@@ -52,5 +52,6 @@
     <file>icons/help.png</file>
     <file>icons/mappings.png</file>
     <file>icons/lock.png</file>
+    <file>icons/corner_arrow.png</file>
 	</qresource>
 </RCC>
