@@ -6,10 +6,10 @@
     <file>icons/decrease_charge.png</file>
 	<file>icons/4-ring.png</file>
 	<file>icons/F.png</file>
-	<file>icons/draw.png</file>	
+	<file>icons/draw.png</file>
 	<file>icons/5-ring.png</file>
 	<file>icons/H.png</file>
-	<file>icons/5-ring_aromatic.png</file>	
+	<file>icons/5-ring_aromatic.png</file>
 	<file>icons/I.png</file>
 	<file>icons/erase.png</file>
 	<file>icons/6-ring.png</file>
@@ -33,9 +33,7 @@
 	<file>icons/dashed_bond.png</file>
 	<file>icons/wedge_bond.png</file>
 	<file>icons/rotate.png</file>
-	<file>icons/LID.png</file>
 	<file>icons/residue.png</file>
-	<file>icons/residueInteraction.png</file>
 	<file>icons/to_ligand.png</file>
 	<file>icons/to_protein.png</file>
 	<file>icons/distance.png</file>
@@ -44,7 +42,6 @@
 	<file>icons/centroid.png</file>
 	<file>icons/plane.png</file>
 	<file>icons/vector.png</file>
-	<file>images/LIDlegend.png</file>
 	<file>icons/water.png</file>
 	<file>icons/R.png</file>
 	<file>icons/edit.png</file>
