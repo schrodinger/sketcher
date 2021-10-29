@@ -51,16 +51,5 @@
     <file>icons/lock.png</file>
     <file>icons/corner_arrow.png</file>
     <file>icons/reset.png</file>
-    <file>icons/cleanup.png</file>
-    <file>icons/configure_view.png</file>
-    <file>icons/draw_mode.png</file>
-    <file>icons/erase_mode.png</file>
-    <file>icons/export.png</file>
-    <file>icons/help2.png</file>
-    <file>icons/more_actions.png</file>
-    <file>icons/new_structures.png</file>
-    <file>icons/redo2.png</file>
-    <file>icons/select_mode.png</file>
-    <file>icons/undo2.png</file>
 	</qresource>
 </RCC>
