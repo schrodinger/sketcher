@@ -21,6 +21,7 @@ class SKETCHER_API SketcherWidget : public QWidget
 {
   public:
     SketcherWidget(QWidget* parent = nullptr);
+    ~SketcherWidget();
 
   private:
     Ui::SketcherWidgetForm* ui = nullptr;
