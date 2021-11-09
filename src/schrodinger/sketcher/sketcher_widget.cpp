@@ -12,6 +12,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
 
     m_sketcher_model = new SketcherModel(this);
     ui->top_bar_wdg->setModel(m_sketcher_model);
+    ui->select_options_wdg->setModel(m_sketcher_model);
 }
 
 SketcherWidget::~SketcherWidget()

@@ -61,5 +61,22 @@
     <file>icons/redo2.png</file>
     <file>icons/select_mode.png</file>
     <file>icons/undo2.png</file>
+    <file>icons/clear_selection.png</file>
+    <file>icons/delete_atoms.png</file>
+    <file>icons/delete_bonds.png</file>
+    <file>icons/marquee_circle.png</file>
+    <file>icons/marquee_lasso.png</file>
+    <file>icons/marquee_square.png</file>
+    <file>icons/move_rotate.png</file>
+    <file>icons/select_add.png</file>
+    <file>icons/select_subtract.png</file>
+    <file>icons/select_tool.png</file>
+    <file>icons/single_bond.png</file>
+    <file>icons/double_bond.png</file>
+    <file>icons/triple_bond.png</file>
+    <file>icons/out_bond.png</file>
+    <file>icons/in_bond.png</file>
+    <file>icons/multi_bond.png</file>
+    <file>icons/multi_ring.png</file>
 	</qresource>
 </RCC>

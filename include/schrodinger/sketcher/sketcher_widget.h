@@ -21,7 +21,7 @@ class SKETCHER_API SketcherWidget : public QWidget
 {
   public:
     SketcherWidget(QWidget* parent = nullptr);
-    ~SketcherWidget();
+    virtual ~SketcherWidget() override;
 
   private:
     Ui::SketcherWidgetForm* ui = nullptr;
