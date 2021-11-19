@@ -71,12 +71,19 @@
     <file>icons/select_add.png</file>
     <file>icons/select_subtract.png</file>
     <file>icons/select_tool.png</file>
+    <file>icons/zero_bond.png</file>
     <file>icons/single_bond.png</file>
     <file>icons/double_bond.png</file>
     <file>icons/triple_bond.png</file>
-    <file>icons/out_bond.png</file>
-    <file>icons/in_bond.png</file>
-    <file>icons/multi_bond.png</file>
+    <file>icons/coordinate_bond.png</file>
+    <file>icons/atom_chain.png</file>
+    <file>icons/any_bond.png</file>
+    <file>icons/aromatic_bond.png</file>
+    <file>icons/single_aromatic_bond.png</file>
+    <file>icons/double_aromatic_bond.png</file>
+    <file>icons/single_double_bond.png</file>
+    <file>icons/single_either_bond.png</file>
+    <file>icons/double_either_bond.png</file>
     <file>icons/multi_ring.png</file>
 	</qresource>
 </RCC>
