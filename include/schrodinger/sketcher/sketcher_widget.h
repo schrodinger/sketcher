@@ -1,6 +1,8 @@
 #pragma once
-#include "schrodinger/sketcher/definitions.h"
+
+#include <memory>
 #include <QWidget>
+#include "schrodinger/sketcher/definitions.h"
 
 namespace Ui
 {
@@ -21,10 +23,10 @@ class SKETCHER_API SketcherWidget : public QWidget
 {
   public:
     SketcherWidget(QWidget* parent = nullptr);
-    virtual ~SketcherWidget() override;
+    ~SketcherWidget();
 
   private:
-    Ui::SketcherWidgetForm* ui = nullptr;
+    std::unique_ptr<Ui::SketcherWidgetForm> ui;
     SketcherModel* m_sketcher_model = nullptr;
 };
 
