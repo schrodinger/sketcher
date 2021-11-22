@@ -1,24 +1,24 @@
 <RCC>
 	<qresource>
     <file>icons/undo.png</file>
-    <file>icons/3-ring.png</file>
+    <file>icons/cyclopropane.png</file>
     <file>icons/Cl.png</file>
     <file>icons/decrease_charge.png</file>
-	<file>icons/4-ring.png</file>
+	<file>icons/cyclobutane.png</file>
 	<file>icons/F.png</file>
 	<file>icons/draw.png</file>
-	<file>icons/5-ring.png</file>
+	<file>icons/cyclopentane.png</file>
 	<file>icons/H.png</file>
-	<file>icons/5-ring_aromatic.png</file>
+	<file>icons/cyclopentadiene.png</file>
 	<file>icons/I.png</file>
 	<file>icons/erase.png</file>
-	<file>icons/6-ring.png</file>
+	<file>icons/cyclohexane.png</file>
 	<file>icons/N.png</file>
 	<file>icons/move.png</file>
-	<file>icons/7-ring.png</file>
+	<file>icons/cycloheptane.png</file>
 	<file>icons/O.png</file>
 	<file>icons/increase_charge.png</file>
-	<file>icons/8-ring.png</file>
+	<file>icons/cyclooctane.png</file>
 	<file>icons/P.png</file>
 	<file>icons/lasso.png</file>
 	<file>icons/B.png</file>
@@ -84,6 +84,13 @@
     <file>icons/single_double_bond.png</file>
     <file>icons/single_either_bond.png</file>
     <file>icons/double_either_bond.png</file>
-    <file>icons/multi_ring.png</file>
+    <file>icons/indane.png</file>
+    <file>icons/add_mapping.png</file>
+    <file>icons/attachment_point.png</file>
+    <file>icons/minus.png</file>
+    <file>icons/plus.png</file>
+    <file>icons/r_group.png</file>
+    <file>icons/r_group1.png</file>
+    <file>icons/remove_mapping.png</file>
 	</qresource>
 </RCC>

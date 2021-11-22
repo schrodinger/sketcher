@@ -17,6 +17,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
     ui->top_bar_wdg->setModel(m_sketcher_model);
     ui->select_options_wdg->setModel(m_sketcher_model);
     ui->draw_tools_wdg->setModel(m_sketcher_model);
+    ui->fragment_wdg->setModel(m_sketcher_model);
 }
 
 SketcherWidget::~SketcherWidget() = default;
