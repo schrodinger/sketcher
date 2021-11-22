@@ -2,33 +2,19 @@
 	<qresource>
     <file>icons/undo.png</file>
     <file>icons/cyclopropane.png</file>
-    <file>icons/Cl.png</file>
     <file>icons/decrease_charge.png</file>
 	<file>icons/cyclobutane.png</file>
-	<file>icons/F.png</file>
-	<file>icons/draw.png</file>
 	<file>icons/cyclopentane.png</file>
-	<file>icons/H.png</file>
 	<file>icons/cyclopentadiene.png</file>
-	<file>icons/I.png</file>
 	<file>icons/erase.png</file>
 	<file>icons/cyclohexane.png</file>
-	<file>icons/N.png</file>
 	<file>icons/move.png</file>
 	<file>icons/cycloheptane.png</file>
-	<file>icons/O.png</file>
 	<file>icons/increase_charge.png</file>
 	<file>icons/cyclooctane.png</file>
-	<file>icons/P.png</file>
 	<file>icons/lasso.png</file>
-	<file>icons/B.png</file>
-	<file>icons/S.png</file>
-	<file>icons/Si.png</file>
-	<file>icons/cleanup.png</file>
 	<file>icons/redo.png</file>
-	<file>icons/Br.png</file>
 	<file>icons/benzene.png</file>
-	<file>icons/C.png</file>
 	<file>icons/dashed_bond.png</file>
 	<file>icons/wedge_bond.png</file>
 	<file>icons/rotate.png</file>
@@ -55,12 +41,9 @@
     <file>icons/draw_mode.png</file>
     <file>icons/erase_mode.png</file>
     <file>icons/export.png</file>
-    <file>icons/help2.png</file>
     <file>icons/more_actions.png</file>
     <file>icons/new_structures.png</file>
-    <file>icons/redo2.png</file>
     <file>icons/select_mode.png</file>
-    <file>icons/undo2.png</file>
     <file>icons/clear_selection.png</file>
     <file>icons/delete_atoms.png</file>
     <file>icons/delete_bonds.png</file>
