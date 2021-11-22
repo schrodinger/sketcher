@@ -8,7 +8,6 @@
 	<file>icons/cyclopentadiene.png</file>
 	<file>icons/erase.png</file>
 	<file>icons/cyclohexane.png</file>
-	<file>icons/move.png</file>
 	<file>icons/cycloheptane.png</file>
 	<file>icons/increase_charge.png</file>
 	<file>icons/cyclooctane.png</file>
@@ -17,7 +16,6 @@
 	<file>icons/benzene.png</file>
 	<file>icons/dashed_bond.png</file>
 	<file>icons/wedge_bond.png</file>
-	<file>icons/rotate.png</file>
 	<file>icons/residue.png</file>
 	<file>icons/to_ligand.png</file>
 	<file>icons/to_protein.png</file>
