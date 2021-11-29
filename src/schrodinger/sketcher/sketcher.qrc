@@ -45,6 +45,8 @@
     <file>icons/marquee_circle.png</file>
     <file>icons/marquee_lasso.png</file>
     <file>icons/marquee_square.png</file>
+    <file>icons/select_lasso.png</file>
+    <file>icons/select_square.png</file>
     <file>icons/move_rotate.png</file>
     <file>icons/select_add.png</file>
     <file>icons/select_subtract.png</file>

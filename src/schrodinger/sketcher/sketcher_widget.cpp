@@ -18,6 +18,10 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
     ui->select_options_wdg->setModel(m_sketcher_model);
     ui->draw_tools_wdg->setModel(m_sketcher_model);
     ui->fragment_wdg->setModel(m_sketcher_model);
+
+    setStyleSheet("QToolButton:checked {"
+                  "background-color: rgb(190, 190, 190);"
+                  "}");
 }
 
 SketcherWidget::~SketcherWidget() = default;
