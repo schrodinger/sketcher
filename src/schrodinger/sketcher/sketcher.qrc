@@ -72,5 +72,18 @@
     <file>icons/r_group.png</file>
     <file>icons/r_group1.png</file>
     <file>icons/remove_mapping.png</file>
+    <file>icons/header_any.png</file>
+    <file>icons/header_halogen.png</file>
+    <file>icons/header_hetero.png</file>
+    <file>icons/header_metal.png</file>
+    <file>icons/queryA.png</file>
+    <file>icons/queryAH.png</file>
+    <file>icons/queryM.png</file>
+    <file>icons/queryMH.png</file>
+    <file>icons/queryQ.png</file>
+    <file>icons/queryQH.png</file>
+    <file>icons/queryX.png</file>
+    <file>icons/queryXH.png</file>
+    <file>icons/position_variant_bond.png</file>
 	</qresource>
 </RCC>
