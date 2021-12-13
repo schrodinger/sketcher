@@ -20,7 +20,10 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
     ui->fragment_wdg->setModel(m_sketcher_model);
 
     setStyleSheet("QToolButton:checked {"
-                  "background-color: rgb(190, 190, 190);"
+                  "background-color: rgb(161, 189, 236);"
+                  "}"
+                  "QToolButton:disabled {"
+                  "background: transparent"
                   "}");
 }
 
