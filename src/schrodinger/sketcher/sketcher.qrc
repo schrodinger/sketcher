@@ -36,6 +36,7 @@
     <file>icons/erase_mode.png</file>
     <file>icons/export.png</file>
     <file>icons/more_actions.png</file>
+    <file>icons/clear_sketcher.png</file>
     <file>icons/new_structures.png</file>
     <file>icons/select_mode.png</file>
     <file>icons/clear_selection.png</file>
@@ -84,5 +85,6 @@
     <file>icons/queryX.png</file>
     <file>icons/queryXH.png</file>
     <file>icons/position_variant_bond.png</file>
+    <file>icons/periodic_table.png</file>
 	</qresource>
 </RCC>
