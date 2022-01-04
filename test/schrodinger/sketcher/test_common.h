@@ -1,6 +1,11 @@
 #ifndef TEST_COMMON_H
 #define TEST_COMMON_H
+
+#include <fstream>
+
 #include <QtGlobal>
+
+#include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 
 #define CREATE_QAPP                                                            \
@@ -10,3 +15,10 @@
     }
 
 #endif // TEST_COMMON_H
+
+std::string read_testfile(const std::string& filename)
+{
+    std::ifstream fh(schrodinger::test::mmshare_testfile(filename));
+    return std::string(std::istreambuf_iterator<char>(fh),
+                       std::istreambuf_iterator<char>());
+}
