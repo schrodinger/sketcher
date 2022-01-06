@@ -5,6 +5,8 @@
 
 #include <QtGlobal>
 
+#include <RDGeneral/RDLog.h>
+
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 
@@ -15,6 +17,19 @@
     }
 
 #endif // TEST_COMMON_H
+
+class SilenceRDKitLogging
+{
+  public:
+    SilenceRDKitLogging()
+    {
+        if (rdErrorLog == nullptr) {
+            RDLog::InitLogs();
+        }
+        boost::logging::disable_logs("rdApp.*");
+    };
+    ~SilenceRDKitLogging() { boost::logging::enable_logs("rdApp.*"); };
+};
 
 std::string read_testfile(const std::string& filename)
 {
