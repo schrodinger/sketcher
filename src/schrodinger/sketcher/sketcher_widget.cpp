@@ -21,9 +21,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
 
     setStyleSheet("QToolButton:checked {"
                   "background-color: rgb(161, 189, 236);"
-                  "}"
-                  "QToolButton:disabled {"
-                  "background: transparent"
                   "}");
 }
 
