@@ -70,10 +70,6 @@
     <file>icons/minus.png</file>
     <file>icons/plus.png</file>
     <file>icons/remove_mapping.png</file>
-    <file>icons/header_any.png</file>
-    <file>icons/header_halogen.png</file>
-    <file>icons/header_hetero.png</file>
-    <file>icons/header_metal.png</file>
     <file>icons/queryA.png</file>
     <file>icons/queryAH.png</file>
     <file>icons/queryM.png</file>
