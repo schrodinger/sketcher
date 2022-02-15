@@ -1,6 +1,5 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/sketcher/ui_sketcher_widget.h"
-#include "schrodinger/sketcher/sketcher_css_style.h" // TOOL_BUTTON_STYLE
 #include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger
@@ -16,9 +15,13 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
 
     m_sketcher_model = new SketcherModel(this);
     ui->top_bar_wdg->setModel(m_sketcher_model);
-    ui->side_bar_wdg->setModel(m_sketcher_model);
+    ui->select_options_wdg->setModel(m_sketcher_model);
+    ui->draw_tools_wdg->setModel(m_sketcher_model);
+    ui->fragment_wdg->setModel(m_sketcher_model);
 
-    setStyleSheet(TOOL_BUTTON_STYLE);
+    setStyleSheet("QToolButton:checked {"
+                  "background-color: rgb(161, 189, 236);"
+                  "}");
 }
 
 SketcherWidget::~SketcherWidget() = default;
