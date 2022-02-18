@@ -1,5 +1,4 @@
-#ifndef TEST_COMMON_H
-#define TEST_COMMON_H
+#pragma once
 
 #include <fstream>
 
@@ -10,13 +9,17 @@
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 
-#define CREATE_QAPP                                                            \
-    Test_QAPP_DisplayRequiredFixture obj(false);                               \
-    if (!obj.hasDisplay()) {                                                   \
-        return;                                                                \
-    }
-
-#endif // TEST_COMMON_H
+/* Use this fixture to construct global fixture which would provide
+ * QApplication for a whole suite of a given test file.
+ * It should always be used in the BOOST_GLOBAL_FIXTURE
+ * This fixture is not suitable as a global fixture if test depends on
+ * QApplication.
+ */
+class Test_Sketcher_global_fixture : public Test_QAPP_DisplayRequiredFixture
+{
+  public:
+    Test_Sketcher_global_fixture() : Test_QAPP_DisplayRequiredFixture(true) {}
+};
 
 class SilenceRDKitLogging
 {
