@@ -1,5 +1,5 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
-#include "schrodinger/sketcher/ui_sketcher_widget.h"
+#include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 #include "schrodinger/sketcher/sketcher_css_style.h" // TOOL_BUTTON_STYLE
 #include "schrodinger/sketcher/sketcher_model.h"
 

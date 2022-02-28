@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SketcherBottomBarForm</class>
+ <widget class="QWidget" name="SketcherBottomBarForm">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>475</width>
+    <height>50</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <item>
+    <widget class="QToolButton" name="reset_btn">
+     <property name="styleSheet">
+      <string notr="true">QToolButton { border : 0; }</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="sketcher.qrc">
+       <normaloff>:/icons/reset.png</normaloff>:/icons/reset.png</iconset>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="reload_btn">
+     <property name="text">
+      <string>Reload Entry</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="bottom_button_spacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="QPushButton" name="save_as_new_btn">
+     <property name="text">
+      <string>Save as New...</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="save_changes_btn">
+     <property name="text">
+      <string>Save Changes</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="sketcher.qrc"/>
+ </resources>
+ <connections/>
+</ui>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SketcherWidgetForm</class>
+ <widget class="QWidget" name="SketcherWidgetForm">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>603</width>
+    <height>294</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="schrodinger::sketcher::SketcherTopBar" name="top_bar_wdg" native="true"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="sketch_layout">
+     <item>
+      <widget class="QStackedWidget" name="sketch_stack">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="single_view_wdg">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QGraphicsView" name="single_view"/>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="side_bar_layout">
+       <item>
+        <widget class="schrodinger::sketcher::SketcherSideBar" name="side_bar_wdg" native="true">
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>schrodinger::sketcher::SketcherTopBar</class>
+   <extends>QWidget</extends>
+   <header>schrodinger/sketcher/sketcher_top_bar.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>schrodinger::sketcher::SketcherSideBar</class>
+   <extends>QWidget</extends>
+   <header>schrodinger/sketcher/sketcher_side_bar.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources>
+  <include location="sketcher.qrc"/>
+ </resources>
+ <connections/>
+</ui>
