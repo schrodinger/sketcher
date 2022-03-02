@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>106</width>
-    <height>151</height>
+    <width>99</width>
+    <height>143</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,11 +47,11 @@
      </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
-font: bold 11px;
+font: bold 10px;
 }</string>
      </property>
      <property name="text">
-      <string>Draw Tools</string>
+      <string>DRAW TOOLS</string>
      </property>
      <property name="margin">
       <number>3</number>
@@ -78,7 +78,7 @@ font: bold 11px;
         <string/>
        </property>
        <property name="icon">
-        <iconset resource="sketcher.qrc">
+        <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/explicit_h.png</normaloff>:/icons/explicit_h.png</iconset>
        </property>
        <property name="iconSize">
@@ -110,7 +110,7 @@ font: bold 11px;
         <string/>
        </property>
        <property name="icon">
-        <iconset resource="sketcher.qrc">
+        <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/increase_charge.png</normaloff>:/icons/increase_charge.png</iconset>
        </property>
        <property name="iconSize">
@@ -145,7 +145,7 @@ font: bold 11px;
         <string/>
        </property>
        <property name="icon">
-        <iconset resource="sketcher.qrc">
+        <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/decrease_charge.png</normaloff>:/icons/decrease_charge.png</iconset>
        </property>
        <property name="iconSize">
@@ -204,7 +204,7 @@ font: bold 11px;
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="sketcher.qrc">
+         <iconset resource="../sketcher.qrc">
           <normaloff>:/icons/aromatic_bond.png</normaloff>:/icons/aromatic_bond.png</iconset>
         </property>
         <property name="iconSize">
@@ -236,7 +236,7 @@ font: bold 11px;
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="sketcher.qrc">
+         <iconset resource="../sketcher.qrc">
           <normaloff>:/icons/wedge_bond.png</normaloff>:/icons/wedge_bond.png</iconset>
         </property>
         <property name="iconSize">
@@ -271,7 +271,7 @@ font: bold 11px;
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="sketcher.qrc">
+         <iconset resource="../sketcher.qrc">
           <normaloff>:/icons/single_bond.png</normaloff>:/icons/single_bond.png</iconset>
         </property>
         <property name="iconSize">
@@ -303,7 +303,7 @@ font: bold 11px;
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="sketcher.qrc">
+         <iconset resource="../sketcher.qrc">
           <normaloff>:/icons/dashed_bond.png</normaloff>:/icons/dashed_bond.png</iconset>
         </property>
         <property name="iconSize">
@@ -338,7 +338,7 @@ font: bold 11px;
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="sketcher.qrc">
+         <iconset resource="../sketcher.qrc">
           <normaloff>:/icons/atom_chain.png</normaloff>:/icons/atom_chain.png</iconset>
         </property>
         <property name="iconSize">
@@ -370,7 +370,7 @@ font: bold 11px;
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="sketcher.qrc">
+         <iconset resource="../sketcher.qrc">
           <normaloff>:/icons/double_bond.png</normaloff>:/icons/double_bond.png</iconset>
         </property>
         <property name="iconSize">
@@ -406,7 +406,7 @@ font: bold 11px;
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

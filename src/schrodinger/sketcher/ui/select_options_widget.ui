@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>98</width>
-    <height>89</height>
+    <width>104</width>
+    <height>80</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,11 +47,11 @@
      </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
-font: bold 11px;
+font: bold 10px;
 }</string>
      </property>
      <property name="text">
-      <string>Select Options</string>
+      <string>SELECT OPTIONS</string>
      </property>
      <property name="margin">
       <number>3</number>
@@ -112,7 +112,7 @@ font: bold 11px;
         <string/>
        </property>
        <property name="icon">
-        <iconset resource="sketcher.qrc">
+        <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/move_rotate.png</normaloff>:/icons/move_rotate.png</iconset>
        </property>
        <property name="iconSize">
@@ -137,86 +137,62 @@ font: bold 11px;
       <number>0</number>
      </property>
      <item>
-      <widget class="QToolButton" name="clear_selection_btn">
-       <property name="maximumSize">
+      <widget class="QToolButton" name="select_all_btn">
+       <property name="minimumSize">
         <size>
-         <width>32</width>
-         <height>32</height>
+         <width>0</width>
+         <height>24</height>
+        </size>
+       </property>
+       <property name="styleSheet">
+        <string notr="true">QToolButton {
+font: bold 10px;
+border : none; }</string>
+       </property>
+       <property name="text">
+        <string>All</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QToolButton" name="clear_selection_btn">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>24</height>
         </size>
        </property>
        <property name="toolTip">
         <string>Clear selection</string>
        </property>
        <property name="styleSheet">
-        <string notr="true">QToolButton { border : none; }</string>
+        <string notr="true">QToolButton {
+font: bold 10px;
+border : none; }</string>
        </property>
        <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="sketcher.qrc">
-         <normaloff>:/icons/clear_selection.png</normaloff>:/icons/clear_selection.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>30</width>
-         <height>32</height>
-        </size>
+        <string>None</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="delete_atoms_btn">
-       <property name="maximumSize">
+      <widget class="QToolButton" name="delete_selection_btn">
+       <property name="minimumSize">
         <size>
-         <width>32</width>
-         <height>32</height>
+         <width>0</width>
+         <height>24</height>
         </size>
        </property>
        <property name="toolTip">
         <string>Delete selected structure</string>
        </property>
        <property name="styleSheet">
-        <string notr="true">QToolButton { border : none; }</string>
+        <string notr="true">QToolButton {
+font: bold 10px;
+border : none; }</string>
        </property>
        <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="sketcher.qrc">
-         <normaloff>:/icons/delete_atoms.png</normaloff>:/icons/delete_atoms.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>30</width>
-         <height>32</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QToolButton" name="delete_bonds_btn">
-       <property name="maximumSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton { border : none; }</string>
-       </property>
-       <property name="text">
-        <string/>
-       </property>
-       <property name="icon">
-        <iconset resource="sketcher.qrc">
-         <normaloff>:/icons/delete_bonds.png</normaloff>:/icons/delete_bonds.png</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>30</width>
-         <height>32</height>
-        </size>
+        <string>Delete</string>
        </property>
       </widget>
      </item>
@@ -232,7 +208,7 @@ font: bold 11px;
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
