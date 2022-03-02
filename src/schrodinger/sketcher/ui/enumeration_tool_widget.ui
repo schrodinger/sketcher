@@ -76,6 +76,9 @@ font: bold 14px;
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Attachment Point</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -83,7 +86,7 @@ font: bold 14px;
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/attachment_point.png</normaloff>:/icons/attachment_point.png</iconset>
      </property>
      <property name="iconSize">
@@ -138,7 +141,7 @@ font: bold 14px;
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

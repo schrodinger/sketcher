@@ -329,7 +329,7 @@ font: bold 10px;
          </size>
         </property>
         <property name="toolTip">
-         <string>Bond Chain</string>
+         <string>Bond Chain - Drag on canvas to draw a chain of carbons</string>
         </property>
         <property name="styleSheet">
          <string notr="true">QToolButton { border : none; }</string>

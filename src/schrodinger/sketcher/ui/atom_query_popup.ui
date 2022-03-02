@@ -37,6 +37,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Heavy Atom</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -44,7 +47,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryA.png</normaloff>:/icons/queryA.png</iconset>
      </property>
      <property name="iconSize">
@@ -69,6 +72,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Metal</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -76,7 +82,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryM.png</normaloff>:/icons/queryM.png</iconset>
      </property>
      <property name="iconSize">
@@ -101,6 +107,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Halogen or H</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -108,7 +117,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryXH.png</normaloff>:/icons/queryXH.png</iconset>
      </property>
      <property name="iconSize">
@@ -133,6 +142,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Atom</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -140,7 +152,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryAH.png</normaloff>:/icons/queryAH.png</iconset>
      </property>
      <property name="iconSize">
@@ -165,6 +177,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Metal or H</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -172,7 +187,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryMH.png</normaloff>:/icons/queryMH.png</iconset>
      </property>
      <property name="iconSize">
@@ -197,6 +212,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Heteroatom or H</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -204,7 +222,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryQH.png</normaloff>:/icons/queryQH.png</iconset>
      </property>
      <property name="iconSize">
@@ -229,6 +247,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Halogen</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -236,7 +257,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryX.png</normaloff>:/icons/queryX.png</iconset>
      </property>
      <property name="iconSize">
@@ -261,6 +282,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Heteroatom</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -268,7 +292,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/queryQ.png</normaloff>:/icons/queryQ.png</iconset>
      </property>
      <property name="iconSize">
@@ -372,7 +396,7 @@ font: italic 7px;
   </layout>
  </widget>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

@@ -37,6 +37,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Single or Aromatic Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -44,7 +47,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/single_aromatic_bond.png</normaloff>:/icons/single_aromatic_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -69,6 +72,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Double or Aromatic Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -76,7 +82,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/double_aromatic_bond.png</normaloff>:/icons/double_aromatic_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -101,6 +107,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Single or Double Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -108,7 +117,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/single_double_bond.png</normaloff>:/icons/single_double_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -133,6 +142,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Aromatic Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -140,7 +152,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/aromatic_bond.png</normaloff>:/icons/aromatic_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -165,6 +177,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Any Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -172,7 +187,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/any_bond.png</normaloff>:/icons/any_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -197,6 +212,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Position Variant Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -204,7 +222,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/position_variant_bond.png</normaloff>:/icons/position_variant_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -224,7 +242,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

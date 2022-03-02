@@ -37,6 +37,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Single Down Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -44,7 +47,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/dashed_bond.png</normaloff>:/icons/dashed_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -69,6 +72,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Single Up Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -76,7 +82,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/wedge_bond.png</normaloff>:/icons/wedge_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -101,6 +107,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Double Cis or Trans Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -108,7 +117,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/double_either_bond.png</normaloff>:/icons/double_either_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -133,6 +142,9 @@
        <height>32</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Single Up or Down Bond</string>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton { border : none; }</string>
      </property>
@@ -140,7 +152,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/single_either_bond.png</normaloff>:/icons/single_either_bond.png</iconset>
      </property>
      <property name="iconSize">
@@ -160,7 +172,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
