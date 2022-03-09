@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>103</width>
+    <width>95</width>
     <height>226</height>
    </rect>
   </property>
@@ -56,6 +56,13 @@
      </item>
      <item>
       <widget class="schrodinger::sketcher::RingToolWidget" name="ring_tool_wdg" native="true"/>
+     </item>
+     <item>
+      <widget class="Line" name="line_4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="schrodinger::sketcher::EnumerationToolWidget" name="enumeration_tool_wdg" native="true"/>
@@ -120,7 +127,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
 </ui>

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>104</width>
-    <height>80</height>
+    <width>121</width>
+    <height>84</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -47,7 +47,11 @@
      </property>
      <property name="styleSheet">
       <string notr="true">QLabel {
-font: bold 10px;
+font: bold 9px;
+color: #666666
+}
+QLabel:disabled {
+color: #b6b6b6;
 }</string>
      </property>
      <property name="text">
@@ -144,10 +148,22 @@ font: bold 10px;
          <height>24</height>
         </size>
        </property>
+       <property name="toolTip">
+        <string>Select all</string>
+       </property>
        <property name="styleSheet">
         <string notr="true">QToolButton {
 font: bold 10px;
-border : none; }</string>
+color: #3d5d71;
+border : none; 
+}
+QToolButton:disabled {
+color: #b6b6b6;
+}
+QToolButton:hover {
+color: #5b8aa8;
+background-color: transparent;
+}</string>
        </property>
        <property name="text">
         <string>All</string>
@@ -168,7 +184,16 @@ border : none; }</string>
        <property name="styleSheet">
         <string notr="true">QToolButton {
 font: bold 10px;
-border : none; }</string>
+color: #3d5d71;
+border : none; 
+}
+QToolButton:disabled {
+color: #b6b6b6;
+}
+QToolButton:hover {
+color: #5b8aa8;
+background-color: transparent;
+}</string>
        </property>
        <property name="text">
         <string>None</string>
@@ -189,7 +214,16 @@ border : none; }</string>
        <property name="styleSheet">
         <string notr="true">QToolButton {
 font: bold 10px;
-border : none; }</string>
+color: #3d5d71;
+border : none; 
+}
+QToolButton:disabled {
+color: #b6b6b6;
+}
+QToolButton:hover {
+color: #5b8aa8;
+background-color: transparent;
+}</string>
        </property>
        <property name="text">
         <string>Delete</string>
