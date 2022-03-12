@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>580</width>
-    <height>429</height>
+    <width>572</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,17 +24,27 @@
     <number>5</number>
    </property>
    <item>
-    <widget class="QLabel" name="label">
-     <property name="font">
-      <font>
-       <weight>50</weight>
-       <bold>false</bold>
-      </font>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <property name="topMargin">
+      <number>12</number>
      </property>
-     <property name="text">
-      <string>Welcome to the new Schrodinger 2D Sketcher! Here are some tips to help you get started:</string>
+     <property name="bottomMargin">
+      <number>12</number>
      </property>
-    </widget>
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="font">
+        <font>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Welcome to the new Schrodinger 2D Sketcher! Here are some tips to help you get started:</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_15">
@@ -130,21 +140,24 @@
      </item>
      <item>
       <widget class="QLabel" name="label_23">
+       <property name="minimumSize">
+        <size>
+         <width>470</width>
+         <height>50</height>
+        </size>
+       </property>
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;The first 3 buttons on the top toolbar put the Sketcher into different modes.&lt;br/&gt;Use Select mode for select-first editing of an existing structure, &amp;nbsp;Draw mode&lt;br/&gt;for building from scratch, &amp;nbsp;and Erase mode for quick or broad deletion.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>The first 3 buttons on the top toolbar put the Sketcher into different modes. Use Select mode for select-first editing of an existing structure,  Draw mode for building from scratch,  and Erase mode for quick or broad deletion.</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
      <item>
-      <spacer name="horizontalSpacer_23">
+      <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>28</width>
-         <height>20</height>
-        </size>
        </property>
       </spacer>
      </item>
@@ -260,8 +273,17 @@
      </item>
      <item>
       <widget class="QLabel" name="label_8">
+       <property name="minimumSize">
+        <size>
+         <width>470</width>
+         <height>50</height>
+        </size>
+       </property>
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Buttons showing a little triangle in the bottom right corner offer a choice of&lt;br/&gt;related tools. &amp;nbsp;&amp;nbsp;To use the currently displayed tool, &amp;nbsp;just click the button. &amp;nbsp;&amp;nbsp;To&lt;br/&gt;choose a different tool, &amp;nbsp;press and hold the button to open the chooser.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>Buttons showing a little triangle in the bottom right corner offer a choice of related tools.  To use the currently displayed tool, just click the button.  To choose a different tool,  press and hold the button to open the chooser.</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -269,12 +291,6 @@
       <spacer name="horizontalSpacer_17">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>28</width>
-         <height>20</height>
-        </size>
        </property>
       </spacer>
      </item>
@@ -390,8 +406,17 @@
      </item>
      <item>
       <widget class="QLabel" name="label_6">
+       <property name="minimumSize">
+        <size>
+         <width>470</width>
+         <height>65</height>
+        </size>
+       </property>
        <property name="text">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;All the tools work with the left-mouse button, &amp;nbsp;but you can also translate and&lt;br/&gt;rotate the structure or selected parts of it by dragging with your right- or&lt;br/&gt;middle-mouse button. &amp;nbsp;&amp;nbsp;Right-clicking on an atom or bond will bring up a&lt;br/&gt;useful context menu.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>All the tools work with the left-mouse button,  but you can also translate and rotate the structure or selected parts of it by dragging with your right- or middle-mouse button.  Right-clicking on an atom or bond will bring up a useful context menu.</string>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -399,12 +424,6 @@
       <spacer name="horizontalSpacer_8">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>28</width>
-         <height>20</height>
-        </size>
        </property>
       </spacer>
      </item>
@@ -449,6 +468,19 @@
       </spacer>
      </item>
     </layout>
+   </item>
+   <item>
+    <spacer name="verticalSpacer_4">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
    </item>
    <item>
     <widget class="Line" name="line">
