@@ -111,14 +111,21 @@ void molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 void fix_cxsmiles_rgroups(RDKit::ROMol& mol)
 {
     for (auto atom : mol.atoms()) {
-        if (atom->getAtomicNum() == 0 && atom->hasQuery()) {
-            auto queryAtom = static_cast<RDKit::QueryAtom*>(atom);
-            auto query_label = queryAtom->getQuery()->getTypeLabel();
+        if (atom->getAtomicNum() == 0) {
+
+            // In SMILES RGroups have no query, but SMARTS & MDL
+            // they should have an empty query
+            if (atom->hasQuery()) {
+                auto queryAtom = static_cast<RDKit::QueryAtom*>(atom);
+                auto query_label = queryAtom->getQuery()->getTypeLabel();
+                if (!query_label.empty()) {
+                    continue;
+                }
+            }
 
             // If this is a null query, check for a proper RGroup atom label
             std::string atom_label;
-            if (query_label.empty() &&
-                atom->getPropIfPresent(RDKit::common_properties::atomLabel,
+            if (atom->getPropIfPresent(RDKit::common_properties::atomLabel,
                                        atom_label) &&
                 atom_label.find("_R") == 0) {
                 int idx = -1;
