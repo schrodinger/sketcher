@@ -8,7 +8,6 @@
     <file>icons/atom_chain.png</file>
     <file>icons/attachment_point.png</file>
     <file>icons/benzene.png</file>
-    <file>icons/centroid.png</file>
     <file>icons/cleanup.png</file>
     <file>icons/clear_sketcher.png</file>
     <file>icons/configure_view.png</file>
@@ -23,7 +22,6 @@
     <file>icons/cyclopropane.png</file>
     <file>icons/dashed_bond.png</file>
     <file>icons/decrease_charge.png</file>
-    <file>icons/distance.png</file>
     <file>icons/double_aromatic_bond.png</file>
     <file>icons/double_bond.png</file>
     <file>icons/double_either_bond.png</file>
@@ -45,7 +43,6 @@
     <file>icons/move_rotate.png</file>
     <file>icons/new_structures.png</file>
     <file>icons/periodic_table.png</file>
-    <file>icons/plane.png</file>
     <file>icons/plus.png</file>
     <file>icons/position_variant_bond.png</file>
     <file>icons/queryA.png</file>
@@ -59,7 +56,6 @@
     <file>icons/redo.png</file>
     <file>icons/remove_mapping.png</file>
     <file>icons/reset.png</file>
-    <file>icons/residue.png</file>
     <file>icons/select_add.png</file>
     <file>icons/select_lasso.png</file>
     <file>icons/select_mode.png</file>
@@ -70,13 +66,8 @@
     <file>icons/single_bond.png</file>
     <file>icons/single_double_bond.png</file>
     <file>icons/single_either_bond.png</file>
-    <file>icons/to_ligand.png</file>
-    <file>icons/to_protein.png</file>
-    <file>icons/torsion.png</file>
     <file>icons/triple_bond.png</file>
     <file>icons/undo.png</file>
-    <file>icons/vector.png</file>
-    <file>icons/water.png</file>
     <file>icons/wedge_bond.png</file>
     <file>icons/zero_bond.png</file>
     </qresource>
