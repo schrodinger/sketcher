@@ -68,9 +68,6 @@
       <widget class="schrodinger::sketcher::EnumerationToolWidget" name="enumeration_tool_wdg" native="true"/>
      </item>
      <item>
-      <widget class="schrodinger::sketcher::OldReactionToolWidget" name="old_reaction_tool_wdg" native="true"/>
-     </item>
-     <item>
       <spacer name="verticalSpacer">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -117,12 +114,6 @@
    <class>schrodinger::sketcher::RingToolWidget</class>
    <extends>QWidget</extends>
    <header>schrodinger/sketcher/ring_tool_widget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>schrodinger::sketcher::OldReactionToolWidget</class>
-   <extends>QWidget</extends>
-   <header>schrodinger/sketcher/old_reaction_tool_widget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
