@@ -1,6 +1,7 @@
 <RCC>
     <qresource>
     <file>icons/add_particle.png</file>
+    <file>icons/angle.png</file>
     <file>icons/any_bond.png</file>
     <file>icons/aromatic_bond.png</file>
     <file>icons/atom_chain.png</file>
@@ -31,6 +32,7 @@
     <file>icons/export.png</file>
     <file>icons/help.png</file>
     <file>icons/increase_charge.png</file>
+    <file>icons/indane.png</file>
     <file>icons/lasso.png</file>
     <file>icons/marquee_circle.png</file>
     <file>icons/marquee_lasso.png</file>
@@ -54,7 +56,7 @@
     <file>icons/reaction_unmap_atoms.png</file>
     <file>icons/redo.png</file>
     <file>icons/reset.png</file>
-    <file>icons/select_add.png</file>    
+    <file>icons/select_add.png</file>
     <file>icons/select_lasso.png</file>
     <file>icons/select_mode.png</file>
     <file>icons/select_square.png</file>
