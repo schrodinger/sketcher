@@ -300,21 +300,22 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
 {
     RDKit::RWMol rwmol(mol);
 
+    bool kekulize = false;
+    bool include_stereo = true;
+
     switch (format) {
         case Format::SMILES:
-            return RDKit::MolToSmiles(rwmol);
+            return RDKit::MolToSmiles(rwmol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            return RDKit::MolToCXSmiles(rwmol);
+            return RDKit::MolToCXSmiles(rwmol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(rwmol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             attachment_point_dummies_to_molattachpt_property(rwmol);
             int confId = -1;
-            bool kekulize = false;
             bool forceV3000 = format == Format::MDL_MOLV3000;
-            bool includeStereo = true;
-            return RDKit::MolToMolBlock(rwmol, includeStereo, confId, kekulize,
+            return RDKit::MolToMolBlock(rwmol, include_stereo, confId, kekulize,
                                         forceV3000);
         }
         case Format::INCHI: {

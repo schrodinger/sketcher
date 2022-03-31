@@ -21,19 +21,6 @@ class Test_Sketcher_global_fixture : public Test_QAPP_DisplayRequiredFixture
     Test_Sketcher_global_fixture() : Test_QAPP_DisplayRequiredFixture(true) {}
 };
 
-class SilenceRDKitLogging
-{
-  public:
-    SilenceRDKitLogging()
-    {
-        if (rdErrorLog == nullptr) {
-            RDLog::InitLogs();
-        }
-        boost::logging::disable_logs("rdApp.*");
-    };
-    ~SilenceRDKitLogging() { boost::logging::enable_logs("rdApp.*"); };
-};
-
 std::string read_testfile(const std::string& filename)
 {
     std::ifstream fh(schrodinger::test::mmshare_testfile(filename));
