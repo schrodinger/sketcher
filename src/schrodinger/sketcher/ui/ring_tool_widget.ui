@@ -323,6 +323,10 @@
      <property name="text">
       <string/>
      </property>
+     <property name="icon">
+      <iconset resource="sketcher.qrc">
+       <normaloff>:/icons/indane.png</normaloff>:/icons/indane.png</iconset>
+     </property>
      <property name="iconSize">
       <size>
        <width>30</width>
