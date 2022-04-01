@@ -32,9 +32,7 @@
     <file>icons/export.png</file>
     <file>icons/help.png</file>
     <file>icons/increase_charge.png</file>
-    <file>icons/indane.png</file>
     <file>icons/lasso.png</file>
-    <file>icons/marquee_circle.png</file>
     <file>icons/marquee_lasso.png</file>
     <file>icons/marquee_square.png</file>
     <file>icons/more_actions.png</file>
@@ -56,12 +54,9 @@
     <file>icons/reaction_unmap_atoms.png</file>
     <file>icons/redo.png</file>
     <file>icons/reset.png</file>
-    <file>icons/select_add.png</file>
     <file>icons/select_lasso.png</file>
     <file>icons/select_mode.png</file>
     <file>icons/select_square.png</file>
-    <file>icons/select_subtract.png</file>
-    <file>icons/select_tool.png</file>
     <file>icons/single_aromatic_bond.png</file>
     <file>icons/single_bond.png</file>
     <file>icons/single_double_bond.png</file>
