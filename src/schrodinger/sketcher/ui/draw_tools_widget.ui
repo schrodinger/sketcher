@@ -76,10 +76,13 @@ color: #b6b6b6;
         <string>Add or remove explicit hydrogens</string>
        </property>
        <property name="styleSheet">
-        <string notr="true">QToolButton { border : none; }</string>
+        <string notr="true">QToolButton {
+border : none;
+font: bold 14px;
+}</string>
        </property>
        <property name="text">
-        <string/>
+        <string>H</string>
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
@@ -202,7 +205,11 @@ color: #b6b6b6;
          </size>
         </property>
         <property name="styleSheet">
-         <string notr="true">QToolButton { border : none; }</string>
+         <string notr="true">QToolButton {
+border : none;
+font: bold 12px;
+color: #333333;
+}</string>
         </property>
         <property name="text">
          <string/>
@@ -414,7 +421,7 @@ color: #b6b6b6;
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="bond_group"/>
   <buttongroup name="charge_group"/>
+  <buttongroup name="bond_group"/>
  </buttongroups>
 </ui>
