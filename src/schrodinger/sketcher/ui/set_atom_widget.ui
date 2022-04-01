@@ -61,6 +61,7 @@
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -109,6 +110,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -157,6 +159,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -205,6 +208,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -253,6 +257,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -301,6 +306,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -349,6 +355,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -397,6 +404,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -445,6 +453,7 @@ font: bold 14px;
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
+color: #333333;
 }</string>
      </property>
      <property name="text">
@@ -487,7 +496,8 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
+font: bold italic 15px;
+color: #606060;
 }</string>
      </property>
      <property name="text">
@@ -540,7 +550,7 @@ font: bold 14px;
       <string>...</string>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/periodic_table.png</normaloff>:/icons/periodic_table.png</iconset>
      </property>
      <property name="iconSize">
@@ -577,7 +587,7 @@ font: bold 14px;
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
