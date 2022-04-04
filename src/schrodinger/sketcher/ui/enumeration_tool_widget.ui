@@ -49,7 +49,6 @@
       <string notr="true">QToolButton {
 border : none;
 font: bold 14px;
-color: #444444;
 }</string>
      </property>
      <property name="text">
