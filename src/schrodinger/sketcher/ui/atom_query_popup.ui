@@ -31,7 +31,7 @@
    </property>
    <item row="1" column="0">
     <widget class="QToolButton" name="A_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -41,14 +41,20 @@
       <string>Any Heavy Atom</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>A</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryA.png</normaloff>:/icons/queryA.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -60,7 +66,7 @@ color: #606060;
    </item>
    <item row="1" column="2">
     <widget class="QToolButton" name="M_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -70,14 +76,20 @@ color: #606060;
       <string>Any Metal</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>M</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryM.png</normaloff>:/icons/queryM.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -89,7 +101,7 @@ color: #606060;
    </item>
    <item row="2" column="3">
     <widget class="QToolButton" name="XH_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -99,14 +111,20 @@ color: #606060;
       <string>Any Halogen or H</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>XH</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryXH.png</normaloff>:/icons/queryXH.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -118,7 +136,7 @@ color: #606060;
    </item>
    <item row="2" column="0">
     <widget class="QToolButton" name="AH_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -128,14 +146,20 @@ color: #606060;
       <string>Any Atom</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>AH</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryAH.png</normaloff>:/icons/queryAH.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -147,7 +171,7 @@ color: #606060;
    </item>
    <item row="2" column="2">
     <widget class="QToolButton" name="MH_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -157,14 +181,20 @@ color: #606060;
       <string>Any Metal or H</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>MH</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryMH.png</normaloff>:/icons/queryMH.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -176,7 +206,7 @@ color: #606060;
    </item>
    <item row="2" column="1">
     <widget class="QToolButton" name="QH_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -186,14 +216,20 @@ color: #606060;
       <string>Any Heteroatom or H</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>QH</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryQH.png</normaloff>:/icons/queryQH.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -205,7 +241,7 @@ color: #606060;
    </item>
    <item row="1" column="3">
     <widget class="QToolButton" name="X_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -215,14 +251,20 @@ color: #606060;
       <string>Any Halogen</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>X</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryX.png</normaloff>:/icons/queryX.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -234,7 +276,7 @@ color: #606060;
    </item>
    <item row="1" column="1">
     <widget class="QToolButton" name="Q_btn">
-     <property name="minimumSize">
+     <property name="maximumSize">
       <size>
        <width>32</width>
        <height>32</height>
@@ -244,14 +286,20 @@ color: #606060;
       <string>Any Heteroatom</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-font: bold italic 15px;
-color: #606060;
-}</string>
+      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
-      <string>Q</string>
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/queryQ.png</normaloff>:/icons/queryQ.png</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>30</width>
+       <height>32</height>
+      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>
