@@ -236,6 +236,15 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
 
     fix_r0_rgroup(*mol);
 
+    // Consider all input formats have the chiral flag on, except MDL.
+    // (CX SMILES/SMARTS have a flag to indicate "relative stereo",
+    // but rdkit doesn't support it yet).
+    if (format != Format::MDL_MOLV2000 && format != Format::MDL_MOLV3000 &&
+        !mol->hasProp(RDKit::common_properties::_MolFileChiralFlag)) {
+        mol->setProp(RDKit::common_properties::_MolFileChiralFlag, 1);
+    }
+    add_enhanced_stereo_to_chiral_atoms(*mol);
+
     mol->updatePropertyCache(false);
 
     return boost::shared_ptr<RDKit::RWMol>(mol);
@@ -355,6 +364,60 @@ bool is_attachment_point_dummy(const RDKit::Atom& atom)
     std::string label;
     return atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
            label.find("_AP") == 0;
+}
+
+void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
+{
+    auto stereo_groups = mol.getStereoGroups();
+    std::unordered_set<RDKit::Atom*> seen_chiral_atoms;
+    for (auto sg : stereo_groups) {
+        auto atoms = sg.getAtoms();
+        seen_chiral_atoms.insert(atoms.begin(), atoms.end());
+    }
+
+    std::vector<RDKit::Atom*> ungrouped_atoms;
+    for (auto atom : mol.atoms()) {
+        if ((atom->getChiralTag() == RDKit::Atom::CHI_TETRAHEDRAL_CW ||
+             atom->getChiralTag() == RDKit::Atom::CHI_TETRAHEDRAL_CCW) &&
+            seen_chiral_atoms.count(atom) == 0) {
+            ungrouped_atoms.push_back(atom);
+        }
+    }
+
+    if (ungrouped_atoms.empty()) {
+        return;
+    }
+
+    int chiral_flag{0};
+    mol.getPropIfPresent(RDKit::common_properties::_MolFileChiralFlag,
+                         chiral_flag);
+
+    if (chiral_flag == 1) {
+        // We have a chiral flag: append to or create the ABS group
+        // (ABS is unique!)
+
+        auto is_abs = [](const auto& sg) {
+            return sg.getGroupType() == RDKit::StereoGroupType::STEREO_ABSOLUTE;
+        };
+        auto abs_group =
+            std::find_if(stereo_groups.begin(), stereo_groups.end(), is_abs);
+
+        if (abs_group != stereo_groups.end()) {
+            auto abs_atoms = abs_group->getAtoms();
+            ungrouped_atoms.insert(ungrouped_atoms.end(), abs_atoms.begin(),
+                                   abs_atoms.end());
+            stereo_groups.erase(abs_group);
+        }
+
+        stereo_groups.emplace_back(RDKit::StereoGroupType::STEREO_ABSOLUTE,
+                                   std::move(ungrouped_atoms));
+    } else {
+        // No chiral flag: ungrouped atoms go into a new AND group
+        stereo_groups.emplace_back(RDKit::StereoGroupType::STEREO_AND,
+                                   std::move(ungrouped_atoms));
+    }
+
+    mol.setStereoGroups(stereo_groups);
 }
 
 } // namespace rdkit_extensions

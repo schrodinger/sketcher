@@ -85,5 +85,14 @@ reaction_to_text(const RDKit::ChemicalReaction& reaction, Format format);
  */
 RDKIT_EXTENSIONS_API bool is_attachment_point_dummy(const RDKit::Atom& atom);
 
+/**
+ * Set enhanced stereo for any chiral atoms that don't already have it.
+ * If the chiral flag is on, ungrouped chiral atoms will go into the ABS
+ * group. If the flag is off or not present, ungrouped atoms will go into
+ * a new AND group.
+ */
+RDKIT_EXTENSIONS_API void
+add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger
