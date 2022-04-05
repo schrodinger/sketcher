@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>99</width>
-    <height>147</height>
+    <height>142</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -39,20 +39,10 @@
     <widget class="QLabel" name="title_lbl">
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>9</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QLabel {
-font: bold 9px;
-color: #666666
-}
-QLabel:disabled {
-color: #b6b6b6;
-}</string>
      </property>
      <property name="text">
       <string>DRAW TOOLS</string>
@@ -201,8 +191,17 @@ color: #b6b6b6;
           <height>32</height>
          </size>
         </property>
+        <property name="font">
+         <font>
+          <pointsize>12</pointsize>
+          <weight>75</weight>
+          <bold>true</bold>
+         </font>
+        </property>
         <property name="styleSheet">
-         <string notr="true">QToolButton { border : none; }</string>
+         <string notr="true">QToolButton {
+border : none;
+}</string>
         </property>
         <property name="text">
          <string/>
@@ -414,7 +413,7 @@ color: #b6b6b6;
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="bond_group"/>
   <buttongroup name="charge_group"/>
+  <buttongroup name="bond_group"/>
  </buttongroups>
 </ui>

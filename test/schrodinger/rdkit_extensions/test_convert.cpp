@@ -247,3 +247,138 @@ CONECT    5    6    6
                          std::string::npos);
     }
 }
+
+BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedMdlChiralAtoms1)
+{
+    // SKETCH-1453
+
+    using RDKit::operator"" _ctab;
+
+    for (auto chiral_flag : {1, 0}) {
+        auto mol = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 1
+M  V30 BEGIN ATOM
+M  V30 1 Cl -3.179732 0.794933 0.000000 0
+M  V30 2 C -1.742857 0.800000 0.000000 0
+M  V30 3 H -1.020031 -0.441837 0.000000 0
+M  V30 4 O -1.032939 2.039690 0.000000 0
+M  V30 5 C -0.314287 0.797860 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 2 4
+M  V30 4 1 2 5 CFG=1
+M  V30 END BOND
+M  V30 END CTAB
+M  END)MDL"_ctab;
+
+        BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 4);
+
+        mol->setProp(RDKit::common_properties::_MolFileChiralFlag, chiral_flag);
+
+        add_enhanced_stereo_to_chiral_atoms(*mol);
+
+        auto sgs = mol->getStereoGroups();
+        BOOST_REQUIRE_EQUAL(sgs.size(), 1);
+
+        auto sg = sgs.front();
+        if (chiral_flag) {
+            BOOST_CHECK(sg.getGroupType() ==
+                        RDKit::StereoGroupType::STEREO_ABSOLUTE);
+        } else {
+            BOOST_CHECK(sg.getGroupType() ==
+                        RDKit::StereoGroupType::STEREO_AND);
+        }
+
+        auto atoms = sg.getAtoms();
+        BOOST_REQUIRE_EQUAL(atoms.size(), 1);
+        // BOOST_CHECK_EQUAL(atoms.front(), mol->getAtomWithIdx(1));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedMdlChiralAtoms2)
+{
+    // SKETCH-1453
+    using RDKit::operator"" _ctab;
+
+    struct test_ref {
+        int chiral_flag;
+        unsigned total_stereo_groups;
+        unsigned abs_atoms_in_group;
+        unsigned num_and_groups;
+    };
+
+    std::vector<test_ref> references = {
+        test_ref{1, 2, 2, 1}, // ABS (2 atoms) + AND1 (1 atom)
+        test_ref{0, 3, 1, 2}, // ABS (1 atom) + AND1 (1 atom) + AND2 (1 atom)
+    };
+
+    for (auto ref : references) {
+        auto mol = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 F -2.216000 -2.382857 0.000000 0
+M  V30 2 C -2.218857 -0.954286 0.000000 0
+M  V30 3 C -0.983143 -0.237429 0.000000 0
+M  V30 4 C 0.255429 -0.949429 0.000000 0
+M  V30 5 Cl 0.258286 -2.377714 0.000000 0
+M  V30 6 C -3.457429 -0.242571 0.000000 0
+M  V30 7 C -0.986000 1.191143 0.000000 0
+M  V30 8 C 1.491143 -0.232571 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 1 2 6 CFG=1
+M  V30 6 1 3 7 CFG=1
+M  V30 7 1 4 8 CFG=1
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STEABS ATOMS=(1 2)
+M  V30 MDLV30/STERAC1 ATOMS=(1 4)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+)MDL"_ctab;
+
+        BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 8);
+
+        mol->setProp(RDKit::common_properties::_MolFileChiralFlag,
+                     ref.chiral_flag);
+
+        add_enhanced_stereo_to_chiral_atoms(*mol);
+
+        unsigned abs_group_count{0};
+        unsigned and_group_count{0};
+        auto sgs = mol->getStereoGroups();
+
+        BOOST_REQUIRE_EQUAL(sgs.size(), ref.total_stereo_groups);
+
+        for (auto sg : sgs) {
+            if (sg.getGroupType() == RDKit::StereoGroupType::STEREO_ABSOLUTE) {
+                ++abs_group_count;
+                BOOST_CHECK_EQUAL(sg.getAtoms().size(), ref.abs_atoms_in_group);
+            } else if (sg.getGroupType() ==
+                       RDKit::StereoGroupType::STEREO_AND) {
+                ++and_group_count;
+                BOOST_CHECK_EQUAL(sg.getAtoms().size(), 1);
+            } else {
+                BOOST_FAIL("unexpected Stereo Group Type");
+            }
+        }
+
+        BOOST_CHECK_EQUAL(abs_group_count, 1);
+        BOOST_CHECK_EQUAL(and_group_count, ref.num_and_groups);
+    }
+}

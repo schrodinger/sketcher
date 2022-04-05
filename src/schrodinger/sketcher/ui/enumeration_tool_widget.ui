@@ -39,16 +39,14 @@
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">

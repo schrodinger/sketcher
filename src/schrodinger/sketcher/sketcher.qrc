@@ -2,7 +2,6 @@
     <qresource>
     <file>icons/add_particle.png</file>
     <file>icons/angle.png</file>
-    <file>icons/any_bond.png</file>
     <file>icons/aromatic_bond.png</file>
     <file>icons/atom_chain.png</file>
     <file>icons/attachment_point.png</file>
@@ -21,7 +20,6 @@
     <file>icons/cyclopropane.png</file>
     <file>icons/dashed_bond.png</file>
     <file>icons/decrease_charge.png</file>
-    <file>icons/double_aromatic_bond.png</file>
     <file>icons/double_bond.png</file>
     <file>icons/double_either_bond.png</file>
     <file>icons/draw_cursor.png</file>
@@ -39,15 +37,6 @@
     <file>icons/move_rotate.png</file>
     <file>icons/new_structures.png</file>
     <file>icons/periodic_table.png</file>
-    <file>icons/position_variant_bond.png</file>
-    <file>icons/queryA.png</file>
-    <file>icons/queryAH.png</file>
-    <file>icons/queryM.png</file>
-    <file>icons/queryMH.png</file>
-    <file>icons/queryQ.png</file>
-    <file>icons/queryQH.png</file>
-    <file>icons/queryX.png</file>
-    <file>icons/queryXH.png</file>
     <file>icons/reaction_arrow.png</file>
     <file>icons/reaction_map_atoms.png</file>
     <file>icons/reaction_plus.png</file>
@@ -57,9 +46,7 @@
     <file>icons/select_lasso.png</file>
     <file>icons/select_mode.png</file>
     <file>icons/select_square.png</file>
-    <file>icons/single_aromatic_bond.png</file>
     <file>icons/single_bond.png</file>
-    <file>icons/single_double_bond.png</file>
     <file>icons/single_either_bond.png</file>
     <file>icons/triple_bond.png</file>
     <file>icons/undo.png</file>
