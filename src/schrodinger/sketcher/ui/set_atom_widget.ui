@@ -522,7 +522,6 @@ border : none;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
