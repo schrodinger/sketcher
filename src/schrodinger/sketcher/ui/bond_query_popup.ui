@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>96</width>
+    <width>97</width>
     <height>64</height>
    </rect>
   </property>
@@ -31,30 +31,29 @@
    </property>
    <item row="1" column="1">
     <widget class="QToolButton" name="single_aromatic_btn">
-     <property name="maximumSize">
+     <property name="minimumSize">
       <size>
        <width>32</width>
        <height>32</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="toolTip">
       <string>Single or Aromatic Bond</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
+      <string notr="true">QToolButton {
+border : none;
+}</string>
      </property>
      <property name="text">
-      <string/>
-     </property>
-     <property name="icon">
-      <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/single_aromatic_bond.png</normaloff>:/icons/single_aromatic_bond.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>30</width>
-       <height>32</height>
-      </size>
+      <string>S/A</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -66,30 +65,29 @@
    </item>
    <item row="1" column="2">
     <widget class="QToolButton" name="double_aromatic_btn">
-     <property name="maximumSize">
+     <property name="minimumSize">
       <size>
        <width>32</width>
        <height>32</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="toolTip">
       <string>Double or Aromatic Bond</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
+      <string notr="true">QToolButton {
+border : none;
+}</string>
      </property>
      <property name="text">
-      <string/>
-     </property>
-     <property name="icon">
-      <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/double_aromatic_bond.png</normaloff>:/icons/double_aromatic_bond.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>30</width>
-       <height>32</height>
-      </size>
+      <string>D/A</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -101,30 +99,29 @@
    </item>
    <item row="1" column="0">
     <widget class="QToolButton" name="single_double_btn">
-     <property name="maximumSize">
+     <property name="minimumSize">
       <size>
        <width>32</width>
        <height>32</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="toolTip">
       <string>Single or Double Bond</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
+      <string notr="true">QToolButton {
+border : none;
+}</string>
      </property>
      <property name="text">
-      <string/>
-     </property>
-     <property name="icon">
-      <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/single_double_bond.png</normaloff>:/icons/single_double_bond.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>30</width>
-       <height>32</height>
-      </size>
+      <string>S/D</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -171,30 +168,29 @@
    </item>
    <item row="0" column="1">
     <widget class="QToolButton" name="any_btn">
-     <property name="maximumSize">
+     <property name="minimumSize">
       <size>
        <width>32</width>
        <height>32</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>12</pointsize>
+       <weight>75</weight>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="toolTip">
       <string>Any Bond</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
+      <string notr="true">QToolButton {
+border : none;
+}</string>
      </property>
      <property name="text">
-      <string/>
-     </property>
-     <property name="icon">
-      <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/any_bond.png</normaloff>:/icons/any_bond.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>30</width>
-       <height>32</height>
-      </size>
+      <string>Any</string>
      </property>
      <property name="checkable">
       <bool>true</bool>
@@ -222,7 +218,7 @@
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="../sketcher.qrc">
+      <iconset>
        <normaloff>:/icons/position_variant_bond.png</normaloff>:/icons/position_variant_bond.png</iconset>
      </property>
      <property name="iconSize">

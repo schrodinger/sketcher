@@ -51,16 +51,14 @@
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -96,9 +94,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -108,7 +105,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -144,9 +140,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -156,7 +151,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -192,9 +186,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -204,7 +197,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -240,9 +232,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -252,7 +243,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -288,9 +278,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -300,7 +289,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -336,9 +324,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -348,7 +335,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -384,9 +370,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -396,7 +381,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -432,9 +416,8 @@ font: bold 14px;
      </property>
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>14</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
      </property>
@@ -444,7 +427,6 @@ font: bold 14px;
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -484,10 +466,17 @@ font: bold 14px;
        <height>32</height>
       </size>
      </property>
+     <property name="font">
+      <font>
+       <pointsize>14</pointsize>
+       <weight>75</weight>
+       <italic>true</italic>
+       <bold>true</bold>
+      </font>
+     </property>
      <property name="styleSheet">
       <string notr="true">QToolButton {
 border : none;
-font: bold 14px;
 }</string>
      </property>
      <property name="text">
@@ -540,7 +529,7 @@ font: bold 14px;
       <string>...</string>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/periodic_table.png</normaloff>:/icons/periodic_table.png</iconset>
      </property>
      <property name="iconSize">
@@ -577,7 +566,7 @@ font: bold 14px;
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

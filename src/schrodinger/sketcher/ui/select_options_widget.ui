@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>104</width>
-    <height>79</height>
+    <height>80</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -39,20 +39,10 @@
     <widget class="QLabel" name="title_lbl">
      <property name="font">
       <font>
-       <pointsize>-1</pointsize>
+       <pointsize>10</pointsize>
        <weight>75</weight>
-       <italic>false</italic>
        <bold>true</bold>
       </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QLabel {
-font: bold 9px;
-color: #666666
-}
-QLabel:disabled {
-color: #b6b6b6;
-}</string>
      </property>
      <property name="text">
       <string>SELECT OPTIONS</string>
@@ -148,17 +138,19 @@ color: #b6b6b6;
          <height>24</height>
         </size>
        </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="toolTip">
         <string>Select all</string>
        </property>
        <property name="styleSheet">
         <string notr="true">QToolButton {
-font: bold 10px;
-color: #3d5d71;
 border : none;
-}
-QToolButton:disabled {
-color: #b6b6b6;
 }
 QToolButton:hover {
 color: #5b8aa8;
@@ -178,17 +170,19 @@ background-color: transparent;
          <height>24</height>
         </size>
        </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="toolTip">
         <string>Clear selection</string>
        </property>
        <property name="styleSheet">
         <string notr="true">QToolButton {
-font: bold 10px;
-color: #3d5d71;
 border : none;
-}
-QToolButton:disabled {
-color: #b6b6b6;
 }
 QToolButton:hover {
 color: #5b8aa8;
@@ -208,17 +202,19 @@ background-color: transparent;
          <height>24</height>
         </size>
        </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="toolTip">
         <string>Delete selected structure</string>
        </property>
        <property name="styleSheet">
         <string notr="true">QToolButton {
-font: bold 10px;
-color: #3d5d71;
 border : none;
-}
-QToolButton:disabled {
-color: #b6b6b6;
 }
 QToolButton:hover {
 color: #5b8aa8;
