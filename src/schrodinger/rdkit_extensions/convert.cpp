@@ -362,7 +362,8 @@ std::string reaction_to_text(const RDKit::ChemicalReaction& reaction,
 bool is_attachment_point_dummy(const RDKit::Atom& atom)
 {
     std::string label;
-    return atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
+    return atom.getAtomicNum() == 0 && atom.getTotalDegree() == 1 &&
+           atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
            label.find("_AP") == 0;
 }
 
