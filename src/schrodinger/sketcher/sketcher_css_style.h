@@ -12,5 +12,7 @@ const QString TOOL_BUTTON_STYLE{
     "QToolButton:checked { background-color: #b8d7ac; }\n"
     "QToolButton:hover:!checked { background-color: #daebd5 ; }\n"};
 
-} // sketcher
-} // schrodinger
+// TODO: Extract the general Sketcher background color into a constant.
+const QString WINDOW_STYLE{"QMainWindow { background-color: white; }\n"};
+} // namespace sketcher
+} // namespace schrodinger
