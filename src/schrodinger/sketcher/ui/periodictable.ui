@@ -26,7 +26,8 @@
    <string>Form</string>
   </property>
   <property name="styleSheet">
-   <string notr="true">QPushButton{
+   <string notr="true">#PeriodicTableForm{background-color:white}
+QPushButton{
 min-width: 20px;
 max-width:20px;
 min-height:20px;
