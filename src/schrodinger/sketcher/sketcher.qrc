@@ -1,7 +1,6 @@
 <RCC>
     <qresource>
     <file>icons/add_particle.png</file>
-    <file>icons/angle.png</file>
     <file>icons/aromatic_bond.png</file>
     <file>icons/atom_chain.png</file>
     <file>icons/attachment_point.png</file>
@@ -52,6 +51,5 @@
     <file>icons/triple_bond.png</file>
     <file>icons/undo.png</file>
     <file>icons/wedge_bond.png</file>
-    <file>icons/zero_bond.png</file>
     </qresource>
 </RCC>
