@@ -150,7 +150,8 @@ border : none;
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/aromatic_bond.png</normaloff>:/icons/aromatic_bond.png</iconset>
+       <normaloff>:/icons/bond_aromatic.svg</normaloff>
+       <disabledoff>:/icons/bond_aromatic_dis.svg</disabledoff>:/icons/bond_aromatic.svg</iconset>
      </property>
      <property name="iconSize">
       <size>

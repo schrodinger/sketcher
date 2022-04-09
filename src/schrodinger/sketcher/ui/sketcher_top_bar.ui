@@ -45,8 +45,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/select_mode.png</normaloff>:/icons/select_mode.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/mode_select.svg</normaloff>
+       <disabledoff>:/icons/mode_select_dis.svg</disabledoff>:/icons/mode_select.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -74,8 +75,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/draw_mode.png</normaloff>:/icons/draw_mode.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/mode_draw.svg</normaloff>
+       <disabledoff>:/icons/mode_draw_dis.svg</disabledoff>:/icons/mode_draw.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -103,8 +105,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/erase_mode.png</normaloff>:/icons/erase_mode.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/mode_erase.svg</normaloff>
+       <disabledoff>:/icons/mode_erase_dis.svg</disabledoff>:/icons/mode_erase.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -139,7 +142,7 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/undo.png</normaloff>:/icons/undo.png</iconset>
      </property>
      <property name="iconSize">
@@ -162,8 +165,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/redo.png</normaloff>:/icons/redo.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_redo.svg</normaloff>
+       <disabledoff>:/icons/topbar_redo_dis.svg</disabledoff>:/icons/topbar_redo.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -185,8 +189,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/cleanup.png</normaloff>:/icons/cleanup.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_cleanup.svg</normaloff>
+       <disabledoff>:/icons/topbar_cleanup_dis.svg</disabledoff>:/icons/topbar_cleanup.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -208,8 +213,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/more_actions.png</normaloff>:/icons/more_actions.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_more_actions.svg</normaloff>
+       <disabledoff>:/icons/topbar_more_actions_dis.svg</disabledoff>:/icons/topbar_more_actions.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -251,8 +257,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string notr="true"/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/clear_sketcher.png</normaloff>:/icons/clear_sketcher.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_clear_sketcher.svg</normaloff>
+       <disabledoff>:/icons/topbar_clear_sketcher_dis.svg</disabledoff>:/icons/topbar_clear_sketcher.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -277,8 +284,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/new_structures.png</normaloff>:/icons/new_structures.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_import.svg</normaloff>
+       <disabledoff>:/icons/topbar_import_dis.svg</disabledoff>:/icons/topbar_import.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -303,8 +311,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/export.png</normaloff>:/icons/export.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_export.svg</normaloff>
+       <disabledoff>:/icons/topbar_export_dis.svg</disabledoff>:/icons/topbar_export.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -342,8 +351,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/configure_view.png</normaloff>:/icons/configure_view.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_settings.svg</normaloff>
+       <disabledoff>:/icons/topbar_settings_dis.svg</disabledoff>:/icons/topbar_settings.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -368,8 +378,9 @@ QToolButton::menu-indicator{width:0px;}</string>
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
-       <normaloff>:/icons/help.png</normaloff>:/icons/help.png</iconset>
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_help.svg</normaloff>
+       <disabledoff>:/icons/topbar_help_dis.svg</disabledoff>:/icons/topbar_help.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -385,7 +396,7 @@ QToolButton::menu-indicator{width:0px;}</string>
   </layout>
  </widget>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

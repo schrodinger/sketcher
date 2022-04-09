@@ -73,7 +73,8 @@
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/explicit_h.png</normaloff>:/icons/explicit_h.png</iconset>
+         <normaloff>:/icons/atom_explicit_H.svg</normaloff>
+         <disabledoff>:/icons/atom_explicit_H_dis.svg</disabledoff>:/icons/atom_explicit_H.svg</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -105,7 +106,8 @@
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/increase_charge.png</normaloff>:/icons/increase_charge.png</iconset>
+         <normaloff>:/icons/atom_charge_plus.svg</normaloff>
+         <disabledoff>:/icons/atom_charge_plus_dis.svg</disabledoff>:/icons/atom_charge_plus.svg</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -140,7 +142,8 @@
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/decrease_charge.png</normaloff>:/icons/decrease_charge.png</iconset>
+         <normaloff>:/icons/atom_charge_minus.svg</normaloff>
+         <disabledoff>:/icons/atom_charge_minus_dis.svg</disabledoff>:/icons/atom_charge_minus.svg</iconset>
        </property>
        <property name="iconSize">
         <size>
@@ -206,10 +209,6 @@ border : none;
         <property name="text">
          <string/>
         </property>
-        <property name="icon">
-         <iconset resource="../sketcher.qrc">
-          <normaloff>:/icons/aromatic_bond.png</normaloff>:/icons/aromatic_bond.png</iconset>
-        </property>
         <property name="iconSize">
          <size>
           <width>30</width>
@@ -237,10 +236,6 @@ border : none;
         </property>
         <property name="text">
          <string/>
-        </property>
-        <property name="icon">
-         <iconset resource="../sketcher.qrc">
-          <normaloff>:/icons/wedge_bond.png</normaloff>:/icons/wedge_bond.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -275,7 +270,8 @@ border : none;
         </property>
         <property name="icon">
          <iconset resource="../sketcher.qrc">
-          <normaloff>:/icons/single_bond.png</normaloff>:/icons/single_bond.png</iconset>
+          <normaloff>:/icons/bond_single.svg</normaloff>
+          <disabledoff>:/icons/bond_single_dis.svg</disabledoff>:/icons/bond_single.svg</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -304,10 +300,6 @@ border : none;
         </property>
         <property name="text">
          <string/>
-        </property>
-        <property name="icon">
-         <iconset resource="../sketcher.qrc">
-          <normaloff>:/icons/dashed_bond.png</normaloff>:/icons/dashed_bond.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -342,7 +334,8 @@ border : none;
         </property>
         <property name="icon">
          <iconset resource="../sketcher.qrc">
-          <normaloff>:/icons/atom_chain.png</normaloff>:/icons/atom_chain.png</iconset>
+          <normaloff>:/icons/bond_chain.svg</normaloff>
+          <disabledoff>:/icons/bond_chain_dis.svg</disabledoff>:/icons/bond_chain.svg</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -371,10 +364,6 @@ border : none;
         </property>
         <property name="text">
          <string/>
-        </property>
-        <property name="icon">
-         <iconset resource="../sketcher.qrc">
-          <normaloff>:/icons/double_bond.png</normaloff>:/icons/double_bond.png</iconset>
         </property>
         <property name="iconSize">
          <size>
@@ -413,7 +402,7 @@ border : none;
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="charge_group"/>
   <buttongroup name="bond_group"/>
+  <buttongroup name="charge_group"/>
  </buttongroups>
 </ui>

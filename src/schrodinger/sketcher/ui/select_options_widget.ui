@@ -107,7 +107,8 @@
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/move_rotate.png</normaloff>:/icons/move_rotate.png</iconset>
+         <normaloff>:/icons/select_move_rotate.svg</normaloff>
+         <disabledoff>:/icons/select_move_rotate_dis.svg</disabledoff>:/icons/select_move_rotate.svg</iconset>
        </property>
        <property name="iconSize">
         <size>

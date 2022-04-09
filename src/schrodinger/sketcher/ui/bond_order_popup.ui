@@ -48,7 +48,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/triple_bond.png</normaloff>:/icons/triple_bond.png</iconset>
+       <normaloff>:/icons/bond_triple.svg</normaloff>
+       <disabledoff>:/icons/bond_triple_dis.svg</disabledoff>:/icons/bond_triple.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -83,7 +84,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/double_bond.png</normaloff>:/icons/double_bond.png</iconset>
+       <normaloff>:/icons/bond_double.svg</normaloff>
+       <disabledoff>:/icons/bond_double_dis.svg</disabledoff>:/icons/bond_double.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -118,7 +120,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/coordinate_bond.png</normaloff>:/icons/coordinate_bond.png</iconset>
+       <normaloff>:/icons/bond_coordinate.svg</normaloff>
+       <disabledoff>:/icons/bond_coordinate_dis.svg</disabledoff>:/icons/bond_coordinate.svg</iconset>
      </property>
      <property name="iconSize">
       <size>

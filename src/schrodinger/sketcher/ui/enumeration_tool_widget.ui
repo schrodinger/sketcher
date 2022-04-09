@@ -85,7 +85,8 @@ border : none;
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/attachment_point.png</normaloff>:/icons/attachment_point.png</iconset>
+       <normaloff>:/icons/enumeration_attachment_point.svg</normaloff>
+       <disabledoff>:/icons/enumeration_attachment_point_dis.svg</disabledoff>:/icons/enumeration_attachment_point.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
