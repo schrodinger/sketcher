@@ -231,7 +231,7 @@
                  </property>
                  <property name="icon">
                   <iconset resource="../sketcher.qrc">
-                   <normaloff>:/icons/periodic_table.png</normaloff>:/icons/periodic_table.png</iconset>
+                   <normaloff>:/icons/periodic_table.svg</normaloff>:/icons/periodic_table.svg</iconset>
                  </property>
                  <property name="iconSize">
                   <size>

@@ -150,7 +150,8 @@ border : none;
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/aromatic_bond.png</normaloff>:/icons/aromatic_bond.png</iconset>
+       <normaloff>:/icons/bond_aromatic.svg</normaloff>
+       <disabledoff>:/icons/bond_aromatic_dis.svg</disabledoff>:/icons/bond_aromatic.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -191,41 +192,6 @@ border : none;
      </property>
      <property name="text">
       <string>Any</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="0" column="2">
-    <widget class="QToolButton" name="position_variant_btn">
-     <property name="maximumSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="toolTip">
-      <string>Position Variant Bond</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="icon">
-      <iconset>
-       <normaloff>:/icons/position_variant_bond.png</normaloff>:/icons/position_variant_bond.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>30</width>
-       <height>32</height>
-      </size>
      </property>
      <property name="checkable">
       <bool>true</bool>

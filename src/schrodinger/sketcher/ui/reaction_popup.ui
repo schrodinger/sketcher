@@ -48,7 +48,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/reaction_arrow.png</normaloff>:/icons/reaction_arrow.png</iconset>
+       <normaloff>:/icons/reaction_arrow.svg</normaloff>
+       <disabledoff>:/icons/reaction_arrow_dis.svg</disabledoff>:/icons/reaction_arrow.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -83,7 +84,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/reaction_plus.png</normaloff>:/icons/reaction_plus.png</iconset>
+       <normaloff>:/icons/reaction_plus.svg</normaloff>
+       <disabledoff>:/icons/reaction_plus_dis.svg</disabledoff>:/icons/reaction_plus.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -118,7 +120,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/reaction_map_atoms.png</normaloff>:/icons/reaction_map_atoms.png</iconset>
+       <normaloff>:/icons/reaction_map_atoms.svg</normaloff>
+       <disabledoff>:/icons/reaction_map_atoms_dis.svg</disabledoff>:/icons/reaction_map_atoms.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -153,7 +156,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/reaction_unmap_atoms.png</normaloff>:/icons/reaction_unmap_atoms.png</iconset>
+       <normaloff>:/icons/reaction_unmap_atoms.svg</normaloff>
+       <disabledoff>:/icons/reaction_unmap_atoms_dis.svg</disabledoff>:/icons/reaction_unmap_atoms.svg</iconset>
      </property>
      <property name="iconSize">
       <size>

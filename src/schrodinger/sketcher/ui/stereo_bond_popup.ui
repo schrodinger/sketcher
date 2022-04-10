@@ -48,7 +48,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/dashed_bond.png</normaloff>:/icons/dashed_bond.png</iconset>
+       <normaloff>:/icons/bond_down.svg</normaloff>
+       <disabledoff>:/icons/bond_down_dis.svg</disabledoff>:/icons/bond_down.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -83,7 +84,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/wedge_bond.png</normaloff>:/icons/wedge_bond.png</iconset>
+       <normaloff>:/icons/bond_up.svg</normaloff>
+       <disabledoff>:/icons/bond_up_dis.svg</disabledoff>:/icons/bond_up.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -118,7 +120,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/double_either_bond.png</normaloff>:/icons/double_either_bond.png</iconset>
+       <normaloff>:/icons/bond_crossed.svg</normaloff>
+       <disabledoff>:/icons/bond_crossed_dis.svg</disabledoff>:/icons/bond_crossed.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
@@ -153,7 +156,8 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/single_either_bond.png</normaloff>:/icons/single_either_bond.png</iconset>
+       <normaloff>:/icons/bond_wiggly.svg</normaloff>
+       <disabledoff>:/icons/bond_wiggly_dis.svg</disabledoff>:/icons/bond_wiggly.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
