@@ -4,10 +4,9 @@
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
+#include "schrodinger/rdkit_extensions/convert.h"
 
-#include <sstream>
-
-#include <boost/algorithm/string.hpp>
+#include <functional>
 
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
@@ -18,7 +17,7 @@
 #include <GraphMol/SmilesParse/SmilesWrite.h>
 #include <GraphMol/inchi.h>
 
-#include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 
 namespace schrodinger
 {
@@ -58,7 +57,7 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
 
             // This should find only one neighbor
             for (auto parent : rdk_mol.atomNeighbors(atom)) {
-                auto attacment_point_type{1};
+                int attacment_point_type{1};
                 if (parent->hasProp(RDKit::common_properties::molAttachPoint)) {
                     attacment_point_type = -1;
                 }
@@ -364,7 +363,7 @@ bool is_attachment_point_dummy(const RDKit::Atom& atom)
     std::string label;
     return atom.getAtomicNum() == 0 && atom.getTotalDegree() == 1 &&
            atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
-           label.find("_AP") == 0;
+           label.find(attachment_point_label_prefix) == 0;
 }
 
 void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)

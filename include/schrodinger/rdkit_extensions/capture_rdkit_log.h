@@ -38,6 +38,7 @@ class RDKIT_EXTENSIONS_API CaptureRDErrorLog : private boost::noncopyable
     std::stringstream m_messages;
     std::ostream* m_saved_dp_dest;
     boost::logging::RDTeeStream* m_saved_teestream;
+    bool m_error_log_initial_state = true;
 };
 
 } // namespace adapter
