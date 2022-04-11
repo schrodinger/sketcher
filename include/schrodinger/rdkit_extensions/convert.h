@@ -6,14 +6,10 @@
 
 #pragma once
 
-#include <memory>
-#include <sstream>
 #include <string>
 
 #include <boost/shared_ptr.hpp>
-#include <RDGeneral/RDLog.h>
 
-#include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/definitions.h"
 
 // Forward declarations:
