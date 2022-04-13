@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>91</width>
+    <width>96</width>
     <height>32</height>
    </rect>
   </property>
@@ -31,23 +31,11 @@
    </property>
    <item>
     <widget class="schrodinger::sketcher::ModularToolButton" name="rgroup_btn">
-     <property name="maximumSize">
+     <property name="minimumSize">
       <size>
        <width>32</width>
        <height>32</height>
       </size>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>14</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string/>
@@ -76,9 +64,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>Attachment Point</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
@@ -109,9 +94,6 @@ border : none;
        <width>32</width>
        <height>32</height>
       </size>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>

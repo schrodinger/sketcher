@@ -56,11 +56,6 @@
        <bold>true</bold>
       </font>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>Si</string>
      </property>
@@ -101,11 +96,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>Chlorine</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>Cl</string>
@@ -148,11 +138,6 @@ border : none;
      <property name="toolTip">
       <string>Nitrogen</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>N</string>
      </property>
@@ -193,11 +178,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>Carbon</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>C</string>
@@ -240,11 +220,6 @@ border : none;
      <property name="toolTip">
       <string>Sulphur</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>S</string>
      </property>
@@ -285,11 +260,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>Oxygen</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>O</string>
@@ -332,11 +302,6 @@ border : none;
      <property name="toolTip">
       <string>Phosphorus</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>P</string>
      </property>
@@ -377,11 +342,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>Hydrogen</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>H</string>
@@ -424,11 +384,6 @@ border : none;
      <property name="toolTip">
       <string>Fluorine</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>F</string>
      </property>
@@ -465,19 +420,6 @@ border : none;
        <width>32</width>
        <height>32</height>
       </size>
-     </property>
-     <property name="font">
-      <font>
-       <pointsize>14</pointsize>
-       <weight>75</weight>
-       <italic>true</italic>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string/>
@@ -518,11 +460,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>Periodic Table</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>...</string>

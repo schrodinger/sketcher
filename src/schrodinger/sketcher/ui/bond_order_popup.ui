@@ -40,9 +40,6 @@
      <property name="toolTip">
       <string>Triple Bond</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -76,9 +73,6 @@
      <property name="toolTip">
       <string>Double Bond</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -111,9 +105,6 @@
      </property>
      <property name="toolTip">
       <string>Coordinate or Zero-Order Bond</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
