@@ -40,9 +40,6 @@
      <property name="toolTip">
       <string>Cyclooctane</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -75,9 +72,6 @@
      </property>
      <property name="toolTip">
       <string>Benzene</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
@@ -112,9 +106,6 @@
      <property name="toolTip">
       <string>Cyclopentadiene</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -147,9 +138,6 @@
      </property>
      <property name="toolTip">
       <string>Cyclopentane</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
@@ -184,9 +172,6 @@
      <property name="toolTip">
       <string>Cyclohexane</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -219,9 +204,6 @@
      </property>
      <property name="toolTip">
       <string>Cycloheptane</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
@@ -256,9 +238,6 @@
      <property name="toolTip">
       <string>Cyclobutane</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -291,9 +270,6 @@
      </property>
      <property name="toolTip">
       <string>Cyclopropane</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>

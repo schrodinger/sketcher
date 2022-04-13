@@ -47,11 +47,6 @@
      <property name="toolTip">
       <string>New R-Group</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>R+</string>
      </property>
@@ -80,11 +75,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>R-Group 1</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>R1</string>
@@ -115,11 +105,6 @@ border : none;
      <property name="toolTip">
       <string>R-Group 5</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>R5</string>
      </property>
@@ -148,11 +133,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>R-Group 6</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>R6</string>
@@ -183,11 +163,6 @@ border : none;
      <property name="toolTip">
       <string>R-Group 7</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>R7</string>
      </property>
@@ -216,11 +191,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>R-Group 2</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>R2</string>
@@ -251,11 +221,6 @@ border : none;
      <property name="toolTip">
       <string>R-Group 3</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>R3</string>
      </property>
@@ -284,11 +249,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>R-Group 8</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>R8</string>
@@ -319,11 +279,6 @@ border : none;
      <property name="toolTip">
       <string>R-Group 9</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
-     </property>
      <property name="text">
       <string>R9</string>
      </property>
@@ -352,11 +307,6 @@ border : none;
      </property>
      <property name="toolTip">
       <string>R-Group 4</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton {
-border : none;
-}</string>
      </property>
      <property name="text">
       <string>R4</string>

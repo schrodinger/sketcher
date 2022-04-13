@@ -16,14 +16,11 @@
   <layout class="QHBoxLayout" name="horizontalLayout">
    <item>
     <widget class="QToolButton" name="reset_btn">
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : 0; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
      <property name="icon">
-      <iconset resource="sketcher.qrc">
+      <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/reset.png</normaloff>:/icons/reset.png</iconset>
      </property>
     </widget>
@@ -65,7 +62,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
 </ui>

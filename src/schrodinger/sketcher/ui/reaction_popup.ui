@@ -40,9 +40,6 @@
      <property name="toolTip">
       <string>Reaction Arrow</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -75,9 +72,6 @@
      </property>
      <property name="toolTip">
       <string>Reaction Plus</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
@@ -112,9 +106,6 @@
      <property name="toolTip">
       <string>Map Atoms - Drag from a reactant atom to the matching product atom</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -147,9 +138,6 @@
      </property>
      <property name="toolTip">
       <string>Delete Mapping - Click mapped atom to remove mapping</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>

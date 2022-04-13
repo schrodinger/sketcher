@@ -40,9 +40,6 @@
      <property name="toolTip">
       <string>Single Down Bond</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -75,9 +72,6 @@
      </property>
      <property name="toolTip">
       <string>Single Up Bond</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>
@@ -112,9 +106,6 @@
      <property name="toolTip">
       <string>Double Cis or Trans Bond</string>
      </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
-     </property>
      <property name="text">
       <string/>
      </property>
@@ -147,9 +138,6 @@
      </property>
      <property name="toolTip">
       <string>Single Up or Down Bond</string>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">QToolButton { border : none; }</string>
      </property>
      <property name="text">
       <string/>

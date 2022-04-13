@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>104</width>
-    <height>80</height>
+    <width>125</width>
+    <height>79</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -39,7 +39,7 @@
     <widget class="QLabel" name="title_lbl">
      <property name="font">
       <font>
-       <pointsize>10</pointsize>
+       <pointsize>9</pointsize>
        <weight>75</weight>
        <bold>true</bold>
       </font>
@@ -64,9 +64,6 @@
          <width>36</width>
          <height>34</height>
         </size>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton { border : none; }</string>
        </property>
        <property name="text">
         <string/>
@@ -98,9 +95,6 @@
        </property>
        <property name="toolTip">
         <string>Rotate and translate structure</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton { border : none; }</string>
        </property>
        <property name="text">
         <string/>
@@ -149,15 +143,6 @@
        <property name="toolTip">
         <string>Select all</string>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton {
-border : none;
-}
-QToolButton:hover {
-color: #5b8aa8;
-background-color: transparent;
-}</string>
-       </property>
        <property name="text">
         <string>All</string>
        </property>
@@ -181,15 +166,6 @@ background-color: transparent;
        <property name="toolTip">
         <string>Clear selection</string>
        </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton {
-border : none;
-}
-QToolButton:hover {
-color: #5b8aa8;
-background-color: transparent;
-}</string>
-       </property>
        <property name="text">
         <string>None</string>
        </property>
@@ -212,15 +188,6 @@ background-color: transparent;
        </property>
        <property name="toolTip">
         <string>Delete selected structure</string>
-       </property>
-       <property name="styleSheet">
-        <string notr="true">QToolButton {
-border : none;
-}
-QToolButton:hover {
-color: #5b8aa8;
-background-color: transparent;
-}</string>
        </property>
        <property name="text">
         <string>Delete</string>
