@@ -131,7 +131,8 @@ QToolButton::menu-indicator{width:0px;}</string>
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/undo.png</normaloff>:/icons/undo.png</iconset>
+       <normaloff>:/icons/topbar_undo.svg</normaloff>
+       <disabledoff>:/icons/topbar_undo_dis.svg</disabledoff>:/icons/topbar_undo.svg</iconset>
      </property>
      <property name="iconSize">
       <size>

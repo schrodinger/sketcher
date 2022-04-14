@@ -28,12 +28,12 @@ const QString TOOL_BUTTON_WITH_POPUP_STYLE{"QToolButton {"
 
 const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
     "QToolButton {"
-    " background-image:url(\":icons/corner_arrow.png\"); "
+    " background-image:url(\":icons/menu_corner_arrow.svg\"); "
     " background-position: bottom right; "
     " background-repeat: no-repeat; "
     "}"
     "QToolButton:disabled {"
-    " background-image:url(\":icons/disabled_corner_arrow.png\"); "
+    " background-image:url(\":icons/menu_corner_arrow_dis.svg\"); "
     "}"};
 
 const QString PALETTE_TITLE_STYLE{"QLabel {"

@@ -28,6 +28,8 @@
     <file>icons/bond_wiggly_dis.svg</file>
     <file>icons/enumeration_attachment_point.svg</file>
     <file>icons/enumeration_attachment_point_dis.svg</file>
+    <file>icons/menu_corner_arrow.svg</file>
+    <file>icons/menu_corner_arrow_dis.svg</file>
     <file>icons/mode_draw.svg</file>
     <file>icons/mode_draw_dis.svg</file>
     <file>icons/mode_erase.svg</file>
@@ -82,12 +84,11 @@
     <file>icons/topbar_redo_dis.svg</file>
     <file>icons/topbar_settings.svg</file>
     <file>icons/topbar_settings_dis.svg</file>
+    <file>icons/topbar_undo.svg</file>
+    <file>icons/topbar_undo_dis.svg</file>
 
-    <file>icons/corner_arrow.png</file>
-    <file>icons/disabled_corner_arrow.png</file>
     <file>icons/draw_cursor.png</file>
     <file>icons/erase_cursor.png</file>
-    <file>icons/undo.png</file>
 
     <file>icons/add_particle.png</file>
     <file>icons/lasso.png</file>
