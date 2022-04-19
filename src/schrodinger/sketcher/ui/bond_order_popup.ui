@@ -104,7 +104,7 @@
       </size>
      </property>
      <property name="toolTip">
-      <string>Coordinate or Zero-Order Bond</string>
+      <string>Coordinate Bond</string>
      </property>
      <property name="text">
       <string/>
