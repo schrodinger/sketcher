@@ -14,8 +14,8 @@ const QString GENERAL_STYLE{
 const QString TOOL_BUTTON_STYLE{
     "QToolButton { border : none; }"
     "QToolButton:disabled { color: #EEEEEE; }"
-    "QToolButton:checked { background-color: rgba(184, 215, 172, .65); }"
-    "QToolButton:hover:!checked { background-color: rgba(218, 235, 213, .5); "
+    "QToolButton:checked { background-color: #d4e6f1; }"
+    "QToolButton:hover:!checked { background-color: #edf7fc; "
     "}"};
 
 const QString TOOL_BUTTON_WITH_POPUP_STYLE{"QToolButton {"
