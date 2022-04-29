@@ -415,9 +415,6 @@
            </item>
            <item row="5" column="2">
             <widget class="QSpinBox" name="ring_bond_count_sb">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
@@ -442,9 +439,6 @@
            </item>
            <item row="3" column="2">
             <widget class="QSpinBox" name="ring_count_sb">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>

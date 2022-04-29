@@ -76,6 +76,8 @@
     <file>icons/topbar_clear_sketcher_dis.svg</file>
     <file>icons/topbar_export.svg</file>
     <file>icons/topbar_export_dis.svg</file>
+    <file>icons/topbar_fit.svg</file>
+    <file>icons/topbar_fit_dis.svg</file>
     <file>icons/topbar_help.svg</file>
     <file>icons/topbar_help_dis.svg</file>
     <file>icons/topbar_import.svg</file>
