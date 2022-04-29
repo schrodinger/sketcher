@@ -7,17 +7,16 @@
 </style>
 <g>
 	<g>
-		<path class="st0" d="M15,8.9l6.2,3.6v7.1L15,23.1l-6.2-3.6v-7.1L15,8.9 M15,5.4l-9.2,5.3v10.6l9.2,5.3l9.2-5.3V10.7L15,5.4L15,5.4
-			z"/>
+		<path class="st0" d="M15,7l7.9,4.6v9L15,25l-7.9-4.6v-9L15,7 M15,3.3L4,9.7v12.7l11,6.3l11-6.3V9.7L15,3.3L15,3.3z"/>
 	</g>
 	<g>
-		<rect x="16.9" y="8.7" transform="matrix(0.5011 -0.8654 0.8654 0.5011 -1.7221 21.0767)" class="st0" width="1" height="6.6"/>
+		<rect x="17.3" y="7.3" transform="matrix(0.5011 -0.8654 0.8654 0.5011 -0.8156 21.0988)" class="st0" width="1.2" height="7.9"/>
 	</g>
 	<g>
-		<rect x="10" y="12.5" class="st0" width="1" height="7"/>
+		<rect x="9" y="11.8" class="st0" width="1.2" height="8.4"/>
 	</g>
 	<g>
-		<rect x="13.8" y="19.2" transform="matrix(0.8672 -0.498 0.498 0.8672 -7.5315 11.2271)" class="st0" width="7" height="1"/>
+		<rect x="13.5" y="19.9" transform="matrix(0.8672 -0.498 0.498 0.8672 -7.8354 11.5459)" class="st0" width="8.4" height="1.2"/>
 	</g>
 </g>
 </svg>
