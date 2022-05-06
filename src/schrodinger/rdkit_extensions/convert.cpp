@@ -349,9 +349,12 @@ std::string reaction_to_text(const RDKit::ChemicalReaction& reaction,
         case Format::SMARTS:
             return RDKit::ChemicalReactionToRxnSmarts(reaction);
         case Format::MDL_MOLV2000:
-        case Format::MDL_MOLV3000: // TODO: actually support in SHARED-8461
-            // Currently, RDKit always writes RXN in v2000 format
-            return RDKit::ChemicalReactionToRxnBlock(reaction);
+        case Format::MDL_MOLV3000: {
+            bool separateAgents = false;
+            bool forceV3000 = format == Format::MDL_MOLV3000;
+            return RDKit::ChemicalReactionToRxnBlock(reaction, separateAgents,
+                                                     forceV3000);
+        }
         default:
             throw std::invalid_argument("Unsupported reaction export format");
     }
