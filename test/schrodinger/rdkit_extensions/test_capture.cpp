@@ -30,7 +30,7 @@ BOOST_AUTO_TEST_CASE(testCaptureErrorLogEnabled)
 
     {
         CaptureRDErrorLog outer_capture_log;
-        RDLog::BlockLogs block_logs;
+        RDLog::LogStateSetter silence_rdkit_logging;
 
         RDKit::SmartsToMol(bad_smarts);
         BOOST_REQUIRE(outer_capture_log.messages().empty());
