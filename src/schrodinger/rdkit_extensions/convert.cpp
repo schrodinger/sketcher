@@ -26,7 +26,6 @@ namespace rdkit_extensions
 
 namespace
 {
-constexpr int MAX_IMPORTED_ATOMS = 200;
 const std::string attachment_point_label_prefix{"_AP"};
 
 /**
@@ -226,24 +225,8 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
                                     rd_error_log.messages());
     }
 
-    if (mol->getNumAtoms() > MAX_IMPORTED_ATOMS) {
-        throw std::runtime_error("Cannot import structure with greater than " +
-                                 std::to_string(MAX_IMPORTED_ATOMS) + " atoms");
-    }
-
     molattachpt_property_to_attachment_point_dummies(*mol);
-
     fix_r0_rgroup(*mol);
-
-    // Consider all input formats have the chiral flag on, except MDL.
-    // (CX SMILES/SMARTS have a flag to indicate "relative stereo",
-    // but rdkit doesn't support it yet).
-    if (format != Format::MDL_MOLV2000 && format != Format::MDL_MOLV3000 &&
-        !mol->hasProp(RDKit::common_properties::_MolFileChiralFlag)) {
-        mol->setProp(RDKit::common_properties::_MolFileChiralFlag, 1);
-    }
-    add_enhanced_stereo_to_chiral_atoms(*mol);
-
     mol->updatePropertyCache(false);
 
     return boost::shared_ptr<RDKit::RWMol>(mol);
