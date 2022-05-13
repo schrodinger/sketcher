@@ -55,9 +55,15 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
     auto m3 = text_to_rdmol(text);
     BOOST_TEST(rdmol_to_text(*m3, sample) == text);
 
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol("garbage", sample),
-                                    std::invalid_argument,
-                                    "Failed to parse text");
+    if (sample == Format::MDL_MOLV2000 || sample == Format::MDL_MOLV3000) {
+        TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol("garbage", sample),
+                                        std::invalid_argument,
+                                        "Single molblock required; 0 present");
+    } else {
+        TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol("garbage", sample),
+                                        std::invalid_argument,
+                                        "Failed to parse text");
+    }
 }
 
 BOOST_DATA_TEST_CASE(test_bypass_sanitization,

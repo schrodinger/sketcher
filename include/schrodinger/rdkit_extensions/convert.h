@@ -44,6 +44,7 @@ enum class Format {
 /**
  * @param text input text block
  * @param format specified format from which to interpret the text
+ * @param sanitize_mol whether to sanitize the output using BASE_SANITIZE_OPS
  * @return resulting rdkit molecule
  * @throw std::invalid_argument if text is not valid for the given format
  */
@@ -89,6 +90,12 @@ RDKIT_EXTENSIONS_API bool is_attachment_point_dummy(const RDKit::Atom& atom);
  */
 RDKIT_EXTENSIONS_API void
 add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol);
+
+/**
+ * Set bond directions based on the input data from SDF
+ * @param rdk_mol rdkit mol
+ */
+RDKIT_EXTENSIONS_API void reapply_molblock_wedging(RDKit::ROMol& rdk_mol);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

@@ -10,7 +10,10 @@
 
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
+#include <GraphMol/Depictor/RDDepictor.h>
 #include <GraphMol/FileParsers/FileParsers.h>
+#include <GraphMol/FileParsers/MolSupplier.h>
+#include <GraphMol/MolOps.h>
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
@@ -74,13 +77,15 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
     rdk_mol.updatePropertyCache(false);
 }
 
-void molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
+bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 {
-    for (auto atom : rdk_mol.atoms()) {
+    std::vector<std::pair<int, int>> new_attachment_point_bonds;
+    for (auto& atom : rdk_mol.atoms()) {
         int attach_point_type{0};
         if (atom->getPropIfPresent(RDKit::common_properties::molAttachPoint,
                                    attach_point_type)) {
             auto num_dummies = (attach_point_type == -1 ? 2 : 1);
+            auto explicit_h_count = atom->getNumExplicitHs();
             for (auto i = 1; i <= num_dummies; ++i) {
 
                 auto dummy_atom = new RDKit::QueryAtom(0);
@@ -96,14 +101,45 @@ void molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
                     rdk_mol.addAtom(dummy_atom, update_label, take_ownership);
                 rdk_mol.addBond(atom, dummy_atom, RDKit::Bond::SINGLE);
 
-                RDKit::MolOps::setTerminalAtomCoords(rdk_mol, dummy_idx,
-                                                     atom->getIdx());
+                new_attachment_point_bonds.push_back(
+                    {dummy_idx, atom->getIdx()});
+            }
+            if (explicit_h_count != 0) {
+                atom->setNumExplicitHs(explicit_h_count - num_dummies);
             }
             atom->clearProp(RDKit::common_properties::molAttachPoint);
         }
     }
 
-    rdk_mol.updatePropertyCache(false);
+    if (!new_attachment_point_bonds.empty()) {
+        // set coordinates for new attachment point atoms after adding all of
+        // them
+        // so that all new atoms are considered in coordinate generation
+        for (const auto& new_bond : new_attachment_point_bonds) {
+            RDKit::MolOps::setTerminalAtomCoords(rdk_mol, new_bond.first,
+                                                 new_bond.second);
+        }
+        reapply_molblock_wedging(rdk_mol);
+        RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);
+        rdk_mol.updatePropertyCache(false);
+        return true;
+    }
+    return false;
+}
+
+void preserve_wiggly_bonds(RDKit::RWMol& mol)
+{
+    for (auto& bond : mol.bonds()) {
+        int wiggly_bond_v2000{0};
+        int wiggly_bond_v3000{0};
+        bond->getPropIfPresent(RDKit::common_properties::_MolFileBondStereo,
+                               wiggly_bond_v2000);
+        bond->getPropIfPresent(RDKit::common_properties::_MolFileBondCfg,
+                               wiggly_bond_v3000);
+        if (wiggly_bond_v2000 == 4 || wiggly_bond_v3000 == 2) {
+            bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
+        }
+    }
 }
 
 void fix_cxsmiles_rgroups(RDKit::ROMol& mol)
@@ -166,6 +202,34 @@ void fix_r0_rgroup(RDKit::ROMol& mol)
     }
 }
 
+RDKit::ROMol* molblock_to_romol(const std::string& text,
+                                const CaptureRDErrorLog& rd_error_log,
+                                bool sanitize, bool removeHs)
+{
+    bool strictParsing = false;
+    // use SDMolSupplier because MolFromMolBlock does not preserve
+    // structure level properties
+    RDKit::SDMolSupplier reader;
+    reader.setData(text, sanitize, removeHs, strictParsing);
+    RDKit::ROMol* romol;
+    try {
+        romol = reader.next();
+    } catch (std::runtime_error& err) { // EOF hit
+        throw std::invalid_argument("Failed to parse text: " +
+                                    rd_error_log.messages());
+    }
+    if (romol == nullptr) {
+        throw std::invalid_argument("Failed to parse text: " +
+                                    rd_error_log.messages());
+    }
+    if (!reader.atEnd()) {
+        throw std::invalid_argument(
+            "Single molblock required; multiple present" +
+            rd_error_log.messages());
+    }
+    return romol;
+}
+
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
@@ -202,8 +266,9 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
             break;
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
-            bool strictParsing = false;
-            mol = RDKit::MolBlockToMol(text, sanitize, removeHs, strictParsing);
+            auto romol =
+                molblock_to_romol(text, rd_error_log, sanitize, removeHs);
+            mol = new RDKit::RWMol(*romol);
             break;
         }
         case Format::INCHI: {
@@ -225,10 +290,12 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
                                     rd_error_log.messages());
     }
 
-    molattachpt_property_to_attachment_point_dummies(*mol);
-    fix_r0_rgroup(*mol);
-    mol->updatePropertyCache(false);
-
+    bool has_attchpt = molattachpt_property_to_attachment_point_dummies(*mol);
+    if (!has_attchpt) {
+        preserve_wiggly_bonds(*mol);
+        fix_r0_rgroup(*mol);
+        mol->updatePropertyCache(false);
+    }
     return boost::shared_ptr<RDKit::RWMol>(mol);
 }
 
@@ -404,6 +471,45 @@ void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
     }
 
     mol.setStereoGroups(stereo_groups);
+}
+
+void reapply_molblock_wedging(RDKit::ROMol& rdk_mol)
+{
+    for (auto& bond : rdk_mol.bonds()) {
+        // only change the wedging if the bond was wedged in the input data (we
+        // recognize that by looking for the properties the mol file parser
+        // sets):
+        unsigned int bond_dir_val{0};
+        if (bond->getPropIfPresent(RDKit::common_properties::_MolFileBondStereo,
+                                   bond_dir_val)) {
+            // v2000
+            if (bond_dir_val == 1) {
+                bond->setBondDir(RDKit::Bond::BondDir::BEGINWEDGE);
+            } else if (bond_dir_val == 6) {
+                bond->setBondDir(RDKit::Bond::BondDir::BEGINDASH);
+            } else if (bond_dir_val == 4) {
+                bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
+            }
+        } else if (bond->getPropIfPresent(
+                       RDKit::common_properties::_MolFileBondCfg,
+                       bond_dir_val)) {
+            // v3000
+            if (bond_dir_val == 1) {
+                bond->setBondDir(RDKit::Bond::BondDir::BEGINWEDGE);
+            } else if (bond_dir_val == 3) {
+                bond->setBondDir(RDKit::Bond::BondDir::BEGINDASH);
+            } else if (bond_dir_val == 2) {
+                bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
+            }
+        } else {
+            auto bond_dir = bond->getBondDir();
+            if (bond_dir == RDKit::Bond::BondDir::BEGINWEDGE ||
+                bond_dir == RDKit::Bond::BondDir::BEGINDASH ||
+                bond_dir == RDKit::Bond::BondDir::UNKNOWN) {
+                bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
+            }
+        }
+    }
 }
 
 } // namespace rdkit_extensions
