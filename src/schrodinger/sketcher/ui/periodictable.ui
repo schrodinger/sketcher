@@ -6,52 +6,12 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>212</height>
+    <width>332</width>
+    <height>193</height>
    </rect>
-  </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
-  </property>
-  <property name="maximumSize">
-   <size>
-    <width>400</width>
-    <height>212</height>
-   </size>
   </property>
   <property name="windowTitle">
    <string>Form</string>
-  </property>
-  <property name="styleSheet">
-   <string notr="true">#PeriodicTableForm{background-color:white}
-QPushButton{
-min-width: 20px;
-max-width:20px;
-min-height:20px;
-max-height:20px;
-border-style: outset;
-border-width: 1px;
-border-color: grey ;
-}
-QPushButton[color_index=&quot;0&quot;]
-{
-background-color: &quot;#7ADDEE&quot;;
-}
-QPushButton[color_index=&quot;1&quot;]
-{
-background-color: &quot;#EEBABA&quot;;
-}
-QPushButton[color_index=&quot;2&quot;]
-{
-background-color: &quot;#EEDD7A&quot;;
-}
-QPushButton[color_index=&quot;3&quot;]
-{
-background-color:&quot;#80FF80&quot;;
-}</string>
   </property>
   <layout class="QGridLayout" name="element_layout">
    <property name="leftMargin">
@@ -67,1242 +27,32 @@ background-color:&quot;#80FF80&quot;;
     <number>2</number>
    </property>
    <property name="spacing">
-    <number>0</number>
+    <number>1</number>
    </property>
-   <item row="3" column="1">
-    <widget class="QPushButton" name="ca_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ca</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="1">
-    <widget class="QPushButton" name="ba_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ba</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="0">
-    <widget class="QPushButton" name="cs_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cs</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="17">
-    <widget class="QPushButton" name="kr_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Kr</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="6">
-    <widget class="QPushButton" name="bh_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Bh</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="11">
-    <widget class="QPushButton" name="zn_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Zn</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="1">
-    <widget class="QPushButton" name="mg_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Mg</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="8">
-    <widget class="QPushButton" name="am_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Am</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="5">
-    <widget class="QPushButton" name="sg_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Sg</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="5">
-    <widget class="QPushButton" name="cr_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cr</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="11">
-    <widget class="QPushButton" name="cd_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cd</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="9">
-    <widget class="QPushButton" name="pt_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Pt</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="8">
-    <widget class="QPushButton" name="ir_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ir</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="16">
-    <widget class="QPushButton" name="br_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Br</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="14">
-    <widget class="QPushButton" name="sb_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Sb</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="13">
-    <widget class="QPushButton" name="pb_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Pb</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="1">
-    <widget class="QPushButton" name="sr_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Sr</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="0" column="17">
-    <widget class="QPushButton" name="he_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>He</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="6">
-    <widget class="QPushButton" name="mn_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Mn</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="12">
-    <widget class="QPushButton" name="es_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Es</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="17">
-    <widget class="QPushButton" name="og_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Og</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="12">
-    <widget class="QPushButton" name="ga_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ga</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="13">
-    <widget class="QPushButton" name="ge_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ge</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="15">
-    <widget class="QPushButton" name="se_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Se</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="12">
-    <widget class="QPushButton" name="in_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>In</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="14">
-    <widget class="QPushButton" name="md_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Md</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="9">
-    <widget class="QPushButton" name="gd_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Gd</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="15">
-    <widget class="QPushButton" name="lv_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Lv</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="15">
-    <widget class="QPushButton" name="po_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Po</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="17">
-    <widget class="QPushButton" name="ne_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ne</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="5">
-    <widget class="QPushButton" name="u_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>U</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="6">
-    <widget class="QPushButton" name="re_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Re</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="14">
-    <widget class="QPushButton" name="tm_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Tm</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="14">
-    <widget class="QPushButton" name="mc_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Mc</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="13">
-    <widget class="QPushButton" name="fm_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Fm</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="14">
-    <widget class="QPushButton" name="as_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>As</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="13">
-    <widget class="QPushButton" name="c_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>C</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="0">
-    <widget class="QPushButton" name="li_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Li</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="14">
-    <widget class="QPushButton" name="p_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>P</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="13">
-    <widget class="QPushButton" name="fl_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Fl</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="6">
-    <widget class="QPushButton" name="pm_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Pm</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="9">
-    <widget class="QPushButton" name="ds_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ds</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="10">
-    <widget class="QPushButton" name="au_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Au</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="11">
-    <widget class="QPushButton" name="cn_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cn</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="10">
-    <widget class="QPushButton" name="tb_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Tb</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="4">
-    <widget class="QPushButton" name="nb_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Nb</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="15">
-    <widget class="QPushButton" name="te_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Te</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="1">
-    <widget class="QPushButton" name="be_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Be</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="13">
-    <widget class="QPushButton" name="er_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Er</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
    <item row="3" column="4">
     <widget class="QPushButton" name="v_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>V</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="17">
-    <widget class="QPushButton" name="xe_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Xe</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="10">
-    <widget class="QPushButton" name="cu_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cu</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="2">
-    <widget class="QPushButton" name="y_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Y</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="12">
-    <widget class="QPushButton" name="nh_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Nh</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="4">
-    <widget class="QPushButton" name="db_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Db</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="17">
-    <widget class="QPushButton" name="ar_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ar</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="0">
-    <widget class="QPushButton" name="fr_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Fr</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="9">
-    <widget class="QPushButton" name="pd_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Pd</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="4">
-    <widget class="QPushButton" name="ta_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ta</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="3">
-    <widget class="QPushButton" name="hf_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Hf</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="8">
-    <widget class="QPushButton" name="eu_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Eu</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="0" column="0">
-    <widget class="QPushButton" name="h_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>H</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -1311,50 +61,88 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="2" column="0">
     <widget class="QPushButton" name="na_btn">
-     <property name="baseSize">
+     <property name="minimumSize">
       <size>
-       <width>18</width>
-       <height>0</height>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
       </size>
      </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Na</string>
      </property>
-     <property name="iconSize">
-      <size>
-       <width>16</width>
-       <height>16</height>
-      </size>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="4" column="0">
-    <widget class="QPushButton" name="rb_btn">
+   <item row="9" column="12">
+    <widget class="QPushButton" name="es_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Rb</string>
+      <string>Es</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="17">
+    <widget class="QPushButton" name="xe_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Xe</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -1363,198 +151,88 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="4" column="8">
     <widget class="QPushButton" name="rh_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Rh</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="3" column="3">
-    <widget class="QPushButton" name="ti_btn">
+   <item row="8" column="13">
+    <widget class="QPushButton" name="er_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Ti</string>
+      <string>Er</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="8" column="5">
-    <widget class="QPushButton" name="nd_btn">
+   <item row="3" column="15">
+    <widget class="QPushButton" name="se_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Nd</string>
+      <string>Se</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="15">
-    <widget class="QPushButton" name="yb_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Yb</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="7">
-    <widget class="QPushButton" name="hs_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Hs</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="7">
-    <widget class="QPushButton" name="fe_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Fe</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="15">
-    <widget class="QPushButton" name="no_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>No</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="2">
-    <widget class="QPushButton" name="sc_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Sc</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="12">
-    <widget class="QPushButton" name="al_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Al</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="17">
-    <widget class="QPushButton" name="rn_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Rn</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -1563,58 +241,148 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="4" column="6">
     <widget class="QPushButton" name="tc_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Tc</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="5" column="11">
-    <widget class="QPushButton" name="hg_btn">
+   <item row="3" column="6">
+    <widget class="QPushButton" name="mn_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Hg</string>
+      <string>Mn</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="4" column="10">
-    <widget class="QPushButton" name="ag_btn">
+   <item row="3" column="12">
+    <widget class="QPushButton" name="ga_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Ag</string>
+      <string>Ga</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="6">
+    <widget class="QPushButton" name="re_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Re</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="10">
+    <widget class="QPushButton" name="tb_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -1623,18 +391,238 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="4" column="13">
     <widget class="QPushButton" name="sn_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Sn</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QPushButton" name="rb_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="16">
+    <widget class="QPushButton" name="lr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Lr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="14">
+    <widget class="QPushButton" name="as_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>As</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="5">
+    <widget class="QPushButton" name="sg_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="5">
+    <widget class="QPushButton" name="u_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>U</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="mg_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="fr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -1643,238 +631,28 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="9" column="6">
     <widget class="QPushButton" name="np_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Np</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="9">
-    <widget class="QPushButton" name="ni_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ni</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="3">
-    <widget class="QPushButton" name="th_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Th</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="14">
-    <widget class="QPushButton" name="n_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>N</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="16">
-    <widget class="QPushButton" name="i_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>I</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="16">
-    <widget class="QPushButton" name="cl_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cl</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="15">
-    <widget class="QPushButton" name="s_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>S</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="2">
-    <widget class="QPushButton" name="la_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>La</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="11">
-    <widget class="QPushButton" name="dy_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Dy</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="11">
-    <widget class="QPushButton" name="cf_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cf</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="7">
-    <widget class="QPushButton" name="ru_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ru</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="8">
-    <widget class="QPushButton" name="mt_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Mt</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>actinides</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -1883,298 +661,88 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="8" column="4">
     <widget class="QPushButton" name="pr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Pr</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="5" column="14">
-    <widget class="QPushButton" name="bi_btn">
+   <item row="4" column="7">
+    <widget class="QPushButton" name="ru_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Bi</string>
+      <string>Ru</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="6" column="16">
-    <widget class="QPushButton" name="ts_btn">
+   <item row="3" column="3">
+    <widget class="QPushButton" name="ti_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Ts</string>
+      <string>Ti</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="3">
-    <widget class="QPushButton" name="ce_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ce</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="4">
-    <widget class="QPushButton" name="pa_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Pa</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="2" column="13">
-    <widget class="QPushButton" name="si_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Si</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="2">
-    <widget class="QPushButton" name="ac_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ac</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="12">
-    <widget class="QPushButton" name="tl_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Tl</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="16">
-    <widget class="QPushButton" name="f_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>F</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="1" column="15">
-    <widget class="QPushButton" name="o_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>O</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="3" column="8">
-    <widget class="QPushButton" name="co_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Co</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="12">
-    <widget class="QPushButton" name="ho_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ho</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="4" column="3">
-    <widget class="QPushButton" name="zr_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Zr</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="8" column="7">
-    <widget class="QPushButton" name="sm_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Sm</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="3">
-    <widget class="QPushButton" name="rf_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Rf</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -2183,138 +751,88 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="3" column="0">
     <widget class="QPushButton" name="k_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>K</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="5" column="7">
-    <widget class="QPushButton" name="os_btn">
+   <item row="1" column="0">
+    <widget class="QPushButton" name="li_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Os</string>
+      <string>Li</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="9" column="7">
-    <widget class="QPushButton" name="pu_btn">
+   <item row="5" column="17">
+    <widget class="QPushButton" name="rn_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Pu</string>
+      <string>Rn</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="10">
-    <widget class="QPushButton" name="bk_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Bk</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="9" column="9">
-    <widget class="QPushButton" name="cm_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Cm</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="5" column="5">
-    <widget class="QPushButton" name="w_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>W</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item row="6" column="1">
-    <widget class="QPushButton" name="ra_btn">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
-     <property name="text">
-      <string>Ra</string>
-     </property>
-     <property name="color_index" stdset="0">
-      <string>0</string>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -2323,78 +841,148 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="4" column="5">
     <widget class="QPushButton" name="mo_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
       <string>Mo</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="5" column="16">
-    <widget class="QPushButton" name="at_btn">
+   <item row="4" column="12">
+    <widget class="QPushButton" name="in_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>At</string>
+      <string>In</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="1" column="12">
-    <widget class="QPushButton" name="b_btn">
+   <item row="6" column="11">
+    <widget class="QPushButton" name="cn_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>B</string>
+      <string>Cn</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>2</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="6" column="10">
-    <widget class="QPushButton" name="rg_btn">
+   <item row="6" column="12">
+    <widget class="QPushButton" name="nh_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Rg</string>
+      <string>Nh</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>1</string>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="3">
+    <widget class="QPushButton" name="zr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Zr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
@@ -2403,13 +991,6 @@ background-color:&quot;#80FF80&quot;;
    </item>
    <item row="7" column="2">
     <spacer name="lanthanide_spacer">
-     <property name="font">
-      <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
-      </font>
-     </property>
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
@@ -2424,44 +1005,2692 @@ background-color:&quot;#80FF80&quot;;
      </property>
     </spacer>
    </item>
-   <item row="8" column="16">
-    <widget class="QPushButton" name="lu_btn">
+   <item row="6" column="15">
+    <widget class="QPushButton" name="lv_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Lu</string>
+      <string>Lv</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
     </widget>
    </item>
-   <item row="9" column="16">
-    <widget class="QPushButton" name="lr_btn">
+   <item row="5" column="4">
+    <widget class="QPushButton" name="ta_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
      <property name="font">
       <font>
-       <pointsize>11</pointsize>
-       <weight>75</weight>
-       <bold>true</bold>
+       <pointsize>10</pointsize>
       </font>
      </property>
      <property name="text">
-      <string>Lr</string>
+      <string>Ta</string>
      </property>
-     <property name="color_index" stdset="0">
-      <string>3</string>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
      </property>
      <attribute name="buttonGroup">
       <string notr="true">group</string>
      </attribute>
+    </widget>
+   </item>
+   <item row="6" column="13">
+    <widget class="QPushButton" name="fl_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fl</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="7">
+    <widget class="QPushButton" name="pu_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="2">
+    <widget class="QPushButton" name="la_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>La</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QPushButton" name="sc_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sc</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="15">
+    <widget class="QPushButton" name="yb_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Yb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="16">
+    <widget class="QPushButton" name="ts_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ts</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="14">
+    <widget class="QPushButton" name="n_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>N</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="9">
+    <widget class="QPushButton" name="ni_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ni</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="12">
+    <widget class="QPushButton" name="ho_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ho</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="7">
+    <widget class="QPushButton" name="hs_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Hs</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="3">
+    <widget class="QPushButton" name="hf_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Hf</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="5">
+    <widget class="QPushButton" name="cr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="14">
+    <widget class="QPushButton" name="p_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>P</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="16">
+    <widget class="QPushButton" name="lu_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Lu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="3">
+    <widget class="QPushButton" name="rf_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rf</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="12">
+    <widget class="QPushButton" name="tl_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tl</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="0" column="17">
+    <widget class="QPushButton" name="he_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>He</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="15">
+    <widget class="QPushButton" name="o_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>O</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="17">
+    <widget class="QPushButton" name="kr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Kr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="7">
+    <widget class="QPushButton" name="os_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Os</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="4">
+    <widget class="QPushButton" name="nb_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Nb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="3">
+    <widget class="QPushButton" name="ce_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ce</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="15">
+    <widget class="QPushButton" name="te_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Te</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="8">
+    <widget class="QPushButton" name="ir_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ir</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="ca_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ca</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="16">
+    <widget class="QPushButton" name="i_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>I</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="13">
+    <widget class="QPushButton" name="fm_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="14">
+    <widget class="QPushButton" name="bi_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Bi</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QPushButton" name="ba_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ba</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="13">
+    <widget class="QPushButton" name="ge_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ge</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="10">
+    <widget class="QPushButton" name="au_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Au</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="10">
+    <widget class="QPushButton" name="cu_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="16">
+    <widget class="QPushButton" name="f_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>F</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="13">
+    <widget class="QPushButton" name="si_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Si</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="16">
+    <widget class="QPushButton" name="cl_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cl</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="be_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Be</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="9">
+    <widget class="QPushButton" name="cm_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="2">
+    <widget class="QPushButton" name="ac_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ac</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="14">
+    <widget class="QPushButton" name="mc_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mc</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="9">
+    <widget class="QPushButton" name="gd_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Gd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="15">
+    <widget class="QPushButton" name="po_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Po</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="15">
+    <widget class="QPushButton" name="no_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>No</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="16">
+    <widget class="QPushButton" name="br_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Br</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QPushButton" name="ra_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ra</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QPushButton" name="sr_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="11">
+    <widget class="QPushButton" name="dy_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Dy</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="14">
+    <widget class="QPushButton" name="sb_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="7">
+    <widget class="QPushButton" name="sm_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="3">
+    <widget class="QPushButton" name="th_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Th</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="14">
+    <widget class="QPushButton" name="tm_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="15">
+    <widget class="QPushButton" name="s_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>S</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="4">
+    <widget class="QPushButton" name="db_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Db</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="4">
+    <widget class="QPushButton" name="pa_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pa</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="6">
+    <widget class="QPushButton" name="bh_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Bh</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QPushButton" name="y_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Y</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="8">
+    <widget class="QPushButton" name="mt_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mt</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="17">
+    <widget class="QPushButton" name="ne_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ne</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="13">
+    <widget class="QPushButton" name="c_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>C</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="10">
+    <widget class="QPushButton" name="bk_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Bk</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="8">
+    <widget class="QPushButton" name="am_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Am</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="7">
+    <widget class="QPushButton" name="fe_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fe</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="10">
+    <widget class="QPushButton" name="rg_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="8">
+    <widget class="QPushButton" name="eu_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Eu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="9">
+    <widget class="QPushButton" name="pd_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="11">
+    <widget class="QPushButton" name="hg_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Hg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QPushButton" name="cs_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cs</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="17">
+    <widget class="QPushButton" name="og_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Og</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="17">
+    <widget class="QPushButton" name="ar_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ar</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="11">
+    <widget class="QPushButton" name="cd_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="9">
+    <widget class="QPushButton" name="pt_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pt</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="10">
+    <widget class="QPushButton" name="ag_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ag</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="11">
+    <widget class="QPushButton" name="cf_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cf</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="6">
+    <widget class="QPushButton" name="pm_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="12">
+    <widget class="QPushButton" name="b_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>B</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QPushButton" name="h_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>H</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>hydrogen</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="11">
+    <widget class="QPushButton" name="zn_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Zn</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="16">
+    <widget class="QPushButton" name="at_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>At</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="14">
+    <widget class="QPushButton" name="md_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Md</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="5">
+    <widget class="QPushButton" name="w_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>W</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="12">
+    <widget class="QPushButton" name="al_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Al</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="5">
+    <widget class="QPushButton" name="nd_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Nd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="8">
+    <widget class="QPushButton" name="co_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Co</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="9">
+    <widget class="QPushButton" name="ds_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ds</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="13">
+    <widget class="QPushButton" name="pb_btn">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="2">
+    <widget class="QLabel" name="label">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>*</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="2">
+    <widget class="QLabel" name="label_2">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>**</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QLabel" name="label_3">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>*</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QLabel" name="label_4">
+     <property name="minimumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>21</width>
+       <height>21</height>
+      </size>
+     </property>
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>**</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
     </widget>
    </item>
   </layout>
