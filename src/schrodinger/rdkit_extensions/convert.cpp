@@ -13,6 +13,7 @@
 #include <GraphMol/Depictor/RDDepictor.h>
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/FileParsers/MolSupplier.h>
+#include <GraphMol/FileParsers/MolWriters.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
@@ -52,6 +53,7 @@ boost::shared_ptr<T> auto_detect(
 
 void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
 {
+    rdk_mol.updatePropertyCache(false);
     std::vector<RDKit::Atom*> dummies_to_remove;
     for (auto atom : rdk_mol.atoms()) {
         if (is_attachment_point_dummy(*atom)) {
@@ -59,12 +61,16 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
 
             // This should find only one neighbor
             for (auto parent : rdk_mol.atomNeighbors(atom)) {
-                int attacment_point_type{1};
+                int attachment_point_type{1};
+                auto num_exp_hs = parent->getNumExplicitHs();
                 if (parent->hasProp(RDKit::common_properties::molAttachPoint)) {
-                    attacment_point_type = -1;
+                    attachment_point_type = -1;
+                    parent->setNumExplicitHs(num_exp_hs + 2);
+                } else {
+                    parent->setNumExplicitHs(num_exp_hs + 1);
                 }
                 parent->setProp(RDKit::common_properties::molAttachPoint,
-                                attacment_point_type);
+                                attachment_point_type);
             }
         }
     }
@@ -365,6 +371,7 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
         case Format::SMILES:
             return RDKit::MolToSmiles(rwmol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
+            rwmol.clearConformers();
             return RDKit::MolToCXSmiles(rwmol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(rwmol);
@@ -373,8 +380,8 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
             attachment_point_dummies_to_molattachpt_property(rwmol);
             int confId = -1;
             bool forceV3000 = format == Format::MDL_MOLV3000;
-            return RDKit::MolToMolBlock(rwmol, include_stereo, confId, kekulize,
-                                        forceV3000);
+            return RDKit::SDWriter::getText(rwmol, confId, kekulize,
+                                            forceV3000);
         }
         case Format::INCHI: {
             RDKit::ExtraInchiReturnValues aux;
