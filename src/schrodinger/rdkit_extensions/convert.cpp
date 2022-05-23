@@ -310,10 +310,10 @@ boost::shared_ptr<RDKit::ChemicalReaction>
 text_to_reaction(const std::string& text, Format format)
 {
     if (format == Format::AUTO_DETECT) {
-        // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
+        // NOTE: Text is always read as SMARTS. Reading text as
+        // SMILES should be explicitly requested
         return auto_detect<RDKit::ChemicalReaction>(
-            text, {Format::MDL_MOLV2000, Format::SMILES, Format::SMARTS},
-            &text_to_reaction);
+            text, {Format::MDL_MOLV2000, Format::SMARTS}, &text_to_reaction);
     }
 
     CaptureRDErrorLog rd_error_log;
