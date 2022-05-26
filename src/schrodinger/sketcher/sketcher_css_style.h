@@ -48,7 +48,8 @@ const QString ATOM_QUERY_STYLE{
 
 const QString PERIODIC_TABLE_STYLE{
     "#PeriodicTableForm { background-color:white }"
-    "QPushButton { font: 10px; color: black; border-style: none; }"
+    "QPushButton { font: 10px; color: black; border-style: none; "
+    "    min-width: 21px; max-width:21px; min-height:21px; max-height:21px; }"
     "QPushButton[class='hydrogen'] { background-color: #b2bcc2; }"
     "QPushButton[class='alkali_metals'] { background-color: #b7d9ec; }"
     "QPushButton[class='alkaline_earth_metals'] { background-color: #8fbed9; }"
@@ -60,7 +61,7 @@ const QString PERIODIC_TABLE_STYLE{
     "QPushButton[class='noble_gases'] { background-color: #eccc75; }"
     "QPushButton[class='lanthanides'] { background-color: #cce5c3; }"
     "QPushButton[class='actinides'] { background-color: #afd1a2; }"
-    "QLabel { font: 10px; color: black; border-style: none; }"};
+    "QLabel { font: 10px; color: black; border-style: none; padding: 0; }"};
 
 const QString BOND_QUERY_STYLE{
     "QToolButton { font: bold 12px; color: #333333; }" + TOOL_BUTTON_STYLE};

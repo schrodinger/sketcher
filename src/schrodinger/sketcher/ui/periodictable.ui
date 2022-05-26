@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>332</width>
-    <height>193</height>
+    <width>828</width>
+    <height>239</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -31,18 +31,6 @@
    </property>
    <item row="3" column="4">
     <widget class="QPushButton" name="v_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -61,18 +49,6 @@
    </item>
    <item row="2" column="0">
     <widget class="QPushButton" name="na_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -91,18 +67,6 @@
    </item>
    <item row="9" column="12">
     <widget class="QPushButton" name="es_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -121,18 +85,6 @@
    </item>
    <item row="4" column="17">
     <widget class="QPushButton" name="xe_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -151,18 +103,6 @@
    </item>
    <item row="4" column="8">
     <widget class="QPushButton" name="rh_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -181,18 +121,6 @@
    </item>
    <item row="8" column="13">
     <widget class="QPushButton" name="er_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -211,18 +139,6 @@
    </item>
    <item row="3" column="15">
     <widget class="QPushButton" name="se_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -241,18 +157,6 @@
    </item>
    <item row="4" column="6">
     <widget class="QPushButton" name="tc_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -271,18 +175,6 @@
    </item>
    <item row="3" column="6">
     <widget class="QPushButton" name="mn_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -301,18 +193,6 @@
    </item>
    <item row="3" column="12">
     <widget class="QPushButton" name="ga_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -331,18 +211,6 @@
    </item>
    <item row="5" column="6">
     <widget class="QPushButton" name="re_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -361,18 +229,6 @@
    </item>
    <item row="8" column="10">
     <widget class="QPushButton" name="tb_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -391,18 +247,6 @@
    </item>
    <item row="4" column="13">
     <widget class="QPushButton" name="sn_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -421,18 +265,6 @@
    </item>
    <item row="4" column="0">
     <widget class="QPushButton" name="rb_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -451,18 +283,6 @@
    </item>
    <item row="9" column="16">
     <widget class="QPushButton" name="lr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -481,18 +301,6 @@
    </item>
    <item row="3" column="14">
     <widget class="QPushButton" name="as_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -511,18 +319,6 @@
    </item>
    <item row="6" column="5">
     <widget class="QPushButton" name="sg_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -541,18 +337,6 @@
    </item>
    <item row="9" column="5">
     <widget class="QPushButton" name="u_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -571,18 +355,6 @@
    </item>
    <item row="2" column="1">
     <widget class="QPushButton" name="mg_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -601,18 +373,6 @@
    </item>
    <item row="6" column="0">
     <widget class="QPushButton" name="fr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -631,18 +391,6 @@
    </item>
    <item row="9" column="6">
     <widget class="QPushButton" name="np_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -661,18 +409,6 @@
    </item>
    <item row="8" column="4">
     <widget class="QPushButton" name="pr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -691,18 +427,6 @@
    </item>
    <item row="4" column="7">
     <widget class="QPushButton" name="ru_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -721,18 +445,6 @@
    </item>
    <item row="3" column="3">
     <widget class="QPushButton" name="ti_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -751,18 +463,6 @@
    </item>
    <item row="3" column="0">
     <widget class="QPushButton" name="k_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -781,18 +481,6 @@
    </item>
    <item row="1" column="0">
     <widget class="QPushButton" name="li_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -811,18 +499,6 @@
    </item>
    <item row="5" column="17">
     <widget class="QPushButton" name="rn_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -841,18 +517,6 @@
    </item>
    <item row="4" column="5">
     <widget class="QPushButton" name="mo_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -871,18 +535,6 @@
    </item>
    <item row="4" column="12">
     <widget class="QPushButton" name="in_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -901,18 +553,6 @@
    </item>
    <item row="6" column="11">
     <widget class="QPushButton" name="cn_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -931,18 +571,6 @@
    </item>
    <item row="6" column="12">
     <widget class="QPushButton" name="nh_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -961,18 +589,6 @@
    </item>
    <item row="4" column="3">
     <widget class="QPushButton" name="zr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1007,18 +623,6 @@
    </item>
    <item row="6" column="15">
     <widget class="QPushButton" name="lv_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1037,18 +641,6 @@
    </item>
    <item row="5" column="4">
     <widget class="QPushButton" name="ta_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1067,18 +659,6 @@
    </item>
    <item row="6" column="13">
     <widget class="QPushButton" name="fl_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1097,18 +677,6 @@
    </item>
    <item row="9" column="7">
     <widget class="QPushButton" name="pu_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1127,18 +695,6 @@
    </item>
    <item row="8" column="2">
     <widget class="QPushButton" name="la_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1157,18 +713,6 @@
    </item>
    <item row="3" column="2">
     <widget class="QPushButton" name="sc_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1187,18 +731,6 @@
    </item>
    <item row="8" column="15">
     <widget class="QPushButton" name="yb_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1217,18 +749,6 @@
    </item>
    <item row="6" column="16">
     <widget class="QPushButton" name="ts_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1247,18 +767,6 @@
    </item>
    <item row="1" column="14">
     <widget class="QPushButton" name="n_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1277,18 +785,6 @@
    </item>
    <item row="3" column="9">
     <widget class="QPushButton" name="ni_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1307,18 +803,6 @@
    </item>
    <item row="8" column="12">
     <widget class="QPushButton" name="ho_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1337,18 +821,6 @@
    </item>
    <item row="6" column="7">
     <widget class="QPushButton" name="hs_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1367,18 +839,6 @@
    </item>
    <item row="5" column="3">
     <widget class="QPushButton" name="hf_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1397,18 +857,6 @@
    </item>
    <item row="3" column="5">
     <widget class="QPushButton" name="cr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1427,18 +875,6 @@
    </item>
    <item row="2" column="14">
     <widget class="QPushButton" name="p_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1457,18 +893,6 @@
    </item>
    <item row="8" column="16">
     <widget class="QPushButton" name="lu_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1487,18 +911,6 @@
    </item>
    <item row="6" column="3">
     <widget class="QPushButton" name="rf_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1517,18 +929,6 @@
    </item>
    <item row="5" column="12">
     <widget class="QPushButton" name="tl_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1547,18 +947,6 @@
    </item>
    <item row="0" column="17">
     <widget class="QPushButton" name="he_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1577,18 +965,6 @@
    </item>
    <item row="1" column="15">
     <widget class="QPushButton" name="o_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1607,18 +983,6 @@
    </item>
    <item row="3" column="17">
     <widget class="QPushButton" name="kr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1637,18 +1001,6 @@
    </item>
    <item row="5" column="7">
     <widget class="QPushButton" name="os_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1667,18 +1019,6 @@
    </item>
    <item row="4" column="4">
     <widget class="QPushButton" name="nb_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1697,18 +1037,6 @@
    </item>
    <item row="8" column="3">
     <widget class="QPushButton" name="ce_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1727,18 +1055,6 @@
    </item>
    <item row="4" column="15">
     <widget class="QPushButton" name="te_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1757,18 +1073,6 @@
    </item>
    <item row="5" column="8">
     <widget class="QPushButton" name="ir_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1787,18 +1091,6 @@
    </item>
    <item row="3" column="1">
     <widget class="QPushButton" name="ca_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1817,18 +1109,6 @@
    </item>
    <item row="4" column="16">
     <widget class="QPushButton" name="i_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1847,18 +1127,6 @@
    </item>
    <item row="9" column="13">
     <widget class="QPushButton" name="fm_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1877,18 +1145,6 @@
    </item>
    <item row="5" column="14">
     <widget class="QPushButton" name="bi_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1907,18 +1163,6 @@
    </item>
    <item row="5" column="1">
     <widget class="QPushButton" name="ba_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1937,18 +1181,6 @@
    </item>
    <item row="3" column="13">
     <widget class="QPushButton" name="ge_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1967,18 +1199,6 @@
    </item>
    <item row="5" column="10">
     <widget class="QPushButton" name="au_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -1997,18 +1217,6 @@
    </item>
    <item row="3" column="10">
     <widget class="QPushButton" name="cu_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2027,18 +1235,6 @@
    </item>
    <item row="1" column="16">
     <widget class="QPushButton" name="f_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2057,18 +1253,6 @@
    </item>
    <item row="2" column="13">
     <widget class="QPushButton" name="si_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2087,18 +1271,6 @@
    </item>
    <item row="2" column="16">
     <widget class="QPushButton" name="cl_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2117,18 +1289,6 @@
    </item>
    <item row="1" column="1">
     <widget class="QPushButton" name="be_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2147,18 +1307,6 @@
    </item>
    <item row="9" column="9">
     <widget class="QPushButton" name="cm_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2177,18 +1325,6 @@
    </item>
    <item row="9" column="2">
     <widget class="QPushButton" name="ac_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2207,18 +1343,6 @@
    </item>
    <item row="6" column="14">
     <widget class="QPushButton" name="mc_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2237,18 +1361,6 @@
    </item>
    <item row="8" column="9">
     <widget class="QPushButton" name="gd_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2267,18 +1379,6 @@
    </item>
    <item row="5" column="15">
     <widget class="QPushButton" name="po_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2297,18 +1397,6 @@
    </item>
    <item row="9" column="15">
     <widget class="QPushButton" name="no_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2327,18 +1415,6 @@
    </item>
    <item row="3" column="16">
     <widget class="QPushButton" name="br_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2357,18 +1433,6 @@
    </item>
    <item row="6" column="1">
     <widget class="QPushButton" name="ra_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2387,18 +1451,6 @@
    </item>
    <item row="4" column="1">
     <widget class="QPushButton" name="sr_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2417,18 +1469,6 @@
    </item>
    <item row="8" column="11">
     <widget class="QPushButton" name="dy_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2447,18 +1487,6 @@
    </item>
    <item row="4" column="14">
     <widget class="QPushButton" name="sb_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2477,18 +1505,6 @@
    </item>
    <item row="8" column="7">
     <widget class="QPushButton" name="sm_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2507,18 +1523,6 @@
    </item>
    <item row="9" column="3">
     <widget class="QPushButton" name="th_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2537,18 +1541,6 @@
    </item>
    <item row="8" column="14">
     <widget class="QPushButton" name="tm_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2567,18 +1559,6 @@
    </item>
    <item row="2" column="15">
     <widget class="QPushButton" name="s_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2597,18 +1577,6 @@
    </item>
    <item row="6" column="4">
     <widget class="QPushButton" name="db_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2627,18 +1595,6 @@
    </item>
    <item row="9" column="4">
     <widget class="QPushButton" name="pa_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2657,18 +1613,6 @@
    </item>
    <item row="6" column="6">
     <widget class="QPushButton" name="bh_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2687,18 +1631,6 @@
    </item>
    <item row="4" column="2">
     <widget class="QPushButton" name="y_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2717,18 +1649,6 @@
    </item>
    <item row="6" column="8">
     <widget class="QPushButton" name="mt_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2747,18 +1667,6 @@
    </item>
    <item row="1" column="17">
     <widget class="QPushButton" name="ne_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2777,18 +1685,6 @@
    </item>
    <item row="1" column="13">
     <widget class="QPushButton" name="c_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2807,18 +1703,6 @@
    </item>
    <item row="9" column="10">
     <widget class="QPushButton" name="bk_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2837,18 +1721,6 @@
    </item>
    <item row="9" column="8">
     <widget class="QPushButton" name="am_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2867,18 +1739,6 @@
    </item>
    <item row="3" column="7">
     <widget class="QPushButton" name="fe_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2897,18 +1757,6 @@
    </item>
    <item row="6" column="10">
     <widget class="QPushButton" name="rg_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2927,18 +1775,6 @@
    </item>
    <item row="8" column="8">
     <widget class="QPushButton" name="eu_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2957,18 +1793,6 @@
    </item>
    <item row="4" column="9">
     <widget class="QPushButton" name="pd_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -2987,18 +1811,6 @@
    </item>
    <item row="5" column="11">
     <widget class="QPushButton" name="hg_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3017,18 +1829,6 @@
    </item>
    <item row="5" column="0">
     <widget class="QPushButton" name="cs_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3047,18 +1847,6 @@
    </item>
    <item row="6" column="17">
     <widget class="QPushButton" name="og_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3077,18 +1865,6 @@
    </item>
    <item row="2" column="17">
     <widget class="QPushButton" name="ar_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3107,18 +1883,6 @@
    </item>
    <item row="4" column="11">
     <widget class="QPushButton" name="cd_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3137,18 +1901,6 @@
    </item>
    <item row="5" column="9">
     <widget class="QPushButton" name="pt_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3167,18 +1919,6 @@
    </item>
    <item row="4" column="10">
     <widget class="QPushButton" name="ag_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3197,18 +1937,6 @@
    </item>
    <item row="9" column="11">
     <widget class="QPushButton" name="cf_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3227,18 +1955,6 @@
    </item>
    <item row="8" column="6">
     <widget class="QPushButton" name="pm_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3257,18 +1973,6 @@
    </item>
    <item row="1" column="12">
     <widget class="QPushButton" name="b_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3287,18 +1991,6 @@
    </item>
    <item row="0" column="0">
     <widget class="QPushButton" name="h_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3317,18 +2009,6 @@
    </item>
    <item row="3" column="11">
     <widget class="QPushButton" name="zn_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3347,18 +2027,6 @@
    </item>
    <item row="5" column="16">
     <widget class="QPushButton" name="at_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3377,18 +2045,6 @@
    </item>
    <item row="9" column="14">
     <widget class="QPushButton" name="md_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3407,18 +2063,6 @@
    </item>
    <item row="5" column="5">
     <widget class="QPushButton" name="w_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3437,18 +2081,6 @@
    </item>
    <item row="2" column="12">
     <widget class="QPushButton" name="al_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3467,18 +2099,6 @@
    </item>
    <item row="8" column="5">
     <widget class="QPushButton" name="nd_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3497,18 +2117,6 @@
    </item>
    <item row="3" column="8">
     <widget class="QPushButton" name="co_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3527,18 +2135,6 @@
    </item>
    <item row="6" column="9">
     <widget class="QPushButton" name="ds_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3557,18 +2153,6 @@
    </item>
    <item row="5" column="13">
     <widget class="QPushButton" name="pb_btn">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3587,18 +2171,6 @@
    </item>
    <item row="5" column="2">
     <widget class="QLabel" name="label">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3614,18 +2186,6 @@
    </item>
    <item row="6" column="2">
     <widget class="QLabel" name="label_2">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3641,18 +2201,6 @@
    </item>
    <item row="8" column="1">
     <widget class="QLabel" name="label_3">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
@@ -3668,18 +2216,6 @@
    </item>
    <item row="9" column="1">
     <widget class="QLabel" name="label_4">
-     <property name="minimumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>21</width>
-       <height>21</height>
-      </size>
-     </property>
      <property name="font">
       <font>
        <pointsize>10</pointsize>
