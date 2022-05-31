@@ -44,7 +44,6 @@ enum class Format {
 /**
  * @param text input text block
  * @param format specified format from which to interpret the text
- * @param sanitize_mol whether to sanitize the output using BASE_SANITIZE_OPS
  * @return resulting rdkit molecule
  * @throw std::invalid_argument if text is not valid for the given format
  */
