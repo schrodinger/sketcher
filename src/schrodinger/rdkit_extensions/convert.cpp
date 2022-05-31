@@ -214,7 +214,7 @@ RDKit::ROMol* molblock_to_romol(const std::string& text,
     RDKit::ROMol* romol;
     try {
         romol = reader.next();
-    } catch (std::runtime_error& err) { // EOF hit
+    } catch (std::runtime_error&) { // EOF hit
         throw std::invalid_argument("Failed to parse text: " +
                                     rd_error_log.messages());
     }
