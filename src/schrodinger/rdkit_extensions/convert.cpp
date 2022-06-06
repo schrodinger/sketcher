@@ -208,9 +208,10 @@ void fix_r0_rgroup(RDKit::ROMol& mol)
     }
 }
 
-RDKit::ROMol* molblock_to_romol(const std::string& text,
-                                const CaptureRDErrorLog& rd_error_log,
-                                bool sanitize, bool removeHs)
+boost::shared_ptr<RDKit::ROMol>
+molblock_to_romol(const std::string& text,
+                  const CaptureRDErrorLog& rd_error_log, bool sanitize,
+                  bool removeHs)
 {
     bool strictParsing = false;
     // use SDMolSupplier because MolFromMolBlock does not preserve
@@ -233,7 +234,7 @@ RDKit::ROMol* molblock_to_romol(const std::string& text,
             "Single molblock required; multiple present" +
             rd_error_log.messages());
     }
-    return romol;
+    return boost::shared_ptr<RDKit::ROMol>(romol);
 }
 
 } // unnamed namespace
