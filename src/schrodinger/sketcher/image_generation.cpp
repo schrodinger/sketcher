@@ -33,8 +33,7 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     SketcherModel sketcher_model(&scene);
     scene.setModel(&sketcher_model);
 
-    sketcherImportStructureSettings settings;
-    scene.addRDKitMolecule(rdmol, settings);
+    scene.addRDKitMolecule(rdmol);
     scene._backgroundColor = Qt::transparent;
     auto scene_rect = scene.itemsBoundingRect();
 
