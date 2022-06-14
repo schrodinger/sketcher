@@ -34,6 +34,8 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     scene.setModel(&sketcher_model);
 
     scene.addRDKitMolecule(rdmol);
+    setHighlights(scene, opts);
+
     scene._backgroundColor = Qt::transparent;
     auto scene_rect = scene.itemsBoundingRect();
 
