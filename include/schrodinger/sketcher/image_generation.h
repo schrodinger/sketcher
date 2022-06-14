@@ -11,6 +11,8 @@
 #include <QImage>
 #include <QPicture>
 #include <QSize>
+#include <unordered_map>
+#include "schrodinger/sketcher/highlighting_item.h"
 
 #include "schrodinger/sketcher/definitions.h"
 
@@ -35,7 +37,8 @@ enum class ImageFormat { PNG, SVG };
 struct RenderOptions {
     QSize width_height = QSize(400, 400);
     QColor background_color = Qt::transparent;
-    // SKETCH-942: std::unordered_map<QColor, std::vector<int>> highlight_atoms;
+    std::unordered_map<int, QColor> highlight_atom_index_to_color;
+    std::unordered_map<int, QColor> highlight_bond_index_to_color;
     // TODO: incorporate both RendererSettings and additional LiveDesign options
 };
 
