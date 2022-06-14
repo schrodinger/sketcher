@@ -26,24 +26,6 @@ namespace sketcher
 namespace
 {
 
-void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
-{
-    auto atoms = scene.quickGetAtoms();
-    for (auto atom : atoms) {
-        atom->removeHighlight();
-    }
-    for (auto index_color : opts.highlight_atom_index_to_color) {
-        atoms.at(index_color.first)->setHighlightColor(index_color.second);
-    }
-    auto bonds = scene.quickGetBonds();
-    for (auto bond : bonds) {
-        bond->removeHighlight();
-    }
-    for (auto index_color : opts.highlight_bond_index_to_color) {
-        bonds.at(index_color.first)->setHighlightColor(index_color.second);
-    }
-}
-
 void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
                  const RenderOptions& opts)
 {
@@ -51,10 +33,7 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     SketcherModel sketcher_model(&scene);
     scene.setModel(&sketcher_model);
 
-    sketcherImportStructureSettings settings;
-    scene.addRDKitMolecule(rdmol, settings);
-    setHighlights(scene, opts);
-
+    scene.addRDKitMolecule(rdmol);
     scene._backgroundColor = Qt::transparent;
     auto scene_rect = scene.itemsBoundingRect();
 

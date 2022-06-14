@@ -49,31 +49,3 @@ BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
     BOOST_REQUIRE_THROW(save_image_file(*rdmol, tmp_file + ".invalid", opts),
                         std::invalid_argument);
 }
-
-BOOST_AUTO_TEST_CASE(test_highlighting)
-{
-    auto rdmol = rdkit_extensions::text_to_rdmol("C1=CC=CC=C1");
-
-    RenderOptions opts;
-    opts.width_height = {400, 400};
-    opts.background_color = QColor(255, 255, 255);
-    std::unordered_map<int, QColor> highlights;
-    QColor red(255, 0, 0);
-    highlights[0] = red;
-    highlights[1] = red;
-    highlights[2] = red;
-    QColor purple(255, 0, 25);
-    highlights[3] = purple;
-    highlights[4] = purple;
-    opts.highlight_atom_index_to_color = highlights;
-
-    std::unordered_map<int, QColor> highlights_2;
-    QColor yellow(255, 255, 0);
-    highlights[0] = yellow;
-    highlights[1] = yellow;
-
-    opts.highlight_bond_index_to_color = highlights_2;
-
-    auto qimage = get_qimage(*rdmol, opts);
-    BOOST_TEST(!qimage.allGray());
-}
