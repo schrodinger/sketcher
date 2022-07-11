@@ -27,7 +27,7 @@
       </font>
      </property>
      <property name="text">
-      <string>Schrodinger 2D Sketcher</string>
+      <string>Schrodinger 2D Sketcher (Beta)</string>
      </property>
      <property name="textFormat">
       <enum>Qt::RichText</enum>
