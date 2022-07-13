@@ -208,6 +208,18 @@ void fix_r0_rgroup(RDKit::ROMol& mol)
     }
 }
 
+// For mol files, RDKit reads the molTotValence property from the atom block,
+// and adjusts Hydrogens on the atom to match this valence, but still leaves the
+// property in place. We should remove it, since it will make no sense if we
+// modify
+// the mol.
+void cleanup_moltotvalence_property(RDKit::ROMol& mol)
+{
+    for (auto atom : mol.atoms()) {
+        atom->clearProp(RDKit::common_properties::molTotValence);
+    }
+}
+
 boost::shared_ptr<RDKit::ROMol>
 molblock_to_romol(const std::string& text,
                   const CaptureRDErrorLog& rd_error_log, bool sanitize,
@@ -303,6 +315,9 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
         fix_r0_rgroup(*mol);
         mol->updatePropertyCache(false);
     }
+
+    cleanup_moltotvalence_property(*mol);
+
     return boost::shared_ptr<RDKit::RWMol>(mol);
 }
 

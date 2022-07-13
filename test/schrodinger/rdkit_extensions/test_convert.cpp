@@ -20,9 +20,11 @@
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/test/boost_checks.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
+using namespace schrodinger;
 using namespace schrodinger::rdkit_extensions;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
@@ -381,4 +383,27 @@ M  END
         BOOST_CHECK_EQUAL(abs_group_count, 1);
         BOOST_CHECK_EQUAL(and_group_count, ref.num_and_groups);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_molTotValence_cleanup)
+{
+    // SHARED-8901
+
+    auto molblock = R"CTAB(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 1 0 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -3.657143 -0.742857 0.000000 0 CHG=1 VAL=4
+M  V30 END ATOM
+M  V30 END CTAB
+M  END)CTAB";
+
+    auto mol = text_to_rdmol(molblock, Format::MDL_MOLV3000);
+    BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 1);
+
+    auto cxsmiles = rdmol_to_text(*mol, Format::EXTENDED_SMILES);
+    BOOST_TEST(!test::contains(cxsmiles, std::string("molTotValence")));
 }
