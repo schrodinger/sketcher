@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>500</width>
+    <width>475</width>
     <height>360</height>
    </rect>
   </property>
@@ -97,7 +97,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="sketcher.qrc"/>
+  <include location="../sketcher.qrc"/>
  </resources>
  <connections>
   <connection>
