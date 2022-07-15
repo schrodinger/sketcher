@@ -33,7 +33,7 @@ const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
 const QString PALETTE_TITLE_STYLE{"QLabel { font: bold 9px; color: #666666; }"
                                   "QLabel:disabled { color: #EEEEEE; }"};
 
-const QString SELECT_ACTIONS_STYLE{
+const QString TEXT_LINK_STYLE{
     "QToolButton { font: bold 10px; color: #3d5d71; }"
     "QToolButton:hover { color: #5b8aa8; background-color: transparent; }" +
     TOOL_BUTTON_STYLE};
