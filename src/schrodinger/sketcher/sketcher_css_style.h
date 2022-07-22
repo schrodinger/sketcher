@@ -15,7 +15,7 @@ const QString GENERAL_STYLE{
 
 const QString TOOL_BUTTON_STYLE{
     "QToolButton { border: none; }"
-    "QToolButton:disabled { color: #EEEEEE; }"
+    "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:checked { background-color: #d4e6f1; }"
     "QToolButton:hover:!checked { background-color: #edf7fc; }"};
 
@@ -31,7 +31,7 @@ const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
     " background-image:url(':icons/menu_corner_arrow_dis.svg'); }"};
 
 const QString PALETTE_TITLE_STYLE{"QLabel { font: bold 9px; color: #666666; }"
-                                  "QLabel:disabled { color: #EEEEEE; }"};
+                                  "QLabel:disabled { color: #E4E4E4; }"};
 
 const QString TEXT_LINK_STYLE{
     "QToolButton { font: bold 10px; color: #3d5d71; }"
