@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>470</width>
+    <width>435</width>
     <height>35</height>
    </rect>
   </property>
@@ -72,33 +72,6 @@ QToolButton::menu-indicator{width:0px;}</string>
       <iconset resource="../sketcher.qrc">
        <normaloff>:/icons/mode_draw.svg</normaloff>
        <disabledoff>:/icons/mode_draw_dis.svg</disabledoff>:/icons/mode_draw.svg</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <attribute name="buttonGroup">
-      <string notr="true">mode_button_group</string>
-     </attribute>
-    </widget>
-   </item>
-   <item>
-    <widget class="QToolButton" name="erase_mode_btn">
-     <property name="toolTip">
-      <string>Erase Mode</string>
-     </property>
-     <property name="text">
-      <string/>
-     </property>
-     <property name="icon">
-      <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/mode_erase.svg</normaloff>
-       <disabledoff>:/icons/mode_erase_dis.svg</disabledoff>:/icons/mode_erase.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
