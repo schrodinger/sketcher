@@ -14,6 +14,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <qsvggenerator.h>
 
+#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/sketcher.h"
 #include "schrodinger/sketcher/sketcher_model.h"
@@ -32,15 +33,15 @@ void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
     for (auto atom : atoms) {
         atom->removeHighlight();
     }
-    for (auto index_color : opts.highlight_atom_index_to_color) {
-        atoms.at(index_color.first)->setHighlightColor(index_color.second);
+    for (auto[index, color] : asKeyValue(opts.highlight_atom_index_to_color)) {
+        atoms.at(index)->setHighlightColor(color);
     }
     auto bonds = scene.quickGetBonds();
     for (auto bond : bonds) {
         bond->removeHighlight();
     }
-    for (auto index_color : opts.highlight_bond_index_to_color) {
-        bonds.at(index_color.first)->setHighlightColor(index_color.second);
+    for (auto[index, color] : asKeyValue(opts.highlight_bond_index_to_color)) {
+        bonds.at(index)->setHighlightColor(color);
     }
 }
 

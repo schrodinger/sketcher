@@ -8,6 +8,7 @@
 
 #include <QByteArray>
 #include <QColor>
+#include <QHash>
 #include <QImage>
 #include <QPicture>
 #include <QSize>
@@ -37,8 +38,8 @@ enum class ImageFormat { PNG, SVG };
 struct RenderOptions {
     QSize width_height = QSize(400, 400);
     QColor background_color = Qt::transparent;
-    std::unordered_map<int, QColor> highlight_atom_index_to_color;
-    std::unordered_map<int, QColor> highlight_bond_index_to_color;
+    QHash<int, QColor> highlight_atom_index_to_color;
+    QHash<int, QColor> highlight_bond_index_to_color;
     // TODO: incorporate both RendererSettings and additional LiveDesign options
 };
 

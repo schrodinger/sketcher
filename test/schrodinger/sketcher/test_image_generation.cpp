@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(test_highlighting)
     RenderOptions opts;
     opts.width_height = {400, 400};
     opts.background_color = QColor(255, 255, 255);
-    std::unordered_map<int, QColor> highlights;
+    QHash<int, QColor> highlights;
     QColor red(255, 0, 0);
     highlights[0] = red;
     highlights[1] = red;
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(test_highlighting)
     highlights[4] = purple;
     opts.highlight_atom_index_to_color = highlights;
 
-    std::unordered_map<int, QColor> highlights_2;
+    QHash<int, QColor> highlights_2;
     QColor yellow(255, 255, 0);
     highlights[0] = yellow;
     highlights[1] = yellow;
