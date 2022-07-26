@@ -249,6 +249,20 @@ molblock_to_romol(const std::string& text,
     return boost::shared_ptr<RDKit::ROMol>(romol);
 }
 
+void adjust_for_mdl_v2k_format(RDKit::RWMol& mol)
+{
+    auto nsgroups = getSubstanceGroups(mol).size();
+    if (mol.getNumAtoms() > 999u || mol.getNumBonds() > 999u ||
+        nsgroups > 999u) {
+        throw std::runtime_error("Mol incompatible with MDL V2000 format");
+    }
+    // MDL V2000 format does not support enhanced stereo groups; if RDKit
+    // detects then on write, it will force V3000 format to prevent
+    // information loss; here, we explicitly clear enhanced stereo so that
+    // V2000 can be written as requested.
+    mol.setStereoGroups({});
+}
+
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
@@ -385,15 +399,18 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
 
     switch (format) {
         case Format::SMILES:
-            return RDKit::MolToSmiles(rwmol, include_stereo, kekulize);
+            return RDKit::MolToSmiles(mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            rwmol.clearConformers();
+            rwmol.clearConformers(); // Don't pollute extension with coordinates
             return RDKit::MolToCXSmiles(rwmol, include_stereo, kekulize);
         case Format::SMARTS:
-            return RDKit::MolToSmarts(rwmol);
+            return RDKit::MolToSmarts(mol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             attachment_point_dummies_to_molattachpt_property(rwmol);
+            if (format == Format::MDL_MOLV2000) {
+                adjust_for_mdl_v2k_format(rwmol);
+            }
             int confId = -1;
             bool forceV3000 = format == Format::MDL_MOLV3000;
             return RDKit::SDWriter::getText(rwmol, confId, kekulize,
@@ -404,9 +421,9 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
             return RDKit::MolToInchi(mol, aux);
         }
         case Format::INCHI_KEY:
-            return RDKit::MolToInchiKey(rwmol);
+            return RDKit::MolToInchiKey(mol);
         case Format::PDB:
-            return RDKit::MolToPDBBlock(rwmol);
+            return RDKit::MolToPDBBlock(mol);
         default:
             throw std::invalid_argument("Unsupported export format");
     }

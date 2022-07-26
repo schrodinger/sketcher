@@ -407,3 +407,41 @@ M  END)CTAB";
     auto cxsmiles = rdmol_to_text(*mol, Format::EXTENDED_SMILES);
     BOOST_TEST(!test::contains(cxsmiles, std::string("molTotValence")));
 }
+
+BOOST_AUTO_TEST_CASE(test_force_v2k)
+{
+    auto molblock = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -4.742857 1.028571 0.000000 0
+M  V30 2 N -4.742857 2.457143 0.000000 0
+M  V30 3 O -5.980036 0.314286 0.000000 0
+M  V30 4 C -3.505678 0.314286 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 1 3
+M  V30 3 1 1 4 CFG=1
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STERAC1 ATOMS=(1 1)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END)MDL";
+
+    auto mol = text_to_rdmol(molblock);
+    BOOST_TEST(mol->getNumAtoms() == 4);
+
+    auto v3k = rdmol_to_text(*mol, Format::MDL_MOLV3000);
+    BOOST_TEST(v3k.find("V3000") != std::string::npos);
+    auto v2k = rdmol_to_text(*mol, Format::MDL_MOLV2000);
+    BOOST_TEST(v2k.find("V2000") != std::string::npos);
+
+    // V2K blows away all enhanced stereo!!!
+    mol = text_to_rdmol(v2k);
+    BOOST_TEST(mol->getStereoGroups().size() == 0);
+}
