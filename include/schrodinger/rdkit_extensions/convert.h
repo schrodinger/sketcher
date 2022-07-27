@@ -96,5 +96,11 @@ add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol);
  */
 RDKIT_EXTENSIONS_API void reapply_molblock_wedging(RDKit::ROMol& rdk_mol);
 
+/**
+ * Removes hydrogens based on a common standard of what can be removed
+ * @param rdk_mol rdkit mol
+ */
+RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger
