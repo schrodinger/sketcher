@@ -92,7 +92,6 @@
     <file>icons/topbar_undo_dis.svg</file>
 
     <file>icons/add_particle.png</file>
-    <file>icons/lasso.png</file>
     <file>icons/reset.png</file>
     </qresource>
 </RCC>
