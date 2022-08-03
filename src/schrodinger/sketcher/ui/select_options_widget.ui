@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>124</width>
-    <height>126</height>
+    <height>124</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -60,37 +60,15 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="schrodinger::sketcher::ModularToolButton" name="select_btn">
-       <property name="maximumSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <property name="popupMode">
-        <enum>QToolButton::DelayedPopup</enum>
-       </property>
-       <attribute name="buttonGroup">
-        <string notr="true">select_move_group</string>
-       </attribute>
-      </widget>
-     </item>
-     <item>
       <widget class="QToolButton" name="select_square_btn">
        <property name="maximumSize">
         <size>
          <width>32</width>
          <height>32</height>
         </size>
+       </property>
+       <property name="toolTip">
+        <string>Select structure (with square marqee)</string>
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
@@ -103,6 +81,12 @@
          <height>32</height>
         </size>
        </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">select_tool_group</string>
+       </attribute>
       </widget>
      </item>
      <item>
@@ -112,6 +96,9 @@
          <width>32</width>
          <height>32</height>
         </size>
+       </property>
+       <property name="toolTip">
+        <string>Select structure (with lasso)</string>
        </property>
        <property name="icon">
         <iconset resource="../sketcher.qrc">
@@ -124,6 +111,12 @@
          <height>32</height>
         </size>
        </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">select_tool_group</string>
+       </attribute>
       </widget>
      </item>
     </layout>
@@ -170,7 +163,7 @@
         </font>
        </property>
        <property name="toolTip">
-        <string>Delete selected structure</string>
+        <string>Invert selected structure</string>
        </property>
        <property name="text">
         <string>Invert</string>
@@ -209,80 +202,87 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QToolButton" name="move_rotate_btn">
-       <property name="maximumSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="toolTip">
-        <string>Rotate and translate structure</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/select_move_rotate.svg</normaloff>
-         <disabledoff>:/icons/select_move_rotate_dis.svg</disabledoff>:/icons/select_move_rotate.svg</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-       <attribute name="buttonGroup">
-        <string notr="true">select_move_group</string>
-       </attribute>
-      </widget>
-     </item>
-     <item>
-      <widget class="QToolButton" name="erase_btn">
-       <property name="maximumSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="toolTip">
-        <string>Erase</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/mode_erase.svg</normaloff>
-         <disabledoff>:/icons/mode_erase_dis.svg</disabledoff>:/icons/mode_erase.svg</iconset>
-       </property>
-       <property name="iconSize">
-        <size>
-         <width>32</width>
-         <height>32</height>
-        </size>
-       </property>
-       <property name="checkable">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-    </layout>
+    <widget class="QFrame" name="move_frame">
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>0</number>
+      </property>
+      <item>
+       <widget class="QToolButton" name="move_rotate_btn">
+        <property name="maximumSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="toolTip">
+         <string>Rotate and translate structure</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../sketcher.qrc">
+          <normaloff>:/icons/select_move_rotate.svg</normaloff>
+          <disabledoff>:/icons/select_move_rotate_dis.svg</disabledoff>:/icons/select_move_rotate.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QToolButton" name="erase_btn">
+        <property name="maximumSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="toolTip">
+         <string>Erase</string>
+        </property>
+        <property name="icon">
+         <iconset resource="../sketcher.qrc">
+          <normaloff>:/icons/mode_erase.svg</normaloff>
+          <disabledoff>:/icons/mode_erase_dis.svg</disabledoff>:/icons/mode_erase.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>32</width>
+          <height>32</height>
+         </size>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>schrodinger::sketcher::ModularToolButton</class>
-   <extends>QToolButton</extends>
-   <header>schrodinger/sketcher/modular_tool_button.h</header>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="select_move_group"/>
+  <buttongroup name="select_tool_group"/>
  </buttongroups>
 </ui>
