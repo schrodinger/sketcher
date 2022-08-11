@@ -9,8 +9,8 @@ namespace sketcher
  * Validator for the "numeric label" line edit of the bracket subgroup dialog
  */
 
-NumericLabelValidator::NumericLabelValidator(QObject* parent)
-    : QIntValidator(parent)
+NumericLabelValidator::NumericLabelValidator(QObject* parent) :
+    QIntValidator(parent)
 {
     setRange(0, 99999);
 }

@@ -33,14 +33,14 @@ void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
     for (auto atom : atoms) {
         atom->removeHighlight();
     }
-    for (auto[index, color] : asKeyValue(opts.highlight_atom_index_to_color)) {
+    for (auto [index, color] : asKeyValue(opts.highlight_atom_index_to_color)) {
         atoms.at(index)->setHighlightColor(color);
     }
     auto bonds = scene.quickGetBonds();
     for (auto bond : bonds) {
         bond->removeHighlight();
     }
-    for (auto[index, color] : asKeyValue(opts.highlight_bond_index_to_color)) {
+    for (auto [index, color] : asKeyValue(opts.highlight_bond_index_to_color)) {
         bonds.at(index)->setHighlightColor(color);
     }
 }
