@@ -16,7 +16,9 @@
 class Test_Sketcher_global_fixture : public Test_QAPP_DisplayRequiredFixture
 {
   public:
-    Test_Sketcher_global_fixture() : Test_QAPP_DisplayRequiredFixture(true) {}
+    Test_Sketcher_global_fixture() : Test_QAPP_DisplayRequiredFixture(true)
+    {
+    }
 };
 
 std::string read_testfile(const std::string& filename)
