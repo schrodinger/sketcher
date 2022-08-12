@@ -41,5 +41,5 @@ class RDKIT_EXTENSIONS_API CaptureRDErrorLog : private boost::noncopyable
     bool m_error_log_initial_state = true;
 };
 
-} // namespace adapter
+} // namespace rdkit_extensions
 } // namespace schrodinger

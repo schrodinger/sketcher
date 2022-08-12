@@ -10,10 +10,10 @@
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 
-#define CREATE_QAPP                                                            \
-    Test_QAPP_DisplayRequiredFixture obj(false);                               \
-    if (!obj.hasDisplay()) {                                                   \
-        return;                                                                \
+#define CREATE_QAPP                              \
+    Test_QAPP_DisplayRequiredFixture obj(false); \
+    if (!obj.hasDisplay()) {                     \
+        return;                                  \
     }
 
 #endif // TEST_COMMON_H

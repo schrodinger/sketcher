@@ -5,8 +5,9 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
-CaptureRDErrorLog::CaptureRDErrorLog()
-    : m_saved_dp_dest(&m_messages), m_saved_teestream(nullptr)
+CaptureRDErrorLog::CaptureRDErrorLog() :
+    m_saved_dp_dest(&m_messages),
+    m_saved_teestream(nullptr)
 {
     if (rdErrorLog == nullptr) {
         RDLog::InitLogs();

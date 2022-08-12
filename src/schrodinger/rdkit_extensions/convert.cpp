@@ -36,8 +36,7 @@ const std::string attachment_point_label_prefix{"_AP"};
  * @internal
  * Guess by attempting conversions, and returning the first valid parse
  */
-template <typename T>
-boost::shared_ptr<T> auto_detect(
+template <typename T> boost::shared_ptr<T> auto_detect(
     const std::string& text, const std::vector<Format> formats,
     std::function<boost::shared_ptr<T>(const std::string&, Format)> text_to_)
 {
@@ -270,9 +269,10 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
 {
     if (format == Format::AUTO_DETECT) {
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
-        return auto_detect<RDKit::RWMol>(text, {Format::MDL_MOLV3000,
-                                                Format::PDB, Format::INCHI,
-                                                Format::SMILES, Format::SMARTS},
+        return auto_detect<RDKit::RWMol>(text,
+                                         {Format::MDL_MOLV3000, Format::PDB,
+                                          Format::INCHI, Format::SMILES,
+                                          Format::SMARTS},
                                          &text_to_rdmol);
     }
 
