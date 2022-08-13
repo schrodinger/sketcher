@@ -13,23 +13,22 @@ const QString GENERAL_STYLE{
     "QMainWindow { background-color: white; }"
     "schrodinger--sketcher--ModularPopup { background-color: white; }"};
 
-const QString SELECTION_ACTIVE_STYLE{"QWidget { background-color: #f3f6f0; }"};
-
 const QString TOOL_BUTTON_STYLE{
     "QToolButton { border: none; }"
     "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:checked { background-color: #d4e6f1; }"
     "QToolButton:hover:!checked { background-color: #edf7fc; }"};
 
-const QString TOOL_BUTTON_WITH_POPUP_STYLE{
-    "QToolButton { border: none; padding: 0px; margin: 0px; spacing: 0px; }" +
-    TOOL_BUTTON_STYLE};
+const QString SELECTION_ACTIVE_STYLE{
+    "QWidget { background-color: #f3f6f0; }"
+    "QToolButton:checked { background-color: #d4e6f1; }"
+    "QToolButton:hover:!checked { background-color: #e3ebda; }"};
 
 const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
     "QToolButton {"
     " background-image:url(':icons/menu_corner_arrow.svg'); "
     " background-position: bottom right; background-repeat: no-repeat; }"
-    "QToolButton:disabled {"
+    "QToolButton:disabled { color: #E4E4E4; "
     " background-image:url(':icons/menu_corner_arrow_dis.svg'); }"};
 
 const QString PALETTE_TITLE_STYLE{"QLabel { font: bold 9px; color: #666666; }"
@@ -37,16 +36,16 @@ const QString PALETTE_TITLE_STYLE{"QLabel { font: bold 9px; color: #666666; }"
 
 const QString TEXT_LINK_STYLE{
     "QToolButton { font: bold 10px; color: #3d5d71; }"
-    "QToolButton:hover { color: #5b8aa8; background-color: transparent; }" +
-    TOOL_BUTTON_STYLE};
+    "QToolButton:disabled { color: #E4E4E4; }"
+    "QToolButton:hover { color: #5b8aa8; background-color: transparent; }"};
 
 const QString ATOM_ELEMENT_STYLE{
-    "QToolButton { font: bold 14px; color: #333333; }" + TOOL_BUTTON_STYLE};
+    "QToolButton { font: bold 14px; color: #333333; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
 
 const QString ATOM_QUERY_STYLE{
     "QLabel { font: italic 7px; color: #666666; }"
-    "QToolButton { font: bold italic 14px; color: #606060; }" +
-    TOOL_BUTTON_STYLE};
+    "QToolButton { font: bold italic 14px; color: #606060; }"};
 
 const QString PERIODIC_TABLE_STYLE{
     "#PeriodicTableForm { background-color:white }"
@@ -66,10 +65,10 @@ const QString PERIODIC_TABLE_STYLE{
     "QLabel { font: 10px; color: black; border-style: none; padding: 0; }"};
 
 const QString BOND_QUERY_STYLE{
-    "QToolButton { font: bold 12px; color: #333333; }" + TOOL_BUTTON_STYLE};
+    "QToolButton { font: bold 12px; color: #333333; }"};
 
 const QString ENUMERATION_STYLE{
-    "QToolButton { font: bold 14px; color: #444444; }" + TOOL_BUTTON_STYLE};
+    "QToolButton { font: bold 14px; color: #444444; }"};
 
 } // namespace sketcher
 } // namespace schrodinger
