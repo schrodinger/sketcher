@@ -541,10 +541,6 @@ void removeHs(RDKit::RWMol& rdk_mol)
 {
     RDKit::MolOps::RemoveHsParameters ps;
 
-    // This is the default, though we hope to change it to true when
-    // addressing SHARED-8892 to replicate the 22-3 sketcher behavior
-    ps.removeInSGroups = false;
-
     // We always remove H on queries; for sketcher import, all atoms are created
     // as QueryAtoms as that they might be changed into queries later on; for
     // conversion from 3D Structure, there is no way to create queries.
