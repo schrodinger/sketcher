@@ -207,6 +207,13 @@ void fix_r0_rgroup(RDKit::ROMol& mol)
     }
 }
 
+void throw_parse_error(const CaptureRDErrorLog& rd_error_log,
+                       const std::string& text)
+{
+    throw std::invalid_argument(rd_error_log.messages() +
+                                "Failed to parse text:\n" + text);
+}
+
 boost::shared_ptr<RDKit::ROMol>
 molblock_to_romol(const std::string& text,
                   const CaptureRDErrorLog& rd_error_log, bool sanitize,
@@ -221,12 +228,10 @@ molblock_to_romol(const std::string& text,
     try {
         romol = reader.next();
     } catch (std::runtime_error&) { // EOF hit
-        throw std::invalid_argument("Failed to parse text: " +
-                                    rd_error_log.messages());
+        throw_parse_error(rd_error_log, text);
     }
     if (romol == nullptr) {
-        throw std::invalid_argument("Failed to parse text: " +
-                                    rd_error_log.messages());
+        throw_parse_error(rd_error_log, text);
     }
     if (!reader.atEnd()) {
         throw std::invalid_argument(
@@ -307,8 +312,7 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
     }
 
     if (mol == nullptr) {
-        throw std::invalid_argument("Failed to parse text: " +
-                                    rd_error_log.messages());
+        throw_parse_error(rd_error_log, text);
     }
 
     bool has_attchpt = molattachpt_property_to_attachment_point_dummies(*mol);
@@ -360,8 +364,7 @@ text_to_reaction(const std::string& text, Format format)
             throw std::invalid_argument("Unsupported reaction import format");
     }
     if (reaction == nullptr) {
-        throw std::invalid_argument("Failed to parse text: " +
-                                    rd_error_log.messages());
+        throw_parse_error(rd_error_log, text);
     }
 
     for (auto reactant : reaction->getReactants()) {
