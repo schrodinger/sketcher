@@ -70,7 +70,7 @@ ImageFormat get_format(const QString& filename)
 {
     const std::unordered_map<std::string, ImageFormat> ext_to_format_map = {
         {"png", ImageFormat::PNG}, {"svg", ImageFormat::SVG}};
-    auto ext = QFileInfo(filename).completeSuffix().toStdString();
+    auto ext = QFileInfo(filename).suffix().toStdString();
     try {
         return ext_to_format_map.at(ext);
     } catch (const std::out_of_range&) {
