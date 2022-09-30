@@ -63,7 +63,17 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     painter.eraseRect(target_rect);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
     painter.fillRect(target_rect, opts.background_color);
-    scene.render(&painter, target_rect, scene_rect);
+
+    // center the scene within the painter's viewport
+    qreal scene_width = scene_rect.width();
+    qreal scene_height = scene_rect.height();
+    qreal x_ratio = target_rect.width() / scene_width;
+    qreal y_ratio = target_rect.height() / scene_height;
+    qreal scale = qMin(x_ratio, y_ratio);
+    QRectF centered_rect(0, 0, scene_width * scale, scene_height * scale);
+    centered_rect.moveCenter(target_rect.center());
+
+    scene.render(&painter, centered_rect, scene_rect);
 }
 
 ImageFormat get_format(const QString& filename)
