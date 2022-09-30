@@ -55,16 +55,18 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     scene.addRDKitMolecule(rdmol);
     setHighlights(scene, opts);
 
-    scene._backgroundColor = Qt::transparent;
-    auto scene_rect = scene.itemsBoundingRect();
+    // The atom and bond items use a semi-transparent version of the background
+    // color to fade out bonds in order to make labels more readable.
+    // Using Qt's black-transparent causes these to turn into black smudges.
+    scene._backgroundColor = QColor(255, 255, 255, 0);
 
     QPainter painter(device);
     auto target_rect = painter.viewport();
-    painter.eraseRect(target_rect);
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
     painter.fillRect(target_rect, opts.background_color);
 
     // center the scene within the painter's viewport
+    auto scene_rect = scene.itemsBoundingRect();
     qreal scene_width = scene_rect.width();
     qreal scene_height = scene_rect.height();
     qreal x_ratio = target_rect.width() / scene_width;
@@ -94,6 +96,7 @@ ImageFormat get_format(const QString& filename)
 QPicture get_qpicture(const RDKit::ROMol& rdmol, const RenderOptions& opts)
 {
     QPicture picture;
+    picture.setBoundingRect(QRect(QPoint(0, 0), opts.width_height));
     paint_scene(&picture, rdmol, opts);
     return picture;
 }
