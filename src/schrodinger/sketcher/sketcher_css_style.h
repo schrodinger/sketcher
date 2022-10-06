@@ -64,6 +64,9 @@ const QString PERIODIC_TABLE_STYLE{
     "QPushButton[class='actinides'] { background-color: #afd1a2; }"
     "QLabel { font: 10px; color: black; border-style: none; padding: 0; }"};
 
+const QString RENDER_OPTIONS_STYLE{
+    "QLabel { font: italic 11px; color: #666666; }"};
+
 const QString RENDER_OPTIONS_POPUP_STYLE{
     "#FileSaveImagePopup { background-color:white }"};
 
