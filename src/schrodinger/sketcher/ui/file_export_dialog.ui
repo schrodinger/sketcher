@@ -18,7 +18,7 @@
     <number>5</number>
    </property>
    <item>
-    <layout class="QGridLayout" name="gridLayout">
+    <layout class="QGridLayout" name="file_format_layout">
      <item row="0" column="0">
       <widget class="QLabel" name="filename_lbl">
        <property name="text">
