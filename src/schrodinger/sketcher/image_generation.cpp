@@ -63,7 +63,13 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     QPainter painter(device);
     auto target_rect = painter.viewport();
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
+    // make sure that the fillRect call replaces device's uninitialized data,
+    // instead of painting the (potentially transparent) background over it
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
     painter.fillRect(target_rect, opts.background_color);
+    // set the composition mode back to SourceOver (the default value) so that
+    // transparency will work correctly during the render call below
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
     // center the scene within the painter's viewport
     auto scene_rect = scene.itemsBoundingRect();
