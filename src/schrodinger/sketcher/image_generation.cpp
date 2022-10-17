@@ -72,7 +72,7 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
     painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
 
     // center the scene within the painter's viewport
-    auto scene_rect = scene.itemsBoundingRect();
+    auto scene_rect = scene.findBoundingRect();
     qreal scene_width = scene_rect.width();
     qreal scene_height = scene_rect.height();
     qreal x_ratio = target_rect.width() / scene_width;
