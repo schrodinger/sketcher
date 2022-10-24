@@ -13,6 +13,8 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <Eigen/Dense>
+
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
 #include <GraphMol/FileParsers/FileParsers.h>
@@ -444,4 +446,30 @@ M  END)MDL";
     // V2K blows away all enhanced stereo!!!
     mol = text_to_rdmol(v2k);
     BOOST_TEST(mol->getStereoGroups().size() == 0);
+}
+
+BOOST_AUTO_TEST_CASE(test_attachment_point_coords)
+{
+    auto molblock = R"MDL(
+  Mrv2216 10242223162D
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 1 0 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -4.4167 2.9583 0 0 ATTCHPT=-1
+M  V30 END ATOM
+M  V30 END CTAB
+M  END)MDL";
+
+    auto mol = text_to_rdmol(molblock);
+    auto conf = mol->getConformer();
+    auto a0 = conf.getAtomPos(0);
+    auto a1 = conf.getAtomPos(1);
+    auto a2 = conf.getAtomPos(2);
+    Eigen::Vector3d a(a0.x, a0.y, a0.z);
+    Eigen::Vector3d b(a1.x, a1.y, a1.z);
+    Eigen::Vector3d c(a2.x, a2.y, a2.z);
+    // *C* is linear, the cross product is the zero vector
+    BOOST_TEST((a - b).cross(a - c).norm() != 0.0);
 }

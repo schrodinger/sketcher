@@ -84,7 +84,7 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
 
 bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 {
-    std::vector<std::pair<int, int>> new_attachment_point_bonds;
+    std::unordered_set<int> new_attachment_dummies;
     for (auto& atom : rdk_mol.atoms()) {
         int attach_point_type{0};
         if (atom->getPropIfPresent(RDKit::common_properties::molAttachPoint,
@@ -106,8 +106,7 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
                     rdk_mol.addAtom(dummy_atom, update_label, take_ownership);
                 rdk_mol.addBond(atom, dummy_atom, RDKit::Bond::SINGLE);
 
-                new_attachment_point_bonds.push_back(
-                    {dummy_idx, atom->getIdx()});
+                new_attachment_dummies.insert(dummy_idx);
             }
             if (explicit_h_count != 0) {
                 atom->setNumExplicitHs(explicit_h_count - num_dummies);
@@ -116,14 +115,18 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
         }
     }
 
-    if (!new_attachment_point_bonds.empty()) {
-        // set coordinates for new attachment point atoms after adding all of
-        // them
-        // so that all new atoms are considered in coordinate generation
-        for (const auto& new_bond : new_attachment_point_bonds) {
-            RDKit::MolOps::setTerminalAtomCoords(rdk_mol, new_bond.first,
-                                                 new_bond.second);
+    if (!new_attachment_dummies.empty()) {
+        // generate coordinates for only the new attachment point atoms
+        RDGeom::INT_POINT2D_MAP cMap;
+        auto& conf = rdk_mol.getConformer();
+        for (auto atom : rdk_mol.atoms()) {
+            auto idx = atom->getIdx();
+            if (new_attachment_dummies.count(idx) == 0) {
+                cMap[idx] = conf.getAtomPos(idx);
+            }
         }
+        RDDepict::compute2DCoords(rdk_mol, &cMap);
+
         reapply_molblock_wedging(rdk_mol);
         RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);
         rdk_mol.updatePropertyCache(false);
