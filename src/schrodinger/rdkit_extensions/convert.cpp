@@ -61,13 +61,10 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
             // This should find only one neighbor
             for (auto parent : rdk_mol.atomNeighbors(atom)) {
                 int attachment_point_type{1};
-                auto num_exp_hs = parent->getNumExplicitHs();
                 if (parent->hasProp(RDKit::common_properties::molAttachPoint)) {
                     attachment_point_type = -1;
-                    parent->setNumExplicitHs(num_exp_hs + 2);
-                } else {
-                    parent->setNumExplicitHs(num_exp_hs + 1);
                 }
+                parent->setNoImplicit(false);
                 parent->setProp(RDKit::common_properties::molAttachPoint,
                                 attachment_point_type);
             }
