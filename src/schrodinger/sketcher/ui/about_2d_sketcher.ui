@@ -32,7 +32,7 @@
       </font>
      </property>
      <property name="text">
-      <string>Schrodinger 2D Sketcher</string>
+      <string>Schrödinger 2D Sketcher</string>
      </property>
     </widget>
    </item>
@@ -47,7 +47,7 @@
         </sizepolicy>
        </property>
        <property name="text">
-        <string>Schrodinger Suite</string>
+        <string>Schrödinger Suite</string>
        </property>
       </widget>
      </item>

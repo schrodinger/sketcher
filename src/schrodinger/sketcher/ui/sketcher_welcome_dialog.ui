@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Schrodinger 2D Sketcher - Welcome</string>
+   <string>Schrödinger 2D Sketcher - Welcome</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
@@ -40,7 +40,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Welcome to the new Schrodinger 2D Sketcher! Here are some tips to help you get started:</string>
+        <string>Welcome to the new Schrödinger 2D Sketcher! Here are some tips to help you get started:</string>
        </property>
       </widget>
      </item>
@@ -101,7 +101,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Modes: Select,  Draw,  Erase</string>
+        <string>Select Mode</string>
        </property>
       </widget>
      </item>
@@ -147,7 +147,7 @@
         </size>
        </property>
        <property name="text">
-        <string>The first 3 buttons on the top toolbar put the Sketcher into different modes. Use Select mode for select-first editing of an existing structure,  Draw mode for building from scratch,  and Erase mode for quick or broad deletion.</string>
+        <string>When structure has been selected, only the tools that can be used with the selection will remain available. Click a tool or use a keyboard shortcut to take an action on the selection. To restore normal drawing, clear the selection.</string>
        </property>
        <property name="wordWrap">
         <bool>true</bool>
