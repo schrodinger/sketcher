@@ -18,6 +18,7 @@
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
 #include <GraphMol/FileParsers/FileParsers.h>
+#include <GraphMol/QueryAtom.h>
 #include <GraphMol/GraphMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
@@ -472,4 +473,40 @@ M  END)MDL";
     Eigen::Vector3d c(a2.x, a2.y, a2.z);
     // *C* is linear, the cross product is the zero vector
     BOOST_TEST((a - b).cross(a - c).norm() != 0.0);
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_ring_queries)
+{
+    auto molblock = R""""(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 3 2 1 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -7.314286 0.828571 0.000000 0
+M  V30 2 C -6.077107 1.542857 0.000000 0
+M  V30 3 C -4.839927 0.828571 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 END BOND
+M  V30 BEGIN SGROUP
+M  V30 1 DAT 0 ATOMS=(1 2) FIELDDISP="    0.0000    0.0000    DR    ALL  0 0" -
+M  V30 QUERYTYPE=SMARTSQ QUERYOP== FIELDDATA="[#6&R]"
+M  V30 END SGROUP
+M  V30 END CTAB
+M  END)"""";
+
+    auto mol = text_to_rdmol(molblock);
+    auto roundtrip_mol =
+        text_to_rdmol(rdmol_to_text(*mol, Format::MDL_MOLV3000));
+
+    // roundtripped mol should have the correct ring query atom
+    auto at = roundtrip_mol->getAtomWithIdx(1);
+    BOOST_REQUIRE(at->hasQuery());
+
+    auto query_description = RDKit::describeQuery(at);
+    BOOST_TEST(query_description.find("AtomInNRings") != std::string::npos);
 }
