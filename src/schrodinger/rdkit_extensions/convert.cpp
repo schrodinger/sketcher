@@ -301,6 +301,30 @@ void add_atom_query_sgroup(RDKit::RWMol& mol)
     }
 }
 
+void set_xyz_plus_title(RDKit::RWMol& mol)
+{
+    std::string title;
+    mol.getPropIfPresent(RDKit::common_properties::_Name, title);
+
+    int charge = 0;
+    for (auto atom : mol.atoms()) {
+        charge += atom->getFormalCharge();
+    }
+    if (charge != 0) {
+        title += title.empty() ? "" : "; ";
+        title += "charge=" + std::to_string(charge);
+    }
+
+    int multiplicity = 1;
+    if (mol.getPropIfPresent("i_m_Spin_multiplicity", multiplicity) &&
+        multiplicity != 1) {
+        title += title.empty() ? "" : "; ";
+        title += "multiplicity=" + std::to_string(multiplicity);
+    }
+
+    mol.setProp(RDKit::common_properties::_Name, title);
+}
+
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
@@ -310,8 +334,8 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
         return auto_detect<RDKit::RWMol>(text,
                                          {Format::MDL_MOLV3000, Format::PDB,
-                                          Format::INCHI, Format::SMILES,
-                                          Format::SMARTS},
+                                          Format::XYZ, Format::INCHI,
+                                          Format::SMILES, Format::SMARTS},
                                          &text_to_rdmol);
     }
 
@@ -352,6 +376,9 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
             throw std::invalid_argument("Cannot read from INCHI_KEY");
         case Format::PDB:
             mol = RDKit::PDBBlockToMol(text, sanitize, removeHs);
+            break;
+        case Format::XYZ:
+            mol = RDKit::XYZBlockToMol(text);
             break;
         default:
             throw std::invalid_argument("Unsupported import format");
@@ -424,9 +451,11 @@ text_to_reaction(const std::string& text, Format format)
     return boost::shared_ptr<RDKit::ChemicalReaction>(reaction);
 }
 
-std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
+std::string rdmol_to_text(const RDKit::ROMol& input_mol, Format format)
 {
-    RDKit::RWMol rwmol(mol);
+    CaptureRDErrorLog rd_error_log;
+
+    RDKit::RWMol mol(input_mol);
 
     bool kekulize = false;
     bool include_stereo = true;
@@ -435,21 +464,20 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
         case Format::SMILES:
             return RDKit::MolToSmiles(mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            rwmol.clearConformers(); // Don't pollute extension with coordinates
-            return RDKit::MolToCXSmiles(rwmol, include_stereo, kekulize);
+            mol.clearConformers(); // Don't pollute extension with coordinates
+            return RDKit::MolToCXSmiles(mol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(mol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
-            attachment_point_dummies_to_molattachpt_property(rwmol);
-            add_atom_query_sgroup(rwmol);
+            attachment_point_dummies_to_molattachpt_property(mol);
+            add_atom_query_sgroup(mol);
             if (format == Format::MDL_MOLV2000) {
-                adjust_for_mdl_v2k_format(rwmol);
+                adjust_for_mdl_v2k_format(mol);
             }
             int confId = -1;
             bool forceV3000 = format == Format::MDL_MOLV3000;
-            return RDKit::SDWriter::getText(rwmol, confId, kekulize,
-                                            forceV3000);
+            return RDKit::SDWriter::getText(mol, confId, kekulize, forceV3000);
         }
         case Format::INCHI: {
             RDKit::ExtraInchiReturnValues aux;
@@ -459,9 +487,17 @@ std::string rdmol_to_text(const RDKit::ROMol& mol, Format format)
             return RDKit::MolToInchiKey(mol);
         case Format::PDB:
             return RDKit::MolToPDBBlock(mol);
+        case Format::XYZ:
+            // RDKit returns an empty string unless there are coordinates
+            if (!mol.getNumConformers()) {
+                throw std::invalid_argument("XYZ format requires coordinates");
+            }
+            set_xyz_plus_title(mol);
+            return RDKit::MolToXYZBlock(mol);
         default:
             throw std::invalid_argument("Unsupported export format");
     }
+
     throw std::invalid_argument("Invalid format specified");
 }
 

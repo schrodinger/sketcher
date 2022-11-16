@@ -17,9 +17,10 @@
 
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
+#include <GraphMol/CoordGen.h>
 #include <GraphMol/FileParsers/FileParsers.h>
-#include <GraphMol/QueryAtom.h>
 #include <GraphMol/GraphMol.h>
+#include <GraphMol/QueryAtom.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -40,11 +41,6 @@ const std::array<Format, 7> TEXT_FORMATS = {
 
 const std::array<Format, 4> REACTION_TEXT_FORMATS = {
     Format::SMILES, Format::SMARTS, Format::MDL_MOLV2000, Format::MDL_MOLV3000};
-
-BOOST_AUTO_TEST_CASE(temp)
-{
-    BOOST_TEST(true);
-}
 
 BOOST_DATA_TEST_CASE(test_auto_detect,
                      boost::unit_test::data::make(TEXT_FORMATS))
@@ -509,4 +505,86 @@ M  END)"""";
 
     auto query_description = RDKit::describeQuery(at);
     BOOST_TEST(query_description.find("AtomInNRings") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(test_XYZ_import)
+{
+    // NOTE: read is primitive, and because RDKit does not add any bonding
+    // information, it is explicitly hidden from sketcher import
+    std::string xyz_input = R"XYZ(4
+CC(=O)[O-]; charge=-1; multiplicity=2
+C     -0.867800   -0.496850    0.000000
+C      0.000000   -0.000050    0.000000
+O      0.003600    0.999950    0.000000
+O      0.864200   -0.503050    0.000000
+)XYZ";
+
+    // Check explicit read
+    auto m1 = text_to_rdmol(xyz_input, Format::XYZ);
+    BOOST_REQUIRE(m1 != nullptr);
+    // atoms present, but no bonding information
+    BOOST_TEST(m1->getNumAtoms() == 4);
+    BOOST_TEST(m1->getNumBonds() == 0);
+    // where the title/charge/multiplicity info is lost
+    BOOST_TEST(!m1->hasProp(RDKit::common_properties::_Name));
+    BOOST_TEST(RDKit::MolOps::getFormalCharge(*m1) == 0);
+    BOOST_TEST(!m1->hasProp("i_m_Spin_multiplicity"));
+
+    // Check auto-detect
+    auto m2 = text_to_rdmol(xyz_input);
+    BOOST_REQUIRE(m2 != nullptr);
+    BOOST_TEST(m2->getNumAtoms() == 4);
+    BOOST_TEST(m2->getNumBonds() == 0);
+}
+
+BOOST_AUTO_TEST_CASE(test_XYZ_export)
+{
+    auto mol = text_to_rdmol("C[NH3+]");
+    // No conformers
+    BOOST_REQUIRE_THROW(rdmol_to_text(*mol, Format::XYZ),
+                        std::invalid_argument);
+
+    RDKit::CoordGen::addCoords(*mol);
+    auto reference = R"XYZ(2
+charge=1
+C     -0.500000    0.000000    0.000000
+N      0.500000    0.000000    0.000000
+)XYZ";
+    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    mol->setProp(RDKit::common_properties::_Name, "C[NH3+]");
+    reference = R"XYZ(2
+C[NH3+]; charge=1
+C     -0.500000    0.000000    0.000000
+N      0.500000    0.000000    0.000000
+)XYZ";
+    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+
+    mol = text_to_rdmol("CC(=O)[O-]");
+    RDKit::CoordGen::addCoords(*mol);
+    reference = R"XYZ(4
+charge=-1
+C     -0.867800   -0.496850    0.000000
+C      0.000000   -0.000050    0.000000
+O      0.003600    0.999950    0.000000
+O      0.864200   -0.503050    0.000000
+)XYZ";
+    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    mol->setProp(RDKit::common_properties::_Name, "CC(=O)[O-]");
+    reference = R"XYZ(4
+CC(=O)[O-]; charge=-1
+C     -0.867800   -0.496850    0.000000
+C      0.000000   -0.000050    0.000000
+O      0.003600    0.999950    0.000000
+O      0.864200   -0.503050    0.000000
+)XYZ";
+    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+
+    mol = text_to_rdmol("O");
+    RDKit::CoordGen::addCoords(*mol);
+    mol->setProp("i_m_Spin_multiplicity", 2);
+    reference = R"XYZ(1
+multiplicity=2
+O      0.000000    0.000000    0.000000
+)XYZ";
+    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
 }

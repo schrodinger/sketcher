@@ -39,6 +39,7 @@ enum class Format {
     INCHI,
     INCHI_KEY,
     PDB,
+    XYZ,
 };
 
 /**
