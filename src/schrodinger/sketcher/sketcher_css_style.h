@@ -19,6 +19,12 @@ const QString TOOL_BUTTON_STYLE{
     "QToolButton:checked { background-color: #d4e6f1; }"
     "QToolButton:hover:!checked { background-color: #edf7fc; }"};
 
+const QString SKETCHER_WIDGET_STYLE{
+    "schrodinger--sketcher--SketcherWidget { background-color: white; }"
+    "schrodinger--sketcher--View { background: transparent; }"
+    "schrodinger--sketcher--ModularPopup { background-color: white; }" +
+    TOOL_BUTTON_STYLE};
+
 const QString SELECTION_ACTIVE_STYLE{
     "QWidget { background-color: #f3f6f0; }"
     "QToolButton:checked { background-color: #d4e6f1; }"

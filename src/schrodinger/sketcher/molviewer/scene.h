@@ -23,6 +23,12 @@ class ROMol;
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+enum class Format;
+}
+
 namespace sketcher
 {
 
@@ -53,13 +59,16 @@ class SKETCHER_API Scene : public QGraphicsScene
      * longer be modified by the calling code.
      */
     void loadMol(std::shared_ptr<RDKit::ROMol> mol);
+
     /**
-     * Create a molecule from a SMILES string and load that into the scene.
+     * Create a molecule from a text string and load that into the scene.
      * Atomic coordinates will be automatically generated using coordgen.
      *
-     * @param smiles The SMILES string to load
+     * @param text input data to load
+     * @param format format to parse
      */
-    void loadSmiles(const std::string& smiles);
+    void importText(const std::string& text,
+                    schrodinger::rdkit_extensions::Format format);
 
     std::shared_ptr<RDKit::ROMol> getRDKitMolecule() const;
 
@@ -100,6 +109,20 @@ class SKETCHER_API Scene : public QGraphicsScene
      * scene.
      */
     void updateBondItems();
+
+  private:
+    /**
+     * @return window for the parent widget
+     */
+    QWidget* window() const;
+
+    /**
+     * Overrides the drag/drop events to import text files of supported formats
+     */
+    void dragEnterEvent(QGraphicsSceneDragDropEvent* event) override;
+    void dragMoveEvent(QGraphicsSceneDragDropEvent* event) override;
+    void dragLeaveEvent(QGraphicsSceneDragDropEvent* event) override;
+    void dropEvent(QGraphicsSceneDragDropEvent* event) override;
 };
 
 } // namespace sketcher

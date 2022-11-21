@@ -1,17 +1,23 @@
 #define BOOST_TEST_MODULE Test_Sketcher
-#include "../test_common.h"
+
 #include "schrodinger/sketcher/molviewer/scene.h"
+
+#include <QRectF>
+
+#include <GraphMol/Depictor/RDDepictor.h>
+#include <GraphMol/ROMol.h>
+#include <GraphMol/SmilesParse/SmilesParse.h>
+
+#include "schrodinger/rdkit_extensions/convert.h"
+
+#include "../test_common.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
-#include <GraphMol/ROMol.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/Depictor/RDDepictor.h>
-
-#include <QRectF>
-
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+
+using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -21,7 +27,7 @@ namespace sketcher
 BOOST_AUTO_TEST_CASE(test_load_smiles)
 {
     Scene test_scene;
-    test_scene.loadSmiles("c1nccc2n1ccc2");
+    test_scene.importText("c1nccc2n1ccc2", Format::SMILES);
     auto mol = test_scene.getRDKitMolecule();
     BOOST_TEST_REQUIRE(mol != nullptr);
     BOOST_TEST(mol->getNumAtoms() == 9);
@@ -93,7 +99,7 @@ BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
     Scene test_scene;
     unsigned num_visible_atoms = 0;
     unsigned num_hidden_atoms = 0;
-    test_scene.loadSmiles("CCCCC");
+    test_scene.importText("CCCCC", Format::SMILES);
 
     // all carbons should be hidden
     test_scene.setCarbonsLabeled(CarbonLabels::NONE);

@@ -1,15 +1,24 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 
+#include <GraphMol/CoordGen.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/Depictor/RDDepictor.h>
 
 #include <QFont>
+#include <QGraphicsSceneMouseEvent>
+#include <QMimeData>
 #include <QString>
+#include <QUrl>
 
+#include "schrodinger/rdkit_extensions/convert.h"
+
+#include "schrodinger/sketcher/error_dialog.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/file_import_export.h"
+
+using schrodinger::rdkit_extensions::Format;
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -39,16 +48,19 @@ Scene::Scene(QObject* parent) : QGraphicsScene(parent)
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
 }
 
-void Scene::loadSmiles(const std::string& smiles)
+void Scene::importText(const std::string& text, Format format)
 {
-    std::shared_ptr<RDKit::ROMol> mol(RDKit::SmilesToMol(smiles));
-    if (mol == nullptr) {
-        throw std::runtime_error("Could not parse SMILES:" + smiles);
+    try {
+        auto mol = text_to_rdmol(text, format);
+        // TODO: deal with chiral flag viz. SHARED-8774
+        // TODO: honor existing coordintes if present
+        RDKit::CoordGen::addCoords(*mol);
+        loadMol(*mol);
+
+    } catch (const std::exception& exc) {
+        auto text = QString("Cannot import structure: ") + exc.what();
+        show_error_dialog("Import Error", text, window());
     }
-    RDDepict::preferCoordGen = true;
-    // passing true for the 3rd argument forces a canonical orientation
-    RDDepict::compute2DCoords(*mol, nullptr, true);
-    loadMol(mol);
 }
 
 void Scene::loadMol(const RDKit::ROMol& mol)
@@ -128,6 +140,41 @@ void Scene::updateBondItems()
             bond_item->updateCachedData();
         }
     }
+}
+
+QWidget* Scene::window() const
+{
+    auto parent_widget = dynamic_cast<QWidget*>(parent());
+    return parent_widget ? parent_widget->window() : nullptr;
+}
+
+void Scene::dropEvent(QGraphicsSceneDragDropEvent* event)
+{
+    auto mime_data = event->mimeData();
+    for (auto url : mime_data->urls()) {
+        if (url.isLocalFile()) { // File drop event
+            auto file_path = url.toLocalFile();
+            auto contents = get_file_text(file_path.toStdString());
+            auto format = get_file_format(file_path);
+            importText(contents, format);
+        }
+    }
+    event->acceptProposedAction();
+}
+
+void Scene::dragEnterEvent(QGraphicsSceneDragDropEvent* event)
+{
+    event->acceptProposedAction();
+}
+
+void Scene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
+{
+    event->acceptProposedAction();
+}
+
+void Scene::dragLeaveEvent(QGraphicsSceneDragDropEvent* event)
+{
+    event->accept();
 }
 
 } // namespace sketcher
