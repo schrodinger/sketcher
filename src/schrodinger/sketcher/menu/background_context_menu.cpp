@@ -77,4 +77,4 @@ void BackgroundContextMenu::updateActions()
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "background_context_menu.moc"
+#include "schrodinger/sketcher/menu/background_context_menu.moc"

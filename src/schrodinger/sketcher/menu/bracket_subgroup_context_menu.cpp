@@ -19,4 +19,4 @@ BracketSubgroupContextMenu::BracketSubgroupContextMenu(QWidget* parent) :
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "bracket_subgroup_context_menu.moc"
+#include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.moc"

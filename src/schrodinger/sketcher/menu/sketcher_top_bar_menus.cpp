@@ -153,4 +153,4 @@ void HelpMenu::showAbout2DSketcherDialog()
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "sketcher_top_bar_menus.moc"
+#include "schrodinger/sketcher/menu/sketcher_top_bar_menus.moc"

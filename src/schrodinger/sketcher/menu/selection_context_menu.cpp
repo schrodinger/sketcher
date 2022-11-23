@@ -116,4 +116,4 @@ SelectionContextMenu::createReplaceSelectionWithMenu(SketcherModel* model)
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "selection_context_menu.moc"
+#include "schrodinger/sketcher/menu/selection_context_menu.moc"

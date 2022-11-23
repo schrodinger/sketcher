@@ -78,4 +78,4 @@ BondContextMenu::BondContextMenu(QWidget* parent) : ModifyBondsMenu(parent)
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "bond_context_menu.moc"
+#include "schrodinger/sketcher/menu/bond_context_menu.moc"

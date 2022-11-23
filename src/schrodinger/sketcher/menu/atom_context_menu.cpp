@@ -254,4 +254,4 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, QWidget* parent) :
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "atom_context_menu.moc"
+#include "schrodinger/sketcher/menu/atom_context_menu.moc"
