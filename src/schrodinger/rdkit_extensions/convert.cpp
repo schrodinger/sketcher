@@ -334,8 +334,8 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
         return auto_detect<RDKit::RWMol>(text,
                                          {Format::MDL_MOLV3000, Format::PDB,
-                                          Format::XYZ, Format::INCHI,
-                                          Format::SMILES, Format::SMARTS},
+                                          Format::INCHI, Format::SMILES,
+                                          Format::SMARTS},
                                          &text_to_rdmol);
     }
 

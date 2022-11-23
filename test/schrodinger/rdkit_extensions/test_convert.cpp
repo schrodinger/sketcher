@@ -530,11 +530,8 @@ O      0.864200   -0.503050    0.000000
     BOOST_TEST(RDKit::MolOps::getFormalCharge(*m1) == 0);
     BOOST_TEST(!m1->hasProp("i_m_Spin_multiplicity"));
 
-    // Check auto-detect
-    auto m2 = text_to_rdmol(xyz_input);
-    BOOST_REQUIRE(m2 != nullptr);
-    BOOST_TEST(m2->getNumAtoms() == 4);
-    BOOST_TEST(m2->getNumBonds() == 0);
+    // Auto-detect should fail until SKETCH-1845
+    BOOST_REQUIRE_THROW(text_to_rdmol(xyz_input), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE(test_XYZ_export)
