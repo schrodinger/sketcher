@@ -5,6 +5,7 @@
 
 #include <vector>
 
+#include <QPen>
 #include <QRectF>
 #include <QString>
 
@@ -107,6 +108,7 @@ class AtomItem : public AbstractGraphicsItem
     Fonts& m_fonts;
     AtomItemSettings& m_settings;
     bool m_label_is_visible;
+    QPen m_pen;
 
     bool determineLabelIsVisible() const;
 };

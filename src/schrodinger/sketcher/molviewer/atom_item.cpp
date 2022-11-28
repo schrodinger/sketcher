@@ -37,6 +37,7 @@ void AtomItem::updateCachedData()
     m_label_is_visible = determineLabelIsVisible();
     m_subrects.clear();
     if (m_label_is_visible) {
+        m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
         m_main_label_text = QString::fromStdString(m_atom->getSymbol());
         qreal label_width =
             m_fonts.m_main_label_fm.boundingRect(m_main_label_text).width();
@@ -88,7 +89,7 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     if (m_label_is_visible) {
         painter->save();
         painter->setFont(m_fonts.m_main_label_font);
-        // TODO: set pen
+        painter->setPen(m_pen);
         painter->drawText(m_main_label_rect, Qt::AlignCenter,
                           m_main_label_text);
         painter->restore();
