@@ -115,11 +115,16 @@ class AtomContextMenu : public ModifyAtomsMenu
     Q_OBJECT
   public:
     AtomContextMenu(SketcherModel* model, QWidget* parent = nullptr);
+    void setAddToBracketGroupEnabled(bool enabled);
 
   signals:
     void deleteRequested();
     void atomSelectionInvertRequested();
     void existingRGroupRequested(unsigned int rgroup_number);
+    void bracketSubgroupDialogRequested();
+
+  private:
+    QAction* m_add_brackets_act = nullptr;
 };
 
 } // namespace sketcher

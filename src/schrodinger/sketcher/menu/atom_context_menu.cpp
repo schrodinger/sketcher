@@ -56,10 +56,11 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
         addAction("Remove Unpaired Electron", this,
                   &ModifyAtomsMenu::removeUnpairedElectronRequested);
     addSeparator();
-    addMenu(m_replace_with_menu);
     m_edit_atom_properties_act =
         addAction("Edit Atom Properties...", this,
                   [this]() { emit showEditAtomPropertiesRequested(false); });
+
+    addMenu(m_replace_with_menu);
 
     connect(m_sketcher_model, &SketcherModel::selectionChanged, this,
             &ModifyAtomsMenu::updateActionsEnabled);
@@ -243,12 +244,22 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, QWidget* parent) :
     // Rename replace menu to 'Replace with'
     m_replace_with_menu->setTitle("Replace with");
 
+    m_add_brackets_act = new QAction("Add Brackets...", this);
+    connect(m_add_brackets_act, &QAction::triggered, this,
+            &AtomContextMenu::bracketSubgroupDialogRequested);
+    insertAction(m_replace_with_menu->menuAction(), m_add_brackets_act);
+
     // Append 'Delete' action
     addSeparator();
     addAction("Delete", this, &AtomContextMenu::deleteRequested);
 
     // Show 'Invert Selection' only if there is an active selection
     invert_selection_action->setVisible(model->hasActiveSelection());
+}
+
+void AtomContextMenu::setAddToBracketGroupEnabled(bool enabled)
+{
+    m_add_brackets_act->setEnabled(enabled);
 }
 
 } // namespace sketcher
