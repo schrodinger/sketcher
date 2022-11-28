@@ -1,0 +1,114 @@
+#include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
+
+#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
+#include "schrodinger/sketcher/ui/ui_file_save_image_popup.h"
+#include "schrodinger/sketcher/ui/ui_file_save_image_widget.h"
+#include "schrodinger/sketcher/sketcher_css_style.h"
+
+namespace schrodinger
+{
+namespace sketcher
+{
+
+FileSaveImagePopup::FileSaveImagePopup(QWidget* parent) : SketcherView(parent)
+{
+    m_ui.reset(new Ui::FileSaveImagePopup());
+    m_ui->setupUi(this);
+
+    setWindowFlags(Qt::Popup);
+    setStyleSheet(RENDER_OPTIONS_POPUP_STYLE);
+
+    connect(m_ui->width_sb, &QSpinBox::valueChanged, this,
+            &FileSaveImagePopup::renderOptionsChanged);
+    connect(m_ui->height_sb, &QSpinBox::valueChanged, this,
+            &FileSaveImagePopup::renderOptionsChanged);
+    connect(m_ui->transparent_cb, &QCheckBox::stateChanged, this,
+            &FileSaveImagePopup::renderOptionsChanged);
+}
+
+FileSaveImagePopup::~FileSaveImagePopup() = default;
+
+RenderOptions FileSaveImagePopup::getRenderOptions() const
+{
+    RenderOptions opts;
+    opts.width_height =
+        QSize(m_ui->width_sb->value(), m_ui->height_sb->value());
+    opts.background_color =
+        m_ui->transparent_cb->isChecked() ? Qt::transparent : Qt::white;
+    return opts;
+}
+
+void FileSaveImagePopup::paintEvent(QPaintEvent*)
+{
+    // NOTE: Duplicated code; see ModularPopup and PeriodicTableWidget
+    QStyleOption opt;
+    opt.initFrom(this);
+    QPainter p(this);
+    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
+}
+
+FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model,
+                                         QWidget* parent) :
+    FileExportDialog(model, parent)
+{
+    setWindowTitle("Save Image");
+
+    // Set up the options widget UI and popup
+    m_options_wdg = new QWidget(this);
+    m_options_wdg_ui.reset(new Ui::FileSaveImageWidget());
+    m_options_wdg_ui->setupUi(m_options_wdg);
+    m_options_wdg->setStyleSheet(RENDER_OPTIONS_STYLE);
+
+    // Setup the popup widget that handles rendering options
+    m_options_popup = new FileSaveImagePopup(this);
+    m_options_wdg_ui->change_btn->setPopupDelay(0);
+    m_options_wdg_ui->change_btn->setPopupWidget(m_options_popup);
+    m_options_wdg_ui->change_btn->showPopupIndicator(false);
+    m_options_wdg_ui->change_btn->setStyleSheet(TEXT_LINK_STYLE);
+
+    // Add to the last row of the file/format layout, spanning all columns
+    m_ui->file_format_layout->addWidget(m_options_wdg, 2, 0, 1, -1);
+
+    m_ui->format_combo->clear(); // clear out base class initialization
+    for (const auto& [format, filter] : get_name_filters(IMAGE_FORMATS)) {
+        m_ui->format_combo->addItem(filter, QVariant::fromValue(format));
+    }
+
+    connect(m_options_popup, &FileSaveImagePopup::renderOptionsChanged, this,
+            &FileSaveImageDialog::onRenderOptionsChanged);
+}
+
+FileSaveImageDialog::~FileSaveImageDialog() = default;
+
+QByteArray FileSaveImageDialog::getFileContent() const
+{
+    auto combo_format = m_ui->format_combo->currentData().value<ImageFormat>();
+    QByteArray file_content;
+    auto opts = m_options_popup->getRenderOptions();
+    emit exportImageRequested(combo_format, opts, file_content);
+    return file_content;
+}
+
+QStringList FileSaveImageDialog::getValidExtensions() const
+{
+    auto combo_format = m_ui->format_combo->currentData().value<ImageFormat>();
+    return get_file_extensions(IMAGE_FORMATS, combo_format);
+}
+
+void FileSaveImageDialog::onRenderOptionsChanged()
+{
+    auto opts = m_options_popup->getRenderOptions();
+    QString background_color =
+        opts.background_color == Qt::transparent ? "Transparent" : "White";
+    QString width = QString::number(opts.width_height.width());
+    QString height = QString::number(opts.width_height.height());
+    m_options_wdg_ui->status_lbl->setText(background_color + " background, " +
+                                          width + " x " + height + " px");
+}
+
+} // namespace sketcher
+} // namespace schrodinger
+
+#include "schrodinger/sketcher/dialog/file_save_image_dialog.moc"

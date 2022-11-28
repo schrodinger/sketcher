@@ -5,11 +5,11 @@
 #include <QKeySequence>
 #include <QString>
 
-#include "schrodinger/sketcher/about_2d_sketcher.h"
+#include "schrodinger/sketcher/dialog/about_2d_sketcher.h"
 #include "schrodinger/sketcher/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 #include "schrodinger/sketcher/sketcher_model.h"
-#include "schrodinger/sketcher/sketcher_welcome_dialog.h"
+#include "schrodinger/sketcher/dialog/sketcher_welcome_dialog.h"
 
 namespace
 {

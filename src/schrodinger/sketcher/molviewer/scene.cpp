@@ -12,7 +12,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 
-#include "schrodinger/sketcher/error_dialog.h"
+#include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"

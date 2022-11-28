@@ -527,7 +527,7 @@
   <customwidget>
    <class>schrodinger::sketcher::CommonAtomPropertiesWidget</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/edit_atom_properties.h</header>
+   <header>schrodinger/sketcher/dialog/edit_atom_properties.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
