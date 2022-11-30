@@ -32,6 +32,10 @@ enum class Format;
 namespace sketcher
 {
 
+class SketcherModel;
+enum class ImageFormat;
+struct RenderOptions;
+
 /**
  * A Qt graphics scene for displaying molecules.
  */
@@ -41,7 +45,11 @@ class SKETCHER_API Scene : public QGraphicsScene
   public:
     Scene(QObject* parent = nullptr);
 
-    // TODO: mimic sketcherScene interface for importing/exporting
+    /**
+     * @param model A model instance to assign to this view
+     * NOTE: the model must be set exactly once.
+     */
+    void setModel(SketcherModel* model);
 
     /**
      * Load an RDKit molecule into this scene
@@ -61,16 +69,53 @@ class SKETCHER_API Scene : public QGraphicsScene
     void loadMol(std::shared_ptr<RDKit::ROMol> mol);
 
     /**
+     * @return RDKit molecule underlying what is currently rendered
+     */
+    std::shared_ptr<RDKit::ROMol> getRDKitMolecule() const;
+
+    /**
      * Create a molecule from a text string and load that into the scene.
      * Atomic coordinates will be automatically generated using coordgen.
      *
      * @param text input data to load
      * @param format format to parse
      */
-    void importText(const std::string& text,
-                    schrodinger::rdkit_extensions::Format format);
+    void importText(const std::string& text, rdkit_extensions::Format format);
 
-    std::shared_ptr<RDKit::ROMol> getRDKitMolecule() const;
+    /**
+     * @param format format to convert to
+     * @return serialized representation of the sketcher contents
+     */
+    std::string exportText(rdkit_extensions::Format format);
+
+    /**
+     *  Clear the contents of the scene
+     */
+    void clear();
+
+    /**
+     * Import the given text into the scene; optionally clear beforehand
+     *
+     * @param text input data to load
+     * @param format format to parse
+     */
+    void onImportTextRequested(const std::string& text,
+                               rdkit_extensions::Format format);
+
+    /**
+     * Present the user with a "Save Image" dialog.
+     */
+    void showFileSaveImageDialog();
+
+    /**
+     * Present the user with an "Export to File" dialog.
+     */
+    void showFileExportDialog();
+
+    /**
+     * Paste clipboard content into the scene
+     */
+    void onPasteRequested();
 
     // Getters and setters for changing settings
     qreal fontSize() const;
@@ -96,6 +141,7 @@ class SKETCHER_API Scene : public QGraphicsScene
     Fonts m_fonts;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
+    SketcherModel* m_sketcher_model = nullptr;
 
     /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.

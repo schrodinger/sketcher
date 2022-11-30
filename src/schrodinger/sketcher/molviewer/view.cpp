@@ -16,8 +16,6 @@ View::View(QGraphicsScene* scene, QWidget* parent) :
 {
     setMouseTracking(true);
     setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
-    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 }
 
 View::View(QWidget* parent) : View(nullptr, parent)

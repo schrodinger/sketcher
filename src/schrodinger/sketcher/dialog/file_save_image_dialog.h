@@ -63,10 +63,10 @@ class SKETCHER_API FileSaveImageDialog : public FileExportDialog
      *
      * @param format requested image format
      * @param opts image rendering options
-     * @param[out] bytes export image from the current scene
+     * @return bytes export image from the current scene
      */
-    void exportImageRequested(ImageFormat format, const RenderOptions& opts,
-                              QByteArray& bytes) const;
+    QByteArray exportImageRequested(ImageFormat format,
+                                    const RenderOptions& opts) const;
 
   private:
     /**

@@ -49,9 +49,7 @@ FileExportDialog::~FileExportDialog() = default;
 QByteArray FileExportDialog::getFileContent() const
 {
     auto combo_format = m_ui->format_combo->currentData().value<Format>();
-    QString file_content;
-    emit exportTextRequested(combo_format, file_content);
-    return file_content.toUtf8();
+    return emit exportTextRequested(combo_format).toUtf8();
 }
 
 QStringList FileExportDialog::getValidExtensions() const

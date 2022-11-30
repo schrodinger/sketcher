@@ -28,9 +28,7 @@ PasteInTextDialog::~PasteInTextDialog() = default;
 
 void PasteInTextDialog::onModelValuesChanged()
 {
-    bool replace =
-        m_sketcher_model->getValue(ModelKey::NEW_STRUCTURES_REPLACE_CONTENT)
-            .toBool();
+    bool replace = m_sketcher_model->getNewStructuresReplaceContent();
     QString text =
         replace ? "Specified structure will <b>replace</b> Sketcher content"
                 : "Specified structure will be added to Sketcher content";

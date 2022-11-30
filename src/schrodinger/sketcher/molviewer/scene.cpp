@@ -4,8 +4,11 @@
 #include <GraphMol/ROMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
+#include <QApplication>
+#include <QClipboard>
 #include <QFont>
 #include <QGraphicsSceneMouseEvent>
+#include <QMimeData>
 #include <QMimeData>
 #include <QString>
 #include <QUrl>
@@ -13,10 +16,14 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 
 #include "schrodinger/sketcher/dialog/error_dialog.h"
+#include "schrodinger/sketcher/dialog/file_export_dialog.h"
+#include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
+#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -45,22 +52,20 @@ namespace sketcher
 
 Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 {
-    m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
+    clear();
 }
 
-void Scene::importText(const std::string& text, Format format)
+void Scene::setModel(SketcherModel* model)
 {
-    try {
-        auto mol = text_to_rdmol(text, format);
-        // TODO: deal with chiral flag viz. SHARED-8774
-        // TODO: honor existing coordintes if present
-        RDKit::CoordGen::addCoords(*mol);
-        loadMol(*mol);
-
-    } catch (const std::exception& exc) {
-        auto text = QString("Cannot import structure: ") + exc.what();
-        show_error_dialog("Import Error", text, window());
+    if (m_sketcher_model != nullptr) {
+        throw std::runtime_error("The model has already been set");
     }
+    m_sketcher_model = model;
+
+    connect(this, &Scene::changed, m_sketcher_model,
+            &SketcherModel::sceneContentsChanged);
+    connect(m_sketcher_model, &SketcherModel::sceneContentsRequested, this,
+            [this]() { return items(); });
 }
 
 void Scene::loadMol(const RDKit::ROMol& mol)
@@ -71,6 +76,7 @@ void Scene::loadMol(const RDKit::ROMol& mol)
 
 void Scene::loadMol(std::shared_ptr<RDKit::ROMol> mol)
 {
+    // TODO: instead of always clearing, handle adding additional mols
     clear();
     m_mol = mol;
     const std::size_t num_atoms = m_mol->getNumAtoms();
@@ -101,6 +107,82 @@ void Scene::loadMol(std::shared_ptr<RDKit::ROMol> mol)
 std::shared_ptr<RDKit::ROMol> Scene::getRDKitMolecule() const
 {
     return m_mol;
+}
+
+void Scene::importText(const std::string& text, Format format)
+{
+    auto show_import_failure = [&](const auto& exc) {
+        auto text = QString("Import Failed: ") + exc.what();
+        show_error_dialog("Import Error", text, window());
+    };
+
+    boost::shared_ptr<RDKit::RWMol> mol{nullptr};
+    try {
+        mol = rdkit_extensions::text_to_rdmol(text, format);
+    } catch (const std::invalid_argument& exc) {
+        show_import_failure(exc);
+        return;
+    } catch (const std::runtime_error& exc) {
+        show_import_failure(exc);
+        return;
+    }
+
+    // TODO: deal with chiral flag viz. SHARED-8774
+    // TODO: honor existing coordinates if present
+    RDKit::CoordGen::addCoords(*mol);
+    loadMol(*mol);
+}
+
+std::string Scene::exportText(Format format)
+{
+    // TODO: handle reactions
+    // TODO: handle toggling between selection/everything
+    // TODO: handle export of selection as atom/bond properties
+    return rdkit_extensions::rdmol_to_text(*m_mol, format);
+}
+
+void Scene::clear()
+{
+    QGraphicsScene::clear();
+    m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
+}
+
+void Scene::onImportTextRequested(const std::string& text, Format format)
+{
+    if (m_sketcher_model->getNewStructuresReplaceContent()) {
+        clear();
+    }
+    importText(text, format);
+}
+
+void Scene::showFileExportDialog()
+{
+    auto dialog = new FileExportDialog(m_sketcher_model, window());
+    connect(dialog, &FileExportDialog::exportTextRequested, this,
+            [this](Format format) {
+                return QString::fromStdString(exportText(format));
+            });
+    dialog->show();
+}
+
+void Scene::showFileSaveImageDialog()
+{
+    auto dialog = new FileSaveImageDialog(m_sketcher_model, window());
+    connect(dialog, &FileSaveImageDialog::exportImageRequested, this,
+            [this](auto format, const auto& opts) {
+                // TODO: this call uses the existing sketcherScene class;
+                // update to render directly from this Scene instance
+                return get_image_bytes(*m_mol, format, opts);
+            });
+    dialog->show();
+}
+
+void Scene::onPasteRequested()
+{
+    auto data = QApplication::clipboard()->mimeData();
+    if (data->hasText()) {
+        importText(data->text().toStdString(), Format::AUTO_DETECT);
+    }
 }
 
 qreal Scene::fontSize() const
@@ -174,7 +256,7 @@ void Scene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 
 void Scene::dragLeaveEvent(QGraphicsSceneDragDropEvent* event)
 {
-    event->accept();
+    event->acceptProposedAction();
 }
 
 } // namespace sketcher

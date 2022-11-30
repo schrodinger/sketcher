@@ -68,8 +68,7 @@ BOOST_AUTO_TEST_CASE(label)
         "Specified structure will <b>replace</b> Sketcher content";
     std::string add_text =
         "Specified structure will be added to Sketcher content";
-    BOOST_TEST(
-        model.getValue(ModelKey::NEW_STRUCTURES_REPLACE_CONTENT).toBool());
+    BOOST_TEST(model.getNewStructuresReplaceContent());
     BOOST_TEST(dlg.getLabelText() == replace_text);
 
     for (bool replace : {false, true}) {

@@ -1,19 +1,11 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
-#include <iostream>
-
-#include <QClipboard>
-#include <QMimeData>
 #include <QWidget>
-
-#include "schrodinger/rdkit_extensions/convert.h"
 
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
-
-using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -29,6 +21,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
     ui->view->setScene(m_scene);
 
     m_sketcher_model = new SketcherModel(this);
+    m_scene->setModel(m_sketcher_model);
     ui->top_bar_wdg->setModel(m_sketcher_model);
     ui->side_bar_wdg->setModel(m_sketcher_model);
 
@@ -42,19 +35,19 @@ SketcherWidget::~SketcherWidget() = default;
 
 void SketcherWidget::connectTopBarSlots()
 {
+    // Connect "More Actions" menu
+    connect(ui->top_bar_wdg, &SketcherTopBar::pasteRequested, m_scene,
+            &Scene::onPasteRequested);
+
+    // Clear/Import/Export
     connect(ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested, m_scene,
             &Scene::clear);
     connect(ui->top_bar_wdg, &SketcherTopBar::importTextRequested, m_scene,
-            &Scene::importText);
-
-    // Connect "More Actions" menu
-    connect(ui->top_bar_wdg, &SketcherTopBar::pasteRequested, [this]() {
-        auto data = QApplication::clipboard()->mimeData();
-        if (data->hasText()) {
-            m_scene->importText(data->text().toStdString(),
-                                Format::AUTO_DETECT);
-        }
-    });
+            &Scene::onImportTextRequested);
+    connect(ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, m_scene,
+            &Scene::showFileSaveImageDialog);
+    connect(ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, m_scene,
+            &Scene::showFileExportDialog);
 }
 
 void SketcherWidget::connectSideBarSlots()

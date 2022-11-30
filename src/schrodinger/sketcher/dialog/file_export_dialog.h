@@ -35,10 +35,9 @@ class SKETCHER_API FileExportDialog : public ModalDialog
      * Signal used to request serialized text from the associated scene.
      *
      * @param format requested structure format
-     * @param[out] text export text from the current scene
+     * @return text export text from the current scene
      */
-    void exportTextRequested(rdkit_extensions::Format format,
-                             QString& text) const;
+    QString exportTextRequested(rdkit_extensions::Format format) const;
 
   protected:
     /**

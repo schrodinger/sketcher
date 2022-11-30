@@ -85,10 +85,8 @@ FileSaveImageDialog::~FileSaveImageDialog() = default;
 QByteArray FileSaveImageDialog::getFileContent() const
 {
     auto combo_format = m_ui->format_combo->currentData().value<ImageFormat>();
-    QByteArray file_content;
     auto opts = m_options_popup->getRenderOptions();
-    emit exportImageRequested(combo_format, opts, file_content);
-    return file_content;
+    return emit exportImageRequested(combo_format, opts);
 }
 
 QStringList FileSaveImageDialog::getValidExtensions() const

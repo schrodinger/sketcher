@@ -24,7 +24,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-BOOST_AUTO_TEST_CASE(test_load_smiles)
+BOOST_AUTO_TEST_CASE(test_importText)
 {
     Scene test_scene;
     test_scene.importText("c1nccc2n1ccc2", Format::SMILES);
@@ -48,6 +48,15 @@ BOOST_AUTO_TEST_CASE(test_load_smiles)
     }
     BOOST_TEST(num_atoms == 9);
     BOOST_TEST(num_bonds == 10);
+
+    test_scene.clear();
+    mol = test_scene.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+
+    // import failed, exception caught, still an empty scene
+    test_scene.importText("nonsense", Format::AUTO_DETECT);
+    mol = test_scene.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_load_mol)
