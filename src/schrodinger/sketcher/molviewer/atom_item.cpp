@@ -83,11 +83,6 @@ const std::vector<QRectF>& AtomItem::getSubrects() const
     return m_subrects;
 }
 
-bool AtomItem::labelIsVisible() const
-{
-    return m_label_is_visible;
-}
-
 void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {

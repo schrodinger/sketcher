@@ -1,7 +1,6 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 #include <GraphMol/CoordGen.h>
-#include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
@@ -131,10 +130,6 @@ void Scene::importText(const std::string& text, Format format)
     // TODO: deal with chiral flag viz. SHARED-8774
     // TODO: honor existing coordinates if present
     RDKit::CoordGen::addCoords(*mol);
-    // We use sanitizeMol to populate RingInfo, which is needed for drawing
-    // double bonds
-    // TODO: handle exceptions from sanitizeMol
-    RDKit::MolOps::sanitizeMol(*mol);
     loadMol(*mol);
 }
 

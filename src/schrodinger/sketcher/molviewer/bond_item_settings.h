@@ -23,11 +23,7 @@ class BondItemSettings
     /// The width of the pen to use for drawing bond lines
     qreal m_bond_width = 2.2;
     /// How far apart to draw the lines of a double (or triple) bond
-    qreal m_double_bond_spacing = 5.0;
-    /// The width of the fat end of the wedge for chiral bonds
-    qreal m_wedge_width = 5.0;
-    /// The distance between hash marks in "down" (i.e. dashed) wedges
-    qreal m_hash_spacing = 5.0;
+    qreal m_double_bond_spacing = 5;
 };
 } // namespace sketcher
 } // namespace schrodinger

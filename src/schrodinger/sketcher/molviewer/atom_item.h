@@ -9,7 +9,6 @@
 #include <QRectF>
 #include <QString>
 
-#include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -42,7 +41,7 @@ namespace sketcher
  * paint anything in those scenarios.  Also note that this class is *not*
  * responsible for drawing bonds.  See BondItem for that.
  */
-class SKETCHER_API AtomItem : public AbstractGraphicsItem
+class AtomItem : public AbstractGraphicsItem
 {
   public:
     /**
@@ -90,12 +89,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * trimming due to assumptions made in BondItem::trimLineToRect.
      */
     const std::vector<QRectF>& getSubrects() const;
-
-    /**
-     * Return whether the label for this atom is visible.  (Labels for some
-     * carbons may be hidden depending on the atom item settings.)
-     */
-    bool labelIsVisible() const;
 
   protected:
     // Creating a shared_ptr to an RDKit Atom (or Bond) implicitly creates a
