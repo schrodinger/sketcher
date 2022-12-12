@@ -5,6 +5,8 @@
 
 #include <QGraphicsItem>
 
+#include "schrodinger/sketcher/definitions.h"
+
 namespace schrodinger
 {
 namespace sketcher
@@ -14,7 +16,7 @@ namespace sketcher
  * An abstract parent class for all graphics items (i.e. AtomItem and
  * BondItem) in a molviewer scene.
  */
-class AbstractGraphicsItem : public QGraphicsItem
+class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
 {
   public:
     AbstractGraphicsItem(QGraphicsItem* parent = nullptr);
