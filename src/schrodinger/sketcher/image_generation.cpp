@@ -45,6 +45,17 @@ void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
     }
 }
 
+void setUserAnnotations(const sketcherScene& scene, const RenderOptions& opts)
+{
+    auto atoms = scene.quickGetAtoms();
+    for (auto atom : atoms) {
+        atom->removeUserAnnotation();
+    }
+    for (auto [index, text] : asKeyValue(opts.atom_index_to_annotation)) {
+        atoms.at(index)->setUserAnnotation(text);
+    }
+}
+
 void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
                  const RenderOptions& opts)
 {
@@ -54,6 +65,7 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
 
     scene.addRDKitMolecule(rdmol);
     setHighlights(scene, opts);
+    setUserAnnotations(scene, opts);
 
     // The atom and bond items use a semi-transparent version of the background
     // color to fade out bonds in order to make labels more readable.

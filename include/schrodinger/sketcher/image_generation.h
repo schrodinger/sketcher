@@ -40,6 +40,7 @@ struct RenderOptions {
     QColor background_color = Qt::transparent;
     QHash<int, QColor> highlight_atom_index_to_color;
     QHash<int, QColor> highlight_bond_index_to_color;
+    QHash<int, std::string> atom_index_to_annotation;
     // TODO: incorporate both RendererSettings and additional LiveDesign options
 };
 
