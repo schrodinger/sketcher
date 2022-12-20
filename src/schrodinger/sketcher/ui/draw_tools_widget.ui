@@ -381,12 +381,12 @@
   <customwidget>
    <class>schrodinger::sketcher::ModularToolButton</class>
    <extends>QToolButton</extends>
-   <header>schrodinger/sketcher/modular_tool_button.h</header>
+   <header>schrodinger/sketcher/widget/modular_tool_button.h</header>
   </customwidget>
   <customwidget>
    <class>schrodinger::sketcher::SetAtomWidget</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/set_atom_widget.h</header>
+   <header>schrodinger/sketcher/widget/set_atom_widget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
