@@ -95,25 +95,25 @@
   <customwidget>
    <class>schrodinger::sketcher::SelectOptionsWidget</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/select_options_widget.h</header>
+   <header>schrodinger/sketcher/widget/select_options_widget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>schrodinger::sketcher::DrawToolsWidget</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/draw_tools_widget.h</header>
+   <header>schrodinger/sketcher/widget/draw_tools_widget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>schrodinger::sketcher::EnumerationToolWidget</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/enumeration_tool_widget.h</header>
+   <header>schrodinger/sketcher/widget/enumeration_tool_widget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>schrodinger::sketcher::RingToolWidget</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/ring_tool_widget.h</header>
+   <header>schrodinger/sketcher/widget/ring_tool_widget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

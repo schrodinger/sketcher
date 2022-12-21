@@ -81,13 +81,13 @@
   <customwidget>
    <class>schrodinger::sketcher::SketcherTopBar</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/sketcher_top_bar.h</header>
+   <header>schrodinger/sketcher/widget/sketcher_top_bar.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>schrodinger::sketcher::SketcherSideBar</class>
    <extends>QWidget</extends>
-   <header>schrodinger/sketcher/sketcher_side_bar.h</header>
+   <header>schrodinger/sketcher/widget/sketcher_side_bar.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -118,7 +118,7 @@
   <customwidget>
    <class>schrodinger::sketcher::ModularToolButton</class>
    <extends>QToolButton</extends>
-   <header>schrodinger/sketcher/modular_tool_button.h</header>
+   <header>schrodinger/sketcher/widget/modular_tool_button.h</header>
   </customwidget>
  </customwidgets>
  <resources>
