@@ -63,10 +63,21 @@ void Scene::setModel(SketcherModel* model)
     }
     m_sketcher_model = model;
 
+    // Connect content-based signals
     connect(this, &Scene::changed, m_sketcher_model,
             &SketcherModel::sceneContentsChanged);
     connect(m_sketcher_model, &SketcherModel::sceneContentsRequested, this,
             [this]() { return items(); });
+
+    // Connect selection-based signals
+    connect(this, &Scene::selectionChanged, m_sketcher_model,
+            &SketcherModel::selectionChanged);
+    connect(m_sketcher_model, &SketcherModel::selectionRequested, this,
+            [this]() { return selectedItems(); });
+
+    // Connect context menu-based signals
+    connect(m_sketcher_model, &SketcherModel::contextMenuObjectsRequested, this,
+            [this]() { return m_context_menu_objects; });
 }
 
 void Scene::loadMol(const RDKit::ROMol& mol)

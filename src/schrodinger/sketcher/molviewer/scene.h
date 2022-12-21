@@ -137,12 +137,6 @@ class SKETCHER_API Scene : public QGraphicsScene
     void setDoubleBondSpacing(qreal value);
 
   protected:
-    std::shared_ptr<RDKit::ROMol> m_mol;
-    Fonts m_fonts;
-    AtomItemSettings m_atom_item_settings;
-    BondItemSettings m_bond_item_settings;
-    SketcherModel* m_sketcher_model = nullptr;
-
     /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.
      * (BondItems always need updating after their bound AtomItems are modified
@@ -155,6 +149,19 @@ class SKETCHER_API Scene : public QGraphicsScene
      * scene.
      */
     void updateBondItems();
+
+    std::shared_ptr<RDKit::ROMol> m_mol;
+    Fonts m_fonts;
+    AtomItemSettings m_atom_item_settings;
+    BondItemSettings m_bond_item_settings;
+    SketcherModel* m_sketcher_model = nullptr;
+
+    /**
+     * Objects associated with the context menu instance that is currently open.
+     * If no context menu instance is open (or if it is not associated with any
+     * objects) then this should be empty.
+     */
+    QList<QGraphicsItem*> m_context_menu_objects;
 
   private:
     /**
