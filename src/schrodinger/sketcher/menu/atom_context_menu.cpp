@@ -5,7 +5,7 @@
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/atom_utils.h"
-#include "schrodinger/sketcher/widget/set_atom_widget.h"
+#include "schrodinger/sketcher/set_atom_widget.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger

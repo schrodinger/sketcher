@@ -3,7 +3,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/widget/sketcher_view.h"
+#include "schrodinger/sketcher/sketcher_view.h"
 
 namespace Ui
 {

@@ -81,7 +81,7 @@
   <customwidget>
    <class>schrodinger::sketcher::ToolButtonWithPopup</class>
    <extends>QToolButton</extends>
-   <header>schrodinger/sketcher/widget/tool_button_with_popup.h</header>
+   <header>schrodinger/sketcher/tool_button_with_popup.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
