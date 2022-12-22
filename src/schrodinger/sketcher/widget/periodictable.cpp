@@ -49,22 +49,21 @@ void PeriodicTableWidget::setCloseOnClick(bool close_on_click)
 
 void PeriodicTableWidget::onButtonClicked(int button_id)
 {
-    emit elementSelected(Element(button_id));
+    auto element = Element(button_id);
+    emit elementSelected(element);
     auto model = getModel();
     if (model != nullptr) {
         if (!model->hasActiveSelection()) {
             // update the model
-            std::unordered_set<ModelKeyValue> kv_pairs = {
-                ModelKeyValue(ModelKey::DRAW_TOOL,
-                              QVariant(static_cast<int>(DrawTool::ATOM))),
-                ModelKeyValue(ModelKey::ATOM_TOOL,
-                              QVariant(static_cast<int>(AtomTool::ELEMENT))),
-                ModelKeyValue(ModelKey::ELEMENT, QVariant(button_id)),
+            std::unordered_map<ModelKey, QVariant> kv_pairs = {
+                {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
+                {ModelKey::ATOM_TOOL, QVariant::fromValue(AtomTool::ELEMENT)},
+                {ModelKey::ELEMENT, QVariant::fromValue(element)},
             };
             model->setValues(kv_pairs);
         } else {
             // do not update the model
-            model->pingValue(ModelKey::ELEMENT, QVariant(button_id));
+            model->pingValue(ModelKey::ELEMENT, element);
         }
     }
     if (m_close_on_click) {

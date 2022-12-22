@@ -57,7 +57,8 @@ std::vector<SetterPacket> SketcherView::getSetterPackets() const
     return m_setter_packets;
 }
 
-void SketcherView::onModelValuesChanged(std::unordered_set<ModelKey> keys)
+void SketcherView::onModelValuesChanged(
+    const std::unordered_set<ModelKey>& keys)
 {
     updateWidgetsEnabled();
     for (auto key : keys) {
@@ -101,7 +102,7 @@ void SketcherView::connectToModel()
         setValue(setter_packet.key, value);
     }
     connect(this, &SketcherView::viewStateChanged, model,
-            &SketcherModel::setValue);
+            [model](auto key, auto value) { model->setValue(key, value); });
     connect(model, &SketcherModel::valuesChanged, this,
             &SketcherView::onModelValuesChanged);
     connect(model, &SketcherModel::valuePinged, this,

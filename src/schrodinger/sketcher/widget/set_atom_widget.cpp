@@ -122,31 +122,28 @@ std::unordered_set<QAbstractButton*> SetAtomWidget::getCheckableButtons()
 void SetAtomWidget::onAtomButtonClicked(QAbstractButton* button)
 {
     auto model = getModel();
-    std::unordered_set<ModelKeyValue> kv_pairs;
+    std::unordered_map<ModelKey, QVariant> kv_pairs;
     AtomTool atom_tool;
     if (button == ui->atom_query_btn) {
         atom_tool = AtomTool::QUERY;
         auto atom_query = AtomQuery(ui->atom_query_btn->getEnumItem());
-        kv_pairs.emplace(ModelKey::ATOM_QUERY,
-                         QVariant(static_cast<int>(atom_query)));
+        kv_pairs.emplace(ModelKey::ATOM_QUERY, QVariant::fromValue(atom_query));
     } else {
         atom_tool = AtomTool::ELEMENT;
         Element element = getElementForButton(button);
-        kv_pairs.emplace(ModelKey::ELEMENT,
-                         QVariant(static_cast<int>(element)));
+        kv_pairs.emplace(ModelKey::ELEMENT, QVariant::fromValue(element));
     }
 
     if (model->hasActiveSelection()) {
         // Do not alter the model, but ping the desired tool to indicate that we
         // want to replace the selection
         auto pair = *kv_pairs.begin();
-        model->pingValue(pair.key, pair.value);
+        model->pingValue(pair.first, pair.second);
     } else {
         // No selection, so fully update the model
         kv_pairs.emplace(ModelKey::DRAW_TOOL,
-                         QVariant(static_cast<int>(DrawTool::ATOM)));
-        kv_pairs.emplace(ModelKey::ATOM_TOOL,
-                         QVariant(static_cast<int>(atom_tool)));
+                         QVariant::fromValue(DrawTool::ATOM));
+        kv_pairs.emplace(ModelKey::ATOM_TOOL, QVariant::fromValue(atom_tool));
 
         model->setValues(kv_pairs);
     }

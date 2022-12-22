@@ -48,7 +48,7 @@ int RGroupPopup::getButtonIDToCheck()
     if (draw_tool == DrawTool::ENUMERATION &&
         (enum_tool == EnumerationTool::NEW_RGROUP ||
          enum_tool == EnumerationTool::EXISTING_RGROUP)) {
-        auto rgroup_number = model->getValue(ModelKey::RGROUP_NUMBER).toInt();
+        auto rgroup_number = model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
         if (enum_tool == EnumerationTool::NEW_RGROUP) {
             button_id = 0;
         } else if (isSupportedRGroup(rgroup_number)) {

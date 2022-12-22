@@ -59,10 +59,9 @@ void RingToolWidget::updateCheckState()
 
 void RingToolWidget::onButtonClicked(int button_id)
 {
-    std::unordered_set<ModelKeyValue> kv_pairs = {
-        ModelKeyValue(ModelKey::DRAW_TOOL,
-                      QVariant(static_cast<int>(DrawTool::RING))),
-        ModelKeyValue(ModelKey::RING_TOOL, QVariant(button_id)),
+    std::unordered_map<ModelKey, QVariant> kv_pairs = {
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::RING)},
+        {ModelKey::RING_TOOL, QVariant::fromValue(RingTool(button_id))},
     };
     getModel()->setValues(kv_pairs);
 }

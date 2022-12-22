@@ -122,7 +122,7 @@ class SKETCHER_API SketcherView : public QWidget
      * @param keys The keys associated with values that have been changed in the
      * model
      */
-    virtual void onModelValuesChanged(std::unordered_set<ModelKey> keys);
+    virtual void onModelValuesChanged(const std::unordered_set<ModelKey>& keys);
 
     /**
      * Respond to a value being pinged on the model.

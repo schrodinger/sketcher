@@ -117,22 +117,20 @@ BOOST_AUTO_TEST_CASE(button_check_state)
         AtomQuery::A, AtomQuery::AH, AtomQuery::M, AtomQuery::MH,
         AtomQuery::Q, AtomQuery::QH, AtomQuery::X, AtomQuery::XH};
     for (auto& atom_tool : atom_tools) {
-        auto atom_tool_int = static_cast<int>(atom_tool);
-        model->setValue(ModelKey::ATOM_TOOL, QVariant(atom_tool_int));
-        BOOST_TEST(model->getValue(ModelKey::ATOM_TOOL).toInt() ==
-                   atom_tool_int);
+        model->setValue(ModelKey::ATOM_TOOL, atom_tool);
+        BOOST_TEST(AtomTool(model->getValue(ModelKey::ATOM_TOOL).toInt()) ==
+                   atom_tool);
         for (auto& element : elements) {
-            auto element_int = static_cast<int>(element);
-            model->setValue(ModelKey::ELEMENT, QVariant(element_int));
-            BOOST_TEST(model->getValue(ModelKey::ELEMENT).toInt() ==
-                       element_int);
+            model->setValue(ModelKey::ELEMENT, element);
+            BOOST_TEST(Element(model->getValue(ModelKey::ELEMENT).toInt()) ==
+                       element);
             BOOST_TEST(view_is_synchronized_to_model(wdg));
         }
         for (auto& query : queries) {
-            auto query_int = static_cast<int>(query);
-            model->setValue(ModelKey::ATOM_QUERY, QVariant(query_int));
-            BOOST_TEST(model->getValue(ModelKey::ATOM_QUERY).toInt() ==
-                       query_int);
+            model->setValue(ModelKey::ATOM_QUERY, query);
+            BOOST_TEST(
+                AtomQuery(model->getValue(ModelKey::ATOM_QUERY).toInt()) ==
+                query);
             BOOST_TEST(view_is_synchronized_to_model(wdg));
         }
     }
@@ -143,8 +141,7 @@ BOOST_AUTO_TEST_CASE(button_check_state)
                                         DrawTool::CHARGE, DrawTool::RING,
                                         DrawTool::ENUMERATION};
     for (auto& draw_tool : draw_tools) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         BOOST_TEST(view_is_synchronized_to_model(wdg));
     }
 }
@@ -204,8 +201,7 @@ BOOST_AUTO_TEST_CASE(enabled)
     std::vector<std::unordered_set<QGraphicsItem*>> selections = {
         empty_sel, atom_sel, bond_sel, both_sel};
     for (bool LID_mode_is_active : {false, true}) {
-        model->setValue(ModelKey::LID_MODE_ACTIVE,
-                        QVariant(LID_mode_is_active));
+        model->setValue(ModelKey::LID_MODE_ACTIVE, LID_mode_is_active);
         for (auto selection : selections) {
             scene.setSelection(selection);
             bool no_selection = selection == empty_sel;

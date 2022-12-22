@@ -39,8 +39,7 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
     auto model = wdg.getModel();
     auto& ui = wdg.getUI();
 
-    model->setValue(ModelKey::DRAW_TOOL,
-                    QVariant(static_cast<int>(DrawTool::ENUMERATION)));
+    model->setValue(ModelKey::DRAW_TOOL, DrawTool::ENUMERATION);
 
     // The check state of the button should reflect the state of the model
     for (auto enum_tool :
@@ -48,8 +47,7 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
           EnumerationTool::ATTACHMENT_POINT, EnumerationTool::ADD_MAPPING,
           EnumerationTool::REMOVE_MAPPING, EnumerationTool::RXN_ARROW,
           EnumerationTool::RXN_PLUS}) {
-        model->setValue(ModelKey::ENUMERATION_TOOL,
-                        QVariant(static_cast<int>(enum_tool)));
+        model->setValue(ModelKey::ENUMERATION_TOOL, enum_tool);
 
         bool exp_checked = enum_tool == EnumerationTool::NEW_RGROUP ||
                            enum_tool == EnumerationTool::EXISTING_RGROUP;
@@ -58,8 +56,8 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
             int rgroup_number = ui->rgroup_btn->getEnumItem();
             int exp_rgroup_number =
                 enum_tool == EnumerationTool::NEW_RGROUP
-                    ? 0
-                    : model->getValue(ModelKey::RGROUP_NUMBER).toInt();
+                    ? 0u
+                    : model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
             BOOST_TEST(rgroup_number == exp_rgroup_number);
         }
 
@@ -74,12 +72,10 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
 
     // Assign values to the model in order to update the modular tool buttons on
     // this widget
+    model->setValue(ModelKey::ENUMERATION_TOOL, EnumerationTool::RXN_ARROW);
     model->setValue(ModelKey::ENUMERATION_TOOL,
-                    QVariant(static_cast<int>(EnumerationTool::RXN_ARROW)));
-    model->setValue(
-        ModelKey::ENUMERATION_TOOL,
-        QVariant(static_cast<int>(EnumerationTool::EXISTING_RGROUP)));
-    model->setValue(ModelKey::RGROUP_NUMBER, QVariant(5));
+                    EnumerationTool::EXISTING_RGROUP);
+    model->setValue(ModelKey::RGROUP_NUMBER, 5u);
 
     // Clicking these buttons should modify the model
     ui->reaction_btn->click();
@@ -100,26 +96,22 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
 
     // Switching to a different interaction mode or draw tool should uncheck all
     // buttons in this widget
-    model->setValue(ModelKey::ENUMERATION_TOOL,
-                    QVariant(static_cast<int>(EnumerationTool::NEW_RGROUP)));
+    model->setValue(ModelKey::ENUMERATION_TOOL, EnumerationTool::NEW_RGROUP);
     std::vector<DrawTool> draw_tools = {DrawTool::ATOM, DrawTool::BOND,
                                         DrawTool::CHARGE, DrawTool::RING,
                                         DrawTool::ENUMERATION};
     for (auto& draw_tool : draw_tools) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
 
         bool in_enum_mode = draw_tool == DrawTool::ENUMERATION;
         for (auto& enum_tool :
              {EnumerationTool::NEW_RGROUP, EnumerationTool::EXISTING_RGROUP,
               EnumerationTool::ATTACHMENT_POINT, EnumerationTool::ADD_MAPPING,
               EnumerationTool::REMOVE_MAPPING}) {
-            model->setValue(ModelKey::ENUMERATION_TOOL,
-                            QVariant(static_cast<int>(enum_tool)));
+            model->setValue(ModelKey::ENUMERATION_TOOL, enum_tool);
             for (unsigned int rgroup_number = 0; rgroup_number < 15;
                  ++rgroup_number) {
-                model->setValue(ModelKey::RGROUP_NUMBER,
-                                QVariant(rgroup_number));
+                model->setValue(ModelKey::RGROUP_NUMBER, rgroup_number);
                 bool exp_checked =
                     in_enum_mode &&
                     (enum_tool == EnumerationTool::NEW_RGROUP ||

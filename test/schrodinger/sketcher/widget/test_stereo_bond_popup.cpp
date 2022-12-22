@@ -99,11 +99,9 @@ BOOST_AUTO_TEST_CASE(checked_button)
                                         BondTool::ANY,
                                         BondTool::ATOM_CHAIN};
     for (auto draw_tool : draw_tools) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         for (auto bond_tool : bond_tools) {
-            model->setValue(ModelKey::BOND_TOOL,
-                            QVariant(static_cast<int>(bond_tool)));
+            model->setValue(ModelKey::BOND_TOOL, bond_tool);
             BOOST_TEST(view_synchronized_to_model(wdg));
         }
     }

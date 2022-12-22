@@ -108,10 +108,9 @@ BOOST_AUTO_TEST_CASE(synchronize)
     // Try changing the state of the model. The view should update the state of
     // its subwidgets automatically.
     for (auto& setter_packet : top_bar.getSetterPackets()) {
-        int new_value =
-            static_cast<int>(!model->getValue(setter_packet.key).toInt());
-        model->setValue(setter_packet.key, QVariant(new_value));
-        BOOST_TEST(model->getValue(setter_packet.key).toInt() == new_value);
+        auto new_value = !model->getValue(setter_packet.key).toBool();
+        model->setValue(setter_packet.key, new_value);
+        BOOST_TEST(model->getValue(setter_packet.key).toBool() == new_value);
         BOOST_TEST(view_synchronized_to_model(top_bar));
     }
 }

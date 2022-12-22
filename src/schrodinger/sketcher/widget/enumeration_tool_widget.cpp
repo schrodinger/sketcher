@@ -87,8 +87,8 @@ void EnumerationToolWidget::updateButtons()
         enum_tool == EnumerationTool::EXISTING_RGROUP) {
         int rgroup_number =
             enum_tool == EnumerationTool::NEW_RGROUP
-                ? 0
-                : model->getValue(ModelKey::RGROUP_NUMBER).toInt();
+                ? 0u
+                : model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
         ui->rgroup_btn->setEnumItem(rgroup_number);
     } else if (m_reaction_popup->getButtonIDs().count(
                    static_cast<int>(enum_tool)) == 1) {
@@ -102,35 +102,30 @@ void EnumerationToolWidget::onRGroupButtonClicked()
         static_cast<unsigned int>(ui->rgroup_btn->getEnumItem());
     auto enum_tool = rgroup_number == 0 ? EnumerationTool::NEW_RGROUP
                                         : EnumerationTool::EXISTING_RGROUP;
-    std::unordered_set<ModelKeyValue> kv_pairs = {
-        ModelKeyValue(ModelKey::DRAW_TOOL,
-                      QVariant(static_cast<int>(DrawTool::ENUMERATION))),
-        ModelKeyValue(ModelKey::ENUMERATION_TOOL,
-                      QVariant(static_cast<int>(enum_tool))),
-        ModelKeyValue(ModelKey::RGROUP_NUMBER, QVariant(rgroup_number)),
+    std::unordered_map<ModelKey, QVariant> kv_pairs = {
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ENUMERATION)},
+        {ModelKey::ENUMERATION_TOOL, QVariant::fromValue(enum_tool)},
+        {ModelKey::RGROUP_NUMBER, QVariant::fromValue(rgroup_number)},
     };
     getModel()->setValues(kv_pairs);
 }
 
 void EnumerationToolWidget::onAttachmentPointButtonClicked()
 {
-    std::unordered_set<ModelKeyValue> kv_pairs = {
-        ModelKeyValue(ModelKey::DRAW_TOOL,
-                      QVariant(static_cast<int>(DrawTool::ENUMERATION))),
-        ModelKeyValue(
-            ModelKey::ENUMERATION_TOOL,
-            QVariant(static_cast<int>(EnumerationTool::ATTACHMENT_POINT))),
+    std::unordered_map<ModelKey, QVariant> kv_pairs = {
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ENUMERATION)},
+        {ModelKey::ENUMERATION_TOOL,
+         QVariant::fromValue(EnumerationTool::ATTACHMENT_POINT)},
     };
     getModel()->setValues(kv_pairs);
 }
 
 void EnumerationToolWidget::onReactionButtonClicked()
 {
-    std::unordered_set<ModelKeyValue> kv_pairs = {
-        ModelKeyValue(ModelKey::DRAW_TOOL,
-                      QVariant(static_cast<int>(DrawTool::ENUMERATION))),
-        ModelKeyValue(ModelKey::ENUMERATION_TOOL,
-                      QVariant(ui->reaction_btn->getEnumItem())),
+    auto enum_tool = EnumerationTool(ui->reaction_btn->getEnumItem());
+    std::unordered_map<ModelKey, QVariant> kv_pairs = {
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ENUMERATION)},
+        {ModelKey::ENUMERATION_TOOL, QVariant::fromValue(enum_tool)},
     };
     getModel()->setValues(kv_pairs);
 }

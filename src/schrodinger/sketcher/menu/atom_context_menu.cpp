@@ -26,8 +26,7 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
     m_set_atom_model = new SketcherModel(this);
     // Assign non-atom draw tool so that none of the buttons in the set atoms
     // menu widget will be highlighted.
-    m_set_atom_model->setValue(ModelKey::DRAW_TOOL,
-                               QVariant(static_cast<int>(DrawTool::BOND)));
+    m_set_atom_model->setValue(ModelKey::DRAW_TOOL, DrawTool::BOND);
     m_replace_with_menu = new ReplaceAtomsWithMenu(model, this);
     connect(m_replace_with_menu,
             &ReplaceAtomsWithMenu::

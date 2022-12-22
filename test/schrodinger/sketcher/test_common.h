@@ -4,8 +4,14 @@
 
 #include <QtGlobal>
 
+#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomQuery)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomTool)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::DrawTool)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::Element)
 
 /* Use this fixture to construct global fixture which would provide
  * QApplication for a whole suite of a given test file.

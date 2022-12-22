@@ -55,7 +55,7 @@ class DummyPopup : public ModularPopup
         if (model == nullptr) {
             return -1;
         }
-        int rgroup_number = model->getValue(ModelKey::RGROUP_NUMBER).toInt();
+        int rgroup_number = model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
         return rgroup_number >= m_button_count ? -1 : rgroup_number;
     }
 };
@@ -76,7 +76,6 @@ BOOST_AUTO_TEST_CASE(update_text)
     button.setPopupWidget(&popup);
 
     for (int idx = 0; idx < popup.m_button_count; ++idx) {
-        // model->setValue(ModelKey::RGROUP_NUMBER, QVariant(idx));
         button.setEnumItem(idx);
         BOOST_TEST(button.getEnumItem() == idx);
         bool conversion_worked = false;

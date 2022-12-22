@@ -78,8 +78,7 @@ BOOST_AUTO_TEST_CASE(synchronize)
     scene.importText("C"); // require contents for the clicks to activate
 
     // setModel() should synchronize the view and model immediately
-    model->setValue(ModelKey::DRAW_TOOL,
-                    QVariant(static_cast<int>(DrawTool::SELECT)));
+    model->setValue(ModelKey::DRAW_TOOL, DrawTool::SELECT);
     BOOST_TEST(view_synchronized_to_model(wdg));
 
     // Try interacting with subwidgets of the view. Synchronization should occur
@@ -100,7 +99,7 @@ BOOST_AUTO_TEST_CASE(synchronize)
     // its subwidgets automatically.
     for (auto& setter_packet : wdg.getSetterPackets()) {
         int new_value = !model->getValue(setter_packet.key).toInt();
-        model->setValue(setter_packet.key, QVariant(new_value));
+        model->setValue(setter_packet.key, new_value);
         BOOST_TEST(model->getValue(setter_packet.key).toInt() == new_value);
         BOOST_TEST(view_synchronized_to_model(wdg));
     }

@@ -133,8 +133,7 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
                                         DrawTool::CHARGE, DrawTool::RING,
                                         DrawTool::ENUMERATION};
     for (auto& draw_tool : draw_tools) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         int bond_tool_int = -1;
         if (draw_tool == DrawTool::BOND) {
             bond_tool_int = model->getValue(ModelKey::BOND_TOOL).toInt();
@@ -231,8 +230,7 @@ BOOST_AUTO_TEST_CASE(other_buttons)
         DrawTool::ATOM, DrawTool::BOND,        DrawTool::CHARGE,
         DrawTool::RING, DrawTool::ENUMERATION, DrawTool::EXPLICIT_H};
     for (auto& draw_tool : draw_tools) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         int exp_id = -1;
         if (draw_tool == DrawTool::CHARGE) {
             exp_id = model->getValue(ModelKey::CHARGE_TOOL).toInt();
@@ -302,8 +300,7 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
         return !widget->isEnabled();
     };
     for (bool LID_mode_is_active : {false, true}) {
-        model->setValue(ModelKey::LID_MODE_ACTIVE,
-                        QVariant(LID_mode_is_active));
+        model->setValue(ModelKey::LID_MODE_ACTIVE, LID_mode_is_active);
         for (auto selection : selections) {
             scene.setSelection(selection);
 

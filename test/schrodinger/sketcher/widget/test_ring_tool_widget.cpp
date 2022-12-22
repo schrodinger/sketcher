@@ -42,8 +42,7 @@ BOOST_AUTO_TEST_CASE(ring_buttons)
     sketcherScene scene;
     scene.setModel(model);
     scene.importText("CC");
-    model->setValue(ModelKey::DRAW_TOOL,
-                    QVariant(static_cast<int>(DrawTool::RING)));
+    model->setValue(ModelKey::DRAW_TOOL, DrawTool::RING);
 
     for (auto button : group->buttons()) {
         auto button_id = group->id(button);
@@ -64,8 +63,7 @@ BOOST_AUTO_TEST_CASE(ring_buttons)
     // should be selected
     for (auto& draw_tool : {DrawTool::ATOM, DrawTool::BOND, DrawTool::CHARGE,
                             DrawTool::RING, DrawTool::ENUMERATION}) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         int exp_id = draw_tool != DrawTool::RING
                          ? -1
                          : model->getValue(ModelKey::RING_TOOL).toInt();

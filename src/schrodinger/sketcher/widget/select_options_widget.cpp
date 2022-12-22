@@ -84,30 +84,28 @@ void SelectOptionsWidget::updateCheckState()
 
 void SelectOptionsWidget::onSelectButtonClicked(int button_id)
 {
-    std::unordered_set<ModelKeyValue> kv_pairs = {
-        ModelKeyValue(ModelKey::DRAW_TOOL,
-                      QVariant(static_cast<int>(DrawTool::SELECT))),
-        ModelKeyValue(ModelKey::SELECTION_TOOL, QVariant(button_id)),
+    std::unordered_map<ModelKey, QVariant> kv_pairs = {
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
+        {ModelKey::SELECTION_TOOL,
+         QVariant::fromValue(SelectionTool(button_id))},
     };
     getModel()->setValues(kv_pairs);
 }
 
 void SelectOptionsWidget::onMoveButtonClicked()
 {
-    getModel()->setValue(ModelKey::DRAW_TOOL,
-                         QVariant(static_cast<int>(DrawTool::MOVE_ROTATE)));
+    getModel()->setValue(ModelKey::DRAW_TOOL, DrawTool::MOVE_ROTATE);
 }
 
 void SelectOptionsWidget::onEraseButtonClicked()
 {
     auto model = getModel();
-    auto value = QVariant(static_cast<int>(DrawTool::ERASE));
     if (model->hasActiveSelection()) {
         // do not change the model
-        model->pingValue(ModelKey::DRAW_TOOL, value);
+        model->pingValue(ModelKey::DRAW_TOOL, DrawTool::ERASE);
     } else {
         // update the model
-        model->setValue(ModelKey::DRAW_TOOL, value);
+        model->setValue(ModelKey::DRAW_TOOL, DrawTool::ERASE);
     }
 }
 

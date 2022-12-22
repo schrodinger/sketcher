@@ -81,14 +81,11 @@ BOOST_AUTO_TEST_CASE(checked_button)
         AtomQuery::A, AtomQuery::AH, AtomQuery::M, AtomQuery::MH,
         AtomQuery::Q, AtomQuery::QH, AtomQuery::X, AtomQuery::XH};
     for (auto draw_tool : draw_tools) {
-        model->setValue(ModelKey::DRAW_TOOL,
-                        QVariant(static_cast<int>(draw_tool)));
+        model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         for (auto atom_tool : atom_tools) {
-            model->setValue(ModelKey::ATOM_TOOL,
-                            QVariant(static_cast<int>(atom_tool)));
+            model->setValue(ModelKey::ATOM_TOOL, atom_tool);
             for (auto query : queries) {
-                model->setValue(ModelKey::ATOM_QUERY,
-                                QVariant(static_cast<int>(query)));
+                model->setValue(ModelKey::ATOM_QUERY, query);
                 BOOST_TEST(view_synchronized_to_model(wdg));
             }
         }

@@ -207,22 +207,21 @@ void DrawToolsWidget::onBondButtonClicked(QAbstractButton* button)
 {
     auto model = getModel();
     auto button_cast = dynamic_cast<ModularToolButton*>(button);
-    int enum_int;
+    BondTool bond_tool;
     if (button_cast == nullptr) {
-        enum_int = ui->bond_group->id(button);
+        bond_tool = BondTool(ui->bond_group->id(button));
     } else {
-        enum_int = button_cast->getEnumItem();
+        bond_tool = BondTool(button_cast->getEnumItem());
     }
 
     if (model->hasActiveSelection()) {
         // do not change the model
-        model->pingValue(ModelKey::BOND_TOOL, QVariant(enum_int));
+        model->pingValue(ModelKey::BOND_TOOL, bond_tool);
     } else {
         // update the model
-        std::unordered_set<ModelKeyValue> kv_pairs = {
-            ModelKeyValue(ModelKey::DRAW_TOOL,
-                          QVariant(static_cast<int>(DrawTool::BOND))),
-            ModelKeyValue(ModelKey::BOND_TOOL, QVariant(enum_int)),
+        std::unordered_map<ModelKey, QVariant> kv_pairs = {
+            {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::BOND)},
+            {ModelKey::BOND_TOOL, QVariant::fromValue(bond_tool)},
         };
         model->setValues(kv_pairs);
     }
@@ -231,15 +230,15 @@ void DrawToolsWidget::onBondButtonClicked(QAbstractButton* button)
 void DrawToolsWidget::onChargeButtonClicked(int button_id)
 {
     auto model = getModel();
+    auto charge_tool = ChargeTool(button_id);
     if (model->hasActiveSelection()) {
         // do not change the model
-        model->pingValue(ModelKey::CHARGE_TOOL, QVariant(button_id));
+        model->pingValue(ModelKey::CHARGE_TOOL, charge_tool);
     } else {
         // update the model
-        std::unordered_set<ModelKeyValue> kv_pairs = {
-            ModelKeyValue(ModelKey::DRAW_TOOL,
-                          QVariant(static_cast<int>(DrawTool::CHARGE))),
-            ModelKeyValue(ModelKey::CHARGE_TOOL, QVariant(button_id)),
+        std::unordered_map<ModelKey, QVariant> kv_pairs = {
+            {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::CHARGE)},
+            {ModelKey::CHARGE_TOOL, QVariant::fromValue(charge_tool)},
         };
         model->setValues(kv_pairs);
     }
@@ -248,13 +247,13 @@ void DrawToolsWidget::onChargeButtonClicked(int button_id)
 void DrawToolsWidget::onExplicitHButtonClicked()
 {
     auto model = getModel();
-    auto explicit_h_tool_int = static_cast<int>(DrawTool::EXPLICIT_H);
     if (model->hasActiveSelection()) {
         // do not change the model
-        model->pingValue(ModelKey::DRAW_TOOL, QVariant(explicit_h_tool_int));
+        model->pingValue(ModelKey::DRAW_TOOL,
+                         QVariant::fromValue(DrawTool::EXPLICIT_H));
     } else {
         // update the model
-        model->setValue(ModelKey::DRAW_TOOL, QVariant(explicit_h_tool_int));
+        model->setValue(ModelKey::DRAW_TOOL, DrawTool::EXPLICIT_H);
     }
 }
 
