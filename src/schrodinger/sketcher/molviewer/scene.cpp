@@ -10,7 +10,7 @@
 #include <QFont>
 #include <QGraphicsSceneMouseEvent>
 #include <QMimeData>
-#include <QMimeData>
+#include <QPainterPath>
 #include <QString>
 #include <QUrl>
 
@@ -54,6 +54,8 @@ namespace sketcher
 Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 {
     clear();
+    connect(this, &Scene::selectionChanged, this,
+            &Scene::updateSelectionHighlighting);
 }
 
 void Scene::setModel(SketcherModel* model)
@@ -161,6 +163,8 @@ void Scene::clear()
 {
     QGraphicsScene::clear();
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
+    m_selection_highlighting_item = new SelectionHighlightingItem();
+    addItem(m_selection_highlighting_item);
 }
 
 void Scene::onImportTextRequested(const std::string& text, Format format)
@@ -238,6 +242,19 @@ void Scene::updateBondItems()
             bond_item->updateCachedData();
         }
     }
+}
+
+void Scene::updateSelectionHighlighting()
+{
+    QPainterPath path;
+    for (auto item : selectedItems()) {
+        if (auto* molviewer_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
+            QPainterPath local_path =
+                molviewer_item->selectionHighlightingPath();
+            path |= molviewer_item->mapToScene(local_path);
+        }
+    }
+    m_selection_highlighting_item->setSelectionPath(path);
 }
 
 QWidget* Scene::window() const

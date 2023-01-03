@@ -4,6 +4,7 @@
 #pragma once
 
 #include <QGraphicsItem>
+#include <QPainterPath>
 
 #include "schrodinger/sketcher/definitions.h"
 
@@ -13,8 +14,9 @@ namespace sketcher
 {
 
 /**
- * An abstract parent class for all graphics items (i.e. AtomItem and
- * BondItem) in a molviewer scene.
+ * An abstract parent class for all graphics items that represent the molecule
+ * itself (i.e. AtomItem and BondItem, but not SelectionHighlightingItem or
+ * PredictiveHighlightingItem) in a molviewer scene.
  */
 class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
 {
@@ -30,6 +32,19 @@ class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
 
     // Overridden QGraphicsItem method
     QRectF boundingRect() const override;
+    QPainterPath shape() const override;
+
+    /**
+     * Return the path to draw for selection highlighting when this item is
+     * selected.
+     */
+    QPainterPath selectionHighlightingPath() const;
+
+    /**
+     * Return the path to draw for predictive highlighting when this item is
+     * hovered over.
+     */
+    QPainterPath predictiveHighlightingPath() const;
 
   protected:
     // Type integers for all QGraphicsItem subclasses.  This enum ensures that
@@ -42,7 +57,21 @@ class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
         BOND,
     };
 
+    /// The rect to be returned from boundingRect().  Subclasses are responsible
+    /// for keeping this value up to date.
     QRectF m_bounding_rect;
+
+    /// The path to be returned from shape().  Subclasses are responsible for
+    /// keeping this value up to date.
+    QPainterPath m_shape;
+
+    /// The path to be returned from selectionHighlightingPath().  Subclasses
+    /// are responsible for keeping this value up to date.
+    QPainterPath m_selection_highlighting_path;
+
+    /// The path to be returned from predictiveHighlightingPath().  Subclasses
+    /// are responsible for keeping this value up to date.
+    QPainterPath m_predictive_highlighting_path;
 };
 
 } // namespace sketcher

@@ -4,6 +4,7 @@
 
 #include <Qt>
 #include <QPainter>
+#include <QPointF>
 #include <QString>
 
 #include "schrodinger/sketcher/sketcher_model.h"
@@ -20,6 +21,13 @@ AtomItem::AtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
     m_fonts(fonts),
     m_settings(settings)
 {
+    setZValue(static_cast<qreal>(ZOrder::ATOM));
+    m_selection_highlighting_path.addEllipse(
+        QPointF(0, 0), ATOM_SELECTION_HIGHLIGHTING_RADIUS,
+        ATOM_SELECTION_HIGHLIGHTING_RADIUS);
+    m_predictive_highlighting_path.addEllipse(
+        QPointF(0, 0), ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS,
+        ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS);
     updateCachedData();
 }
 
@@ -46,12 +54,20 @@ void AtomItem::updateCachedData()
         m_main_label_rect = QRectF(-label_width * 0.5, -label_height * 0.5,
                                    label_width, label_height);
         m_subrects.push_back(m_main_label_rect);
-        m_bounding_rect = QRectF(m_main_label_rect);
     } else {
         m_main_label_text = QString();
         m_main_label_rect = QRectF();
-        m_bounding_rect = QRectF();
     }
+
+    // merge all of the subrects with the predictive highlighting path to create
+    // the shape and bounding rect
+    m_shape = QPainterPath(m_predictive_highlighting_path);
+    for (QRectF rect : m_subrects) {
+        QPainterPath rect_path;
+        rect_path.addRect(rect);
+        m_shape |= rect_path;
+    }
+    m_bounding_rect = m_shape.boundingRect();
 }
 
 bool AtomItem::determineLabelIsVisible() const

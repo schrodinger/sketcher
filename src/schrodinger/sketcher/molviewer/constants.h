@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include <QGraphicsItem>
+#include <QColor>
 #include <QString>
 
 namespace schrodinger
@@ -30,8 +30,18 @@ const qreal SUBSCRIPT_FONT_RATIO = 0.8;
 const qreal CHARGE_FONT_RATIO = 0.8;
 const qreal MAPPING_FONT_RATIO = 0.6;
 
-// The half-width of the gray rectangle drawn for predictive highlighting
-const qreal PREDICTIVE_HIGHLIGHTING_HALF_WIDTH = 10;
+// The radius of the circle drawn around atoms for predictive highlighting
+const qreal ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS = 10;
+
+// The half-width of the rectangle drawn around bonds for predictive
+// highlighting
+const qreal BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH = 10;
+
+// The radius of the circle drawn around atoms for selection highlighting
+const qreal ATOM_SELECTION_HIGHLIGHTING_RADIUS = 11;
+
+// The half-width of the rectangle drawn around bonds for selection highlighting
+const qreal BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH = 8;
 
 // The dimensions of the arrow for dative bonds (a.k.a. coordinate bonds)
 const qreal DATIVE_ARROW_HALF_WIDTH = 4.0;
@@ -51,6 +61,22 @@ const qreal DOUBLE_BOND_INNER_LINE_SHORTENING = 6.0;
 // always be preferred over rings with more than
 // DOUBLE_BOND_BEST_RING_SIZE_CUTOFF atoms.
 const unsigned int DOUBLE_BOND_BEST_RING_SIZE_CUTOFF = 8;
+
+// The background color for drawing selection highlighting
+const QColor SELECTION_BACKGROUND_COLOR = QColor("#c7d5b8");
+
+// The outline color for drawing selection highlighting
+const QColor SELECTION_OUTLINE_COLOR = QColor("#779c59");
+
+// The Z ordering for graphics items.  Items listed later in this enum (i.e. a
+// higher value) will be drawn on top of items listed earlier in this enum (i.e.
+// a lower value)
+enum class ZOrder {
+    SELECTION_HIGHLIGHTING = 1,
+    PREDICTIVE_HIGHLIGHTING,
+    BOND,
+    ATOM,
+};
 
 } // namespace sketcher
 } // namespace schrodinger

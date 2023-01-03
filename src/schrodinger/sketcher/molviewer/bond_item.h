@@ -96,7 +96,6 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     // Overridden QGraphicsItem methods
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override;
-    QPainterPath shape() const override;
 
   protected:
     // Creating a shared_ptr to an RDKit Bond (or Atom) implicitly creates a
@@ -116,7 +115,6 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     QPen m_solid_pen;
     QPen m_dashed_pen;
     QBrush m_solid_brush = QBrush(Qt::black);
-    QPainterPath m_shape;
 
     BondItemSettings& m_settings;
 

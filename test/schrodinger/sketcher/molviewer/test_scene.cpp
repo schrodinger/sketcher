@@ -83,24 +83,19 @@ BOOST_AUTO_TEST_CASE(test_font_size)
     BOOST_TEST(test_scene.fontSize() == 45);
 }
 
-bool count_visible_atoms(const Scene& test_scene, unsigned& num_visible_atoms,
+void count_visible_atoms(const Scene& test_scene, unsigned& num_visible_atoms,
                          unsigned& num_hidden_atoms)
 {
     num_visible_atoms = num_hidden_atoms = 0;
     for (auto item : test_scene.items()) {
-        if (item->type() == AtomItem::Type) {
-            QRectF brect = item->boundingRect();
-            if (brect.width() == 0 && brect.height() == 0) {
-                ++num_hidden_atoms;
-            } else if (brect.width() > 0 && brect.height() > 0) {
+        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            if (atom_item->labelIsVisible()) {
                 ++num_visible_atoms;
             } else {
-                // The bounding rect should never be a line
-                return false;
+                ++num_hidden_atoms;
             }
         }
     }
-    return true;
 }
 
 BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
@@ -112,22 +107,19 @@ BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
 
     // all carbons should be hidden
     test_scene.setCarbonsLabeled(CarbonLabels::NONE);
-    BOOST_TEST(
-        count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms));
+    count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 0);
     BOOST_TEST(num_hidden_atoms == 5);
 
     // only terminal carbons should be visible
     test_scene.setCarbonsLabeled(CarbonLabels::TERMINAL);
-    BOOST_TEST(
-        count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms));
+    count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 2);
     BOOST_TEST(num_hidden_atoms == 3);
 
     // all carbons should be visible
     test_scene.setCarbonsLabeled(CarbonLabels::ALL);
-    BOOST_TEST(
-        count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms));
+    count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 5);
     BOOST_TEST(num_hidden_atoms == 0);
 }

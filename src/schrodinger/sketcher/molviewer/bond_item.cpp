@@ -62,7 +62,7 @@ BondItem::BondItem(RDKit::Bond* bond, const AtomItem& start_item,
     m_dashed_pen.setJoinStyle(Qt::RoundJoin);
     m_dashed_pen.setCapStyle(Qt::RoundCap);
     m_dashed_pen.setDashPattern({3.0, 3.0});
-
+    setZValue(static_cast<qreal>(ZOrder::BOND));
     updateCachedData();
 }
 
@@ -88,7 +88,11 @@ void BondItem::updateCachedData()
     QPointF bond_end = m_end_item.pos() - m_start_item.pos();
     QLineF bond_line = QLineF(QPointF(0, 0), bond_end);
     m_to_paint = calculateLinesToPaint(bond_line);
-    m_shape = pathAroundLine(bond_line, PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+    m_selection_highlighting_path =
+        pathAroundLine(bond_line, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
+    m_predictive_highlighting_path =
+        pathAroundLine(bond_line, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+    m_shape = QPainterPath(m_predictive_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
 
     // TODO: calculate bond intersections, store clipping path
@@ -585,11 +589,6 @@ QPainterPath BondItem::pathAroundLine(const QLineF& line,
     path.lineTo(p1 - offset);
     path.closeSubpath();
     return path;
-}
-
-QPainterPath BondItem::shape() const
-{
-    return QPainterPath(m_shape);
 }
 
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
