@@ -77,6 +77,28 @@ RDKIT_EXTENSIONS_API std::string
 reaction_to_text(const RDKit::ChemicalReaction& reaction, Format format);
 
 /**
+ * Level of RDKit sanitization to apply
+ *
+ * FULL indicates all possible sanitization routines
+ *
+ * PARTIAL indicates only the following MolOps:: operations are performed:
+ * - clear out any cached properties on atoms/bonds and update computed ones
+ * - symmetrize SSSR
+ * - set conjugation
+ * - set hybridization
+ * - adjust Hydrogen counts
+ */
+enum class Sanitization { FULL, PARTIAL };
+
+/**
+ * @param mol rdkit mol
+ * @param sanitization what level of sanitization to apply
+ */
+RDKIT_EXTENSIONS_API void
+apply_sanitization(RDKit::RWMol& mol,
+                   Sanitization sanitization = Sanitization::FULL);
+
+/**
  * @param atom rdkit atom
  * @return whether the atom is an attachment point
  */

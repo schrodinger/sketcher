@@ -388,12 +388,16 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
         throw_parse_error(rd_error_log, text);
     }
 
+    // TODO: Add sanitization option as an argument to this function,
+    // ideally FULL as a default for most callers
+    apply_sanitization(*mol, Sanitization::PARTIAL);
+
     bool has_attchpt = molattachpt_property_to_attachment_point_dummies(*mol);
     if (!has_attchpt) {
         preserve_wiggly_bonds(*mol);
         fix_r0_rgroup(*mol);
-        mol->updatePropertyCache(false);
     }
+
     return boost::shared_ptr<RDKit::RWMol>(mol);
 }
 
@@ -520,6 +524,21 @@ std::string reaction_to_text(const RDKit::ChemicalReaction& reaction,
             throw std::invalid_argument("Unsupported reaction export format");
     }
     throw std::invalid_argument("Invalid format specified");
+}
+
+void apply_sanitization(RDKit::RWMol& mol, Sanitization sanitization)
+{
+    RDLog::LogStateSetter silence_rdkit_logging;
+
+    unsigned failed_op{0};
+    int ops = RDKit::MolOps::SANITIZE_ALL;
+    if (sanitization == Sanitization::PARTIAL) {
+        ops = RDKit::MolOps::SANITIZE_SYMMRINGS |
+              RDKit::MolOps::SANITIZE_SETCONJUGATION |
+              RDKit::MolOps::SANITIZE_SETHYBRIDIZATION |
+              RDKit::MolOps::SANITIZE_ADJUSTHS;
+    }
+    RDKit::MolOps::sanitizeMol(mol, failed_op, ops);
 }
 
 bool is_attachment_point_dummy(const RDKit::Atom& atom)
