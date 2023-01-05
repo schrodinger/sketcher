@@ -20,6 +20,8 @@ Element ModularElementButton::getElement() const
 void ModularElementButton::setElement(Element element)
 {
     m_element = element;
+    setToolTip(QString::fromStdString(
+        atomic_number_to_name(static_cast<int>(m_element))));
     updateButtonText();
 }
 

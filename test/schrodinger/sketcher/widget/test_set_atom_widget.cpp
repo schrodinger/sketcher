@@ -8,6 +8,7 @@
 #include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include <QSignalSpy>
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::ModelKey);
@@ -337,14 +338,19 @@ BOOST_AUTO_TEST_CASE(last_picked_element_button)
     }
 
     int exp_atomic_number = static_cast<int>(button->getElement());
-    for (int atomic_number = 1; atomic_number < 51; ++atomic_number) {
+    for (int atomic_number = 1; atomic_number < 119; ++atomic_number) {
         model->pingValue(ModelKey::ELEMENT, QVariant(atomic_number));
+        // The element "last picked" should only correspond to atoms
+        // not in the set atom widget panel.
+        // No H(1), C(6), N(7), O(8),  F(9), P(15), S(16), Cl(17)
         if (other_button_atomic_numbers.count(atomic_number) == 0) {
             // The element on the "last picked" button should only change if
             // the model's pinged element is not represented by another button
             exp_atomic_number = atomic_number;
         }
         BOOST_TEST(static_cast<int>(button->getElement()) == exp_atomic_number);
+        BOOST_TEST(atomic_number_to_name(exp_atomic_number) ==
+                   button->toolTip().toStdString());
     }
 }
 
