@@ -51,6 +51,9 @@
      </item>
      <item>
       <widget class="QRadioButton" name="set_as_atom_rb">
+       <property name="toolTip">
+        <string>Set General properties only</string>
+       </property>
        <property name="text">
         <string>Atom</string>
        </property>
@@ -74,6 +77,9 @@
      </item>
      <item>
       <widget class="QRadioButton" name="set_as_query_rb">
+       <property name="toolTip">
+        <string>Set General and/or Advanced properties (used for searching)</string>
+       </property>
        <property name="text">
         <string>Query</string>
        </property>
@@ -117,6 +123,9 @@
              <width>130</width>
              <height>0</height>
             </size>
+           </property>
+           <property name="toolTip">
+            <string>Chemical symbol</string>
            </property>
            <property name="text">
             <string>Element:</string>
@@ -172,6 +181,9 @@
        </property>
        <item row="0" column="0">
         <widget class="QTabWidget" name="edit_query_tab_wdg">
+         <property name="toolTip">
+          <string/>
+         </property>
          <property name="currentIndex">
           <number>0</number>
          </property>
@@ -211,6 +223,9 @@
                  <height>16777215</height>
                 </size>
                </property>
+               <property name="toolTip">
+                <string>Category of query - determines behavior and available options</string>
+               </property>
                <property name="text">
                 <string>Type:</string>
                </property>
@@ -226,6 +241,9 @@
                </item>
                <item>
                 <widget class="schrodinger::sketcher::ToolButtonWithPopup" name="periodic_table_btn">
+                 <property name="toolTip">
+                  <string>Periodic table</string>
+                 </property>
                  <property name="text">
                   <string/>
                  </property>
@@ -273,6 +291,9 @@
                </item>
                <item>
                 <widget class="QSpinBox" name="rgroup_sb">
+                 <property name="toolTip">
+                  <string>R-Group index</string>
+                 </property>
                  <property name="alignment">
                   <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                  </property>
@@ -344,6 +365,9 @@
            </item>
            <item row="2" column="0">
             <widget class="QLabel" name="aromaticity_lbl">
+             <property name="toolTip">
+              <string>Whether this atom has (a) or must not (A) be part of an aromatic ring</string>
+             </property>
              <property name="text">
               <string>Aromaticity (a/A):</string>
              </property>
@@ -351,6 +375,9 @@
            </item>
            <item row="1" column="0">
             <widget class="QLabel" name="num_connections_lbl">
+             <property name="toolTip">
+              <string>Total number of substituents, including hydrogens</string>
+             </property>
              <property name="text">
               <string># Connections (X):</string>
              </property>
@@ -358,6 +385,9 @@
            </item>
            <item row="6" column="0">
             <widget class="QLabel" name="smallest_ring_size_lbl">
+             <property name="toolTip">
+              <string>Size of the smallest SSSR ring this atom is a member of</string>
+             </property>
              <property name="text">
               <string>Smallest ring size (r):</string>
              </property>
@@ -371,6 +401,9 @@
                <height>0</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Total number of hydrogen subsitituents</string>
+             </property>
              <property name="text">
               <string>Total H (H):</string>
              </property>
@@ -378,6 +411,9 @@
            </item>
            <item row="3" column="0">
             <widget class="QLabel" name="ring_count_lbl">
+             <property name="toolTip">
+              <string>Number of SSSR rings this atom is a member</string>
+             </property>
              <property name="text">
               <string>Ring Count (R):</string>
              </property>
@@ -398,6 +434,9 @@
            </item>
            <item row="5" column="0">
             <widget class="QLabel" name="ring_bond_count_lbl">
+             <property name="toolTip">
+              <string>Number of ring bonds to this atom</string>
+             </property>
              <property name="text">
               <string>Ring bond count (rb):</string>
              </property>
@@ -405,6 +444,9 @@
            </item>
            <item row="7" column="0">
             <widget class="QLabel" name="smarts_query_lbl">
+             <property name="toolTip">
+              <string>Custom SMARTS query applied to this atom</string>
+             </property>
              <property name="text">
               <string>SMARTS query:</string>
              </property>
@@ -439,6 +481,9 @@
            </item>
            <item row="3" column="2">
             <widget class="QSpinBox" name="ring_count_sb">
+             <property name="toolTip">
+              <string>R-Group index</string>
+             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
