@@ -90,3 +90,14 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
     BOOST_TEST(exts.count() == 1);
     BOOST_TEST(exts.contains(".rsmi"));
 }
+
+BOOST_AUTO_TEST_CASE(export_button)
+{
+    SketcherModel model;
+    TestFileExportDialog dlg(&model);
+#ifdef __EMSCRIPTEN__
+    BOOST_TEST(dlg.m_ui->export_btn->text().toStdString() == "Download");
+#else
+    BOOST_TEST(dlg.m_ui->export_btn->text().toStdString() == "Save...");
+#endif
+}

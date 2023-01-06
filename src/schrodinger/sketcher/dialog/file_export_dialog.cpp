@@ -32,7 +32,13 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
 {
     m_ui.reset(new Ui::FileExportDialog());
     m_ui->setupUi(this);
-
+#ifdef __EMSCRIPTEN__
+    // In the Browser the exporting of data is a Download action.
+    // In Maestro the exporting of data is a File Save action.
+    // The button should say "Download" with no "...".
+    // In Maestro, it should continue to say "Save...".
+    m_ui->filename_le->setText("Download");
+#endif
     connect(m_ui->export_btn, &QPushButton::clicked, this,
             &FileExportDialog::exportFile);
 
