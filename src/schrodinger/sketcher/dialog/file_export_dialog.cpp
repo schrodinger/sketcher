@@ -37,7 +37,7 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     // In Maestro the exporting of data is a File Save action.
     // The button should say "Download" with no "...".
     // In Maestro, it should continue to say "Save...".
-    m_ui->filename_le->setText("Download");
+    m_ui->export_btn->setText("Download");
 #endif
     connect(m_ui->export_btn, &QPushButton::clicked, this,
             &FileExportDialog::exportFile);
