@@ -38,9 +38,10 @@ enum class ImageFormat { PNG, SVG };
 struct RenderOptions {
     QSize width_height = QSize(400, 400);
     QColor background_color = Qt::transparent;
-    QHash<int, QColor> highlight_atom_index_to_color;
-    QHash<int, QColor> highlight_bond_index_to_color;
-    QHash<int, std::string> atom_index_to_annotation;
+    QHash<int, std::string> rdatom_index_to_annotation;
+    QHash<int, QColor> rdatom_index_to_highlight_color;
+    QHash<int, QColor> rdbond_index_to_highlight_color;
+
     // TODO: incorporate both RendererSettings and additional LiveDesign options
 };
 

@@ -33,14 +33,16 @@ void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
     for (auto atom : atoms) {
         atom->removeHighlight();
     }
-    for (auto [index, color] : asKeyValue(opts.highlight_atom_index_to_color)) {
+    for (auto [index, color] :
+         asKeyValue(opts.rdatom_index_to_highlight_color)) {
         atoms.at(index)->setHighlightColor(color);
     }
     auto bonds = scene.quickGetBonds();
     for (auto bond : bonds) {
         bond->removeHighlight();
     }
-    for (auto [index, color] : asKeyValue(opts.highlight_bond_index_to_color)) {
+    for (auto [index, color] :
+         asKeyValue(opts.rdbond_index_to_highlight_color)) {
         bonds.at(index)->setHighlightColor(color);
     }
 }
@@ -51,7 +53,7 @@ void setUserAnnotations(const sketcherScene& scene, const RenderOptions& opts)
     for (auto atom : atoms) {
         atom->removeUserAnnotation();
     }
-    for (auto [index, text] : asKeyValue(opts.atom_index_to_annotation)) {
+    for (auto [index, text] : asKeyValue(opts.rdatom_index_to_annotation)) {
         atoms.at(index)->setUserAnnotation(text);
     }
 }
