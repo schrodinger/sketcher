@@ -68,6 +68,10 @@ const QColor SELECTION_BACKGROUND_COLOR = QColor("#c7d5b8");
 // The outline color for drawing selection highlighting
 const QColor SELECTION_OUTLINE_COLOR = QColor("#779c59");
 
+// The color for drawing predictive highlighting.  The same color is used for
+// both the outline and the background.
+const QColor PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#e2eadb");
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)

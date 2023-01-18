@@ -11,13 +11,13 @@ namespace sketcher
 {
 
 /**
- * A Qt graphics item for drawing the selection highlighting in a molviewer
- * Scene.
+ * A Qt graphics item for drawing the predictive highlighting (i.e. highlighting
+ * atoms and bonds as they're moused over) in a molviewer Scene.
  */
-class SelectionHighlightingItem : public AbstractHighlightingItem
+class PredictiveHighlightingItem : public AbstractHighlightingItem
 {
   public:
-    SelectionHighlightingItem();
+    PredictiveHighlightingItem();
 };
 
 } // namespace sketcher

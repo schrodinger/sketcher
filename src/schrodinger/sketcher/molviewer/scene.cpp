@@ -12,6 +12,7 @@
 #include <QMimeData>
 #include <QPainterPath>
 #include <QString>
+#include <QTransform>
 #include <QUrl>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -165,6 +166,8 @@ void Scene::clear()
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
     m_selection_highlighting_item = new SelectionHighlightingItem();
     addItem(m_selection_highlighting_item);
+    m_predictive_highlighting_item = new PredictiveHighlightingItem();
+    addItem(m_predictive_highlighting_item);
 }
 
 void Scene::onImportTextRequested(const std::string& text, Format format)
@@ -254,7 +257,30 @@ void Scene::updateSelectionHighlighting()
             path |= molviewer_item->mapToScene(local_path);
         }
     }
-    m_selection_highlighting_item->setSelectionPath(path);
+    m_selection_highlighting_item->setHighlightingPath(path);
+}
+
+void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
+{
+    QGraphicsScene::mouseMoveEvent(event);
+    updatePredictiveHighlighting(event->scenePos());
+}
+
+void Scene::updatePredictiveHighlighting(const QPointF& scene_pos)
+{
+    // TODO: highlight the context menu items if a context menu is visible
+    // TODO: if the rotation tool is selected, highlight the entire selection
+    //       when inside the rotation box
+    QGraphicsItem* item = itemAt(scene_pos, QTransform());
+    if (auto* highlightable_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
+        QPainterPath path = highlightable_item->predictiveHighlightingPath();
+        path = highlightable_item->mapToScene(path);
+        // note that setHighlightingPath is a no-op if path == the current
+        // predictive highlighting path
+        m_predictive_highlighting_item->setHighlightingPath(path);
+    } else {
+        m_predictive_highlighting_item->clearHighlightingPath();
+    }
 }
 
 QWidget* Scene::window() const

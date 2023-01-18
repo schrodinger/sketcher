@@ -12,6 +12,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
+#include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
 
 class QObject;
@@ -156,12 +157,23 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void updateSelectionHighlighting();
 
+    /**
+     * Overrides the QGraphicsScene method to handle predictive highlighting
+     */
+    void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+
+    /**
+     * Update the path drawn to show predictive highlighting.
+     */
+    void updatePredictiveHighlighting(const QPointF& scene_pos);
+
     std::shared_ptr<RDKit::ROMol> m_mol;
     Fonts m_fonts;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
+    PredictiveHighlightingItem* m_predictive_highlighting_item = nullptr;
 
     /**
      * Objects associated with the context menu instance that is currently open.
