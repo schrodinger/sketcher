@@ -31,6 +31,9 @@
    </property>
    <item row="1" column="0">
     <widget class="QLabel" name="charge_lbl">
+     <property name="toolTip">
+      <string>Formal charge</string>
+     </property>
      <property name="text">
       <string>Charge:</string>
      </property>
@@ -38,8 +41,11 @@
    </item>
    <item row="3" column="0">
     <widget class="QLabel" name="enhanced_stereo_lbl">
+     <property name="toolTip">
+      <string>Chiral center label for enhanced stereochemistry - ABS (absolute) is the default; AND / OR require a group identifier</string>
+     </property>
      <property name="text">
-      <string>Enhanced stereo:</string>
+      <string>Enhanced Stereo:</string>
      </property>
     </widget>
    </item>
@@ -51,6 +57,9 @@
        <height>0</height>
       </size>
      </property>
+     <property name="toolTip">
+      <string>Isotope number</string>
+     </property>
      <property name="text">
       <string>Isotope:</string>
      </property>
@@ -58,8 +67,11 @@
    </item>
    <item row="2" column="0">
     <widget class="QLabel" name="unpaired_electrons_lbl">
+     <property name="toolTip">
+      <string>Number of unpaired electrons - defines the radical character of the system</string>
+     </property>
      <property name="text">
-      <string>Unpaired electrons:</string>
+      <string>Unpaired Electrons:</string>
      </property>
     </widget>
    </item>
@@ -74,6 +86,9 @@
     <widget class="QSpinBox" name="enhanced_stereo_sb">
      <property name="enabled">
       <bool>false</bool>
+     </property>
+     <property name="toolTip">
+      <string>Group identifier - must be an integer</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
