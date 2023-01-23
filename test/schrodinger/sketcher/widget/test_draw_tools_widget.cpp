@@ -299,32 +299,25 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     std::function<bool(QWidget*)> is_not_enabled = [](QWidget* widget) {
         return !widget->isEnabled();
     };
-    for (bool LID_mode_is_active : {false, true}) {
-        model->setValue(ModelKey::LID_MODE_ACTIVE, LID_mode_is_active);
-        for (auto selection : selections) {
-            scene.setSelection(selection);
 
-            // Test atom-dependent widgets
-            bool atom_selected =
-                (selection == atom_sel || selection == nonatom_sel ||
-                 selection == atom_obj_sel || selection == all_sel);
-            bool exp_enabled =
-                (!model->hasActiveSelection() || atom_selected) &&
-                !LID_mode_is_active;
-            std::function<bool(QWidget*)> fn =
-                exp_enabled ? is_enabled : is_not_enabled;
-            BOOST_TEST(
-                std::all_of(other_widgets.cbegin(), other_widgets.cend(), fn));
+    for (auto selection : selections) {
+        scene.setSelection(selection);
 
-            // Test bond-dependent widgets
-            bool bond_selected =
-                (selection == bond_sel || selection == all_sel);
-            exp_enabled = (!model->hasActiveSelection() || bond_selected) &&
-                          !LID_mode_is_active;
-            fn = exp_enabled ? is_enabled : is_not_enabled;
-            BOOST_TEST(
-                std::all_of(bond_widgets.cbegin(), bond_widgets.cend(), fn));
-        }
+        // Test atom-dependent widgets
+        bool atom_selected =
+            (selection == atom_sel || selection == nonatom_sel ||
+             selection == atom_obj_sel || selection == all_sel);
+        bool exp_enabled = (!model->hasActiveSelection() || atom_selected);
+        std::function<bool(QWidget*)> fn =
+            exp_enabled ? is_enabled : is_not_enabled;
+        BOOST_TEST(
+            std::all_of(other_widgets.cbegin(), other_widgets.cend(), fn));
+
+        // Test bond-dependent widgets
+        bool bond_selected = (selection == bond_sel || selection == all_sel);
+        exp_enabled = (!model->hasActiveSelection() || bond_selected);
+        fn = exp_enabled ? is_enabled : is_not_enabled;
+        BOOST_TEST(std::all_of(bond_widgets.cbegin(), bond_widgets.cend(), fn));
     }
 }
 

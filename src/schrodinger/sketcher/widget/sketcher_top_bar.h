@@ -131,11 +131,6 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     void onAddCustomFragmentClicked();
 
     /**
-     * @param enabled whether to alter the menu to the LID configuration
-     */
-    void setLIDModeEnabled(bool enabled);
-
-    /**
      * Respond to a click on the "Help..." action, opening the documentation
      */
     void onHelpClicked();

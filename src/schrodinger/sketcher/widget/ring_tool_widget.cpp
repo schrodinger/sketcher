@@ -40,8 +40,7 @@ RingToolWidget::~RingToolWidget() = default;
 void RingToolWidget::updateWidgetsEnabled()
 {
     auto model = getModel();
-    bool lid_active = model->getValue(ModelKey::LID_MODE_ACTIVE).toBool();
-    setEnabled(!model->hasActiveSelection() && !lid_active);
+    setEnabled(!model->hasActiveSelection());
 }
 
 void RingToolWidget::updateCheckState()

@@ -102,12 +102,9 @@ void DrawToolsWidget::updateWidgetsEnabled()
     auto model = getModel();
     auto has_selection = model->hasActiveSelection();
 
-    // Draw tools are never enabled in LID
-    bool lid_active = model->getValue(ModelKey::LID_MODE_ACTIVE).toBool();
-
     // Atom tools
     auto sel_has_atom = model->hasAtomSelection();
-    bool enable_atom = !lid_active && (!has_selection || sel_has_atom);
+    bool enable_atom = (!has_selection || sel_has_atom);
     std::vector<QWidget*> widgets = {
         ui->increase_charge_btn, ui->decrease_charge_btn, ui->explicit_h_btn};
     for (auto wdg : widgets) {
@@ -116,7 +113,7 @@ void DrawToolsWidget::updateWidgetsEnabled()
 
     // Bond tools
     bool sel_has_bond = model->hasBondSelection();
-    bool enable_bond = !lid_active && (!has_selection || sel_has_bond);
+    bool enable_bond = (!has_selection || sel_has_bond);
     widgets = {ui->single_bond_btn, ui->bond_order_btn, ui->bond_query_btn,
                ui->stereo_bond1_btn, ui->stereo_bond2_btn};
     for (auto wdg : widgets) {
@@ -124,7 +121,7 @@ void DrawToolsWidget::updateWidgetsEnabled()
     }
 
     // Atom chain never available as edit action
-    ui->atom_chain_btn->setEnabled(!lid_active && !has_selection);
+    ui->atom_chain_btn->setEnabled(!has_selection);
 
     // Update title label and background color based on selection
     std::string title = has_selection ? "EDIT ACTIONS" : "DRAW";

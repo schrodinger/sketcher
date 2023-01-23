@@ -103,10 +103,7 @@ void SetAtomWidget::updateWidgetsEnabled()
 {
     AbstractDrawToolWidget::updateWidgetsEnabled();
     auto model = getModel();
-    bool LID_mode_is_active =
-        model->getValue(ModelKey::LID_MODE_ACTIVE).toBool();
-    bool enable = (!model->hasActiveSelection() || model->hasAtomSelection()) &&
-                  !LID_mode_is_active; // Always disabled in LID
+    bool enable = (!model->hasActiveSelection() || model->hasAtomSelection());
     setEnabled(enable);
 }
 

@@ -177,13 +177,7 @@ void SketcherTopBar::updateWidgetsEnabled()
         act->setEnabled(scene_has_contents);
     }
 
-    // Disable certain elements if LID mode active
-    bool LID_active = model->getValue(ModelKey::LID_MODE_ACTIVE).toBool();
-    ui->import_btn->setDisabled(LID_active);
-    m_more_actions_menu->m_paste_act->setDisabled(LID_active);
-    m_export_menu->m_export_to_file_act->setDisabled(LID_active);
-    // Make sure non-LID doesn't re-enable clear
-    ui->clear_btn->setDisabled(!scene_has_contents || LID_active);
+    ui->clear_btn->setDisabled(!scene_has_contents);
 }
 
 void SketcherTopBar::generatePackets()
@@ -203,11 +197,7 @@ void SketcherTopBar::generatePackets()
     m_signal_packets.emplace_back(
         ModelKey::USE_IMPLICIT_HYDROGENS,
         m_configure_view_menu->m_implicit_hydrogens_act);
-    {
-        auto setter = std::bind(&SketcherTopBar::setLIDModeEnabled, this,
-                                std::placeholders::_1);
-        m_setter_packets.emplace_back(ModelKey::LID_MODE_ACTIVE, setter);
-    }
+
     for (auto& signal_packet : m_signal_packets) {
         auto setter = std::bind(&QAction::setChecked, signal_packet.action,
                                 std::placeholders::_1);
@@ -255,11 +245,6 @@ void SketcherTopBar::onPasteInTextClicked()
 
 void SketcherTopBar::onAddCustomFragmentClicked()
 {
-}
-
-void SketcherTopBar::setLIDModeEnabled(bool enabled)
-{
-    m_configure_view_menu->m_show_lid_legend_act->setVisible(enabled);
 }
 
 bool SketcherTopBar::handleShortcutAction(const QKeySequence& key_seq)

@@ -201,17 +201,13 @@ BOOST_AUTO_TEST_CASE(enabled)
 
     std::vector<std::unordered_set<QGraphicsItem*>> selections = {
         empty_sel, atom_sel, bond_sel, both_sel};
-    for (bool LID_mode_is_active : {false, true}) {
-        model->setValue(ModelKey::LID_MODE_ACTIVE, LID_mode_is_active);
-        for (auto selection : selections) {
-            scene.setSelection(selection);
-            bool no_selection = selection == empty_sel;
-            bool atom_selection =
-                (selection == atom_sel || selection == both_sel);
-            bool exp_enabled =
-                (no_selection || atom_selection) && !LID_mode_is_active;
-            BOOST_TEST(wdg.isEnabled() == exp_enabled);
-        }
+
+    for (auto selection : selections) {
+        scene.setSelection(selection);
+        bool no_selection = selection == empty_sel;
+        bool atom_selection = (selection == atom_sel || selection == both_sel);
+        bool exp_enabled = (no_selection || atom_selection);
+        BOOST_TEST(wdg.isEnabled() == exp_enabled);
     }
 }
 
