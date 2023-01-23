@@ -89,5 +89,6 @@
 
     <file>icons/add_particle.png</file>
     <file>icons/reset.png</file>
+    <file>icons/2D-Sketcher-watermark.svg</file>
     </qresource>
 </RCC>
