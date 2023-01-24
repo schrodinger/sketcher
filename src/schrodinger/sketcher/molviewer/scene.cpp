@@ -61,12 +61,9 @@ Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
     m_predictive_highlighting_item = new PredictiveHighlightingItem();
-    m_rect_select_item = new QGraphicsRectItem();
-    m_rect_select_item->setZValue(
-        static_cast<qreal>(ZOrder::DRAG_SELECT_OUTLINE));
-    m_ellipse_select_item = new QGraphicsEllipseItem();
-    m_ellipse_select_item->setZValue(
-        static_cast<qreal>(ZOrder::DRAG_SELECT_OUTLINE));
+    m_rect_select_item = new RectSelectionItem();
+    m_ellipse_select_item = new EllipseSelectionItem();
+    m_lasso_select_item = new LassoSelectionItem();
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
 
     addItem(m_selection_highlighting_item);
@@ -89,6 +86,7 @@ Scene::~Scene()
     removeSelectItemsFromScene();
     delete m_rect_select_item;
     delete m_ellipse_select_item;
+    delete m_lasso_select_item;
 }
 
 void Scene::removeSelectItemsFromScene()
@@ -98,6 +96,9 @@ void Scene::removeSelectItemsFromScene()
     }
     if (m_ellipse_select_item->scene() == this) {
         removeItem(m_ellipse_select_item);
+    }
+    if (m_lasso_select_item->scene() == this) {
+        removeItem(m_lasso_select_item);
     }
 }
 
@@ -209,6 +210,7 @@ void Scene::clear()
     removeItem(m_predictive_highlighting_item);
     removeSelectItemsFromScene();
     m_mouse_drag_action = MouseDragAction::NONE;
+    m_lasso_select_item->clearPath();
 
     QGraphicsScene::clear();
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
@@ -321,6 +323,12 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     m_mouse_down_scene_pos = event->scenePos();
     m_mouse_down_screen_pos = event->screenPos();
+    if (event->button() == Qt::LeftButton &&
+        m_sketcher_model->getDrawTool() == DrawTool::SELECT &&
+        m_sketcher_model->getSelectionTool() == SelectionTool::LASSO) {
+        m_lasso_select_item->clearPath();
+        m_lasso_select_item->addPoint(m_mouse_down_scene_pos);
+    }
 }
 
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
@@ -328,19 +336,28 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     //  TODO: SKETCH-1890: translate on right click and rotate on middle click
     auto draw_tool = m_sketcher_model->getDrawTool();
     if (draw_tool == DrawTool::SELECT && (event->buttons() & Qt::LeftButton)) {
+        auto select_tool = m_sketcher_model->getSelectionTool();
+        // update the lasso path, even if the mouse hasn't yet moved far enough
+        // to start a selection
+        if (select_tool == SelectionTool::LASSO) {
+            m_lasso_select_item->addPoint(event->scenePos());
+        }
+
         // check to see whether the mouse has moved far enough to start a
-        // marquee selection
+        // selection
         if (m_mouse_drag_action == MouseDragAction::NONE) {
             int drag_dist = (m_mouse_down_screen_pos - event->screenPos())
                                 .manhattanLength();
             if (drag_dist >= QApplication::startDragDistance()) {
-                auto select_tool = m_sketcher_model->getSelectionTool();
                 if (select_tool == SelectionTool::RECTANGLE) {
                     m_mouse_drag_action = MouseDragAction::RECTANGLE_SELECT;
                     addItem(m_rect_select_item);
                 } else if (select_tool == SelectionTool::ELLIPSE) {
                     m_mouse_drag_action = MouseDragAction::ELLIPSE_SELECT;
                     addItem(m_ellipse_select_item);
+                } else if (select_tool == SelectionTool::LASSO) {
+                    m_mouse_drag_action = MouseDragAction::LASSO_SELECT;
+                    addItem(m_lasso_select_item);
                 }
             }
         }
@@ -350,10 +367,12 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
             rect_for_points(m_mouse_down_scene_pos, event->scenePos());
         if (m_mouse_drag_action == MouseDragAction::RECTANGLE_SELECT) {
             m_rect_select_item->setRect(rect);
-            setPredictiveHighlightingForMarqueeSelection(m_rect_select_item);
+            setPredictiveHighlightingForSelection(m_rect_select_item);
         } else if (m_mouse_drag_action == MouseDragAction::ELLIPSE_SELECT) {
             m_ellipse_select_item->setRect(rect);
-            setPredictiveHighlightingForMarqueeSelection(m_ellipse_select_item);
+            setPredictiveHighlightingForSelection(m_ellipse_select_item);
+        } else if (m_mouse_drag_action == MouseDragAction::LASSO_SELECT) {
+            setPredictiveHighlightingForSelection(m_lasso_select_item);
         }
     } else {
         // update predictive highlighting for mouse overs
@@ -376,24 +395,27 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
                 item->setSelected(true);
             }
         } else {
-            // select the items inside the marquee selection
-            QList<QGraphicsItem*> items_to_select;
+            QAbstractGraphicsShapeItem* select_item;
             if (m_mouse_drag_action == MouseDragAction::RECTANGLE_SELECT) {
-                items_to_select =
-                    itemsWithinMarqueeSelection(m_rect_select_item);
-                removeItem(m_rect_select_item);
+                select_item = m_rect_select_item;
             } else if (m_mouse_drag_action == MouseDragAction::ELLIPSE_SELECT) {
-                items_to_select =
-                    itemsWithinMarqueeSelection(m_ellipse_select_item);
-                removeItem(m_ellipse_select_item);
+                select_item = m_ellipse_select_item;
+            } else { // m_mouse_drag_action == MouseDragAction::LASSO_SELECT
+                select_item = m_lasso_select_item;
             }
+
+            // select the items within the marquee or lasso
+            QList<QGraphicsItem*> items_to_select =
+                itemsWithinSelection(select_item);
             for (auto item : items_to_select) {
                 item->setSelected(true);
             }
 
             // reset the scene state
+            removeItem(select_item);
             m_mouse_drag_action = MouseDragAction::NONE;
             m_predictive_highlighting_item->clearHighlightingPath();
+            m_lasso_select_item->clearPath();
         }
     }
 
@@ -418,11 +440,10 @@ void Scene::setPredictiveHighlightingForPoint(const QPointF& scene_pos)
     }
 }
 
-void Scene::setPredictiveHighlightingForMarqueeSelection(
+void Scene::setPredictiveHighlightingForSelection(
     const QAbstractGraphicsShapeItem* sel_item)
 {
-    QList<QGraphicsItem*> items_to_highlight =
-        itemsWithinMarqueeSelection(sel_item);
+    QList<QGraphicsItem*> items_to_highlight = itemsWithinSelection(sel_item);
     auto get_pred_path = [](AbstractGraphicsItem* item) {
         return item->predictiveHighlightingPath();
     };
@@ -431,8 +452,8 @@ void Scene::setPredictiveHighlightingForMarqueeSelection(
     m_predictive_highlighting_item->setHighlightingPath(path);
 }
 
-QList<QGraphicsItem*> Scene::itemsWithinMarqueeSelection(
-    const QAbstractGraphicsShapeItem* sel_item) const
+QList<QGraphicsItem*>
+Scene::itemsWithinSelection(const QAbstractGraphicsShapeItem* sel_item) const
 {
     QList<QGraphicsItem*> items_within;
     for (auto item : items()) {

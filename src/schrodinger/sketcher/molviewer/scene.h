@@ -6,9 +6,8 @@
 #include <string>
 
 #include <QtGlobal>
-#include <QGraphicsEllipseItem>
-#include <QGraphicsRectItem>
 #include <QGraphicsScene>
+#include <QPolygonF>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
@@ -16,6 +15,7 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
+#include "schrodinger/sketcher/molviewer/selection_items.h"
 
 class QObject;
 class QFont;
@@ -204,22 +204,21 @@ class SKETCHER_API Scene : public QGraphicsScene
 
     /**
      * Update predictive highlighting to highlight all items within the user's
-     * current marquee selection.
+     * current marquee or lasso selection.
      *
-     * @param sel_item The graphics item representing the current marquee
-     * selection.
+     * @param sel_item The graphics item representing the current selection.
      */
-    void setPredictiveHighlightingForMarqueeSelection(
+    void setPredictiveHighlightingForSelection(
         const QAbstractGraphicsShapeItem* sel_item);
 
     /**
-     * Find all graphics item within the user's current marquee selection.
-     *
-     * @param sel_item The graphics item representing the current marquee
+     * Find all graphics item within the user's current marquee or lasso
      * selection.
+     *
+     * @param sel_item The graphics item representing the current selection.
      */
-    QList<QGraphicsItem*> itemsWithinMarqueeSelection(
-        const QAbstractGraphicsShapeItem* sel_item) const;
+    QList<QGraphicsItem*>
+    itemsWithinSelection(const QAbstractGraphicsShapeItem* sel_item) const;
 
     std::shared_ptr<RDKit::ROMol> m_mol;
     Fonts m_fonts;
@@ -228,8 +227,9 @@ class SKETCHER_API Scene : public QGraphicsScene
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
     PredictiveHighlightingItem* m_predictive_highlighting_item = nullptr;
-    QGraphicsRectItem* m_rect_select_item = nullptr;
-    QGraphicsEllipseItem* m_ellipse_select_item = nullptr;
+    RectSelectionItem* m_rect_select_item = nullptr;
+    EllipseSelectionItem* m_ellipse_select_item = nullptr;
+    LassoSelectionItem* m_lasso_select_item = nullptr;
     QPointF m_mouse_down_scene_pos;
     QPointF m_mouse_down_screen_pos;
     MouseDragAction m_mouse_drag_action = MouseDragAction::NONE;
