@@ -1,10 +1,13 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 
+#include <functional>
+
 #include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 
+#include <QtGlobal>
 #include <QApplication>
 #include <QClipboard>
 #include <QFont>
@@ -17,15 +20,17 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 
+#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/qt_utils.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
-#include "schrodinger/sketcher/file_import_export.h"
-#include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -54,9 +59,46 @@ namespace sketcher
 
 Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 {
-    clear();
+    m_selection_highlighting_item = new SelectionHighlightingItem();
+    m_predictive_highlighting_item = new PredictiveHighlightingItem();
+    m_rect_select_item = new QGraphicsRectItem();
+    m_rect_select_item->setZValue(
+        static_cast<qreal>(ZOrder::DRAG_SELECT_OUTLINE));
+    m_ellipse_select_item = new QGraphicsEllipseItem();
+    m_ellipse_select_item->setZValue(
+        static_cast<qreal>(ZOrder::DRAG_SELECT_OUTLINE));
+    m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
+
+    addItem(m_selection_highlighting_item);
+    addItem(m_predictive_highlighting_item);
+    // We intentionally don't add the m_*_select_item items to the scene.  Those
+    // only get added during a drag select.
+
     connect(this, &Scene::selectionChanged, this,
             &Scene::updateSelectionHighlighting);
+}
+
+Scene::~Scene()
+{
+    // The QGraphicsScene destructor will destroy m_selection_highlighting_item
+    // and m_predictive_highlighting_item for us, since those items are in the
+    // scene
+    // The m_*_select_item items shouldn't be in the scene unless this instance
+    // is getting destroyed in the middle of a click-and-drag, but double check
+    // just to be safe and make sure we avoid a double free.
+    removeSelectItemsFromScene();
+    delete m_rect_select_item;
+    delete m_ellipse_select_item;
+}
+
+void Scene::removeSelectItemsFromScene()
+{
+    if (m_rect_select_item->scene() == this) {
+        removeItem(m_rect_select_item);
+    }
+    if (m_ellipse_select_item->scene() == this) {
+        removeItem(m_ellipse_select_item);
+    }
 }
 
 void Scene::setModel(SketcherModel* model)
@@ -162,11 +204,15 @@ std::string Scene::exportText(Format format)
 
 void Scene::clear()
 {
+    // remove the highlighting items so that the clear doesn't destroy them
+    removeItem(m_selection_highlighting_item);
+    removeItem(m_predictive_highlighting_item);
+    removeSelectItemsFromScene();
+    m_mouse_drag_action = MouseDragAction::NONE;
+
     QGraphicsScene::clear();
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
-    m_selection_highlighting_item = new SelectionHighlightingItem();
     addItem(m_selection_highlighting_item);
-    m_predictive_highlighting_item = new PredictiveHighlightingItem();
     addItem(m_predictive_highlighting_item);
 }
 
@@ -249,24 +295,113 @@ void Scene::updateBondItems()
 
 void Scene::updateSelectionHighlighting()
 {
+    auto get_sel_path = [](AbstractGraphicsItem* item) {
+        return item->selectionHighlightingPath();
+    };
+    QPainterPath path =
+        buildHighlightingPathForItems(selectedItems(), get_sel_path);
+    m_selection_highlighting_item->setHighlightingPath(path);
+}
+
+QPainterPath Scene::buildHighlightingPathForItems(
+    QList<QGraphicsItem*> items,
+    std::function<QPainterPath(AbstractGraphicsItem*)> path_getter) const
+{
     QPainterPath path;
-    for (auto item : selectedItems()) {
+    for (auto item : items) {
         if (auto* molviewer_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
-            QPainterPath local_path =
-                molviewer_item->selectionHighlightingPath();
+            QPainterPath local_path = path_getter(molviewer_item);
             path |= molviewer_item->mapToScene(local_path);
         }
     }
-    m_selection_highlighting_item->setHighlightingPath(path);
+    return path;
+}
+
+void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
+{
+    m_mouse_down_scene_pos = event->scenePos();
+    m_mouse_down_screen_pos = event->screenPos();
 }
 
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    QGraphicsScene::mouseMoveEvent(event);
-    updatePredictiveHighlighting(event->scenePos());
+    //  TODO: SKETCH-1890: translate on right click and rotate on middle click
+    auto draw_tool = m_sketcher_model->getDrawTool();
+    if (draw_tool == DrawTool::SELECT && (event->buttons() & Qt::LeftButton)) {
+        // check to see whether the mouse has moved far enough to start a
+        // marquee selection
+        if (m_mouse_drag_action == MouseDragAction::NONE) {
+            int drag_dist = (m_mouse_down_screen_pos - event->screenPos())
+                                .manhattanLength();
+            if (drag_dist >= QApplication::startDragDistance()) {
+                auto select_tool = m_sketcher_model->getSelectionTool();
+                if (select_tool == SelectionTool::RECTANGLE) {
+                    m_mouse_drag_action = MouseDragAction::RECTANGLE_SELECT;
+                    addItem(m_rect_select_item);
+                } else if (select_tool == SelectionTool::ELLIPSE) {
+                    m_mouse_drag_action = MouseDragAction::ELLIPSE_SELECT;
+                    addItem(m_ellipse_select_item);
+                }
+            }
+        }
+
+        // update the marquee selection
+        QRectF rect =
+            rect_for_points(m_mouse_down_scene_pos, event->scenePos());
+        if (m_mouse_drag_action == MouseDragAction::RECTANGLE_SELECT) {
+            m_rect_select_item->setRect(rect);
+            setPredictiveHighlightingForMarqueeSelection(m_rect_select_item);
+        } else if (m_mouse_drag_action == MouseDragAction::ELLIPSE_SELECT) {
+            m_ellipse_select_item->setRect(rect);
+            setPredictiveHighlightingForMarqueeSelection(m_ellipse_select_item);
+        }
+    } else {
+        // update predictive highlighting for mouse overs
+        setPredictiveHighlightingForPoint(event->scenePos());
+    }
 }
 
-void Scene::updatePredictiveHighlighting(const QPointF& scene_pos)
+void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
+{
+    auto draw_tool = m_sketcher_model->getDrawTool();
+    if (draw_tool == DrawTool::SELECT && event->button() == Qt::LeftButton) {
+        if (!(event->modifiers() & Qt::ControlModifier)) {
+            clearSelection();
+        }
+
+        if (m_mouse_drag_action == MouseDragAction::NONE) {
+            // this was a click, not a drag
+            QGraphicsItem* item = itemAt(event->scenePos(), QTransform());
+            if (item) {
+                item->setSelected(true);
+            }
+        } else {
+            // select the items inside the marquee selection
+            QList<QGraphicsItem*> items_to_select;
+            if (m_mouse_drag_action == MouseDragAction::RECTANGLE_SELECT) {
+                items_to_select =
+                    itemsWithinMarqueeSelection(m_rect_select_item);
+                removeItem(m_rect_select_item);
+            } else if (m_mouse_drag_action == MouseDragAction::ELLIPSE_SELECT) {
+                items_to_select =
+                    itemsWithinMarqueeSelection(m_ellipse_select_item);
+                removeItem(m_ellipse_select_item);
+            }
+            for (auto item : items_to_select) {
+                item->setSelected(true);
+            }
+
+            // reset the scene state
+            m_mouse_drag_action = MouseDragAction::NONE;
+            m_predictive_highlighting_item->clearHighlightingPath();
+        }
+    }
+
+    m_mouse_down_scene_pos = QPointF();
+    m_mouse_down_screen_pos = QPointF();
+}
+
+void Scene::setPredictiveHighlightingForPoint(const QPointF& scene_pos)
 {
     // TODO: highlight the context menu items if a context menu is visible
     // TODO: if the rotation tool is selected, highlight the entire selection
@@ -281,6 +416,31 @@ void Scene::updatePredictiveHighlighting(const QPointF& scene_pos)
     } else {
         m_predictive_highlighting_item->clearHighlightingPath();
     }
+}
+
+void Scene::setPredictiveHighlightingForMarqueeSelection(
+    const QAbstractGraphicsShapeItem* sel_item)
+{
+    QList<QGraphicsItem*> items_to_highlight =
+        itemsWithinMarqueeSelection(sel_item);
+    auto get_pred_path = [](AbstractGraphicsItem* item) {
+        return item->predictiveHighlightingPath();
+    };
+    QPainterPath path =
+        buildHighlightingPathForItems(items_to_highlight, get_pred_path);
+    m_predictive_highlighting_item->setHighlightingPath(path);
+}
+
+QList<QGraphicsItem*> Scene::itemsWithinMarqueeSelection(
+    const QAbstractGraphicsShapeItem* sel_item) const
+{
+    QList<QGraphicsItem*> items_within;
+    for (auto item : items()) {
+        if (sel_item->collidesWithItem(item)) {
+            items_within.append(item);
+        }
+    }
+    return items_within;
 }
 
 QWidget* Scene::window() const

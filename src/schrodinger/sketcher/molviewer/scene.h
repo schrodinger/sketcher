@@ -6,6 +6,8 @@
 #include <string>
 
 #include <QtGlobal>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsRectItem>
 #include <QGraphicsScene>
 
 #include "schrodinger/sketcher/definitions.h"
@@ -34,9 +36,19 @@ enum class Format;
 namespace sketcher
 {
 
+class AbstractGraphicsItem;
 class SketcherModel;
+enum class DrawTool;
 enum class ImageFormat;
+enum class SelectionTool;
 struct RenderOptions;
+
+enum class MouseDragAction {
+    NONE,
+    RECTANGLE_SELECT,
+    ELLIPSE_SELECT,
+    LASSO_SELECT,
+};
 
 /**
  * A Qt graphics scene for displaying molecules.
@@ -46,6 +58,7 @@ class SKETCHER_API Scene : public QGraphicsScene
     Q_OBJECT
   public:
     Scene(QObject* parent = nullptr);
+    virtual ~Scene();
 
     /**
      * @param model A model instance to assign to this view
@@ -140,6 +153,14 @@ class SKETCHER_API Scene : public QGraphicsScene
 
   protected:
     /**
+     * If the m_rect_select_item or m_ellipse_select_item graphics items are in
+     * the scene, remove them.  These items are normally removed in
+     * mouseReleaseEvent, but this method can be used to ensure that they are
+     * removed prior to a QGraphicsScene::clear() call or object destruction.
+     */
+    void removeSelectItemsFromScene();
+
+    /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.
      * (BondItems always need updating after their bound AtomItems are modified
      * in any way.)
@@ -158,14 +179,47 @@ class SKETCHER_API Scene : public QGraphicsScene
     void updateSelectionHighlighting();
 
     /**
-     * Overrides the QGraphicsScene method to handle predictive highlighting
+     * Build a painter path for use with either predictive or selection
+     * highlighting.
+     *
+     * @param items The graphics items that the path should include
+     * @param path_getter A function to fetch the path for a given graphics item
+     * @return The newly constructed path
      */
+    QPainterPath buildHighlightingPathForItems(
+        QList<QGraphicsItem*> items,
+        std::function<QPainterPath(AbstractGraphicsItem*)> path_getter) const;
+
+    // Override the QGraphicsScene mouse event methods
+    void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
 
     /**
-     * Update the path drawn to show predictive highlighting.
+     * Update predictive highlighting to highlight the item at the specified
+     * point.  If the point is not over an item, predictive highlighting will be
+     * cleared.
      */
-    void updatePredictiveHighlighting(const QPointF& scene_pos);
+    void setPredictiveHighlightingForPoint(const QPointF& scene_pos);
+
+    /**
+     * Update predictive highlighting to highlight all items within the user's
+     * current marquee selection.
+     *
+     * @param sel_item The graphics item representing the current marquee
+     * selection.
+     */
+    void setPredictiveHighlightingForMarqueeSelection(
+        const QAbstractGraphicsShapeItem* sel_item);
+
+    /**
+     * Find all graphics item within the user's current marquee selection.
+     *
+     * @param sel_item The graphics item representing the current marquee
+     * selection.
+     */
+    QList<QGraphicsItem*> itemsWithinMarqueeSelection(
+        const QAbstractGraphicsShapeItem* sel_item) const;
 
     std::shared_ptr<RDKit::ROMol> m_mol;
     Fonts m_fonts;
@@ -174,6 +228,11 @@ class SKETCHER_API Scene : public QGraphicsScene
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
     PredictiveHighlightingItem* m_predictive_highlighting_item = nullptr;
+    QGraphicsRectItem* m_rect_select_item = nullptr;
+    QGraphicsEllipseItem* m_ellipse_select_item = nullptr;
+    QPointF m_mouse_down_scene_pos;
+    QPointF m_mouse_down_screen_pos;
+    MouseDragAction m_mouse_drag_action = MouseDragAction::NONE;
 
     /**
      * Objects associated with the context menu instance that is currently open.

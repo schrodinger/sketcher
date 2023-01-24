@@ -80,6 +80,7 @@ enum class ZOrder {
     PREDICTIVE_HIGHLIGHTING,
     BOND,
     ATOM,
+    DRAG_SELECT_OUTLINE,
 };
 
 } // namespace sketcher

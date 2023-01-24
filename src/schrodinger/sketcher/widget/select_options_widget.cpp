@@ -25,7 +25,7 @@ SelectOptionsWidget::SelectOptionsWidget(QWidget* parent) : SketcherView(parent)
 
     // Init buttons
     ui->select_tool_group->setId(ui->select_square_btn,
-                                 static_cast<int>(SelectionTool::SQUARE));
+                                 static_cast<int>(SelectionTool::RECTANGLE));
     ui->select_tool_group->setId(ui->select_lasso_btn,
                                  static_cast<int>(SelectionTool::LASSO));
     connect(ui->select_tool_group, QT6_COMPAT_ID_CLICKED, this,

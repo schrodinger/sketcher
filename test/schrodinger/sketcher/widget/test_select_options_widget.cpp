@@ -84,7 +84,8 @@ BOOST_AUTO_TEST_CASE(synchronize)
     // Try interacting with subwidgets of the view. Synchronization should occur
     // automatically.
     auto group = ui->select_tool_group;
-    BOOST_TEST(group->checkedId() == static_cast<int>(SelectionTool::SQUARE));
+    BOOST_TEST(group->checkedId() ==
+               static_cast<int>(SelectionTool::RECTANGLE));
     group->button(static_cast<int>(SelectionTool::LASSO))->click();
     BOOST_TEST(group->checkedId() == static_cast<int>(SelectionTool::LASSO));
     BOOST_TEST(view_synchronized_to_model(wdg));
@@ -92,7 +93,7 @@ BOOST_AUTO_TEST_CASE(synchronize)
     BOOST_TEST(view_synchronized_to_model(wdg));
     ui->erase_btn->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
-    group->button(static_cast<int>(SelectionTool::SQUARE))->click();
+    group->button(static_cast<int>(SelectionTool::RECTANGLE))->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
 
     // Try changing the state of the model. The view should update the state of
