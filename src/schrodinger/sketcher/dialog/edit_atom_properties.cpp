@@ -62,13 +62,6 @@ void update_ring_count_spinbox(QSpinBox* sb, const QString& combo_key_text)
     }
 }
 
-bool has_atom_specified_chirality(const RDKit::Atom* atom)
-{
-    auto sinfo = RDKit::Chirality::detail::getStereoInfo(atom);
-    return sinfo.type == RDKit::Chirality::StereoType::Atom_Tetrahedral &&
-           sinfo.specified == RDKit::Chirality::StereoSpecified::Specified;
-}
-
 } // anonymous namespace
 
 namespace schrodinger
@@ -148,7 +141,8 @@ void CommonAtomPropertiesWidget::readAtomInfo(const sketcherAtom& atom)
 
     // Atoms must have a defined chirality in order to get enhanced stereo
     auto rdk_atom = atom.getRDKAtom();
-    if (rdk_atom != nullptr && has_atom_specified_chirality(rdk_atom)) {
+    if (rdk_atom != nullptr &&
+        rdk_atom->hasProp(RDKit::common_properties::_CIPCode)) {
         auto enh_stereo = atom.getEnhancedStereo();
         ui->enhanced_stereo_sb->setValue(enh_stereo.group_id);
         setEnhancedStereoTypeComboValue(enh_stereo.type);
@@ -285,7 +279,8 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(SketcherModel* model,
     }
 
     auto rdk_atom = m_atom.getRDKAtom();
-    bool enable = rdk_atom != nullptr && has_atom_specified_chirality(rdk_atom);
+    bool enable = rdk_atom != nullptr &&
+                  rdk_atom->hasProp(RDKit::common_properties::_CIPCode);
     ui->atom_common_props_wdg->setEnhancedStereoTypeComboEnabled(enable);
     ui->query_common_props_wdg->setEnhancedStereoTypeComboEnabled(enable);
 
