@@ -262,6 +262,12 @@ bool atom_has_advanced_query(const RDKit::Atom& at, std::string atom_smarts)
         return false;
     }
 
+    if (at.hasProp("hasAdvancedQuery")) {
+        // This atom is from sketcher, so the advanced query property will be
+        // set
+        return at.getProp<bool>("hasAdvancedQuery");
+    }
+
     // make sure this isn't a wildcard atom
     return at.getQueryType().empty() && atom_smarts != "*";
 }
