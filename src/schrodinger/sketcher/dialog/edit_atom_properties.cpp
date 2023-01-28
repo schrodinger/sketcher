@@ -543,7 +543,7 @@ void EditAtomPropertiesDialog::writeAtomInfo()
     ui->atom_common_props_wdg->writeAtomInfo(m_atom);
 
     auto rdk_atom = m_atom.getRDKAtom();
-    if (rdk_atom != nullptr) {
+    if (rdk_atom != nullptr && rdk_atom->hasQuery()) {
         rdk_atom->setQuery(nullptr);
     }
 }
