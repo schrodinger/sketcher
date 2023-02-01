@@ -14,11 +14,10 @@ namespace schrodinger
 namespace sketcher
 {
 
-// The Angstrom to point (i.e. font size) conversion factor.  Coordgen (via
-// RDKit) attempts to set bond lengths to a reasonable number of Angstroms, even
-// in 2D.  As a result, without this scaling, the default font size would be
-// substantially larger than an entire molecule and even a 1 pt font would be
-// far too large.
+// The scaling of the graphics scene coordinate system relative to the RDKit
+// coordinate system.  Without this scaling, even a 1 pt font in the graphics
+// scene would be far too large for the molecule, and Qt won't render fonts
+// smaller than 1 pt.
 const int VIEW_SCALE = 50;
 
 const QString FONT_NAME = "Arial";
