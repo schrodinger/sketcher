@@ -109,6 +109,16 @@ class SKETCHER_API Scene : public QGraphicsScene
     void clear();
 
     /**
+     * Select all items in the scene
+     */
+    void selectAll();
+
+    /**
+     * Select all unselected items; clear selection from those already selected
+     */
+    void invertSelection();
+
+    /**
      * Import the given text into the scene; optionally clear beforehand
      *
      * @param text input data to load
@@ -242,6 +252,20 @@ class SKETCHER_API Scene : public QGraphicsScene
     QList<QGraphicsItem*> m_context_menu_objects;
 
   private:
+    /**
+     * Signal blocker for selection based signals
+     */
+    class SelectionChangeSignalBlocker
+    {
+      public:
+        SelectionChangeSignalBlocker(Scene* scene);
+        ~SelectionChangeSignalBlocker();
+
+      private:
+        Scene* m_scene;
+        bool m_original_value;
+    };
+
     /**
      * @return window for the parent widget
      */

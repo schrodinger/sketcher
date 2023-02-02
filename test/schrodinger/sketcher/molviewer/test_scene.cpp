@@ -24,6 +24,13 @@ namespace schrodinger
 namespace sketcher
 {
 
+class TestScene : public Scene
+{
+  public:
+    TestScene() : Scene(){};
+    using Scene::m_selection_highlighting_item;
+};
+
 BOOST_AUTO_TEST_CASE(test_importText)
 {
     Scene test_scene;
@@ -122,6 +129,47 @@ BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
     count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 5);
     BOOST_TEST(num_hidden_atoms == 0);
+}
+
+BOOST_AUTO_TEST_CASE(test_item_selection)
+{
+    TestScene scene;
+    scene.importText("CC", Format::SMILES);
+
+    auto test_selected_items = [](const auto& scene, bool expected) {
+        BOOST_TEST(scene.m_selection_highlighting_item->isVisible() ==
+                   expected);
+        for (auto item : scene.items()) {
+            // We expect all objects that inherit from AbstractGraphicsItem to
+            // be interactive (atoms, bonds, etc.), and all objects that don't
+            // to be purely graphical (selection highlighting paths, etc.)
+            bool selectable = item->flags() & QGraphicsItem::ItemIsSelectable;
+            if (dynamic_cast<AbstractGraphicsItem*>(item) != nullptr) {
+                BOOST_TEST(selectable);
+                BOOST_TEST(item->isSelected() == expected);
+            } else {
+                BOOST_TEST(!selectable);
+                BOOST_TEST(!item->isSelected());
+            }
+        }
+    };
+
+    // no selection
+    test_selected_items(scene, false);
+
+    // select everything
+    scene.selectAll();
+    test_selected_items(scene, true);
+
+    // clear selection
+    scene.clearSelection();
+    test_selected_items(scene, false);
+
+    // invert selection
+    scene.invertSelection();
+    test_selected_items(scene, true);
+    scene.invertSelection();
+    test_selected_items(scene, false);
 }
 
 } // namespace sketcher

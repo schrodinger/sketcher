@@ -77,6 +77,9 @@ Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 
 Scene::~Scene()
 {
+    // Avoid selection update calls when any selected item is destroyed
+    disconnect(this, &Scene::selectionChanged, this,
+               &Scene::updateSelectionHighlighting);
     // The QGraphicsScene destructor will destroy m_selection_highlighting_item
     // and m_predictive_highlighting_item for us, since those items are in the
     // scene
@@ -216,6 +219,22 @@ void Scene::clear()
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
     addItem(m_selection_highlighting_item);
     addItem(m_predictive_highlighting_item);
+}
+
+void Scene::selectAll()
+{
+    Scene::SelectionChangeSignalBlocker signal_blocker(this);
+    for (auto item : items()) {
+        item->setSelected(true);
+    }
+}
+
+void Scene::invertSelection()
+{
+    Scene::SelectionChangeSignalBlocker signal_blocker(this);
+    for (auto item : items()) {
+        item->setSelected(!item->isSelected());
+    }
 }
 
 void Scene::onImportTextRequested(const std::string& text, Format format)
@@ -407,9 +426,12 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             // select the items within the marquee or lasso
             QList<QGraphicsItem*> items_to_select =
                 itemsWithinSelection(select_item);
-            for (auto item : items_to_select) {
-                item->setSelected(true);
-            }
+            { // block the per-item signals for performance reasons
+                Scene::SelectionChangeSignalBlocker signal_blocker(this);
+                for (auto item : items_to_select) {
+                    item->setSelected(true);
+                }
+            } // signal_blocker emits selectionChanged on destruction
 
             // reset the scene state
             removeItem(select_item);
@@ -462,6 +484,19 @@ Scene::itemsWithinSelection(const QAbstractGraphicsShapeItem* sel_item) const
         }
     }
     return items_within;
+}
+
+Scene::SelectionChangeSignalBlocker::SelectionChangeSignalBlocker(
+    Scene* scene) :
+    m_scene(scene),
+    m_original_value(m_scene->signalsBlocked())
+{
+    m_scene->blockSignals(true);
+}
+Scene::SelectionChangeSignalBlocker::~SelectionChangeSignalBlocker()
+{
+    m_scene->blockSignals(m_original_value);
+    m_scene->selectionChanged();
 }
 
 QWidget* Scene::window() const

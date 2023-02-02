@@ -14,16 +14,16 @@ namespace sketcher
 
 SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
 {
-    ui.reset(new Ui::SketcherWidgetForm());
-    ui->setupUi(this);
+    m_ui.reset(new Ui::SketcherWidgetForm());
+    m_ui->setupUi(this);
 
     m_scene = new Scene(this);
-    ui->view->setScene(m_scene);
+    m_ui->view->setScene(m_scene);
 
     m_sketcher_model = new SketcherModel(this);
     m_scene->setModel(m_sketcher_model);
-    ui->top_bar_wdg->setModel(m_sketcher_model);
-    ui->side_bar_wdg->setModel(m_sketcher_model);
+    m_ui->top_bar_wdg->setModel(m_sketcher_model);
+    m_ui->side_bar_wdg->setModel(m_sketcher_model);
 
     connectTopBarSlots();
     connectSideBarSlots();
@@ -36,29 +36,43 @@ SketcherWidget::~SketcherWidget() = default;
 void SketcherWidget::connectTopBarSlots()
 {
     // Connect "More Actions" menu
-    connect(ui->top_bar_wdg, &SketcherTopBar::pasteRequested, m_scene,
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_scene,
+            &Scene::selectAll);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,
+            m_scene, &Scene::clearSelection);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::invertSelectionRequested,
+            m_scene, &Scene::invertSelection);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, m_scene,
             &Scene::onPasteRequested);
 
     // Clear/Import/Export
-    connect(ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested, m_scene,
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested, m_scene,
             &Scene::clear);
-    connect(ui->top_bar_wdg, &SketcherTopBar::importTextRequested, m_scene,
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::importTextRequested, m_scene,
             &Scene::onImportTextRequested);
-    connect(ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, m_scene,
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, m_scene,
             &Scene::showFileSaveImageDialog);
-    connect(ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, m_scene,
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, m_scene,
             &Scene::showFileExportDialog);
 }
 
 void SketcherWidget::connectSideBarSlots()
 {
+    // Connect "Select Options" widget
+    connect(m_ui->side_bar_wdg, &SketcherSideBar::selectAllRequested, m_scene,
+            &Scene::selectAll);
+    connect(m_ui->side_bar_wdg, &SketcherSideBar::clearSelectionRequested,
+            m_scene, &Scene::clearSelection);
+    connect(m_ui->side_bar_wdg, &SketcherSideBar::invertSelectionRequested,
+            m_scene, &Scene::invertSelection);
+
     // TODO: Testing components to be removed from the widget
-    ui->font_sb->setValue(m_scene->fontSize());
-    connect(ui->font_sb, &QDoubleSpinBox::valueChanged, m_scene,
+    m_ui->font_sb->setValue(m_scene->fontSize());
+    connect(m_ui->font_sb, &QDoubleSpinBox::valueChanged, m_scene,
             &Scene::setFontSize);
-    ui->carbon_labels_combo->addItems(
+    m_ui->carbon_labels_combo->addItems(
         {"No carbon labels", "Terminal carbons only", "All atoms labeled"});
-    connect(ui->carbon_labels_combo, &QComboBox::currentIndexChanged,
+    connect(m_ui->carbon_labels_combo, &QComboBox::currentIndexChanged,
             [this](auto i) { m_scene->setCarbonsLabeled(CarbonLabels(i)); });
 }
 

@@ -29,7 +29,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     ~SketcherWidget();
 
   private:
-    std::unique_ptr<Ui::SketcherWidgetForm> ui;
+    std::unique_ptr<Ui::SketcherWidgetForm> m_ui;
     Scene* m_scene = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
 
