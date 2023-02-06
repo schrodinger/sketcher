@@ -54,6 +54,9 @@ class TestBondItem : public BondItem
     using BondItem::calcSquigglyWedge;
     using BondItem::calculateLinesToPaint;
     using BondItem::calcWedgeEnds;
+    using BondItem::findBestRingForBond;
+    using BondItem::findRingCenter;
+    using BondItem::m_bond;
 
     TestBondItem(RDKit::Bond* bond, const AtomItem& start_atom_item,
                  const AtomItem& end_atom_item, BondItemSettings& settings,
@@ -62,6 +65,37 @@ class TestBondItem : public BondItem
     {
     }
 };
+
+std::pair<std::vector<std::shared_ptr<TestBondItem>>,
+          std::shared_ptr<TestScene>>
+createStructure(std::string smiles)
+{
+    auto test_scene = std::make_shared<TestScene>();
+    test_scene->importText(smiles, Format::SMILES);
+    std::vector<AtomItem*> atom_items;
+    std::vector<BondItem*> scene_bond_items;
+    for (auto* item : test_scene->items()) {
+        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            atom_items.push_back(atom_item);
+        }
+        if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+            scene_bond_items.push_back(bond_item);
+        }
+    }
+    int idx = 0;
+    std::vector<std::shared_ptr<TestBondItem>> bond_items;
+    for (auto bond : test_scene->m_mol->bonds()) {
+        BOOST_TEST_REQUIRE(bond != nullptr);
+        auto start_atom_idx = bond->getBeginAtomIdx();
+        auto end_atom_idx = bond->getEndAtomIdx();
+        auto bond_item = std::make_shared<TestBondItem>(
+            bond, *atom_items[start_atom_idx], *atom_items[end_atom_idx],
+            test_scene->m_bond_item_settings);
+        bond_item->setPos(scene_bond_items.at(idx++)->pos());
+        bond_items.push_back(bond_item);
+    }
+    return {bond_items, test_scene};
+}
 
 std::tuple<std::shared_ptr<TestBondItem>, std::shared_ptr<TestScene>, QLineF>
 createBondItem()
@@ -167,6 +201,42 @@ BOOST_AUTO_TEST_CASE(test_arePointsOnSameSideOfLine)
         !bond_item->arePointsOnSameSideOfLine(above, below, line_endpoint));
     BOOST_TEST(!bond_item->arePointsOnSameSideOfLine(also_above, also_below,
                                                      line_endpoint));
+}
+
+BOOST_AUTO_TEST_CASE(test_findRingCenter)
+{
+    auto [bond_items, test_scene] = createStructure("C1CCCCC1");
+    auto first_bond = bond_items[0];
+    const RDKit::ROMol& molecule = first_bond->m_bond->getOwningMol();
+    RDKit::RingInfo* ring_info = molecule.getRingInfo();
+    auto ring_center = first_bond->mapToScene(
+        first_bond->findRingCenter(molecule, ring_info, 0));
+
+    // test that each bond of the ring finds the same ring center
+    for (auto bond : bond_items) {
+        auto ring_center_relative_to_bond =
+            bond->findRingCenter(molecule, ring_info, 0);
+        auto absolute_center = bond->mapToScene(ring_center_relative_to_bond);
+        const auto SMALL = 0.01;
+        BOOST_TEST((ring_center - absolute_center).manhattanLength() < SMALL);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_findBestRingForBond)
+{
+    auto [bond_items, test_scene] =
+        createStructure("O=C(O)C1=NN=C(C2C3=CC=C(Cl)C=C3CCC3=C2N=CC=C3)C=C1");
+    for (auto bond_item : bond_items) {
+        auto bond = bond_item->m_bond;
+        if (bond->getBondType() != RDKit::Bond::BondType::DOUBLE &&
+            bond->getBondType() != RDKit::Bond::BondType::AROMATIC) {
+            continue;
+        }
+        const RDKit::ROMol& molecule = bond->getOwningMol();
+        RDKit::RingInfo* ring_info = molecule.getRingInfo();
+        auto ring_idx = bond_item->findBestRingForBond(molecule, ring_info);
+        BOOST_REQUIRE(ring_idx != 2);
+    }
 }
 
 } // namespace sketcher

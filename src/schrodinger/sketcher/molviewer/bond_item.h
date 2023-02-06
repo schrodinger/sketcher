@@ -249,12 +249,12 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     QPointF calcAsymmetricDoubleBondOffset(const QLineF& trimmed_line) const;
 
     /**
-     * For an asymmetric double bond, figure out which ring the second bond
-     * should be drawn inside of.  If this bond is part of multiple rings, then
-     * the criteria for picking the "best" one are:
+     * For an asymmetric  bond (double or aromatic), figure out which ring the
+     * second bond should be drawn inside of.  If this bond is part of multiple
+     * rings, then the criteria for picking the "best" one are:
      * - a ring with eight or fewer atoms is always preferred over a larger ring
      *   (i.e. avoid macrocycles if possible)
-     * - after that, we want the ring with the most double bonds
+     * - after that, we want the ring with the most double or aromatic bonds
      * - after that, we use the lowest ring index just to make the results
      *   reproducible
      * @param molecule The RDKit molecule
@@ -262,8 +262,8 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      * @return The ring index of the "best" ring.  If this bond is not part of
      * any rings, then -1 will be returned.
      */
-    int findBestRingForDoubleBond(const RDKit::ROMol& molecule,
-                                  const RDKit::RingInfo* ring_info) const;
+    int findBestRingForBond(const RDKit::ROMol& molecule,
+                            const RDKit::RingInfo* ring_info) const;
 
     /**
      * Find the center of the specified ring

@@ -27,10 +27,15 @@ namespace sketcher
 
 struct NumBondsInRing {
     unsigned int num_bonds;
-    unsigned int num_double_bonds;
+
+    // Double bonds and aromatic bonds are drawn with an asymmetric second line
+    // that needs to be placed inside the ring. This is not true for any other
+    // bond, including the double/aromatic bond query
+
+    unsigned int num_double_or_aromatic_bonds;
     int ring_index;
 
-    // See findBestRingForDoubleBond documentation for an explanation of the
+    // See findBestRingForBond documentation for an explanation of the
     // ordering criteria
     bool operator<(const NumBondsInRing& other) const
     {
@@ -41,8 +46,10 @@ struct NumBondsInRing {
         if (num_bonds > cutoff && other.num_bonds <= cutoff) {
             return true;
         }
-        if (num_double_bonds != other.num_double_bonds) {
-            return num_double_bonds < other.num_double_bonds;
+        if (num_double_or_aromatic_bonds !=
+            other.num_double_or_aromatic_bonds) {
+            return num_double_or_aromatic_bonds <
+                   other.num_double_or_aromatic_bonds;
         }
         return ring_index < other.ring_index;
     };
@@ -327,7 +334,7 @@ BondItem::calcAsymmetricDoubleBondOffset(const QLineF& trimmed_line) const
     // trimmed_line.  If offset is on the wrong side, flip it.
     const RDKit::ROMol& molecule = m_bond->getOwningMol();
     RDKit::RingInfo* ring_info = molecule.getRingInfo();
-    int ring_index = findBestRingForDoubleBond(molecule, ring_info);
+    int ring_index = findBestRingForBond(molecule, ring_info);
     if (ring_index >= 0) {
         // this bond is in a ring, so we want to draw the second line *inside*
         // of the ring
@@ -366,8 +373,8 @@ BondItem::calcAsymmetricDoubleBondOffset(const QLineF& trimmed_line) const
     return offset;
 }
 
-int BondItem::findBestRingForDoubleBond(const RDKit::ROMol& molecule,
-                                        const RDKit::RingInfo* ring_info) const
+int BondItem::findBestRingForBond(const RDKit::ROMol& molecule,
+                                  const RDKit::RingInfo* ring_info) const
 {
     // figure out what rings this bond is a part of
     std::vector<int> ring_indices = ring_info->bondMembers(m_bond->getIdx());
@@ -389,14 +396,16 @@ int BondItem::findBestRingForDoubleBond(const RDKit::ROMol& molecule,
     for (int ring_index : ring_indices) {
         auto bond_indices = bond_rings[ring_index];
         unsigned int num_bonds = bond_indices.size();
-        unsigned int num_double_bonds = 0;
+        unsigned int num_double_or_aromatic_bonds = 0;
         for (int bond_index : bond_indices) {
             const RDKit::Bond* cur_bond = molecule.getBondWithIdx(bond_index);
-            if (cur_bond->getBondType() == RDKit::Bond::BondType::DOUBLE) {
-                ++num_double_bonds;
+            if (cur_bond->getBondType() == RDKit::Bond::BondType::DOUBLE ||
+                cur_bond->getBondType() == RDKit::Bond::BondType::AROMATIC) {
+                ++num_double_or_aromatic_bonds;
             }
         }
-        num_bonds_in_rings.push_back({num_bonds, num_double_bonds, ring_index});
+        num_bonds_in_rings.push_back(
+            {num_bonds, num_double_or_aromatic_bonds, ring_index});
     }
 
     // Now pick the "best" ring, i.e., the ring we should draw this bond inside
@@ -420,6 +429,7 @@ QPointF BondItem::findRingCenter(const RDKit::ROMol& molecule,
     }
     center /= atom_indices.size();
     QPointF qcenter(center.x, center.y);
+    qcenter *= VIEW_SCALE;
     return mapFromScene(qcenter);
 }
 
@@ -451,19 +461,21 @@ bool BondItem::arePointsOnSameSideOfLine(const QPointF& point1,
 {
     qreal x = line_endpoint.x();
     qreal y = line_endpoint.y();
+
     qreal slope, d1, d2;
     if (qFabs(x) > qFabs(y)) {
         slope = y / x;
-        d1 = point1.y() - y - slope * (point1.x() - x);
-        d2 = point2.y() - y - slope * (point2.x() - x);
+        d1 = point1.y() - slope * point1.x();
+        d2 = point2.y() - slope * point2.x();
     } else {
         // the line might be vertical (or close to vertical), so we flip the
         // axes to avoid divide by zero (or arithmetic underflow) in our
         // calculations
         slope = x / y;
-        d1 = point1.x() - x - slope * (point1.y() - y);
-        d2 = point2.x() - x - slope * (point2.y() - y);
+        d1 = point1.x() - slope * point1.y();
+        d2 = point2.x() - slope * point2.y();
     }
+
     // the sign of d1 and d2 tell which side of the line they're on
     return std::signbit(d1) == std::signbit(d2);
 }
