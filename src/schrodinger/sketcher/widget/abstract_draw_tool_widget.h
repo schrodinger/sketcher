@@ -1,6 +1,7 @@
 #pragma once
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/sketcher_view.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 
 class QAbstractButton;
 

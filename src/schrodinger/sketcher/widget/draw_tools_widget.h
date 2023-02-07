@@ -13,7 +13,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-enum class BondTool;
 class BondOrderPopup;
 class BondQueryPopup;
 class StereoBondPopup;
