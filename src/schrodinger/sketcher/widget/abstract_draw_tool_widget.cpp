@@ -1,5 +1,8 @@
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
+
 #include <QAbstractButton>
+
+#include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger
 {
