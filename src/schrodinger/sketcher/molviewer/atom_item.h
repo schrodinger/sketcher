@@ -97,6 +97,18 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      */
     bool labelIsVisible() const;
 
+    /**
+     * @param avoid_subrects whether or not to consider the atom's subrects
+     * in the calculation: when picking a position for something close to the
+     * atom (e.g. chiral labels), this make sure that the returned position
+     * doesn't clash with the atom labels. When picking positions for something
+     * far away from the label (e.g. another atom bound to this), this should be
+     * false
+     * @return a position on the canvas that is near this atom but doesn't clash
+     * with it or its neighbors.
+     */
+    QPointF findPositionInEmptySpace(bool avoid_subrects) const;
+
   protected:
     // Creating a shared_ptr to an RDKit Atom (or Bond) implicitly creates a
     // copy of the Atom, which means that the new Atom is no longer part of the

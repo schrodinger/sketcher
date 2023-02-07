@@ -14,6 +14,45 @@ namespace schrodinger
 namespace sketcher
 {
 
+/**
+ * @return a point one bond length (i.e. one unit in the RDKit coordinate
+ * system) away from center, in the direction that places it furthest from any
+ * of the given points
+ */
+QPointF best_placing_around_center(std::vector<QPointF> points, QPointF center)
+{
+    if (points.empty()) {
+        return center + QPointF(VIEW_SCALE, 0);
+    }
+    std::vector<float> angles;
+    // find out the angles at which each member of points is found around center
+    for (auto& point : points) {
+        QLineF line(center, point);
+        auto angle = line.angle();
+        angles.push_back(angle);
+    }
+    sort(angles.begin(), angles.end());
+    angles.push_back(angles.front() + 360);
+    // find the biggest angle interval and return a point in the middle of it
+    int best_i = 0;
+    auto best_angle = (angles[best_i + 1] - angles[best_i]) * 0.5;
+    for (unsigned int i = 0; i < angles.size() - 1; ++i) {
+        auto angle_i = (angles[i + 1] - angles[i]) * 0.5;
+        if (angle_i > best_angle) {
+            best_i = i;
+            best_angle = angle_i;
+        }
+    }
+    // For a single substituent, limit the angle to 120 (instead of 180)
+    float max_angle = (points.size() == 1) ? 120.0 : 180.0;
+    float angle_to_use = (angles[best_i + 1] - angles[best_i]) * 0.5;
+    float angle_increment = std::min(max_angle, angle_to_use);
+    float return_angle = angles[best_i] + angle_increment;
+    QLineF line(center, center + QPointF(VIEW_SCALE, 0));
+    line.setAngle(return_angle);
+    return line.p2();
+}
+
 AtomItem::AtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
                    QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
@@ -115,6 +154,25 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                           m_main_label_text);
         painter->restore();
     }
+}
+
+QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
+{
+    QPointF lastp = scenePos();
+    std::vector<QPointF> positions;
+    auto& mol = m_atom->getOwningMol();
+    auto& conf = mol.getConformer();
+    for (const auto& neighbor : mol.atomNeighbors(m_atom)) {
+        auto& pos = conf.getAtomPos(neighbor->getIdx());
+        positions.push_back({pos.x, pos.y});
+    }
+
+    if (avoid_subrects) {
+        for (auto rect : getSubrects()) {
+            positions.push_back(rect.center() + lastp);
+        }
+    }
+    return best_placing_around_center(positions, lastp);
 }
 
 } // namespace sketcher

@@ -58,16 +58,27 @@ class TestAtomItem : public AtomItem
     }
 };
 
-std::pair<std::shared_ptr<TestAtomItem>, std::shared_ptr<TestScene>>
-createAtomItem(std::string smiles)
+std::pair<std::vector<std::shared_ptr<TestAtomItem>>,
+          std::shared_ptr<TestScene>>
+createAtomItems(std::string smiles)
 {
     auto test_scene = std::make_shared<TestScene>();
     test_scene->importText(smiles, Format::SMILES);
-    RDKit::Atom* atom = *(test_scene->m_mol->atoms().begin());
-    BOOST_TEST_REQUIRE(atom != nullptr);
-    auto atom_item = std::make_shared<TestAtomItem>(
-        atom, test_scene->m_fonts, test_scene->m_atom_item_settings);
-    return std::make_pair(atom_item, test_scene);
+    std::vector<std::shared_ptr<TestAtomItem>> atom_items;
+    for (auto atom : test_scene->m_mol->atoms()) {
+        BOOST_TEST_REQUIRE(atom != nullptr);
+        auto atom_item = std::make_shared<TestAtomItem>(
+            atom, test_scene->m_fonts, test_scene->m_atom_item_settings);
+        atom_items.push_back(atom_item);
+    }
+    return std::make_pair(atom_items, test_scene);
+}
+
+std::pair<std::shared_ptr<TestAtomItem>, std::shared_ptr<TestScene>>
+createAtomItem(std::string smiles)
+{
+    auto [atom_items, test_scene] = createAtomItems(smiles);
+    return {atom_items.front(), test_scene};
 }
 
 BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
@@ -100,6 +111,28 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_UnlabeledC)
     BOOST_TEST(!atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+}
+
+BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
+                     *boost::unit_test::tolerance(0.01))
+{
+    auto scene = std::make_shared<Scene>();
+    scene->importText("CCC", Format::SMILES);
+    std::vector<AtomItem*> atom_items;
+    for (auto* item : scene->items()) {
+        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            atom_items.push_back(atom_item);
+        }
+    }
+
+    auto central_atom = atom_items.at(1);
+    auto first_atom_position = atom_items.at(0)->pos();
+    auto second_atom_position = atom_items.at(2)->pos();
+    auto empty_space_position = central_atom->findPositionInEmptySpace(false);
+
+    for (const auto& pos : {first_atom_position, second_atom_position}) {
+        BOOST_TEST(QLineF(pos, empty_space_position).length() == 86.6);
+    }
 }
 
 } // namespace sketcher
