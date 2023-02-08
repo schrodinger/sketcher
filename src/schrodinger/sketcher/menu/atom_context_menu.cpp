@@ -7,14 +7,12 @@
 #include "schrodinger/sketcher/atom_utils.h"
 #include "schrodinger/sketcher/widget/set_atom_widget.h"
 #include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/constants.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
-
-constexpr int MIN_CHARGE = -8;
-constexpr int MAX_CHARGE = 8;
 constexpr int MIN_UNPAIRED_E = 0;
 constexpr int MAX_UNPAIRED_E = 4;
 
@@ -97,8 +95,8 @@ void ModifyAtomsMenu::updateActionsEnabled()
                        [](auto a) { return a->getCharge(); });
         const auto [min_charge, max_charge] =
             std::minmax_element(charges.begin(), charges.end());
-        m_decrease_charge_act->setEnabled(*min_charge > MIN_CHARGE);
-        m_increase_charge_act->setEnabled(*max_charge < MAX_CHARGE);
+        m_decrease_charge_act->setEnabled(*min_charge > -ATOM_CHARGE_LIMIT);
+        m_increase_charge_act->setEnabled(*max_charge < ATOM_CHARGE_LIMIT);
 
         // Toggle add/remove explicit hydrogens
         m_add_remove_explicit_h_act->setEnabled(true);

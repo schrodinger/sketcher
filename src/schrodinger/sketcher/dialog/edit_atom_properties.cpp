@@ -97,6 +97,10 @@ CommonAtomPropertiesWidget::CommonAtomPropertiesWidget(QWidget* parent) :
             &CommonAtomPropertiesWidget::updateEnhancedStereoSpinBox);
 
     setEnhancedStereoTypeComboValue(EnhancedStereoType::ABS);
+
+    // Cap charges
+    ui->charge_sb->setMinimum(-ATOM_CHARGE_LIMIT);
+    ui->charge_sb->setMaximum(ATOM_CHARGE_LIMIT);
 }
 
 void CommonAtomPropertiesWidget::setEnhancedStereoTypeComboValue(
