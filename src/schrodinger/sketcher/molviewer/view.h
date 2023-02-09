@@ -26,6 +26,9 @@ class SKETCHER_API View : public QGraphicsView
     View(QGraphicsScene* scene, QWidget* parent = nullptr);
     View(QWidget* parent = nullptr);
 
+  signals:
+    void resized();
+
   protected:
     // Override the QGraphicsView method so we can call enlargeSceneIfNeeded
     void resizeEvent(QResizeEvent* event) override;

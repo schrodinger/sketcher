@@ -137,7 +137,7 @@ void SketcherTopBar::setModel(SketcherModel* model)
 {
     SketcherView::setModel(model);
     m_more_actions_menu->setModel(model);
-    connect(model, &SketcherModel::sceneContentsChanged, this,
+    connect(model, &SketcherModel::interactiveItemsChanged, this,
             &SketcherTopBar::updateWidgetsEnabled);
     connect(model, &SketcherModel::undoStackDataChanged, this,
             &SketcherTopBar::updateWidgetsEnabled);

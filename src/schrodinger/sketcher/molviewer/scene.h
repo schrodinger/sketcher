@@ -104,9 +104,16 @@ class SKETCHER_API Scene : public QGraphicsScene
     std::string exportText(rdkit_extensions::Format format);
 
     /**
-     *  Clear the contents of the scene
+     * @return interactive items in the scene; these are items that inherit
+     * from AbstractGraphicsItem (atoms, bonds, etc.) as opposed to objects
+     * that are purely graphical (selection highlighting paths, etc.)
      */
-    void clear();
+    QList<QGraphicsItem*> getInteractiveItems() const;
+
+    /**
+     *  Clear the interactive items in the scene
+     */
+    void clearInteractiveItems();
 
     /**
      * Select all items in the scene
@@ -162,6 +169,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     void setDoubleBondSpacing(qreal value);
 
   protected:
+    using QGraphicsScene::clear;
+
     /**
      * If the m_rect_select_item or m_ellipse_select_item graphics items are in
      * the scene, remove them.  These items are normally removed in

@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE(test_importText)
     BOOST_TEST(num_atoms == 9);
     BOOST_TEST(num_bonds == 10);
 
-    test_scene.clear();
+    test_scene.clearInteractiveItems();
     mol = test_scene.getRDKitMolecule();
     BOOST_TEST(mol->getNumAtoms() == 0);
 
@@ -131,6 +131,24 @@ BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
     BOOST_TEST(num_hidden_atoms == 0);
 }
 
+BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
+{
+    TestScene scene;
+    auto items = scene.getInteractiveItems();
+    BOOST_TEST(items.size() == 0);
+    BOOST_TEST(scene.items().size() == 2); // highlighting items
+
+    scene.importText("CC", Format::SMILES);
+    items = scene.getInteractiveItems();
+    BOOST_TEST(items.size() == 3); // two atoms and a bond
+    BOOST_TEST(scene.items().size() == 5);
+
+    scene.clearInteractiveItems();
+    items = scene.getInteractiveItems();
+    BOOST_TEST(items.size() == 0);
+    BOOST_TEST(scene.items().size() == 2);
+}
+
 BOOST_AUTO_TEST_CASE(test_item_selection)
 {
     TestScene scene;
@@ -139,18 +157,9 @@ BOOST_AUTO_TEST_CASE(test_item_selection)
     auto test_selected_items = [](const auto& scene, bool expected) {
         BOOST_TEST(scene.m_selection_highlighting_item->isVisible() ==
                    expected);
-        for (auto item : scene.items()) {
-            // We expect all objects that inherit from AbstractGraphicsItem to
-            // be interactive (atoms, bonds, etc.), and all objects that don't
-            // to be purely graphical (selection highlighting paths, etc.)
-            bool selectable = item->flags() & QGraphicsItem::ItemIsSelectable;
-            if (dynamic_cast<AbstractGraphicsItem*>(item) != nullptr) {
-                BOOST_TEST(selectable);
-                BOOST_TEST(item->isSelected() == expected);
-            } else {
-                BOOST_TEST(!selectable);
-                BOOST_TEST(!item->isSelected());
-            }
+        for (auto item : scene.getInteractiveItems()) {
+            BOOST_TEST(item->flags() & QGraphicsItem::ItemIsSelectable);
+            BOOST_TEST(item->isSelected() == expected);
         }
     };
 

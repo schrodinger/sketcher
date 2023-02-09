@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     check_nonempty_actions(menu, false);
 
     scene.importText("CCCC");
-    emit model->sceneContentsChanged();
+    emit model->interactiveItemsChanged();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, true);

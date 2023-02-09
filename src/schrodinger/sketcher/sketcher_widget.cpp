@@ -1,5 +1,6 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
+#include <QGraphicsPixmapItem>
 #include <QWidget>
 
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -29,6 +30,13 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
     connectSideBarSlots();
 
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
+
+    m_watermark_item = new QGraphicsPixmapItem();
+    m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
+    m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    m_scene->addItem(m_watermark_item);
+    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
+    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
 }
 
 SketcherWidget::~SketcherWidget() = default;
@@ -47,7 +55,7 @@ void SketcherWidget::connectTopBarSlots()
 
     // Clear/Import/Export
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested, m_scene,
-            &Scene::clear);
+            &Scene::clearInteractiveItems);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::importTextRequested, m_scene,
             &Scene::onImportTextRequested);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, m_scene,
@@ -74,6 +82,21 @@ void SketcherWidget::connectSideBarSlots()
         {"No carbon labels", "Terminal carbons only", "All atoms labeled"});
     connect(m_ui->carbon_labels_combo, &QComboBox::currentIndexChanged,
             [this](auto i) { m_scene->setCarbonsLabeled(CarbonLabels(i)); });
+}
+
+void SketcherWidget::updateWatermark()
+{
+    bool is_empty = m_sketcher_model->sceneIsEmpty();
+    if (is_empty) {
+        auto center =
+            m_ui->view->mapToScene(m_ui->view->viewport()->rect().center());
+        // Center Watermark on view
+        m_watermark_item->setPos(
+            center.x() - (m_watermark_item->boundingRect().width()) / 2,
+            center.y() - (m_watermark_item->boundingRect().height()) / 2);
+    }
+
+    m_watermark_item->setVisible(is_empty);
 }
 
 } // namespace sketcher

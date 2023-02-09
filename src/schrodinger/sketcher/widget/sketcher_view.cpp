@@ -111,7 +111,7 @@ void SketcherView::connectToModel()
             &SketcherView::updateWidgetsEnabled);
     connect(model, &SketcherModel::selectionChanged, this,
             &SketcherView::updateCheckState);
-    connect(model, &SketcherModel::sceneContentsChanged, this,
+    connect(model, &SketcherModel::interactiveItemsChanged, this,
             &SketcherView::updateWidgetsEnabled);
 }
 

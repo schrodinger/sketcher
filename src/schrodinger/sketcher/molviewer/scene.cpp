@@ -114,9 +114,9 @@ void Scene::setModel(SketcherModel* model)
 
     // Connect content-based signals
     connect(this, &Scene::changed, m_sketcher_model,
-            &SketcherModel::sceneContentsChanged);
-    connect(m_sketcher_model, &SketcherModel::sceneContentsRequested, this,
-            [this]() { return items(); });
+            &SketcherModel::interactiveItemsChanged);
+    connect(m_sketcher_model, &SketcherModel::interactiveItemsRequested, this,
+            [this]() { return getInteractiveItems(); });
 
     // Connect selection-based signals
     connect(this, &Scene::selectionChanged, m_sketcher_model,
@@ -138,7 +138,7 @@ void Scene::loadMol(const RDKit::ROMol& mol)
 void Scene::loadMol(std::shared_ptr<RDKit::ROMol> mol)
 {
     // TODO: instead of always clearing, handle adding additional mols
-    clear();
+    clearInteractiveItems();
     m_mol = mol;
     const std::size_t num_atoms = m_mol->getNumAtoms();
     std::vector<AtomItem*> atom_items;
@@ -206,19 +206,35 @@ std::string Scene::exportText(Format format)
     return rdkit_extensions::rdmol_to_text(*m_mol, format);
 }
 
-void Scene::clear()
+QList<QGraphicsItem*> Scene::getInteractiveItems() const
 {
-    // remove the highlighting items so that the clear doesn't destroy them
-    removeItem(m_selection_highlighting_item);
-    removeItem(m_predictive_highlighting_item);
+    // We expect all objects that inherit from AbstractGraphicsItem to
+    // be interactive (atoms, bonds, etc.), and all objects that don't
+    // to be purely graphical (selection highlighting paths, etc.)
+    QList<QGraphicsItem*> interactive_items;
+    for (auto item : items()) {
+        if (dynamic_cast<AbstractGraphicsItem*>(item) != nullptr) {
+            interactive_items.append(item);
+        }
+    }
+    return interactive_items;
+}
+
+void Scene::clearInteractiveItems()
+{
+    // reset the state of the selection item
     removeSelectItemsFromScene();
     m_mouse_drag_action = MouseDragAction::NONE;
     m_lasso_select_item->clearPath();
 
-    QGraphicsScene::clear();
+    // remove all interactive items and reset the rdkit molecule; this will
+    // preserve items include selection paths, highlighting items, and
+    // potentially the watermark managed by the SketcherWidget
+    for (auto item : getInteractiveItems()) {
+        removeItem(item);
+        delete item;
+    }
     m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
-    addItem(m_selection_highlighting_item);
-    addItem(m_predictive_highlighting_item);
 }
 
 void Scene::selectAll()
@@ -240,7 +256,7 @@ void Scene::invertSelection()
 void Scene::onImportTextRequested(const std::string& text, Format format)
 {
     if (m_sketcher_model->getNewStructuresReplaceContent()) {
-        clear();
+        clearInteractiveItems();
     }
     importText(text, format);
 }

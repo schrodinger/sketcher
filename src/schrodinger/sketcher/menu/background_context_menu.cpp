@@ -52,7 +52,7 @@ BackgroundContextMenu::BackgroundContextMenu(SketcherModel* model,
 
     connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
             &BackgroundContextMenu::updateActions);
-    connect(m_sketcher_model, &SketcherModel::sceneContentsChanged, this,
+    connect(m_sketcher_model, &SketcherModel::interactiveItemsChanged, this,
             &BackgroundContextMenu::updateActions);
     connect(m_sketcher_model, &SketcherModel::undoStackDataChanged, this,
             &BackgroundContextMenu::updateActions);

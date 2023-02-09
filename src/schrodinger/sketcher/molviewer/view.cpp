@@ -32,6 +32,7 @@ void View::resizeEvent(QResizeEvent* event)
 {
     QGraphicsView::resizeEvent(event);
     enlargeSceneIfNeeded();
+    emit resized();
 }
 
 void View::enlargeSceneIfNeeded()
