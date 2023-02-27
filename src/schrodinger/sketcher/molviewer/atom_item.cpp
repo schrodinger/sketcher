@@ -175,5 +175,10 @@ QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
     return best_placing_around_center(positions, lastp);
 }
 
+QPointF to_scene_xy(const RDGeom::Point3D& xyz)
+{
+    return QPointF(xyz.x * VIEW_SCALE, -xyz.y * VIEW_SCALE);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

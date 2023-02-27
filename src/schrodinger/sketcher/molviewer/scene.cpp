@@ -150,7 +150,7 @@ void Scene::loadMol(std::shared_ptr<RDKit::ROMol> mol)
         const auto pos = m_mol->getConformer().getAtomPos(i);
         const auto cur_atom_item =
             new AtomItem(atom, m_fonts, m_atom_item_settings);
-        cur_atom_item->setPos(pos.x * VIEW_SCALE, pos.y * VIEW_SCALE);
+        cur_atom_item->setPos(to_scene_xy(pos));
         addItem(cur_atom_item);
         atom_items.push_back(cur_atom_item);
     }
@@ -191,10 +191,6 @@ void Scene::importText(const std::string& text, Format format)
     // TODO: deal with chiral flag viz. SHARED-8774
     // TODO: honor existing coordinates if present
     RDKit::CoordGen::addCoords(*mol);
-    // We use sanitizeMol to populate RingInfo, which is needed for drawing
-    // double bonds
-    // TODO: handle exceptions from sanitizeMol
-    RDKit::MolOps::sanitizeMol(*mol);
     loadMol(*mol);
 }
 

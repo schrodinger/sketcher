@@ -428,9 +428,7 @@ QPointF BondItem::findRingCenter(const RDKit::ROMol& molecule,
         center += pos;
     }
     center /= atom_indices.size();
-    QPointF qcenter(center.x, center.y);
-    qcenter *= VIEW_SCALE;
-    return mapFromScene(qcenter);
+    return mapFromScene(to_scene_xy(center));
 }
 
 void BondItem::countNeighboringAtomsBySide(
