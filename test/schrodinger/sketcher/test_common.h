@@ -4,6 +4,7 @@
 
 #include <QtGlobal>
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
@@ -33,3 +34,18 @@ std::string read_testfile(const std::string& filename)
     return std::string(std::istreambuf_iterator<char>(fh),
                        std::istreambuf_iterator<char>());
 }
+
+namespace schrodinger
+{
+namespace rdkit_extensions
+{
+
+const std::vector<Format> TEXT_FORMATS = {
+    Format::SMILES,       Format::EXTENDED_SMILES,
+    Format::SMARTS,       Format::MAESTRO,
+    Format::MDL_MOLV2000, Format::MDL_MOLV3000,
+    Format::INCHI,        Format::PDB,
+};
+
+} // namespace rdkit_extensions
+} // namespace schrodinger

@@ -216,31 +216,25 @@ void throw_parse_error(const CaptureRDErrorLog& rd_error_log,
                                 "Failed to parse text:\n" + text);
 }
 
-boost::shared_ptr<RDKit::ROMol>
-molblock_to_romol(const std::string& text,
-                  const CaptureRDErrorLog& rd_error_log, bool sanitize,
-                  bool removeHs)
+template <typename T>
+RDKit::RWMol* read_mol(T& reader, const CaptureRDErrorLog& rd_error_log)
 {
-    bool strictParsing = false;
-    // use SDMolSupplier because MolFromMolBlock does not preserve
-    // structure level properties
-    RDKit::SDMolSupplier reader;
-    reader.setData(text, sanitize, removeHs, strictParsing);
-    RDKit::ROMol* romol;
+
+    boost::shared_ptr<RDKit::ROMol> mol = nullptr;
     try {
-        romol = reader.next();
+        mol.reset(reader.next());
     } catch (std::runtime_error&) { // EOF hit
-        throw_parse_error(rd_error_log, text);
+        return nullptr;
     }
-    if (romol == nullptr) {
-        throw_parse_error(rd_error_log, text);
+    if (mol == nullptr) {
+        return nullptr;
     }
     if (!reader.atEnd()) {
         throw std::invalid_argument(
-            "Single molblock required; multiple present" +
+            "Single structure required; multiple present" +
             rd_error_log.messages());
     }
-    return boost::shared_ptr<RDKit::ROMol>(romol);
+    return new RDKit::RWMol(*mol);
 }
 
 void adjust_for_mdl_v2k_format(RDKit::RWMol& mol)
@@ -328,9 +322,9 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
     if (format == Format::AUTO_DETECT) {
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
         return auto_detect<RDKit::RWMol>(text,
-                                         {Format::MDL_MOLV3000, Format::PDB,
-                                          Format::INCHI, Format::SMILES,
-                                          Format::SMARTS},
+                                         {Format::MDL_MOLV3000, Format::MAESTRO,
+                                          Format::PDB, Format::INCHI,
+                                          Format::SMILES, Format::SMARTS},
                                          &text_to_rdmol);
     }
 
@@ -357,9 +351,22 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
             break;
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
-            auto romol =
-                molblock_to_romol(text, rd_error_log, sanitize, removeHs);
-            mol = new RDKit::RWMol(*romol);
+            // SDMolSupplier will preserve structure level properties
+            RDKit::SDMolSupplier reader;
+            bool strict_parsing = false;
+            reader.setData(text, sanitize, removeHs, strict_parsing);
+            mol = read_mol(reader, rd_error_log);
+            break;
+        }
+        case Format::MAESTRO: {
+            RDKit::MaeMolSupplier reader;
+            try { // parse error on init()
+                reader.setData(text, sanitize, removeHs);
+            } catch (std::runtime_error&) {
+                mol = nullptr;
+                break;
+            }
+            mol = read_mol(reader, rd_error_log);
             break;
         }
         case Format::INCHI: {
@@ -480,6 +487,12 @@ std::string rdmol_to_text(const RDKit::ROMol& input_mol, Format format)
             bool forceV3000 = format == Format::MDL_MOLV3000;
             return RDKit::SDWriter::getText(mol, confId, kekulize, forceV3000);
         }
+        case Format::MAESTRO:
+            // TODO: Fix writing atom colors that are already present
+            for (auto atom : mol.atoms()) {
+                atom->clearProp("s_m_color_rgb");
+            }
+            return RDKit::MaeWriter::getText(mol);
         case Format::INCHI: {
             RDKit::ExtraInchiReturnValues aux;
             return RDKit::MolToInchi(mol, aux);

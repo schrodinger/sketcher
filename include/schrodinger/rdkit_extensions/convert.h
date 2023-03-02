@@ -33,6 +33,7 @@ enum class Format {
     SMILES,
     EXTENDED_SMILES,
     SMARTS,
+    MAESTRO,
     MDL_MOLV2000,
     MDL_MOLV3000,
     INCHI,

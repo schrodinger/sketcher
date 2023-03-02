@@ -34,10 +34,11 @@ using namespace schrodinger::rdkit_extensions;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 
-const std::array<Format, 7> TEXT_FORMATS = {
-    Format::SMILES,       Format::EXTENDED_SMILES, Format::SMARTS,
-    Format::MDL_MOLV2000, Format::MDL_MOLV3000,    Format::INCHI,
-    Format::PDB,
+const std::vector<Format> TEXT_FORMATS = {
+    Format::SMILES,       Format::EXTENDED_SMILES,
+    Format::SMARTS,       Format::MAESTRO,
+    Format::MDL_MOLV2000, Format::MDL_MOLV3000,
+    Format::INCHI,        Format::PDB,
 };
 
 const std::array<Format, 4> REACTION_TEXT_FORMATS = {
