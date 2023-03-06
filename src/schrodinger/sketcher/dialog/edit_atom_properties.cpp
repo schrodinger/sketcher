@@ -169,7 +169,9 @@ void CommonAtomPropertiesWidget::writeAtomInfo(sketcherAtom& atom) const
     };
 
     // TODO: Add isotope validator though RDKit::getAbundanceForIsotope
-    atom.setIsotope(get_value(ui->isotope_le));
+    int ui_isotope_value = get_value(ui->isotope_le);
+
+    atom.setIsotope(std::min(std::abs(ui_isotope_value), MAX_ISOTOPE_VALUE));
     atom.setCharge(get_value(ui->charge_sb));
     atom.setUnpairedElectronsN(get_value(ui->unpaired_elec_sb));
 
@@ -661,8 +663,8 @@ void EditAtomPropertiesDialog::writeQueryInfo()
         if (atom != nullptr && atom->hasQuery()) {
             parse_rdk_atom_queries(&m_atom, atom.get());
 
-            // if we parsed a SMARTS, skip writing the info from the other tab,
-            // since the SMARTS might have overwritten some of the info
+            // if we parsed a SMARTS, skip writing the info from the other
+            // tab, since the SMARTS might have overwritten some of the info
             return;
         }
     }

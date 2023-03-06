@@ -101,6 +101,14 @@ BOOST_AUTO_TEST_CASE(test_CommonAtomPropertiesWidget)
     auto enh_st = atom.getEnhancedStereo();
     BOOST_TEST(enh_st.type == EnhancedStereoType::OR);
     BOOST_TEST(enh_st.group_id == 2);
+
+    // Test setting isotope out of range
+    ui->isotope_le->setText("1000");
+    widget.writeAtomInfo(atom);
+    BOOST_TEST(atom.getIsotope() == MAX_ISOTOPE_VALUE);
+    ui->isotope_le->setText("-1000");
+    widget.writeAtomInfo(atom);
+    BOOST_TEST(atom.getIsotope() == MAX_ISOTOPE_VALUE);
 }
 
 /**
