@@ -14,7 +14,7 @@ namespace sketcher
 
 /**
  * An object used for storing all fonts (and associated QFontMetrics) used in a
- * Scene.
+ * Scene. Also includes the size for radical dots pen.
  */
 class Fonts
 {
@@ -41,6 +41,8 @@ class Fonts
     QFontMetrics m_subscript_fm;
     QFontMetrics m_charge_fm;
     QFontMetrics m_mapping_fm;
+
+    qreal m_radical_dot_size;
 };
 
 } // namespace sketcher

@@ -25,9 +25,31 @@ const QString FONT_NAME = "Arial";
 // measured in points
 const qreal DEFAULT_FONT_SIZE = 13.0;
 // Ratios for the size of specified font to the size of the atom label font
-const qreal SUBSCRIPT_FONT_RATIO = 0.8;
-const qreal CHARGE_FONT_RATIO = 0.8;
+const qreal SUBSCRIPT_FONT_RATIO = 0.6;
+const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.6;
+
+// Ratios between the dot width for radicals and the font size
+const qreal RADICAL_DOT_RATIO = 0.25;
+
+// Ratios the spacer between two consecutive labels (such as NH) and the width
+// of the main element label
+const qreal LABEL_SPACER_RATIO = 0.1;
+
+// Ratio between the distance of radical dots from the center and the label
+// height. Used for radicals when the atom label is visible
+const qreal RADICAL_DISTANCE_FROM_LABEL_RATIO = 0.75;
+// Ratio between the distance of radical dots from the center and the radical
+// dot size. Used for radicals when the atom label is not visible
+const qreal RADICAL_DISTANCE_FROM_HIDDEN_LABEL_RATIO = 3.;
+
+// QFontmetrics returns a bigger height for characters that the actual size.
+// This factor is used to correct that so the label fits the actual dimensions
+// of the text
+const qreal LABEL_RECT_HEIGHT_ADJUSTMENT_FACTOR = 0.2;
+
+// Ratios between paired dots and their size for radicals
+const qreal PAIRED_ELECTRONS_DISTANCE_RATIO = 0.75;
 
 // The radius of the circle drawn around atoms for predictive highlighting
 const qreal ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS = 10;

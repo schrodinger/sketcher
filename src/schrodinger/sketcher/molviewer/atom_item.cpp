@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 
 #include <GraphMol/ROMol.h>
+#include <GraphMol/PeriodicTable.h>
 
 #include <Qt>
 #include <QPainter>
@@ -16,18 +17,20 @@ namespace sketcher
 
 /**
  * @return a point one bond length (i.e. one unit in the RDKit coordinate
- * system) away from center, in the direction that places it furthest from any
- * of the given points
+ * system) away from the origin, in the direction that places it furthest from
+ * any of the given points
  */
-QPointF best_placing_around_center(std::vector<QPointF> points, QPointF center)
+QPointF best_placing_around_origin(std::vector<QPointF> points)
 {
     if (points.empty()) {
-        return center + QPointF(VIEW_SCALE, 0);
+        return QPointF(VIEW_SCALE, 0);
     }
+    QPointF origin(0.f, 0.f);
     std::vector<float> angles;
-    // find out the angles at which each member of points is found around center
+    // find out the angles at which each member of points is found around the
+    // origin
     for (auto& point : points) {
-        QLineF line(center, point);
+        QLineF line(origin, point);
         auto angle = line.angle();
         angles.push_back(angle);
     }
@@ -48,10 +51,21 @@ QPointF best_placing_around_center(std::vector<QPointF> points, QPointF center)
     float angle_to_use = (angles[best_i + 1] - angles[best_i]) * 0.5;
     float angle_increment = std::min(max_angle, angle_to_use);
     float return_angle = angles[best_i] + angle_increment;
-    QLineF line(center, center + QPointF(VIEW_SCALE, 0));
+    QLineF line(origin, QPointF(VIEW_SCALE, 0));
     line.setAngle(return_angle);
     return line.p2();
 }
+
+/**
+ * @return a bounding rect of the given label for the given font metrics, with
+ * the height adjusted to better fit the actual size of the text
+ */
+QRect make_text_rect(QFontMetrics fm, QString label)
+{
+    auto rect = fm.boundingRect(label);
+    return rect.adjusted(0, rect.height() * LABEL_RECT_HEIGHT_ADJUSTMENT_FACTOR,
+                         0, 0);
+};
 
 AtomItem::AtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
                    QGraphicsItem* parent) :
@@ -75,27 +89,70 @@ int AtomItem::type() const
     return Type;
 }
 
+HsDirection AtomItem::findHsDirection() const
+{
+    auto& mol = m_atom->getOwningMol();
+    auto& conf = mol.getConformer();
+    switch (m_atom->getDegree()) {
+        case 0: {
+            // if there's no bonds, draw Hs to the left for chalcogens and
+            // halogens and to the right for any other atom
+            const auto* table = RDKit::PeriodicTable::getTable();
+            auto n_electrons = table->getNouterElecs(m_atom->getAtomicNum());
+            return ((n_electrons == 6 || n_electrons == 7)
+                        ? HsDirection::LEFT
+                        : HsDirection::RIGHT);
+        }
+        case 1: {
+            // with 1 bond, draw the Hs horizontally, on the opposite side of
+            // the bound atom
+            auto neighbor = mol.atomNeighbors(m_atom).begin();
+            auto pos = conf.getAtomPos((*neighbor)->getIdx()) -
+                       conf.getAtomPos(m_atom->getIdx());
+            return (pos.x > 0 ? HsDirection::LEFT : HsDirection::RIGHT);
+        }
+        default: {
+            // with two or more bonds, draw the Hs vertically or horizontally,
+            // as far away as possible from bonded atoms
+            auto position = findPositionInEmptySpace(false);
+
+            if (std::abs(position.x()) > std::abs(position.y())) {
+                return (position.x() > 0) ? HsDirection::RIGHT
+                                          : HsDirection::LEFT;
+            } else {
+                return (position.y() > 0) ? HsDirection::DOWN : HsDirection::UP;
+            }
+        }
+    }
+}
+
 void AtomItem::updateCachedData()
 {
     // prepareGeometryChange notifies the scene to schedule a repaint and to
     // schedule a recheck of our bounding rect.  It must be called *before* the
     // bounding rect changes.
     prepareGeometryChange();
+    clearLabels();
     m_label_is_visible = determineLabelIsVisible();
-    m_subrects.clear();
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
         m_main_label_text = QString::fromStdString(m_atom->getSymbol());
-        qreal label_width =
-            m_fonts.m_main_label_fm.boundingRect(m_main_label_text).width();
-        qreal label_height = m_fonts.m_main_label_fm.height() * 0.8;
-        // center a label_width by label_height rectangle about (0, 0)
-        m_main_label_rect = QRectF(-label_width * 0.5, -label_height * 0.5,
-                                   label_width, label_height);
-        m_subrects.push_back(m_main_label_rect);
-    } else {
-        m_main_label_text = QString();
-        m_main_label_rect = QRectF();
+
+        m_main_label_rect =
+            make_text_rect(m_fonts.m_main_label_fm, m_main_label_text);
+        m_main_label_rect.moveCenter(QPointF(0, 0));
+        updateIsotopeLabel();
+        updateChargeAndRadicalLabel();
+        updateHsLabel();
+        positionLabels();
+
+        for (auto rect :
+             {m_main_label_rect, m_isotope_rect, m_charge_and_radical_rect,
+              m_H_count_label_rect, m_H_label_rect}) {
+            if (rect.isValid()) {
+                m_subrects.push_back(rect);
+            }
+        }
     }
 
     // merge all of the subrects with the predictive highlighting path to create
@@ -109,6 +166,165 @@ void AtomItem::updateCachedData()
     m_bounding_rect = m_shape.boundingRect();
 }
 
+void AtomItem::clearLabels()
+{
+    for (auto string : {m_main_label_text, m_charge_and_radical_label_text,
+                        m_H_count_label_text}) {
+        string = QString();
+    }
+    for (auto rect :
+         {m_main_label_rect, m_isotope_rect, m_charge_and_radical_rect,
+          m_H_label_rect, m_H_count_label_rect}) {
+        rect = QRectF();
+    }
+    m_subrects.clear();
+}
+
+void AtomItem::updateIsotopeLabel()
+{
+    auto isotope = m_atom->getIsotope();
+    // when no isotope is set RDKit returns 0
+    if (isotope != 0) {
+        m_isotope_label_text = QString::number(isotope);
+        m_isotope_rect =
+            make_text_rect(m_fonts.m_subscript_fm, m_isotope_label_text);
+    }
+}
+
+void AtomItem::updateChargeAndRadicalLabel()
+{
+    QString radical = "•"; // U+2022
+    auto radical_electrons_count = m_atom->getNumRadicalElectrons();
+    auto charge = m_atom->getFormalCharge();
+    QString radical_label("");
+    if (radical_electrons_count > 0) {
+        auto parentheses = radical_electrons_count > 1 && charge != 0;
+        radical_label = (parentheses ? "(" : "") +
+                        (radical_electrons_count > 1
+                             ? QString::number(radical_electrons_count)
+                             : "") +
+                        radical + (parentheses ? ")" : "");
+    }
+    QString sign("+");
+    QString charge_label("");
+
+    if (charge < 0) {
+        charge = -charge;
+        // en dash
+        sign = QString("–");
+    }
+    if (charge == 1) {
+        charge_label = sign;
+    } else if (charge > 1) {
+        charge_label = QString::number(charge) + sign;
+    }
+    auto text_label =
+        radical_label +
+        (radical_label.isEmpty() || charge_label.isEmpty() ? "" : " ") +
+        charge_label;
+    if (!text_label.isEmpty()) {
+        m_charge_and_radical_label_text = text_label;
+        m_charge_and_radical_rect = make_text_rect(
+            m_fonts.m_subscript_fm, m_charge_and_radical_label_text);
+    }
+}
+
+void AtomItem::updateHsLabel()
+{
+    bool includeNeighbors = false;
+    auto H_count = m_atom->getTotalNumHs(includeNeighbors);
+
+    if (H_count > 0) {
+        m_H_label_rect = make_text_rect(m_fonts.m_main_label_fm, "H");
+    }
+    if (H_count > 1) {
+        m_H_count_label_text = QString::number(H_count);
+        m_H_count_label_rect =
+            make_text_rect(m_fonts.m_subscript_fm, m_H_count_label_text);
+    }
+}
+
+void AtomItem::positionLabels()
+{
+    auto label_rect = m_main_label_rect;
+    m_isotope_rect.translate(
+        QPointF(m_main_label_rect.left(), m_main_label_rect.center().y()) -
+        m_isotope_rect.bottomRight());
+    m_charge_and_radical_rect.translate(
+        QPointF(m_main_label_rect.right(), m_main_label_rect.center().y()) -
+        m_charge_and_radical_rect.bottomLeft());
+    label_rect = label_rect.united(m_isotope_rect);
+    auto H_direction = findHsDirection();
+    // charge and radical text is next to the main label, on the right, unless
+    // hydrogens are drawn to the right, in which case they come before charge
+    // and radicals. (e.g. H3O+ but NH4+)
+    if (H_direction != HsDirection::RIGHT) {
+        label_rect = label_rect.united(m_charge_and_radical_rect);
+    }
+    auto SPACER = m_main_label_rect.width() * LABEL_SPACER_RATIO;
+    if (!m_H_count_label_rect.isValid() && H_direction == HsDirection::LEFT) {
+        label_rect.adjust(-SPACER, 0, 0, 0);
+    }
+    if (m_H_label_rect.isValid() && H_direction == HsDirection::RIGHT) {
+        label_rect.adjust(0, 0, SPACER, 0);
+    }
+    switch (H_direction) {
+        case HsDirection::LEFT:
+            m_H_count_label_rect.translate(
+                label_rect.bottomLeft() -
+                QPointF(m_H_count_label_rect.right(),
+                        m_H_count_label_rect.center().y()));
+            label_rect.setLeft(m_H_count_label_rect.left());
+            m_H_label_rect.translate(label_rect.bottomLeft() -
+                                     m_H_label_rect.bottomRight());
+            break;
+
+        case HsDirection::RIGHT:
+            m_H_label_rect.translate(label_rect.bottomRight() -
+                                     m_H_label_rect.bottomLeft());
+            label_rect.setRight(m_H_label_rect.right());
+            m_H_count_label_rect.translate(
+                label_rect.bottomRight() -
+                QPointF(m_H_count_label_rect.left(),
+                        m_H_count_label_rect.center().y()));
+            label_rect.setRight(m_H_count_label_rect.right());
+            m_charge_and_radical_rect.translate(
+                m_H_count_label_rect.right() - m_charge_and_radical_rect.left(),
+                0);
+
+            break;
+        case HsDirection::UP: {
+            auto label_and_H_height =
+                m_main_label_rect.height() + m_H_label_rect.height();
+            m_H_label_rect.moveCenter(m_main_label_rect.center() +
+                                      QPointF(0, label_and_H_height * 0.5));
+            m_H_count_label_rect.translate(
+                m_H_label_rect.bottomRight() -
+                QPointF(m_H_count_label_rect.left(),
+                        m_H_count_label_rect.center().y()));
+            QPointF offset(0, label_rect.top() - m_H_count_label_rect.bottom());
+            if (m_H_count_label_rect.isValid() &&
+                m_charge_and_radical_rect.isValid()) {
+                offset -= QPoint(0, SPACER);
+            }
+            m_H_label_rect.translate(offset);
+            m_H_count_label_rect.translate(offset);
+            break;
+        }
+        case HsDirection::DOWN: {
+            auto label_and_H_height =
+                m_main_label_rect.height() + m_H_label_rect.height();
+            m_H_label_rect.moveCenter(m_main_label_rect.center() +
+                                      QPointF(0, label_and_H_height * 0.5));
+            m_H_count_label_rect.translate(
+                m_H_label_rect.bottomRight() -
+                QPointF(m_H_count_label_rect.left(),
+                        m_H_count_label_rect.center().y()));
+            break;
+        }
+    }
+}
+
 bool AtomItem::determineLabelIsVisible() const
 {
     if (m_settings.m_carbon_labels == CarbonLabels::ALL) {
@@ -117,9 +333,13 @@ bool AtomItem::determineLabelIsVisible() const
     if (m_atom->getAtomicNum() != static_cast<unsigned int>(Element::C)) {
         return true;
     }
-    // TODO: visible if isotope
-    // TODO: visible if valence error
-    // if (m_settings.m_show_valence_errors && ...)
+    if (m_atom->getIsotope() != 0) {
+        return true;
+    }
+
+    if (m_atom->getNumRadicalElectrons()) {
+        return true;
+    }
     if (m_atom->getFormalCharge() != 0) {
         return true;
     }
@@ -129,6 +349,15 @@ bool AtomItem::determineLabelIsVisible() const
     } else if (num_bonds == 1 &&
                m_settings.m_carbon_labels == CarbonLabels::TERMINAL) {
         return true;
+    } else if (num_bonds == 2) {
+        // show label of carbons with two double bonds
+        auto bonds = m_atom->getOwningMol().atomBonds(m_atom);
+        auto is_double = [](auto bond) {
+            return bond->getBondType() == RDKit::Bond::DOUBLE;
+        };
+        if (std::all_of(bonds.begin(), bonds.end(), is_double)) {
+            return true;
+        }
     }
     return false;
 }
@@ -152,27 +381,46 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->setPen(m_pen);
         painter->drawText(m_main_label_rect, Qt::AlignCenter,
                           m_main_label_text);
+        // drawText only paints when the rect is valid
+        painter->drawText(m_H_label_rect, Qt::AlignCenter, "H");
+        painter->setFont(m_fonts.m_subscript_font);
+        painter->drawText(m_H_count_label_rect, Qt::AlignCenter,
+                          m_H_count_label_text);
+        painter->drawText(m_charge_and_radical_rect, Qt::AlignCenter,
+                          m_charge_and_radical_label_text);
+        painter->drawText(m_isotope_rect, Qt::AlignCenter,
+                          m_isotope_label_text);
+
         painter->restore();
     }
 }
 
 QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
 {
-    QPointF lastp = scenePos();
-    std::vector<QPointF> positions;
+
     auto& mol = m_atom->getOwningMol();
     auto& conf = mol.getConformer();
+    std::vector<QPointF> positions;
+    auto& this_pos = conf.getAtomPos(m_atom->getIdx());
+    QPointF lastp = to_scene_xy(this_pos);
+
     for (const auto& neighbor : mol.atomNeighbors(m_atom)) {
         auto& pos = conf.getAtomPos(neighbor->getIdx());
-        positions.push_back({pos.x, pos.y});
+        positions.push_back(to_scene_xy(pos) - lastp);
     }
 
     if (avoid_subrects) {
         for (auto rect : getSubrects()) {
-            positions.push_back(rect.center() + lastp);
+            if (rect == m_main_label_rect)
+                continue;
+            positions.push_back(rect.topLeft());
+            positions.push_back(rect.topRight());
+            positions.push_back(rect.bottomLeft());
+            positions.push_back(rect.bottomRight());
+            positions.push_back(rect.center());
         }
     }
-    return best_placing_around_center(positions, lastp);
+    return best_placing_around_origin(positions);
 }
 
 QPointF to_scene_xy(const RDGeom::Point3D& xyz)

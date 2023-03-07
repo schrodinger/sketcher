@@ -22,6 +22,7 @@
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QString);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::HsDirection);
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -42,7 +43,15 @@ class TestScene : public Scene
 class TestAtomItem : public AtomItem
 {
   public:
+    using AtomItem::findHsDirection;
     using AtomItem::m_bounding_rect;
+    using AtomItem::m_charge_and_radical_label_text;
+    using AtomItem::m_charge_and_radical_rect;
+    using AtomItem::m_H_count_label_rect;
+    using AtomItem::m_H_count_label_text;
+    using AtomItem::m_H_label_rect;
+    using AtomItem::m_isotope_label_text;
+    using AtomItem::m_isotope_rect;
     using AtomItem::m_label_is_visible;
     using AtomItem::m_main_label_rect;
     using AtomItem::m_main_label_text;
@@ -86,6 +95,12 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
     auto [atom_item, test_scene] = createAtomItem("N");
     BOOST_TEST(atom_item->m_main_label_text == "N");
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(atom_item->m_isotope_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(!atom_item->m_H_count_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_H_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_count_label_text == "3");
+
     BOOST_TEST(!atom_item->m_subrects.empty());
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
@@ -107,10 +122,27 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_UnlabeledC)
     auto [atom_item, test_scene] = createAtomItem("CC");
     BOOST_TEST(atom_item->m_main_label_text.isEmpty());
     BOOST_TEST(atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_count_label_text.isEmpty());
     BOOST_TEST(atom_item->m_subrects.empty());
     BOOST_TEST(!atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+}
+
+BOOST_AUTO_TEST_CASE(test_updateCachedData_ChargeAndIsotope)
+{
+    auto [atom_item, test_scene] = createAtomItem("[13C++]");
+    BOOST_TEST(atom_item->m_label_is_visible);
+    BOOST_TEST(!atom_item->m_main_label_text.isEmpty());
+    BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(!atom_item->m_isotope_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_text == "2+");
+    BOOST_TEST(atom_item->m_isotope_label_text == "13");
+    BOOST_TEST(!atom_item->m_subrects.empty());
 }
 
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
@@ -131,8 +163,23 @@ BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
     auto empty_space_position = central_atom->findPositionInEmptySpace(false);
 
     for (const auto& pos : {first_atom_position, second_atom_position}) {
-        BOOST_TEST(QLineF(pos, empty_space_position).length() == 86.6);
+        BOOST_TEST(QLineF(pos, empty_space_position).length() == 72.6);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_findHsDirection, *boost::unit_test::tolerance(0.01))
+{
+    auto [atom_item, scene] = createAtomItem("N");
+    BOOST_TEST(atom_item->findHsDirection() == HsDirection::RIGHT);
+
+    auto [oxygen_atom_item, scene2] = createAtomItem("O");
+    BOOST_TEST(oxygen_atom_item->findHsDirection() == HsDirection::LEFT);
+
+    auto [atom_items, scene3] = createAtomItems("NNNN");
+    BOOST_TEST(atom_items.at(0)->findHsDirection() == HsDirection::RIGHT);
+    BOOST_TEST(atom_items.at(1)->findHsDirection() == HsDirection::DOWN);
+    BOOST_TEST(atom_items.at(2)->findHsDirection() == HsDirection::UP);
+    BOOST_TEST(atom_items.at(3)->findHsDirection() == HsDirection::LEFT);
 }
 
 } // namespace sketcher

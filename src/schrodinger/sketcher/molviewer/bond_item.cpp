@@ -287,10 +287,12 @@ bool BondItem::isDoubleBondSymmetric() const
         // have more than two)
         return true;
     }
-    if (m_start_item.labelIsVisible() && m_end_item.labelIsVisible() &&
+    if ((begin_degree == 1 || m_start_item.labelIsVisible()) &&
+        (end_degree == 1 || m_end_item.labelIsVisible()) &&
         !RDKit::queryIsBondInRing(m_bond)) {
         // We always draw the bond as symmetrical when this bond is not part of
-        // a ring and the labels for both atoms are visible
+        // a ring and the labels for both atoms are either visible or terminal
+        // atoms
         return true;
     }
     // "cis or trans" bonds (i.e. crossed double bonds) are always drawn
