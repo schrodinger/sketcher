@@ -59,6 +59,7 @@ class TestAtomItem : public AtomItem
     using AtomItem::m_selection_highlighting_path;
     using AtomItem::m_shape;
     using AtomItem::m_subrects;
+    using AtomItem::shouldDisplayValenceError;
 
     TestAtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
                  QGraphicsItem* parent = nullptr) :
@@ -180,6 +181,35 @@ BOOST_AUTO_TEST_CASE(test_findHsDirection, *boost::unit_test::tolerance(0.01))
     BOOST_TEST(atom_items.at(1)->findHsDirection() == HsDirection::DOWN);
     BOOST_TEST(atom_items.at(2)->findHsDirection() == HsDirection::UP);
     BOOST_TEST(atom_items.at(3)->findHsDirection() == HsDirection::LEFT);
+}
+
+BOOST_AUTO_TEST_CASE(test_hasValenceErrors)
+{
+    // TODO: SKETCH-1917 add equivalents to the commented out strings that are
+    // now failing.
+
+    //  Valid
+    for (const auto& smiles : {
+             "C", "C(C)(C)(C)C", "S(C)(C)(C)(C)(C)C", "O(C)C", "[He]",
+             //  "[HH]",
+             //       "[Og][Og]([Og])([Og])([Og])([Og])([Og])[Og]" // any
+             //       valence ok
+             //       "*",             // aka AH wildcard query
+             //       "*C |$_AP1;$|]", // attachment point
+             //        "[*] |$_R1$|",   // rgroup
+             //        "[*:101]",       // rgroup indicated by map number
+             "[NH4+]", // Charged atom, SKETCH-1686
+         }) {
+        auto [atom_items, scene] = createAtomItems(smiles);
+        BOOST_TEST(atom_items.at(0)->shouldDisplayValenceError() == false);
+    }
+    // First atom has a valence error!
+    for (const auto& smiles :
+         {"[CH3+]", "C(C)(C)(C)(C)C", "S(C)(C)(C)(C)(C)(C)C", "O(C)=C",
+          "[He][He]", "[H+]"}) {
+        auto [atom_items, scene] = createAtomItems(smiles);
+        BOOST_TEST(atom_items.at(0)->shouldDisplayValenceError() == true);
+    }
 }
 
 } // namespace sketcher

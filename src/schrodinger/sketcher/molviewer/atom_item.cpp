@@ -81,6 +81,11 @@ AtomItem::AtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
     m_predictive_highlighting_path.addEllipse(
         QPointF(0, 0), ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS,
         ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS);
+    m_valence_error_pen = QPen(VALENCE_ERROR_BORDER_COLOR);
+    m_valence_error_pen.setWidthF(VALENCE_ERROR_BORDER_WIDTH);
+    m_valence_error_pen.setStyle(Qt::DotLine);
+    m_valence_error_pen.setCapStyle(Qt::RoundCap);
+    m_valence_error_brush = QBrush(VALENCE_ERROR_AREA_COLOR);
     updateCachedData();
 }
 
@@ -336,8 +341,10 @@ bool AtomItem::determineLabelIsVisible() const
     if (m_atom->getIsotope() != 0) {
         return true;
     }
-
     if (m_atom->getNumRadicalElectrons()) {
+        return true;
+    }
+    if (shouldDisplayValenceError()) {
         return true;
     }
     if (m_atom->getFormalCharge() != 0) {
@@ -375,6 +382,15 @@ bool AtomItem::labelIsVisible() const
 void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
+    if (shouldDisplayValenceError()) {
+        painter->save();
+        painter->setPen(m_valence_error_pen);
+        painter->setBrush(m_valence_error_brush);
+        painter->drawEllipse(m_main_label_rect.adjusted(
+            -VALENCE_ERROR_AREA_BORDER, -VALENCE_ERROR_AREA_BORDER,
+            VALENCE_ERROR_AREA_BORDER, VALENCE_ERROR_AREA_BORDER));
+        painter->restore();
+    }
     if (m_label_is_visible) {
         painter->save();
         painter->setFont(m_fonts.m_main_label_font);
@@ -426,6 +442,35 @@ QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
 QPointF to_scene_xy(const RDGeom::Point3D& xyz)
 {
     return QPointF(xyz.x * VIEW_SCALE, -xyz.y * VIEW_SCALE);
+}
+
+bool AtomItem::shouldDisplayValenceError() const
+{
+    if (!m_settings.m_valence_errors_shown) {
+        return false;
+    }
+    auto atomic_number = m_atom->getAtomicNum();
+    const auto* table = RDKit::PeriodicTable::getTable();
+
+    /*  TODO: SKETCH-1917 non-elements, or elements signifying any valence is
+       permitted, or attached to any query bond if (isQuery() ||
+       table->getDefaultValence(atomic_number) == -1 ||
+           std::any_of(m_bonds.begin(), m_bonds.end(),
+                       [](const auto& b) { return b->isQuery(); })) {
+           return false;
+       }
+     */
+
+    // There is a valence error if the current value is not permitted
+    auto allowed_valence = table->getValenceList(atomic_number);
+
+    // RDKit's getTotalValence() doesn't consider charges or unpaired electrons
+    // -- it returns the total bond order instead of the total valence.
+    auto current_valence = m_atom->getTotalValence() -
+                           m_atom->getFormalCharge() +
+                           m_atom->getNumRadicalElectrons();
+    return std::find(allowed_valence.begin(), allowed_valence.end(),
+                     current_valence) == allowed_valence.end();
 }
 
 } // namespace sketcher

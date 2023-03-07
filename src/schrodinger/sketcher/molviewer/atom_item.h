@@ -181,8 +181,16 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     AtomItemSettings& m_settings;
     bool m_label_is_visible;
     QPen m_pen;
+    QPen m_valence_error_pen;
+    QBrush m_valence_error_brush;
 
     bool determineLabelIsVisible() const;
+
+    /**
+     * @Return whether the associated atom has a valence error that should be
+     * displayed
+     */
+    bool shouldDisplayValenceError() const;
 };
 
 /**

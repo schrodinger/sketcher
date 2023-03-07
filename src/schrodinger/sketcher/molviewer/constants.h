@@ -93,6 +93,18 @@ const QColor SELECTION_OUTLINE_COLOR = QColor("#779c59");
 // both the outline and the background.
 const QColor PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#e2eadb");
 
+// the color of the dotted line around valence errors
+const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
+
+// the size of the dotted line around valence errors
+const qreal VALENCE_ERROR_BORDER_WIDTH = 2.f;
+
+// the color of the area of valence errors
+const QColor VALENCE_ERROR_AREA_COLOR = QColor("#ffecc5");
+
+// the border size around the main element to define the valence error area
+const qreal VALENCE_ERROR_AREA_BORDER = 3.f;
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
