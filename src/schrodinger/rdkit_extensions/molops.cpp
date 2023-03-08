@@ -72,8 +72,8 @@ void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
 {
     auto stereo_groups = mol.getStereoGroups();
     std::unordered_set<RDKit::Atom*> seen_chiral_atoms;
-    for (auto sg : stereo_groups) {
-        auto atoms = sg.getAtoms();
+    for (const auto& sg : stereo_groups) {
+        const auto& atoms = sg.getAtoms();
         seen_chiral_atoms.insert(atoms.begin(), atoms.end());
     }
 
@@ -90,7 +90,12 @@ void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
         return;
     }
 
-    int chiral_flag{0};
+    // Default to chiral flag on (absolute stereo) if the flag is not present,
+    // or else we'll flip stereo on things that don't come from .sdf.
+    // For .sdf, we explicitly set chiral_flag=0 if the flag is not present
+    // (see convert.cpp). Note that only adds the flag property when it is on,
+    // when it is off, no property is present.
+    int chiral_flag{1};
     mol.getPropIfPresent(RDKit::common_properties::_MolFileChiralFlag,
                          chiral_flag);
 
