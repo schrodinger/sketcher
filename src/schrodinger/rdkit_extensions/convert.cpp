@@ -356,15 +356,6 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
             bool strict_parsing = false;
             reader.setData(text, sanitize, removeHs, strict_parsing);
             mol = read_mol(reader, rd_error_log);
-
-            // .sdf files with no chiral flag default to 0 (all ungrouped chiral
-            // atoms are AND). We explicitly set this flag because anything else
-            // coming from any other format we consider has chiral_flag=1
-            // (absolute).
-            if (mol != nullptr &&
-                !mol->hasProp(RDKit::common_properties::_MolFileChiralFlag)) {
-                mol->setProp(RDKit::common_properties::_MolFileChiralFlag, 0);
-            }
             break;
         }
         case Format::MAESTRO: {
