@@ -22,6 +22,7 @@
 #include <GraphMol/GraphMol.h>
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
+#include <GraphMol/SmilesParse/SmilesWrite.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -33,6 +34,7 @@ using namespace schrodinger;
 using namespace schrodinger::rdkit_extensions;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::StereoGroupType);
 
 const std::vector<Format> TEXT_FORMATS = {
     Format::SMILES,       Format::EXTENDED_SMILES,
@@ -383,6 +385,119 @@ M  END
 
         BOOST_CHECK_EQUAL(abs_group_count, 1);
         BOOST_CHECK_EQUAL(and_group_count, ref.num_and_groups);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedChiralAtomsSafety)
+{
+    // add_enhanced_stereo_to_chiral_atoms() should always add ABS groups
+    // unless the input is coming from a mol block with chiral_flag=0.
+
+    const auto smiles = "N[C@@H](CS)C(=O)O";
+    {
+        // non-text_to_rdmol inputs!
+        const std::unique_ptr<RDKit::RWMol> mol(RDKit::SmilesToMol(smiles));
+        BOOST_REQUIRE_EQUAL(
+            mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), false);
+        add_enhanced_stereo_to_chiral_atoms(*mol);
+        const auto estg = mol->getStereoGroups();
+        BOOST_REQUIRE_EQUAL(estg.size(), 1);
+        BOOST_CHECK_EQUAL(estg.front().getGroupType(),
+                          RDKit::StereoGroupType::STEREO_ABSOLUTE);
+        BOOST_CHECK_EQUAL(RDKit::MolToSmiles(*mol), smiles);
+    }
+    {
+        // text_to_rdmol SMILES input
+        const auto mol = text_to_rdmol(smiles);
+        BOOST_REQUIRE_EQUAL(
+            mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), false);
+        add_enhanced_stereo_to_chiral_atoms(*mol);
+        const auto estg = mol->getStereoGroups();
+        BOOST_REQUIRE_EQUAL(estg.size(), 1);
+        BOOST_CHECK_EQUAL(estg.front().getGroupType(),
+                          RDKit::StereoGroupType::STEREO_ABSOLUTE);
+        BOOST_CHECK_EQUAL(RDKit::MolToSmiles(*mol), smiles);
+    }
+
+    {
+        const auto molblock = R"CTAB(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 6 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N 1.299038 2.250000 0.000000 0
+M  V30 2 C 1.299038 0.750000 0.000000 0
+M  V30 3 C 0.000000 0.000000 0.000000 0
+M  V30 4 S -1.299038 0.750000 0.000000 0
+M  V30 5 C 2.598076 -0.000000 0.000000 0
+M  V30 6 O 2.598076 -1.500000 0.000000 0
+M  V30 7 O 3.897114 0.750000 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1 CFG=3
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 2 5
+M  V30 5 2 5 6
+M  V30 6 1 5 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)CTAB";
+        const auto mol = text_to_rdmol(molblock);
+        BOOST_REQUIRE_EQUAL(
+            mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), true);
+        BOOST_CHECK_EQUAL(
+            mol->getProp<int>(RDKit::common_properties::_MolFileChiralFlag), 0);
+        add_enhanced_stereo_to_chiral_atoms(*mol);
+        const auto estg = mol->getStereoGroups();
+        BOOST_REQUIRE_EQUAL(estg.size(), 1);
+        BOOST_CHECK_EQUAL(estg.front().getGroupType(),
+                          RDKit::StereoGroupType::STEREO_AND);
+
+        // note this is *stereo reversed* smiles!
+        BOOST_CHECK_EQUAL(RDKit::MolToSmiles(*mol), "N[C@H](CS)C(=O)O");
+    }
+    {
+        const auto molblock = R"CTAB(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 6 0 0 1
+M  V30 BEGIN ATOM
+M  V30 1 N 1.299038 2.250000 0.000000 0
+M  V30 2 C 1.299038 0.750000 0.000000 0
+M  V30 3 C 0.000000 0.000000 0.000000 0
+M  V30 4 S -1.299038 0.750000 0.000000 0
+M  V30 5 C 2.598076 -0.000000 0.000000 0
+M  V30 6 O 2.598076 -1.500000 0.000000 0
+M  V30 7 O 3.897114 0.750000 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1 CFG=3
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 2 5
+M  V30 5 2 5 6
+M  V30 6 1 5 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)CTAB";
+        const auto mol = text_to_rdmol(molblock);
+        BOOST_REQUIRE_EQUAL(
+            mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), true);
+        BOOST_CHECK_EQUAL(
+            mol->getProp<int>(RDKit::common_properties::_MolFileChiralFlag), 1);
+        add_enhanced_stereo_to_chiral_atoms(*mol);
+        const auto estg = mol->getStereoGroups();
+        BOOST_REQUIRE_EQUAL(estg.size(), 1);
+        BOOST_CHECK_EQUAL(estg.front().getGroupType(),
+                          RDKit::StereoGroupType::STEREO_ABSOLUTE);
+        BOOST_CHECK_EQUAL(RDKit::MolToSmiles(*mol), smiles);
     }
 }
 
