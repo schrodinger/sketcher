@@ -1,0 +1,9 @@
+
+{
+   See SHARED-9628: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher17TestUndoableModel8addTwiceEi
+}
