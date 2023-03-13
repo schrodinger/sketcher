@@ -38,9 +38,10 @@ int ReactionPopup::getButtonIDToCheck()
     }
 
     int button_id = -1;
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
     if (draw_tool == DrawTool::ENUMERATION) {
-        auto enum_tool_int = model->getValueInt(ModelKey::ENUMERATION_TOOL);
+        auto enum_tool_int =
+            model->getValue(ModelKey::ENUMERATION_TOOL).toInt();
         button_id = getButtonIDs().count(enum_tool_int) == 1 ? enum_tool_int
                                                              : button_id;
     }
@@ -52,7 +53,7 @@ void ReactionPopup::updateWidgetsEnabled()
     ModularPopup::updateWidgetsEnabled();
     auto model = getModel();
     auto allow_multiple_rxns =
-        model->getValueBool(ModelKey::ALLOW_MULTIPLE_RXNS);
+        model->getValue(ModelKey::ALLOW_MULTIPLE_RXNS).toBool();
     ui->rxn_arrow_btn->setEnabled(allow_multiple_rxns || !model->hasReaction());
 }
 

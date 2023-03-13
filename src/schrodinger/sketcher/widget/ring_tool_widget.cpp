@@ -46,10 +46,10 @@ void RingToolWidget::updateWidgetsEnabled()
 void RingToolWidget::updateCheckState()
 {
     auto model = getModel();
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
     QAbstractButton* button = nullptr;
     if (draw_tool == DrawTool::RING) {
-        auto button_id = model->getValueInt(ModelKey::RING_TOOL);
+        auto button_id = model->getValue(ModelKey::RING_TOOL).toInt();
         button = ui->group->button(button_id);
     }
 

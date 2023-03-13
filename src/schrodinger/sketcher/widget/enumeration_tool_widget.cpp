@@ -55,12 +55,13 @@ void EnumerationToolWidget::updateCheckState()
     updateButtons();
 
     auto model = getModel();
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
     QAbstractButton* button = nullptr;
     if (draw_tool == DrawTool::ENUMERATION) {
-        auto enum_tool = model->getValue<EnumerationTool>();
+        auto enum_tool = EnumerationTool(
+            model->getValue(ModelKey::ENUMERATION_TOOL).toInt());
         unsigned int rgroup_number =
-            model->getValueInt(ModelKey::RGROUP_NUMBER);
+            model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
         if (enum_tool == EnumerationTool::NEW_RGROUP ||
             (enum_tool == EnumerationTool::EXISTING_RGROUP &&
              m_rgroup_popup->isSupportedRGroup(rgroup_number))) {
@@ -79,12 +80,14 @@ void EnumerationToolWidget::updateCheckState()
 void EnumerationToolWidget::updateButtons()
 {
     auto model = getModel();
-    auto enum_tool = model->getValue<EnumerationTool>();
+    auto enum_tool =
+        EnumerationTool(model->getValue(ModelKey::ENUMERATION_TOOL).toInt());
     if (enum_tool == EnumerationTool::NEW_RGROUP ||
         enum_tool == EnumerationTool::EXISTING_RGROUP) {
-        int rgroup_number = enum_tool == EnumerationTool::NEW_RGROUP
-                                ? 0u
-                                : model->getValueInt(ModelKey::RGROUP_NUMBER);
+        int rgroup_number =
+            enum_tool == EnumerationTool::NEW_RGROUP
+                ? 0u
+                : model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
         ui->rgroup_btn->setEnumItem(rgroup_number);
     } else if (m_reaction_popup->getButtonIDs().count(
                    static_cast<int>(enum_tool)) == 1) {

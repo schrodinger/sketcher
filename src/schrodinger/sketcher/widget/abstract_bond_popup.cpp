@@ -18,9 +18,9 @@ int AbstractBondPopup::getButtonIDToCheck()
     }
 
     int button_id = -1;
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
     if (draw_tool == DrawTool::BOND) {
-        button_id = model->getValueInt(ModelKey::BOND_TOOL);
+        button_id = model->getValue(ModelKey::BOND_TOOL).toInt();
     }
     return button_id;
 }

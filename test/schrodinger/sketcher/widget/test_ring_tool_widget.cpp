@@ -49,11 +49,11 @@ BOOST_AUTO_TEST_CASE(ring_buttons)
         button->click();
         BOOST_TEST(button->isChecked());
         BOOST_TEST(group->checkedId() == button_id);
-        BOOST_TEST(model->getValueInt(ModelKey::RING_TOOL) == button_id);
+        BOOST_TEST(model->getValue(ModelKey::RING_TOOL).toInt() == button_id);
     }
 
     // Switching to a different interaction mode should uncheck all ring buttons
-    int button_id = model->getValueInt(ModelKey::RING_TOOL);
+    int button_id = model->getValue(ModelKey::RING_TOOL).toInt();
     BOOST_TEST(group->button(button_id)->isEnabled());
     scene.selectAll();
     BOOST_TEST(!group->button(button_id)->isEnabled());
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(ring_buttons)
         model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         int exp_id = draw_tool != DrawTool::RING
                          ? -1
-                         : model->getValueInt(ModelKey::RING_TOOL);
+                         : model->getValue(ModelKey::RING_TOOL).toInt();
         BOOST_TEST(group->checkedId() == exp_id);
     }
 }

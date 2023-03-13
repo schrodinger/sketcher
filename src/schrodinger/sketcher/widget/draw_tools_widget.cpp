@@ -151,13 +151,13 @@ void DrawToolsWidget::updateCheckedButton()
 
     QAbstractButton* bond_button = nullptr;
     QAbstractButton* charge_button = nullptr;
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
 
     if (draw_tool == DrawTool::BOND) {
-        auto bond_tool = model->getValue<BondTool>();
+        auto bond_tool = BondTool(model->getValue(ModelKey::BOND_TOOL).toInt());
         bond_button = getBondButton(bond_tool);
     } else if (draw_tool == DrawTool::CHARGE) {
-        auto charge_tool_int = model->getValueInt(ModelKey::CHARGE_TOOL);
+        auto charge_tool_int = model->getValue(ModelKey::CHARGE_TOOL).toInt();
         charge_button = ui->charge_group->button(charge_tool_int);
     }
 

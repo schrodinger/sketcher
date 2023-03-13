@@ -67,14 +67,14 @@ void SetAtomWidget::setModel(SketcherModel* model)
 void SetAtomWidget::updateCheckedButton()
 {
     auto model = getModel();
-    auto draw_tool = model->getValue<DrawTool>();
-    auto atom_tool = model->getValue<AtomTool>();
-    auto element = model->getValue<Element>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
+    auto atom_tool = AtomTool(model->getValue(ModelKey::ATOM_TOOL).toInt());
+    auto element = Element(model->getValue(ModelKey::ELEMENT).toInt());
     QAbstractButton* button = nullptr;
 
     if (draw_tool == DrawTool::ATOM) {
         if (atom_tool == AtomTool::QUERY) {
-            auto query_int = model->getValueInt(ModelKey::ATOM_QUERY);
+            auto query_int = model->getValue(ModelKey::ATOM_QUERY).toInt();
             ui->atom_query_btn->setEnumItem(query_int);
             button = ui->atom_query_btn;
         } else {
@@ -93,7 +93,7 @@ void SetAtomWidget::updateCheckedButton()
 void SetAtomWidget::onModelValuePinged(ModelKey key, QVariant value)
 {
     if (key == ModelKey::ELEMENT) {
-        auto element = value.value<Element>();
+        auto element = Element(value.toInt());
         if (m_button_element_bimap.right.count(element) == 0) {
             ui->last_picked_element_btn->setElement(element);
         }

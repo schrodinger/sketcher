@@ -57,13 +57,13 @@ bool view_is_synchronized_to_model(TestSetAtomWidget& wdg)
     auto model = wdg.getModel();
     auto& ui = wdg.getUI();
     QAbstractButton* exp_button = nullptr;
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
     if (draw_tool == DrawTool::ATOM) {
         // The "atom" draw tool is selected, and we must dig deeper
-        auto atom_tool = model->getValue<AtomTool>();
+        auto atom_tool = AtomTool(model->getValue(ModelKey::ATOM_TOOL).toInt());
         if (atom_tool == AtomTool::ELEMENT) {
             auto bimap = wdg.getButtonElementBimap();
-            auto element = model->getValue<Element>();
+            auto element = Element(model->getValue(ModelKey::ELEMENT).toInt());
             if (bimap.right.count(element) == 1) {
                 exp_button = bimap.right.at(element);
             } else {
@@ -73,8 +73,8 @@ bool view_is_synchronized_to_model(TestSetAtomWidget& wdg)
                 }
             }
         } else {
-            auto query = model->getValue<AtomQuery>();
-            if (ui->atom_query_btn->getEnumItem() != static_cast<int>(query)) {
+            auto query_int = model->getValue(ModelKey::ATOM_QUERY).toInt();
+            if (ui->atom_query_btn->getEnumItem() != query_int) {
                 return false;
             }
             exp_button = ui->atom_query_btn;
@@ -119,15 +119,19 @@ BOOST_AUTO_TEST_CASE(button_check_state)
         AtomQuery::Q, AtomQuery::QH, AtomQuery::X, AtomQuery::XH};
     for (auto& atom_tool : atom_tools) {
         model->setValue(ModelKey::ATOM_TOOL, atom_tool);
-        BOOST_TEST(model->getValue<AtomTool>() == atom_tool);
+        BOOST_TEST(AtomTool(model->getValue(ModelKey::ATOM_TOOL).toInt()) ==
+                   atom_tool);
         for (auto& element : elements) {
             model->setValue(ModelKey::ELEMENT, element);
-            BOOST_TEST(model->getValue<Element>() == element);
+            BOOST_TEST(Element(model->getValue(ModelKey::ELEMENT).toInt()) ==
+                       element);
             BOOST_TEST(view_is_synchronized_to_model(wdg));
         }
         for (auto& query : queries) {
             model->setValue(ModelKey::ATOM_QUERY, query);
-            BOOST_TEST(model->getValue<AtomQuery>() == query);
+            BOOST_TEST(
+                AtomQuery(model->getValue(ModelKey::ATOM_QUERY).toInt()) ==
+                query);
             BOOST_TEST(view_is_synchronized_to_model(wdg));
         }
     }
@@ -163,9 +167,9 @@ BOOST_AUTO_TEST_CASE(modular_button)
         auto int_value = static_cast<int>(atom_query);
         button->setEnumItem(int_value);
         BOOST_TEST((button->toolTip()).contains("press & hold") == true);
-        BOOST_TEST(model->getValue<AtomQuery>() != atom_query);
+        BOOST_TEST(model->getValue(ModelKey::ATOM_QUERY).toInt() != int_value);
         wdg.onAtomButtonClicked(button);
-        BOOST_TEST(model->getValue<AtomQuery>() == atom_query);
+        BOOST_TEST(model->getValue(ModelKey::ATOM_QUERY).toInt() == int_value);
     }
 }
 
@@ -286,7 +290,7 @@ BOOST_AUTO_TEST_CASE(model_signals)
     scene.setSelection(scene.getObjects());
     pinged_spy.clear();
     changed_spy.clear();
-    auto model_element = model->getValue<Element>();
+    int model_element_int = model->getValue(ModelKey::ELEMENT).toInt();
     for (auto button : ui->atom_group->buttons()) {
         button->click();
         int exp_value_int;
@@ -306,7 +310,8 @@ BOOST_AUTO_TEST_CASE(model_signals)
         auto value = args.at(1).value<QVariant>();
         BOOST_TEST(key_int == exp_key_int);
         BOOST_TEST(value.toInt() == exp_value_int);
-        BOOST_TEST(model->getValue<Element>() == model_element);
+        BOOST_TEST(model->getValue(ModelKey::ELEMENT).toInt() ==
+                   model_element_int);
     }
 }
 

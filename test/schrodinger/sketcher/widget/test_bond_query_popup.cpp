@@ -56,10 +56,10 @@ bool view_synchronized_to_model(TestBondQueryPopup& wdg)
 {
     auto model = wdg.getModel();
     auto group = wdg.getGroup();
-    auto draw_tool = model->getValue<DrawTool>();
+    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
     int exp_button_id = -1;
     if (draw_tool == DrawTool::BOND) {
-        int bond_tool_int = model->getValueInt(ModelKey::BOND_TOOL);
+        int bond_tool_int = model->getValue(ModelKey::BOND_TOOL).toInt();
         for (auto button : group->buttons()) {
             if (group->id(button) == bond_tool_int) {
                 exp_button_id = bond_tool_int;

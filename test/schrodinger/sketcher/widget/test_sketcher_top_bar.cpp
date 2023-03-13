@@ -69,7 +69,7 @@ bool view_synchronized_to_model(TestSketcherTopBar& top_bar)
 {
     auto model = top_bar.getModel();
     for (auto& signal_packet : top_bar.getSignalPackets()) {
-        bool exp_value = model->getValueBool(signal_packet.key);
+        bool exp_value = model->getValue(signal_packet.key).toBool();
         if (signal_packet.action->isChecked() != exp_value) {
             return false;
         }
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(synchronize)
     // Try interacting with subwidgets of the view. Synchronization should occur
     // automatically.
     for (auto& signal_packet : top_bar.getSignalPackets()) {
-        bool value = model->getValueBool(signal_packet.key);
+        bool value = model->getValue(signal_packet.key).toBool();
         signal_packet.action->trigger();
         BOOST_TEST(signal_packet.action->isChecked() != value);
         BOOST_TEST(view_synchronized_to_model(top_bar));
@@ -108,9 +108,9 @@ BOOST_AUTO_TEST_CASE(synchronize)
     // Try changing the state of the model. The view should update the state of
     // its subwidgets automatically.
     for (auto& setter_packet : top_bar.getSetterPackets()) {
-        auto new_value = !model->getValueBool(setter_packet.key);
+        auto new_value = !model->getValue(setter_packet.key).toBool();
         model->setValue(setter_packet.key, new_value);
-        BOOST_TEST(model->getValueBool(setter_packet.key) == new_value);
+        BOOST_TEST(model->getValue(setter_packet.key).toBool() == new_value);
         BOOST_TEST(view_synchronized_to_model(top_bar));
     }
 }
