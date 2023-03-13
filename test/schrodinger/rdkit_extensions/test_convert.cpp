@@ -50,17 +50,17 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
                      boost::unit_test::data::make(TEXT_FORMATS))
 {
     auto mol = std::shared_ptr<RDKit::RWMol>(RDKit::SmilesToMol("c1ccccc1"));
-    auto text = rdmol_to_text(*mol, sample);
+    auto text = to_string(*mol, sample);
 
     // Check roundtripping
-    auto m2 = text_to_rdmol(text, sample);
-    BOOST_TEST(rdmol_to_text(*m2, sample) == text);
+    auto m2 = to_rdkit(text, sample);
+    BOOST_TEST(to_string(*m2, sample) == text);
 
     // Check format auto-detect
-    auto m3 = text_to_rdmol(text);
-    BOOST_TEST(rdmol_to_text(*m3, sample) == text);
+    auto m3 = to_rdkit(text);
+    BOOST_TEST(to_string(*m3, sample) == text);
 
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol("garbage", sample),
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit("garbage", sample),
                                     std::invalid_argument,
                                     "Failed to parse text");
 }
@@ -72,18 +72,17 @@ BOOST_DATA_TEST_CASE(test_bypass_sanitization,
         return; // skip SMARTS, which doesn't have sanitize options
     }
     // Create an unsanitized mol with a pentavalent C...
-    auto mol = text_to_rdmol("C[C](C)(C)(C)C", Format::SMILES);
-    auto text = rdmol_to_text(*mol, sample);
+    auto mol = to_rdkit("C[C](C)(C)(C)C", Format::SMILES);
+    auto text = to_string(*mol, sample);
 
     // Make sure roundtripping preserves the poor chemistry
-    auto m2 = text_to_rdmol(text, sample);
-    BOOST_TEST(rdmol_to_text(*m2, sample) == text);
+    auto m2 = to_rdkit(text, sample);
+    BOOST_TEST(to_string(*m2, sample) == text);
 }
 
 BOOST_AUTO_TEST_CASE(test_invalid_input)
 {
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol("garbage"),
-                                    std::invalid_argument,
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit("garbage"), std::invalid_argument,
                                     "Unable to determine format");
 }
 
@@ -91,28 +90,28 @@ BOOST_AUTO_TEST_CASE(test_roundtrip_smarts)
 {
     // roundtrip through SMARTS
     std::string smarts = "cOc";
-    auto mol = text_to_rdmol(smarts, Format::SMARTS);
-    BOOST_TEST(rdmol_to_text(*mol, Format::SMARTS) == "cOc");
+    auto mol = to_rdkit(smarts, Format::SMARTS);
+    BOOST_TEST(to_string(*mol, Format::SMARTS) == "cOc");
 
     // Read in as SMILES
-    mol = text_to_rdmol(smarts, Format::SMILES);
-    BOOST_TEST(rdmol_to_text(*mol, Format::SMARTS) == "[#6]-[#8]-[#6]");
+    mol = to_rdkit(smarts, Format::SMILES);
+    BOOST_TEST(to_string(*mol, Format::SMARTS) == "[#6]-[#8]-[#6]");
 
     // Auto-detect reads as unsanitized SMILES
-    mol = text_to_rdmol(smarts);
-    BOOST_TEST(rdmol_to_text(*mol, Format::SMARTS) == "[#6]-[#8]-[#6]");
+    mol = to_rdkit(smarts);
+    BOOST_TEST(to_string(*mol, Format::SMARTS) == "[#6]-[#8]-[#6]");
 }
 
 BOOST_AUTO_TEST_CASE(test_INCHI_KEY)
 {
-    auto mol = text_to_rdmol("C[C](C)(C)(C)C", Format::SMILES);
-    auto text = rdmol_to_text(*mol, Format::INCHI_KEY);
+    auto mol = to_rdkit("C[C](C)(C)(C)C", Format::SMILES);
+    auto text = to_string(*mol, Format::INCHI_KEY);
     BOOST_TEST(text == "PJNAWCYHQGIPJJ-UHFFFAOYSA-N");
 
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol(text), std::invalid_argument,
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit(text), std::invalid_argument,
                                     "Unable to determine format");
 
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol(text, Format::INCHI_KEY),
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit(text, Format::INCHI_KEY),
                                     std::invalid_argument,
                                     "Cannot read from INCHI_KEY");
 }
@@ -121,23 +120,22 @@ BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
                      boost::unit_test::data::make(REACTION_TEXT_FORMATS))
 {
     std::string smiles = "CC(=O)O.OCC>>CC(=O)OCC";
-    auto reaction = text_to_reaction(smiles, Format::SMILES);
-    auto text = reaction_to_text(*reaction, sample);
+    auto reaction = to_rdkit_reaction(smiles, Format::SMILES);
+    auto text = to_string(*reaction, sample);
 
     // Check roundtripping
-    auto reaction2 = text_to_reaction(text, sample);
-    BOOST_TEST(reaction_to_text(*reaction2, sample) == text);
+    auto reaction2 = to_rdkit_reaction(text, sample);
+    BOOST_TEST(to_string(*reaction2, sample) == text);
 
     // Confirm reaction formats aren't picked up and fail
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_rdmol(smiles),
-                                    std::invalid_argument,
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit(smiles), std::invalid_argument,
                                     "Unable to determine format");
 
     // General failure
     std::string regular_smiles = "CC";
-    auto reaction4 = text_to_reaction(smiles, Format::SMILES);
-    reaction_to_text(*reaction4, sample);
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(text_to_reaction(regular_smiles),
+    auto reaction4 = to_rdkit_reaction(smiles, Format::SMILES);
+    to_string(*reaction4, sample);
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit_reaction(regular_smiles),
                                     std::invalid_argument,
                                     "Unable to determine format");
 }
@@ -149,17 +147,17 @@ BOOST_DATA_TEST_CASE(testDoNotForceKekulizationOnExport,
 
     // This SMILES cannot be kekulized: N atom's valence is ambiguous,
     // an explicit H is required to disambiguate.
-    auto mol = text_to_rdmol("c1ccnc1", Format::SMILES);
+    auto mol = to_rdkit("c1ccnc1", Format::SMILES);
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 5);
 
     if (sample == Format::INCHI || sample == Format::PDB) {
         // INCHI and PDB force kekulization, so we expect them to throw
         TEST_CHECK_EXCEPTION_MSG_SUBSTR(
-            rdmol_to_text(*mol, sample), RDKit::KekulizeException,
+            to_string(*mol, sample), RDKit::KekulizeException,
             "Can't kekulize mol.  Unkekulized atoms: 0 1 2 3 4");
     } else {
         // any other export format should not throw
-        rdmol_to_text(*mol, sample);
+        to_string(*mol, sample);
     }
 }
 
@@ -168,7 +166,7 @@ BOOST_DATA_TEST_CASE(testExportPreservesKekulizationState,
 {
     // SKETCH-1416
 
-    auto mol = text_to_rdmol("c1ccccc1", Format::SMILES);
+    auto mol = to_rdkit("c1ccccc1", Format::SMILES);
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 6);
 
     // Aromatic mol
@@ -206,7 +204,7 @@ CONECT    5    6    6
 )PDB"},
         };
 
-        auto molblock_out = rdmol_to_text(*mol, sample);
+        auto molblock_out = to_string(*mol, sample);
         BOOST_REQUIRE_NE(molblock_out.find(references[sample]),
                          std::string::npos);
     }
@@ -247,7 +245,7 @@ CONECT    5    6    6
 )PDB"},
         };
 
-        auto molblock_out = rdmol_to_text(*mol, sample);
+        auto molblock_out = to_string(*mol, sample);
         BOOST_REQUIRE_NE(molblock_out.find(references[sample]),
                          std::string::npos);
     }
@@ -517,10 +515,10 @@ M  V30 END ATOM
 M  V30 END CTAB
 M  END)CTAB";
 
-    auto mol = text_to_rdmol(molblock, Format::MDL_MOLV3000);
+    auto mol = to_rdkit(molblock, Format::MDL_MOLV3000);
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 1);
 
-    auto cxsmiles = rdmol_to_text(*mol, Format::EXTENDED_SMILES);
+    auto cxsmiles = to_string(*mol, Format::EXTENDED_SMILES);
     BOOST_TEST(!test::contains(cxsmiles, std::string("molTotValence")));
 }
 
@@ -549,16 +547,16 @@ M  V30 END COLLECTION
 M  V30 END CTAB
 M  END)MDL";
 
-    auto mol = text_to_rdmol(molblock);
+    auto mol = to_rdkit(molblock);
     BOOST_TEST(mol->getNumAtoms() == 4);
 
-    auto v3k = rdmol_to_text(*mol, Format::MDL_MOLV3000);
+    auto v3k = to_string(*mol, Format::MDL_MOLV3000);
     BOOST_TEST(v3k.find("V3000") != std::string::npos);
-    auto v2k = rdmol_to_text(*mol, Format::MDL_MOLV2000);
+    auto v2k = to_string(*mol, Format::MDL_MOLV2000);
     BOOST_TEST(v2k.find("V2000") != std::string::npos);
 
     // V2K blows away all enhanced stereo!!!
-    mol = text_to_rdmol(v2k);
+    mol = to_rdkit(v2k);
     BOOST_TEST(mol->getStereoGroups().size() == 0);
 }
 
@@ -576,7 +574,7 @@ M  V30 END ATOM
 M  V30 END CTAB
 M  END)MDL";
 
-    auto mol = text_to_rdmol(molblock);
+    auto mol = to_rdkit(molblock);
     auto conf = mol->getConformer();
     auto a0 = conf.getAtomPos(0);
     auto a1 = conf.getAtomPos(1);
@@ -612,9 +610,8 @@ M  V30 END SGROUP
 M  V30 END CTAB
 M  END)"""";
 
-    auto mol = text_to_rdmol(molblock);
-    auto roundtrip_mol =
-        text_to_rdmol(rdmol_to_text(*mol, Format::MDL_MOLV3000));
+    auto mol = to_rdkit(molblock);
+    auto roundtrip_mol = to_rdkit(to_string(*mol, Format::MDL_MOLV3000));
 
     // roundtripped mol should have the correct ring query atom
     auto at = roundtrip_mol->getAtomWithIdx(1);
@@ -637,7 +634,7 @@ O      0.864200   -0.503050    0.000000
 )XYZ";
 
     // Check explicit read
-    auto m1 = text_to_rdmol(xyz_input, Format::XYZ);
+    auto m1 = to_rdkit(xyz_input, Format::XYZ);
     BOOST_REQUIRE(m1 != nullptr);
     // atoms present, but no bonding information
     BOOST_TEST(m1->getNumAtoms() == 4);
@@ -648,15 +645,14 @@ O      0.864200   -0.503050    0.000000
     BOOST_TEST(!m1->hasProp("i_m_Spin_multiplicity"));
 
     // Auto-detect should fail until SKETCH-1845
-    BOOST_REQUIRE_THROW(text_to_rdmol(xyz_input), std::invalid_argument);
+    BOOST_REQUIRE_THROW(to_rdkit(xyz_input), std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_CASE(test_XYZ_export)
 {
-    auto mol = text_to_rdmol("C[NH3+]");
+    auto mol = to_rdkit("C[NH3+]");
     // No conformers
-    BOOST_REQUIRE_THROW(rdmol_to_text(*mol, Format::XYZ),
-                        std::invalid_argument);
+    BOOST_REQUIRE_THROW(to_string(*mol, Format::XYZ), std::invalid_argument);
 
     RDKit::CoordGen::addCoords(*mol);
     auto reference = R"XYZ(2
@@ -664,16 +660,16 @@ charge=1
 C     -0.500000    0.000000    0.000000
 N      0.500000    0.000000    0.000000
 )XYZ";
-    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
     mol->setProp(RDKit::common_properties::_Name, "C[NH3+]");
     reference = R"XYZ(2
 C[NH3+]; charge=1
 C     -0.500000    0.000000    0.000000
 N      0.500000    0.000000    0.000000
 )XYZ";
-    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
 
-    mol = text_to_rdmol("CC(=O)[O-]");
+    mol = to_rdkit("CC(=O)[O-]");
     RDKit::CoordGen::addCoords(*mol);
     reference = R"XYZ(4
 charge=-1
@@ -682,7 +678,7 @@ C      0.000000   -0.000050    0.000000
 O      0.003600    0.999950    0.000000
 O      0.864200   -0.503050    0.000000
 )XYZ";
-    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
     mol->setProp(RDKit::common_properties::_Name, "CC(=O)[O-]");
     reference = R"XYZ(4
 CC(=O)[O-]; charge=-1
@@ -691,14 +687,14 @@ C      0.000000   -0.000050    0.000000
 O      0.003600    0.999950    0.000000
 O      0.864200   -0.503050    0.000000
 )XYZ";
-    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
 
-    mol = text_to_rdmol("O");
+    mol = to_rdkit("O");
     RDKit::CoordGen::addCoords(*mol);
     mol->setProp("i_m_Spin_multiplicity", 2);
     reference = R"XYZ(1
 multiplicity=2
 O      0.000000    0.000000    0.000000
 )XYZ";
-    BOOST_TEST(rdmol_to_text(*mol, Format::XYZ) == reference);
+    BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
 }

@@ -49,7 +49,7 @@ enum class Format {
  * @throw std::invalid_argument if text is not valid for the given format
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
-text_to_rdmol(const std::string& text, Format format = Format::AUTO_DETECT);
+to_rdkit(const std::string& text, Format format = Format::AUTO_DETECT);
 
 /**
  * @param text input text block
@@ -58,15 +58,15 @@ text_to_rdmol(const std::string& text, Format format = Format::AUTO_DETECT);
  * @throw std::invalid_argument if text is not valid for the given format
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::ChemicalReaction>
-text_to_reaction(const std::string& text, Format format = Format::AUTO_DETECT);
+to_rdkit_reaction(const std::string& text, Format format = Format::AUTO_DETECT);
 
 /**
  * @param mol rdkit molecule
  * @param format specified format to which to serialize
  * @return requested text representation of the given molecule
  */
-RDKIT_EXTENSIONS_API std::string rdmol_to_text(const RDKit::ROMol& mol,
-                                               Format format);
+RDKIT_EXTENSIONS_API std::string to_string(const RDKit::ROMol& mol,
+                                           Format format);
 
 /**
  * @param mol rdkit molecule
@@ -74,7 +74,7 @@ RDKIT_EXTENSIONS_API std::string rdmol_to_text(const RDKit::ROMol& mol,
  * @return requested text representation of the given reaction
  */
 RDKIT_EXTENSIONS_API std::string
-reaction_to_text(const RDKit::ChemicalReaction& reaction, Format format);
+to_string(const RDKit::ChemicalReaction& reaction, Format format);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger
