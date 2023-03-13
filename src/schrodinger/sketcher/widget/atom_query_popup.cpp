@@ -40,10 +40,10 @@ int AtomQueryPopup::getButtonIDToCheck()
     }
 
     int button_id = -1;
-    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
-    auto atom_tool = AtomTool(model->getValue(ModelKey::ATOM_TOOL).toInt());
+    auto draw_tool = model->getValue<DrawTool>();
+    auto atom_tool = model->getValue<AtomTool>();
     if (draw_tool == DrawTool::ATOM && atom_tool == AtomTool::QUERY) {
-        button_id = model->getValue(ModelKey::ATOM_QUERY).toInt();
+        button_id = model->getValueInt(ModelKey::ATOM_QUERY);
     }
     return button_id;
 }

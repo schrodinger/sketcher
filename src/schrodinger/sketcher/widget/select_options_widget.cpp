@@ -70,11 +70,11 @@ void SelectOptionsWidget::updateWidgetsEnabled()
 void SelectOptionsWidget::updateCheckState()
 {
     auto model = getModel();
-    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
+    auto draw_tool = model->getValue<DrawTool>();
 
     QAbstractButton* button = nullptr;
     if (draw_tool == DrawTool::SELECT) {
-        auto button_id = model->getValue(ModelKey::SELECTION_TOOL).toInt();
+        auto button_id = model->getValueInt(ModelKey::SELECTION_TOOL);
         button = ui->select_tool_group->button(button_id);
     }
     check_button_or_uncheck_group(button, ui->select_tool_group);

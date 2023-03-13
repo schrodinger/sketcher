@@ -42,13 +42,12 @@ int RGroupPopup::getButtonIDToCheck()
     }
 
     int button_id = -1;
-    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
-    auto enum_tool =
-        EnumerationTool(model->getValue(ModelKey::ENUMERATION_TOOL).toInt());
+    auto draw_tool = model->getValue<DrawTool>();
+    auto enum_tool = model->getValue<EnumerationTool>();
     if (draw_tool == DrawTool::ENUMERATION &&
         (enum_tool == EnumerationTool::NEW_RGROUP ||
          enum_tool == EnumerationTool::EXISTING_RGROUP)) {
-        auto rgroup_number = model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
+        auto rgroup_number = model->getValueInt(ModelKey::RGROUP_NUMBER);
         if (enum_tool == EnumerationTool::NEW_RGROUP) {
             button_id = 0;
         } else if (isSupportedRGroup(rgroup_number)) {

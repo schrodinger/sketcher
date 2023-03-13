@@ -72,13 +72,13 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
     pinged_spy.clear();
     ui->single_bond_btn->click();
     int exp_value_int = static_cast<int>(BondTool::SINGLE);
-    BOOST_TEST(model->getValue(ModelKey::BOND_TOOL).toInt() == exp_value_int);
+    BOOST_TEST(model->getValueInt(ModelKey::BOND_TOOL) == exp_value_int);
     BOOST_TEST(pinged_spy.count() == 2);
 
     pinged_spy.clear();
     ui->atom_chain_btn->click();
     exp_value_int = static_cast<int>(BondTool::ATOM_CHAIN);
-    BOOST_TEST(model->getValue(ModelKey::BOND_TOOL).toInt() ==
+    BOOST_TEST(model->getValueInt(ModelKey::BOND_TOOL) ==
                static_cast<int>(BondTool::ATOM_CHAIN));
     BOOST_TEST(pinged_spy.count() == 2);
 
@@ -118,11 +118,9 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
             auto int_value = static_cast<int>(tool);
             button->setEnumItem(int_value);
             BOOST_TEST((button->toolTip()).contains("press & hold") == true);
-            BOOST_TEST(model->getValue(ModelKey::BOND_TOOL).toInt() !=
-                       int_value);
+            BOOST_TEST(model->getValueInt(ModelKey::BOND_TOOL) != int_value);
             wdg.onBondButtonClicked(button);
-            BOOST_TEST(model->getValue(ModelKey::BOND_TOOL).toInt() ==
-                       int_value);
+            BOOST_TEST(model->getValueInt(ModelKey::BOND_TOOL) == int_value);
             BOOST_TEST(pinged_spy.count() == 2);
         }
     }
@@ -136,7 +134,7 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
         model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         int bond_tool_int = -1;
         if (draw_tool == DrawTool::BOND) {
-            bond_tool_int = model->getValue(ModelKey::BOND_TOOL).toInt();
+            bond_tool_int = model->getValueInt(ModelKey::BOND_TOOL);
         }
 
         int button_value = -1;
@@ -174,7 +172,7 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
     pinged_spy.clear();
     changed_spy.clear();
 
-    int exp_model_value_int = model->getValue(ModelKey::BOND_TOOL).toInt();
+    int exp_model_value_int = model->getValueInt(ModelKey::BOND_TOOL);
     int exp_key_int = static_cast<int>(ModelKey::BOND_TOOL);
     for (auto& pair : button_tools_pairs) {
         auto button = pair.first;
@@ -189,7 +187,7 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
             auto value_int = args.at(1).value<QVariant>().toInt();
             BOOST_TEST(key_int == exp_key_int);
             BOOST_TEST(value_int == exp_value_int);
-            BOOST_TEST(model->getValue(ModelKey::BOND_TOOL).toInt() ==
+            BOOST_TEST(model->getValueInt(ModelKey::BOND_TOOL) ==
                        exp_model_value_int);
         }
     }
@@ -216,11 +214,9 @@ BOOST_AUTO_TEST_CASE(other_buttons)
         BOOST_TEST(ui->explicit_h_btn->isChecked() ==
                    (button == ui->explicit_h_btn));
         if (button == ui->explicit_h_btn) {
-            BOOST_TEST(model->getValue(ModelKey::DRAW_TOOL).toInt() ==
-                       static_cast<int>(DrawTool::EXPLICIT_H));
+            BOOST_TEST(model->getValue<DrawTool>() == DrawTool::EXPLICIT_H);
         } else {
-            BOOST_TEST(model->getValue(ModelKey::CHARGE_TOOL).toInt() ==
-                       button_id);
+            BOOST_TEST(model->getValueInt(ModelKey::CHARGE_TOOL) == button_id);
         }
     }
 
@@ -233,7 +229,7 @@ BOOST_AUTO_TEST_CASE(other_buttons)
         model->setValue(ModelKey::DRAW_TOOL, draw_tool);
         int exp_id = -1;
         if (draw_tool == DrawTool::CHARGE) {
-            exp_id = model->getValue(ModelKey::CHARGE_TOOL).toInt();
+            exp_id = model->getValueInt(ModelKey::CHARGE_TOOL);
         }
         BOOST_TEST(group->checkedId() == exp_id);
         BOOST_TEST(ui->explicit_h_btn->isChecked() ==

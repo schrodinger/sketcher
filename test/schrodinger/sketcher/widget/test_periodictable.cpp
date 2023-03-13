@@ -70,8 +70,7 @@ BOOST_AUTO_TEST_CASE(model_controller)
         changed_spy.clear();
         button->click();
         auto exp_atomic_number = pt_widget.ui->group->id(button);
-        BOOST_TEST(model->getValue(ModelKey::ELEMENT).toInt() ==
-                   exp_atomic_number);
+        BOOST_TEST(model->getValueInt(ModelKey::ELEMENT) == exp_atomic_number);
         BOOST_TEST(pinged_spy.count() == 3);
         BOOST_TEST(changed_spy.count() == 1);
     }
@@ -82,7 +81,7 @@ BOOST_AUTO_TEST_CASE(model_controller)
     changed_spy.clear();
 
     int exp_key_int = static_cast<int>(ModelKey::ELEMENT);
-    int exp_model_value_int = model->getValue(ModelKey::ELEMENT).toInt();
+    auto exp_model_value = model->getValue<Element>();
     for (auto button : pt_widget.ui->group->buttons()) {
         button->click();
         BOOST_TEST(pinged_spy.count() == 1);
@@ -93,8 +92,7 @@ BOOST_AUTO_TEST_CASE(model_controller)
         BOOST_TEST(key_int == exp_key_int);
         auto exp_atomic_number = pt_widget.ui->group->id(button);
         BOOST_TEST(value_int == exp_atomic_number);
-        BOOST_TEST(model->getValue(ModelKey::ELEMENT).toInt() ==
-                   exp_model_value_int);
+        BOOST_TEST(model->getValue<Element>() == exp_model_value);
     }
 }
 

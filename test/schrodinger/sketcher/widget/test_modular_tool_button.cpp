@@ -55,7 +55,7 @@ class DummyPopup : public ModularPopup
         if (model == nullptr) {
             return -1;
         }
-        int rgroup_number = model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
+        int rgroup_number = model->getValueInt(ModelKey::RGROUP_NUMBER);
         return rgroup_number >= m_button_count ? -1 : rgroup_number;
     }
 };
