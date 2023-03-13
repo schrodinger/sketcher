@@ -316,8 +316,7 @@ void set_xyz_plus_title(RDKit::RWMol& mol)
 
 } // unnamed namespace
 
-boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
-                                              Format format)
+boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
 {
     if (format == Format::AUTO_DETECT) {
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
@@ -325,7 +324,7 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
                                          {Format::MDL_MOLV3000, Format::MAESTRO,
                                           Format::PDB, Format::INCHI,
                                           Format::SMILES, Format::SMARTS},
-                                         &text_to_rdmol);
+                                         &to_rdkit);
     }
 
     CaptureRDErrorLog rd_error_log;
@@ -415,13 +414,13 @@ boost::shared_ptr<RDKit::RWMol> text_to_rdmol(const std::string& text,
 }
 
 boost::shared_ptr<RDKit::ChemicalReaction>
-text_to_reaction(const std::string& text, Format format)
+to_rdkit_reaction(const std::string& text, Format format)
 {
     if (format == Format::AUTO_DETECT) {
         // NOTE: Text is always read as SMARTS. Reading text as
         // SMILES should be explicitly requested
         return auto_detect<RDKit::ChemicalReaction>(
-            text, {Format::MDL_MOLV2000, Format::SMARTS}, &text_to_reaction);
+            text, {Format::MDL_MOLV2000, Format::SMARTS}, &to_rdkit_reaction);
     }
 
     CaptureRDErrorLog rd_error_log;
@@ -468,7 +467,7 @@ text_to_reaction(const std::string& text, Format format)
     return boost::shared_ptr<RDKit::ChemicalReaction>(reaction);
 }
 
-std::string rdmol_to_text(const RDKit::ROMol& input_mol, Format format)
+std::string to_string(const RDKit::ROMol& input_mol, Format format)
 {
     CaptureRDErrorLog rd_error_log;
 
@@ -524,8 +523,7 @@ std::string rdmol_to_text(const RDKit::ROMol& input_mol, Format format)
     throw std::invalid_argument("Invalid format specified");
 }
 
-std::string reaction_to_text(const RDKit::ChemicalReaction& reaction,
-                             Format format)
+std::string to_string(const RDKit::ChemicalReaction& reaction, Format format)
 {
     switch (format) {
         case Format::SMILES:

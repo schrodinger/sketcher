@@ -179,7 +179,7 @@ void Scene::importText(const std::string& text, Format format)
 
     boost::shared_ptr<RDKit::RWMol> mol{nullptr};
     try {
-        mol = rdkit_extensions::text_to_rdmol(text, format);
+        mol = rdkit_extensions::to_rdkit(text, format);
     } catch (const std::invalid_argument& exc) {
         show_import_failure(exc);
         return;
@@ -199,7 +199,7 @@ std::string Scene::exportText(Format format)
     // TODO: handle reactions
     // TODO: handle toggling between selection/everything
     // TODO: handle export of selection as atom/bond properties
-    return rdkit_extensions::rdmol_to_text(*m_mol, format);
+    return rdkit_extensions::to_string(*m_mol, format);
 }
 
 QList<QGraphicsItem*> Scene::getInteractiveItems() const
