@@ -25,7 +25,7 @@ BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
 BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
 {
-    auto rdmol = rdkit_extensions::to_rdkit("C1=CC=CC=C1");
+    auto rdmol = rdkit_extensions::text_to_rdmol("C1=CC=CC=C1");
 
     RenderOptions opts;
     opts.width_height = {400, 400};
@@ -52,7 +52,7 @@ BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
 
 BOOST_AUTO_TEST_CASE(test_highlighting)
 {
-    auto rdmol = rdkit_extensions::to_rdkit("C1=CC=CC=C1");
+    auto rdmol = rdkit_extensions::text_to_rdmol("C1=CC=CC=C1");
 
     RenderOptions opts;
     opts.width_height = {400, 400};
