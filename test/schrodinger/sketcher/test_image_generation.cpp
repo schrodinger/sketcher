@@ -10,6 +10,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/test/framework.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/tools/floating_point_comparison.hpp>
+
+#include <QList>
 
 #include <GraphMol/GraphMol.h>
 
@@ -76,4 +79,60 @@ BOOST_AUTO_TEST_CASE(test_highlighting)
 
     auto qimage = get_qimage(*rdmol, opts);
     BOOST_TEST(!qimage.allGray());
+}
+
+BOOST_AUTO_TEST_CASE(test_get_best_image_scale)
+{
+    QList<RDKit::ROMol*> rdmols;
+    BOOST_TEST(get_best_image_scale(rdmols) == -1);
+    auto rdmol_small = rdkit_extensions::to_rdkit("c");
+    auto rdmol_med = rdkit_extensions::to_rdkit("c1ccccc1");
+    auto rdmol_large = rdkit_extensions::to_rdkit("c1nccc2n1ccc2");
+    rdmols.append({rdmol_small.get(), rdmol_med.get(), rdmol_large.get()});
+    qreal scale_all_three = get_best_image_scale(rdmols);
+    BOOST_TEST(scale_all_three > 0);
+    qreal scale_small = get_best_image_scale({rdmol_small.get()});
+    BOOST_TEST(scale_small > 0);
+    // removing larger molecules should increase the scale
+    BOOST_TEST(scale_small > scale_all_three);
+    qreal scale_large = get_best_image_scale({rdmol_large.get()});
+    // using only the largest molecule should give the same scale
+    BOOST_CHECK_CLOSE(scale_large, scale_all_three, 0.01);
+    RenderOptions opts;
+    opts.width_height = {100, 100};
+    qreal scale_low_res = get_best_image_scale(rdmols, opts);
+    BOOST_TEST(scale_low_res > 0);
+    // lowering the resolution (i.e. a smaller image) should decrease the scale
+    BOOST_TEST(scale_low_res < scale_all_three);
+    // setting opts.scale shouldn't affect the return value
+    opts.scale = 5;
+    BOOST_CHECK_CLOSE(get_best_image_scale(rdmols, opts), scale_low_res, 0.01);
+}
+
+BOOST_AUTO_TEST_CASE(test_image_scaling)
+{
+    auto rdmol = rdkit_extensions::to_rdkit("c1nccc2n1ccc2");
+    qreal best_scale = get_best_image_scale({rdmol.get()});
+    RenderOptions opts;
+    opts.scale = best_scale;
+    auto bytes_with_best_scale =
+        get_image_bytes(*rdmol, ImageFormat::PNG, opts);
+
+    // autoscaling should scale things the same as get_best_image_scale
+    auto bytes_with_autoscale = get_image_bytes(*rdmol, ImageFormat::PNG);
+    BOOST_TEST(bytes_with_best_scale == bytes_with_autoscale);
+
+    // scale should be ignored if it would make the molecule too big for the
+    // image
+    opts.scale = best_scale * 2;
+    auto bytes_with_scale_too_big =
+        get_image_bytes(*rdmol, ImageFormat::PNG, opts);
+    BOOST_TEST(bytes_with_best_scale == bytes_with_scale_too_big);
+
+    // for a sanity check, make sure that setting a smaller scale *does* affect
+    // the image
+    opts.scale = best_scale / 2;
+    auto bytes_with_scale_too_small =
+        get_image_bytes(*rdmol, ImageFormat::PNG, opts);
+    BOOST_TEST(bytes_with_best_scale != bytes_with_scale_too_small);
 }

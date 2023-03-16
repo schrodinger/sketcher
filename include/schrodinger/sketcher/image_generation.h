@@ -17,6 +17,8 @@
 
 #include "schrodinger/sketcher/definitions.h"
 
+template <typename T> class QList;
+
 namespace RDKit
 {
 class ROMol;
@@ -35,9 +37,20 @@ enum class ImageFormat { PNG, SVG };
 /**
  * Image generation options
  */
+
+const qreal AUTOSCALE = -1.0;
+
 struct RenderOptions {
     QSize width_height = QSize(400, 400);
     QColor background_color = Qt::transparent;
+    /**
+     * The scale used to size the molecule to width_height.  If < 0, the
+     * molecule will be scaled automatically to fill the space.  If the scale is
+     * too large for the current molecule (i.e if it would make the image larger
+     * than width_height), then it will be ignored and auto scaling will be used
+     * instead.
+     */
+    qreal scale = AUTOSCALE;
     QHash<int, std::string> rdatom_index_to_annotation;
     QHash<int, QColor> rdatom_index_to_highlight_color;
     QHash<int, QColor> rdbond_index_to_highlight_color;
@@ -81,6 +94,20 @@ get_image_bytes(const RDKit::ROMol& rdmol, ImageFormat format,
 SKETCHER_API void save_image_file(const RDKit::ROMol& rdmol,
                                   const std::string& filename,
                                   const RenderOptions& opts = RenderOptions());
+
+/**
+ * Get the correct scale for rendering all of the provided mols to identically
+ * sized images.  To render the the molecules using this scaling, set
+ * RenderOptions::scale to the return value.
+ * @param all_rdmols All molecules to be rendered
+ * @param opts The image generation options to use.  Note that opts.scale will
+ * be ignored.
+ * @return The maximum scale value that will allow all molecules in all_rdmols
+ * to fit within an image of size opts.width_height
+ */
+SKETCHER_API qreal
+get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
+                     const RenderOptions& opts = RenderOptions());
 
 } // namespace sketcher
 } // namespace schrodinger

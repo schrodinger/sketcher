@@ -6,10 +6,13 @@
 
 #include "schrodinger/sketcher/image_generation.h"
 
+#include <limits>
+
 #include <QBuffer>
 #include <QByteArray>
 #include <QFile>
 #include <QFileInfo>
+#include <QList>
 #include <QPainter>
 #include <boost/algorithm/string/predicate.hpp>
 #include <qsvggenerator.h>
@@ -58,6 +61,15 @@ void setUserAnnotations(const sketcherScene& scene, const RenderOptions& opts)
     }
 }
 
+qreal get_scale(const QRectF& scene_rect, const QSize& render_size)
+{
+    qreal scene_width = scene_rect.width();
+    qreal scene_height = scene_rect.height();
+    qreal x_ratio = render_size.width() / scene_width;
+    qreal y_ratio = render_size.height() / scene_height;
+    return qMin(x_ratio, y_ratio);
+}
+
 void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
                  const RenderOptions& opts)
 {
@@ -81,12 +93,14 @@ void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
 
     // center the scene within the painter's viewport
     auto scene_rect = scene.findBoundingRect();
-    qreal scene_width = scene_rect.width();
-    qreal scene_height = scene_rect.height();
-    qreal x_ratio = target_rect.width() / scene_width;
-    qreal y_ratio = target_rect.height() / scene_height;
-    qreal scale = qMin(x_ratio, y_ratio);
-    QRectF centered_rect(0, 0, scene_width * scale, scene_height * scale);
+    qreal scale = get_scale(scene_rect, opts.width_height);
+    if (opts.scale > 0 && opts.scale < scale) {
+        // if the user has specified a scale, use that unless it would make the
+        // molecule too big for the image
+        scale = opts.scale;
+    }
+    QRectF centered_rect(0, 0, scene_rect.width() * scale,
+                         scene_rect.height() * scale);
     centered_rect.moveCenter(target_rect.center());
 
     scene.render(&painter, centered_rect, scene_rect);
@@ -164,6 +178,32 @@ void save_image_file(const RDKit::ROMol& rdmol, const std::string& filename,
     QFile file(path);
     file.open(QIODevice::WriteOnly);
     file.write(data);
+}
+
+qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
+                           const RenderOptions& opts)
+{
+    if (all_rdmols.empty()) {
+        return AUTOSCALE;
+    }
+    qreal best_scale = std::numeric_limits<qreal>::max();
+    for (auto rdmol : all_rdmols) {
+        // We sometimes get graphical artifacts when clearing and reusing a
+        // sketcherScene instance for multiple molecules.  To avoid that, we
+        // create a new scene instance for each molecule.  We can presumably
+        // switch this code to use scene.clearInteractiveItems() instead once we
+        // switch to the the molviewer Scene class here.
+        sketcherScene scene;
+        SketcherModel sketcher_model(&scene);
+        scene.setModel(&sketcher_model);
+        scene.addRDKitMolecule(*rdmol);
+        qreal cur_scale =
+            get_scale(scene.findBoundingRect(), opts.width_height);
+        if (cur_scale < best_scale) {
+            best_scale = cur_scale;
+        }
+    }
+    return best_scale;
 }
 
 } // namespace sketcher
