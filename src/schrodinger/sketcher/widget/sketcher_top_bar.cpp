@@ -217,12 +217,6 @@ void SketcherTopBar::onImportFromFileClicked()
     };
 
     QString name_filter = get_import_name_filters();
-#ifdef __EMSCRIPTEN__
-    // https://bugreports.qt.io/browse/QTBUG-105472
-    // Workaround to reformat the name filter until implemented Qt-side
-    auto exts = name_filter.split(QRegularExpression("[ ()*;]")).filter(".");
-    name_filter = exts.join(",");
-#endif
     QFileDialog::getOpenFileContent(name_filter, file_open_completed);
 }
 
