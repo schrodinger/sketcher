@@ -356,8 +356,8 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
     m_mouse_down_scene_pos = event->scenePos();
     m_mouse_down_screen_pos = event->screenPos();
     if (event->button() == Qt::LeftButton &&
-        m_sketcher_model->getValue<DrawTool>() == DrawTool::SELECT &&
-        m_sketcher_model->getValue<SelectionTool>() == SelectionTool::LASSO) {
+        m_sketcher_model->getDrawTool() == DrawTool::SELECT &&
+        m_sketcher_model->getSelectionTool() == SelectionTool::LASSO) {
         m_lasso_select_item->clearPath();
         m_lasso_select_item->addPoint(m_mouse_down_scene_pos);
     }
@@ -366,9 +366,9 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     //  TODO: SKETCH-1890: translate on right click and rotate on middle click
-    auto draw_tool = m_sketcher_model->getValue<DrawTool>();
+    auto draw_tool = m_sketcher_model->getDrawTool();
     if (draw_tool == DrawTool::SELECT && (event->buttons() & Qt::LeftButton)) {
-        auto select_tool = m_sketcher_model->getValue<SelectionTool>();
+        auto select_tool = m_sketcher_model->getSelectionTool();
         // update the lasso path, even if the mouse hasn't yet moved far enough
         // to start a selection
         if (select_tool == SelectionTool::LASSO) {
@@ -414,7 +414,7 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    auto draw_tool = m_sketcher_model->getValue<DrawTool>();
+    auto draw_tool = m_sketcher_model->getDrawTool();
     if (draw_tool == DrawTool::SELECT && event->button() == Qt::LeftButton) {
         if (!(event->modifiers() & Qt::ControlModifier)) {
             clearSelection();

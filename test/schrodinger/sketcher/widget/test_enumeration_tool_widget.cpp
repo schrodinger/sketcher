@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
             int exp_rgroup_number =
                 enum_tool == EnumerationTool::NEW_RGROUP
                     ? 0u
-                    : model->getValue(ModelKey::RGROUP_NUMBER).toUInt();
+                    : model->getValueInt(ModelKey::RGROUP_NUMBER);
             BOOST_TEST(rgroup_number == exp_rgroup_number);
         }
 
@@ -80,19 +80,18 @@ BOOST_AUTO_TEST_CASE(enumeration_buttons)
     // Clicking these buttons should modify the model
     ui->reaction_btn->click();
     BOOST_TEST(ui->reaction_btn->isChecked());
-    BOOST_TEST(model->getValue(ModelKey::ENUMERATION_TOOL).toInt() ==
-               static_cast<int>(EnumerationTool::RXN_ARROW));
+    BOOST_TEST(model->getEnumerationTool() == EnumerationTool::RXN_ARROW);
 
     ui->attachment_point_btn->click();
     BOOST_TEST(ui->attachment_point_btn->isChecked());
-    BOOST_TEST(model->getValue(ModelKey::ENUMERATION_TOOL).toInt() ==
-               static_cast<int>(EnumerationTool::ATTACHMENT_POINT));
+    BOOST_TEST(model->getEnumerationTool() ==
+               EnumerationTool::ATTACHMENT_POINT);
 
     ui->attachment_point_btn->click();
     BOOST_TEST(ui->attachment_point_btn->isChecked());
-    BOOST_TEST(model->getValue(ModelKey::ENUMERATION_TOOL).toInt() ==
-               static_cast<int>(EnumerationTool::ATTACHMENT_POINT));
-    BOOST_TEST(model->getValue(ModelKey::RGROUP_NUMBER).toInt() == 5);
+    BOOST_TEST(model->getEnumerationTool() ==
+               EnumerationTool::ATTACHMENT_POINT);
+    BOOST_TEST(model->getValueInt(ModelKey::RGROUP_NUMBER) == 5u);
 
     // Switching to a different interaction mode or draw tool should uncheck all
     // buttons in this widget

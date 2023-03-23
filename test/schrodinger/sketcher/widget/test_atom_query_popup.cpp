@@ -55,11 +55,11 @@ BOOST_AUTO_TEST_CASE(selectionChanged)
 bool view_synchronized_to_model(TestAtomQueryPopup& wdg)
 {
     auto model = wdg.getModel();
-    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
-    auto atom_tool = AtomTool(model->getValue(ModelKey::ATOM_TOOL).toInt());
+    auto draw_tool = model->getDrawTool();
+    auto atom_tool = model->getAtomTool();
     int exp_button_id = -1;
     if (draw_tool == DrawTool::ATOM && atom_tool == AtomTool::QUERY) {
-        exp_button_id = model->getValue(ModelKey::ATOM_QUERY).toInt();
+        exp_button_id = model->getValueInt(ModelKey::ATOM_QUERY);
     }
     return wdg.getGroup()->checkedId() == exp_button_id;
 }

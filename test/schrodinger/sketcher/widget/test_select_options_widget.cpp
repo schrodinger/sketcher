@@ -51,11 +51,11 @@ bool view_synchronized_to_model(TestSelectOptionsWidget& wdg)
 {
     auto model = wdg.getModel();
     auto ui = wdg.getUI();
-    auto draw_tool = DrawTool(model->getValue(ModelKey::DRAW_TOOL).toInt());
+    auto draw_tool = model->getDrawTool();
 
     int sel_button_id = -1;
     if (draw_tool == DrawTool::SELECT) {
-        sel_button_id = model->getValue(ModelKey::SELECTION_TOOL).toInt();
+        sel_button_id = model->getValueInt(ModelKey::SELECTION_TOOL);
     }
     bool move_rotate_checked = draw_tool == DrawTool::MOVE_ROTATE;
     bool erase_checked = draw_tool == DrawTool::ERASE;
