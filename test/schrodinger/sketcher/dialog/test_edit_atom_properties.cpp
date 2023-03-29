@@ -242,7 +242,7 @@ void check_atom_query_page(TestEditAtomPropertiesDialog& dlg)
     BOOST_TEST(ui->element_list_le->placeholderText() ==
                QString("(comma-separated list)"));
     BOOST_TEST(ui->specific_element_le->text() == symbol);
-    BOOST_TEST(ui->element_list_le->text().isEmpty());
+    BOOST_TEST(ui->element_list_le->text() == symbol);
 }
 
 /**
@@ -424,4 +424,16 @@ BOOST_AUTO_TEST_CASE(test_specific_element_advanced_query)
                ui->edit_query_page);
     BOOST_TEST(dlg.getQueryTypeComboValue() == QueryType::SPECIFIC_ELEMENT);
     BOOST_TEST(ui->specific_element_le->text().toStdString() == "C");
+}
+
+BOOST_AUTO_TEST_CASE(test_elementList)
+{
+    // Tests the element list line edit by default is set to the selected atom
+    testSketcherScene scene;
+    scene.importText("C");
+    auto atom = scene.quickGetAtoms().front();
+
+    TestEditAtomPropertiesDialog dlg(scene.getModel(), *atom);
+    auto ui = dlg.getUI();
+    BOOST_TEST(ui->element_list_le->text().toStdString() == "C");
 }

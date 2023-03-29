@@ -385,6 +385,7 @@ void EditAtomPropertiesDialog::reset()
         ui->element_le->setText(symbol.c_str());
         ui->specific_element_le->setText(symbol.c_str());
         ui->rgroup_sb->setValue(m_sketcher_model->getNextRGroupNumber());
+        ui->element_list_le->setText(symbol.c_str());
     }
     props_wdg->readAtomInfo(m_atom);
 
