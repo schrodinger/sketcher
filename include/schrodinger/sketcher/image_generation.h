@@ -13,7 +13,6 @@
 #include <QPicture>
 #include <QSize>
 #include <unordered_map>
-#include "schrodinger/sketcher/highlighting_item.h"
 
 #include "schrodinger/sketcher/definitions.h"
 

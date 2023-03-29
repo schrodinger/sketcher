@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
 
+#include <QPainter>
+
 #include "schrodinger/sketcher/file_import_export.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
