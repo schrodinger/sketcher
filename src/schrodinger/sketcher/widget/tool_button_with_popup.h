@@ -86,6 +86,15 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     void updateStyle();
 
     /**
+     * Override paintEvent() to ensure that a menu indicator is always drawn.
+     *
+     * Normally, the menu indicator would only be rendered if a menu is set on
+     * the button. However, we don't use a conventional menu as our popup, so we
+     * must trick the painter into thinking we have one.
+     */
+    void paintEvent(QPaintEvent* event) override;
+
+    /**
      * Respond when the button is clicked by showing the popup if already
      * checked.
      *

@@ -30,6 +30,17 @@ ToolButtonWithPopup::ToolButtonWithPopup(QWidget* parent) : QToolButton(parent)
             &ToolButtonWithPopup::onClicked);
 }
 
+void ToolButtonWithPopup::paintEvent(QPaintEvent* event)
+{
+    QStylePainter p(this);
+    QStyleOptionToolButton opt;
+    initStyleOption(&opt);
+    if (m_show_corner_arrow) {
+        opt.features |= QStyleOptionToolButton::HasMenu;
+    }
+    p.drawComplexControl(QStyle::CC_ToolButton, opt);
+}
+
 void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
 {
     if (m_popup_wdg != nullptr) {

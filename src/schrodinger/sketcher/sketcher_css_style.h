@@ -32,10 +32,17 @@ const QString SELECTION_ACTIVE_STYLE{
 
 const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
     "QToolButton {"
-    " background-image:url(':icons/menu_corner_arrow.svg'); "
-    " background-position: bottom right; background-repeat: no-repeat; }"
-    "QToolButton:disabled { color: #E4E4E4; "
-    " background-image:url(':icons/menu_corner_arrow_dis.svg'); }"};
+    " border : none;"
+    " padding: 0px;"
+    " margin: 0px;"
+    " spacing: 0px; }"
+    " QToolButton::menu-indicator {"
+    " image: url(\":icons/menu_corner_arrow.svg\");"
+    " subcontrol-position: right bottom;"
+    " subcontrol-origin: padding;"
+    " left: -2px; }"
+    "QToolButton::menu-indicator:disabled { color: #E4E4E4; "
+    " image: url(\":icons/menu_corner_arrow_dis.svg\"); }"};
 
 const QString PALETTE_TITLE_STYLE{"QLabel { font: bold 9px; color: #666666; }"
                                   "QLabel:disabled { color: #E4E4E4; }"};
