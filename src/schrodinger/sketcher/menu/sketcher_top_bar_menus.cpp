@@ -109,8 +109,6 @@ void MoreActionsMenu::setModel(SketcherModel* model)
 
 ConfigureViewMenu::ConfigureViewMenu(QWidget* parent) : QMenu(parent)
 {
-    m_show_lid_legend_act = addAction("LID Legend");
-    addSeparator();
     m_valence_errors_act = addAction("Valence Errors");
     m_heteroatom_colors_act = addAction("Heteroatom Colors");
     m_stereocenter_labels_act = addAction("Stereocenter Labels");
@@ -120,8 +118,9 @@ ConfigureViewMenu::ConfigureViewMenu(QWidget* parent) : QMenu(parent)
 
     // Assign checkable actions
     std::vector<QAction*> checkable_actions = {
-        m_show_lid_legend_act,    m_valence_errors_act,
-        m_heteroatom_colors_act,  m_stereocenter_labels_act,
+        m_valence_errors_act,
+        m_heteroatom_colors_act,
+        m_stereocenter_labels_act,
         m_implicit_hydrogens_act,
     };
     for (auto& action : checkable_actions) {

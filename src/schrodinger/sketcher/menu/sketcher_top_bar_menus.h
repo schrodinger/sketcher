@@ -61,7 +61,6 @@ class SKETCHER_API ConfigureViewMenu : public QMenu
     Q_OBJECT
   public:
     ConfigureViewMenu(QWidget* parent = nullptr);
-    QAction* m_show_lid_legend_act = nullptr;
     QAction* m_valence_errors_act = nullptr;
     QAction* m_heteroatom_colors_act = nullptr;
     QAction* m_stereocenter_labels_act = nullptr;
