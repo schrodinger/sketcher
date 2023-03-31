@@ -176,6 +176,9 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QString m_isotope_label_text;
     QRectF m_isotope_rect;
 
+    // user label. If set it replaces the atomic labels
+    QString m_user_label;
+
     std::vector<QRectF> m_subrects;
     Fonts& m_fonts;
     AtomItemSettings& m_settings;

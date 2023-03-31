@@ -143,13 +143,20 @@ void AtomItem::updateCachedData()
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
         m_main_label_text = QString::fromStdString(m_atom->getSymbol());
 
+        // if there's a user-set label, override m_main_label_text
+        if (!m_user_label.isEmpty()) {
+            m_main_label_text = m_user_label;
+        }
+
         m_main_label_rect =
             make_text_rect(m_fonts.m_main_label_fm, m_main_label_text);
         m_main_label_rect.moveCenter(QPointF(0, 0));
-        updateIsotopeLabel();
-        updateChargeAndRadicalLabel();
-        updateHsLabel();
-        positionLabels();
+        if (m_user_label.isEmpty()) {
+            updateIsotopeLabel();
+            updateChargeAndRadicalLabel();
+            updateHsLabel();
+            positionLabels();
+        }
 
         for (auto rect :
              {m_main_label_rect, m_isotope_rect, m_charge_and_radical_rect,
@@ -332,6 +339,9 @@ void AtomItem::positionLabels()
 
 bool AtomItem::determineLabelIsVisible() const
 {
+    if (!m_user_label.isEmpty()) {
+        return true;
+    }
     if (m_settings.m_carbon_labels == CarbonLabels::ALL) {
         return true;
     }

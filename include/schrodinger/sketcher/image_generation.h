@@ -50,10 +50,9 @@ struct RenderOptions {
      * instead.
      */
     qreal scale = AUTOSCALE;
-    QHash<int, std::string> rdatom_index_to_annotation;
+    QHash<int, std::string> rdatom_index_to_atom_label;
     QHash<int, QColor> rdatom_index_to_highlight_color;
     QHash<int, QColor> rdbond_index_to_highlight_color;
-
     // TODO: incorporate both RendererSettings and additional LiveDesign options
 };
 
