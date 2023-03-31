@@ -184,8 +184,6 @@ void SketcherTopBar::generatePackets()
 {
     m_signal_packets.emplace_back(ModelKey::NEW_STRUCTURES_REPLACE_CONTENT,
                                   m_import_menu->m_replace_content_act);
-    m_signal_packets.emplace_back(ModelKey::SHOW_LID_LEGEND,
-                                  m_configure_view_menu->m_show_lid_legend_act);
     m_signal_packets.emplace_back(ModelKey::SHOW_VALENCE_ERRORS,
                                   m_configure_view_menu->m_valence_errors_act);
     m_signal_packets.emplace_back(
