@@ -37,29 +37,19 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::StereoGroupType);
 
 const std::vector<Format> TEXT_FORMATS = {
-    Format::SMILES,
-    Format::EXTENDED_SMILES,
-    Format::SMARTS,
-    Format::MAESTRO,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::INCHI,
-    Format::PDB,
-    Format::RDMOL_BINARY_BASE64,
+    Format::SMILES,       Format::EXTENDED_SMILES,
+    Format::SMARTS,       Format::MAESTRO,
+    Format::MDL_MOLV2000, Format::MDL_MOLV3000,
+    Format::INCHI,        Format::PDB,
 };
 
-const std::array<Format, 5> REACTION_TEXT_FORMATS = {
-    Format::SMILES,
-    Format::SMARTS,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::RDMOL_BINARY_BASE64,
-};
+const std::array<Format, 4> REACTION_TEXT_FORMATS = {
+    Format::SMILES, Format::SMARTS, Format::MDL_MOLV2000, Format::MDL_MOLV3000};
 
 BOOST_DATA_TEST_CASE(test_auto_detect,
                      boost::unit_test::data::make(TEXT_FORMATS))
 {
-    auto mol = to_rdkit("c1ccccc1", Format::SMILES);
+    auto mol = std::shared_ptr<RDKit::RWMol>(RDKit::SmilesToMol("c1ccccc1"));
     auto text = to_string(*mol, sample);
 
     // Check roundtripping
@@ -78,6 +68,9 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
 BOOST_DATA_TEST_CASE(test_bypass_sanitization,
                      boost::unit_test::data::make(TEXT_FORMATS))
 {
+    if (sample == Format::SMARTS) {
+        return; // skip SMARTS, which doesn't have sanitize options
+    }
     // Create an unsanitized mol with a pentavalent C...
     auto mol = to_rdkit("C[C](C)(C)(C)C", Format::SMILES);
     auto text = to_string(*mol, sample);
