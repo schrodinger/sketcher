@@ -8,8 +8,6 @@
 
 #include <functional>
 
-#include <boost/beast/core/detail/base64.hpp>
-
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
 #include <GraphMol/Depictor/RDDepictor.h>
@@ -17,9 +15,7 @@
 #include <GraphMol/FileParsers/MolSupplier.h>
 #include <GraphMol/FileParsers/MolWriters.h>
 #include <GraphMol/MolOps.h>
-#include <GraphMol/MolPickler.h>
 #include <GraphMol/QueryAtom.h>
-#include <GraphMol/ChemReactions/ReactionPickler.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
@@ -318,59 +314,36 @@ void set_xyz_plus_title(RDKit::RWMol& mol)
     mol.setProp(RDKit::common_properties::_Name, title);
 }
 
-std::string base64_decode(const std::string& text)
-{
-    // text is about 1/3 longer than the decoded data
-    std::string byte_array(text.size(), '\0');
-    const auto& [sz, read_sz] = boost::beast::detail::base64::decode(
-        byte_array.data(), text.data(), text.size());
-    byte_array.resize(sz);
-    return byte_array;
-}
-
-std::string base64_encode(const std::string& byte_array)
-{
-    // base64 has a 1/3 size overhead in respect to binary, but we give
-    // it some extra space to be safe. Base64 is also padded, which makes
-    // the minimum output size 4 bytes.
-    std::string text(std::max(2 * byte_array.size(), 4ul), '\0');
-    const auto sz = boost::beast::detail::base64::encode(
-        text.data(), byte_array.data(), byte_array.size());
-    text.resize(sz);
-    return text;
-}
-
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
 {
     if (format == Format::AUTO_DETECT) {
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
-        return auto_detect<RDKit::RWMol>(
-            text,
-            {Format::RDMOL_BINARY_BASE64, Format::MDL_MOLV3000, Format::MAESTRO,
-             Format::PDB, Format::INCHI, Format::SMILES, Format::SMARTS},
-            &to_rdkit);
+        return auto_detect<RDKit::RWMol>(text,
+                                         {Format::MDL_MOLV3000, Format::MAESTRO,
+                                          Format::PDB, Format::INCHI,
+                                          Format::SMILES, Format::SMARTS},
+                                         &to_rdkit);
     }
 
     CaptureRDErrorLog rd_error_log;
 
-    boost::shared_ptr<RDKit::RWMol> mol;
-
+    RDKit::RWMol* mol = nullptr;
     bool sanitize = false;
     bool removeHs = false;
     switch (format) {
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
             int debugParse = 0;
-            mol.reset(RDKit::SmilesToMol(text, debugParse, sanitize));
+            mol = RDKit::SmilesToMol(text, debugParse, sanitize);
             if (mol != nullptr) {
                 fix_cxsmiles_rgroups(*mol);
             }
             break;
         }
         case Format::SMARTS:
-            mol.reset(RDKit::SmartsToMol(text));
+            mol = RDKit::SmartsToMol(text);
             if (mol != nullptr) {
                 fix_cxsmiles_rgroups(*mol);
             }
@@ -381,7 +354,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
             RDKit::SDMolSupplier reader;
             bool strict_parsing = false;
             reader.setData(text, sanitize, removeHs, strict_parsing);
-            mol.reset(read_mol(reader, rd_error_log));
+            mol = read_mol(reader, rd_error_log);
 
             // .sdf files with no chiral flag default to 0 (all ungrouped chiral
             // atoms are AND). We explicitly set this flag because anything else
@@ -398,39 +371,24 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
             try { // parse error on init()
                 reader.setData(text, sanitize, removeHs);
             } catch (std::runtime_error&) {
-                mol.reset();
+                mol = nullptr;
                 break;
             }
-            mol.reset(read_mol(reader, rd_error_log));
+            mol = read_mol(reader, rd_error_log);
             break;
         }
         case Format::INCHI: {
             RDKit::ExtraInchiReturnValues aux;
-            mol.reset(RDKit::InchiToMol(text, aux, sanitize, removeHs));
+            mol = RDKit::InchiToMol(text, aux, sanitize, removeHs);
             break;
         }
         case Format::INCHI_KEY:
             throw std::invalid_argument("Cannot read from INCHI_KEY");
         case Format::PDB:
-            mol.reset(RDKit::PDBBlockToMol(text, sanitize, removeHs));
+            mol = RDKit::PDBBlockToMol(text, sanitize, removeHs);
             break;
-        case Format::RDMOL_BINARY_BASE64: {
-            const auto byte_array = base64_decode(text);
-            if (byte_array.empty()) {
-                // Early exit on a failed decoding.
-                // This avoids an exception in the unpickler
-                break;
-            }
-            mol.reset(new RDKit::RWMol());
-            try {
-                RDKit::MolPickler::molFromPickle(byte_array, mol.get());
-            } catch (const RDKit::MolPicklerException&) {
-                mol.reset();
-            }
-            break;
-        }
         case Format::XYZ:
-            mol.reset(RDKit::XYZBlockToMol(text));
+            mol = RDKit::XYZBlockToMol(text);
             break;
         default:
             throw std::invalid_argument("Unsupported import format");
@@ -452,7 +410,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
 
     assign_stereochemistry(*mol);
 
-    return mol;
+    return boost::shared_ptr<RDKit::RWMol>(mol);
 }
 
 boost::shared_ptr<RDKit::ChemicalReaction>
@@ -462,20 +420,18 @@ to_rdkit_reaction(const std::string& text, Format format)
         // NOTE: Text is always read as SMARTS. Reading text as
         // SMILES should be explicitly requested
         return auto_detect<RDKit::ChemicalReaction>(
-            text,
-            {Format::RDMOL_BINARY_BASE64, Format::MDL_MOLV2000, Format::SMARTS},
-            &to_rdkit_reaction);
+            text, {Format::MDL_MOLV2000, Format::SMARTS}, &to_rdkit_reaction);
     }
 
     CaptureRDErrorLog rd_error_log;
 
-    boost::shared_ptr<RDKit::ChemicalReaction> reaction;
+    RDKit::ChemicalReaction* reaction = nullptr;
     switch (format) {
         case Format::SMILES:
         case Format::SMARTS: {
             auto useSMILES = (format == Format::SMILES);
-            reaction.reset(
-                RDKit::RxnSmartsToChemicalReaction(text, nullptr, useSMILES));
+            reaction =
+                RDKit::RxnSmartsToChemicalReaction(text, nullptr, useSMILES);
 
             // Bootstrap coords to preserve double bond stereo (SKETCH-1254)
             double spacing = 2.0;
@@ -489,24 +445,8 @@ to_rdkit_reaction(const std::string& text, Format format)
         case Format::MDL_MOLV3000: {
             bool sanitize = false;
             bool removeHs = false;
-            reaction.reset(
-                RDKit::RxnBlockToChemicalReaction(text, sanitize, removeHs));
-            break;
-        }
-        case Format::RDMOL_BINARY_BASE64: {
-            const auto byte_array = base64_decode(text);
-            if (byte_array.empty()) {
-                // Early exit on a failed decoding.
-                // This avoids an exception in the unpickler
-                break;
-            }
-            reaction.reset(new RDKit::ChemicalReaction());
-            try {
-                RDKit::ReactionPickler::reactionFromPickle(byte_array,
-                                                           reaction.get());
-            } catch (const RDKit::ReactionPicklerException&) {
-                reaction.reset();
-            }
+            reaction =
+                RDKit::RxnBlockToChemicalReaction(text, sanitize, removeHs);
             break;
         }
         default:
@@ -524,7 +464,7 @@ to_rdkit_reaction(const std::string& text, Format format)
         fix_r0_rgroup(*product);
     }
 
-    return reaction;
+    return boost::shared_ptr<RDKit::ChemicalReaction>(reaction);
 }
 
 std::string to_string(const RDKit::ROMol& input_mol, Format format)
@@ -569,12 +509,6 @@ std::string to_string(const RDKit::ROMol& input_mol, Format format)
             return RDKit::MolToInchiKey(mol);
         case Format::PDB:
             return RDKit::MolToPDBBlock(mol);
-        case Format::RDMOL_BINARY_BASE64: {
-            std::string byte_array;
-            auto opts = RDKit::PicklerOps::AllProps;
-            RDKit::MolPickler::pickleMol(mol, byte_array, opts);
-            return base64_encode(byte_array);
-        }
         case Format::XYZ:
             // RDKit returns an empty string unless there are coordinates
             if (!mol.getNumConformers()) {
@@ -602,12 +536,6 @@ std::string to_string(const RDKit::ChemicalReaction& reaction, Format format)
             bool forceV3000 = format == Format::MDL_MOLV3000;
             return RDKit::ChemicalReactionToRxnBlock(reaction, separateAgents,
                                                      forceV3000);
-        }
-        case Format::RDMOL_BINARY_BASE64: {
-            std::string byte_array;
-            auto opts = RDKit::PicklerOps::AllProps;
-            RDKit::ReactionPickler::pickleReaction(reaction, byte_array, opts);
-            return base64_encode(byte_array);
         }
         default:
             throw std::invalid_argument("Unsupported reaction export format");

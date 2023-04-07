@@ -39,7 +39,6 @@ enum class Format {
     INCHI,
     INCHI_KEY,
     PDB,
-    RDMOL_BINARY_BASE64,
     XYZ,
 };
 
