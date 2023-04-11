@@ -4,6 +4,7 @@
 #include <boost/test/data/test_case.hpp> // boost::unit_test::data::make
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <string>
 
 #include "schrodinger/rdkit_extensions/helm/string/util.h"
