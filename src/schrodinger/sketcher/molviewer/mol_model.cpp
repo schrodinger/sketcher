@@ -15,6 +15,11 @@ namespace schrodinger
 namespace sketcher
 {
 
+/**
+ * The name of the RDKit property used to store atom tags and bond tags
+ */
+const std::string TAG_PROPERTY = "SKETCHER_TAG";
+
 MolModel::MolModel(QUndoStack* const undo_stack) :
     AbstractUndoableModel(undo_stack)
 {
@@ -29,13 +34,42 @@ const RDKit::ROMol* MolModel::getMol() const
     return &m_mol;
 }
 
+std::unordered_set<const RDKit::Atom*> MolModel::getSelectedAtoms() const
+{
+    std::unordered_set<const RDKit::Atom*> sel_atoms;
+    for (int atom_tag : m_selected_atom_tags) {
+        sel_atoms.insert(getAtomFromTag(atom_tag));
+    }
+    return sel_atoms;
+}
+
+std::unordered_set<const RDKit::Bond*> MolModel::getSelectedBonds() const
+{
+    std::unordered_set<const RDKit::Bond*> sel_bonds;
+    for (int bond_tag : m_selected_bond_tags) {
+        sel_bonds.insert(getBondFromTag(bond_tag));
+    }
+    return sel_bonds;
+}
+
 void MolModel::doCommandWithMolUndo(const std::function<void()> redo,
                                     const QString& description)
 {
     RDKit::ROMol undo_mol = m_mol;
-    auto undo = [this, undo_mol]() {
+    std::unordered_set<int> sel_atom_tags = m_selected_atom_tags;
+    std::unordered_set<int> sel_bond_tags = m_selected_bond_tags;
+    auto undo = [this, undo_mol, sel_atom_tags, sel_bond_tags]() {
         m_mol = undo_mol;
+        bool selection_changed = sel_atom_tags != m_selected_atom_tags ||
+                                 sel_bond_tags != m_selected_bond_tags;
+        if (selection_changed) {
+            m_selected_atom_tags = sel_atom_tags;
+            m_selected_bond_tags = sel_bond_tags;
+        }
         emit moleculeChanged();
+        if (selection_changed) {
+            emit selectionChanged();
+        }
     };
     doCommand(redo, undo, description);
 }
@@ -116,33 +150,168 @@ void MolModel::addMol(const RDKit::ROMol& mol, const QString& description)
 
 void MolModel::clear()
 {
+    if (!(m_mol.getNumAtoms() || m_mol.getNumBonds())) {
+        // nothing to clear
+        return;
+    }
     QString desc = QString("Clear");
     auto redo = [this]() { clearFromCommand(); };
     doCommandWithMolUndo(redo, desc);
 }
 
-int MolModel::getTagForAtom(const RDKit::Atom* const atom)
+void MolModel::select(const std::unordered_set<const RDKit::Atom*>& atoms,
+                      const std::unordered_set<const RDKit::Bond*>& bonds,
+                      const SelectMode select_mode)
 {
-    for (auto& [bookmark, atom_list] : *m_mol.getAtomBookmarks()) {
-        // atom_list should be exactly one element long since we ensure
-        // uniqueness for atom tags
-        if (atom == atom_list.front()) {
-            return bookmark;
+    std::unordered_set<int> atom_tags;
+    for (auto cur_atom : atoms) {
+        atom_tags.insert(getTagForAtom(cur_atom));
+    }
+    std::unordered_set<int> bond_tags;
+    for (auto cur_bond : bonds) {
+        bond_tags.insert(getTagForBond(cur_bond));
+    }
+    selectTags(atom_tags, bond_tags, select_mode);
+}
+
+void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
+                          const std::unordered_set<int>& bond_tags,
+                          const SelectMode select_mode)
+{
+    bool no_tags_specified = atom_tags.empty() && bond_tags.empty();
+    if (select_mode == SelectMode::SELECT_ONLY) {
+        if (no_tags_specified) {
+            clearSelection();
+        } else {
+            auto undo_macro_raii = createUndoMacro("Select only");
+            clearSelection();
+            doSelectionCommand(atom_tags, bond_tags, true, "Select");
+        }
+        return;
+    }
+    if (no_tags_specified) {
+        return;
+    }
+
+    auto [selected_atom_tags, deselected_atom_tags] =
+        divideBySelected(atom_tags, m_selected_atom_tags);
+    auto [selected_bond_tags, deselected_bond_tags] =
+        divideBySelected(bond_tags, m_selected_bond_tags);
+    if (select_mode == SelectMode::SELECT) {
+        // if we passed atom_tags and bond_tags to doSelectionCommand instead of
+        // deselected_atom_tags and deselected_bond_tags, then undoing the
+        // command could deselect atoms and bonds that should've remained
+        // selected.
+        doSelectionCommand(deselected_atom_tags, deselected_bond_tags, true,
+                           "Select");
+    } else if (select_mode == SelectMode::DESELECT) {
+        // if we passed atom_tags and bond_tags to doSelectionCommand instead of
+        // selected_atom_tags and selected_bond_tags, then undoing the command
+        // could select atoms and bonds that should've remained deselected.
+        doSelectionCommand(selected_atom_tags, selected_bond_tags, false,
+                           "Deselect");
+    } else { // select_mode == SelectMode::TOGGLE
+        auto undo_macro_raii = createUndoMacro("Toggle selection");
+        doSelectionCommand(deselected_atom_tags, deselected_bond_tags, true,
+                           "Select");
+        doSelectionCommand(selected_atom_tags, selected_bond_tags, false,
+                           "Deselect");
+    }
+}
+
+std::pair<std::unordered_set<int>, std::unordered_set<int>>
+MolModel::divideBySelected(const std::unordered_set<int>& tags_to_divide,
+                           const std::unordered_set<int>& selected_tags)
+{
+    std::unordered_set<int> selected;
+    std::unordered_set<int> deselected;
+    for (int cur_tag : tags_to_divide) {
+        if (selected_tags.find(cur_tag) != selected_tags.end()) {
+            selected.insert(cur_tag);
+        } else {
+            deselected.insert(cur_tag);
         }
     }
-    throw std::runtime_error("No atom tag found");
+    return {selected, deselected};
+}
+
+void MolModel::doSelectionCommand(
+    const std::unordered_set<int>& filtered_atom_tags,
+    const std::unordered_set<int>& filtered_bond_tags, const bool to_select,
+    const QString& description)
+{
+    if (filtered_atom_tags.empty() && filtered_bond_tags.empty()) {
+        // nothing to select or deselect
+        return;
+    }
+
+    auto redo = [this, filtered_atom_tags, filtered_bond_tags, to_select]() {
+        setSelectedFromCommand(filtered_atom_tags, filtered_bond_tags,
+                               to_select);
+    };
+    auto undo = [this, filtered_atom_tags, filtered_bond_tags, to_select]() {
+        setSelectedFromCommand(filtered_atom_tags, filtered_bond_tags,
+                               !to_select);
+    };
+    doCommand(redo, undo, description);
+}
+
+void MolModel::clearSelection()
+{
+    if (m_selected_atom_tags.empty() && m_selected_bond_tags.empty()) {
+        // nothing to clear
+        return;
+    }
+    std::unordered_set<int> sel_atom_tags = m_selected_atom_tags;
+    std::unordered_set<int> sel_bond_tags = m_selected_bond_tags;
+
+    QString desc = QString("Clear selection");
+    auto redo = [this]() { clearSelectionFromCommand(); };
+    auto undo = [this, sel_atom_tags, sel_bond_tags]() {
+        m_selected_atom_tags = sel_atom_tags;
+        m_selected_bond_tags = sel_bond_tags;
+    };
+    doCommand(redo, undo, desc);
+}
+
+void MolModel::setTagForAtom(RDKit::Atom* const atom, const int atom_tag)
+{
+    m_mol.setAtomBookmark(atom, atom_tag);
+    atom->setProp(TAG_PROPERTY, atom_tag);
+}
+
+int MolModel::getTagForAtom(const RDKit::Atom* const atom)
+{
+    return atom->getProp<int>(TAG_PROPERTY);
+}
+
+void MolModel::setTagForBond(RDKit::Bond* const bond, const int bond_tag)
+{
+    m_mol.setBondBookmark(bond, bond_tag);
+    bond->setProp(TAG_PROPERTY, bond_tag);
 }
 
 int MolModel::getTagForBond(const RDKit::Bond* const bond)
 {
-    for (auto& [bookmark, bond_list] : *m_mol.getBondBookmarks()) {
-        // bond_list should be exactly one element long since we ensure
-        // uniqueness for bond tags
-        if (bond == bond_list.front()) {
-            return bookmark;
-        }
-    }
-    throw std::runtime_error("No bond tag found");
+    return bond->getProp<int>(TAG_PROPERTY);
+}
+
+const RDKit::Atom* MolModel::getAtomFromTag(int atom_tag) const
+{
+    // RDKit is missing const versions of bookmark getters, even though it has
+    // const atom getters that take an atom index.  To get around this, we use
+    // const_cast.  (See SHARED-9673.)
+    return const_cast<RDKit::RWMol*>(&m_mol)->getUniqueAtomWithBookmark(
+        atom_tag);
+}
+
+const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
+{
+    // RDKit is missing const versions of bookmark getters, even though it has
+    // const bond getters that take a bond index.  To get around this, we use
+    // const_cast.  (See SHARED-9673.)
+    return const_cast<RDKit::RWMol*>(&m_mol)->getUniqueBondWithBookmark(
+        bond_tag);
 }
 
 void MolModel::addAtomFromCommand(const int atom_tag,
@@ -157,7 +326,7 @@ void MolModel::addAtomFromCommand(const int atom_tag,
     // number of atoms)
     unsigned int atom_index = m_mol.addAtom(atom, /* updateLabel = */ false,
                                             /* takeOwnership = */ true);
-    m_mol.setAtomBookmark(atom, atom_tag);
+    setTagForAtom(atom, atom_tag);
     m_mol.getConformer().setAtomPos(atom_index, coords);
     emit moleculeChanged();
 }
@@ -166,8 +335,21 @@ void MolModel::removeAtomFromCommand(const int atom_tag)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+    bool selection_changed = false;
+    selection_changed = m_selected_atom_tags.erase(atom_tag);
+    // RDKit automatically deletes all bonds involving this atom, so we have to
+    // remove those from the selection as well
+    for (auto cur_bond : m_mol.atomBonds(atom)) {
+        int bond_tag = getTagForBond(cur_bond);
+        if (m_selected_bond_tags.erase(bond_tag)) {
+            selection_changed = true;
+        }
+    }
     m_mol.removeAtom(atom);
     emit moleculeChanged();
+    if (selection_changed) {
+        emit selectionChanged();
+    }
 }
 
 void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
@@ -182,7 +364,7 @@ void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
     unsigned int bond_index =
         m_mol.addBond(start_atom, end_atom, bond_type) - 1;
     RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
-    m_mol.setBondBookmark(bond, bond_tag);
+    setTagForBond(bond, bond_tag);
     emit moleculeChanged();
 }
 
@@ -193,8 +375,12 @@ void MolModel::removeBondFromCommand(const int bond_tag,
     Q_ASSERT(m_in_command);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
+    bool selection_changed = m_selected_bond_tags.erase(bond_tag);
     m_mol.removeBond(start_atom->getIdx(), end_atom->getIdx());
     emit moleculeChanged();
+    if (selection_changed) {
+        emit selectionChanged();
+    }
 }
 
 void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
@@ -209,13 +395,13 @@ void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
 
     for (int cur_atom_tag : atom_tags) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);
-        m_mol.setAtomBookmark(atom, cur_atom_tag);
+        setTagForAtom(atom, cur_atom_tag);
         ++atom_index;
     }
 
     for (int cur_bond_tag : bond_tags) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
-        m_mol.setBondBookmark(bond, cur_bond_tag);
+        setTagForBond(bond, cur_bond_tag);
         ++bond_index;
     }
     emit moleculeChanged();
@@ -225,7 +411,49 @@ void MolModel::clearFromCommand()
 {
     Q_ASSERT(m_in_command);
     m_mol.clear();
+    bool selection_changed =
+        !(m_selected_atom_tags.empty() && m_selected_bond_tags.empty());
+    m_selected_atom_tags.clear();
+    m_selected_bond_tags.clear();
     emit moleculeChanged();
+    if (selection_changed) {
+        emit selectionChanged();
+    }
+}
+
+void MolModel::setSelectedFromCommand(const std::unordered_set<int>& atom_tags,
+                                      const std::unordered_set<int>& bond_tags,
+                                      const bool selected)
+{
+    Q_ASSERT(m_in_command);
+    if (selected) {
+        for (int cur_atom_tag : atom_tags) {
+            m_selected_atom_tags.insert(cur_atom_tag);
+        }
+        for (int cur_bond_tag : bond_tags) {
+            m_selected_bond_tags.insert(cur_bond_tag);
+        }
+    } else {
+        for (int cur_atom_tag : atom_tags) {
+            m_selected_atom_tags.erase(cur_atom_tag);
+        }
+        for (int cur_bond_tag : bond_tags) {
+            m_selected_bond_tags.erase(cur_bond_tag);
+        }
+    }
+    emit selectionChanged();
+}
+
+void MolModel::clearSelectionFromCommand()
+{
+    Q_ASSERT(m_in_command);
+    bool selection_changed =
+        !(m_selected_atom_tags.empty() && m_selected_bond_tags.empty());
+    m_selected_atom_tags.clear();
+    m_selected_bond_tags.clear();
+    if (selection_changed) {
+        emit selectionChanged();
+    }
 }
 
 } // namespace sketcher

@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <string>
+#include <unordered_set>
 
 #include <GraphMol/RWMol.h>
 
@@ -28,6 +29,13 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+enum class SelectMode {
+    SELECT,      // Shift + click
+    DESELECT,    //
+    TOGGLE,      // Ctrl + click
+    SELECT_ONLY, // normal click (no Shift or Ctrl)
+};
 
 /**
  * A model for making undoable changes to an RDKit Mol using a QUndoStack.  Note
@@ -67,6 +75,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @return the RDKit molecule
      */
     const RDKit::ROMol* getMol() const;
+
+    /**
+     * @return A set of all currently selected atoms
+     */
+    std::unordered_set<const RDKit::Atom*> getSelectedAtoms() const;
+
+    /**
+     * @return A set of all currently selected bonds
+     */
+    std::unordered_set<const RDKit::Bond*> getSelectedBonds() const;
 
     /*************************** UNDOABLE COMMANDS **************************/
 
@@ -122,8 +140,23 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     // TODO:
     // void modifyAtom(/*arguments here*/);
     // void modifyBond(/*arguments here*/);
-    // void clearSelection();
-    // void select(/*arguments here*/);
+
+    /**
+     * Undoably select or deselect the specified atoms and bonds.
+     *
+     * @param atoms The atoms to select or deselect
+     * @param bonds The bonds to select or deselect
+     * @param select_mode Whether to select, deselect, toggle selection, or
+     * select-only (i.e. clear the selection and then select)
+     */
+    void select(const std::unordered_set<const RDKit::Atom*>& atoms,
+                const std::unordered_set<const RDKit::Bond*>& bonds,
+                const SelectMode select_mode);
+
+    /**
+     * Undoably clear all selected atoms and bonds.
+     */
+    void clearSelection();
 
   signals:
 
@@ -133,14 +166,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void moleculeChanged();
 
-    // TODO:
-    void selectionChanged(/*params here*/);
-    void selectionCleared();
+    // Signal emitted when selection is changed.  Note that atoms and bonds will
+    // automatically be deselected when they are removed and reselected if the
+    // removal is undone, and this signal *will* be emitted in those scenario.
+    void selectionChanged();
 
   protected:
     RDKit::RWMol m_mol = RDKit::RWMol();
     int m_next_atom_tag = 0;
     int m_next_bond_tag = 0;
+    std::unordered_set<int> m_selected_atom_tags;
+    std::unordered_set<int> m_selected_bond_tags;
+
+    /**
+     * Set the atom tag for the specified atom
+     */
+    void setTagForAtom(RDKit::Atom* const atom, const int atom_tag);
 
     /**
      * Find the atom tag for the specified atom.
@@ -149,10 +190,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * not implement a const version of getAtomBookmarks.  (And because this
      * method isn't public, so it's not worth using const_cast unless we need
      * this to be const.)
-     *
-     * @throw std::runtime_error if the atom is not part of this molecule
      */
     int getTagForAtom(const RDKit::Atom* const atom);
+
+    /**
+     * Set the bond tag for the specified bond
+     */
+    void setTagForBond(RDKit::Bond* const bond, const int bond_tag);
 
     /**
      * Find the bond tag for the specified bond.
@@ -161,10 +205,71 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * not implement a const version of getBondBookmarks.  (And because this
      * method isn't public, so it's not worth using const_cast unless we need
      * this to be const.)
-     *
-     * @throw std::runtime_error if the bond is not part of this molecule
      */
     int getTagForBond(const RDKit::Bond* const bond);
+
+    /**
+     * Return the atom identified by the given atom tag.  Note that an atom tag
+     * uniquely identifies a single atom in the molecule.  No two atoms in the
+     * same molecule will ever have identical atom tags, even if the two atoms
+     * don't exist at the same time.
+     *
+     * @param atom_tag An atom_tag for an atom that is currently in the
+     * molecule.
+     *
+     * @throw if no atom is found with the specified atom_tag
+     */
+    const RDKit::Atom* getAtomFromTag(int atom_tag) const;
+
+    /**
+     * Return the bond identified by the given bond tag.  Note that a bond tag
+     * uniquely identifies a single bond in the molecule.  No two bonds in the
+     * same molecule will ever have identical bond tags, even if the two bonds
+     * don't exist at the same time.
+     *
+     * @param bond_tag A bond tag for a bond that is currently in the molecule.
+     *
+     * @throw if no bond is found with the specified bond_tag
+     */
+    const RDKit::Bond* getBondFromTag(int bond_tag) const;
+
+    /**
+     * Undoably select or deselect the specified atoms and bonds.
+     *
+     * @param atom_tags Tags for the atoms to select or deselect
+     * @param bond_tags Tags for the bonds to select or deselect
+     * @param select_mode Whether to select, deselect, toggle selection, or
+     * select-only (i.e. clear the selection and then select)
+     */
+    void selectTags(const std::unordered_set<int>& atom_tags,
+                    const std::unordered_set<int>& bond_tags,
+                    const SelectMode select_mode);
+
+    /**
+     * Divide the given set of tags into two sets: one containing selected tags
+     * and one containing deselected tags
+     * @param tags_to_divide The atom or bond tags to divide
+     * @param selected_tags The atom or bond tags that are currently selected
+     * @return the selected and deselected sets, in that order
+     */
+    std::pair<std::unordered_set<int>, std::unordered_set<int>>
+    divideBySelected(const std::unordered_set<int>& tags_to_divide,
+                     const std::unordered_set<int>& selected_tags);
+
+    /**
+     * Undoably select or deselect the specified atoms and bonds.  If selecting,
+     * all given tags must be currently deselected.  If deselecting, all given
+     * tags must be currently selected.
+     *
+     * @param filtered_atom_tags Tags for the atoms to select or deselect.
+     * @param filtered_bond_tags Tags for the bonds to select or deselect.
+     * @param to_select Whether to select or deselect the specified atoms and
+     * bonds.
+     * @param description The description for the undo command
+     */
+    void doSelectionCommand(const std::unordered_set<int>& filtered_atom_tags,
+                            const std::unordered_set<int>& filtered_bond_tags,
+                            const bool to_select, const QString& description);
 
     /**
      * Create an undo command and add it to the undo stack, which automatically
@@ -226,6 +331,25 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * command.
      */
     void clearFromCommand();
+
+    /**
+     * Select or deselect the specified atoms and bonds.  This method must only
+     * be called from an undo command.
+     *
+     * @param atom_tags The atom tags to select or deselect
+     * @param bond_tags The bond tags to select or deselect
+     * @param selected Whether to select or deselect the specified atoms and
+     * bonds
+     */
+    void setSelectedFromCommand(const std::unordered_set<int>& atom_tags,
+                                const std::unordered_set<int>& bond_tags,
+                                const bool selected);
+
+    /**
+     * Clear all selected atoms and bonds.  This method must only be called from
+     * an undo command.
+     */
+    void clearSelectionFromCommand();
 };
 
 } // namespace sketcher
