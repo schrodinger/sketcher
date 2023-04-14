@@ -403,6 +403,15 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      */
     QPainterPath pathAroundLine(const QLineF& line,
                                 const qreal half_width) const;
+
+    /** Paint text parallel to the bond and always above.
+     *
+     * @param painter  the qt painter to be used
+     * @param distance  the distance between the bond and the text
+     * @param text  the text to be displayed
+     */
+    void paintStringParallelToBond(QPainter* painter, qreal distance,
+                                   QString text);
 };
 
 } // namespace sketcher

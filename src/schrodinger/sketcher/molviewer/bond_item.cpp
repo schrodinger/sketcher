@@ -620,5 +620,45 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     painter->restore();
 }
 
+void BondItem::paintStringParallelToBond(QPainter* painter, qreal distance,
+                                         QString text)
+{
+    auto bond_end = m_end_item.pos() - m_start_item.pos();
+    auto bond_line = QLineF(QPointF(0, 0), bond_end);
+    // Calculate the unit vector in the direction of the line segment
+    auto unit_vector_line = bond_line.unitVector();
+
+    // Calculate the offset vector perpendicular to the unit vector, always
+    // pointing towards the upper hemiplane (which is y < 0, since
+    // QGraphicsScenes's y axis grows downwards)
+    auto normal_line = unit_vector_line.normalVector();
+    auto offset_vector = normal_line.p2() * distance;
+    if (offset_vector.y() > 0) {
+        offset_vector = -offset_vector;
+    }
+
+    // Calculate the position of the text as the midpoint between the two points
+    // plus the offset
+    auto textPos = bond_end * 0.5 + offset_vector;
+
+    // Calculate the angle between the x-axis and the line segment in degrees so
+    // that the angle is between -90 and 90
+    auto angle = std::remainder(bond_line.angle(), 180.0);
+
+    painter->save();
+    // Rotate the painter to the correct angle
+    painter->translate(textPos);
+    painter->rotate(-angle);
+
+    // Draw the text centered at the rotated position
+    QFont font = painter->font();
+    auto text_bounding_rect = QFontMetrics(font).boundingRect(text);
+    auto text_width = text_bounding_rect.width();
+    painter->drawText(-text_width * 0.5, 0, text);
+
+    // Restore the painter's original state
+    painter->restore();
+}
+
 } // namespace sketcher
 } // namespace schrodinger
