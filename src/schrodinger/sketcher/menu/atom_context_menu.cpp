@@ -13,8 +13,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-constexpr int MIN_UNPAIRED_E = 0;
-constexpr int MAX_UNPAIRED_E = 4;
 
 ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
     QMenu(parent),
@@ -71,6 +69,8 @@ void ModifyAtomsMenu::updateActionsEnabled()
 {
     std::unordered_set<sketcherAtom*> atoms;
     std::vector<sketcherAtom*> element_atoms;
+    std::vector<sketcherAtom*> atoms_that_can_have_charge;
+
     for (const auto& obj : m_sketcher_model->getContextMenuObjects()) {
         auto atom = dynamic_cast<sketcherAtom*>(obj);
         if (atom != nullptr) {
@@ -78,26 +78,18 @@ void ModifyAtomsMenu::updateActionsEnabled()
             if (is_atomic_number(atom->getAtomType())) {
                 element_atoms.push_back(atom);
             }
+            if (can_have_charge(*atom)) {
+                atoms_that_can_have_charge.push_back(atom);
+            }
         }
     }
 
+    // Disable hydrogen and unpaired e for non elements
     if (element_atoms.empty()) {
-        m_decrease_charge_act->setEnabled(false);
-        m_increase_charge_act->setEnabled(false);
         m_add_remove_explicit_h_act->setEnabled(false);
         m_remove_unpaired_electrons_act->setEnabled(false);
         m_add_unpaired_electrons_act->setEnabled(false);
     } else {
-        // Cap charges
-        std::vector<int> charges;
-        std::transform(element_atoms.begin(), element_atoms.end(),
-                       std::back_inserter(charges),
-                       [](auto a) { return a->getCharge(); });
-        const auto [min_charge, max_charge] =
-            std::minmax_element(charges.begin(), charges.end());
-        m_decrease_charge_act->setEnabled(*min_charge > -ATOM_CHARGE_LIMIT);
-        m_increase_charge_act->setEnabled(*max_charge < ATOM_CHARGE_LIMIT);
-
         // Toggle add/remove explicit hydrogens
         m_add_remove_explicit_h_act->setEnabled(true);
         if (std::any_of(element_atoms.begin(), element_atoms.end(),
@@ -119,6 +111,25 @@ void ModifyAtomsMenu::updateActionsEnabled()
                                                     MIN_UNPAIRED_E);
         m_add_unpaired_electrons_act->setEnabled(*min_unpaired_e_count <
                                                  MAX_UNPAIRED_E);
+    }
+
+    if (atoms_that_can_have_charge.empty()) {
+        // Disable if charges not allowed
+        m_decrease_charge_act->setEnabled(false);
+        m_increase_charge_act->setEnabled(false);
+    } else {
+        // Cap charges
+        std::vector<int> charges;
+        std::transform(atoms_that_can_have_charge.begin(),
+                       atoms_that_can_have_charge.end(),
+                       std::back_inserter(charges),
+                       [](auto a) { return a->getCharge(); });
+
+        const auto [min_charge, max_charge] =
+            std::minmax_element(charges.begin(), charges.end());
+
+        m_decrease_charge_act->setEnabled(*min_charge > -ATOM_CHARGE_LIMIT);
+        m_increase_charge_act->setEnabled(*max_charge < ATOM_CHARGE_LIMIT);
     }
 
     bool enable = atoms.size() == 1;
