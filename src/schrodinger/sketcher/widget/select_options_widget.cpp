@@ -2,7 +2,6 @@
 
 #include <functional>
 
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_select_options_widget.h"
@@ -28,7 +27,7 @@ SelectOptionsWidget::SelectOptionsWidget(QWidget* parent) : SketcherView(parent)
                                  static_cast<int>(SelectionTool::RECTANGLE));
     ui->select_tool_group->setId(ui->select_lasso_btn,
                                  static_cast<int>(SelectionTool::LASSO));
-    connect(ui->select_tool_group, QT6_COMPAT_ID_CLICKED, this,
+    connect(ui->select_tool_group, &QButtonGroup::idClicked, this,
             &SelectOptionsWidget::onSelectButtonClicked);
     connect(ui->select_all_btn, &QToolButton::clicked, this,
             &SelectOptionsWidget::selectAllRequested);

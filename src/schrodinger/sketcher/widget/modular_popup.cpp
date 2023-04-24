@@ -8,7 +8,6 @@
 #include <QStyleOption>
 #include <QVariant>
 
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 
@@ -53,7 +52,8 @@ void ModularPopup::setButtonGroup(QButtonGroup* group)
         group->setId(packet.button, packet.enum_int);
     }
 
-    connect(group, QT6_COMPAT_ID_CLICKED, this, &ModularPopup::onButtonClicked);
+    connect(group, &QButtonGroup::idClicked, this,
+            &ModularPopup::onButtonClicked);
 }
 
 QIcon ModularPopup::getIcon(int enum_int) const

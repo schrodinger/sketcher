@@ -1,6 +1,5 @@
 #include "schrodinger/sketcher/widget/draw_tools_widget.h"
 
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
@@ -91,7 +90,7 @@ void DrawToolsWidget::connectLocalSlots()
             static_cast<void (QButtonGroup::*)(QAbstractButton*)>(
                 &QButtonGroup::buttonClicked),
             this, &DrawToolsWidget::onBondButtonClicked);
-    connect(ui->charge_group, QT6_COMPAT_ID_CLICKED, this,
+    connect(ui->charge_group, &QButtonGroup::idClicked, this,
             &DrawToolsWidget::onChargeButtonClicked);
     connect(ui->explicit_h_btn, &QToolButton::clicked, this,
             &DrawToolsWidget::onExplicitHButtonClicked);

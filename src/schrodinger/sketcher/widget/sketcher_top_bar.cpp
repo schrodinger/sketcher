@@ -8,7 +8,6 @@
 #include <QWidget>
 
 #include "mmshare-version.h"
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"

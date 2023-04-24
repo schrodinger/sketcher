@@ -3,7 +3,6 @@
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/qt6_compat.h"
 #include <functional>
 
 namespace schrodinger
@@ -31,7 +30,7 @@ RingToolWidget::RingToolWidget(QWidget* parent) : SketcherView(parent)
                      static_cast<int>(RingTool::CYCLOHEPTANE));
     ui->group->setId(ui->cyclooctane_btn,
                      static_cast<int>(RingTool::CYCLOOCTANE));
-    connect(ui->group, QT6_COMPAT_ID_CLICKED, this,
+    connect(ui->group, &QButtonGroup::idClicked, this,
             &RingToolWidget::onButtonClicked);
 }
 

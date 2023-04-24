@@ -3,7 +3,6 @@
 
 #include <QSignalSpy>
 
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
 #include "schrodinger/sketcher/ui/ui_bond_order_popup.h"
@@ -46,8 +45,7 @@ BOOST_AUTO_TEST_CASE(selectionChanged)
 
         BOOST_TEST(spy.count() == 1);
         auto args = spy.takeLast();
-        BOOST_TEST(args.at(0).QT6_COMPAT_QVARIANT_METATYPE_ID() ==
-                   QMetaType::Int);
+        BOOST_TEST(args.at(0).typeId() == QMetaType::Int);
         BOOST_TEST(args.at(0).toInt() == static_cast<int>(packet.enum_int));
     }
 }

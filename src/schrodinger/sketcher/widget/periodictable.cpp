@@ -7,7 +7,6 @@
 #include <QStyleOption>
 #include <cctype>
 
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/sketcher_model.h"
@@ -36,7 +35,7 @@ PeriodicTableWidget::PeriodicTableWidget(QWidget* parent) : SketcherView(parent)
         button->setToolTip(QString::fromStdString(tooltip));
     }
 
-    connect(ui->group, QT6_COMPAT_ID_CLICKED, this,
+    connect(ui->group, &QButtonGroup::idClicked, this,
             &PeriodicTableWidget::onButtonClicked);
 }
 
