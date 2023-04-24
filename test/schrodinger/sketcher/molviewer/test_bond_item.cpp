@@ -22,6 +22,7 @@
 #include "../test_common.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
+#include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
@@ -39,7 +40,7 @@ class TestScene : public Scene
 {
   public:
     using Scene::m_bond_item_settings;
-    using Scene::m_mol;
+    using Scene::m_mol_model;
 };
 
 class TestBondItem : public BondItem
@@ -84,7 +85,7 @@ createStructure(std::string smiles)
     }
     int idx = 0;
     std::vector<std::shared_ptr<TestBondItem>> bond_items;
-    for (auto bond : test_scene->m_mol->bonds()) {
+    for (auto bond : test_scene->m_mol_model->getMol()->bonds()) {
         BOOST_TEST_REQUIRE(bond != nullptr);
         auto start_atom_idx = bond->getBeginAtomIdx();
         auto end_atom_idx = bond->getEndAtomIdx();
@@ -109,7 +110,7 @@ createBondItem()
         }
     }
     BOOST_TEST_REQUIRE(atom_items.size() == 2);
-    RDKit::Bond* bond = *(test_scene->m_mol->bonds().begin());
+    RDKit::Bond* bond = *(test_scene->m_mol_model->getMol()->bonds().begin());
     BOOST_TEST_REQUIRE(bond != nullptr);
     auto bond_item = std::make_shared<TestBondItem>(
         bond, *atom_items[0], *atom_items[1], test_scene->m_bond_item_settings);
@@ -226,16 +227,24 @@ BOOST_AUTO_TEST_CASE(test_findBestRingForBond)
 {
     auto [bond_items, test_scene] =
         createStructure("O=C(O)C1=NN=C(C2C3=CC=C(Cl)C=C3CCC3=C2N=CC=C3)C=C1");
+    const RDKit::ROMol& molecule = bond_items[0]->m_bond->getOwningMol();
+    RDKit::RingInfo* ring_info = molecule.getRingInfo();
+    auto bond_rings = ring_info->bondRings();
     for (auto bond_item : bond_items) {
         auto bond = bond_item->m_bond;
         if (bond->getBondType() != RDKit::Bond::BondType::DOUBLE &&
             bond->getBondType() != RDKit::Bond::BondType::AROMATIC) {
             continue;
         }
-        const RDKit::ROMol& molecule = bond->getOwningMol();
-        RDKit::RingInfo* ring_info = molecule.getRingInfo();
         auto ring_idx = bond_item->findBestRingForBond(molecule, ring_info);
-        BOOST_REQUIRE(ring_idx != 2);
+        // ignore the double bond in the carboxyl group, which isn't in any
+        // rings
+        if (ring_idx > 0) {
+            // make sure that the bonds are drawn inside the 6 membered rings,
+            // not the 7 membered ring
+            auto ring_size = bond_rings[ring_idx].size();
+            BOOST_TEST(ring_size == 6);
+        }
     }
 }
 

@@ -67,8 +67,8 @@ QRect make_text_rect(QFontMetrics fm, QString label)
                          0, 0);
 };
 
-AtomItem::AtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
-                   QGraphicsItem* parent) :
+AtomItem::AtomItem(const RDKit::Atom* const atom, Fonts& fonts,
+                   AtomItemSettings& settings, QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
     m_atom(atom),
     m_fonts(fonts),
@@ -138,7 +138,9 @@ void AtomItem::updateCachedData()
     // bounding rect changes.
     prepareGeometryChange();
     clearLabels();
-    m_label_is_visible = determineLabelIsVisible();
+    m_valence_error_is_visible = determineValenceErrorIsVisible();
+    m_label_is_visible =
+        m_valence_error_is_visible || determineLabelIsVisible();
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
         m_main_label_text = QString::fromStdString(m_atom->getSymbol());
@@ -339,6 +341,9 @@ void AtomItem::positionLabels()
 
 bool AtomItem::determineLabelIsVisible() const
 {
+    // note that this method does not take m_valence_error_is_visible into
+    // account.  If that value is true (and up-to-date), then the label should
+    // be visible.
     if (!m_user_label.isEmpty()) {
         return true;
     }
@@ -352,9 +357,6 @@ bool AtomItem::determineLabelIsVisible() const
         return true;
     }
     if (m_atom->getNumRadicalElectrons()) {
-        return true;
-    }
-    if (shouldDisplayValenceError()) {
         return true;
     }
     if (m_atom->getFormalCharge() != 0) {
@@ -392,7 +394,7 @@ bool AtomItem::labelIsVisible() const
 void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
-    if (shouldDisplayValenceError()) {
+    if (m_valence_error_is_visible) {
         painter->save();
         painter->setPen(m_valence_error_pen);
         painter->setBrush(m_valence_error_brush);
@@ -419,6 +421,11 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
 
         painter->restore();
     }
+}
+
+const RDKit::Atom* AtomItem::getAtom() const
+{
+    return m_atom;
 }
 
 QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
@@ -454,7 +461,7 @@ QPointF to_scene_xy(const RDGeom::Point3D& xyz)
     return QPointF(xyz.x * VIEW_SCALE, -xyz.y * VIEW_SCALE);
 }
 
-bool AtomItem::shouldDisplayValenceError() const
+bool AtomItem::determineValenceErrorIsVisible() const
 {
     if (!m_settings.m_valence_errors_shown) {
         return false;

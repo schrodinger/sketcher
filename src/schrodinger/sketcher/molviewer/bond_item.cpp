@@ -55,7 +55,7 @@ struct NumBondsInRing {
     };
 };
 
-BondItem::BondItem(RDKit::Bond* bond, const AtomItem& start_item,
+BondItem::BondItem(const RDKit::Bond* const bond, const AtomItem& start_item,
                    const AtomItem& end_item, BondItemSettings& settings,
                    QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
@@ -618,6 +618,11 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         }
     }
     painter->restore();
+}
+
+const RDKit::Bond* BondItem::getBond() const
+{
+    return m_bond;
 }
 
 void BondItem::paintStringParallelToBond(QPainter* painter, qreal distance,

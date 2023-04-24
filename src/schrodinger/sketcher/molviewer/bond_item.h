@@ -80,7 +80,7 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      * @pre bond != nullptr
      * @pre bond->hasOwningMol()
      */
-    BondItem(RDKit::Bond* bond, const AtomItem& start_atom_item,
+    BondItem(const RDKit::Bond* const bond, const AtomItem& start_atom_item,
              const AtomItem& end_atom_item, BondItemSettings& settings,
              QGraphicsItem* parent = nullptr);
 
@@ -97,6 +97,11 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override;
 
+    /**
+     * @return the bond associated with this item
+     */
+    const RDKit::Bond* getBond() const;
+
   protected:
     // Creating a shared_ptr to an RDKit Bond (or Atom) implicitly creates a
     // copy of the Bond, which means that the new Bond is no longer part of the
@@ -108,7 +113,7 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     // Also note that m_bond, m_start_item, and m_end_item should only be
     // accessed from within updateCachedData to ensure that we can properly
     // notify the scene of any BondItem changes *before* they happen.
-    RDKit::Bond* const m_bond;
+    const RDKit::Bond* const m_bond;
     const AtomItem& m_start_item;
     const AtomItem& m_end_item;
     std::vector<ToPaint> m_to_paint;

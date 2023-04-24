@@ -11,7 +11,9 @@ namespace schrodinger
 namespace sketcher
 {
 
-AbstractUndoableModel::AbstractUndoableModel(QUndoStack* const undo_stack) :
+AbstractUndoableModel::AbstractUndoableModel(QUndoStack* const undo_stack,
+                                             QObject* parent) :
+    QObject(parent),
     m_undo_stack(undo_stack)
 {
     // prevent signal from being emitted unless we're in a command

@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(test_load_mol)
     BOOST_TEST(test_scene.getRDKitMolecule()->getNumAtoms() == 4);
     // pass shared_ptr to loadMol
     test_scene.loadMol(mol);
-    BOOST_TEST(test_scene.getRDKitMolecule()->getNumAtoms() == 4);
+    BOOST_TEST(test_scene.getRDKitMolecule()->getNumAtoms() == 8);
 }
 
 BOOST_AUTO_TEST_CASE(test_font_size)
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(test_item_selection)
     test_selected_items(scene, true);
 
     // clear selection
-    scene.clearSelection();
+    scene.clearSelectionPublic();
     test_selected_items(scene, false);
 
     // invert selection

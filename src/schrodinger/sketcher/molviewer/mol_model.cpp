@@ -5,9 +5,11 @@
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
 #include <GraphMol/Conformer.h>
+#include <GraphMol/MolOps.h>
 #include <GraphMol/RWMol.h>
 
 #include <QtGlobal>
+#include <QObject>
 #include <QUndoStack>
 
 namespace schrodinger
@@ -20,8 +22,8 @@ namespace sketcher
  */
 const std::string TAG_PROPERTY = "SKETCHER_TAG";
 
-MolModel::MolModel(QUndoStack* const undo_stack) :
-    AbstractUndoableModel(undo_stack)
+MolModel::MolModel(QUndoStack* const undo_stack, QObject* parent) :
+    AbstractUndoableModel(undo_stack, parent)
 {
     auto* conf = new RDKit::Conformer();
     // RDKit takes ownership of this conformer, so we don't have to worry about
@@ -274,6 +276,41 @@ void MolModel::clearSelection()
     doCommand(redo, undo, desc);
 }
 
+void MolModel::selectAll()
+{
+    auto [atom_tags_to_select, bond_tags_to_select] = getAllUnselectedTags();
+    doSelectionCommand(atom_tags_to_select, bond_tags_to_select, true,
+                       "Select all");
+}
+
+std::pair<std::unordered_set<int>, std::unordered_set<int>>
+MolModel::getAllUnselectedTags()
+{
+    std::unordered_set<int> deselected_atoms;
+    for (const auto& [atom_tag, atom] : *m_mol.getAtomBookmarks()) {
+        if (m_selected_atom_tags.find(atom_tag) == m_selected_atom_tags.end()) {
+            deselected_atoms.insert(atom_tag);
+        }
+    }
+    std::unordered_set<int> deselected_bonds;
+    for (const auto& [bond_tag, bond] : *m_mol.getBondBookmarks()) {
+        if (m_selected_bond_tags.find(bond_tag) == m_selected_bond_tags.end()) {
+            deselected_bonds.insert(bond_tag);
+        }
+    }
+    return {deselected_atoms, deselected_bonds};
+}
+
+void MolModel::invertSelection()
+{
+    auto [atom_tags_to_select, bond_tags_to_select] = getAllUnselectedTags();
+    auto undo_macro_raii = createUndoMacro("Invert selection");
+    doSelectionCommand(m_selected_atom_tags, m_selected_bond_tags, false,
+                       "Deselect");
+    doSelectionCommand(atom_tags_to_select, bond_tags_to_select, true,
+                       "Select");
+}
+
 void MolModel::setTagForAtom(RDKit::Atom* const atom, const int atom_tag)
 {
     m_mol.setAtomBookmark(atom, atom_tag);
@@ -328,6 +365,8 @@ void MolModel::addAtomFromCommand(const int atom_tag,
                                             /* takeOwnership = */ true);
     setTagForAtom(atom, atom_tag);
     m_mol.getConformer().setAtomPos(atom_index, coords);
+    // we don't need to update the ring info here since an unbound atom can't be
+    // part of a ring
     emit moleculeChanged();
 }
 
@@ -346,6 +385,8 @@ void MolModel::removeAtomFromCommand(const int atom_tag)
         }
     }
     m_mol.removeAtom(atom);
+    // update the ring info in case we implicitly deleted any bonds
+    RDKit::MolOps::fastFindRings(m_mol);
     emit moleculeChanged();
     if (selection_changed) {
         emit selectionChanged();
@@ -365,6 +406,8 @@ void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
         m_mol.addBond(start_atom, end_atom, bond_type) - 1;
     RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
     setTagForBond(bond, bond_tag);
+    // update the ring info
+    RDKit::MolOps::fastFindRings(m_mol);
     emit moleculeChanged();
 }
 
@@ -377,6 +420,8 @@ void MolModel::removeBondFromCommand(const int bond_tag,
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
     bool selection_changed = m_selected_bond_tags.erase(bond_tag);
     m_mol.removeBond(start_atom->getIdx(), end_atom->getIdx());
+    // update the ring info
+    RDKit::MolOps::fastFindRings(m_mol);
     emit moleculeChanged();
     if (selection_changed) {
         emit selectionChanged();
@@ -392,6 +437,8 @@ void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
     unsigned int atom_index = m_mol.getNumAtoms();
     unsigned int bond_index = m_mol.getNumBonds();
     m_mol.insertMol(mol);
+    // update the ring info, which wasn't transferred from mol
+    RDKit::MolOps::fastFindRings(m_mol);
 
     for (int cur_atom_tag : atom_tags) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);

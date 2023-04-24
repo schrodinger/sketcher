@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 
 #include <QtGlobal>
 #include <QGraphicsScene>
@@ -13,17 +14,21 @@
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
+#include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
 
 class QObject;
 class QFont;
+class QUndoStack;
 
 namespace RDKit
 {
+class Atom;
+class Bond;
 class ROMol;
-}
+} // namespace RDKit
 
 namespace schrodinger
 {
@@ -37,6 +42,9 @@ namespace sketcher
 {
 
 class AbstractGraphicsItem;
+class AtomItem;
+class BondItem;
+class MolModel;
 class SketcherModel;
 enum class DrawTool;
 enum class ImageFormat;
@@ -110,20 +118,13 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     QList<QGraphicsItem*> getInteractiveItems() const;
 
-    /**
-     *  Clear the interactive items in the scene
-     */
+    // TODO: remove these methods in SKETCH-1947.  Calls to these methods
+    //       should be replaced with direct calls to the corresponding MolModel
+    //       methods.
     void clearInteractiveItems();
-
-    /**
-     * Select all items in the scene
-     */
     void selectAll();
-
-    /**
-     * Select all unselected items; clear selection from those already selected
-     */
     void invertSelection();
+    void clearSelectionPublic();
 
     /**
      * Import the given text into the scene; optionally clear beforehand
@@ -170,6 +171,20 @@ class SKETCHER_API Scene : public QGraphicsScene
 
   protected:
     using QGraphicsScene::clear;
+    using QGraphicsScene::clearSelection;
+
+    /**
+     * Delete all interactive graphics items in the scene; these are items that
+     * inherit from AbstractGraphicsItem (atoms, bonds, etc.) as opposed to
+     * objects that are purely graphical (selection highlighting paths, etc.).
+     */
+    void clearAllInteractiveItems();
+
+    /**
+     * Clear all interactive graphics items (e.g. atoms, bonds, etc.) and
+     * regenerate them from the current MolModel molecule.
+     */
+    void updateInteractiveItems();
 
     /**
      * If the m_rect_select_item or m_ellipse_select_item graphics items are in
@@ -231,6 +246,26 @@ class SKETCHER_API Scene : public QGraphicsScene
         const QAbstractGraphicsShapeItem* sel_item);
 
     /**
+     * Update the MolModel selection for the atoms and bonds that correspond to
+     * the specified graphics items.  This will trigger a call to
+     * onMolModelSelectionChanged, which is responsible for actually selecting
+     * the graphics items.  This method should always be used to select graphics
+     * items to ensure that selection is kept in sync between MolModel and the
+     * Scene.
+     * @param items The graphics items to update the selection of
+     * @param select_mode Whether to select, deselect, toggle selection, or
+     * select-only (i.e. clear the selection and then select)
+     */
+    void selectGraphicsItems(const QList<QGraphicsItem*>& items,
+                             const SelectMode select_mode);
+
+    /**
+     * Update the graphics items selection in response to a change in the
+     * MolModel selection.
+     */
+    void onMolModelSelectionChanged();
+
+    /**
      * Find all graphics item within the user's current marquee or lasso
      * selection.
      *
@@ -239,7 +274,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     QList<QGraphicsItem*>
     itemsWithinSelection(const QAbstractGraphicsShapeItem* sel_item) const;
 
-    std::shared_ptr<RDKit::ROMol> m_mol;
+    MolModel* m_mol_model;
+    QUndoStack* m_undo_stack;
     Fonts m_fonts;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
@@ -252,6 +288,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     QPointF m_mouse_down_scene_pos;
     QPointF m_mouse_down_screen_pos;
     MouseDragAction m_mouse_drag_action = MouseDragAction::NONE;
+    std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
+    std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
 
     /**
      * Objects associated with the context menu instance that is currently open.

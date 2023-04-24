@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 #include <functional>
+#include <unordered_set>
 
 #include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
@@ -16,6 +17,7 @@
 #include <QPainterPath>
 #include <QString>
 #include <QTransform>
+#include <QUndoStack>
 #include <QUrl>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -64,15 +66,18 @@ Scene::Scene(QObject* parent) : QGraphicsScene(parent)
     m_rect_select_item = new RectSelectionItem();
     m_ellipse_select_item = new EllipseSelectionItem();
     m_lasso_select_item = new LassoSelectionItem();
-    m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
+    m_undo_stack = new QUndoStack(this);
+    m_mol_model = new MolModel(m_undo_stack, this);
 
     addItem(m_selection_highlighting_item);
     addItem(m_predictive_highlighting_item);
     // We intentionally don't add the m_*_select_item items to the scene.  Those
     // only get added during a drag select.
 
-    connect(this, &Scene::selectionChanged, this,
-            &Scene::updateSelectionHighlighting);
+    connect(m_mol_model, &MolModel::moleculeChanged, this,
+            &Scene::updateInteractiveItems);
+    connect(m_mol_model, &MolModel::selectionChanged, this,
+            &Scene::onMolModelSelectionChanged);
 }
 
 Scene::~Scene()
@@ -137,37 +142,42 @@ void Scene::loadMol(const RDKit::ROMol& mol)
 
 void Scene::loadMol(std::shared_ptr<RDKit::ROMol> mol)
 {
-    // TODO: instead of always clearing, handle adding additional mols
-    clearInteractiveItems();
-    m_mol = mol;
-    const std::size_t num_atoms = m_mol->getNumAtoms();
-    std::vector<AtomItem*> atom_items;
-    atom_items.reserve(num_atoms);
+    m_mol_model->addMol(*mol);
+}
+
+void Scene::updateInteractiveItems()
+{
+    clearAllInteractiveItems();
+    const auto* mol = m_mol_model->getMol();
+
+    m_atom_to_atom_item.clear();
+    m_bond_to_bond_item.clear();
 
     // create atom items
-    for (std::size_t i = 0; i < num_atoms; ++i) {
-        auto const atom = m_mol->getAtomWithIdx(i);
-        const auto pos = m_mol->getConformer().getAtomPos(i);
-        const auto cur_atom_item =
-            new AtomItem(atom, m_fonts, m_atom_item_settings);
-        cur_atom_item->setPos(to_scene_xy(pos));
-        addItem(cur_atom_item);
-        atom_items.push_back(cur_atom_item);
+    for (std::size_t i = 0; i < mol->getNumAtoms(); ++i) {
+        const auto* atom = mol->getAtomWithIdx(i);
+        const auto pos = mol->getConformer().getAtomPos(i);
+        auto* atom_item = new AtomItem(atom, m_fonts, m_atom_item_settings);
+        atom_item->setPos(to_scene_xy(pos));
+        m_atom_to_atom_item[atom] = atom_item;
+        addItem(atom_item);
     }
 
     // create bond items
-    for (auto bond : m_mol->bonds()) {
-        const auto* from_atom_item = atom_items[bond->getBeginAtomIdx()];
-        const auto* to_atom_item = atom_items[bond->getEndAtomIdx()];
-        const auto bond_item = new BondItem(
-            bond, *from_atom_item, *to_atom_item, m_bond_item_settings);
+    for (auto bond : mol->bonds()) {
+        const auto* from_atom_item = m_atom_to_atom_item[bond->getBeginAtom()];
+        const auto* to_atom_item = m_atom_to_atom_item[bond->getEndAtom()];
+        auto* bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
+                                       m_bond_item_settings);
+        m_bond_to_bond_item[bond] = bond_item;
         addItem(bond_item);
     }
 }
 
 std::shared_ptr<RDKit::ROMol> Scene::getRDKitMolecule() const
 {
-    return m_mol;
+    // note that this will return a copy
+    return std::make_shared<RDKit::ROMol>(*m_mol_model->getMol());
 }
 
 void Scene::importText(const std::string& text, Format format)
@@ -199,7 +209,13 @@ std::string Scene::exportText(Format format)
     // TODO: handle reactions
     // TODO: handle toggling between selection/everything
     // TODO: handle export of selection as atom/bond properties
-    return rdkit_extensions::to_string(*m_mol, format);
+    return rdkit_extensions::to_string(*m_mol_model->getMol(), format);
+}
+
+// TODO: remove this method as part of SKETCH-1947
+void Scene::clearInteractiveItems()
+{
+    m_mol_model->clear();
 }
 
 QList<QGraphicsItem*> Scene::getInteractiveItems() const
@@ -216,7 +232,7 @@ QList<QGraphicsItem*> Scene::getInteractiveItems() const
     return interactive_items;
 }
 
-void Scene::clearInteractiveItems()
+void Scene::clearAllInteractiveItems()
 {
     // reset the state of the selection item
     removeSelectItemsFromScene();
@@ -230,23 +246,24 @@ void Scene::clearInteractiveItems()
         removeItem(item);
         delete item;
     }
-    m_mol = std::make_shared<RDKit::ROMol>(RDKit::ROMol());
 }
 
+// TODO: remove this method as part of SKETCH-1947
 void Scene::selectAll()
 {
-    Scene::SelectionChangeSignalBlocker signal_blocker(this);
-    for (auto item : items()) {
-        item->setSelected(true);
-    }
+    m_mol_model->selectAll();
 }
 
+// TODO: remove this method as part of SKETCH-1947
 void Scene::invertSelection()
 {
-    Scene::SelectionChangeSignalBlocker signal_blocker(this);
-    for (auto item : items()) {
-        item->setSelected(!item->isSelected());
-    }
+    m_mol_model->invertSelection();
+}
+
+// TODO: remove this method as part of SKETCH-1947
+void Scene::clearSelectionPublic()
+{
+    m_mol_model->clearSelection();
 }
 
 void Scene::onImportTextRequested(const std::string& text, Format format)
@@ -275,7 +292,7 @@ void Scene::showFileSaveImageDialog()
             [this](auto format, const auto& opts) {
                 // TODO: this call uses the existing sketcherScene class;
                 // update to render directly from this Scene instance
-                return get_image_bytes(*m_mol, format, opts);
+                return get_image_bytes(*m_mol_model->getMol(), format, opts);
             });
     dialog->show();
 }
@@ -416,15 +433,22 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     auto draw_tool = m_sketcher_model->getDrawTool();
     if (draw_tool == DrawTool::SELECT && event->button() == Qt::LeftButton) {
-        if (!(event->modifiers() & Qt::ControlModifier)) {
-            clearSelection();
+        SelectMode select_mode;
+        auto modifiers = event->modifiers();
+        if (modifiers & Qt::ControlModifier) {
+            select_mode = SelectMode::TOGGLE;
+        } else if (modifiers & Qt::ShiftModifier) {
+            select_mode = SelectMode::SELECT;
+        } else {
+            select_mode = SelectMode::SELECT_ONLY;
         }
 
+        QList<QGraphicsItem*> items_to_select;
         if (m_mouse_drag_action == MouseDragAction::NONE) {
             // this was a click, not a drag
             QGraphicsItem* item = itemAt(event->scenePos(), QTransform());
             if (item) {
-                item->setSelected(true);
+                items_to_select.append(item);
             }
         } else {
             QAbstractGraphicsShapeItem* select_item;
@@ -437,14 +461,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             }
 
             // select the items within the marquee or lasso
-            QList<QGraphicsItem*> items_to_select =
-                itemsWithinSelection(select_item);
-            { // block the per-item signals for performance reasons
-                Scene::SelectionChangeSignalBlocker signal_blocker(this);
-                for (auto item : items_to_select) {
-                    item->setSelected(true);
-                }
-            } // signal_blocker emits selectionChanged on destruction
+            items_to_select = itemsWithinSelection(select_item);
 
             // reset the scene state
             removeItem(select_item);
@@ -452,6 +469,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             m_predictive_highlighting_item->clearHighlightingPath();
             m_lasso_select_item->clearPath();
         }
+        selectGraphicsItems(items_to_select, select_mode);
     }
 
     m_mouse_down_scene_pos = QPointF();
@@ -485,6 +503,36 @@ void Scene::setPredictiveHighlightingForSelection(
     QPainterPath path =
         buildHighlightingPathForItems(items_to_highlight, get_pred_path);
     m_predictive_highlighting_item->setHighlightingPath(path);
+}
+
+void Scene::selectGraphicsItems(const QList<QGraphicsItem*>& items,
+                                const SelectMode select_mode)
+{
+    std::unordered_set<const RDKit::Atom*> atoms;
+    std::unordered_set<const RDKit::Bond*> bonds;
+    for (auto cur_item : items) {
+        if (auto atom_item = qgraphicsitem_cast<AtomItem*>(cur_item)) {
+            atoms.insert(atom_item->getAtom());
+        } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(cur_item)) {
+            bonds.insert(bond_item->getBond());
+        }
+    }
+    m_mol_model->select(atoms, bonds, select_mode);
+}
+
+void Scene::onMolModelSelectionChanged()
+{
+    // block the per-item signals for performance reasons
+    Scene::SelectionChangeSignalBlocker signal_blocker(this);
+    clearSelection();
+    for (auto* atom : m_mol_model->getSelectedAtoms()) {
+        m_atom_to_atom_item[atom]->setSelected(true);
+    }
+    for (auto* bond : m_mol_model->getSelectedBonds()) {
+        m_bond_to_bond_item[bond]->setSelected(true);
+    }
+    updateSelectionHighlighting();
+    // signal_blocker emits selectionChanged on destruction
 }
 
 QList<QGraphicsItem*>

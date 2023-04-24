@@ -94,7 +94,8 @@ class SKETCHER_API AbstractUndoableModel : public QObject
      * @param undo_stack The undo stack to use.  If not given here, setUndoStack
      * must be called before this instance creates any undo commands.
      */
-    AbstractUndoableModel(QUndoStack* undo_stack = nullptr);
+    AbstractUndoableModel(QUndoStack* undo_stack = nullptr,
+                          QObject* parent = nullptr);
 
     /**
      * Specify the undo stack to use

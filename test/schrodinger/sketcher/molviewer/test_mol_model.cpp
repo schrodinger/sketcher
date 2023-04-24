@@ -454,6 +454,59 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond3}));
 }
 
+BOOST_AUTO_TEST_CASE(test_select_all_and_invert)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCCCC"));
+    model.addMol(*mol_to_add);
+
+    model.selectAll();
+    BOOST_TEST(model.getSelectedAtoms().size() == 5);
+    BOOST_TEST(model.getSelectedBonds().size() == 4);
+    undo_stack.undo();
+    BOOST_TEST(model.getSelectedAtoms().empty());
+    BOOST_TEST(model.getSelectedBonds().empty());
+    undo_stack.redo();
+    BOOST_TEST(model.getSelectedAtoms().size() == 5);
+    BOOST_TEST(model.getSelectedBonds().size() == 4);
+
+    auto* atom1 = model.getAtomFromTag(1);
+    auto* atom2 = model.getAtomFromTag(2);
+    auto* bond1 = model.getBondFromTag(1);
+    model.select({atom1, atom2}, {bond1}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
+    model.selectAll();
+    BOOST_TEST(model.getSelectedAtoms().size() == 5);
+    BOOST_TEST(model.getSelectedBonds().size() == 4);
+    undo_stack.undo();
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
+    undo_stack.redo();
+    BOOST_TEST(model.getSelectedAtoms().size() == 5);
+    BOOST_TEST(model.getSelectedBonds().size() == 4);
+    undo_stack.undo();
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
+
+    auto* atom3 = model.getAtomFromTag(3);
+    auto* atom4 = model.getAtomFromTag(4);
+    auto* atom0 = model.getAtomFromTag(0);
+    auto* bond2 = model.getBondFromTag(2);
+    auto* bond3 = model.getBondFromTag(3);
+    auto* bond0 = model.getBondFromTag(0);
+    model.invertSelection();
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom3, atom4, atom0}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({bond2, bond3, bond0}));
+    undo_stack.undo();
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
+    undo_stack.redo();
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom3, atom4, atom0}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({bond2, bond3, bond0}));
+}
+
 /**
  * Ensure that removing a selected atom or bond automatically deselects the
  * removed element.  Ensure that undoing the removal restores the selection.

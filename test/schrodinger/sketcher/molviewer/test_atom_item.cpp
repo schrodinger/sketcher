@@ -17,6 +17,7 @@
 #include "../test_common.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
+#include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
@@ -37,12 +38,13 @@ class TestScene : public Scene
     using Scene::m_atom_item_settings;
     using Scene::m_bond_item_settings;
     using Scene::m_fonts;
-    using Scene::m_mol;
+    using Scene::m_mol_model;
 };
 
 class TestAtomItem : public AtomItem
 {
   public:
+    using AtomItem::determineValenceErrorIsVisible;
     using AtomItem::findHsDirection;
     using AtomItem::m_bounding_rect;
     using AtomItem::m_charge_and_radical_label_text;
@@ -59,7 +61,6 @@ class TestAtomItem : public AtomItem
     using AtomItem::m_selection_highlighting_path;
     using AtomItem::m_shape;
     using AtomItem::m_subrects;
-    using AtomItem::shouldDisplayValenceError;
 
     TestAtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
                  QGraphicsItem* parent = nullptr) :
@@ -75,7 +76,7 @@ createAtomItems(std::string smiles)
     auto test_scene = std::make_shared<TestScene>();
     test_scene->importText(smiles, Format::SMILES);
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
-    for (auto atom : test_scene->m_mol->atoms()) {
+    for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
         BOOST_TEST_REQUIRE(atom != nullptr);
         auto atom_item = std::make_shared<TestAtomItem>(
             atom, test_scene->m_fonts, test_scene->m_atom_item_settings);
@@ -183,7 +184,7 @@ BOOST_AUTO_TEST_CASE(test_findHsDirection, *boost::unit_test::tolerance(0.01))
     BOOST_TEST(atom_items.at(3)->findHsDirection() == HsDirection::LEFT);
 }
 
-BOOST_AUTO_TEST_CASE(test_hasValenceErrors)
+BOOST_AUTO_TEST_CASE(test_determineValenceErrorIsVisible)
 {
     // TODO: SKETCH-1917 add equivalents to the commented out strings that are
     // now failing.
@@ -201,14 +202,14 @@ BOOST_AUTO_TEST_CASE(test_hasValenceErrors)
              "[NH4+]", // Charged atom, SKETCH-1686
          }) {
         auto [atom_items, scene] = createAtomItems(smiles);
-        BOOST_TEST(atom_items.at(0)->shouldDisplayValenceError() == false);
+        BOOST_TEST(atom_items.at(0)->determineValenceErrorIsVisible() == false);
     }
     // First atom has a valence error!
     for (const auto& smiles :
          {"[CH3+]", "C(C)(C)(C)(C)C", "S(C)(C)(C)(C)(C)(C)C", "O(C)=C",
           "[He][He]", "[H+]"}) {
         auto [atom_items, scene] = createAtomItems(smiles);
-        BOOST_TEST(atom_items.at(0)->shouldDisplayValenceError() == true);
+        BOOST_TEST(atom_items.at(0)->determineValenceErrorIsVisible() == true);
     }
 }
 

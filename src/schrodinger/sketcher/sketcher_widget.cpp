@@ -47,7 +47,7 @@ void SketcherWidget::connectTopBarSlots()
     connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_scene,
             &Scene::selectAll);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,
-            m_scene, &Scene::clearSelection);
+            m_scene, &Scene::clearSelectionPublic);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::invertSelectionRequested,
             m_scene, &Scene::invertSelection);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, m_scene,
@@ -70,7 +70,7 @@ void SketcherWidget::connectSideBarSlots()
     connect(m_ui->side_bar_wdg, &SketcherSideBar::selectAllRequested, m_scene,
             &Scene::selectAll);
     connect(m_ui->side_bar_wdg, &SketcherSideBar::clearSelectionRequested,
-            m_scene, &Scene::clearSelection);
+            m_scene, &Scene::clearSelectionPublic);
     connect(m_ui->side_bar_wdg, &SketcherSideBar::invertSelectionRequested,
             m_scene, &Scene::invertSelection);
 

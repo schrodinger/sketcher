@@ -72,8 +72,8 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * @pre atom != nullptr
      * @pre atom->hasOwningMol()
      */
-    AtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
-             QGraphicsItem* parent = nullptr);
+    AtomItem(const RDKit::Atom* const atom, Fonts& fonts,
+             AtomItemSettings& settings, QGraphicsItem* parent = nullptr);
 
     // Type and type() are required for qgraphicsitem_cast.  Note that this enum
     // implementation is based on the sample code from the QGraphicsItem::Type
@@ -89,6 +89,11 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
                QWidget* widget = nullptr) override;
 
     /**
+     * @return the atom associated with this item
+     */
+    const RDKit::Atom* getAtom() const;
+
+    /**
      * Return a list of bounding rectangles for all individual components of
      * this item.  These subrects are used to precisely trim the bond lines so
      * that they don't overlap with the atom labels.  Note that this method
@@ -97,6 +102,79 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * trimming due to assumptions made in BondItem::trimLineToRect.
      */
     const std::vector<QRectF>& getSubrects() const;
+
+    /**
+     * Return whether the label for this atom is visible.  (Labels for some
+     * carbons may be hidden depending on the atom item settings.)
+     */
+    bool labelIsVisible() const;
+
+    /**
+     * @param avoid_subrects whether or not to consider the atom's subrects
+     * in the calculation: when picking a position for something close to the
+     * atom (e.g. chiral labels), this make sure that the returned position
+     * doesn't clash with the atom labels. When picking positions for something
+     * far away from the label (e.g. another atom bound to this), this should be
+     * false
+     * @return a position on the canvas (in coordinates relative to this item)
+     * that is near this atom but doesn't clash with it or its neighbors.
+     */
+    QPointF findPositionInEmptySpace(bool avoid_subrects) const;
+
+  protected:
+    /**
+     * @return the direction Hs labels would be drawn on this atom if the label
+     * is shown and it has hydrogens
+     */
+    HsDirection findHsDirection() const;
+
+    // Creating a shared_ptr to an RDKit Atom (or Bond) implicitly creates a
+    // copy of the Atom, which means that the new Atom is no longer part of the
+    // original molecule, which leads to problems.  Because of this, we store a
+    // raw pointer instead.  The RDKit molecule takes care of the lifetime of
+    // the Atom, so an AtomItem instance must be deleted as soon as its
+    // associated Atom is deleted.
+    //
+    // Also note that m_atom should only be accessed from within
+    // updateCachedData to ensure that we can properly notify the scene of any
+    // AtomItem changes *before* they happen.
+
+    const RDKit::Atom* const m_atom;
+    QString m_main_label_text;
+    QRectF m_main_label_rect;
+    QRectF m_H_label_rect;
+    QRectF m_H_count_label_rect;
+    QString m_H_count_label_text;
+    QRectF m_charge_and_radical_rect;
+    QString m_charge_and_radical_label_text;
+    QString m_isotope_label_text;
+    QRectF m_isotope_rect;
+
+    // user label. If set it replaces the atomic labels
+    QString m_user_label;
+
+    std::vector<QRectF> m_subrects;
+    Fonts& m_fonts;
+    AtomItemSettings& m_settings;
+    bool m_label_is_visible;
+    bool m_valence_error_is_visible;
+    QPen m_pen;
+    QPen m_valence_error_pen;
+    QBrush m_valence_error_brush;
+
+    /**
+     * @return whether the label for this atom is visible.  (Labels for some
+     * carbons may be hidden depending on the atom item settings.)  Note that
+     * this method does *not* take the valence error into account.  If a valence
+     * error is visible, the label should always be visible.
+     */
+    bool determineLabelIsVisible() const;
+
+    /**
+     * @return whether the associated atom has a valence error that should be
+     * displayed
+     */
+    bool determineValenceErrorIsVisible() const;
 
     /**
      * set all label rects to invalid rects and all label text to empty strings
@@ -129,71 +207,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * (if any)
      */
     void updateUnpairedElectronsLabels();
-
-    /**
-     * Return whether the label for this atom is visible.  (Labels for some
-     * carbons may be hidden depending on the atom item settings.)
-     */
-    bool labelIsVisible() const;
-
-    /**
-     * @param avoid_subrects whether or not to consider the atom's subrects
-     * in the calculation: when picking a position for something close to the
-     * atom (e.g. chiral labels), this make sure that the returned position
-     * doesn't clash with the atom labels. When picking positions for something
-     * far away from the label (e.g. another atom bound to this), this should be
-     * false
-     * @return a position on the canvas (in coordinates relative to this item)
-     * that is near this atom but doesn't clash with it or its neighbors.
-     */
-    QPointF findPositionInEmptySpace(bool avoid_subrects) const;
-
-  protected:
-    /**
-     * @Return the direction Hs labels would be drawn on this atom if the label
-     * is shown and it has hydrogens
-     */
-    HsDirection findHsDirection() const;
-
-    // Creating a shared_ptr to an RDKit Atom (or Bond) implicitly creates a
-    // copy of the Atom, which means that the new Atom is no longer part of the
-    // original molecule, which leads to problems.  Because of this, we store a
-    // raw pointer instead.  The RDKit molecule takes care of the lifetime of
-    // the Atom, so an AtomItem instance must be deleted as soon as its
-    // associated Atom is deleted.
-    //
-    // Also note that m_atom should only be accessed from within
-    // updateCachedData to ensure that we can properly notify the scene of any
-    // AtomItem changes *before* they happen.
-    RDKit::Atom* const m_atom;
-    QString m_main_label_text;
-    QRectF m_main_label_rect;
-    QRectF m_H_label_rect;
-    QRectF m_H_count_label_rect;
-    QString m_H_count_label_text;
-    QRectF m_charge_and_radical_rect;
-    QString m_charge_and_radical_label_text;
-    QString m_isotope_label_text;
-    QRectF m_isotope_rect;
-
-    // user label. If set it replaces the atomic labels
-    QString m_user_label;
-
-    std::vector<QRectF> m_subrects;
-    Fonts& m_fonts;
-    AtomItemSettings& m_settings;
-    bool m_label_is_visible;
-    QPen m_pen;
-    QPen m_valence_error_pen;
-    QBrush m_valence_error_brush;
-
-    bool determineLabelIsVisible() const;
-
-    /**
-     * @Return whether the associated atom has a valence error that should be
-     * displayed
-     */
-    bool shouldDisplayValenceError() const;
 };
 
 /**

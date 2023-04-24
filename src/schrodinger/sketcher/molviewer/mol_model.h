@@ -6,6 +6,7 @@
 #include <functional>
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include <GraphMol/RWMol.h>
 
@@ -14,6 +15,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/abstract_undoable_model.h"
 
+class QObject;
 class QPointF;
 class QString;
 class QUndoStack;
@@ -67,7 +69,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 {
     Q_OBJECT
   public:
-    MolModel(QUndoStack* const undo_stack = nullptr);
+    MolModel(QUndoStack* const undo_stack = nullptr, QObject* parent = nullptr);
 
     /******************************** GETTERS *******************************/
 
@@ -158,6 +160,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void clearSelection();
 
+    /**
+     * Select all atoms and bonds.
+     */
+    void selectAll();
+
+    /**
+     * Select all unselected atoms and bonds and deselect all selected atoms
+     * and bonds.
+     */
+    void invertSelection();
+
   signals:
 
     /**
@@ -247,18 +260,25 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Divide the given set of tags into two sets: one containing selected tags
-     * and one containing deselected tags
+     * and one containing unselected tags
      * @param tags_to_divide The atom or bond tags to divide
      * @param selected_tags The atom or bond tags that are currently selected
-     * @return the selected and deselected sets, in that order
+     * @return the selected and unselected sets, in that order
      */
     std::pair<std::unordered_set<int>, std::unordered_set<int>>
     divideBySelected(const std::unordered_set<int>& tags_to_divide,
                      const std::unordered_set<int>& selected_tags);
 
     /**
+     * @return The atoms and bond tags for all atoms and bonds that are not
+     * currently selected
+     */
+    std::pair<std::unordered_set<int>, std::unordered_set<int>>
+    getAllUnselectedTags();
+
+    /**
      * Undoably select or deselect the specified atoms and bonds.  If selecting,
-     * all given tags must be currently deselected.  If deselecting, all given
+     * all given tags must be currently unselected.  If deselecting, all given
      * tags must be currently selected.
      *
      * @param filtered_atom_tags Tags for the atoms to select or deselect.
