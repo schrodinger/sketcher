@@ -1,7 +1,5 @@
 /* -------------------------------------------------------------------------
  * Tests class schrodinger::sketcher::CommonAtomPropertiesWidget
- *
- * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
 #define BOOST_TEST_DYN_LINK

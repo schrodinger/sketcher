@@ -1,7 +1,6 @@
 /**
  * Constants use in the molviewer Qt graphics view classes.
  *
- * Copyright Schrodinger, LLC. All rights reserved.
  */
 
 #pragma once

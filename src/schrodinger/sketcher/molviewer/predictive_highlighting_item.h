@@ -1,6 +1,3 @@
-/**
- * Copyright Schrodinger, LLC. All rights reserved.
- */
 #pragma once
 
 #include "schrodinger/sketcher/molviewer/abstract_highlighting_item.h"

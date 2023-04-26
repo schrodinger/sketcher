@@ -1,7 +1,5 @@
 /* -------------------------------------------------------------------------
  * Implements schrodinger::sketcher:: rendering APIs
- *
- * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
 #include "schrodinger/sketcher/image_generation.h"

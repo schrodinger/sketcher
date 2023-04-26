@@ -1,7 +1,5 @@
 /* -------------------------------------------------------------------------
  * Declares schrodinger::sketcher:: rendering APIs
- *
- * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
 #pragma once

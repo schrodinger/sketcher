@@ -1,7 +1,5 @@
 /* -------------------------------------------------------------------------
  * Tests class schrodinger::sketcher::EditAtomPropertiesDialog
- *
- * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
 #pragma once

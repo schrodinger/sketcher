@@ -1,6 +1,3 @@
-/**
- * Copyright Schrodinger, LLC. All rights reserved.
- */
 #pragma once
 
 #include <QGraphicsView>
