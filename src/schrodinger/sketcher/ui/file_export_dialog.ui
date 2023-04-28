@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>FileExportDialog</class>
- <widget class="QDialog" name="FileExportDialog">
+ <widget class="QWidget" name="FileExportDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -82,22 +82,5 @@
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>cancel_btn</sender>
-   <signal>clicked()</signal>
-   <receiver>FileExportDialog</receiver>
-   <slot>reject()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>304</x>
-     <y>114</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>175</x>
-     <y>67</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>

@@ -226,7 +226,7 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(SketcherModel* model,
     }
 
     ui.reset(new Ui::EditAtomPropertiesDialog());
-    ui->setupUi(this);
+    setupDialogUI(*ui);
 
     // Connect radio buttons to stacked widget
     auto stack_wgt = ui->atom_query_stacked_wdg;

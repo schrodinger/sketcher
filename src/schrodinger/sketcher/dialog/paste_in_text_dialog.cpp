@@ -17,8 +17,9 @@ PasteInTextDialog::PasteInTextDialog(SketcherModel* model, QWidget* parent) :
     m_sketcher_model = model;
 
     ui.reset(new Ui::PasteInTextDialog());
-    ui->setupUi(this);
+    setupDialogUI(*ui);
 
+    // Connect signals and slots
     connect(model, &SketcherModel::valuesChanged, this,
             &PasteInTextDialog::onModelValuesChanged);
     onModelValuesChanged();

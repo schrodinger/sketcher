@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 
 #include <QFileDialog>
+#include <QTimer>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/file_import_export.h"
@@ -31,7 +32,8 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     m_model_has_reaction(model->hasReaction())
 {
     m_ui.reset(new Ui::FileExportDialog());
-    m_ui->setupUi(this);
+    setupDialogUI(*m_ui);
+
 #ifdef __EMSCRIPTEN__
     // In the Browser the exporting of data is a Download action.
     // In Maestro the exporting of data is a File Save action.
@@ -39,8 +41,10 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     // In Maestro, it should continue to say "Save...".
     m_ui->export_btn->setText("Download");
 #endif
+    // Connect signals and slots
     connect(m_ui->export_btn, &QPushButton::clicked, this,
             &FileExportDialog::exportFile);
+    connect(m_ui->cancel_btn, &QPushButton::clicked, this, &QDialog::reject);
 
     m_ui->filename_le->setText(DEFAULT_FILENAME);
     // initialize the format combo

@@ -19,7 +19,7 @@ namespace sketcher
 About2DSketcher::About2DSketcher(QWidget* parent) : ModalDialog(parent)
 {
     m_ui.reset(new Ui::About2DSketcher());
-    m_ui->setupUi(this);
+    setupDialogUI(*m_ui);
 
     auto schrodinger_version = std::string("Release ") + RELEASE_NAME +
                                " (version " + std::to_string(MMSHARE_VERSION) +
