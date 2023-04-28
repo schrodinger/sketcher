@@ -17,8 +17,10 @@
 #include <QMarginsF>
 #include <QPainter>
 #include <QPointF>
+#include <QTransform>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/stereochemistry.h"
 
 namespace schrodinger
 {
@@ -55,13 +57,15 @@ struct NumBondsInRing {
     };
 };
 
-BondItem::BondItem(const RDKit::Bond* const bond, const AtomItem& start_item,
-                   const AtomItem& end_item, BondItemSettings& settings,
-                   QGraphicsItem* parent) :
+BondItem::BondItem(const RDKit::Bond* bond, const AtomItem& start_item,
+                   const AtomItem& end_item, const Fonts& fonts,
+                   BondItemSettings& settings, QGraphicsItem* parent) :
+
     AbstractGraphicsItem(parent),
     m_bond(bond),
     m_start_item(start_item),
     m_end_item(end_item),
+    m_fonts(fonts),
     m_settings(settings)
 {
     m_solid_pen.setJoinStyle(Qt::RoundJoin);
@@ -69,6 +73,8 @@ BondItem::BondItem(const RDKit::Bond* const bond, const AtomItem& start_item,
     m_dashed_pen.setJoinStyle(Qt::RoundJoin);
     m_dashed_pen.setCapStyle(Qt::RoundCap);
     m_dashed_pen.setDashPattern({3.0, 3.0});
+    m_chirality_pen = QPen(CHIRALITY_LABEL_COLOR);
+
     setZValue(static_cast<qreal>(ZOrder::BOND));
     updateCachedData();
 }
@@ -101,6 +107,23 @@ void BondItem::updateCachedData()
         pathAroundLine(bond_line, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
     m_shape = QPainterPath(m_predictive_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
+
+    auto stereo_label = get_bond_stereo_label(*m_bond);
+
+    // add the stereo label (if present) to the bounding rect
+    if (!stereo_label.isEmpty()) {
+
+        auto [angle, text_pos, text_size] =
+            getStereoAnnotationParameters(stereo_label);
+        auto rect = QRectF(text_pos, text_size);
+        rect.moveCenter(QPointF(0, 0));
+        auto rotation = QTransform().rotate(angle);
+        auto bounding_rect = rotation.mapRect(rect);
+
+        bounding_rect.moveCenter(text_pos);
+        m_bounding_rect = m_bounding_rect.united(bounding_rect);
+    }
+    m_stereo_label = stereo_label;
 
     // TODO: calculate bond intersections, store clipping path
     // TODO: deal with atom radii for aromatics
@@ -618,6 +641,15 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         }
     }
     painter->restore();
+    if (!m_stereo_label.isEmpty()) {
+        painter->save();
+        painter->setPen(m_chirality_pen);
+        painter->setFont(m_fonts.m_chirality_font);
+        auto [angle, text_pos, text_size] =
+            getStereoAnnotationParameters(m_stereo_label);
+        paintAnnotation(painter, angle, text_pos, text_size, m_stereo_label);
+        painter->restore();
+    }
 }
 
 const RDKit::Bond* BondItem::getBond() const
@@ -625,9 +657,10 @@ const RDKit::Bond* BondItem::getBond() const
     return m_bond;
 }
 
-void BondItem::paintStringParallelToBond(QPainter* painter, qreal distance,
-                                         QString text)
+std::tuple<qreal, QPointF, QSizeF>
+BondItem::getStereoAnnotationParameters(const QString& label) const
 {
+    auto distance = VIEW_SCALE * BOND_STEREO_LABEL_DISTANCE_RATIO;
     auto bond_end = m_end_item.pos() - m_start_item.pos();
     auto bond_line = QLineF(QPointF(0, 0), bond_end);
     // Calculate the unit vector in the direction of the line segment
@@ -644,22 +677,28 @@ void BondItem::paintStringParallelToBond(QPainter* painter, qreal distance,
 
     // Calculate the position of the text as the midpoint between the two points
     // plus the offset
-    auto textPos = bond_end * 0.5 + offset_vector;
+    auto text_pos = bond_end * 0.5 + offset_vector;
 
     // Calculate the angle between the x-axis and the line segment in degrees so
     // that the angle is between -90 and 90
     auto angle = std::remainder(bond_line.angle(), 180.0);
+    QFont font = m_fonts.m_chirality_font;
+    auto text_size = QFontMetrics(font).size(Qt::TextSingleLine, label);
+    return std::make_tuple(angle, text_pos, text_size);
+}
 
+void BondItem::paintAnnotation(QPainter* painter, qreal angle,
+                               const QPointF& text_pos, const QSizeF& text_size,
+                               const QString& text)
+{
     painter->save();
-    // Rotate the painter to the correct angle
-    painter->translate(textPos);
+    // Position and rotate the painter to the correct angle
+    painter->translate(text_pos);
     painter->rotate(-angle);
 
     // Draw the text centered at the rotated position
     QFont font = painter->font();
-    auto text_bounding_rect = QFontMetrics(font).boundingRect(text);
-    auto text_width = text_bounding_rect.width();
-    painter->drawText(-text_width * 0.5, 0, text);
+    painter->drawText(-text_size.width() * 0.5, text_size.height() * 0.5, text);
 
     // Restore the painter's original state
     painter->restore();

@@ -72,6 +72,11 @@ class SKETCHER_API Scene : public QGraphicsScene
     void setModel(SketcherModel* model);
 
     /**
+     * @param mol The molecule to assign CIP labels to
+     */
+    void addCIPLabels(RDKit::ROMol& mol) const;
+
+    /**
      * Load an RDKit molecule into this scene
      *
      * @param mol The RDKit molecule to load.  Note that this class will store a

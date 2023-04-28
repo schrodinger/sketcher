@@ -69,7 +69,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * @pre atom != nullptr
      * @pre atom->hasOwningMol()
      */
-    AtomItem(const RDKit::Atom* const atom, Fonts& fonts,
+    AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
              AtomItemSettings& settings, QGraphicsItem* parent = nullptr);
 
     // Type and type() are required for qgraphicsitem_cast.  Note that this enum
@@ -101,12 +101,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     const std::vector<QRectF>& getSubrects() const;
 
     /**
-     * Return whether the label for this atom is visible.  (Labels for some
-     * carbons may be hidden depending on the atom item settings.)
-     */
-    bool labelIsVisible() const;
-
-    /**
      * @param avoid_subrects whether or not to consider the atom's subrects
      * in the calculation: when picking a position for something close to the
      * atom (e.g. chiral labels), this make sure that the returned position
@@ -117,6 +111,12 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * that is near this atom but doesn't clash with it or its neighbors.
      */
     QPointF findPositionInEmptySpace(bool avoid_subrects) const;
+
+    /**
+     * Return whether the label for this atom is visible.  (Labels for some
+     * carbons may be hidden depending on the atom item settings.)
+     */
+    bool labelIsVisible() const;
 
   protected:
     /**
@@ -145,19 +145,28 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QRectF m_charge_and_radical_rect;
     QString m_charge_and_radical_label_text;
     QString m_isotope_label_text;
+    QString m_chirality_label_text;
+    QRectF m_chirality_label_rect;
     QRectF m_isotope_rect;
 
     // user label. If set it replaces the atomic labels
     QString m_user_label;
 
     std::vector<QRectF> m_subrects;
-    Fonts& m_fonts;
+    const Fonts& m_fonts;
     AtomItemSettings& m_settings;
     bool m_label_is_visible;
     bool m_valence_error_is_visible;
     QPen m_pen;
     QPen m_valence_error_pen;
+    QPen m_chirality_pen;
     QBrush m_valence_error_brush;
+
+    /**
+     * @return a list of the rectangles that make up the atom label. This is
+     * used to populate m_subrects with the visible rectangles
+     */
+    std::vector<QRectF> getLabelRects() const;
 
     /**
      * @return whether the label for this atom is visible.  (Labels for some
@@ -168,7 +177,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     bool determineLabelIsVisible() const;
 
     /**
-     * @return whether the associated atom has a valence error that should be
+     * @Return whether the associated atom has a valence error that should be
      * displayed
      */
     bool determineValenceErrorIsVisible() const;
@@ -200,10 +209,16 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     void positionLabels();
 
     /**
-     * create and position labels (dots) for the unpaired electrons on this atom
-     * (if any)
+     * create and position labels (dots) for the unpaired electrons on this
+     * atom (if any)
      */
     void updateUnpairedElectronsLabels();
+
+    /**
+     * create and position labels for stereo annotations (if they are present)
+     * on this atom
+     */
+    void updateChiralityLabel();
 };
 
 /**

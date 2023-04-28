@@ -33,6 +33,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/stereochemistry.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -168,7 +169,7 @@ void Scene::updateInteractiveItems()
         const auto* from_atom_item = m_atom_to_atom_item[bond->getBeginAtom()];
         const auto* to_atom_item = m_atom_to_atom_item[bond->getEndAtom()];
         auto* bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
-                                       m_bond_item_settings);
+                                       m_fonts, m_bond_item_settings);
         m_bond_to_bond_item[bond] = bond_item;
         addItem(bond_item);
     }
@@ -201,6 +202,9 @@ void Scene::importText(const std::string& text, Format format)
     // TODO: deal with chiral flag viz. SHARED-8774
     // TODO: honor existing coordinates if present
     RDKit::CoordGen::addCoords(*mol);
+
+    assign_CIP_labels(*mol);
+
     loadMol(*mol);
 }
 

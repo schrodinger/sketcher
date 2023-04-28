@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 
 #include <GraphMol/ROMol.h>
+#include <GraphMol/Chirality.h>
 #include <GraphMol/PeriodicTable.h>
 
 #include <Qt>
@@ -9,6 +10,9 @@
 #include <QString>
 
 #include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/rdkit_extensions/molops.h"
+
+#include "schrodinger/sketcher/molviewer/stereochemistry.h"
 
 namespace schrodinger
 {
@@ -67,7 +71,7 @@ QRect make_text_rect(QFontMetrics fm, QString label)
                          0, 0);
 };
 
-AtomItem::AtomItem(const RDKit::Atom* const atom, Fonts& fonts,
+AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
                    AtomItemSettings& settings, QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
     m_atom(atom),
@@ -86,6 +90,10 @@ AtomItem::AtomItem(const RDKit::Atom* const atom, Fonts& fonts,
     m_valence_error_pen.setStyle(Qt::DotLine);
     m_valence_error_pen.setCapStyle(Qt::RoundCap);
     m_valence_error_brush = QBrush(VALENCE_ERROR_AREA_COLOR);
+
+    // setup chirality pen
+    m_chirality_pen = QPen(CHIRALITY_LABEL_COLOR);
+
     updateCachedData();
 }
 
@@ -138,9 +146,8 @@ void AtomItem::updateCachedData()
     // bounding rect changes.
     prepareGeometryChange();
     clearLabels();
-    m_valence_error_is_visible = determineValenceErrorIsVisible();
-    m_label_is_visible =
-        m_valence_error_is_visible || determineLabelIsVisible();
+
+    m_label_is_visible = determineLabelIsVisible();
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
         m_main_label_text = QString::fromStdString(m_atom->getSymbol());
@@ -160,9 +167,7 @@ void AtomItem::updateCachedData()
             positionLabels();
         }
 
-        for (auto rect :
-             {m_main_label_rect, m_isotope_rect, m_charge_and_radical_rect,
-              m_H_count_label_rect, m_H_label_rect}) {
+        for (auto rect : getLabelRects()) {
             if (rect.isValid()) {
                 m_subrects.push_back(rect);
             }
@@ -178,17 +183,32 @@ void AtomItem::updateCachedData()
         m_shape |= rect_path;
     }
     m_bounding_rect = m_shape.boundingRect();
+    updateChiralityLabel();
+}
+
+void AtomItem::updateChiralityLabel()
+{
+    auto chirality = get_atom_chirality_label(*m_atom);
+    if (!chirality.isEmpty()) {
+        // add parentheses around chiral label
+        chirality = "(" + chirality + ")";
+        // TODO: enhanced stereo labels - SKETCH-1960
+    }
+    m_chirality_label_text = chirality;
+    auto chirality_label_position =
+        findPositionInEmptySpace(true) * CHIRALITY_LABEL_DISTANCE_RATIO;
+    m_chirality_label_rect =
+        make_text_rect(m_fonts.m_chirality_fm, m_chirality_label_text);
+    m_chirality_label_rect.moveCenter(chirality_label_position);
 }
 
 void AtomItem::clearLabels()
 {
     for (auto string : {m_main_label_text, m_charge_and_radical_label_text,
-                        m_H_count_label_text}) {
+                        m_H_count_label_text, m_chirality_label_text}) {
         string = QString();
     }
-    for (auto rect :
-         {m_main_label_rect, m_isotope_rect, m_charge_and_radical_rect,
-          m_H_label_rect, m_H_count_label_rect}) {
+    for (auto rect : getLabelRects()) {
         rect = QRectF();
     }
     m_subrects.clear();
@@ -418,9 +438,13 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                           m_charge_and_radical_label_text);
         painter->drawText(m_isotope_rect, Qt::AlignCenter,
                           m_isotope_label_text);
-
         painter->restore();
     }
+    painter->save();
+    painter->setPen(m_chirality_pen);
+    painter->setFont(m_fonts.m_chirality_font);
+    painter->drawText(m_chirality_label_rect, m_chirality_label_text);
+    painter->restore();
 }
 
 const RDKit::Atom* AtomItem::getAtom() const
@@ -454,6 +478,12 @@ QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
         }
     }
     return best_placing_around_origin(positions);
+}
+
+std::vector<QRectF> AtomItem::getLabelRects() const
+{
+    return {m_main_label_rect,    m_isotope_rect, m_charge_and_radical_rect,
+            m_H_count_label_rect, m_H_label_rect, m_chirality_label_rect};
 }
 
 QPointF to_scene_xy(const RDGeom::Point3D& xyz)
