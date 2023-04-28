@@ -11,7 +11,7 @@ ErrorDialog::ErrorDialog(const QString& title, const QString& text,
     ModalDialog(parent, f)
 {
     m_ui.reset(new Ui::ErrorDialog());
-    m_ui->setupUi(this);
+    setupDialogUI(*m_ui);
 
     setWindowTitle(title);
     m_ui->text_lbl->setText(text);

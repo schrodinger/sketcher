@@ -44,8 +44,7 @@ BracketSubgroupDialog::BracketSubgroupDialog(QWidget* parent) :
     ModalDialog(parent)
 {
     ui.reset(new Ui::BracketSubgroupDialog());
-    ui->setupUi(this);
-    setWindowTitle("Bracket Subgroup");
+    setupDialogUI(*ui);
 
     for (auto& [subgroup_type, title] : ::subgrouptype_titles) {
         ui->subgroup_type_combo->addItem(title,
@@ -60,11 +59,6 @@ BracketSubgroupDialog::BracketSubgroupDialog(QWidget* parent) :
     m_validator = new NumericLabelValidator(this);
 
     // Connect signals
-    connect(ui->bottom_button_box, &QDialogButtonBox::accepted, this,
-            &QDialog::accept);
-    connect(ui->bottom_button_box, &QDialogButtonBox::rejected, this,
-            &QDialog::reject);
-
     connect(ui->subgroup_type_combo,
             QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &BracketSubgroupDialog::updateWidgets);
@@ -131,6 +125,7 @@ void BracketSubgroupDialog::accept()
 {
     emit bracketSubgroupAccepted(getSubgroupType(), getRepeatPattern(),
                                  getPolymerLabel(), m_atoms);
+
     QDialog::accept();
 }
 

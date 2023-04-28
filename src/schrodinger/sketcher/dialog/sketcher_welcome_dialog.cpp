@@ -10,7 +10,7 @@ SketcherWelcomeDialog::SketcherWelcomeDialog(QWidget* parent) :
     ModalDialog(parent)
 {
     m_ui.reset(new Ui::SketcherWelcomeDialog());
-    m_ui->setupUi(this);
+    setupDialogUI(*m_ui);
 
     connect(m_ui->ok_btn, &QPushButton::clicked, this,
             &SketcherWelcomeDialog::accept);

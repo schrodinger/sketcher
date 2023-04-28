@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>About2DSketcher</class>
- <widget class="QDialog" name="About2DSketcher">
+ <widget class="QWidget" name="About2DSketcher">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -205,22 +205,5 @@
   </layout>
  </widget>
  <resources/>
- <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>About2DSketcher</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>174</x>
-     <y>142</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>174</x>
-     <y>79</y>
-    </hint>
-   </hints>
-  </connection>
- </connections>
+ <connections/>
 </ui>
