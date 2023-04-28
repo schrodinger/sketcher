@@ -15,6 +15,7 @@
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/fonts.h"
 
 class QPainter;
 class QPainterPath;
@@ -77,9 +78,9 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      * @pre bond != nullptr
      * @pre bond->hasOwningMol()
      */
-    BondItem(const RDKit::Bond* const bond, const AtomItem& start_atom_item,
-             const AtomItem& end_atom_item, BondItemSettings& settings,
-             QGraphicsItem* parent = nullptr);
+    BondItem(const RDKit::Bond* bond, const AtomItem& start_atom_item,
+             const AtomItem& end_atom_item, const Fonts& fonts,
+             BondItemSettings& settings, QGraphicsItem* parent = nullptr);
 
     // Type and type() are required for qgraphicsitem_cast.  Note that this
     // implementation is based on the sample code from the QGraphicsItem::Type
@@ -116,9 +117,14 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     std::vector<ToPaint> m_to_paint;
     QPen m_solid_pen;
     QPen m_dashed_pen;
+    QPen m_chirality_pen;
     QBrush m_solid_brush = QBrush(Qt::black);
 
+    const Fonts& m_fonts;
+
     BondItemSettings& m_settings;
+
+    QString m_stereo_label;
 
     /**
      * Calculate the lines and polygons needed to paint this bond.  Note that
@@ -406,14 +412,33 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     QPainterPath pathAroundLine(const QLineF& line,
                                 const qreal half_width) const;
 
-    /** Paint text parallel to the bond and always above.
+    /**
+     * @return parameters to be used for painting the stereo annotation
+     * @param label the stereo label to be displayed.
+     * The label is drawn parallel to the bond and always above it. The
+     * parameters are:
+     * - angle: the angle of the annotation text
+     * - text_pos: the position of center of the label,
+     * - text_size: size of the bounding rect of the label
+     */
+    std::tuple<qreal, QPointF, QSizeF>
+    getStereoAnnotationParameters(const QString& label) const;
+
+    /** Paint text annontation .
      *
      * @param painter  the qt painter to be used
-     * @param distance  the distance between the bond and the text
+     * @param angle  the angle of the annotation text
+     * @param text_pos the position of center of the label,
+     * @param text_size size of the label
      * @param text  the text to be displayed
      */
-    void paintStringParallelToBond(QPainter* painter, qreal distance,
-                                   QString text);
+    void paintAnnotation(QPainter* painter, qreal angle,
+                         const QPointF& text_pos, const QSizeF& text_size,
+                         const QString& text);
+
+    /** @return the stereo label associated with this bond
+     */
+    QString getStereoLabel();
 };
 
 } // namespace sketcher

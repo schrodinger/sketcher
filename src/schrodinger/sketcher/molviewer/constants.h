@@ -27,6 +27,7 @@ const qreal DEFAULT_FONT_SIZE = 13.0;
 const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.6;
+const qreal CHIRALITY_FONT_RATIO = 0.6;
 
 // Ratios between the dot width for radicals and the font size
 const qreal RADICAL_DOT_RATIO = 0.25;
@@ -94,6 +95,15 @@ const QColor PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#e2eadb");
 
 // the color of the dotted line around valence errors
 const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
+
+// the color of the stereo annotations (e.g. "R" and "S")
+const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
+
+// the distance between the stereo annotation and the atom in bond length units
+const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.25;
+
+// the distance between the stereo annotation and the bond in bond length units
+const qreal BOND_STEREO_LABEL_DISTANCE_RATIO = 0.20;
 
 // the size of the dotted line around valence errors
 const qreal VALENCE_ERROR_BORDER_WIDTH = 2.f;
