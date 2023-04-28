@@ -49,8 +49,6 @@ class TestAtomItem : public AtomItem
     using AtomItem::m_bounding_rect;
     using AtomItem::m_charge_and_radical_label_text;
     using AtomItem::m_charge_and_radical_rect;
-    using AtomItem::m_chirality_label_rect;
-    using AtomItem::m_chirality_label_text;
     using AtomItem::m_H_count_label_rect;
     using AtomItem::m_H_count_label_text;
     using AtomItem::m_H_label_rect;
@@ -212,26 +210,6 @@ BOOST_AUTO_TEST_CASE(test_determineValenceErrorIsVisible)
           "[He][He]", "[H+]"}) {
         auto [atom_items, scene] = createAtomItems(smiles);
         BOOST_TEST(atom_items.at(0)->determineValenceErrorIsVisible() == true);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(test_chirality_label)
-{
-    // test that the chirality are correctly set for each atom of two
-    // enantiomers (non chiral atoms should have an empty label and null rect)
-    std::map<std::string, std::string> chiralities = {{"C[C@H](N)S", "(R)"},
-                                                      {"C[C@@H](N)S", "(S)"}};
-    for (const auto& [smiles, expected_chirality] : chiralities) {
-        auto [atom_items, scene] = createAtomItems(smiles);
-        auto chiral_center = atom_items.at(1);
-        for (auto atom_item : atom_items) {
-            auto chirality =
-                (atom_item == chiral_center ? expected_chirality : "");
-            BOOST_TEST(atom_item->m_chirality_label_text.toStdString() ==
-                       chirality);
-            BOOST_TEST(atom_item->m_chirality_label_rect.isNull() ==
-                       (atom_item != chiral_center));
-        }
     }
 }
 

@@ -24,7 +24,6 @@
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/molviewer/fonts.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QPoints
@@ -41,7 +40,6 @@ class TestScene : public Scene
 {
   public:
     using Scene::m_bond_item_settings;
-    using Scene::m_fonts;
     using Scene::m_mol_model;
 };
 
@@ -60,12 +58,11 @@ class TestBondItem : public BondItem
     using BondItem::findBestRingForBond;
     using BondItem::findRingCenter;
     using BondItem::m_bond;
-    using BondItem::m_stereo_label;
 
     TestBondItem(RDKit::Bond* bond, const AtomItem& start_atom_item,
-                 const AtomItem& end_atom_item, Fonts& fonts,
-                 BondItemSettings& settings, QGraphicsItem* parent = nullptr) :
-        BondItem(bond, start_atom_item, end_atom_item, fonts, settings, parent)
+                 const AtomItem& end_atom_item, BondItemSettings& settings,
+                 QGraphicsItem* parent = nullptr) :
+        BondItem(bond, start_atom_item, end_atom_item, settings, parent)
     {
     }
 };
@@ -94,7 +91,7 @@ createStructure(std::string smiles)
         auto end_atom_idx = bond->getEndAtomIdx();
         auto bond_item = std::make_shared<TestBondItem>(
             bond, *atom_items[start_atom_idx], *atom_items[end_atom_idx],
-            test_scene->m_fonts, test_scene->m_bond_item_settings);
+            test_scene->m_bond_item_settings);
         bond_item->setPos(scene_bond_items.at(idx++)->pos());
         bond_items.push_back(bond_item);
     }
@@ -116,8 +113,7 @@ createBondItem()
     RDKit::Bond* bond = *(test_scene->m_mol_model->getMol()->bonds().begin());
     BOOST_TEST_REQUIRE(bond != nullptr);
     auto bond_item = std::make_shared<TestBondItem>(
-        bond, *atom_items[0], *atom_items[1], test_scene->m_fonts,
-        test_scene->m_bond_item_settings);
+        bond, *atom_items[0], *atom_items[1], test_scene->m_bond_item_settings);
     QLineF trimmed_line(10, 0, 10, 100);
     return std::make_tuple(bond_item, test_scene, trimmed_line);
 }
@@ -248,27 +244,6 @@ BOOST_AUTO_TEST_CASE(test_findBestRingForBond)
             // not the 7 membered ring
             auto ring_size = bond_rings[ring_idx].size();
             BOOST_TEST(ring_size == 6);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(test_stereo_label)
-{
-    // test that the stereo labels are correctly set for each bond of two
-    // structures (non stereo bonds should have an empty label)
-    std::map<std::string, std::string> stereo_labels = {{"C\\C=C\\C", "E"},
-                                                        {"C\\C=C/C", "Z"}};
-
-    for (const auto& [smiles, expected_label] : stereo_labels) {
-        auto [bond_items, scene] = createStructure(smiles);
-        auto stereo_bond = bond_items.at(1);
-        for (auto bond_item : bond_items) {
-            auto stereo_label =
-                QString(bond_item == stereo_bond ? expected_label.c_str() : "");
-            std::cout << "stereo_label: " << stereo_label.toStdString()
-                      << " bond label "
-                      << bond_item->m_stereo_label.toStdString() << std::endl;
-            BOOST_TEST(bond_item->m_stereo_label == stereo_label);
         }
     }
 }

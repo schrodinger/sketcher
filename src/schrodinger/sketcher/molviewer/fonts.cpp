@@ -12,12 +12,10 @@ Fonts::Fonts() :
     m_subscript_font(QFont(FONT_NAME)),
     m_charge_font(QFont(FONT_NAME)),
     m_mapping_font(QFont(FONT_NAME)),
-    m_chirality_font(QFont(FONT_NAME)),
     m_main_label_fm(QFontMetrics(m_main_label_font)),
     m_subscript_fm(QFontMetrics(m_subscript_font)),
     m_charge_fm(QFontMetrics(m_charge_font)),
-    m_mapping_fm(QFontMetrics(m_mapping_font)),
-    m_chirality_fm(QFontMetrics(m_chirality_font))
+    m_mapping_fm(QFontMetrics(m_mapping_font))
 {
     setSize(DEFAULT_FONT_SIZE);
 }
@@ -33,7 +31,6 @@ void Fonts::setSize(qreal size)
     m_subscript_font.setPointSizeF(size * SUBSCRIPT_FONT_RATIO);
     m_charge_font.setPointSizeF(size * CHARGE_FONT_RATIO);
     m_mapping_font.setPointSizeF(size * MAPPING_FONT_RATIO);
-    m_chirality_font.setPointSizeF(size * CHIRALITY_FONT_RATIO);
 
     // font metrics objects don't update themselves when their font changes, so
     // we need to create new ones

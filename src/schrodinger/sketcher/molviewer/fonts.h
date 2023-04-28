@@ -33,13 +33,11 @@ class Fonts
     QFont m_subscript_font;
     QFont m_charge_font;
     QFont m_mapping_font;
-    QFont m_chirality_font;
 
     QFontMetrics m_main_label_fm;
     QFontMetrics m_subscript_fm;
     QFontMetrics m_charge_fm;
     QFontMetrics m_mapping_fm;
-    QFontMetrics m_chirality_fm;
 
     qreal m_radical_dot_size;
 };
