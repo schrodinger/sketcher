@@ -1,0 +1,48 @@
+
+{
+   See SHARED-9765: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN10QBoxLayoutC1ENS_9DirectionEP7QWidget
+   fun:_ZN11QVBoxLayoutC1Ev
+   fun:_ZN11schrodinger8sketcher11ModalDialogC1EP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN11schrodinger8sketcher24EditAtomPropertiesDialogC1EPNS0_13SketcherModelER12sketcherAtomP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN28TestEditAtomPropertiesDialogC1EPN11schrodinger8sketcher13SketcherModelER12sketcherAtom
+}
+{
+   See SHARED-9765: memory definitely lost 0
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher11ModalDialogC1EP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN11schrodinger8sketcher16FileExportDialogC1EPNS0_13SketcherModelEP7QWidget
+   fun:_ZN20TestFileExportDialogC1EPN11schrodinger8sketcher13SketcherModelE
+}
+{
+   See SHARED-9765: memory definitely lost 1
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher11ModalDialogC1EP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN11schrodinger8sketcher17PasteInTextDialogC1EPNS0_13SketcherModelEP7QWidget
+   fun:_ZN11schrodinger8sketcher21TestPasteInTextDialogC1EPNS0_13SketcherModelE
+}
+{
+   See SHARED-9765: memory definitely lost 2
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher11ModalDialogC1EP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN11schrodinger8sketcher21BracketSubgroupDialogC1EP7QWidget
+   fun:_ZN11schrodinger8sketcher25TestBracketSubgroupDialogC1Ev
+}
+{
+   See SHARED-9765: memory definitely lost 3
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher11ModalDialogC1EP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN11schrodinger8sketcher24EditAtomPropertiesDialogC1EPNS0_13SketcherModelER12sketcherAtomP7QWidget6QFlagsIN2Qt10WindowTypeEE
+   fun:_ZN28TestEditAtomPropertiesDialogC1EPN11schrodinger8sketcher13SketcherModelER12sketcherAtom
+}
