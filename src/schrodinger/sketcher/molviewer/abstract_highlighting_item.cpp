@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/molviewer/abstract_highlighting_item.h"
 
+#include <QList>
+
 namespace schrodinger
 {
 namespace sketcher
@@ -21,6 +23,31 @@ void AbstractHighlightingItem::setHighlightingPath(const QPainterPath& path)
 void AbstractHighlightingItem::clearHighlightingPath()
 {
     setHighlightingPath(QPainterPath());
+}
+
+void AbstractHighlightingItem::highlightItem(QGraphicsItem* const item)
+{
+    highlightItems({item});
+}
+
+void AbstractHighlightingItem::highlightItems(
+    const QList<QGraphicsItem*>& items)
+{
+    QPainterPath path = buildHighlightingPathForItems(items);
+    setHighlightingPath(path);
+}
+
+QPainterPath AbstractHighlightingItem::buildHighlightingPathForItems(
+    const QList<QGraphicsItem*>& items) const
+{
+    QPainterPath path;
+    for (auto item : items) {
+        if (auto* molviewer_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
+            QPainterPath local_path = getPathForItem(molviewer_item);
+            path |= molviewer_item->mapToScene(local_path);
+        }
+    }
+    return path;
 }
 
 } // namespace sketcher

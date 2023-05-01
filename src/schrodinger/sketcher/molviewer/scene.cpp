@@ -24,7 +24,6 @@
 
 #include "schrodinger/sketcher/file_import_export.h"
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
@@ -60,20 +59,18 @@ namespace schrodinger
 namespace sketcher
 {
 
+NullSceneTool::NullSceneTool() : AbstractSceneTool(nullptr, nullptr)
+{
+}
+
 Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
-    m_predictive_highlighting_item = new PredictiveHighlightingItem();
-    m_rect_select_item = new RectSelectionItem();
-    m_ellipse_select_item = new EllipseSelectionItem();
-    m_lasso_select_item = new LassoSelectionItem();
     m_undo_stack = new QUndoStack(this);
     m_mol_model = new MolModel(m_undo_stack, this);
+    m_scene_tool = std::make_shared<NullSceneTool>();
 
     addItem(m_selection_highlighting_item);
-    addItem(m_predictive_highlighting_item);
-    // We intentionally don't add the m_*_select_item items to the scene.  Those
-    // only get added during a drag select.
 
     connect(m_mol_model, &MolModel::moleculeChanged, this,
             &Scene::updateInteractiveItems);
@@ -83,32 +80,16 @@ Scene::Scene(QObject* parent) : QGraphicsScene(parent)
 
 Scene::~Scene()
 {
+    // load an empty scene tool to ensure that we unload the current scene tool.
+    // Otherwise, both this class and the scene tool itself will try to destroy
+    // any graphics items owned by the scene tool.
+    std::shared_ptr<AbstractSceneTool> null_scene_tool =
+        std::make_shared<NullSceneTool>();
+    setSceneTool(null_scene_tool);
+
     // Avoid selection update calls when any selected item is destroyed
     disconnect(this, &Scene::selectionChanged, this,
                &Scene::updateSelectionHighlighting);
-    // The QGraphicsScene destructor will destroy m_selection_highlighting_item
-    // and m_predictive_highlighting_item for us, since those items are in the
-    // scene
-    // The m_*_select_item items shouldn't be in the scene unless this instance
-    // is getting destroyed in the middle of a click-and-drag, but double check
-    // just to be safe and make sure we avoid a double free.
-    removeSelectItemsFromScene();
-    delete m_rect_select_item;
-    delete m_ellipse_select_item;
-    delete m_lasso_select_item;
-}
-
-void Scene::removeSelectItemsFromScene()
-{
-    if (m_rect_select_item->scene() == this) {
-        removeItem(m_rect_select_item);
-    }
-    if (m_ellipse_select_item->scene() == this) {
-        removeItem(m_ellipse_select_item);
-    }
-    if (m_lasso_select_item->scene() == this) {
-        removeItem(m_lasso_select_item);
-    }
 }
 
 void Scene::setModel(SketcherModel* model)
@@ -117,6 +98,9 @@ void Scene::setModel(SketcherModel* model)
         throw std::runtime_error("The model has already been set");
     }
     m_sketcher_model = model;
+
+    connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
+            &Scene::onModelValuesChanged);
 
     // Connect content-based signals
     connect(this, &Scene::changed, m_sketcher_model,
@@ -133,6 +117,8 @@ void Scene::setModel(SketcherModel* model)
     // Connect context menu-based signals
     connect(m_sketcher_model, &SketcherModel::contextMenuObjectsRequested, this,
             [this]() { return m_context_menu_objects; });
+
+    updateSceneTool();
 }
 
 void Scene::loadMol(const RDKit::ROMol& mol)
@@ -238,11 +224,6 @@ QList<QGraphicsItem*> Scene::getInteractiveItems() const
 
 void Scene::clearAllInteractiveItems()
 {
-    // reset the state of the selection item
-    removeSelectItemsFromScene();
-    m_mouse_drag_action = MouseDragAction::NONE;
-    m_lasso_select_item->clearPath();
-
     // remove all interactive items and reset the rdkit molecule; this will
     // preserve items include selection paths, highlighting items, and
     // potentially the watermark managed by the SketcherWidget
@@ -350,163 +331,51 @@ void Scene::updateBondItems()
 
 void Scene::updateSelectionHighlighting()
 {
-    auto get_sel_path = [](AbstractGraphicsItem* item) {
-        return item->selectionHighlightingPath();
-    };
-    QPainterPath path =
-        buildHighlightingPathForItems(selectedItems(), get_sel_path);
-    m_selection_highlighting_item->setHighlightingPath(path);
-}
-
-QPainterPath Scene::buildHighlightingPathForItems(
-    QList<QGraphicsItem*> items,
-    std::function<QPainterPath(AbstractGraphicsItem*)> path_getter) const
-{
-    QPainterPath path;
-    for (auto item : items) {
-        if (auto* molviewer_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
-            QPainterPath local_path = path_getter(molviewer_item);
-            path |= molviewer_item->mapToScene(local_path);
-        }
-    }
-    return path;
+    m_selection_highlighting_item->highlightItems(selectedItems());
 }
 
 void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-    m_mouse_down_scene_pos = event->scenePos();
     m_mouse_down_screen_pos = event->screenPos();
-    if (event->button() == Qt::LeftButton &&
-        m_sketcher_model->getDrawTool() == DrawTool::SELECT &&
-        m_sketcher_model->getSelectionTool() == SelectionTool::LASSO) {
-        m_lasso_select_item->clearPath();
-        m_lasso_select_item->addPoint(m_mouse_down_scene_pos);
+    if (event->button() == Qt::LeftButton) {
+        m_scene_tool->onMousePress(event);
     }
 }
 
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    //  TODO: SKETCH-1890: translate on right click and rotate on middle click
-    auto draw_tool = m_sketcher_model->getDrawTool();
-    if (draw_tool == DrawTool::SELECT && (event->buttons() & Qt::LeftButton)) {
-        auto select_tool = m_sketcher_model->getSelectionTool();
-        // update the lasso path, even if the mouse hasn't yet moved far enough
-        // to start a selection
-        if (select_tool == SelectionTool::LASSO) {
-            m_lasso_select_item->addPoint(event->scenePos());
-        }
-
+    // TODO: don't pass events to the scene tool if a context menu is visible
+    // TODO: SKETCH-1890: translate on right click and rotate on middle click
+    m_scene_tool->onMouseMove(event);
+    if (event->buttons() & Qt::LeftButton) {
         // check to see whether the mouse has moved far enough to start a
-        // selection
-        if (m_mouse_drag_action == MouseDragAction::NONE) {
+        // drag
+        if (!m_drag_started) {
             int drag_dist = (m_mouse_down_screen_pos - event->screenPos())
                                 .manhattanLength();
             if (drag_dist >= QApplication::startDragDistance()) {
-                if (select_tool == SelectionTool::RECTANGLE) {
-                    m_mouse_drag_action = MouseDragAction::RECTANGLE_SELECT;
-                    addItem(m_rect_select_item);
-                } else if (select_tool == SelectionTool::ELLIPSE) {
-                    m_mouse_drag_action = MouseDragAction::ELLIPSE_SELECT;
-                    addItem(m_ellipse_select_item);
-                } else if (select_tool == SelectionTool::LASSO) {
-                    m_mouse_drag_action = MouseDragAction::LASSO_SELECT;
-                    addItem(m_lasso_select_item);
-                }
+                m_drag_started = true;
+                m_scene_tool->onDragStart(event);
             }
         }
-
-        // update the marquee selection
-        QRectF rect =
-            rect_for_points(m_mouse_down_scene_pos, event->scenePos());
-        if (m_mouse_drag_action == MouseDragAction::RECTANGLE_SELECT) {
-            m_rect_select_item->setRect(rect);
-            setPredictiveHighlightingForSelection(m_rect_select_item);
-        } else if (m_mouse_drag_action == MouseDragAction::ELLIPSE_SELECT) {
-            m_ellipse_select_item->setRect(rect);
-            setPredictiveHighlightingForSelection(m_ellipse_select_item);
-        } else if (m_mouse_drag_action == MouseDragAction::LASSO_SELECT) {
-            setPredictiveHighlightingForSelection(m_lasso_select_item);
+        if (m_drag_started) {
+            m_scene_tool->onDragMove(event);
         }
-    } else {
-        // update predictive highlighting for mouse overs
-        setPredictiveHighlightingForPoint(event->scenePos());
     }
 }
 
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    auto draw_tool = m_sketcher_model->getDrawTool();
-    if (draw_tool == DrawTool::SELECT && event->button() == Qt::LeftButton) {
-        SelectMode select_mode;
-        auto modifiers = event->modifiers();
-        if (modifiers & Qt::ControlModifier) {
-            select_mode = SelectMode::TOGGLE;
-        } else if (modifiers & Qt::ShiftModifier) {
-            select_mode = SelectMode::SELECT;
+    if (event->button() == Qt::LeftButton) {
+        if (m_drag_started) {
+            m_scene_tool->onDragRelease(event);
         } else {
-            select_mode = SelectMode::SELECT_ONLY;
+            m_scene_tool->onMouseClick(event);
         }
-
-        QList<QGraphicsItem*> items_to_select;
-        if (m_mouse_drag_action == MouseDragAction::NONE) {
-            // this was a click, not a drag
-            QGraphicsItem* item = itemAt(event->scenePos(), QTransform());
-            if (item) {
-                items_to_select.append(item);
-            }
-        } else {
-            QAbstractGraphicsShapeItem* select_item;
-            if (m_mouse_drag_action == MouseDragAction::RECTANGLE_SELECT) {
-                select_item = m_rect_select_item;
-            } else if (m_mouse_drag_action == MouseDragAction::ELLIPSE_SELECT) {
-                select_item = m_ellipse_select_item;
-            } else { // m_mouse_drag_action == MouseDragAction::LASSO_SELECT
-                select_item = m_lasso_select_item;
-            }
-
-            // select the items within the marquee or lasso
-            items_to_select = itemsWithinSelection(select_item);
-
-            // reset the scene state
-            removeItem(select_item);
-            m_mouse_drag_action = MouseDragAction::NONE;
-            m_predictive_highlighting_item->clearHighlightingPath();
-            m_lasso_select_item->clearPath();
-        }
-        selectGraphicsItems(items_to_select, select_mode);
     }
 
-    m_mouse_down_scene_pos = QPointF();
     m_mouse_down_screen_pos = QPointF();
-}
-
-void Scene::setPredictiveHighlightingForPoint(const QPointF& scene_pos)
-{
-    // TODO: highlight the context menu items if a context menu is visible
-    // TODO: if the rotation tool is selected, highlight the entire selection
-    //       when inside the rotation box
-    QGraphicsItem* item = itemAt(scene_pos, QTransform());
-    if (auto* highlightable_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
-        QPainterPath path = highlightable_item->predictiveHighlightingPath();
-        path = highlightable_item->mapToScene(path);
-        // note that setHighlightingPath is a no-op if path == the current
-        // predictive highlighting path
-        m_predictive_highlighting_item->setHighlightingPath(path);
-    } else {
-        m_predictive_highlighting_item->clearHighlightingPath();
-    }
-}
-
-void Scene::setPredictiveHighlightingForSelection(
-    const QAbstractGraphicsShapeItem* sel_item)
-{
-    QList<QGraphicsItem*> items_to_highlight = itemsWithinSelection(sel_item);
-    auto get_pred_path = [](AbstractGraphicsItem* item) {
-        return item->predictiveHighlightingPath();
-    };
-    QPainterPath path =
-        buildHighlightingPathForItems(items_to_highlight, get_pred_path);
-    m_predictive_highlighting_item->setHighlightingPath(path);
+    m_drag_started = false;
 }
 
 void Scene::selectGraphicsItems(const QList<QGraphicsItem*>& items,
@@ -539,16 +408,53 @@ void Scene::onMolModelSelectionChanged()
     // signal_blocker emits selectionChanged on destruction
 }
 
-QList<QGraphicsItem*>
-Scene::itemsWithinSelection(const QAbstractGraphicsShapeItem* sel_item) const
+void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
 {
-    QList<QGraphicsItem*> items_within;
-    for (auto item : items()) {
-        if (sel_item->collidesWithItem(item)) {
-            items_within.append(item);
+    for (auto key : keys) {
+        switch (key) {
+            case ModelKey::SELECTION_TOOL:
+            case ModelKey::DRAW_TOOL:
+            case ModelKey::ATOM_TOOL:
+            case ModelKey::BOND_TOOL:
+            case ModelKey::CHARGE_TOOL:
+            case ModelKey::RING_TOOL:
+            case ModelKey::ENUMERATION_TOOL:
+            case ModelKey::ELEMENT:
+            case ModelKey::ATOM_QUERY:
+            case ModelKey::RGROUP_NUMBER:
+                updateSceneTool();
+                break;
+            default:
+                break;
         }
     }
-    return items_within;
+}
+
+void Scene::updateSceneTool()
+{
+    std::shared_ptr<AbstractSceneTool> new_scene_tool;
+    auto draw_tool = m_sketcher_model->getDrawTool();
+    if (draw_tool == DrawTool::SELECT) {
+        auto select_tool = m_sketcher_model->getSelectionTool();
+        new_scene_tool = get_select_scene_tool(select_tool, this, m_mol_model);
+    } else {
+        // tool not yet implemented
+        new_scene_tool = std::make_shared<NullSceneTool>();
+    }
+    setSceneTool(new_scene_tool);
+}
+
+void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
+{
+    // remove any graphics items associated with the old scene tool
+    for (auto* item : m_scene_tool->getGraphicsItems()) {
+        removeItem(item);
+    }
+    m_scene_tool = new_scene_tool;
+    // add graphics items from the new scene tool
+    for (auto* item : m_scene_tool->getGraphicsItems()) {
+        addItem(item);
+    }
 }
 
 Scene::SelectionChangeSignalBlocker::SelectionChangeSignalBlocker(

@@ -18,5 +18,11 @@ SelectionHighlightingItem::SelectionHighlightingItem() :
     setZValue(static_cast<qreal>(ZOrder::SELECTION_HIGHLIGHTING));
 }
 
+QPainterPath SelectionHighlightingItem::getPathForItem(
+    AbstractGraphicsItem* const item) const
+{
+    return item->selectionHighlightingPath();
+}
+
 } // namespace sketcher
 } // namespace schrodinger

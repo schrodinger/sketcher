@@ -136,17 +136,17 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
     TestScene scene;
     auto items = scene.getInteractiveItems();
     BOOST_TEST(items.size() == 0);
-    BOOST_TEST(scene.items().size() == 2); // highlighting items
+    BOOST_TEST(scene.items().size() == 1); // selection items
 
     scene.importText("CC", Format::SMILES);
     items = scene.getInteractiveItems();
     BOOST_TEST(items.size() == 3); // two atoms and a bond
-    BOOST_TEST(scene.items().size() == 5);
+    BOOST_TEST(scene.items().size() == 4);
 
     scene.clearInteractiveItems();
     items = scene.getInteractiveItems();
     BOOST_TEST(items.size() == 0);
-    BOOST_TEST(scene.items().size() == 2);
+    BOOST_TEST(scene.items().size() == 1);
 }
 
 BOOST_AUTO_TEST_CASE(test_item_selection)

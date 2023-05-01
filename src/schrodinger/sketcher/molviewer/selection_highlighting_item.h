@@ -15,6 +15,9 @@ class SelectionHighlightingItem : public AbstractHighlightingItem
 {
   public:
     SelectionHighlightingItem();
+
+    QPainterPath
+    getPathForItem(AbstractGraphicsItem* const item) const override;
 };
 
 } // namespace sketcher

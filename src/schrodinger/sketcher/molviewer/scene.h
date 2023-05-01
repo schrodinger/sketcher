@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 
@@ -15,6 +16,8 @@
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
+#include "schrodinger/sketcher/molviewer/scene_tools/abstract_scene_tool.h"
+#include "schrodinger/sketcher/molviewer/scene_tools/select_scene_tool.h"
 
 class QObject;
 class QFont;
@@ -45,14 +48,19 @@ class MolModel;
 class SketcherModel;
 enum class DrawTool;
 enum class ImageFormat;
+enum class ModelKey;
 enum class SelectionTool;
 struct RenderOptions;
 
-enum class MouseDragAction {
-    NONE,
-    RECTANGLE_SELECT,
-    ELLIPSE_SELECT,
-    LASSO_SELECT,
+/**
+ * A scene tool (i.e. a mouse cursor mode) that does nothing and draws nothing.
+ * Setting a NullSceneTool on the Scene will safely unload the existing scene
+ * tool.
+ */
+class NullSceneTool : public AbstractSceneTool
+{
+  public:
+    NullSceneTool();
 };
 
 /**
@@ -152,6 +160,20 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void onPasteRequested();
 
+    /**
+     * Update the MolModel selection for the atoms and bonds that correspond to
+     * the specified graphics items.  This will trigger a call to
+     * onMolModelSelectionChanged, which is responsible for actually selecting
+     * the graphics items.  This method should always be used to select graphics
+     * items to ensure that selection is kept in sync between MolModel and the
+     * Scene.
+     * @param items The graphics items to update the selection of
+     * @param select_mode Whether to select, deselect, toggle selection, or
+     * select-only (i.e. clear the selection and then select)
+     */
+    void selectGraphicsItems(const QList<QGraphicsItem*>& items,
+                             const SelectMode select_mode);
+
     // Getters and setters for changing settings
     qreal fontSize() const;
     void setFontSize(qreal size);
@@ -189,14 +211,6 @@ class SKETCHER_API Scene : public QGraphicsScene
     void updateInteractiveItems();
 
     /**
-     * If the m_rect_select_item or m_ellipse_select_item graphics items are in
-     * the scene, remove them.  These items are normally removed in
-     * mouseReleaseEvent, but this method can be used to ensure that they are
-     * removed prior to a QGraphicsScene::clear() call or object destruction.
-     */
-    void removeSelectItemsFromScene();
-
-    /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.
      * (BondItems always need updating after their bound AtomItems are modified
      * in any way.)
@@ -214,52 +228,10 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void updateSelectionHighlighting();
 
-    /**
-     * Build a painter path for use with either predictive or selection
-     * highlighting.
-     *
-     * @param items The graphics items that the path should include
-     * @param path_getter A function to fetch the path for a given graphics item
-     * @return The newly constructed path
-     */
-    QPainterPath buildHighlightingPathForItems(
-        QList<QGraphicsItem*> items,
-        std::function<QPainterPath(AbstractGraphicsItem*)> path_getter) const;
-
     // Override the QGraphicsScene mouse event methods
     void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
-
-    /**
-     * Update predictive highlighting to highlight the item at the specified
-     * point.  If the point is not over an item, predictive highlighting will be
-     * cleared.
-     */
-    void setPredictiveHighlightingForPoint(const QPointF& scene_pos);
-
-    /**
-     * Update predictive highlighting to highlight all items within the user's
-     * current marquee or lasso selection.
-     *
-     * @param sel_item The graphics item representing the current selection.
-     */
-    void setPredictiveHighlightingForSelection(
-        const QAbstractGraphicsShapeItem* sel_item);
-
-    /**
-     * Update the MolModel selection for the atoms and bonds that correspond to
-     * the specified graphics items.  This will trigger a call to
-     * onMolModelSelectionChanged, which is responsible for actually selecting
-     * the graphics items.  This method should always be used to select graphics
-     * items to ensure that selection is kept in sync between MolModel and the
-     * Scene.
-     * @param items The graphics items to update the selection of
-     * @param select_mode Whether to select, deselect, toggle selection, or
-     * select-only (i.e. clear the selection and then select)
-     */
-    void selectGraphicsItems(const QList<QGraphicsItem*>& items,
-                             const SelectMode select_mode);
 
     /**
      * Update the graphics items selection in response to a change in the
@@ -268,13 +240,21 @@ class SKETCHER_API Scene : public QGraphicsScene
     void onMolModelSelectionChanged();
 
     /**
-     * Find all graphics item within the user's current marquee or lasso
-     * selection.
-     *
-     * @param sel_item The graphics item representing the current selection.
+     * Update the scene in response to changes in the SketcherModel
+     * @param keys The keys that were changed
      */
-    QList<QGraphicsItem*>
-    itemsWithinSelection(const QAbstractGraphicsShapeItem* sel_item) const;
+    void onModelValuesChanged(const std::unordered_set<ModelKey>& keys);
+
+    /**
+     * Update the scene tool (i.e. the mouse cursor mode) based on the current
+     * SketcherModel settings
+     */
+    void updateSceneTool();
+
+    /**
+     * Set the scene tool (i.e. the mouse cursor mode) to the given value
+     */
+    void setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool);
 
     MolModel* m_mol_model;
     QUndoStack* m_undo_stack;
@@ -283,15 +263,11 @@ class SKETCHER_API Scene : public QGraphicsScene
     BondItemSettings m_bond_item_settings;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
-    PredictiveHighlightingItem* m_predictive_highlighting_item = nullptr;
-    RectSelectionItem* m_rect_select_item = nullptr;
-    EllipseSelectionItem* m_ellipse_select_item = nullptr;
-    LassoSelectionItem* m_lasso_select_item = nullptr;
-    QPointF m_mouse_down_scene_pos;
     QPointF m_mouse_down_screen_pos;
-    MouseDragAction m_mouse_drag_action = MouseDragAction::NONE;
     std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
+    std::shared_ptr<AbstractSceneTool> m_scene_tool;
+    bool m_drag_started = false;
 
     /**
      * Objects associated with the context menu instance that is currently open.

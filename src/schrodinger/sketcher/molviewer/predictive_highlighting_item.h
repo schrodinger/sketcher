@@ -15,6 +15,9 @@ class PredictiveHighlightingItem : public AbstractHighlightingItem
 {
   public:
     PredictiveHighlightingItem();
+
+    QPainterPath
+    getPathForItem(AbstractGraphicsItem* const item) const override;
 };
 
 } // namespace sketcher
