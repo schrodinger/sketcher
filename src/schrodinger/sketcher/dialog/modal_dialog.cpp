@@ -14,7 +14,11 @@ ModalDialog::ModalDialog(QWidget* parent, Qt::WindowFlags f) :
     setWindowModality(Qt::ApplicationModal);
     setAttribute(Qt::WA_DeleteOnClose, true);
 
-    m_dlg_layout = new QVBoxLayout();
+    // Create a wrapper layout that holds the title bar and the dialog contents
+    QVBoxLayout* wrapper_layout = new QVBoxLayout(this);
+    setLayout(wrapper_layout);
+    m_dlg_layout = new QVBoxLayout(this);
+    wrapper_layout->addLayout(m_dlg_layout);
 
 // Add a custom title bar to the dialog if we're in WASM
 #ifdef __EMSCRIPTEN__
@@ -22,11 +26,7 @@ ModalDialog::ModalDialog(QWidget* parent, Qt::WindowFlags f) :
     // Note: this has the side effect of removing the window's border
     setWindowFlags(Qt::FramelessWindowHint | Qt::Dialog);
 
-    // Create a wrapper layout that holds the title bar and the dialog contents
     // This layout should have 0 margins for styling purposes
-    QVBoxLayout* wrapper_layout = new QVBoxLayout(this);
-    wrapper_layout->addLayout(m_dlg_layout);
-    this->setLayout(wrapper_layout);
     wrapper_layout->setContentsMargins(0, 0, 0, 0);
     // Removing the window's border makes the dialog contents look closer
     // to the edge of the window, so we add some margins to the dialog contents
