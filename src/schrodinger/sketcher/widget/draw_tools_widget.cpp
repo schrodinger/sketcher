@@ -1,8 +1,5 @@
 #include "schrodinger/sketcher/widget/draw_tools_widget.h"
 
-#include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/Bond.h"
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/sketcher_model.h"

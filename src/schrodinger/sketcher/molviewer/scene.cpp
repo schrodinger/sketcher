@@ -29,7 +29,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/molviewer/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 
 using schrodinger::rdkit_extensions::Format;

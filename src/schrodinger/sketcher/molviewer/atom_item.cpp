@@ -9,7 +9,7 @@
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/molops.h"
-#include "schrodinger/sketcher/molviewer/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger

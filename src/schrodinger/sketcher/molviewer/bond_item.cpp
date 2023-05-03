@@ -19,7 +19,7 @@
 #include <QtMath>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
-#include "schrodinger/sketcher/molviewer/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
 namespace schrodinger
 {

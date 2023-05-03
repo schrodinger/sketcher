@@ -1,15 +1,14 @@
-
-/**
- *
- * Copyright Schrodinger, LLC. All rights reserved.
- */
+#pragma once
 
 #include <GraphMol/GraphMol.h>
 #include <QString>
 
 #include "schrodinger/sketcher/definitions.h"
 
-#pragma once
+namespace schrodinger
+{
+namespace sketcher
+{
 
 /**
  * @return the chiral label for the given atom.
@@ -25,3 +24,6 @@ SKETCHER_API QString get_bond_stereo_label(const RDKit::Bond& bond);
  * assign CIP labels to the given molecule
  */
 SKETCHER_API void assign_CIP_labels(RDKit::RWMol& mol);
+
+} // namespace sketcher
+} // namespace schrodinger

@@ -6,11 +6,11 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/Scene.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_model.h"
-#include "schrodinger/sketcher/ui/ui_periodictable.h"
-#include "schrodinger/sketcher/widget/periodictable.h"
+#include "schrodinger/sketcher/ui/ui_periodic_table_widget.h"
+#include "schrodinger/sketcher/widget/periodic_table_widget.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::ModelKey);
 Q_DECLARE_METATYPE(std::unordered_set<schrodinger::sketcher::ModelKey>);

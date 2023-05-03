@@ -1,6 +1,6 @@
 #include "schrodinger/sketcher/widget/modular_element_button.h"
 
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger

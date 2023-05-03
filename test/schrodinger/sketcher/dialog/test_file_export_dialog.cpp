@@ -4,7 +4,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
@@ -39,12 +38,11 @@ BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
 BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
 {
-    testSketcherScene scene;
-    auto model = scene.getModel();
+    SketcherModel model;
+    BOOST_TEST(!model.hasReaction());
 
     // Confirm default format and default filename
-    TestFileExportDialog dlg(model);
-    BOOST_TEST(!model->hasReaction());
+    TestFileExportDialog dlg(&model);
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
     // There are 6 available structure export formats
@@ -64,16 +62,14 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
 
 BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
 {
-    testSketcherScene scene;
-    auto model = scene.getModel();
-
-    // Create a reaction
-    QPointF pos(0.0, 0.0);
-    scene.addReactionArrowAt(pos);
+    SketcherModel model;
+    QObject::connect(&model, &SketcherModel::reactionCountRequested,
+                     [](int& count) { count = 1; });
+    BOOST_TEST(model.hasReaction());
 
     // Confirm default format for reactions and default filename
-    TestFileExportDialog dlg(model);
-    BOOST_TEST(model->hasReaction());
+    TestFileExportDialog dlg(&model);
+
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
     // There are only 2 available reaction formats

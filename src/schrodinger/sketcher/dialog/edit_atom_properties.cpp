@@ -14,11 +14,12 @@
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/atom_type_mappings.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_common_atom_properties_widget.h"
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
 #include "schrodinger/sketcher/undoable_structure_change_wrapper.h"
-#include "schrodinger/sketcher/widget/periodictable.h"
+#include "schrodinger/sketcher/widget/periodic_table_widget.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::QueryType);
 Q_DECLARE_METATYPE(schrodinger::sketcher::AtomQuery);

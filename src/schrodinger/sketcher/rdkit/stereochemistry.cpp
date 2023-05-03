@@ -1,10 +1,15 @@
-#include "stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
 #include <CIPLabeler/CIPLabeler.h>
 #include <CIPLabeler/TooManyNodesException.h>
 #include <GraphMol/Chirality.h>
 
 #include "schrodinger/rdkit_extensions/molops.h"
+
+namespace schrodinger
+{
+namespace sketcher
+{
 
 SKETCHER_API QString get_atom_chirality_label(const RDKit::Atom& atom)
 {
@@ -68,3 +73,6 @@ SKETCHER_API void assign_CIP_labels(RDKit::RWMol& mol)
         // keep any labels we found so far.
     }
 }
+
+} // namespace sketcher
+} // namespace schrodinger

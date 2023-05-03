@@ -14,6 +14,7 @@
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_common_atom_properties_widget.h"
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"

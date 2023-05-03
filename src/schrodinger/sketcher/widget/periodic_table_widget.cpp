@@ -1,4 +1,4 @@
-#include "schrodinger/sketcher/widget/periodictable.h"
+#include "schrodinger/sketcher/widget/periodic_table_widget.h"
 
 #include <cctype>
 
@@ -8,10 +8,10 @@
 #include <QPushButton>
 #include <QStyleOption>
 
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/sketcher_model.h"
-#include "schrodinger/sketcher/ui/ui_periodictable.h"
+#include "schrodinger/sketcher/ui/ui_periodic_table_widget.h"
 
 namespace schrodinger
 {
@@ -83,4 +83,4 @@ void PeriodicTableWidget::paintEvent(QPaintEvent*)
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "schrodinger/sketcher/widget/periodictable.moc"
+#include "schrodinger/sketcher/widget/periodic_table_widget.moc"
