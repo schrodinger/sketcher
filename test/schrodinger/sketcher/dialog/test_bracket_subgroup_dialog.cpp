@@ -1,10 +1,11 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Test_Sketcher
-#include "../test_common.h"
 #include <boost/test/unit_test.hpp>
+
+#include "../test_common.h"
 #include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
-#include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"
 #include "schrodinger/sketcher/s_group_constants.h"
+#include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

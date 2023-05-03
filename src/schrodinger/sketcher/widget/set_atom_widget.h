@@ -1,8 +1,10 @@
 #pragma once
+#include <memory>
+
+#include <boost/bimap.hpp>
+
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
-#include <memory>
-#include <boost/bimap.hpp>
 
 class QAbstractButton;
 

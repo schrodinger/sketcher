@@ -1,12 +1,12 @@
 #include "schrodinger/sketcher/molviewer/scene_tools/select_scene_tool.h"
 
-#include <QList>
 #include <QGraphicsItem>
+#include <QList>
 
-#include "schrodinger/sketcher/qt_utils.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/qt_utils.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger
 {

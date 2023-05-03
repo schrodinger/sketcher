@@ -11,11 +11,11 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
-#include "schrodinger/sketcher/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
+#include "schrodinger/sketcher/file_import_export.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
 
 namespace schrodinger

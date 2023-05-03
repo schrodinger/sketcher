@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include <QPointF>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsSceneMouseEvent>
+#include <QPointF>
 
 #include "schrodinger/sketcher/definitions.h"
 

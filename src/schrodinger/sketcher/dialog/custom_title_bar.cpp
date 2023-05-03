@@ -1,10 +1,10 @@
 #include "schrodinger/sketcher/dialog/custom_title_bar.h"
 
+#include <QApplication>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMouseEvent>
 #include <QPainter>
-#include <QApplication>
 
 namespace schrodinger
 {

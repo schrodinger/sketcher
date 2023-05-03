@@ -4,13 +4,14 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include <QByteArray>
 #include <QColor>
 #include <QHash>
 #include <QImage>
 #include <QPicture>
 #include <QSize>
-#include <unordered_map>
 
 #include "schrodinger/sketcher/definitions.h"
 

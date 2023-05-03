@@ -1,6 +1,7 @@
 #pragma once
-#include "schrodinger/sketcher/definitions.h"
 #include <QToolButton>
+
+#include "schrodinger/sketcher/definitions.h"
 
 namespace schrodinger
 {

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "schrodinger/sketcher/dialog/modal_dialog.h"
 #include <memory> // std::unique_ptr<>, required on Linux with Qt5
+
+#include "schrodinger/sketcher/dialog/modal_dialog.h"
 
 namespace Ui
 {

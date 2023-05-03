@@ -1,9 +1,11 @@
-#include "schrodinger/sketcher/ui/ui_ring_tool_widget.h"
 #include "schrodinger/sketcher/widget/ring_tool_widget.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+
+#include <functional>
+
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include <functional>
+#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ui/ui_ring_tool_widget.h"
 
 namespace schrodinger
 {

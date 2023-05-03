@@ -1,8 +1,8 @@
 #pragma once
 
 #include <QDialog>
-#include <QVBoxLayout>
 #include <QDialogButtonBox>
+#include <QVBoxLayout>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/custom_title_bar.h"

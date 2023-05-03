@@ -1,18 +1,16 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 
-#include <GraphMol/ROMol.h>
 #include <GraphMol/Chirality.h>
 #include <GraphMol/PeriodicTable.h>
-
-#include <Qt>
+#include <GraphMol/ROMol.h>
 #include <QPainter>
 #include <QPointF>
 #include <QString>
+#include <Qt>
 
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/rdkit_extensions/molops.h"
-
 #include "schrodinger/sketcher/molviewer/stereochemistry.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger
 {

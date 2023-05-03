@@ -1,7 +1,8 @@
 #pragma once
 
-#include "schrodinger/sketcher/definitions.h"
 #include <QMenu>
+
+#include "schrodinger/sketcher/definitions.h"
 
 namespace schrodinger
 {

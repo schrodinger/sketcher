@@ -1,12 +1,13 @@
 #define BOOST_TEST_MODULE Test_Sketcher
+#include <QButtonGroup>
+#include <QTest>
 #include <boost/test/unit_test.hpp>
+
 #include "../test_common.h"
-#include "schrodinger/sketcher/widget/select_options_widget.h"
-#include "schrodinger/sketcher/ui/ui_select_options_widget.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/sketcher_model.h"
-#include <QTest>
-#include <QButtonGroup>
+#include "schrodinger/sketcher/ui/ui_select_options_widget.h"
+#include "schrodinger/sketcher/widget/select_options_widget.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

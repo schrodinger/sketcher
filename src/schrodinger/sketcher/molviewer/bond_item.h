@@ -1,15 +1,15 @@
 #pragma once
 
-#include <vector>
 #include <tuple>
 #include <utility>
+#include <vector>
 
-#include <QtGlobal>
 #include <QBrush>
 #include <QGraphicsItem>
 #include <QLineF>
 #include <QPen>
 #include <QRectF>
+#include <QtGlobal>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"

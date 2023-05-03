@@ -1,5 +1,6 @@
 
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
+
 #include "schrodinger/rdkit_extensions/convert.h"
 
 namespace schrodinger

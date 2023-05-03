@@ -1,4 +1,5 @@
 #include "schrodinger/sketcher/dialog/error_dialog.h"
+
 #include "schrodinger/sketcher/ui/ui_error_dialog.h"
 
 namespace schrodinger

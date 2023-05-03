@@ -1,10 +1,11 @@
 #define BOOST_TEST_MODULE Test_Sketcher
-#include <boost/test/unit_test.hpp>
-#include "../test_common.h"
-#include "schrodinger/sketcher/sketcher_model.h"
-#include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
-#include "schrodinger/sketcher/ui/ui_paste_in_text_dialog.h"
 #include <QSignalSpy>
+#include <boost/test/unit_test.hpp>
+
+#include "../test_common.h"
+#include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
+#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ui/ui_paste_in_text_dialog.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

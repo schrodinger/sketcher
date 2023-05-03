@@ -7,8 +7,6 @@
 #include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
-
-#include <QtGlobal>
 #include <QApplication>
 #include <QClipboard>
 #include <QFont>
@@ -19,20 +17,20 @@
 #include <QTransform>
 #include <QUndoStack>
 #include <QUrl>
+#include <QtGlobal>
 
 #include "schrodinger/rdkit_extensions/convert.h"
-
-#include "schrodinger/sketcher/file_import_export.h"
-#include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
+#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/stereochemistry.h"
+#include "schrodinger/sketcher/sketcher_model.h"
 
 using schrodinger::rdkit_extensions::Format;
 

@@ -1,4 +1,5 @@
 #include "schrodinger/sketcher/dialog/sketcher_welcome_dialog.h"
+
 #include "schrodinger/sketcher/ui/ui_sketcher_welcome_dialog.h"
 
 namespace schrodinger

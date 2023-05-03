@@ -1,8 +1,10 @@
 #pragma once
-#include "schrodinger/sketcher/definitions.h"
-#include <QWidget>
 #include <functional>
 #include <unordered_set>
+
+#include <QWidget>
+
+#include "schrodinger/sketcher/definitions.h"
 
 class QVariant;
 class QAction;

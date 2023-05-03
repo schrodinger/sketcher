@@ -1,20 +1,21 @@
 #define BOOST_TEST_MODULE Test_Sketcher
-#include <boost/test/unit_test.hpp>
-#include "../test_common.h"
-#include "schrodinger/sketcher/widget/sketcher_top_bar.h"
-#include "schrodinger/sketcher/sketcher_model.h"
-#include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
-#include "schrodinger/sketcher/cut_copy_action_manager.h"
-#include "schrodinger/sketcher/reaction_arrow.h"
-#include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
-#include "schrodinger/sketcher/menu/selection_context_menu.h"
-#include "schrodinger/sketcher/Scene.h"
-#include "../test_sketcherScene.h"
+#include <QAction>
+#include <QButtonGroup>
+#include <QKeyEvent>
 #include <QSignalSpy>
 #include <QTest>
-#include <QKeyEvent>
-#include <QButtonGroup>
-#include <QAction>
+#include <boost/test/unit_test.hpp>
+
+#include "../test_common.h"
+#include "../test_sketcherScene.h"
+#include "schrodinger/sketcher/Scene.h"
+#include "schrodinger/sketcher/cut_copy_action_manager.h"
+#include "schrodinger/sketcher/menu/selection_context_menu.h"
+#include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
+#include "schrodinger/sketcher/reaction_arrow.h"
+#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
+#include "schrodinger/sketcher/widget/sketcher_top_bar.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

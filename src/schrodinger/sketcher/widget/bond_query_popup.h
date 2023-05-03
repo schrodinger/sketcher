@@ -1,7 +1,8 @@
 #pragma once
+#include <memory>
+
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/abstract_bond_popup.h"
-#include <memory>
 
 namespace Ui
 {

@@ -3,8 +3,8 @@
 #include <QBrush>
 #include <QPen>
 
-#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
 {

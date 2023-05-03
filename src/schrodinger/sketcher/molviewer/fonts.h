@@ -1,8 +1,8 @@
 #pragma once
 
-#include <QtGlobal>
 #include <QFont>
 #include <QFontMetrics>
+#include <QtGlobal>
 
 namespace schrodinger
 {

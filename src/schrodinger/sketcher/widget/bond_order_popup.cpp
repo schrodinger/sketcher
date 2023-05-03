@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
-#include "schrodinger/sketcher/ui/ui_bond_order_popup.h"
+
 #include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ui/ui_bond_order_popup.h"
 
 namespace schrodinger
 {

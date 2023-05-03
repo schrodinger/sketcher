@@ -1,19 +1,16 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
-#include "schrodinger/sketcher/molviewer/scene.h"
-
-#include <QRectF>
-
 #include <GraphMol/Depictor/RDDepictor.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
-
-#include "schrodinger/rdkit_extensions/convert.h"
+#include <QRectF>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

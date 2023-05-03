@@ -1,16 +1,14 @@
 #include "schrodinger/sketcher/molviewer/mol_model.h"
 
-#include <boost/range/combine.hpp>
-
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
 #include <GraphMol/Conformer.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/RWMol.h>
-
-#include <QtGlobal>
 #include <QObject>
 #include <QUndoStack>
+#include <QtGlobal>
+#include <boost/range/combine.hpp>
 
 namespace schrodinger
 {

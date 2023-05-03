@@ -1,7 +1,9 @@
 #include "schrodinger/sketcher/widget/sketcher_view.h"
-#include "schrodinger/sketcher/sketcher_model.h"
-#include <QVariant>
+
 #include <QAction>
+#include <QVariant>
+
+#include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger
 {

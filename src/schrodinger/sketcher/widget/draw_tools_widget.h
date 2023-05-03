@@ -1,7 +1,8 @@
 #pragma once
+#include <memory>
+
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
-#include <memory>
 
 namespace Ui
 {

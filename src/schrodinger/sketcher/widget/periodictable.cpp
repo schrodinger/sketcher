@@ -1,11 +1,12 @@
 #include "schrodinger/sketcher/widget/periodictable.h"
 
+#include <cctype>
+
 #include <QHBoxLayout>
 #include <QList>
 #include <QPainter>
 #include <QPushButton>
 #include <QStyleOption>
-#include <cctype>
 
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"

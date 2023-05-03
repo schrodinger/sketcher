@@ -1,11 +1,14 @@
 #include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
-#include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"
+
+#include <iostream>
+#include <unordered_map>
+
+#include <QString>
+
+#include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/numeric_label_validator.h"
 #include "schrodinger/sketcher/s_group_constants.h"
-#include "schrodinger/sketcher/Atom.h"
-#include <QString>
-#include <unordered_map>
-#include <iostream>
+#include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::RepeatPattern);
 Q_DECLARE_METATYPE(schrodinger::sketcher::SubgroupType);

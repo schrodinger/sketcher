@@ -1,15 +1,16 @@
 #define BOOST_TEST_MODULE Test_Sketcher
+#include <QSignalSpy>
 #include <boost/test/unit_test.hpp>
+
 #include "../test_common.h"
-#include "schrodinger/sketcher/widget/set_atom_widget.h"
-#include "schrodinger/sketcher/ui/ui_set_atom_widget.h"
 #include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/widget/atom_query_popup.h"
 #include "schrodinger/sketcher/Bond.h"
+#include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/sketcher_model.h"
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
-#include <QSignalSpy>
+#include "schrodinger/sketcher/ui/ui_set_atom_widget.h"
+#include "schrodinger/sketcher/widget/atom_query_popup.h"
+#include "schrodinger/sketcher/widget/set_atom_widget.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::ModelKey);
 Q_DECLARE_METATYPE(std::unordered_set<schrodinger::sketcher::ModelKey>);

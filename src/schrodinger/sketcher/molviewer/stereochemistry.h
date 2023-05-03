@@ -4,9 +4,10 @@
  * Copyright Schrodinger, LLC. All rights reserved.
  */
 
-#include "schrodinger/sketcher/definitions.h"
 #include <GraphMol/GraphMol.h>
 #include <QString>
+
+#include "schrodinger/sketcher/definitions.h"
 
 #pragma once
 

@@ -1,9 +1,10 @@
 #include "stereochemistry.h"
-#include <GraphMol/Chirality.h>
-#include "schrodinger/rdkit_extensions/molops.h"
 
 #include <CIPLabeler/CIPLabeler.h>
 #include <CIPLabeler/TooManyNodesException.h>
+#include <GraphMol/Chirality.h>
+
+#include "schrodinger/rdkit_extensions/molops.h"
 
 SKETCHER_API QString get_atom_chirality_label(const RDKit::Atom& atom)
 {

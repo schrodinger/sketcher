@@ -3,23 +3,22 @@
 #include <set>
 #include <sstream>
 
-#include <QPushButton>
-
 #include <GraphMol/Atom.h>
 #include <GraphMol/Chirality.h>
 #include <GraphMol/PeriodicTable.h>
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
+#include <QPushButton>
 
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/atom_type_mappings.h"
-#include "schrodinger/sketcher/widget/periodictable.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_common_atom_properties_widget.h"
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
 #include "schrodinger/sketcher/undoable_structure_change_wrapper.h"
+#include "schrodinger/sketcher/widget/periodictable.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::QueryType);
 Q_DECLARE_METATYPE(schrodinger::sketcher::AtomQuery);

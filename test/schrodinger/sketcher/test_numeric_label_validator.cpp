@@ -1,8 +1,9 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE Test_Sketcher
-#include "test_common.h"
 #include <boost/test/unit_test.hpp>
+
 #include "schrodinger/sketcher/numeric_label_validator.h"
+#include "test_common.h"
 
 namespace schrodinger
 {

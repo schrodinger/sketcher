@@ -1,6 +1,7 @@
 #include "paste_in_text_dialog.h"
-#include "schrodinger/sketcher/ui/ui_paste_in_text_dialog.h"
+
 #include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/ui/ui_paste_in_text_dialog.h"
 
 namespace schrodinger
 {

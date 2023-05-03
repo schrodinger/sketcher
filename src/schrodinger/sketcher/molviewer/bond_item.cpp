@@ -8,16 +8,15 @@
 #include <Geometry/point.h>
 #include <GraphMol/Conformer.h>
 #include <GraphMol/QueryOps.h>
-#include <GraphMol/RingInfo.h>
 #include <GraphMol/ROMol.h>
-
-#include <Qt>
-#include <QtMath>
-#include <QtGlobal>
+#include <GraphMol/RingInfo.h>
 #include <QMarginsF>
 #include <QPainter>
 #include <QPointF>
 #include <QTransform>
+#include <Qt>
+#include <QtGlobal>
+#include <QtMath>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/stereochemistry.h"

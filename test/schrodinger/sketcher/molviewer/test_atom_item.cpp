@@ -1,20 +1,17 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
-#include "schrodinger/sketcher/molviewer/atom_item.h"
-
 #include <string>
 #include <utility>
 
-#include <QRectF>
-#include <QMarginsF>
-#include <QString>
-
 #include <GraphMol/ROMol.h>
 #include <GraphMol/RWMol.h>
-
-#include "schrodinger/rdkit_extensions/convert.h"
+#include <QMarginsF>
+#include <QRectF>
+#include <QString>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/mol_model.h"

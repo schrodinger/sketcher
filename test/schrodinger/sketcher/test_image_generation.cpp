@@ -5,17 +5,15 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE sketcher_image_generation
 
+#include <GraphMol/GraphMol.h>
+#include <QList>
 #include <boost/filesystem.hpp>
 #include <boost/test/framework.hpp>
-#include <boost/test/unit_test.hpp>
 #include <boost/test/tools/floating_point_comparison.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <QList>
-
-#include <GraphMol/GraphMol.h>
-
-#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/image_generation.h"
 #include "test_common.h"
 
 using boost::unit_test::framework::current_test_case;

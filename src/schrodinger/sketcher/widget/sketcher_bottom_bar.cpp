@@ -1,9 +1,11 @@
 #include "schrodinger/sketcher/widget/sketcher_bottom_bar.h"
-#include "schrodinger/sketcher/ui/ui_sketcher_bottom_bar.h"
-#include <QPushButton>
+
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QPushButton>
 #include <QString>
+
+#include "schrodinger/sketcher/ui/ui_sketcher_bottom_bar.h"
 
 namespace schrodinger
 {

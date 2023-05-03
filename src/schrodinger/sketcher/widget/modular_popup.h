@@ -1,7 +1,8 @@
 #pragma once
+#include <QToolButton>
+
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/sketcher_view.h"
-#include <QToolButton>
 
 class QButtonGroup;
 class QIcon;

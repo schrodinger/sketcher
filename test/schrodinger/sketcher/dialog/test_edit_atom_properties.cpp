@@ -5,17 +5,18 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE edit_atom_properties
 
-#include <boost/test/unit_test.hpp>
-#include <QSignalSpy>
 #include <QPushButton>
+#include <QSignalSpy>
+#include <boost/test/unit_test.hpp>
+
+#include "../test_common.h"
+#include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_common_atom_properties_widget.h"
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
-#include "../test_common.h"
-#include "../test_sketcherScene.h"
 
 using namespace schrodinger::sketcher;
 

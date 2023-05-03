@@ -1,14 +1,12 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
-#include "schrodinger/sketcher/molviewer/mol_model.h"
-
 #include <unordered_set>
 
+#include <GraphMol/SmilesParse/SmilesParse.h>
 #include <QUndoStack>
 
-#include <GraphMol/SmilesParse/SmilesParse.h>
-
 #include "../test_common.h"
+#include "schrodinger/sketcher/molviewer/mol_model.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings

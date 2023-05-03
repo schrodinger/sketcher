@@ -1,8 +1,7 @@
 #pragma once
 
-#include <QColor>
-
 #include <GraphMol/MolDraw2D/MolDraw2DHelpers.h>
+#include <QColor>
 
 namespace schrodinger
 {

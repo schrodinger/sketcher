@@ -3,11 +3,11 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "../test_common.h"
+#include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
-#include "../test_common.h"
-#include "../test_sketcherScene.h"
 
 using namespace schrodinger::sketcher;
 using schrodinger::rdkit_extensions::Format;

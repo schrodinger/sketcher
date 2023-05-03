@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include "schrodinger/sketcher/dialog/modal_dialog.h"
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/dialog/modal_dialog.h"
 
 class QComboBox;
 class QLineEdit;

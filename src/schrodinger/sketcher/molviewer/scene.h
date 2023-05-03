@@ -4,9 +4,9 @@
 #include <string>
 #include <unordered_map>
 
-#include <QtGlobal>
 #include <QGraphicsScene>
 #include <QPolygonF>
+#include <QtGlobal>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
@@ -14,10 +14,10 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
-#include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
-#include "schrodinger/sketcher/molviewer/selection_items.h"
 #include "schrodinger/sketcher/molviewer/scene_tools/abstract_scene_tool.h"
 #include "schrodinger/sketcher/molviewer/scene_tools/select_scene_tool.h"
+#include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
+#include "schrodinger/sketcher/molviewer/selection_items.h"
 
 class QObject;
 class QFont;

@@ -1,12 +1,14 @@
 #define BOOST_TEST_MODULE Test_Sketcher
-#include <boost/test/unit_test.hpp>
-#include "../test_common.h"
-#include "schrodinger/sketcher/widget/modular_popup.h"
-#include "schrodinger/sketcher/widget/modular_tool_button.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include <iostream>
+
 #include <QButtonGroup>
 #include <QLayout>
-#include <iostream>
+#include <boost/test/unit_test.hpp>
+
+#include "../test_common.h"
+#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/widget/modular_popup.h"
+#include "schrodinger/sketcher/widget/modular_tool_button.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

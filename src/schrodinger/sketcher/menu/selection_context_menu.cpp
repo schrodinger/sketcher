@@ -1,9 +1,9 @@
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
-#include "schrodinger/sketcher/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 
 using ::schrodinger::rdkit_extensions::Format;

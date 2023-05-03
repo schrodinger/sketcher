@@ -1,7 +1,9 @@
 #pragma once
 
 #include <memory>
+
 #include <QWidget>
+
 #include "schrodinger/sketcher/definitions.h"
 
 class QGraphicsPixmapItem;

@@ -2,7 +2,9 @@
 
 #include <memory>
 #include <string>
+
 #include <QWidget>
+
 #include "schrodinger/sketcher/definitions.h"
 
 namespace Ui

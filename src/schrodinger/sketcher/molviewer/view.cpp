@@ -1,10 +1,10 @@
 #include "schrodinger/sketcher/molviewer/view.h"
 
-#include <Qt>
-#include <QtGlobal>
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QResizeEvent>
+#include <Qt>
+#include <QtGlobal>
 
 #include "schrodinger/sketcher/molviewer/constants.h"
 

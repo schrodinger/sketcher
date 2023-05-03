@@ -1,30 +1,27 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
-#include "schrodinger/sketcher/molviewer/bond_item.h"
-
 #include <memory>
 #include <tuple>
 #include <vector>
-
-#include <QtGlobal>
-#include <QLineF>
-#include <QGraphicsItem>
-#include <QPolygonF>
-#include <QPointF>
 
 #include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/RWMol.h>
-
-#include "schrodinger/rdkit_extensions/convert.h"
+#include <QGraphicsItem>
+#include <QLineF>
+#include <QPointF>
+#include <QPolygonF>
+#include <QtGlobal>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
+#include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/molviewer/fonts.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QPoints

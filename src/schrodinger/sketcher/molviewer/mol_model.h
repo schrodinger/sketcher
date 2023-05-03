@@ -6,7 +6,6 @@
 #include <utility>
 
 #include <GraphMol/RWMol.h>
-
 #include <QUndoStack>
 
 #include "schrodinger/sketcher/definitions.h"

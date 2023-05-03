@@ -4,8 +4,8 @@
 #include <vector>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/molviewer/scene_tools/scene_tool_with_predictive_highlighting.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
+#include "schrodinger/sketcher/molviewer/scene_tools/scene_tool_with_predictive_highlighting.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
 
 namespace schrodinger

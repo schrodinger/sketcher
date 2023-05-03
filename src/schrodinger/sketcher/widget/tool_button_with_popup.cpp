@@ -1,13 +1,15 @@
+#include "schrodinger/sketcher/widget/tool_button_with_popup.h"
+
 #include <stdexcept>
 
-#include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/sketcher/widget/tool_button_with_popup.h"
-#include <QTimer>
+#include <QApplication>
 #include <QPoint>
+#include <QScreen>
 #include <QStyleOptionToolButton>
 #include <QStylePainter>
-#include <QApplication>
-#include <QScreen>
+#include <QTimer>
+
+#include "schrodinger/sketcher/sketcher_css_style.h"
 
 namespace schrodinger
 {

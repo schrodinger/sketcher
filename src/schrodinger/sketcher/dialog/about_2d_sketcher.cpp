@@ -1,13 +1,14 @@
+#include "schrodinger/sketcher/dialog/about_2d_sketcher.h"
+
 #include <ctime>
 #include <iomanip>
 #include <sstream>
 
-#include "mmshare-version.h"
-#include <RDGeneral/versions.h>
-#include <QUrl> // required with Qt5
 #include <QDesktopServices>
+#include <QUrl> // required with Qt5
+#include <RDGeneral/versions.h>
 
-#include "schrodinger/sketcher/dialog/about_2d_sketcher.h"
+#include "mmshare-version.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_about_2d_sketcher.h"
 
