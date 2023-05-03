@@ -3,12 +3,18 @@
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
 #include <GraphMol/Conformer.h>
+#include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/RWMol.h>
 #include <QObject>
 #include <QUndoStack>
 #include <QtGlobal>
 #include <boost/range/combine.hpp>
+
+#include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+
+using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -31,7 +37,15 @@ MolModel::MolModel(QUndoStack* const undo_stack, QObject* parent) :
 
 const RDKit::ROMol* MolModel::getMol() const
 {
+    // TODO: add API to get reactions
+    // TODO: add API to get selected mol
+    // TODO: add API to export selection as atom/bond properties
     return &m_mol;
+}
+
+std::string MolModel::getMolText(Format format)
+{
+    return rdkit_extensions::to_string(*getMol(), format);
 }
 
 std::unordered_set<const RDKit::Atom*> MolModel::getSelectedAtoms() const
@@ -146,6 +160,18 @@ void MolModel::addMol(const RDKit::ROMol& mol, const QString& description)
         addMolFromCommand(mol, atom_tags, bond_tags);
     };
     doCommandWithMolUndo(redo, description);
+}
+
+void MolModel::addMolFromText(const std::string& text, Format format)
+{
+    boost::shared_ptr<RDKit::RWMol> mol{nullptr};
+    mol = rdkit_extensions::to_rdkit(text, format);
+
+    // TODO: deal with chiral flag viz. SHARED-8774
+    // TODO: honor existing coordinates if present
+    RDKit::CoordGen::addCoords(*mol);
+    assign_CIP_labels(*mol);
+    addMol(*mol);
 }
 
 void MolModel::clear()

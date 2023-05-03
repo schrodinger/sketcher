@@ -5,6 +5,7 @@
 #include <QtGlobal>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
@@ -63,4 +64,24 @@ const std::vector<Format> REACTION_TEXT_FORMATS = {
 };
 
 } // namespace rdkit_extensions
+} // namespace schrodinger
+
+namespace schrodinger
+{
+namespace sketcher
+{
+
+class TestScene : public Scene
+{
+  public:
+    TestScene() : Scene(new MolModel(new QUndoStack()), new SketcherModel()){};
+    using Scene::m_atom_item_settings;
+    using Scene::m_bond_item_settings;
+    using Scene::m_fonts;
+    using Scene::m_mol_model;
+    using Scene::m_selection_highlighting_item;
+    using Scene::m_sketcher_model;
+};
+
+} // namespace sketcher
 } // namespace schrodinger

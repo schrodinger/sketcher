@@ -3,12 +3,8 @@
 #include <functional>
 #include <unordered_set>
 
-#include <GraphMol/CoordGen.h>
-#include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
 #include <QApplication>
-#include <QClipboard>
 #include <QFont>
 #include <QGraphicsSceneMouseEvent>
 #include <QMimeData>
@@ -19,20 +15,13 @@
 #include <QUrl>
 #include <QtGlobal>
 
-#include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/sketcher/dialog/error_dialog.h"
-#include "schrodinger/sketcher/dialog/file_export_dialog.h"
-#include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
 #include "schrodinger/sketcher/file_import_export.h"
-#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_model.h"
-
-using schrodinger::rdkit_extensions::Format;
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -61,19 +50,40 @@ NullSceneTool::NullSceneTool() : AbstractSceneTool(nullptr, nullptr)
 {
 }
 
-Scene::Scene(QObject* parent) : QGraphicsScene(parent)
+Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
+             QObject* parent) :
+    QGraphicsScene(parent),
+    m_mol_model(mol_model),
+    m_sketcher_model(sketcher_model)
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
-    m_undo_stack = new QUndoStack(this);
-    m_mol_model = new MolModel(m_undo_stack, this);
     m_scene_tool = std::make_shared<NullSceneTool>();
 
     addItem(m_selection_highlighting_item);
+
+    if (m_mol_model == nullptr || m_sketcher_model == nullptr) {
+        throw std::runtime_error("Cannot construct without valid models");
+    }
+    connect(this, &Scene::changed, m_sketcher_model,
+            &SketcherModel::interactiveItemsChanged);
+    connect(this, &Scene::selectionChanged, m_sketcher_model,
+            &SketcherModel::selectionChanged);
 
     connect(m_mol_model, &MolModel::moleculeChanged, this,
             &Scene::updateInteractiveItems);
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
+
+    connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
+            &Scene::onModelValuesChanged);
+    connect(m_sketcher_model, &SketcherModel::interactiveItemsRequested, this,
+            [this]() { return getInteractiveItems(); });
+    connect(m_sketcher_model, &SketcherModel::selectionRequested, this,
+            [this]() { return selectedItems(); });
+    connect(m_sketcher_model, &SketcherModel::contextMenuObjectsRequested, this,
+            [this]() { return m_context_menu_objects; });
+
+    updateSceneTool();
 }
 
 Scene::~Scene()
@@ -88,46 +98,6 @@ Scene::~Scene()
     // Avoid selection update calls when any selected item is destroyed
     disconnect(this, &Scene::selectionChanged, this,
                &Scene::updateSelectionHighlighting);
-}
-
-void Scene::setModel(SketcherModel* model)
-{
-    if (m_sketcher_model != nullptr) {
-        throw std::runtime_error("The model has already been set");
-    }
-    m_sketcher_model = model;
-
-    connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
-            &Scene::onModelValuesChanged);
-
-    // Connect content-based signals
-    connect(this, &Scene::changed, m_sketcher_model,
-            &SketcherModel::interactiveItemsChanged);
-    connect(m_sketcher_model, &SketcherModel::interactiveItemsRequested, this,
-            [this]() { return getInteractiveItems(); });
-
-    // Connect selection-based signals
-    connect(this, &Scene::selectionChanged, m_sketcher_model,
-            &SketcherModel::selectionChanged);
-    connect(m_sketcher_model, &SketcherModel::selectionRequested, this,
-            [this]() { return selectedItems(); });
-
-    // Connect context menu-based signals
-    connect(m_sketcher_model, &SketcherModel::contextMenuObjectsRequested, this,
-            [this]() { return m_context_menu_objects; });
-
-    updateSceneTool();
-}
-
-void Scene::loadMol(const RDKit::ROMol& mol)
-{
-    auto shared_mol = std::make_shared<RDKit::ROMol>(mol);
-    loadMol(shared_mol);
-}
-
-void Scene::loadMol(std::shared_ptr<RDKit::ROMol> mol)
-{
-    m_mol_model->addMol(*mol);
 }
 
 void Scene::updateInteractiveItems()
@@ -159,53 +129,6 @@ void Scene::updateInteractiveItems()
     }
 }
 
-std::shared_ptr<RDKit::ROMol> Scene::getRDKitMolecule() const
-{
-    // note that this will return a copy
-    return std::make_shared<RDKit::ROMol>(*m_mol_model->getMol());
-}
-
-void Scene::importText(const std::string& text, Format format)
-{
-    auto show_import_failure = [&](const auto& exc) {
-        auto text = QString("Import Failed: ") + exc.what();
-        show_error_dialog("Import Error", text, window());
-    };
-
-    boost::shared_ptr<RDKit::RWMol> mol{nullptr};
-    try {
-        mol = rdkit_extensions::to_rdkit(text, format);
-    } catch (const std::invalid_argument& exc) {
-        show_import_failure(exc);
-        return;
-    } catch (const std::runtime_error& exc) {
-        show_import_failure(exc);
-        return;
-    }
-
-    // TODO: deal with chiral flag viz. SHARED-8774
-    // TODO: honor existing coordinates if present
-    RDKit::CoordGen::addCoords(*mol);
-
-    assign_CIP_labels(*mol);
-
-    loadMol(*mol);
-}
-
-std::string Scene::exportText(Format format)
-{
-    // TODO: handle reactions
-    // TODO: handle toggling between selection/everything
-    // TODO: handle export of selection as atom/bond properties
-    return rdkit_extensions::to_string(*m_mol_model->getMol(), format);
-}
-
-// TODO: remove this method as part of SKETCH-1947
-void Scene::clearInteractiveItems()
-{
-    m_mol_model->clear();
-}
-
 QList<QGraphicsItem*> Scene::getInteractiveItems() const
 {
     // We expect all objects that inherit from AbstractGraphicsItem to
@@ -228,63 +151,6 @@ void Scene::clearAllInteractiveItems()
     for (auto item : getInteractiveItems()) {
         removeItem(item);
         delete item;
-    }
-}
-
-// TODO: remove this method as part of SKETCH-1947
-void Scene::selectAll()
-{
-    m_mol_model->selectAll();
-}
-
-// TODO: remove this method as part of SKETCH-1947
-void Scene::invertSelection()
-{
-    m_mol_model->invertSelection();
-}
-
-// TODO: remove this method as part of SKETCH-1947
-void Scene::clearSelectionPublic()
-{
-    m_mol_model->clearSelection();
-}
-
-void Scene::onImportTextRequested(const std::string& text, Format format)
-{
-    if (m_sketcher_model->getValueBool(
-            ModelKey::NEW_STRUCTURES_REPLACE_CONTENT)) {
-        clearInteractiveItems();
-    }
-    importText(text, format);
-}
-
-void Scene::showFileExportDialog()
-{
-    auto dialog = new FileExportDialog(m_sketcher_model, window());
-    connect(dialog, &FileExportDialog::exportTextRequested, this,
-            [this](Format format) {
-                return QString::fromStdString(exportText(format));
-            });
-    dialog->show();
-}
-
-void Scene::showFileSaveImageDialog()
-{
-    auto dialog = new FileSaveImageDialog(m_sketcher_model, window());
-    connect(dialog, &FileSaveImageDialog::exportImageRequested, this,
-            [this](auto format, const auto& opts) {
-                // TODO: this call uses the existing sketcherScene class;
-                // update to render directly from this Scene instance
-                return get_image_bytes(*m_mol_model->getMol(), format, opts);
-            });
-    dialog->show();
-}
-
-void Scene::onPasteRequested()
-{
-    auto data = QApplication::clipboard()->mimeData();
-    if (data->hasText()) {
-        importText(data->text().toStdString(), Format::AUTO_DETECT);
     }
 }
 
@@ -482,7 +348,7 @@ void Scene::dropEvent(QGraphicsSceneDragDropEvent* event)
             auto file_path = url.toLocalFile();
             auto contents = get_file_text(file_path.toStdString());
             auto format = get_file_format(file_path);
-            importText(contents, format);
+            emit importTextRequested(contents, format);
         }
     }
     event->acceptProposedAction();

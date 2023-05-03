@@ -34,14 +34,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-class TestScene : public Scene
-{
-  public:
-    using Scene::m_bond_item_settings;
-    using Scene::m_fonts;
-    using Scene::m_mol_model;
-};
-
 class TestBondItem : public BondItem
 {
   public:
@@ -72,7 +64,7 @@ std::pair<std::vector<std::shared_ptr<TestBondItem>>,
 createStructure(std::string smiles)
 {
     auto test_scene = std::make_shared<TestScene>();
-    test_scene->importText(smiles, Format::SMILES);
+    test_scene->m_mol_model->addMolFromText(smiles, Format::SMILES);
     std::vector<AtomItem*> atom_items;
     std::vector<BondItem*> scene_bond_items;
     for (auto* item : test_scene->items()) {
@@ -102,7 +94,7 @@ std::tuple<std::shared_ptr<TestBondItem>, std::shared_ptr<TestScene>, QLineF>
 createBondItem()
 {
     auto test_scene = std::make_shared<TestScene>();
-    test_scene->importText("CC", Format::SMILES);
+    test_scene->m_mol_model->addMolFromText("CC", Format::SMILES);
     std::vector<AtomItem*> atom_items;
     for (auto* item : test_scene->items()) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
@@ -262,9 +254,6 @@ BOOST_AUTO_TEST_CASE(test_stereo_label)
         for (auto bond_item : bond_items) {
             auto stereo_label =
                 QString(bond_item == stereo_bond ? expected_label.c_str() : "");
-            std::cout << "stereo_label: " << stereo_label.toStdString()
-                      << " bond label "
-                      << bond_item->m_stereo_label.toStdString() << std::endl;
             BOOST_TEST(bond_item->m_stereo_label == stereo_label);
         }
     }

@@ -21,65 +21,9 @@ namespace schrodinger
 namespace sketcher
 {
 
-class TestScene : public Scene
-{
-  public:
-    TestScene() : Scene(){};
-    using Scene::m_selection_highlighting_item;
-};
-
-BOOST_AUTO_TEST_CASE(test_importText)
-{
-    Scene test_scene;
-    test_scene.importText("c1nccc2n1ccc2", Format::SMILES);
-    auto mol = test_scene.getRDKitMolecule();
-    BOOST_TEST_REQUIRE(mol != nullptr);
-    BOOST_TEST(mol->getNumAtoms() == 9);
-    unsigned num_atoms = 0;
-    unsigned num_bonds = 0;
-    for (auto item : test_scene.items()) {
-        if (item->type() == AtomItem::Type) {
-            ++num_atoms;
-            // make sure that this really is an AtomItem
-            auto cast_item = dynamic_cast<AtomItem*>(item);
-            BOOST_TEST(cast_item);
-        } else if (item->type() == BondItem::Type) {
-            ++num_bonds;
-            // make sure that this really is a BondItem
-            auto cast_item = dynamic_cast<BondItem*>(item);
-            BOOST_TEST(cast_item);
-        }
-    }
-    BOOST_TEST(num_atoms == 9);
-    BOOST_TEST(num_bonds == 10);
-
-    test_scene.clearInteractiveItems();
-    mol = test_scene.getRDKitMolecule();
-    BOOST_TEST(mol->getNumAtoms() == 0);
-
-    // import failed, exception caught, still an empty scene
-    test_scene.importText("nonsense", Format::AUTO_DETECT);
-    mol = test_scene.getRDKitMolecule();
-    BOOST_TEST(mol->getNumAtoms() == 0);
-}
-
-BOOST_AUTO_TEST_CASE(test_load_mol)
-{
-    Scene test_scene;
-    std::shared_ptr<RDKit::ROMol> mol(RDKit::SmilesToMol("CCCC"));
-    BOOST_TEST_REQUIRE(mol != nullptr);
-    RDDepict::compute2DCoords(*mol, nullptr, true);
-    // pass mol to loadMol
-    test_scene.loadMol(*mol);
-    BOOST_TEST(test_scene.getRDKitMolecule()->getNumAtoms() == 4);
-    // pass shared_ptr to loadMol
-    test_scene.loadMol(mol);
-    BOOST_TEST(test_scene.getRDKitMolecule()->getNumAtoms() == 8);
-}
-
 BOOST_AUTO_TEST_CASE(test_font_size)
 {
-    Scene test_scene;
+    TestScene test_scene;
     BOOST_TEST(test_scene.fontSize() == DEFAULT_FONT_SIZE);
     test_scene.setFontSize(8);
     BOOST_TEST(test_scene.fontSize() == 8);
@@ -104,10 +48,10 @@ void count_visible_atoms(const Scene& test_scene, unsigned& num_visible_atoms,
 
 BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
 {
-    Scene test_scene;
+    TestScene test_scene;
     unsigned num_visible_atoms = 0;
     unsigned num_hidden_atoms = 0;
-    test_scene.importText("CCCCC", Format::SMILES);
+    test_scene.m_mol_model->addMolFromText("CCCCC", Format::SMILES);
 
     // all carbons should be hidden
     test_scene.setCarbonsLabeled(CarbonLabels::NONE);
@@ -135,12 +79,12 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
     BOOST_TEST(items.size() == 0);
     BOOST_TEST(scene.items().size() == 1); // selection items
 
-    scene.importText("CC", Format::SMILES);
+    scene.m_mol_model->addMolFromText("CC", Format::SMILES);
     items = scene.getInteractiveItems();
     BOOST_TEST(items.size() == 3); // two atoms and a bond
     BOOST_TEST(scene.items().size() == 4);
 
-    scene.clearInteractiveItems();
+    scene.m_mol_model->clear();
     items = scene.getInteractiveItems();
     BOOST_TEST(items.size() == 0);
     BOOST_TEST(scene.items().size() == 1);
@@ -149,7 +93,7 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
 BOOST_AUTO_TEST_CASE(test_item_selection)
 {
     TestScene scene;
-    scene.importText("CC", Format::SMILES);
+    scene.m_mol_model->addMolFromText("CC", Format::SMILES);
 
     auto test_selected_items = [](const auto& scene, bool expected) {
         BOOST_TEST(scene.m_selection_highlighting_item->isVisible() ==
@@ -164,17 +108,17 @@ BOOST_AUTO_TEST_CASE(test_item_selection)
     test_selected_items(scene, false);
 
     // select everything
-    scene.selectAll();
+    scene.m_mol_model->selectAll();
     test_selected_items(scene, true);
 
     // clear selection
-    scene.clearSelectionPublic();
+    scene.m_mol_model->clearSelection();
     test_selected_items(scene, false);
 
     // invert selection
-    scene.invertSelection();
+    scene.m_mol_model->invertSelection();
     test_selected_items(scene, true);
-    scene.invertSelection();
+    scene.m_mol_model->invertSelection();
     test_selected_items(scene, false);
 }
 

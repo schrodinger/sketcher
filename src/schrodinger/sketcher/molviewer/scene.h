@@ -32,12 +32,6 @@ class ROMol;
 
 namespace schrodinger
 {
-
-namespace rdkit_extensions
-{
-enum class Format;
-}
-
 namespace sketcher
 {
 
@@ -47,10 +41,8 @@ class BondItem;
 class MolModel;
 class SketcherModel;
 enum class DrawTool;
-enum class ImageFormat;
 enum class ModelKey;
 enum class SelectionTool;
-struct RenderOptions;
 
 /**
  * A scene tool (i.e. a mouse cursor mode) that does nothing and draws nothing.
@@ -70,56 +62,9 @@ class SKETCHER_API Scene : public QGraphicsScene
 {
     Q_OBJECT
   public:
-    Scene(QObject* parent = nullptr);
+    Scene(MolModel* mol_model, SketcherModel* sketcher_model,
+          QObject* parent = nullptr);
     virtual ~Scene();
-
-    /**
-     * @param model A model instance to assign to this view
-     * NOTE: the model must be set exactly once.
-     */
-    void setModel(SketcherModel* model);
-
-    /**
-     * @param mol The molecule to assign CIP labels to
-     */
-    void addCIPLabels(RDKit::ROMol& mol) const;
-
-    /**
-     * Load an RDKit molecule into this scene
-     *
-     * @param mol The RDKit molecule to load.  Note that this class will store a
-     * copy of this molecule and will not take ownership of the passed-in
-     * instance.
-     */
-    void loadMol(const RDKit::ROMol& mol);
-    /**
-     * Load an RDKit molecule into this scene
-     *
-     * @param mol A shared pointer to the RDKit molecule to load.  After this
-     * method is called, the molecule (including the conformation) must no
-     * longer be modified by the calling code.
-     */
-    void loadMol(std::shared_ptr<RDKit::ROMol> mol);
-
-    /**
-     * @return RDKit molecule underlying what is currently rendered
-     */
-    std::shared_ptr<RDKit::ROMol> getRDKitMolecule() const;
-
-    /**
-     * Create a molecule from a text string and load that into the scene.
-     * Atomic coordinates will be automatically generated using coordgen.
-     *
-     * @param text input data to load
-     * @param format format to parse
-     */
-    void importText(const std::string& text, rdkit_extensions::Format format);
-
-    /**
-     * @param format format to convert to
-     * @return serialized representation of the sketcher contents
-     */
-    std::string exportText(rdkit_extensions::Format format);
 
     /**
      * @return interactive items in the scene; these are items that inherit
@@ -127,38 +72,6 @@ class SKETCHER_API Scene : public QGraphicsScene
      * that are purely graphical (selection highlighting paths, etc.)
      */
     QList<QGraphicsItem*> getInteractiveItems() const;
-
-    // TODO: remove these methods in SKETCH-1947.  Calls to these methods
-    //       should be replaced with direct calls to the corresponding MolModel
-    //       methods.
-    void clearInteractiveItems();
-    void selectAll();
-    void invertSelection();
-    void clearSelectionPublic();
-
-    /**
-     * Import the given text into the scene; optionally clear beforehand
-     *
-     * @param text input data to load
-     * @param format format to parse
-     */
-    void onImportTextRequested(const std::string& text,
-                               rdkit_extensions::Format format);
-
-    /**
-     * Present the user with a "Save Image" dialog.
-     */
-    void showFileSaveImageDialog();
-
-    /**
-     * Present the user with an "Export to File" dialog.
-     */
-    void showFileExportDialog();
-
-    /**
-     * Paste clipboard content into the scene
-     */
-    void onPasteRequested();
 
     /**
      * Update the MolModel selection for the atoms and bonds that correspond to
@@ -192,6 +105,10 @@ class SKETCHER_API Scene : public QGraphicsScene
 
     qreal doubleBondSpacing() const;
     void setDoubleBondSpacing(qreal value);
+
+  signals:
+    void importTextRequested(const std::string& text,
+                             rdkit_extensions::Format format);
 
   protected:
     using QGraphicsScene::clear;
@@ -256,11 +173,10 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool);
 
-    MolModel* m_mol_model;
-    QUndoStack* m_undo_stack;
     Fonts m_fonts;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
+    MolModel* m_mol_model = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
     QPointF m_mouse_down_screen_pos;

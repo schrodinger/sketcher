@@ -29,15 +29,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-class TestScene : public Scene
-{
-  public:
-    using Scene::m_atom_item_settings;
-    using Scene::m_bond_item_settings;
-    using Scene::m_fonts;
-    using Scene::m_mol_model;
-};
-
 class TestAtomItem : public AtomItem
 {
   public:
@@ -73,7 +64,7 @@ std::pair<std::vector<std::shared_ptr<TestAtomItem>>,
 createAtomItems(std::string smiles)
 {
     auto test_scene = std::make_shared<TestScene>();
-    test_scene->importText(smiles, Format::SMILES);
+    test_scene->m_mol_model->addMolFromText(smiles, Format::SMILES);
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
     for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
         BOOST_TEST_REQUIRE(atom != nullptr);
@@ -149,10 +140,10 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_ChargeAndIsotope)
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
                      *boost::unit_test::tolerance(0.01))
 {
-    auto scene = std::make_shared<Scene>();
-    scene->importText("CCC", Format::SMILES);
+    TestScene scene;
+    scene.m_mol_model->addMolFromText("CCC", Format::SMILES);
     std::vector<AtomItem*> atom_items;
-    for (auto* item : scene->items()) {
+    for (auto* item : scene.items()) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             atom_items.push_back(atom_item);
         }

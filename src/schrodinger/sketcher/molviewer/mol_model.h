@@ -25,6 +25,12 @@ class Bond;
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+enum class Format;
+}
+
 namespace sketcher
 {
 
@@ -73,6 +79,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @return the RDKit molecule
      */
     const RDKit::ROMol* getMol() const;
+
+    /**
+     * @param format format to convert to
+     * @return serialized representation of the sketcher contents
+     */
+    std::string getMolText(rdkit_extensions::Format format);
 
     /**
      * @return A set of all currently selected atoms
@@ -129,6 +141,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void addMol(const RDKit::ROMol& mol,
                 const QString& description = "Import molecule");
+
+    /**
+     * Create a molecule from a text string and load that into the scene.
+     * Atomic coordinates will be automatically generated using coordgen.
+     *
+     * @param text input data to load
+     * @param format format to parse
+     */
+    void addMolFromText(const std::string& text,
+                        rdkit_extensions::Format format);
 
     /**
      * Undoably clear the molecule.
