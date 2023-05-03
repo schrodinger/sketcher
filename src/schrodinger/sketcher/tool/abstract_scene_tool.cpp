@@ -1,6 +1,6 @@
-#include "schrodinger/sketcher/molviewer/scene_tools/abstract_scene_tool.h"
+#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 
-#include "schrodinger/sketcher/molviewer/mol_model.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 namespace schrodinger

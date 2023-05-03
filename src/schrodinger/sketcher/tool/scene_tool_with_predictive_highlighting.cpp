@@ -1,8 +1,8 @@
-#include "schrodinger/sketcher/molviewer/scene_tools/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
 
 #include <QPointF>
 
-#include "schrodinger/sketcher/molviewer/mol_model.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 namespace schrodinger

@@ -1,4 +1,4 @@
-#include "schrodinger/sketcher/molviewer/mol_model.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
@@ -530,4 +530,4 @@ void MolModel::clearSelectionFromCommand()
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "schrodinger/sketcher/molviewer/mol_model.moc"
+#include "schrodinger/sketcher/model/mol_model.moc"

@@ -8,9 +8,9 @@
 #include <QPushButton>
 #include <QStyleOption>
 
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_periodic_table_widget.h"
 
 namespace schrodinger

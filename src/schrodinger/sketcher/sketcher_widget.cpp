@@ -8,12 +8,12 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
-#include "schrodinger/sketcher/file_import_export.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 
 using schrodinger::rdkit_extensions::Format;

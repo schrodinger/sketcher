@@ -7,8 +7,8 @@
 #include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

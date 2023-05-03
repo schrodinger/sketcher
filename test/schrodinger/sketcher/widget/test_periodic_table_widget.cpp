@@ -7,8 +7,8 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/Scene.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_periodic_table_widget.h"
 #include "schrodinger/sketcher/widget/periodic_table_widget.h"
 

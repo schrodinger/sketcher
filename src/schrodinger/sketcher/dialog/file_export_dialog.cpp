@@ -5,8 +5,8 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
-#include "schrodinger/sketcher/file_import_export.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
 
 using ::schrodinger::rdkit_extensions::Format;

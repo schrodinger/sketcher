@@ -8,7 +8,7 @@
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_draw_tools_widget.h"
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
 #include "schrodinger/sketcher/widget/bond_query_popup.h"

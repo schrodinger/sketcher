@@ -1,8 +1,8 @@
 #include "schrodinger/sketcher/widget/atom_query_popup.h"
 
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_atom_query_popup.h"
 
 namespace schrodinger

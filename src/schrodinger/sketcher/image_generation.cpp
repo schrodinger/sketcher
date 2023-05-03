@@ -17,9 +17,9 @@
 
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/highlighting_item.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 
 namespace schrodinger
 {

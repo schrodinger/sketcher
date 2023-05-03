@@ -3,7 +3,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_bond_order_popup.h"
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
 

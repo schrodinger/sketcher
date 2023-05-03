@@ -5,8 +5,8 @@
 #include <QtGlobal>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 

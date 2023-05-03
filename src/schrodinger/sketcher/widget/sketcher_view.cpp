@@ -3,7 +3,7 @@
 #include <QAction>
 #include <QVariant>
 
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 
 namespace schrodinger
 {

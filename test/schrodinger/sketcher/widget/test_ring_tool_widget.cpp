@@ -3,7 +3,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_ring_tool_widget.h"
 #include "schrodinger/sketcher/widget/ring_tool_widget.h"
 

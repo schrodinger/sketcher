@@ -6,8 +6,8 @@
 #include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/atom_utils.h"
 #include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/widget/set_atom_widget.h"
 
 namespace schrodinger

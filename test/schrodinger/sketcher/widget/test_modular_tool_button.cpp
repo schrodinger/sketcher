@@ -6,7 +6,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/widget/modular_popup.h"
 #include "schrodinger/sketcher/widget/modular_tool_button.h"
 

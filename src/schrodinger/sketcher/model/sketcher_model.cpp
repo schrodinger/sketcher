@@ -1,0 +1,262 @@
+#include "schrodinger/sketcher/model/sketcher_model.h"
+
+#include <stdexcept>
+#include <string>
+
+#include <QPointF>
+
+#include "schrodinger/sketcher/Atom.h"
+#include "schrodinger/sketcher/Bond.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/bond_item.h"
+
+namespace schrodinger
+{
+namespace sketcher
+{
+
+std::vector<ModelKey> get_model_keys()
+{
+    return {
+        ModelKey::NEW_STRUCTURES_REPLACE_CONTENT,
+        ModelKey::SHOW_LID_LEGEND,
+        ModelKey::ALLOW_MULTIPLE_RXNS,
+        ModelKey::SHOW_VALENCE_ERRORS,
+        ModelKey::COLOR_HETEROATOMS,
+        ModelKey::SHOW_STEREOCENTER_LABELS,
+        ModelKey::USE_IMPLICIT_HYDROGENS,
+        ModelKey::SELECTION_TOOL,
+        ModelKey::DRAW_TOOL,
+        ModelKey::ATOM_TOOL,
+        ModelKey::BOND_TOOL,
+        ModelKey::CHARGE_TOOL,
+        ModelKey::RING_TOOL,
+        ModelKey::ENUMERATION_TOOL,
+        ModelKey::ELEMENT,
+        ModelKey::ATOM_QUERY,
+        ModelKey::RGROUP_NUMBER,
+        ModelKey::RESIDUE_TYPE,
+    };
+}
+
+SketcherModel::SketcherModel(QObject* parent) : QObject(parent)
+{
+    m_model_map = {
+        {ModelKey::NEW_STRUCTURES_REPLACE_CONTENT, true},
+        {ModelKey::SHOW_LID_LEGEND, false},
+        {ModelKey::ALLOW_MULTIPLE_RXNS, false},
+        {ModelKey::SHOW_VALENCE_ERRORS, true},
+        {ModelKey::COLOR_HETEROATOMS, true},
+        {ModelKey::SHOW_STEREOCENTER_LABELS, true},
+        {ModelKey::USE_IMPLICIT_HYDROGENS, false},
+        {ModelKey::SELECTION_TOOL,
+         QVariant::fromValue(SelectionTool::RECTANGLE)},
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
+        {ModelKey::ATOM_TOOL, QVariant::fromValue(AtomTool::ELEMENT)},
+        {ModelKey::BOND_TOOL, QVariant::fromValue(BondTool::SINGLE)},
+        {ModelKey::CHARGE_TOOL, QVariant::fromValue(ChargeTool::DECREASE)},
+        {ModelKey::RING_TOOL, QVariant::fromValue(RingTool::CYCLOPROPANE)},
+        {ModelKey::ENUMERATION_TOOL,
+         QVariant::fromValue(EnumerationTool::NEW_RGROUP)},
+        {ModelKey::ELEMENT, QVariant::fromValue(Element::C)},
+        {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::A)},
+        {ModelKey::RGROUP_NUMBER, 1u},
+        {ModelKey::RESIDUE_TYPE, QString("")},
+    };
+
+    connect(this, &SketcherModel::selectionChanged, this,
+            &SketcherModel::onSelectionChanged);
+}
+
+QVariant SketcherModel::getValue(ModelKey key) const
+{
+    return m_model_map.at(key);
+}
+
+SelectionTool SketcherModel::getSelectionTool() const
+{
+    return m_model_map.at(ModelKey::SELECTION_TOOL).value<SelectionTool>();
+}
+
+DrawTool SketcherModel::getDrawTool() const
+{
+    return m_model_map.at(ModelKey::DRAW_TOOL).value<DrawTool>();
+}
+
+AtomTool SketcherModel::getAtomTool() const
+{
+    return m_model_map.at(ModelKey::ATOM_TOOL).value<AtomTool>();
+}
+
+BondTool SketcherModel::getBondTool() const
+{
+    return m_model_map.at(ModelKey::BOND_TOOL).value<BondTool>();
+}
+
+ChargeTool SketcherModel::getChargeTool() const
+{
+    return m_model_map.at(ModelKey::CHARGE_TOOL).value<ChargeTool>();
+}
+
+RingTool SketcherModel::getRingTool() const
+{
+    return m_model_map.at(ModelKey::RING_TOOL).value<RingTool>();
+}
+
+EnumerationTool SketcherModel::getEnumerationTool() const
+{
+    return m_model_map.at(ModelKey::ENUMERATION_TOOL).value<EnumerationTool>();
+}
+
+Element SketcherModel::getElement() const
+{
+    return m_model_map.at(ModelKey::ELEMENT).value<Element>();
+}
+
+AtomQuery SketcherModel::getAtomQuery() const
+{
+    return m_model_map.at(ModelKey::ATOM_QUERY).value<AtomQuery>();
+}
+
+bool SketcherModel::getValueBool(ModelKey key) const
+{
+    return m_model_map.at(key).value<bool>();
+}
+
+int SketcherModel::getValueInt(ModelKey key) const
+{
+    return m_model_map.at(key).value<int>();
+}
+
+QString SketcherModel::getValueString(ModelKey key) const
+{
+    return m_model_map.at(key).value<QString>();
+}
+
+void SketcherModel::setValues(
+    const std::unordered_map<ModelKey, QVariant>& key_value_map)
+{
+    // Assign model values individually
+    std::unordered_set<ModelKey> changed_keys;
+    for (const auto& [key, value] : key_value_map) {
+        auto current_value = getValue(key);
+        // Outright forbid setting a value of a different type
+        if (current_value.typeId() != value.typeId()) {
+            throw std::runtime_error(std::string("ModelKey must be type ") +
+                                     current_value.typeName());
+        }
+        if (current_value != value) {
+            m_model_map[key] = value;
+            changed_keys.insert(key);
+        }
+    }
+
+    // Finally, emit necessary signals all at once
+    for (const auto& [key, value] : key_value_map) {
+        emit valuePinged(key, value);
+    }
+    if (changed_keys.size() > 0) {
+        emit valuesChanged(changed_keys);
+    }
+}
+
+bool SketcherModel::hasReaction() const
+{
+    int reaction_count = 0;
+    emit reactionCountRequested(reaction_count);
+    return reaction_count > 0;
+}
+
+bool SketcherModel::sceneIsEmpty() const
+{
+    return getInteractiveItems().isEmpty();
+}
+
+bool SketcherModel::hasActiveSelection() const
+{
+    return !getSelection().isEmpty();
+}
+
+namespace
+{
+template <typename T> bool contains_item(const SketcherModel& model)
+{
+    auto contains = [](QGraphicsItem* item) {
+        return dynamic_cast<T*>(item) != nullptr;
+    };
+    auto selection = model.getSelection();
+    return std::any_of(selection.begin(), selection.end(), contains);
+}
+} // namespace
+
+bool SketcherModel::hasAtomSelection() const
+{
+    return contains_item<AtomItem>(*this) || contains_item<sketcherAtom>(*this);
+}
+
+bool SketcherModel::hasBondSelection() const
+{
+    return contains_item<BondItem>(*this) || contains_item<sketcherBond>(*this);
+}
+
+QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const
+{
+    return emit interactiveItemsRequested();
+}
+
+QList<QGraphicsItem*> SketcherModel::getSelection() const
+{
+    return emit selectionRequested();
+}
+
+QList<QGraphicsItem*> SketcherModel::getContextMenuObjects() const
+{
+    return emit contextMenuObjectsRequested();
+}
+
+std::pair<bool, bool> SketcherModel::getUndoStackData() const
+{
+    bool can_undo = false;
+    bool can_redo = false;
+
+    emit undoStackDataRequested(can_undo, can_redo);
+
+    std::pair<bool, bool> result{can_undo, can_redo};
+    return result;
+}
+
+std::set<unsigned int> SketcherModel::getRGroupNumbers() const
+{
+    std::set<unsigned int> rgroup_numbers;
+    emit rGroupNumbersRequested(rgroup_numbers);
+    return rgroup_numbers;
+}
+
+unsigned int SketcherModel::getNextRGroupNumber() const
+{
+    auto rgroup_numbers = getRGroupNumbers();
+    unsigned int idx = 1;
+    for (idx = 1; idx <= rgroup_numbers.size(); ++idx) {
+        if (rgroup_numbers.count(idx) == 0) {
+            break;
+        }
+    }
+    return idx;
+}
+
+void SketcherModel::onSelectionChanged()
+{
+    // If there's a selection present, make sure that either the select tool or
+    // the move-rotate tool is equipped. If not, switch to the last-used select
+    // tool.
+    auto draw_tool = getDrawTool();
+    if (hasActiveSelection() && draw_tool != DrawTool::SELECT &&
+        draw_tool != DrawTool::MOVE_ROTATE) {
+        setValue(ModelKey::DRAW_TOOL, DrawTool::SELECT);
+    }
+}
+
+} // namespace sketcher
+} // namespace schrodinger
+
+#include "sketcher_model.moc"

@@ -1,4 +1,4 @@
-#include "schrodinger/sketcher/molviewer/undoable_model_undo_command.h"
+#include "schrodinger/sketcher/model/undoable_model_undo_command.h"
 
 #include <QString>
 

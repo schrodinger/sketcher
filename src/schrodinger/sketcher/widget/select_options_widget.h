@@ -5,7 +5,7 @@
 #include <QWidget>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/widget/sketcher_view.h"
 
 namespace Ui

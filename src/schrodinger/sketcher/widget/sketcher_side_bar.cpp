@@ -1,6 +1,6 @@
 #include "schrodinger/sketcher/widget/sketcher_side_bar.h"
 
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_side_bar.h"
 
 namespace schrodinger

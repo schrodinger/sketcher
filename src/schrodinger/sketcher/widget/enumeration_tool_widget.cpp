@@ -1,8 +1,8 @@
 #include "schrodinger/sketcher/widget/enumeration_tool_widget.h"
 
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/qt_utils.h" // check_button_or_uncheck_group
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_enumeration_tool_widget.h"
 #include "schrodinger/sketcher/widget/reaction_popup.h"
 #include "schrodinger/sketcher/widget/rgroup_popup.h"

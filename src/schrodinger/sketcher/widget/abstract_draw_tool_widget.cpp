@@ -2,7 +2,7 @@
 
 #include <QAbstractButton>
 
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 
 namespace schrodinger
 {

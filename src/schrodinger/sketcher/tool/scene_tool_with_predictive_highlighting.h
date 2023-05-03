@@ -6,7 +6,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
-#include "schrodinger/sketcher/molviewer/scene_tools/abstract_scene_tool.h"
+#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 
 namespace schrodinger
 {

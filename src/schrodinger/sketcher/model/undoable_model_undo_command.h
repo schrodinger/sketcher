@@ -5,7 +5,7 @@
 #include <QUndoCommand>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/molviewer/abstract_undoable_model.h"
+#include "schrodinger/sketcher/model/abstract_undoable_model.h"
 
 class QObject;
 

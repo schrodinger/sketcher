@@ -171,4 +171,4 @@ BOOST_AUTO_TEST_CASE(test_exception)
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "molviewer/test_abstract_undoable_model.moc"
+#include "model/test_abstract_undoable_model.moc"

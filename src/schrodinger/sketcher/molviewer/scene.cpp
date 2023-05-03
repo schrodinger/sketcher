@@ -15,13 +15,13 @@
 #include <QUrl>
 #include <QtGlobal>
 
-#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/qt_utils.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \

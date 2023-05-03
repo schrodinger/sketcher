@@ -2,9 +2,9 @@
 
 #include <QPainter>
 
-#include "schrodinger/sketcher/file_import_export.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
-#include "schrodinger/sketcher/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
 #include "schrodinger/sketcher/ui/ui_file_save_image_popup.h"
 #include "schrodinger/sketcher/ui/ui_file_save_image_widget.h"

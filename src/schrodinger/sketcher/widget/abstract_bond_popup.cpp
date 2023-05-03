@@ -1,6 +1,6 @@
 #include "schrodinger/sketcher/widget/abstract_bond_popup.h"
 
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 
 namespace schrodinger
 {

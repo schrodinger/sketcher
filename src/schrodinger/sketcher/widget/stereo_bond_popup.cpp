@@ -1,6 +1,6 @@
 #include "schrodinger/sketcher/widget/stereo_bond_popup.h"
 
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_stereo_bond_popup.h"
 
 namespace schrodinger

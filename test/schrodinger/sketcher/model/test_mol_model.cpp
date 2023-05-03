@@ -6,7 +6,7 @@
 #include <QUndoStack>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/molviewer/mol_model.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings

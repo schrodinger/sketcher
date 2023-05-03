@@ -16,11 +16,11 @@
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
-#include "schrodinger/sketcher/molviewer/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);

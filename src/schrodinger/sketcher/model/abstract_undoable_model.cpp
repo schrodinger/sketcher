@@ -1,10 +1,10 @@
-#include "schrodinger/sketcher/molviewer/abstract_undoable_model.h"
+#include "schrodinger/sketcher/model/abstract_undoable_model.h"
 
 #include <stdexcept>
 
 #include <QUndoStack>
 
-#include "schrodinger/sketcher/molviewer/undoable_model_undo_command.h"
+#include "schrodinger/sketcher/model/undoable_model_undo_command.h"
 
 namespace schrodinger
 {
@@ -74,4 +74,4 @@ UndoMacroRAII::~UndoMacroRAII()
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "schrodinger/sketcher/molviewer/abstract_undoable_model.moc"
+#include "schrodinger/sketcher/model/abstract_undoable_model.moc"

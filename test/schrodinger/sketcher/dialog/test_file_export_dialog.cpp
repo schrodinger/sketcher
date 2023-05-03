@@ -5,7 +5,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
-#include "schrodinger/sketcher/sketcher_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
 
 using namespace schrodinger::sketcher;
