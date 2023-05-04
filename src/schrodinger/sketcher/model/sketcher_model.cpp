@@ -259,4 +259,4 @@ void SketcherModel::onSelectionChanged()
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "sketcher_model.moc"
+#include "schrodinger/sketcher/model/sketcher_model.moc"

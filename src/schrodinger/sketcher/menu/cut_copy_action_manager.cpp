@@ -116,4 +116,4 @@ void CutCopyActionManager::updateActions()
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "cut_copy_action_manager.moc"
+#include "schrodinger/sketcher/menu/cut_copy_action_manager.moc"
