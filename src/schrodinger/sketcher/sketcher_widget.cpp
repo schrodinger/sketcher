@@ -40,6 +40,16 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_scene, &Scene::importTextRequested, this,
             &SketcherWidget::importText);
 
+    // Connect the SketcherModel to the undo stack
+    connect(m_sketcher_model, &SketcherModel::undoStackCanUndoRequested,
+            m_undo_stack, &QUndoStack::canUndo);
+    connect(m_sketcher_model, &SketcherModel::undoStackCanRedoRequested,
+            m_undo_stack, &QUndoStack::canRedo);
+    connect(m_undo_stack, &QUndoStack::canUndoChanged, m_sketcher_model,
+            &SketcherModel::undoStackDataChanged);
+    connect(m_undo_stack, &QUndoStack::canRedoChanged, m_sketcher_model,
+            &SketcherModel::undoStackDataChanged);
+
     connectTopBarSlots();
     connectSideBarSlots();
 
@@ -58,6 +68,13 @@ SketcherWidget::~SketcherWidget() = default;
 
 void SketcherWidget::connectTopBarSlots()
 {
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::undoRequested, m_undo_stack,
+            &QUndoStack::undo);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::redoRequested, m_undo_stack,
+            &QUndoStack::redo);
+    // TODO: cleanup
+    // TODO: fitToView
+
     // Connect "More Actions" menu
     connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_mol_model,
             &MolModel::selectAll);

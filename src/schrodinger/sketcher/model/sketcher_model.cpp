@@ -216,13 +216,9 @@ QList<QGraphicsItem*> SketcherModel::getContextMenuObjects() const
 
 std::pair<bool, bool> SketcherModel::getUndoStackData() const
 {
-    bool can_undo = false;
-    bool can_redo = false;
-
-    emit undoStackDataRequested(can_undo, can_redo);
-
-    std::pair<bool, bool> result{can_undo, can_redo};
-    return result;
+    bool can_undo = emit undoStackCanUndoRequested();
+    bool can_redo = emit undoStackCanRedoRequested();
+    return {can_undo, can_redo};
 }
 
 std::set<unsigned int> SketcherModel::getRGroupNumbers() const

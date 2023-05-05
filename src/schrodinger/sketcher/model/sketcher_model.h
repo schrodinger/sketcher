@@ -458,12 +458,14 @@ class SKETCHER_API SketcherModel : public QObject
     void reactionCountRequested(int& reaction_count) const;
 
     /**
-     * Signal used to request undo stack information from the associated scene.
-     *
-     * @param can_undo Whether an undo operation can be performed
-     * @param can_redo Whether a redo operation can be performed
+     * @return Whether an undo operation can be performed
      */
-    void undoStackDataRequested(bool& can_undo, bool& can_redo) const;
+    bool undoStackCanUndoRequested() const;
+
+    /**
+     * @return Whether a redo operation can be performed
+     */
+    bool undoStackCanRedoRequested() const;
 
     /**
      * Signal used to notify views that the scene undo stack has changed.
