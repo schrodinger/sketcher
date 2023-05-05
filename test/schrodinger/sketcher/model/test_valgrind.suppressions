@@ -1,0 +1,124 @@
+
+{
+   See SHARED-9779: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher17TestUndoableModel8addTwiceEi
+}
+{
+   See SHARED-9779: memory definitely lost 0
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher8MolModel18addAtomFromCommandEiRKSsRKN6RDGeom7Point3DE
+   fun:_ZZN11schrodinger8sketcher8MolModel7addAtomERKSsRKN6RDGeom7Point3DEENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel7addAtomERKSsRKN6RDGeom7Point3DEEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4redoEv
+   fun:_ZN10QUndoStack4pushEP12QUndoCommand
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel7addAtomERKSsRKN6RDGeom7Point3DE
+}
+{
+   See SHARED-9779: memory definitely lost 1
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher8MolModel18addAtomFromCommandEiRKSsRKN6RDGeom7Point3DE
+   fun:_ZZN11schrodinger8sketcher8MolModel7addAtomERKSsRKN6RDGeom7Point3DEENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel7addAtomERKSsRKN6RDGeom7Point3DEEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4redoEv
+   fun:_ZN10QUndoStack4redoEv
+}
+{
+   See SHARED-9779: memory definitely lost 2
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN5RDKit5RWMol7addBondEjjNS_4Bond8BondTypeE
+   fun:_ZN5RDKit5RWMol7addBondEPNS_4AtomES2_NS_4Bond8BondTypeE
+   fun:_ZN11schrodinger8sketcher8MolModel18addBondFromCommandEiiiRKN5RDKit4Bond8BondTypeE
+   fun:_ZZN11schrodinger8sketcher8MolModel7addBondEPKN5RDKit4AtomES5_RKNS2_4Bond8BondTypeEENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel7addBondEPKN5RDKit4AtomES7_RKNS4_4Bond8BondTypeEEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4redoEv
+   fun:_ZN10QUndoStack4pushEP12QUndoCommand
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel7addBondEPKN5RDKit4AtomES5_RKNS2_4Bond8BondTypeE
+}
+{
+   See SHARED-9779: memory definitely lost 3
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZNK5RDKit4Atom4copyEv
+   fun:_ZN5RDKit5ROMol13initFromOtherERKS0_bi
+   fun:_ZN5RDKit5ROMolC1ERKS0_bi
+   fun:_ZN5RDKit5RWMolC1ERKNS_5ROMolEbi
+   fun:_ZZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QStringENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIS0_ERK7QStringEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4undoEv
+   fun:_ZN10QUndoStack4undoEv
+}
+{
+   See SHARED-9779: memory definitely lost 4
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZNK5RDKit4Atom4copyEv
+   fun:_ZN5RDKit5RWMol9insertMolERKNS_5ROMolE
+   fun:_ZN11schrodinger8sketcher8MolModel17addMolFromCommandERKN5RDKit5ROMolERKSt6vectorIiSaIiEESA_
+   fun:_ZZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QStringENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QStringEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4redoEv
+   fun:_ZN10QUndoStack4pushEP12QUndoCommand
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QString
+}
+{
+   See SHARED-9779: memory definitely lost 5
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZNK5RDKit4Bond4copyEv
+   fun:_ZN5RDKit5ROMol13initFromOtherERKS0_bi
+   fun:_ZN5RDKit5ROMolC1ERKS0_bi
+   fun:_ZN5RDKit5RWMolC1ERKNS_5ROMolEbi
+   fun:_ZZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QStringENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIS0_ERK7QStringEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4undoEv
+   fun:_ZN10QUndoStack4undoEv
+}
+{
+   See SHARED-9779: memory definitely lost 6
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZNK5RDKit4Bond4copyEv
+   fun:_ZN5RDKit5RWMol9insertMolERKNS_5ROMolE
+   fun:_ZN11schrodinger8sketcher8MolModel17addMolFromCommandERKN5RDKit5ROMolERKSt6vectorIiSaIiEESA_
+   fun:_ZZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QStringENKUlvE_clEv
+   fun:_ZNSt17_Function_handlerIFvvEZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QStringEUlvE_E9_M_invokeERKSt9_Any_data
+   fun:_ZNKSt8functionIFvvEEclEv
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand7do_funcERKSt8functionIFvvEE
+   fun:_ZN11schrodinger8sketcher24UndoableModelUndoCommand4redoEv
+   fun:_ZN10QUndoStack4pushEP12QUndoCommand
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QString
+}
