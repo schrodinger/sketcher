@@ -123,3 +123,11 @@
    fun:_ZN11schrodinger8sketcher8MolModel20doCommandWithMolUndoESt8functionIFvvEERK7QString
    fun:_ZN11schrodinger8sketcher8MolModel6addMolERKN5RDKit5ROMolERK7QString
 }
+
+{
+   See SHARED-9780: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher9TestSceneC1Ev
+}
