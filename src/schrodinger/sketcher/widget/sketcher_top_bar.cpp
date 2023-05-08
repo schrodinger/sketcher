@@ -41,7 +41,7 @@ void SketcherTopBar::initButtons()
     connect(ui->redo_btn, &QToolButton::clicked, this,
             &SketcherTopBar::redoRequested);
     connect(ui->fit_btn, &QToolButton::clicked, this,
-            &SketcherTopBar::requestFitToScreen);
+            &SketcherTopBar::fitToScreenRequested);
     connect(ui->cleanup_btn, &QToolButton::clicked, this,
             &SketcherTopBar::cleanupRequested);
 
@@ -99,7 +99,7 @@ void SketcherTopBar::initMenus()
     connect(m_more_actions_menu->m_add_custom_fragment_act, &QAction::triggered,
             this, &SketcherTopBar::onAddCustomFragmentClicked);
     connect(m_more_actions_menu->m_fit_to_screen_act, &QAction::triggered, this,
-            &SketcherTopBar::requestFitToScreen);
+            &SketcherTopBar::fitToScreenRequested);
 
     // Set up "Configure View" menu
     m_configure_view_menu = new ConfigureViewMenu(this);

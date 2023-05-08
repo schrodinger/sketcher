@@ -85,6 +85,9 @@ void SketcherWidget::connectTopBarSlots()
     connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, this,
             &SketcherWidget::paste);
 
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
+            m_ui->view, &View::onFitToScreenRequested);
+
     // Clear/Import/Export
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested,
             m_mol_model, &MolModel::clear);

@@ -23,6 +23,13 @@ class SKETCHER_API View : public QGraphicsView
     View(QGraphicsScene* scene, QWidget* parent = nullptr);
     View(QWidget* parent = nullptr);
 
+  public slots:
+    /**
+     * fit the scene to the view so that the entire scene is visible, but avoid
+     * zooming in too much for small molecules
+     */
+    void onFitToScreenRequested();
+
   signals:
     void resized();
 
@@ -37,6 +44,12 @@ class SKETCHER_API View : public QGraphicsView
      * re-center, which causes the molecule to jump around.
      */
     void enlargeSceneIfNeeded();
+
+    /**
+     * Make sure that the scene has enough space around the items so that it can
+     * be centered
+     */
+    void adjustSceneAroundItems();
 };
 
 } // namespace sketcher

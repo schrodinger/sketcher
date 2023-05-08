@@ -57,6 +57,42 @@ void View::enlargeSceneIfNeeded()
     cur_scene->setSceneRect(scene_rect);
 }
 
+void View::adjustSceneAroundItems()
+{
+    QGraphicsScene* cur_scene = scene();
+    if (!cur_scene) {
+        return;
+    }
+    // get the bounding rectangle of all items in the scene
+    QRectF items_bounding_rect = cur_scene->itemsBoundingRect();
+    if (!items_bounding_rect.isValid()) {
+        return;
+    }
+    cur_scene->setSceneRect(items_bounding_rect);
+}
+
+void View::onFitToScreenRequested()
+{
+    QGraphicsScene* cur_scene = scene();
+    if (!cur_scene) {
+        return;
+    }
+    adjustSceneAroundItems();
+    enlargeSceneIfNeeded();
+    QRectF rec = cur_scene->itemsBoundingRect();
+    qreal zoom_threshold = 1.0;
+    if (rec.isValid()) {
+        fitInView(rec, Qt::KeepAspectRatio);
+        // don't zoom in more than zoom_threshold so that small molecules don't
+        // get too big
+        float m11 = transform().m11();
+        float m22 = transform().m22();
+        if (m11 > zoom_threshold || m22 > zoom_threshold) {
+            scale(zoom_threshold / m11, zoom_threshold / m22);
+        }
+    }
+}
+
 } // namespace sketcher
 } // namespace schrodinger
 
