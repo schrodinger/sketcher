@@ -13,6 +13,7 @@
 #include <QTransform>
 #include <QUndoStack>
 #include <QUrl>
+#include <QWidget>
 #include <QtGlobal>
 
 #include "schrodinger/sketcher/dialog/file_import_export.h"
@@ -21,7 +22,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/qt_utils.h"
+#include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -236,25 +237,11 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
         } else {
             m_scene_tool->onMouseClick(event);
         }
+        m_scene_tool->onMouseRelease(event);
     }
 
     m_mouse_down_screen_pos = QPointF();
     m_drag_started = false;
-}
-
-void Scene::selectGraphicsItems(const QList<QGraphicsItem*>& items,
-                                const SelectMode select_mode)
-{
-    std::unordered_set<const RDKit::Atom*> atoms;
-    std::unordered_set<const RDKit::Bond*> bonds;
-    for (auto cur_item : items) {
-        if (auto atom_item = qgraphicsitem_cast<AtomItem*>(cur_item)) {
-            atoms.insert(atom_item->getAtom());
-        } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(cur_item)) {
-            bonds.insert(bond_item->getBond());
-        }
-    }
-    m_mol_model->select(atoms, bonds, select_mode);
 }
 
 void Scene::onMolModelSelectionChanged()
@@ -301,6 +288,8 @@ void Scene::updateSceneTool()
     if (draw_tool == DrawTool::SELECT) {
         auto select_tool = m_sketcher_model->getSelectionTool();
         new_scene_tool = get_select_scene_tool(select_tool, this, m_mol_model);
+    } else if (draw_tool == DrawTool::ERASE) {
+        new_scene_tool = std::make_shared<EraseSceneTool>(this, m_mol_model);
     } else {
         // tool not yet implemented
         new_scene_tool = std::make_shared<NullSceneTool>();

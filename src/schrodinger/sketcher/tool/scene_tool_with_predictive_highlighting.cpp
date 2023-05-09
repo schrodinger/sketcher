@@ -23,7 +23,7 @@ SceneToolWithPredictiveHighlighting::getGraphicsItems()
 }
 
 void SceneToolWithPredictiveHighlighting::onMouseMove(
-    QGraphicsSceneMouseEvent* event)
+    QGraphicsSceneMouseEvent* const event)
 {
     AbstractSceneTool::onMouseMove(event);
     if (!m_mouse_pressed) {

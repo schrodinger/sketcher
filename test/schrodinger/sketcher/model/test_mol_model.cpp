@@ -122,14 +122,14 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
     model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
     auto* n_atom = mol->getAtomWithIdx(1);
 
-    model.removeAtom(c_atom);
+    model.removeAtomsAndBonds({c_atom}, {});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getAtomWithIdx(0) == n_atom);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
     BOOST_TEST(model.getAtomFromTag(1) == n_atom);
     BOOST_TEST(model.getTagForAtom(n_atom) == 1);
-    model.removeAtom(n_atom);
+    model.removeAtomsAndBonds({n_atom}, {});
     BOOST_TEST(mol->getNumAtoms() == 0);
 
     undo_stack.undo();
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* bond = mol->getBondWithIdx(0);
 
-    model.removeBond(bond);
+    model.removeAtomsAndBonds({}, {bond});
     BOOST_TEST(mol->getNumBonds() == 0);
 
     undo_stack.undo();
@@ -226,6 +226,35 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
 
     undo_stack.redo();
+    BOOST_TEST(mol->getNumBonds() == 0);
+}
+
+/**
+ * Ensure that removing atoms and bonds in the same call works as expected
+ */
+BOOST_AUTO_TEST_CASE(test_removeAtomsAndBonds)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CN"));
+    model.addMol(*mol_to_add);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    const auto* n_atom = mol->getAtomWithIdx(1);
+    const auto* bond = mol->getBondWithIdx(0);
+    model.removeAtomsAndBonds({c_atom, n_atom}, {bond});
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
 }
 
@@ -522,7 +551,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
 
-    model.removeBond(bond1);
+    model.removeAtomsAndBonds({}, {bond1});
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
 
@@ -533,9 +562,9 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
 
-    // removing an atom removes all of its bonds, so this removeAtom call will
-    // implicitly remove and deselect bond1
-    model.removeAtom(model.getAtomFromTag(1));
+    // removing an atom removes all of its bonds, so this removeAtomsAndBonds
+    // call will implicitly remove and deselect bond1
+    model.removeAtomsAndBonds({model.getAtomFromTag(1)}, {});
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
 
@@ -559,12 +588,12 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
 
     // removing non-selected atoms and bonds shouldn't have any effect on the
     // selection
-    model.removeAtom(model.getAtomFromTag(3));
+    model.removeAtomsAndBonds({model.getAtomFromTag(3)}, {});
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
 
     undo_stack.undo();
-    model.removeBond(model.getBondFromTag(2));
+    model.removeAtomsAndBonds({}, {model.getBondFromTag(2)});
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);

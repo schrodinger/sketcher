@@ -17,7 +17,6 @@
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
-#include "schrodinger/sketcher/tool/select_scene_tool.h"
 
 class QObject;
 class QFont;
@@ -72,20 +71,6 @@ class SKETCHER_API Scene : public QGraphicsScene
      * that are purely graphical (selection highlighting paths, etc.)
      */
     QList<QGraphicsItem*> getInteractiveItems() const;
-
-    /**
-     * Update the MolModel selection for the atoms and bonds that correspond to
-     * the specified graphics items.  This will trigger a call to
-     * onMolModelSelectionChanged, which is responsible for actually selecting
-     * the graphics items.  This method should always be used to select graphics
-     * items to ensure that selection is kept in sync between MolModel and the
-     * Scene.
-     * @param items The graphics items to update the selection of
-     * @param select_mode Whether to select, deselect, toggle selection, or
-     * select-only (i.e. clear the selection and then select)
-     */
-    void selectGraphicsItems(const QList<QGraphicsItem*>& items,
-                             const SelectMode select_mode);
 
     // Getters and setters for changing settings
     qreal fontSize() const;

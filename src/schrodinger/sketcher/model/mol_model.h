@@ -109,14 +109,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     // TODO: add support for query atoms, R groups
 
     /**
-     * Undoably remove the given atom.  Note that even though this method
-     * accepts a pointer to a const Atom, the Atom will be destroyed as a result
-     * of this method and will no longer be valid.  (Without the const, it
-     * wouldn't be possible to pass in a value returned from getMol.)
-     */
-    void removeAtom(const RDKit::Atom* const atom);
-
-    /**
      * Undoably add a bond between the specified atoms.
      */
     void addBond(const RDKit::Atom* const start_atom,
@@ -125,12 +117,15 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     // TODO: add support for query bonds
 
     /**
-     * Undoably remove the given bond.  Note that, even though this method
-     * accepts a pointer to a const Bond, the Bond will be destroyed as a result
-     * of this method and will no longer be valid.  (Without the const, it
-     * wouldn't be possible to pass in a value returned from getMol.)
+     * Undoably remove the given atoms and bonds.  Note that, even though this
+     * method accepts pointers to const Atoms and Bonds, the Atoms and Bonds
+     * will be destroyed as a result of this method and will no longer be valid.
+     * (Without the const, it wouldn't be possible to pass in values returned
+     * from getMol.)
      */
-    void removeBond(const RDKit::Bond* const bond);
+    void
+    removeAtomsAndBonds(const std::unordered_set<const RDKit::Atom*>& atoms,
+                        const std::unordered_set<const RDKit::Bond*>& bonds);
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
@@ -331,9 +326,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Remove an atom from the molecule.  This method must only be called from
-     * an undo command.
+     * an undo command.  Note that this method does not update ring information
+     * or emit signals (as these are intended to be done from
+     * removeAtomsAndBondsFromCommand instead).
+     * @return whether selection was changed by this action
      */
-    void removeAtomFromCommand(const int atom_tag);
+    bool removeAtomFromCommand(const int atom_tag);
 
     /**
      * Add a bond to the molecule.  This method must only be called from an undo
@@ -345,10 +343,24 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Remove a bond from the molecule.  This method must only be called from an
-     * undo command.
+     * undo command.  Note that this method does not update ring information or
+     * emit signals (as these are intended to be done from
+     * removeAtomsAndBondsFromCommand instead).
+     * @return whether selection was changed by this action
      */
-    void removeBondFromCommand(const int bond_tag, const int start_atom_tag,
+    bool removeBondFromCommand(const int bond_tag, const int start_atom_tag,
                                const int end_atom_tag);
+
+    /**
+     * Remove the specified atoms and bonds from the molecule.  This method must
+     * only be called from an undo command.
+     * @param atom_tags The atom tags to delete
+     * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
+     * bond's end atom tag) for the bonds to delete
+     */
+    void removeAtomsAndBondsFromCommand(
+        const std::vector<int>& atom_tags,
+        const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms);
 
     /**
      * Add all atoms and bonds from the given molecule into this molecule.  This

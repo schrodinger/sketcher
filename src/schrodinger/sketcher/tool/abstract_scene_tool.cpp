@@ -14,37 +14,37 @@ AbstractSceneTool::AbstractSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
-void AbstractSceneTool::onMousePress(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onMousePress(QGraphicsSceneMouseEvent* const event)
 {
     m_mouse_pressed = true;
     m_mouse_press_scene_pos = event->scenePos();
 }
 
-void AbstractSceneTool::onMouseMove(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
 }
 
-void AbstractSceneTool::onMouseRelease(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onMouseRelease(QGraphicsSceneMouseEvent* const event)
 {
     m_mouse_pressed = false;
     m_mouse_press_scene_pos = QPointF();
 }
 
-void AbstractSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onDragStart(QGraphicsSceneMouseEvent* const event)
 {
     m_drag_started = true;
 }
 
-void AbstractSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
 {
 }
 
-void AbstractSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
 {
     m_drag_started = false;
 }
 
-void AbstractSceneTool::onMouseClick(QGraphicsSceneMouseEvent* event)
+void AbstractSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
 {
 }
 

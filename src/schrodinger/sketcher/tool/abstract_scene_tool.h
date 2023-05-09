@@ -46,17 +46,17 @@ class SKETCHER_API AbstractSceneTool
     /**
      * Called whenever the user presses the left mouse button
      */
-    virtual void onMousePress(QGraphicsSceneMouseEvent* event);
+    virtual void onMousePress(QGraphicsSceneMouseEvent* const event);
 
     /**
      * Called whenever the user moves the mouse
      */
-    virtual void onMouseMove(QGraphicsSceneMouseEvent* event);
+    virtual void onMouseMove(QGraphicsSceneMouseEvent* const event);
 
     /**
      * Called whenever the user releases the left mouse button
      */
-    virtual void onMouseRelease(QGraphicsSceneMouseEvent* event);
+    virtual void onMouseRelease(QGraphicsSceneMouseEvent* const event);
 
     /**
      * Called whenever the user starts a drag by moving the mouse
@@ -64,23 +64,23 @@ class SKETCHER_API AbstractSceneTool
      * down.  Note that onDragMove() will also be called with the same mouse
      * event.
      */
-    virtual void onDragStart(QGraphicsSceneMouseEvent* event);
+    virtual void onDragStart(QGraphicsSceneMouseEvent* const event);
 
     /**
      * Called when the mouse is moved during a click-and-drag
      */
-    virtual void onDragMove(QGraphicsSceneMouseEvent* event);
+    virtual void onDragMove(QGraphicsSceneMouseEvent* const event);
 
     /**
      * Called when the user releases the mouse button, ending a click-and-drag
      */
-    virtual void onDragRelease(QGraphicsSceneMouseEvent* event);
+    virtual void onDragRelease(QGraphicsSceneMouseEvent* const event);
 
     /**
      * Called when the user clicks the left mouse button.  A mouse click is any
      * press and release in which no drag was started.
      */
-    virtual void onMouseClick(QGraphicsSceneMouseEvent* event);
+    virtual void onMouseClick(QGraphicsSceneMouseEvent* const event);
 
     /**
      * @return all graphics items that should be added to the scene while this

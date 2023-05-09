@@ -116,24 +116,30 @@ void MolModel::addBond(const RDKit::Atom* const start_atom,
     doCommandWithMolUndo(redo, desc);
 }
 
-void MolModel::removeAtom(const RDKit::Atom* const atom)
+void MolModel::removeAtomsAndBonds(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const RDKit::Bond*>& bonds)
 {
-    int atom_tag = getTagForAtom(atom);
-    std::string element = atom->getSymbol();
-    QString desc = QString("Remove %1").arg(QString::fromStdString(element));
-    auto redo = [this, atom_tag]() { removeAtomFromCommand(atom_tag); };
-    doCommandWithMolUndo(redo, desc);
-}
+    if (atoms.empty() && bonds.empty()) {
+        return;
+    }
 
-void MolModel::removeBond(const RDKit::Bond* const bond)
-{
-    int bond_tag = getTagForBond(bond);
-    int start_atom_tag = getTagForAtom(bond->getBeginAtom());
-    int end_atom_tag = getTagForAtom(bond->getEndAtom());
+    std::vector<int> atom_tags;
+    for (auto cur_atom : atoms) {
+        atom_tags.push_back(getTagForAtom(cur_atom));
+    }
 
-    QString desc = QString("Remove bond");
-    auto redo = [this, bond_tag, start_atom_tag, end_atom_tag]() {
-        removeBondFromCommand(bond_tag, start_atom_tag, end_atom_tag);
+    std::vector<std::tuple<int, int, int>> bond_tags;
+    for (auto cur_bond : bonds) {
+        int bond_tag = getTagForBond(cur_bond);
+        int start_atom_tag = getTagForAtom(cur_bond->getBeginAtom());
+        int end_atom_tag = getTagForAtom(cur_bond->getEndAtom());
+        bond_tags.push_back({bond_tag, start_atom_tag, end_atom_tag});
+    }
+
+    QString desc = QString("Erase");
+    auto redo = [this, atom_tags, bond_tags]() {
+        removeAtomsAndBondsFromCommand(atom_tags, bond_tags);
     };
     doCommandWithMolUndo(redo, desc);
 }
@@ -394,7 +400,7 @@ void MolModel::addAtomFromCommand(const int atom_tag,
     emit moleculeChanged();
 }
 
-void MolModel::removeAtomFromCommand(const int atom_tag)
+bool MolModel::removeAtomFromCommand(const int atom_tag)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
@@ -409,12 +415,7 @@ void MolModel::removeAtomFromCommand(const int atom_tag)
         }
     }
     m_mol.removeAtom(atom);
-    // update the ring info in case we implicitly deleted any bonds
-    RDKit::MolOps::fastFindRings(m_mol);
-    emit moleculeChanged();
-    if (selection_changed) {
-        emit selectionChanged();
-    }
+    return selection_changed;
 }
 
 void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
@@ -435,7 +436,7 @@ void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
     emit moleculeChanged();
 }
 
-void MolModel::removeBondFromCommand(const int bond_tag,
+bool MolModel::removeBondFromCommand(const int bond_tag,
                                      const int start_atom_tag,
                                      const int end_atom_tag)
 {
@@ -444,6 +445,29 @@ void MolModel::removeBondFromCommand(const int bond_tag,
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
     bool selection_changed = m_selected_bond_tags.erase(bond_tag);
     m_mol.removeBond(start_atom->getIdx(), end_atom->getIdx());
+    return selection_changed;
+}
+
+void MolModel::removeAtomsAndBondsFromCommand(
+    const std::vector<int>& atom_tags,
+    const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms)
+{
+    Q_ASSERT(m_in_command);
+    bool selection_changed = false;
+    // remove the bonds first so that they don't get implicitly deleted when we
+    // remove an atom
+    for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
+        if (removeBondFromCommand(bond_tag, start_atom_tag, end_atom_tag)) {
+            selection_changed = true;
+        }
+    }
+
+    for (int cur_atom_tag : atom_tags) {
+        if (removeAtomFromCommand(cur_atom_tag)) {
+            selection_changed = true;
+        }
+    }
+
     // update the ring info
     RDKit::MolOps::fastFindRings(m_mol);
     emit moleculeChanged();

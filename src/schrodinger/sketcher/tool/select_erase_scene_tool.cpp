@@ -1,12 +1,16 @@
-#include "schrodinger/sketcher/tool/select_scene_tool.h"
+#include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 
 #include <QGraphicsItem>
 #include <QList>
 
+#include <GraphMol/ROMol.h>
+
+#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/qt_utils.h"
 
 namespace schrodinger
 {
@@ -34,14 +38,14 @@ SelectSceneTool<T>::SelectSceneTool(Scene* scene, MolModel* mol_model) :
 }
 
 template <typename T>
-void SelectSceneTool<T>::onDragStart(QGraphicsSceneMouseEvent* event)
+void SelectSceneTool<T>::onDragStart(QGraphicsSceneMouseEvent* const event)
 {
     SceneToolWithPredictiveHighlighting::onDragStart(event);
     m_select_item.setVisible(true);
 }
 
 template <typename T>
-void SelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* event)
+void SelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* const event)
 {
     SceneToolWithPredictiveHighlighting::onDragMove(event);
     QList<QGraphicsItem*> items = m_scene->collidingItems(&m_select_item);
@@ -49,19 +53,38 @@ void SelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* event)
 }
 
 template <typename T>
-void SelectSceneTool<T>::onDragRelease(QGraphicsSceneMouseEvent* event)
+void SelectSceneTool<T>::onDragRelease(QGraphicsSceneMouseEvent* const event)
 {
     SceneToolWithPredictiveHighlighting::onDragRelease(event);
     m_select_item.setVisible(false);
     m_predictive_highlighting_item.clearHighlightingPath();
 
-    auto select_mode = getSelectMode(event);
     QList<QGraphicsItem*> items = m_scene->collidingItems(&m_select_item);
-    m_scene->selectGraphicsItems(items, select_mode);
+    onSelectionMade(items, event);
 }
 
 template <typename T>
-SelectMode SelectSceneTool<T>::getSelectMode(QGraphicsSceneMouseEvent* event)
+void SelectSceneTool<T>::onMouseClick(QGraphicsSceneMouseEvent* const event)
+{
+    SceneToolWithPredictiveHighlighting::onMouseClick(event);
+    QGraphicsItem* item = m_scene->itemAt(event->scenePos(), QTransform());
+    if (item != nullptr) {
+        onSelectionMade({item}, event);
+    } else {
+        onSelectionMade({}, event);
+    }
+}
+
+template <typename T>
+std::vector<QGraphicsItem*> SelectSceneTool<T>::getGraphicsItems()
+{
+    auto items = SceneToolWithPredictiveHighlighting::getGraphicsItems();
+    items.push_back(&m_select_item);
+    return items;
+}
+
+template <typename T> SelectMode
+SelectSceneTool<T>::getSelectMode(QGraphicsSceneMouseEvent* const event) const
 {
     auto modifiers = event->modifiers();
     if (modifiers & Qt::ControlModifier) {
@@ -73,25 +96,30 @@ SelectMode SelectSceneTool<T>::getSelectMode(QGraphicsSceneMouseEvent* event)
     }
 }
 
-template <typename T>
-void SelectSceneTool<T>::onMouseClick(QGraphicsSceneMouseEvent* event)
+template <typename T> std::pair<std::unordered_set<const RDKit::Atom*>,
+                                std::unordered_set<const RDKit::Bond*>>
+SelectSceneTool<T>::getAtomsAndBondsForGraphicsItems(
+    const QList<QGraphicsItem*>& items) const
 {
-    SceneToolWithPredictiveHighlighting::onMouseClick(event);
-    auto select_mode = getSelectMode(event);
-    QGraphicsItem* item = m_scene->itemAt(event->scenePos(), QTransform());
-    if (item != nullptr) {
-        m_scene->selectGraphicsItems({item}, select_mode);
-    } else {
-        m_scene->selectGraphicsItems({}, select_mode);
+    std::unordered_set<const RDKit::Atom*> atoms;
+    std::unordered_set<const RDKit::Bond*> bonds;
+    for (auto cur_item : items) {
+        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(cur_item)) {
+            atoms.insert(atom_item->getAtom());
+        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(cur_item)) {
+            bonds.insert(bond_item->getBond());
+        }
     }
+    return {atoms, bonds};
 }
 
 template <typename T>
-std::vector<QGraphicsItem*> SelectSceneTool<T>::getGraphicsItems()
+void SelectSceneTool<T>::onSelectionMade(const QList<QGraphicsItem*>& items,
+                                         QGraphicsSceneMouseEvent* const event)
 {
-    auto items = SceneToolWithPredictiveHighlighting::getGraphicsItems();
-    items.push_back(&m_select_item);
-    return items;
+    auto select_mode = getSelectMode(event);
+    auto [atoms, bonds] = getAtomsAndBondsForGraphicsItems(items);
+    m_mol_model->select(atoms, bonds, select_mode);
 }
 
 LassoSelectSceneTool::LassoSelectSceneTool(Scene* scene, MolModel* mol_model) :
@@ -140,5 +168,19 @@ void ShapeSelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* event)
     SelectSceneTool<T>::onDragMove(event);
 }
 
+EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :
+    RectSelectSceneTool(scene, mol_model)
+{
+}
+
+void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
+                                     QGraphicsSceneMouseEvent* const event)
+{
+    // immediately clear the predictive highlighting, since the highlighted
+    // items won't exist after the removeAtomsAndBonds call
+    m_predictive_highlighting_item.clearHighlightingPath();
+    auto [atoms, bonds] = getAtomsAndBondsForGraphicsItems(items);
+    m_mol_model->removeAtomsAndBonds(atoms, bonds);
+}
 } // namespace sketcher
 } // namespace schrodinger

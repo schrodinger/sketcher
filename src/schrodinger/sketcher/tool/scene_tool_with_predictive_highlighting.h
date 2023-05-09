@@ -26,7 +26,7 @@ class SKETCHER_API SceneToolWithPredictiveHighlighting
   public:
     SceneToolWithPredictiveHighlighting(Scene* scene, MolModel* mol_model);
     virtual ~SceneToolWithPredictiveHighlighting() = default;
-    virtual void onMouseMove(QGraphicsSceneMouseEvent* event) override;
+    virtual void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
 
   protected:
