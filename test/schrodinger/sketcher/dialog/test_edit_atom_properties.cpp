@@ -51,6 +51,10 @@ class TestEditAtomPropertiesDialog : public EditAtomPropertiesDialog
     {
         return ui->atom_common_props_wdg->ui.get();
     }
+    Ui::CommonAtomPropertiesWidget* getQueryPropsUI() const
+    {
+        return ui->query_common_props_wdg->ui.get();
+    }
     Ui::EditAtomPropertiesDialog* getUI() const
     {
         return ui.get();
@@ -397,9 +401,9 @@ BOOST_AUTO_TEST_CASE(test_updateOKButtonEnabled)
 
     // Atom mode tests
     ui->set_as_atom_rb->click();
-    BOOST_CHECK_EQUAL(ok_button->isEnabled(), true);
-    ui->element_le->setText("");
     BOOST_CHECK_EQUAL(ok_button->isEnabled(), false);
+    ui->element_le->setText("C");
+    BOOST_CHECK_EQUAL(ok_button->isEnabled(), true);
 }
 
 BOOST_AUTO_TEST_CASE(test_specific_element_advanced_query)
@@ -436,4 +440,151 @@ BOOST_AUTO_TEST_CASE(test_elementList)
     TestEditAtomPropertiesDialog dlg(scene.getModel(), *atom);
     auto ui = dlg.getUI();
     BOOST_TEST(ui->element_list_le->text().toStdString() == "C");
+}
+
+/*
+ * Assign values to all subwidgets in the dialog in order to test `reset()`
+ */
+void assign_subwidget_values(TestEditAtomPropertiesDialog& dlg)
+{
+    auto ui = dlg.getUI();
+    auto cap_ui = dlg.getAtomPropsUI();
+    auto cqp_ui = dlg.getQueryPropsUI();
+
+    ui->set_as_group->button(1 - ui->set_as_group->checkedId())->click();
+    for (auto le :
+         {ui->element_le, ui->specific_element_le, ui->element_list_le,
+          ui->smarts_query_le, ui->smallest_ring_size_le, ui->total_H_le,
+          ui->num_connections_le, cap_ui->isotope_le, cqp_ui->isotope_le}) {
+        le->setText("001011");
+    }
+    for (auto combo :
+         {ui->ring_count_combo, ui->ring_bond_count_combo, ui->wildcard_combo,
+          ui->aromaticity_combo, cap_ui->enhanced_stereo_combo}) {
+        auto current_idx = combo->currentIndex();
+        auto new_idx =
+            combo->count() - 1 == current_idx ? 0 : combo->count() - 1;
+        combo->setCurrentIndex(new_idx);
+    }
+
+    {
+        // Treat this combo box separately to ensure that as many associated
+        // subwidgets are enabled as possible. (The default behavior in the
+        // combo loop above causes some subwidgets to be disabled.
+        auto new_query_type = QueryType::SPECIFIC_ELEMENT;
+        if (dlg.getQueryTypeComboValue() == QueryType::SPECIFIC_ELEMENT) {
+            new_query_type = QueryType::WILDCARD;
+        }
+        dlg.setQueryTypeComboValue(new_query_type);
+    }
+
+    for (auto sb : {ui->ring_count_sb, ui->ring_bond_count_sb, ui->rgroup_sb,
+                    cap_ui->charge_sb, cqp_ui->charge_sb,
+                    cap_ui->unpaired_elec_sb, cap_ui->enhanced_stereo_sb}) {
+        // First, verify that the spin box is enabled. Otherwise, we won't be
+        // able to modify its contents for the purposes of this test.
+        BOOST_TEST(sb->isEnabled());
+        auto value = sb->value();
+        if (value != sb->minimum()) {
+            value = sb->minimum();
+        } else {
+            value = sb->maximum();
+        }
+        sb->setValue(value);
+    }
+}
+
+/**
+ * For a given atom (element or query or whatever), verify that an
+ * `EditAtomPropertiesDialog` instance opened with this atom is properly reset
+ * after all subwidgets have been modified.
+ */
+void check_dialog_subwidgets(SketcherModel* model, sketcherAtom* atom)
+{
+    TestEditAtomPropertiesDialog dlg(model, *atom);
+    assign_subwidget_values(dlg);
+    dlg.reset();
+    TestEditAtomPropertiesDialog ref_dlg(model, *atom);
+
+    auto ui = dlg.getUI();
+    auto ref_ui = ref_dlg.getUI();
+    BOOST_TEST(ui->set_as_group->checkedId() ==
+               ref_ui->set_as_group->checkedId());
+    BOOST_TEST(ui->element_le->text() == ref_ui->element_le->text());
+    BOOST_TEST(ui->specific_element_le->text() ==
+               ref_ui->specific_element_le->text());
+    BOOST_TEST(ui->element_list_le->text() == ref_ui->element_list_le->text());
+    BOOST_TEST(ui->smarts_query_le->text() == ref_ui->smarts_query_le->text());
+    BOOST_TEST(ui->smallest_ring_size_le->text() ==
+               ref_ui->smallest_ring_size_le->text());
+    BOOST_TEST(ui->total_H_le->text() == ref_ui->total_H_le->text());
+    BOOST_TEST(ui->num_connections_le->text() ==
+               ref_ui->num_connections_le->text());
+    BOOST_TEST(ui->ring_count_combo->currentIndex() ==
+               ref_ui->ring_count_combo->currentIndex());
+    BOOST_TEST(ui->ring_bond_count_combo->currentIndex() ==
+               ref_ui->ring_bond_count_combo->currentIndex());
+    BOOST_TEST(ui->query_type_combo->currentIndex() ==
+               ref_ui->query_type_combo->currentIndex());
+    BOOST_TEST(ui->wildcard_combo->currentIndex() ==
+               ref_ui->wildcard_combo->currentIndex());
+    BOOST_TEST(ui->aromaticity_combo->currentIndex() ==
+               ref_ui->aromaticity_combo->currentIndex());
+    BOOST_TEST(ui->ring_count_sb->value() == ref_ui->ring_count_sb->value());
+    BOOST_TEST(ui->ring_bond_count_sb->value() ==
+               ref_ui->ring_bond_count_sb->value());
+    BOOST_TEST(ui->rgroup_sb->value() == ref_ui->rgroup_sb->value());
+
+    auto cap_ui = dlg.getAtomPropsUI();
+    auto cqp_ui = dlg.getQueryPropsUI();
+    auto ref_cap_ui = ref_dlg.getAtomPropsUI();
+    auto ref_cqp_ui = ref_dlg.getQueryPropsUI();
+    BOOST_TEST(cap_ui->isotope_le->text() == ref_cap_ui->isotope_le->text());
+    BOOST_TEST(cap_ui->charge_sb->value() == ref_cap_ui->charge_sb->value());
+    BOOST_TEST(cqp_ui->isotope_le->text() == ref_cqp_ui->isotope_le->text());
+    BOOST_TEST(cqp_ui->charge_sb->value() == ref_cqp_ui->charge_sb->value());
+    BOOST_TEST(cap_ui->unpaired_elec_sb->value() ==
+               ref_cap_ui->unpaired_elec_sb->value());
+    BOOST_TEST(cap_ui->enhanced_stereo_sb->value() ==
+               ref_cap_ui->enhanced_stereo_sb->value());
+    BOOST_TEST(cap_ui->enhanced_stereo_sb->isEnabled() ==
+               ref_cap_ui->enhanced_stereo_sb->isEnabled());
+    BOOST_TEST(cap_ui->enhanced_stereo_combo->currentIndex() ==
+               ref_cap_ui->enhanced_stereo_combo->currentIndex());
+}
+
+/**
+ * Verify that the `reset()` method properly resets all subwidgets in the dialog
+ * by changing the value on every subwidget then comparing the value on each
+ * subwidgets to a freshly-created dialog.
+ */
+BOOST_AUTO_TEST_CASE(test_reset)
+{
+    testSketcherScene scene;
+    scene.importText("N");
+    auto atom = scene.quickGetAtoms().front();
+
+    // Open dialog for standard element
+    check_dialog_subwidgets(scene.getModel(), atom);
+
+    // Open dialog for element with nonzero charge
+    atom->setCharge(2);
+    BOOST_TEST(atom->getCharge() == 2);
+    check_dialog_subwidgets(scene.getModel(), atom);
+
+    // Open dialog for element with isotope defined
+    atom->setIsotope(15);
+    BOOST_TEST(atom->getIsotope() == 15);
+    check_dialog_subwidgets(scene.getModel(), atom);
+
+    // Open dialog for R group atom
+    atom->setAsRGroup(1);
+    BOOST_TEST(atom->isRGroup());
+    BOOST_TEST(atom->getRGroupNumber() == 1);
+    check_dialog_subwidgets(scene.getModel(), atom);
+
+    // Open dialog for query atom
+    atom->setAtomType(AH_QUERY_KEY);
+    BOOST_TEST(atom->isAnyAtomWildcard());
+    check_dialog_subwidgets(scene.getModel(), atom);
 }

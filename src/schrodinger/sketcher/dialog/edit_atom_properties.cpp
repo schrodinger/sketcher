@@ -76,6 +76,9 @@ namespace schrodinger
 namespace sketcher
 {
 
+const uint SET_AS_ATOM_ID = 0;
+const uint SET_AS_QUERY_ID = 1;
+
 CommonAtomPropertiesWidget::CommonAtomPropertiesWidget(QWidget* parent) :
     QWidget(parent)
 {
@@ -142,21 +145,28 @@ CommonAtomPropertiesWidget::~CommonAtomPropertiesWidget() = default;
 
 void CommonAtomPropertiesWidget::readAtomInfo(const sketcherAtom& atom)
 {
+    ui->isotope_le->setText(QString::number(atom.getIsotope()));
     if (atom.getIsotope() == 0) {
         ui->isotope_le->clear();
-    } else {
-        ui->isotope_le->setText(QString::number(atom.getIsotope()));
     }
     ui->charge_sb->setValue(atom.getCharge());
     ui->unpaired_elec_sb->setValue(atom.getUnpairedElectronsN());
 
     // Atoms must have a defined chirality in order to get enhanced stereo
     auto rdk_atom = atom.getRDKAtom();
+    auto enhanced_stereo_type = EnhancedStereoType::ABS;
+    auto enhanced_stereo_group_id = 0;
     if (rdk_atom != nullptr && has_atom_specified_chirality(rdk_atom)) {
         auto enh_stereo = atom.getEnhancedStereo();
-        ui->enhanced_stereo_sb->setValue(enh_stereo.group_id);
-        setEnhancedStereoTypeComboValue(enh_stereo.type);
+        enhanced_stereo_type = enh_stereo.type;
+        enhanced_stereo_group_id = enh_stereo.group_id;
     }
+
+    // Set the combo value last because altering this combo box will signal
+    // `updateEnhancedStereoSpinBox()` which may then update the enhanced stereo
+    // spin box anyway.
+    ui->enhanced_stereo_sb->setValue(enhanced_stereo_group_id);
+    setEnhancedStereoTypeComboValue(enhanced_stereo_type);
 }
 
 void CommonAtomPropertiesWidget::writeAtomInfo(sketcherAtom& atom) const
@@ -227,6 +237,9 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(SketcherModel* model,
 
     ui.reset(new Ui::EditAtomPropertiesDialog());
     setupDialogUI(*ui);
+
+    ui->set_as_group->setId(ui->set_as_atom_rb, SET_AS_ATOM_ID);
+    ui->set_as_group->setId(ui->set_as_query_rb, SET_AS_QUERY_ID);
 
     // Connect radio buttons to stacked widget
     auto stack_wgt = ui->atom_query_stacked_wdg;
@@ -341,77 +354,106 @@ void EditAtomPropertiesDialog::accept()
 
 void EditAtomPropertiesDialog::reset()
 {
-    sketcherChemicalKnowledge ck;
-    CommonAtomPropertiesWidget* props_wdg = nullptr;
+    // Reset the "Set as" radio buttons
     if (m_atom.isQuery() || m_atom.hasAdvancedQueryFeatures()) {
-        props_wdg = ui->query_common_props_wdg;
         ui->set_as_query_rb->click();
-
-        auto atom_type = m_atom.getAtomType();
-        auto query_type = QueryType::SPECIFIC_ELEMENT;
-        if (is_atomic_number(atom_type)) {
-            auto symbol = atomic_number_to_symbol(atom_type);
-            ui->specific_element_le->setText(QString::fromStdString(symbol));
-        } else if (m_atom.isAllowedAtomListQuery() ||
-                   m_atom.isDisallowedAtomListQuery()) {
-            query_type = m_atom.isAllowedAtomListQuery()
-                             ? QueryType::ALLOWED_LIST
-                             : QueryType::NOT_ALLOWED_LIST;
-            auto element_list = ck.getAtomicNumbersListString(&m_atom);
-            ui->element_list_le->setText(QString::fromStdString(element_list));
-        } else if (m_atom.isAnyAtomWildcard() || m_atom.isHeavyAtomWildcard() ||
-                   m_atom.isAnyNonCarbonWildcard() ||
-                   m_atom.isNonCarbonHeavyAtomWildcard() ||
-                   m_atom.isMetalOrHWildcard() || m_atom.isMetalWildcard() ||
-                   m_atom.isHalogenOrHWildcard() ||
-                   m_atom.isHalogenWildcard()) {
-            query_type = QueryType::WILDCARD;
-
-            // Update the combo to the current wildcard type
-            auto type = AtomTypes(m_atom.getAtomType());
-            auto value = QVariant::fromValue(get_atomquery_for_atomtype(type));
-            auto index = ui->wildcard_combo->findData(value);
-            ui->wildcard_combo->setCurrentIndex(index);
-        } else if (m_atom.isRGroup()) {
-            query_type = QueryType::RGROUP;
-            ui->rgroup_sb->setValue(m_atom.getRGroupNumber());
-        }
-        setQueryTypeComboValue(query_type);
     } else {
-        props_wdg = ui->atom_common_props_wdg;
         ui->set_as_atom_rb->click();
-
-        auto symbol = atomic_number_to_symbol(m_atom.getAtomicNumber());
-        ui->element_le->setText(symbol.c_str());
-        ui->specific_element_le->setText(symbol.c_str());
-        ui->rgroup_sb->setValue(m_sketcher_model->getNextRGroupNumber());
-        ui->element_list_le->setText(symbol.c_str());
     }
-    props_wdg->readAtomInfo(m_atom);
 
+    // Reset the "Set as atom" subwidgets
+    auto atom_type = m_atom.getAtomType();
+    std::string element_text;
+    if (is_atomic_number(atom_type)) {
+        element_text = atomic_number_to_symbol(atom_type);
+    }
+    ui->element_le->setText(QString::fromStdString(element_text));
+
+    ui->atom_common_props_wdg->readAtomInfo(m_atom);
+
+    resetGeneralQuerySubwidgets();
+    resetAdvancedQuerySubwidgets();
+}
+
+void EditAtomPropertiesDialog::resetGeneralQuerySubwidgets()
+{
+    auto query_type = QueryType::SPECIFIC_ELEMENT;
+    if (m_atom.isAllowedAtomListQuery()) {
+        query_type = QueryType::ALLOWED_LIST;
+    } else if (m_atom.isDisallowedAtomListQuery()) {
+        query_type = QueryType::NOT_ALLOWED_LIST;
+    } else if (m_atom.isRGroup()) {
+        query_type = QueryType::RGROUP;
+    } else if (m_atom.isAnyAtomWildcard() || m_atom.isHeavyAtomWildcard() ||
+               m_atom.isAnyNonCarbonWildcard() ||
+               m_atom.isNonCarbonHeavyAtomWildcard() ||
+               m_atom.isMetalOrHWildcard() || m_atom.isMetalWildcard() ||
+               m_atom.isHalogenOrHWildcard() || m_atom.isHalogenWildcard()) {
+        query_type = QueryType::WILDCARD;
+    }
+    setQueryTypeComboValue(query_type);
+
+    auto atom_type = m_atom.getAtomType();
+    auto wildcard_combo_idx = 0;
+    if (query_type == QueryType::WILDCARD) {
+        auto atom_type_qvariant = QVariant::fromValue(
+            get_atomquery_for_atomtype(AtomTypes(atom_type)));
+        wildcard_combo_idx = ui->wildcard_combo->findData(atom_type_qvariant);
+    }
+    ui->wildcard_combo->setCurrentIndex(wildcard_combo_idx);
+
+    std::string element_list_text;
+    std::string element_text;
+    if (is_atomic_number(atom_type)) {
+        element_text = atomic_number_to_symbol(atom_type);
+    }
+    if (!m_atom.isQuery()) {
+        element_list_text = element_text;
+    } else if (m_atom.isAllowedAtomListQuery() ||
+               m_atom.isDisallowedAtomListQuery()) {
+        sketcherChemicalKnowledge ck;
+        element_list_text = ck.getAtomicNumbersListString(&m_atom);
+    }
+    ui->element_list_le->setText(QString::fromStdString(element_list_text));
+
+    ui->specific_element_le->setText(QString::fromStdString(element_text));
+
+    auto r_group_number = m_sketcher_model->getNextRGroupNumber();
+    if (m_atom.isRGroup()) {
+        r_group_number = m_atom.getRGroupNumber();
+    }
+    ui->rgroup_sb->setValue(r_group_number);
+
+    ui->query_common_props_wdg->readAtomInfo(m_atom);
+}
+
+void EditAtomPropertiesDialog::resetAdvancedQuerySubwidgets()
+{
     std::string atom_smarts;
-    if (m_atom.getStringProperty(ATOM_SMARTS_KEY, atom_smarts) &&
-        !atom_smarts.empty()) {
-        ui->smarts_query_le->setText(QString::fromStdString(atom_smarts));
-    } else {
+    m_atom.getStringProperty(ATOM_SMARTS_KEY, atom_smarts);
 
-        QString total_h_text{""};
-        int total_h{-1};
+    QString total_h_text = "";
+    if (atom_smarts.empty()) {
+        int total_h = -1;
         if (m_atom.getIntProperty(TOTAL_H_COUNT_KEY, total_h) && total_h > -1) {
             total_h_text = QString::number(total_h);
         }
-        ui->total_H_le->setText(total_h_text);
+    }
+    ui->total_H_le->setText(total_h_text);
 
-        int num_connections{-1};
-        QString num_connections_text{""};
+    QString num_connections_text{""};
+    if (atom_smarts.empty()) {
+        int num_connections = -1;
         if (m_atom.getIntProperty(NUMBER_OF_CONNECTIONS_KEY, num_connections) &&
             num_connections > -1) {
             num_connections_text = QString::number(num_connections);
         }
-        ui->num_connections_le->setText(num_connections_text);
+    }
+    ui->num_connections_le->setText(num_connections_text);
 
-        int aromaticity{-1};
-        auto aromaticity_key = ANY_COMBO_KEY;
+    auto aromaticity_key = ANY_COMBO_KEY;
+    if (atom_smarts.empty()) {
+        int aromaticity = -1;
         if (m_atom.getIntProperty(AROMATICITY_KEY, aromaticity)) {
             if (aromaticity == sketcherAtom::ALIPHATIC_ATOM) {
                 aromaticity_key = ALIPHATIC_COMBO_KEY;
@@ -419,48 +461,57 @@ void EditAtomPropertiesDialog::reset()
                 aromaticity_key = AROMATIC_COMBO_KEY;
             }
         }
-        auto aromaticity_index =
-            ui->aromaticity_combo->findText(aromaticity_key);
-        ui->aromaticity_combo->setCurrentIndex(aromaticity_index);
+    }
+    auto aromaticity_index = ui->aromaticity_combo->findText(aromaticity_key);
+    ui->aromaticity_combo->setCurrentIndex(aromaticity_index);
 
-        int min_rings{-1};
-        int max_rings{-1};
-        auto ring_count_key = ANY_COMBO_KEY;
+    auto ring_count_key = ANY_COMBO_KEY;
+    int ring_count = 0;
+    if (atom_smarts.empty()) {
+        int min_rings = -1;
         if (m_atom.getIntProperty(MINIMUM_NUMBER_OF_RINGS_KEY, min_rings)) {
-            auto key = ANY_COMBO_KEY;
+            int max_rings = -1;
             if (m_atom.getIntProperty(MAXIMUM_NUMBER_OF_RINGS_KEY, max_rings)) {
                 if (min_rings == max_rings && min_rings > -1) {
                     ring_count_key = EXACT_COMBO_KEY;
-                    ui->ring_count_sb->setValue(min_rings);
+                    ring_count = min_rings;
                 }
             } else if (min_rings == 1 && max_rings == -1) {
                 ring_count_key = NONZERO_COMBO_KEY;
             }
         }
-        auto ring_count_index = ui->ring_count_combo->findText(ring_count_key);
-        ui->ring_count_combo->setCurrentIndex(ring_count_index);
-        update_ring_count_spinbox(ui->ring_count_sb, ring_count_key);
+    }
+    ui->ring_count_sb->setValue(ring_count);
+    auto ring_count_index = ui->ring_count_combo->findText(ring_count_key);
+    ui->ring_count_combo->setCurrentIndex(ring_count_index);
+    update_ring_count_spinbox(ui->ring_count_sb, ring_count_key);
 
-        int ring_bonds{-1};
-        auto ring_bonds_key = ANY_COMBO_KEY;
+    auto ring_bonds_key = ANY_COMBO_KEY;
+    int ring_bond_count = 0;
+    if (atom_smarts.empty()) {
+        int ring_bonds = -1;
         if (m_atom.getIntProperty(RING_BOND_COUNT_KEY, ring_bonds) &&
             ring_bonds > -1) {
             ring_bonds_key = EXACT_COMBO_KEY;
-            ui->ring_bond_count_sb->setValue(ring_bonds);
+            ring_bond_count = ring_bonds;
         }
-        auto ring_bonds_index =
-            ui->ring_bond_count_combo->findText(ring_bonds_key);
-        ui->ring_bond_count_combo->setCurrentIndex(ring_bonds_index);
-        update_ring_count_spinbox(ui->ring_bond_count_sb, ring_bonds_key);
+    }
+    ui->ring_bond_count_sb->setValue(ring_bond_count);
+    auto ring_bonds_index = ui->ring_bond_count_combo->findText(ring_bonds_key);
+    ui->ring_bond_count_combo->setCurrentIndex(ring_bonds_index);
+    update_ring_count_spinbox(ui->ring_bond_count_sb, ring_bonds_key);
 
-        int ring_size{-1};
-        QString ring_size_text{""};
+    QString ring_size_text{""};
+    if (atom_smarts.empty()) {
+        int ring_size = -1;
         if (m_atom.getIntProperty(MINIMUM_SIZE_OF_RINGS_KEY, ring_size) &&
             ring_size > -1) {
             ring_size_text = QString::number(ring_size);
         }
-        ui->smallest_ring_size_le->setText(ring_size_text);
     }
+    ui->smallest_ring_size_le->setText(ring_size_text);
+
+    ui->smarts_query_le->setText(QString::fromStdString(atom_smarts));
 }
 
 QueryType EditAtomPropertiesDialog::getQueryTypeComboValue() const

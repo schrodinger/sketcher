@@ -67,6 +67,13 @@ class SKETCHER_API EditAtomPropertiesDialog : public ModalDialog
     void reset();
 
     /**
+     * Organizational methods to reset different components of the dialog. Only
+     * meant to be called from the `reset()` method.
+     */
+    void resetGeneralQuerySubwidgets();
+    void resetAdvancedQuerySubwidgets();
+
+    /**
      * Writes values from the atom properties page to the member sketcher atom
      */
     void writeAtomInfo();
