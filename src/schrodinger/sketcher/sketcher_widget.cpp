@@ -76,6 +76,11 @@ void SketcherWidget::connectTopBarSlots()
     // TODO: fitToView
 
     // Connect "More Actions" menu
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::flipHorizontalRequested,
+            m_mol_model, &MolModel::flipAllHorizontal);
+
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::flipVerticalRequested,
+            m_mol_model, &MolModel::flipAllVertical);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_mol_model,
             &MolModel::selectAll);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,

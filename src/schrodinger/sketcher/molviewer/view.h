@@ -3,6 +3,7 @@
 #include <QGraphicsView>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/menu/background_context_menu.h"
 
 class QGraphicsScene;
 class QResizeEvent;

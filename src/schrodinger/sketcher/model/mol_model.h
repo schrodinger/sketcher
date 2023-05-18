@@ -128,6 +128,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                         const std::unordered_set<const RDKit::Bond*>& bonds);
 
     /**
+     * Unodable flip all atoms coordinates horizontally or vertically.
+     */
+    void flipAllHorizontal();
+    void flipAllVertical();
+
+    /**
      * Undoably add all atoms and bonds from the given molecule into this
      * molecule.
      *
@@ -203,6 +209,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     int m_next_bond_tag = 0;
     std::unordered_set<int> m_selected_atom_tags;
     std::unordered_set<int> m_selected_bond_tags;
+
+    /**
+     * Undoably transform all coordinates using the given function.
+     * @param desc The description to use for the redo/undo command.
+     * @param function The function to use to transform the coordinates.
+     */
+    void transformCoordinatesWithFunction(
+        const QString& desc, std::function<void(RDGeom::Point3D&)> function);
+
+    /**
+     *  compute the centroid of atoms by averaging their coordinates
+     */
+    RDGeom::Point3D findCentroid() const;
 
     /**
      * Set the atom tag for the specified atom
@@ -350,6 +369,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     bool removeBondFromCommand(const int bond_tag, const int start_atom_tag,
                                const int end_atom_tag);
+
+    /**
+     * set new coordinates for a set of atoms.  This method must only be called
+     * from an undo command.
+     */
+    void setCoordinatesFromCommand(const std::vector<int>& atom_tags,
+                                   const std::vector<RDGeom::Point3D>& coords);
 
     /**
      * Remove the specified atoms and bonds from the molecule.  This method must

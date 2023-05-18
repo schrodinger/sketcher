@@ -191,6 +191,62 @@ void MolModel::clear()
     doCommandWithMolUndo(redo, desc);
 }
 
+void MolModel::transformCoordinatesWithFunction(
+    const QString& desc, std::function<void(RDGeom::Point3D&)> function)
+{
+    auto& conf = m_mol.getConformer();
+    auto coords = conf.getPositions();
+
+    // apply function to all coordinates
+    std::for_each(coords.begin(), coords.end(), function);
+
+    auto atoms = m_mol.atoms();
+    std::vector<int> atom_tags(m_mol.getNumAtoms());
+    transform(atoms.begin(), atoms.end(), atom_tags.begin(),
+              [this](const RDKit::Atom* atom) { return getTagForAtom(atom); });
+
+    auto redo = [this, atom_tags, coords]() {
+        this->setCoordinatesFromCommand(atom_tags, coords);
+    };
+    auto current_coords = m_mol.getConformer().getPositions();
+    auto undo = [this, atom_tags, current_coords]() {
+        this->setCoordinatesFromCommand(atom_tags, current_coords);
+    };
+    doCommand(redo, undo, desc);
+}
+
+RDGeom::Point3D MolModel::findCentroid() const
+{
+    auto& conf = m_mol.getConformer();
+    auto coords = conf.getPositions();
+
+    // Calculate the centroid by averaging the coordinates
+    size_t numAtoms = coords.size();
+    RDGeom::Point3D centroid;
+    for (const auto& coord : coords) {
+        centroid += coord;
+    }
+    // avoid division by zero
+    if (numAtoms > 0) {
+        centroid /= static_cast<double>(numAtoms);
+    }
+    return centroid;
+}
+
+void MolModel::flipAllVertical()
+{
+    auto center = findCentroid();
+    auto flip_y = [center](auto& coord) { coord.y = 2 * center.y - coord.y; };
+    transformCoordinatesWithFunction("Flip All Vertical", flip_y);
+}
+
+void MolModel::flipAllHorizontal()
+{
+    auto center = findCentroid();
+    auto flip_x = [center](auto& coord) { coord.x = 2 * center.x - coord.x; };
+    transformCoordinatesWithFunction("flip All Horizontal", flip_x);
+}
+
 void MolModel::select(const std::unordered_set<const RDKit::Atom*>& atoms,
                       const std::unordered_set<const RDKit::Bond*>& bonds,
                       const SelectMode select_mode)
@@ -230,16 +286,17 @@ void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
     auto [selected_bond_tags, deselected_bond_tags] =
         divideBySelected(bond_tags, m_selected_bond_tags);
     if (select_mode == SelectMode::SELECT) {
-        // if we passed atom_tags and bond_tags to doSelectionCommand instead of
-        // deselected_atom_tags and deselected_bond_tags, then undoing the
-        // command could deselect atoms and bonds that should've remained
-        // selected.
+        // if we passed atom_tags and bond_tags to doSelectionCommand
+        // instead of deselected_atom_tags and deselected_bond_tags, then
+        // undoing the command could deselect atoms and bonds that should've
+        // remained selected.
         doSelectionCommand(deselected_atom_tags, deselected_bond_tags, true,
                            "Select");
     } else if (select_mode == SelectMode::DESELECT) {
-        // if we passed atom_tags and bond_tags to doSelectionCommand instead of
-        // selected_atom_tags and selected_bond_tags, then undoing the command
-        // could select atoms and bonds that should've remained deselected.
+        // if we passed atom_tags and bond_tags to doSelectionCommand
+        // instead of selected_atom_tags and selected_bond_tags, then
+        // undoing the command could select atoms and bonds that should've
+        // remained deselected.
         doSelectionCommand(selected_atom_tags, selected_bond_tags, false,
                            "Deselect");
     } else { // select_mode == SelectMode::TOGGLE
@@ -365,18 +422,18 @@ int MolModel::getTagForBond(const RDKit::Bond* const bond)
 
 const RDKit::Atom* MolModel::getAtomFromTag(int atom_tag) const
 {
-    // RDKit is missing const versions of bookmark getters, even though it has
-    // const atom getters that take an atom index.  To get around this, we use
-    // const_cast.  (See SHARED-9673.)
+    // RDKit is missing const versions of bookmark getters, even though it
+    // has const atom getters that take an atom index.  To get around this,
+    // we use const_cast.  (See SHARED-9673.)
     return const_cast<RDKit::RWMol*>(&m_mol)->getUniqueAtomWithBookmark(
         atom_tag);
 }
 
 const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
 {
-    // RDKit is missing const versions of bookmark getters, even though it has
-    // const bond getters that take a bond index.  To get around this, we use
-    // const_cast.  (See SHARED-9673.)
+    // RDKit is missing const versions of bookmark getters, even though it
+    // has const bond getters that take a bond index.  To get around this,
+    // we use const_cast.  (See SHARED-9673.)
     return const_cast<RDKit::RWMol*>(&m_mol)->getUniqueBondWithBookmark(
         bond_tag);
 }
@@ -386,8 +443,8 @@ void MolModel::addAtomFromCommand(const int atom_tag,
                                   const RDGeom::Point3D& coords)
 {
     Q_ASSERT(m_in_command);
-    // RDKit will take ownership of this atom after we call addAtom, so we don't
-    // have to worry about deleting it
+    // RDKit will take ownership of this atom after we call addAtom, so we
+    // don't have to worry about deleting it
     auto* atom = new RDKit::Atom(element);
     // addAtom returns the atom index of the newly added atom (*not* the new
     // number of atoms)
@@ -395,8 +452,8 @@ void MolModel::addAtomFromCommand(const int atom_tag,
                                             /* takeOwnership = */ true);
     setTagForAtom(atom, atom_tag);
     m_mol.getConformer().setAtomPos(atom_index, coords);
-    // we don't need to update the ring info here since an unbound atom can't be
-    // part of a ring
+    // we don't need to update the ring info here since an unbound atom
+    // can't be part of a ring
     emit moleculeChanged();
 }
 
@@ -406,8 +463,8 @@ bool MolModel::removeAtomFromCommand(const int atom_tag)
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
     bool selection_changed = false;
     selection_changed = m_selected_atom_tags.erase(atom_tag);
-    // RDKit automatically deletes all bonds involving this atom, so we have to
-    // remove those from the selection as well
+    // RDKit automatically deletes all bonds involving this atom, so we have
+    // to remove those from the selection as well
     for (auto cur_bond : m_mol.atomBonds(atom)) {
         int bond_tag = getTagForBond(cur_bond);
         if (m_selected_bond_tags.erase(bond_tag)) {
@@ -498,6 +555,24 @@ void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
         setTagForBond(bond, cur_bond_tag);
         ++bond_index;
+    }
+    emit moleculeChanged();
+}
+
+void MolModel::setCoordinatesFromCommand(
+    const std::vector<int>& atom_tags,
+    const std::vector<RDGeom::Point3D>& coords)
+{
+    Q_ASSERT(m_in_command);
+    if (atom_tags.size() == coords.size()) {
+
+        for (unsigned int i = 0; i < atom_tags.size(); ++i) {
+            RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tags[i]);
+            m_mol.getConformer().setAtomPos(atom->getIdx(), coords[i]);
+        }
+    } else {
+        throw std::invalid_argument("setCoordinatesFromCommand: atom_tags "
+                                    "and coords must have the same size");
     }
     emit moleculeChanged();
 }

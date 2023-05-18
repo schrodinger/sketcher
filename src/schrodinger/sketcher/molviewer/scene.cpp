@@ -15,6 +15,7 @@
 #include <QUrl>
 #include <QWidget>
 #include <QtGlobal>
+#include <QScreen>
 
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -52,7 +53,7 @@ NullSceneTool::NullSceneTool() : AbstractSceneTool(nullptr, nullptr)
 }
 
 Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
-             QObject* parent) :
+             QWidget* parent) :
     QGraphicsScene(parent),
     m_mol_model(mol_model),
     m_sketcher_model(sketcher_model)
@@ -84,7 +85,41 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     connect(m_sketcher_model, &SketcherModel::contextMenuObjectsRequested, this,
             [this]() { return m_context_menu_objects; });
 
+    m_background_context_menu =
+        new BackgroundContextMenu(m_sketcher_model, parent);
+    connectContextMenu(*m_background_context_menu);
+
     updateSceneTool();
+}
+
+void Scene::connectContextMenu(const BackgroundContextMenu& menu)
+{
+    /*
+    connect(&menu, &BackgroundContextMenu::saveImageRequested, this,
+            &sketcherScene::onSaveImageRequested);
+    connect(&menu, &BackgroundContextMenu::exportToFileRequested, this,
+            &sketcherScene::exportToFileRequested);
+    connect(&menu, &BackgroundContextMenu::undoRequested, this,
+            &sketcherScene::undo);
+    connect(&menu, &BackgroundContextMenu::redoRequested, this,
+            &sketcherScene::redo);
+            */
+    connect(&menu, &BackgroundContextMenu::flipHorizontalRequested, m_mol_model,
+            &MolModel::flipAllHorizontal);
+    connect(&menu, &BackgroundContextMenu::flipVerticalRequested, m_mol_model,
+            &MolModel::flipAllVertical);
+    /*
+connect(&menu, &BackgroundContextMenu::selectAllRequested, this,
+    &sketcherScene::selectAll);
+connect(&menu, &BackgroundContextMenu::copyRequested, this,
+    &sketcherScene::copyRequested);
+connect(&menu, &BackgroundContextMenu::pasteRequested, this,
+    [this]() { emit pasteRequested(true); });
+connect(&menu, &BackgroundContextMenu::clearRequested, this,
+    &sketcherScene::clearStructure);
+connect(&menu, &BackgroundContextMenu::aboutToHide, this,
+    &sketcherScene::onContextMenuHidden);
+    */
 }
 
 Scene::~Scene()
@@ -238,10 +273,66 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
             m_scene_tool->onMouseClick(event);
         }
         m_scene_tool->onMouseRelease(event);
+
+    } else if (event->button() == Qt::RightButton) {
+        showContextMenu(event);
     }
 
     m_mouse_down_screen_pos = QPointF();
     m_drag_started = false;
+}
+
+void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
+{
+    // Collect the set of items that the context menu should interact with
+    // based on the position of the cursor
+    std::unordered_set<QGraphicsItem*> context_menu_objects;
+    auto top_item = getTopInteractiveItemAt(event->pos());
+    if (top_item != nullptr) {
+        if (top_item->isSelected()) {
+            // If the cursor is over a selected object, the context menu should
+            // be concerned with all selected objects
+            for (auto item : selectedItems()) {
+                context_menu_objects.insert(item);
+            }
+        } else {
+            context_menu_objects.insert(top_item);
+        }
+    }
+    // TODO: call different menus based on context menu objects. For now, just
+    // call m_background_context_menu
+    QMenu* menu = nullptr;
+    menu = m_background_context_menu;
+
+    menu->move(event->screenPos());
+    auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
+    auto menu_rectangle = menu->geometry();
+
+    // Make sure the menu is not off the screen (or on a different screen)
+    if (menu_rectangle.left() < screen_rect.left()) {
+        menu_rectangle.moveLeft(screen_rect.left());
+    }
+    if (menu_rectangle.top() < screen_rect.top()) {
+        menu_rectangle.moveTop(screen_rect.top());
+    }
+    if (menu_rectangle.right() > screen_rect.right()) {
+        menu_rectangle.moveRight(screen_rect.right());
+    }
+    if (menu_rectangle.bottom() > screen_rect.bottom()) {
+        menu_rectangle.moveBottom(screen_rect.bottom());
+    }
+    menu->move(menu_rectangle.topLeft());
+    menu->show();
+}
+
+AbstractGraphicsItem* Scene::getTopInteractiveItemAt(const QPointF& pos) const
+{
+    for (auto item : items(pos)) {
+        if (auto interactive_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
+            return interactive_item;
+        }
+    }
+    return nullptr;
 }
 
 void Scene::onMolModelSelectionChanged()

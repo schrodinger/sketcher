@@ -17,6 +17,7 @@
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+#include "schrodinger/sketcher/menu/background_context_menu.h"
 
 class QObject;
 class QFont;
@@ -62,7 +63,7 @@ class SKETCHER_API Scene : public QGraphicsScene
     Q_OBJECT
   public:
     Scene(MolModel* mol_model, SketcherModel* sketcher_model,
-          QObject* parent = nullptr);
+          QWidget* parent = nullptr);
     virtual ~Scene();
 
     /**
@@ -130,6 +131,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void updateSelectionHighlighting();
 
+    /**
+     * @return the top interactive graphics item at the given position, or
+     * nullptr if none are found
+     */
+    AbstractGraphicsItem* getTopInteractiveItemAt(const QPointF& pos) const;
+
     // Override the QGraphicsScene mouse event methods
     void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
@@ -158,6 +165,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool);
 
+    /**
+     * display the appropriate context menu at the given position
+     * @param event The mouse event that triggered the context menu
+     */
+    void showContextMenu(QGraphicsSceneMouseEvent* event);
+
     Fonts m_fonts;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
@@ -169,6 +182,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
     std::shared_ptr<AbstractSceneTool> m_scene_tool;
     bool m_drag_started = false;
+
+    BackgroundContextMenu* m_background_context_menu;
 
     /**
      * Objects associated with the context menu instance that is currently open.
@@ -196,6 +211,15 @@ class SKETCHER_API Scene : public QGraphicsScene
      * @return window for the parent widget
      */
     QWidget* window() const;
+
+    /**
+     * Connect relevant slots to signals from a context menu instance.
+     *
+     * This method should only be called once per menu instance.
+     *
+     * @param menu A context menu instance
+     */
+    void connectContextMenu(const BackgroundContextMenu& menu);
 
     /**
      * Overrides the drag/drop events to import text files of supported formats
