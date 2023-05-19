@@ -26,10 +26,10 @@ class SKETCHER_API View : public QGraphicsView
 
   public slots:
     /**
-     * fit the scene to the view so that the entire scene is visible, but avoid
-     * zooming in too much for small molecules
+     * Scale and center the view matrix so that all objects in the scene are
+     * visible, but avoid zooming in too much for small molecules
      */
-    void onFitToScreenRequested();
+    void fitToScreen();
 
   signals:
     void resized();

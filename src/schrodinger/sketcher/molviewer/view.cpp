@@ -71,7 +71,7 @@ void View::adjustSceneAroundItems()
     cur_scene->setSceneRect(items_bounding_rect);
 }
 
-void View::onFitToScreenRequested()
+void View::fitToScreen()
 {
     QGraphicsScene* cur_scene = scene();
     if (!cur_scene) {

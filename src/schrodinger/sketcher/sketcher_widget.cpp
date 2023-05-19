@@ -72,8 +72,12 @@ void SketcherWidget::connectTopBarSlots()
             &QUndoStack::undo);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::redoRequested, m_undo_stack,
             &QUndoStack::redo);
-    // TODO: cleanup
-    // TODO: fitToView
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested, [this]() {
+        m_mol_model->regenerateCoordinates();
+        m_ui->view->fitToScreen();
+    });
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
+            m_ui->view, &View::fitToScreen);
 
     // Connect "More Actions" menu
     connect(m_ui->top_bar_wdg, &SketcherTopBar::flipHorizontalRequested,
@@ -89,9 +93,6 @@ void SketcherWidget::connectTopBarSlots()
             m_mol_model, &MolModel::invertSelection);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, this,
             &SketcherWidget::paste);
-
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
-            m_ui->view, &View::onFitToScreenRequested);
 
     // Clear/Import/Export
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested,

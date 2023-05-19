@@ -173,11 +173,28 @@ void MolModel::addMolFromText(const std::string& text, Format format)
     boost::shared_ptr<RDKit::RWMol> mol{nullptr};
     mol = rdkit_extensions::to_rdkit(text, format);
 
-    // TODO: deal with chiral flag viz. SHARED-8774
-    // TODO: honor existing coordinates if present
-    RDKit::CoordGen::addCoords(*mol);
+    // SHARED-8774: Deal with chiral flag
+    // SKETCH-1841: Move this rdkit specific logic into sketcher/rdkit
+    // Add 2D coordinates only if the molecule does not already have them
+    // present (ie specified via molblock, SMILES extension, etc.)
+    auto conformer_2d =
+        std::find_if_not(mol->beginConformers(), mol->endConformers(),
+                         std::mem_fn(&RDKit::Conformer::is3D));
+    if (conformer_2d == mol->endConformers()) {
+        RDKit::CoordGen::addCoords(*mol);
+    }
     assign_CIP_labels(*mol);
     addMol(*mol);
+}
+
+void MolModel::regenerateCoordinates()
+{
+    auto cmd = [this]() {
+        RDKit::CoordGen::addCoords(m_mol);
+        assign_CIP_labels(m_mol);
+        emit moleculeChanged();
+    };
+    doCommandWithMolUndo(cmd, "Clean Up Coordinates");
 }
 
 void MolModel::clear()

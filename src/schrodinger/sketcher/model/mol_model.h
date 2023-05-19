@@ -154,6 +154,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                         rdkit_extensions::Format format);
 
     /**
+     * Fully generate coordinates for the current molecule
+     */
+    void regenerateCoordinates();
+
+    /**
      * Undoably clear the molecule.
      */
     void clear();
@@ -198,9 +203,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void moleculeChanged();
 
-    // Signal emitted when selection is changed.  Note that atoms and bonds will
-    // automatically be deselected when they are removed and reselected if the
-    // removal is undone, and this signal *will* be emitted in those scenario.
+    /**
+     * Signal emitted when selection is changed.  Note that atoms and bonds will
+     * automatically be deselected when they are removed and reselected if the
+     * removal is undone, and this signal *will* be emitted in those scenario.
+     */
     void selectionChanged();
 
   protected:
