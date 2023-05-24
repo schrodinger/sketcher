@@ -7,6 +7,7 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 
 #include <GraphMol/MolOps.h>
+#include <GraphMol/FileParsers/MolFileStereochem.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 
@@ -70,61 +71,17 @@ bool is_attachment_point_dummy(const RDKit::Atom& atom)
 
 void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
 {
-    auto stereo_groups = mol.getStereoGroups();
-    std::unordered_set<RDKit::Atom*> seen_chiral_atoms;
-    for (const auto& sg : stereo_groups) {
-        const auto& atoms = sg.getAtoms();
-        seen_chiral_atoms.insert(atoms.begin(), atoms.end());
-    }
-
-    std::vector<RDKit::Atom*> ungrouped_atoms;
-    for (auto atom : mol.atoms()) {
-        if ((atom->getChiralTag() == RDKit::Atom::CHI_TETRAHEDRAL_CW ||
-             atom->getChiralTag() == RDKit::Atom::CHI_TETRAHEDRAL_CCW) &&
-            seen_chiral_atoms.count(atom) == 0) {
-            ungrouped_atoms.push_back(atom);
-        }
-    }
-
-    if (ungrouped_atoms.empty()) {
-        return;
-    }
-
-    // Default to chiral flag on (absolute stereo) if the flag is not present,
-    // or else we'll flip stereo on things that don't come from .sdf.
-    // For .sdf, we explicitly set chiral_flag=0 if the flag is not present
-    // (see convert.cpp). Note that only adds the flag property when it is on,
-    // when it is off, no property is present.
+    // translateChiralFlagToStereoGroups() works based on the chiral flag, so
+    // make sure it is set. We default to chiral flag on (absolute stereo) if
+    // the flag is not present, or else we'll flip stereo on things that don't
+    // come from .sdf.
     int chiral_flag{1};
-    mol.getPropIfPresent(RDKit::common_properties::_MolFileChiralFlag,
-                         chiral_flag);
-
-    if (chiral_flag == 1) {
-        // We have a chiral flag: append to or create the ABS group
-        // (ABS is unique!)
-
-        auto is_abs = [](const auto& sg) {
-            return sg.getGroupType() == RDKit::StereoGroupType::STEREO_ABSOLUTE;
-        };
-        auto abs_group =
-            std::find_if(stereo_groups.begin(), stereo_groups.end(), is_abs);
-
-        if (abs_group != stereo_groups.end()) {
-            auto abs_atoms = abs_group->getAtoms();
-            ungrouped_atoms.insert(ungrouped_atoms.end(), abs_atoms.begin(),
-                                   abs_atoms.end());
-            stereo_groups.erase(abs_group);
-        }
-
-        stereo_groups.emplace_back(RDKit::StereoGroupType::STEREO_ABSOLUTE,
-                                   std::move(ungrouped_atoms));
-    } else {
-        // No chiral flag: ungrouped atoms go into a new AND group
-        stereo_groups.emplace_back(RDKit::StereoGroupType::STEREO_AND,
-                                   std::move(ungrouped_atoms));
+    if (!mol.getPropIfPresent(RDKit::common_properties::_MolFileChiralFlag,
+                              chiral_flag)) {
+        mol.setProp(RDKit::common_properties::_MolFileChiralFlag, chiral_flag);
     }
 
-    mol.setStereoGroups(stereo_groups);
+    RDKit::translateChiralFlagToStereoGroups(mol);
 }
 
 void reapply_molblock_wedging(RDKit::ROMol& rdk_mol)
