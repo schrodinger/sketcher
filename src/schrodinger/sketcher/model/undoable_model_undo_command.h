@@ -135,7 +135,7 @@ template <typename T> class SKETCHER_API UndoableModelMergeableUndoCommand
     T m_data;
 
     // overridden AbstractUndoableModelUndoCommand method
-    void call_func(const std::function<void(T)>& func);
+    void call_func(const std::function<void(T)>& func) override;
 };
 
 } // namespace sketcher
