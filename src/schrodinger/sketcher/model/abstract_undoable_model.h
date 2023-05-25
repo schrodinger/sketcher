@@ -6,6 +6,7 @@
 #include <QUndoStack>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/model/undoable_model_undo_command.h"
 
 class QString;
 class QUndoStack;
@@ -14,8 +15,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-class UndoableModelUndoCommand;
 
 /**
  * An RAII class for creating undo macros in a QUndoStack
@@ -118,12 +117,50 @@ class SKETCHER_API AbstractUndoableModel : public QObject
                    const std::function<void()> undo,
                    const QString& description);
 
+    /**
+     * Throw an exception if we're currently running a command
+     */
+    void throwIfInCommand();
+
+    /**
+     * Create an undo command and add it to the undo stack, which automatically
+     * executes the command.  If multiple commands with the same merge_id are
+     * executed in a row, they will be merged.
+     *
+     * @param redo The function to call on redo (or for the initial do).  The
+     * function will be called either with init_data or with merged data if
+     * multiple commands have been merged.
+     * @param undo The function to call on undo.  The function will be called
+     * either with init_data or with merged data if multiple commands have been
+     * merged.
+     * @param merge_func The function to call when merging two commands.  It
+     * will be called with the data from each of the two commands being merged,
+     * and should return the merged data.
+     * @param merge_id An arbitrary integer that will only be used for this type
+     * of command.  If multiple commands with the same merge_id are executed in
+     * a row, they will be merged.
+     * @param init_data The data that will initially be passed to redo and undo
+     * @param description A description of the command
+     */
+    template <typename T>
+    void doMergeableCommand(const std::function<void(T)> redo,
+                            const std::function<void(T)> undo,
+                            const std::function<T(T, T)>& merge_func,
+                            const int merge_id, const T init_data,
+                            const QString& description)
+    // we must implement this method in the header because of the templating
+    {
+        throwIfInCommand();
+        m_undo_stack->push(new UndoableModelMergeableUndoCommand<T>(
+            this, redo, undo, merge_func, merge_id, init_data, description));
+    }
+
     QUndoStack* m_undo_stack;
 
-    // m_in_command is updated by UndoableModelUndoCommand immediately before
-    // and after running a command
+    // m_in_command is updated by AbstractUndoableModelUndoCommand immediately
+    // before and after running a command
     bool m_in_command = false;
-    friend class UndoableModelUndoCommand;
+    template <typename T> friend class AbstractUndoableModelUndoCommand;
 };
 
 } // namespace sketcher

@@ -4,8 +4,6 @@
 
 class QUndoStack;
 
-// TODO: Move these tests to the molviewer directory once Qt moc builds work in
-//       that directory
 namespace schrodinger
 {
 namespace sketcher
@@ -18,6 +16,7 @@ class TestUndoableModel : public AbstractUndoableModel
     TestUndoableModel(QUndoStack* const undo_stack);
     void add(int value);
     void addTwice(int value);
+    void mergeableAdd(int value);
 
     int m_sum = 0;
     int m_in_redo_count = 0;

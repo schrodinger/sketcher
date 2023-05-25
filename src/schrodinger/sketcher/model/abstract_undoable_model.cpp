@@ -29,6 +29,14 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
                                       const std::function<void()> undo,
                                       const QString& description)
 {
+    throwIfInCommand();
+    UndoableModelUndoCommand* command =
+        new UndoableModelUndoCommand(this, redo, undo, description);
+    m_undo_stack->push(command);
+}
+
+void AbstractUndoableModel::throwIfInCommand()
+{
     if (m_in_command) {
         // Creating a command while inside of a command will work correctly
         // during the initial "do" of the command, but will crash when the
@@ -37,9 +45,6 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
         throw std::runtime_error(
             "Cannot create a command from within a command");
     }
-    UndoableModelUndoCommand* command =
-        new UndoableModelUndoCommand(this, redo, undo, description);
-    m_undo_stack->push(command);
 }
 
 UndoMacroRAII AbstractUndoableModel::createUndoMacro(const QString& description)

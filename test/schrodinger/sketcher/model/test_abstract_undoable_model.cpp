@@ -60,6 +60,25 @@ void TestUndoableModel::addTwice(int value)
     doCommand(redo, undo, desc);
 }
 
+void TestUndoableModel::mergeableAdd(int value)
+{
+    // note that value is passed in as an argument instead of being captured
+    auto redo = [this](int value) {
+        m_sum += value;
+        emit inRedo();
+    };
+    auto undo = [this](int value) {
+        m_sum -= value;
+        emit inUndo();
+    };
+    auto merge = [this](int this_value, int other_value) {
+        return this_value + other_value;
+    };
+    QString desc = QString("Mergeable add").arg(value);
+    int merge_id = 1;
+    doMergeableCommand<int>(redo, undo, merge, merge_id, value, desc);
+}
+
 BOOST_AUTO_TEST_CASE(test_sumAndSignals)
 {
     QUndoStack undo_stack;
@@ -166,6 +185,67 @@ BOOST_AUTO_TEST_CASE(test_exception)
     QUndoStack undo_stack;
     TestUndoableModel model(&undo_stack);
     BOOST_CHECK_THROW(model.addTwice(5), std::runtime_error);
+}
+
+BOOST_AUTO_TEST_CASE(test_merging)
+{
+    QUndoStack undo_stack;
+    TestUndoableModel model(&undo_stack);
+    BOOST_TEST(undo_stack.count() == 0);
+    BOOST_TEST(model.m_sum == 0);
+    model.mergeableAdd(5);
+    BOOST_TEST(undo_stack.count() == 1);
+    BOOST_TEST(undo_stack.canUndo());
+    BOOST_TEST(model.m_sum == 5);
+    BOOST_TEST(model.m_in_redo_count == 1);
+    BOOST_TEST(model.m_in_undo_count == 0);
+    model.mergeableAdd(3);
+    BOOST_TEST(undo_stack.count() == 1);
+    BOOST_TEST(undo_stack.canUndo());
+    BOOST_TEST(model.m_sum == 8);
+    BOOST_TEST(model.m_in_redo_count == 2);
+    BOOST_TEST(model.m_in_undo_count == 0);
+    model.mergeableAdd(2);
+    BOOST_TEST(undo_stack.count() == 1);
+    BOOST_TEST(undo_stack.canUndo());
+    BOOST_TEST(model.m_sum == 10);
+    BOOST_TEST(model.m_in_redo_count == 3);
+    BOOST_TEST(model.m_in_undo_count == 0);
+    undo_stack.undo();
+    BOOST_TEST(model.m_sum == 0);
+    BOOST_TEST(model.m_in_redo_count == 3);
+    BOOST_TEST(model.m_in_undo_count == 1);
+    undo_stack.redo();
+    BOOST_TEST(model.m_sum == 10);
+    BOOST_TEST(model.m_in_redo_count == 4);
+    BOOST_TEST(model.m_in_undo_count == 1);
+
+    model.add(4);
+    BOOST_TEST(undo_stack.count() == 2);
+    BOOST_TEST(undo_stack.canUndo());
+    BOOST_TEST(model.m_sum == 14);
+
+    model.mergeableAdd(1);
+    BOOST_TEST(undo_stack.count() == 3);
+    BOOST_TEST(undo_stack.canUndo());
+    BOOST_TEST(model.m_sum == 15);
+    model.mergeableAdd(7);
+    BOOST_TEST(undo_stack.count() == 3);
+    BOOST_TEST(undo_stack.canUndo());
+    BOOST_TEST(model.m_sum == 22);
+
+    undo_stack.undo();
+    BOOST_TEST(model.m_sum == 14);
+    undo_stack.undo();
+    BOOST_TEST(model.m_sum == 10);
+    undo_stack.undo();
+    BOOST_TEST(model.m_sum == 0);
+    undo_stack.redo();
+    BOOST_TEST(model.m_sum == 10);
+    undo_stack.redo();
+    BOOST_TEST(model.m_sum == 14);
+    undo_stack.redo();
+    BOOST_TEST(model.m_sum == 22);
 }
 
 } // namespace sketcher

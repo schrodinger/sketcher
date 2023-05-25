@@ -1,16 +1,19 @@
 #include "schrodinger/sketcher/model/undoable_model_undo_command.h"
+#include "schrodinger/sketcher/model/abstract_undoable_model.h"
 
 #include <QString>
+
+#include <Geometry/point.h>
 
 namespace schrodinger
 {
 namespace sketcher
 {
 
-UndoableModelUndoCommand::UndoableModelUndoCommand(
-    AbstractUndoableModel* const model, const std::function<void()>& redo,
-    const std::function<void()>& undo, const QString& description,
-    QUndoCommand* parent) :
+template <typename T>
+AbstractUndoableModelUndoCommand<T>::AbstractUndoableModelUndoCommand(
+    AbstractUndoableModel* const model, const T& redo, const T& undo,
+    const QString& description, QUndoCommand* parent) :
     QUndoCommand(description, parent),
     m_model(model),
     m_redo(redo),
@@ -18,24 +21,90 @@ UndoableModelUndoCommand::UndoableModelUndoCommand(
 {
 }
 
-void UndoableModelUndoCommand::redo()
+template <typename T> void AbstractUndoableModelUndoCommand<T>::redo()
 {
     do_func(m_redo);
 }
 
-void UndoableModelUndoCommand::undo()
+template <typename T> void AbstractUndoableModelUndoCommand<T>::undo()
 {
     do_func(m_undo);
 }
-void UndoableModelUndoCommand::do_func(const std::function<void()>& func)
+
+template <typename T>
+void AbstractUndoableModelUndoCommand<T>::do_func(const T& func)
 {
     bool signals_blocked = m_model->blockSignals(false);
     bool was_in_command = m_model->m_in_command;
     m_model->m_in_command = true;
-    func();
+    call_func(func);
     m_model->blockSignals(signals_blocked);
     m_model->m_in_command = was_in_command;
 }
+
+UndoableModelUndoCommand::UndoableModelUndoCommand(
+    AbstractUndoableModel* const model, const std::function<void()>& redo,
+    const std::function<void()>& undo, const QString& description,
+    QUndoCommand* parent) :
+    AbstractUndoableModelUndoCommand(model, redo, undo, description, parent)
+{
+}
+
+void UndoableModelUndoCommand::call_func(const std::function<void()>& func)
+{
+    func();
+}
+
+template <typename T>
+UndoableModelMergeableUndoCommand<T>::UndoableModelMergeableUndoCommand(
+    AbstractUndoableModel* const model, const std::function<void(T)>& redo,
+    const std::function<void(T)>& undo,
+    const std::function<T(T, T)>& merge_func, const int merge_id,
+    const T init_data, const QString& description, QUndoCommand* parent) :
+    AbstractUndoableModelUndoCommand<std::function<void(T)>>(
+        model, redo, undo, description, parent),
+    m_merge_func(merge_func),
+    m_merge_id(merge_id),
+    m_data(init_data)
+{
+}
+
+template <typename T> int UndoableModelMergeableUndoCommand<T>::id() const
+{
+    return m_merge_id;
+}
+
+template <typename T> T UndoableModelMergeableUndoCommand<T>::getData() const
+{
+    return m_data;
+}
+
+template <typename T> bool
+UndoableModelMergeableUndoCommand<T>::mergeWith(const QUndoCommand* command)
+{
+    if (m_merge_id != command->id()) {
+        return false;
+    }
+    auto* mergeable_command =
+        dynamic_cast<const UndoableModelMergeableUndoCommand<T>*>(command);
+    if (mergeable_command != nullptr) {
+        m_data = m_merge_func(m_data, mergeable_command->getData());
+    }
+    return mergeable_command != nullptr;
+}
+
+template <typename T> void UndoableModelMergeableUndoCommand<T>::call_func(
+    const std::function<void(T)>& func)
+{
+    func(m_data);
+}
+
+// explicit template instantiations
+template class UndoableModelMergeableUndoCommand<int>;
+template class UndoableModelMergeableUndoCommand<float>;
+template class UndoableModelMergeableUndoCommand<RDGeom::Point3D>;
+template class UndoableModelMergeableUndoCommand<
+    std::pair<float, RDGeom::Point3D>>;
 
 } // namespace sketcher
 } // namespace schrodinger
