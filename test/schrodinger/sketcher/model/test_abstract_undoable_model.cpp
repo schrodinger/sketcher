@@ -71,7 +71,7 @@ void TestUndoableModel::mergeableAdd(int value)
         m_sum -= value;
         emit inUndo();
     };
-    auto merge = [this](int this_value, int other_value) {
+    auto merge = [](int this_value, int other_value) {
         return this_value + other_value;
     };
     QString desc = QString("Mergeable add").arg(value);
