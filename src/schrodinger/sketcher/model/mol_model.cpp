@@ -123,14 +123,16 @@ std::vector<int> MolModel::getNextNTags(const size_t count,
 
 void MolModel::addAtom(const Element& element, const RDGeom::Point3D& coords,
                        const RDKit::Bond::BondType& bond_type,
+                       const RDKit::Bond::BondDir& bond_dir,
                        const RDKit::Atom* const bound_to_atom)
 {
-    addAtomChain(element, {coords}, bond_type, bound_to_atom);
+    addAtomChain(element, {coords}, bond_type, bond_dir, bound_to_atom);
 }
 
 void MolModel::addAtomChain(const Element& element,
                             const std::vector<RDGeom::Point3D>& coords,
                             const RDKit::Bond::BondType& bond_type,
+                            const RDKit::Bond::BondDir& bond_dir,
                             const RDKit::Atom* const bound_to_atom)
 {
     size_t num_atoms = coords.size();
@@ -148,24 +150,27 @@ void MolModel::addAtomChain(const Element& element,
     std::string elem_name = atomic_number_to_name(atomic_num);
     QString desc = QString("Add %1").arg(QString::fromStdString(elem_name));
     auto redo = [this, atom_tags, bond_tags, atomic_num, coords, bond_type,
-                 bound_to_atom_tag]() {
+                 bond_dir, bound_to_atom_tag]() {
         addAtomChainFromCommand(atom_tags, bond_tags, atomic_num, coords,
-                                bond_type, bound_to_atom_tag);
+                                bond_type, bond_dir, bound_to_atom_tag);
     };
     doCommandWithMolUndo(redo, desc);
 }
 
 void MolModel::addBond(const RDKit::Atom* const start_atom,
                        const RDKit::Atom* const end_atom,
-                       const RDKit::Bond::BondType& bond_type)
+                       const RDKit::Bond::BondType& bond_type,
+                       const RDKit::Bond::BondDir& bond_dir)
 {
     int bond_tag = m_next_bond_tag++;
     int start_atom_tag = getTagForAtom(start_atom);
     int end_atom_tag = getTagForAtom(end_atom);
 
     QString desc = QString("Add bond");
-    auto redo = [this, bond_tag, start_atom_tag, end_atom_tag, bond_type]() {
-        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, bond_type);
+    auto redo = [this, bond_tag, start_atom_tag, end_atom_tag, bond_type,
+                 bond_dir]() {
+        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, bond_type,
+                           bond_dir);
     };
     doCommandWithMolUndo(redo, desc);
 }
@@ -243,13 +248,21 @@ void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
 }
 
 void MolModel::mutateBond(const RDKit::Bond* const bond,
-                          const RDKit::Bond::BondType& bond_type)
+                          const RDKit::Bond::BondType& bond_type,
+                          const RDKit::Bond::BondDir& bond_dir)
 {
     int bond_tag = getTagForBond(bond);
-    auto redo = [this, bond_tag, bond_type]() {
-        mutateBondFromCommand(bond_tag, bond_type);
+    auto redo = [this, bond_tag, bond_type, bond_dir]() {
+        mutateBondFromCommand(bond_tag, bond_type, bond_dir);
     };
     doCommandWithMolUndo(redo, "Mutate bond");
+}
+
+void MolModel::flipBond(const RDKit::Bond* const bond)
+{
+    int bond_tag = getTagForBond(bond);
+    auto redo = [this, bond_tag]() { flipBondFromCommand(bond_tag); };
+    doCommandWithMolUndo(redo, "Flip bond");
 }
 
 void MolModel::regenerateCoordinates()
@@ -523,7 +536,8 @@ const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
 void MolModel::addAtomChainFromCommand(
     const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
     const unsigned int atomic_num, const std::vector<RDGeom::Point3D>& coords,
-    const RDKit::Bond::BondType& bond_type, const int bound_to_atom_tag)
+    const RDKit::Bond::BondType& bond_type,
+    const RDKit::Bond::BondDir& bond_dir, const int bound_to_atom_tag)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* prev_atom = nullptr;
@@ -547,6 +561,7 @@ void MolModel::addAtomChainFromCommand(
             unsigned int bond_index =
                 m_mol.addBond(prev_atom, atom, bond_type) - 1;
             RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
+            bond->setBondDir(bond_dir);
             setTagForBond(bond, cur_bond_tag);
         }
         prev_atom = atom;
@@ -574,7 +589,8 @@ bool MolModel::removeAtomFromCommand(const int atom_tag)
 
 void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
                                   const int end_atom_tag,
-                                  const RDKit::Bond::BondType& bond_type)
+                                  const RDKit::Bond::BondType& bond_type,
+                                  const RDKit::Bond::BondDir& bond_dir)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
@@ -584,6 +600,7 @@ void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
     unsigned int bond_index =
         m_mol.addBond(start_atom, end_atom, bond_type) - 1;
     RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
+    bond->setBondDir(bond_dir);
     setTagForBond(bond, bond_tag);
     finalizeMoleculeChange();
 }
@@ -655,11 +672,24 @@ void MolModel::mutateAtomFromCommand(const int atom_tag,
 }
 
 void MolModel::mutateBondFromCommand(const int bond_tag,
-                                     const RDKit::Bond::BondType& bond_type)
+                                     const RDKit::Bond::BondType& bond_type,
+                                     const RDKit::Bond::BondDir& bond_dir)
 {
     Q_ASSERT(m_in_command);
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     bond->setBondType(bond_type);
+    bond->setBondDir(bond_dir);
+    finalizeMoleculeChange();
+}
+
+void MolModel::flipBondFromCommand(const int bond_tag)
+{
+    Q_ASSERT(m_in_command);
+    RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
+    unsigned int orig_begin = bond->getBeginAtomIdx();
+    unsigned int orig_end = bond->getEndAtomIdx();
+    bond->setEndAtomIdx(orig_begin);
+    bond->setBeginAtomIdx(orig_end);
     finalizeMoleculeChange();
 }
 

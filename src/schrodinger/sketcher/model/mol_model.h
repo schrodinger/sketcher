@@ -105,13 +105,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param element The element for the new atom
      * @param coords The coordinates for the new atom
      * @param bond_type If bound_to is given, the type of bond that will be
-     * added between the new atom and bound_to_atom
+     * added between the new atom and bound_to
+     * @param bond_dir If bound_to is given, the stereochemistry of the bond
+     * that will be added between the new atom and bound_to
      * @param bound_to_atom If given, a bond will be added between this atom and
      * the newly added atom
      */
     void addAtom(
         const Element& element, const RDGeom::Point3D& coords,
         const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
         const RDKit::Atom* const bound_to_atom = nullptr);
     // TODO: add support for query atoms, R groups
 
@@ -122,20 +125,29 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param element The element for the new atoms
      * @param coords The coordinates for the new atoms
      * @param bond_type The type of bond to add
+     * @param bond_dir The stereochemistry of the bond to add
      * @param bound_to_atom If given, a bond will be added between this atom and
      * the first atom in the chain
      */
-    void addAtomChain(const Element& element,
-                      const std::vector<RDGeom::Point3D>& coords,
-                      const RDKit::Bond::BondType& bond_type,
-                      const RDKit::Atom* const bound_to_atom = nullptr);
+    void addAtomChain(
+        const Element& element, const std::vector<RDGeom::Point3D>& coords,
+        const RDKit::Bond::BondType& bond_type,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
+        const RDKit::Atom* const bound_to_atom = nullptr);
 
     /**
      * Undoably add a bond between the specified atoms.
+     *
+     * @param start_atom The start atom for the bond
+     * @param end_atom The end atom for the bond
+     * @param bond_type The type of bond to add
+     * @param bond_dir The stereochemistry of the bond to add
      */
-    void addBond(const RDKit::Atom* const start_atom,
-                 const RDKit::Atom* const end_atom,
-                 const RDKit::Bond::BondType& bond_type);
+    void
+    addBond(const RDKit::Atom* const start_atom,
+            const RDKit::Atom* const end_atom,
+            const RDKit::Bond::BondType& bond_type,
+            const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
     // TODO: add support for query bonds
 
     /**
@@ -182,9 +194,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Change the type of an existing bond
+     *
+     * @param bond The bond to mutate
+     * @param bond_type The type of bond to mutate to
+     * @param bond_dir The stereochemistry to mutate to
      */
-    void mutateBond(const RDKit::Bond* const bond,
-                    const RDKit::Bond::BondType& bond_type);
+    void mutateBond(
+        const RDKit::Bond* const bond, const RDKit::Bond::BondType& bond_type,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
+
+    /**
+     * Reverse an existing bond (i.e. swap the start and end atoms).  This is
+     * only meaningful for dative bonds or bonds with a BondDir set.
+     */
+    void flipBond(const RDKit::Bond* const bond);
 
     /**
      * Fully generate coordinates for the current molecule
@@ -403,6 +426,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atomic_num The atomic number for the new atoms
      * @param coords The coordinates for the new atoms
      * @param bond_type The type of bond to add
+     * @param bond_dir The stereochemistry of the bond to add
      * @param bound_to_atom_tag If given, a bond will be added between the
      * existing atom with this tag and the first new atom in the chain
      */
@@ -411,6 +435,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                  const unsigned int atomic_num,
                                  const std::vector<RDGeom::Point3D>& coords,
                                  const RDKit::Bond::BondType& bond_type,
+                                 const RDKit::Bond::BondDir& bond_dir,
                                  const int bound_to_atom_tag);
 
     /**
@@ -428,7 +453,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void addBondFromCommand(const int bond_tag, const int start_atom_tag,
                             const int end_atom_tag,
-                            const RDKit::Bond::BondType& bond_type);
+                            const RDKit::Bond::BondType& bond_type,
+                            const RDKit::Bond::BondDir& bond_dir);
 
     /**
      * Remove a bond from the molecule.  This method must only be called from an
@@ -484,7 +510,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * from an undo command.
      */
     void mutateBondFromCommand(const int bond_tag,
-                               const RDKit::Bond::BondType& bond_type);
+                               const RDKit::Bond::BondType& bond_type,
+                               const RDKit::Bond::BondDir& bond_dir);
+
+    /**
+     * Reverse an existing bond (i.e. swap the start and end atoms).  This
+     * method must only be called from an undo command.
+     */
+    void flipBondFromCommand(const int bond_tag);
 
     /**
      * Clear the molecule.  This method must only be called from an undo

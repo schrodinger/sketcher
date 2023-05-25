@@ -26,6 +26,7 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -286,8 +287,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    // this method intentionally a no-op.  The default behavior is to select a
-    // graphics item that's double-clicked, and we don't want that.
+    // TODO: select clicked molecule
 }
 
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
@@ -404,6 +404,35 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             auto atom_query = m_sketcher_model->getAtomQuery();
             return std::make_shared<DrawAtomQuerySceneTool>(atom_query, this,
                                                             m_mol_model);
+        }
+    } else if (draw_tool == DrawTool::BOND) {
+        auto bond_tool = m_sketcher_model->getBondTool();
+        switch (bond_tool) {
+            case BondTool::SINGLE:
+            case BondTool::DOUBLE:
+            case BondTool::TRIPLE:
+            case BondTool::COORDINATE:
+            case BondTool::ZERO:
+            case BondTool::SINGLE_UP:
+            case BondTool::SINGLE_DOWN:
+            case BondTool::AROMATIC:
+                return std::make_shared<DrawBondSceneTool>(bond_tool, this,
+                                                           m_mol_model);
+                break;
+            case BondTool::SINGLE_EITHER:
+            case BondTool::DOUBLE_EITHER:
+            case BondTool::SINGLE_OR_DOUBLE:
+            case BondTool::SINGLE_OR_AROMATIC:
+            case BondTool::DOUBLE_OR_AROMATIC:
+            case BondTool::ANY:
+                return std::make_shared<DrawBondQuerySceneTool>(bond_tool, this,
+                                                                m_mol_model);
+                break;
+            case BondTool::ATOM_CHAIN:
+                // TODO
+                // return std::make_shared<DrawChainSceneTool>(this,
+                // m_mol_model);
+                break;
         }
     }
     // tool not yet implemented

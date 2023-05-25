@@ -128,7 +128,8 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     BOOST_TEST(mol->getNumBonds() == 0);
     const auto* c_atom = mol->getAtomWithIdx(0);
     model.addAtom(Element::N, RDGeom::Point3D(1.0, 2.0, 0.0),
-                  RDKit::Bond::BondType::SINGLE, c_atom);
+                  RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE,
+                  c_atom);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* n_atom = mol->getAtomWithIdx(1);
@@ -138,6 +139,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 1);
@@ -155,6 +157,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 }
 
 BOOST_AUTO_TEST_CASE(test_addAtomChain)
@@ -182,7 +185,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomChain)
     model.addAtomChain(
         Element::N,
         {RDGeom::Point3D(10.0, 1.0, 0.0), RDGeom::Point3D(1.0, 2.0, 0.0)},
-        RDKit::Bond::BondType::SINGLE, c_atom);
+        RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE, c_atom);
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 4);
 
@@ -255,7 +258,8 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     const auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
-    model.addBond(c_atom, n_atom, RDKit::Bond::BondType::SINGLE);
+    model.addBond(c_atom, n_atom, RDKit::Bond::BondType::SINGLE,
+                  RDKit::Bond::BondDir::BEGINDASH);
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* bond = mol->getBondWithIdx(0);
     BOOST_TEST(model.getBondFromTag(0) == bond);
@@ -263,6 +267,7 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINDASH);
 
     undo_stack.undo();
     BOOST_TEST(mol->getNumBonds() == 0);
@@ -277,6 +282,7 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINDASH);
 }
 
 BOOST_AUTO_TEST_CASE(test_removeBond)
@@ -721,22 +727,81 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     model.mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     undo_stack.undo();
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
+
+    model.mutateBond(bond, RDKit::Bond::BondType::SINGLE,
+                     RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+
+    undo_stack.undo();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+}
+
+BOOST_AUTO_TEST_CASE(test_flipBond)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtomChain(
+        Element::C,
+        {RDGeom::Point3D(0.0, 0.0, 0.0), RDGeom::Point3D(1.0, 0.0, 0.0)},
+        RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINWEDGE);
+    const auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 0);
+    BOOST_TEST(bond->getEndAtomIdx() == 1);
+
+    model.flipBond(bond);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 1);
+    BOOST_TEST(bond->getEndAtomIdx() == 0);
+
+    undo_stack.undo();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 0);
+    BOOST_TEST(bond->getEndAtomIdx() == 1);
+
+    undo_stack.redo();
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 1);
+    BOOST_TEST(bond->getEndAtomIdx() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_regenerate_coords)

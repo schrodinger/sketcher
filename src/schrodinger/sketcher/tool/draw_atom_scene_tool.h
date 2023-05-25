@@ -20,7 +20,7 @@ namespace sketcher
 {
 
 /**
- * A base class for scene tools that draw atom or query atoms
+ * A base class for scene tools that draw atoms or query atoms
  */
 class SKETCHER_API AbstractDrawAtomSceneTool : public AbstractDrawSceneTool
 {

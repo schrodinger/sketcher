@@ -55,13 +55,14 @@ void DrawElementSceneTool::addAtom(const RDGeom::Point3D& pos,
                                    const RDKit::Atom* const bound_to)
 {
     m_mol_model->addAtom(m_element, pos, RDKit::Bond::BondType::SINGLE,
-                         bound_to);
+                         RDKit::Bond::BondDir::NONE, bound_to);
 }
 void DrawElementSceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                                             const RDGeom::Point3D& pos2)
 {
     m_mol_model->addAtomChain(m_element, {pos1, pos2},
-                              RDKit::Bond::BondType::SINGLE);
+                              RDKit::Bond::BondType::SINGLE,
+                              RDKit::Bond::BondDir::NONE);
 }
 
 DrawAtomQuerySceneTool::DrawAtomQuerySceneTool(AtomQuery atom_query,

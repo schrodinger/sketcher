@@ -105,7 +105,7 @@ class SKETCHER_API AbstractDrawSceneTool
      * Respond to the user clicking on an atom
      * @param atom The atom that was clicked on
      */
-    void onAtomClicked(const RDKit::Atom* const atom);
+    virtual void onAtomClicked(const RDKit::Atom* const atom);
 
     /**
      * Mutate the specified atom.  Note that the default implementation of this
