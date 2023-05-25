@@ -221,13 +221,5 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     void updateChiralityLabel();
 };
 
-/**
- * @param xyz RDKit atom coordinates to transform
- * @return resulting 2D scene coordinates
- *
- * TODO: Move this to another header/source during SKETCH-1841
- */
-SKETCHER_API QPointF to_scene_xy(const RDGeom::Point3D& xyz);
-
 } // namespace sketcher
 } // namespace schrodinger

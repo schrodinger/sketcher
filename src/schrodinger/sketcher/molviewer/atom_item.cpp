@@ -10,53 +10,13 @@
 
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
-
-/**
- * @return a point one bond length (i.e. one unit in the RDKit coordinate
- * system) away from the origin, in the direction that places it furthest from
- * any of the given points
- */
-QPointF best_placing_around_origin(std::vector<QPointF> points)
-{
-    if (points.empty()) {
-        return QPointF(VIEW_SCALE, 0);
-    }
-    QPointF origin(0.f, 0.f);
-    std::vector<float> angles;
-    // find out the angles at which each member of points is found around the
-    // origin
-    for (auto& point : points) {
-        QLineF line(origin, point);
-        auto angle = line.angle();
-        angles.push_back(angle);
-    }
-    sort(angles.begin(), angles.end());
-    angles.push_back(angles.front() + 360);
-    // find the biggest angle interval and return a point in the middle of it
-    int best_i = 0;
-    auto best_angle = (angles[best_i + 1] - angles[best_i]) * 0.5;
-    for (unsigned int i = 0; i < angles.size() - 1; ++i) {
-        auto angle_i = (angles[i + 1] - angles[i]) * 0.5;
-        if (angle_i > best_angle) {
-            best_i = i;
-            best_angle = angle_i;
-        }
-    }
-    // For a single substituent, limit the angle to 120 (instead of 180)
-    float max_angle = (points.size() == 1) ? 120.0 : 180.0;
-    float angle_to_use = (angles[best_i + 1] - angles[best_i]) * 0.5;
-    float angle_increment = std::min(max_angle, angle_to_use);
-    float return_angle = angles[best_i] + angle_increment;
-    QLineF line(origin, QPointF(VIEW_SCALE, 0));
-    line.setAngle(return_angle);
-    return line.p2();
-}
 
 /**
  * @return a bounding rect of the given label for the given font metrics, with
@@ -452,41 +412,31 @@ const RDKit::Atom* AtomItem::getAtom() const
 
 QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
 {
-
-    auto& mol = m_atom->getOwningMol();
-    auto& conf = mol.getConformer();
-    std::vector<QPointF> positions;
-    auto& this_pos = conf.getAtomPos(m_atom->getIdx());
-    QPointF lastp = to_scene_xy(this_pos);
-
-    for (const auto& neighbor : mol.atomNeighbors(m_atom)) {
-        auto& pos = conf.getAtomPos(neighbor->getIdx());
-        positions.push_back(to_scene_xy(pos) - lastp);
+    auto mol_positions = get_relative_positions_of_atom_neighbors(m_atom);
+    std::vector<QPointF> qpositions;
+    qpositions.reserve(mol_positions.size());
+    for (auto pos : mol_positions) {
+        qpositions.push_back(to_scene_xy(pos));
     }
 
     if (avoid_subrects) {
         for (auto rect : getSubrects()) {
             if (rect == m_main_label_rect)
                 continue;
-            positions.push_back(rect.topLeft());
-            positions.push_back(rect.topRight());
-            positions.push_back(rect.bottomLeft());
-            positions.push_back(rect.bottomRight());
-            positions.push_back(rect.center());
+            qpositions.push_back(rect.topLeft());
+            qpositions.push_back(rect.topRight());
+            qpositions.push_back(rect.bottomLeft());
+            qpositions.push_back(rect.bottomRight());
+            qpositions.push_back(rect.center());
         }
     }
-    return best_placing_around_origin(positions);
+    return best_placing_around_origin(qpositions);
 }
 
 std::vector<QRectF> AtomItem::getLabelRects() const
 {
     return {m_main_label_rect,    m_isotope_rect, m_charge_and_radical_rect,
             m_H_count_label_rect, m_H_label_rect, m_chirality_label_rect};
-}
-
-QPointF to_scene_xy(const RDGeom::Point3D& xyz)
-{
-    return QPointF(xyz.x * VIEW_SCALE, -xyz.y * VIEW_SCALE);
 }
 
 bool AtomItem::determineValenceErrorIsVisible() const

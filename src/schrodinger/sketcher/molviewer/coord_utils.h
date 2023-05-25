@@ -1,0 +1,66 @@
+#pragma once
+
+#include <vector>
+
+#include <QPointF>
+
+#include "schrodinger/sketcher/definitions.h"
+
+namespace RDGeom
+{
+class Point3D;
+} // namespace RDGeom
+
+namespace RDKit
+{
+class Atom;
+} // namespace RDKit
+
+namespace schrodinger
+{
+namespace sketcher
+{
+
+/**
+ * Covert a location from MolModel/RDKit coordinates to Scene coordinates.
+ * @param xyz RDKit atom coordinates to transform
+ * @return resulting 2D scene coordinates
+ */
+SKETCHER_API QPointF to_scene_xy(const RDGeom::Point3D& mol_xy);
+
+/**
+ * Covert a location from Scene coordinates to MolModel/RDKit coordinates.
+ * @param scene_xy Scene coordinates to transform
+ * @return resulting MolModel coordinates
+ */
+SKETCHER_API RDGeom::Point3D to_mol_xy(const QPointF& scene_xy);
+
+/**
+ * For each neighbor of the given atom, return the coordinates of the neighbor
+ * relative to the given atom (i.e. assume that atom is at (0, 0)).
+ * @return The resulting relative MolModel coordinates
+ */
+std::vector<RDGeom::Point3D>
+get_relative_positions_of_atom_neighbors(const RDKit::Atom* const atom);
+
+/**
+ * Determine the best location to place something new around an atom.
+ * @param points All points to take into account, given in Scene coordinates
+ * relative to the atom.  These are typically coordinates of neighboring atoms
+ * or labels.
+ * @return A point one bond length (i.e. one unit in the RDKit coordinate
+ * system) away from the origin, in the direction that places it furthest from
+ * any of the given points.  Given in Scene coordinates relative to the atom.
+ */
+SKETCHER_API QPointF
+best_placing_around_origin(const std::vector<QPointF>& points);
+
+/**
+ * An overload of the above method that operates in relative MolModel
+ * coordinates instead of relative Scene coordinates.
+ */
+SKETCHER_API RDGeom::Point3D
+best_placing_around_origin(const std::vector<RDGeom::Point3D>& points);
+
+} // namespace sketcher
+} // namespace schrodinger

@@ -99,6 +99,8 @@ const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 // the color of the stereo annotations (e.g. "R" and "S")
 const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
 
+const QColor HINT_COLOR = Qt::blue;
+
 // the distance between the stereo annotation and the atom in bond length units
 const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.25;
 
@@ -123,6 +125,7 @@ enum class ZOrder {
     BOND,
     ATOM,
     DRAG_SELECT_OUTLINE,
+    HINT,
 };
 
 } // namespace sketcher

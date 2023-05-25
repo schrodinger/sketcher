@@ -8,6 +8,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/model/mol_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings
@@ -52,14 +53,14 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
     BOOST_TEST(mol->getNumAtoms() == 0);
-    model.addAtom("C", RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     BOOST_TEST(mol->getNumAtoms() == 1);
     auto* c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getSymbol() == "C");
     BOOST_TEST(model.getAtomFromTag(0) == c_atom);
     BOOST_TEST(model.getTagForAtom(c_atom) == 0);
     check_coords(mol, 0, 1.0, 2.0);
-    model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     BOOST_TEST(mol->getNumAtoms() == 2);
     auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(n_atom->getSymbol() == "N");
@@ -117,14 +118,91 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(mol->getNumAtoms() == 0);
 }
 
+BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    model.addAtom(Element::N, RDGeom::Point3D(1.0, 2.0, 0.0),
+                  RDKit::Bond::BondType::SINGLE, c_atom);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    const auto* n_atom = mol->getAtomWithIdx(1);
+    const auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(model.getBondFromTag(0) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(bond->getBeginAtom() == c_atom);
+    BOOST_TEST(bond->getEndAtom() == n_atom);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getSymbol() == "C");
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    n_atom = mol->getAtomWithIdx(1);
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(model.getBondFromTag(0) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(bond->getBeginAtom() == c_atom);
+    BOOST_TEST(bond->getEndAtom() == n_atom);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+}
+
+BOOST_AUTO_TEST_CASE(test_addAtomChain)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtomChain(Element::C,
+                       {RDGeom::Point3D(1.0, 0.0, 0.0),
+                        RDGeom::Point3D(2.0, 0.0, 0.0),
+                        RDGeom::Point3D(3.0, 0.0, 0.0)},
+                       RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 2);
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 2);
+
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    model.addAtomChain(
+        Element::N,
+        {RDGeom::Point3D(10.0, 1.0, 0.0), RDGeom::Point3D(1.0, 2.0, 0.0)},
+        RDKit::Bond::BondType::SINGLE, c_atom);
+    BOOST_TEST(mol->getNumAtoms() == 5);
+    BOOST_TEST(mol->getNumBonds() == 4);
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 2);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 5);
+    BOOST_TEST(mol->getNumBonds() == 4);
+}
+
 BOOST_AUTO_TEST_CASE(test_removeAtom)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
-    model.addAtom("C", RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     auto* c_atom = mol->getAtomWithIdx(0);
-    model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     auto* n_atom = mol->getAtomWithIdx(1);
 
     model.removeAtomsAndBonds({c_atom}, {});
@@ -171,9 +249,9 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
-    model.addAtom("C", RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     const auto* c_atom = mol->getAtomWithIdx(0);
-    model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     const auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -206,9 +284,9 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
-    model.addAtom("C", RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     const auto* c_atom = mol->getAtomWithIdx(0);
-    model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     const auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -268,7 +346,7 @@ BOOST_AUTO_TEST_CASE(test_addMol)
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
-    model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -320,7 +398,7 @@ BOOST_AUTO_TEST_CASE(test_clear)
     BOOST_TEST(!undo_stack.count());
 
     const RDKit::ROMol* mol = model.getMol();
-    model.addAtom("N", RDGeom::Point3D(3.0, 4.0, 0.0));
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCCC"));
     model.addMol(*mol_to_add);
     BOOST_TEST(mol->getNumAtoms() == 5);
@@ -604,6 +682,61 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     bond1 = model.getBondFromTag(1);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
+}
+
+BOOST_AUTO_TEST_CASE(test_mutateAtom)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getSymbol() == "C");
+
+    model.mutateAtom(c_atom, Element::N);
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(c_atom->getSymbol() == "N");
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getSymbol() == "C");
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(c_atom->getSymbol() == "N");
+}
+
+BOOST_AUTO_TEST_CASE(test_mutateBond)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtomChain(
+        Element::C,
+        {RDGeom::Point3D(0.0, 0.0, 0.0), RDGeom::Point3D(1.0, 0.0, 0.0)},
+        RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    const auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+
+    model.mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
+
+    undo_stack.undo();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
 }
 
 BOOST_AUTO_TEST_CASE(test_regenerate_coords)

@@ -23,7 +23,9 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -282,6 +284,12 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
     m_drag_started = false;
 }
 
+void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
+{
+    // this method intentionally a no-op.  The default behavior is to select a
+    // graphics item that's double-clicked, and we don't want that.
+}
+
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
     // Collect the set of items that the context menu should interact with
@@ -374,18 +382,32 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
 
 void Scene::updateSceneTool()
 {
-    std::shared_ptr<AbstractSceneTool> new_scene_tool;
+    std::shared_ptr<AbstractSceneTool> new_scene_tool = getNewSceneTool();
+    setSceneTool(new_scene_tool);
+}
+
+std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
+{
     auto draw_tool = m_sketcher_model->getDrawTool();
     if (draw_tool == DrawTool::SELECT) {
         auto select_tool = m_sketcher_model->getSelectionTool();
-        new_scene_tool = get_select_scene_tool(select_tool, this, m_mol_model);
+        return get_select_scene_tool(select_tool, this, m_mol_model);
     } else if (draw_tool == DrawTool::ERASE) {
-        new_scene_tool = std::make_shared<EraseSceneTool>(this, m_mol_model);
-    } else {
-        // tool not yet implemented
-        new_scene_tool = std::make_shared<NullSceneTool>();
+        return std::make_shared<EraseSceneTool>(this, m_mol_model);
+    } else if (draw_tool == DrawTool::ATOM) {
+        auto atom_tool = m_sketcher_model->getAtomTool();
+        if (atom_tool == AtomTool::ELEMENT) {
+            auto element = m_sketcher_model->getElement();
+            return std::make_shared<DrawElementSceneTool>(element, this,
+                                                          m_mol_model);
+        } else { // atom_tool == AtomTool::AtomQuery
+            auto atom_query = m_sketcher_model->getAtomQuery();
+            return std::make_shared<DrawAtomQuerySceneTool>(atom_query, this,
+                                                            m_mol_model);
+        }
     }
-    setSceneTool(new_scene_tool);
+    // tool not yet implemented
+    return std::make_shared<NullSceneTool>();
 }
 
 void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)

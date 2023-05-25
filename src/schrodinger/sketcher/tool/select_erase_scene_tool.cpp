@@ -67,7 +67,7 @@ template <typename T>
 void SelectSceneTool<T>::onMouseClick(QGraphicsSceneMouseEvent* const event)
 {
     SceneToolWithPredictiveHighlighting::onMouseClick(event);
-    QGraphicsItem* item = m_scene->itemAt(event->scenePos(), QTransform());
+    QGraphicsItem* item = m_scene->getTopInteractiveItemAt(event->scenePos());
     if (item != nullptr) {
         onSelectionMade({item}, event);
     } else {

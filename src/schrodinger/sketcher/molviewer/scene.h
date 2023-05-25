@@ -73,6 +73,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     QList<QGraphicsItem*> getInteractiveItems() const;
 
+    /**
+     * @return the top interactive graphics item at the given position, or
+     * nullptr if none are found
+     */
+    AbstractGraphicsItem* getTopInteractiveItemAt(const QPointF& pos) const;
+
     // Getters and setters for changing settings
     qreal fontSize() const;
     void setFontSize(qreal size);
@@ -131,16 +137,11 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void updateSelectionHighlighting();
 
-    /**
-     * @return the top interactive graphics item at the given position, or
-     * nullptr if none are found
-     */
-    AbstractGraphicsItem* getTopInteractiveItemAt(const QPointF& pos) const;
-
     // Override the QGraphicsScene mouse event methods
     void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
     void mouseReleaseEvent(QGraphicsSceneMouseEvent* event) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event) override;
 
     /**
      * Update the graphics items selection in response to a change in the
@@ -159,6 +160,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      * SketcherModel settings
      */
     void updateSceneTool();
+
+    /**
+     * Instantiate and return a new scene tool (i.e. the mouse cursor mode)
+     * based on the current SketcherModel settings.
+     */
+    std::shared_ptr<AbstractSceneTool> getNewSceneTool();
 
     /**
      * Set the scene tool (i.e. the mouse cursor mode) to the given value

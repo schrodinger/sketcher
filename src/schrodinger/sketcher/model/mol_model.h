@@ -10,6 +10,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 
 class QObject;
 class QPointF;
@@ -99,14 +100,35 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /*************************** UNDOABLE COMMANDS **************************/
 
     /**
-     * Undoably add the specified atom.
+     * Undoably add a single atom.
      *
      * @param element The element for the new atom
      * @param coords The coordinates for the new atom
+     * @param bond_type If bound_to is given, the type of bond that will be
+     * added between the new atom and bound_to_atom
+     * @param bound_to_atom If given, a bond will be added between this atom and
+     * the newly added atom
      */
-    void addAtom(const std::string& element, const RDGeom::Point3D& coords);
-    // TODO: accept element constant here?
+    void addAtom(
+        const Element& element, const RDGeom::Point3D& coords,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE,
+        const RDKit::Atom* const bound_to_atom = nullptr);
     // TODO: add support for query atoms, R groups
+
+    /**
+     * Undoably add a chain of atoms, where each atom is bound to the previous
+     * and next atoms in the chain.
+     *
+     * @param element The element for the new atoms
+     * @param coords The coordinates for the new atoms
+     * @param bond_type The type of bond to add
+     * @param bound_to_atom If given, a bond will be added between this atom and
+     * the first atom in the chain
+     */
+    void addAtomChain(const Element& element,
+                      const std::vector<RDGeom::Point3D>& coords,
+                      const RDKit::Bond::BondType& bond_type,
+                      const RDKit::Atom* const bound_to_atom = nullptr);
 
     /**
      * Undoably add a bond between the specified atoms.
@@ -154,6 +176,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                         rdkit_extensions::Format format);
 
     /**
+     * Change the element of an existing atom.
+     */
+    void mutateAtom(const RDKit::Atom* const atom, const Element& element);
+
+    /**
+     * Change the type of an existing bond
+     */
+    void mutateBond(const RDKit::Bond* const bond,
+                    const RDKit::Bond::BondType& bond_type);
+
+    /**
      * Fully generate coordinates for the current molecule
      */
     void regenerateCoordinates();
@@ -162,10 +195,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Undoably clear the molecule.
      */
     void clear();
-
-    // TODO:
-    // void modifyAtom(/*arguments here*/);
-    // void modifyBond(/*arguments here*/);
 
     /**
      * Undoably select or deselect the specified atoms and bonds.
@@ -344,11 +373,45 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                               const QString& description);
 
     /**
-     * Add an atom to the molecule.  This method must only be called from an
-     * undo command.
+     * Update all molecule metadata and notify the Scene of the changes.  This
+     * method should be called exactly once after changes to m_mol.
      */
-    void addAtomFromCommand(const int atom_tag, const std::string& element,
-                            const RDGeom::Point3D& coords);
+    void finalizeMoleculeChange(bool selection_changed = false);
+
+    /**
+     * Update any RDKit metadata that is required to render the molecule in the
+     * Scene.  This method must be called anytime atoms or bonds are changed.
+     */
+    void updateMoleculeMetadata();
+
+    /**
+     * Generate multiple atom tags or bond tags
+     * @param[in] count The number of tags to generate
+     * @param[in,out] tag_counter Either m_next_atom_tag or m_next_bond_tag,
+     * depending on whether atom tags or bond tags are desired.
+     * @return The generated tags
+     */
+    std::vector<int> getNextNTags(const size_t count, int& tag_counter) const;
+
+    /**
+     * Add a chain of atoms, where each atom is bound to the previous and next
+     * atoms in the chain.  This method must only be called from an undo
+     * command.
+     *
+     * @param atom_tags The atom tags for each newly created atom
+     * @param bond_tags The bond tags for each newly created bond
+     * @param atomic_num The atomic number for the new atoms
+     * @param coords The coordinates for the new atoms
+     * @param bond_type The type of bond to add
+     * @param bound_to_atom_tag If given, a bond will be added between the
+     * existing atom with this tag and the first new atom in the chain
+     */
+    void addAtomChainFromCommand(const std::vector<int>& atom_tags,
+                                 const std::vector<int>& bond_tags,
+                                 const unsigned int atomic_num,
+                                 const std::vector<RDGeom::Point3D>& coords,
+                                 const RDKit::Bond::BondType& bond_type,
+                                 const int bound_to_atom_tag);
 
     /**
      * Remove an atom from the molecule.  This method must only be called from
@@ -408,6 +471,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addMolFromCommand(const RDKit::ROMol& mol,
                            const std::vector<int>& atom_tags,
                            const std::vector<int>& bond_tags);
+
+    /**
+     * Change the element of an existing atom.  This method must only be called
+     * from an undo command.
+     */
+    void mutateAtomFromCommand(const int atom_tag,
+                               const unsigned int atomic_num);
+
+    /**
+     * Change the type of an existing bond.  This method must only be called
+     * from an undo command.
+     */
+    void mutateBondFromCommand(const int bond_tag,
+                               const RDKit::Bond::BondType& bond_type);
 
     /**
      * Clear the molecule.  This method must only be called from an undo
