@@ -4,7 +4,7 @@
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "test_common.h"
+#include "../test_common.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 

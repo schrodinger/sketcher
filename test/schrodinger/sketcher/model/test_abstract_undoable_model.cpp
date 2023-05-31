@@ -251,4 +251,4 @@ BOOST_AUTO_TEST_CASE(test_merging)
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "model/test_abstract_undoable_model.moc"
+#include "test_abstract_undoable_model.moc"
