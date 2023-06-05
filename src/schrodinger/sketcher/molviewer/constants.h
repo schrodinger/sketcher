@@ -116,6 +116,10 @@ const QColor VALENCE_ERROR_AREA_COLOR = QColor("#ffecc5");
 // the border size around the main element to define the valence error area
 const qreal VALENCE_ERROR_AREA_BORDER = 3.f;
 
+// the amount the scene should be zoomed  out to allow for some white space
+// around a molecule when they fill the screen
+const float FIT_TO_SCREEN_MARGIN_FACTOR = 0.15f;
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)

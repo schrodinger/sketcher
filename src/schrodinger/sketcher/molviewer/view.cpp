@@ -77,9 +77,15 @@ void View::fitToScreen()
     if (!cur_scene) {
         return;
     }
-    adjustSceneAroundItems();
-    enlargeSceneIfNeeded();
+
     QRectF rec = cur_scene->itemsBoundingRect();
+    // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
+    // molecule too close to the border
+    rec.adjust(-rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
+               -rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR,
+               rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
+               rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR);
+
     qreal zoom_threshold = 1.0;
     if (rec.isValid()) {
         fitInView(rec, Qt::KeepAspectRatio);
@@ -91,6 +97,8 @@ void View::fitToScreen()
             scale(zoom_threshold / m11, zoom_threshold / m22);
         }
     }
+    adjustSceneAroundItems();
+    enlargeSceneIfNeeded();
 }
 
 } // namespace sketcher
