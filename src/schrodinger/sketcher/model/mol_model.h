@@ -42,31 +42,38 @@ enum class SelectMode {
     SELECT_ONLY, // normal click (no Shift or Ctrl)
 };
 
+enum class MergeId {
+    NO_MERGE = -1,
+    ROTATE = 1,
+    TRANSLATE,
+};
+
 /**
- * A model for making undoable changes to an RDKit Mol using a QUndoStack.  Note
- * that all public methods in this class should fall into one of two categories:
+ * A model for making undoable changes to an RDKit Mol using a QUndoStack.
+ * Note that all public methods in this class should fall into one of two
+ * categories:
  *
- * Getters: These methods return a value but do not modify the instance (i.e.
- * these methods should be marked as const).
+ * Getters: These methods return a value but do not modify the instance
+ * (i.e. these methods should be marked as const).
  *
- * Undoable commands: These methods undoably modify the instance by creating a
- * command and pushing it onto the undo stack (which immediately runs the
+ * Undoable commands: These methods undoably modify the instance by creating
+ * a command and pushing it onto the undo stack (which immediately runs the
  * command) using AbstractUndoableModel::doCommand.  Note that these methods
- * should have a void return type, as callers should not be taking *any* action
- * in response to these methods being called.  Callers should instead listen for
- * signals, as this ensures that the caller will respond identically when a
- * command is initially done and when it's redone.
+ * should have a void return type, as callers should not be taking *any*
+ * action in response to these methods being called.  Callers should instead
+ * listen for signals, as this ensures that the caller will respond
+ * identically when a command is initially done and when it's redone.
  *
- * In other words, don't modify addAtom to return the newly added atom.  That
+ * In other words, don't modify addAtom to return the newly added atom. That
  * encourages the calling class to write code like
  *
  *   Atom* new_atom = mol_model.addAtom("C", coord);
  *   addGraphicsItemForAtom(new_atom);
  *
  * which is wrong!  addGraphicsItemForAtom will be called when the atom is
- * initially added, but it will *not* be called if the user undoes and redoes
- * the addAtom call.  Instead, the calling class should listen for the
- * moleculeChanged signal.
+ * initially added, but it will *not* be called if the user undoes and
+ * redoes the addAtom call.  Instead, the calling class should listen for
+ * the moleculeChanged signal.
  */
 class SKETCHER_API MolModel : public AbstractUndoableModel
 {
@@ -96,6 +103,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @return A set of all currently selected bonds
      */
     std::unordered_set<const RDKit::Bond*> getSelectedBonds() const;
+
+    /**
+     *  compute the centroid of atoms by averaging their coordinates
+     */
+    RDGeom::Point3D findCentroid() const;
 
     /*************************** UNDOABLE COMMANDS **************************/
 
@@ -166,6 +178,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void flipAllHorizontal();
     void flipAllVertical();
+
+    /**
+     * rotate all atoms by the given angle (the rdkit coordinates rotate
+     * clockwise, while the representation in the scene
+     * rotates counter-clockwise,  since the y axis is inverted)
+     * @param angle angle in degrees
+     */
+    void rotateByAngle(float angle);
+
+    /**
+     * translate all atoms by the given vector
+     * @param vector vector to translate by
+     */
+    void translateByVector(const RDGeom::Point3D& vector);
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
@@ -264,23 +290,23 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
   protected:
     RDKit::RWMol m_mol = RDKit::RWMol();
+
     int m_next_atom_tag = 0;
     int m_next_bond_tag = 0;
     std::unordered_set<int> m_selected_atom_tags;
     std::unordered_set<int> m_selected_bond_tags;
 
     /**
-     * Undoably transform all coordinates using the given function.
+     * Transform all coordinates using the given function.
      * @param desc The description to use for the redo/undo command.
      * @param function The function to use to transform the coordinates.
+     * @param merge_id The merge id to use for the redo/undo command. If this is
+     * different from -1, the command will be merged with the previous command
+     * if they share the same merge id.
      */
     void transformCoordinatesWithFunction(
-        const QString& desc, std::function<void(RDGeom::Point3D&)> function);
-
-    /**
-     *  compute the centroid of atoms by averaging their coordinates
-     */
-    RDGeom::Point3D findCentroid() const;
+        const QString& desc, std::function<void(RDGeom::Point3D&)> function,
+        MergeId merge_id = MergeId::NO_MERGE);
 
     /**
      * Set the atom tag for the specified atom
@@ -290,10 +316,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Find the atom tag for the specified atom.
      *
-     * Note that this method is const, but not marked as such because RDKit does
-     * not implement a const version of getAtomBookmarks.  (And because this
-     * method isn't public, so it's not worth using const_cast unless we need
-     * this to be const.)
+     * Note that this method is const, but not marked as such because RDKit
+     * does not implement a const version of getAtomBookmarks.  (And because
+     * this method isn't public, so it's not worth using const_cast unless we
+     * need this to be const.)
      */
     int getTagForAtom(const RDKit::Atom* const atom);
 
@@ -305,10 +331,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Find the bond tag for the specified bond.
      *
-     * Note that this method is const, but not marked as such because RDKit does
-     * not implement a const version of getBondBookmarks.  (And because this
-     * method isn't public, so it's not worth using const_cast unless we need
-     * this to be const.)
+     * Note that this method is const, but not marked as such because RDKit
+     * does not implement a const version of getBondBookmarks.  (And because
+     * this method isn't public, so it's not worth using const_cast unless we
+     * need this to be const.)
      */
     int getTagForBond(const RDKit::Bond* const bond);
 
@@ -368,9 +394,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     getAllUnselectedTags();
 
     /**
-     * Undoably select or deselect the specified atoms and bonds.  If selecting,
-     * all given tags must be currently unselected.  If deselecting, all given
-     * tags must be currently selected.
+     * Undoably select or deselect the specified atoms and bonds.  If
+     * selecting, all given tags must be currently unselected.  If deselecting,
+     * all given tags must be currently selected.
      *
      * @param filtered_atom_tags Tags for the atoms to select or deselect.
      * @param filtered_bond_tags Tags for the bonds to select or deselect.
@@ -448,8 +474,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     bool removeAtomFromCommand(const int atom_tag);
 
     /**
-     * Add a bond to the molecule.  This method must only be called from an undo
-     * command.
+     * Add a bond to the molecule.  This method must only be called from an
+     * undo command.
      */
     void addBondFromCommand(const int bond_tag, const int start_atom_tag,
                             const int end_atom_tag,
@@ -457,9 +483,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                             const RDKit::Bond::BondDir& bond_dir);
 
     /**
-     * Remove a bond from the molecule.  This method must only be called from an
-     * undo command.  Note that this method does not update ring information or
-     * emit signals (as these are intended to be done from
+     * Remove a bond from the molecule.  This method must only be called from
+     * an undo command.  Note that this method does not update ring information
+     * or emit signals (as these are intended to be done from
      * removeAtomsAndBondsFromCommand instead).
      * @return whether selection was changed by this action
      */
@@ -470,12 +496,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * set new coordinates for a set of atoms.  This method must only be called
      * from an undo command.
      */
-    void setCoordinatesFromCommand(const std::vector<int>& atom_tags,
-                                   const std::vector<RDGeom::Point3D>& coords);
+    void setCoordinates(const std::vector<int>& atom_tags,
+                        const std::vector<RDGeom::Point3D>& coords);
 
     /**
-     * Remove the specified atoms and bonds from the molecule.  This method must
-     * only be called from an undo command.
+     * Remove the specified atoms and bonds from the molecule.  This method
+     * must only be called from an undo command.
      * @param atom_tags The atom tags to delete
      * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
      * bond's end atom tag) for the bonds to delete
@@ -485,7 +511,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms);
 
     /**
-     * Add all atoms and bonds from the given molecule into this molecule.  This
+     * Add all atoms and bonds from the given molecule into this molecule. This
      * method must only be called from an undo command.
      *
      * @param mol The molecule to add
@@ -539,8 +565,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                 const bool selected);
 
     /**
-     * Clear all selected atoms and bonds.  This method must only be called from
-     * an undo command.
+     * Clear all selected atoms and bonds.  This method must only be called
+     * from an undo command.
      */
     void clearSelectionFromCommand();
 };

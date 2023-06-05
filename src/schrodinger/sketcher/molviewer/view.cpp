@@ -3,9 +3,13 @@
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QResizeEvent>
+#include <QPinchGesture>
+#include <QGestureEvent>
 #include <Qt>
 #include <QtGlobal>
+#include <QWheelEvent>
 
+#include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
@@ -17,6 +21,8 @@ View::View(QGraphicsScene* scene, QWidget* parent) :
     QGraphicsView(scene, parent)
 {
     setMouseTracking(true);
+
+    grabGesture(Qt::PinchGesture);
     setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
 
     // We don't need to call enlargeSceneIfNeeded here since the View doesn't
@@ -33,6 +39,58 @@ void View::resizeEvent(QResizeEvent* event)
     QGraphicsView::resizeEvent(event);
     enlargeSceneIfNeeded();
     emit resized();
+}
+
+bool View::event(QEvent* event)
+{
+    if (event->type() == QEvent::Gesture) {
+        return gestureEvent(static_cast<QGestureEvent*>(event));
+    }
+    return QGraphicsView::event(event);
+}
+
+bool View::gestureEvent(QGestureEvent* event)
+{
+    if (QGesture* pinch = event->gesture(Qt::PinchGesture)) {
+        pinchTriggered(static_cast<QPinchGesture*>(pinch));
+        event->accept();
+    }
+    return true;
+}
+
+void View::scaleSafely(qreal scale_factor)
+{
+    scale(scale_factor, scale_factor);
+    float zoom_threshold = 1.0;
+    auto matrix = transform();
+    float m11 = matrix.m11();
+    float m22 = matrix.m22();
+    if (m11 > zoom_threshold || m22 > zoom_threshold) {
+        matrix.setMatrix(zoom_threshold, matrix.m12(), matrix.m13(),
+                         matrix.m21(), zoom_threshold, matrix.m23(),
+                         matrix.m31(), matrix.m32(), matrix.m33());
+        setTransform(matrix);
+    }
+}
+
+void View::pinchTriggered(QPinchGesture* gesture)
+{
+    QGraphicsScene* cur_scene = scene();
+    if (!cur_scene || !m_mol_model) {
+        return;
+    }
+
+    auto state = gesture->state();
+    if (state != Qt::GestureStarted) {
+        // zoom
+        auto scale_factor = gesture->scaleFactor();
+        scaleSafely(scale_factor);
+
+        auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();
+        // invert the angle since RDKit and QGraphicsScene have opposite y
+        // directions
+        m_mol_model->rotateByAngle(-angle);
+    }
 }
 
 void View::enlargeSceneIfNeeded()
@@ -71,6 +129,15 @@ void View::adjustSceneAroundItems()
     cur_scene->setSceneRect(items_bounding_rect);
 }
 
+void View::wheelEvent(QWheelEvent* event)
+{
+    // convert wheel movement to a scaling factor, using a function of type y =
+    // K * 2^x, where K is an empirical constant to make the zooming feel
+    // natural
+    qreal scal = pow(2.0, event->angleDelta().y() / 2400.0);
+    scaleSafely(scal);
+}
+
 void View::fitToScreen()
 {
     QGraphicsScene* cur_scene = scene();
@@ -86,19 +153,18 @@ void View::fitToScreen()
                rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
                rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR);
 
-    qreal zoom_threshold = 1.0;
     if (rec.isValid()) {
         fitInView(rec, Qt::KeepAspectRatio);
-        // don't zoom in more than zoom_threshold so that small molecules don't
-        // get too big
-        float m11 = transform().m11();
-        float m22 = transform().m22();
-        if (m11 > zoom_threshold || m22 > zoom_threshold) {
-            scale(zoom_threshold / m11, zoom_threshold / m22);
-        }
+        // avoid zooming in too much
+        scaleSafely(1.0);
     }
     adjustSceneAroundItems();
     enlargeSceneIfNeeded();
+}
+
+void View::setMolModel(schrodinger::sketcher::MolModel* mol_model)
+{
+    m_mol_model = mol_model;
 }
 
 } // namespace sketcher

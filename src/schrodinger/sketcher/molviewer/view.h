@@ -7,12 +7,15 @@
 
 class QGraphicsScene;
 class QResizeEvent;
+class QGestureEvent;
+class QPinchGesture;
 class QWidget;
 
 namespace schrodinger
 {
 namespace sketcher
 {
+class MolModel;
 
 /**
  * A Qt graphics view for displaying molecules in a molviewer Scene.
@@ -23,6 +26,7 @@ class SKETCHER_API View : public QGraphicsView
   public:
     View(QGraphicsScene* scene, QWidget* parent = nullptr);
     View(QWidget* parent = nullptr);
+    void setMolModel(MolModel* mol_model);
 
   public slots:
     /**
@@ -38,19 +42,45 @@ class SKETCHER_API View : public QGraphicsView
     // Override the QGraphicsView method so we can call enlargeSceneIfNeeded
     void resizeEvent(QResizeEvent* event) override;
 
+    // Override the QWidget method so we can detect trackpad gestures
+    bool event(QEvent* event) override;
+
+    // respond to a trackpad gesture, such as pinch to zoom and rotate
+    bool gestureEvent(QGestureEvent* event);
+
+    /** respond to a pinch gesture. This is called by gestureEvent and is
+     * responsible for tracking the distance and angle of the user's fingers and
+     * converting them into a zoom of the matrix and a rotation of the
+     * molecule's coordinates respectively.
+     */
+    void pinchTriggered(QPinchGesture* gesture);
+
+    // handle mouse wheel events, zooming in on wheel up and out on wheel down.
+    void wheelEvent(QWheelEvent* event) override;
+
     /**
-     * Make sure that the scene is at least as large as the view.  If the scene
-     * is smaller than the view, then the view will center the scene.  Then, if
-     * a new item gets added that causes the scene to grow, the view will
-     * re-center, which causes the molecule to jump around.
+     * Make sure that the scene is at least as large as the view.  If the
+     * scene is smaller than the view, then the view will center the scene.
+     * Then, if a new item gets added that causes the scene to grow, the
+     * view will re-center, which causes the molecule to jump around.
      */
     void enlargeSceneIfNeeded();
 
     /**
      * Make sure that the scene has enough space around the items so that it can
-     * be centered
+     * be centered.
      */
     void adjustSceneAroundItems();
+
+    /**
+     * Scale the matrix, multiply the current zoom level by scale_factor, but
+     * cap the  result  at 1, so that the scene is never zoomed in more than
+     * it's starting factor. All view zooming should be done using this function
+     * to avoid zooming in too close.
+     */
+    void scaleSafely(qreal scale_factor);
+
+    MolModel* m_mol_model = nullptr;
 };
 
 } // namespace sketcher

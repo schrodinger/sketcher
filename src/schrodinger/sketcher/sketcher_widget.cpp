@@ -37,6 +37,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_ui->side_bar_wdg->setModel(m_sketcher_model);
 
     m_ui->view->setScene(m_scene);
+    m_ui->view->setMolModel(m_mol_model);
     connect(m_scene, &Scene::importTextRequested, this,
             &SketcherWidget::importText);
 

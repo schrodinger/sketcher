@@ -27,6 +27,8 @@
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
+#include "schrodinger/sketcher/tool/rotate_scene_tool.h"
+#include "schrodinger/sketcher/tool/translate_scene_tool.h"
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -62,7 +64,11 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     m_sketcher_model(sketcher_model)
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
-    m_scene_tool = std::make_shared<NullSceneTool>();
+    m_left_button_scene_tool = std::make_shared<NullSceneTool>();
+    m_middle_button_scene_tool =
+        std::make_shared<RotateSceneTool>(this, m_mol_model);
+    m_right_button_scene_tool =
+        std::make_shared<TranslateSceneTool>(this, m_mol_model);
 
     addItem(m_selection_highlighting_item);
 
@@ -76,6 +82,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
 
     connect(m_mol_model, &MolModel::moleculeChanged, this,
             &Scene::updateInteractiveItems);
+
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
 
@@ -240,49 +247,52 @@ void Scene::updateSelectionHighlighting()
 void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     m_mouse_down_screen_pos = event->screenPos();
-    if (event->button() == Qt::LeftButton) {
-        m_scene_tool->onMousePress(event);
-    }
+    auto scene_tool = getSceneTool(event);
+    scene_tool->onMousePress(event);
+    event->accept();
 }
 
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
-    // TODO: don't pass events to the scene tool if a context menu is visible
-    // TODO: SKETCH-1890: translate on right click and rotate on middle click
-    m_scene_tool->onMouseMove(event);
-    if (event->buttons() & Qt::LeftButton) {
-        // check to see whether the mouse has moved far enough to start a
-        // drag
-        if (!m_drag_started) {
-            int drag_dist = (m_mouse_down_screen_pos - event->screenPos())
-                                .manhattanLength();
-            if (drag_dist >= QApplication::startDragDistance()) {
-                m_drag_started = true;
-                m_scene_tool->onDragStart(event);
-            }
-        }
-        if (m_drag_started) {
-            m_scene_tool->onDragMove(event);
+    // TODO: don't pass events to the scene tool if a context menu is
+    // visible
+
+    auto scene_tool = getSceneTool(event);
+    if (event->buttons() != Qt::NoButton && !m_drag_started) {
+        // check to see whether the mouse has moved far enough to start a drag
+        int drag_dist =
+            (m_mouse_down_screen_pos - event->screenPos()).manhattanLength();
+        if (drag_dist >= QApplication::startDragDistance()) {
+            m_drag_started = true;
+            scene_tool->onDragStart(event);
         }
     }
+    scene_tool->onMouseMove(event);
+    /*make sure  m_left_button_scene_tool->onMouseMove gets always called,
+     * regardless of the button which is actually being used, to update
+     * predictive highlighting */
+    if (scene_tool != m_left_button_scene_tool) {
+        m_left_button_scene_tool->onMouseMove(event);
+    }
+    if (m_drag_started) {
+        scene_tool->onDragMove(event);
+    }
+
+    event->accept();
 }
 
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton) {
-        if (m_drag_started) {
-            m_scene_tool->onDragRelease(event);
-        } else {
-            m_scene_tool->onMouseClick(event);
-        }
-        m_scene_tool->onMouseRelease(event);
-
-    } else if (event->button() == Qt::RightButton) {
-        showContextMenu(event);
+    auto scene_tool = getSceneTool(event);
+    if (m_drag_started) {
+        scene_tool->onDragRelease(event);
+    } else {
+        scene_tool->onMouseClick(event);
     }
-
+    scene_tool->onMouseRelease(event);
     m_mouse_down_screen_pos = QPointF();
     m_drag_started = false;
+    event->accept();
 }
 
 void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
@@ -298,8 +308,8 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
     auto top_item = getTopInteractiveItemAt(event->pos());
     if (top_item != nullptr) {
         if (top_item->isSelected()) {
-            // If the cursor is over a selected object, the context menu should
-            // be concerned with all selected objects
+            // If the cursor is over a selected object, the context menu
+            // should be concerned with all selected objects
             for (auto item : selectedItems()) {
                 context_menu_objects.insert(item);
             }
@@ -307,8 +317,8 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
             context_menu_objects.insert(top_item);
         }
     }
-    // TODO: call different menus based on context menu objects. For now, just
-    // call m_background_context_menu
+    // TODO: call different menus based on context menu objects. For now,
+    // just call m_background_context_menu
     QMenu* menu = nullptr;
     menu = m_background_context_menu;
 
@@ -380,6 +390,22 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
     }
 }
 
+std::shared_ptr<AbstractSceneTool>
+Scene::getSceneTool(QGraphicsSceneMouseEvent* const event)
+{
+    // the button for a release event is stored in event->button(), while the
+    // one for a drag event is stored in event->buttons()
+    if ((event->buttons() & Qt::MiddleButton) ||
+        (event->button() == Qt::MiddleButton)) {
+        return m_middle_button_scene_tool;
+    } else if ((event->buttons() & Qt::RightButton) ||
+               (event->button() == Qt::RightButton)) {
+        return m_right_button_scene_tool;
+    } else {
+        return m_left_button_scene_tool;
+    }
+}
+
 void Scene::updateSceneTool()
 {
     std::shared_ptr<AbstractSceneTool> new_scene_tool = getNewSceneTool();
@@ -442,12 +468,12 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
 void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
 {
     // remove any graphics items associated with the old scene tool
-    for (auto* item : m_scene_tool->getGraphicsItems()) {
+    for (auto* item : m_left_button_scene_tool->getGraphicsItems()) {
         removeItem(item);
     }
-    m_scene_tool = new_scene_tool;
+    m_left_button_scene_tool = new_scene_tool;
     // add graphics items from the new scene tool
-    for (auto* item : m_scene_tool->getGraphicsItems()) {
+    for (auto* item : m_left_button_scene_tool->getGraphicsItems()) {
         addItem(item);
     }
 }

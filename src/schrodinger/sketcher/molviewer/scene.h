@@ -98,6 +98,12 @@ class SKETCHER_API Scene : public QGraphicsScene
     qreal doubleBondSpacing() const;
     void setDoubleBondSpacing(qreal value);
 
+    /**
+     * display the appropriate context menu at the given position
+     * @param event The mouse event that triggered the context menu
+     */
+    void showContextMenu(QGraphicsSceneMouseEvent* event);
+
   signals:
     void importTextRequested(const std::string& text,
                              rdkit_extensions::Format format);
@@ -156,8 +162,16 @@ class SKETCHER_API Scene : public QGraphicsScene
     void onModelValuesChanged(const std::unordered_set<ModelKey>& keys);
 
     /**
-     * Update the scene tool (i.e. the mouse cursor mode) based on the current
-     * SketcherModel settings
+     * Return the scene tool that should be used for a mouse event, based on the
+     * button (left, middle or right) that was pressed
+     * @param event The mouse event
+     */
+    std::shared_ptr<AbstractSceneTool>
+    getSceneTool(QGraphicsSceneMouseEvent* const event);
+
+    /**
+     * Update the scene tool (i.e. the mouse cursor mode) based on the
+     * current SketcherModel settings
      */
     void updateSceneTool();
 
@@ -172,12 +186,6 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool);
 
-    /**
-     * display the appropriate context menu at the given position
-     * @param event The mouse event that triggered the context menu
-     */
-    void showContextMenu(QGraphicsSceneMouseEvent* event);
-
     Fonts m_fonts;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
@@ -187,7 +195,10 @@ class SKETCHER_API Scene : public QGraphicsScene
     QPointF m_mouse_down_screen_pos;
     std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
-    std::shared_ptr<AbstractSceneTool> m_scene_tool;
+    std::shared_ptr<AbstractSceneTool> m_left_button_scene_tool;
+    std::shared_ptr<AbstractSceneTool> m_middle_button_scene_tool;
+    std::shared_ptr<AbstractSceneTool> m_right_button_scene_tool;
+
     bool m_drag_started = false;
 
     BackgroundContextMenu* m_background_context_menu;

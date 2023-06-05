@@ -287,7 +287,8 @@ void MolModel::clear()
 }
 
 void MolModel::transformCoordinatesWithFunction(
-    const QString& desc, std::function<void(RDGeom::Point3D&)> function)
+    const QString& desc, std::function<void(RDGeom::Point3D&)> function,
+    MergeId merge_id)
 {
     auto& conf = m_mol.getConformer();
     auto coords = conf.getPositions();
@@ -299,15 +300,41 @@ void MolModel::transformCoordinatesWithFunction(
     std::vector<int> atom_tags(m_mol.getNumAtoms());
     transform(atoms.begin(), atoms.end(), atom_tags.begin(),
               [this](const RDKit::Atom* atom) { return getTagForAtom(atom); });
-
-    auto redo = [this, atom_tags, coords]() {
-        this->setCoordinatesFromCommand(atom_tags, coords);
-    };
     auto current_coords = m_mol.getConformer().getPositions();
-    auto undo = [this, atom_tags, current_coords]() {
-        this->setCoordinatesFromCommand(atom_tags, current_coords);
-    };
-    doCommand(redo, undo, desc);
+
+    if (merge_id == MergeId::NO_MERGE) {
+        auto redo = [this, atom_tags, coords]() {
+            this->setCoordinates(atom_tags, coords);
+        };
+        auto undo = [this, atom_tags, current_coords]() {
+            this->setCoordinates(atom_tags, current_coords);
+        };
+        doCommand(redo, undo, desc);
+    } else {
+        // issue a mergeable command
+        typedef std::tuple<std::vector<int>, std::vector<RDGeom::Point3D>,
+                           std::vector<RDGeom::Point3D>>
+            MergeData;
+        auto redo = [this](MergeData data) {
+            auto& atom_tags = std::get<0>(data);
+            auto& coords = std::get<1>(data);
+            this->setCoordinates(atom_tags, coords);
+        };
+        auto undo = [this](MergeData data) {
+            auto& atom_tags = std::get<0>(data);
+            auto& current_coords = std::get<2>(data);
+            this->setCoordinates(atom_tags, current_coords);
+        };
+        auto merge_func = [](MergeData this_data, MergeData other_data) {
+            std::get<1>(this_data) = std::get<1>(other_data);
+            return this_data;
+        };
+        MergeData command_data =
+            std::make_tuple(atom_tags, coords, current_coords);
+        doMergeableCommand<MergeData>(redo, undo, merge_func,
+                                      static_cast<int>(merge_id), command_data,
+                                      desc);
+    }
 }
 
 RDGeom::Point3D MolModel::findCentroid() const
@@ -326,6 +353,31 @@ RDGeom::Point3D MolModel::findCentroid() const
         centroid /= static_cast<double>(numAtoms);
     }
     return centroid;
+}
+
+void MolModel::rotateByAngle(float angle)
+{
+    auto centroid = findCentroid();
+    auto angle_radians = angle * M_PI / 180.0; // Convert angle to radians
+    auto cosine = std::cos(angle_radians);
+    auto sine = std::sin(angle_radians);
+
+    auto rotate = [centroid, sine, cosine](auto& coord) {
+        coord -= centroid;
+        auto rotated_coord = coord;
+        rotated_coord.x = coord.x * cosine - coord.y * sine;
+        rotated_coord.y = coord.x * sine + coord.y * cosine;
+        coord = rotated_coord + centroid;
+    };
+    transformCoordinatesWithFunction("Rotate", rotate, MergeId::ROTATE);
+}
+
+void MolModel::translateByVector(const RDGeom::Point3D& vector)
+{
+
+    auto translate = [vector](auto& coord) { coord += vector; };
+    transformCoordinatesWithFunction("Translate", translate,
+                                     MergeId::TRANSLATE);
 }
 
 void MolModel::flipAllVertical()
@@ -693,9 +745,8 @@ void MolModel::flipBondFromCommand(const int bond_tag)
     finalizeMoleculeChange();
 }
 
-void MolModel::setCoordinatesFromCommand(
-    const std::vector<int>& atom_tags,
-    const std::vector<RDGeom::Point3D>& coords)
+void MolModel::setCoordinates(const std::vector<int>& atom_tags,
+                              const std::vector<RDGeom::Point3D>& coords)
 {
     Q_ASSERT(m_in_command);
     if (atom_tags.size() == coords.size()) {
@@ -705,7 +756,7 @@ void MolModel::setCoordinatesFromCommand(
             m_mol.getConformer().setAtomPos(atom->getIdx(), coords[i]);
         }
     } else {
-        throw std::invalid_argument("setCoordinatesFromCommand: atom_tags "
+        throw std::invalid_argument("setCoordinates: atom_tags "
                                     "and coords must have the same size");
     }
     emit moleculeChanged();
