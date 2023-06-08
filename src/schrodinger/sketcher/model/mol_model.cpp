@@ -21,6 +21,53 @@
 
 using schrodinger::rdkit_extensions::Format;
 
+namespace
+{
+
+/**
+ * @return a new atom using the specified atomic number
+ */
+std::shared_ptr<RDKit::Atom> make_new_atom(const unsigned int atomic_num)
+{
+    return std::make_shared<RDKit::Atom>(atomic_num);
+}
+
+/**
+ * @return a new query atom using the specified query
+ */
+std::shared_ptr<RDKit::Atom> make_new_query_atom(
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
+{
+    auto atom = std::make_shared<RDKit::QueryAtom>();
+    atom->setQuery(atom_query->copy());
+    return atom;
+}
+
+/**
+ * @return a new bond using the specified settings
+ */
+std::shared_ptr<RDKit::Bond>
+make_new_bond(const RDKit::Bond::BondType& bond_type,
+              const RDKit::Bond::BondDir& bond_dir)
+{
+    auto bond = std::make_shared<RDKit::Bond>(bond_type);
+    bond->setBondDir(bond_dir);
+    return bond;
+};
+
+/**
+ * @return a new query bond using the specified query
+ */
+std::shared_ptr<RDKit::Bond> make_new_query_bond(
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    auto bond = std::make_shared<RDKit::QueryBond>();
+    bond->setQuery(bond_query->copy());
+    return bond;
+};
+
+} // namespace
+
 namespace schrodinger
 {
 namespace sketcher
@@ -122,18 +169,139 @@ std::vector<int> MolModel::getNextNTags(const size_t count,
 }
 
 void MolModel::addAtom(const Element& element, const RDGeom::Point3D& coords,
+                       const RDKit::Atom* const bound_to_atom,
                        const RDKit::Bond::BondType& bond_type,
-                       const RDKit::Bond::BondDir& bond_dir,
-                       const RDKit::Atom* const bound_to_atom)
+                       const RDKit::Bond::BondDir& bond_dir)
 {
-    addAtomChain(element, {coords}, bond_type, bond_dir, bound_to_atom);
+    addAtomChain(element, {coords}, bound_to_atom, bond_type, bond_dir);
+}
+
+void MolModel::addAtom(
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+    const RDGeom::Point3D& coords, const RDKit::Atom* const bound_to_atom,
+    const RDKit::Bond::BondType& bond_type,
+    const RDKit::Bond::BondDir& bond_dir)
+{
+    addAtomChain(atom_query, {coords}, bound_to_atom, bond_type, bond_dir);
+}
+
+void MolModel::addAtom(
+    const Element& element, const RDGeom::Point3D& coords,
+    const RDKit::Atom* const bound_to_atom,
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    addAtomChain(element, {coords}, bound_to_atom, bond_query);
+}
+
+void MolModel::addAtom(
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+    const RDGeom::Point3D& coords, const RDKit::Atom* const bound_to_atom,
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    addAtomChain(atom_query, {coords}, bound_to_atom, bond_query);
 }
 
 void MolModel::addAtomChain(const Element& element,
                             const std::vector<RDGeom::Point3D>& coords,
+                            const RDKit::Atom* const bound_to_atom,
                             const RDKit::Bond::BondType& bond_type,
-                            const RDKit::Bond::BondDir& bond_dir,
-                            const RDKit::Atom* const bound_to_atom)
+                            const RDKit::Bond::BondDir& bond_dir)
+{
+    // structured binding doesn't work with lambda captures until C++20, so we
+    // use ties here instead to unpack the return values (same with the ties in
+    // the other overloads of this method)
+    std::vector<int> atom_tags;
+    std::vector<int> bond_tags;
+    int bound_to_atom_tag;
+    unsigned int atomic_num;
+    QString desc;
+    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
+        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    std::tie(atomic_num, desc) = getAddElementInfo(element);
+    auto redo = [this, atom_tags, bond_tags, atomic_num, coords, bond_type,
+                 bond_dir, bound_to_atom_tag]() {
+        auto create_atom = std::bind(make_new_atom, atomic_num);
+        auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
+        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
+                                create_bond, bound_to_atom_tag);
+    };
+    doCommandWithMolUndo(redo, desc);
+}
+
+void MolModel::addAtomChain(
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+    const std::vector<RDGeom::Point3D>& coords,
+    const RDKit::Atom* const bound_to_atom,
+    const RDKit::Bond::BondType& bond_type,
+    const RDKit::Bond::BondDir& bond_dir)
+{
+    std::vector<int> atom_tags;
+    std::vector<int> bond_tags;
+    int bound_to_atom_tag;
+    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
+        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    QString desc = QString("Add %1").arg(
+        QString::fromStdString(atom_query->getTypeLabel()));
+    auto redo = [this, atom_tags, bond_tags, atom_query, coords, bond_type,
+                 bond_dir, bound_to_atom_tag]() {
+        auto create_atom = std::bind(make_new_query_atom, atom_query);
+        auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
+        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
+                                create_bond, bound_to_atom_tag);
+    };
+    doCommandWithMolUndo(redo, desc);
+}
+
+void MolModel::addAtomChain(
+    const Element& element, const std::vector<RDGeom::Point3D>& coords,
+    const RDKit::Atom* const bound_to_atom,
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    std::vector<int> atom_tags;
+    std::vector<int> bond_tags;
+    int bound_to_atom_tag;
+    unsigned int atomic_num;
+    QString desc;
+    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
+        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    std::tie(atomic_num, desc) = getAddElementInfo(element);
+    auto redo = [this, atom_tags, bond_tags, atomic_num, coords, bond_query,
+                 bound_to_atom_tag]() {
+        auto create_atom = std::bind(make_new_atom, atomic_num);
+        auto create_bond = std::bind(make_new_query_bond, bond_query);
+        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
+                                create_bond, bound_to_atom_tag);
+    };
+    doCommandWithMolUndo(redo, desc);
+}
+
+void MolModel::addAtomChain(
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+    const std::vector<RDGeom::Point3D>& coords,
+    const RDKit::Atom* const bound_to_atom,
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    std::vector<int> atom_tags;
+    std::vector<int> bond_tags;
+    int bound_to_atom_tag;
+    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
+        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    QString desc = QString("Add %1").arg(
+        QString::fromStdString(atom_query->getTypeLabel()));
+    auto redo = [this, atom_tags, bond_tags, atom_query, coords, bond_query,
+                 bound_to_atom_tag]() {
+        auto create_atom = std::bind(make_new_query_atom, atom_query);
+        auto create_bond = std::bind(make_new_query_bond, bond_query);
+        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
+                                create_bond, bound_to_atom_tag);
+    };
+    doCommandWithMolUndo(redo, desc);
+}
+
+std::tuple<std::vector<int>, std::vector<int>, int>
+MolModel::getAtomAndBondTagsForAddingAtomChain(
+    const std::vector<RDGeom::Point3D>& coords,
+    const RDKit::Atom* const bound_to_atom)
 {
     size_t num_atoms = coords.size();
     size_t num_bonds = num_atoms;
@@ -146,15 +314,16 @@ void MolModel::addAtomChain(const Element& element,
     if (bound_to_atom) {
         bound_to_atom_tag = getTagForAtom(bound_to_atom);
     }
+    return {atom_tags, bond_tags, bound_to_atom_tag};
+}
+
+std::pair<unsigned int, QString>
+MolModel::getAddElementInfo(const Element& element)
+{
     unsigned int atomic_num = static_cast<unsigned int>(element);
     std::string elem_name = atomic_number_to_name(atomic_num);
     QString desc = QString("Add %1").arg(QString::fromStdString(elem_name));
-    auto redo = [this, atom_tags, bond_tags, atomic_num, coords, bond_type,
-                 bond_dir, bound_to_atom_tag]() {
-        addAtomChainFromCommand(atom_tags, bond_tags, atomic_num, coords,
-                                bond_type, bond_dir, bound_to_atom_tag);
-    };
-    doCommandWithMolUndo(redo, desc);
+    return {atomic_num, desc};
 }
 
 void MolModel::addBond(const RDKit::Atom* const start_atom,
@@ -169,8 +338,24 @@ void MolModel::addBond(const RDKit::Atom* const start_atom,
     QString desc = QString("Add bond");
     auto redo = [this, bond_tag, start_atom_tag, end_atom_tag, bond_type,
                  bond_dir]() {
-        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, bond_type,
-                           bond_dir);
+        auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
+        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, create_bond);
+    };
+    doCommandWithMolUndo(redo, desc);
+}
+
+void MolModel::addBond(
+    const RDKit::Atom* const start_atom, const RDKit::Atom* const end_atom,
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    int bond_tag = m_next_bond_tag++;
+    int start_atom_tag = getTagForAtom(start_atom);
+    int end_atom_tag = getTagForAtom(end_atom);
+
+    QString desc = QString("Add query bond");
+    auto redo = [this, bond_tag, start_atom_tag, end_atom_tag, bond_query]() {
+        auto create_bond = std::bind(make_new_query_bond, bond_query);
+        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, create_bond);
     };
     doCommandWithMolUndo(redo, desc);
 }
@@ -242,7 +427,20 @@ void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
     int atom_tag = getTagForAtom(atom);
     unsigned int atomic_num = static_cast<unsigned int>(element);
     auto redo = [this, atom_tag, atomic_num]() {
-        mutateAtomFromCommand(atom_tag, atomic_num);
+        auto create_atom = std::bind(make_new_atom, atomic_num);
+        mutateAtomFromCommand(atom_tag, create_atom);
+    };
+    doCommandWithMolUndo(redo, "Mutate atom");
+}
+
+void MolModel::mutateAtom(
+    const RDKit::Atom* const atom,
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
+{
+    int atom_tag = getTagForAtom(atom);
+    auto redo = [this, atom_tag, atom_query]() {
+        auto create_atom = std::bind(make_new_query_atom, atom_query);
+        mutateAtomFromCommand(atom_tag, create_atom);
     };
     doCommandWithMolUndo(redo, "Mutate atom");
 }
@@ -253,7 +451,20 @@ void MolModel::mutateBond(const RDKit::Bond* const bond,
 {
     int bond_tag = getTagForBond(bond);
     auto redo = [this, bond_tag, bond_type, bond_dir]() {
-        mutateBondFromCommand(bond_tag, bond_type, bond_dir);
+        auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
+        mutateBondFromCommand(bond_tag, create_bond);
+    };
+    doCommandWithMolUndo(redo, "Mutate bond");
+}
+
+void MolModel::mutateBond(
+    const RDKit::Bond* const bond,
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    int bond_tag = getTagForBond(bond);
+    auto redo = [this, bond_tag, bond_query]() {
+        auto create_bond = std::bind(make_new_query_bond, bond_query);
+        mutateBondFromCommand(bond_tag, create_bond);
     };
     doCommandWithMolUndo(redo, "Mutate bond");
 }
@@ -587,9 +798,10 @@ const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
 
 void MolModel::addAtomChainFromCommand(
     const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
-    const unsigned int atomic_num, const std::vector<RDGeom::Point3D>& coords,
-    const RDKit::Bond::BondType& bond_type,
-    const RDKit::Bond::BondDir& bond_dir, const int bound_to_atom_tag)
+    const std::function<std::shared_ptr<RDKit::Atom>()> create_atom,
+    const std::vector<RDGeom::Point3D>& coords,
+    const std::function<std::shared_ptr<RDKit::Bond>()> create_bond,
+    const int bound_to_atom_tag)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* prev_atom = nullptr;
@@ -602,18 +814,23 @@ void MolModel::addAtomChainFromCommand(
     auto bond_tags_iter = bond_tags.cbegin();
     BOOST_FOREACH (boost::tie(cur_atom_tag, cur_coords),
                    boost::combine(atom_tags, coords)) {
-        auto* atom = new RDKit::Atom(atomic_num);
-        unsigned int atom_index = m_mol.addAtom(atom, /* updateLabel = */ false,
-                                                /* takeOwnership = */ true);
+        auto atom_shared = create_atom();
+        auto* atom = atom_shared.get();
+        unsigned int atom_index =
+            m_mol.addAtom(atom, /* updateLabel = */ false);
+        atom = m_mol.getAtomWithIdx(atom_index);
         setTagForAtom(atom, cur_atom_tag);
         m_mol.getConformer().setAtomPos(atom_index, cur_coords);
 
-        if (prev_atom) {
+        if (prev_atom != nullptr) {
             const unsigned int cur_bond_tag = *(bond_tags_iter++);
-            unsigned int bond_index =
-                m_mol.addBond(prev_atom, atom, bond_type) - 1;
-            RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
-            bond->setBondDir(bond_dir);
+            auto bond_shared = create_bond();
+            auto* bond = bond_shared.get();
+            bond->setOwningMol(m_mol);
+            bond->setBeginAtom(prev_atom);
+            bond->setEndAtom(atom);
+            unsigned int bond_index = m_mol.addBond(bond) - 1;
+            bond = m_mol.getBondWithIdx(bond_index);
             setTagForBond(bond, cur_bond_tag);
         }
         prev_atom = atom;
@@ -639,20 +856,22 @@ bool MolModel::removeAtomFromCommand(const int atom_tag)
     return selection_changed;
 }
 
-void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
-                                  const int end_atom_tag,
-                                  const RDKit::Bond::BondType& bond_type,
-                                  const RDKit::Bond::BondDir& bond_dir)
+void MolModel::addBondFromCommand(
+    const int bond_tag, const int start_atom_tag, const int end_atom_tag,
+    const std::function<std::shared_ptr<RDKit::Bond>()> create_bond)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
+    auto bond_shared = create_bond();
+    auto* bond = bond_shared.get();
+    bond->setOwningMol(m_mol);
+    bond->setBeginAtom(start_atom);
+    bond->setEndAtom(end_atom);
     // addBond returns the new number of bonds, *not* the index of the newly
     // added bond, so we have to subtract one to get the index
-    unsigned int bond_index =
-        m_mol.addBond(start_atom, end_atom, bond_type) - 1;
-    RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
-    bond->setBondDir(bond_dir);
+    unsigned int bond_index = m_mol.addBond(bond) - 1;
+    bond = m_mol.getBondWithIdx(bond_index);
     setTagForBond(bond, bond_tag);
     finalizeMoleculeChange();
 }
@@ -714,23 +933,28 @@ void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
     finalizeMoleculeChange();
 }
 
-void MolModel::mutateAtomFromCommand(const int atom_tag,
-                                     const unsigned int atomic_num)
+void MolModel::mutateAtomFromCommand(
+    const int atom_tag,
+    const std::function<std::shared_ptr<RDKit::Atom>()> create_atom)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-    atom->setAtomicNum(atomic_num);
+    auto new_atom = create_atom();
+    m_mol.replaceAtom(atom->getIdx(), new_atom.get(),
+                      /* updateLabel = */ false,
+                      /* preserveProps = */ true);
     finalizeMoleculeChange();
 }
 
-void MolModel::mutateBondFromCommand(const int bond_tag,
-                                     const RDKit::Bond::BondType& bond_type,
-                                     const RDKit::Bond::BondDir& bond_dir)
+void MolModel::mutateBondFromCommand(
+    const int bond_tag,
+    const std::function<std::shared_ptr<RDKit::Bond>()> create_bond)
 {
     Q_ASSERT(m_in_command);
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
-    bond->setBondType(bond_type);
-    bond->setBondDir(bond_dir);
+    auto new_bond = create_bond();
+    m_mol.replaceBond(bond->getIdx(), new_bond.get(),
+                      /* preserveProps = */ true);
     finalizeMoleculeChange();
 }
 

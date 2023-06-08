@@ -119,12 +119,15 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     QPen m_dashed_pen;
     QPen m_chirality_pen;
     QBrush m_solid_brush = QBrush(Qt::black);
+    qreal m_text_angle;
+    QPointF m_text_pos;
+    QSizeF m_text_size;
 
     const Fonts& m_fonts;
 
     BondItemSettings& m_settings;
 
-    QString m_stereo_label;
+    QString m_label_text;
 
     /**
      * Calculate the lines and polygons needed to paint this bond.  Note that
@@ -413,16 +416,19 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
                                 const qreal half_width) const;
 
     /**
-     * @return parameters to be used for painting the stereo annotation
-     * @param label the stereo label to be displayed.
-     * The label is drawn parallel to the bond and always above it. The
-     * parameters are:
+     * Determine the parameters to be used for painting the stereo or query
+     * annotation.  The label is always drawn parallel to the bond.
+     * @param label The label text to be displayed.
+     * @param draw_text_above_bond Whether to draw the text above the bond
+     * or over the bond
+     * @return The calculated parameters:
      * - angle: the angle of the annotation text
      * - text_pos: the position of center of the label,
      * - text_size: size of the bounding rect of the label
      */
     std::tuple<qreal, QPointF, QSizeF>
-    getStereoAnnotationParameters(const QString& label) const;
+    getStereoAnnotationParameters(const QString& label,
+                                  const bool draw_text_above_bond) const;
 
     /** Paint text annontation .
      *

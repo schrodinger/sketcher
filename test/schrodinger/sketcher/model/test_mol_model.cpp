@@ -1,7 +1,10 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
 #include <unordered_set>
+#include <memory>
 
+#include <GraphMol/QueryAtom.h>
+#include <GraphMol/QueryBond.h>
 #include <GraphMol/MolTransforms/MolTransforms.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <QUndoStack>
@@ -127,9 +130,8 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getNumBonds() == 0);
     const auto* c_atom = mol->getAtomWithIdx(0);
-    model.addAtom(Element::N, RDGeom::Point3D(1.0, 2.0, 0.0),
-                  RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE,
-                  c_atom);
+    model.addAtom(Element::N, RDGeom::Point3D(1.0, 2.0, 0.0), c_atom,
+                  RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* n_atom = mol->getAtomWithIdx(1);
@@ -169,7 +171,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomChain)
                        {RDGeom::Point3D(1.0, 0.0, 0.0),
                         RDGeom::Point3D(2.0, 0.0, 0.0),
                         RDGeom::Point3D(3.0, 0.0, 0.0)},
-                       RDKit::Bond::BondType::SINGLE);
+                       nullptr, RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(mol->getNumAtoms() == 3);
     BOOST_TEST(mol->getNumBonds() == 2);
 
@@ -185,7 +187,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomChain)
     model.addAtomChain(
         Element::N,
         {RDGeom::Point3D(10.0, 1.0, 0.0), RDGeom::Point3D(1.0, 2.0, 0.0)},
-        RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE, c_atom);
+        c_atom, RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE);
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 4);
 
@@ -196,6 +198,65 @@ BOOST_AUTO_TEST_CASE(test_addAtomChain)
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 4);
+}
+
+BOOST_AUTO_TEST_CASE(test_addAtom_query)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    auto atom_query = std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
+        RDKit::makeAAtomQuery());
+    model.addAtom(atom_query, RDGeom::Point3D(1.0, 2.0, 0.0));
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    auto* query_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(query_atom->hasQuery());
+    BOOST_TEST(query_atom->getQueryType() == "A");
+
+    auto bond_query = std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
+        RDKit::makeBondNullQuery());
+    model.addAtom(Element::C, RDGeom::Point3D(3.0, 4.0, 0.0), query_atom,
+                  bond_query);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    auto* c_atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(!c_atom->hasQuery());
+    BOOST_TEST(c_atom->getSymbol() == "C");
+    auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->hasQuery());
+    BOOST_TEST(bond->getQuery()->getTypeLabel() == bond_query->getTypeLabel());
+
+    model.addAtom(atom_query, RDGeom::Point3D(5.0, 6.0, 0.0), c_atom,
+                  bond_query);
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 2);
+    auto* query_atom2 = mol->getAtomWithIdx(2);
+    BOOST_TEST(query_atom2->hasQuery());
+    BOOST_TEST(query_atom2->getQueryType() == "A");
+    auto* bond2 = mol->getBondWithIdx(1);
+    BOOST_TEST(bond2->hasQuery());
+    BOOST_TEST(bond2->getQuery()->getTypeLabel() == bond_query->getTypeLabel());
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 2);
 }
 
 BOOST_AUTO_TEST_CASE(test_removeAtom)
@@ -283,6 +344,37 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINDASH);
+}
+
+BOOST_AUTO_TEST_CASE(test_addBond_query)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
+    const auto* n_atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    auto bond_query = std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
+        RDKit::makeBondNullQuery());
+    model.addBond(c_atom, n_atom, bond_query);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    const auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->getBeginAtom() == c_atom);
+    BOOST_TEST(bond->getEndAtom() == n_atom);
+    BOOST_TEST(bond->hasQuery());
+    BOOST_TEST(bond->getQuery()->getTypeLabel() == bond_query->getTypeLabel());
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumBonds() == 1);
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->hasQuery());
+    BOOST_TEST(bond->getQuery()->getTypeLabel() == bond_query->getTypeLabel());
 }
 
 BOOST_AUTO_TEST_CASE(test_removeBond)
@@ -698,10 +790,12 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom)
     model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     BOOST_TEST(mol->getNumAtoms() == 1);
     const auto* c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(!c_atom->hasQuery());
     BOOST_TEST(c_atom->getSymbol() == "C");
 
     model.mutateAtom(c_atom, Element::N);
     BOOST_TEST(mol->getNumAtoms() == 1);
+    c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getSymbol() == "N");
 
     undo_stack.undo();
@@ -711,6 +805,44 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom)
 
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 1);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getSymbol() == "N");
+
+    // mutate atom to query atom
+    auto atom_query = std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
+        RDKit::makeAAtomQuery());
+    model.mutateAtom(c_atom, atom_query);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->hasQuery());
+    BOOST_TEST(c_atom->getQueryType() == "A");
+
+    // mutate query atom to a different query
+    atom_query = std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
+        RDKit::makeMHAtomQuery());
+    model.mutateAtom(c_atom, atom_query);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->hasQuery());
+    BOOST_TEST(c_atom->getQueryType() == "MH");
+
+    // mutate query atom to an element
+    model.mutateAtom(c_atom, Element::C);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(!c_atom->hasQuery());
+    BOOST_TEST(c_atom->getSymbol() == "C");
+
+    undo_stack.undo();
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->hasQuery());
+    BOOST_TEST(c_atom->getQueryType() == "MH");
+
+    undo_stack.undo();
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->hasQuery());
+    BOOST_TEST(c_atom->getQueryType() == "A");
+
+    undo_stack.undo();
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(!c_atom->hasQuery());
     BOOST_TEST(c_atom->getSymbol() == "N");
 }
 
@@ -722,7 +854,7 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     model.addAtomChain(
         Element::C,
         {RDGeom::Point3D(0.0, 0.0, 0.0), RDGeom::Point3D(1.0, 0.0, 0.0)},
-        RDKit::Bond::BondType::SINGLE);
+        nullptr, RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* bond = mol->getBondWithIdx(0);
@@ -730,10 +862,12 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     model.mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
+    bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
+    BOOST_TEST(!bond->hasQuery());
 
     undo_stack.undo();
     bond = mol->getBondWithIdx(0);
@@ -743,6 +877,7 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     undo_stack.redo();
+    bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
@@ -750,6 +885,7 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
 
     model.mutateBond(bond, RDKit::Bond::BondType::SINGLE,
                      RDKit::Bond::BondDir::BEGINWEDGE);
+    bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
@@ -763,10 +899,36 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
     undo_stack.redo();
+    bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // mutate regular bond to query bond
+    auto bond_any_query = std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
+        RDKit::makeBondNullQuery());
+    model.mutateBond(bond, bond_any_query);
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->hasQuery());
+    BOOST_TEST(bond->getQuery()->getFullDescription() ==
+               bond_any_query->getFullDescription());
+
+    // mutate to a different query
+    auto bond_sd_query = std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
+        RDKit::makeSingleOrDoubleBondQuery());
+    model.mutateBond(bond, bond_sd_query);
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->hasQuery());
+    BOOST_TEST(bond->getQuery()->getFullDescription() ==
+               bond_sd_query->getFullDescription());
+
+    // mutate query bond to regular bond
+    model.mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(!bond->hasQuery());
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 }
 
 BOOST_AUTO_TEST_CASE(test_flipBond)
@@ -777,7 +939,8 @@ BOOST_AUTO_TEST_CASE(test_flipBond)
     model.addAtomChain(
         Element::C,
         {RDGeom::Point3D(0.0, 0.0, 0.0), RDGeom::Point3D(1.0, 0.0, 0.0)},
-        RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINWEDGE);
+        nullptr, RDKit::Bond::BondType::SINGLE,
+        RDKit::Bond::BondDir::BEGINWEDGE);
     const auto* bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);

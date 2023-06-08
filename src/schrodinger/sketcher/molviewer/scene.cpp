@@ -442,11 +442,11 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             case BondTool::SINGLE_UP:
             case BondTool::SINGLE_DOWN:
             case BondTool::AROMATIC:
+            case BondTool::SINGLE_EITHER:
+            case BondTool::DOUBLE_EITHER:
                 return std::make_shared<DrawBondSceneTool>(bond_tool, this,
                                                            m_mol_model);
                 break;
-            case BondTool::SINGLE_EITHER:
-            case BondTool::DOUBLE_EITHER:
             case BondTool::SINGLE_OR_DOUBLE:
             case BondTool::SINGLE_OR_AROMATIC:
             case BondTool::DOUBLE_OR_AROMATIC:

@@ -108,22 +108,29 @@ void BondItem::updateCachedData()
     m_shape = QPainterPath(m_predictive_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
 
-    auto stereo_label = get_bond_stereo_label(*m_bond);
+    QString label_text;
+    bool is_query = m_bond->hasQuery();
+    if (is_query) {
+        label_text = QString::fromStdString(m_bond->getQuery()->getTypeLabel());
+    } else {
+        label_text = get_bond_stereo_label(*m_bond);
+    }
 
-    // add the stereo label (if present) to the bounding rect
-    if (!stereo_label.isEmpty()) {
+    // add the label (if present) to the bounding rect
+    if (!label_text.isEmpty()) {
 
-        auto [angle, text_pos, text_size] =
-            getStereoAnnotationParameters(stereo_label);
-        auto rect = QRectF(text_pos, text_size);
+        // TODO: make bond partially transparent behind query label
+        std::tie(m_text_angle, m_text_pos, m_text_size) =
+            getStereoAnnotationParameters(label_text, !is_query);
+        auto rect = QRectF(m_text_pos, m_text_size);
         rect.moveCenter(QPointF(0, 0));
-        auto rotation = QTransform().rotate(angle);
+        auto rotation = QTransform().rotate(m_text_angle);
         auto bounding_rect = rotation.mapRect(rect);
 
-        bounding_rect.moveCenter(text_pos);
+        bounding_rect.moveCenter(m_text_pos);
         m_bounding_rect = m_bounding_rect.united(bounding_rect);
     }
-    m_stereo_label = stereo_label;
+    m_label_text = label_text;
 
     // TODO: calculate bond intersections, store clipping path
     // TODO: deal with atom radii for aromatics
@@ -641,13 +648,12 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         }
     }
     painter->restore();
-    if (!m_stereo_label.isEmpty()) {
+    if (!m_label_text.isEmpty()) {
         painter->save();
         painter->setPen(m_chirality_pen);
         painter->setFont(m_fonts.m_chirality_font);
-        auto [angle, text_pos, text_size] =
-            getStereoAnnotationParameters(m_stereo_label);
-        paintAnnotation(painter, angle, text_pos, text_size, m_stereo_label);
+        paintAnnotation(painter, m_text_angle, m_text_pos, m_text_size,
+                        m_label_text);
         painter->restore();
     }
 }
@@ -658,9 +664,12 @@ const RDKit::Bond* BondItem::getBond() const
 }
 
 std::tuple<qreal, QPointF, QSizeF>
-BondItem::getStereoAnnotationParameters(const QString& label) const
+BondItem::getStereoAnnotationParameters(const QString& label,
+                                        const bool draw_text_above_bond) const
 {
-    auto distance = VIEW_SCALE * BOND_STEREO_LABEL_DISTANCE_RATIO;
+    auto distance = draw_text_above_bond
+                        ? VIEW_SCALE * BOND_STEREO_LABEL_DISTANCE_RATIO
+                        : 0;
     auto bond_end = m_end_item.pos() - m_start_item.pos();
     auto bond_line = QLineF(QPointF(0, 0), bond_end);
     // Calculate the unit vector in the direction of the line segment

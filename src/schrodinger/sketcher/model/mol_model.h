@@ -1,11 +1,15 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
+#include <tuple>
 #include <unordered_set>
 #include <utility>
 
 #include <GraphMol/RWMol.h>
+#include <GraphMol/QueryAtom.h>
+#include <GraphMol/QueryBond.h>
 #include <QUndoStack>
 
 #include "schrodinger/sketcher/definitions.h"
@@ -112,23 +116,73 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /*************************** UNDOABLE COMMANDS **************************/
 
     /**
-     * Undoably add a single atom.
+     * Undoably add a single atom.  This atom may optionally be bound to an
+     * existing atom.
      *
      * @param element The element for the new atom
      * @param coords The coordinates for the new atom
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
      * @param bond_type If bound_to is given, the type of bond that will be
      * added between the new atom and bound_to
      * @param bond_dir If bound_to is given, the stereochemistry of the bond
      * that will be added between the new atom and bound_to
-     * @param bound_to_atom If given, a bond will be added between this atom and
-     * the newly added atom
      */
     void addAtom(
         const Element& element, const RDGeom::Point3D& coords,
+        const RDKit::Atom* const bound_to_atom = nullptr,
         const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE,
-        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
-        const RDKit::Atom* const bound_to_atom = nullptr);
-    // TODO: add support for query atoms, R groups
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
+
+    /**
+     * Undoably add a single query atom.  This atom may optionally be bound to
+     * an existing atom.
+     *
+     * @param atom_query The query for the atom
+     * @param coords The coordinates for the new atom
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @param bond_type If bound_to is given, the type of bond that will be
+     * added between the new atom and bound_to
+     * @param bond_dir If bound_to is given, the stereochemistry of the bond
+     * that will be added between the new atom and bound_to
+     */
+    void addAtom(
+        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+        const RDGeom::Point3D& coords,
+        const RDKit::Atom* const bound_to_atom = nullptr,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
+
+    /**
+     * Undoably add a single atom and bond it to an existing atom using a query
+     * bond.
+     *
+     * @param element The element for the new atom
+     * @param coords The coordinates for the new atom
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @param bond_query The query for the bond
+     */
+    void addAtom(
+        const Element& element, const RDGeom::Point3D& coords,
+        const RDKit::Atom* const bound_to_atom,
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+
+    /**
+     * Undoably add a single query atom and bond it to an existing atom using a
+     * query bond.
+     *
+     * @param atom_query The query for the atom
+     * @param coords The coordinates for the new atom
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @param bond_query The query for the bond
+     */
+    void addAtom(
+        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+        const RDGeom::Point3D& coords, const RDKit::Atom* const bound_to_atom,
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
@@ -136,16 +190,65 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param element The element for the new atoms
      * @param coords The coordinates for the new atoms
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
      * @param bond_type The type of bond to add
      * @param bond_dir The stereochemistry of the bond to add
-     * @param bound_to_atom If given, a bond will be added between this atom and
-     * the first atom in the chain
      */
     void addAtomChain(
         const Element& element, const std::vector<RDGeom::Point3D>& coords,
-        const RDKit::Bond::BondType& bond_type,
-        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
-        const RDKit::Atom* const bound_to_atom = nullptr);
+        const RDKit::Atom* const bound_to_atom = nullptr,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
+
+    /**
+     * Undoably add a chain of query atoms, where each query atom is bound to
+     * the previous and next query atoms in the chain.
+     *
+     * @param atom_query The query for the atoms
+     * @param coords The coordinates for the new atoms
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @param bond_type The type of bond to add
+     * @param bond_dir The stereochemistry of the bond to add
+     */
+    void addAtomChain(
+        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+        const std::vector<RDGeom::Point3D>& coords,
+        const RDKit::Atom* const bound_to_atom = nullptr,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
+
+    /**
+     * Undoably add a chain of atoms, where each atom is bound to the previous
+     * and next atoms in the chain using a query bond.
+     *
+     * @param element The element for the new atoms
+     * @param coords The coordinates for the new atoms
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @param bond_query The query for the bonds
+     */
+    void addAtomChain(
+        const Element& element, const std::vector<RDGeom::Point3D>& coords,
+        const RDKit::Atom* const bound_to_atom,
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+
+    /**
+     * Undoably add a chain of query atoms, where each query atom is bound to
+     * the previous and next query atoms in the chain using a query bond.
+     *
+     * @param atom_query The query for the atoms
+     * @param coords The coordinates for the new atoms
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @param bond_query The query for the bonds
+     */
+    void addAtomChain(
+        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
+        const std::vector<RDGeom::Point3D>& coords,
+        const RDKit::Atom* const bound_to_atom,
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
      * Undoably add a bond between the specified atoms.
@@ -160,7 +263,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
             const RDKit::Atom* const end_atom,
             const RDKit::Bond::BondType& bond_type,
             const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
-    // TODO: add support for query bonds
+
+    /**
+     * Undoably add a query bond between the specified atoms.
+     *
+     * @param start_atom The start atom for the bond
+     * @param end_atom The end atom for the bond
+     * @param bond_query The query for the bond
+     */
+    void addBond(
+        const RDKit::Atom* const start_atom, const RDKit::Atom* const end_atom,
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
      * Undoably remove the given atoms and bonds.  Note that, even though this
@@ -214,12 +327,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                         rdkit_extensions::Format format);
 
     /**
-     * Change the element of an existing atom.
+     * Change the element of an existing atom.  This method can also mutate a
+     * query atom into a non-query atom.
      */
     void mutateAtom(const RDKit::Atom* const atom, const Element& element);
 
     /**
-     * Change the type of an existing bond
+     * Change the query of an existing atom.  This method can also mutate a
+     * non-query atom into a query atom.
+     */
+    void mutateAtom(
+        const RDKit::Atom* const atom,
+        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
+
+    /**
+     * Change the type of an existing bond.  This method can also mutate a
+     * query bond into a non-query bond.
      *
      * @param bond The bond to mutate
      * @param bond_type The type of bond to mutate to
@@ -230,8 +353,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
 
     /**
+     * Change the query of an existing bond.  This method can also mutate a
+     * non-query bond into a query bond.
+     *
+     * @param bond The bond to mutate
+     * @param bond_query The query for the bond
+     */
+    void mutateBond(
+        const RDKit::Bond* const bond,
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+
+    /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This is
-     * only meaningful for dative bonds or bonds with a BondDir set.
+     * only meaningful for dative bonds or bonds with a BondDir of BEGINWEDGE or
+     * BEGINDASH.
      */
     void flipBond(const RDKit::Bond* const bond);
 
@@ -364,6 +499,26 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     const RDKit::Bond* getBondFromTag(int bond_tag) const;
 
     /**
+     * Determine all atom and bond tags needed for adding an atom chain
+     * @param coords The list of coordinates for the atom chain being added
+     * @param bound_to_atom If not nullptr, a bond will be added between this
+     * atom and the first atom in the chain
+     * @return A tuple of
+     *   - The atom tags
+     *   - The bond tags
+     *   - The tag for bound_to_atom (or -1 if bound_to_atom was nullptr)
+     */
+    std::tuple<std::vector<int>, std::vector<int>, int>
+    getAtomAndBondTagsForAddingAtomChain(
+        const std::vector<RDGeom::Point3D>& coords,
+        const RDKit::Atom* const bound_to_atom);
+
+    /**
+     * Get the atomic number and element name for the specified element.
+     */
+    std::pair<unsigned int, QString> getAddElementInfo(const Element& element);
+
+    /**
      * Undoably select or deselect the specified atoms and bonds.
      *
      * @param atom_tags Tags for the atoms to select or deselect
@@ -449,20 +604,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param atom_tags The atom tags for each newly created atom
      * @param bond_tags The bond tags for each newly created bond
-     * @param atomic_num The atomic number for the new atoms
+     * @param create_atom A function that will return a new atom to add.  Note
+     * that this method will add a *copy* of the returned atom, as the
+     * shared_ptr is responsible for deleting the returned atom.
      * @param coords The coordinates for the new atoms
-     * @param bond_type The type of bond to add
-     * @param bond_dir The stereochemistry of the bond to add
+     * @param create_bond A function that will return a new bond to add.  Note
+     * that this method will add a *copy* of the returned bond, as the
+     * shared_ptr is responsible for deleting the returned bond.
      * @param bound_to_atom_tag If given, a bond will be added between the
      * existing atom with this tag and the first new atom in the chain
      */
-    void addAtomChainFromCommand(const std::vector<int>& atom_tags,
-                                 const std::vector<int>& bond_tags,
-                                 const unsigned int atomic_num,
-                                 const std::vector<RDGeom::Point3D>& coords,
-                                 const RDKit::Bond::BondType& bond_type,
-                                 const RDKit::Bond::BondDir& bond_dir,
-                                 const int bound_to_atom_tag);
+    void addAtomChainFromCommand(
+        const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
+        const std::function<std::shared_ptr<RDKit::Atom>()> create_atom,
+        const std::vector<RDGeom::Point3D>& coords,
+        const std::function<std::shared_ptr<RDKit::Bond>()> create_bond,
+        const int bound_to_atom_tag);
 
     /**
      * Remove an atom from the molecule.  This method must only be called from
@@ -474,13 +631,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     bool removeAtomFromCommand(const int atom_tag);
 
     /**
-     * Add a bond to the molecule.  This method must only be called from an
-     * undo command.
+     * Add a bond to the molecule.  This method must only be called from an undo
+     * command.
+     * @param bond_tag The tag to use for the newly added bond
+     * @param start_atom_tag The tag of the bond's start atom
+     * @param end_atom_tag The tag of the bond's end atom
+     * @param create_bond A function that will return the new bond to add.  Note
+     * that this method will add a *copy* of the returned bond, as the
+     * shared_ptr is responsible for deleting the returned bond.
      */
-    void addBondFromCommand(const int bond_tag, const int start_atom_tag,
-                            const int end_atom_tag,
-                            const RDKit::Bond::BondType& bond_type,
-                            const RDKit::Bond::BondDir& bond_dir);
+    void addBondFromCommand(
+        const int bond_tag, const int start_atom_tag, const int end_atom_tag,
+        const std::function<std::shared_ptr<RDKit::Bond>()> create_bond);
 
     /**
      * Remove a bond from the molecule.  This method must only be called from
@@ -525,19 +687,28 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                            const std::vector<int>& bond_tags);
 
     /**
-     * Change the element of an existing atom.  This method must only be called
-     * from an undo command.
+     * Change the element of an existing atom, or change a query atom to a
+     * non-query atom.  This method must only be called from an undo command.
+     * @param atom_tag The tag of the atom to mutate
+     * @param create_atom A function that will return a new atom to mutate to.
+     * Note that this method will add a *copy* of the returned atom, as the
+     * shared_ptr is responsible for deleting the returned atom.
      */
-    void mutateAtomFromCommand(const int atom_tag,
-                               const unsigned int atomic_num);
+    void mutateAtomFromCommand(
+        const int atom_tag,
+        const std::function<std::shared_ptr<RDKit::Atom>()> create_atom);
 
     /**
-     * Change the type of an existing bond.  This method must only be called
-     * from an undo command.
+     * Change the type of an existing bond, or change a query bond to a
+     * non-query bond.  This method must only be called from an undo command.
+     * @param bond_tag The tag of the bond to mutate
+     * @param create_bond A function that will return a new bond to mutate to.
+     * Note that this method will add a *copy* of the returned bond, as the
+     * shared_ptr is responsible for deleting the returned bond.
      */
-    void mutateBondFromCommand(const int bond_tag,
-                               const RDKit::Bond::BondType& bond_type,
-                               const RDKit::Bond::BondDir& bond_dir);
+    void mutateBondFromCommand(
+        const int bond_tag,
+        const std::function<std::shared_ptr<RDKit::Bond>()> create_bond);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This

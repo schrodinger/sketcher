@@ -105,10 +105,14 @@ void AtomItem::updateCachedData()
     prepareGeometryChange();
     clearLabels();
 
-    m_label_is_visible = determineLabelIsVisible();
+    m_valence_error_is_visible = determineValenceErrorIsVisible();
+    m_label_is_visible =
+        m_valence_error_is_visible || determineLabelIsVisible();
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
-        m_main_label_text = QString::fromStdString(m_atom->getSymbol());
+        std::string text =
+            m_atom->hasQuery() ? m_atom->getQueryType() : m_atom->getSymbol();
+        m_main_label_text = QString::fromStdString(text);
 
         // if there's a user-set label, override m_main_label_text
         if (!m_user_label.isEmpty()) {
@@ -338,6 +342,9 @@ bool AtomItem::determineLabelIsVisible() const
         return true;
     }
     if (m_atom->getFormalCharge() != 0) {
+        return true;
+    }
+    if (m_atom->hasQuery()) {
         return true;
     }
     int num_bonds = m_atom->getDegree();

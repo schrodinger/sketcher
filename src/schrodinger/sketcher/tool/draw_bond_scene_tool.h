@@ -1,6 +1,11 @@
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <string>
+
 #include <GraphMol/ROMol.h>
+#include <GraphMol/QueryBond.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -28,7 +33,7 @@ class SKETCHER_API AbstractDrawBondSceneTool : public AbstractDrawSceneTool
     /**
      * Does the bond change meaningfully if we swap the start and end atoms?
      */
-    bool m_flippable;
+    bool m_flippable = false;
 
     /**
      * Should the scene tool cycle bonds (i.e. single -> double -> triple ->
@@ -95,6 +100,22 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
                            MolModel* mol_model);
 
   protected:
+    /**
+     * A function that returns an RDKit Query object containing the appropriate
+     * bond query
+     */
+    std::function<RDKit::QueryBond::QUERYBOND_QUERY*()> m_query_func;
+
+    /**
+     * The text to use for labeling the drawn queries
+     */
+    std::string m_query_type;
+
+    /**
+     * @return the query to use for bonds
+     */
+    std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> getQuery();
+
     // overriden AbstractDrawBondSceneTool methods
     bool bondMatches(const RDKit::Bond* const bond) override;
     void mutateBond(const RDKit::Bond* const bond) override;

@@ -1,5 +1,11 @@
 #pragma once
 
+#include <functional>
+#include <memory>
+#include <string>
+
+#include <GraphMol/QueryAtom.h>
+
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/tool/abstract_draw_atom_bond_scene_tool.h"
 
@@ -66,7 +72,17 @@ class SKETCHER_API DrawAtomQuerySceneTool : public AbstractDrawAtomSceneTool
                            MolModel* mol_model);
 
   protected:
-    AtomQuery m_atom_query;
+    /**
+     * A function that returns an RDKit Query object containing the appropriate
+     * atom query
+     */
+    std::function<RDKit::QueryAtom::QUERYATOM_QUERY*()> m_query_func;
+    std::string m_query_type;
+
+    /**
+     * @return the query to use for atoms
+     */
+    std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> getQuery();
 
     // reimplemented AbstractDrawSceneTool methods
     bool

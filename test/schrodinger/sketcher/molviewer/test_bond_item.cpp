@@ -49,7 +49,7 @@ class TestBondItem : public BondItem
     using BondItem::findBestRingForBond;
     using BondItem::findRingCenter;
     using BondItem::m_bond;
-    using BondItem::m_stereo_label;
+    using BondItem::m_label_text;
 
     TestBondItem(RDKit::Bond* bond, const AtomItem& start_atom_item,
                  const AtomItem& end_atom_item, Fonts& fonts,
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(test_stereo_label)
         for (auto bond_item : bond_items) {
             auto stereo_label =
                 QString(bond_item == stereo_bond ? expected_label.c_str() : "");
-            BOOST_TEST(bond_item->m_stereo_label == stereo_label);
+            BOOST_TEST(bond_item->m_label_text == stereo_label);
         }
     }
 }
