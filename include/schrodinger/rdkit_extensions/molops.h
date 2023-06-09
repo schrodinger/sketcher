@@ -6,12 +6,15 @@
 
 #pragma once
 
+#include <boost/noncopyable.hpp>
+
 #include "schrodinger/rdkit_extensions/definitions.h"
 
 // Forward declarations:
 namespace RDKit
 {
 class Atom;
+class Conformer;
 class ROMol;
 class RWMol;
 } // namespace RDKit
@@ -34,6 +37,16 @@ namespace rdkit_extensions
  * - adjust Hydrogen counts
  */
 enum class Sanitization { FULL, PARTIAL };
+
+class RDKIT_EXTENSIONS_API UseModernStereoPerception : public boost::noncopyable
+{
+  public:
+    UseModernStereoPerception();
+    ~UseModernStereoPerception();
+
+  private:
+    bool m_stereo_algo_state;
+};
 
 /**
  * @param mol rdkit mol
@@ -75,6 +88,13 @@ RDKIT_EXTENSIONS_API void reapply_molblock_wedging(RDKit::ROMol& rdk_mol);
  * @param rdk_mol rdkit mol
  */
 RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol);
+
+/**
+ * A custom wrapper around RDkit's WedgeMolBonds() that makes sure
+ * we don't wedge attachment point dummy atoms
+ */
+RDKIT_EXTENSIONS_API void wedgeMolBonds(RDKit::ROMol& mol,
+                                        const RDKit::Conformer* conf);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

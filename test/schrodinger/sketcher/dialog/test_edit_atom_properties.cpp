@@ -12,7 +12,6 @@
 #include "../test_common.h"
 #include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"

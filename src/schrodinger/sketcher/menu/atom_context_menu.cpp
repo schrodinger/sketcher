@@ -3,7 +3,6 @@
 #include <QWidgetAction>
 
 #include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
 #include "schrodinger/sketcher/atom_utils.h"
 #include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -79,7 +78,7 @@ void ModifyAtomsMenu::updateActionsEnabled()
             if (is_atomic_number(atom->getAtomType())) {
                 element_atoms.push_back(atom);
             }
-            if (can_have_charge(*atom)) {
+            if (atom->canHaveCharge()) {
                 atoms_that_can_have_charge.push_back(atom);
             }
         }

@@ -411,8 +411,7 @@ void EditAtomPropertiesDialog::resetGeneralQuerySubwidgets()
         element_list_text = element_text;
     } else if (m_atom.isAllowedAtomListQuery() ||
                m_atom.isDisallowedAtomListQuery()) {
-        sketcherChemicalKnowledge ck;
-        element_list_text = ck.getAtomicNumbersListString(&m_atom);
+        element_list_text = m_atom.getAtomicNumbersListString();
     }
     ui->element_list_le->setText(QString::fromStdString(element_list_text));
 

@@ -6,6 +6,9 @@
  --------------------------------------------------------------------------- */
 #include "schrodinger/rdkit_extensions/molops.h"
 
+#include <GraphMol/Chirality.h>
+#include <GraphMol/Conformer.h>
+#include <GraphMol/FileParsers/MolFileStereochem.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/FileParsers/MolFileStereochem.h>
 
@@ -15,6 +18,17 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
+
+UseModernStereoPerception::UseModernStereoPerception() :
+    m_stereo_algo_state{RDKit::Chirality::getUseLegacyStereoPerception()}
+{
+    RDKit::Chirality::setUseLegacyStereoPerception(false);
+}
+
+UseModernStereoPerception::~UseModernStereoPerception()
+{
+    RDKit::Chirality::setUseLegacyStereoPerception(m_stereo_algo_state);
+}
 
 void apply_sanitization(RDKit::RWMol& mol, Sanitization sanitization)
 {
@@ -137,6 +151,36 @@ void removeHs(RDKit::RWMol& rdk_mol)
 
     bool sanitize = false;
     RDKit::MolOps::removeHs(rdk_mol, ps, sanitize);
+}
+
+void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
+{
+    std::vector<RDKit::Bond*> attachment_dummy_bonds;
+    for (auto atom : mol.atoms()) {
+        if (rdkit_extensions::is_attachment_point_dummy(*atom)) {
+            auto bonds = mol.atomBonds(atom);
+            auto bond = *bonds.begin();
+            if (bond->getBondType() == RDKit::Bond::SINGLE) {
+                attachment_dummy_bonds.push_back(bond);
+                bond->setBondType(RDKit::Bond::OTHER);
+            }
+        }
+    }
+
+    RDKit::ClearSingleBondDirFlags(mol);
+    try {
+        // Temporarily silence RDKit's loggers
+        RDLog::LogStateSetter silence_rdkit_logging;
+
+        RDKit::WedgeMolBonds(mol, conf);
+    } catch (const Invar::Invariant&) {
+        // RDkit wasn't able to find a 'wedgeable' bond for some chiral atom
+    }
+
+    // Restore the dummies
+    for (auto bond : attachment_dummy_bonds) {
+        bond->setBondType(RDKit::Bond::SINGLE);
+    }
 }
 
 } // namespace rdkit_extensions
