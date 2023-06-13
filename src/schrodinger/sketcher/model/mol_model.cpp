@@ -121,7 +121,7 @@ std::unordered_set<const RDKit::Bond*> MolModel::getSelectedBonds() const
 void MolModel::doCommandWithMolUndo(const std::function<void()> redo,
                                     const QString& description)
 {
-    RDKit::ROMol undo_mol = m_mol;
+    RDKit::RWMol undo_mol = m_mol;
     std::unordered_set<int> sel_atom_tags = m_selected_atom_tags;
     std::unordered_set<int> sel_bond_tags = m_selected_bond_tags;
     auto undo = [this, undo_mol, sel_atom_tags, sel_bond_tags]() {

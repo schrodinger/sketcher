@@ -32,7 +32,14 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
     throwIfInCommand();
     UndoableModelUndoCommand* command =
         new UndoableModelUndoCommand(this, redo, undo, description);
-    m_undo_stack->push(command);
+    try {
+        m_undo_stack->push(command);
+    } catch (std::exception&) {
+        // if something goes wrong with the command, make
+        // sure it doesn't get leaked
+        delete command;
+        throw;
+    }
 }
 
 void AbstractUndoableModel::throwIfInCommand()
