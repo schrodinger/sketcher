@@ -113,6 +113,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     RDGeom::Point3D findCentroid() const;
 
+    /**
+     * Get multiple available R-group numbers
+     * @param how_many How many R-group numbers to return
+     * @return A sorted list (of length `how_many`) containing the smallest
+     * unused R-group numbers
+     */
+    std::vector<unsigned int> getNextRGroupNumbers(const size_t how_many) const;
+
     /*************************** UNDOABLE COMMANDS **************************/
 
     /**
@@ -185,6 +193,29 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
+     * Undoably add an R-group atom.  This atom may optionally be bound to an
+     * existing atom.
+     *
+     * @param r_group_num The R-group number for the new atom
+     * @param coords The coordinates for the new atom
+     * @param bound_to_atom If not nullptr, a single bond will be added between
+     * this atom and the newly added atom
+     */
+    void addRGroup(const unsigned int r_group_num,
+                   const RDGeom::Point3D& coords,
+                   const RDKit::Atom* const bound_to_atom = nullptr);
+
+    /**
+     * Undoably add an attachment point bound to an existing atom.
+     *
+     * @param coords The coordinates for the new attachment point
+     * @param bound_to_atom A single bond will be added between
+     * this atom and the newly added atom.  Must not be nullptr.
+     */
+    void addAttachmentPoint(const RDGeom::Point3D& coords,
+                            const RDKit::Atom* const bound_to_atom);
+
+    /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
      * and next atoms in the chain.
      *
@@ -249,6 +280,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::vector<RDGeom::Point3D>& coords,
         const RDKit::Atom* const bound_to_atom,
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+
+    /**
+     * Undoably add a chain of R-group atoms, where each R-group atom is bound
+     * to the previous and next atoms in the chain using a single bond.
+     *
+     * @param r_group_nums The R-group number for each new atom
+     * @param coords The coordinates for the new atoms
+     * @param bound_to_atom If not nullptr, a single bond will be added between
+     * this atom and the first atom in the chain
+     */
+    void addRGroupChain(const std::vector<unsigned int> r_group_nums,
+                        const std::vector<RDGeom::Point3D>& coords,
+                        const RDKit::Atom* const bound_to_atom = nullptr);
 
     /**
      * Undoably add a bond between the specified atoms.
@@ -339,6 +383,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mutateAtom(
         const RDKit::Atom* const atom,
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
+
+    /**
+     * Change the R-group of an existing atom.  This method can also mutate a
+     * non-R-group atom into an R-group atom.
+     */
+    void mutateRGroup(const RDKit::Atom* const atom,
+                      const unsigned int r_group_num);
 
     /**
      * Change the type of an existing bond.  This method can also mutate a
@@ -624,11 +675,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Remove an atom from the molecule.  This method must only be called from
      * an undo command.  Note that this method does not update ring information
-     * or emit signals (as these are intended to be done from
-     * removeAtomsAndBondsFromCommand instead).
-     * @return whether selection was changed by this action
+     * or emit signals, as these are intended to be done from
+     * removeAtomsAndBondsFromCommand instead.
+     * @param[in] atom_tag The tag of the atom to delete
+     * @param[in,out] selection_changed This will be set to true if the removed
+     * atom was selected.
+     * @param[in,out] attachment_point_deleted This will be set to true if the
+     * removed atom was an attachment point.
      */
-    bool removeAtomFromCommand(const int atom_tag);
+    void removeAtomFromCommand(const int atom_tag, bool& selection_changed,
+                               bool& attachment_point_deleted);
 
     /**
      * Add a bond to the molecule.  This method must only be called from an undo

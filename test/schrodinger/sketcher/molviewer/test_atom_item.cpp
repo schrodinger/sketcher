@@ -137,6 +137,22 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_ChargeAndIsotope)
     BOOST_TEST(!atom_item->m_subrects.empty());
 }
 
+BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
+{
+    auto [atom_item, test_scene] = createAtomItem("* |$_R5$|");
+    BOOST_TEST(atom_item->m_main_label_text == "R5");
+    BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(atom_item->m_isotope_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_label_rect.isNull());
+
+    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(atom_item->m_label_is_visible);
+    BOOST_TEST(!(atom_item->m_shape.isEmpty()));
+    BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+}
+
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
                      *boost::unit_test::tolerance(0.01))
 {

@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <memory>
+#include <vector>
 
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/QueryBond.h>
@@ -12,6 +13,7 @@
 #include "../test_common.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings
@@ -259,6 +261,167 @@ BOOST_AUTO_TEST_CASE(test_addAtom_query)
     BOOST_TEST(mol->getNumBonds() == 2);
 }
 
+BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    BOOST_TEST(get_all_r_group_numbers(mol).empty());
+    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({1}));
+    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+               std::vector<unsigned int>({1, 2}));
+    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+               std::vector<unsigned int>({1, 2, 3}));
+
+    model.addRGroup(3, RDGeom::Point3D(1.0, 2.0, 0.0));
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    const auto* r3_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(r3_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r3_atom) == 3);
+    BOOST_TEST(is_r_group(r3_atom));
+    BOOST_TEST(!is_attachment_point(r3_atom));
+    BOOST_TEST(get_all_r_group_numbers(mol) == std::vector<unsigned int>({3}));
+    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({1}));
+    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+               std::vector<unsigned int>({1, 2}));
+    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+               std::vector<unsigned int>({1, 2, 4}));
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    r3_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(r3_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r3_atom) == 3);
+    BOOST_TEST(is_r_group(r3_atom));
+    BOOST_TEST(!is_attachment_point(r3_atom));
+
+    model.addRGroup(1, RDGeom::Point3D(3.0, 4.0, 0.0), r3_atom);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    const auto* r1_atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(r1_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r1_atom) == 1);
+    BOOST_TEST(is_r_group(r1_atom));
+    BOOST_TEST(!is_attachment_point(r1_atom));
+    BOOST_TEST(get_all_r_group_numbers(mol) ==
+               std::vector<unsigned int>({1, 3}));
+    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({2}));
+    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+               std::vector<unsigned int>({2, 4}));
+    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+               std::vector<unsigned int>({2, 4, 5}));
+
+    model.addRGroupChain({2, 4}, {RDGeom::Point3D(5.0, 6.0, 0.0),
+                                  RDGeom::Point3D(7.0, 8.0, 0.0)});
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    BOOST_TEST(mol->getNumBonds() == 2);
+    const auto* r2_atom = mol->getAtomWithIdx(2);
+    BOOST_TEST(r2_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r2_atom) == 2);
+    const auto* r4_atom = mol->getAtomWithIdx(3);
+    BOOST_TEST(r4_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r4_atom) == 4);
+    BOOST_TEST(get_all_r_group_numbers(mol) ==
+               std::vector<unsigned int>({1, 2, 3, 4}));
+    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({5}));
+    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+               std::vector<unsigned int>({5, 6}));
+    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+               std::vector<unsigned int>({5, 6, 7}));
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    undo_stack.redo();
+    r2_atom = mol->getAtomWithIdx(2);
+    BOOST_TEST(r2_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r2_atom) == 2);
+    r4_atom = mol->getAtomWithIdx(3);
+    BOOST_TEST(r4_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(r4_atom) == 4);
+}
+
+BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(!is_r_group(c_atom));
+    BOOST_TEST(!is_attachment_point(c_atom));
+    BOOST_TEST(get_r_group_number(c_atom) == 0);
+    BOOST_TEST(get_next_attachment_point_number(mol) == 1);
+
+    model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    const auto* attachment_atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(attachment_atom->getAtomicNum() == 0);
+    BOOST_TEST(is_attachment_point(attachment_atom));
+    BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
+    BOOST_TEST(!is_r_group(attachment_atom));
+    BOOST_TEST(get_r_group_number(attachment_atom) == 0);
+    BOOST_TEST(get_all_r_group_numbers(mol).empty());
+    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({1}));
+    BOOST_TEST(get_next_attachment_point_number(mol) == 2);
+
+    model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
+    const auto* attachment_atom2 = mol->getAtomWithIdx(2);
+    BOOST_TEST(attachment_atom2->getAtomicNum() == 0);
+    BOOST_TEST(is_attachment_point(attachment_atom2));
+    BOOST_TEST(get_attachment_point_number(attachment_atom2) == 2);
+    BOOST_TEST(get_r_group_number(attachment_atom2) == 0);
+    BOOST_TEST(get_next_attachment_point_number(mol) == 3);
+
+    model.addAtom(Element::N, RDGeom::Point3D(5.0, 6.0, 0.0));
+    const auto* n_atom = mol->getAtomWithIdx(3);
+
+    model.addAttachmentPoint(RDGeom::Point3D(7.0, 8.0, 0.0), n_atom);
+    const auto* attachment_atom3 = mol->getAtomWithIdx(4);
+    BOOST_TEST(attachment_atom3->getAtomicNum() == 0);
+    BOOST_TEST(is_attachment_point(attachment_atom3));
+    BOOST_TEST(get_attachment_point_number(attachment_atom3) == 3);
+    BOOST_TEST(get_next_attachment_point_number(mol) == 4);
+
+    model.addAttachmentPoint(RDGeom::Point3D(9.0, 0.0, 0.0), n_atom);
+    const auto* attachment_atom4 = mol->getAtomWithIdx(5);
+    BOOST_TEST(attachment_atom4->getAtomicNum() == 0);
+    BOOST_TEST(is_attachment_point(attachment_atom4));
+    BOOST_TEST(get_attachment_point_number(attachment_atom4) == 4);
+    BOOST_TEST(get_next_attachment_point_number(mol) == 5);
+
+    // make sure that deleting an attachment point renumbers all remaining
+    // attachment points
+    model.removeAtomsAndBonds({attachment_atom2}, {});
+    BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
+    BOOST_TEST(get_attachment_point_number(attachment_atom3) == 2);
+    BOOST_TEST(get_attachment_point_number(attachment_atom4) == 3);
+    BOOST_TEST(get_next_attachment_point_number(mol) == 4);
+
+    model.removeAtomsAndBonds({attachment_atom, attachment_atom3}, {});
+    BOOST_TEST(get_attachment_point_number(attachment_atom4) == 1);
+    BOOST_TEST(get_next_attachment_point_number(mol) == 2);
+
+    model.removeAtomsAndBonds({attachment_atom4}, {});
+    BOOST_TEST(get_next_attachment_point_number(mol) == 1);
+
+    undo_stack.undo();
+    BOOST_TEST(get_next_attachment_point_number(mol) == 2);
+
+    undo_stack.undo();
+    BOOST_TEST(get_next_attachment_point_number(mol) == 4);
+}
+
 BOOST_AUTO_TEST_CASE(test_removeAtom)
 {
     QUndoStack undo_stack;
@@ -485,6 +648,44 @@ BOOST_AUTO_TEST_CASE(test_addMol)
         BOOST_TEST(model.getBondFromTag(i) == bond);
         BOOST_TEST(model.getTagForBond(bond) == i);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_addMol_attachment_points)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addMolFromText("C*.N* |$;_AP7;;_AP3$|");
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    BOOST_TEST(mol->getNumBonds() == 2);
+    auto* ap7_atom = mol->getAtomWithIdx(1);
+    auto* ap3_atom = mol->getAtomWithIdx(3);
+    // addMol should automatically renumber the attachment points
+    BOOST_TEST(get_attachment_point_number(ap7_atom) == 2);
+    BOOST_TEST(get_attachment_point_number(ap3_atom) == 1);
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    BOOST_TEST(mol->getNumBonds() == 2);
+    ap7_atom = mol->getAtomWithIdx(1);
+    ap3_atom = mol->getAtomWithIdx(3);
+    BOOST_TEST(get_attachment_point_number(ap7_atom) == 2);
+    BOOST_TEST(get_attachment_point_number(ap3_atom) == 1);
+
+    model.addMolFromText("C*.N* |$;_AP1;;_AP2$|");
+    BOOST_TEST(mol->getNumAtoms() == 8);
+    BOOST_TEST(mol->getNumBonds() == 4);
+    auto* ap1_atom = mol->getAtomWithIdx(5);
+    auto* ap2_atom = mol->getAtomWithIdx(7);
+    // the existing _AP1 should be numbered before the new _AP1.  Same with _AP2
+    BOOST_TEST(get_attachment_point_number(ap3_atom) == 1);
+    BOOST_TEST(get_attachment_point_number(ap1_atom) == 2);
+    BOOST_TEST(get_attachment_point_number(ap7_atom) == 3);
+    BOOST_TEST(get_attachment_point_number(ap2_atom) == 4);
 }
 
 BOOST_AUTO_TEST_CASE(test_clear)
@@ -844,6 +1045,43 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom)
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(!c_atom->hasQuery());
     BOOST_TEST(c_atom->getSymbol() == "N");
+}
+
+BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getAtomicNum() == 6);
+    BOOST_TEST(c_atom->getSymbol() == "C");
+    BOOST_TEST(get_r_group_number(c_atom) == 0);
+
+    model.mutateRGroup(c_atom, 2);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(c_atom) == 2);
+    BOOST_TEST(get_all_r_group_numbers(mol) == std::vector<unsigned int>({2}));
+    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+               std::vector<unsigned int>({1, 3, 4}));
+
+    undo_stack.undo();
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getAtomicNum() == 6);
+    BOOST_TEST(c_atom->getSymbol() == "C");
+    BOOST_TEST(get_r_group_number(c_atom) == 0);
+
+    undo_stack.redo();
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getAtomicNum() == 0);
+    BOOST_TEST(get_r_group_number(c_atom) == 2);
+
+    model.mutateAtom(c_atom, Element::C);
+    c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(c_atom->getAtomicNum() == 6);
+    BOOST_TEST(c_atom->getSymbol() == "C");
+    BOOST_TEST(get_r_group_number(c_atom) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateBond)

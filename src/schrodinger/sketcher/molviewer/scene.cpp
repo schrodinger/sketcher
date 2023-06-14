@@ -27,6 +27,7 @@
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/translate_scene_tool.h"
 
@@ -459,6 +460,21 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 // return std::make_shared<DrawChainSceneTool>(this,
                 // m_mol_model);
                 break;
+        }
+    } else if (draw_tool == DrawTool::ENUMERATION) {
+        auto enumeration_tool = m_sketcher_model->getEnumerationTool();
+        if (enumeration_tool == EnumerationTool::NEW_RGROUP) {
+            return std::make_shared<DrawIncrementingRGroupSceneTool>(
+                this, m_mol_model);
+        } else if (enumeration_tool == EnumerationTool::EXISTING_RGROUP) {
+            auto r_group_num =
+                m_sketcher_model->getValueInt(ModelKey::RGROUP_NUMBER);
+            return std::make_shared<DrawRGroupSceneTool>(r_group_num, this,
+                                                         m_mol_model);
+        } else if (enumeration_tool == EnumerationTool::ATTACHMENT_POINT) {
+            // TODO
+            // return std::make_shared<DrawAttachmentPointSceneTool>(this,
+            // m_mol_model);
         }
     }
     // tool not yet implemented

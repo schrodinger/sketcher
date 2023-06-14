@@ -132,5 +132,8 @@ enum class ZOrder {
     HINT,
 };
 
+// The atomic number of RDKit dummy atoms
+const int DUMMY_ATOMIC_NUMBER = 0;
+
 } // namespace sketcher
 } // namespace schrodinger

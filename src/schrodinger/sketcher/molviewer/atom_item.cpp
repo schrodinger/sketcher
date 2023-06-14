@@ -3,15 +3,19 @@
 #include <GraphMol/Chirality.h>
 #include <GraphMol/PeriodicTable.h>
 #include <GraphMol/ROMol.h>
+#include <RDGeneral/types.h>
+
 #include <QPainter>
 #include <QPointF>
 #include <QString>
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 
 namespace schrodinger
 {
@@ -105,24 +109,16 @@ void AtomItem::updateCachedData()
     prepareGeometryChange();
     clearLabels();
 
-    m_valence_error_is_visible = determineValenceErrorIsVisible();
-    m_label_is_visible =
-        m_valence_error_is_visible || determineLabelIsVisible();
+    bool needs_additional_labels;
+    std::tie(m_main_label_text, m_label_is_visible, m_valence_error_is_visible,
+             needs_additional_labels) = determineLabelType();
+
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
-        std::string text =
-            m_atom->hasQuery() ? m_atom->getQueryType() : m_atom->getSymbol();
-        m_main_label_text = QString::fromStdString(text);
-
-        // if there's a user-set label, override m_main_label_text
-        if (!m_user_label.isEmpty()) {
-            m_main_label_text = m_user_label;
-        }
-
         m_main_label_rect =
             make_text_rect(m_fonts.m_main_label_fm, m_main_label_text);
         m_main_label_rect.moveCenter(QPointF(0, 0));
-        if (m_user_label.isEmpty()) {
+        if (needs_additional_labels) {
             updateIsotopeLabel();
             updateChargeAndRadicalLabel();
             updateHsLabel();
@@ -146,6 +142,43 @@ void AtomItem::updateCachedData()
     }
     m_bounding_rect = m_shape.boundingRect();
     updateChiralityLabel();
+}
+
+std::tuple<QString, bool, bool, bool> AtomItem::determineLabelType() const
+{
+    std::string main_label_text = "";
+    bool valence_error_is_visible = false;
+    bool label_is_visible = true;
+    bool needs_additional_labels = false;
+
+    if (m_atom->hasProp(RDKit::common_properties::_displayLabel)) {
+        // if there's a user-set display label, always use that
+        main_label_text = m_atom->getProp<std::string>(
+            RDKit::common_properties::_displayLabel);
+    } else if (m_atom->hasQuery() && !m_atom->getQueryType().empty()) {
+        main_label_text = m_atom->getQueryType();
+    } else if (m_atom->getAtomicNum() == DUMMY_ATOMIC_NUMBER) {
+        if (is_attachment_point(m_atom)) {
+            label_is_visible = false;
+        } else if (unsigned int r_group_num = get_r_group_number(m_atom)) {
+            main_label_text = "R" + std::to_string(r_group_num);
+        } else {
+            // Unrecognized dummy atom.  Display any user-set labels
+            main_label_text = m_atom->getSymbol();
+        }
+    } else {
+        // a "normal" atom, i.e. an atom that represents an element
+        valence_error_is_visible = determineValenceErrorIsVisible();
+        label_is_visible =
+            valence_error_is_visible || determineLabelIsVisible();
+        if (label_is_visible) {
+            main_label_text = m_atom->getSymbol();
+            needs_additional_labels = true;
+        }
+    }
+
+    return {QString::fromStdString(main_label_text), label_is_visible,
+            valence_error_is_visible, needs_additional_labels};
 }
 
 void AtomItem::updateChiralityLabel()
@@ -326,9 +359,6 @@ bool AtomItem::determineLabelIsVisible() const
     // note that this method does not take m_valence_error_is_visible into
     // account.  If that value is true (and up-to-date), then the label should
     // be visible.
-    if (!m_user_label.isEmpty()) {
-        return true;
-    }
     if (m_settings.m_carbon_labels == CarbonLabels::ALL) {
         return true;
     }
@@ -342,9 +372,6 @@ bool AtomItem::determineLabelIsVisible() const
         return true;
     }
     if (m_atom->getFormalCharge() != 0) {
-        return true;
-    }
-    if (m_atom->hasQuery()) {
         return true;
     }
     int num_bonds = m_atom->getDegree();

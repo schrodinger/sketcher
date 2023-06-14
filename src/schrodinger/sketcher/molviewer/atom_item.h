@@ -149,9 +149,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QRectF m_chirality_label_rect;
     QRectF m_isotope_rect;
 
-    // user label. If set it replaces the atomic labels
-    QString m_user_label;
-
     std::vector<QRectF> m_subrects;
     const Fonts& m_fonts;
     AtomItemSettings& m_settings;
@@ -169,10 +166,24 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     std::vector<QRectF> getLabelRects() const;
 
     /**
+     * Determine what type of label we should display for this atom
+     * @return A tuple of
+     *   - the text to display in the main label
+     *   - whether the main label should be visible
+     *   - whether the valence error should be visible
+     *   - whether this atom needs additional labels (e.g. charge label, isotope
+     *     label, Hs label, etc.)
+     */
+    std::tuple<QString, bool, bool, bool> determineLabelType() const;
+
+    /**
      * @return whether the label for this atom is visible.  (Labels for some
      * carbons may be hidden depending on the atom item settings.)  Note that
-     * this method does *not* take the valence error into account.  If a valence
-     * error is visible, the label should always be visible.
+     * this method is only called for "normal" atoms (i.e. atoms that represent
+     * an element, as opposed to query atoms, R-groups, etc, all of which are
+     * always visible) and that it does *not* take the valence error into
+     * account.  If a valence error is visible, the label should always be
+     * visible.
      */
     bool determineLabelIsVisible() const;
 
