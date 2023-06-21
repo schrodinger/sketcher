@@ -151,6 +151,56 @@ void removeHs(RDKit::RWMol& rdk_mol)
 
     bool sanitize = false;
     RDKit::MolOps::removeHs(rdk_mol, ps, sanitize);
+
+    rdk_mol.updatePropertyCache(false);
+}
+
+void removeHs(RDKit::RWMol& rdk_mol, std::vector<unsigned> atom_ids)
+{
+    if (atom_ids.empty()) {
+        return;
+    }
+
+    // Augment atom ids with the ids of the hydrogens attached to them.
+    // We don't care about duplicates, because we will sort ant uniquify
+    // the list later on.
+    const auto num_atom_ids = atom_ids.size();
+    for (unsigned i = 0; i < num_atom_ids; ++i) {
+        const auto atom = rdk_mol.getAtomWithIdx(atom_ids[i]);
+        for (auto nbr : rdk_mol.atomNeighbors(atom)) {
+            if (nbr->getAtomicNum() == 1 && nbr->getIsotope() == 0) {
+                atom_ids.push_back(nbr->getIdx());
+            }
+        }
+    }
+
+    constexpr int h_protection_mark = 1000;
+
+    // Sort and uniquify the list of atom ids.
+    std::sort(atom_ids.begin(), atom_ids.end());
+    atom_ids.erase(std::unique(atom_ids.begin(), atom_ids.end()),
+                   atom_ids.end());
+
+    auto remove_id_itr = atom_ids.begin();
+    std::vector<RDKit::Atom*> protected_atoms;
+    const auto input_num_atoms = rdk_mol.getNumAtoms();
+    for (unsigned i = 0; i < input_num_atoms; ++i) {
+        if (i == *remove_id_itr) {
+            ++remove_id_itr;
+            continue;
+        }
+        auto atom = rdk_mol.getAtomWithIdx(i);
+        if (atom->getAtomicNum() == 1 && atom->getIsotope() == 0) {
+            atom->setIsotope(atom->getIsotope() + h_protection_mark);
+            protected_atoms.push_back(atom);
+        }
+    }
+
+    rdkit_extensions::removeHs(rdk_mol);
+
+    for (auto atom : protected_atoms) {
+        atom->setIsotope(atom->getIsotope() - h_protection_mark);
+    }
 }
 
 void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)

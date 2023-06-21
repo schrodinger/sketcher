@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
     auto empty_space_position = central_atom->findPositionInEmptySpace(false);
 
     for (const auto& pos : {first_atom_position, second_atom_position}) {
-        BOOST_TEST(QLineF(pos, empty_space_position).length() == 72.6);
+        BOOST_TEST(QLineF(pos, empty_space_position).length() == 83.8);
     }
 }
 

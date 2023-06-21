@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include <boost/noncopyable.hpp>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
@@ -88,6 +90,17 @@ RDKIT_EXTENSIONS_API void reapply_molblock_wedging(RDKit::ROMol& rdk_mol);
  * @param rdk_mol rdkit mol
  */
 RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol);
+
+/**
+ * Overload to remove only the Hs that are either included in the vector of
+ * ints, or attached to atoms in the list.
+ * @param rdk_mol rdkit mol
+ * @param atom_ids vector of atom indexes where Hs should be removed
+ *
+ * @note atom_ids will be sorted and uniqued
+ */
+RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol,
+                                   std::vector<unsigned> atom_ids);
 
 /**
  * A custom wrapper around RDkit's WedgeMolBonds() that makes sure

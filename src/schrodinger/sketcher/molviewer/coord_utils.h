@@ -14,12 +14,32 @@ class Point3D;
 namespace RDKit
 {
 class Atom;
+class Conformer;
+class ROMol;
 } // namespace RDKit
 
 namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * @return whether a 2D Conformer is available for the given molecule.
+ */
+SKETCHER_API bool has_2d_conformer(const RDKit::ROMol& mol);
+
+/**
+ * @return the first 2D Conformer found on the given molecule.
+ * If none is found, one is generated and returned.
+ */
+SKETCHER_API RDKit::Conformer& get_2d_conformer(RDKit::ROMol& mol);
+
+/**
+ * Rescale a conformer so that the most frequent bond length matches the given
+ * reference bond length.
+ */
+SKETCHER_API void rescale(RDKit::Conformer& conformer, RDKit::ROMol& mol,
+                          double reference_bond_length);
 
 /**
  * Covert a location from MolModel/RDKit coordinates to Scene coordinates.
