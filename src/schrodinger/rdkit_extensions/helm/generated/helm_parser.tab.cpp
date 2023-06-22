@@ -520,6 +520,7 @@ int TokenParser::parse()
 
     // Error handling.
     int yynerrs_ = 0;
+    (void)yynerrs_; // Silence 'set but unused' compiler warning
     int yyerrstatus_ = 0;
 
     /// The lookahead symbol.
