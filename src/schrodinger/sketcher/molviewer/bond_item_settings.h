@@ -2,6 +2,8 @@
 
 #include <QtGlobal>
 
+#include "schrodinger/sketcher/molviewer/constants.h"
+
 namespace schrodinger
 {
 namespace sketcher
@@ -18,7 +20,7 @@ class BondItemSettings
     // a single BondItemSettings object with all BondItems.
     explicit BondItemSettings(const BondItemSettings&) = default;
     /// The width of the pen to use for drawing bond lines
-    qreal m_bond_width = 2.2;
+    qreal m_bond_width = BOND_DEFAULT_PEN_WIDTH;
     /// How far apart to draw the lines of a double (or triple) bond
     qreal m_double_bond_spacing = 5.0;
     /// The width of the fat end of the wedge for chiral bonds

@@ -24,6 +24,8 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/tool/attachment_point_scene_tool.h"
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
@@ -151,14 +153,19 @@ void Scene::updateInteractiveItems()
 {
     clearAllInteractiveItems();
     const auto* mol = m_mol_model->getMol();
-
-    m_atom_to_atom_item.clear();
-    m_bond_to_bond_item.clear();
+    unsigned int num_atoms = mol->getNumAtoms();
+    if (num_atoms == 0) {
+        // If there are no atoms, then there's nothing more to do.  Also, if
+        // there are no atoms, then shorten_attachment_point_bonds() will raise
+        // a ConformerException.
+        return;
+    }
+    RDKit::Conformer conformer = shorten_attachment_point_bonds(mol);
 
     // create atom items
-    for (std::size_t i = 0; i < mol->getNumAtoms(); ++i) {
+    for (std::size_t i = 0; i < num_atoms; ++i) {
         const auto* atom = mol->getAtomWithIdx(i);
-        const auto pos = mol->getConformer().getAtomPos(i);
+        const auto pos = conformer.getAtomPos(i);
         auto* atom_item = new AtomItem(atom, m_fonts, m_atom_item_settings);
         atom_item->setPos(to_scene_xy(pos));
         m_atom_to_atom_item[atom] = atom_item;
@@ -199,6 +206,8 @@ void Scene::clearAllInteractiveItems()
         removeItem(item);
         delete item;
     }
+    m_atom_to_atom_item.clear();
+    m_bond_to_bond_item.clear();
 }
 
 qreal Scene::fontSize() const
@@ -344,14 +353,61 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
     menu->show();
 }
 
-AbstractGraphicsItem* Scene::getTopInteractiveItemAt(const QPointF& pos) const
+AbstractGraphicsItem*
+Scene::getTopInteractiveItemAt(const QPointF& pos,
+                               const bool include_attachment_points) const
 {
     for (auto item : items(pos)) {
-        if (auto interactive_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
+        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            if (include_attachment_points ||
+                !is_attachment_point(atom_item->getAtom())) {
+                return atom_item;
+            }
+        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+            if (include_attachment_points ||
+                !is_attachment_point_bond(bond_item->getBond())) {
+                return bond_item;
+            }
+        } else if (auto interactive_item =
+                       dynamic_cast<AbstractGraphicsItem*>(item)) {
+            // we can't use qgraphicsitem_cast for AbstractGraphicsItem since it
+            // doesn't have a unique Type value
             return interactive_item;
         }
     }
     return nullptr;
+}
+
+QList<QGraphicsItem*>
+Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
+{
+    // make sure that .find() calls are O(1) instead of O(N)
+    std::unordered_set<QGraphicsItem*> items_set(items.begin(), items.end());
+    QList<QGraphicsItem*> new_items;
+    for (auto* item : items) {
+        if (const auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            const auto* atom = atom_item->getAtom();
+            if (const RDKit::Bond* ap_bond = get_attachment_point_bond(atom)) {
+                BondItem* bond_item = m_bond_to_bond_item.at(ap_bond);
+                if (items_set.find(bond_item) == items_set.end()) {
+                    new_items.push_back(bond_item);
+                }
+            }
+        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+            const auto* bond = bond_item->getBond();
+            if (const RDKit::Atom* ap_atom = get_attachment_point_atom(bond)) {
+                AtomItem* atom_item = m_atom_to_atom_item.at(ap_atom);
+                if (items_set.find(atom_item) == items_set.end()) {
+                    new_items.push_back(atom_item);
+                }
+            }
+        }
+    }
+    if (new_items.empty()) {
+        return items;
+    } else {
+        return items + new_items;
+    }
 }
 
 void Scene::onMolModelSelectionChanged()
@@ -472,9 +528,8 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             return std::make_shared<DrawRGroupSceneTool>(r_group_num, this,
                                                          m_mol_model);
         } else if (enumeration_tool == EnumerationTool::ATTACHMENT_POINT) {
-            // TODO
-            // return std::make_shared<DrawAttachmentPointSceneTool>(this,
-            // m_mol_model);
+            return std::make_shared<DrawAttachmentPointSceneTool>(this,
+                                                                  m_mol_model);
         }
     }
     // tool not yet implemented

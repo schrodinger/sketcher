@@ -33,8 +33,15 @@ void AbstractHighlightingItem::highlightItem(QGraphicsItem* const item)
 void AbstractHighlightingItem::highlightItems(
     const QList<QGraphicsItem*>& items)
 {
-    QPainterPath path = buildHighlightingPathForItems(items);
+    auto updated_items = updateItemsToHighlight(items);
+    QPainterPath path = buildHighlightingPathForItems(updated_items);
     setHighlightingPath(path);
+}
+
+QList<QGraphicsItem*> AbstractHighlightingItem::updateItemsToHighlight(
+    const QList<QGraphicsItem*>& items) const
+{
+    return items;
 }
 
 QPainterPath AbstractHighlightingItem::buildHighlightingPathForItems(

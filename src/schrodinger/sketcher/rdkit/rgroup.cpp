@@ -1,6 +1,10 @@
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
+#include <algorithm>
+
 #include <GraphMol/Atom.h>
+#include <GraphMol/Bond.h>
+#include <GraphMol/Conformer.h>
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/RWMol.h>
 #include <RDGeneral/types.h>
@@ -169,6 +173,62 @@ void renumber_attachment_points(RDKit::RWMol* const mol)
         atom->setProp(RDKit::common_properties::atomLabel,
                       ATTACHMENT_POINT_LABEL_PREFIX + std::to_string(ap_num++));
     }
+}
+
+const RDKit::Bond* const
+get_attachment_point_bond(const RDKit::Atom* const atom)
+{
+    if (is_attachment_point(atom)) {
+        auto& mol = atom->getOwningMol();
+        return *(mol.atomBonds(atom).begin());
+    }
+    return nullptr;
+}
+
+const RDKit::Atom* const
+get_attachment_point_atom(const RDKit::Bond* const bond)
+{
+    const auto* begin_atom = bond->getBeginAtom();
+    const auto* end_atom = bond->getEndAtom();
+    if (is_attachment_point(begin_atom)) {
+        return begin_atom;
+    } else if (is_attachment_point(end_atom)) {
+        return end_atom;
+    }
+    return nullptr;
+}
+
+bool is_attachment_point_bond(const RDKit::Bond* const bond)
+{
+    return get_attachment_point_atom(bond) != nullptr;
+}
+
+RDKit::Conformer shorten_attachment_point_bonds(const RDKit::ROMol* const mol)
+{
+    RDKit::Conformer new_conf = mol->getConformer();
+    for (const auto* bond : mol->bonds()) {
+        if (const auto* ap_atom = get_attachment_point_atom(bond)) {
+            unsigned int ap_index = ap_atom->getIdx();
+            const auto& ap_coords = new_conf.getAtomPos(ap_index);
+            unsigned int other_index = bond->getOtherAtomIdx(ap_index);
+            const auto& other_coords = new_conf.getAtomPos(other_index);
+            const auto new_ap_coords =
+                other_coords + other_coords.directionVector(ap_coords) *
+                                   ATTACHMENT_POINT_BOND_DISTANCE_RATIO;
+            new_conf.setAtomPos(ap_index, new_ap_coords);
+        }
+    }
+    return new_conf;
+}
+
+unsigned int number_of_bound_attachment_points(const RDKit::Atom* const atom)
+{
+    auto& mol = atom->getOwningMol();
+    auto neighbors = mol.atomNeighbors(atom);
+    return std::count_if(neighbors.begin(), neighbors.end(),
+                         [](const RDKit::Atom* const cur_neighbor) {
+                             return is_attachment_point(cur_neighbor);
+                         });
 }
 
 } // namespace sketcher

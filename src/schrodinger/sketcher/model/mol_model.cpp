@@ -432,14 +432,16 @@ void MolModel::removeAtomsAndBonds(
     if (atoms.empty() && bonds.empty()) {
         return;
     }
+    auto [expanded_atoms, expanded_bonds] =
+        ensureCompleteAttachmentPoints(atoms, bonds);
 
     std::vector<int> atom_tags;
-    for (auto cur_atom : atoms) {
+    for (auto cur_atom : expanded_atoms) {
         atom_tags.push_back(getTagForAtom(cur_atom));
     }
 
     std::vector<std::tuple<int, int, int>> bond_tags;
-    for (auto cur_bond : bonds) {
+    for (auto cur_bond : expanded_bonds) {
         int bond_tag = getTagForBond(cur_bond);
         int start_atom_tag = getTagForAtom(cur_bond->getBeginAtom());
         int end_atom_tag = getTagForAtom(cur_bond->getEndAtom());
@@ -685,12 +687,14 @@ void MolModel::select(const std::unordered_set<const RDKit::Atom*>& atoms,
                       const std::unordered_set<const RDKit::Bond*>& bonds,
                       const SelectMode select_mode)
 {
+    auto [expanded_atoms, expanded_bonds] =
+        ensureCompleteAttachmentPoints(atoms, bonds);
     std::unordered_set<int> atom_tags;
-    for (auto cur_atom : atoms) {
+    for (auto cur_atom : expanded_atoms) {
         atom_tags.insert(getTagForAtom(cur_atom));
     }
     std::unordered_set<int> bond_tags;
-    for (auto cur_bond : bonds) {
+    for (auto cur_bond : expanded_bonds) {
         bond_tags.insert(getTagForBond(cur_bond));
     }
     selectTags(atom_tags, bond_tags, select_mode);
@@ -700,6 +704,8 @@ void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
                           const std::unordered_set<int>& bond_tags,
                           const SelectMode select_mode)
 {
+    // note that we do not ensure that attachment points are complete here.
+    // That happens in select, not selectTags
     bool no_tags_specified = atom_tags.empty() && bond_tags.empty();
     if (select_mode == SelectMode::SELECT_ONLY) {
         if (no_tags_specified) {
@@ -872,6 +878,27 @@ const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
         bond_tag);
 }
 
+std::pair<std::unordered_set<const RDKit::Atom*>,
+          std::unordered_set<const RDKit::Bond*>>
+MolModel::ensureCompleteAttachmentPoints(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const RDKit::Bond*>& bonds)
+{
+    std::unordered_set<const RDKit::Atom*> new_atoms(atoms);
+    std::unordered_set<const RDKit::Bond*> new_bonds(bonds);
+    for (const auto* atom : atoms) {
+        if (const RDKit::Bond* ap_bond = get_attachment_point_bond(atom)) {
+            new_bonds.insert(ap_bond);
+        }
+    }
+    for (const auto* bond : bonds) {
+        if (const RDKit::Atom* ap_atom = get_attachment_point_atom(bond)) {
+            new_atoms.insert(ap_atom);
+        }
+    }
+    return {new_atoms, new_bonds};
+}
+
 void MolModel::addAtomChainFromCommand(
     const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
     const std::function<std::shared_ptr<RDKit::Atom>()> create_atom,
@@ -914,16 +941,11 @@ void MolModel::addAtomChainFromCommand(
     finalizeMoleculeChange();
 }
 
-void MolModel::removeAtomFromCommand(const int atom_tag,
-                                     bool& selection_changed,
-                                     bool& attachment_point_deleted)
+bool MolModel::removeAtomFromCommand(const int atom_tag)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-    attachment_point_deleted =
-        attachment_point_deleted || is_attachment_point(atom);
-    bool cur_selection_changed = m_selected_atom_tags.erase(atom_tag);
-    selection_changed = selection_changed || cur_selection_changed;
+    bool selection_changed = m_selected_atom_tags.erase(atom_tag);
     // RDKit automatically deletes all bonds involving this atom, so we have
     // to remove those from the selection as well
     for (auto cur_bond : m_mol.atomBonds(atom)) {
@@ -933,6 +955,7 @@ void MolModel::removeAtomFromCommand(const int atom_tag,
         }
     }
     m_mol.removeAtom(atom);
+    return selection_changed;
 }
 
 void MolModel::addBondFromCommand(
@@ -973,7 +996,13 @@ void MolModel::removeAtomsAndBondsFromCommand(
 {
     Q_ASSERT(m_in_command);
     bool selection_changed = false;
-    bool attachment_point_deleted = false;
+    // we have to determine whether we're deleting an attachment point before we
+    // delete any of the bonds, since is_attachment_point() will return false
+    // for unbound atoms
+    bool attachment_point_deleted =
+        std::any_of(atom_tags.begin(), atom_tags.end(), [this](int tag) {
+            return is_attachment_point(getAtomFromTag(tag));
+        });
     // remove the bonds first so that they don't get implicitly deleted when we
     // remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
@@ -982,8 +1011,9 @@ void MolModel::removeAtomsAndBondsFromCommand(
         }
     }
     for (int cur_atom_tag : atom_tags) {
-        removeAtomFromCommand(cur_atom_tag, selection_changed,
-                              attachment_point_deleted);
+        if (removeAtomFromCommand(cur_atom_tag)) {
+            selection_changed = true;
+        }
     }
     if (attachment_point_deleted) {
         renumber_attachment_points(&m_mol);

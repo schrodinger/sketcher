@@ -325,6 +325,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * will be destroyed as a result of this method and will no longer be valid.
      * (Without the const, it wouldn't be possible to pass in values returned
      * from getMol.)
+     *
+     * @note If either an attachment point dummy atom or the associated bond are
+     * removed, then the other will automatically be removed as well.
      */
     void
     removeAtomsAndBonds(const std::unordered_set<const RDKit::Atom*>& atoms,
@@ -438,6 +441,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bonds The bonds to select or deselect
      * @param select_mode Whether to select, deselect, toggle selection, or
      * select-only (i.e. clear the selection and then select)
+     *
+     * @note If either an attachment point dummy atom or the associated bond are
+     * selected (or deselected, etc.), then the other will automatically be
+     * selected (or deselected, etc.) as well.
      */
     void select(const std::unordered_set<const RDKit::Atom*>& atoms,
                 const std::unordered_set<const RDKit::Bond*>& bonds,
@@ -576,6 +583,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bond_tags Tags for the bonds to select or deselect
      * @param select_mode Whether to select, deselect, toggle selection, or
      * select-only (i.e. clear the selection and then select)
+     *
+     * @note This method does *not* expand attachment points (i.e. make sure
+     * that both the dummy atom and the bond are included).  That is instead
+     * handled in the select method.
      */
     void selectTags(const std::unordered_set<int>& atom_tags,
                     const std::unordered_set<int>& bond_tags,
@@ -649,6 +660,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::vector<int> getNextNTags(const size_t count, int& tag_counter) const;
 
     /**
+     * Make sure that the returned sets include both an attachment point dummy
+     * atom *and* the associated bond if either the atom *or* the bond are
+     * included in the input sets.
+     */
+    std::pair<std::unordered_set<const RDKit::Atom*>,
+              std::unordered_set<const RDKit::Bond*>>
+    ensureCompleteAttachmentPoints(
+        const std::unordered_set<const RDKit::Atom*>& atoms,
+        const std::unordered_set<const RDKit::Bond*>& bonds);
+
+    /**
      * Add a chain of atoms, where each atom is bound to the previous and next
      * atoms in the chain.  This method must only be called from an undo
      * command.
@@ -677,14 +699,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * an undo command.  Note that this method does not update ring information
      * or emit signals, as these are intended to be done from
      * removeAtomsAndBondsFromCommand instead.
-     * @param[in] atom_tag The tag of the atom to delete
-     * @param[in,out] selection_changed This will be set to true if the removed
-     * atom was selected.
-     * @param[in,out] attachment_point_deleted This will be set to true if the
-     * removed atom was an attachment point.
+     * @param atom_tag The tag of the atom to delete
+     * @return whether selection was changed by this action
      */
-    void removeAtomFromCommand(const int atom_tag, bool& selection_changed,
-                               bool& attachment_point_deleted);
+    bool removeAtomFromCommand(const int atom_tag);
 
     /**
      * Add a bond to the molecule.  This method must only be called from an undo

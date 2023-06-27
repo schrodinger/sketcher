@@ -2,6 +2,8 @@
 
 #include <vector>
 
+#include <QtGlobal>
+#include <QPainterPath>
 #include <QPointF>
 
 #include "schrodinger/sketcher/definitions.h"
@@ -81,6 +83,31 @@ best_placing_around_origin(const std::vector<QPointF>& points);
  */
 SKETCHER_API RDGeom::Point3D
 best_placing_around_origin(const std::vector<RDGeom::Point3D>& points);
+
+/**
+ * Create and return a path for painting a wavy line
+ *
+ * @param number_of_waves The number of "waves" in the squiggle, where each wave
+ * goes from zero, to the maximum, to the minimum, and back to
+ * zero
+ * @param width_per_wave The width of each "wave," measured in Scene units.
+ * @param height The height of the wavy line, measured in Scene units
+ * @param angle The angle of wavy line, measured in degrees
+ */
+SKETCHER_API QPainterPath get_wavy_line_path(const int number_of_waves,
+                                             const qreal width_per_wave,
+                                             const qreal height,
+                                             const qreal angle);
+
+/**
+ * Determine the correct angle for painting a squiggle used to represent an
+ * attachment point
+ *
+ * @param atom The attachment point atom
+ * @return The angle, measured in degrees
+ */
+SKETCHER_API qreal
+get_attachment_point_line_angle(const RDKit::Atom* const atom);
 
 } // namespace sketcher
 } // namespace schrodinger

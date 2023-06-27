@@ -41,12 +41,6 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
     m_settings(settings)
 {
     setZValue(static_cast<qreal>(ZOrder::ATOM));
-    m_selection_highlighting_path.addEllipse(
-        QPointF(0, 0), ATOM_SELECTION_HIGHLIGHTING_RADIUS,
-        ATOM_SELECTION_HIGHLIGHTING_RADIUS);
-    m_predictive_highlighting_path.addEllipse(
-        QPointF(0, 0), ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS,
-        ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS);
     m_valence_error_pen = QPen(VALENCE_ERROR_BORDER_COLOR);
     m_valence_error_pen.setWidthF(VALENCE_ERROR_BORDER_WIDTH);
     m_valence_error_pen.setStyle(Qt::DotLine);
@@ -55,6 +49,14 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
 
     // setup chirality pen
     m_chirality_pen = QPen(CHIRALITY_LABEL_COLOR);
+
+    // use the default atom color for the squiggle pen (used for attachment
+    // points)
+    m_squiggle_pen = QPen(settings.getAtomColor(-1));
+    // TODO: update this pen width when the bond width changes, should be done
+    // as part of SKETCH-1270
+    m_squiggle_pen.setWidthF(BOND_DEFAULT_PEN_WIDTH);
+    m_squiggle_pen.setCapStyle(Qt::RoundCap);
 
     updateCachedData();
 }
@@ -108,10 +110,15 @@ void AtomItem::updateCachedData()
     // bounding rect changes.
     prepareGeometryChange();
     clearLabels();
+    m_selection_highlighting_path =
+        calcHighlightingPath(ATOM_SELECTION_HIGHLIGHTING_RADIUS);
+    m_predictive_highlighting_path =
+        calcHighlightingPath(ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS);
 
     bool needs_additional_labels;
-    std::tie(m_main_label_text, m_label_is_visible, m_valence_error_is_visible,
-             needs_additional_labels) = determineLabelType();
+    std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,
+             m_valence_error_is_visible, needs_additional_labels) =
+        determineLabelType();
 
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
@@ -144,9 +151,33 @@ void AtomItem::updateCachedData()
     updateChiralityLabel();
 }
 
-std::tuple<QString, bool, bool, bool> AtomItem::determineLabelType() const
+QPainterPath AtomItem::calcHighlightingPath(qreal radius)
+{
+    QPainterPath path;
+    if (!is_attachment_point(m_atom)) {
+        path.addEllipse(QPointF(0, 0), radius, radius);
+        return path;
+    } else {
+        path.setFillRule(Qt::WindingFill);
+        qreal squiggle_width = ATTACHMENT_POINT_SQUIGGLE_NUMBER_OF_WAVES *
+                               ATTACHMENT_POINT_SQUIGGLE_WIDTH_PER_WAVE;
+        qreal half_squiggle_width = 0.5 * squiggle_width;
+        path.addRect(-half_squiggle_width, -radius, squiggle_width, 2 * radius);
+        path.addEllipse(QPointF(-half_squiggle_width, 0.0), radius, radius);
+        path.addEllipse(QPointF(half_squiggle_width, 0.0), radius, radius);
+
+        qreal angle = get_attachment_point_line_angle(m_atom);
+        QTransform transform;
+        transform.rotate(angle);
+        return transform.map(path);
+    }
+}
+
+std::tuple<QString, QPainterPath, bool, bool, bool>
+AtomItem::determineLabelType() const
 {
     std::string main_label_text = "";
+    QPainterPath squiggle_path;
     bool valence_error_is_visible = false;
     bool label_is_visible = true;
     bool needs_additional_labels = false;
@@ -160,6 +191,7 @@ std::tuple<QString, bool, bool, bool> AtomItem::determineLabelType() const
     } else if (m_atom->getAtomicNum() == DUMMY_ATOMIC_NUMBER) {
         if (is_attachment_point(m_atom)) {
             label_is_visible = false;
+            squiggle_path = getWavyLine();
         } else if (unsigned int r_group_num = get_r_group_number(m_atom)) {
             main_label_text = "R" + std::to_string(r_group_num);
         } else {
@@ -177,8 +209,17 @@ std::tuple<QString, bool, bool, bool> AtomItem::determineLabelType() const
         }
     }
 
-    return {QString::fromStdString(main_label_text), label_is_visible,
-            valence_error_is_visible, needs_additional_labels};
+    return {QString::fromStdString(main_label_text), squiggle_path,
+            label_is_visible, valence_error_is_visible,
+            needs_additional_labels};
+}
+
+QPainterPath AtomItem::getWavyLine() const
+{
+    qreal angle = get_attachment_point_line_angle(m_atom);
+    return get_wavy_line_path(ATTACHMENT_POINT_SQUIGGLE_NUMBER_OF_WAVES,
+                              ATTACHMENT_POINT_SQUIGGLE_WIDTH_PER_WAVE,
+                              ATTACHMENT_POINT_SQUIGGLE_HEIGHT, angle);
 }
 
 void AtomItem::updateChiralityLabel()
@@ -414,6 +455,9 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
             -VALENCE_ERROR_AREA_BORDER, -VALENCE_ERROR_AREA_BORDER,
             VALENCE_ERROR_AREA_BORDER, VALENCE_ERROR_AREA_BORDER));
         painter->restore();
+    }
+    if (!m_squiggle_path.isEmpty()) {
+        painter->strokePath(m_squiggle_path, m_squiggle_pen);
     }
     if (m_label_is_visible) {
         painter->save();

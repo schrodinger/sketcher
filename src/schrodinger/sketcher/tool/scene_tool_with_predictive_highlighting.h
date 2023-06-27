@@ -32,6 +32,7 @@ class SKETCHER_API SceneToolWithPredictiveHighlighting
   protected:
     PredictiveHighlightingItem m_predictive_highlighting_item =
         PredictiveHighlightingItem();
+    bool m_highlight_attachment_points = true;
 };
 
 } // namespace sketcher

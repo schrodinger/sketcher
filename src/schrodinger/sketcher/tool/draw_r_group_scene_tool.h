@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 
 #include "schrodinger/sketcher/definitions.h"

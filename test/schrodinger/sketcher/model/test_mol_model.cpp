@@ -401,27 +401,42 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(is_attachment_point(attachment_atom4));
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 4);
     BOOST_TEST(get_next_attachment_point_number(mol) == 5);
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 4);
 
     // make sure that deleting an attachment point renumbers all remaining
-    // attachment points
+    // attachment points and removes the attachment point bond
     model.removeAtomsAndBonds({attachment_atom2}, {});
     BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
     BOOST_TEST(get_attachment_point_number(attachment_atom3) == 2);
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 3);
     BOOST_TEST(get_next_attachment_point_number(mol) == 4);
+    BOOST_TEST(mol->getNumAtoms() == 5);
+    BOOST_TEST(mol->getNumBonds() == 3);
 
     model.removeAtomsAndBonds({attachment_atom, attachment_atom3}, {});
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 1);
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 1);
 
-    model.removeAtomsAndBonds({attachment_atom4}, {});
+    // make sure that deleting an attachment point bond also removes the
+    // attachment point itself
+    auto* ap4_bond = *(mol->atomBonds(attachment_atom4).begin());
+    model.removeAtomsAndBonds({}, {ap4_bond});
     BOOST_TEST(get_next_attachment_point_number(mol) == 1);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 0);
 
     undo_stack.undo();
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumBonds() == 1);
 
     undo_stack.undo();
     BOOST_TEST(get_next_attachment_point_number(mol) == 4);
+    BOOST_TEST(mol->getNumAtoms() == 5);
+    BOOST_TEST(mol->getNumBonds() == 3);
 }
 
 BOOST_AUTO_TEST_CASE(test_removeAtom)
@@ -983,6 +998,38 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     bond1 = model.getBondFromTag(1);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
+}
+
+/**
+ * Make sure that attachment points and their bonds are automatically selected
+ * and deselected together.
+ */
+BOOST_AUTO_TEST_CASE(test_select_attachment_point)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    model.addMolFromText("CC* |$;;_AP1$|");
+    const RDKit::ROMol* mol = model.getMol();
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    const auto* ap_atom = mol->getAtomWithIdx(2);
+    const auto* ap_bond = mol->getBondWithIdx(1);
+    model.select({c_atom, ap_atom}, {}, SelectMode::SELECT);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
+    model.select({}, {ap_bond}, SelectMode::DESELECT);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom}));
+    BOOST_TEST(model.getSelectedBonds().empty());
+
+    model.select({}, {ap_bond}, SelectMode::SELECT);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
+    model.select({ap_atom}, {}, SelectMode::TOGGLE);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom}));
+    BOOST_TEST(model.getSelectedBonds().empty());
+
+    model.select({ap_atom}, {ap_bond}, SelectMode::SELECT);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
+    BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateAtom)

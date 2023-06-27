@@ -148,6 +148,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QString m_chirality_label_text;
     QRectF m_chirality_label_rect;
     QRectF m_isotope_rect;
+    QPainterPath m_squiggle_path; // used for attachment point squiggle
 
     std::vector<QRectF> m_subrects;
     const Fonts& m_fonts;
@@ -157,7 +158,15 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QPen m_pen;
     QPen m_valence_error_pen;
     QPen m_chirality_pen;
+    QPen m_squiggle_pen;
     QBrush m_valence_error_brush;
+
+    /**
+     * @return A painter path with the specified radius for use with either
+     * selection highlighting or predictive highlighting.
+     *
+     */
+    QPainterPath calcHighlightingPath(qreal radius);
 
     /**
      * @return a list of the rectangles that make up the atom label. This is
@@ -169,12 +178,21 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * Determine what type of label we should display for this atom
      * @return A tuple of
      *   - the text to display in the main label
+     *   - the path for painting the attachment point squiggle.  This path will
+     *     be empty if this atom is not an attachment point.
      *   - whether the main label should be visible
      *   - whether the valence error should be visible
      *   - whether this atom needs additional labels (e.g. charge label, isotope
      *     label, Hs label, etc.)
      */
-    std::tuple<QString, bool, bool, bool> determineLabelType() const;
+    std::tuple<QString, QPainterPath, bool, bool, bool>
+    determineLabelType() const;
+
+    /**
+     * @return A path for painting the attachment point squiggle.  This method
+     * should only be called for AtomItems that represent an attachment point.
+     */
+    QPainterPath getWavyLine() const;
 
     /**
      * @return whether the label for this atom is visible.  (Labels for some

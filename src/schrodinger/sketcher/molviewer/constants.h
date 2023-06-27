@@ -99,6 +99,8 @@ const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 // the color of the stereo annotations (e.g. "R" and "S")
 const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
 
+// the color of hint bonds (e.g. the blue lines that show where a bond will be
+// drawn)
 const QColor HINT_COLOR = Qt::blue;
 
 // the distance between the stereo annotation and the atom in bond length units
@@ -119,6 +121,29 @@ const qreal VALENCE_ERROR_AREA_BORDER = 3.f;
 // the amount the scene should be zoomed  out to allow for some white space
 // around a molecule when they fill the screen
 const float FIT_TO_SCREEN_MARGIN_FACTOR = 0.15f;
+
+/// The width of the pen to use for drawing bond lines
+const qreal BOND_DEFAULT_PEN_WIDTH = 2.2;
+
+// The length of the bond to an attachment point in bond length units
+const qreal ATTACHMENT_POINT_BOND_DISTANCE_RATIO = 0.5;
+
+// The number of "waves" in the squiggle used to represent attachment points
+// (where each wave is goes from zero, to the maximum, to the minimum, and back
+// to zero)
+const int ATTACHMENT_POINT_SQUIGGLE_NUMBER_OF_WAVES = 3;
+
+// The width of each "wave" in the squiggle used to represent attachment points.
+// This value is measured in Scene units.
+const qreal ATTACHMENT_POINT_SQUIGGLE_WIDTH_PER_WAVE = 8.0;
+
+// The height of the attachment point squiggle, measured in Scene units
+const qreal ATTACHMENT_POINT_SQUIGGLE_HEIGHT = 3.0;
+
+// The maximum number of attachment points that can be addded to any given atom
+// when using the attachment point tool.  Note, however, that it's possible to
+// *import* structures that violate this limit.
+const unsigned int MAX_ATTACHMENT_POINTS_PER_ATOM = 2;
 
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.

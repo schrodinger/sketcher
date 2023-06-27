@@ -74,10 +74,26 @@ class SKETCHER_API Scene : public QGraphicsScene
     QList<QGraphicsItem*> getInteractiveItems() const;
 
     /**
+     * Get the topmost interactive item at a given position.  See the
+     * getInteractiveItems docstring for an explanation of "interactive" items.
+     *
+     * @param pos The Scene coordinates to use
+     * @param include_attachment_points If false, attachment point dummy atoms
+     * and their associated bonds will be ignored.
      * @return the top interactive graphics item at the given position, or
      * nullptr if none are found
      */
-    AbstractGraphicsItem* getTopInteractiveItemAt(const QPointF& pos) const;
+    AbstractGraphicsItem*
+    getTopInteractiveItemAt(const QPointF& pos,
+                            const bool include_attachment_points = true) const;
+
+    /**
+     * Make sure that the returned list includes graphics items for both an
+     * attachment point dummy atom *and* the associated bond if either the atom
+     * *or* the bond are included in the input list.
+     */
+    QList<QGraphicsItem*>
+    ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const;
 
     // Getters and setters for changing settings
     qreal fontSize() const;

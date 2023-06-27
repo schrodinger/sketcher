@@ -168,5 +168,39 @@ best_placing_around_origin(const std::vector<RDGeom::Point3D>& points)
     return to_mol_xy(best);
 }
 
+QPainterPath get_wavy_line_path(const int number_of_waves,
+                                const qreal width_per_wave, const qreal height,
+                                const qreal angle)
+{
+    qreal half_width = width_per_wave / 2.0;
+    qreal start_x = -number_of_waves * half_width;
+    QRectF half_wiggle_rect(start_x, -height / 2.0, half_width, height);
+
+    QPainterPath path;
+    path.moveTo(start_x, 0);
+    for (int i = 0; i < number_of_waves; ++i) {
+        path.arcTo(half_wiggle_rect, -180, -180);
+        half_wiggle_rect.translate(half_width, 0);
+        path.arcTo(half_wiggle_rect, -180, 180);
+        half_wiggle_rect.translate(half_width, 0);
+    }
+
+    QTransform transform;
+    transform.rotate(angle);
+    return transform.map(path);
+}
+
+qreal get_attachment_point_line_angle(const RDKit::Atom* const ap_atom)
+{
+    auto& mol = ap_atom->getOwningMol();
+    // attachment point atoms have exactly one neighbor
+    RDKit::Atom* neighbor = *(mol.atomNeighbors(ap_atom).begin());
+    auto& conf = mol.getConformer();
+    auto ap_pos = conf.getAtomPos(ap_atom->getIdx());
+    auto neighbor_pos = conf.getAtomPos(neighbor->getIdx());
+    QLineF bond_line(to_scene_xy(neighbor_pos), to_scene_xy(ap_pos));
+    return -bond_line.normalVector().angle();
+}
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -8,10 +8,11 @@
 
 namespace RDKit
 {
-class ROMol;
-class RWMol;
 class Atom;
 class Bond;
+class Conformer;
+class ROMol;
+class RWMol;
 } // namespace RDKit
 
 namespace schrodinger
@@ -89,6 +90,42 @@ get_next_attachment_point_number(const RDKit::ROMol* const mol);
  * Number all access points consecutively
  */
 SKETCHER_API void renumber_attachment_points(RDKit::RWMol* const mol);
+
+/**
+ * @return the bond bound to a given attachment point dummy atom.  If a
+ * non-attachment point atom is passed in, nullptr will be returned.
+ */
+SKETCHER_API const RDKit::Bond* const
+get_attachment_point_bond(const RDKit::Atom* const atom);
+
+/**
+ * @return the attachment point dummy atom bound to the given bond.  If a
+ * non-attachment point bond is passed in, nullptr will be returned.
+ */
+SKETCHER_API const RDKit::Atom* const
+get_attachment_point_atom(const RDKit::Bond* const bond);
+
+/**
+ * @return whether the given bond is bound to an attachment point dummy atom.
+ */
+SKETCHER_API bool is_attachment_point_bond(const RDKit::Bond* const bond);
+
+/**
+ * @return The number of attachment point dummy atoms bound to the specified
+ * atom
+ */
+SKETCHER_API unsigned int
+number_of_bound_attachment_points(const RDKit::Atom* const atom);
+
+/**
+ * Shorten all bonds bound to attachment point dummy atoms in the molecule.
+ * @param mol The molecule to modify the coordinates of.  This molecule must
+ * have a 2D conformer.
+ * @return A conformer with the newly calculated coordinates.  Note that this
+ * conformer is *not* added to the molecule.
+ */
+SKETCHER_API RDKit::Conformer
+shorten_attachment_point_bonds(const RDKit::ROMol* const mol);
 
 } // namespace sketcher
 } // namespace schrodinger

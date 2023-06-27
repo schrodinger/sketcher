@@ -76,7 +76,9 @@ class TestScene : public Scene
   public:
     TestScene() : Scene(new MolModel(new QUndoStack()), new SketcherModel()){};
     using Scene::m_atom_item_settings;
+    using Scene::m_atom_to_atom_item;
     using Scene::m_bond_item_settings;
+    using Scene::m_bond_to_bond_item;
     using Scene::m_fonts;
     using Scene::m_mol_model;
     using Scene::m_selection_highlighting_item;

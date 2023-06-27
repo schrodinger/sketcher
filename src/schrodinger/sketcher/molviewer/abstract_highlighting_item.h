@@ -54,6 +54,15 @@ class AbstractHighlightingItem : public QGraphicsPathItem
     getPathForItem(AbstractGraphicsItem* const item) const = 0;
 
     /**
+     * Modify the list of items to highlight immediately prior to highlighting.
+     * The default implementation of this method simply returns the input items,
+     * but subclasses may override this method to change which items get
+     * highlighted.
+     */
+    virtual QList<QGraphicsItem*>
+    updateItemsToHighlight(const QList<QGraphicsItem*>& items) const;
+
+    /**
      * Create a painter path highlighting all specified graphics items.
      */
     QPainterPath

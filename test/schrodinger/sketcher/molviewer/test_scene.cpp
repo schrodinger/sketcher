@@ -122,5 +122,42 @@ BOOST_AUTO_TEST_CASE(test_item_selection)
     test_selected_items(scene, false);
 }
 
+BOOST_AUTO_TEST_CASE(test_ensureCompleteAttachmentPoints)
+{
+    TestScene scene;
+    scene.m_mol_model->addMolFromText("CC* |$;;_AP1$|", Format::SMILES);
+    auto mol = scene.m_mol_model->getMol();
+    auto* ap_atom = mol->getAtomWithIdx(2);
+    auto* ap_atom_item = scene.m_atom_to_atom_item.at(ap_atom);
+    auto* ap_bond = mol->getBondWithIdx(1);
+    auto* ap_bond_item = scene.m_bond_to_bond_item.at(ap_bond);
+
+    // test with attachment point atom
+    auto complete_items = scene.ensureCompleteAttachmentPoints({ap_atom_item});
+    BOOST_TEST(complete_items.size() == 2);
+    BOOST_TEST(complete_items.contains(ap_atom_item));
+    BOOST_TEST(complete_items.contains(ap_bond_item));
+
+    // test with attachment point bond
+    complete_items = scene.ensureCompleteAttachmentPoints({ap_bond_item});
+    BOOST_TEST(complete_items.size() == 2);
+    BOOST_TEST(complete_items.contains(ap_atom_item));
+    BOOST_TEST(complete_items.contains(ap_bond_item));
+
+    // test with non-attachment point atom
+    auto* c_atom = mol->getAtomWithIdx(1);
+    auto* c_atom_item = scene.m_atom_to_atom_item.at(c_atom);
+    complete_items = scene.ensureCompleteAttachmentPoints({c_atom_item});
+    BOOST_TEST(complete_items.size() == 1);
+    BOOST_TEST(complete_items.contains(c_atom_item));
+
+    // test with non-attachment point bond
+    auto* cc_bond = mol->getBondWithIdx(0);
+    auto* cc_bond_item = scene.m_bond_to_bond_item.at(cc_bond);
+    complete_items = scene.ensureCompleteAttachmentPoints({cc_bond_item});
+    BOOST_TEST(complete_items.size() == 1);
+    BOOST_TEST(complete_items.contains(cc_bond_item));
+}
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <tuple>
 #include <utility>
 
 #include <QGraphicsLineItem>
@@ -57,6 +58,17 @@ class SKETCHER_API AbstractDrawSceneTool
     HintBondItem m_hint_bond_item = HintBondItem();
 
     /**
+     * Update whether the hint bond is visible
+     */
+    virtual void setHintBondVisible(bool visible);
+
+    /**
+     * Update where the hint bond is drawn.  Note that this will not affect hint
+     * bond visibility.
+     */
+    virtual void updateHintBondPath(const QPointF& start, const QPointF& end);
+
+    /**
      * Modify the specified bond.  Single bonds become double bonds, double
      * bonds become triple bonds, and all other bonds become single bonds.
      */
@@ -73,8 +85,23 @@ class SKETCHER_API AbstractDrawSceneTool
      *   - The existing atom that the default bond should connect to, or a
      *     nullptr if the default bond will require adding a new atom.
      */
-    std::tuple<RDGeom::Point3D, QPointF, const RDKit::Atom*>
+    virtual std::tuple<RDGeom::Point3D, QPointF, const RDKit::Atom*>
     getDefaultBondPosition(const RDKit::Atom* const atom) const;
+
+    /**
+     * Figure out where we would draw a bond if the user clicked on the
+     * specified atom, ignoring any other existing atoms.
+     * @param atom The atom to add a bond to
+     * @param bond_length The length of the bond to draw, given in MolModel
+     * coordinates.
+     * @return A tuple of
+     *   - The location for the new atom to add (i.e. the atom on the other side
+     *     of the bond), given in MolModel coordinates.
+     *   - The end point for drawing the hint bond, given in Scene coordinates.
+     */
+    std::pair<RDGeom::Point3D, QPointF>
+    getInitialDefaultBondPosition(const RDKit::Atom* const atom,
+                                  const float bond_length = 1.0) const;
 
     /**
      * Determine whether we should start a mouse drag action based on the
@@ -84,7 +111,8 @@ class SKETCHER_API AbstractDrawSceneTool
      *   - Where the drag should start from, given in Scene coordinates.
      *   - The atom that the drag was started over, if any.  Nullptr otherwise.
      */
-    std::tuple<bool, QPointF, const RDKit::Atom*> getDragStartInfo() const;
+    virtual std::tuple<bool, QPointF, const RDKit::Atom*>
+    getDragStartInfo() const;
 
     /**
      * Determine where we should draw the end of the hint bond during a drag.
@@ -97,9 +125,21 @@ class SKETCHER_API AbstractDrawSceneTool
      *   - The location for the end of the hint bond in Scene coordinates.
      *   - The moused-over atom, if any.  Nullptr otherwise.
      */
-    std::pair<QPointF, const RDKit::Atom*>
+    virtual std::pair<QPointF, const RDKit::Atom*>
     getBondEndInMousedDirection(const QPointF& start,
                                 const QPointF& event_pos) const;
+
+    /**
+     * Determine where we should draw the end of the hint bond during a drag,
+     * ignoring any existing atoms.  A bond of the appropriate length will be
+     * drawn at the nearest 30 degree interval.
+     * @param start The start of the drag in Scene coordinates
+     * @param event_pos The current mouse location in Scene coordinates
+     * @return The location for the end of the hint bond in Scene coordinates.
+     */
+    QPointF
+    getDefaultBondOffsetInMousedDirection(const QPointF& start,
+                                          const QPointF& mouse_pos) const;
 
     /**
      * Respond to the user clicking on an atom
