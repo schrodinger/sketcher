@@ -64,7 +64,7 @@ class SKETCHER_API DrawAttachmentPointSceneTool : public AbstractDrawSceneTool
     void onEmptySpaceClicked(const RDGeom::Point3D& pos) override{};
 
     void addTwoBoundAtoms(const RDGeom::Point3D& pos1,
-                          const RDGeom::Point3D& pos2){};
+                          const RDGeom::Point3D& pos2) override{};
 
     void addBond(const RDKit::Atom* const start_atom,
                  const RDKit::Atom* const end_atom) override{};
