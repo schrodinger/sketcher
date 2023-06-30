@@ -9,14 +9,13 @@ namespace schrodinger
 namespace sketcher
 {
 TranslateSceneTool::TranslateSceneTool(Scene* scene, MolModel* mol_model) :
-    AbstractSceneTool(scene, mol_model)
+    MoveRotateSceneTool(scene, mol_model)
 {
 }
 
 void TranslateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 {
-    auto distance = event->scenePos() - event->lastScenePos();
-    m_mol_model->translateByVector(to_mol_xy(distance));
+    translate(event);
 }
 
 void TranslateSceneTool::onMouseClick(QGraphicsSceneMouseEvent* event)

@@ -1,6 +1,6 @@
 #pragma once
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+#include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 
 namespace schrodinger
 {
@@ -12,7 +12,7 @@ class MolModel;
 /**
  * The scene tool for right click mouse translation and context menus
  */
-class SKETCHER_API TranslateSceneTool : public AbstractSceneTool
+class SKETCHER_API TranslateSceneTool : public MoveRotateSceneTool
 {
   public:
     TranslateSceneTool(Scene* scene, MolModel* mol_model);

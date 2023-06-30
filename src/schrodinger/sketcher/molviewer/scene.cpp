@@ -30,8 +30,12 @@
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
+#include "schrodinger/sketcher/selection_item.h"
+
+#include "schrodinger/sketcher/molviewer/rotation_item.h"
 #include "schrodinger/sketcher/tool/rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/translate_scene_tool.h"
+#include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 
 #define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
                           setter, variable_name)                        \
@@ -85,6 +89,9 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
 
     connect(m_mol_model, &MolModel::moleculeChanged, this,
             &Scene::updateInteractiveItems);
+
+    connect(m_mol_model, &MolModel::coordinatesChanged, this,
+            &Scene::moveInteractiveItems);
 
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
@@ -147,6 +154,28 @@ Scene::~Scene()
     // Avoid selection update calls when any selected item is destroyed
     disconnect(this, &Scene::selectionChanged, this,
                &Scene::updateSelectionHighlighting);
+}
+
+void Scene::moveInteractiveItems()
+{
+
+    const auto& conf = m_mol_model->getMol()->getConformer();
+
+    for (auto* item : items()) {
+        auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
+        if (atom_item != nullptr) {
+            auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
+            atom_item->setPos(to_scene_xy(pos));
+            atom_item->updateCachedData();
+        }
+    }
+    for (auto* item : items()) {
+        auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
+        if (bond_item != nullptr) {
+            bond_item->updateCachedData();
+        }
+    }
+    updateSelectionHighlighting();
 }
 
 void Scene::updateInteractiveItems()
@@ -230,8 +259,9 @@ BOND_SETTING(qreal, doubleBondSpacing, setDoubleBondSpacing,
 
 void Scene::updateAtomAndBondItems()
 {
-    // we need to update all of the atom items before we update any bond items,
-    // since bond items pull information from their associated atom items
+    // we need to update all of the atom items before we update any bond
+    // items, since bond items pull information from their associated atom
+    // items
     for (auto item : items()) {
         if (auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             atom_item->updateCachedData();
@@ -269,7 +299,8 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
     auto scene_tool = getSceneTool(event);
     if (event->buttons() != Qt::NoButton && !m_drag_started) {
-        // check to see whether the mouse has moved far enough to start a drag
+        // check to see whether the mouse has moved far enough to start a
+        // drag
         int drag_dist =
             (m_mouse_down_screen_pos - event->screenPos()).manhattanLength();
         if (drag_dist >= QApplication::startDragDistance()) {
@@ -450,8 +481,8 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
 std::shared_ptr<AbstractSceneTool>
 Scene::getSceneTool(QGraphicsSceneMouseEvent* const event)
 {
-    // the button for a release event is stored in event->button(), while the
-    // one for a drag event is stored in event->buttons()
+    // the button for a release event is stored in event->button(), while
+    // the one for a drag event is stored in event->buttons()
     if ((event->buttons() & Qt::MiddleButton) ||
         (event->button() == Qt::MiddleButton)) {
         return m_middle_button_scene_tool;
@@ -531,6 +562,8 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             return std::make_shared<DrawAttachmentPointSceneTool>(this,
                                                                   m_mol_model);
         }
+    } else if (draw_tool == DrawTool::MOVE_ROTATE) {
+        return std::make_shared<MoveRotateSceneTool>(this, m_mol_model);
     }
     // tool not yet implemented
     return std::make_shared<NullSceneTool>();
@@ -595,6 +628,11 @@ void Scene::dragMoveEvent(QGraphicsSceneDragDropEvent* event)
 void Scene::dragLeaveEvent(QGraphicsSceneDragDropEvent* event)
 {
     event->acceptProposedAction();
+}
+
+QRectF Scene::getSelectionRect() const
+{
+    return m_selection_highlighting_item->shape().boundingRect();
 }
 
 } // namespace sketcher

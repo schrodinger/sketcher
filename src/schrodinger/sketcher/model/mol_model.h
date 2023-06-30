@@ -109,11 +109,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::unordered_set<const RDKit::Bond*> getSelectedBonds() const;
 
     /**
-     *  compute the centroid of atoms by averaging their coordinates
-     */
-    RDGeom::Point3D findCentroid() const;
-
-    /**
      * Get multiple available R-group numbers
      * @param how_many How many R-group numbers to return
      * @return A sorted list (of length `how_many`) containing the smallest
@@ -344,14 +339,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * clockwise, while the representation in the scene
      * rotates counter-clockwise,  since the y axis is inverted)
      * @param angle angle in degrees
+     * @param pivot_point point to rotate around
+     * @param atoms atoms to rotate, if empty rotate all atoms
      */
-    void rotateByAngle(float angle);
+    void rotateByAngle(float angle, const RDGeom::Point3D& pivot_point,
+                       const std::vector<const RDKit::Atom*>& atoms = {});
 
     /**
      * translate all atoms by the given vector
      * @param vector vector to translate by
+     * @param atoms atoms to translate, if empty translate all atoms
      */
-    void translateByVector(const RDGeom::Point3D& vector);
+    void translateByVector(const RDGeom::Point3D& vector,
+                           const std::vector<const RDKit::Atom*>& atoms = {});
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
@@ -469,10 +469,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
   signals:
 
     /**
-     * Signal emitted when the molecule is changed, excluding selection changes,
-     * which will trigger selectionChanged instead.
+     * Signal emitted when the molecule is changed (e.g. by adding or removing
+     * atoms or bonds), excluding selection changes, which will trigger
+     * selectionChanged instead and coordinates changes which will trigger
+     * coordinatesChanged.
      */
     void moleculeChanged();
+
+    /**
+     * Signal emitted when the molecule's coordinates are changed
+     */
+    void coordinatesChanged();
 
     /**
      * Signal emitted when selection is changed.  Note that atoms and bonds will
@@ -496,10 +503,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param merge_id The merge id to use for the redo/undo command. If this is
      * different from -1, the command will be merged with the previous command
      * if they share the same merge id.
+     * @param atoms The atoms to transform. If this is empty, all atoms will be
+     * transformed
      */
     void transformCoordinatesWithFunction(
         const QString& desc, std::function<void(RDGeom::Point3D&)> function,
-        MergeId merge_id = MergeId::NO_MERGE);
+        MergeId merge_id = MergeId::NO_MERGE,
+        std::vector<const RDKit::Atom*> atoms =
+            std::vector<const RDKit::Atom*>());
 
     /**
      * Set the atom tag for the specified atom

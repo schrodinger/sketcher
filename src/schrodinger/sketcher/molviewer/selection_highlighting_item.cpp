@@ -2,6 +2,7 @@
 
 #include <QBrush>
 #include <QPen>
+#include <QPainter>
 
 #include "schrodinger/sketcher/molviewer/constants.h"
 

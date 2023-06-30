@@ -9,19 +9,14 @@ namespace schrodinger
 namespace sketcher
 {
 RotateSceneTool::RotateSceneTool(Scene* scene, MolModel* mol_model) :
-    AbstractSceneTool(scene, mol_model)
+    MoveRotateSceneTool(scene, mol_model)
 {
 }
 
 void RotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 {
-    // calculate angle increment of the event,
-    // considering the centroid of the molecule as the origin
-    auto centroid = to_scene_xy(m_mol_model->findCentroid());
-    QLineF current_position_line(centroid, event->scenePos());
-    QLineF last_position_line(centroid, event->lastScenePos());
-    auto angle = last_position_line.angleTo(current_position_line);
-    m_mol_model->rotateByAngle(angle);
+    auto center_of_rotation = find_centroid(*(m_mol_model->getMol()));
+    rotate(event, to_scene_xy(center_of_rotation));
 }
 
 } // namespace sketcher

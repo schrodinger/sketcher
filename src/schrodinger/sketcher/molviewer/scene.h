@@ -35,6 +35,7 @@ namespace schrodinger
 namespace sketcher
 {
 
+class RotationItem;
 class AbstractGraphicsItem;
 class AtomItem;
 class BondItem;
@@ -120,6 +121,8 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void showContextMenu(QGraphicsSceneMouseEvent* event);
 
+    QRectF getSelectionRect() const;
+
   signals:
     void importTextRequested(const std::string& text,
                              rdkit_extensions::Format format);
@@ -140,6 +143,11 @@ class SKETCHER_API Scene : public QGraphicsScene
      * regenerate them from the current MolModel molecule.
      */
     void updateInteractiveItems();
+
+    /**
+     * update the positions of all interactive items in the scene
+     */
+    void moveInteractiveItems();
 
     /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.
@@ -208,6 +216,7 @@ class SKETCHER_API Scene : public QGraphicsScene
     MolModel* m_mol_model = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
+
     QPointF m_mouse_down_screen_pos;
     std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;

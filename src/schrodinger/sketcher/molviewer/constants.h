@@ -145,6 +145,12 @@ const qreal ATTACHMENT_POINT_SQUIGGLE_HEIGHT = 3.0;
 // *import* structures that violate this limit.
 const unsigned int MAX_ATTACHMENT_POINTS_PER_ATOM = 2;
 
+const QColor ROTATION_ITEM_COLOR = QColor("#ff9b00");
+
+const float ROTATION_ITEM_HANDLE_RADIUS = 12.f;
+const float ROTATION_ITEM_PIVOT_RADIUS = 8.f;
+const float ROTATION_ITEM_PEN_WIDTH = 3.f;
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
@@ -155,6 +161,7 @@ enum class ZOrder {
     ATOM,
     DRAG_SELECT_OUTLINE,
     HINT,
+    ROTATION_HANDLE,
 };
 
 // The atomic number of RDKit dummy atoms

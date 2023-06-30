@@ -167,6 +167,46 @@ best_placing_around_origin(const std::vector<RDGeom::Point3D>& points)
     QPointF best = best_placing_around_origin(qpoints);
     return to_mol_xy(best);
 }
+RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
+                             const RDGeom::Point3D& center_of_rotation,
+                             float angle)
+{
+    auto angle_radians = angle * M_PI / 180.0; // Convert angle to radians
+    auto cosine = std::cos(angle_radians);
+    auto sine = std::sin(angle_radians);
+
+    auto coord = point - center_of_rotation;
+    auto rotated_coord = coord;
+    rotated_coord.x = coord.x * cosine - coord.y * sine;
+    rotated_coord.y = coord.x * sine + coord.y * cosine;
+    return rotated_coord + center_of_rotation;
+}
+
+RDGeom::Point3D
+find_centroid(const RDKit::ROMol& mol,
+              const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    std::vector<RDGeom::Point3D> positions;
+    if (atoms.empty()) {
+        positions = mol.getConformer().getPositions();
+    } else {
+        positions.reserve(atoms.size());
+        for (const auto& atom : atoms) {
+            positions.push_back(mol.getConformer().getAtomPos(atom->getIdx()));
+        }
+    }
+    // Calculate the centroid by averaging the coordinates
+    size_t numAtoms = positions.size();
+    RDGeom::Point3D centroid;
+    for (const auto& coord : positions) {
+        centroid += coord;
+    }
+    // avoid division by zero
+    if (numAtoms > 0) {
+        centroid /= static_cast<double>(numAtoms);
+    }
+    return centroid;
+}
 
 QPainterPath get_wavy_line_path(const int number_of_waves,
                                 const qreal width_per_wave, const qreal height,

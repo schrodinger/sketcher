@@ -5,12 +5,17 @@
 #include <QResizeEvent>
 #include <QPinchGesture>
 #include <QGestureEvent>
+#include <QPinchGesture>
+#include <QGestureEvent>
 #include <Qt>
 #include <QtGlobal>
 #include <QWheelEvent>
+#include <QWheelEvent>
 
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 namespace schrodinger
 {
@@ -87,9 +92,9 @@ void View::pinchTriggered(QPinchGesture* gesture)
         scaleSafely(scale_factor);
 
         auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();
-        // invert the angle since RDKit and QGraphicsScene have opposite y
-        // directions
-        m_mol_model->rotateByAngle(-angle);
+
+        auto center_of_rotation = find_centroid(*(m_mol_model->getMol()));
+        m_mol_model->rotateByAngle(-angle, center_of_rotation);
     }
 }
 

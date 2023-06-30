@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <unordered_set>
 
 #include <QtGlobal>
 #include <QPainterPath>
@@ -108,6 +109,26 @@ SKETCHER_API QPainterPath get_wavy_line_path(const int number_of_waves,
  */
 SKETCHER_API qreal
 get_attachment_point_line_angle(const RDKit::Atom* const atom);
+
+/**
+ * @param point coordinate to rotate
+ * @param center_of_rotation center about which to rotate
+ * @param angle specified rotation angle in degrees
+ * @return a new point generated from the requested rotation
+ */
+RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
+                             const RDGeom::Point3D& center_of_rotation,
+                             float angle);
+
+/**
+ * @return the centroid of a set of atoms. If no atoms are given, the centroid
+ * of the whole molecule is returned.
+ * @param mol the molecule to compute the centroid for
+ * @param atoms the atoms to compute the centroid for
+ */
+RDGeom::Point3D
+find_centroid(const RDKit::ROMol& mol,
+              const std::unordered_set<const RDKit::Atom*>& atoms = {});
 
 } // namespace sketcher
 } // namespace schrodinger

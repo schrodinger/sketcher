@@ -1,6 +1,6 @@
 #pragma once
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+#include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 
 namespace schrodinger
 {
@@ -10,9 +10,9 @@ class Scene;
 class MolModel;
 
 /**
- * The scene tool for mid mouse rotation
+ * The scene tool for mouse rotation (middle button drag)
  */
-class SKETCHER_API RotateSceneTool : public AbstractSceneTool
+class SKETCHER_API RotateSceneTool : public MoveRotateSceneTool
 {
   public:
     RotateSceneTool(Scene* scene, MolModel* mol_model);

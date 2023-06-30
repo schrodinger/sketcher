@@ -577,20 +577,28 @@ void MolModel::clear()
 
 void MolModel::transformCoordinatesWithFunction(
     const QString& desc, std::function<void(RDGeom::Point3D&)> function,
-    MergeId merge_id)
+    MergeId merge_id, std::vector<const RDKit::Atom*> atoms)
 {
+
+    // if no atoms are provided, apply to all atoms
+    if (atoms.empty()) {
+        auto all_atoms = m_mol.atoms();
+        atoms.insert(atoms.end(), all_atoms.begin(), all_atoms.end());
+    }
     auto& conf = m_mol.getConformer();
-    auto coords = conf.getPositions();
+    std::vector<RDGeom::Point3D> coords;
+    for (auto atom : atoms) {
+        coords.push_back(conf.getAtomPos(atom->getIdx()));
+    }
+    auto current_coords = coords;
 
     // apply function to all coordinates
     std::for_each(coords.begin(), coords.end(), function);
-
-    auto atoms = m_mol.atoms();
-    std::vector<int> atom_tags(m_mol.getNumAtoms());
+    std::vector<int> atom_tags(atoms.size());
     transform(atoms.begin(), atoms.end(), atom_tags.begin(),
               [this](const RDKit::Atom* atom) { return getTagForAtom(atom); });
-    auto current_coords = m_mol.getConformer().getPositions();
 
+    // if no merge_id is provided, issue a non-mergeable command
     if (merge_id == MergeId::NO_MERGE) {
         auto redo = [this, atom_tags, coords]() {
             this->setCoordinates(atom_tags, coords);
@@ -626,59 +634,35 @@ void MolModel::transformCoordinatesWithFunction(
     }
 }
 
-RDGeom::Point3D MolModel::findCentroid() const
+void MolModel::rotateByAngle(float angle, const RDGeom::Point3D& pivot_point,
+                             const std::vector<const RDKit::Atom*>& atoms)
 {
-    auto& conf = m_mol.getConformer();
-    auto coords = conf.getPositions();
 
-    // Calculate the centroid by averaging the coordinates
-    size_t numAtoms = coords.size();
-    RDGeom::Point3D centroid;
-    for (const auto& coord : coords) {
-        centroid += coord;
-    }
-    // avoid division by zero
-    if (numAtoms > 0) {
-        centroid /= static_cast<double>(numAtoms);
-    }
-    return centroid;
-}
-
-void MolModel::rotateByAngle(float angle)
-{
-    auto centroid = findCentroid();
-    auto angle_radians = angle * M_PI / 180.0; // Convert angle to radians
-    auto cosine = std::cos(angle_radians);
-    auto sine = std::sin(angle_radians);
-
-    auto rotate = [centroid, sine, cosine](auto& coord) {
-        coord -= centroid;
-        auto rotated_coord = coord;
-        rotated_coord.x = coord.x * cosine - coord.y * sine;
-        rotated_coord.y = coord.x * sine + coord.y * cosine;
-        coord = rotated_coord + centroid;
+    auto rotate = [pivot_point, angle](auto& coord) {
+        coord = rotate_point(coord, pivot_point, angle);
     };
-    transformCoordinatesWithFunction("Rotate", rotate, MergeId::ROTATE);
+    transformCoordinatesWithFunction("Rotate", rotate, MergeId::ROTATE, atoms);
 }
 
-void MolModel::translateByVector(const RDGeom::Point3D& vector)
+void MolModel::translateByVector(const RDGeom::Point3D& vector,
+                                 const std::vector<const RDKit::Atom*>& atoms)
 {
 
     auto translate = [vector](auto& coord) { coord += vector; };
-    transformCoordinatesWithFunction("Translate", translate,
-                                     MergeId::TRANSLATE);
+    transformCoordinatesWithFunction("Translate", translate, MergeId::TRANSLATE,
+                                     atoms);
 }
 
 void MolModel::flipAllVertical()
 {
-    auto center = findCentroid();
+    auto center = find_centroid(m_mol);
     auto flip_y = [center](auto& coord) { coord.y = 2 * center.y - coord.y; };
     transformCoordinatesWithFunction("Flip All Vertical", flip_y);
 }
 
 void MolModel::flipAllHorizontal()
 {
-    auto center = findCentroid();
+    auto center = find_centroid(m_mol);
     auto flip_x = [center](auto& coord) { coord.x = 2 * center.x - coord.x; };
     transformCoordinatesWithFunction("flip All Horizontal", flip_x);
 }
@@ -1110,7 +1094,7 @@ void MolModel::setCoordinates(const std::vector<int>& atom_tags,
         throw std::invalid_argument("setCoordinates: atom_tags "
                                     "and coords must have the same size");
     }
-    emit moleculeChanged();
+    emit coordinatesChanged();
 }
 
 void MolModel::clearFromCommand()
