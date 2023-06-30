@@ -108,14 +108,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     std::unordered_set<const RDKit::Bond*> getSelectedBonds() const;
 
-    /**
-     * Get multiple available R-group numbers
-     * @param how_many How many R-group numbers to return
-     * @return A sorted list (of length `how_many`) containing the smallest
-     * unused R-group numbers
-     */
-    std::vector<unsigned int> getNextRGroupNumbers(const size_t how_many) const;
-
     /*************************** UNDOABLE COMMANDS **************************/
 
     /**

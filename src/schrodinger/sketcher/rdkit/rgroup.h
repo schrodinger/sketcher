@@ -66,12 +66,6 @@ SKETCHER_API std::vector<unsigned int>
 get_all_r_group_numbers(const RDKit::ROMol* const mol);
 
 /**
- * @return The next available (i.e. smallest unused) R-group number
- */
-SKETCHER_API unsigned int
-get_next_r_group_number(const RDKit::ROMol* const mol);
-
-/**
  * Get multiple available R-group numbers
  * @param how_many How many R-group numbers to return
  * @return A sorted list (of length `how_many`) containing the smallest

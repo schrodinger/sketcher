@@ -269,10 +269,11 @@ BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
     BOOST_TEST(get_all_r_group_numbers(mol).empty());
-    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({1}));
-    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 1) ==
+               std::vector<unsigned int>({1}));
+    BOOST_TEST(get_next_r_group_numbers(mol, 2) ==
                std::vector<unsigned int>({1, 2}));
-    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 3) ==
                std::vector<unsigned int>({1, 2, 3}));
 
     model.addRGroup(3, RDGeom::Point3D(1.0, 2.0, 0.0));
@@ -284,10 +285,11 @@ BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
     BOOST_TEST(is_r_group(r3_atom));
     BOOST_TEST(!is_attachment_point(r3_atom));
     BOOST_TEST(get_all_r_group_numbers(mol) == std::vector<unsigned int>({3}));
-    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({1}));
-    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 1) ==
+               std::vector<unsigned int>({1}));
+    BOOST_TEST(get_next_r_group_numbers(mol, 2) ==
                std::vector<unsigned int>({1, 2}));
-    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 3) ==
                std::vector<unsigned int>({1, 2, 4}));
 
     undo_stack.undo();
@@ -313,10 +315,11 @@ BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
     BOOST_TEST(!is_attachment_point(r1_atom));
     BOOST_TEST(get_all_r_group_numbers(mol) ==
                std::vector<unsigned int>({1, 3}));
-    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({2}));
-    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 1) ==
+               std::vector<unsigned int>({2}));
+    BOOST_TEST(get_next_r_group_numbers(mol, 2) ==
                std::vector<unsigned int>({2, 4}));
-    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 3) ==
                std::vector<unsigned int>({2, 4, 5}));
 
     model.addRGroupChain({2, 4}, {RDGeom::Point3D(5.0, 6.0, 0.0),
@@ -331,10 +334,11 @@ BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
     BOOST_TEST(get_r_group_number(r4_atom) == 4);
     BOOST_TEST(get_all_r_group_numbers(mol) ==
                std::vector<unsigned int>({1, 2, 3, 4}));
-    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({5}));
-    BOOST_TEST(model.getNextRGroupNumbers(2) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 1) ==
+               std::vector<unsigned int>({5}));
+    BOOST_TEST(get_next_r_group_numbers(mol, 2) ==
                std::vector<unsigned int>({5, 6}));
-    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 3) ==
                std::vector<unsigned int>({5, 6, 7}));
 
     undo_stack.undo();
@@ -374,7 +378,8 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(!is_r_group(attachment_atom));
     BOOST_TEST(get_r_group_number(attachment_atom) == 0);
     BOOST_TEST(get_all_r_group_numbers(mol).empty());
-    BOOST_TEST(model.getNextRGroupNumbers(1) == std::vector<unsigned int>({1}));
+    BOOST_TEST(get_next_r_group_numbers(mol, 1) ==
+               std::vector<unsigned int>({1}));
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
 
     model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
@@ -1112,7 +1117,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     BOOST_TEST(c_atom->getAtomicNum() == 0);
     BOOST_TEST(get_r_group_number(c_atom) == 2);
     BOOST_TEST(get_all_r_group_numbers(mol) == std::vector<unsigned int>({2}));
-    BOOST_TEST(model.getNextRGroupNumbers(3) ==
+    BOOST_TEST(get_next_r_group_numbers(mol, 3) ==
                std::vector<unsigned int>({1, 3, 4}));
 
     undo_stack.undo();

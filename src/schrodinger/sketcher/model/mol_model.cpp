@@ -129,12 +129,6 @@ std::unordered_set<const RDKit::Bond*> MolModel::getSelectedBonds() const
     return sel_bonds;
 }
 
-std::vector<unsigned int>
-MolModel::getNextRGroupNumbers(const size_t how_many) const
-{
-    return get_next_r_group_numbers(&m_mol, how_many);
-}
-
 void MolModel::doCommandWithMolUndo(const std::function<void()> redo,
                                     const QString& description)
 {

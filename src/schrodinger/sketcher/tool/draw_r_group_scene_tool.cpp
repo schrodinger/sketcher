@@ -65,7 +65,7 @@ DrawIncrementingRGroupSceneTool::DrawIncrementingRGroupSceneTool(
 std::vector<unsigned int>
 DrawIncrementingRGroupSceneTool::getRGroupNums(const size_t how_many) const
 {
-    return m_mol_model->getNextRGroupNumbers(how_many);
+    return get_next_r_group_numbers(m_mol_model->getMol(), how_many);
 }
 
 bool DrawIncrementingRGroupSceneTool::shouldDrawBondForClickOnAtom(
