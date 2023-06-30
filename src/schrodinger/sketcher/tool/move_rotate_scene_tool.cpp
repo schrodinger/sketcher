@@ -110,8 +110,9 @@ void MoveRotateSceneTool::updateRotationItem()
 
     // Show the rotation handle if there is more than one selected atom, or
     // if there is no selection and the molecule has more than one atom
-    int num_atoms = m_mol_model->getSelectedAtoms().size() ||
-                    m_mol_model->getMol()->getNumAtoms();
+    int num_atoms = (m_mol_model->getSelectedAtoms().size() > 0
+                         ? m_mol_model->getSelectedAtoms().size()
+                         : m_mol_model->getMol()->getNumAtoms());
     m_rotation_item.setDrawRotationHandle(num_atoms > 1);
 }
 
