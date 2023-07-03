@@ -14,6 +14,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
@@ -519,31 +520,7 @@ std::vector<QRectF> AtomItem::getLabelRects() const
 
 bool AtomItem::determineValenceErrorIsVisible() const
 {
-    if (!m_settings.m_valence_errors_shown) {
-        return false;
-    }
-    auto atomic_number = m_atom->getAtomicNum();
-    const auto* table = RDKit::PeriodicTable::getTable();
-
-    /*  TODO: SKETCH-1917 non-elements, or elements signifying any valence is
-       permitted, or attached to any query bond if (isQuery() ||
-       table->getDefaultValence(atomic_number) == -1 ||
-           std::any_of(m_bonds.begin(), m_bonds.end(),
-                       [](const auto& b) { return b->isQuery(); })) {
-           return false;
-       }
-     */
-
-    // There is a valence error if the current value is not permitted
-    auto allowed_valence = table->getValenceList(atomic_number);
-
-    // RDKit's getTotalValence() doesn't consider charges or unpaired electrons
-    // -- it returns the total bond order instead of the total valence.
-    auto current_valence = m_atom->getTotalValence() -
-                           m_atom->getFormalCharge() +
-                           m_atom->getNumRadicalElectrons();
-    return std::find(allowed_valence.begin(), allowed_valence.end(),
-                     current_valence) == allowed_valence.end();
+    return m_settings.m_valence_errors_shown && has_valence_violation(m_atom);
 }
 
 } // namespace sketcher

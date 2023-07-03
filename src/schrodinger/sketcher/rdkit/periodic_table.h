@@ -5,6 +5,11 @@
 
 #include "schrodinger/sketcher/definitions.h"
 
+namespace RDKit
+{
+class Atom;
+} // namespace RDKit
+
 namespace schrodinger
 {
 namespace sketcher
@@ -35,7 +40,13 @@ SKETCHER_API int symbol_to_atomic_number(std::string element_symbol);
  * @param atomic_number an atomic number
  * @return whether or not the given number corresponds to a valid element
  */
-SKETCHER_API bool is_atomic_number(unsigned int atomic_number);
+SKETCHER_API bool is_atomic_number(int atomic_number);
+
+/**
+ * @param m_atom the atom to check
+ * @return whether or not the given atom has a valence violation
+ */
+SKETCHER_API bool has_valence_violation(const RDKit::Atom* m_atom);
 
 } // namespace sketcher
 } // namespace schrodinger
