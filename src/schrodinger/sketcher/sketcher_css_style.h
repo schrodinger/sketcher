@@ -62,19 +62,19 @@ const QString ATOM_QUERY_STYLE{
 
 const QString PERIODIC_TABLE_STYLE{
     "#PeriodicTableForm { background-color:white }"
-    "QPushButton { font: 10px; color: black; border-style: none; "
+    "QToolButton { font: 10px; color: black; border-style: none; "
     "    min-width: 21px; max-width:21px; min-height:21px; max-height:21px; }"
-    "QPushButton[class='hydrogen'] { background-color: #b2bcc2; }"
-    "QPushButton[class='alkali_metals'] { background-color: #b7d9ec; }"
-    "QPushButton[class='alkaline_earth_metals'] { background-color: #8fbed9; }"
-    "QPushButton[class='transition_metals'] { background-color: #f2d2c6; }"
-    "QPushButton[class='other_metals'] { background-color: #f2d2c6; }"
-    "QPushButton[class='metalloids'] { background-color: #e1baad; }"
-    "QPushButton[class='non_metals'] { background-color: #f2e8b7; }"
-    "QPushButton[class='halogens'] { background-color: #f2e392; }"
-    "QPushButton[class='noble_gases'] { background-color: #eccc75; }"
-    "QPushButton[class='lanthanides'] { background-color: #cce5c3; }"
-    "QPushButton[class='actinides'] { background-color: #afd1a2; }"
+    "QToolButton[class='hydrogen'] { background-color: #b2bcc2; }"
+    "QToolButton[class='alkali_metals'] { background-color: #b7d9ec; }"
+    "QToolButton[class='alkaline_earth_metals'] { background-color: #8fbed9; }"
+    "QToolButton[class='transition_metals'] { background-color: #f2d2c6; }"
+    "QToolButton[class='other_metals'] { background-color: #f2d2c6; }"
+    "QToolButton[class='metalloids'] { background-color: #e1baad; }"
+    "QToolButton[class='non_metals'] { background-color: #f2e8b7; }"
+    "QToolButton[class='halogens'] { background-color: #f2e392; }"
+    "QToolButton[class='noble_gases'] { background-color: #eccc75; }"
+    "QToolButton[class='lanthanides'] { background-color: #cce5c3; }"
+    "QToolButton[class='actinides'] { background-color: #afd1a2; }"
     "QLabel { font: 10px; color: black; border-style: none; padding: 0; }"};
 
 const QString RENDER_OPTIONS_STYLE{
