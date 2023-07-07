@@ -15,7 +15,8 @@ RotateSceneTool::RotateSceneTool(Scene* scene, MolModel* mol_model) :
 
 void RotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 {
-    auto center_of_rotation = find_centroid(*(m_mol_model->getMol()));
+    auto center_of_rotation = find_centroid(
+        *(m_mol_model->getMol()), m_mol_model->getNonMolecularObjects());
     rotate(event, to_scene_xy(center_of_rotation));
 }
 

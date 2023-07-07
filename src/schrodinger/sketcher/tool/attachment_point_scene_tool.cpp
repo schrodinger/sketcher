@@ -80,7 +80,7 @@ std::tuple<bool, QPointF, const RDKit::Atom*>
 DrawAttachmentPointSceneTool::getDragStartInfo() const
 {
     auto* item = m_scene->getTopInteractiveItemAt(
-        m_mouse_press_scene_pos, /*include_attachment_points = */ false);
+        m_mouse_press_scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         const auto* atom = atom_item->getAtom();
         if (number_of_bound_attachment_points(atom) <

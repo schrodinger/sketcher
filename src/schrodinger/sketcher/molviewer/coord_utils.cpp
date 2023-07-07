@@ -182,17 +182,21 @@ RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
     return rotated_coord + center_of_rotation;
 }
 
-RDGeom::Point3D
-find_centroid(const RDKit::ROMol& mol,
-              const std::unordered_set<const RDKit::Atom*>& atoms)
+RDGeom::Point3D find_centroid(
+    const RDKit::ROMol& mol,
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
     std::vector<RDGeom::Point3D> positions;
-    if (atoms.empty()) {
+    if (atoms.empty() && non_molecular_objects.empty()) {
         positions = mol.getConformer().getPositions();
     } else {
-        positions.reserve(atoms.size());
+        positions.reserve(atoms.size() + non_molecular_objects.size());
         for (const auto& atom : atoms) {
             positions.push_back(mol.getConformer().getAtomPos(atom->getIdx()));
+        }
+        for (const auto* non_mol_obj : non_molecular_objects) {
+            positions.push_back(non_mol_obj->getCoords());
         }
     }
     // Calculate the centroid by averaging the coordinates
@@ -206,6 +210,16 @@ find_centroid(const RDKit::ROMol& mol,
         centroid /= static_cast<double>(numAtoms);
     }
     return centroid;
+}
+
+RDGeom::Point3D find_centroid(
+    const RDKit::ROMol& mol,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+{
+    auto all_atoms = mol.atoms();
+    std::unordered_set<const RDKit::Atom*> all_atoms_set(all_atoms.begin(),
+                                                         all_atoms.end());
+    return find_centroid(mol, all_atoms_set, non_molecular_objects);
 }
 
 QPainterPath get_wavy_line_path(const int number_of_waves,

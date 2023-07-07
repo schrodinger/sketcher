@@ -1,9 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <tuple>
 #include <unordered_set>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
@@ -21,10 +22,9 @@ namespace schrodinger
 namespace sketcher
 {
 
-class AtomItem;
-class BondItem;
 class Scene;
 class MolModel;
+class NonMolecularObject;
 enum class SelectionTool;
 enum class SelectMode;
 
@@ -70,9 +70,10 @@ template <typename T> class SKETCHER_API SelectSceneTool
      */
     SelectMode getSelectMode(QGraphicsSceneMouseEvent* const event) const;
 
-    std::pair<std::unordered_set<const RDKit::Atom*>,
-              std::unordered_set<const RDKit::Bond*>>
-    getAtomsAndBondsForGraphicsItems(const QList<QGraphicsItem*>& items) const;
+    std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
+               std::unordered_set<const NonMolecularObject*>>
+    getModelObjectsForGraphicsItems(const QList<QGraphicsItem*>& items) const;
 
     /**
      * Carry out the MolModel selection after the user has selected item(s) in

@@ -151,6 +151,21 @@ const float ROTATION_ITEM_HANDLE_RADIUS = 12.f;
 const float ROTATION_ITEM_PIVOT_RADIUS = 8.f;
 const float ROTATION_ITEM_PEN_WIDTH = 3.f;
 
+// The width of the pen used for painting non-molecular objects (reaction arrows
+// and pluses) measured in Scene units
+const qreal NON_MOLECULAR_PEN_WIDTH = 3.0;
+
+// The dimensions of the reaction arrow, measured in Scene units
+const qreal ARROW_LENGTH = 40.0;
+const qreal ARROW_WIDTH = 10.0;
+
+// The dimensions of the reaction plus sign, measured in Scene units
+const qreal PLUS_LENGTH = 20.0;
+
+// The width of the path drawn around non-molecular objects for predictive and
+// selection highlighting
+const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
@@ -159,6 +174,7 @@ enum class ZOrder {
     PREDICTIVE_HIGHLIGHTING,
     BOND,
     ATOM,
+    RXN_ARROW_AND_PLUS,
     DRAG_SELECT_OUTLINE,
     HINT,
     ROTATION_HANDLE,
@@ -172,6 +188,26 @@ const int DUMMY_ATOMIC_NUMBER = 0;
  * The current value of 1.17 comes from playing a bit with coordgen.
  */
 const double DEFAULT_MOLVIEWER_BOND_LENGTH = 1.17;
+
+// Bit flags for specifying subsets of Scene items based on the type of model
+// object they represent
+typedef uint8_t InteractiveItemFlagType;
+namespace InteractiveItemFlag
+{
+enum : InteractiveItemFlagType { // clang-format off
+    ATOM_NOT_AP           = 1 << 0,
+    ATTACHMENT_POINT      = 1 << 1,
+    BOND_NOT_AP           = 1 << 2,
+    ATTACHMENT_POINT_BOND = 1 << 3,
+    NON_MOLECULAR         = 1 << 4, // clang-format on
+    ATOM = ATOM_NOT_AP | ATTACHMENT_POINT,
+    BOND = BOND_NOT_AP | ATTACHMENT_POINT_BOND,
+    MOLECULAR = ATOM | BOND,
+    ALL = MOLECULAR | NON_MOLECULAR,
+    ATTACHMENT_POINT_OR_AP_BOND = ATTACHMENT_POINT | ATTACHMENT_POINT_BOND,
+    MOLECULAR_NOT_AP = ATOM_NOT_AP | BOND_NOT_AP,
+};
+};
 
 } // namespace sketcher
 } // namespace schrodinger

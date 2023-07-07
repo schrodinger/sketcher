@@ -28,9 +28,8 @@ void SceneToolWithPredictiveHighlighting::onMouseMove(
     AbstractSceneTool::onMouseMove(event);
     if (!m_mouse_pressed) {
         QPointF scene_pos = event->scenePos();
-        QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
-            scene_pos,
-            /*include_attachment_points = */ m_highlight_attachment_points);
+        QGraphicsItem* item =
+            m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
         m_predictive_highlighting_item.highlightItem(item);
     }
 }

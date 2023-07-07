@@ -2,8 +2,10 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
@@ -14,6 +16,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
+#include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 class QObject;
@@ -99,6 +102,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::string getMolText(rdkit_extensions::Format format);
 
     /**
+     * @return whether the model is completely empty, i.e. no atoms, bonds, or
+     * non-molecular objects
+     */
+    bool isEmpty() const;
+
+    /**
+     * @return whether anything (atoms, bonds, or non-molecular objects) is
+     * selected
+     */
+    bool hasSelection() const;
+
+    /**
      * @return A set of all currently selected atoms
      */
     std::unordered_set<const RDKit::Atom*> getSelectedAtoms() const;
@@ -107,6 +122,29 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @return A set of all currently selected bonds
      */
     std::unordered_set<const RDKit::Bond*> getSelectedBonds() const;
+
+    /**
+     * @return A set of all currently selected non-molecular objects
+     */
+    std::unordered_set<const NonMolecularObject*>
+    getSelectedNonMolecularObjects() const;
+
+    /**
+     * @return whether the model contains a reaction arrow
+     */
+    bool hasReactionArrow() const;
+
+    /**
+     * @return the reaction arrow.  Will return nullptr if no reaction arrow is
+     * present.
+     */
+    const NonMolecularObject* getReactionArrow() const;
+
+    /**
+     * @return all non-molecular objects (pluses and the reaction arrow)
+     */
+    std::unordered_set<const NonMolecularObject*>
+    getNonMolecularObjects() const;
 
     /*************************** UNDOABLE COMMANDS **************************/
 
@@ -307,18 +345,28 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
-     * Undoably remove the given atoms and bonds.  Note that, even though this
-     * method accepts pointers to const Atoms and Bonds, the Atoms and Bonds
-     * will be destroyed as a result of this method and will no longer be valid.
+     * Undoably add a non-molecular object (a plus sign or a reaction arrow)
+     * @param type The type of non-molecular object to add
+     * @param coords The coordinates for the new non-molecular object
+     */
+    void addNonMolecularObject(const NonMolecularType& type,
+                               const RDGeom::Point3D& coords);
+
+    /**
+     * Undoably remove the given atoms, bonds, and non-molecular objects (pluses
+     * and/or the reaction arrow).  Note that, even though this method accepts
+     * pointers to const objects, the Atoms, Bonds, and NonMolecularObjects will
+     * be destroyed as a result of this method and will no longer be valid.
      * (Without the const, it wouldn't be possible to pass in values returned
      * from getMol.)
      *
      * @note If either an attachment point dummy atom or the associated bond are
      * removed, then the other will automatically be removed as well.
      */
-    void
-    removeAtomsAndBonds(const std::unordered_set<const RDKit::Atom*>& atoms,
-                        const std::unordered_set<const RDKit::Bond*>& bonds);
+    void remove(const std::unordered_set<const RDKit::Atom*>& atoms,
+                const std::unordered_set<const RDKit::Bond*>& bonds,
+                const std::unordered_set<const NonMolecularObject*>&
+                    non_molecular_objects);
 
     /**
      * Unodable flip all atoms coordinates horizontally or vertically.
@@ -332,18 +380,30 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * rotates counter-clockwise,  since the y axis is inverted)
      * @param angle angle in degrees
      * @param pivot_point point to rotate around
-     * @param atoms atoms to rotate, if empty rotate all atoms
+     * @param atoms atoms to rotate.  If both atoms and non_molecular_objects
+     * are empty, then all objects will be rotated.
+     * @param non_molecular_objects non-molecular objects to rotate.  If both
+     * atoms and non_molecular_objects are empty, then all objects will be
+     * rotated.
      */
-    void rotateByAngle(float angle, const RDGeom::Point3D& pivot_point,
-                       const std::vector<const RDKit::Atom*>& atoms = {});
+    void rotateByAngle(
+        float angle, const RDGeom::Point3D& pivot_point,
+        const std::vector<const RDKit::Atom*>& atoms = {},
+        std::vector<const NonMolecularObject*> non_molecular_objects = {});
 
     /**
      * translate all atoms by the given vector
      * @param vector vector to translate by
-     * @param atoms atoms to translate, if empty translate all atoms
+     * @param atoms atoms to translate.  If both atoms and non_molecular_objects
+     * are empty, then all objects will be translated.
+     * @param non_molecular_objects non-molecular objects to translate.  If both
+     * atoms and non_molecular_objects are empty, then all objects will be
+     * translated.
      */
-    void translateByVector(const RDGeom::Point3D& vector,
-                           const std::vector<const RDKit::Atom*>& atoms = {});
+    void translateByVector(
+        const RDGeom::Point3D& vector,
+        const std::vector<const RDKit::Atom*>& atoms = {},
+        std::vector<const NonMolecularObject*> non_molecular_objects = {});
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
@@ -422,15 +482,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void regenerateCoordinates();
 
     /**
-     * Undoably clear the molecule.
+     * Undoably clear the molecule and non-molecular objects.
      */
     void clear();
 
     /**
-     * Undoably select or deselect the specified atoms and bonds.
+     * Undoably select or deselect the specified atoms, bonds, and non-molecular
+     * objects.
      *
      * @param atoms The atoms to select or deselect
      * @param bonds The bonds to select or deselect
+     * @param non_molecular_objects The non-molecular objects to select or
+     * deselect
      * @param select_mode Whether to select, deselect, toggle selection, or
      * select-only (i.e. clear the selection and then select)
      *
@@ -440,21 +503,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void select(const std::unordered_set<const RDKit::Atom*>& atoms,
                 const std::unordered_set<const RDKit::Bond*>& bonds,
+                const std::unordered_set<const NonMolecularObject*>&
+                    non_molecular_objects,
                 const SelectMode select_mode);
 
     /**
-     * Undoably clear all selected atoms and bonds.
+     * Undoably clear all selected atoms, bonds, and non-molecular objects.
      */
     void clearSelection();
 
     /**
-     * Select all atoms and bonds.
+     * Select all atoms, bonds, and non-molecular objects.
      */
     void selectAll();
 
     /**
-     * Select all unselected atoms and bonds and deselect all selected atoms
-     * and bonds.
+     * Select all unselected objects, and deselect all selected objects.
      */
     void invertSelection();
 
@@ -469,24 +533,44 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void moleculeChanged();
 
     /**
-     * Signal emitted when the molecule's coordinates are changed
+     * Signal emitted when the non-molecular objects are changed, excluding
+     * selection changes, which will trigger selectionChanged instead, and
+     * coordinate changes, which will trigger coordinatesChanged.
+     */
+    void nonMolecularObjectsChanged();
+
+    /**
+     * Signal emitted when the coordinates of the molecule or the non-molecular
+     * objects are changed
      */
     void coordinatesChanged();
 
     /**
-     * Signal emitted when selection is changed.  Note that atoms and bonds will
-     * automatically be deselected when they are removed and reselected if the
-     * removal is undone, and this signal *will* be emitted in those scenario.
+     * Signal emitted when selection is changed.  Note that atoms, bonds, and
+     * non-molecular objects will automatically be deselected when they are
+     * removed and reselected if the removal is undone, and this signal *will*
+     * be emitted in those scenario.
      */
     void selectionChanged();
 
+    /**
+     * Signal emitted when a reaction arrow is added.  Note that this signal
+     * will be emitted *in addition to* nonMolecularObjectsChanged.
+     */
+    void reactionArrowAdded();
+
   protected:
     RDKit::RWMol m_mol = RDKit::RWMol();
+    std::vector<NonMolecularObject> m_pluses;
+    std::optional<NonMolecularObject> m_arrow;
+    std::unordered_map<int, NonMolecularObject*> m_tag_to_non_molecular_object;
 
     int m_next_atom_tag = 0;
     int m_next_bond_tag = 0;
+    int m_next_non_molecular_tag = 0;
     std::unordered_set<int> m_selected_atom_tags;
     std::unordered_set<int> m_selected_bond_tags;
+    std::unordered_set<int> m_selected_non_molecular_tags;
 
     /**
      * Transform all coordinates using the given function.
@@ -495,14 +579,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param merge_id The merge id to use for the redo/undo command. If this is
      * different from -1, the command will be merged with the previous command
      * if they share the same merge id.
-     * @param atoms The atoms to transform. If this is empty, all atoms will be
-     * transformed
+     * @param atoms The atoms to transform. If both atoms and
+     * non_molecular_objects are empty, then all objects will be transformed.
+     * @param non_molecular_objects The non-molecular objects to transform. If
+     * both atoms and non_molecular_objects are empty, then all objects will be
+     * transformed.
      */
     void transformCoordinatesWithFunction(
         const QString& desc, std::function<void(RDGeom::Point3D&)> function,
         MergeId merge_id = MergeId::NO_MERGE,
-        std::vector<const RDKit::Atom*> atoms =
-            std::vector<const RDKit::Atom*>());
+        std::vector<const RDKit::Atom*> atoms = {},
+        std::vector<const NonMolecularObject*> non_molecular_objects = {});
 
     /**
      * Set the atom tag for the specified atom
@@ -584,6 +671,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param atom_tags Tags for the atoms to select or deselect
      * @param bond_tags Tags for the bonds to select or deselect
+     * @param non_molecular_tags Tags for the non-molecular objects to select or
+     * deselect
      * @param select_mode Whether to select, deselect, toggle selection, or
      * select-only (i.e. clear the selection and then select)
      *
@@ -593,6 +682,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void selectTags(const std::unordered_set<int>& atom_tags,
                     const std::unordered_set<int>& bond_tags,
+                    const std::unordered_set<int>& non_molecular_tags,
                     const SelectMode select_mode);
 
     /**
@@ -607,10 +697,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                      const std::unordered_set<int>& selected_tags);
 
     /**
-     * @return The atoms and bond tags for all atoms and bonds that are not
-     * currently selected
+     * @return The atom, bond, and non-molecular tags for all objects that are
+     * not currently selected
      */
-    std::pair<std::unordered_set<int>, std::unordered_set<int>>
+    std::tuple<std::unordered_set<int>, std::unordered_set<int>,
+               std::unordered_set<int>>
     getAllUnselectedTags();
 
     /**
@@ -620,13 +711,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param filtered_atom_tags Tags for the atoms to select or deselect.
      * @param filtered_bond_tags Tags for the bonds to select or deselect.
+     * @param filtered_non_molecular_tags Tags for the non-molecular objects to
+     * select or deselect.
      * @param to_select Whether to select or deselect the specified atoms and
      * bonds.
      * @param description The description for the undo command
      */
-    void doSelectionCommand(const std::unordered_set<int>& filtered_atom_tags,
-                            const std::unordered_set<int>& filtered_bond_tags,
-                            const bool to_select, const QString& description);
+    void doSelectionCommand(
+        const std::unordered_set<int>& filtered_atom_tags,
+        const std::unordered_set<int>& filtered_bond_tags,
+        const std::unordered_set<int>& filtered_non_molecular_tags,
+        const bool to_select, const QString& description);
 
     /**
      * Create an undo command and add it to the undo stack, which automatically
@@ -644,8 +739,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Update all molecule metadata and notify the Scene of the changes.  This
      * method should be called exactly once after changes to m_mol.
+     * @param selection_changed Whether or not selection was changed.  If this
+     * is true, selectionChanged will be emitted.
+     * @param non_molecular_objects_changed Whether or not any non-molecular
+     * objects were changed.  If this is true, the non-molecular tags will be
+     * updated and nonMolecularObjectsChanged will be emitted.
      */
-    void finalizeMoleculeChange(bool selection_changed = false);
+    void finalizeMoleculeChange(bool selection_changed = false,
+                                bool non_molecular_objects_changed = false);
 
     /**
      * Update any RDKit metadata that is required to render the molecule in the
@@ -698,10 +799,27 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const int bound_to_atom_tag);
 
     /**
+     * Add a non-molecular object (a plus sign or a reaction arrow).  This
+     * method must only be called from an undo command.
+     * @param type The type of non-molecular object to add
+     * @param coords The coordinates for the new non-molecular object
+     * @param tag The tag for the new non-molecular object
+     */
+    void addNonMolecularObjectFromCommand(const NonMolecularType& type,
+                                          const RDGeom::Point3D& coords,
+                                          const int tag);
+
+    /**
+     * Update m_tag_to_non_molecular_object so that it reflects the currently
+     * existant non-molecular objects
+     */
+    void updateNonMolecularTags();
+
+    /**
      * Remove an atom from the molecule.  This method must only be called from
      * an undo command.  Note that this method does not update ring information
-     * or emit signals, as these are intended to be done from
-     * removeAtomsAndBondsFromCommand instead.
+     * or emit signals, as these are intended to be done from removeFromCommand
+     * instead.
      * @param atom_tag The tag of the atom to delete
      * @return whether selection was changed by this action
      */
@@ -722,21 +840,33 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::function<std::shared_ptr<RDKit::Bond>()> create_bond);
 
     /**
-     * Remove a bond from the molecule.  This method must only be called from
-     * an undo command.  Note that this method does not update ring information
-     * or emit signals (as these are intended to be done from
-     * removeAtomsAndBondsFromCommand instead).
+     * Remove a bond from the molecule.  This method must only be called from an
+     * undo command.  Note that this method does not update ring information or
+     * emit signals (as these are intended to be done from removeFromCommand
+     * instead).
      * @return whether selection was changed by this action
      */
     bool removeBondFromCommand(const int bond_tag, const int start_atom_tag,
                                const int end_atom_tag);
 
     /**
-     * set new coordinates for a set of atoms.  This method must only be called
-     * from an undo command.
+     * Remove a non-molecular object from the model.  This method must only be
+     * called from an undo command.  Note that this method does not update
+     * m_tag_to_non_molecular_object, as this is intended to be done from
+     * removeFromCommand instead.
+     * @param cur_tag The tag of the non-molecular object to delete
+     * @return whether selection was changed by this action
+     */
+    bool removeNonMolecularObjectFromCommand(const int cur_tag);
+
+    /**
+     * set new coordinates for a set of atoms and non-molecular objects.  This
+     * method must only be called from an undo command.
      */
     void setCoordinates(const std::vector<int>& atom_tags,
-                        const std::vector<RDGeom::Point3D>& coords);
+                        const std::vector<RDGeom::Point3D>& atom_coords,
+                        const std::vector<int>& non_mol_tags,
+                        const std::vector<RDGeom::Point3D>& non_mol_coords);
 
     /**
      * Remove the specified atoms and bonds from the molecule.  This method
@@ -744,10 +874,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atom_tags The atom tags to delete
      * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
      * bond's end atom tag) for the bonds to delete
+     * @param non_molecular_tags The non-molecular tags to delete
      */
-    void removeAtomsAndBondsFromCommand(
+    void removeFromCommand(
         const std::vector<int>& atom_tags,
-        const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms);
+        const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
+        const std::vector<int>& non_molecular_tags);
 
     /**
      * Add all atoms and bonds from the given molecule into this molecule. This
@@ -805,12 +937,15 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param atom_tags The atom tags to select or deselect
      * @param bond_tags The bond tags to select or deselect
+     * @param non_molecular_tags The non-molecular tags to select or deselect
      * @param selected Whether to select or deselect the specified atoms and
      * bonds
      */
-    void setSelectedFromCommand(const std::unordered_set<int>& atom_tags,
-                                const std::unordered_set<int>& bond_tags,
-                                const bool selected);
+    void
+    setSelectedFromCommand(const std::unordered_set<int>& atom_tags,
+                           const std::unordered_set<int>& bond_tags,
+                           const std::unordered_set<int>& non_molecular_tags,
+                           const bool selected);
 
     /**
      * Clear all selected atoms and bonds.  This method must only be called

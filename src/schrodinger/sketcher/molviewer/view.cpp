@@ -93,7 +93,8 @@ void View::pinchTriggered(QPinchGesture* gesture)
 
         auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();
 
-        auto center_of_rotation = find_centroid(*(m_mol_model->getMol()));
+        auto center_of_rotation = find_centroid(
+            *(m_mol_model->getMol()), m_mol_model->getNonMolecularObjects());
         m_mol_model->rotateByAngle(-angle, center_of_rotation);
     }
 }

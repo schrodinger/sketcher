@@ -12,6 +12,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
@@ -40,6 +41,7 @@ class AbstractGraphicsItem;
 class AtomItem;
 class BondItem;
 class MolModel;
+class NonMolecularItem;
 class SketcherModel;
 enum class DrawTool;
 enum class ModelKey;
@@ -68,25 +70,31 @@ class SKETCHER_API Scene : public QGraphicsScene
     virtual ~Scene();
 
     /**
-     * @return interactive items in the scene; these are items that inherit
-     * from AbstractGraphicsItem (atoms, bonds, etc.) as opposed to objects
-     * that are purely graphical (selection highlighting paths, etc.)
+     * Get a list of interactive items in the scene; these are items that
+     * inherit from AbstractGraphicsItem (atoms, bonds, etc.) as opposed to
+     * objects that are purely graphical (selection highlighting paths, etc.)
+     *
+     * @param types The subset of interactive items to return.  Defaults to
+     * returning all interactive items.
+     * @return all requested items
      */
-    QList<QGraphicsItem*> getInteractiveItems() const;
+    QList<QGraphicsItem*> getInteractiveItems(
+        const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
 
     /**
      * Get the topmost interactive item at a given position.  See the
      * getInteractiveItems docstring for an explanation of "interactive" items.
      *
      * @param pos The Scene coordinates to use
-     * @param include_attachment_points If false, attachment point dummy atoms
-     * and their associated bonds will be ignored.
-     * @return the top interactive graphics item at the given position, or
-     * nullptr if none are found
+     * @param types The subset of interactive item types to return.  Defaults to
+     * returning any type interactive items.  Any item types that are not
+     * specified by this flag will be ignored.
+     * @return the top interactive graphics item of the requested type(s) at the
+     * given position, or nullptr if none is found
      */
-    AbstractGraphicsItem*
-    getTopInteractiveItemAt(const QPointF& pos,
-                            const bool include_attachment_points = true) const;
+    AbstractGraphicsItem* getTopInteractiveItemAt(
+        const QPointF& pos,
+        const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
 
     /**
      * Make sure that the returned list includes graphics items for both an
@@ -132,17 +140,31 @@ class SKETCHER_API Scene : public QGraphicsScene
     using QGraphicsScene::clearSelection;
 
     /**
-     * Delete all interactive graphics items in the scene; these are items that
-     * inherit from AbstractGraphicsItem (atoms, bonds, etc.) as opposed to
-     * objects that are purely graphical (selection highlighting paths, etc.).
+     * Deletes interactive graphics items in the scene; these are items that
+     * inherit from AbstractGraphicsItem (atoms, bonds, pluses, etc.) as opposed
+     * to objects that are purely graphical (selection highlighting paths,
+     * etc.).
+     * @param types The subset of interactive items to delete.  Defaults to
+     * deleting all interactive items.  Note that this method does *not*
+     * distinguish between attachment points and non-attachment points, so if
+     * this flag has the ATOM_NOT_AP (or BOND_NOT_AP) bit set, it must also have
+     * the ATTACHMENT_POINT (or ATTACHMENT_POINT_BOND) bit set.  (In other
+     * words, don't try to delete *only* attachment points using this method.)
      */
-    void clearAllInteractiveItems();
+    void clearInteractiveItems(
+        const InteractiveItemFlagType types = InteractiveItemFlag::ALL);
 
     /**
-     * Clear all interactive graphics items (e.g. atoms, bonds, etc.) and
-     * regenerate them from the current MolModel molecule.
+     * Clear all atom and bond graphics items and regenerate them from the
+     * MolModel molecule.
      */
-    void updateInteractiveItems();
+    void updateMolecularItems();
+
+    /**
+     * Clear all arrow and plus graphics items and regenerate them from the
+     * MolModel.
+     */
+    void updateNonMolecularItems();
 
     /**
      * update the positions of all interactive items in the scene
@@ -220,6 +242,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     QPointF m_mouse_down_screen_pos;
     std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
+    std::unordered_map<const NonMolecularObject*, NonMolecularItem*>
+        m_non_molecular_to_non_molecular_item;
     std::shared_ptr<AbstractSceneTool> m_left_button_scene_tool;
     std::shared_ptr<AbstractSceneTool> m_middle_button_scene_tool;
     std::shared_ptr<AbstractSceneTool> m_right_button_scene_tool;

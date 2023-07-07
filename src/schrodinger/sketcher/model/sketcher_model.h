@@ -361,6 +361,12 @@ class SKETCHER_API SketcherModel : public QObject
     bool hasReaction() const;
 
     /**
+     * When a reaction arrow is added, disable the reaction arrow tool unless
+     * ALLOW_MULTIPLE_RXNS is enabled.
+     */
+    void onReactionArrowAdded();
+
+    /**
      * Query the attached scene (if any) and return R group numbers.
      *
      * @return the R group numbers currently in use in the associated scene
@@ -449,13 +455,9 @@ class SKETCHER_API SketcherModel : public QObject
     QList<QGraphicsItem*> contextMenuObjectsRequested() const;
 
     /**
-     * Signal used to request reaction information from the associated scene.
-     *
-     * @param reaction_count An integer representing the number of reaction
-     * arrows in the scene. It should be modified in place by the associated
-     * sketcher scene, if any.
+     * @return the number of reaction arrows in the scene
      */
-    void reactionCountRequested(int& reaction_count) const;
+    unsigned int reactionCountRequested() const;
 
     /**
      * @return Whether an undo operation can be performed

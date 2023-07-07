@@ -31,7 +31,7 @@ AbstractDrawSceneTool::AbstractDrawSceneTool(Scene* scene,
                                              MolModel* mol_model) :
     SceneToolWithPredictiveHighlighting(scene, mol_model)
 {
-    m_highlight_attachment_points = false;
+    m_highlight_types = InteractiveItemFlag::MOLECULAR_NOT_AP;
 }
 
 std::vector<QGraphicsItem*> AbstractDrawSceneTool::getGraphicsItems()
@@ -50,7 +50,7 @@ void AbstractDrawSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
     }
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(
-        scene_pos, /*include_attachment_points = */ false);
+        scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
     bool drew_hint = false;
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         const RDKit::Atom* atom = atom_item->getAtom();
@@ -75,7 +75,7 @@ void AbstractDrawSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
     SceneToolWithPredictiveHighlighting::onMouseClick(event);
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(
-        scene_pos, /*include_attachment_points = */ false);
+        scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         const RDKit::Atom* atom = atom_item->getAtom();
         onAtomClicked(atom);
@@ -169,7 +169,7 @@ AbstractDrawSceneTool::getDefaultBondPosition(
 {
     auto [bond_end, scene_bond_end] = getInitialDefaultBondPosition(atom);
     AbstractGraphicsItem* item = m_scene->getTopInteractiveItemAt(
-        scene_bond_end, /*include_attachment_points = */ false);
+        scene_bond_end, InteractiveItemFlag::MOLECULAR_NOT_AP);
     const RDKit::Atom* atom_at_bond_end = nullptr;
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         atom_at_bond_end = atom_item->getAtom();
@@ -182,7 +182,7 @@ std::tuple<bool, QPointF, const RDKit::Atom*>
 AbstractDrawSceneTool::getDragStartInfo() const
 {
     auto* item = m_scene->getTopInteractiveItemAt(
-        m_mouse_press_scene_pos, /*include_attachment_points = */ false);
+        m_mouse_press_scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         return {true, atom_item->pos(), atom_item->getAtom()};
     } else if (qgraphicsitem_cast<BondItem*>(item)) {
@@ -197,7 +197,7 @@ AbstractDrawSceneTool::getBondEndInMousedDirection(
     const QPointF& start, const QPointF& mouse_pos) const
 {
     auto* item = m_scene->getTopInteractiveItemAt(
-        mouse_pos, /*include_attachment_points = */ false);
+        mouse_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         return {atom_item->pos(), atom_item->getAtom()};
     }
@@ -205,8 +205,7 @@ AbstractDrawSceneTool::getBondEndInMousedDirection(
         getDefaultBondOffsetInMousedDirection(start, mouse_pos);
     QPointF bond_end = start + bond_offset;
     item = m_scene->getTopInteractiveItemAt(
-        bond_end,
-        /*include_attachment_points = */ false);
+        bond_end, InteractiveItemFlag::MOLECULAR_NOT_AP);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         return {atom_item->pos(), atom_item->getAtom()};
     }

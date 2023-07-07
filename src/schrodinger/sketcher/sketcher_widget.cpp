@@ -51,6 +51,11 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_undo_stack, &QUndoStack::canRedoChanged, m_sketcher_model,
             &SketcherModel::undoStackDataChanged);
 
+    connect(m_mol_model, &MolModel::reactionArrowAdded, m_sketcher_model,
+            &SketcherModel::onReactionArrowAdded);
+    connect(m_sketcher_model, &SketcherModel::reactionCountRequested,
+            m_mol_model, &MolModel::hasReactionArrow);
+
     connectTopBarSlots();
     connectSideBarSlots();
 

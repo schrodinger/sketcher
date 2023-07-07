@@ -22,21 +22,21 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
 
 void MoveRotateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
 {
-    std::vector<const RDKit::Atom*> selected_atoms;
-
-    for (auto& item : m_scene->selectedItems()) {
-        if (auto atom_item = dynamic_cast<AtomItem*>(item)) {
-            selected_atoms.push_back(atom_item->getAtom());
-        }
-    }
+    auto selected_atoms = m_mol_model->getSelectedAtoms();
+    auto selected_non_mol_objs = m_mol_model->getSelectedNonMolecularObjects();
+    // convert unordered_set to vectors
+    std::vector<const RDKit::Atom*> atoms_vec(selected_atoms.begin(),
+                                              selected_atoms.end());
+    std::vector<const NonMolecularObject*> non_mol_objs_vec(
+        selected_non_mol_objs.begin(), selected_non_mol_objs.end());
 
     if (m_rotation_item.isInsideHandle(event->scenePos())) {
         m_action = Action::ROTATE;
-        setAtomsToMove(selected_atoms);
+        setObjectsToMove(atoms_vec, non_mol_objs_vec);
     } else {
         m_action = Action::TRANSLATE;
         if (m_move_selection_item.rect().contains(event->scenePos())) {
-            setAtomsToMove(selected_atoms);
+            setObjectsToMove(atoms_vec, non_mol_objs_vec);
         }
     }
 }
@@ -45,10 +45,11 @@ void MoveRotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 {
     switch (m_action) {
         case Action::ROTATE:
-            rotate(event, m_rotation_item.getPivotPoint(), m_atoms_to_move);
+            rotate(event, m_rotation_item.getPivotPoint(), m_atoms_to_move,
+                   m_non_mol_objs_to_move);
             break;
         case Action::TRANSLATE:
-            translate(event, m_atoms_to_move);
+            translate(event, m_atoms_to_move, m_non_mol_objs_to_move);
             break;
         default:
             break;
@@ -59,25 +60,29 @@ void MoveRotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 void MoveRotateSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
 {
     m_action = Action::NONE;
-    setAtomsToMove({});
+    setObjectsToMove({}, {});
 }
 
-void MoveRotateSceneTool::setAtomsToMove(
-    const std::vector<const RDKit::Atom*>& atoms)
+void MoveRotateSceneTool::setObjectsToMove(
+    const std::vector<const RDKit::Atom*>& atoms,
+    const std::vector<const NonMolecularObject*>& non_mol_objects)
 {
     m_atoms_to_move = atoms;
+    m_non_mol_objs_to_move = non_mol_objects;
 }
 
 void MoveRotateSceneTool::rotate(
     QGraphicsSceneMouseEvent* const event, QPointF pivot_point,
-    const std::vector<const RDKit::Atom*>& atoms_to_move)
+    const std::vector<const RDKit::Atom*>& atoms_to_move,
+    const std::vector<const NonMolecularObject*>& non_mol_objs_to_move)
 {
     // calculate angle increment of the event,
     // considering the centroid of the molecule as the origin
     QLineF current_position_line(pivot_point, event->scenePos());
     QLineF last_position_line(pivot_point, event->lastScenePos());
     auto angle = last_position_line.angleTo(current_position_line);
-    m_mol_model->rotateByAngle(angle, to_mol_xy(pivot_point), atoms_to_move);
+    m_mol_model->rotateByAngle(angle, to_mol_xy(pivot_point), atoms_to_move,
+                               non_mol_objs_to_move);
     rotateRotationItem(event);
 }
 
@@ -92,27 +97,33 @@ void MoveRotateSceneTool::rotateRotationItem(QGraphicsSceneMouseEvent* event)
 
 void MoveRotateSceneTool::translate(
     QGraphicsSceneMouseEvent* const event,
-    const std::vector<const RDKit::Atom*>& atoms_to_move)
+    const std::vector<const RDKit::Atom*>& atoms_to_move,
+    const std::vector<const NonMolecularObject*>& non_mol_objs_to_move)
 {
     auto distance = event->scenePos() - event->lastScenePos();
-    m_mol_model->translateByVector(to_mol_xy(distance), atoms_to_move);
+    m_mol_model->translateByVector(to_mol_xy(distance), atoms_to_move,
+                                   non_mol_objs_to_move);
     m_rotation_item.setPivotPoint(m_rotation_item.getPivotPoint() + distance);
 }
 
 void MoveRotateSceneTool::updateRotationItem()
 {
-    if (m_mol_model->getMol()->getNumAtoms() == 0) {
+    if (m_mol_model->isEmpty()) {
         return;
     }
     m_rotation_item.setArmAngle(0);
     auto pivot_point = findPivotPointForRotation();
     m_rotation_item.setPivotPoint(to_scene_xy(pivot_point));
 
-    // Show the rotation handle if there is more than one selected atom, or
-    // if there is no selection and the molecule has more than one atom
-    int num_atoms = (m_mol_model->getSelectedAtoms().size() > 0
-                         ? m_mol_model->getSelectedAtoms().size()
-                         : m_mol_model->getMol()->getNumAtoms());
+    // Show the rotation handle if there is more than one selected atom or
+    // non-molecular object, or if there is no selection and the molecule has
+    // more than one atom or non-molecular object
+    auto sel_atoms = m_mol_model->getSelectedAtoms();
+    auto sel_nmo = m_mol_model->getSelectedNonMolecularObjects();
+    int num_atoms = sel_atoms.empty() && sel_nmo.empty()
+                        ? m_mol_model->getMol()->getNumAtoms() +
+                              m_mol_model->getNonMolecularObjects().size()
+                        : sel_atoms.size() + sel_nmo.size();
     m_rotation_item.setDrawRotationHandle(num_atoms > 1);
 }
 
@@ -132,14 +143,15 @@ std::vector<QGraphicsItem*> MoveRotateSceneTool::getGraphicsItems()
 RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
 {
     // if there's no coordinates, return the origin
-    auto mol = m_mol_model->getMol();
-    if (mol->getNumAtoms() == 0) {
+    if (m_mol_model->isEmpty()) {
         return RDGeom::Point3D(0, 0, 0);
     }
 
+    auto mol = m_mol_model->getMol();
     auto selected_atoms = m_mol_model->getSelectedAtoms();
-    if (selected_atoms.empty()) {
-        return find_centroid(*mol);
+    auto selected_non_mol_objs = m_mol_model->getSelectedNonMolecularObjects();
+    if (selected_atoms.empty() && selected_non_mol_objs.empty()) {
+        return find_centroid(*mol, m_mol_model->getNonMolecularObjects());
     }
 
     // Find all bonds with one selected atom and one unselected atom
@@ -158,7 +170,7 @@ RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
                                               : bond->getEndAtom()->getIdx();
         return mol->getConformer().getAtomPos(pivot_point_idx);
     }
-    return find_centroid(*mol, selected_atoms);
+    return find_centroid(*mol, selected_atoms, selected_non_mol_objs);
 }
 
 } // namespace sketcher

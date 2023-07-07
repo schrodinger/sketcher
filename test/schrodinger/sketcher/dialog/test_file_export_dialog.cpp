@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
 {
     SketcherModel model;
     QObject::connect(&model, &SketcherModel::reactionCountRequested,
-                     [](int& count) { count = 1; });
+                     []() { return 1; });
     BOOST_TEST(model.hasReaction());
 
     // Confirm default format for reactions and default filename

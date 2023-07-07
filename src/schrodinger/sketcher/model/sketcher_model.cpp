@@ -162,9 +162,16 @@ void SketcherModel::setValues(
 
 bool SketcherModel::hasReaction() const
 {
-    int reaction_count = 0;
-    emit reactionCountRequested(reaction_count);
+    unsigned int reaction_count = emit reactionCountRequested();
     return reaction_count > 0;
+}
+
+void SketcherModel::onReactionArrowAdded()
+{
+    if (!getValueBool(ModelKey::ALLOW_MULTIPLE_RXNS) &&
+        getEnumerationTool() == EnumerationTool::RXN_ARROW) {
+        setValue(ModelKey::ENUMERATION_TOOL, EnumerationTool::RXN_PLUS);
+    }
 }
 
 bool SketcherModel::sceneIsEmpty() const

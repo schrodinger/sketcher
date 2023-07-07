@@ -107,7 +107,8 @@ template class UndoableModelMergeableUndoCommand<
     std::pair<float, RDGeom::Point3D>>;
 template class UndoableModelMergeableUndoCommand<
     std::tuple<std::vector<int>, std::vector<RDGeom::Point3D>,
-               std::vector<RDGeom::Point3D>>>;
+               std::vector<RDGeom::Point3D>, std::vector<int>,
+               std::vector<RDGeom::Point3D>, std::vector<RDGeom::Point3D>>>;
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -18,13 +18,16 @@
 #include <QScreen>
 
 #include "schrodinger/sketcher/dialog/file_import_export.h"
+#include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/tool/arrow_plus_scene_tool.h"
 #include "schrodinger/sketcher/tool/attachment_point_scene_tool.h"
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
@@ -60,6 +63,49 @@ namespace schrodinger
 namespace sketcher
 {
 
+namespace
+{
+
+/**
+ * @return whether a graphics item is one of the types specified by the type
+ * flag.
+ */
+bool item_matches_type_flag(QGraphicsItem* item,
+                            InteractiveItemFlagType type_flag)
+{
+    auto type = item->type();
+    if (type == AtomItem::Type) {
+        if ((type_flag & InteractiveItemFlag::ATOM) ==
+            InteractiveItemFlag::ATOM) {
+            // we want all atoms, regardless of whether or not they're
+            // attachment points
+            return true;
+        } else if (type_flag & InteractiveItemFlag::ATOM) {
+            auto* atom = static_cast<AtomItem*>(item)->getAtom();
+            return is_attachment_point(atom) ==
+                   static_cast<bool>(type_flag &
+                                     InteractiveItemFlag::ATTACHMENT_POINT);
+        }
+    } else if (type == BondItem::Type) {
+        if ((type_flag & InteractiveItemFlag::BOND) ==
+            InteractiveItemFlag::BOND) {
+            // we want all bonds, regardless of whether or not they're
+            // attachment point bonds
+            return true;
+        } else if (type_flag & InteractiveItemFlag::BOND) {
+            auto* bond = static_cast<BondItem*>(item)->getBond();
+            return is_attachment_point_bond(bond) ==
+                   static_cast<bool>(
+                       type_flag & InteractiveItemFlag::ATTACHMENT_POINT_BOND);
+        }
+    } else if (type == NonMolecularItem::Type) {
+        return type_flag & InteractiveItemFlag::NON_MOLECULAR;
+    }
+    return false;
+}
+
+} // namespace
+
 NullSceneTool::NullSceneTool() : AbstractSceneTool(nullptr, nullptr)
 {
 }
@@ -88,7 +134,9 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
             &SketcherModel::selectionChanged);
 
     connect(m_mol_model, &MolModel::moleculeChanged, this,
-            &Scene::updateInteractiveItems);
+            &Scene::updateMolecularItems);
+    connect(m_mol_model, &MolModel::nonMolecularObjectsChanged, this,
+            &Scene::updateNonMolecularItems);
 
     connect(m_mol_model, &MolModel::coordinatesChanged, this,
             &Scene::moveInteractiveItems);
@@ -129,16 +177,16 @@ void Scene::connectContextMenu(const BackgroundContextMenu& menu)
     connect(&menu, &BackgroundContextMenu::flipVerticalRequested, m_mol_model,
             &MolModel::flipAllVertical);
     /*
-connect(&menu, &BackgroundContextMenu::selectAllRequested, this,
-    &sketcherScene::selectAll);
-connect(&menu, &BackgroundContextMenu::copyRequested, this,
-    &sketcherScene::copyRequested);
-connect(&menu, &BackgroundContextMenu::pasteRequested, this,
-    [this]() { emit pasteRequested(true); });
-connect(&menu, &BackgroundContextMenu::clearRequested, this,
-    &sketcherScene::clearStructure);
-connect(&menu, &BackgroundContextMenu::aboutToHide, this,
-    &sketcherScene::onContextMenuHidden);
+    connect(&menu, &BackgroundContextMenu::selectAllRequested, this,
+        &sketcherScene::selectAll);
+    connect(&menu, &BackgroundContextMenu::copyRequested, this,
+        &sketcherScene::copyRequested);
+    connect(&menu, &BackgroundContextMenu::pasteRequested, this,
+        [this]() { emit pasteRequested(true); });
+    connect(&menu, &BackgroundContextMenu::clearRequested, this,
+        &sketcherScene::clearStructure);
+    connect(&menu, &BackgroundContextMenu::aboutToHide, this,
+        &sketcherScene::onContextMenuHidden);
     */
 }
 
@@ -161,26 +209,28 @@ void Scene::moveInteractiveItems()
 
     const auto& conf = m_mol_model->getMol()->getConformer();
 
-    for (auto* item : items()) {
+    for (auto* item : getInteractiveItems(InteractiveItemFlag::ATOM)) {
         auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
-        if (atom_item != nullptr) {
-            auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
-            atom_item->setPos(to_scene_xy(pos));
-            atom_item->updateCachedData();
-        }
+        auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
+        atom_item->setPos(to_scene_xy(pos));
+        atom_item->updateCachedData();
     }
-    for (auto* item : items()) {
+    for (auto* item : getInteractiveItems(InteractiveItemFlag::BOND)) {
         auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
-        if (bond_item != nullptr) {
-            bond_item->updateCachedData();
-        }
+        bond_item->updateCachedData();
+    }
+    for (auto* non_mol_obj : m_mol_model->getNonMolecularObjects()) {
+        auto* non_mol_item =
+            m_non_molecular_to_non_molecular_item.at(non_mol_obj);
+        non_mol_item->setPos(to_scene_xy(non_mol_obj->getCoords()));
+        non_mol_item->updateCachedData();
     }
     updateSelectionHighlighting();
 }
 
-void Scene::updateInteractiveItems()
+void Scene::updateMolecularItems()
 {
-    clearAllInteractiveItems();
+    clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
     const auto* mol = m_mol_model->getMol();
     unsigned int num_atoms = mol->getNumAtoms();
     if (num_atoms == 0) {
@@ -212,31 +262,51 @@ void Scene::updateInteractiveItems()
     }
 }
 
-QList<QGraphicsItem*> Scene::getInteractiveItems() const
+void Scene::updateNonMolecularItems()
+{
+    clearInteractiveItems(InteractiveItemFlag::NON_MOLECULAR);
+    QColor color = m_atom_item_settings.getAtomColor(-1);
+    for (const auto* model_obj : m_mol_model->getNonMolecularObjects()) {
+        auto* item = new NonMolecularItem(model_obj, color);
+        auto rd_coords = model_obj->getCoords();
+        auto qpos = to_scene_xy(rd_coords);
+        item->setPos(qpos);
+        m_non_molecular_to_non_molecular_item[model_obj] = item;
+        addItem(item);
+    }
+}
+
+QList<QGraphicsItem*>
+Scene::getInteractiveItems(const InteractiveItemFlagType types) const
 {
     // We expect all objects that inherit from AbstractGraphicsItem to
     // be interactive (atoms, bonds, etc.), and all objects that don't
     // to be purely graphical (selection highlighting paths, etc.)
     QList<QGraphicsItem*> interactive_items;
     for (auto item : items()) {
-        if (dynamic_cast<AbstractGraphicsItem*>(item) != nullptr) {
+        if (item_matches_type_flag(item, types)) {
             interactive_items.append(item);
         }
     }
     return interactive_items;
 }
 
-void Scene::clearAllInteractiveItems()
+void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
 {
     // remove all interactive items and reset the rdkit molecule; this will
     // preserve items include selection paths, highlighting items, and
     // potentially the watermark managed by the SketcherWidget
-    for (auto item : getInteractiveItems()) {
+    for (auto item : getInteractiveItems(types)) {
         removeItem(item);
         delete item;
     }
-    m_atom_to_atom_item.clear();
-    m_bond_to_bond_item.clear();
+    if (types & InteractiveItemFlag::ATOM) {
+        m_atom_to_atom_item.clear();
+    } else if (types & InteractiveItemFlag::BOND) {
+        m_bond_to_bond_item.clear();
+    } else if (types & InteractiveItemFlag::NON_MOLECULAR) {
+        m_non_molecular_to_non_molecular_item.clear();
+    }
 }
 
 qreal Scene::fontSize() const
@@ -386,24 +456,13 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 
 AbstractGraphicsItem*
 Scene::getTopInteractiveItemAt(const QPointF& pos,
-                               const bool include_attachment_points) const
+                               const InteractiveItemFlagType types) const
 {
-    for (auto item : items(pos)) {
-        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-            if (include_attachment_points ||
-                !is_attachment_point(atom_item->getAtom())) {
-                return atom_item;
-            }
-        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
-            if (include_attachment_points ||
-                !is_attachment_point_bond(bond_item->getBond())) {
-                return bond_item;
-            }
-        } else if (auto interactive_item =
-                       dynamic_cast<AbstractGraphicsItem*>(item)) {
-            // we can't use qgraphicsitem_cast for AbstractGraphicsItem since it
-            // doesn't have a unique Type value
-            return interactive_item;
+    for (auto* item : items(pos)) {
+        if (item_matches_type_flag(item, types)) {
+            // item_matches_type_flag only returns true for AbstractGraphicsItem
+            // subclasses, so we can safely use static_cast here
+            return static_cast<AbstractGraphicsItem*>(item);
         }
     }
     return nullptr;
@@ -451,6 +510,11 @@ void Scene::onMolModelSelectionChanged()
     }
     for (auto* bond : m_mol_model->getSelectedBonds()) {
         m_bond_to_bond_item[bond]->setSelected(true);
+    }
+    for (auto* non_molecular_object :
+         m_mol_model->getSelectedNonMolecularObjects()) {
+        m_non_molecular_to_non_molecular_item[non_molecular_object]
+            ->setSelected(true);
     }
     updateSelectionHighlighting();
     // signal_blocker emits selectionChanged on destruction
@@ -561,6 +625,12 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         } else if (enumeration_tool == EnumerationTool::ATTACHMENT_POINT) {
             return std::make_shared<DrawAttachmentPointSceneTool>(this,
                                                                   m_mol_model);
+        } else if (enumeration_tool == EnumerationTool::RXN_ARROW) {
+            return std::make_shared<ArrowPlusSceneTool>(
+                NonMolecularType::RXN_ARROW, this, m_mol_model);
+        } else if (enumeration_tool == EnumerationTool::RXN_PLUS) {
+            return std::make_shared<ArrowPlusSceneTool>(
+                NonMolecularType::RXN_PLUS, this, m_mol_model);
         }
     } else if (draw_tool == DrawTool::MOVE_ROTATE) {
         return std::make_shared<MoveRotateSceneTool>(this, m_mol_model);

@@ -1,6 +1,7 @@
 #pragma once
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+#include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/molviewer/rotation_item.h"
 #include <GraphMol/Atom.h>
 #include <Geometry/point.h>
@@ -34,9 +35,13 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
   protected:
     void rotateRotationItem(QGraphicsSceneMouseEvent* const event);
     void rotate(QGraphicsSceneMouseEvent* const event, QPointF pivot_point,
-                const std::vector<const RDKit::Atom*>& atoms_to_move = {});
+                const std::vector<const RDKit::Atom*>& atoms_to_move = {},
+                const std::vector<const NonMolecularObject*>&
+                    non_mol_objs_to_move = {});
     void translate(QGraphicsSceneMouseEvent* const event,
-                   const std::vector<const RDKit::Atom*>& atoms_to_move = {});
+                   const std::vector<const RDKit::Atom*>& atoms_to_move = {},
+                   const std::vector<const NonMolecularObject*>&
+                       non_mol_objs_to_move = {});
 
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
 
@@ -62,7 +67,9 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
      * between actions that should be performed on the selection and those
      * that should be performed on the whole molecule
      */
-    void setAtomsToMove(const std::vector<const RDKit::Atom*>& atoms_to_move);
+    void setObjectsToMove(
+        const std::vector<const RDKit::Atom*>& atoms_to_move,
+        const std::vector<const NonMolecularObject*>& non_mol_objects);
 
     /** this variable is used to determine if the mouse is being performed in a
      * mouse drag (rotate, translate or none). It gets set in onDragStart and
@@ -82,6 +89,7 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
     RDGeom::Point3D findPivotPointForRotation();
 
     std::vector<const RDKit::Atom*> m_atoms_to_move;
+    std::vector<const NonMolecularObject*> m_non_mol_objs_to_move;
 };
 
 } // namespace sketcher

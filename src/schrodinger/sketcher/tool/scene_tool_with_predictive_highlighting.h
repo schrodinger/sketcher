@@ -5,6 +5,7 @@
 #include <QPointF>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 
@@ -32,7 +33,7 @@ class SKETCHER_API SceneToolWithPredictiveHighlighting
   protected:
     PredictiveHighlightingItem m_predictive_highlighting_item =
         PredictiveHighlightingItem();
-    bool m_highlight_attachment_points = true;
+    InteractiveItemFlagType m_highlight_types = InteractiveItemFlag::ALL;
 };
 
 } // namespace sketcher
