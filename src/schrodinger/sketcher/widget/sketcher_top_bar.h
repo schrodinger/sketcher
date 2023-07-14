@@ -133,7 +133,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     /**
      * Respond to a click on the "Help..." action, opening the documentation
      */
-    void onHelpClicked();
+    virtual void onHelpClicked();
 };
 
 } // namespace sketcher
