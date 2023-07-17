@@ -135,6 +135,9 @@ class SKETCHER_API Scene : public QGraphicsScene
     void importTextRequested(const std::string& text,
                              rdkit_extensions::Format format);
 
+    void viewportTranslationRequested(const QPointF& start_screen_position,
+                                      const QPointF& end_screen_position);
+
   protected:
     using QGraphicsScene::clear;
     using QGraphicsScene::clearSelection;

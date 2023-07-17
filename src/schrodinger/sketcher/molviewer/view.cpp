@@ -30,6 +30,10 @@ View::View(QGraphicsScene* scene, QWidget* parent) :
     grabGesture(Qt::PinchGesture);
     setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
 
+    // disable scrollbars
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+
     // We don't need to call enlargeSceneIfNeeded here since the View doesn't
     // have a size yet, so we're guaranteed to get a resizeEvent call before
     // View is painted.
@@ -171,6 +175,39 @@ void View::fitToScreen()
 void View::setMolModel(schrodinger::sketcher::MolModel* mol_model)
 {
     m_mol_model = mol_model;
+}
+
+void View::translateViewportFromScreenCoords(
+    const QPointF& start_screen_position, const QPointF& end_screen_position)
+{
+    QPointF start_position = mapToScene(start_screen_position.toPoint());
+    QPointF end_position = mapToScene(end_screen_position.toPoint());
+    translateViewport(start_position - end_position);
+}
+
+void View::translateViewport(const QPointF& delta)
+{
+    setSceneRect(sceneRect().translated(delta));
+}
+
+void View::keyPressEvent(QKeyEvent* event)
+{
+    auto distance = VIEW_SCALE * KEY_SCROLL_BOND_LENGTH_RATIO;
+    switch (event->key()) {
+        case Qt::Key_Up:
+            translateViewport(QPointF(0, distance));
+            break;
+        case Qt::Key_Down:
+            translateViewport(QPointF(0, -distance));
+            break;
+        case Qt::Key_Right:
+            translateViewport(QPointF(-distance, 0));
+            break;
+        case Qt::Key_Left:
+            translateViewport(QPointF(distance, 0));
+            break;
+    }
+    event->accept();
 }
 
 } // namespace sketcher

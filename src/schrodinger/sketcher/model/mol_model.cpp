@@ -537,11 +537,12 @@ void MolModel::remove(
     doCommandWithMolUndo(redo, desc);
 }
 
-void MolModel::addMol(const RDKit::ROMol& mol, const QString& description)
+void MolModel::addMol(RDKit::ROMol mol, const QString& description)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
+    center_on_origin(mol);
     std::vector<int> atom_tags =
         getNextNTags(mol.getNumAtoms(), m_next_atom_tag);
     std::vector<int> bond_tags =

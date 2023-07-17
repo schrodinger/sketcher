@@ -39,8 +39,14 @@ SKETCHER_API bool has_2d_conformer(const RDKit::ROMol& mol);
 SKETCHER_API RDKit::Conformer& get_2d_conformer(RDKit::ROMol& mol);
 
 /**
- * Rescale a conformer so that the most frequent bond length matches the given
- * reference bond length.
+ * If the given molecule has coordinates, center it on the origin. Otherwise do
+ * nothing.
+ */
+void center_on_origin(RDKit::ROMol& mol);
+
+/**
+ * Rescale a conformer so that the most frequent bond length matches the
+ * given reference bond length.
  */
 SKETCHER_API void rescale(RDKit::Conformer& conformer, RDKit::ROMol& mol,
                           double reference_bond_length);

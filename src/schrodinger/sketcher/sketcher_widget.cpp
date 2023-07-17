@@ -41,6 +41,9 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_scene, &Scene::importTextRequested, this,
             &SketcherWidget::importText);
 
+    connect(m_scene, &Scene::viewportTranslationRequested, m_ui->view,
+            &View::translateViewportFromScreenCoords);
+
     // Connect the SketcherModel to the undo stack
     connect(m_sketcher_model, &SketcherModel::undoStackCanUndoRequested,
             m_undo_stack, &QUndoStack::canUndo);

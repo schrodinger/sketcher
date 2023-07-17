@@ -35,6 +35,19 @@ class SKETCHER_API View : public QGraphicsView
      */
     void fitToScreen();
 
+    /**
+     * Translate the viewport by delta. This is used to pan the view around the
+     * scene when the user hits the arrow keys.
+     */
+    void translateViewport(const QPointF& delta);
+
+    /**
+     * translate the viewport by the given amount in screen coordinates. This is
+     * used to pan the view around the scene when the user uses the mouse tools
+     */
+    void translateViewportFromScreenCoords(const QPointF& start_screen_position,
+                                           const QPointF& end_screen_position);
+
   signals:
     void resized();
 
@@ -57,6 +70,9 @@ class SKETCHER_API View : public QGraphicsView
 
     // handle mouse wheel events, zooming in on wheel up and out on wheel down.
     void wheelEvent(QWheelEvent* event) override;
+
+    // Override the QGraphicsView keyboard event method
+    void keyPressEvent(QKeyEvent* event) override;
 
     /**
      * Make sure that the scene is at least as large as the view.  If the

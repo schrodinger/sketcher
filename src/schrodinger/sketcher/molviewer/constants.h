@@ -122,6 +122,10 @@ const qreal VALENCE_ERROR_AREA_BORDER = 3.f;
 // around a molecule when they fill the screen
 const float FIT_TO_SCREEN_MARGIN_FACTOR = 0.15f;
 
+// the ratio of the scroll step for scrolling with the key arrows to a bond
+// length
+const float KEY_SCROLL_BOND_LENGTH_RATIO = 0.5;
+
 /// The width of the pen to use for drawing bond lines
 const qreal BOND_DEFAULT_PEN_WIDTH = 2.2;
 

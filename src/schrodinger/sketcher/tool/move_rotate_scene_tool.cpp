@@ -100,10 +100,18 @@ void MoveRotateSceneTool::translate(
     const std::vector<const RDKit::Atom*>& atoms_to_move,
     const std::vector<const NonMolecularObject*>& non_mol_objs_to_move)
 {
-    auto distance = event->scenePos() - event->lastScenePos();
-    m_mol_model->translateByVector(to_mol_xy(distance), atoms_to_move,
-                                   non_mol_objs_to_move);
-    m_rotation_item.setPivotPoint(m_rotation_item.getPivotPoint() + distance);
+    // if no atoms are specified, move the viewport instead
+    if (atoms_to_move.empty()) {
+        // we can't use scenePos() here because the scene gets moved by the
+        // viewport translation, so passing screen coordiates instead
+        m_scene->viewportTranslationRequested(event->lastScreenPos(),
+                                              event->screenPos());
+    } else {
+        auto distance = event->scenePos() - event->lastScenePos();
+        m_mol_model->translateByVector(to_mol_xy(distance), atoms_to_move);
+        m_rotation_item.setPivotPoint(m_rotation_item.getPivotPoint() +
+                                      distance);
+    }
 }
 
 void MoveRotateSceneTool::updateRotationItem()

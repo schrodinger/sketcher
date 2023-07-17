@@ -407,12 +407,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
-     * molecule.
+     * molecule. The molecule will be centered at the origin.
      *
      * @param mol The molecule to add
      * @param description The description to use for the undo command.
      */
-    void addMol(const RDKit::ROMol& mol,
+    void addMol(RDKit::ROMol mol,
                 const QString& description = "Import molecule");
 
     /**

@@ -222,6 +222,19 @@ RDGeom::Point3D find_centroid(
     return find_centroid(mol, all_atoms_set, non_molecular_objects);
 }
 
+void center_on_origin(RDKit::ROMol& mol)
+{
+    if (!mol.getNumConformers()) {
+        return;
+    }
+    auto centroid = find_centroid(mol);
+    auto& conf = mol.getConformer();
+    for (auto atom : mol.atoms()) {
+        auto current_pos = conf.getAtomPos(atom->getIdx());
+        conf.setAtomPos(atom->getIdx(), current_pos - centroid);
+    }
+}
+
 QPainterPath get_wavy_line_path(const int number_of_waves,
                                 const qreal width_per_wave, const qreal height,
                                 const qreal angle)
