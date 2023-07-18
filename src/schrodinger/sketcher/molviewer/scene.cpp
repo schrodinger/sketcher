@@ -33,6 +33,7 @@
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
+#include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 #include "schrodinger/sketcher/selection_item.h"
 
 #include "schrodinger/sketcher/molviewer/rotation_item.h"
@@ -82,9 +83,13 @@ bool item_matches_type_flag(QGraphicsItem* item,
             return true;
         } else if (type_flag & InteractiveItemFlag::ATOM) {
             auto* atom = static_cast<AtomItem*>(item)->getAtom();
-            return is_attachment_point(atom) ==
-                   static_cast<bool>(type_flag &
-                                     InteractiveItemFlag::ATTACHMENT_POINT);
+            if (is_r_group(atom)) {
+                return type_flag & InteractiveItemFlag::R_GROUP;
+            } else if (is_attachment_point(atom)) {
+                return type_flag & InteractiveItemFlag::ATTACHMENT_POINT;
+            } else {
+                return type_flag & InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
+            }
         }
     } else if (type == BondItem::Type) {
         if ((type_flag & InteractiveItemFlag::BOND) ==
@@ -632,6 +637,10 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             return std::make_shared<ArrowPlusSceneTool>(
                 NonMolecularType::RXN_PLUS, this, m_mol_model);
         }
+    } else if (draw_tool == DrawTool::CHARGE) {
+        auto charge_tool = m_sketcher_model->getChargeTool();
+        return std::make_shared<EditChargeSceneTool>(charge_tool, this,
+                                                     m_mol_model);
     } else if (draw_tool == DrawTool::MOVE_ROTATE) {
         return std::make_shared<MoveRotateSceneTool>(this, m_mol_model);
     }

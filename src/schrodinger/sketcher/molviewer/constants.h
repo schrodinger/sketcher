@@ -149,6 +149,10 @@ const qreal ATTACHMENT_POINT_SQUIGGLE_HEIGHT = 3.0;
 // *import* structures that violate this limit.
 const unsigned int MAX_ATTACHMENT_POINTS_PER_ATOM = 2;
 
+// The maximum and minimum charg that can be set on an atom
+const int MAX_ATOM_CHARGE = 8;
+const int MIN_ATOM_CHARGE = -8;
+
 const QColor ROTATION_ITEM_COLOR = QColor("#ff9b00");
 
 const float ROTATION_ITEM_HANDLE_RADIUS = 12.f;
@@ -199,11 +203,13 @@ typedef uint8_t InteractiveItemFlagType;
 namespace InteractiveItemFlag
 {
 enum : InteractiveItemFlagType { // clang-format off
-    ATOM_NOT_AP           = 1 << 0,
-    ATTACHMENT_POINT      = 1 << 1,
-    BOND_NOT_AP           = 1 << 2,
-    ATTACHMENT_POINT_BOND = 1 << 3,
-    NON_MOLECULAR         = 1 << 4, // clang-format on
+    ATOM_NOT_R_NOT_AP     = 1 << 0,
+    R_GROUP               = 1 << 1,
+    ATTACHMENT_POINT      = 1 << 2,
+    BOND_NOT_AP           = 1 << 3,
+    ATTACHMENT_POINT_BOND = 1 << 4,
+    NON_MOLECULAR         = 1 << 5, // clang-format on
+    ATOM_NOT_AP = ATOM_NOT_R_NOT_AP | R_GROUP,
     ATOM = ATOM_NOT_AP | ATTACHMENT_POINT,
     BOND = BOND_NOT_AP | ATTACHMENT_POINT_BOND,
     MOLECULAR = ATOM | BOND,

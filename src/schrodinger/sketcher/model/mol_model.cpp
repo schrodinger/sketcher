@@ -583,6 +583,15 @@ void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
     doCommandWithMolUndo(redo, "Mutate atom");
 }
 
+void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
+{
+    int atom_tag = getTagForAtom(atom);
+    auto redo = [this, atom_tag, charge]() {
+        setAtomChargeFromCommand(atom_tag, charge);
+    };
+    doCommandWithMolUndo(redo, "Set atom charge");
+}
+
 void MolModel::mutateAtom(
     const RDKit::Atom* const atom,
     const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
@@ -1272,6 +1281,13 @@ void MolModel::mutateBondFromCommand(
     // The bookmark is automatically updated, but we have to manually copy the
     // bond tag property
     mutated_bond->setProp(TAG_PROPERTY, bond_tag);
+    finalizeMoleculeChange();
+}
+void MolModel::setAtomChargeFromCommand(const int atom_tag, const int charge)
+{
+    Q_ASSERT(m_in_command);
+    RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+    atom->setFormalCharge(charge);
     finalizeMoleculeChange();
 }
 

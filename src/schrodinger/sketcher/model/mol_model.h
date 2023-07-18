@@ -470,6 +470,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
+     * Change the charge of an existing atom.
+     * @param atom The atom to mutate
+     * @param charge The charge to be set
+     */
+    void setAtomCharge(const RDKit::Atom* const atom, int charge);
+
+    /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This is
      * only meaningful for dative bonds or bonds with a BondDir of BEGINWEDGE or
      * BEGINDASH.
@@ -918,6 +925,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mutateBondFromCommand(
         const int bond_tag,
         const std::function<std::shared_ptr<RDKit::Bond>()> create_bond);
+
+    /**
+     * Set the charge of an existing atom.  This method must only be called from
+     * an undo command.
+     * @param atom_tag The tag of the atom to mutate
+     * @param charge The new charge of the atom
+     */
+    void setAtomChargeFromCommand(const int atom_tag, const int charge);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This
