@@ -369,7 +369,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                     non_molecular_objects);
 
     /**
-     * Unodable flip all atoms coordinates horizontally or vertically.
+     * Undoably flip all atoms coordinates around the given axis.
+     * @param p1 first point on the axis
+     * @param p2 second point on the axis
+     * @param atoms atoms to flip
+     */
+    void flipAroundSegment(const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
+                           const std::unordered_set<const RDKit::Atom*>& atoms);
+
+    /**
+     * Undoably flip all atoms coordinates horizontally or vertically.
      */
     void flipAllHorizontal();
     void flipAllVertical();
@@ -386,10 +395,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * atoms and non_molecular_objects are empty, then all objects will be
      * rotated.
      */
-    void rotateByAngle(
-        float angle, const RDGeom::Point3D& pivot_point,
-        const std::vector<const RDKit::Atom*>& atoms = {},
-        std::vector<const NonMolecularObject*> non_molecular_objects = {});
+    void rotateByAngle(float angle, const RDGeom::Point3D& pivot_point,
+                       const std::unordered_set<const RDKit::Atom*>& atoms = {},
+                       const std::unordered_set<const NonMolecularObject*>&
+                           non_molecular_objects = {});
 
     /**
      * translate all atoms by the given vector
@@ -400,10 +409,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * atoms and non_molecular_objects are empty, then all objects will be
      * translated.
      */
-    void translateByVector(
-        const RDGeom::Point3D& vector,
-        const std::vector<const RDKit::Atom*>& atoms = {},
-        std::vector<const NonMolecularObject*> non_molecular_objects = {});
+    void
+    translateByVector(const RDGeom::Point3D& vector,
+                      const std::unordered_set<const RDKit::Atom*>& atoms = {},
+                      const std::unordered_set<const NonMolecularObject*>&
+                          non_molecular_objects = {});
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
@@ -595,8 +605,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void transformCoordinatesWithFunction(
         const QString& desc, std::function<void(RDGeom::Point3D&)> function,
         MergeId merge_id = MergeId::NO_MERGE,
-        std::vector<const RDKit::Atom*> atoms = {},
-        std::vector<const NonMolecularObject*> non_molecular_objects = {});
+        std::unordered_set<const RDKit::Atom*> atoms = {},
+        std::unordered_set<const NonMolecularObject*> non_molecular_objects =
+            {});
 
     /**
      * Set the atom tag for the specified atom

@@ -20,23 +20,45 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
+// TODO: remove this, for testing only until context menus are implemented
+void MoveRotateSceneTool::onMouseClick(QGraphicsSceneMouseEvent* event)
+{
+    auto mol = m_mol_model->getMol();
+    auto selected_atoms = m_mol_model->getSelectedAtoms();
+    if (selected_atoms.empty()) {
+        return;
+    }
+    // Find all bonds with one selected atom and one unselected atom
+    std::unordered_set<const RDKit::Bond*> crossing_bonds;
+    for (auto bond : mol->bonds()) {
+        if (selected_atoms.count(bond->getBeginAtom()) !=
+            selected_atoms.count(bond->getEndAtom())) {
+            crossing_bonds.insert(bond);
+        }
+    }
+    // If there is only one, use it as the point
+    if (crossing_bonds.size() == 1) {
+        auto bond = *crossing_bonds.begin();
+        auto start_coord =
+            mol->getConformer().getAtomPos(bond->getBeginAtom()->getIdx());
+        auto end_coord =
+            mol->getConformer().getAtomPos(bond->getEndAtom()->getIdx());
+        m_mol_model->flipAroundSegment(start_coord, end_coord, selected_atoms);
+    }
+}
+
 void MoveRotateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
 {
     auto selected_atoms = m_mol_model->getSelectedAtoms();
     auto selected_non_mol_objs = m_mol_model->getSelectedNonMolecularObjects();
-    // convert unordered_set to vectors
-    std::vector<const RDKit::Atom*> atoms_vec(selected_atoms.begin(),
-                                              selected_atoms.end());
-    std::vector<const NonMolecularObject*> non_mol_objs_vec(
-        selected_non_mol_objs.begin(), selected_non_mol_objs.end());
 
     if (m_rotation_item.isInsideHandle(event->scenePos())) {
         m_action = Action::ROTATE;
-        setObjectsToMove(atoms_vec, non_mol_objs_vec);
+        setObjectsToMove(selected_atoms, selected_non_mol_objs);
     } else {
         m_action = Action::TRANSLATE;
         if (m_move_selection_item.rect().contains(event->scenePos())) {
-            setObjectsToMove(atoms_vec, non_mol_objs_vec);
+            setObjectsToMove(selected_atoms, selected_non_mol_objs);
         }
     }
 }
@@ -64,8 +86,8 @@ void MoveRotateSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
 }
 
 void MoveRotateSceneTool::setObjectsToMove(
-    const std::vector<const RDKit::Atom*>& atoms,
-    const std::vector<const NonMolecularObject*>& non_mol_objects)
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const NonMolecularObject*>& non_mol_objects)
 {
     m_atoms_to_move = atoms;
     m_non_mol_objs_to_move = non_mol_objects;
@@ -73,8 +95,8 @@ void MoveRotateSceneTool::setObjectsToMove(
 
 void MoveRotateSceneTool::rotate(
     QGraphicsSceneMouseEvent* const event, QPointF pivot_point,
-    const std::vector<const RDKit::Atom*>& atoms_to_move,
-    const std::vector<const NonMolecularObject*>& non_mol_objs_to_move)
+    const std::unordered_set<const RDKit::Atom*>& atoms_to_move,
+    const std::unordered_set<const NonMolecularObject*>& non_mol_objs_to_move)
 {
     // calculate angle increment of the event,
     // considering the centroid of the molecule as the origin
@@ -97,8 +119,8 @@ void MoveRotateSceneTool::rotateRotationItem(QGraphicsSceneMouseEvent* event)
 
 void MoveRotateSceneTool::translate(
     QGraphicsSceneMouseEvent* const event,
-    const std::vector<const RDKit::Atom*>& atoms_to_move,
-    const std::vector<const NonMolecularObject*>& non_mol_objs_to_move)
+    const std::unordered_set<const RDKit::Atom*>& atoms_to_move,
+    const std::unordered_set<const NonMolecularObject*>& non_mol_objs_to_move)
 {
     // if no atoms are specified, move the viewport instead
     if (atoms_to_move.empty()) {

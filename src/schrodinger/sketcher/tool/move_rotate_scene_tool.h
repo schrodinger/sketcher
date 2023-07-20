@@ -5,6 +5,7 @@
 #include "schrodinger/sketcher/molviewer/rotation_item.h"
 #include <GraphMol/Atom.h>
 #include <Geometry/point.h>
+#include <unordered_set>
 
 namespace schrodinger
 {
@@ -32,16 +33,22 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
     virtual void onDragMove(QGraphicsSceneMouseEvent* const event) override;
     virtual void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
 
+    // TODO: remove this function, for testing only until context menus are
+    // implemented
+    virtual void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
+
   protected:
     void rotateRotationItem(QGraphicsSceneMouseEvent* const event);
-    void rotate(QGraphicsSceneMouseEvent* const event, QPointF pivot_point,
-                const std::vector<const RDKit::Atom*>& atoms_to_move = {},
-                const std::vector<const NonMolecularObject*>&
-                    non_mol_objs_to_move = {});
-    void translate(QGraphicsSceneMouseEvent* const event,
-                   const std::vector<const RDKit::Atom*>& atoms_to_move = {},
-                   const std::vector<const NonMolecularObject*>&
-                       non_mol_objs_to_move = {});
+    void
+    rotate(QGraphicsSceneMouseEvent* const event, QPointF pivot_point,
+           const std::unordered_set<const RDKit::Atom*>& atoms_to_move = {},
+           const std::unordered_set<const NonMolecularObject*>&
+               non_mol_objs_to_move = {});
+    void
+    translate(QGraphicsSceneMouseEvent* const event,
+              const std::unordered_set<const RDKit::Atom*>& atoms_to_move = {},
+              const std::unordered_set<const NonMolecularObject*>&
+                  non_mol_objs_to_move = {});
 
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
 
@@ -68,8 +75,8 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
      * that should be performed on the whole molecule
      */
     void setObjectsToMove(
-        const std::vector<const RDKit::Atom*>& atoms_to_move,
-        const std::vector<const NonMolecularObject*>& non_mol_objects);
+        const std::unordered_set<const RDKit::Atom*>& atoms_to_move,
+        const std::unordered_set<const NonMolecularObject*>& non_mol_objects);
 
     /** this variable is used to determine if the mouse is being performed in a
      * mouse drag (rotate, translate or none). It gets set in onDragStart and
@@ -88,8 +95,8 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
      */
     RDGeom::Point3D findPivotPointForRotation();
 
-    std::vector<const RDKit::Atom*> m_atoms_to_move;
-    std::vector<const NonMolecularObject*> m_non_mol_objs_to_move;
+    std::unordered_set<const RDKit::Atom*> m_atoms_to_move;
+    std::unordered_set<const NonMolecularObject*> m_non_mol_objs_to_move;
 };
 
 } // namespace sketcher

@@ -1522,5 +1522,43 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.0001))
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.0);
 }
 
+BOOST_AUTO_TEST_CASE(test_flipAroundAxis, *utf::tolerance(0.0001))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtomChain(Element::C, {RDGeom::Point3D(0.0, 0.0, 0.0),
+                                    RDGeom::Point3D(1.0, 1.0, 0.0)});
+
+    // flip around x=y axis, coordinates remain the same
+    model.flipAroundSegment(RDGeom::Point3D(0.0, 0.0, 0.0),
+                            RDGeom::Point3D(1.0, 1.0, 0.0),
+                            {mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)});
+    BOOST_TEST(mol->getConformer().getAtomPos(0).x == 0.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(0).y == 0.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(1).x == 1.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(1).y == 1.0);
+
+    // flip around x=0 axis, coordinates are mirrored vertically
+    model.flipAroundSegment(RDGeom::Point3D(0.0, 0.0, 0.0),
+                            RDGeom::Point3D(1.0, 0.0, 0.0),
+                            {mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)});
+
+    BOOST_TEST(mol->getConformer().getAtomPos(0).x == 0.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(0).y == 0.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(1).x == 1.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(1).y == -1.0);
+
+    // flip around y=0 axis, coordinates are mirrored horizontally
+    model.flipAroundSegment(RDGeom::Point3D(0.0, 0.0, 0.0),
+                            RDGeom::Point3D(0.0, 1.0, 0.0),
+                            {mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)});
+
+    BOOST_TEST(mol->getConformer().getAtomPos(0).x == 0.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(0).y == 0.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(1).x == -1.0);
+    BOOST_TEST(mol->getConformer().getAtomPos(1).y == -1.0);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

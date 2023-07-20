@@ -167,6 +167,18 @@ best_placing_around_origin(const std::vector<RDGeom::Point3D>& points)
     QPointF best = best_placing_around_origin(qpoints);
     return to_mol_xy(best);
 }
+
+RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
+                           const RDGeom::Point3D& start,
+                           const RDGeom::Point3D& end)
+{
+    auto angle = (end - start).signedAngleTo(point - start) * 180 / M_PI;
+    if (isnan(angle)) {
+        return point;
+    }
+    return rotate_point(point, start, -2.0 * angle);
+}
+
 RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
                              const RDGeom::Point3D& center_of_rotation,
                              float angle)

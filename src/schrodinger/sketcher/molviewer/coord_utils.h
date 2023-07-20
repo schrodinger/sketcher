@@ -128,9 +128,19 @@ RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
                              float angle);
 
 /**
- * @return the centroid of a set of atoms and non-molecular objects. If no atoms
- * or non-molecular objects are given, the centroid of the whole molecule plus
- * all non-molecular objects is returned.
+ * mirror coordinates about a segment
+ * @param point coordinate to flip
+ * @param start start of the segment about which to flip
+ * @param end end of the segment about which to flip
+ */
+RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
+                           const RDGeom::Point3D& start,
+                           const RDGeom::Point3D& end);
+
+/**
+ * @return the centroid of a set of atoms and non-molecular objects. If no
+ * atoms or non-molecular objects are given, the centroid of the whole
+ * molecule plus all non-molecular objects is returned.
  * @param mol the molecule to compute the centroid for
  * @param atoms the atoms to compute the centroid for
  * @param non_molecular_objects the non-molecular objects to consider in

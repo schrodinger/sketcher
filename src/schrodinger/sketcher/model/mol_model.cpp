@@ -669,8 +669,8 @@ void MolModel::clear()
 
 void MolModel::transformCoordinatesWithFunction(
     const QString& desc, std::function<void(RDGeom::Point3D&)> function,
-    MergeId merge_id, std::vector<const RDKit::Atom*> atoms,
-    std::vector<const NonMolecularObject*> non_molecular_objects)
+    MergeId merge_id, std::unordered_set<const RDKit::Atom*> atoms,
+    std::unordered_set<const NonMolecularObject*> non_molecular_objects)
 {
     if (isEmpty()) {
         // there aren't any coordinates to transform
@@ -680,33 +680,37 @@ void MolModel::transformCoordinatesWithFunction(
     // if no objects are provided, apply to all objects
     if (atoms.empty() && non_molecular_objects.empty()) {
         auto all_atoms = m_mol.atoms();
-        atoms.insert(atoms.end(), all_atoms.begin(), all_atoms.end());
-        auto all_non_mol_objects = getNonMolecularObjects();
-        non_molecular_objects.insert(non_molecular_objects.end(),
-                                     all_non_mol_objects.begin(),
-                                     all_non_mol_objects.end());
+        for (auto atom : all_atoms) {
+            atoms.insert(atom);
+        }
+        non_molecular_objects = getNonMolecularObjects();
     }
 
+    // convert to vectors
+    std::vector<const RDKit::Atom*> atom_vec(atoms.begin(), atoms.end());
+    std::vector<const NonMolecularObject*> non_mol_vec(
+        non_molecular_objects.begin(), non_molecular_objects.end());
+
     // get tags
-    std::vector<int> atom_tags(atoms.size());
-    transform(atoms.begin(), atoms.end(), atom_tags.begin(),
+    std::vector<int> atom_tags(atom_vec.size());
+    transform(atom_vec.begin(), atom_vec.end(), atom_tags.begin(),
               [this](const RDKit::Atom* atom) { return getTagForAtom(atom); });
-    std::vector<int> non_mol_tags(non_molecular_objects.size());
-    transform(non_molecular_objects.begin(), non_molecular_objects.end(),
-              non_mol_tags.begin(), [](const NonMolecularObject* non_mol_obj) {
+    std::vector<int> non_mol_tags(non_mol_vec.size());
+    transform(non_mol_vec.begin(), non_mol_vec.end(), non_mol_tags.begin(),
+              [](const NonMolecularObject* non_mol_obj) {
                   return non_mol_obj->getTag();
               });
 
     // get coordinates
     auto& conf = m_mol.getConformer();
     std::vector<RDGeom::Point3D> atom_coords;
-    for (auto atom : atoms) {
+    for (auto atom : atom_vec) {
         atom_coords.push_back(conf.getAtomPos(atom->getIdx()));
     }
     auto current_atom_coords = atom_coords;
 
     std::vector<RDGeom::Point3D> non_mol_coords;
-    for (auto* non_mol_obj : non_molecular_objects) {
+    for (auto* non_mol_obj : non_mol_vec) {
         non_mol_coords.push_back(non_mol_obj->getCoords());
     }
     auto current_non_mol_coords = non_mol_coords;
@@ -765,8 +769,8 @@ void MolModel::transformCoordinatesWithFunction(
 
 void MolModel::rotateByAngle(
     float angle, const RDGeom::Point3D& pivot_point,
-    const std::vector<const RDKit::Atom*>& atoms,
-    std::vector<const NonMolecularObject*> non_molecular_objects)
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
 
     auto rotate = [pivot_point, angle](auto& coord) {
@@ -777,8 +781,9 @@ void MolModel::rotateByAngle(
 }
 
 void MolModel::translateByVector(
-    const RDGeom::Point3D& vector, const std::vector<const RDKit::Atom*>& atoms,
-    std::vector<const NonMolecularObject*> non_molecular_objects)
+    const RDGeom::Point3D& vector,
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
 
     auto translate = [vector](auto& coord) { coord += vector; };
@@ -786,18 +791,27 @@ void MolModel::translateByVector(
                                      atoms, non_molecular_objects);
 }
 
-void MolModel::flipAllVertical()
+void MolModel::flipAroundSegment(
+    const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
-    auto center = find_centroid(m_mol, getNonMolecularObjects());
-    auto flip_y = [center](auto& coord) { coord.y = 2 * center.y - coord.y; };
-    transformCoordinatesWithFunction("Flip All Vertical", flip_y);
+    auto flip = [p1, p2](auto& coord) { coord = flip_point(coord, p1, p2); };
+    transformCoordinatesWithFunction("Flip selection", flip, MergeId::NO_MERGE,
+                                     atoms);
 }
 
 void MolModel::flipAllHorizontal()
 {
     auto center = find_centroid(m_mol, getNonMolecularObjects());
     auto flip_x = [center](auto& coord) { coord.x = 2 * center.x - coord.x; };
-    transformCoordinatesWithFunction("flip All Horizontal", flip_x);
+    transformCoordinatesWithFunction("Flip all horizontal", flip_x);
+}
+
+void MolModel::flipAllVertical()
+{
+    auto center = find_centroid(m_mol, getNonMolecularObjects());
+    auto flip_y = [center](auto& coord) { coord.y = 2 * center.y - coord.y; };
+    transformCoordinatesWithFunction("Flip all vertical", flip_y);
 }
 
 void MolModel::select(
@@ -1189,15 +1203,15 @@ void MolModel::removeFromCommand(
 {
     Q_ASSERT(m_in_command);
     bool selection_changed = false;
-    // we have to determine whether we're deleting an attachment point before we
-    // delete any of the bonds, since is_attachment_point() will return false
-    // for unbound atoms
+    // we have to determine whether we're deleting an attachment point
+    // before we delete any of the bonds, since is_attachment_point() will
+    // return false for unbound atoms
     bool attachment_point_deleted =
         std::any_of(atom_tags.begin(), atom_tags.end(), [this](int tag) {
             return is_attachment_point(getAtomFromTag(tag));
         });
-    // remove the bonds first so that they don't get implicitly deleted when we
-    // remove an atom
+    // remove the bonds first so that they don't get implicitly deleted when
+    // we remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
         if (removeBondFromCommand(bond_tag, start_atom_tag, end_atom_tag)) {
             selection_changed = true;
@@ -1261,8 +1275,9 @@ void MolModel::mutateAtomFromCommand(
     m_mol.replaceAtom(atom_index, new_atom.get());
     // replaceAtom creates a copy, so we need to fetch the "real" new atom
     auto* mutated_atom = m_mol.getAtomWithIdx(atom_index);
-    // The bookmark is automatically updated, but the property is not (unless we
-    // passed preserveProbs = true, but that overwrites the R-group property)
+    // The bookmark is automatically updated, but the property is not
+    // (unless we passed preserveProbs = true, but that overwrites the
+    // R-group property)
     mutated_atom->setProp(TAG_PROPERTY, atom_tag);
     finalizeMoleculeChange();
 }
@@ -1278,8 +1293,8 @@ void MolModel::mutateBondFromCommand(
     m_mol.replaceBond(bond_index, new_bond.get());
     // replaceBond creates a copy, so we need to fetch the "real" new bond
     auto* mutated_bond = m_mol.getBondWithIdx(bond_index);
-    // The bookmark is automatically updated, but we have to manually copy the
-    // bond tag property
+    // The bookmark is automatically updated, but we have to manually copy
+    // the bond tag property
     mutated_bond->setProp(TAG_PROPERTY, bond_tag);
     finalizeMoleculeChange();
 }
