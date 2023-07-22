@@ -1,0 +1,35 @@
+# byte-compiled python files
+*.pyc
+*.pyo
+# emacs backup files
+*~
+# vim backup files
+.*.sw[a-p]
+.swp
+# patch leftovers
+*.rej
+*.orig
+# general backup files
+*.bak
+# Windows build debris
+*.user
+# ctags
+tags
+TAGS
+# Eclipse-Pydev files
+.project
+.pydevproject
+.settings
+# IntelliJ Idea, PyCharm files
+.idea
+# waf files
+*waf-*
+*waf3-*
+# Mac os files
+.DS_Store*
+# protobuf compiled file
+*.pb.go
+# pytest files
+.pytest_cache
+# compilation database
+compile_commands.json
