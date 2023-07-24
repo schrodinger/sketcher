@@ -474,8 +474,7 @@ void BondItem::countNeighboringAtomsBySide(
             continue;
         }
         RDGeom::Point3D neighbor_coords = conf.getAtomPos(neighbor->getIdx());
-        QPointF neighbor_qcoords(neighbor_coords.x, neighbor_coords.y);
-        neighbor_qcoords = mapFromScene(neighbor_qcoords);
+        QPointF neighbor_qcoords = mapFromScene(to_scene_xy(neighbor_coords));
         if (arePointsOnSameSideOfLine(neighbor_qcoords, offset,
                                       line_endpoint)) {
             ++num_same_side;
