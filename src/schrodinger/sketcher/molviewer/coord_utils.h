@@ -45,13 +45,6 @@ SKETCHER_API RDKit::Conformer& get_2d_conformer(RDKit::ROMol& mol);
 void center_on_origin(RDKit::ROMol& mol);
 
 /**
- * Rescale a conformer so that the most frequent bond length matches the
- * given reference bond length.
- */
-SKETCHER_API void rescale(RDKit::Conformer& conformer, RDKit::ROMol& mol,
-                          double reference_bond_length);
-
-/**
  * Covert a location from MolModel/RDKit coordinates to Scene coordinates.
  * @param xyz RDKit atom coordinates to transform
  * @return resulting 2D scene coordinates

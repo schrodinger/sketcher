@@ -560,9 +560,7 @@ void MolModel::addMolFromText(const std::string& text, Format format)
 
     // Add 2D coordinates only if the molecule does not already have them
     // present (ie specified via molblock, SMILES extension, etc.)
-
-    auto& conformer_2d = get_2d_conformer(*mol);
-    rescale(conformer_2d, *mol, DEFAULT_MOLVIEWER_BOND_LENGTH);
+    get_2d_conformer(*mol);
 
     assign_CIP_labels(*mol);
 

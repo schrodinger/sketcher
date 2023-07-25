@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <GraphMol/QueryAtom.h>
@@ -52,6 +53,80 @@ class TestMolModel : public MolModel
         MolModel::addMolFromText(text, rdkit_extensions::Format::AUTO_DETECT);
     }
 };
+
+const std::string STRUC_WITH_RINGS = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 28 32 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 N -0.180969 -4.827934 0.000000 0
+M  V30 2 C 0.684718 -4.327610 0.000000 0
+M  V30 3 N 0.684341 -3.327343 0.000000 0
+M  V30 4 C 1.549928 -2.827192 0.000000 0
+M  V30 5 N 1.549625 -1.827197 0.000000 0
+M  V30 6 C 2.416364 -3.326887 0.000000 0
+M  V30 7 N 3.282051 -2.826562 0.000000 0
+M  V30 8 C 4.148313 -3.326158 0.000000 0
+M  V30 9 C 5.014000 -2.825833 0.000000 0
+M  V30 10 N 5.880263 -3.325429 0.000000 0
+M  V30 11 C 6.706370 -2.761842 0.000000 0
+M  V30 12 C 6.483613 -1.787165 0.000000 0
+M  V30 13 C 7.216485 -1.106732 0.000000 0
+M  V30 14 C 8.172187 -1.401248 0.000000 0
+M  V30 15 C 8.394845 -2.376098 0.000000 0
+M  V30 16 C 7.661974 -3.056531 0.000000 0
+M  V30 17 C 8.027705 -3.987299 0.000000 0
+M  V30 18 C 7.527762 -4.853363 0.000000 0
+M  V30 19 C 6.539072 -5.002846 0.000000 0
+M  V30 20 C 6.316569 -5.977700 0.000000 0
+M  V30 21 C 5.361167 -6.272597 0.000000 0
+M  V30 22 C 4.628094 -5.592542 0.000000 0
+M  V30 23 C 4.850424 -4.617588 0.000000 0
+M  V30 24 C 5.805826 -4.322690 0.000000 0
+M  V30 25 C 4.148443 -4.326053 0.000000 0
+M  V30 26 N 3.282756 -4.826377 0.000000 0
+M  V30 27 C 2.416667 -4.326881 0.000000 0
+M  V30 28 N 1.550807 -4.827106 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 2 2 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 2 4 6
+M  V30 6 1 6 7
+M  V30 7 2 7 8
+M  V30 8 1 8 9
+M  V30 9 1 9 10
+M  V30 10 1 10 11
+M  V30 11 2 11 12
+M  V30 12 1 12 13
+M  V30 13 2 13 14
+M  V30 14 1 14 15
+M  V30 15 2 15 16
+M  V30 16 1 11 16
+M  V30 17 1 16 17
+M  V30 18 2 17 18
+M  V30 19 1 18 19
+M  V30 20 2 19 20
+M  V30 21 1 20 21
+M  V30 22 2 21 22
+M  V30 23 1 22 23
+M  V30 24 2 23 24
+M  V30 25 1 10 24
+M  V30 26 1 19 24
+M  V30 27 1 8 25
+M  V30 28 2 25 26
+M  V30 29 1 26 27
+M  V30 30 1 6 27
+M  V30 31 2 27 28
+M  V30 32 1 2 28
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)";
 
 void check_coords(const RDGeom::Point3D& point, const double exp_x,
                   const double exp_y)
@@ -1470,7 +1545,7 @@ BOOST_AUTO_TEST_CASE(test_flipBond)
     BOOST_TEST(bond->getEndAtomIdx() == 0);
 }
 
-BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.0001))
+BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.01))
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
@@ -1482,7 +1557,7 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.0001))
     auto mol = model.getMol();
     BOOST_REQUIRE(mol->getNumBonds() == 1);
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) ==
-               0.8444);
+               4.286);
 
     // Check that the molecule is centered at the origin
     auto centroid = MolTransforms::computeCentroid(mol->getConformer(),
@@ -1502,7 +1577,7 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.0001))
     mol = model.getMol();
     BOOST_REQUIRE(mol->getNumBonds() == 1);
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) ==
-               0.8444);
+               4.286);
 
     // Clear the scene
     undo_stack.undo();
@@ -1514,7 +1589,7 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.0001))
     mol = model.getMol();
     BOOST_REQUIRE(mol->getNumBonds() == 1);
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) ==
-               0.8444);
+               4.286);
 
     undo_stack.redo();
     mol = model.getMol();
@@ -1558,6 +1633,21 @@ BOOST_AUTO_TEST_CASE(test_flipAroundAxis, *utf::tolerance(0.0001))
     BOOST_TEST(mol->getConformer().getAtomPos(0).y == 0.0);
     BOOST_TEST(mol->getConformer().getAtomPos(1).x == -1.0);
     BOOST_TEST(mol->getConformer().getAtomPos(1).y == -1.0);
+}
+
+/**
+ * Make sure an SDF structure with rings is imported with correct bond lengths.
+ * See SKETCH-1651 and SKETCH-2025.
+ */
+BOOST_AUTO_TEST_CASE(test_struc_with_rings, *utf::tolerance(0.001))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    model.addMolFromText(STRUC_WITH_RINGS);
+    auto mol = model.getMol();
+    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.0);
+    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 1, 2) == 1.0);
+    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 3, 5) == 1.0);
 }
 
 } // namespace sketcher

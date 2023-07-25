@@ -191,12 +191,6 @@ enum class ZOrder {
 // The atomic number of RDKit dummy atoms
 const int DUMMY_ATOMIC_NUMBER = 0;
 
-/**
- * This is the reference bond length we use when rescaling input molecules.
- * The current value of 1.17 comes from playing a bit with coordgen.
- */
-const double DEFAULT_MOLVIEWER_BOND_LENGTH = 1.17;
-
 // Bit flags for specifying subsets of Scene items based on the type of model
 // object they represent
 typedef uint8_t InteractiveItemFlagType;

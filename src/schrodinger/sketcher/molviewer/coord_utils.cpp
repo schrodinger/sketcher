@@ -41,58 +41,6 @@ SKETCHER_API RDKit::Conformer& get_2d_conformer(RDKit::ROMol& mol)
     return mol.getConformer(conformer_id);
 }
 
-SKETCHER_API void rescale(RDKit::Conformer& conformer, RDKit::ROMol& mol,
-                          double reference_bond_length)
-{
-    if (&conformer.getOwningMol() != &mol) {
-        throw std::invalid_argument(
-            "Conformer does not belong to the given molecule");
-    }
-
-    if (mol.getNumBonds() == 0) {
-        return;
-    }
-
-    const double tolerance = 0.1;
-
-    // build a map storing how many times each bond length is present
-    std::unordered_map<double, int> length_map;
-    for (auto bond : mol.bonds()) {
-        auto this_bond_length = (conformer.getAtomPos(bond->getBeginAtomIdx()),
-                                 conformer.getAtomPos(bond->getEndAtomIdx()))
-                                    .length();
-
-        // check if we have already seen a similar bond length
-        for (auto& length_pair : length_map) {
-            double ratio = length_pair.first / this_bond_length;
-            if (ratio < 1. + tolerance && ratio > 1. - tolerance) {
-                this_bond_length = length_pair.first;
-            }
-            break;
-        }
-
-        // Make sure we don't end up dividing by 0 (or something tiny)
-        if (std::abs(this_bond_length) > 0.0001) {
-            length_map[this_bond_length]++;
-        }
-    }
-
-    // Make sure we at least have one bond to measure
-    if (length_map.empty()) {
-        return;
-    }
-
-    auto most_frequent_pair =
-        std::max_element(length_map.begin(), length_map.end(),
-                         [](const auto left, const auto& right) {
-                             return left.second < right.second;
-                         });
-    auto ratio = reference_bond_length / most_frequent_pair->first;
-    for (auto& atom_position : conformer.getPositions()) {
-        atom_position *= ratio;
-    }
-}
-
 QPointF to_scene_xy(const RDGeom::Point3D& mol_xy)
 {
     return QPointF(mol_xy.x * VIEW_SCALE, -mol_xy.y * VIEW_SCALE);
