@@ -204,7 +204,8 @@ void SketcherTopBar::generatePackets()
 
 void SketcherTopBar::onImportFromFileClicked()
 {
-    auto file_open_completed = [=](const auto& file_path, const auto& content) {
+    auto file_open_completed = [this](const auto& file_path,
+                                      const auto& content) {
         try {
             auto format = get_file_format(file_path);
             emit importTextRequested(content.toStdString(), format);
