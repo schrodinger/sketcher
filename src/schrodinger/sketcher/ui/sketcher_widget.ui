@@ -30,30 +30,14 @@
     <number>0</number>
    </property>
    <item>
-    <widget class="schrodinger::sketcher::SketcherSideBar" name="side_bar_wdg" native="true"/>
-   </item>
-   <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <property name="spacing">
       <number>0</number>
      </property>
      <item>
-      <widget class="schrodinger::sketcher::SketcherTopBar" name="top_bar_wdg" native="true"/>
-     </item>
-     <item>
       <widget class="Line" name="line">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="schrodinger::sketcher::View" name="view">
-       <property name="frameShape">
-        <enum>QFrame::Panel</enum>
-       </property>
-       <property name="lineWidth">
-        <number>0</number>
        </property>
       </widget>
      </item>
@@ -71,26 +55,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>schrodinger::sketcher::View</class>
-   <extends>QGraphicsView</extends>
-   <header>schrodinger/sketcher/molviewer/view.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>schrodinger::sketcher::SketcherTopBar</class>
-   <extends>QWidget</extends>
-   <header>schrodinger/sketcher/widget/sketcher_top_bar.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>schrodinger::sketcher::SketcherSideBar</class>
-   <extends>QWidget</extends>
-   <header>schrodinger/sketcher/widget/sketcher_side_bar.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources>
   <include location="../sketcher.qrc"/>
  </resources>

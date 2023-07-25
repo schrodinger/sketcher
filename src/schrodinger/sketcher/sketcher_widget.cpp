@@ -1,13 +1,11 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
-#include <GraphMol/SmilesParse/SmilesParse.h>
+// #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <QGraphicsPixmapItem>
 #include <QWidget>
-#include <fmt/format.h>
+// #include <fmt/format.h>
 
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
-
-using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -20,8 +18,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
     m_ui->setupUi(this);
 
     // Test using RDKit and fmt
-    auto mol = RDKit::SmilesToMol("c1ccccc1");
-    fmt::format("Benzene has {} atoms", mol.getNumAtoms());
+    // auto mol = RDKit::SmilesToMol("c1ccccc1");
+    // fmt::format("Benzene has {} atoms", mol.getNumAtoms());
 
     auto watermark = new QGraphicsPixmapItem();
     watermark->setPixmap(QPixmap(":icons/watermark.svg"));
