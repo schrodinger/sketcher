@@ -5,6 +5,7 @@
 
 %{
 
+#include <string>
 #include <string_view>
 #include "schrodinger/rdkit_extensions/helm/token_scanner.h"
 
@@ -17,8 +18,9 @@ using token = helm::TokenParser::token;
 
 #define YY_NO_UNISTD_H
 
-/* update location on matching */
-#define YY_USER_ACTION loc->step(); loc->columns(yyleng);
+#define YY_USER_ACTION \
+        loc->step(); loc->columns(yyleng); \
+        yylval->build<std::string_view>(ref_string_view.substr(loc->begin.column - 1, yyleng));
 
 %}
 
@@ -29,13 +31,31 @@ using token = helm::TokenParser::token;
 %option c++
 %option outfile="lex.yy.cpp"
 
-%s POLYMER
+/* We're defining different token recognition states because token identities differ
+ * based on what type of section we're parsing. This is mainly to allow the
+ * following:
+ *
+ *     * Capture unknown monomers since the definition is X for peptides and
+ *       N for nucleotides
+ *     * Capture unknown sequences for BLOB polymers since they can be anything
+ *       including whitespace characters.
+ *
+ */
+%x PEPTIDE NUCLEOTIDE BLOB CHEM CONNECTIONS POLYMER_GROUPS EXTENDED_ANNOTATIONS VERSION
 
+float_token                 [0-9]*\.[0-9]+
 positive_int                [1-9][0-9]*
-peptide_polymer_id          PEPTIDE{positive_int}
-nucleotide_polymer_id       RNA{positive_int}
-chem_polymer_id             CHEM{positive_int}
-blob_polymer_id             BLOB{positive_int}
+polymer_id                  (PEPTIDE|RNA|CHEM|BLOB){positive_int}
+
+multicharacter_monomer      [a-zA-Z0-9]{2,}
+inline_smiles_monomer       (\[[^\[\]\n]+\]|[^\[\]\n]+)+
+inline_annotation           \"[^\"]+\"
+num_repetitions             {positive_int}|{positive_int}\-{positive_int}
+ratio                       ({float_token}|{positive_int})
+
+
+/* The '$' char is reserved for section ends, so it shouldn't here */
+extended_annotations        [^$]+
 
 %%
 %{
@@ -43,28 +63,52 @@ blob_polymer_id             BLOB{positive_int}
 %}
 
     /* Helm polymers */
-{peptide_polymer_id}|{nucleotide_polymer_id}|{chem_polymer_id}|{blob_polymer_id} {
-    BEGIN POLYMER;
-    yylval->build<std::string_view>(yytext);
-    if (yytext[0] == 'B') { return token::BLOB_ID; }
-    else if (yytext[0] == 'R') { return token::RNA_ID; }
-    else if (yytext[0] == 'C') { return token::CHEM_ID; }
-    else { return token::PEPTIDE_ID; }
+<INITIAL>{polymer_id} {
+    if (yytext[0] == 'B') { BEGIN BLOB; return token::BLOB_ID; }
+    else if (yytext[0] == 'R') { BEGIN NUCLEOTIDE; return token::RNA_ID; }
+    else if (yytext[0] == 'C') { BEGIN CHEM; return token::CHEM_ID; }
+    else { BEGIN PEPTIDE; return token::PEPTIDE_ID; }
 }
+<BLOB>[a-zA-Z ]+ { return token::UNKNOWN_SEQUENCE; }
+    /* Special monomer recognition for peptides and nucleotide */
+<PEPTIDE>X |
+<NUCLEOTIDE>N { return token::UNKNOWN_MONOMER; }
 
-<POLYMER>BEAD { return token::BEAD;}
+<PEPTIDE,NUCLEOTIDE,CHEM>[a-zA-Z] { return token::SINGLE_CHARACTER_MONOMER; }
+<PEPTIDE,NUCLEOTIDE,CHEM>_ { return token::MISSING_MONOMER; }
+<PEPTIDE,NUCLEOTIDE,CHEM>\?|{ratio} { return token::MONOMER_RATIO; }
+<PEPTIDE,NUCLEOTIDE,CHEM>\* { return token::MONOMER_WILDCARD; }
+<PEPTIDE,NUCLEOTIDE,CHEM>\[{multicharacter_monomer}\] { return token::MULTI_CHARACTER_MONOMER; }
+<PEPTIDE,NUCLEOTIDE,CHEM>\[{inline_smiles_monomer}\] { return token::INLINE_SMILES_MONOMER; }
 
-<POLYMER>[a-zA-Z][a-zA-Z]* {
-    yylval->build<std::string_view>(yytext);
-    return yyleng > 1 ? token::MULTI_CHARACTER_MONOMER : token::SINGLE_CHARACTER_MONOMER;
+<PEPTIDE,NUCLEOTIDE,BLOB,CHEM>\| { BEGIN INITIAL; return yytext[0]; }
+<PEPTIDE,NUCLEOTIDE,BLOB,CHEM>{inline_annotation} { return token::ANNOTATION; }
+<PEPTIDE,NUCLEOTIDE>\'{num_repetitions}\' { return token::REPETITIONS; }
+<PEPTIDE,NUCLEOTIDE,BLOB,CHEM>\$ { BEGIN CONNECTIONS; return yytext[0]; }
+
+
+<CONNECTIONS>{polymer_id} { return token::POLYMER_ID; }
+<CONNECTIONS>pair { return token::HYDROGEN_PAIRING; }
+<CONNECTIONS>\? { return token::UNDEFINED_RESIDUE_NUMBER_OR_RGROUP; }
+<CONNECTIONS>R{positive_int} { return token::RGROUP; }
+<CONNECTIONS>{positive_int}|[a-zA-Z]+ { return token::CONNECTION_RESIDUE; }
+<CONNECTIONS>{inline_annotation} { return token::ANNOTATION; }
+<CONNECTIONS>G{positive_int} { return token::POLYMER_GROUP_ID; }
+<CONNECTIONS>\$ { BEGIN POLYMER_GROUPS; return yytext[0]; }
+
+
+<POLYMER_GROUPS>G{positive_int} { return token::POLYMER_GROUP_ID; }
+<POLYMER_GROUPS>{polymer_id} { return token::POLYMER_ID;
 }
+<POLYMER_GROUPS>({ratio}|{ratio}\-{ratio}) { return token::POLYMER_GROUP_RATIO; }
+<POLYMER_GROUPS>\$ { BEGIN EXTENDED_ANNOTATIONS; return yytext[0]; }
 
-<POLYMER>.|\n { return yytext[0]; }
+
+<EXTENDED_ANNOTATIONS>{extended_annotations} { return token::EXTENDED_ANNOTATIONS_TOKEN; }
+<EXTENDED_ANNOTATIONS>\$ { BEGIN VERSION; return yytext[0]; }
+<VERSION>[^\n ]+ { return token::VERSION_TOKEN; }
 
     /* General tokens */
-V2\.0 { return token::VERSION_TOKEN; }
-\$ |
-\n |
-. { BEGIN 0; return yytext[0]; }
+<*>.|\n { return yytext[0]; }
 
 %%

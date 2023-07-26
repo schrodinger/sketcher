@@ -1,0 +1,293 @@
+#include "schrodinger/rdkit_extensions/helm/validation.h"
+
+#include <algorithm>
+#include <charconv> // from_chars
+#include <cctype>
+#include <fmt/format.h>
+#include <string>
+#include <string_view>
+#include <regex>
+#include <unordered_set>
+#include <vector>
+
+#include "schrodinger/rdkit_extensions/helm/helm_parser.h"
+
+namespace helm
+{
+namespace
+{
+[[nodiscard]] bool validate_smiles(const std::string_view monomer_smiles)
+{
+    static std::regex modern_rgroup_pattern(R"(\[\*\:([1-9][0-9]*)\])");
+    static std::regex cxxsmiles_rgroup_pattern(R"(_?R([1-9][0-9]*))");
+
+    static auto check_smiles = [](const std::string_view monomer_smiles,
+                                  const std::regex& rgroup_pattern) {
+        std::string smiles{monomer_smiles.begin(), monomer_smiles.end()};
+        std::sregex_token_iterator matches(smiles.begin(), smiles.end(),
+                                           rgroup_pattern, 1);
+        std::vector<int> rgroup_ids;
+        std::transform(matches, std::sregex_token_iterator(),
+                       std::back_inserter(rgroup_ids),
+                       [](const auto& id) { return std::stoi(id.str()); });
+
+        // Make sure we inline smiles have at least one attachment and that
+        // N attachment points are numbered 1-N
+        std::sort(rgroup_ids.begin(), rgroup_ids.end());
+        return rgroup_ids.size() &&
+               std::all_of(rgroup_ids.begin(), rgroup_ids.end(),
+                           [i = 0](const auto& rgroup_id) mutable {
+                               return rgroup_id == ++i;
+                           });
+    };
+
+    return check_smiles(monomer_smiles, modern_rgroup_pattern) ||
+           check_smiles(monomer_smiles, cxxsmiles_rgroup_pattern);
+}
+
+void validate_polymer(const polymer& polymer,
+                      std::unordered_set<std::string_view>& polymer_ids,
+                      HelmParser& parser)
+{
+    if (!polymer_ids.insert(polymer.id).second) {
+        parser.saveError(polymer.id,
+                         fmt::format("Duplicate polymer id: '{}'", polymer.id));
+    }
+
+    for (const auto& monomer : polymer.monomers) {
+        if (monomer.is_smiles && !validate_smiles(monomer.id)) {
+            parser.saveError(
+                monomer.id,
+                "The inline smiles has missing or non-sequential rgroups.");
+        } else if (monomer.id == "_") {
+            parser.saveError(monomer.id,
+                             "Missing monomers are currently unsupported.");
+        } else if (monomer.is_list &&
+                   monomer.id.find("_") != std::string_view::npos) {
+
+            parser.saveError(monomer.id.substr(monomer.id.find("_")),
+                             "Missing monomers are currently unsupported.");
+        }
+    }
+}
+
+/*
+ * Rules for a valid connection:
+ *      * BLOBS can't have defined connection residues or rgroups
+ *      * Unknown residues can't have defined rgroups
+ *
+ * Unsupported connection types:
+ *      * Connections with polymer groups
+ *      * Connections with non-blob ambiguous bonds
+ *      * Connections with multiple to and from residues
+ */
+void validate_connection(
+    const connection& connection,
+    const std::unordered_set<std::string_view>& polymer_ids, HelmParser& parser)
+{
+    static auto validate_blob_connection_info = [](const auto& monomer_id,
+                                                   const auto& rgroup,
+                                                   auto& parser) {
+        if (monomer_id != "*" && monomer_id != "?") {
+            parser.saveError(monomer_id,
+                             "Connections to/from BLOB polymers  can't have "
+                             "defined connection residues");
+        }
+        if (rgroup != "*" && rgroup != "?") {
+            parser.saveError(rgroup,
+                             "Connections to/from BLOB polymers  can't have "
+                             "defined connection rgroups");
+        }
+    };
+
+    static auto validate_connection_info = [](const auto& polymer_ids,
+                                              const auto& polymer_id,
+                                              const auto& monomer_id,
+                                              const auto& rgroup,
+                                              auto& parser) {
+        if (polymer_id[0] != 'G' && !polymer_ids.count(polymer_id)) {
+            parser.saveError(
+                polymer_id,
+                fmt::format("Unknown polymer '{}' in connection", polymer_id));
+        } else if (polymer_id[0] == 'B') {
+            validate_blob_connection_info(monomer_id, rgroup, parser);
+        } else if (polymer_id[0] == 'G') {
+            parser.saveError(polymer_id,
+                             "Connections involving polymer groups are "
+                             "currently unsupported.");
+        } else if (monomer_id.find_first_of("*?") != std::string_view::npos ||
+                   rgroup.find_first_of("*?") != std::string_view::npos) {
+            parser.saveError(rgroup, "Ambiguous bonds to non-blob polymers are "
+                                     "currently unsupported");
+        } else if (monomer_id.find_first_of(",+") != std::string_view::npos) {
+            parser.saveError(
+                polymer_id,
+                "Multiple monomers in connections are currently unsupported");
+        }
+    };
+
+    validate_connection_info(polymer_ids, connection.from_id,
+                             connection.from_res, connection.from_rgroup,
+                             parser);
+    validate_connection_info(polymer_ids, connection.to_id, connection.to_res,
+                             connection.to_rgroup, parser);
+}
+
+[[nodiscard]] std::vector<std::string_view>
+split_string_view(const std::string_view& source,
+                  const std::string_view delimiters)
+{
+    std::vector<std::string_view> tokens;
+    size_t start = 0;
+    for (size_t idx = 1; idx < source.size(); ++idx) {
+        if (delimiters.find(source[idx]) != std::string_view::npos) {
+            tokens.push_back(source.substr(start, idx - start));
+            start = idx + 1;
+        }
+    }
+    tokens.push_back(source.substr(start));
+    return tokens;
+}
+
+void validate_connection_residues(const connection& connection,
+                                  const std::vector<polymer>& polymers,
+                                  HelmParser& parser)
+{
+    static auto validate_residue_number = [](const auto& residue,
+                                             const auto& polymer,
+                                             const auto& rgroup, auto& parser) {
+        size_t residue_number = 0;
+        std::from_chars(residue.data(), residue.data() + residue.size(),
+                        residue_number);
+        if (residue_number > polymer.monomers.size()) {
+            parser.saveError(
+                residue,
+                fmt::format(
+                    "Residue number '{}' falls outside of polymer chain.",
+                    residue_number));
+        } else if (polymer.wildcard_and_unknown_residues.count(
+                       residue_number) &&
+                   rgroup[0] == 'R') {
+            parser.saveError(residue,
+                             fmt::format("Residue number '{}' points to a "
+                                         "wildcard/ unknown residue, so "
+                                         "it can't have a specified rgroup.",
+                                         residue_number));
+        }
+    };
+
+    static auto validate_connection_residue =
+        [](const auto& polymer, const auto& residues, const auto& rgroup,
+           auto& parser) {
+            for (const auto& residue : split_string_view(residues, "+,")) {
+                const auto is_digit = std::all_of(
+                    residue.begin(), residue.end(),
+                    [](const unsigned char c) { return std::isdigit(c); });
+                if (is_digit) {
+                    validate_residue_number(residue, polymer, rgroup, parser);
+                } else if (!polymer.residue_names.count(residue)) {
+                    parser.saveError(
+                        residue,
+                        fmt::format("Residue '{}' can't be found in polymer.",
+                                    residue));
+                }
+            }
+        };
+
+    static auto find_polymer = [](const auto& polymer_id,
+                                  const auto& polymers) {
+        return *std::find_if(
+            polymers.begin(), polymers.end(),
+            [&](const auto& polymer) { return polymer.id == polymer_id; });
+    };
+
+    if (connection.from_id[0] != 'B') {
+        validate_connection_residue(find_polymer(connection.from_id, polymers),
+                                    connection.from_res, connection.from_rgroup,
+                                    parser);
+    }
+    if (connection.to_id[0] != 'B') {
+        validate_connection_residue(find_polymer(connection.to_id, polymers),
+                                    connection.to_res, connection.to_rgroup,
+                                    parser);
+    }
+}
+// check duplicate group ids
+void validate_polymer_group_ids(const polymer_group& polymer_group,
+                                std::unordered_set<std::string_view>& group_ids,
+                                HelmParser& parser)
+{
+    if (!group_ids.insert(polymer_group.id).second) {
+        parser.saveError(
+            polymer_group.id,
+            fmt::format("Duplicate polymer group id: '{}'", polymer_group.id));
+    }
+}
+
+// Make sure all items in the list can be located
+void validate_polymer_group_items(
+    const polymer_group& polymer_group,
+    const std::unordered_set<std::string_view>& polymer_ids,
+    const std::unordered_set<std::string_view>& group_ids, HelmParser& parser)
+{
+    for (const auto& item : split_string_view(polymer_group.items, "+,")) {
+        std::string_view prefix = item;
+        // strip ratio off
+        if (prefix.find(":") != std::string_view::npos) {
+            prefix.remove_suffix(prefix.size() - prefix.find(":"));
+        }
+        if (!(polymer_ids.count(prefix) || group_ids.count(prefix))) {
+            parser.saveError(
+                prefix, fmt::format("Unknown polymer group item: '{}'", item));
+        }
+    }
+}
+} // namespace
+
+void validate_parsed_info(const helm_info& parsed_info, HelmParser& parser)
+{
+    std::unordered_set<std::string_view> polymer_ids;
+    std::for_each(parsed_info.polymers.begin(), parsed_info.polymers.end(),
+                  [&](const auto& polymer) {
+                      validate_polymer(polymer, polymer_ids, parser);
+                  });
+    if (parser.hasErrors()) {
+        return;
+    }
+
+    std::for_each(parsed_info.connections.begin(),
+                  parsed_info.connections.end(), [&](const auto& connection) {
+                      validate_connection(connection, polymer_ids, parser);
+                  });
+    if (parser.hasErrors()) {
+        return;
+    }
+    // if connection has no unsupported features check for missing residues
+    // or incompatible rgroups
+    std::for_each(parsed_info.connections.begin(),
+                  parsed_info.connections.end(), [&](const auto& connection) {
+                      validate_connection_residues(
+                          connection, parsed_info.polymers, parser);
+                  });
+    if (parser.hasErrors()) {
+        return;
+    }
+
+    std::unordered_set<std::string_view> group_ids;
+    std::for_each(
+        parsed_info.polymer_groups.begin(), parsed_info.polymer_groups.end(),
+        [&](const auto& polymer_group) {
+            validate_polymer_group_ids(polymer_group, group_ids, parser);
+        });
+    if (parser.hasErrors()) {
+        return;
+    }
+
+    std::for_each(parsed_info.polymer_groups.begin(),
+                  parsed_info.polymer_groups.end(),
+                  [&](const auto& polymer_group) {
+                      validate_polymer_group_items(polymer_group, polymer_ids,
+                                                   group_ids, parser);
+                  });
+}
+} // namespace helm

@@ -47,14 +47,17 @@
 // "%code requires" blocks.
 #line 21 "../helm_parser.yy"
 
+   #include <string>
+   #include <string_view>
+
    namespace helm {
       class HelmParser;
       class TokenScanner;
-   }
+   };
 
-#line 56 "helm_parser.tab.hh"
+#line 59 "helm_parser.tab.hh"
 
-# include <cassert>
+
 # include <cstdlib> // std::abort
 # include <iostream>
 # include <stdexcept>
@@ -98,11 +101,6 @@
 # define YY_CONSTEXPR
 #endif
 # include "location.hh"
-#include <typeinfo>
-#ifndef YY_ASSERT
-# include <cassert>
-# define YY_ASSERT assert
-#endif
 
 
 #ifndef YY_ATTRIBUTE_PURE
@@ -191,9 +189,9 @@
 # define YYDEBUG 1
 #endif
 
-#line 16 "../helm_parser.yy"
+#line 15 "../helm_parser.yy"
 namespace helm {
-#line 197 "helm_parser.tab.hh"
+#line 195 "helm_parser.tab.hh"
 
 
 
@@ -222,15 +220,12 @@ namespace helm {
     /// Empty construction.
     value_type () YY_NOEXCEPT
       : yyraw_ ()
-      , yytypeid_ (YY_NULLPTR)
     {}
 
     /// Construct and fill.
     template <typename T>
     value_type (YY_RVREF (T) t)
-      : yytypeid_ (&typeid (T))
     {
-      YY_ASSERT (sizeof (T) <= size);
       new (yyas_<T> ()) T (YY_MOVE (t));
     }
 
@@ -243,9 +238,7 @@ namespace helm {
 
     /// Destruction, allowed only if empty.
     ~value_type () YY_NOEXCEPT
-    {
-      YY_ASSERT (!yytypeid_);
-    }
+    {}
 
 # if 201103L <= YY_CPLUSPLUS
     /// Instantiate a \a T in here from \a t.
@@ -253,9 +246,6 @@ namespace helm {
     T&
     emplace (U&&... u)
     {
-      YY_ASSERT (!yytypeid_);
-      YY_ASSERT (sizeof (T) <= size);
-      yytypeid_ = & typeid (T);
       return *new (yyas_<T> ()) T (std::forward <U>(u)...);
     }
 # else
@@ -264,9 +254,6 @@ namespace helm {
     T&
     emplace ()
     {
-      YY_ASSERT (!yytypeid_);
-      YY_ASSERT (sizeof (T) <= size);
-      yytypeid_ = & typeid (T);
       return *new (yyas_<T> ()) T ();
     }
 
@@ -275,9 +262,6 @@ namespace helm {
     T&
     emplace (const T& t)
     {
-      YY_ASSERT (!yytypeid_);
-      YY_ASSERT (sizeof (T) <= size);
-      yytypeid_ = & typeid (T);
       return *new (yyas_<T> ()) T (t);
     }
 # endif
@@ -305,9 +289,6 @@ namespace helm {
     T&
     as () YY_NOEXCEPT
     {
-      YY_ASSERT (yytypeid_);
-      YY_ASSERT (*yytypeid_ == typeid (T));
-      YY_ASSERT (sizeof (T) <= size);
       return *yyas_<T> ();
     }
 
@@ -316,9 +297,6 @@ namespace helm {
     const T&
     as () const YY_NOEXCEPT
     {
-      YY_ASSERT (yytypeid_);
-      YY_ASSERT (*yytypeid_ == typeid (T));
-      YY_ASSERT (sizeof (T) <= size);
       return *yyas_<T> ();
     }
 
@@ -334,8 +312,6 @@ namespace helm {
     void
     swap (self_type& that) YY_NOEXCEPT
     {
-      YY_ASSERT (yytypeid_);
-      YY_ASSERT (*yytypeid_ == *that.yytypeid_);
       std::swap (as<T> (), that.as<T> ());
     }
 
@@ -380,7 +356,6 @@ namespace helm {
     destroy ()
     {
       as<T> ().~T ();
-      yytypeid_ = YY_NULLPTR;
     }
 
   private:
@@ -412,13 +387,56 @@ namespace helm {
     /// An auxiliary type to compute the largest semantic type.
     union union_type
     {
+      // connections
+      // polymer_groups
+      // monomer_sequence
+      // branch_monomer_group
+      char dummy1[sizeof (size_t)];
+
       // BLOB_ID
       // CHEM_ID
       // PEPTIDE_ID
       // RNA_ID
+      // POLYMER_ID
       // SINGLE_CHARACTER_MONOMER
       // MULTI_CHARACTER_MONOMER
-      char dummy1[sizeof (std::string_view)];
+      // UNKNOWN_MONOMER
+      // MISSING_MONOMER
+      // MONOMER_WILDCARD
+      // MONOMER_RATIO
+      // INLINE_SMILES_MONOMER
+      // ANNOTATION
+      // REPETITIONS
+      // UNKNOWN_SEQUENCE
+      // VERSION_TOKEN
+      // HYDROGEN_PAIRING
+      // RGROUP
+      // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+      // CONNECTION_RESIDUE
+      // POLYMER_GROUP_RATIO
+      // POLYMER_GROUP_ID
+      // EXTENDED_ANNOTATIONS_TOKEN
+      // extended_annotations
+      // version
+      // polymer
+      // repetitions
+      // monomer_list
+      // monomer_and_list
+      // monomer_or_list
+      // monomer_list_item
+      // smiles_monomer
+      // monomer_id
+      // blob
+      // connection_polymer
+      // attachment_point
+      // connection_monomer
+      // residue_and_list
+      // residue_or_list
+      // polymer_or_list
+      // polymer_and_list
+      // polymer_group_item
+      // annotation
+      char dummy2[sizeof (std::string_view)];
     };
 
     /// The size of the largest semantic type.
@@ -432,9 +450,6 @@ namespace helm {
       /// A buffer large enough to store any of the semantic values.
       char yyraw_[size];
     };
-
-    /// Whether the content is built: if defined, the name of the stored type.
-    const std::type_info *yytypeid_;
   };
 
 #endif
@@ -471,14 +486,29 @@ namespace helm {
     END = 0,                       // END
     YYerror = 256,                 // error
     YYUNDEF = 257,                 // "invalid token"
-    BEAD = 258,                    // BEAD
-    VERSION_TOKEN = 259,           // VERSION_TOKEN
-    BLOB_ID = 260,                 // BLOB_ID
-    CHEM_ID = 261,                 // CHEM_ID
-    PEPTIDE_ID = 262,              // PEPTIDE_ID
-    RNA_ID = 263,                  // RNA_ID
-    SINGLE_CHARACTER_MONOMER = 264, // SINGLE_CHARACTER_MONOMER
-    MULTI_CHARACTER_MONOMER = 265  // MULTI_CHARACTER_MONOMER
+    BLOB_ID = 258,                 // BLOB_ID
+    CHEM_ID = 259,                 // CHEM_ID
+    PEPTIDE_ID = 260,              // PEPTIDE_ID
+    RNA_ID = 261,                  // RNA_ID
+    POLYMER_ID = 262,              // POLYMER_ID
+    SINGLE_CHARACTER_MONOMER = 263, // SINGLE_CHARACTER_MONOMER
+    MULTI_CHARACTER_MONOMER = 264, // MULTI_CHARACTER_MONOMER
+    UNKNOWN_MONOMER = 265,         // UNKNOWN_MONOMER
+    MISSING_MONOMER = 266,         // MISSING_MONOMER
+    MONOMER_WILDCARD = 267,        // MONOMER_WILDCARD
+    MONOMER_RATIO = 268,           // MONOMER_RATIO
+    INLINE_SMILES_MONOMER = 269,   // INLINE_SMILES_MONOMER
+    ANNOTATION = 270,              // ANNOTATION
+    REPETITIONS = 271,             // REPETITIONS
+    UNKNOWN_SEQUENCE = 272,        // UNKNOWN_SEQUENCE
+    VERSION_TOKEN = 273,           // VERSION_TOKEN
+    HYDROGEN_PAIRING = 274,        // HYDROGEN_PAIRING
+    RGROUP = 275,                  // RGROUP
+    UNDEFINED_RESIDUE_NUMBER_OR_RGROUP = 276, // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+    CONNECTION_RESIDUE = 277,      // CONNECTION_RESIDUE
+    POLYMER_GROUP_RATIO = 278,     // POLYMER_GROUP_RATIO
+    POLYMER_GROUP_ID = 279,        // POLYMER_GROUP_ID
+    EXTENDED_ANNOTATIONS_TOKEN = 280 // EXTENDED_ANNOTATIONS_TOKEN
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -495,35 +525,79 @@ namespace helm {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 17, ///< Number of tokens.
+        YYNTOKENS = 37, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // END
         S_YYerror = 1,                           // error
         S_YYUNDEF = 2,                           // "invalid token"
-        S_BEAD = 3,                              // BEAD
-        S_VERSION_TOKEN = 4,                     // VERSION_TOKEN
-        S_BLOB_ID = 5,                           // BLOB_ID
-        S_CHEM_ID = 6,                           // CHEM_ID
-        S_PEPTIDE_ID = 7,                        // PEPTIDE_ID
-        S_RNA_ID = 8,                            // RNA_ID
-        S_SINGLE_CHARACTER_MONOMER = 9,          // SINGLE_CHARACTER_MONOMER
-        S_MULTI_CHARACTER_MONOMER = 10,          // MULTI_CHARACTER_MONOMER
-        S_11_ = 11,                              // '$'
-        S_12_ = 12,                              // '{'
-        S_13_ = 13,                              // '}'
-        S_14_ = 14,                              // '.'
-        S_15_ = 15,                              // '['
-        S_16_ = 16,                              // ']'
-        S_YYACCEPT = 17,                         // $accept
-        S_helm = 18,                             // helm
-        S_polymers = 19,                         // polymers
-        S_polymer = 20,                          // polymer
-        S_monomers = 21,                         // monomers
-        S_monomer = 22,                          // monomer
-        S_bead = 23,                             // bead
-        S_connections = 24,                      // connections
-        S_polymer_groups = 25,                   // polymer_groups
-        S_extended_annotations = 26              // extended_annotations
+        S_BLOB_ID = 3,                           // BLOB_ID
+        S_CHEM_ID = 4,                           // CHEM_ID
+        S_PEPTIDE_ID = 5,                        // PEPTIDE_ID
+        S_RNA_ID = 6,                            // RNA_ID
+        S_POLYMER_ID = 7,                        // POLYMER_ID
+        S_SINGLE_CHARACTER_MONOMER = 8,          // SINGLE_CHARACTER_MONOMER
+        S_MULTI_CHARACTER_MONOMER = 9,           // MULTI_CHARACTER_MONOMER
+        S_UNKNOWN_MONOMER = 10,                  // UNKNOWN_MONOMER
+        S_MISSING_MONOMER = 11,                  // MISSING_MONOMER
+        S_MONOMER_WILDCARD = 12,                 // MONOMER_WILDCARD
+        S_MONOMER_RATIO = 13,                    // MONOMER_RATIO
+        S_INLINE_SMILES_MONOMER = 14,            // INLINE_SMILES_MONOMER
+        S_ANNOTATION = 15,                       // ANNOTATION
+        S_REPETITIONS = 16,                      // REPETITIONS
+        S_UNKNOWN_SEQUENCE = 17,                 // UNKNOWN_SEQUENCE
+        S_VERSION_TOKEN = 18,                    // VERSION_TOKEN
+        S_HYDROGEN_PAIRING = 19,                 // HYDROGEN_PAIRING
+        S_RGROUP = 20,                           // RGROUP
+        S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP = 21, // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+        S_CONNECTION_RESIDUE = 22,               // CONNECTION_RESIDUE
+        S_POLYMER_GROUP_RATIO = 23,              // POLYMER_GROUP_RATIO
+        S_POLYMER_GROUP_ID = 24,                 // POLYMER_GROUP_ID
+        S_EXTENDED_ANNOTATIONS_TOKEN = 25,       // EXTENDED_ANNOTATIONS_TOKEN
+        S_26_ = 26,                              // '$'
+        S_27_ = 27,                              // '|'
+        S_28_ = 28,                              // '{'
+        S_29_ = 29,                              // '}'
+        S_30_ = 30,                              // '.'
+        S_31_ = 31,                              // '('
+        S_32_ = 32,                              // ')'
+        S_33_ = 33,                              // '+'
+        S_34_ = 34,                              // ','
+        S_35_ = 35,                              // ':'
+        S_36_ = 36,                              // '-'
+        S_YYACCEPT = 37,                         // $accept
+        S_helm = 38,                             // helm
+        S_polymers = 39,                         // polymers
+        S_connections = 40,                      // connections
+        S_polymer_groups = 41,                   // polymer_groups
+        S_extended_annotations = 42,             // extended_annotations
+        S_version = 43,                          // version
+        S_polymer_unit = 44,                     // polymer_unit
+        S_polymer = 45,                          // polymer
+        S_monomers = 46,                         // monomers
+        S_monomer_group = 47,                    // monomer_group
+        S_repeated_monomers = 48,                // repeated_monomers
+        S_repetitions = 49,                      // repetitions
+        S_monomer_sequence = 50,                 // monomer_sequence
+        S_branch_monomer_group = 51,             // branch_monomer_group
+        S_monomer_unit = 52,                     // monomer_unit
+        S_monomer_list = 53,                     // monomer_list
+        S_monomer_and_list = 54,                 // monomer_and_list
+        S_monomer_or_list = 55,                  // monomer_or_list
+        S_monomer_list_item = 56,                // monomer_list_item
+        S_smiles_monomer = 57,                   // smiles_monomer
+        S_monomer_id = 58,                       // monomer_id
+        S_blob = 59,                             // blob
+        S_connection = 60,                       // connection
+        S_connection_polymer = 61,               // connection_polymer
+        S_attachment_point = 62,                 // attachment_point
+        S_connection_monomer = 63,               // connection_monomer
+        S_residue_and_list = 64,                 // residue_and_list
+        S_residue_or_list = 65,                  // residue_or_list
+        S_polymer_group = 66,                    // polymer_group
+        S_polymer_or_list = 67,                  // polymer_or_list
+        S_polymer_and_list = 68,                 // polymer_and_list
+        S_polymer_group_item = 69,               // polymer_group_item
+        S_annotation = 70                        // annotation
       };
     };
 
@@ -560,12 +634,56 @@ namespace helm {
       {
         switch (this->kind ())
     {
+      case symbol_kind::S_connections: // connections
+      case symbol_kind::S_polymer_groups: // polymer_groups
+      case symbol_kind::S_monomer_sequence: // monomer_sequence
+      case symbol_kind::S_branch_monomer_group: // branch_monomer_group
+        value.move< size_t > (std::move (that.value));
+        break;
+
       case symbol_kind::S_BLOB_ID: // BLOB_ID
       case symbol_kind::S_CHEM_ID: // CHEM_ID
       case symbol_kind::S_PEPTIDE_ID: // PEPTIDE_ID
       case symbol_kind::S_RNA_ID: // RNA_ID
+      case symbol_kind::S_POLYMER_ID: // POLYMER_ID
       case symbol_kind::S_SINGLE_CHARACTER_MONOMER: // SINGLE_CHARACTER_MONOMER
       case symbol_kind::S_MULTI_CHARACTER_MONOMER: // MULTI_CHARACTER_MONOMER
+      case symbol_kind::S_UNKNOWN_MONOMER: // UNKNOWN_MONOMER
+      case symbol_kind::S_MISSING_MONOMER: // MISSING_MONOMER
+      case symbol_kind::S_MONOMER_WILDCARD: // MONOMER_WILDCARD
+      case symbol_kind::S_MONOMER_RATIO: // MONOMER_RATIO
+      case symbol_kind::S_INLINE_SMILES_MONOMER: // INLINE_SMILES_MONOMER
+      case symbol_kind::S_ANNOTATION: // ANNOTATION
+      case symbol_kind::S_REPETITIONS: // REPETITIONS
+      case symbol_kind::S_UNKNOWN_SEQUENCE: // UNKNOWN_SEQUENCE
+      case symbol_kind::S_VERSION_TOKEN: // VERSION_TOKEN
+      case symbol_kind::S_HYDROGEN_PAIRING: // HYDROGEN_PAIRING
+      case symbol_kind::S_RGROUP: // RGROUP
+      case symbol_kind::S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP: // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+      case symbol_kind::S_CONNECTION_RESIDUE: // CONNECTION_RESIDUE
+      case symbol_kind::S_POLYMER_GROUP_RATIO: // POLYMER_GROUP_RATIO
+      case symbol_kind::S_POLYMER_GROUP_ID: // POLYMER_GROUP_ID
+      case symbol_kind::S_EXTENDED_ANNOTATIONS_TOKEN: // EXTENDED_ANNOTATIONS_TOKEN
+      case symbol_kind::S_extended_annotations: // extended_annotations
+      case symbol_kind::S_version: // version
+      case symbol_kind::S_polymer: // polymer
+      case symbol_kind::S_repetitions: // repetitions
+      case symbol_kind::S_monomer_list: // monomer_list
+      case symbol_kind::S_monomer_and_list: // monomer_and_list
+      case symbol_kind::S_monomer_or_list: // monomer_or_list
+      case symbol_kind::S_monomer_list_item: // monomer_list_item
+      case symbol_kind::S_smiles_monomer: // smiles_monomer
+      case symbol_kind::S_monomer_id: // monomer_id
+      case symbol_kind::S_blob: // blob
+      case symbol_kind::S_connection_polymer: // connection_polymer
+      case symbol_kind::S_attachment_point: // attachment_point
+      case symbol_kind::S_connection_monomer: // connection_monomer
+      case symbol_kind::S_residue_and_list: // residue_and_list
+      case symbol_kind::S_residue_or_list: // residue_or_list
+      case symbol_kind::S_polymer_or_list: // polymer_or_list
+      case symbol_kind::S_polymer_and_list: // polymer_and_list
+      case symbol_kind::S_polymer_group_item: // polymer_group_item
+      case symbol_kind::S_annotation: // annotation
         value.move< std::string_view > (std::move (that.value));
         break;
 
@@ -588,6 +706,20 @@ namespace helm {
 #else
       basic_symbol (typename Base::kind_type t, const location_type& l)
         : Base (t)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, size_t&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const size_t& v, const location_type& l)
+        : Base (t)
+        , value (v)
         , location (l)
       {}
 #endif
@@ -630,12 +762,56 @@ namespace helm {
         // Value type destructor.
 switch (yykind)
     {
+      case symbol_kind::S_connections: // connections
+      case symbol_kind::S_polymer_groups: // polymer_groups
+      case symbol_kind::S_monomer_sequence: // monomer_sequence
+      case symbol_kind::S_branch_monomer_group: // branch_monomer_group
+        value.template destroy< size_t > ();
+        break;
+
       case symbol_kind::S_BLOB_ID: // BLOB_ID
       case symbol_kind::S_CHEM_ID: // CHEM_ID
       case symbol_kind::S_PEPTIDE_ID: // PEPTIDE_ID
       case symbol_kind::S_RNA_ID: // RNA_ID
+      case symbol_kind::S_POLYMER_ID: // POLYMER_ID
       case symbol_kind::S_SINGLE_CHARACTER_MONOMER: // SINGLE_CHARACTER_MONOMER
       case symbol_kind::S_MULTI_CHARACTER_MONOMER: // MULTI_CHARACTER_MONOMER
+      case symbol_kind::S_UNKNOWN_MONOMER: // UNKNOWN_MONOMER
+      case symbol_kind::S_MISSING_MONOMER: // MISSING_MONOMER
+      case symbol_kind::S_MONOMER_WILDCARD: // MONOMER_WILDCARD
+      case symbol_kind::S_MONOMER_RATIO: // MONOMER_RATIO
+      case symbol_kind::S_INLINE_SMILES_MONOMER: // INLINE_SMILES_MONOMER
+      case symbol_kind::S_ANNOTATION: // ANNOTATION
+      case symbol_kind::S_REPETITIONS: // REPETITIONS
+      case symbol_kind::S_UNKNOWN_SEQUENCE: // UNKNOWN_SEQUENCE
+      case symbol_kind::S_VERSION_TOKEN: // VERSION_TOKEN
+      case symbol_kind::S_HYDROGEN_PAIRING: // HYDROGEN_PAIRING
+      case symbol_kind::S_RGROUP: // RGROUP
+      case symbol_kind::S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP: // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+      case symbol_kind::S_CONNECTION_RESIDUE: // CONNECTION_RESIDUE
+      case symbol_kind::S_POLYMER_GROUP_RATIO: // POLYMER_GROUP_RATIO
+      case symbol_kind::S_POLYMER_GROUP_ID: // POLYMER_GROUP_ID
+      case symbol_kind::S_EXTENDED_ANNOTATIONS_TOKEN: // EXTENDED_ANNOTATIONS_TOKEN
+      case symbol_kind::S_extended_annotations: // extended_annotations
+      case symbol_kind::S_version: // version
+      case symbol_kind::S_polymer: // polymer
+      case symbol_kind::S_repetitions: // repetitions
+      case symbol_kind::S_monomer_list: // monomer_list
+      case symbol_kind::S_monomer_and_list: // monomer_and_list
+      case symbol_kind::S_monomer_or_list: // monomer_or_list
+      case symbol_kind::S_monomer_list_item: // monomer_list_item
+      case symbol_kind::S_smiles_monomer: // smiles_monomer
+      case symbol_kind::S_monomer_id: // monomer_id
+      case symbol_kind::S_blob: // blob
+      case symbol_kind::S_connection_polymer: // connection_polymer
+      case symbol_kind::S_attachment_point: // attachment_point
+      case symbol_kind::S_connection_monomer: // connection_monomer
+      case symbol_kind::S_residue_and_list: // residue_and_list
+      case symbol_kind::S_residue_or_list: // residue_or_list
+      case symbol_kind::S_polymer_or_list: // polymer_or_list
+      case symbol_kind::S_polymer_and_list: // polymer_and_list
+      case symbol_kind::S_polymer_group_item: // polymer_group_item
+      case symbol_kind::S_annotation: // annotation
         value.template destroy< std::string_view > ();
         break;
 
@@ -737,18 +913,7 @@ switch (yykind)
       symbol_type (int tok, const location_type& l)
         : super_type (token_kind_type (tok), l)
 #endif
-      {
-#if !defined _MSC_VER || defined __clang__
-        YY_ASSERT (tok == token::END
-                   || (token::YYerror <= tok && tok <= token::VERSION_TOKEN)
-                   || tok == 36
-                   || tok == 123
-                   || tok == 125
-                   || tok == 46
-                   || tok == 91
-                   || tok == 93);
-#endif
-      }
+      {}
 #if 201103L <= YY_CPLUSPLUS
       symbol_type (int tok, std::string_view v, location_type l)
         : super_type (token_kind_type (tok), std::move (v), std::move (l))
@@ -756,11 +921,7 @@ switch (yykind)
       symbol_type (int tok, const std::string_view& v, const location_type& l)
         : super_type (token_kind_type (tok), v, l)
 #endif
-      {
-#if !defined _MSC_VER || defined __clang__
-        YY_ASSERT ((token::BLOB_ID <= tok && tok <= token::MULTI_CHARACTER_MONOMER));
-#endif
-      }
+      {}
     };
 
     /// Build a parser object.
@@ -860,36 +1021,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_BEAD (location_type l)
-      {
-        return symbol_type (token::BEAD, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_BEAD (const location_type& l)
-      {
-        return symbol_type (token::BEAD, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_VERSION_TOKEN (location_type l)
-      {
-        return symbol_type (token::VERSION_TOKEN, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_VERSION_TOKEN (const location_type& l)
-      {
-        return symbol_type (token::VERSION_TOKEN, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_BLOB_ID (std::string_view v, location_type l)
       {
         return symbol_type (token::BLOB_ID, std::move (v), std::move (l));
@@ -950,6 +1081,21 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_POLYMER_ID (std::string_view v, location_type l)
+      {
+        return symbol_type (token::POLYMER_ID, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_POLYMER_ID (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::POLYMER_ID, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_SINGLE_CHARACTER_MONOMER (std::string_view v, location_type l)
       {
         return symbol_type (token::SINGLE_CHARACTER_MONOMER, std::move (v), std::move (l));
@@ -977,6 +1123,246 @@ switch (yykind)
         return symbol_type (token::MULTI_CHARACTER_MONOMER, v, l);
       }
 #endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_UNKNOWN_MONOMER (std::string_view v, location_type l)
+      {
+        return symbol_type (token::UNKNOWN_MONOMER, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_UNKNOWN_MONOMER (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::UNKNOWN_MONOMER, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_MISSING_MONOMER (std::string_view v, location_type l)
+      {
+        return symbol_type (token::MISSING_MONOMER, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_MISSING_MONOMER (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::MISSING_MONOMER, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_MONOMER_WILDCARD (std::string_view v, location_type l)
+      {
+        return symbol_type (token::MONOMER_WILDCARD, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_MONOMER_WILDCARD (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::MONOMER_WILDCARD, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_MONOMER_RATIO (std::string_view v, location_type l)
+      {
+        return symbol_type (token::MONOMER_RATIO, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_MONOMER_RATIO (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::MONOMER_RATIO, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_INLINE_SMILES_MONOMER (std::string_view v, location_type l)
+      {
+        return symbol_type (token::INLINE_SMILES_MONOMER, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_INLINE_SMILES_MONOMER (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::INLINE_SMILES_MONOMER, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_ANNOTATION (std::string_view v, location_type l)
+      {
+        return symbol_type (token::ANNOTATION, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_ANNOTATION (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::ANNOTATION, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_REPETITIONS (std::string_view v, location_type l)
+      {
+        return symbol_type (token::REPETITIONS, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_REPETITIONS (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::REPETITIONS, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_UNKNOWN_SEQUENCE (std::string_view v, location_type l)
+      {
+        return symbol_type (token::UNKNOWN_SEQUENCE, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_UNKNOWN_SEQUENCE (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::UNKNOWN_SEQUENCE, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_VERSION_TOKEN (std::string_view v, location_type l)
+      {
+        return symbol_type (token::VERSION_TOKEN, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_VERSION_TOKEN (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::VERSION_TOKEN, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_HYDROGEN_PAIRING (std::string_view v, location_type l)
+      {
+        return symbol_type (token::HYDROGEN_PAIRING, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_HYDROGEN_PAIRING (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::HYDROGEN_PAIRING, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_RGROUP (std::string_view v, location_type l)
+      {
+        return symbol_type (token::RGROUP, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_RGROUP (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::RGROUP, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP (std::string_view v, location_type l)
+      {
+        return symbol_type (token::UNDEFINED_RESIDUE_NUMBER_OR_RGROUP, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::UNDEFINED_RESIDUE_NUMBER_OR_RGROUP, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_CONNECTION_RESIDUE (std::string_view v, location_type l)
+      {
+        return symbol_type (token::CONNECTION_RESIDUE, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_CONNECTION_RESIDUE (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::CONNECTION_RESIDUE, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_POLYMER_GROUP_RATIO (std::string_view v, location_type l)
+      {
+        return symbol_type (token::POLYMER_GROUP_RATIO, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_POLYMER_GROUP_RATIO (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::POLYMER_GROUP_RATIO, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_POLYMER_GROUP_ID (std::string_view v, location_type l)
+      {
+        return symbol_type (token::POLYMER_GROUP_ID, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_POLYMER_GROUP_ID (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::POLYMER_GROUP_ID, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_EXTENDED_ANNOTATIONS_TOKEN (std::string_view v, location_type l)
+      {
+        return symbol_type (token::EXTENDED_ANNOTATIONS_TOKEN, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_EXTENDED_ANNOTATIONS_TOKEN (const std::string_view& v, const location_type& l)
+      {
+        return symbol_type (token::EXTENDED_ANNOTATIONS_TOKEN, v, l);
+      }
+#endif
 
 
   private:
@@ -989,7 +1375,7 @@ switch (yykind)
 
 
     /// Stored state numbers (used for stacks).
-    typedef signed char state_type;
+    typedef unsigned char state_type;
 
     /// Compute post-reduction state.
     /// \param yystate   the current state
@@ -1032,14 +1418,14 @@ switch (yykind)
     static const signed char yypgoto_[];
 
     // YYDEFGOTO[NTERM-NUM].
-    static const signed char yydefgoto_[];
+    static const unsigned char yydefgoto_[];
 
     // YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
     // positive, shift that token.  If negative, reduce the rule whose
     // number is the opposite.  If YYTABLE_NINF, syntax error.
-    static const signed char yytable_[];
+    static const short yytable_[];
 
-    static const signed char yycheck_[];
+    static const short yycheck_[];
 
     // YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
     // state STATE-NUM.
@@ -1054,7 +1440,7 @@ switch (yykind)
 
 #if YYDEBUG
     // YYRLINE[YYN] -- Source line where rule number YYN was defined.
-    static const signed char yyrline_[];
+    static const short yyrline_[];
     /// Report on the debug stream that the rule \a r is going to be reduced.
     virtual void yy_reduce_print_ (int r) const;
     /// Print the state stack on the debug stream.
@@ -1281,9 +1667,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 28,     ///< Last index in yytable_.
-      yynnts_ = 10,  ///< Number of nonterminal symbols.
-      yyfinal_ = 12 ///< Termination state number.
+      yylast_ = 151,     ///< Last index in yytable_.
+      yynnts_ = 34,  ///< Number of nonterminal symbols.
+      yyfinal_ = 13 ///< Termination state number.
     };
 
 
@@ -1294,9 +1680,9 @@ switch (yykind)
   };
 
 
-#line 16 "../helm_parser.yy"
+#line 15 "../helm_parser.yy"
 } // helm
-#line 1300 "helm_parser.tab.hh"
+#line 1686 "helm_parser.tab.hh"
 
 
 
