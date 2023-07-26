@@ -3,7 +3,7 @@
 // #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <QGraphicsPixmapItem>
 #include <QWidget>
-// #include <fmt/format.h>
+#include <fmt/format.h>
 
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 
@@ -19,7 +19,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) : QWidget(parent)
 
     // Test using RDKit and fmt
     // auto mol = RDKit::SmilesToMol("c1ccccc1");
-    // fmt::format("Benzene has {} atoms", mol.getNumAtoms());
+    // setWindowTitle(fmt::format("Benzene has {} atoms", mol.getNumAtoms()));
+    setWindowTitle(fmt::format("Hello World!!!").c_str());
 
     auto watermark = new QGraphicsPixmapItem();
     watermark->setPixmap(QPixmap(":icons/watermark.svg"));

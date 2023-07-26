@@ -1,17 +1,40 @@
 #pragma once
 
-#include <QtGlobal>
+#include <csignal>
 
-/* Use this fixture to construct global fixture which would provide
- * QApplication for a whole suite of a given test file.
- * It should always be used in the BOOST_GLOBAL_FIXTURE
- * This fixture is not suitable as a global fixture if test depends on
- * QApplication.
- */
-class Test_Sketcher_global_fixture : public Test_QAPP_DisplayRequiredFixture
+#include <QApplication>
+#include <fmt/format.h>
+#include <boost/test/unit_test.hpp>
+
+// Use this class to construct a global fixture which would provide a
+// QApplication for a whole suite of a given test file
+class QApplicationRequiredFixture
 {
   public:
-    Test_Sketcher_global_fixture() : Test_QAPP_DisplayRequiredFixture(true)
+    QApplicationRequiredFixture()
     {
+        if (QCoreApplication::instance() != nullptr) {
+            throw std::runtime_error(
+                "QApplication instance already exists, multiple QAppication "
+                "instances are not allowed.");
+        }
+
+        // assert() raises a SIGABRT signal, which is not an exception
+        // and bypasses the destructor, so add a handler for it.
+        signal(SIGABRT, [](int signal) {
+            auto test_name =
+                boost::unit_test::framework::current_test_case().p_name.get();
+            throw std::runtime_error(fmt::format(
+                "A SIGABRT signal was raised from '{}'", test_name));
+        });
+
+        // Qt requires argc and argv to stay valid for the entire lifetime of
+        // the QApplication object, so pass boost master test suite variables.
+        d_app.reset(new QApplication(
+            boost::unit_test::framework::master_test_suite().argc,
+            boost::unit_test::framework::master_test_suite().argv));
     }
+
+  private:
+    std::unique_ptr<QApplication> d_app;
 };

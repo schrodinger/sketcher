@@ -5,7 +5,7 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "test_common.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 using namespace schrodinger::sketcher;
 
