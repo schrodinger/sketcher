@@ -92,6 +92,11 @@ std::shared_ptr<RDKit::Bond> make_new_query_bond(
 MolModel::MolModel(QUndoStack* const undo_stack, QObject* parent) :
     AbstractUndoableModel(undo_stack, parent)
 {
+    initializeMol();
+}
+
+void MolModel::initializeMol()
+{
     auto* conf = new RDKit::Conformer();
     // RDKit takes ownership of this conformer, so we don't have to worry about
     // deleting it
@@ -1352,6 +1357,9 @@ void MolModel::clearFromCommand()
         !m_pluses.empty() || m_arrow.has_value();
 
     m_mol.clear();
+    // clear() removes the conformer, so we have to reinitialize m_mol
+    initializeMol();
+
     m_pluses.clear();
     m_arrow.reset();
 

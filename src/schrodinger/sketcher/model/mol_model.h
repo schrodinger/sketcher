@@ -96,6 +96,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     const RDKit::ROMol* getMol() const;
 
     /**
+     * create an emtpy conformer for m_mol so it's ready to be used by other
+     * functions. This is called in the constructor and whenever the model is
+     * cleared.
+     */
+    void initializeMol();
+
+    /**
      * @param format format to convert to
      * @return serialized representation of the sketcher contents
      */

@@ -953,6 +953,8 @@ BOOST_AUTO_TEST_CASE(test_clear)
     BOOST_TEST(mol->getNumBonds() == 0);
     BOOST_TEST(model.getNonMolecularObjects().size() == 0);
     BOOST_TEST(model.isEmpty());
+    // make sure we can add stuff after a clear SKETCH-2027
+    model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
 }
 
 BOOST_AUTO_TEST_CASE(test_selection)
