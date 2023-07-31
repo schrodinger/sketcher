@@ -1,11 +1,14 @@
 """
 Convenience script for building/testing
+
+> source $SCHRODINGER_SRC/mmshare/build_env
+> $SCHRODINGER/run schrodinger_build.py
 """
 
 import argparse
 import os
 import subprocess
-from pathlib import Path
+import sys
 
 import pytest
 from schrodinger.test import add_build_tools_to_path
@@ -14,13 +17,28 @@ with add_build_tools_to_path():
     from library_definitions import get_library_definitions
     LIBDEFS = get_library_definitions()
 
-LIB_DIR_DICT = {
-    "QT": "qt_DIR",
-    "RDKIT": "rdkit_DIR",
-    "COORDGENLIBS": "maeparser_DIR",
-    "BOOST": "boost_DIR",
-    "FMTLIB": "fmt_DIR",
-}
+PREFIX_PATHS = (
+    LIBDEFS["QT"].base_directory,
+    # LIBDEFS["RDKIT"].base_directory,
+    # FIXME: lib/cmake/rdkit/rdkit-targets.cmake required updating these paths:
+    # RDKit::rdkit_base PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+    # RDKit::rdkit_py_base PROPERTIES INTERFACE_LINK_LIBRARIES
+    # RDKit::Depictor PROPERTIES INTERFACE_LINK_LIBRARIES
+    # RDKit::FileParsers PROPERTIES INTERFACE_LINK_LIBRARIES
+    # RDKit::MolDraw2D PROPERTIES INTERFACE_INCLUDE_DIRECTORIES
+    # RDKit::MolDraw2D PROPERTIES INTERFACE_LINK_LIBRARIES
+    "/Users/vonbarge/schrodinger/sketcher_libcopy/rdkit-Release_2023_03_2-BLDMGR-7314",
+    # FIXME: 3.4.0 doesn't have cmake files!
+    LIBDEFS["EIGEN"].base_directory + "/../eigen-0eeb60526ce0/share/eigen3",
+    LIBDEFS["COORDGENLIBS"].library_directory,  # for maeparser
+    LIBDEFS["BOOST"].base_directory,
+    LIBDEFS["FMTLIB"].base_directory,
+)
+
+CONFIG_FLAGS = [
+    f"-DCMAKE_PREFIX_PATH={';'.join(PREFIX_PATHS)}",
+    "-DCMAKE_OSX_ARCHITECTURES=x86_64",  # SCHRODINGER_LIB uses x86_64 on Darwin
+]
 
 
 def parse_args(argv=None):
@@ -43,18 +61,15 @@ def parse_args(argv=None):
 
 def main(argv=None):
 
-    for lib_name, env_var in LIB_DIR_DICT.items():
-        os.putenv(env_var, LIBDEFS[lib_name].base_directory)
-
     args = parse_args(argv)
-    top_dir = Path.cwd()
-    build_dir = top_dir / "build"
+    top_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
+    build_dir = os.path.join(top_dir, "build")
 
     run_cmake = lambda x: subprocess.check_call(["cmake"] + x)
 
     if args.clean:
         run_cmake(["--build", build_dir, "--target", "clean"])
-    run_cmake([top_dir, "-B", build_dir])
+    run_cmake([top_dir, "-B", build_dir] + CONFIG_FLAGS)
     run_cmake(["--build", build_dir])
 
     if args.with_tests:
