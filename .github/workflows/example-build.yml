@@ -4,14 +4,14 @@ jobs:
   build-project:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Configure
-        uses: cmake ${{ github.workspace }} -B build_dir
-
+      - uses: actions/checkout@v3
+      - uses: lukka/get-cmake@latest
+        with:
+          cmakeVersion: 3.20
+      - name: Run CMake
+        working-directory: ./build
+        run: cmake ..
       - name: Build
-        runs: cmake --build build
-
+        run: cmake --build build
       - name: Run Tests
         runs: ctest --test-dir build
