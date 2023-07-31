@@ -14,4 +14,4 @@ jobs:
       - name: Build
         run: cmake --build build
       - name: Run Tests
-        runs: ctest --test-dir build
+        run: ctest --test-dir build
