@@ -8,6 +8,15 @@ project(
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# WASM specific settings
+if(CMAKE_CXX_COMPILER MATCHES "/em\\+\\+(-[a-zA-Z0-9.])?$")
+  set(WASM_BUILD ON)
+  set(CMAKE_CXX_COMPILER_ID "Emscripten")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s DISABLE_EXCEPTION_CATCHING=0")
+endif()
+
+message(STATUS "C++ compiler: ${CMAKE_CXX_COMPILER_ID}")
+
 # FIXME: -WX on Windows
 add_definitions(-Wall -Werror -Wswitch -O2 -fvisibility=hidden)
 

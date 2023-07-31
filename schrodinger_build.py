@@ -12,6 +12,7 @@ import sys
 
 import pytest
 from schrodinger.test import add_build_tools_to_path
+from schrodinger.utils import fileutils
 
 with add_build_tools_to_path():
     from library_definitions import get_library_definitions
@@ -73,8 +74,8 @@ def main(argv=None):
     run_cmake(["--build", build_dir])
 
     if args.with_tests:
-        pytest_args = [str(build_dir)] + args.TEST_ARGS.split()
-        pytest.main(pytest_args)
+        with fileutils.chdir(build_dir):
+            pytest.main(args.TEST_ARGS.split())
 
 
 if __name__ == "__main__":
