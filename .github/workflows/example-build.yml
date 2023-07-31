@@ -6,8 +6,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: lukka/get-cmake@latest
-        with:
-          cmakeVersion: 3.20
       - name: Run CMake
         working-directory: ./build
         run: cmake ..
