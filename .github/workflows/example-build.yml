@@ -1,9 +1,4 @@
-
-
-
-
 name: Sketcher CI
-run-name: ${{ runner.os }} Build -- ${{ github.ref }}
 on: [push]
 jobs:
   build-project:
