@@ -1,3 +1,5 @@
+name: Build Sketcher
+on: [push]
 jobs:
   build:
     steps:
