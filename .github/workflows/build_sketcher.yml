@@ -11,3 +11,9 @@ jobs:
 
     - name: Build
       run: cmake --build ./build
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: sketcher-artifacts
+        path: |
+          build/sketcher_app
