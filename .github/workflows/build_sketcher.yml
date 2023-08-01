@@ -2,11 +2,12 @@ name: Build Sketcher
 on: [push]
 jobs:
   build:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/cache@v3
+    - uses: actions/checkout@v3
 
-      - name: Install latest CMake
-        uses: lukka/get-cmake@latest
+    - name: Configure CMake
+      run: cmake -S . -B build
 
-      - name: Run CMake
-        uses: lukka/run-cmake@v10
+    - name: Build
+      run: cmake --build ./build
