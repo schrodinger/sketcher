@@ -103,6 +103,10 @@ const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
 // drawn)
 const QColor HINT_COLOR = Qt::blue;
 
+// The width of bonds for fragment hints (e.g. the blue rings that appear when
+// using the ring tool)
+const qreal FRAGMENT_HINT_BOND_WIDTH = 1.0;
+
 // the distance between the stereo annotation and the atom in bond length units
 const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.25;
 

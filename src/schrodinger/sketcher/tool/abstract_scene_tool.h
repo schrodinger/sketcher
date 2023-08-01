@@ -59,6 +59,11 @@ class SKETCHER_API AbstractSceneTool
     virtual void onMouseRelease(QGraphicsSceneMouseEvent* const event);
 
     /**
+     * Called whenever the mouse leaves the scene.
+     */
+    virtual void onMouseLeave();
+
+    /**
      * Called whenever the user starts a drag by moving the mouse
      * QApplication::startDragDistance() pixels with the left mouse button held
      * down.  Note that onDragMove() will also be called with the same mouse

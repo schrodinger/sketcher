@@ -774,12 +774,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                 bool non_molecular_objects_changed = false);
 
     /**
-     * Update any RDKit metadata that is required to render the molecule in the
-     * Scene.  This method must be called anytime atoms or bonds are changed.
-     */
-    void updateMoleculeMetadata();
-
-    /**
      * Generate multiple atom tags or bond tags
      * @param[in] count The number of tags to generate
      * @param[in,out] tag_counter Either m_next_atom_tag or m_next_bond_tag,

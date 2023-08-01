@@ -91,6 +91,10 @@ void BondItem::updateCachedData()
     // bounding rect changes.
     prepareGeometryChange();
 
+    m_solid_pen.setColor(m_settings.m_color);
+    m_dashed_pen.setColor(m_settings.m_color);
+    m_solid_brush.setColor(m_settings.m_color);
+
     m_solid_pen.setWidthF(m_settings.m_bond_width);
     m_dashed_pen.setWidthF(m_settings.m_bond_width);
 

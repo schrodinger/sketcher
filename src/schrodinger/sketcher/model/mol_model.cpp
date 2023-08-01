@@ -20,6 +20,7 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
@@ -225,7 +226,7 @@ void MolModel::finalizeMoleculeChange(bool selection_changed,
     if (non_molecular_objects_changed) {
         updateNonMolecularTags();
     }
-    updateMoleculeMetadata();
+    update_molecule_metadata(m_mol);
 
     emit moleculeChanged();
     if (non_molecular_objects_changed) {
@@ -234,12 +235,6 @@ void MolModel::finalizeMoleculeChange(bool selection_changed,
     if (selection_changed) {
         emit selectionChanged();
     }
-}
-
-void MolModel::updateMoleculeMetadata()
-{
-    m_mol.updatePropertyCache(false);
-    RDKit::MolOps::fastFindRings(m_mol);
 }
 
 std::vector<int> MolModel::getNextNTags(const size_t count,
@@ -560,18 +555,7 @@ void MolModel::addMol(RDKit::ROMol mol, const QString& description)
 
 void MolModel::addMolFromText(const std::string& text, Format format)
 {
-    boost::shared_ptr<RDKit::RWMol> mol{nullptr};
-    mol = rdkit_extensions::to_rdkit(text, format);
-
-    // Add 2D coordinates only if the molecule does not already have them
-    // present (ie specified via molblock, SMILES extension, etc.)
-    get_2d_conformer(*mol);
-
-    assign_CIP_labels(*mol);
-
-    // SHARED-8774: Deal with chiral flag
-    rdkit_extensions::add_enhanced_stereo_to_chiral_atoms(*mol);
-
+    boost::shared_ptr<RDKit::RWMol> mol = text_to_mol(text, format);
     addMol(*mol);
 }
 

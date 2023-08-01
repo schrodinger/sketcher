@@ -26,12 +26,14 @@
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/tool/arrow_plus_scene_tool.h"
 #include "schrodinger/sketcher/tool/attachment_point_scene_tool.h"
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 #include "schrodinger/sketcher/selection_item.h"
@@ -212,18 +214,9 @@ Scene::~Scene()
 void Scene::moveInteractiveItems()
 {
 
-    const auto& conf = m_mol_model->getMol()->getConformer();
-
-    for (auto* item : getInteractiveItems(InteractiveItemFlag::ATOM)) {
-        auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
-        auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
-        atom_item->setPos(to_scene_xy(pos));
-        atom_item->updateCachedData();
-    }
-    for (auto* item : getInteractiveItems(InteractiveItemFlag::BOND)) {
-        auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
-        bond_item->updateCachedData();
-    }
+    update_conf_for_mol_graphics_items(
+        getInteractiveItems(InteractiveItemFlag::ATOM),
+        getInteractiveItems(InteractiveItemFlag::BOND), *m_mol_model->getMol());
     for (auto* non_mol_obj : m_mol_model->getNonMolecularObjects()) {
         auto* non_mol_item =
             m_non_molecular_to_non_molecular_item.at(non_mol_obj);
@@ -237,33 +230,12 @@ void Scene::updateMolecularItems()
 {
     clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
     const auto* mol = m_mol_model->getMol();
-    unsigned int num_atoms = mol->getNumAtoms();
-    if (num_atoms == 0) {
-        // If there are no atoms, then there's nothing more to do.  Also, if
-        // there are no atoms, then shorten_attachment_point_bonds() will raise
-        // a ConformerException.
-        return;
-    }
-    RDKit::Conformer conformer = shorten_attachment_point_bonds(mol);
-
-    // create atom items
-    for (std::size_t i = 0; i < num_atoms; ++i) {
-        const auto* atom = mol->getAtomWithIdx(i);
-        const auto pos = conformer.getAtomPos(i);
-        auto* atom_item = new AtomItem(atom, m_fonts, m_atom_item_settings);
-        atom_item->setPos(to_scene_xy(pos));
-        m_atom_to_atom_item[atom] = atom_item;
-        addItem(atom_item);
-    }
-
-    // create bond items
-    for (auto bond : mol->bonds()) {
-        const auto* from_atom_item = m_atom_to_atom_item[bond->getBeginAtom()];
-        const auto* to_atom_item = m_atom_to_atom_item[bond->getEndAtom()];
-        auto* bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
-                                       m_fonts, m_bond_item_settings);
-        m_bond_to_bond_item[bond] = bond_item;
-        addItem(bond_item);
+    std::vector<QGraphicsItem*> all_items;
+    std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item) =
+        create_graphics_items_for_mol(mol, m_fonts, m_atom_item_settings,
+                                      m_bond_item_settings);
+    for (auto* item : all_items) {
+        addItem(item);
     }
 }
 
@@ -352,6 +324,12 @@ void Scene::updateBondItems()
             bond_item->updateCachedData();
         }
     }
+    // DrawFragmentSceneTool inherits most of the settings from the Scene's
+    // AtomItemSettings and BondItemSettings.  Since this method gets called
+    // whenever any of those settings are changed, we call updateSceneTool here
+    // to regenerate the active scene tool in case DrawFragmentSceneTool is
+    // active.  That way, it can inherit the updated settings.
+    updateSceneTool();
 }
 
 void Scene::updateSelectionHighlighting()
@@ -414,6 +392,11 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
     // TODO: select clicked molecule
+}
+
+void Scene::onMouseLeave()
+{
+    m_left_button_scene_tool->onMouseLeave();
 }
 
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
@@ -643,6 +626,11 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                                                      m_mol_model);
     } else if (draw_tool == DrawTool::MOVE_ROTATE) {
         return std::make_shared<MoveRotateSceneTool>(this, m_mol_model);
+    } else if (draw_tool == DrawTool::RING) {
+        auto ring_tool = m_sketcher_model->getRingTool();
+        return get_draw_fragment_scene_tool(
+            ring_tool, m_fonts, m_atom_item_settings, m_bond_item_settings,
+            this, m_mol_model);
     }
     // tool not yet implemented
     return std::make_shared<NullSceneTool>();

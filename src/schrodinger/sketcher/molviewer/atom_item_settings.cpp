@@ -31,6 +31,13 @@ void AtomItemSettings::setColorScheme(ColorScheme scheme)
     }
 }
 
+void AtomItemSettings::setMonochromeColorScheme(QColor color)
+{
+    m_color_palette.clear();
+    m_color_palette[-1] =
+        RDKit::DrawColour(color.redF(), color.greenF(), color.blueF());
+}
+
 QColor AtomItemSettings::getAtomColor(int atomic_number)
 {
     auto color = m_color_palette[-1]; // default

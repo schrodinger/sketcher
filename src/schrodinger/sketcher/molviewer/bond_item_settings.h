@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QtGlobal>
+#include <QColor>
 
 #include "schrodinger/sketcher/molviewer/constants.h"
 
@@ -27,6 +28,8 @@ class BondItemSettings
     qreal m_wedge_width = 5.0;
     /// The distance between hash marks in "down" (i.e. dashed) wedges
     qreal m_hash_spacing = 5.0;
+    /// The bond color
+    QColor m_color = Qt::black;
 };
 } // namespace sketcher
 } // namespace schrodinger

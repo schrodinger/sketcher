@@ -74,6 +74,10 @@ class SKETCHER_API View : public QGraphicsView
     // Override the QGraphicsView keyboard event method
     void keyPressEvent(QKeyEvent* event) override;
 
+    // Override the QWidget method so that we can pass leave events to the Scene
+    // (which passes them on to the scene tool)
+    void leaveEvent(QEvent* event) override;
+
     /**
      * Make sure that the scene is at least as large as the view.  If the
      * scene is smaller than the view, then the view will center the scene.

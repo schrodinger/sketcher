@@ -131,6 +131,12 @@ class SKETCHER_API Scene : public QGraphicsScene
 
     QRectF getSelectionRect() const;
 
+    /**
+     * Notify the active left-click scene tool that the mouse cursor has left
+     * the view.
+     */
+    void onMouseLeave();
+
   signals:
     void importTextRequested(const std::string& text,
                              rdkit_extensions::Format format);

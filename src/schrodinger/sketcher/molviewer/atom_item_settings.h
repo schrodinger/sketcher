@@ -40,9 +40,16 @@ class AtomItemSettings
     explicit AtomItemSettings(const AtomItemSettings&) = default;
 
     /**
+     * Set a pre-defined RDKit color scheme
      * @param scheme color scheme to apply to atom items
      */
     void setColorScheme(ColorScheme scheme);
+
+    /**
+     * Set a color scheme where all atoms use the same color
+     * @param color the color for all atoms
+     */
+    void setMonochromeColorScheme(QColor color);
 
     /**
      * @param atomic_number the atomic number of the atom

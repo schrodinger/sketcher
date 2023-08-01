@@ -210,6 +210,15 @@ void View::keyPressEvent(QKeyEvent* event)
     event->accept();
 }
 
+void View::leaveEvent(QEvent* event)
+{
+    QGraphicsView::leaveEvent(event);
+    QGraphicsScene* cur_scene = scene();
+    if (auto scene = dynamic_cast<Scene*>(cur_scene)) {
+        scene->onMouseLeave();
+    }
+}
+
 } // namespace sketcher
 } // namespace schrodinger
 
