@@ -42,10 +42,10 @@ helm_info HelmParser::parse()
     return std::move(m_parsed_info);
 }
 
-void HelmParser::add_extended_annotation(
-    const std::string_view extended_annotation)
+void HelmParser::add_extended_annotations(
+    const std::string_view extended_annotations)
 {
-    m_parsed_info.extended_annotation = extended_annotation;
+    m_parsed_info.extended_annotations = extended_annotations;
 }
 
 void HelmParser::add_polymer_group(const std::string_view polymer_group_id,

@@ -1099,7 +1099,7 @@ int TokenParser::parse()
                     case 12: // extended_annotations: EXTENDED_ANNOTATIONS_TOKEN
 #line 143 "../helm_parser.yy"
                     {
-                        helm_parser.add_extended_annotation(
+                        helm_parser.add_extended_annotations(
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
                         yylhs.value.as<std::string_view>() =
                             YY_MOVE(yystack_[0].value.as<std::string_view>());

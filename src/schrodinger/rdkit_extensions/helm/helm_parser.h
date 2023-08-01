@@ -57,7 +57,7 @@ struct helm_info {
     std::vector<polymer> polymers;
     std::vector<connection> connections;
     std::vector<polymer_group> polymer_groups;
-    std::string_view extended_annotation;
+    std::string_view extended_annotations;
 };
 
 class RDKIT_EXTENSIONS_API HelmParser
@@ -97,8 +97,8 @@ class RDKIT_EXTENSIONS_API HelmParser
                            const std::string_view items,
                            const bool is_polymer_union);
 
-    // apis for extended annotation
-    void add_extended_annotation(const std::string_view extended_annotation);
+    // apis for extended annotations
+    void add_extended_annotations(const std::string_view extended_annotations);
 
     bool hasErrors();
     void saveError(const std::string_view& failed_token,

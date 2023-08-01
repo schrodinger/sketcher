@@ -141,7 +141,7 @@ polymer_groups:  /* polymer groups are optional */ { $$ = 0; }
               };
 extended_annotations:  /* optional */ { $$ = {}; }
                     | EXTENDED_ANNOTATIONS_TOKEN {
-                        helm_parser.add_extended_annotation($1);
+                        helm_parser.add_extended_annotations($1);
                         $$ = $1;
                     };
 version:  /* empty case */{ $$ = {}; } | VERSION_TOKEN { $$ = $1; };
