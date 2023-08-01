@@ -1,0 +1,10 @@
+jobs:
+  build:
+    steps:
+      - uses: actions/cache@v3
+
+      - name: Install latest CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Run CMake
+        uses: lukka/run-cmake@v10
