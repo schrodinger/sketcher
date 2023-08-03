@@ -6,7 +6,6 @@
 #include <boost/range/iterator_range.hpp>
 
 #include <Geometry/point.h>
-#include <GraphMol/CoordGen.h>
 #include <GraphMol/ROMol.h>
 
 #include <QLineF>
@@ -17,29 +16,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-SKETCHER_API bool has_2d_conformer(const RDKit::ROMol& mol)
-{
-    auto conformer =
-        std::find_if_not(mol.beginConformers(), mol.endConformers(),
-                         std::mem_fn(&RDKit::Conformer::is3D));
-
-    return conformer != mol.endConformers();
-}
-
-SKETCHER_API RDKit::Conformer& get_2d_conformer(RDKit::ROMol& mol)
-{
-    auto conformer =
-        std::find_if_not(mol.beginConformers(), mol.endConformers(),
-                         std::mem_fn(&RDKit::Conformer::is3D));
-
-    if (conformer != mol.endConformers()) {
-        return *(*conformer);
-    }
-
-    const auto conformer_id = RDKit::CoordGen::addCoords(mol);
-    return mol.getConformer(conformer_id);
-}
 
 QPointF to_scene_xy(const RDGeom::Point3D& mol_xy)
 {

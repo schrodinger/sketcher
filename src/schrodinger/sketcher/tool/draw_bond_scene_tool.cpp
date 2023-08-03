@@ -42,7 +42,7 @@ void AbstractDrawBondSceneTool::onBondClicked(const RDKit::Bond* const bond)
 void AbstractDrawBondSceneTool::onEmptySpaceClicked(const RDGeom::Point3D& pos)
 {
     RDGeom::Point3D pos2(pos);
-    pos2.x += 1;
+    pos2.x += BOND_LENGTH;
     addTwoBoundAtoms(pos, pos2);
 }
 

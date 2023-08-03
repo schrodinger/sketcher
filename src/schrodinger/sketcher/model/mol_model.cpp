@@ -5,7 +5,6 @@
 #include <GraphMol/Atom.h>
 #include <GraphMol/Bond.h>
 #include <GraphMol/Conformer.h>
-#include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/RWMol.h>
 #include <QObject>
@@ -17,6 +16,7 @@
 #include <boost/range/combine.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -636,7 +636,7 @@ void MolModel::flipBond(const RDKit::Bond* const bond)
 void MolModel::regenerateCoordinates()
 {
     auto cmd = [this]() {
-        RDKit::CoordGen::addCoords(m_mol);
+        rdkit_extensions::compute2DCoords(m_mol);
         assign_CIP_labels(m_mol);
         emit moleculeChanged();
     };

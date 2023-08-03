@@ -219,7 +219,8 @@ QPointF AbstractDrawSceneTool::getDefaultBondOffsetInMousedDirection(
     angle = qDegreesToRadians(angle);
     int rounded = std::round(angle * 6.0 / M_PI);
     qreal new_angle = rounded / 6.0 * M_PI;
-    return QPointF(VIEW_SCALE * qCos(new_angle), -VIEW_SCALE * qSin(new_angle));
+    return to_scene_xy(RDGeom::Point3D(BOND_LENGTH * qCos(new_angle),
+                                       BOND_LENGTH * qSin(new_angle), 0));
 }
 
 void AbstractDrawSceneTool::onAtomClicked(const RDKit::Atom* const atom)
