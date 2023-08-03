@@ -1,5 +1,4 @@
-name: Build Sketcher ${{ github.ref }}
-run-name: Run Name ${{ github.actor }}
+name: Linux Builder
 on: [push]
 jobs:
   build:
