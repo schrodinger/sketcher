@@ -101,7 +101,7 @@ class SKETCHER_API AbstractDrawSceneTool
      */
     std::pair<RDGeom::Point3D, QPointF>
     getInitialDefaultBondPosition(const RDKit::Atom* const atom,
-                                  const float bond_length = BOND_LENGTH) const;
+                                  const float bond_length = 1.0) const;
 
     /**
      * Determine whether we should start a mouse drag action based on the

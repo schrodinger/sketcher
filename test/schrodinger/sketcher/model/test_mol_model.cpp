@@ -1572,7 +1572,7 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.01))
     model.regenerateCoordinates();
     mol = model.getMol();
     BOOST_REQUIRE(mol->getNumBonds() == 1);
-    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.5);
+    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.0);
 
     // Go back to the rescaled "bad" coordinates
     undo_stack.undo();
@@ -1596,7 +1596,7 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.01))
     undo_stack.redo();
     mol = model.getMol();
     BOOST_REQUIRE(mol->getNumBonds() == 1);
-    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.5);
+    BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.0);
 }
 
 BOOST_AUTO_TEST_CASE(test_flipAroundAxis, *utf::tolerance(0.0001))

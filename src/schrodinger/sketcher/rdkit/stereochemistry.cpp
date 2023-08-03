@@ -11,7 +11,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-QString get_atom_chirality_label(const RDKit::Atom& atom)
+SKETCHER_API QString get_atom_chirality_label(const RDKit::Atom& atom)
 {
     std::string chirality;
     auto stereo_info = RDKit::Chirality::detail::getStereoInfo(&atom);
@@ -45,7 +45,7 @@ QString get_atom_chirality_label(const RDKit::Atom& atom)
     return QString(chirality.c_str());
 }
 
-QString get_bond_stereo_label(const RDKit::Bond& bond)
+SKETCHER_API QString get_bond_stereo_label(const RDKit::Bond& bond)
 {
     std::string label;
     // bond stereo can never be undefined because we always
@@ -55,7 +55,7 @@ QString get_bond_stereo_label(const RDKit::Bond& bond)
     return QString::fromStdString(label);
 }
 
-void assign_CIP_labels(RDKit::RWMol& mol)
+SKETCHER_API void assign_CIP_labels(RDKit::RWMol& mol)
 {
     try {
         // This number of calculation cycles takes:

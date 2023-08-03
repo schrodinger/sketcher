@@ -1,5 +1,6 @@
 /**
  * Constants use in the molviewer Qt graphics view classes.
+ *
  */
 
 #pragma once
@@ -7,21 +8,16 @@
 #include <QColor>
 #include <QString>
 
-#include <GraphMol/Depictor/DepictUtils.h>
-
 namespace schrodinger
 {
 namespace sketcher
 {
 
-// The default bond length as defined by RDKit
-const float BOND_LENGTH = RDDepict::BOND_LEN;
-
 // The scaling of the graphics scene coordinate system relative to the RDKit
 // coordinate system.  Without this scaling, even a 1 pt font in the graphics
 // scene would be far too large for the molecule, and Qt won't render fonts
 // smaller than 1 pt.
-const int VIEW_SCALE = std::floor(50 / BOND_LENGTH);
+const int VIEW_SCALE = 50;
 
 const QString FONT_NAME = "Arial";
 // The default font size for atom labels (e.g. the element abbreviation),

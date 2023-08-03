@@ -1,11 +1,12 @@
 #include "schrodinger/sketcher/rdkit/molops.h"
 
+#include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/molops.h"
-#include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
 namespace schrodinger
@@ -19,7 +20,7 @@ boost::shared_ptr<RDKit::RWMol> text_to_mol(const std::string& text,
 
     // Add 2D coordinates only if the molecule does not already have them
     // present (ie specified via molblock, SMILES extension, etc.)
-    rdkit_extensions::update_2d_coordinates(*mol);
+    get_2d_conformer(*mol);
 
     assign_CIP_labels(*mol);
 

@@ -4,6 +4,7 @@
 #include <tuple>
 #include <vector>
 
+#include <GraphMol/CoordGen.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/RWMol.h>

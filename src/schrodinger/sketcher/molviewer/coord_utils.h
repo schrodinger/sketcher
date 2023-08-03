@@ -28,6 +28,17 @@ namespace sketcher
 {
 
 /**
+ * @return whether a 2D Conformer is available for the given molecule.
+ */
+SKETCHER_API bool has_2d_conformer(const RDKit::ROMol& mol);
+
+/**
+ * @return the first 2D Conformer found on the given molecule.
+ * If none is found, one is generated and returned.
+ */
+SKETCHER_API RDKit::Conformer& get_2d_conformer(RDKit::ROMol& mol);
+
+/**
  * If the given molecule has coordinates, center it on the origin. Otherwise do
  * nothing.
  */
