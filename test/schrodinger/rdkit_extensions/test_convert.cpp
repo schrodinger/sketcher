@@ -462,8 +462,14 @@ M  END
         BOOST_CHECK_EQUAL(estg.front().getGroupType(),
                           RDKit::StereoGroupType::STEREO_AND);
 
-        // note this is *stereo reversed* smiles!
-        BOOST_CHECK_EQUAL(RDKit::MolToSmiles(*mol), "N[C@H](CS)C(=O)O");
+        // note that the CXSMILES is canonicalized (parity is reversed), but the
+        // standard SMILES is not!
+        const auto ps = RDKit::SmilesWriteParams();
+        const auto flags =
+            RDKit::SmilesWrite::CXSmilesFields::CX_ALL_BUT_COORDS;
+        BOOST_CHECK_EQUAL(RDKit::MolToCXSmiles(*mol, ps, flags),
+                          "N[C@H](CS)C(=O)O |&1:1|");
+        BOOST_CHECK_EQUAL(RDKit::MolToSmiles(*mol), "N[C@@H](CS)C(=O)O");
     }
     {
         const auto molblock = R"CTAB(
