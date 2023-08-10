@@ -46,6 +46,7 @@ const std::vector<Format> TEXT_FORMATS = {
     Format::INCHI,
     Format::PDB,
     Format::RDMOL_BINARY_BASE64,
+    // TODO: Format::HELM
 };
 
 const std::array<Format, 5> REACTION_TEXT_FORMATS = {
@@ -710,4 +711,11 @@ multiplicity=2
 O      0.000000    0.000000    0.000000
 )XYZ";
     BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
+}
+
+BOOST_AUTO_TEST_CASE(TestConvertingHELM)
+{
+    const std::string text{"PEPTIDE1{A.K.L}$$$$V2.0"};
+    const auto mol = to_rdkit(text, Format::HELM);
+    BOOST_TEST(to_string(*mol, Format::HELM) == text);
 }

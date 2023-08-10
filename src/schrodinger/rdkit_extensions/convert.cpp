@@ -28,6 +28,8 @@
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/constants.h"
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
+#include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 
 namespace schrodinger
@@ -350,7 +352,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
         return auto_detect<RDKit::RWMol>(
             text,
             {Format::RDMOL_BINARY_BASE64, Format::MDL_MOLV3000, Format::MAESTRO,
-             Format::PDB, Format::INCHI, Format::SMILES, Format::SMARTS},
+             Format::PDB, Format::INCHI, Format::SMILES, Format::SMARTS,
+             Format::HELM},
             &to_rdkit);
     }
 
@@ -424,6 +427,12 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
         case Format::XYZ:
             mol.reset(RDKit::XYZBlockToMol(text));
             break;
+
+        case Format::HELM: {
+            auto romol = helm::helm_to_rdkit(text).release();
+            mol.reset(new ::RDKit::RWMol(std::move(*romol)));
+            break;
+        }
         default:
             throw std::invalid_argument("Unsupported import format");
     }
@@ -570,6 +579,8 @@ std::string to_string(const RDKit::ROMol& input_mol, Format format)
             }
             set_xyz_plus_title(mol);
             return RDKit::MolToXYZBlock(mol);
+        case Format::HELM:
+            return helm::rdkit_to_helm(mol);
         default:
             throw std::invalid_argument("Unsupported export format");
     }

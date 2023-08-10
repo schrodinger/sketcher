@@ -41,6 +41,7 @@ enum class Format {
     PDB,
     RDMOL_BINARY_BASE64,
     XYZ,
+    HELM
 };
 
 /**
