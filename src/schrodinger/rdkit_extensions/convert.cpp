@@ -548,10 +548,6 @@ std::string to_string(const RDKit::ROMol& input_mol, Format format)
             return RDKit::SDWriter::getText(mol, confId, kekulize, forceV3000);
         }
         case Format::MAESTRO:
-            // TODO: Fix writing atom colors that are already present
-            for (auto atom : mol.atoms()) {
-                atom->clearProp("s_m_color_rgb");
-            }
             return RDKit::MaeWriter::getText(mol);
         case Format::INCHI: {
             RDKit::ExtraInchiReturnValues aux;
