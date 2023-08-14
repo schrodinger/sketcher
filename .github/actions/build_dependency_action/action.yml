@@ -1,0 +1,49 @@
+inputs:
+  platform:
+    description: 'platform on which we are building'
+    required: true
+  deps_sha:
+    description: 'commit hash of the last change to the dependencies file'
+    required: true
+  library:
+    description: 'Name of the dependency to build'
+    required: true
+  version:
+    description: 'Version of the dependency to build'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for a cached build
+      id: cache-check
+      uses: actions/cache@v3
+      with:
+        path: ./dependencies/${{ inputs.platform }}_${{ inputs.library }}_${{ inputs.deps_sha }}
+        key: ${{ inputs.platform }}_${{ inputs.library }}_${{ inputs.deps_sha }}
+
+    - name: Setup the build environment
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        micromamba-version: 'latest'
+        environment-file: dependencies/environment.yml
+        generate-run-shell: true
+        cache-environment: true
+        post-cleanup: 'none'
+
+    - name: Run build script
+      if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
+      shell: bash
+      run: |
+        if [ -f ./dependencies/${{ inputs.platform }}_${{ inputs.library }}.sh ]; then
+          echo Using platform-specific build script for ${{ inputs.library }} on ${{ inputs.platform }}
+          ./dependencies/${{ inputs.platform }}_${{ inputs.library }}.sh
+        elif [ -f dependencies/${{ inputs.library }}.sh ]; then
+          echo Using generic build script for ${{ inputs.library }} on ${{ inputs.platform }}
+          ./dependencies/${{ inputs.library }}.sh
+        else
+          echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
+          exit 1
+        fi
+

@@ -9,50 +9,33 @@ on:
 
 jobs:
 
-    generate_jobs:
+    prepare_jobs:
         runs-on: ubuntu-latest
         outputs:
           jobs: ${{ steps.job-gen.outputs.jobs }}
+          deps_sha: ${{ steps.job-gen.outputs.deps_sha }}
         steps:
-
         - name: Checkout repo
           uses: actions/checkout@v3
 
-        - name: Import dependencies
-          run: |
-            {
-                echo 'DEPENDENCIES_JSON<<EOF'
-                cat dependencies.json
-                echo -e '\nEOF'
-            } >> "$GITHUB_ENV"
-
-        - name: Build strategy matrix
+        - name: "Generate dependency build jobs matrix"
+          uses: ./.github/actions/prepare_jobs_action
           id: job-gen
-          uses: actions/github-script@v6
-          with:
-            script: |
-                const deps = ${{ env.DEPENDENCIES_JSON }}
-                jobs = {}
-                jobs.os = ["ubuntu-latest", "macos-latest", "windows-latest"]
-                jobs.library = []
-                jobs.include = []
-                for (const dep of deps) {
-                    jobs.library.push(dep.library)
-                    jobs.include.push({
-                        library: dep.library,
-                        version: dep.version,
-                    })
-                }
-                console.log(jobs)
-                core.setOutput('jobs', JSON.stringify(jobs))
 
     base_deps:
-        needs: generate_jobs
+        needs: prepare_jobs
         strategy:
-            matrix: ${{ fromJson(needs.generate_jobs.outputs.jobs) }}
+            matrix: ${{ fromJson(needs.prepare_jobs.outputs.jobs) }}
 
         runs-on: ${{ matrix.os }}
         steps:
+        - name: Checkout repo
+          uses: actions/checkout@v3
 
-        - name: Log dep_name
-          run: echo "dep_name = ${{ matrix.library }}\n version = ${{ matrix.version }}"
+        - name: Build ${{ matrix.library }} v${{ matrix.version }} dependency on ${{ matrix.platform }}
+          uses: ./.github/actions/build_dependency_action
+          with:
+            platform: ${{ matrix.platform }}
+            deps_sha: ${{ needs.prepare_jobs.outputs.deps_sha }}
+            library: ${{ matrix.library }}
+            version: ${{ matrix.version }}

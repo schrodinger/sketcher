@@ -1,0 +1,58 @@
+inputs:
+  deps_file:
+    description: 'file containing the dependencies in json format'
+    required: false
+    default:  dependencies/dependencies.json
+
+outputs:
+  jobs:
+    description: 'JSON mapping of OSs and libraries to build'
+    value: ${{ steps.job-gen.outputs.jobs }}
+  deps_sha:
+    description: 'commit hash of the last change to the dependencies file'
+    value: ${{ steps.get-hash.outputs.deps_sha }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Import dependencies
+      shell: bash
+      run: |
+        {
+            echo 'DEPENDENCIES_JSON<<EOF'
+            cat ${{ inputs.DEPS_FILE }}
+            echo -e '\nEOF'
+        } >> "$GITHUB_ENV"
+
+    - name: Build strategy matrix
+      id: job-gen
+      uses: actions/github-script@v6
+      with:
+        script: |
+            const deps = ${{ env.DEPENDENCIES_JSON }}
+            jobs = {}
+            jobs.os = ["ubuntu-latest", "macos-latest", "windows-latest"]
+            jobs.library = []
+            jobs.include = []
+            jobs.include.push({os: "ubuntu-latest", platform: "linux"})
+            jobs.include.push({os: "macos-latest", platform: "darwin"})
+            jobs.include.push({os: "windows-latest", platform: "win32"})
+            for (const dep of deps) {
+                jobs.library.push(dep.library)
+                jobs.include.push({
+                    library: dep.library,
+                    version: dep.version,
+                })
+            }
+            console.log(jobs)
+            core.setOutput('jobs', JSON.stringify(jobs))
+
+    - name: Get dependencies sha
+      id: get-hash
+      shell: bash
+      run: |
+        deps_sha=$(git log -1 --format=%h  -- $DEPS_FILE)
+        echo "deps_sha=$deps_sha" >> $GITHUB_OUTPUT
