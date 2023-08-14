@@ -1,0 +1,30 @@
+[
+    {
+        "library": "BOOST",
+        "version": "1.81.0"
+    },
+    {
+        "library": "COORDGENLIBS",
+        "version": "3.0.2"
+    },
+    {
+        "library": "MAEPARSER",
+        "version": "1.3.1"
+    },
+    {
+        "library": "FMT",
+        "version": "6.1.2"
+    },
+    {
+        "library": "QT6",
+        "version": "6.2.5"
+    },
+    {
+        "library": "RDKIT",
+        "version": "master"
+    },
+    {
+        "library": "ZLIB",
+        "version": "1.2.11"
+    }
+]
