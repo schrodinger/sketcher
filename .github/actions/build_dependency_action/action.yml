@@ -27,7 +27,7 @@ runs:
       uses: mamba-org/setup-micromamba@v1
       with:
         micromamba-version: 'latest'
-        environment-file: dependencies/environment.yml
+        environment-file: dependencies/${{ inputs.platform }}_environment.yml
         generate-run-shell: true
         cache-environment: true
         post-cleanup: 'none'
@@ -36,12 +36,12 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash
       run: |
-        if [ -f ./dependencies/${{ inputs.platform }}_${{ inputs.library }}.sh ]; then
+        if [ -f ./dependencies/build_${{ inputs.platform }}_${{ inputs.library }}.sh ]; then
           echo Using platform-specific build script for ${{ inputs.library }} on ${{ inputs.platform }}
-          ./dependencies/${{ inputs.platform }}_${{ inputs.library }}.sh
-        elif [ -f dependencies/${{ inputs.library }}.sh ]; then
+          ./dependencies/build_${{ inputs.platform }}_${{ inputs.library }}.sh ${{ inputs.version }} ${{ inputs.deps_sha }}
+        elif [ -f dependencies/build_${{ inputs.library }}.sh ]; then
           echo Using generic build script for ${{ inputs.library }} on ${{ inputs.platform }}
-          ./dependencies/${{ inputs.library }}.sh
+          ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.version }} ${{ inputs.deps_sha }}
         else
           echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
           exit 1

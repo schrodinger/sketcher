@@ -1,0 +1,5 @@
+name: sketcher_builder
+channels:
+  - conda-forge
+dependencies:
+  - cmake
