@@ -19,8 +19,8 @@ runs:
       id: cache-check
       uses: actions/cache@v3
       with:
-        path: ./dependencies/${{ inputs.platform }}_${{ inputs.library }}_${{ inputs.deps_sha }}
-        key: ${{ inputs.platform }}_${{ inputs.library }}_${{ inputs.deps_sha }}
+        path: ./dependencies/${{ inputs.platform }}_${{ inputs.deps_sha }}_${{ inputs.library }}
+        key: ${{ inputs.platform }}_${{ inputs.deps_sha }}_${{ inputs.library }}
 
     - name: Setup the build environment
       if: steps.cache-check.outputs.cache-hit != 'true'
@@ -28,20 +28,16 @@ runs:
       with:
         micromamba-version: 'latest'
         environment-file: dependencies/${{ inputs.platform }}_environment.yml
-        generate-run-shell: true
+        init-shell: bash
         cache-environment: true
         post-cleanup: 'none'
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
-      shell: bash
+      shell: bash -l {0}
       run: |
-        if [ -f ./dependencies/build_${{ inputs.platform }}_${{ inputs.library }}.sh ]; then
-          echo Using platform-specific build script for ${{ inputs.library }} on ${{ inputs.platform }}
-          ./dependencies/build_${{ inputs.platform }}_${{ inputs.library }}.sh ${{ inputs.version }} ${{ inputs.deps_sha }}
-        elif [ -f dependencies/build_${{ inputs.library }}.sh ]; then
-          echo Using generic build script for ${{ inputs.library }} on ${{ inputs.platform }}
-          ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.version }} ${{ inputs.deps_sha }}
+        if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
+          ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
         else
           echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
           exit 1

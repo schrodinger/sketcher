@@ -3,4 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - cmake
-  - clangxx_osx-64
+  - cxx-compiler
+  - curl
+  - ninja
+  - pcre2

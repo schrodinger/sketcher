@@ -84,5 +84,5 @@ runs:
       id: get-hash
       shell: bash
       run: |
-        deps_sha=$(git log -1 --format=%h  -- $DEPS_FILE)
-        echo "deps_sha=$deps_sha" >> $GITHUB_OUTPUT
+        deps_sha=$(cat dependencies/* | md5sum)
+        echo "deps_sha=${deps_sha:0:8}" >> $GITHUB_OUTPUT
