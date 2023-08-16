@@ -122,3 +122,17 @@
    fun:_ZN5RDKit11SmilesToMolERKSsibPSt3mapISsSsSt4lessISsESaISt4pairIS0_SsEEE
    fun:_ZZN11schrodinger8sketcher26test_has_valence_violation11test_methodEvENKUlRKT_E_clIPKcEEDaS4_
 }
+
+{
+   See SHARED-10064: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN5RDKit5ROMol7addBondEPNS_4BondEb
+   fun:_Z14yysmarts_parsePKcPSt6vectorIPN5RDKit5RWMolESaIS4_EERPNS2_4AtomERPNS2_4BondERjSE_PSt4listIjSaIjEEPvRi
+   fun:_ZN5RDKit12_GLOBAL__N_119smarts_parse_helperERKSsRSt6vectorIPNS_5RWMolESaIS5_EERPNS_4AtomERPNS_4BondEi
+   fun:_ZN5RDKit12_GLOBAL__N_112smarts_parseERKSsRSt6vectorIPNS_5RWMolESaIS5_EE
+   fun:_ZN5RDKit5toMolERKSsPFiS1_RSt6vectorIPNS_5RWMolESaIS4_EEES1_
+   fun:_ZN5RDKit11SmartsToMolERKSsRKNS_18SmartsParserParamsE
+   fun:_ZN5RDKit11SmartsToMolERKSsibPSt3mapISsSsSt4lessISsESaISt4pairIS0_SsEEE
+}
