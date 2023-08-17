@@ -27,6 +27,9 @@ boost::shared_ptr<RDKit::RWMol> text_to_mol(const std::string& text,
     // SHARED-8774: Deal with chiral flag
     rdkit_extensions::add_enhanced_stereo_to_chiral_atoms(*mol);
 
+    // Preserve IDs of stereo groups
+    RDKit::forwardStereoGroupIds(*mol);
+
     return mol;
 }
 
