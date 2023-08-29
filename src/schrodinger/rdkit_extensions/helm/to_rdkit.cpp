@@ -18,9 +18,9 @@
 #include <GraphMol/SubstanceGroup.h>
 #include <GraphMol/MonomerInfo.h>
 
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
-#include "schrodinger/rdkit_extensions/helm/constants.h"
 
 /*
  * The structure of the output romol is as follows:
@@ -195,7 +195,8 @@ void condense_monomer_list(const std::string_view& polymer_id,
                                          const auto& monomer,
                                          const int residue_number) {
         auto atom = std::make_unique<::RDKit::Atom>();
-        atom->setProp(ATOM_LABEL, get_monomer_id(polymer_id, monomer));
+        const auto monomer_id = get_monomer_id(polymer_id, monomer);
+        atom->setProp(ATOM_LABEL, monomer_id);
         if (!monomer.annotation.empty()) {
             atom->setProp(ANNOTATION, std::string{monomer.annotation});
         }
@@ -205,8 +206,13 @@ void condense_monomer_list(const std::string_view& polymer_id,
             atom->setProp(MONOMER_LIST, std::string{monomer.id});
         }
 
+        // NOTE: These are to allow replacing the python api
+        atom->setProp(BRANCH_MONOMER, monomer.is_branch);
+        atom->setProp(SMILES_MONOMER, monomer.is_smiles);
+
         auto* residue_info = new ::RDKit::AtomPDBResidueInfo();
         residue_info->setResidueNumber(residue_number);
+        residue_info->setResidueName(monomer_id);
         residue_info->setChainId(std::string{polymer_id});
         atom->setMonomerInfo(residue_info);
         return atom;
@@ -389,7 +395,7 @@ std::vector<linkage_info> enumerate_connection_monomers(
 
     std::vector<linkage_info> connected_monomers;
     const std::string linkage =
-        fmt::format("{}{}", connection.from_rgroup, connection.to_rgroup);
+        fmt::format("{}-{}", connection.from_rgroup, connection.to_rgroup);
     std::for_each(source_monomers.begin(), source_monomers.end(),
                   [&](const auto source_monomer) {
                       std::for_each(
@@ -424,6 +430,8 @@ void add_helm_connections(::RDKit::RWMol& mol,
                                                      : ::RDKit::Bond::SINGLE);
             auto idx = mol.addBond(from_atom, to_atom, bond_type) - 1;
             mol.getBondWithIdx(idx)->setProp(LINKAGE, linkage);
+            // NOTE: For python apis
+            mol.getBondWithIdx(idx)->setProp(CUSTOM_BOND, linkage);
             if (!annotation.empty()) {
                 mol.getBondWithIdx(idx)->setProp(ANNOTATION, annotation);
             }
@@ -451,6 +459,11 @@ void add_polymer_groups_and_extended_annotations(
         std::string{extended_annotations}};
     sgroup.setProp("DATAFIELDS", datafields);
     ::RDKit::addSubstanceGroup(mol, sgroup);
+
+    // NOTE: For python apis
+    if (!extended_annotations.empty()) {
+        mol.setProp(EXTENDED_ANNOTATIONS, std::string(extended_annotations));
+    }
 }
 } // namespace
 } // namespace helm

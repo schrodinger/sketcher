@@ -12,7 +12,7 @@
 #include <GraphMol/AtomIterators.h>
 #include <GraphMol/ROMol.h>
 
-#include "schrodinger/rdkit_extensions/helm/constants.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/helm_examples.h"

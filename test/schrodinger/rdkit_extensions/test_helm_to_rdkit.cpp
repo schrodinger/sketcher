@@ -13,7 +13,7 @@
 #include <GraphMol/SubstanceGroup.h>
 
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
-#include "schrodinger/rdkit_extensions/helm/constants.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/test/checkexceptionmsg.h" // TEST_CHECK_EXCEPTION_MSG_SUBSTR
 
 using namespace helm;
@@ -316,7 +316,7 @@ BOOST_DATA_TEST_CASE(TestConnections,
     // check that the inter-polymer bonds have the right linkage
     auto bond = ++mol->beginBonds(); // advance from K-C bond
     for (; bond != mol->endBonds(); ++bond) {
-        BOOST_TEST((*bond)->template getProp<std::string>(LINKAGE) == "R3?");
+        BOOST_TEST((*bond)->template getProp<std::string>(LINKAGE) == "R3-?");
     }
 };
 

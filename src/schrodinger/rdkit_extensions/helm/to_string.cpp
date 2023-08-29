@@ -16,7 +16,7 @@
 #include <GraphMol/RWMol.h>
 #include <GraphMol/SubstanceGroup.h>
 
-#include "schrodinger/rdkit_extensions/helm/constants.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 
 namespace helm
 {
@@ -213,10 +213,11 @@ get_polymer_helm(const ::RDKit::SubstanceGroup& polymer)
 
     const auto [from_rgroup, to_rgroup] = [&]() {
         auto linkage = get_property<std::string>(bond, LINKAGE);
-        // NOTE: linkages can be of the forms RXRX, RX?, ?RX, ??,pairpair etc
-        auto middle = linkage.find_first_of("R*?p", 1);
+        // NOTE: linkages can be of the forms RX-RX, RX-?, ?-RX, ?-?,pair-pair
+        // etc
+        auto middle = linkage.find("-");
         return std::make_pair<std::string, std::string>(
-            linkage.substr(0, middle), linkage.substr(middle));
+            linkage.substr(0, middle), linkage.substr(middle + 1));
     }();
 
     auto [from_id, from_res] = get_linkage_residue(bond->getBeginAtom());
