@@ -1,0 +1,13 @@
+
+{
+   See SHARED-10075: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZNK5RDKit4Atom4copyEv
+   fun:_ZN5RDKit5RWMol9insertMolERKNS_5ROMolE
+   fun:_ZZN4helm13helm_to_rdkitERKSsENKUlRKT_E_clIN5RDKit5RWMolEEEDaS4_
+   fun:_ZSt8for_eachIN9__gnu_cxx17__normal_iteratorIPKN5RDKit5RWMolESt6vectorIS3_SaIS3_EEEEZN4helm13helm_to_rdkitERKSsEUlRKT_E_ET0_SD_SD_SH_
+   fun:_ZN4helm13helm_to_rdkitERKSs
+   fun:_ZN11schrodinger16rdkit_extensions8to_rdkitERKSsNS0_6FormatE
+}
