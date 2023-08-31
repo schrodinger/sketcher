@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 
 #include <boost/range/iterator_range.hpp>
@@ -10,6 +11,7 @@
 #include <GraphMol/ROMol.h>
 
 #include <QLineF>
+#include <QtMath>
 
 #include "schrodinger/sketcher/molviewer/constants.h"
 
@@ -69,7 +71,8 @@ get_relative_positions_of_atom_neighbors(const RDKit::Atom* const atom)
     return positions;
 }
 
-QPointF best_placing_around_origin(const std::vector<QPointF>& points)
+QPointF best_placing_around_origin(const std::vector<QPointF>& points,
+                                   const bool limit_to_120_for_single_neighbor)
 {
     if (points.empty()) {
         return QPointF(VIEW_SCALE, 0);
@@ -96,7 +99,9 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points)
         }
     }
     // For a single substituent, limit the angle to 120 (instead of 180)
-    float max_angle = (points.size() == 1) ? 120.0 : 180.0;
+    bool limit_to_120 =
+        limit_to_120_for_single_neighbor && (points.size() == 1);
+    float max_angle = limit_to_120 ? 120.0 : 180.0;
     float angle_to_use = (angles[best_i + 1] - angles[best_i]) * 0.5;
     float angle_increment = std::min(max_angle, angle_to_use);
     float return_angle = angles[best_i] + angle_increment;
@@ -106,13 +111,15 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points)
 }
 
 RDGeom::Point3D
-best_placing_around_origin(const std::vector<RDGeom::Point3D>& points)
+best_placing_around_origin(const std::vector<RDGeom::Point3D>& points,
+                           const bool limit_to_120_for_single_neighbor)
 {
     std::vector<QPointF> qpoints;
     qpoints.reserve(points.size());
     std::transform(points.begin(), points.end(), std::back_inserter(qpoints),
                    to_scene_xy);
-    QPointF best = best_placing_around_origin(qpoints);
+    QPointF best =
+        best_placing_around_origin(qpoints, limit_to_120_for_single_neighbor);
     return to_mol_xy(best);
 }
 
@@ -120,11 +127,11 @@ RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
                            const RDGeom::Point3D& start,
                            const RDGeom::Point3D& end)
 {
-    auto angle = (end - start).signedAngleTo(point - start) * 180 / M_PI;
+    auto angle = get_angle_radians(end, start, point);
     if (isnan(angle)) {
         return point;
     }
-    return rotate_point(point, start, -2.0 * angle);
+    return rotate_point_radians(point, start, -2.0 * angle);
 }
 
 RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
@@ -132,6 +139,13 @@ RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
                              float angle)
 {
     auto angle_radians = angle * M_PI / 180.0; // Convert angle to radians
+    return rotate_point_radians(point, center_of_rotation, angle_radians);
+}
+
+RDGeom::Point3D rotate_point_radians(const RDGeom::Point3D& point,
+                                     const RDGeom::Point3D& center_of_rotation,
+                                     float angle_radians)
+{
     auto cosine = std::cos(angle_radians);
     auto sine = std::sin(angle_radians);
 
@@ -227,6 +241,57 @@ qreal get_attachment_point_line_angle(const RDKit::Atom* const ap_atom)
     auto neighbor_pos = conf.getAtomPos(neighbor->getIdx());
     QLineF bond_line(to_scene_xy(neighbor_pos), to_scene_xy(ap_pos));
     return -bond_line.normalVector().angle();
+}
+
+double get_angle_radians(const RDGeom::Point3D& a, const RDGeom::Point3D& b,
+                         const RDGeom::Point3D& c)
+{
+    auto vec_ba = a - b;
+    auto vec_bc = c - b;
+    return vec_ba.signedAngleTo(vec_bc);
+}
+
+void rotate_conformer_radians(const double angle_radians,
+                              const RDGeom::Point3D& center_of_rotation,
+                              RDKit::Conformer& conf)
+{
+    for (auto& cur_atom_coords : conf.getPositions()) {
+        cur_atom_coords = rotate_point_radians(
+            cur_atom_coords, center_of_rotation, angle_radians);
+    }
+}
+
+bool are_points_on_same_side_of_line(const RDGeom::Point3D& point1,
+                                     const RDGeom::Point3D& point2,
+                                     const RDGeom::Point3D& line_endpoint)
+{
+    return are_points_on_same_side_of_line(
+        to_scene_xy(point1), to_scene_xy(point2), to_scene_xy(line_endpoint));
+}
+
+bool are_points_on_same_side_of_line(const QPointF& point1,
+                                     const QPointF& point2,
+                                     const QPointF& line_endpoint)
+{
+    qreal x = line_endpoint.x();
+    qreal y = line_endpoint.y();
+
+    qreal slope, d1, d2;
+    if (qFabs(x) > qFabs(y)) {
+        slope = y / x;
+        d1 = point1.y() - slope * point1.x();
+        d2 = point2.y() - slope * point2.x();
+    } else {
+        // the line might be vertical (or close to vertical), so we flip the
+        // axes to avoid divide by zero (or arithmetic underflow) in our
+        // calculations
+        slope = x / y;
+        d1 = point1.x() - slope * point1.y();
+        d2 = point2.x() - slope * point2.y();
+    }
+
+    // the sign of d1 and d2 tell which side of the line they're on
+    return std::signbit(d1) == std::signbit(d2);
 }
 
 } // namespace sketcher

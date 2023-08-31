@@ -35,8 +35,8 @@ class Fonts;
  * @param fonts The fonts to use for rendering the molecule
  * @param atom_item_settings The settings for displaying atoms
  * @param bond_item_settings The settings for displaying bonds
- * @param skip_attachment_points Whether to ignore all attachment points and
- * attachment point bonds.
+ * @param draw_attachment_points Whether to create graphics items for
+ * attachment point atoms.
  * @return A tuple of
  *   - A list of all newly created graphics items.
  *   - A map of atom -> the graphics item used to represent that atom
@@ -48,7 +48,7 @@ SKETCHER_API std::tuple<std::vector<QGraphicsItem*>,
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               AtomItemSettings& atom_item_settings,
                               BondItemSettings& bond_item_settings,
-                              const bool skip_attachment_points = false);
+                              const bool draw_attachment_points = true);
 
 /**
  * Update all graphics items to represent an updated conformer

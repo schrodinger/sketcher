@@ -247,8 +247,13 @@ class SKETCHER_API Scene : public QGraphicsScene
     MolModel* m_mol_model = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
-
     QPointF m_mouse_down_screen_pos;
+
+    /// A set of all "interactive" graphics items that are currently in the
+    /// scene.  See the getInteractiveItems docstring for an explanation of
+    /// "interactive" versus "non-interactive" items.
+    std::unordered_set<QGraphicsItem*> m_interactive_items;
+
     std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
     std::unordered_map<const NonMolecularObject*, NonMolecularItem*>

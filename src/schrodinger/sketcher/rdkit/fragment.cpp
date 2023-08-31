@@ -1,16 +1,36 @@
 #include "schrodinger/sketcher/rdkit/fragment.h"
 
 #include <algorithm>
+#include <math.h>
 #include <stdexcept>
+#include <tuple>
 
+#include <GraphMol/QueryOps.h>
+
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+
+#include <iostream>
 
 namespace schrodinger
 {
 namespace sketcher
 {
 
-RDKit::Atom* const get_attachment_point_heavy_atom(const RDKit::ROMol& fragment)
+namespace
+{
+
+/**
+ * Get information about the fragment
+ * @param fragment A molecule with exactly one attachment point
+ * @return A tuple of
+ *   - the fragment's attachment point parent atom, i.e., the heavy atom that
+ *     the attachment point dummy atom is bound to
+ *   - the fragment's attachment point dummy atom
+ *   - whether the attachment point parent atom is in a ring
+ */
+std::tuple<const RDKit::Atom*, const RDKit::Atom*, bool>
+get_frag_info(const RDKit::ROMol& fragment)
 {
     std::vector<RDKit::Atom*> all_aps;
     auto all_atoms = fragment.atoms();
@@ -20,17 +40,240 @@ RDKit::Atom* const get_attachment_point_heavy_atom(const RDKit::ROMol& fragment)
         throw std::runtime_error(
             "Fragments must have exactly one attachment point.");
     }
-    auto* ap_atom = all_aps.front();
-    return *fragment.atomNeighbors(ap_atom).begin();
+    auto* ap_dummy_atom = all_aps.front();
+    auto* ap_parent_atom = *fragment.atomNeighbors(ap_dummy_atom).begin();
+    bool is_ring = RDKit::queryIsAtomInRing(ap_parent_atom);
+    return {ap_parent_atom, ap_dummy_atom, is_ring};
 }
+
+/**
+ * Move the fragment so that it is in the appropriate position relative to the
+ * core
+ * @param fragment The fragment to overlay.  This molecule must have exactly one
+ * attachment point.
+ * @param frag_atom The fragment atom to overlay on top of core_atom
+ * @param frag_bond The fragment bond to align with core_bond
+ * @param core The molecule to overlay fragment on
+ * @param core_atom The atom to overlay frag_atom on
+ * @param core_bond The bond to align core_bond with
+ * @return A new fragment conformer.  Note that this conformer is not added to
+ * fragment.
+ */
+RDKit::Conformer overlay_fragment_on_core(const RDKit::ROMol& fragment,
+                                          const RDKit::Atom* const frag_atom,
+                                          const RDKit::Bond* const frag_bond,
+                                          const RDKit::ROMol& core,
+                                          const RDKit::Atom* const core_atom,
+                                          const RDKit::Bond* const core_bond)
+{
+    const auto& core_conf = core.getConformer();
+    const auto core_atom_idx = core_atom->getIdx();
+    const auto& core_atom_coords = core_conf.getAtomPos(core_atom_idx);
+    auto frag_conf = translate_fragment(fragment, core_atom_coords);
+
+    const auto frag_atom_idx = frag_atom->getIdx();
+    const auto other_frag_atom_idx = frag_bond->getOtherAtomIdx(frag_atom_idx);
+    const auto& other_frag_atom_coords =
+        frag_conf.getAtomPos(other_frag_atom_idx);
+
+    const auto other_core_atom_idx = core_bond->getOtherAtomIdx(core_atom_idx);
+    const auto& other_core_atom_coords =
+        core_conf.getAtomPos(other_core_atom_idx);
+    auto rotate_by = get_angle_radians(other_frag_atom_coords, core_atom_coords,
+                                       other_core_atom_coords);
+    rotate_conformer_radians(rotate_by, core_atom_coords, frag_conf);
+    return frag_conf;
+}
+
+/**
+ * Determine whether a ring fragment should be flipped 180 degrees to avoid
+ * clashing with core atoms.  To do this, we look at the core atoms that are
+ * neighbors of the atoms involved in core_bond.  We want these neighbors to be
+ * on the *same* side of core_bond as frag_ap_dummy_atom, since we assume that
+ * frag_ap_dummy_atom is outside of the ring (which means that this would put
+ * the ring on the *opposite* side of the bond from the neighbors.
+ * @param fragment The fragment.  This molecule must have exactly one attachment
+ * point and it must be bound to a ring atom.
+ * @param frag_conf The conformer that overlays the fragment on the core
+ * @param frag_ap_dummy_atom The fragment attachment point atom
+ * @param core The core molecule
+ * @param core_bond The core bond that the fragment is overlayed on top of
+ * @return Whether the fragment should be flipped
+ */
+bool should_flip_ring_fragment(const RDKit::ROMol& fragment,
+                               const RDKit::Conformer& frag_conf,
+                               const RDKit::Atom* const frag_ap_dummy_atom,
+                               const RDKit::ROMol& core,
+                               const RDKit::Bond* const core_bond)
+{
+    unsigned int num_same_side = 0;
+    unsigned int num_opposite_side = 0;
+    auto& core_conf = core.getConformer();
+    auto& frag_ap_coords = frag_conf.getAtomPos(frag_ap_dummy_atom->getIdx());
+    for (const auto* atom :
+         {core_bond->getBeginAtom(), core_bond->getEndAtom()}) {
+        const auto* other_atom = core_bond->getOtherAtom(atom);
+        const auto& atom_coords = core_conf.getAtomPos(atom->getIdx());
+        const auto& other_atom_coords =
+            core_conf.getAtomPos(other_atom->getIdx());
+        auto relative_frag_ap_coords = frag_ap_coords - atom_coords;
+        auto relative_other_atom_coords = other_atom_coords - atom_coords;
+
+        for (const RDKit::Atom* neighbor : core.atomNeighbors(atom)) {
+            if (neighbor == other_atom) {
+                continue;
+            }
+            auto& neighbor_coords = core_conf.getAtomPos(neighbor->getIdx());
+            auto relative_neighbor_coords = neighbor_coords - atom_coords;
+
+            if (are_points_on_same_side_of_line(relative_neighbor_coords,
+                                                relative_frag_ap_coords,
+                                                relative_other_atom_coords)) {
+                ++num_same_side;
+            } else {
+                ++num_opposite_side;
+            }
+        }
+    }
+    return num_opposite_side > num_same_side;
+}
+
+/**
+ * Determine whether the ring containing the given bond consists entirely of
+ * single bonds.  If this bond is in multiple rings, only the smallest ring will
+ * be considered.
+ * @param mol The molecule containing bond
+ * @param bond The bond to examine
+ */
+bool smallest_ring_contains_only_single_bonds(const RDKit::ROMol& mol,
+                                              const RDKit::Bond* bond)
+{
+    const auto* ring_info = mol.getRingInfo();
+    const auto& bond_rings = ring_info->bondRings();
+    const auto bond_members = ring_info->bondMembers(bond->getIdx());
+    size_t smallest_ring_idx = *std::min_element(
+        bond_members.begin(), bond_members.end(),
+        [&bond_rings](const size_t idx1, const size_t idx2) {
+            return bond_rings[idx1].size() < bond_rings[idx2].size();
+        });
+    for (int bond_idx : bond_rings[smallest_ring_idx]) {
+        const auto* ring_bond = mol.getBondWithIdx(bond_idx);
+        if (ring_bond->hasQuery() ||
+            ring_bond->getBondType() != RDKit::Bond::BondType::SINGLE) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Get a list of candidate bonds from the fragment that could possibly be used
+ * for aligning the fragment with the core.  The bonds are all between the
+ * attachment point parent atom and a non-attachment-point atom.  If the
+ * parent atom is in a ring, then the bonds will all be ring bonds.
+ * @param fragment The fragment molecule
+ * @param ap_parent_atom The attachment point parent atom
+ * @param is_ring Whether the attachment point parent atom is part of a ring
+ * @return A list of all candidate bonds
+ */
+std::vector<const RDKit::Bond*>
+get_candidate_frag_bonds_for_alignment(const RDKit::ROMol& fragment,
+                                       const RDKit::Atom* const ap_parent_atom,
+                                       const bool is_ring)
+{
+    // make a list of all of the fragment candidate bonds
+    std::vector<const RDKit::Bond*> frag_bonds;
+    auto frag_bonds_it = fragment.atomBonds(ap_parent_atom);
+
+    std::function<bool(const RDKit::Bond* const)> bond_criterion;
+    if (is_ring) {
+        // if the fragment is a ring fragment, then we always want to use one of
+        // the ring bonds
+        bond_criterion = RDKit::queryIsBondInRing;
+    } else {
+        bond_criterion = [&ap_parent_atom](const RDKit::Bond* const bond) {
+            auto other_atom = bond->getOtherAtom(ap_parent_atom);
+            return !is_attachment_point(other_atom);
+        };
+    }
+    std::copy_if(frag_bonds_it.begin(), frag_bonds_it.end(),
+                 std::back_inserter(frag_bonds), bond_criterion);
+    return frag_bonds;
+}
+
+/**
+ * Determine which fragment bond should be aligned to the given core bond
+ * @param fragment The fragment molecule
+ * @param frag_ap_parent_atom The attachment point parent atom from the fragment
+ * @param core The core molecule
+ * @param core_bond The core bond to align to
+ * @return The appropriate fragment bond
+ */
+const RDKit::Bond* get_frag_bond_to_align_to(
+    const RDKit::ROMol& fragment, const RDKit::Atom* const frag_ap_parent_atom,
+    const RDKit::ROMol& core, const RDKit::Bond* const core_bond)
+{
+    bool frag_is_ring = RDKit::queryIsAtomInRing(frag_ap_parent_atom);
+    auto frag_bonds = get_candidate_frag_bonds_for_alignment(
+        fragment, frag_ap_parent_atom, frag_is_ring);
+
+    if (frag_is_ring && RDKit::queryIsBondInRing(core_bond) &&
+        smallest_ring_contains_only_single_bonds(core, core_bond)) {
+        // if the fragment is a ring fragment and the core atom is in a ring
+        // that contains only single bonds, then frag_bond should be the bond
+        // with the highest order
+        return *std::max_element(
+            frag_bonds.begin(), frag_bonds.end(),
+            [](const RDKit::Bond* const bond1, const RDKit::Bond* const bond2) {
+                return bond1->getBondTypeAsDouble() <
+                       bond2->getBondTypeAsDouble();
+            });
+    } else {
+        // Otherwise, we use the bond with the bond order (e.g. single vs.
+        // double) closest to core_bond
+        auto core_bond_order = core_bond->getBondTypeAsDouble();
+        auto bond_degree_diff =
+            [core_bond_order](const RDKit::Bond* const bond) {
+                return std::abs(bond->getBondTypeAsDouble() - core_bond_order);
+            };
+        return *std::min_element(
+            frag_bonds.begin(), frag_bonds.end(),
+            [&bond_degree_diff](const RDKit::Bond* const bond1,
+                                const RDKit::Bond* const bond2) {
+                return bond_degree_diff(bond1) < bond_degree_diff(bond2);
+            });
+    }
+}
+
+/**
+ * Return a non-dummy atom bound to an attachment point parent atom
+ * @param mol The molecule
+ * @param ap_parent_atom The attachment point parent atom (i.e. the heavy atom
+ * bound to the attachment point dummy atom)
+ * @param is_ring Whether ap_parent_atom is part of a ring.  If it is, then the
+ * returned atom will always be a ring atom.
+ */
+const RDKit::Atom*
+get_atom_bound_to_ap_parent_atom(const RDKit::ROMol& mol,
+                                 const RDKit::Atom* const ap_parent_atom,
+                                 const bool is_ring)
+{
+    auto bonds =
+        get_candidate_frag_bonds_for_alignment(mol, ap_parent_atom, is_ring);
+    auto* bond = bonds.front();
+    return bond->getOtherAtom(ap_parent_atom);
+}
+
+} // namespace
 
 RDKit::Conformer translate_fragment(const RDKit::ROMol& fragment,
                                     const RDGeom::Point3D& point)
 {
-    auto* ap = get_attachment_point_heavy_atom(fragment);
+    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
+        get_frag_info(fragment);
     // note that this makes a copy of the conformer
     auto conf = fragment.getConformer();
-    auto offset = point - conf.getAtomPos(ap->getIdx());
+    auto offset = point - conf.getAtomPos(frag_ap_parent_atom->getIdx());
     for (auto& coords : conf.getPositions()) {
         coords += offset;
     }
@@ -38,17 +281,83 @@ RDKit::Conformer translate_fragment(const RDKit::ROMol& fragment,
 }
 
 RDKit::Conformer align_fragment_with_atom(const RDKit::ROMol& fragment,
-                                          const RDKit::Atom* const atom)
+                                          const RDKit::Atom* const core_atom)
 {
-    // TODO: real implementation
-    return fragment.getConformer();
+    const auto& core = core_atom->getOwningMol();
+    const auto& core_conf = core.getConformer();
+    const auto core_atom_idx = core_atom->getIdx();
+    const auto& core_atom_coords = core_conf.getAtomPos(core_atom_idx);
+
+    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
+        get_frag_info(fragment);
+
+    auto core_neighbors = get_relative_positions_of_atom_neighbors(core_atom);
+    auto core_offset = best_placing_around_origin(
+        core_neighbors, /* limit_to_120_for_single_neighbor = */ !is_ring);
+    auto core_best_placing = core_offset + core_atom_coords;
+
+    const RDKit::Atom* frag_other_atom;
+    if (is_ring) {
+        frag_other_atom = frag_ap_dummy_atom;
+    } else {
+        frag_other_atom = get_atom_bound_to_ap_parent_atom(
+            fragment, frag_ap_parent_atom, is_ring);
+    }
+
+    RDKit::Conformer frag_conf = translate_fragment(fragment, core_atom_coords);
+    auto frag_other_atom_coords =
+        frag_conf.getAtomPos(frag_other_atom->getIdx());
+    auto rotate_by = get_angle_radians(frag_other_atom_coords, core_atom_coords,
+                                       core_best_placing);
+    if (is_ring) {
+        // rotate_by will put the attachment point in the best position, instead
+        // of the ring itself, so we flip the angle 180 degrees
+        rotate_by += M_PI;
+    }
+    rotate_conformer_radians(rotate_by, core_atom_coords, frag_conf);
+    return frag_conf;
 }
 
 RDKit::Conformer align_fragment_with_bond(const RDKit::ROMol& fragment,
-                                          const RDKit::Bond* const bond)
+                                          const RDKit::Bond* const core_bond)
 {
-    // TODO: real implementation
-    return fragment.getConformer();
+    const auto& core = core_bond->getOwningMol();
+    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
+        get_frag_info(fragment);
+    const RDKit::Bond* frag_bond = get_frag_bond_to_align_to(
+        fragment, frag_ap_parent_atom, core, core_bond);
+    const RDKit::Atom* core_atom; // the core atom to overlay frag_atom on
+    if (is_ring) {
+        // Arbitrarily pick one of core_bond's atoms to overlay.  We'll test the
+        // opposite configuration (i.e. rotating 180 degrees) below.
+        core_atom = core_bond->getBeginAtom();
+    } else {
+        // use the atom with the highest degree as the point to overlay so that
+        // the fragment itself will always be over any terminal atoms if the
+        // user hovers over a terminal bond
+        core_atom = std::max(core_bond->getBeginAtom(), core_bond->getEndAtom(),
+                             [&core](const RDKit::Atom* const atom1,
+                                     const RDKit::Atom* const atom2) {
+                                 return core.getAtomDegree(atom1) <
+                                        core.getAtomDegree(atom2);
+                             });
+    }
+
+    auto new_conf = overlay_fragment_on_core(
+        fragment, frag_ap_parent_atom, frag_bond, core, core_atom, core_bond);
+    if (is_ring &&
+        should_flip_ring_fragment(fragment, new_conf, frag_ap_dummy_atom, core,
+                                  core_bond)) {
+        // flip new_conf by 180 degrees so that the ring points away from
+        // neighboring core bonds
+        auto ap_parent_idx = frag_ap_parent_atom->getIdx();
+        auto frag_bond_center =
+            new_conf.getAtomPos(ap_parent_idx) +
+            new_conf.getAtomPos(frag_bond->getOtherAtomIdx(ap_parent_idx));
+        frag_bond_center /= 2;
+        rotate_conformer_radians(M_PI, frag_bond_center, new_conf);
+    }
+    return new_conf;
 }
 
 } // namespace sketcher

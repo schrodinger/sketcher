@@ -4,12 +4,15 @@
 
 #include <boost/shared_ptr.hpp>
 
+#include <QPointF>
+
 #include <GraphMol/RWMol.h>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
@@ -80,11 +83,12 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
 
     // We'll set this to visible once the mouse is over the scene
     setVisible(false);
+    setZValue(static_cast<qreal>(ZOrder::HINT));
 
     auto [all_items, atom_to_atom_item, bond_to_bond_item] =
         create_graphics_items_for_mol(&m_frag, fonts, m_atom_item_settings,
                                       m_bond_item_settings,
-                                      /*skip_attachment_points = */ true);
+                                      /*draw_attachment_points = */ false);
     for (auto* item : all_items) {
         addToGroup(item);
     }
@@ -124,16 +128,37 @@ void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
         // drag actions are handled in onDragMove
         return;
     }
-    // TODO: determine if we are over an atom or bond
-    auto mol_pos = to_mol_xy(event->scenePos());
-    auto conf = translate_fragment(m_frag, mol_pos);
-    m_hint_item.updateConformer(conf);
+    RDKit::Conformer new_conf = getConformerForScenePos(event->scenePos());
+    m_hint_item.updateConformer(new_conf);
     m_hint_item.show();
 }
 
 void DrawFragmentSceneTool::onMouseLeave()
 {
     m_hint_item.hide();
+}
+
+RDKit::Conformer
+DrawFragmentSceneTool::getConformerForScenePos(const QPointF& scene_pos) const
+{
+    auto* item = m_scene->getTopInteractiveItemAt(
+        scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
+    RDKit::Conformer new_conf;
+    if (auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+        const auto core_atom = atom_item->getAtom();
+        const auto& core = core_atom->getOwningMol();
+        // if the atom has three or more neighbors, then don't try to add to it.
+        // Instead, allow the fragment to follow the mouse cursor.
+        if (core.getAtomDegree(core_atom) < 3) {
+            return align_fragment_with_atom(m_frag, core_atom);
+        }
+    } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+        return align_fragment_with_bond(m_frag, bond_item->getBond());
+    }
+    // we're not over any part of the molecule, or we're over an atom with 3 or
+    // more bonds
+    auto mol_pos = to_mol_xy(scene_pos);
+    return translate_fragment(m_frag, mol_pos);
 }
 
 } // namespace sketcher

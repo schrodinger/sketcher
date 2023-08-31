@@ -236,6 +236,7 @@ void Scene::updateMolecularItems()
                                       m_bond_item_settings);
     for (auto* item : all_items) {
         addItem(item);
+        m_interactive_items.insert(item);
     }
 }
 
@@ -250,6 +251,7 @@ void Scene::updateNonMolecularItems()
         item->setPos(qpos);
         m_non_molecular_to_non_molecular_item[model_obj] = item;
         addItem(item);
+        m_interactive_items.insert(item);
     }
 }
 
@@ -260,7 +262,7 @@ Scene::getInteractiveItems(const InteractiveItemFlagType types) const
     // be interactive (atoms, bonds, etc.), and all objects that don't
     // to be purely graphical (selection highlighting paths, etc.)
     QList<QGraphicsItem*> interactive_items;
-    for (auto item : items()) {
+    for (auto item : m_interactive_items) {
         if (item_matches_type_flag(item, types)) {
             interactive_items.append(item);
         }
@@ -273,8 +275,9 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
     // remove all interactive items and reset the rdkit molecule; this will
     // preserve items include selection paths, highlighting items, and
     // potentially the watermark managed by the SketcherWidget
-    for (auto item : getInteractiveItems(types)) {
+    for (auto* item : getInteractiveItems(types)) {
         removeItem(item);
+        m_interactive_items.erase(item);
         delete item;
     }
     if (types & InteractiveItemFlag::ATOM) {
@@ -309,20 +312,16 @@ void Scene::updateAtomAndBondItems()
     // we need to update all of the atom items before we update any bond
     // items, since bond items pull information from their associated atom
     // items
-    for (auto item : items()) {
-        if (auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-            atom_item->updateCachedData();
-        }
+    for (auto item : getInteractiveItems(InteractiveItemFlag::ATOM)) {
+        static_cast<AtomItem*>(item)->updateCachedData();
     }
     updateBondItems();
 }
 
 void Scene::updateBondItems()
 {
-    for (auto item : items()) {
-        if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
-            bond_item->updateCachedData();
-        }
+    for (auto item : getInteractiveItems(InteractiveItemFlag::BOND)) {
+        static_cast<BondItem*>(item)->updateCachedData();
     }
     // DrawFragmentSceneTool inherits most of the settings from the Scene's
     // AtomItemSettings and BondItemSettings.  Since this method gets called
@@ -447,9 +446,10 @@ Scene::getTopInteractiveItemAt(const QPointF& pos,
                                const InteractiveItemFlagType types) const
 {
     for (auto* item : items(pos)) {
-        if (item_matches_type_flag(item, types)) {
-            // item_matches_type_flag only returns true for AbstractGraphicsItem
-            // subclasses, so we can safely use static_cast here
+        if (m_interactive_items.count(item) &&
+            item_matches_type_flag(item, types)) {
+            // all interactive items are AbstractGraphicsItem subclasses, so we
+            // can safely use static_cast here
             return static_cast<AbstractGraphicsItem*>(item);
         }
     }

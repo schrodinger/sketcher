@@ -15,6 +15,8 @@
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 
+class QPointF;
+
 namespace schrodinger
 {
 namespace sketcher
@@ -92,6 +94,8 @@ class SKETCHER_API DrawFragmentSceneTool : public AbstractSceneTool
   protected:
     RDKit::ROMol m_frag;
     HintFragmentItem m_hint_item;
+
+    RDKit::Conformer getConformerForScenePos(const QPointF& scene_pos) const;
 };
 
 /**

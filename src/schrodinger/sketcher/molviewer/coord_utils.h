@@ -71,19 +71,24 @@ get_relative_positions_of_atom_neighbors(const RDKit::Atom* const atom);
  * @param points All points to take into account, given in Scene coordinates
  * relative to the atom.  These are typically coordinates of neighboring atoms
  * or labels.
+ * @param limit_to_120_for_single_neighbor If points contains only a single
+ * point, should we limit the angle between this point and the returned point to
+ * be 120 degrees or less.  If false, the angle can be up to 180 degrees.
  * @return A point one bond length (i.e. one unit in the RDKit coordinate
  * system) away from the origin, in the direction that places it furthest from
  * any of the given points.  Given in Scene coordinates relative to the atom.
  */
 SKETCHER_API QPointF
-best_placing_around_origin(const std::vector<QPointF>& points);
+best_placing_around_origin(const std::vector<QPointF>& points,
+                           const bool limit_to_120_for_single_neighbor = true);
 
 /**
  * An overload of the above method that operates in relative MolModel
  * coordinates instead of relative Scene coordinates.
  */
 SKETCHER_API RDGeom::Point3D
-best_placing_around_origin(const std::vector<RDGeom::Point3D>& points);
+best_placing_around_origin(const std::vector<RDGeom::Point3D>& points,
+                           const bool limit_to_120_for_single_neighbor = true);
 
 /**
  * Create and return a path for painting a wavy line
@@ -116,9 +121,17 @@ get_attachment_point_line_angle(const RDKit::Atom* const atom);
  * @param angle specified rotation angle in degrees
  * @return a new point generated from the requested rotation
  */
-RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
-                             const RDGeom::Point3D& center_of_rotation,
-                             float angle);
+SKETCHER_API RDGeom::Point3D
+rotate_point(const RDGeom::Point3D& point,
+             const RDGeom::Point3D& center_of_rotation, float angle);
+
+/**
+ * A version of rotate_point that takes the angle in radians instead of degrees
+ */
+SKETCHER_API RDGeom::Point3D
+rotate_point_radians(const RDGeom::Point3D& point,
+                     const RDGeom::Point3D& center_of_rotation,
+                     float angle_radians);
 
 /**
  * mirror coordinates about a segment
@@ -126,9 +139,9 @@ RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
  * @param start start of the segment about which to flip
  * @param end end of the segment about which to flip
  */
-RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
-                           const RDGeom::Point3D& start,
-                           const RDGeom::Point3D& end);
+SKETCHER_API RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
+                                        const RDGeom::Point3D& start,
+                                        const RDGeom::Point3D& end);
 
 /**
  * @return the centroid of a set of atoms and non-molecular objects. If no
@@ -139,7 +152,7 @@ RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
  * @param non_molecular_objects the non-molecular objects to consider in
  * addition to mol/atoms
  */
-RDGeom::Point3D
+SKETCHER_API RDGeom::Point3D
 find_centroid(const RDKit::ROMol& mol,
               const std::unordered_set<const RDKit::Atom*>& atoms = {},
               const std::unordered_set<const NonMolecularObject*>&
@@ -151,9 +164,51 @@ find_centroid(const RDKit::ROMol& mol,
  * @param mol the molecule to compute the centroid for
  * @param non_molecular_objects the non-molecular objects
  */
-RDGeom::Point3D find_centroid(
+SKETCHER_API RDGeom::Point3D find_centroid(
     const RDKit::ROMol& mol,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects);
+
+/**
+ * @return the angle in radians between vectors ab and bc
+ */
+SKETCHER_API double get_angle_radians(const RDGeom::Point3D& a,
+                                      const RDGeom::Point3D& b,
+                                      const RDGeom::Point3D& c);
+
+/**
+ * Rotate a conformer by the specified angle
+ * @param[in] angle_radians The angle in radians
+ * @param[in] center_of_rotation The point to rotate about
+ * @param[in,out] conf The conformer to rotate.  This conformer will be modified
+ * in place
+ */
+SKETCHER_API void
+rotate_conformer_radians(const double angle_radians,
+                         const RDGeom::Point3D& center_of_rotation,
+                         RDKit::Conformer& conf);
+
+/**
+ * Determine whether two points are on the same or different sides of
+ * a line.
+ * @param point1 The first point
+ * @param point2 The second point
+ * @param line_endpoint A point on the line.  The other end of the line is
+ * assumed to be (0, 0).
+ * @return true if the points are on the same side of the line.  false
+ * otherwise.
+ */
+SKETCHER_API bool
+are_points_on_same_side_of_line(const RDGeom::Point3D& point1,
+                                const RDGeom::Point3D& point2,
+                                const RDGeom::Point3D& line_endpoint);
+
+/**
+ * An overload that accepts QPointFs instead of RDGeom::Point3Ds
+ * @overload
+ */
+SKETCHER_API bool are_points_on_same_side_of_line(const QPointF& point1,
+                                                  const QPointF& point2,
+                                                  const QPointF& line_endpoint);
 
 } // namespace sketcher
 } // namespace schrodinger

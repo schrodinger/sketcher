@@ -23,7 +23,7 @@ std::tuple<std::vector<QGraphicsItem*>,
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               AtomItemSettings& atom_item_settings,
                               BondItemSettings& bond_item_settings,
-                              const bool skip_attachment_points)
+                              const bool draw_attachment_points)
 {
     unsigned int num_atoms = mol->getNumAtoms();
     if (num_atoms == 0) {
@@ -41,7 +41,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
     // create atom items
     for (std::size_t i = 0; i < num_atoms; ++i) {
         const auto* atom = mol->getAtomWithIdx(i);
-        if (skip_attachment_points && is_attachment_point(atom)) {
+        if (!draw_attachment_points && is_attachment_point(atom)) {
             continue;
         }
         const auto pos = conformer.getAtomPos(i);
@@ -53,7 +53,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
 
     // create bond items
     for (auto bond : mol->bonds()) {
-        if (skip_attachment_points && is_attachment_point_bond(bond)) {
+        if (!draw_attachment_points && is_attachment_point_bond(bond)) {
             continue;
         }
         const auto* from_atom_item = atom_to_atom_item[bond->getBeginAtom()];

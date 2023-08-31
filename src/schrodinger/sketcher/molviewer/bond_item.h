@@ -316,19 +316,6 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
         int& num_opposite_side) const;
 
     /**
-     * Determine whether two points are on the same or different sides of
-     * a line.
-     * @param point1 The first point
-     * @param point2 The second point
-     * @param line_endpoint A point on the line.  The other end of the line is
-     * assumed to be (0, 0).
-     * @return true if the points are on the same side of the line.  false
-     * otherwise.
-     */
-    bool arePointsOnSameSideOfLine(const QPointF& point1, const QPointF& point2,
-                                   const QPointF& line_endpoint) const;
-
-    /**
      * Modify inner_line so that each end is at least 6 pixels shorter than
      * bond_line, unless the atom at that end of the bond is a terminal atom.
      * If inner_line has already been trimmed by 6 pixels or more (due to an

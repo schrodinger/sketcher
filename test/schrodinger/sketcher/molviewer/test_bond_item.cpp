@@ -37,7 +37,6 @@ namespace sketcher
 class TestBondItem : public BondItem
 {
   public:
-    using BondItem::arePointsOnSameSideOfLine;
     using BondItem::calcArrowTip;
     using BondItem::calcDashedWedge;
     using BondItem::calcDashedWedgeParams;
@@ -177,24 +176,6 @@ BOOST_AUTO_TEST_CASE(test_chiral_bond_methods)
             y2_of_previous_dash = dash.y2();
         }
     }
-}
-
-BOOST_AUTO_TEST_CASE(test_arePointsOnSameSideOfLine)
-{
-    auto [bond_item, test_scene, trimmed_line] = createBondItem();
-    QPointF line_endpoint(1, 1);
-    QPointF above(0, 1);
-    QPointF also_above(1, 2);
-    QPointF below(1, 0);
-    QPointF also_below(2, 1);
-    BOOST_TEST(
-        bond_item->arePointsOnSameSideOfLine(above, also_above, line_endpoint));
-    BOOST_TEST(
-        bond_item->arePointsOnSameSideOfLine(below, also_below, line_endpoint));
-    BOOST_TEST(
-        !bond_item->arePointsOnSameSideOfLine(above, below, line_endpoint));
-    BOOST_TEST(!bond_item->arePointsOnSameSideOfLine(also_above, also_below,
-                                                     line_endpoint));
 }
 
 BOOST_AUTO_TEST_CASE(test_findRingCenter)

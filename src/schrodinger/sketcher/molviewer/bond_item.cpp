@@ -376,8 +376,8 @@ BondItem::calcAsymmetricDoubleBondOffset(const QLineF& trimmed_line) const
         // of the ring
         QPointF ring_center = findRingCenter(molecule, ring_info, ring_index);
         // make sure offset is on the same side of the bond as ring_center
-        if (!arePointsOnSameSideOfLine(offset, ring_center,
-                                       trimmed_line.p2())) {
+        if (!are_points_on_same_side_of_line(offset, ring_center,
+                                             trimmed_line.p2())) {
             // offset is on the wrong side of the bond, so flip it
             offset *= -1;
         }
@@ -479,38 +479,13 @@ void BondItem::countNeighboringAtomsBySide(
         }
         RDGeom::Point3D neighbor_coords = conf.getAtomPos(neighbor->getIdx());
         QPointF neighbor_qcoords = mapFromScene(to_scene_xy(neighbor_coords));
-        if (arePointsOnSameSideOfLine(neighbor_qcoords, offset,
-                                      line_endpoint)) {
+        if (are_points_on_same_side_of_line(neighbor_qcoords, offset,
+                                            line_endpoint)) {
             ++num_same_side;
         } else {
             ++num_opposite_side;
         }
     }
-}
-
-bool BondItem::arePointsOnSameSideOfLine(const QPointF& point1,
-                                         const QPointF& point2,
-                                         const QPointF& line_endpoint) const
-{
-    qreal x = line_endpoint.x();
-    qreal y = line_endpoint.y();
-
-    qreal slope, d1, d2;
-    if (qFabs(x) > qFabs(y)) {
-        slope = y / x;
-        d1 = point1.y() - slope * point1.x();
-        d2 = point2.y() - slope * point2.x();
-    } else {
-        // the line might be vertical (or close to vertical), so we flip the
-        // axes to avoid divide by zero (or arithmetic underflow) in our
-        // calculations
-        slope = x / y;
-        d1 = point1.x() - slope * point1.y();
-        d2 = point2.x() - slope * point2.y();
-    }
-
-    // the sign of d1 and d2 tell which side of the line they're on
-    return std::signbit(d1) == std::signbit(d2);
 }
 
 void BondItem::trimDoubleBondInnerLine(QLineF& inner_line,
