@@ -32,10 +32,6 @@ const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.6;
 const qreal CHIRALITY_FONT_RATIO = 0.6;
 
-// The font size used to display the number of bonds that the Draw Chain scene
-// tool will draw
-const qreal DRAW_CHAIN_FONT_SIZE = 11.0;
-
 // Ratios between the dot width for radicals and the font size
 const qreal RADICAL_DOT_RATIO = 0.25;
 

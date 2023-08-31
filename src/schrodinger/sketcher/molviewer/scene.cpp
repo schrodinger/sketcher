@@ -33,7 +33,6 @@
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
-#include "schrodinger/sketcher/tool/draw_chain_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
@@ -597,14 +596,19 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             case BondTool::DOUBLE_EITHER:
                 return std::make_shared<DrawBondSceneTool>(bond_tool, this,
                                                            m_mol_model);
+                break;
             case BondTool::SINGLE_OR_DOUBLE:
             case BondTool::SINGLE_OR_AROMATIC:
             case BondTool::DOUBLE_OR_AROMATIC:
             case BondTool::ANY:
                 return std::make_shared<DrawBondQuerySceneTool>(bond_tool, this,
                                                                 m_mol_model);
+                break;
             case BondTool::ATOM_CHAIN:
-                return std::make_shared<DrawChainSceneTool>(this, m_mol_model);
+                // TODO
+                // return std::make_shared<DrawChainSceneTool>(this,
+                // m_mol_model);
+                break;
         }
     } else if (draw_tool == DrawTool::ENUMERATION) {
         auto enumeration_tool = m_sketcher_model->getEnumerationTool();

@@ -138,7 +138,7 @@ RDGeom::Point3D rotate_point(const RDGeom::Point3D& point,
                              const RDGeom::Point3D& center_of_rotation,
                              float angle)
 {
-    auto angle_radians = qDegreesToRadians(angle);
+    auto angle_radians = angle * M_PI / 180.0; // Convert angle to radians
     return rotate_point_radians(point, center_of_rotation, angle_radians);
 }
 
