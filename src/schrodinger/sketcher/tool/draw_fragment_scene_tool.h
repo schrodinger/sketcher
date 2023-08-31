@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <GraphMol/ROMol.h>
 
@@ -90,12 +91,24 @@ class SKETCHER_API DrawFragmentSceneTool : public AbstractSceneTool
     std::vector<QGraphicsItem*> getGraphicsItems() override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onMouseLeave() override;
+    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
 
   protected:
     RDKit::ROMol m_frag;
     HintFragmentItem m_hint_item;
 
-    RDKit::Conformer getConformerForScenePos(const QPointF& scene_pos) const;
+    /**
+     * Determine the appropriate fragment conformer for a given set of Scene
+     * coordinates.
+     * @param scene_pos The Scene coordinates
+     * @return A tuple of
+     *   - The fragment conformer
+     *   - The existing atom (if any) that has the same coordinates as the
+     *     fragment's attachment point parent atom (i.e. the atom bound to the
+     *     attachment point dummy atom).  Nullptr otherwise.
+     */
+    std::pair<RDKit::Conformer, const RDKit::Atom*>
+    getFragConfAndCoreAtomForScenePos(const QPointF& scene_pos) const;
 };
 
 /**

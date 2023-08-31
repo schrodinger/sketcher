@@ -12,9 +12,12 @@
 #include <QUndoStack>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/fragment.h"
+#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
@@ -25,6 +28,7 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularObject);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularType);
 
 namespace utf = boost::unit_test;
+namespace tt = boost::test_tools;
 
 namespace schrodinger
 {
@@ -127,6 +131,13 @@ M  V30 END BOND
 M  V30 END CTAB
 M  END
 )";
+
+const std::string AMIDE_FRAG_SMILES = "*CC(N)=O |$_AP1;;;;$|";
+const std::string CYCLOHEXANE_MOL_SMILES = "C1CCCCC1";
+const std::string CYCLOHEXANE_FRAG_SMILES = "*C1CCCCC1 |$_AP1;;;;;;$|";
+const std::string BENZENE_MOL_SMILES = "C1=CC=CC=C1";
+const std::string BENZENE_FRAG_SMILES = "*C1=CC=CC=C1 |$_AP1;;;;;;$|";
+const std::string METHYLCYCLOHEXANE_MOL_SMILES = "CC1CCCCC1";
 
 void check_coords(const RDGeom::Point3D& point, const double exp_x,
                   const double exp_y)
@@ -1650,6 +1661,100 @@ BOOST_AUTO_TEST_CASE(test_struc_with_rings, *utf::tolerance(0.001))
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.0);
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 1, 2) == 1.0);
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 3, 5) == 1.0);
+}
+
+/**
+ * Make sure that adding a fragment works as expected.  This method mimics the
+ * behavior of DrawFragmentSceneTool.
+ * @param core_smiles The SMILES for the core structure
+ * @param frag_smiles The SMILES for the fragment to be added
+ * @param exp_result_smiles The canonical SMILES of the expected output
+ * structure
+ * @param core_atom_idx If >= 0, mimic the DrawFragmentSceneTool behavior when
+ * the mouse cursor is over the specified atom.
+ * @param core_bond_idx If >= 0, mimic the DrawFragmentSceneTool behavior when
+ * the mouse cursor is over the specified bond.
+ */
+void check_fragment_addition(const std::string& core_smiles,
+                             const std::string& frag_smiles,
+                             const std::string& exp_result_smiles,
+                             int core_atom_idx = -1, int core_bond_idx = -1)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    model.addMolFromText(core_smiles);
+    auto* mol = model.getMol();
+    auto frag = text_to_mol(frag_smiles);
+    RDKit::Conformer frag_conf;
+    const RDKit::Atom* core_atom = nullptr;
+    if (core_atom_idx >= 0 && core_bond_idx >= 0) {
+        BOOST_FAIL(
+            "core_atom_idx and core_bond_idx cannot both be greater than 0");
+    } else if (core_atom_idx >= 0) {
+        // mimic what the DrawFragmentSceneTool does when the mouse cursor is
+        // over an atom
+        core_atom = mol->getAtomWithIdx(core_atom_idx);
+        frag_conf = align_fragment_with_atom(*frag, core_atom);
+    } else if (core_bond_idx >= 0) {
+        // mimic what the DrawFragmentSceneTool does when the mouse cursor is
+        // over a bond
+        const auto* core_bond = mol->getBondWithIdx(core_bond_idx);
+        std::tie(frag_conf, core_atom) =
+            align_fragment_with_bond(*frag, core_bond);
+    } else {
+        // mimic what the DrawFragmentSceneTool does when the mouse cursor is
+        // over empty space
+        frag_conf = translate_fragment(*frag, RDGeom::Point3D(10, 10, 0));
+    }
+    frag->getConformer() = frag_conf;
+    model.addFragment(*frag, core_atom);
+    auto result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    // clang-format off
+    BOOST_TEST(result_smiles == exp_result_smiles,
+               "FAILURE: expected result = " <<  exp_result_smiles
+                   << "\n\tactual result = " << result_smiles
+                   << "\n\tcore_smiles = " << core_smiles
+                   << "\n\tfrag_smiles = " << frag_smiles
+                   << "\n\tcore_atom_idx = " << core_atom_idx
+                   << "\n\tcore_bond_idx = " << core_bond_idx);
+    // clang-format on
+
+    // make sure that all bonds in the structure are the appropriate length
+    auto& mol_conf = mol->getConformer();
+    for (auto* bond : mol->bonds()) {
+        auto& begin_coords = mol_conf.getAtomPos(bond->getBeginAtomIdx());
+        auto& end_coords = mol_conf.getAtomPos(bond->getEndAtomIdx());
+        auto bond_dist = (begin_coords - end_coords).length();
+        BOOST_TEST(bond_dist == BOND_LENGTH, tt::tolerance(0.01));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_adding_fragments)
+{
+    check_fragment_addition(CYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
+                            "C1CCCCC1.CC(N)=O", -1, -1);
+    check_fragment_addition(CYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
+                            "NC(=O)C1CCCCC1", 0, -1);
+
+    check_fragment_addition(METHYLCYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
+                            "NC(=O)CC1CCCCC1", 0, -1);
+    check_fragment_addition(METHYLCYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
+                            "NC(=O)C1CCCCC1", -1, 0);
+
+    check_fragment_addition(CYCLOHEXANE_MOL_SMILES, CYCLOHEXANE_FRAG_SMILES,
+                            "C1CCCCC1.C1CCCCC1", -1, -1);
+    check_fragment_addition(CYCLOHEXANE_MOL_SMILES, CYCLOHEXANE_FRAG_SMILES,
+                            "C1CCC2(CC1)CCCCC2", 0, -1);
+    check_fragment_addition(CYCLOHEXANE_MOL_SMILES, CYCLOHEXANE_FRAG_SMILES,
+                            "C1CCC2CCCCC2C1", -1, 0);
+
+    check_fragment_addition(CYCLOHEXANE_MOL_SMILES, BENZENE_FRAG_SMILES,
+                            "C1=CC2=C(C=C1)CCCC2", -1, 0);
+    check_fragment_addition(BENZENE_MOL_SMILES, BENZENE_FRAG_SMILES,
+                            "C1=CC2=C(C=C1)C=CC=C2", -1, 0);
+    check_fragment_addition(BENZENE_MOL_SMILES, BENZENE_FRAG_SMILES,
+                            "C1=CC=C2=CC=CC=C2=C1", -1, 1);
 }
 
 } // namespace sketcher

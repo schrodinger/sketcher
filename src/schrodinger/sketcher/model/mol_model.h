@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include <GraphMol/RWMol.h>
 #include <GraphMol/QueryAtom.h>
@@ -18,6 +19,7 @@
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/fragment.h"
 
 class QObject;
 class QPointF;
@@ -41,6 +43,23 @@ enum class Format;
 
 namespace sketcher
 {
+
+typedef std::function<std::shared_ptr<RDKit::Atom>()> AtomFunc;
+typedef std::function<std::shared_ptr<RDKit::Bond>()> BondFunc;
+
+// a tuple of:
+//   - function that returns a Bond instance to use for the bond
+//   - the bond tag
+//   - whether the fragment atom is the starting atom of the bond (true) or the
+//     ending atom (false)
+typedef std::tuple<BondFunc, int, bool> FragmentBondInfo;
+
+typedef std::unordered_map<
+    const RDKit::Atom*,
+    std::unordered_map<const RDKit::Atom*, FragmentBondInfo>>
+    AtomPtrToFragmentBondMap;
+typedef std::unordered_map<int, std::unordered_map<int, FragmentBondInfo>>
+    AtomTagToFragmentBondMap;
 
 enum class SelectMode {
     SELECT,      // Shift + click
@@ -428,9 +447,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param mol The molecule to add
      * @param description The description to use for the undo command.
+     * @param center_mol Whether to center the molecule's coordinates
      */
     void addMol(RDKit::ROMol mol,
-                const QString& description = "Import molecule");
+                const QString& description = "Import molecule",
+                const bool center_mol = true);
 
     /**
      * Create a molecule from a text string and load that into the scene.
@@ -441,6 +462,37 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void addMolFromText(const std::string& text,
                         rdkit_extensions::Format format);
+
+    /**
+     * Undoably add a fragment and (optionally) bond it to the existing
+     * structure.  The fragment must contain exactly one attachment point and
+     * must have a conformer set.
+     *
+     * @param fragment_to_add The fragment to add
+     * @param core_start_atom An existing atom with the same coordinates as the
+     * fragment's attachment point parent atom.  If given, existing atoms may be
+     * replaced by fragment atoms with the same coordinates, following the rules
+     * given below.
+     *
+     * To determine which core atoms will be replaced, first we must determine
+     * corresponding atom.  In order to "correspond," a fragment atom and an
+     * existing atom must have the same coordinates.  Additionally, all
+     * corresponding atoms must be connected.  In other words, frag_start_atom
+     * always corresponds to core_start_atom.  Neighbors of frag_start_atom may
+     * correspond to neighbors of core_start_atom, assuming they have the same
+     * coordinates.  If a pair of those atoms are corresponding, then any
+     * neighbors of *those* atoms may correspond if they have the same
+     * coordinates, etc.
+     *
+     * If an existing atom has a corresponding fragment atom, then the core atom
+     * will be replaced if the fragment atom is a query atom or a heteroatom, or
+     * if the existing atom is neither a query atom nor a heteroatom.  All
+     * fragment bonds will be added to the molecule, and any existing bonds
+     * between corresponding atoms will be replaced by the corresponding
+     * fragment bond.
+     */
+    void addFragment(const RDKit::ROMol& fragment_to_add,
+                     const RDKit::Atom* const core_start_atom = nullptr);
 
     /**
      * Change the element of an existing atom.  This method can also mutate a
@@ -810,12 +862,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bound_to_atom_tag If given, a bond will be added between the
      * existing atom with this tag and the first new atom in the chain
      */
-    void addAtomChainFromCommand(
-        const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
-        const std::function<std::shared_ptr<RDKit::Atom>()> create_atom,
-        const std::vector<RDGeom::Point3D>& coords,
-        const std::function<std::shared_ptr<RDKit::Bond>()> create_bond,
-        const int bound_to_atom_tag);
+    void addAtomChainFromCommand(const std::vector<int>& atom_tags,
+                                 const std::vector<int>& bond_tags,
+                                 const AtomFunc create_atom,
+                                 const std::vector<RDGeom::Point3D>& coords,
+                                 const BondFunc create_bond,
+                                 const int bound_to_atom_tag);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This
@@ -853,10 +905,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param create_bond A function that will return the new bond to add.  Note
      * that this method will add a *copy* of the returned bond, as the
      * shared_ptr is responsible for deleting the returned bond.
+     * @param finalize Whether to "finalize" the molecule, i.e update all
+     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void addBondFromCommand(
-        const int bond_tag, const int start_atom_tag, const int end_atom_tag,
-        const std::function<std::shared_ptr<RDKit::Bond>()> create_bond);
+    void addBondFromCommand(const int bond_tag, const int start_atom_tag,
+                            const int end_atom_tag, const BondFunc create_bond,
+                            const bool finalize = true);
 
     /**
      * Remove a bond from the molecule.  This method must only be called from an
@@ -909,10 +963,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * length of this list must be exactly mol.getNumAtoms().
      * @param bond_tags A list of bond tags to use for each new bond.  The
      * length of this list must be exactly mol.getNumBonds().
+     * @param finalize Whether to "finalize" the molecule, i.e update all
+     * RDKit metadata and emit a signal notifying the scene about the change.
      */
     void addMolFromCommand(const RDKit::ROMol& mol,
                            const std::vector<int>& atom_tags,
-                           const std::vector<int>& bond_tags);
+                           const std::vector<int>& bond_tags,
+                           const bool finalize = true);
 
     /**
      * Change the element of an existing atom, or change a query atom to a
@@ -921,10 +978,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param create_atom A function that will return a new atom to mutate to.
      * Note that this method will add a *copy* of the returned atom, as the
      * shared_ptr is responsible for deleting the returned atom.
+     * @param finalize Whether to "finalize" the molecule, i.e update all
+     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void mutateAtomFromCommand(
-        const int atom_tag,
-        const std::function<std::shared_ptr<RDKit::Atom>()> create_atom);
+    void mutateAtomFromCommand(const int atom_tag, const AtomFunc create_atom,
+                               const bool finalize = true);
 
     /**
      * Change the type of an existing bond, or change a query bond to a
@@ -933,10 +991,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param create_bond A function that will return a new bond to mutate to.
      * Note that this method will add a *copy* of the returned bond, as the
      * shared_ptr is responsible for deleting the returned bond.
+     * @param finalize Whether to "finalize" the molecule, i.e update all
+     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void mutateBondFromCommand(
-        const int bond_tag,
-        const std::function<std::shared_ptr<RDKit::Bond>()> create_bond);
+    void mutateBondFromCommand(const int bond_tag, const BondFunc create_bond,
+                               const bool finalize = true);
 
     /**
      * Set the charge of an existing atom.  This method must only be called from
@@ -979,6 +1038,90 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * from an undo command.
      */
     void clearSelectionFromCommand();
+
+    /**
+     * When adding a fragment, figure out which core atoms should be mutated to
+     * match the fragment.
+     * @param frag_atom_to_core_atom A map of fragment atoms to their
+     * corresponding core atom
+     * @return A list of (core atom tag, function that returns an atom to mutate
+     * to)
+     */
+    std::vector<std::pair<int, AtomFunc>>
+    determineCoreAtomMutations(const AtomToAtomMap& frag_atom_to_core_atom);
+
+    /**
+     * When adding a fragment, figure out which bonds involving at least one
+     * core atom should be added or mutated to match the fragment.
+     * @param fragment The fragment structure being added
+     * @param frag_atom_to_core_atom A map of fragment atoms to their
+     * corresponding core atom
+     * @return A tuple of:
+     *   - Bonds to make between the core and the fragment, formatted as a map
+     *     of {core atom: {fragment atom: info about bond to create}}
+     *   - A list of core bonds to mutate, where each bond is given as (core
+     *     bond tag, function that returns a bond to mutate to)
+     *   - A list of bonds to make between two core atoms, where each bond is
+     *     given as a tuple of
+     *     - new bond tag for the bond to create
+     *     - atom tag for the starting atom
+     *     - atom tag for the ending atom
+     *     - function that returns a bond instance for the new bond
+     */
+    std::tuple<AtomPtrToFragmentBondMap, std::vector<std::pair<int, BondFunc>>,
+               std::vector<std::tuple<int, int, int, BondFunc>>>
+    determineCoreBondAdditionsAndMutations(
+        const RDKit::ROMol& fragment, AtomToAtomMap frag_atom_to_core_atom);
+
+    /**
+     * Convert a map of atoms-to-bond-info from using atom pointers to using
+     * atom tags.
+     * @param core_to_frag_bonds_by_ptr A map of {core atom: {fragment atom:
+     * info about bond to create}}, where both atoms are represented by pointers
+     * @param frag_atom_tags A list of tags that will be used for the fragment
+     * atoms
+     * @return A map that is identical to core_to_frag_bonds_by_ptr, but using
+     * atom tags in place of pointers.
+     */
+    AtomTagToFragmentBondMap convertBondMapFromPtrsToTags(
+        const AtomPtrToFragmentBondMap& core_to_frag_bonds_by_ptr,
+        const std::vector<int>& frag_atom_tags);
+
+    /**
+     * Add a fragment to the molecule and create new bonds between the new
+     * fragment and the core (i.e. the existing molecule).  This method must
+     * only be called from an undo command.
+     * @param fragment The fragment to add
+     * @param atom_tags A list of atom tags for the fragment atoms
+     * @param bond_tags A list of bond tags for the fragment bonds
+     * @param core_atoms_to_mutate A list of core atoms to mutate, where each
+     *     atom is given as (core atom tag, function that returns a bond to
+     *     mutate to)
+     * @param core_bonds_to_mutate A list of core bonds to mutate, where each
+     * bond is given as (core bond tag, function that returns a bond to mutate
+     * to)
+     * @param core_bonds_to_add A list of bonds to make between two core atoms,
+     * where each bond is given as a tuple of
+     *   - new bond tag for the bond to create
+     *   - atom tag for the starting atom
+     *   - atom tag for the ending atom
+     *   - function that returns a bond instance for the new bond
+     * @param core_to_frag_bonds_by_tag Bonds to make between the core and the
+     * fragment, formatted as a map of {core atom tag: {fragment atom tag: info
+     * about bond to create}}, and bond info is given as a tuple of
+     *   - function that returns a bond instance for the new bond
+     *   - new bond tag for the bond to create
+     *   - whether the bond starts with the fragment atom (as opposed to
+     *     starting with the core atom)
+     */
+    void addFragmentFromCommand(
+        const RDKit::ROMol& fragment, const std::vector<int>& atom_tags,
+        const std::vector<int>& bond_tags,
+        std::vector<std::pair<int, AtomFunc>> mutations_to_core_atoms,
+        std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds,
+        std::vector<std::tuple<int, int, int, BondFunc>>
+            additions_to_core_bonds,
+        const AtomTagToFragmentBondMap& core_to_frag_bonds_by_tag);
 };
 
 } // namespace sketcher

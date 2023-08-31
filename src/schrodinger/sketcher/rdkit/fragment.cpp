@@ -2,12 +2,16 @@
 
 #include <algorithm>
 #include <math.h>
+#include <queue>
 #include <stdexcept>
 #include <tuple>
 
 #include <GraphMol/QueryOps.h>
 
+#include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 #include <iostream>
@@ -264,6 +268,20 @@ get_atom_bound_to_ap_parent_atom(const RDKit::ROMol& mol,
     return bond->getOtherAtom(ap_parent_atom);
 }
 
+/**
+ * Return true if the atom is a heteroatom (not C or H) or a query.  Otherwise,
+ * return false.
+ */
+bool is_heteroatom_or_query(const RDKit::Atom* const atom)
+{
+    if (atom->hasQuery()) {
+        return true;
+    }
+    auto core_atomic_num = atom->getAtomicNum();
+    return core_atomic_num != static_cast<int>(Element::C) &&
+           core_atomic_num != static_cast<int>(Element::H);
+}
+
 } // namespace
 
 RDKit::Conformer translate_fragment(const RDKit::ROMol& fragment,
@@ -318,8 +336,9 @@ RDKit::Conformer align_fragment_with_atom(const RDKit::ROMol& fragment,
     return frag_conf;
 }
 
-RDKit::Conformer align_fragment_with_bond(const RDKit::ROMol& fragment,
-                                          const RDKit::Bond* const core_bond)
+std::pair<RDKit::Conformer, const RDKit::Atom*>
+align_fragment_with_bond(const RDKit::ROMol& fragment,
+                         const RDKit::Bond* const core_bond)
 {
     const auto& core = core_bond->getOwningMol();
     auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
@@ -350,14 +369,71 @@ RDKit::Conformer align_fragment_with_bond(const RDKit::ROMol& fragment,
                                   core_bond)) {
         // flip new_conf by 180 degrees so that the ring points away from
         // neighboring core bonds
-        auto ap_parent_idx = frag_ap_parent_atom->getIdx();
-        auto frag_bond_center =
-            new_conf.getAtomPos(ap_parent_idx) +
-            new_conf.getAtomPos(frag_bond->getOtherAtomIdx(ap_parent_idx));
-        frag_bond_center /= 2;
-        rotate_conformer_radians(M_PI, frag_bond_center, new_conf);
+        core_atom = core_bond->getOtherAtom(core_atom);
+        new_conf =
+            overlay_fragment_on_core(fragment, frag_ap_parent_atom, frag_bond,
+                                     core, core_atom, core_bond);
     }
-    return new_conf;
+    return {new_conf, core_atom};
+}
+
+RDKit::Atom* prepare_fragment_for_insertion(RDKit::RWMol& fragment)
+{
+    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
+        get_frag_info(fragment);
+    // remove the attachment point atom, which will automatically remove the
+    // attachment point bond
+    fragment.removeAtom(frag_ap_dummy_atom->getIdx());
+    update_molecule_metadata(fragment);
+    // strip constness from frag_ap_parent_atom, since get_frag_info returns
+    // const values
+    return fragment.getAtomWithIdx(frag_ap_parent_atom->getIdx());
+}
+
+AtomToAtomMap get_fragment_to_core_atom_map(const RDKit::ROMol& fragment,
+                                            const RDKit::Atom* frag_start_atom,
+                                            const RDKit::ROMol& core,
+                                            const RDKit::Atom* core_start_atom)
+{
+    AtomToAtomMap frag_atom_to_core_atom{{frag_start_atom, core_start_atom}};
+    std::queue<std::pair<const RDKit::Atom*, const RDKit::Atom*>> to_examine;
+    to_examine.emplace(frag_start_atom, core_start_atom);
+
+    const auto& frag_conf = fragment.getConformer();
+    const auto& core_conf = core.getConformer();
+    while (!to_examine.empty()) {
+        auto [frag_atom, core_atom] = to_examine.front();
+        to_examine.pop();
+        for (auto* frag_neighbor : fragment.atomNeighbors(frag_atom)) {
+            if (frag_atom_to_core_atom.count(frag_neighbor)) {
+                // we've already examined this atom and found a match, so
+                // there's nothing more to do
+                continue;
+            }
+            const auto& frag_neighbor_coords =
+                frag_conf.getAtomPos(frag_neighbor->getIdx());
+            for (auto* core_neighbor : core.atomNeighbors(core_atom)) {
+                const auto& core_neighbor_coords =
+                    core_conf.getAtomPos(core_neighbor->getIdx());
+                auto dist =
+                    (frag_neighbor_coords - core_neighbor_coords).length();
+                if (dist <= MAX_DIST_FOR_FRAG_OVERLAP) {
+                    frag_atom_to_core_atom[frag_neighbor] = core_neighbor;
+                    to_examine.emplace(frag_neighbor, core_neighbor);
+                }
+            }
+        }
+    }
+    return frag_atom_to_core_atom;
+}
+
+bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
+                              const RDKit::Atom* const core_atom)
+{
+    if (is_heteroatom_or_query(frag_atom)) {
+        return true;
+    }
+    return !is_heteroatom_or_query(core_atom);
 }
 
 } // namespace sketcher

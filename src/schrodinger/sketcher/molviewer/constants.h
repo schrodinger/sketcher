@@ -13,6 +13,9 @@ namespace schrodinger
 namespace sketcher
 {
 
+// The default bond length in MolModel coordinates
+const float BOND_LENGTH = 1.0;
+
 // The scaling of the graphics scene coordinate system relative to the RDKit
 // coordinate system.  Without this scaling, even a 1 pt font in the graphics
 // scene would be far too large for the molecule, and Qt won't render fonts
@@ -177,6 +180,12 @@ const qreal PLUS_LENGTH = 20.0;
 // The width of the path drawn around non-molecular objects for predictive and
 // selection highlighting
 const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
+
+// When inserting a fragment (e.g. the Draw Ring tool), we look for fragment
+// atoms that have identical coordinates to core atoms.  This is the max
+// distance (in MolModel coordinates) for two coordinates to be considered
+// "identical."
+const double MAX_DIST_FOR_FRAG_OVERLAP = 0.01;
 
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.

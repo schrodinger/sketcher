@@ -128,7 +128,8 @@ void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
         // drag actions are handled in onDragMove
         return;
     }
-    RDKit::Conformer new_conf = getConformerForScenePos(event->scenePos());
+    auto [new_conf, overlay_atom] =
+        getFragConfAndCoreAtomForScenePos(event->scenePos());
     m_hint_item.updateConformer(new_conf);
     m_hint_item.show();
 }
@@ -138,19 +139,30 @@ void DrawFragmentSceneTool::onMouseLeave()
     m_hint_item.hide();
 }
 
-RDKit::Conformer
-DrawFragmentSceneTool::getConformerForScenePos(const QPointF& scene_pos) const
+void DrawFragmentSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+{
+    m_hint_item.hide();
+    auto [new_conf, overlay_atom] =
+        getFragConfAndCoreAtomForScenePos(event->scenePos());
+    auto frag_copy = RDKit::ROMol(m_frag);
+    frag_copy.getConformer() = new_conf;
+    m_mol_model->addFragment(frag_copy, overlay_atom);
+}
+
+std::pair<RDKit::Conformer, const RDKit::Atom*>
+DrawFragmentSceneTool::getFragConfAndCoreAtomForScenePos(
+    const QPointF& scene_pos) const
 {
     auto* item = m_scene->getTopInteractiveItemAt(
         scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
-    RDKit::Conformer new_conf;
     if (auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         const auto core_atom = atom_item->getAtom();
         const auto& core = core_atom->getOwningMol();
         // if the atom has three or more neighbors, then don't try to add to it.
         // Instead, allow the fragment to follow the mouse cursor.
         if (core.getAtomDegree(core_atom) < 3) {
-            return align_fragment_with_atom(m_frag, core_atom);
+            auto new_conf = align_fragment_with_atom(m_frag, core_atom);
+            return {new_conf, core_atom};
         }
     } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
         return align_fragment_with_bond(m_frag, bond_item->getBond());
@@ -158,7 +170,8 @@ DrawFragmentSceneTool::getConformerForScenePos(const QPointF& scene_pos) const
     // we're not over any part of the molecule, or we're over an atom with 3 or
     // more bonds
     auto mol_pos = to_mol_xy(scene_pos);
-    return translate_fragment(m_frag, mol_pos);
+    auto new_conf = translate_fragment(m_frag, mol_pos);
+    return {new_conf, nullptr};
 }
 
 } // namespace sketcher

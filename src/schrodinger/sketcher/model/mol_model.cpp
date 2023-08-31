@@ -20,6 +20,7 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
@@ -537,12 +538,15 @@ void MolModel::remove(
     doCommandWithMolUndo(redo, desc);
 }
 
-void MolModel::addMol(RDKit::ROMol mol, const QString& description)
+void MolModel::addMol(RDKit::ROMol mol, const QString& description,
+                      const bool center_mol)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
-    center_on_origin(mol);
+    if (center_mol) {
+        center_on_origin(mol);
+    }
     std::vector<int> atom_tags =
         getNextNTags(mol.getNumAtoms(), m_next_atom_tag);
     std::vector<int> bond_tags =
@@ -557,6 +561,199 @@ void MolModel::addMolFromText(const std::string& text, Format format)
 {
     boost::shared_ptr<RDKit::RWMol> mol = text_to_mol(text, format);
     addMol(*mol);
+}
+
+void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
+                           const RDKit::Atom* const core_start_atom)
+{
+    QString desc("Add fragment");
+    RDKit::RWMol frag(fragment_to_add);
+    auto frag_start_atom = prepare_fragment_for_insertion(frag);
+    if (core_start_atom == nullptr) {
+        // the fragment isn't attached to any existing structure, so we can just
+        // add it as is
+        addMol(frag, desc, /*center_mol = */ false);
+        return;
+    }
+
+    // figure out which fragment atoms correspond to which atoms in the core
+    // (i.e. the existing structure)
+    auto frag_atom_to_core_atom = get_fragment_to_core_atom_map(
+        frag, frag_start_atom, m_mol, core_start_atom);
+
+    // figure out which core atoms should be mutated so they match the overlayed
+    // fragment atom
+    auto mutations_to_core_atoms =
+        determineCoreAtomMutations(frag_atom_to_core_atom);
+
+    // figure out where bonds should be added and which core bonds should be
+    // mutated
+    AtomPtrToFragmentBondMap core_to_frag_bonds_by_ptr;
+    std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds;
+    std::vector<std::tuple<int, int, int, BondFunc>> additions_to_core_bonds;
+    std::tie(core_to_frag_bonds_by_ptr, mutations_to_core_bonds,
+             additions_to_core_bonds) =
+        determineCoreBondAdditionsAndMutations(frag, frag_atom_to_core_atom);
+
+    // delete all fragment atoms that overlay on existing core atoms
+    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
+        frag.removeAtom(frag_atom->getIdx());
+    }
+
+    // Create atom tags for all fragment atoms and bond tags for all
+    // intra-fragment bonds.  The bond tags for bonds involving core atom were
+    // already generated in determineCoreBondAdditionsAndMutations
+    auto frag_atom_tags = getNextNTags(frag.getNumAtoms(), m_next_atom_tag);
+    auto frag_bond_tags = getNextNTags(frag.getNumBonds(), m_next_bond_tag);
+
+    // core_to_frag_bonds_by_ptr uses atom pointers, so it's only valid for this
+    // exact instance of m_mol and frag.  Convert the pointers to atom tags so
+    // that the dictionary will still be valid in addFragmentFromCommand
+    auto core_to_frag_bonds_by_tag =
+        convertBondMapFromPtrsToTags(core_to_frag_bonds_by_ptr, frag_atom_tags);
+
+    auto redo = [this, frag, frag_atom_tags, frag_bond_tags,
+                 mutations_to_core_atoms, mutations_to_core_bonds,
+                 additions_to_core_bonds, core_to_frag_bonds_by_tag]() {
+        addFragmentFromCommand(frag, frag_atom_tags, frag_bond_tags,
+                               mutations_to_core_atoms, mutations_to_core_bonds,
+                               additions_to_core_bonds,
+                               core_to_frag_bonds_by_tag);
+    };
+    doCommandWithMolUndo(redo, desc);
+}
+
+std::vector<std::pair<int, AtomFunc>> MolModel::determineCoreAtomMutations(
+    const AtomToAtomMap& frag_atom_to_core_atom)
+{
+    std::vector<std::pair<int, AtomFunc>> mutations_to_core_atoms;
+    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
+        if (should_replace_core_atom(frag_atom, core_atom)) {
+            auto frag_atom_ref = *frag_atom;
+            auto copy_frag_atom = [frag_atom_ref]() {
+                return std::make_shared<RDKit::Atom>(frag_atom_ref);
+            };
+            mutations_to_core_atoms.emplace_back(getTagForAtom(core_atom),
+                                                 copy_frag_atom);
+        }
+    }
+    return mutations_to_core_atoms;
+}
+
+std::tuple<AtomPtrToFragmentBondMap, std::vector<std::pair<int, BondFunc>>,
+           std::vector<std::tuple<int, int, int, BondFunc>>>
+MolModel::determineCoreBondAdditionsAndMutations(
+    const RDKit::ROMol& fragment, AtomToAtomMap frag_atom_to_core_atom)
+{
+    AtomPtrToFragmentBondMap core_to_frag_bonds;
+    std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds;
+    std::vector<std::tuple<int, int, int, BondFunc>> additions_to_core_bonds;
+    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
+        for (auto* frag_bond : fragment.atomBonds(frag_atom)) {
+            auto* frag_neighbor = frag_bond->getOtherAtom(frag_atom);
+            auto frag_bond_ref = *frag_bond;
+            auto copy_bond = [frag_bond_ref]() {
+                return std::make_shared<RDKit::Bond>(frag_bond_ref);
+            };
+            if (frag_atom_to_core_atom.count(frag_neighbor)) {
+                // both of the fragment atoms in this bond are on top of a core
+                // atom
+                auto* core_neighbor = frag_atom_to_core_atom[frag_neighbor];
+                auto* core_bond = m_mol.getBondBetweenAtoms(
+                    core_atom->getIdx(), core_neighbor->getIdx());
+                if (core_bond == nullptr) {
+                    // there's no equivalent bond in the core, so one needs to
+                    // be added
+                    int start_atom_tag = getTagForAtom(core_atom);
+                    int end_atom_tag = getTagForAtom(core_neighbor);
+                    if (frag_bond->getBeginAtom() != frag_atom) {
+                        std::swap(start_atom_tag, end_atom_tag);
+                    }
+                    additions_to_core_bonds.emplace_back(
+                        m_next_atom_tag++, start_atom_tag, end_atom_tag,
+                        copy_bond);
+                } else {
+                    // there's already a core bond between these atoms, so we
+                    // mutate it
+                    mutations_to_core_bonds.emplace_back(
+                        getTagForBond(core_bond), copy_bond);
+                }
+            } else {
+                // this bond will be between a core atom and a fragment atom
+                core_to_frag_bonds.try_emplace(core_atom);
+                bool frag_first = frag_bond->getBeginAtom() == frag_atom;
+                FragmentBondInfo bond_info =
+                    std::make_tuple(copy_bond, m_next_bond_tag++, frag_first);
+                core_to_frag_bonds[core_atom].emplace(frag_neighbor, bond_info);
+            }
+        }
+    }
+    return {core_to_frag_bonds, mutations_to_core_bonds,
+            additions_to_core_bonds};
+}
+
+AtomTagToFragmentBondMap MolModel::convertBondMapFromPtrsToTags(
+    const AtomPtrToFragmentBondMap& core_to_frag_bonds_by_ptr,
+    const std::vector<int>& frag_atom_tags)
+{
+    AtomTagToFragmentBondMap core_to_frag_bonds_by_tag;
+    for (auto& [core_atom, frag_atom_to_bond_func_and_tag] :
+         core_to_frag_bonds_by_ptr) {
+        auto core_atom_tag = getTagForAtom(core_atom);
+        core_to_frag_bonds_by_tag.try_emplace(core_atom_tag);
+        auto& frag_atom_tag_to_bond_info =
+            core_to_frag_bonds_by_tag[core_atom_tag];
+        for (auto& [frag_atom, bond_func_and_tag] :
+             frag_atom_to_bond_func_and_tag) {
+            auto frag_atom_tag = frag_atom_tags[frag_atom->getIdx()];
+            frag_atom_tag_to_bond_info.emplace(frag_atom_tag,
+                                               bond_func_and_tag);
+        }
+    }
+    return core_to_frag_bonds_by_tag;
+}
+
+void MolModel::addFragmentFromCommand(
+    const RDKit::ROMol& fragment, const std::vector<int>& atom_tags,
+    const std::vector<int>& bond_tags,
+    std::vector<std::pair<int, AtomFunc>> mutations_to_core_atoms,
+    std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds,
+    std::vector<std::tuple<int, int, int, BondFunc>> additions_to_core_bonds,
+    const AtomTagToFragmentBondMap& core_to_frag_bonds_by_tag)
+{
+    addMolFromCommand(fragment, atom_tags, bond_tags, /* finalize = */ false);
+    for (const auto& [core_atom_tag, create_atom] : mutations_to_core_atoms) {
+        mutateAtomFromCommand(core_atom_tag, create_atom,
+                              /* finalize = */ false);
+    }
+    for (const auto& [core_bond_tag, create_bond] : mutations_to_core_bonds) {
+        mutateBondFromCommand(core_bond_tag, create_bond,
+                              /* finalize = */ false);
+    }
+    for (const auto& [core_bond_tag, begin_atom_tag, end_atom_tag,
+                      create_bond] : additions_to_core_bonds) {
+        addBondFromCommand(core_bond_tag, begin_atom_tag, end_atom_tag,
+                           create_bond, /* finalize = */ false);
+    }
+
+    // add bonds between the core (i.e. the previously existing molecule) and
+    // the fragment
+    for (const auto& [core_atom_tag, frag_atom_tag_to_bond_info] :
+         core_to_frag_bonds_by_tag) {
+        for (const auto& [frag_atom_tag, bond_info] :
+             frag_atom_tag_to_bond_info) {
+            const auto& [bond_func, bond_tag, frag_first] = bond_info;
+            auto begin_atom_tag = frag_atom_tag;
+            auto end_atom_tag = core_atom_tag;
+            if (!frag_first) {
+                std::swap(begin_atom_tag, end_atom_tag);
+            }
+            addBondFromCommand(bond_tag, begin_atom_tag, end_atom_tag,
+                               bond_func,
+                               /* finalize = */ false);
+        }
+    }
+    finalizeMoleculeChange();
 }
 
 void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
@@ -1049,10 +1246,8 @@ MolModel::ensureCompleteAttachmentPoints(
 
 void MolModel::addAtomChainFromCommand(
     const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
-    const std::function<std::shared_ptr<RDKit::Atom>()> create_atom,
-    const std::vector<RDGeom::Point3D>& coords,
-    const std::function<std::shared_ptr<RDKit::Bond>()> create_bond,
-    const int bound_to_atom_tag)
+    const AtomFunc create_atom, const std::vector<RDGeom::Point3D>& coords,
+    const BondFunc create_bond, const int bound_to_atom_tag)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* prev_atom = nullptr;
@@ -1134,9 +1329,9 @@ bool MolModel::removeAtomFromCommand(const int atom_tag)
     return selection_changed;
 }
 
-void MolModel::addBondFromCommand(
-    const int bond_tag, const int start_atom_tag, const int end_atom_tag,
-    const std::function<std::shared_ptr<RDKit::Bond>()> create_bond)
+void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
+                                  const int end_atom_tag,
+                                  const BondFunc create_bond, bool finalize)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
@@ -1151,7 +1346,9 @@ void MolModel::addBondFromCommand(
     unsigned int bond_index = m_mol.addBond(bond) - 1;
     bond = m_mol.getBondWithIdx(bond_index);
     setTagForBond(bond, bond_tag);
-    finalizeMoleculeChange();
+    if (finalize) {
+        finalizeMoleculeChange();
+    }
 }
 
 bool MolModel::removeBondFromCommand(const int bond_tag,
@@ -1223,7 +1420,8 @@ void MolModel::removeFromCommand(
 
 void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
                                  const std::vector<int>& atom_tags,
-                                 const std::vector<int>& bond_tags)
+                                 const std::vector<int>& bond_tags,
+                                 const bool finalize)
 {
     Q_ASSERT(m_in_command);
     // get the starting index for the atoms and bonds to be inserted
@@ -1248,12 +1446,14 @@ void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
     if (attachment_point_added) {
         renumber_attachment_points(&m_mol);
     }
-    finalizeMoleculeChange();
+    if (finalize) {
+        finalizeMoleculeChange();
+    }
 }
 
-void MolModel::mutateAtomFromCommand(
-    const int atom_tag,
-    const std::function<std::shared_ptr<RDKit::Atom>()> create_atom)
+void MolModel::mutateAtomFromCommand(const int atom_tag,
+                                     const AtomFunc create_atom,
+                                     const bool finalize)
 {
     Q_ASSERT(m_in_command);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
@@ -1266,12 +1466,14 @@ void MolModel::mutateAtomFromCommand(
     // (unless we passed preserveProbs = true, but that overwrites the
     // R-group property)
     mutated_atom->setProp(TAG_PROPERTY, atom_tag);
-    finalizeMoleculeChange();
+    if (finalize) {
+        finalizeMoleculeChange();
+    }
 }
 
-void MolModel::mutateBondFromCommand(
-    const int bond_tag,
-    const std::function<std::shared_ptr<RDKit::Bond>()> create_bond)
+void MolModel::mutateBondFromCommand(const int bond_tag,
+                                     const BondFunc create_bond,
+                                     const bool finalize)
 {
     Q_ASSERT(m_in_command);
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
@@ -1283,7 +1485,9 @@ void MolModel::mutateBondFromCommand(
     // The bookmark is automatically updated, but we have to manually copy
     // the bond tag property
     mutated_bond->setProp(TAG_PROPERTY, bond_tag);
-    finalizeMoleculeChange();
+    if (finalize) {
+        finalizeMoleculeChange();
+    }
 }
 void MolModel::setAtomChargeFromCommand(const int atom_tag, const int charge)
 {
