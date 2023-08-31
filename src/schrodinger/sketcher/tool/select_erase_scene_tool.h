@@ -58,8 +58,6 @@ template <typename T> class SKETCHER_API SelectSceneTool
     virtual void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
 
     virtual void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    virtual void
-    onMouseDoubleClick(QGraphicsSceneMouseEvent* const event) override;
 
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
 
@@ -125,7 +123,6 @@ class SKETCHER_API EraseSceneTool : public RectSelectSceneTool
 {
   public:
     EraseSceneTool(Scene* scene, MolModel* mol_model);
-    void onMouseDoubleClick(QGraphicsSceneMouseEvent* const event) override;
 
   protected:
     void onSelectionMade(const QList<QGraphicsItem*>& items,

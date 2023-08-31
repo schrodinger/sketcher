@@ -4,7 +4,6 @@
 #include <QList>
 
 #include <GraphMol/ROMol.h>
-#include <GraphMol/MolOps.h>
 
 #include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/model/mol_model.h"
@@ -14,7 +13,6 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
 
 namespace schrodinger
 {
@@ -78,36 +76,6 @@ void SelectSceneTool<T>::onMouseClick(QGraphicsSceneMouseEvent* const event)
     } else {
         onSelectionMade({}, event);
     }
-}
-
-template <typename T> void
-SelectSceneTool<T>::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
-{
-    SceneToolWithPredictiveHighlighting::onMouseDoubleClick(event);
-    QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
-        event->scenePos(), InteractiveItemFlag::MOLECULAR);
-    if (item == nullptr) {
-        // double click was on empty space, so we don't do anything
-        return;
-    }
-
-    // double click was on the molecule, so select all connected atoms and bonds
-    const RDKit::Atom* atom;
-    if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-        atom = atom_item->getAtom();
-    } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
-        atom = bond_item->getBond()->getBeginAtom();
-    }
-    auto [atoms_to_select, bonds_to_select] =
-        get_connected_atoms_and_bonds(atom);
-    auto select_mode = getSelectMode(event);
-    if (select_mode == SelectMode::TOGGLE) {
-        // Toggle behaves strangely because the first click gets processed
-        // separately and selects the atom or bond, so we just treat a
-        // Ctrl-click as a regular click here
-        select_mode = SelectMode::SELECT_ONLY;
-    }
-    m_mol_model->select(atoms_to_select, bonds_to_select, {}, select_mode);
 }
 
 template <typename T>
@@ -225,11 +193,5 @@ void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
         getModelObjectsForGraphicsItems(items);
     m_mol_model->remove(atoms, bonds, non_molecular_objects);
 }
-
-void EraseSceneTool::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
-{
-    // disable the select tool double-click behavior
-}
-
 } // namespace sketcher
 } // namespace schrodinger
