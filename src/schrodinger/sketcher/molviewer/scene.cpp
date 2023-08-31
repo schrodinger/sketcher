@@ -376,6 +376,14 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
+    if (m_is_during_double_click) {
+        // This event is the mouse release for the second click of a double
+        // click, so we never got a corresponding mousePressEvent (since it was
+        // a mouseDoubleClickEvent instead) and we've already handled the
+        // double-click (in mouseDoubleClickEvent).
+        m_is_during_double_click = false;
+        return;
+    }
     auto scene_tool = getSceneTool(event);
     if (m_drag_started) {
         scene_tool->onDragRelease(event);
@@ -390,7 +398,8 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 
 void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    // TODO: select clicked molecule
+    m_is_during_double_click = true;
+    m_left_button_scene_tool->onMouseDoubleClick(event);
 }
 
 void Scene::onMouseLeave()

@@ -88,6 +88,11 @@ class SKETCHER_API AbstractSceneTool
     virtual void onMouseClick(QGraphicsSceneMouseEvent* const event);
 
     /**
+     * Called when the user double clicks the left mouse button.
+     */
+    virtual void onMouseDoubleClick(QGraphicsSceneMouseEvent* const event);
+
+    /**
      * @return all graphics items that should be added to the scene while this
      * tool is active (e.g. predictive highlighting, marquee selection outline).
      * These graphics items will be removed from the Scene when the user changes
