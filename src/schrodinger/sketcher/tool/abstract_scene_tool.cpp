@@ -52,6 +52,11 @@ void AbstractSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
 {
 }
 
+void AbstractSceneTool::onMouseDoubleClick(
+    QGraphicsSceneMouseEvent* const event)
+{
+}
+
 std::vector<QGraphicsItem*> AbstractSceneTool::getGraphicsItems()
 {
     return {};

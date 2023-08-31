@@ -262,6 +262,7 @@ class SKETCHER_API Scene : public QGraphicsScene
     std::shared_ptr<AbstractSceneTool> m_right_button_scene_tool;
 
     bool m_drag_started = false;
+    bool m_is_during_double_click = false;
 
     BackgroundContextMenu* m_background_context_menu;
 
