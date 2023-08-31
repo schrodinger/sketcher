@@ -16,6 +16,7 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 
 namespace schrodinger
 {
@@ -124,6 +125,7 @@ std::vector<QGraphicsItem*> DrawFragmentSceneTool::getGraphicsItems()
 
 void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
+    AbstractSceneTool::onMouseMove(event);
     if (m_mouse_pressed) {
         // drag actions are handled in onDragMove
         return;
@@ -136,17 +138,37 @@ void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 
 void DrawFragmentSceneTool::onMouseLeave()
 {
+    AbstractSceneTool::onMouseLeave();
     m_hint_item.hide();
 }
 
 void DrawFragmentSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
 {
-    m_hint_item.hide();
+    AbstractSceneTool::onMouseClick(event);
     auto [new_conf, overlay_atom] =
         getFragConfAndCoreAtomForScenePos(event->scenePos());
-    auto frag_copy = RDKit::ROMol(m_frag);
-    frag_copy.getConformer() = new_conf;
-    m_mol_model->addFragment(frag_copy, overlay_atom);
+    addFragToModel(new_conf, overlay_atom);
+}
+
+void DrawFragmentSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
+{
+    AbstractSceneTool::onDragMove(event);
+    auto maybe_conf = getConformerForDragToScenePos(event->scenePos());
+    if (maybe_conf.has_value()) {
+        // we only perform a drag action if the mouse press was over empty space
+        m_hint_item.updateConformer(*maybe_conf);
+    }
+    m_hint_item.setVisible(maybe_conf.has_value());
+}
+
+void DrawFragmentSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
+{
+    AbstractSceneTool::onDragRelease(event);
+    auto maybe_conf = getConformerForDragToScenePos(event->scenePos());
+    if (maybe_conf.has_value()) {
+        // we only perform a drag action if the mouse press was over empty space
+        addFragToModel(*maybe_conf);
+    }
 }
 
 std::pair<RDKit::Conformer, const RDKit::Atom*>
@@ -172,6 +194,47 @@ DrawFragmentSceneTool::getFragConfAndCoreAtomForScenePos(
     auto mol_pos = to_mol_xy(scene_pos);
     auto new_conf = translate_fragment(m_frag, mol_pos);
     return {new_conf, nullptr};
+}
+
+std::optional<RDKit::Conformer>
+DrawFragmentSceneTool::getConformerForDragToScenePos(
+    const QPointF& scene_pos) const
+{
+    std::optional<RDKit::Conformer> maybe_conf;
+    auto* item = m_scene->getTopInteractiveItemAt(
+        m_mouse_press_scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
+    if (item == nullptr) {
+        // the drag was started from empty space, so we rotate the conformer
+        auto mouse_press_mol_pos = to_mol_xy(m_mouse_press_scene_pos);
+        // first, translate the conformer to where it was when the drag started
+        maybe_conf = translate_fragment(m_frag, mouse_press_mol_pos);
+
+        // find the centroid of the fragment, but ignore the attachment point,
+        // which isn't being painted
+        auto all_atoms = m_frag.atoms();
+        std::unordered_set<const RDKit::Atom*> all_atoms_except_ap;
+        std::copy_if(
+            all_atoms.begin(), all_atoms.end(),
+            std::inserter(all_atoms_except_ap, all_atoms_except_ap.end()),
+            std::not_fn(is_attachment_point));
+        auto centroid = find_centroid(*maybe_conf, all_atoms_except_ap);
+
+        // determine the angle of the mouse cursor relative to the fragment
+        // centroid, *not* where the drag started
+        auto scene_centroid = to_scene_xy(centroid);
+        auto new_angle = get_rounded_angle_radians(scene_centroid, scene_pos);
+        rotate_conformer_radians(new_angle, centroid, *maybe_conf);
+    }
+    return maybe_conf;
+}
+
+void DrawFragmentSceneTool::addFragToModel(
+    const RDKit::Conformer& conf, const RDKit::Atom* const overlay_atom)
+{
+    m_hint_item.hide();
+    auto frag_copy = RDKit::ROMol(m_frag);
+    frag_copy.getConformer() = conf;
+    m_mol_model->addFragment(frag_copy, overlay_atom);
 }
 
 } // namespace sketcher

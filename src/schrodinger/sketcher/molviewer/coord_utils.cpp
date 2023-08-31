@@ -160,14 +160,23 @@ RDGeom::Point3D find_centroid(
     const RDKit::ROMol& mol,
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+
+{
+    return find_centroid(mol.getConformer(), atoms, non_molecular_objects);
+}
+
+RDGeom::Point3D find_centroid(
+    const RDKit::Conformer& conf,
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
     std::vector<RDGeom::Point3D> positions;
     if (atoms.empty() && non_molecular_objects.empty()) {
-        positions = mol.getConformer().getPositions();
+        positions = conf.getPositions();
     } else {
         positions.reserve(atoms.size() + non_molecular_objects.size());
         for (const auto& atom : atoms) {
-            positions.push_back(mol.getConformer().getAtomPos(atom->getIdx()));
+            positions.push_back(conf.getAtomPos(atom->getIdx()));
         }
         for (const auto* non_mol_obj : non_molecular_objects) {
             positions.push_back(non_mol_obj->getCoords());
@@ -292,6 +301,14 @@ bool are_points_on_same_side_of_line(const QPointF& point1,
 
     // the sign of d1 and d2 tell which side of the line they're on
     return std::signbit(d1) == std::signbit(d2);
+}
+
+qreal get_rounded_angle_radians(const QPointF& start, const QPointF& end)
+{
+    qreal angle = QLineF(start, end).angle();
+    angle = qDegreesToRadians(angle);
+    int rounded = std::round(angle * 6.0 / M_PI);
+    return rounded / 6.0 * M_PI;
 }
 
 } // namespace sketcher

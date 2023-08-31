@@ -86,15 +86,14 @@ class SKETCHER_API Scene : public QGraphicsScene
      * getInteractiveItems docstring for an explanation of "interactive" items.
      *
      * @param pos The Scene coordinates to use
-     * @param types The subset of interactive item types to return.  Defaults to
-     * returning any type interactive items.  Any item types that are not
-     * specified by this flag will be ignored.
+     * @param types The subset of interactive item types to return.  Any item
+     * types that are not specified by this flag will be ignored.
      * @return the top interactive graphics item of the requested type(s) at the
      * given position, or nullptr if none is found
      */
-    AbstractGraphicsItem* getTopInteractiveItemAt(
-        const QPointF& pos,
-        const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
+    AbstractGraphicsItem*
+    getTopInteractiveItemAt(const QPointF& pos,
+                            const InteractiveItemFlagType types) const;
 
     /**
      * Make sure that the returned list includes graphics items for both an

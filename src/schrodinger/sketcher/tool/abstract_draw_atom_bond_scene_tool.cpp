@@ -215,10 +215,7 @@ AbstractDrawSceneTool::getBondEndInMousedDirection(
 QPointF AbstractDrawSceneTool::getDefaultBondOffsetInMousedDirection(
     const QPointF& start, const QPointF& mouse_pos) const
 {
-    qreal angle = QLineF(start, mouse_pos).angle();
-    angle = qDegreesToRadians(angle);
-    int rounded = std::round(angle * 6.0 / M_PI);
-    qreal new_angle = rounded / 6.0 * M_PI;
+    qreal new_angle = get_rounded_angle_radians(start, mouse_pos);
     return QPointF(VIEW_SCALE * qCos(new_angle), -VIEW_SCALE * qSin(new_angle));
 }
 

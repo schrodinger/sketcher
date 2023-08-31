@@ -159,10 +159,23 @@ find_centroid(const RDKit::ROMol& mol,
                   non_molecular_objects = {});
 
 /**
+ * An overload of find_centroid that takes a conformer in place of a molecule
+ *
+ * @overload
+ */
+SKETCHER_API RDGeom::Point3D
+find_centroid(const RDKit::Conformer& conf,
+              const std::unordered_set<const RDKit::Atom*>& atoms = {},
+              const std::unordered_set<const NonMolecularObject*>&
+                  non_molecular_objects = {});
+
+/**
  * @return the centroid of a set of all atoms in a molecule plus additional
  * non-molecular objects.
  * @param mol the molecule to compute the centroid for
  * @param non_molecular_objects the non-molecular objects
+ *
+ * @overload
  */
 SKETCHER_API RDGeom::Point3D find_centroid(
     const RDKit::ROMol& mol,
@@ -209,6 +222,13 @@ are_points_on_same_side_of_line(const RDGeom::Point3D& point1,
 SKETCHER_API bool are_points_on_same_side_of_line(const QPointF& point1,
                                                   const QPointF& point2,
                                                   const QPointF& line_endpoint);
+
+/**
+ * @return the angle in radians of a line from start to end, rounded to the
+ * nearest pi/6 (30 degree) increment.
+ */
+SKETCHER_API qreal get_rounded_angle_radians(const QPointF& start,
+                                             const QPointF& end);
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -92,6 +93,8 @@ class SKETCHER_API DrawFragmentSceneTool : public AbstractSceneTool
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onMouseLeave() override;
     void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
+    void onDragMove(QGraphicsSceneMouseEvent* const event) override;
+    void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
 
   protected:
     RDKit::ROMol m_frag;
@@ -109,6 +112,29 @@ class SKETCHER_API DrawFragmentSceneTool : public AbstractSceneTool
      */
     std::pair<RDKit::Conformer, const RDKit::Atom*>
     getFragConfAndCoreAtomForScenePos(const QPointF& scene_pos) const;
+
+    /**
+     * Determine the appropriate fragment conformer for a click-and-drag to the
+     * given set of Scene coordinates.  The start of the drag is taken from
+     * m_mouse_press_scene_pos.
+     * @param scene_pos The Scene coordinates
+     * @return The fragment conformer if the drag was started over empty space.
+     * nullopt otherwise.
+     */
+    std::optional<RDKit::Conformer>
+    getConformerForDragToScenePos(const QPointF& scene_pos) const;
+
+    /**
+     * Add the fragment to MolModel using the given conformer.  Also hide the
+     * fragment hint, as it will overlay the newly added fragment itself.
+     * @param conf The fragment conformer
+     * @param overlay_atom The atom that the mouse cursor was over (or bond
+     * starting atom if the cursor was over a bond).  This will be used to
+     * determine which fragment atoms should replace core atoms.  Should be
+     * nullptr if the cursor was not over the molecule.
+     */
+    void addFragToModel(const RDKit::Conformer& conf,
+                        const RDKit::Atom* const overlay_atom = nullptr);
 };
 
 /**

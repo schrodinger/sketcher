@@ -403,7 +403,8 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
     // Collect the set of items that the context menu should interact with
     // based on the position of the cursor
     std::unordered_set<QGraphicsItem*> context_menu_objects;
-    auto top_item = getTopInteractiveItemAt(event->pos());
+    auto top_item =
+        getTopInteractiveItemAt(event->pos(), InteractiveItemFlag::ALL);
     if (top_item != nullptr) {
         if (top_item->isSelected()) {
             // If the cursor is over a selected object, the context menu
