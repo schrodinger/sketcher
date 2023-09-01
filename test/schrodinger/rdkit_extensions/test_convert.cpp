@@ -17,7 +17,7 @@
 
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
-#include <GraphMol/CoordGen.h>
+#include <GraphMol/Depictor/RDDepictor.h>
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/GraphMol.h>
 #include <GraphMol/QueryAtom.h>
@@ -668,43 +668,43 @@ BOOST_AUTO_TEST_CASE(test_XYZ_export)
     // No conformers
     BOOST_REQUIRE_THROW(to_string(*mol, Format::XYZ), std::invalid_argument);
 
-    RDKit::CoordGen::addCoords(*mol);
+    RDDepict::compute2DCoords(*mol);
     auto reference = R"XYZ(2
 charge=1
-C     -0.500000    0.000000    0.000000
-N      0.500000    0.000000    0.000000
+C      0.000000    0.000000    0.000000
+N      1.299038    0.750000    0.000000
 )XYZ";
     BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
     mol->setProp(RDKit::common_properties::_Name, "C[NH3+]");
     reference = R"XYZ(2
 C[NH3+]; charge=1
-C     -0.500000    0.000000    0.000000
-N      0.500000    0.000000    0.000000
+C      0.000000    0.000000    0.000000
+N      1.299038    0.750000    0.000000
 )XYZ";
     BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
 
     mol = to_rdkit("CC(=O)[O-]");
-    RDKit::CoordGen::addCoords(*mol);
+    RDDepict::compute2DCoords(*mol);
     reference = R"XYZ(4
 charge=-1
-C     -0.867800   -0.496850    0.000000
-C      0.000000   -0.000050    0.000000
-O      0.003600    0.999950    0.000000
-O      0.864200   -0.503050    0.000000
+C      0.000000    0.000000    0.000000
+C      1.299038    0.750000    0.000000
+O      2.598076   -0.000000    0.000000
+O      1.299038    2.250000    0.000000
 )XYZ";
     BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
     mol->setProp(RDKit::common_properties::_Name, "CC(=O)[O-]");
     reference = R"XYZ(4
 CC(=O)[O-]; charge=-1
-C     -0.867800   -0.496850    0.000000
-C      0.000000   -0.000050    0.000000
-O      0.003600    0.999950    0.000000
-O      0.864200   -0.503050    0.000000
+C      0.000000    0.000000    0.000000
+C      1.299038    0.750000    0.000000
+O      2.598076   -0.000000    0.000000
+O      1.299038    2.250000    0.000000
 )XYZ";
     BOOST_TEST(to_string(*mol, Format::XYZ) == reference);
 
     mol = to_rdkit("O");
-    RDKit::CoordGen::addCoords(*mol);
+    RDDepict::compute2DCoords(*mol);
     mol->setProp("i_m_Spin_multiplicity", 2);
     reference = R"XYZ(1
 multiplicity=2

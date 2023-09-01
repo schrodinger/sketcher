@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
     auto empty_space_position = central_atom->findPositionInEmptySpace(false);
 
     for (const auto& pos : {first_atom_position, second_atom_position}) {
-        BOOST_TEST(QLineF(pos, empty_space_position).length() == 72.6);
+        BOOST_TEST(QLineF(pos, empty_space_position).length() == 59.5);
     }
 }
 
@@ -184,10 +184,10 @@ BOOST_AUTO_TEST_CASE(test_findHsDirection, *boost::unit_test::tolerance(0.01))
     BOOST_TEST(oxygen_atom_item->findHsDirection() == HsDirection::LEFT);
 
     auto [atom_items, scene3] = createAtomItems("NNNN");
-    BOOST_TEST(atom_items.at(0)->findHsDirection() == HsDirection::RIGHT);
-    BOOST_TEST(atom_items.at(1)->findHsDirection() == HsDirection::DOWN);
-    BOOST_TEST(atom_items.at(2)->findHsDirection() == HsDirection::UP);
-    BOOST_TEST(atom_items.at(3)->findHsDirection() == HsDirection::LEFT);
+    BOOST_TEST(atom_items.at(0)->findHsDirection() == HsDirection::LEFT);
+    BOOST_TEST(atom_items.at(1)->findHsDirection() == HsDirection::UP);
+    BOOST_TEST(atom_items.at(2)->findHsDirection() == HsDirection::DOWN);
+    BOOST_TEST(atom_items.at(3)->findHsDirection() == HsDirection::RIGHT);
 }
 
 BOOST_AUTO_TEST_CASE(test_chirality_label)
