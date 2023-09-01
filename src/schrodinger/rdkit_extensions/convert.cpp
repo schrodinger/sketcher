@@ -429,8 +429,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
             break;
 
         case Format::HELM: {
-            auto romol = helm::helm_to_rdkit(text).release();
-            mol.reset(new ::RDKit::RWMol(std::move(*romol)));
+            mol = helm::helm_to_rdkit(text);
             break;
         }
         default:

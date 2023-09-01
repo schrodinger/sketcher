@@ -10,7 +10,6 @@
 #include <string>
 #include <vector>
 
-#include <GraphMol/ROMol.h>
 #include <GraphMol/RWMol.h>
 #include <GraphMol/Atom.h>
 #include <GraphMol/QueryAtom.h>
@@ -84,15 +83,15 @@ template <class PropType, class RDKitObject> PropType get_property
 
 } // namespace
 
-[[nodiscard]] std::unique_ptr<::RDKit::ROMol>
+[[nodiscard]] std::unique_ptr<::RDKit::RWMol>
 helm_to_rdkit(const std::string& helm_string)
 {
     const auto parsed_info = helm::HelmParser(helm_string).parse();
 
-    ::RDKit::RWMol mol;
+    std::unique_ptr<::RDKit::RWMol> mol(new ::RDKit::RWMol);
     const auto polymers = create_helm_polymers(parsed_info.polymers);
     std::for_each(polymers.begin(), polymers.end(),
-                  [&](const auto& polymer) { mol.insertMol(polymer); });
+                  [&](const auto& polymer) { mol->insertMol(polymer); });
 
     // TODO: Keep track of unused rgroups
     std::vector<::RDKit::SubstanceGroup> polymer_sgroups;
@@ -106,23 +105,16 @@ helm_to_rdkit(const std::string& helm_string)
                 });
         });
 
-    add_helm_connections(mol, parsed_info.connections, polymer_sgroups);
+    add_helm_connections(*mol, parsed_info.connections, polymer_sgroups);
 
     // Do this here since atom and bond addition will clear the sgroups
-    add_polymer_sgroups_to_mol(mol, polymers);
+    add_polymer_sgroups_to_mol(*mol, polymers);
     add_polymer_groups_and_extended_annotations(
-        mol, parsed_info.polymer_groups, parsed_info.extended_annotations);
+        *mol, parsed_info.polymer_groups, parsed_info.extended_annotations);
 
     // store this as an easy way to identify coarse-grain mols
-    mol.setProp<bool>(HELM_MODEL, true);
-
-    // NOTE: do this since RDKit doesn't update the sgroup owning mols
-    // for some reason
-    auto output = std::make_unique<::RDKit::ROMol>(std::move(mol));
-    for (auto& sgroup : ::RDKit::getSubstanceGroups(*output)) {
-        sgroup.setOwningMol(output.get());
-    }
-    return output;
+    mol->setProp<bool>(HELM_MODEL, true);
+    return mol;
 }
 
 namespace

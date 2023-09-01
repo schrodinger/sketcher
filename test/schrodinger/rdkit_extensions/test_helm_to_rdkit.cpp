@@ -10,6 +10,8 @@
 #include <GraphMol/AtomIterators.h>
 #include <GraphMol/BondIterators.h>
 #include <GraphMol/MonomerInfo.h>
+#include <GraphMol/ROMol.h>
+#include <GraphMol/RWMol.h>
 #include <GraphMol/SubstanceGroup.h>
 
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
@@ -23,6 +25,10 @@ static auto get_atom_label = [](const auto& atom) {
         return atom->template getProp<std::string>(MONOMER_LIST);
     }
     return atom->template getProp<std::string>(ATOM_LABEL);
+};
+
+static auto get_sgroups_from_rwmol = [](const auto& rwmol) {
+    return ::RDKit::getSubstanceGroups(rwmol);
 };
 
 /*
@@ -277,7 +283,7 @@ BOOST_DATA_TEST_CASE(TestMonomerRepetitions,
     BOOST_TEST(mol->getNumAtoms() == num_monomers);
 
     if (repeated_monomers.find("-") != std::string::npos) {
-        const auto& sgroups = ::RDKit::getSubstanceGroups(*mol);
+        const auto& sgroups = get_sgroups_from_rwmol(*mol);
         const auto& sru_sgroup = *std::find_if(
             sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
                 return sgroup.template getProp<std::string>("TYPE") == "SRU";
@@ -305,7 +311,7 @@ BOOST_DATA_TEST_CASE(TestConnections,
 
     // check that there are inter-polymer bonds
     auto num_intra_polymer_bonds = 0;
-    for (const auto& sgroup : ::RDKit::getSubstanceGroups(*mol)) {
+    for (const auto& sgroup : get_sgroups_from_rwmol(*mol)) {
         if (sgroup.template getProp<std::string>("TYPE") != "COP") {
             continue;
         }
@@ -376,7 +382,7 @@ BOOST_DATA_TEST_CASE(TestPolymerGroups,
     // CHEM1{*}|CHEM2{*}$$G1(CHEM1:0.5,CHEM2:0.1-1.3)$$V2.0
     const auto mol =
         helm_to_rdkit("CHEM1{*}|CHEM2{*}$$" + polymer_groups + "$$V2.0");
-    auto polymer_group_sgroup = ::RDKit::getSubstanceGroups(*mol).back();
+    auto polymer_group_sgroup = get_sgroups_from_rwmol(*mol).back();
     BOOST_TEST(polymer_groups ==
                polymer_group_sgroup.template getProp<std::vector<std::string>>(
                    "DATAFIELDS")[0]);
@@ -391,7 +397,7 @@ BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
     const auto mol =
         helm_to_rdkit("PEPTIDE1{L.V.A}$$$" + annotations + "$V2.0");
 
-    auto annotation_sgroup = ::RDKit::getSubstanceGroups(*mol).back();
+    auto annotation_sgroup = get_sgroups_from_rwmol(*mol).back();
     BOOST_TEST(annotations ==
                annotation_sgroup.template getProp<std::vector<std::string>>(
                    "DATAFIELDS")[1]);

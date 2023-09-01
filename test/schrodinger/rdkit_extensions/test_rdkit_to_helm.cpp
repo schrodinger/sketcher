@@ -11,6 +11,7 @@
 
 #include <GraphMol/AtomIterators.h>
 #include <GraphMol/ROMol.h>
+#include <GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
@@ -24,6 +25,11 @@ using helm::rdkit_to_helm;
 
 namespace bdata = boost::unit_test::data;
 
+static auto get_roundtripped_helm = [](const auto& input_helm) {
+    const auto mol = helm_to_rdkit(input_helm);
+    return rdkit_to_helm(*mol);
+};
+
 // NOTE: Currently we convert input connections
 // with residue names to residue numbers, so those should be skipped
 BOOST_DATA_TEST_CASE(TestRoundtrippingValidExamples,
@@ -36,8 +42,7 @@ BOOST_DATA_TEST_CASE(TestRoundtrippingValidExamples,
         return;
     }
 
-    const auto mol = helm_to_rdkit(input_helm);
-    const auto roundtripped_helm = rdkit_to_helm(*mol);
+    const auto roundtripped_helm = get_roundtripped_helm(input_helm);
     // NOTE: Doing the check this way since some of the inputs do not have the
     // V2.0 suffix
     BOOST_TEST(boost::starts_with(roundtripped_helm, input_helm));
@@ -55,7 +60,7 @@ BOOST_DATA_TEST_CASE(TestRoundtrippingMonomerRepetitions,
                      }),
                      input_helm)
 {
-    BOOST_TEST(rdkit_to_helm(*helm_to_rdkit(input_helm)) == input_helm);
+    BOOST_TEST(get_roundtripped_helm(input_helm) == input_helm);
 }
 
 // Check that mixtures will be roundtripped
@@ -68,7 +73,7 @@ BOOST_DATA_TEST_CASE(TestRoundtrippingMonomerLists,
                      }),
                      input_helm)
 {
-    BOOST_TEST(rdkit_to_helm(*helm_to_rdkit(input_helm)) == input_helm);
+    BOOST_TEST(get_roundtripped_helm(input_helm) == input_helm);
 }
 
 // Check that polymer groups will be roundtripped
@@ -81,7 +86,7 @@ BOOST_DATA_TEST_CASE(TestRoundtrippingPolymerGroups,
                      }),
                      input_helm)
 {
-    BOOST_TEST(rdkit_to_helm(*helm_to_rdkit(input_helm)) == input_helm);
+    BOOST_TEST(get_roundtripped_helm(input_helm) == input_helm);
 }
 
 // Check that connections will be expanded
@@ -98,5 +103,5 @@ BOOST_DATA_TEST_CASE(
          }),
     input_helm, expected_helm)
 {
-    BOOST_TEST(rdkit_to_helm(*helm_to_rdkit(input_helm)) == expected_helm);
+    BOOST_TEST(get_roundtripped_helm(input_helm) == expected_helm);
 }

@@ -7,11 +7,11 @@
 
 namespace RDKit
 {
-class ROMol;
+class RWMol;
 }
 
 namespace helm
 {
-RDKIT_EXTENSIONS_API std::unique_ptr<::RDKit::ROMol> helm_to_rdkit
-    [[nodiscard]] (const std::string& helm_string);
+[[nodiscard]] RDKIT_EXTENSIONS_API std::unique_ptr<::RDKit::RWMol>
+helm_to_rdkit(const std::string& helm_string);
 }
