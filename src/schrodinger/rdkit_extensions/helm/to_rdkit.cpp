@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
+#include <boost/functional/hash.hpp>
 #include <boost/range/irange.hpp>
 #include <charconv>
 #include <fmt/format.h>
@@ -30,26 +31,28 @@
  *          * are represented as atoms
  *          * monomer ids are stored as the ATOM_LABEL property on each atom
  *          * annotations are stored as the ANNOTATION property on an annotated
- * atom
+ *            atom
  *          * repeated monomers with ambiguous repetitions are stored as SRU
- * sgroups after enumerating the minimum number of repetitions - 1. i.e. X'3-4'
- * will be converted to X.X.X'1-2'
+ *          sgroups
+ *          * NOTE: A hash of the monomer id is stored as the isotope number
+ *            for the coarse grain atom. This allow us to use RDKit substructure
+ *            search apis for coarse grain romols.
  *      * linkages:
  *          * are represented as bonds between atoms
  *          * annotations are stored as the ANNOTATION property on an annotated
- * connection
+ *            connection
  *          * the participating rgroups are stored as the LINKAGE property on
- * each bond
+ *            each bond
  *          * hydrogen bonds are depicted as zero-order bonds and other types
  *            of linkages as single bonds
  *
  *      * polymer groups and extended annotations
  *          * are store as a DAT sgroup with the SUPPLEMENTARY_INFORMATION field
- * name
+ *            name
  *          * the sgroup is a vector with two strings encoding the polymer
- * groups and extended annotations
+ *            groups and extended annotations
  *          * these are currently lumped together since there's no obvious use
- * for them other than roundtripping to a HELMV2.0 string.
+ *            for them other than roundtripping to a HELMV2.0 string.
  *
  * TODO: Add example use cases
  */
@@ -249,12 +252,19 @@ void condense_monomer_list(const std::string_view& polymer_id,
         return sru_sgroup;
     };
 
+    static auto add_substructure_search_props = [](auto* atom,
+                                                   const auto& monomer) {
+        static boost::hash<std::string_view> hasher;
+        atom->setIsotope(hasher(monomer.id));
+    };
+
     std::vector<::RDKit::SubstanceGroup> monomer_lists;
     ::RDKit::RWMol mol;
     int residue_number = 1;
     int prev_backbone_idx = -1;
     for (const auto& monomer : polymer.monomers) {
         auto atom = create_helm_monomer(polymer.id, monomer, residue_number);
+        add_substructure_search_props(atom.get(), monomer);
         auto idx = mol.addAtom(atom.release(), true, true);
         if (prev_backbone_idx != -1) {
             idx = mol.addBond(prev_backbone_idx, idx,
