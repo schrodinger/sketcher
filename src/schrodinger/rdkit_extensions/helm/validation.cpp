@@ -16,33 +16,50 @@ namespace helm
 {
 namespace
 {
-[[nodiscard]] bool validate_smiles(const std::string_view monomer_smiles)
+[[nodiscard]] bool validate_smiles(const std::string_view& monomer_smiles,
+                                   const size_t residue_number,
+                                   const size_t num_monomers)
 {
-    static std::regex modern_rgroup_pattern(R"(\[\*\:([1-9][0-9]*)\])");
+    // NOTE: Types of Rgroups in smiles, [OH:1], [*:1]
+    static std::regex modern_rgroup_pattern(R"(\[\w*\*?\:([1-9][0-9]*)\])");
     static std::regex cxxsmiles_rgroup_pattern(R"(_?R([1-9][0-9]*))");
 
-    static auto check_smiles = [](const std::string_view monomer_smiles,
-                                  const std::regex& rgroup_pattern) {
+    // Make sure we inline smiles have the attachment points needed to
+    // for the right bonds
+    auto check_smiles = [&](const std::regex& rgroup_pattern) {
         std::string smiles{monomer_smiles.begin(), monomer_smiles.end()};
         std::sregex_token_iterator matches(smiles.begin(), smiles.end(),
                                            rgroup_pattern, 1);
-        std::vector<int> rgroup_ids;
+
+        std::unordered_set<unsigned int> rgroup_ids;
         std::transform(matches, std::sregex_token_iterator(),
-                       std::back_inserter(rgroup_ids),
+                       std::inserter(rgroup_ids, rgroup_ids.end()),
                        [](const auto& id) { return std::stoi(id.str()); });
 
-        // Make sure we inline smiles have at least one attachment and that
-        // N attachment points are numbered 1-N
-        std::sort(rgroup_ids.begin(), rgroup_ids.end());
-        return rgroup_ids.size() &&
-               std::all_of(rgroup_ids.begin(), rgroup_ids.end(),
-                           [i = 0](const auto& rgroup_id) mutable {
-                               return rgroup_id == ++i;
-                           });
+        // If this is the only residue in the polymer, we don't need to look for
+        // rgroups now
+        if (residue_number == 1 && num_monomers == 1) {
+            return true;
+        }
+        // Anything else should have rgroups
+        if (!rgroup_ids.size()) {
+            return false;
+        }
+        // We need R1 to form the bond to previous atom. i.e. backbone bond
+        // would be R2-R1 and branch bond would be R3-R1
+        if (residue_number > 1 && !rgroup_ids.count(1)) {
+            return false;
+        }
+        // We need either or both of R2 and R3 to form the next bond
+        if (residue_number < num_monomers &&
+            !(rgroup_ids.count(2) || rgroup_ids.count(3))) {
+            return false;
+        }
+        return true;
     };
 
-    return check_smiles(monomer_smiles, modern_rgroup_pattern) ||
-           check_smiles(monomer_smiles, cxxsmiles_rgroup_pattern);
+    return check_smiles(modern_rgroup_pattern) ||
+           check_smiles(cxxsmiles_rgroup_pattern);
 }
 
 void validate_polymer(const polymer& polymer,
@@ -54,11 +71,14 @@ void validate_polymer(const polymer& polymer,
                          fmt::format("Duplicate polymer id: '{}'", polymer.id));
     }
 
+    const auto num_monomers = polymer.monomers.size();
+    auto i = 0;
     for (const auto& monomer : polymer.monomers) {
-        if (monomer.is_smiles && !validate_smiles(monomer.id)) {
-            parser.saveError(
-                monomer.id,
-                "The inline smiles has missing or non-sequential rgroups.");
+        ++i;
+        if (monomer.is_smiles &&
+            !validate_smiles(monomer.id, i, num_monomers)) {
+            parser.saveError(monomer.id,
+                             "The inline smiles has missing rgroups.");
         } else if (monomer.id == "_") {
             parser.saveError(monomer.id,
                              "Missing monomers are currently unsupported.");
@@ -100,6 +120,22 @@ void validate_connection(
         }
     };
 
+    static auto validate_hydrogen_pairings = [](const auto& connection,
+                                                auto& parser) {
+        if (connection.from_rgroup == "pair" &&
+            connection.to_rgroup == "pair") {
+            return;
+        }
+
+        if (connection.from_rgroup == "pair" ||
+            connection.to_rgroup == "pair") {
+            parser.saveError(
+                connection.from_id,
+                "Connections for hydrogen pairings must have 'pair' as the "
+                "attachment point for both monomers.");
+        }
+    };
+
     static auto validate_connection_info = [](const auto& polymer_ids,
                                               const auto& polymer_id,
                                               const auto& monomer_id,
@@ -120,11 +156,12 @@ void validate_connection(
             parser.saveError(rgroup, "Ambiguous bonds to non-blob polymers are "
                                      "currently unsupported");
         } else if (monomer_id.find_first_of(",+") != std::string_view::npos) {
-            parser.saveError(
-                polymer_id,
-                "Multiple monomers in connections are currently unsupported");
+            parser.saveError(polymer_id, "Multiple monomers in connections are "
+                                         "currently unsupported");
         }
     };
+
+    validate_hydrogen_pairings(connection, parser);
 
     validate_connection_info(polymer_ids, connection.from_id,
                              connection.from_res, connection.from_rgroup,

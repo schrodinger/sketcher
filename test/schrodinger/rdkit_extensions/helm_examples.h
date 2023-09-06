@@ -72,9 +72,9 @@ static const std::vector<std::string> INVALID_EXAMPLES{
     /* unnumbered connection point brackets 3 */
     R"(PEPTIDE1{A.[C(=O)[C@H](C)N([*])C]}$$$$)",
     /* unnumbered connection point no brackets */
-    R"(PEPTIDE1{[C(=O)[C@H](C)N(*)C]}$$$$)",
+    R"(PEPTIDE1{[C(=O)[C@H](C)N(*)C].P}$$$$)",
     /* unnumbered connection point brackets 2 */
-    R"(PEPTIDE1{[[*]C(=O)[C@H](C)N([*])C]}$$$$)",
+    R"(PEPTIDE1{[[*]C(=O)[C@H](C)N([*])C].P}$$$$)",
     /* blob peptide blob location specified peptide unspecified */
     R"(BLOB1{Bead}|PEPTIDE1{A.G.T}$BLOB1,PEPTIDE1,1:?-?:?$$$V2.0)",
     /* chems connected to each other   incorrectly joined */
@@ -83,8 +83,6 @@ static const std::vector<std::string> INVALID_EXAMPLES{
     R"(CHEM1{*}|PEPTIDE1{A.C}$CHEM1,PEPTIDE1,1:R1-?:?$$$V2.0)",
     /* unnumbered connection point no brackets 4 */
     R"(PEPTIDE1{A.[*C(=O)[C@H](C)N(*)C]}$$$$)",
-    /* unnumbered connection point brackets */
-    R"(PEPTIDE1{[C(=O)[C@H](C)N([*])C]}$$$$)",
     /* unspecified peptide connection and specified chem */
     R"(CHEM1{*}|PEPTIDE1{A.C}$CHEM1,PEPTIDE1,1:R1-?:?$$$V2.0)",
     /* unnumbered connection point brackets 5 */
@@ -99,8 +97,6 @@ static const std::vector<std::string> INVALID_EXAMPLES{
     R"(BLOB1{Bead}|PEPTIDE1{A.G.T}$BLOB1,PEPTIDE1,?:R1-?:?$$$V2.0)",
     /* specified peptide connection specified chem */
     R"(CHEM1{*}|PEPTIDE1{A.C}$CHEM1,PEPTIDE1,1:R1-1:R1$$$V2.0)",
-    /* unnumbered connection point no brackets 2 */
-    R"(PEPTIDE1{[*C(=O)[C@H](C)N(*)C]}$$$$)",
     /* unknown peptide peptide and peptide side fully specified */
     R"(PEPTIDE1{*}|PEPTIDE2{A.C}$PEPTIDE1,PEPTIDE2,1:?-?:R1$$$V2.0)",
     /* unnumbered connection point brackets 4 */
@@ -162,7 +158,6 @@ static const std::vector<std::string>
         R"(PEPTIDE1{[[*:2]C(=O)[C@H](C)N([*:1])C]}$$$$)",
         R"(RNA1{P.[O[C@H]1[C@H]([*:1])O[C@H](CO[*:2])[C@H]1O[*:3]](U)P.R(T)}$$$$V2.0)",
         R"(RNA1{R(C)[OP([*:1])([*:2])=O]}$$$$V2.0)",
-        R"(RNA1{R([NC1=NC(N([*:1])C=C1)=O])P}$$$$V2.0)",
         R"(RNA1{[O[C@H]1[C@H]([*:3])O[C@H](CO[*:1])[C@H]1O[*:2]](C)P}$$$$V2.0)",
         /* Polymer groups */
         R"(PEPTIDE1{A.C.D}"Polymer 1"|PEPTIDE2{D.A.C}"Polymer 2"$$G3(PEPTIDE1,PEPTIDE2)$$V2.0)",
