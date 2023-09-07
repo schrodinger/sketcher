@@ -18,6 +18,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
@@ -417,7 +418,7 @@ void MolModel::addRGroupChain(const std::vector<unsigned int> r_group_nums,
                  bound_to_atom_tag]() {
         auto r_group_iter = r_group_nums.cbegin();
         auto create_atom = [&r_group_iter]() {
-            return make_new_r_group(*r_group_iter++);
+            return rdkit_extensions::make_new_r_group(*r_group_iter++);
         };
         auto create_bond = make_new_single_bond;
         addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
@@ -793,7 +794,8 @@ void MolModel::mutateRGroup(const RDKit::Atom* const atom,
 {
     int atom_tag = getTagForAtom(atom);
     auto redo = [this, atom_tag, r_group_num]() {
-        auto create_atom = std::bind(make_new_r_group, r_group_num);
+        auto create_atom =
+            std::bind(rdkit_extensions::make_new_r_group, r_group_num);
         mutateAtomFromCommand(atom_tag, create_atom);
     };
     doCommandWithMolUndo(redo, "Mutate atom");

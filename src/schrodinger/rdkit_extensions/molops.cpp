@@ -232,6 +232,5 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
         bond->setBondType(RDKit::Bond::SINGLE);
     }
 }
-
 } // namespace rdkit_extensions
 } // namespace schrodinger

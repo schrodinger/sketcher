@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
+#include <optional>
 #include <unordered_set>
 #include <memory>
 #include <string>
@@ -13,6 +14,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -29,6 +31,12 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularType);
 
 namespace utf = boost::unit_test;
 namespace tt = boost::test_tools;
+
+using r_group_num_t = std::optional<unsigned int>;
+static auto no_r_group_num = std::nullopt;
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(r_group_num_t);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(decltype(no_r_group_num));
 
 namespace schrodinger
 {
@@ -362,6 +370,8 @@ BOOST_AUTO_TEST_CASE(test_addAtom_query)
     BOOST_TEST(mol->getNumBonds() == 2);
 }
 
+using schrodinger::rdkit_extensions::get_r_group_number;
+
 BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
 {
     QUndoStack undo_stack;
@@ -464,7 +474,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     const auto* c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(!is_r_group(c_atom));
     BOOST_TEST(!is_attachment_point(c_atom));
-    BOOST_TEST(get_r_group_number(c_atom) == 0);
+    BOOST_TEST(get_r_group_number(c_atom) == no_r_group_num);
     BOOST_TEST(get_next_attachment_point_number(mol) == 1);
 
     model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
@@ -475,7 +485,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(is_attachment_point(attachment_atom));
     BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
     BOOST_TEST(!is_r_group(attachment_atom));
-    BOOST_TEST(get_r_group_number(attachment_atom) == 0);
+    BOOST_TEST(get_r_group_number(attachment_atom) == no_r_group_num);
     BOOST_TEST(get_all_r_group_numbers(mol).empty());
     BOOST_TEST(get_next_r_group_numbers(mol, 1) ==
                std::vector<unsigned int>({1}));
@@ -486,7 +496,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(attachment_atom2->getAtomicNum() == 0);
     BOOST_TEST(is_attachment_point(attachment_atom2));
     BOOST_TEST(get_attachment_point_number(attachment_atom2) == 2);
-    BOOST_TEST(get_r_group_number(attachment_atom2) == 0);
+    BOOST_TEST(get_r_group_number(attachment_atom2) == no_r_group_num);
     BOOST_TEST(get_next_attachment_point_number(mol) == 3);
 
     model.addAtom(Element::N, RDGeom::Point3D(5.0, 6.0, 0.0));
@@ -1409,7 +1419,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     const auto* c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getAtomicNum() == 6);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(get_r_group_number(c_atom) == 0);
+    BOOST_TEST(get_r_group_number(c_atom) == no_r_group_num);
 
     model.mutateRGroup(c_atom, 2);
     c_atom = mol->getAtomWithIdx(0);
@@ -1423,7 +1433,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getAtomicNum() == 6);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(get_r_group_number(c_atom) == 0);
+    BOOST_TEST(get_r_group_number(c_atom) == no_r_group_num);
 
     undo_stack.redo();
     c_atom = mol->getAtomWithIdx(0);
@@ -1434,7 +1444,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getAtomicNum() == 6);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(get_r_group_number(c_atom) == 0);
+    BOOST_TEST(get_r_group_number(c_atom) == no_r_group_num);
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateBond)

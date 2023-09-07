@@ -9,17 +9,18 @@
 #include <GraphMol/RWMol.h>
 #include <RDGeneral/types.h>
 
+#include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+
+using schrodinger::rdkit_extensions::ATTACHMENT_POINT_LABEL_PREFIX;
 
 namespace schrodinger
 {
 namespace sketcher
 {
-
-const std::string ATTACHMENT_POINT_LABEL_PREFIX = "_AP";
-const std::string R_GROUP_LABEL_PREFIX = "_R";
 
 namespace
 {
@@ -45,20 +46,6 @@ unsigned int get_numerical_suffix(const std::string& label,
     }
 }
 } // namespace
-
-std::shared_ptr<RDKit::Atom> make_new_r_group(const unsigned int r_group_num)
-{
-    auto atom = std::make_shared<RDKit::QueryAtom>();
-    atom->setAtomicNum(DUMMY_ATOMIC_NUMBER);
-    // This prevents the atom from being shown in SMARTS as [#0]
-    atom->setQuery(RDKit::makeAtomNullQuery());
-    // This prevents the RGroup from having a VAL in MOL file output
-    atom->setNoImplicit(false);
-    atom->setProp(RDKit::common_properties::atomLabel,
-                  R_GROUP_LABEL_PREFIX + std::to_string(r_group_num));
-    atom->setProp(RDKit::common_properties::_MolFileRLabel, r_group_num);
-    return atom;
-}
 
 std::shared_ptr<RDKit::Atom>
 make_new_attachment_point(const unsigned int ap_num)
@@ -96,27 +83,15 @@ unsigned int get_attachment_point_number(const RDKit::Atom* const atom)
 
 bool is_r_group(const RDKit::Atom* const atom)
 {
-    return get_r_group_number(atom);
-}
-
-unsigned int get_r_group_number(const RDKit::Atom* const atom)
-{
-    std::string label;
-    if (!(atom->getAtomicNum() == DUMMY_ATOMIC_NUMBER &&
-          atom->getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
-          label.find(R_GROUP_LABEL_PREFIX) == 0)) {
-        return 0;
-    }
-    return get_numerical_suffix(label, R_GROUP_LABEL_PREFIX);
+    return rdkit_extensions::get_r_group_number(atom).has_value();
 }
 
 std::vector<unsigned int> get_all_r_group_numbers(const RDKit::ROMol* const mol)
 {
     std::vector<unsigned int> r_groups;
     for (auto* atom : mol->atoms()) {
-        unsigned int r_group_num = get_r_group_number(atom);
-        if (r_group_num > 0) {
-            r_groups.push_back(r_group_num);
+        if (auto r_group_num = rdkit_extensions::get_r_group_number(atom)) {
+            r_groups.push_back(r_group_num.value());
         }
     }
     std::sort(r_groups.begin(), r_groups.end());

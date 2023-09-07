@@ -21,11 +21,6 @@ namespace sketcher
 {
 
 /**
- * @return a new R-group atom using the specified R-group number
- */
-std::shared_ptr<RDKit::Atom> make_new_r_group(const unsigned int r_group_num);
-
-/**
  * @return a new attachment point atom using the specified attachment point
  * number
  */
@@ -52,12 +47,6 @@ get_attachment_point_number(const RDKit::Atom* const atom);
  * by a number.
  */
 SKETCHER_API bool is_r_group(const RDKit::Atom* const atom);
-
-/**
- * @return The R-group number of the specified atom.  If the atom is not an
- * R-group, 0 will be returned.
- */
-SKETCHER_API unsigned int get_r_group_number(const RDKit::Atom* const atom);
 
 /**
  * @return A sorted list of all used R-group numbers in the molecule

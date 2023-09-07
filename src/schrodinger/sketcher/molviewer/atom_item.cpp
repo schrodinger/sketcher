@@ -11,6 +11,7 @@
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -197,8 +198,9 @@ AtomItem::determineLabelType() const
         if (is_attachment_point(m_atom)) {
             label_is_visible = false;
             squiggle_path = getWavyLine();
-        } else if (unsigned int r_group_num = get_r_group_number(m_atom)) {
-            main_label_text = "R" + std::to_string(r_group_num);
+        } else if (auto r_group_num =
+                       rdkit_extensions::get_r_group_number(m_atom)) {
+            main_label_text = "R" + std::to_string(r_group_num.value());
         } else {
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();

@@ -5,6 +5,7 @@
 
 #include <GraphMol/ROMol.h>
 
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
@@ -53,7 +54,8 @@ DrawRGroupSceneTool::getRGroupNums(const size_t how_many) const
 bool DrawRGroupSceneTool::shouldDrawBondForClickOnAtom(
     const RDKit::Atom* const atom) const
 {
-    return get_r_group_number(atom) == m_r_group_num;
+    auto r_group_num = rdkit_extensions::get_r_group_number(atom);
+    return r_group_num.has_value() && r_group_num.value() == m_r_group_num;
 }
 
 DrawIncrementingRGroupSceneTool::DrawIncrementingRGroupSceneTool(

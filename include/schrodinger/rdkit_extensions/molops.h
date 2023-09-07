@@ -108,6 +108,5 @@ RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol,
  */
 RDKIT_EXTENSIONS_API void wedgeMolBonds(RDKit::ROMol& mol,
                                         const RDKit::Conformer* conf);
-
 } // namespace rdkit_extensions
 } // namespace schrodinger
