@@ -188,7 +188,7 @@ class SKETCHER_API Scene : public QGraphicsScene
      * functions to select atoms, bonds and non molecular items in the scene
      * according to the selection info stored in m_mol_model.
      */
-    updateItemSelection();
+    void updateItemSelection();
 
     /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.
