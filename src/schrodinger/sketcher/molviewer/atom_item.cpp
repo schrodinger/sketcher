@@ -122,7 +122,9 @@ void AtomItem::updateCachedData()
         determineLabelType();
 
     if (m_label_is_visible) {
+
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
+
         m_main_label_rect =
             make_text_rect(m_fonts.m_main_label_fm, m_main_label_text);
         m_main_label_rect.moveCenter(QPointF(0, 0));
@@ -149,7 +151,9 @@ void AtomItem::updateCachedData()
         m_shape |= rect_path;
     }
     m_bounding_rect = m_shape.boundingRect();
-    updateChiralityLabel();
+    if (m_settings.m_stereo_labels_shown) {
+        updateChiralityLabel();
+    }
 }
 
 QPainterPath AtomItem::calcHighlightingPath(qreal radius)
@@ -477,11 +481,13 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                           m_isotope_label_text);
         painter->restore();
     }
-    painter->save();
-    painter->setPen(m_chirality_pen);
-    painter->setFont(m_fonts.m_chirality_font);
-    painter->drawText(m_chirality_label_rect, m_chirality_label_text);
-    painter->restore();
+    if (m_settings.m_stereo_labels_shown) {
+        painter->save();
+        painter->setPen(m_chirality_pen);
+        painter->setFont(m_fonts.m_chirality_font);
+        painter->drawText(m_chirality_label_rect, m_chirality_label_text);
+        painter->restore();
+    }
 }
 
 const RDKit::Atom* AtomItem::getAtom() const

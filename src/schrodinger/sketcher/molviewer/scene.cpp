@@ -304,6 +304,9 @@ void Scene::setFontSize(qreal size)
 ATOM_SETTING(CarbonLabels, carbonsLabeled, setCarbonsLabeled, m_carbon_labels)
 ATOM_SETTING(bool, valenceErrorsShown, setValenceErrorsShown,
              m_valence_errors_shown)
+ATOM_SETTING(bool, stereoLabelsShown, setStereoLabelsShown,
+             m_stereo_labels_shown)
+
 BOND_SETTING(qreal, bondWidth, setBondWidth, m_bond_width)
 BOND_SETTING(qreal, doubleBondSpacing, setDoubleBondSpacing,
              m_double_bond_spacing)
@@ -535,10 +538,31 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::RGROUP_NUMBER:
                 updateSceneTool();
                 break;
+
+            case ModelKey::COLOR_HETEROATOMS:
+                setColorHeteroatoms(m_sketcher_model->getValueBool(key));
+                break;
+            case ModelKey::SHOW_STEREOCENTER_LABELS:
+                setStereoLabelsShown(m_sketcher_model->getValueBool(key));
+                break;
+            case ModelKey::SHOW_VALENCE_ERRORS:
+                setValenceErrorsShown(m_sketcher_model->getValueBool(key));
+                break;
             default:
                 break;
         }
     }
+}
+
+void Scene::setColorHeteroatoms(bool color_heteroatoms)
+{
+    if (color_heteroatoms) {
+        m_atom_item_settings.setColorScheme(ColorScheme::DEFAULT);
+    } else {
+        m_atom_item_settings.setMonochromeColorScheme(
+            m_atom_item_settings.getAtomColor(-1));
+    }
+    updateAtomAndBondItems();
 }
 
 std::shared_ptr<AbstractSceneTool>

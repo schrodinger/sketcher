@@ -116,11 +116,16 @@ class SKETCHER_API Scene : public QGraphicsScene
     bool valenceErrorsShown() const;
     void setValenceErrorsShown(bool value);
 
+    bool stereoLabelsShown() const;
+    void setStereoLabelsShown(bool value);
+
     qreal bondWidth() const;
     void setBondWidth(qreal value);
 
     qreal doubleBondSpacing() const;
     void setDoubleBondSpacing(qreal value);
+
+    void setColorHeteroatoms(bool color_heteroatoms);
 
     /**
      * display the appropriate context menu at the given position

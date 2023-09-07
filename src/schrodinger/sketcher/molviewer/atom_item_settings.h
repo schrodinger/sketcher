@@ -67,6 +67,12 @@ class AtomItemSettings
      */
     bool m_valence_errors_shown = true;
 
+    /**
+     * Whether to display stereochemistry
+     * labels when present
+     */
+    bool m_stereo_labels_shown = true;
+
   private:
     RDKit::ColourPalette m_color_palette;
 };
