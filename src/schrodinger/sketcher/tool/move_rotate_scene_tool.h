@@ -37,6 +37,8 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
     // implemented
     virtual void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
 
+    virtual void onStructureUpdated() override;
+
   protected:
     void rotateRotationItem(QGraphicsSceneMouseEvent* const event);
     void

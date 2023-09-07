@@ -104,6 +104,13 @@ class SKETCHER_API AbstractSceneTool
     // TODO
     // QCursor getCursor();
 
+    /**
+     * Called when the structure of the molecule changes. It does nothing
+     * by default, but can be reimplemented in subclasses to update the tool's
+     * state (e.g. graphics items that needs to be updated)
+     */
+    virtual void onStructureUpdated();
+
   protected:
     Scene* m_scene;
     MolModel* m_mol_model;

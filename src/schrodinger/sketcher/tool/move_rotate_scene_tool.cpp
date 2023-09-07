@@ -203,5 +203,10 @@ RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
     return find_centroid(*mol, selected_atoms, selected_non_mol_objs);
 }
 
+void MoveRotateSceneTool::onStructureUpdated()
+{
+    updateMoveSelectionItem();
+}
+
 } // namespace sketcher
 } // namespace schrodinger

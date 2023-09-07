@@ -62,5 +62,9 @@ std::vector<QGraphicsItem*> AbstractSceneTool::getGraphicsItems()
     return {};
 }
 
+void AbstractSceneTool::onStructureUpdated()
+{
+}
+
 } // namespace sketcher
 } // namespace schrodinger

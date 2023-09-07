@@ -225,6 +225,7 @@ void Scene::moveInteractiveItems()
         non_mol_item->updateCachedData();
     }
     updateSelectionHighlighting();
+    m_left_button_scene_tool->onStructureUpdated();
 }
 
 void Scene::updateMolecularItems()
@@ -239,6 +240,9 @@ void Scene::updateMolecularItems()
         addItem(item);
         m_interactive_items.insert(item);
     }
+    updateItemSelection();
+    updateSelectionHighlighting();
+    m_left_button_scene_tool->onStructureUpdated();
 }
 
 void Scene::updateNonMolecularItems()
@@ -253,6 +257,25 @@ void Scene::updateNonMolecularItems()
         m_non_molecular_to_non_molecular_item[model_obj] = item;
         addItem(item);
         m_interactive_items.insert(item);
+    }
+    updateItemSelection();
+    updateSelectionHighlighting();
+    m_left_button_scene_tool->onStructureUpdated();
+}
+
+void Scene::updateItemSelection()
+{
+    clearSelection();
+    for (auto* atom : m_mol_model->getSelectedAtoms()) {
+        m_atom_to_atom_item[atom]->setSelected(true);
+    }
+    for (auto* bond : m_mol_model->getSelectedBonds()) {
+        m_bond_to_bond_item[bond]->setSelected(true);
+    }
+    for (auto* non_molecular_object :
+         m_mol_model->getSelectedNonMolecularObjects()) {
+        m_non_molecular_to_non_molecular_item[non_molecular_object]
+            ->setSelected(true);
     }
 }
 
@@ -506,18 +529,7 @@ void Scene::onMolModelSelectionChanged()
 {
     // block the per-item signals for performance reasons
     Scene::SelectionChangeSignalBlocker signal_blocker(this);
-    clearSelection();
-    for (auto* atom : m_mol_model->getSelectedAtoms()) {
-        m_atom_to_atom_item[atom]->setSelected(true);
-    }
-    for (auto* bond : m_mol_model->getSelectedBonds()) {
-        m_bond_to_bond_item[bond]->setSelected(true);
-    }
-    for (auto* non_molecular_object :
-         m_mol_model->getSelectedNonMolecularObjects()) {
-        m_non_molecular_to_non_molecular_item[non_molecular_object]
-            ->setSelected(true);
-    }
+    updateItemSelection();
     updateSelectionHighlighting();
     // signal_blocker emits selectionChanged on destruction
 }
