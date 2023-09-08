@@ -36,10 +36,17 @@ runs:
 
     - name: Create bash VS Compiler activation script
       if: inputs.platform == 'win32'
-      shell: cmd.exe /C call {0}
+      shell: cmd /C call {0}
       run: |
+        echo "--------"
+        echo "--------"
+        echo "--------"
         where cl.exe
+        echo "--------"
         set
+        echo "--------"
+        echo "--------"
+        echo "--------"
         set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
         echo #!/usr/bin/env bash > %activation_file%
         echo export CC='%CC%' >> %activation_file%
@@ -63,7 +70,7 @@ runs:
         echo export VS_YEAR='%VS_YEAR%' >> %activation_file%
         echo export VSINSTALLDIR='%VSINSTALLDIR%' >> %activation_file%
         echo export WindowsSdkDir='%WindowsSdkDir%' >> %activation_file%
-        echo export WindowsSDKVer='%WindowsSDKVer%'' >> %activation_file%
+        echo export WindowsSDKVer='%WindowsSDKVer%' >> %activation_file%
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
