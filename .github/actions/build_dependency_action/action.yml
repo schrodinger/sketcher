@@ -38,16 +38,6 @@ runs:
       if: inputs.platform == 'win32'
       shell: cmd /C call {0}
       run: |
-        echo "--------"
-        echo "--------"
-        echo "--------"
-        where cl.exe
-        where rc.exe
-        echo "--------"
-        set
-        echo "--------"
-        echo "--------"
-        echo "--------"
         set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
         echo #!/usr/bin/env bash > %activation_file%
         echo translate_path() { p=$(realpath "$1"); echo ${p/C:\//\/c\/}; } >> %activation_file%
@@ -60,6 +50,8 @@ runs:
         echo export CMAKE_PLAT='%CMAKE_PLAT%' >> %activation_file%
         echo export CONDA_BUILD_CROSS_COMPILATION='%CONDA_BUILD_CROSS_COMPILATION%' >> %activation_file%
         echo export DISTUTILS_USE_SDK='%DISTUTILS_USE_SDK%' >> %activation_file%
+        echo export INCLUDE='%INCLUDE%' >> %activation_file%
+        echo export LIB='%LIB%' >> %activation_file%
         echo export MSSdk='%MSSdk%' >> %activation_file%
         echo export MSYS2_ARG_CONV_EXCL='%MSYS2_ARG_CONV_EXCL%' >> %activation_file%
         echo export MSYS2_ENV_CONV_EXCL='%MSYS2_ENV_CONV_EXCL%' >> %activation_file%
@@ -82,17 +74,7 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
       run: |
-        export
-        echo "1 -----"
-        cat "C:\\Users\\runneradmin\\micromamba\\condabin\\mamba_hook.bat"
-        echo "2 -----"
-        cat "C:\\Users\\runneradmin\\.bash_profile"
-        echo "3 -----"
-        vdir ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.sh
-        echo "4 -----"
-        ca ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.sh
-        echo "5 -----"
-        echo "6 -----"
+        [ "${RUNNER_DEBUG}" == "1" ] && export
         if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
           ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
         else
