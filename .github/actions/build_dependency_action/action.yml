@@ -33,10 +33,10 @@ runs:
         post-cleanup: 'none'
 
     - name: Add directory of 'vcvarsall.bat' into env PATH and call 'vcvarsall.bat'
-      shell: cmd
+      shell: cmd /C call {0}
       run: |
-        dir C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\
-        set PATH="%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\" && call vcvarsall.bat x64
+        set
+        call "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
         set
 
     - name: Run build script
