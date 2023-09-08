@@ -28,47 +28,42 @@ runs:
       with:
         micromamba-version: 'latest'
         environment-file: dependencies/${{ inputs.platform }}_environment.yml
-        init-shell: bash
+        init-shell: >-
+          bash
+          cmd.exe
         cache-environment: true
         post-cleanup: 'none'
 
-    # - name: Create bash VS Compiler activation script
-    #   if: inputs.platform == 'win32'
-    #   shell: cmd.exe /C call {0}
-    #   run: |
-    #     echo "--------"
-    #     echo "--------"
-    #     echo "--------"
-    #     where cl.exe
-    #     echo "--------"
-    #     set
-    #     echo "--------"
-    #     echo "--------"
-    #     echo "--------"
-    #     set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
-    #     echo #!/usr/bin/env bash > %activation_file%
-    #     echo export CC='%CC%' >> %activation_file%
-    #     echo export CXX='%CXX%' >> %activation_file%
-    #     echo export CMAKE_GEN='%CMAKE_GEN%' >> %activation_file%
-    #     echo export CMAKE_GENERATOR='%CMAKE_GENERATOR%' >> %activation_file%
-    #     echo export CMAKE_GENERATOR_PLATFORM='%CMAKE_GENERATOR_PLATFORM%' >> %activation_file%
-    #     echo export CMAKE_GENERATOR_TOOLSET='%CMAKE_GENERATOR_TOOLSET%' >> %activation_file%
-    #     echo export CMAKE_PLAT='%CMAKE_PLAT%' >> %activation_file%
-    #     echo export CONDA_BUILD_CROSS_COMPILATION='%CONDA_BUILD_CROSS_COMPILATION%' >> %activation_file%
-    #     echo export DISTUTILS_USE_SDK='%DISTUTILS_USE_SDK%' >> %activation_file%
-    #     echo export MSSdk='%MSSdk%' >> %activation_file%
-    #     echo export MSYS2_ARG_CONV_EXCL='%MSYS2_ARG_CONV_EXCL%' >> %activation_file%
-    #     echo export MSYS2_ENV_CONV_EXCL='%MSYS2_ENV_CONV_EXCL%' >> %activation_file%
-    #     echo export NEWER_VS_WITH_OLDER_VC='%NEWER_VS_WITH_OLDER_VC%' >> %activation_file%
-    #     echo export PY_VCRUNTIME_REDIST='%PY_VCRUNTIME_REDIST%' >> %activation_file%
-    #     echo export USE_NEW_CMAKE_GEN_SYNTAX='%USE_NEW_CMAKE_GEN_SYNTAX%' >> %activation_file%
-    #     echo export VCVARSBAT='%VCVARSBAT%' >> %activation_file%
-    #     echo export VS_MAJOR='%VS_MAJOR%' >> %activation_file%
-    #     echo export VS_VERSION='%VS_VERSION%' >> %activation_file%
-    #     echo export VS_YEAR='%VS_YEAR%' >> %activation_file%
-    #     echo export VSINSTALLDIR='%VSINSTALLDIR%' >> %activation_file%
-    #     echo export WindowsSdkDir='%WindowsSdkDir%' >> %activation_file%
-    #     echo export WindowsSDKVer="%WindowsSDKVer%" >> %activation_file%
+    - name: Create bash VS Compiler activation script
+      if: inputs.platform == 'win32'
+      shell: cmd.exe /C call {0}
+      run: |
+        where cl.exe
+        set
+        set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
+        echo #!/usr/bin/env bash > %activation_file%
+        echo export CC='%CC%' >> %activation_file%
+        echo export CXX='%CXX%' >> %activation_file%
+        echo export CMAKE_GEN='%CMAKE_GEN%' >> %activation_file%
+        echo export CMAKE_GENERATOR='%CMAKE_GENERATOR%' >> %activation_file%
+        echo export CMAKE_GENERATOR_PLATFORM='%CMAKE_GENERATOR_PLATFORM%' >> %activation_file%
+        echo export CMAKE_GENERATOR_TOOLSET='%CMAKE_GENERATOR_TOOLSET%' >> %activation_file%
+        echo export CMAKE_PLAT='%CMAKE_PLAT%' >> %activation_file%
+        echo export CONDA_BUILD_CROSS_COMPILATION='%CONDA_BUILD_CROSS_COMPILATION%' >> %activation_file%
+        echo export DISTUTILS_USE_SDK='%DISTUTILS_USE_SDK%' >> %activation_file%
+        echo export MSSdk='%MSSdk%' >> %activation_file%
+        echo export MSYS2_ARG_CONV_EXCL='%MSYS2_ARG_CONV_EXCL%' >> %activation_file%
+        echo export MSYS2_ENV_CONV_EXCL='%MSYS2_ENV_CONV_EXCL%' >> %activation_file%
+        echo export NEWER_VS_WITH_OLDER_VC='%NEWER_VS_WITH_OLDER_VC%' >> %activation_file%
+        echo export PY_VCRUNTIME_REDIST='%PY_VCRUNTIME_REDIST%' >> %activation_file%
+        echo export USE_NEW_CMAKE_GEN_SYNTAX='%USE_NEW_CMAKE_GEN_SYNTAX%' >> %activation_file%
+        echo export VCVARSBAT='%VCVARSBAT%' >> %activation_file%
+        echo export VS_MAJOR='%VS_MAJOR%' >> %activation_file%
+        echo export VS_VERSION='%VS_VERSION%' >> %activation_file%
+        echo export VS_YEAR='%VS_YEAR%' >> %activation_file%
+        echo export VSINSTALLDIR='%VSINSTALLDIR%' >> %activation_file%
+        echo export WindowsSdkDir='%WindowsSdkDir%' >> %activation_file%
+        echo export WindowsSDKVer='%WindowsSDKVer%'' >> %activation_file%
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
