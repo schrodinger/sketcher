@@ -35,7 +35,7 @@ runs:
         post-cleanup: 'none'
 
     - name: Create bash VS Compiler activation script
-      if: steps.platform == 'win32'
+      if: inputs.platform == 'win32'
       shell: cmd /C call {0}
       run: |
         where cl.exe
