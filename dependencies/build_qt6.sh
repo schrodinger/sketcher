@@ -35,6 +35,8 @@ for lib in base svg; do
         -DCMAKE_INSTALL_PREFIX=${install_dir} \
         -DQT_BUILD_EXAMPLES=FALSE \
         -DQT_BUILD_TESTS=FALSE \
+        -DQT_FEATURE_brotli=OFF \
+        -DQT_FEATURE_sql=OFF \
         -DCMAKE_BUILD_TYPE=Release \
         -DINPUT_opengl=no \
         $(pwd)
