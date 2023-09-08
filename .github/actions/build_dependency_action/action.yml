@@ -32,6 +32,11 @@ runs:
         cache-environment: true
         post-cleanup: 'none'
 
+    - name: Inspect shell variables
+      shell: cmd
+      run: |
+        set
+
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
