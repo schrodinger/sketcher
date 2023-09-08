@@ -69,11 +69,13 @@ runs:
         echo compiler_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64") >> %activation_file%
         echo sdk_path=$(translate_path "${WindowsSdkDir:-.}/bin/${WindowsSDKVer:-}/x64") >> %activation_file%
         echo export PATH=${PATH}:"${compiler_path}":"${sdk_path}" >> %activation_file%
+        set
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
       run: |
+        export
         [ "${RUNNER_DEBUG}" == "1" ] && export
         if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
           ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
