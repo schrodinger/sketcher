@@ -3,7 +3,6 @@ channels:
   - conda-forge
 dependencies:
   - cmake
-  - cxx-compiler
   - curl
   - ninja
   - pcre2
