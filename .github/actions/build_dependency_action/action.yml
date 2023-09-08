@@ -75,8 +75,8 @@ runs:
         echo export WindowsSdkDir='%WindowsSdkDir%' >> %activation_file%
         echo export WindowsSDKVer='%WindowsSDKVer%' >> %activation_file%
         echo compiler_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64") >> %activation_file%
-        echo sdk_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64") >> %activation_file%
-        echo export PATH=${PATH}:"${compiler_path}" >> %activation_file%
+        echo sdk_path=$(translate_path "${WindowsSdkDir:-.}/bin/${WindowsSDKVer:-}/x64") >> %activation_file%
+        echo export PATH=${PATH}:"${compiler_path}":"${sdk_path}" >> %activation_file%
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
