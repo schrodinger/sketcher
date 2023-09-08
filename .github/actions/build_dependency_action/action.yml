@@ -35,6 +35,7 @@ runs:
     - name: Add directory of 'vcvarsall.bat' into env PATH and call 'vcvarsall.bat'
       shell: cmd
       run: |
+        dir C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\
         set PATH="%PATH%;C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\" && call vcvarsall.bat x64
         set
 
