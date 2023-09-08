@@ -28,14 +28,33 @@ runs:
       with:
         micromamba-version: 'latest'
         environment-file: dependencies/${{ inputs.platform }}_environment.yml
-        init-shell: bash
+        init-shell: >-
+          bash
+          cmd.exe
         cache-environment: true
         post-cleanup: 'none'
 
     - name: Add directory of 'vcvarsall.bat' into env PATH and call 'vcvarsall.bat'
       shell: cmd /C call {0}
       run: |
+        echo "-----"
         set
+        echo "-----"
+        echo "%CONDA_PREFIX%"
+        dir "%CONDA_PREFIX%"
+        echo "-----"
+        echo "%CONDA_PREFIX%\etc"
+        dir "%CONDA_PREFIX%\etc"
+        echo "-----"
+        echo "%CONDA_PREFIX%\etc\conda"
+        dir "%CONDA_PREFIX%\etc\conda"
+        echo "-----"
+        echo "%CONDA_PREFIX%\etc\conda\activate.d"
+        dir "%CONDA_PREFIX%\etc\conda\activate.d"
+        echo "-----"
+        echo "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
+        dir "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
+        echo "-----"
         call "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
         set
 
