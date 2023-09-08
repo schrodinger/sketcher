@@ -36,9 +36,10 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
       run: |
-        if [ -f ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat }}.sh ]; then
-          cmd.exe /c ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat
-        fi
+        # if [ -f ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat }}.sh ]; then
+        #   cmd.exe /c ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat
+        # fi
+        cat $CONDARC
         export
         if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
           ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
