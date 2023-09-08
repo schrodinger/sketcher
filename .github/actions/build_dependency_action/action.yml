@@ -49,6 +49,7 @@ runs:
         echo "--------"
         set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
         echo #!/usr/bin/env bash > %activation_file%
+        echo translate_path() { p=$(realpath "$1"); echo ${p/C:\//\/c\/}; } >> %activation_file%
         echo export CC='%CC%' >> %activation_file%
         echo export CXX='%CXX%' >> %activation_file%
         echo export CMAKE_GEN='%CMAKE_GEN%' >> %activation_file%
@@ -72,25 +73,23 @@ runs:
         echo export VSINSTALLDIR='%VSINSTALLDIR%' >> %activation_file%
         echo export WindowsSdkDir='%WindowsSdkDir%' >> %activation_file%
         echo export WindowsSDKVer='%WindowsSDKVer%' >> %activation_file%
+        echo compiler_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64") >> %activation_file%
+        echo export PATH=${PATH}:"${compiler_path}" >> %activation_file%
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
       run: |
-        translate_path() { p=$(realpath "$1"); echo ${p/C:\//\/c\/}; }
-        export compiler_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64")
-        echo $compiler_path
-        export PATH=${PATH}:$compiler_path
+        export
         echo "1 -----"
         cat "C:\\Users\\runneradmin\\micromamba\\condabin\\mamba_hook.bat"
         echo "2 -----"
         cat "C:\\Users\\runneradmin\\.bash_profile"
         echo "3 -----"
-        vdir ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.bat
+        vdir ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.sh
         echo "4 -----"
-        ca ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.bat
+        ca ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.sh
         echo "5 -----"
-        export
         echo "6 -----"
         if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
           ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
