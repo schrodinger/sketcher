@@ -32,37 +32,18 @@ runs:
         cache-environment: true
         post-cleanup: 'none'
 
-    - name: Inspect env
+    - name: Run build script
+      if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
       run: |
+        if [ -f ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat }}.sh ]; then
+          cmd.exe /c ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat
+        fi
         export
-        echo $(pwd)
-        vdir
-        echo /c/Users/runneradmin/micromamba/envs/sketcher_builder:
-        vdir /c/Users/runneradmin/micromamba/envs/sketcher_builder
-        echo /c/Users/runneradmin/micromamba/envs/sketcher_builder/Library/mingw-w64/bin:
-        vdir /c/Users/runneradmin/micromamba/envs/sketcher_builder/Library/mingw-w64/bin
-        echo /c/Users/runneradmin/micromamba/envs/sketcher_builder/Library/usr/bin:
-        vdir /c/Users/runneradmin/micromamba/envs/sketcher_builder/Library/usr/bin
-        echo /c/Users/runneradmin/micromamba/envs/sketcher_builder/Library/bin:
-        vdir /c/Users/runneradmin/micromamba/envs/sketcher_builder/Library/bin
-        echo /c/Users/runneradmin/micromamba/envs/sketcher_builder/Scripts:
-        vdir /c/Users/runneradmin/micromamba/envs/sketcher_builder/Scripts
-        echo /c/Users/runneradmin/micromamba/envs/sketcher_builder/bin:
-        vdir /c/Users/runneradmin/micromamba/envs/sketcher_builder/bin
-        echo /c/Users/runneradmin/micromamba/condabin:
-        vdir /c/Users/runneradmin/micromamba/condabin
-        echo /c/Users/runneradmin/bin:
-        vdir /c/Users/runneradmin/bin
-
-    # - name: Run build script
-    #   if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
-    #   shell: bash -l {0}
-    #   run: |
-    #     if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
-    #       ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
-    #     else
-    #       echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
-    #       exit 1
-    #     fi
+        if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
+          ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
+        else
+          echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
+          exit 1
+        fi
 

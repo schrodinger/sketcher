@@ -40,7 +40,7 @@ for lib in base svg; do
         -DCMAKE_BUILD_TYPE=Release \
         -DINPUT_opengl=no \
         $(pwd)
-    cmake --build . -j${num_cores} && cmake --install .
+    # cmake --build . -j${num_cores} && cmake --install .
     popd
 done
 
