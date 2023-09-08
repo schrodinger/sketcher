@@ -56,6 +56,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
+      - name: Pull the boost dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+
       - name: Build ${{ matrix.library }} v${{ matrix.version }} dependency on ${{ matrix.platform }}
         uses: ./.github/actions/build_dependency_action
         with:
@@ -74,6 +80,30 @@ jobs:
       steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Pull the boost dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+
+      - name: Pull the coordgenlibs dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_coordgenlibs
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_coordgenlibs
+
+      - name: Pull the maeparser dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+
+      - name: Pull the zlib dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
 
       - name: Build ${{ matrix.library }} '${{ matrix.version }}' dependency on ${{ matrix.platform }}
         uses: ./.github/actions/build_dependency_action
@@ -101,6 +131,42 @@ jobs:
       steps:
       - name: Checkout repo
         uses: actions/checkout@v3
+
+      - name: Pull the boost dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+
+      - name: Pull the coordgenlibs dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_coordgenlibs
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_coordgenlibs
+
+      - name: Pull the maeparser dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+
+      - name: Pull the rdkit dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_rdkit
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_rdkit
+
+      - name: Pull the qt6 dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_qt6
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_qt6
+
+      - name: Pull the zlib dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
 
       - name: Build Sketcher on ${{ matrix.platform }}
         uses: ./.github/actions/build_dependency_action
