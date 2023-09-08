@@ -34,29 +34,33 @@ runs:
         cache-environment: true
         post-cleanup: 'none'
 
-    - name: Add directory of 'vcvarsall.bat' into env PATH and call 'vcvarsall.bat'
+    - name: Create bash VS Compiler activation script
+      if: steps.platform == 'win32'
       shell: cmd /C call {0}
       run: |
-        echo "-----"
-        set
-        echo "-----"
-        echo "%CONDA_PREFIX%"
-        dir "%CONDA_PREFIX%"
-        echo "-----"
-        echo "%CONDA_PREFIX%\etc"
-        dir "%CONDA_PREFIX%\etc"
-        echo "-----"
-        echo "%CONDA_PREFIX%\etc\conda"
-        dir "%CONDA_PREFIX%\etc\conda"
-        echo "-----"
-        echo "%CONDA_PREFIX%\etc\conda\activate.d"
-        dir "%CONDA_PREFIX%\etc\conda\activate.d"
-        echo "-----"
-        echo "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
-        dir "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
-        echo "-----"
-        call "%CONDA_PREFIX%\etc\conda\activate.d\vs2019_compiler_vars.bat"
-        set
+        where cl.exe
+        set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
+        echo #!/usr/bin/env bash > %activation_file%
+        echo export CC="%CC%" >> %activation_file%
+        echo export CXX="%CXX%" >> %activation_file%
+        echo export CMAKE_GENERATOR_PLATFORM="%CMAKE_GENERATOR_PLATFORM%" >> %activation_file%
+        echo export CMAKE_GENERATOR_TOOLSET="%CMAKE_GENERATOR_TOOLSET%" >> %activation_file%
+        echo export CMAKE_PLAT="%CMAKE_PLAT%" >> %activation_file%
+        echo export CONDA_BUILD_CROSS_COMPILATION="%CONDA_BUILD_CROSS_COMPILATION%" >> %activation_file%
+        echo export DISTUTILS_USE_SDK="%DISTUTILS_USE_SDK%" >> %activation_file%
+        echo export MSSdk="%MSSdk%" >> %activation_file%
+        echo export MSYS2_ARG_CONV_EXCL="%MSYS2_ARG_CONV_EXCL%" >> %activation_file%
+        echo export MSYS2_ENV_CONV_EXCL="%MSYS2_ENV_CONV_EXCL%" >> %activation_file%
+        echo export NEWER_VS_WITH_OLDER_VC="%NEWER_VS_WITH_OLDER_VC%" >> %activation_file%
+        echo export PY_VCRUNTIME_REDIST="%PY_VCRUNTIME_REDIST%" >> %activation_file%
+        echo export USE_NEW_CMAKE_GEN_SYNTAX="%USE_NEW_CMAKE_GEN_SYNTAX%" >> %activation_file%
+        echo export VCVARSBAT="%VCVARSBAT%" >> %activation_file%
+        echo export VS_MAJOR="%VS_MAJOR%" >> %activation_file%
+        echo export VS_VERSION="%VS_VERSION%" >> %activation_file%
+        echo export VS_YEAR="%VS_YEAR%" >> %activation_file%
+        echo export VSINSTALLDIR="%VSINSTALLDIR%" >> %activation_file%
+        echo export WindowsSdkDir="%WindowsSdkDir%" >> %activation_file%
+        echo export WindowsSDKVer="%WindowsSDKVer%" >> %activation_file%
 
     - name: Run build script
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
@@ -65,7 +69,13 @@ runs:
         # if [ -f ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat }}.sh ]; then
         #   cmd.exe /c ${CONDA_PREFIX}/etc/conda/activate.d/vs2019_compiler_vars.bat
         # fi
+        echo "-----"
+        vdir ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.bat
+        echo "-----"
+        ca ${CONDA_PREFIX}/etc/conda/activate.d/vs_compiler_vars.bat
+        echo "-----"
         export
+        echo "-----"
         if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
           ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
         else
