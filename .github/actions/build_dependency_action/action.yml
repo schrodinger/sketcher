@@ -64,6 +64,7 @@ runs:
         echo export NEWER_VS_WITH_OLDER_VC='%NEWER_VS_WITH_OLDER_VC%' >> %activation_file%
         echo export PY_VCRUNTIME_REDIST='%PY_VCRUNTIME_REDIST%' >> %activation_file%
         echo export USE_NEW_CMAKE_GEN_SYNTAX='%USE_NEW_CMAKE_GEN_SYNTAX%' >> %activation_file%
+        echo export VCToolsInstallDir='%VCToolsInstallDir%' >> %activation_file%
         echo export VCVARSBAT='%VCVARSBAT%' >> %activation_file%
         echo export VS_MAJOR='%VS_MAJOR%' >> %activation_file%
         echo export VS_VERSION='%VS_VERSION%' >> %activation_file%
@@ -76,6 +77,10 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' && success() }}
       shell: bash -l {0}
       run: |
+        translate_path() { p=$(realpath "$1"); echo ${p/C:\//\/c\/}; }
+        export compiler_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64")
+        echo $compiler_path
+        export PATH=${PATH}:$compiler_path
         echo "1 -----"
         cat "C:\\Users\\runneradmin\\micromamba\\condabin\\mamba_hook.bat"
         echo "2 -----"
