@@ -1,13 +1,14 @@
 #pragma once
 #include <QMenu>
 
-#include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/definitions.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
+
+enum class BondTool;
 
 class SKETCHER_API ModifyBondsMenu : public QMenu
 {
@@ -17,7 +18,7 @@ class SKETCHER_API ModifyBondsMenu : public QMenu
     void setFlipEnabled(bool b);
 
   signals:
-    void changeTypeRequested(sketcherBond::BondType type);
+    void changeTypeRequested(BondTool bond_tool);
     void flipRequested();
 
   private:

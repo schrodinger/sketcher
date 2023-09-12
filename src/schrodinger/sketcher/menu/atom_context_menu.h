@@ -2,7 +2,6 @@
 
 #include <QMenu>
 
-#include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/definitions.h"
 
 namespace schrodinger
@@ -14,6 +13,7 @@ class ExistingRGroupMenu;
 class ReplaceAtomsWithMenu;
 class SetAtomMenuWidget;
 class SketcherModel;
+enum class AtomQuery;
 enum class Element;
 enum class ModelKey;
 
@@ -84,7 +84,7 @@ class ReplaceAtomsWithMenu : public QMenu
     QAction* m_allowed_list_act = nullptr;
 
   signals:
-    void changeTypeRequested(AtomTypes type);
+    void changeTypeRequested(AtomQuery query_type);
     void showEditAtomPropertiesDialogWithAllowedListRequested();
     void newRGroupRequested();
     void existingRGroupRequested(unsigned int rgroup_number);

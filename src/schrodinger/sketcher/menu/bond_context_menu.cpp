@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 
+#include "schrodinger/sketcher/model/sketcher_model.h"
+
 namespace schrodinger
 {
 namespace sketcher
@@ -16,13 +18,13 @@ ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
     m_flip_action =
         addAction("Flip Substituent", this, &ModifyBondsMenu::flipRequested);
     addSeparator();
-    addBondAction("Single", sketcherBond::BondType::SINGLE);
-    addBondAction("Double", sketcherBond::BondType::DOUBLE);
-    addBondAction("Triple", sketcherBond::BondType::TRIPLE);
-    addBondAction("Aromatic", sketcherBond::BondType::AROMATIC);
+    addBondAction("Single", BondTool::SINGLE);
+    addBondAction("Double", BondTool::DOUBLE);
+    addBondAction("Triple", BondTool::TRIPLE);
+    addBondAction("Aromatic", BondTool::AROMATIC);
     addSeparator();
-    addBondAction("Up", sketcherBond::BondType::SINGLE_UP);
-    addBondAction("Down", sketcherBond::BondType::SINGLE_DOWN);
+    addBondAction("Up", BondTool::SINGLE_UP);
+    addBondAction("Down", BondTool::SINGLE_DOWN);
     addMenu(createOtherTypeMenu());
     addMenu(createQueryMenu());
 }
@@ -41,11 +43,11 @@ QMenu* ModifyBondsMenu::createOtherTypeMenu()
             text, this, [this, type]() { emit changeTypeRequested(type); });
     };
 
-    addBondAction("Coordinate", sketcherBond::BondType::COORDINATE);
-    addBondAction("Zero Order", sketcherBond::BondType::ZERO);
+    addBondAction("Coordinate", BondTool::COORDINATE);
+    addBondAction("Zero Order", BondTool::ZERO);
     other_type_menu->addSeparator();
-    addBondAction("Single Up/Down", sketcherBond::BondType::SINGLE_EITHER);
-    addBondAction("Double Cis/Trans", sketcherBond::BondType::DOUBLE_EITHER);
+    addBondAction("Single Up/Down", BondTool::SINGLE_EITHER);
+    addBondAction("Double Cis/Trans", BondTool::DOUBLE_EITHER);
 
     return other_type_menu;
 }
@@ -59,12 +61,10 @@ QMenu* ModifyBondsMenu::createQueryMenu()
             text, this, [this, type]() { emit changeTypeRequested(type); });
     };
 
-    addBondAction("Any", sketcherBond::BondType::ANY);
-    addBondAction("Single/Double", sketcherBond::BondType::SINGLE_OR_DOUBLE);
-    addBondAction("Double/Aromatic",
-                  sketcherBond::BondType::DOUBLE_OR_AROMATIC);
-    addBondAction("Single/Aromatic",
-                  sketcherBond::BondType::SINGLE_OR_AROMATIC);
+    addBondAction("Any", BondTool::ANY);
+    addBondAction("Single/Double", BondTool::SINGLE_OR_DOUBLE);
+    addBondAction("Double/Aromatic", BondTool::DOUBLE_OR_AROMATIC);
+    addBondAction("Single/Aromatic", BondTool::SINGLE_OR_AROMATIC);
 
     return query_menu;
 }

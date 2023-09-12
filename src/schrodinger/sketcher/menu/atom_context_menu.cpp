@@ -196,20 +196,20 @@ QMenu* ReplaceAtomsWithMenu::createWildcardMenu()
 {
     auto wildcard_menu = new QMenu("Wildcard", this);
 
-    auto addBondAction = [this, wildcard_menu](auto text, auto type) {
+    auto addQueryAction = [this, wildcard_menu](auto text, auto type) {
         wildcard_menu->addAction(
             text, this, [this, type]() { emit changeTypeRequested(type); });
     };
 
-    addBondAction("A (Any heavy atom)", A_QUERY_KEY);
-    addBondAction("Q (Heteroatom)", Q_QUERY_KEY);
-    addBondAction("M (Metal)", M_QUERY_KEY);
-    addBondAction("X (Halogen)", X_QUERY_KEY);
+    addQueryAction("A (Any heavy atom)", AtomQuery::A);
+    addQueryAction("Q (Heteroatom)", AtomQuery::Q);
+    addQueryAction("M (Metal)", AtomQuery::M);
+    addQueryAction("X (Halogen)", AtomQuery::X);
     wildcard_menu->addSeparator();
-    addBondAction("AH (Any or H)", AH_QUERY_KEY);
-    addBondAction("QH (Hetero or H)", QH_QUERY_KEY);
-    addBondAction("MH (Metal or H)", MH_QUERY_KEY);
-    addBondAction("XH (Halogen or H)", XH_QUERY_KEY);
+    addQueryAction("AH (Any or H)", AtomQuery::AH);
+    addQueryAction("QH (Hetero or H)", AtomQuery::QH);
+    addQueryAction("MH (Metal or H)", AtomQuery::MH);
+    addQueryAction("XH (Halogen or H)", AtomQuery::XH);
     return wildcard_menu;
 }
 
