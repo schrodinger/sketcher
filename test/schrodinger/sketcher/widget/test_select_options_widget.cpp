@@ -5,7 +5,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/sketcher_model2.h"
 #include "schrodinger/sketcher/ui/ui_select_options_widget.h"
 #include "schrodinger/sketcher/widget/select_options_widget.h"
 
@@ -34,7 +34,7 @@ class TestSelectOptionsWidget : public SelectOptionsWidget
   public:
     TestSelectOptionsWidget()
     {
-        setModel(new SketcherModel(this));
+        setModel(new SketcherModel2(this));
     }
 
     Ui::SelectOptionsWidget* getUI() const

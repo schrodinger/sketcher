@@ -393,8 +393,8 @@ class SKETCHER_API SketcherModel : public QObject
      * @return Whether there are any items selected in the scene.
      */
     bool hasActiveSelection() const;
-    bool hasAtomSelection() const;
-    bool hasBondSelection() const;
+    virtual bool hasAtomSelection() const;
+    virtual bool hasBondSelection() const;
 
     /**
      * @return all interactive graphics items in the scene.

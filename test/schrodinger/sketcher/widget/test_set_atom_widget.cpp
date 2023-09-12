@@ -6,7 +6,7 @@
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/sketcher_model2.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/ui/ui_set_atom_widget.h"
 #include "schrodinger/sketcher/widget/atom_query_popup.h"
@@ -31,7 +31,7 @@ class TestSetAtomWidget : public SetAtomWidget
   public:
     TestSetAtomWidget()
     {
-        setModel(new SketcherModel(this));
+        setModel(new SketcherModel2(this));
         m_atom_query_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
     }
     using SetAtomWidget::getElementForButton;
@@ -225,8 +225,8 @@ BOOST_AUTO_TEST_CASE(model_signals)
     qRegisterMetaType<std::unordered_set<ModelKey>>(
         "std::unordered_set<ModelKey>");
 
-    QSignalSpy pinged_spy(model, &SketcherModel::valuePinged);
-    QSignalSpy changed_spy(model, &SketcherModel::valuesChanged);
+    QSignalSpy pinged_spy(model, &SketcherModel2::valuePinged);
+    QSignalSpy changed_spy(model, &SketcherModel2::valuesChanged);
 
     // If the user clicks a button, we expect the "changed" signals to be
     // grouped together and the "set" signals to be separate.

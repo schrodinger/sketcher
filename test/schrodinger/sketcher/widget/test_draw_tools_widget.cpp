@@ -8,7 +8,7 @@
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/sketcher_model2.h"
 #include "schrodinger/sketcher/ui/ui_draw_tools_widget.h"
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
 #include "schrodinger/sketcher/widget/bond_query_popup.h"
@@ -34,7 +34,7 @@ class TestDrawToolsWidget : public DrawToolsWidget
   public:
     TestDrawToolsWidget()
     {
-        setModel(new SketcherModel(this));
+        setModel(new SketcherModel2(this));
         m_bond_order_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
         m_bond_query_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
         m_stereo_bond1_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
@@ -67,8 +67,8 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
     qRegisterMetaType<ModelKey>("ModelKey");
     qRegisterMetaType<std::unordered_set<ModelKey>>(
         "std::unordered_set<ModelKey>");
-    QSignalSpy pinged_spy(model, &SketcherModel::valuePinged);
-    QSignalSpy changed_spy(model, &SketcherModel::valuesChanged);
+    QSignalSpy pinged_spy(model, &SketcherModel2::valuePinged);
+    QSignalSpy changed_spy(model, &SketcherModel2::valuesChanged);
 
     // First, test the non-modal buttons (because they are easy)
     pinged_spy.clear();

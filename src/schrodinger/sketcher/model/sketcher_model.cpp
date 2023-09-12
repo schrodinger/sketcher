@@ -5,8 +5,6 @@
 
 #include <QPointF>
 
-#include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/Bond.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 
@@ -198,12 +196,12 @@ template <typename T> bool contains_item(const SketcherModel& model)
 
 bool SketcherModel::hasAtomSelection() const
 {
-    return contains_item<AtomItem>(*this) || contains_item<sketcherAtom>(*this);
+    return contains_item<AtomItem>(*this);
 }
 
 bool SketcherModel::hasBondSelection() const
 {
-    return contains_item<BondItem>(*this) || contains_item<sketcherBond>(*this);
+    return contains_item<BondItem>(*this);
 }
 
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const
