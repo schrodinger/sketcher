@@ -18,7 +18,6 @@
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/highlighting_item.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher.h"
 
 namespace schrodinger
@@ -28,6 +27,28 @@ namespace sketcher
 
 namespace
 {
+
+/**
+ * Wrapper for QHash/QMap to use range-based for loops and structured bindings
+ */
+template <typename T> class asKeyValue
+{
+  public:
+    asKeyValue(const T& data) : m_data{data}
+    {
+    }
+    const auto begin()
+    {
+        return m_data.keyValueBegin();
+    }
+    const auto end()
+    {
+        return m_data.keyValueEnd();
+    }
+
+  private:
+    const T& m_data;
+};
 
 void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
 {

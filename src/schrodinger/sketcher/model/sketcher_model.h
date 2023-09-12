@@ -19,6 +19,11 @@ namespace sketcher
 {
 
 /**
+ * Whether to the entire scene or a selection subset should be used
+ */
+enum class SceneSubset { ALL, SELECTION };
+
+/**
  * Possible selection tools to equip
  */
 enum class SelectionTool {

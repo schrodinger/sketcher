@@ -6,8 +6,6 @@
 
 #include "schrodinger/sketcher/definitions.h"
 
-enum class SceneSubset;
-
 namespace schrodinger
 {
 
@@ -20,6 +18,7 @@ namespace sketcher
 
 class CutCopyActionManager;
 class SketcherModel;
+enum class SceneSubset;
 
 class SKETCHER_API BackgroundContextMenu : public QMenu
 {

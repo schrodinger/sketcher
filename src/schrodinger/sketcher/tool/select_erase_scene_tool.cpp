@@ -6,7 +6,6 @@
 #include <GraphMol/ROMol.h>
 #include <GraphMol/MolOps.h>
 
-#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -20,6 +19,27 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+namespace
+{
+
+/**
+ * Create a QRectF with corners of the two given point.  Note that the
+ * QRectF(QPointF, QPointF) constructor expects that the two arguments are the
+ * upper-left and lower-right corners, respectively.  `rect_for_points` avoids
+ * that requirement: any two corners in any order will result in a QRect with a
+ * positive width and height.
+ */
+QRectF rect_for_points(const QPointF& a, const QPointF& b)
+{
+    qreal x = qMin(a.x(), b.x());
+    qreal y = qMin(a.y(), b.y());
+    qreal width = qAbs(a.x() - b.x());
+    qreal height = qAbs(a.y() - b.y());
+    return QRectF(x, y, width, height);
+}
+
+} // unnamed namespace
 
 std::shared_ptr<AbstractSceneTool>
 get_select_scene_tool(SelectionTool selection_type, Scene* scene,

@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "schrodinger/sketcher/qt_utils.h"
+#include "schrodinger/sketcher/widget/widget_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_select_options_widget.h"
 

@@ -2,7 +2,6 @@
 
 #include <stdexcept>
 
-#include "schrodinger/sketcher/qt_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/widget/modular_popup.h"
 

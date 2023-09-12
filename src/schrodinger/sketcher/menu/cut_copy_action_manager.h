@@ -6,14 +6,13 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/definitions.h"
 
-enum class SceneSubset;
-
 namespace schrodinger
 {
 namespace sketcher
 {
 
 class SketcherModel;
+enum class SceneSubset;
 
 class SKETCHER_API CutCopyActionManager : public QWidget
 {

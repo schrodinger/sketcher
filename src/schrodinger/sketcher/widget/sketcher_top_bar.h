@@ -7,7 +7,6 @@
 #include "schrodinger/sketcher/widget/sketcher_view.h"
 
 class QWidget;
-enum class SceneSubset;
 
 namespace Ui
 {
@@ -27,6 +26,7 @@ class ExportMenu;
 class HelpMenu;
 class ImportMenu;
 class MoreActionsMenu;
+enum class SceneSubset;
 
 /**
  * Top bar for the sketcher widget.

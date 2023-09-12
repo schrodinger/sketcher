@@ -4,8 +4,6 @@
 
 #include "schrodinger/sketcher/definitions.h"
 
-enum class SceneSubset;
-
 namespace schrodinger
 {
 namespace rdkit_extensions
@@ -19,6 +17,7 @@ class CutCopyActionManager;
 class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class SketcherModel;
+enum class SceneSubset;
 
 class SKETCHER_API SelectionContextMenu : public QMenu
 {

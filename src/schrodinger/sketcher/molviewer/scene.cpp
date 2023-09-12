@@ -37,7 +37,6 @@
 #include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
-#include "schrodinger/sketcher/selection_item.h"
 
 #include "schrodinger/sketcher/molviewer/rotation_item.h"
 #include "schrodinger/sketcher/tool/rotate_scene_tool.h"

@@ -2,7 +2,6 @@
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
