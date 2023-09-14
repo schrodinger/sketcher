@@ -25,14 +25,20 @@ namespace sketcher
 {
 
 /**
- * @return a bounding rect of the given label for the given font metrics, with
- * the height adjusted to better fit the actual size of the text
+ * @return a bounding rect of the given label for the given font metrics
  */
-QRect make_text_rect(QFontMetrics fm, QString label)
+QRectF make_text_rect(QFontMetricsF fm, QString label)
+
 {
-    auto rect = fm.boundingRect(label);
-    return rect.adjusted(0, rect.height() * LABEL_RECT_HEIGHT_ADJUSTMENT_FACTOR,
-                         0, 0);
+    // if the label is empty return an invalid QRectF
+    if (label.isEmpty()) {
+        return QRectF();
+    }
+
+    auto rect = fm.tightBoundingRect(label);
+    // add some margin around the text
+    return rect.adjusted(-TEXT_RECT_MARGIN, -TEXT_RECT_MARGIN, TEXT_RECT_MARGIN,
+                         TEXT_RECT_MARGIN);
 };
 
 AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
@@ -133,6 +139,7 @@ void AtomItem::updateCachedData()
             updateIsotopeLabel();
             updateChargeAndRadicalLabel();
             updateHsLabel();
+            updateMappingLabel();
             positionLabels();
         }
 
@@ -141,6 +148,9 @@ void AtomItem::updateCachedData()
                 m_subrects.push_back(rect);
             }
         }
+    }
+    if (m_settings.m_stereo_labels_shown) {
+        updateChiralityLabel();
     }
 
     // merge all of the subrects with the predictive highlighting path to create
@@ -152,9 +162,6 @@ void AtomItem::updateCachedData()
         m_shape |= rect_path;
     }
     m_bounding_rect = m_shape.boundingRect();
-    if (m_settings.m_stereo_labels_shown) {
-        updateChiralityLabel();
-    }
 }
 
 QPainterPath AtomItem::calcHighlightingPath(qreal radius)
@@ -247,8 +254,9 @@ void AtomItem::updateChiralityLabel()
 
 void AtomItem::clearLabels()
 {
-    for (auto string : {m_main_label_text, m_charge_and_radical_label_text,
-                        m_H_count_label_text, m_chirality_label_text}) {
+    for (auto string :
+         {m_main_label_text, m_charge_and_radical_label_text,
+          m_H_count_label_text, m_chirality_label_text, m_mapping_label_text}) {
         string = QString();
     }
     for (auto rect : getLabelRects()) {
@@ -263,8 +271,19 @@ void AtomItem::updateIsotopeLabel()
     // when no isotope is set RDKit returns 0
     if (isotope != 0) {
         m_isotope_label_text = QString::number(isotope);
-        m_isotope_rect =
+        m_isotope_label_rect =
             make_text_rect(m_fonts.m_subscript_fm, m_isotope_label_text);
+    }
+}
+
+void AtomItem::updateMappingLabel()
+{
+    auto mapping_n = m_atom->getAtomMapNum();
+    // when no mapping is set RDKit returns 0
+    if (mapping_n != 0) {
+        m_mapping_label_text = QString("[%1]").arg(mapping_n);
+        m_mapping_label_rect =
+            make_text_rect(m_fonts.m_mapping_fm, m_mapping_label_text);
     }
 }
 
@@ -301,7 +320,7 @@ void AtomItem::updateChargeAndRadicalLabel()
         charge_label;
     if (!text_label.isEmpty()) {
         m_charge_and_radical_label_text = text_label;
-        m_charge_and_radical_rect = make_text_rect(
+        m_charge_and_radical_label_rect = make_text_rect(
             m_fonts.m_subscript_fm, m_charge_and_radical_label_text);
     }
 }
@@ -324,33 +343,39 @@ void AtomItem::updateHsLabel()
 void AtomItem::positionLabels()
 {
     auto label_rect = m_main_label_rect;
-    m_isotope_rect.translate(
+    m_isotope_label_rect.translate(
         QPointF(m_main_label_rect.left(), m_main_label_rect.center().y()) -
-        m_isotope_rect.bottomRight());
-    m_charge_and_radical_rect.translate(
+        m_isotope_label_rect.bottomRight());
+
+    m_charge_and_radical_label_rect.translate(
         QPointF(m_main_label_rect.right(), m_main_label_rect.center().y()) -
-        m_charge_and_radical_rect.bottomLeft());
-    label_rect = label_rect.united(m_isotope_rect);
+        m_charge_and_radical_label_rect.bottomLeft());
+    m_mapping_label_rect.translate(
+        QPointF(m_main_label_rect.right(), m_main_label_rect.center().y()) -
+        m_mapping_label_rect.bottomLeft());
+
+    if (m_mapping_label_rect.isValid()) {
+        m_charge_and_radical_label_rect.translate(m_mapping_label_rect.width(),
+                                                  0);
+    }
+    label_rect = label_rect.united(m_isotope_label_rect);
+    label_rect = label_rect.united(m_mapping_label_rect);
+
     auto H_direction = findHsDirection();
     // charge and radical text is next to the main label, on the right, unless
     // hydrogens are drawn to the right, in which case they come before charge
     // and radicals. (e.g. H3O+ but NH4+)
     if (H_direction != HsDirection::RIGHT) {
-        label_rect = label_rect.united(m_charge_and_radical_rect);
+        label_rect = label_rect.united(m_charge_and_radical_label_rect);
     }
-    auto SPACER = m_main_label_rect.width() * LABEL_SPACER_RATIO;
-    if (!m_H_count_label_rect.isValid() && H_direction == HsDirection::LEFT) {
-        label_rect.adjust(-SPACER, 0, 0, 0);
-    }
-    if (m_H_label_rect.isValid() && H_direction == HsDirection::RIGHT) {
-        label_rect.adjust(0, 0, SPACER, 0);
-    }
+    const auto H_LABEL_VERTICAL_OFFSET =
+        m_H_count_label_rect.height() * H_COUNT_LABEL_VERTICAL_OFFSET_RATIO;
     switch (H_direction) {
         case HsDirection::LEFT:
             m_H_count_label_rect.translate(
                 label_rect.bottomLeft() -
                 QPointF(m_H_count_label_rect.right(),
-                        m_H_count_label_rect.center().y()));
+                        m_H_count_label_rect.top() + H_LABEL_VERTICAL_OFFSET));
             label_rect.setLeft(m_H_count_label_rect.left());
             m_H_label_rect.translate(label_rect.bottomLeft() -
                                      m_H_label_rect.bottomRight());
@@ -363,10 +388,11 @@ void AtomItem::positionLabels()
             m_H_count_label_rect.translate(
                 label_rect.bottomRight() -
                 QPointF(m_H_count_label_rect.left(),
-                        m_H_count_label_rect.center().y()));
+                        m_H_count_label_rect.top() + H_LABEL_VERTICAL_OFFSET));
             label_rect.setRight(m_H_count_label_rect.right());
-            m_charge_and_radical_rect.translate(
-                m_H_count_label_rect.right() - m_charge_and_radical_rect.left(),
+            m_charge_and_radical_label_rect.translate(
+                m_H_count_label_rect.right() -
+                    m_charge_and_radical_label_rect.left(),
                 0);
 
             break;
@@ -378,12 +404,9 @@ void AtomItem::positionLabels()
             m_H_count_label_rect.translate(
                 m_H_label_rect.bottomRight() -
                 QPointF(m_H_count_label_rect.left(),
-                        m_H_count_label_rect.center().y()));
+                        m_H_count_label_rect.top() + H_LABEL_VERTICAL_OFFSET));
             QPointF offset(0, label_rect.top() - m_H_count_label_rect.bottom());
-            if (m_H_count_label_rect.isValid() &&
-                m_charge_and_radical_rect.isValid()) {
-                offset -= QPoint(0, SPACER);
-            }
+
             m_H_label_rect.translate(offset);
             m_H_count_label_rect.translate(offset);
             break;
@@ -396,7 +419,7 @@ void AtomItem::positionLabels()
             m_H_count_label_rect.translate(
                 m_H_label_rect.bottomRight() -
                 QPointF(m_H_count_label_rect.left(),
-                        m_H_count_label_rect.center().y()));
+                        m_H_count_label_rect.top() + H_LABEL_VERTICAL_OFFSET));
             break;
         }
     }
@@ -414,6 +437,9 @@ bool AtomItem::determineLabelIsVisible() const
         return true;
     }
     if (m_atom->getIsotope() != 0) {
+        return true;
+    }
+    if (m_atom->getAtomMapNum() != 0) {
         return true;
     }
     if (m_atom->getNumRadicalElectrons()) {
@@ -477,17 +503,24 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->setFont(m_fonts.m_subscript_font);
         painter->drawText(m_H_count_label_rect, Qt::AlignCenter,
                           m_H_count_label_text);
-        painter->drawText(m_charge_and_radical_rect, Qt::AlignCenter,
+        painter->drawText(m_charge_and_radical_label_rect, Qt::AlignCenter,
                           m_charge_and_radical_label_text);
-        painter->drawText(m_isotope_rect, Qt::AlignCenter,
+        painter->drawText(m_isotope_label_rect, Qt::AlignCenter,
                           m_isotope_label_text);
+
+        // atom mappings
+        painter->setPen(m_pen);
+        painter->setFont(m_fonts.m_mapping_font);
+        painter->drawText(m_mapping_label_rect, Qt::AlignCenter,
+                          m_mapping_label_text);
         painter->restore();
     }
     if (m_settings.m_stereo_labels_shown) {
         painter->save();
         painter->setPen(m_chirality_pen);
         painter->setFont(m_fonts.m_chirality_font);
-        painter->drawText(m_chirality_label_rect, m_chirality_label_text);
+        painter->drawText(m_chirality_label_rect, Qt::AlignCenter,
+                          m_chirality_label_text);
         painter->restore();
     }
 }
@@ -522,8 +555,10 @@ QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
 
 std::vector<QRectF> AtomItem::getLabelRects() const
 {
-    return {m_main_label_rect,    m_isotope_rect, m_charge_and_radical_rect,
-            m_H_count_label_rect, m_H_label_rect, m_chirality_label_rect};
+    return {m_main_label_rect,     m_mapping_label_rect,
+            m_isotope_label_rect,  m_charge_and_radical_label_rect,
+            m_H_count_label_rect,  m_H_label_rect,
+            m_chirality_label_rect};
 }
 
 bool AtomItem::determineValenceErrorIsVisible() const

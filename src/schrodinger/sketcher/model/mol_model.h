@@ -546,9 +546,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void setAtomCharge(const RDKit::Atom* const atom, int charge);
 
     /**
-     * Reverse an existing bond (i.e. swap the start and end atoms).  This is
-     * only meaningful for dative bonds or bonds with a BondDir of BEGINWEDGE or
-     * BEGINDASH.
+     * Add mapping info to a set of existing atoms.
+     * @param atoms The atoms to map
+     * @param mapping The mapping number to be set. Setting 0 will remove the
+     * mapping
+     */
+    void setAtomMapping(const std::unordered_set<const RDKit::Atom*>& atoms,
+                        int mapping);
+
+    /**
+     * Reverse an existing bond (i.e. swap the start and end atoms).  This
+     * is only meaningful for dative bonds or bonds with a BondDir of
+     * BEGINWEDGE or BEGINDASH.
      */
     void flipBond(const RDKit::Bond* const bond);
 
@@ -1004,6 +1013,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param charge The new charge of the atom
      */
     void setAtomChargeFromCommand(const int atom_tag, const int charge);
+
+    /**
+     * Set the mapping number of a set of atoms.  This method must only be
+     * called from an undo command.
+     * @param atom_tags The tag of the atoms to add mappings to
+     * @param mapping The new mapping number of the atom. If this is 0 the
+     * mapping is removed
+     */
+    void setAtomMappingFromCommand(const std::unordered_set<int>& atom_tags,
+                                   const int mapping);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This

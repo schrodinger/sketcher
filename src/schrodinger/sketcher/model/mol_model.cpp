@@ -777,6 +777,24 @@ void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
     doCommandWithMolUndo(redo, "Set atom charge");
 }
 
+void MolModel::setAtomMapping(
+    const std::unordered_set<const RDKit::Atom*>& atoms, int mapping)
+{
+    if (atoms.empty()) {
+        return;
+    }
+    std::unordered_set<int> atom_tags(atoms.size());
+    for (const RDKit::Atom* atom : atoms) {
+        atom_tags.insert(getTagForAtom(atom));
+    }
+
+    auto redo = [this, atom_tags, mapping]() {
+        setAtomMappingFromCommand(atom_tags, mapping);
+    };
+
+    doCommandWithMolUndo(redo, "Set mapping number");
+}
+
 void MolModel::mutateAtom(
     const RDKit::Atom* const atom,
     const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
@@ -1496,6 +1514,17 @@ void MolModel::setAtomChargeFromCommand(const int atom_tag, const int charge)
     Q_ASSERT(m_in_command);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
     atom->setFormalCharge(charge);
+    finalizeMoleculeChange();
+}
+
+void MolModel::setAtomMappingFromCommand(
+    const std::unordered_set<int>& atom_tags, const int atom_mapping)
+{
+    Q_ASSERT(m_in_command);
+    for (auto atom_tag : atom_tags) {
+        RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+        atom->setAtomMapNum(atom_mapping);
+    }
     finalizeMoleculeChange();
 }
 

@@ -287,5 +287,40 @@ qreal get_rounded_angle_radians(const QPointF& start, const QPointF& end)
     return rounded / 6.0 * M_PI;
 }
 
+void trim_line_to_rect(QLineF& line, const QRectF& rect)
+{
+    // expand rect by 4 pixels in all directions
+    const QMarginsF margins(ATOM_LABEL_MARGIN, ATOM_LABEL_MARGIN,
+                            ATOM_LABEL_MARGIN, ATOM_LABEL_MARGIN);
+    const QRectF enlarged_rect = rect + margins;
+
+    QPointF inter_point; // the intersection point
+    if (enlarged_rect.contains(line.p1()) &&
+        intersection_of_line_and_rect(line, enlarged_rect, inter_point)) {
+        line.setP1(inter_point);
+    } else if (enlarged_rect.contains(line.p2()) &&
+               intersection_of_line_and_rect(line, enlarged_rect,
+                                             inter_point)) {
+        line.setP2(inter_point);
+    }
+}
+
+bool intersection_of_line_and_rect(const QLineF& line, const QRectF& rect,
+                                   QPointF& inter_point)
+{
+    // break the bounding rect up into four lines
+    QLineF top(rect.topLeft(), rect.topRight());
+    QLineF left(rect.topLeft(), rect.bottomLeft());
+    QLineF bottom(rect.bottomLeft(), rect.bottomRight());
+    QLineF right(rect.topRight(), rect.bottomRight());
+
+    bool found_intersection =
+        (line.intersects(top, &inter_point) == QLineF::BoundedIntersection ||
+         line.intersects(left, &inter_point) == QLineF::BoundedIntersection ||
+         line.intersects(bottom, &inter_point) == QLineF::BoundedIntersection ||
+         line.intersects(right, &inter_point) == QLineF::BoundedIntersection);
+    return found_intersection;
+}
+
 } // namespace sketcher
 } // namespace schrodinger

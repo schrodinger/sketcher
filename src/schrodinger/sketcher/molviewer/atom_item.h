@@ -96,7 +96,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * that they don't overlap with the atom labels.  Note that this method
      * returns subrects starting from the center of the atom and working
      * outwards.  This behavior is required for proper functioning of bond line
-     * trimming due to assumptions made in BondItem::trimLineToRect.
+     * trimming due to assumptions made in trim_line_to_rect.
      */
     const std::vector<QRectF>& getSubrects() const;
 
@@ -142,12 +142,14 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QRectF m_H_label_rect;
     QRectF m_H_count_label_rect;
     QString m_H_count_label_text;
-    QRectF m_charge_and_radical_rect;
+    QRectF m_charge_and_radical_label_rect;
     QString m_charge_and_radical_label_text;
     QString m_isotope_label_text;
     QString m_chirality_label_text;
     QRectF m_chirality_label_rect;
-    QRectF m_isotope_rect;
+    QString m_mapping_label_text;
+    QRectF m_mapping_label_rect;
+    QRectF m_isotope_label_rect;
     QPainterPath m_squiggle_path; // used for attachment point squiggle
 
     std::vector<QRectF> m_subrects;
@@ -220,6 +222,11 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * create a label for the isotope number (if present)
      */
     void updateIsotopeLabel();
+
+    /**
+     * create a label for the mapping number (if present)
+     */
+    void updateMappingLabel();
 
     /**
      * create a label for the charge and radical information  (if present)

@@ -41,6 +41,7 @@ void Fonts::setSize(qreal size)
     m_subscript_fm = QFontMetrics(m_subscript_font);
     m_charge_fm = QFontMetrics(m_charge_font);
     m_mapping_fm = QFontMetrics(m_mapping_font);
+    m_chirality_fm = QFontMetrics(m_chirality_font);
 
     m_radical_dot_size = size * RADICAL_DOT_RATIO;
 }

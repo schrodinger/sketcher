@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QFont>
-#include <QFontMetrics>
+#include <QFontMetricsF>
 #include <QtGlobal>
 
 namespace schrodinger
@@ -35,11 +35,11 @@ class Fonts
     QFont m_mapping_font;
     QFont m_chirality_font;
 
-    QFontMetrics m_main_label_fm;
-    QFontMetrics m_subscript_fm;
-    QFontMetrics m_charge_fm;
-    QFontMetrics m_mapping_fm;
-    QFontMetrics m_chirality_fm;
+    QFontMetricsF m_main_label_fm;
+    QFontMetricsF m_subscript_fm;
+    QFontMetricsF m_charge_fm;
+    QFontMetricsF m_mapping_fm;
+    QFontMetricsF m_chirality_fm;
 
     qreal m_radical_dot_size;
 };

@@ -366,33 +366,6 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     QLineF trimLineToBoundAtoms(const QLineF& line) const;
 
     /**
-     * Trim a line so that it ends at least 4 pixels outside of the given
-     * rectangle.  Note that this method assumes that the line is either
-     * completely outside of the rectangle (in which case no trimming is
-     * required), or that the line has exactly one endpoint within the rectangle
-     * (in which case that endpoint is moved outside of the rectangle).  We
-     * assume that the line is *not* completely contained within the rectangle
-     * and that the line does not pass through the rectangle and come out the
-     * other side.
-     *
-     * @param line[in,out] The line to trim
-     * @param subrect[in] The rectangle to trim to
-     */
-    void trimLineToRect(QLineF& line, const QRectF& subrect) const;
-
-    /**
-     * Calculate the intersection point (if any) of a line and a rectangle.  See
-     * caveats in the `trimLineToRect` docstring.
-     *
-     * @param line[in] The line
-     * @param rect[in] The rectangle
-     * @param i[out] Will be set to the intersection point, if there is one
-     * @return Whether the line intersects the rectangle
-     */
-    bool intersectionOfLineAndRect(const QLineF& line, const QRectF& rect,
-                                   QPointF& i) const;
-
-    /**
      * Calculate a painter path around the perimeter of `line` if `line` were
      * drawn with a pen width of `2 * half_width`.
      *

@@ -30,7 +30,7 @@ const qreal DEFAULT_FONT_SIZE = 13.0;
 // Ratios for the size of specified font to the size of the atom label font
 const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
-const qreal MAPPING_FONT_RATIO = 0.6;
+const qreal MAPPING_FONT_RATIO = 0.5;
 const qreal CHIRALITY_FONT_RATIO = 0.6;
 
 // The font size used to display the number of bonds that the Draw Chain scene
@@ -40,9 +40,11 @@ const qreal DRAW_CHAIN_FONT_SIZE = 11.0;
 // Ratios between the dot width for radicals and the font size
 const qreal RADICAL_DOT_RATIO = 0.25;
 
-// Ratios the spacer between two consecutive labels (such as NH) and the width
-// of the main element label
-const qreal LABEL_SPACER_RATIO = 0.1;
+// margin around the text in an atom text rectangle in pixels
+const qreal TEXT_RECT_MARGIN = 1.3;
+
+// the hight ratio on the H label at which the top of the h count label is drawn
+const qreal H_COUNT_LABEL_VERTICAL_OFFSET_RATIO = 0.7;
 
 // Ratio between the distance of radical dots from the center and the label
 // height. Used for radicals when the atom label is visible
@@ -50,11 +52,6 @@ const qreal RADICAL_DISTANCE_FROM_LABEL_RATIO = 0.75;
 // Ratio between the distance of radical dots from the center and the radical
 // dot size. Used for radicals when the atom label is not visible
 const qreal RADICAL_DISTANCE_FROM_HIDDEN_LABEL_RATIO = 3.;
-
-// QFontmetrics returns a bigger height for characters that the actual size.
-// This factor is used to correct that so the label fits the actual dimensions
-// of the text
-const qreal LABEL_RECT_HEIGHT_ADJUSTMENT_FACTOR = 0.2;
 
 // Ratios between paired dots and their size for radicals
 const qreal PAIRED_ELECTRONS_DISTANCE_RATIO = 0.75;
@@ -109,7 +106,11 @@ const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
 
 // the color of hint bonds (e.g. the blue lines that show where a bond will be
 // drawn)
-const QColor HINT_COLOR = Qt::blue;
+const QColor HINT_COLOR = QColor("#9cbcd1");
+
+// the color of hint text (e.g. the element name that appears when using the
+// atom tool)
+const QColor HINT_TEXT_COLOR = QColor("#9cbcd1");
 
 // The width of bonds for fragment hints (e.g. the blue rings that appear when
 // using the ring tool)
@@ -181,6 +182,10 @@ const qreal ARROW_WIDTH = 10.0;
 
 // The dimensions of the reaction plus sign, measured in Scene units
 const qreal PLUS_LENGTH = 20.0;
+
+// The dimensions of the atom mapping tool arrow, measured in Scene units
+const qreal MAPPING_ARROW_HEAD_LENGTH = 10;
+const qreal MAPPING_ARROW_HEAD_HALF_WIDTH = 3;
 
 // The width of the path drawn around non-molecular objects for predictive and
 // selection highlighting

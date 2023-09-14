@@ -29,6 +29,7 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/tool/arrow_plus_scene_tool.h"
+#include "schrodinger/sketcher/tool/atom_mapping_scene_tool.h"
 #include "schrodinger/sketcher/tool/attachment_point_scene_tool.h"
 #include "schrodinger/sketcher/tool/select_erase_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_atom_scene_tool.h"
@@ -642,24 +643,29 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 return std::make_shared<DrawChainSceneTool>(this, m_mol_model);
         }
     } else if (draw_tool == DrawTool::ENUMERATION) {
-        auto enumeration_tool = m_sketcher_model->getEnumerationTool();
-        if (enumeration_tool == EnumerationTool::NEW_RGROUP) {
-            return std::make_shared<DrawIncrementingRGroupSceneTool>(
-                this, m_mol_model);
-        } else if (enumeration_tool == EnumerationTool::EXISTING_RGROUP) {
-            auto r_group_num =
-                m_sketcher_model->getValueInt(ModelKey::RGROUP_NUMBER);
-            return std::make_shared<DrawRGroupSceneTool>(r_group_num, this,
-                                                         m_mol_model);
-        } else if (enumeration_tool == EnumerationTool::ATTACHMENT_POINT) {
-            return std::make_shared<DrawAttachmentPointSceneTool>(this,
-                                                                  m_mol_model);
-        } else if (enumeration_tool == EnumerationTool::RXN_ARROW) {
-            return std::make_shared<ArrowPlusSceneTool>(
-                NonMolecularType::RXN_ARROW, this, m_mol_model);
-        } else if (enumeration_tool == EnumerationTool::RXN_PLUS) {
-            return std::make_shared<ArrowPlusSceneTool>(
-                NonMolecularType::RXN_PLUS, this, m_mol_model);
+        switch (m_sketcher_model->getEnumerationTool()) {
+            case EnumerationTool::NEW_RGROUP:
+                return std::make_shared<DrawIncrementingRGroupSceneTool>(
+                    this, m_mol_model);
+            case EnumerationTool::EXISTING_RGROUP:
+                return std::make_shared<DrawRGroupSceneTool>(
+                    m_sketcher_model->getValueInt(ModelKey::RGROUP_NUMBER),
+                    this, m_mol_model);
+            case EnumerationTool::ATTACHMENT_POINT:
+                return std::make_shared<DrawAttachmentPointSceneTool>(
+                    this, m_mol_model);
+            case EnumerationTool::RXN_ARROW:
+                return std::make_shared<ArrowPlusSceneTool>(
+                    NonMolecularType::RXN_ARROW, this, m_mol_model);
+            case EnumerationTool::RXN_PLUS:
+                return std::make_shared<ArrowPlusSceneTool>(
+                    NonMolecularType::RXN_PLUS, this, m_mol_model);
+            case EnumerationTool::ADD_MAPPING:
+                return std::make_shared<AtomMappingSceneTool>(
+                    MappingAction::ADD, this, m_mol_model);
+            case EnumerationTool::REMOVE_MAPPING:
+                return std::make_shared<AtomMappingSceneTool>(
+                    MappingAction::REMOVE, this, m_mol_model);
         }
     } else if (draw_tool == DrawTool::CHARGE) {
         auto charge_tool = m_sketcher_model->getChargeTool();

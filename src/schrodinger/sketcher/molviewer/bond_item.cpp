@@ -550,48 +550,14 @@ QLineF BondItem::trimLineToBoundAtoms(const QLineF& line) const
     for (const QRectF& subrect : m_start_item.getSubrects()) {
         // this bond uses the same local coordinate system as the start
         // atom, so we don't need to map these subrects
-        trimLineToRect(trimmed_line, subrect);
+        trim_line_to_rect(trimmed_line, subrect);
     }
     // trim to the end atom
     for (const QRectF& subrect : m_end_item.getSubrects()) {
         QRectF mapped_rect = mapRectFromItem(&m_end_item, subrect);
-        trimLineToRect(trimmed_line, mapped_rect);
+        trim_line_to_rect(trimmed_line, mapped_rect);
     }
     return trimmed_line;
-}
-
-void BondItem::trimLineToRect(QLineF& line, const QRectF& rect) const
-{
-    // expand rect by 4 pixels in all directions
-    const QMarginsF margins(ATOM_LABEL_MARGIN, ATOM_LABEL_MARGIN,
-                            ATOM_LABEL_MARGIN, ATOM_LABEL_MARGIN);
-    const QRectF enlarged_rect = rect + margins;
-
-    QPointF inter_point; // the intersection point
-    if (enlarged_rect.contains(line.p1()) &&
-        intersectionOfLineAndRect(line, enlarged_rect, inter_point)) {
-        line.setP1(inter_point);
-    } else if (enlarged_rect.contains(line.p2()) &&
-               intersectionOfLineAndRect(line, enlarged_rect, inter_point)) {
-        line.setP2(inter_point);
-    }
-}
-
-bool BondItem::intersectionOfLineAndRect(const QLineF& line, const QRectF& rect,
-                                         QPointF& inter_point) const
-{
-    // break the bounding rect up into four lines
-    QLineF top(rect.topLeft(), rect.topRight());
-    QLineF left(rect.topLeft(), rect.bottomLeft());
-    QLineF bottom(rect.bottomLeft(), rect.bottomRight());
-    QLineF right(rect.topRight(), rect.bottomRight());
-
-    bool found_intersection =
-        (line.intersects(top, &inter_point) == QLineF::BoundedIntersection ||
-         line.intersects(left, &inter_point) == QLineF::BoundedIntersection ||
-         line.intersects(bottom, &inter_point) == QLineF::BoundedIntersection ||
-         line.intersects(right, &inter_point) == QLineF::BoundedIntersection);
-    return found_intersection;
 }
 
 QPainterPath BondItem::pathAroundLine(const QLineF& line,

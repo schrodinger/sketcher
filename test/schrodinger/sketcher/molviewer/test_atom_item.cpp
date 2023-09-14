@@ -35,18 +35,20 @@ class TestAtomItem : public AtomItem
     using AtomItem::determineValenceErrorIsVisible;
     using AtomItem::findHsDirection;
     using AtomItem::m_bounding_rect;
+    using AtomItem::m_charge_and_radical_label_rect;
     using AtomItem::m_charge_and_radical_label_text;
-    using AtomItem::m_charge_and_radical_rect;
     using AtomItem::m_chirality_label_rect;
     using AtomItem::m_chirality_label_text;
     using AtomItem::m_H_count_label_rect;
     using AtomItem::m_H_count_label_text;
     using AtomItem::m_H_label_rect;
+    using AtomItem::m_isotope_label_rect;
     using AtomItem::m_isotope_label_text;
-    using AtomItem::m_isotope_rect;
     using AtomItem::m_label_is_visible;
     using AtomItem::m_main_label_rect;
     using AtomItem::m_main_label_text;
+    using AtomItem::m_mapping_label_rect;
+    using AtomItem::m_mapping_label_text;
     using AtomItem::m_predictive_highlighting_path;
     using AtomItem::m_selection_highlighting_path;
     using AtomItem::m_shape;
@@ -87,8 +89,8 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
     auto [atom_item, test_scene] = createAtomItem("N");
     BOOST_TEST(atom_item->m_main_label_text == "N");
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
-    BOOST_TEST(atom_item->m_isotope_rect.isNull());
-    BOOST_TEST(atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
     BOOST_TEST(!atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(!atom_item->m_H_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_count_label_text == "3");
@@ -114,7 +116,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_UnlabeledC)
     auto [atom_item, test_scene] = createAtomItem("CC");
     BOOST_TEST(atom_item->m_main_label_text.isEmpty());
     BOOST_TEST(atom_item->m_main_label_rect.isNull());
-    BOOST_TEST(atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_count_label_text.isEmpty());
@@ -130,8 +132,8 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_ChargeAndIsotope)
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!atom_item->m_main_label_text.isEmpty());
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
-    BOOST_TEST(!atom_item->m_charge_and_radical_rect.isNull());
-    BOOST_TEST(!atom_item->m_isotope_rect.isNull());
+    BOOST_TEST(!atom_item->m_charge_and_radical_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_isotope_label_rect.isNull());
     BOOST_TEST(atom_item->m_charge_and_radical_label_text == "2+");
     BOOST_TEST(atom_item->m_isotope_label_text == "13");
     BOOST_TEST(!atom_item->m_subrects.empty());
@@ -142,8 +144,8 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
     auto [atom_item, test_scene] = createAtomItem("* |$_R5$|");
     BOOST_TEST(atom_item->m_main_label_text == "R5");
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
-    BOOST_TEST(atom_item->m_isotope_rect.isNull());
-    BOOST_TEST(atom_item->m_charge_and_radical_rect.isNull());
+    BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_label_rect.isNull());
 
@@ -151,6 +153,28 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+}
+
+BOOST_AUTO_TEST_CASE(test_updateCachedData_atomMapping)
+{
+    auto [atom_item, test_scene] = createAtomItem("[CH4:1]");
+    // test that the atom label is set correctly when a mapping number is
+    // present, with a C and Hs and no charge or isotopes and that labels and
+    // rects are correctly created
+    BOOST_TEST(atom_item->m_main_label_text == "C");
+    BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_H_count_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_H_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(atom_item->m_label_is_visible);
+    BOOST_TEST(!(atom_item->m_shape.isEmpty()));
+    BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+
+    // test the mapping portion of the label
+    BOOST_TEST(!atom_item->m_mapping_label_rect.isNull());
+    BOOST_TEST(atom_item->m_mapping_label_text == "[1]");
 }
 
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
