@@ -24,11 +24,11 @@ namespace sketcher
 BOOST_AUTO_TEST_CASE(test_font_size)
 {
     TestScene test_scene;
-    BOOST_TEST(test_scene.fontSize() == DEFAULT_FONT_SIZE);
+    BOOST_TEST(test_scene.m_fonts.size() == DEFAULT_FONT_SIZE);
     test_scene.setFontSize(8);
-    BOOST_TEST(test_scene.fontSize() == 8);
+    BOOST_TEST(test_scene.m_fonts.size() == 8);
     test_scene.setFontSize(45);
-    BOOST_TEST(test_scene.fontSize() == 45);
+    BOOST_TEST(test_scene.m_fonts.size() == 45);
 }
 
 void count_visible_atoms(const Scene& test_scene, unsigned& num_visible_atoms,

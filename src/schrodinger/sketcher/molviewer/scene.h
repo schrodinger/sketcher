@@ -103,29 +103,11 @@ class SKETCHER_API Scene : public QGraphicsScene
     QList<QGraphicsItem*>
     ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const;
 
-    // Getters and setters for changing settings
-    qreal fontSize() const;
-    void setFontSize(qreal size);
-
-    bool allAtomsShown() const;
-    void setAllAtomsShown(bool value);
-
-    CarbonLabels carbonsLabeled() const;
-    void setCarbonsLabeled(CarbonLabels value);
-
-    bool valenceErrorsShown() const;
-    void setValenceErrorsShown(bool value);
-
-    bool stereoLabelsShown() const;
-    void setStereoLabelsShown(bool value);
-
-    qreal bondWidth() const;
-    void setBondWidth(qreal value);
-
-    qreal doubleBondSpacing() const;
-    void setDoubleBondSpacing(qreal value);
-
-    void setColorHeteroatoms(bool color_heteroatoms);
+    // These setters are public because the corresponding setting doesn't yet
+    // exist in SketcherModel, so they're called directly from SketcherWidget.
+    // These setters should be made private as part of SKETCH-2066.
+    void setFontSize(const qreal size);
+    void setCarbonsLabeled(const CarbonLabels value);
 
     /**
      * display the appropriate context menu at the given position
@@ -225,6 +207,8 @@ class SKETCHER_API Scene : public QGraphicsScene
      * @param keys The keys that were changed
      */
     void onModelValuesChanged(const std::unordered_set<ModelKey>& keys);
+
+    void setColorHeteroatoms(const bool color_heteroatoms);
 
     /**
      * Return the scene tool that should be used for a mouse event, based on the

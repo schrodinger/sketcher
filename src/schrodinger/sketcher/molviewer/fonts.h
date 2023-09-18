@@ -4,6 +4,8 @@
 #include <QFontMetricsF>
 #include <QtGlobal>
 
+#include "schrodinger/sketcher/definitions.h"
+
 namespace schrodinger
 {
 namespace sketcher
@@ -13,7 +15,7 @@ namespace sketcher
  * An object used for storing all fonts (and associated QFontMetrics) used in a
  * Scene. Also includes the size for radical dots pen.
  */
-class Fonts
+class SKETCHER_API Fonts
 {
   public:
     Fonts();

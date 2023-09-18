@@ -44,24 +44,6 @@
 #include "schrodinger/sketcher/tool/translate_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 
-#define SETTER_AND_GETTER(settings_member, update_method, type, getter, \
-                          setter, variable_name)                        \
-    type Scene::getter() const                                          \
-    {                                                                   \
-        return settings_member.variable_name;                           \
-    }                                                                   \
-    void Scene::setter(type value)                                      \
-    {                                                                   \
-        settings_member.variable_name = value;                          \
-        update_method();                                                \
-    }
-#define ATOM_SETTING(type, getter, setter, variable_name)                 \
-    SETTER_AND_GETTER(m_atom_item_settings, updateAtomAndBondItems, type, \
-                      getter, setter, variable_name)
-#define BOND_SETTING(type, getter, setter, variable_name)                  \
-    SETTER_AND_GETTER(m_bond_item_settings, updateBondItems, type, getter, \
-                      setter, variable_name)
-
 namespace schrodinger
 {
 namespace sketcher
@@ -313,27 +295,6 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
     }
 }
 
-qreal Scene::fontSize() const
-{
-    return m_fonts.size();
-}
-
-void Scene::setFontSize(qreal size)
-{
-    m_fonts.setSize(size);
-    updateAtomAndBondItems();
-}
-
-ATOM_SETTING(CarbonLabels, carbonsLabeled, setCarbonsLabeled, m_carbon_labels)
-ATOM_SETTING(bool, valenceErrorsShown, setValenceErrorsShown,
-             m_valence_errors_shown)
-ATOM_SETTING(bool, stereoLabelsShown, setStereoLabelsShown,
-             m_stereo_labels_shown)
-
-BOND_SETTING(qreal, bondWidth, setBondWidth, m_bond_width)
-BOND_SETTING(qreal, doubleBondSpacing, setDoubleBondSpacing,
-             m_double_bond_spacing)
-
 void Scene::updateAtomAndBondItems()
 {
     // we need to update all of the atom items before we update any bond
@@ -536,6 +497,8 @@ void Scene::onMolModelSelectionChanged()
 
 void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
 {
+    bool update_atom_and_bond_items = false;
+
     for (auto key : keys) {
         switch (key) {
             case ModelKey::SELECTION_TOOL:
@@ -553,20 +516,28 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
 
             case ModelKey::COLOR_HETEROATOMS:
                 setColorHeteroatoms(m_sketcher_model->getValueBool(key));
+                update_atom_and_bond_items = true;
                 break;
             case ModelKey::SHOW_STEREOCENTER_LABELS:
-                setStereoLabelsShown(m_sketcher_model->getValueBool(key));
+                m_atom_item_settings.m_stereo_labels_shown =
+                    m_sketcher_model->getValueBool(key);
+                update_atom_and_bond_items = true;
                 break;
             case ModelKey::SHOW_VALENCE_ERRORS:
-                setValenceErrorsShown(m_sketcher_model->getValueBool(key));
+                m_atom_item_settings.m_valence_errors_shown =
+                    m_sketcher_model->getValueBool(key);
+                update_atom_and_bond_items = true;
                 break;
             default:
                 break;
         }
     }
+    if (update_atom_and_bond_items) {
+        updateAtomAndBondItems();
+    }
 }
 
-void Scene::setColorHeteroatoms(bool color_heteroatoms)
+void Scene::setColorHeteroatoms(const bool color_heteroatoms)
 {
     if (color_heteroatoms) {
         m_atom_item_settings.setColorScheme(ColorScheme::DEFAULT);
@@ -574,6 +545,17 @@ void Scene::setColorHeteroatoms(bool color_heteroatoms)
         m_atom_item_settings.setMonochromeColorScheme(
             m_atom_item_settings.getAtomColor(-1));
     }
+}
+
+void Scene::setFontSize(const qreal size)
+{
+    m_fonts.setSize(size);
+    updateAtomAndBondItems();
+}
+
+void Scene::setCarbonsLabeled(const CarbonLabels value)
+{
+    m_atom_item_settings.m_carbon_labels = value;
     updateAtomAndBondItems();
 }
 
