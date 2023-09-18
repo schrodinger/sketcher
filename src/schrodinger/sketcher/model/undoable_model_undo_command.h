@@ -44,7 +44,7 @@ template <typename T> class SKETCHER_API AbstractUndoableModelUndoCommand
     /**
      * Run the specified function.  While the function is being run, signals
      * will be unblocked on the associated AbstractUndoableModel instance.
-     * AbstractUndoableModel::m_in_command will also be updated so that
+     * AbstractUndoableModel::m_allow_edits will also be updated so that
      * AbstractUndoableModel can catch commands that create commands (which
      * isn't allowed and would lead to a crash).
      *

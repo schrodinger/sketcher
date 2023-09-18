@@ -118,9 +118,10 @@ class SKETCHER_API AbstractUndoableModel : public QObject
                    const QString& description);
 
     /**
-     * Throw an exception if we're currently running a command
+     * Throw an exception if we're already in edit mode.  This prevents us from
+     * creating a command from within a command, as that leads to a Qt crash.
      */
-    void throwIfInCommand();
+    void throwIfAlreadyAllowingEdits();
 
     /**
      * Create an undo command and add it to the undo stack, which automatically
@@ -150,16 +151,16 @@ class SKETCHER_API AbstractUndoableModel : public QObject
                             const QString& description)
     // we must implement this method in the header because of the templating
     {
-        throwIfInCommand();
+        throwIfAlreadyAllowingEdits();
         m_undo_stack->push(new UndoableModelMergeableUndoCommand<T>(
             this, redo, undo, merge_func, merge_id, init_data, description));
     }
 
     QUndoStack* m_undo_stack;
 
-    // m_in_command is updated by AbstractUndoableModelUndoCommand immediately
+    // m_allow_edits is updated by AbstractUndoableModelUndoCommand immediately
     // before and after running a command
-    bool m_in_command = false;
+    bool m_allow_edits = false;
     template <typename T> friend class AbstractUndoableModelUndoCommand;
 };
 

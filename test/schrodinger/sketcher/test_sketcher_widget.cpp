@@ -116,17 +116,17 @@ BOOST_AUTO_TEST_CASE(test_undo)
     BOOST_TEST(sk.m_undo_stack->index() == command_idx + 1);
     BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == num_atoms);
 
-    // Manually clear the selection.
+    // Manually clear the MolModel.
     sk.m_mol_model->clear();
 
-    // Verify that the clear selection worked
+    // Verify that the clear worked
     BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
 
-    // Verify that the selection operation was added to the stack
+    // Verify that the clear operation was added to the stack
     BOOST_TEST(sk.m_undo_stack->count() == command_count + 2);
     BOOST_TEST(sk.m_undo_stack->index() == command_idx + 2);
 
-    // Attempt to undo the selection
+    // Attempt to undo the clear
     sk.m_undo_stack->undo();
     BOOST_TEST(sk.m_undo_stack->count() == command_idx + 2);
     BOOST_TEST(sk.m_undo_stack->index() == command_idx + 1);

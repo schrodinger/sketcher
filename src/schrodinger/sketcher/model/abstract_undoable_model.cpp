@@ -29,7 +29,7 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
                                       const std::function<void()> undo,
                                       const QString& description)
 {
-    throwIfInCommand();
+    throwIfAlreadyAllowingEdits();
     UndoableModelUndoCommand* command =
         new UndoableModelUndoCommand(this, redo, undo, description);
     try {
@@ -42,15 +42,16 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
     }
 }
 
-void AbstractUndoableModel::throwIfInCommand()
+void AbstractUndoableModel::throwIfAlreadyAllowingEdits()
 {
-    if (m_in_command) {
-        // Creating a command while inside of a command will work correctly
-        // during the initial "do" of the command, but will crash when the
-        // command is redone.  Throw an exception here so the problem is
-        // immediately obvious.
+    if (m_allow_edits) {
+        // If we're already allowing edits, then we're either in a command or in
+        // the process of creating one.  Creating a command while inside of a
+        // command will work correctly during the initial "do" of the command,
+        // but will crash when the command is redone.  Throw an exception here
+        // so the problem is immediately obvious.
         throw std::runtime_error(
-            "Cannot create a command from within a command");
+            "Cannot create a command while already in edit mode.");
     }
 }
 

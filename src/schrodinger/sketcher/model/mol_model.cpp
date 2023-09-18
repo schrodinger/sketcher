@@ -92,6 +92,28 @@ std::shared_ptr<RDKit::Bond> make_new_query_bond(
 
 } // namespace
 
+MolModelSnapshot::MolModelSnapshot(
+    const RDKit::RWMol& mol, const std::vector<NonMolecularObject>& pluses,
+    const std::optional<NonMolecularObject>& arrow,
+    const std::unordered_set<int>& selected_atom_tags,
+    const std::unordered_set<int>& selected_bond_tags,
+    const std::unordered_set<int>& selected_non_molecular_tags) :
+    m_mol(mol),
+    m_pluses(pluses),
+    m_arrow(arrow),
+    m_selected_atom_tags(selected_atom_tags),
+    m_selected_bond_tags(selected_bond_tags),
+    m_selected_non_molecular_tags(selected_non_molecular_tags)
+{
+}
+
+bool MolModelSnapshot::isSelectionIdentical(const MolModelSnapshot& other)
+{
+    return m_selected_atom_tags == other.m_selected_atom_tags &&
+           m_selected_bond_tags == other.m_selected_bond_tags &&
+           m_selected_non_molecular_tags == other.m_selected_non_molecular_tags;
+}
+
 MolModel::MolModel(QUndoStack* const undo_stack, QObject* parent) :
     AbstractUndoableModel(undo_stack, parent)
 {
@@ -186,68 +208,88 @@ MolModel::getNonMolecularObjects() const
     return objs;
 }
 
-void MolModel::doCommandWithMolUndo(const std::function<void()> redo,
-                                    const QString& description)
+void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
+                                       const QString& description,
+                                       const WhatChangedType to_be_changed)
 {
-    RDKit::RWMol undo_mol = m_mol;
-    auto undo_pluses = m_pluses;
-    auto undo_arrow = m_arrow;
-    auto sel_atom_tags = m_selected_atom_tags;
-    auto sel_bond_tags = m_selected_bond_tags;
-    auto sel_non_molecular_tags = m_selected_non_molecular_tags;
-    auto undo = [this, undo_mol, undo_pluses, undo_arrow, sel_atom_tags,
-                 sel_bond_tags, sel_non_molecular_tags]() {
-        m_mol = undo_mol;
-        m_pluses = undo_pluses;
-        m_arrow = undo_arrow;
-        updateNonMolecularTags();
+    Q_ASSERT(!m_allow_edits);
+    auto undo_snapshot = takeSnapshot();
+    m_allow_edits = true;
+    do_func();
+    if (to_be_changed & WhatChanged::MOLECULE) {
+        update_molecule_metadata(m_mol);
+    }
+    // We don't need to call updateNonMolecularMetadata here since
+    // m_tag_to_non_molecular_object (which is what updateNonMolecularMetadata
+    // updates) doesn't get saved in the snapshot.
+    // (m_tag_to_non_molecular_object uses pointers, which are invalidated by
+    // the restoreSnapshot call below, so calling updateNonMolecularMetadata
+    // here wouldn't actually do any good.)  updateNonMolecularMetadata is
+    // instead called in restoreSnapshot.
+    m_allow_edits = false;
+    auto redo_snapshot = takeSnapshot();
 
-        bool selection_changed =
-            sel_atom_tags != m_selected_atom_tags ||
-            sel_bond_tags != m_selected_bond_tags ||
-            sel_non_molecular_tags != m_selected_non_molecular_tags;
-        if (selection_changed) {
-            m_selected_atom_tags = sel_atom_tags;
-            m_selected_bond_tags = sel_bond_tags;
-            m_selected_non_molecular_tags = sel_non_molecular_tags;
-        }
-        // we don't need to update the metadata since undo_mol was stored with
-        // valid metadata
-        emit moleculeChanged();
-        emit nonMolecularObjectsChanged();
-        if (selection_changed) {
-            emit selectionChanged();
-        }
+    bool selection_changed = !undo_snapshot.isSelectionIdentical(redo_snapshot);
+    bool arrow_added =
+        !undo_snapshot.m_arrow.has_value() && redo_snapshot.m_arrow.has_value();
+    bool arrow_removed =
+        undo_snapshot.m_arrow.has_value() && !redo_snapshot.m_arrow.has_value();
+
+    auto undo = [this, undo_snapshot, to_be_changed, selection_changed,
+                 arrow_removed]() {
+        // undoing the removal of an arrow is equivalent to adding an arrow
+        restoreSnapshot(undo_snapshot, to_be_changed, selection_changed,
+                        arrow_removed);
+    };
+    auto redo = [this, redo_snapshot, to_be_changed, selection_changed,
+                 arrow_added]() {
+        restoreSnapshot(redo_snapshot, to_be_changed, selection_changed,
+                        arrow_added);
     };
     doCommand(redo, undo, description);
 }
 
-void MolModel::finalizeMoleculeChange(bool selection_changed,
-                                      bool non_molecular_objects_changed)
+MolModelSnapshot MolModel::takeSnapshot() const
 {
-    if (non_molecular_objects_changed) {
-        updateNonMolecularTags();
-    }
-    update_molecule_metadata(m_mol);
+    return MolModelSnapshot(m_mol, m_pluses, m_arrow, m_selected_atom_tags,
+                            m_selected_bond_tags,
+                            m_selected_non_molecular_tags);
+}
 
-    emit moleculeChanged();
-    if (non_molecular_objects_changed) {
+void MolModel::restoreSnapshot(const MolModelSnapshot& snapshot,
+                               const WhatChangedType what_changed,
+                               const bool selection_changed,
+                               const bool arrow_added)
+{
+    Q_ASSERT(m_allow_edits);
+    if (what_changed & WhatChanged::MOLECULE) {
+        m_mol = snapshot.m_mol;
+        // we don't need to call update_molecule_metadata since all metadata was
+        // updated before we took the snapshot
+    }
+    if (what_changed & WhatChanged::NON_MOL_OBJS) {
+        m_pluses = snapshot.m_pluses;
+        m_arrow = snapshot.m_arrow;
+        updateNonMolecularMetadata();
+    }
+    if (selection_changed) {
+        m_selected_atom_tags = snapshot.m_selected_atom_tags;
+        m_selected_bond_tags = snapshot.m_selected_bond_tags;
+        m_selected_non_molecular_tags = snapshot.m_selected_non_molecular_tags;
+    }
+
+    if (what_changed & WhatChanged::MOLECULE) {
+        emit moleculeChanged();
+    }
+    if (what_changed & WhatChanged::NON_MOL_OBJS) {
         emit nonMolecularObjectsChanged();
     }
     if (selection_changed) {
         emit selectionChanged();
     }
-}
-
-std::vector<int> MolModel::getNextNTags(const size_t count,
-                                        int& tag_counter) const
-{
-    std::vector<int> tags;
-    tags.reserve(count);
-    for (unsigned int i = 0; i < count; i++) {
-        tags.push_back(tag_counter++);
+    if (arrow_added) {
+        emit reactionArrowAdded();
     }
-    return tags;
 }
 
 void MolModel::addAtom(const Element& element, const RDGeom::Point3D& coords,
@@ -293,19 +335,17 @@ void MolModel::addRGroup(const unsigned int r_group_num,
 void MolModel::addAttachmentPoint(const RDGeom::Point3D& coords,
                                   const RDKit::Atom* const bound_to_atom)
 {
-    int atom_tag = m_next_atom_tag++;
-    int bond_tag = m_next_bond_tag++;
     int bound_to_atom_tag = getTagForAtom(bound_to_atom);
     unsigned int ap_num = get_next_attachment_point_number(&m_mol);
 
-    auto redo = [this, atom_tag, bond_tag, coords, bound_to_atom_tag,
-                 ap_num]() {
+    auto cmd_func = [this, coords, bound_to_atom_tag, ap_num]() {
         auto create_atom = std::bind(make_new_attachment_point, ap_num);
         auto create_bond = make_new_single_bond;
-        addAtomChainFromCommand({atom_tag}, {bond_tag}, create_atom, {coords},
-                                create_bond, bound_to_atom_tag);
+        addAtomChainCommandFunc(create_atom, {coords}, create_bond,
+                                bound_to_atom_tag);
     };
-    doCommandWithMolUndo(redo, "Add attachment point");
+    doCommandUsingSnapshots(cmd_func, "Add attachment point",
+                            WhatChanged::MOLECULE);
 }
 
 void MolModel::addAtomChain(const Element& element,
@@ -314,25 +354,22 @@ void MolModel::addAtomChain(const Element& element,
                             const RDKit::Bond::BondType& bond_type,
                             const RDKit::Bond::BondDir& bond_dir)
 {
+    int bound_to_atom_tag =
+        getTagForAtom(bound_to_atom, /* allow_null = */ true);
     // structured binding doesn't work with lambda captures until C++20, so we
     // use ties here instead to unpack the return values (same with the ties in
     // the other overloads of this method)
-    std::vector<int> atom_tags;
-    std::vector<int> bond_tags;
-    int bound_to_atom_tag;
     unsigned int atomic_num;
     QString desc;
-    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
-        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
     std::tie(atomic_num, desc) = getAddElementInfo(element);
-    auto redo = [this, atom_tags, bond_tags, atomic_num, coords, bond_type,
-                 bond_dir, bound_to_atom_tag]() {
+    auto cmd_func = [this, atomic_num, coords, bond_type, bond_dir,
+                     bound_to_atom_tag]() {
         auto create_atom = std::bind(make_new_atom, atomic_num);
         auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
-        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
-                                create_bond, bound_to_atom_tag);
+        addAtomChainCommandFunc(create_atom, coords, create_bond,
+                                bound_to_atom_tag);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
 void MolModel::addAtomChain(
@@ -342,21 +379,18 @@ void MolModel::addAtomChain(
     const RDKit::Bond::BondType& bond_type,
     const RDKit::Bond::BondDir& bond_dir)
 {
-    std::vector<int> atom_tags;
-    std::vector<int> bond_tags;
-    int bound_to_atom_tag;
-    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
-        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    int bound_to_atom_tag =
+        getTagForAtom(bound_to_atom, /* allow_null = */ true);
     QString desc = QString("Add %1").arg(
         QString::fromStdString(atom_query->getTypeLabel()));
-    auto redo = [this, atom_tags, bond_tags, atom_query, coords, bond_type,
-                 bond_dir, bound_to_atom_tag]() {
+    auto cmd_func = [this, atom_query, coords, bond_type, bond_dir,
+                     bound_to_atom_tag]() {
         auto create_atom = std::bind(make_new_query_atom, atom_query);
         auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
-        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
-                                create_bond, bound_to_atom_tag);
+        addAtomChainCommandFunc(create_atom, coords, create_bond,
+                                bound_to_atom_tag);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
 void MolModel::addAtomChain(
@@ -364,22 +398,19 @@ void MolModel::addAtomChain(
     const RDKit::Atom* const bound_to_atom,
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
-    std::vector<int> atom_tags;
-    std::vector<int> bond_tags;
-    int bound_to_atom_tag;
     unsigned int atomic_num;
     QString desc;
-    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
-        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    int bound_to_atom_tag =
+        getTagForAtom(bound_to_atom, /* allow_null = */ true);
     std::tie(atomic_num, desc) = getAddElementInfo(element);
-    auto redo = [this, atom_tags, bond_tags, atomic_num, coords, bond_query,
-                 bound_to_atom_tag]() {
+    auto cmd_func = [this, atomic_num, coords, bond_query,
+                     bound_to_atom_tag]() {
         auto create_atom = std::bind(make_new_atom, atomic_num);
         auto create_bond = std::bind(make_new_query_bond, bond_query);
-        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
-                                create_bond, bound_to_atom_tag);
+        addAtomChainCommandFunc(create_atom, coords, create_bond,
+                                bound_to_atom_tag);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
 void MolModel::addAtomChain(
@@ -388,63 +419,37 @@ void MolModel::addAtomChain(
     const RDKit::Atom* const bound_to_atom,
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
-    std::vector<int> atom_tags;
-    std::vector<int> bond_tags;
-    int bound_to_atom_tag;
-    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
-        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
+    int bound_to_atom_tag =
+        getTagForAtom(bound_to_atom, /* allow_null = */ true);
     QString desc = QString("Add %1").arg(
         QString::fromStdString(atom_query->getTypeLabel()));
-    auto redo = [this, atom_tags, bond_tags, atom_query, coords, bond_query,
-                 bound_to_atom_tag]() {
+    auto cmd_func = [this, atom_query, coords, bond_query,
+                     bound_to_atom_tag]() {
         auto create_atom = std::bind(make_new_query_atom, atom_query);
         auto create_bond = std::bind(make_new_query_bond, bond_query);
-        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
-                                create_bond, bound_to_atom_tag);
+        addAtomChainCommandFunc(create_atom, coords, create_bond,
+                                bound_to_atom_tag);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
 void MolModel::addRGroupChain(const std::vector<unsigned int> r_group_nums,
                               const std::vector<RDGeom::Point3D>& coords,
                               const RDKit::Atom* const bound_to_atom)
 {
-    std::vector<int> atom_tags;
-    std::vector<int> bond_tags;
-    int bound_to_atom_tag;
-    std::tie(atom_tags, bond_tags, bound_to_atom_tag) =
-        getAtomAndBondTagsForAddingAtomChain(coords, bound_to_atom);
-    auto redo = [this, atom_tags, bond_tags, r_group_nums, coords,
-                 bound_to_atom_tag]() {
+    int bound_to_atom_tag =
+        getTagForAtom(bound_to_atom, /* allow_null = */ true);
+    auto cmd_func = [this, r_group_nums, coords, bound_to_atom_tag]() {
         auto r_group_iter = r_group_nums.cbegin();
         auto create_atom = [&r_group_iter]() {
             return rdkit_extensions::make_new_r_group(*r_group_iter++);
         };
         auto create_bond = make_new_single_bond;
-        addAtomChainFromCommand(atom_tags, bond_tags, create_atom, coords,
-                                create_bond, bound_to_atom_tag);
+        addAtomChainCommandFunc(create_atom, coords, create_bond,
+                                bound_to_atom_tag);
     };
 
-    doCommandWithMolUndo(redo, "Add R group");
-}
-
-std::tuple<std::vector<int>, std::vector<int>, int>
-MolModel::getAtomAndBondTagsForAddingAtomChain(
-    const std::vector<RDGeom::Point3D>& coords,
-    const RDKit::Atom* const bound_to_atom)
-{
-    size_t num_atoms = coords.size();
-    size_t num_bonds = num_atoms;
-    if (bound_to_atom == nullptr) {
-        --num_bonds;
-    }
-    std::vector<int> atom_tags = getNextNTags(num_atoms, m_next_atom_tag);
-    std::vector<int> bond_tags = getNextNTags(num_bonds, m_next_bond_tag);
-    int bound_to_atom_tag = -1;
-    if (bound_to_atom) {
-        bound_to_atom_tag = getTagForAtom(bound_to_atom);
-    }
-    return {atom_tags, bond_tags, bound_to_atom_tag};
+    doCommandUsingSnapshots(cmd_func, "Add R group", WhatChanged::MOLECULE);
 }
 
 std::pair<unsigned int, QString>
@@ -461,33 +466,31 @@ void MolModel::addBond(const RDKit::Atom* const start_atom,
                        const RDKit::Bond::BondType& bond_type,
                        const RDKit::Bond::BondDir& bond_dir)
 {
-    int bond_tag = m_next_bond_tag++;
     int start_atom_tag = getTagForAtom(start_atom);
     int end_atom_tag = getTagForAtom(end_atom);
 
     QString desc = QString("Add bond");
-    auto redo = [this, bond_tag, start_atom_tag, end_atom_tag, bond_type,
-                 bond_dir]() {
+    auto cmd_func = [this, start_atom_tag, end_atom_tag, bond_type,
+                     bond_dir]() {
         auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
-        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, create_bond);
+        addBondCommandFunc(start_atom_tag, end_atom_tag, create_bond);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
 void MolModel::addBond(
     const RDKit::Atom* const start_atom, const RDKit::Atom* const end_atom,
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
-    int bond_tag = m_next_bond_tag++;
     int start_atom_tag = getTagForAtom(start_atom);
     int end_atom_tag = getTagForAtom(end_atom);
 
     QString desc = QString("Add query bond");
-    auto redo = [this, bond_tag, start_atom_tag, end_atom_tag, bond_query]() {
+    auto cmd_func = [this, start_atom_tag, end_atom_tag, bond_query]() {
         auto create_bond = std::bind(make_new_query_bond, bond_query);
-        addBondFromCommand(bond_tag, start_atom_tag, end_atom_tag, create_bond);
+        addBondCommandFunc(start_atom_tag, end_atom_tag, create_bond);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
 void MolModel::addNonMolecularObject(const NonMolecularType& type,
@@ -496,11 +499,11 @@ void MolModel::addNonMolecularObject(const NonMolecularType& type,
     if (type == NonMolecularType::RXN_ARROW && m_arrow.has_value()) {
         throw std::runtime_error("Only one arrow allowed");
     }
-    int tag = m_next_non_molecular_tag++;
-    auto redo = [this, type, coords, tag]() {
-        addNonMolecularObjectFromCommand(type, coords, tag);
+    auto cmd_func = [this, type, coords]() {
+        addNonMolecularObjectCommandFunc(type, coords);
     };
-    doCommandWithMolUndo(redo, "Add non-molecular object");
+    doCommandUsingSnapshots(cmd_func, "Add non-molecular object",
+                            WhatChanged::NON_MOL_OBJS);
 }
 
 void MolModel::remove(
@@ -508,7 +511,15 @@ void MolModel::remove(
     const std::unordered_set<const RDKit::Bond*>& bonds,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
-    if (atoms.empty() && bonds.empty() && non_molecular_objects.empty()) {
+    WhatChangedType to_be_changed = WhatChanged::NOTHING;
+    if (!(atoms.empty() && bonds.empty())) {
+        to_be_changed |= WhatChanged::MOLECULE;
+    }
+    if (!non_molecular_objects.empty()) {
+        to_be_changed |= WhatChanged::NON_MOL_OBJS;
+    }
+    if (to_be_changed == WhatChanged::NOTHING) {
+        // all sets are empty, so there's nothing to remove
         return;
     }
     auto [expanded_atoms, expanded_bonds] =
@@ -533,10 +544,10 @@ void MolModel::remove(
     }
 
     QString desc = QString("Erase");
-    auto redo = [this, atom_tags, bond_tags, non_molecular_tags]() {
-        removeFromCommand(atom_tags, bond_tags, non_molecular_tags);
+    auto cmd_func = [this, atom_tags, bond_tags, non_molecular_tags]() {
+        removeCommandFunc(atom_tags, bond_tags, non_molecular_tags);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
 }
 
 void MolModel::addMol(RDKit::ROMol mol, const QString& description,
@@ -548,14 +559,8 @@ void MolModel::addMol(RDKit::ROMol mol, const QString& description,
     if (center_mol) {
         center_on_origin(mol);
     }
-    std::vector<int> atom_tags =
-        getNextNTags(mol.getNumAtoms(), m_next_atom_tag);
-    std::vector<int> bond_tags =
-        getNextNTags(mol.getNumBonds(), m_next_bond_tag);
-    auto redo = [this, mol, atom_tags, bond_tags]() {
-        addMolFromCommand(mol, atom_tags, bond_tags);
-    };
-    doCommandWithMolUndo(redo, description);
+    auto cmd_func = [this, mol]() { addMolCommandFunc(mol); };
+    doCommandUsingSnapshots(cmd_func, description, WhatChanged::MOLECULE);
 }
 
 void MolModel::addMolFromText(const std::string& text, Format format)
@@ -577,204 +582,88 @@ void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
         return;
     }
 
-    // figure out which fragment atoms correspond to which atoms in the core
-    // (i.e. the existing structure)
-    auto frag_atom_to_core_atom = get_fragment_to_core_atom_map(
-        frag, frag_start_atom, m_mol, core_start_atom);
+    std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms;
+    std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds;
+    std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
+        additions_to_core_bonds;
+    AtomIdxToFragBondMap core_to_frag_bonds;
+    std::tie(mutations_to_core_atoms, mutations_to_core_bonds,
+             additions_to_core_bonds, core_to_frag_bonds) =
+        get_fragment_addition_info(frag, frag_start_atom, m_mol,
+                                   core_start_atom);
 
-    // figure out which core atoms should be mutated so they match the overlayed
-    // fragment atom
-    auto mutations_to_core_atoms =
-        determineCoreAtomMutations(frag_atom_to_core_atom);
-
-    // figure out where bonds should be added and which core bonds should be
-    // mutated
-    AtomPtrToFragmentBondMap core_to_frag_bonds_by_ptr;
-    std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds;
-    std::vector<std::tuple<int, int, int, BondFunc>> additions_to_core_bonds;
-    std::tie(core_to_frag_bonds_by_ptr, mutations_to_core_bonds,
-             additions_to_core_bonds) =
-        determineCoreBondAdditionsAndMutations(frag, frag_atom_to_core_atom);
-
-    // delete all fragment atoms that overlay on existing core atoms
-    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
-        frag.removeAtom(frag_atom->getIdx());
-    }
-
-    // Create atom tags for all fragment atoms and bond tags for all
-    // intra-fragment bonds.  The bond tags for bonds involving core atom were
-    // already generated in determineCoreBondAdditionsAndMutations
-    auto frag_atom_tags = getNextNTags(frag.getNumAtoms(), m_next_atom_tag);
-    auto frag_bond_tags = getNextNTags(frag.getNumBonds(), m_next_bond_tag);
-
-    // core_to_frag_bonds_by_ptr uses atom pointers, so it's only valid for this
-    // exact instance of m_mol and frag.  Convert the pointers to atom tags so
-    // that the dictionary will still be valid in addFragmentFromCommand
-    auto core_to_frag_bonds_by_tag =
-        convertBondMapFromPtrsToTags(core_to_frag_bonds_by_ptr, frag_atom_tags);
-
-    auto redo = [this, frag, frag_atom_tags, frag_bond_tags,
-                 mutations_to_core_atoms, mutations_to_core_bonds,
-                 additions_to_core_bonds, core_to_frag_bonds_by_tag]() {
-        addFragmentFromCommand(frag, frag_atom_tags, frag_bond_tags,
-                               mutations_to_core_atoms, mutations_to_core_bonds,
-                               additions_to_core_bonds,
-                               core_to_frag_bonds_by_tag);
+    auto cmd_func = [this, frag, mutations_to_core_atoms,
+                     mutations_to_core_bonds, additions_to_core_bonds,
+                     core_to_frag_bonds]() {
+        addFragmentCommandFunc(frag, mutations_to_core_atoms,
+                               mutations_to_core_bonds, additions_to_core_bonds,
+                               core_to_frag_bonds);
     };
-    doCommandWithMolUndo(redo, desc);
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }
 
-std::vector<std::pair<int, AtomFunc>> MolModel::determineCoreAtomMutations(
-    const AtomToAtomMap& frag_atom_to_core_atom)
+void MolModel::addFragmentCommandFunc(
+    const RDKit::ROMol& fragment,
+    std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms,
+    std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds,
+    std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
+        additions_to_core_bonds,
+    const AtomIdxToFragBondMap& core_to_frag_bonds_by_idx)
 {
-    std::vector<std::pair<int, AtomFunc>> mutations_to_core_atoms;
-    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
-        if (should_replace_core_atom(frag_atom, core_atom)) {
-            auto frag_atom_ref = *frag_atom;
-            auto copy_frag_atom = [frag_atom_ref]() {
-                return std::make_shared<RDKit::Atom>(frag_atom_ref);
-            };
-            mutations_to_core_atoms.emplace_back(getTagForAtom(core_atom),
-                                                 copy_frag_atom);
-        }
+    addMolCommandFunc(fragment);
+    for (const auto& [core_atom_idx, create_atom] : mutations_to_core_atoms) {
+        auto core_atom_tag = getTagForAtom(m_mol.getAtomWithIdx(core_atom_idx));
+        mutateAtomCommandFunc(core_atom_tag, create_atom);
     }
-    return mutations_to_core_atoms;
-}
-
-std::tuple<AtomPtrToFragmentBondMap, std::vector<std::pair<int, BondFunc>>,
-           std::vector<std::tuple<int, int, int, BondFunc>>>
-MolModel::determineCoreBondAdditionsAndMutations(
-    const RDKit::ROMol& fragment, AtomToAtomMap frag_atom_to_core_atom)
-{
-    AtomPtrToFragmentBondMap core_to_frag_bonds;
-    std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds;
-    std::vector<std::tuple<int, int, int, BondFunc>> additions_to_core_bonds;
-    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
-        for (auto* frag_bond : fragment.atomBonds(frag_atom)) {
-            auto* frag_neighbor = frag_bond->getOtherAtom(frag_atom);
-            auto frag_bond_ref = *frag_bond;
-            auto copy_bond = [frag_bond_ref]() {
-                return std::make_shared<RDKit::Bond>(frag_bond_ref);
-            };
-            if (frag_atom_to_core_atom.count(frag_neighbor)) {
-                // both of the fragment atoms in this bond are on top of a core
-                // atom
-                auto* core_neighbor = frag_atom_to_core_atom[frag_neighbor];
-                auto* core_bond = m_mol.getBondBetweenAtoms(
-                    core_atom->getIdx(), core_neighbor->getIdx());
-                if (core_bond == nullptr) {
-                    // there's no equivalent bond in the core, so one needs to
-                    // be added
-                    int start_atom_tag = getTagForAtom(core_atom);
-                    int end_atom_tag = getTagForAtom(core_neighbor);
-                    if (frag_bond->getBeginAtom() != frag_atom) {
-                        std::swap(start_atom_tag, end_atom_tag);
-                    }
-                    additions_to_core_bonds.emplace_back(
-                        m_next_atom_tag++, start_atom_tag, end_atom_tag,
-                        copy_bond);
-                } else {
-                    // there's already a core bond between these atoms, so we
-                    // mutate it
-                    mutations_to_core_bonds.emplace_back(
-                        getTagForBond(core_bond), copy_bond);
-                }
-            } else {
-                // this bond will be between a core atom and a fragment atom
-                core_to_frag_bonds.try_emplace(core_atom);
-                bool frag_first = frag_bond->getBeginAtom() == frag_atom;
-                FragmentBondInfo bond_info =
-                    std::make_tuple(copy_bond, m_next_bond_tag++, frag_first);
-                core_to_frag_bonds[core_atom].emplace(frag_neighbor, bond_info);
-            }
-        }
+    for (const auto& [core_bond_idx, create_bond] : mutations_to_core_bonds) {
+        auto core_bond_tag = getTagForBond(m_mol.getBondWithIdx(core_bond_idx));
+        mutateBondCommandFunc(core_bond_tag, create_bond);
     }
-    return {core_to_frag_bonds, mutations_to_core_bonds,
-            additions_to_core_bonds};
-}
-
-AtomTagToFragmentBondMap MolModel::convertBondMapFromPtrsToTags(
-    const AtomPtrToFragmentBondMap& core_to_frag_bonds_by_ptr,
-    const std::vector<int>& frag_atom_tags)
-{
-    AtomTagToFragmentBondMap core_to_frag_bonds_by_tag;
-    for (auto& [core_atom, frag_atom_to_bond_func_and_tag] :
-         core_to_frag_bonds_by_ptr) {
-        auto core_atom_tag = getTagForAtom(core_atom);
-        core_to_frag_bonds_by_tag.try_emplace(core_atom_tag);
-        auto& frag_atom_tag_to_bond_info =
-            core_to_frag_bonds_by_tag[core_atom_tag];
-        for (auto& [frag_atom, bond_func_and_tag] :
-             frag_atom_to_bond_func_and_tag) {
-            auto frag_atom_tag = frag_atom_tags[frag_atom->getIdx()];
-            frag_atom_tag_to_bond_info.emplace(frag_atom_tag,
-                                               bond_func_and_tag);
-        }
-    }
-    return core_to_frag_bonds_by_tag;
-}
-
-void MolModel::addFragmentFromCommand(
-    const RDKit::ROMol& fragment, const std::vector<int>& atom_tags,
-    const std::vector<int>& bond_tags,
-    std::vector<std::pair<int, AtomFunc>> mutations_to_core_atoms,
-    std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds,
-    std::vector<std::tuple<int, int, int, BondFunc>> additions_to_core_bonds,
-    const AtomTagToFragmentBondMap& core_to_frag_bonds_by_tag)
-{
-    addMolFromCommand(fragment, atom_tags, bond_tags, /* finalize = */ false);
-    for (const auto& [core_atom_tag, create_atom] : mutations_to_core_atoms) {
-        mutateAtomFromCommand(core_atom_tag, create_atom,
-                              /* finalize = */ false);
-    }
-    for (const auto& [core_bond_tag, create_bond] : mutations_to_core_bonds) {
-        mutateBondFromCommand(core_bond_tag, create_bond,
-                              /* finalize = */ false);
-    }
-    for (const auto& [core_bond_tag, begin_atom_tag, end_atom_tag,
-                      create_bond] : additions_to_core_bonds) {
-        addBondFromCommand(core_bond_tag, begin_atom_tag, end_atom_tag,
-                           create_bond, /* finalize = */ false);
+    for (const auto& [begin_atom_idx, end_atom_idx, create_bond] :
+         additions_to_core_bonds) {
+        auto begin_atom_tag =
+            getTagForAtom(m_mol.getAtomWithIdx(begin_atom_idx));
+        auto end_atom_tag = getTagForAtom(m_mol.getAtomWithIdx(end_atom_idx));
+        addBondCommandFunc(begin_atom_tag, end_atom_tag, create_bond);
     }
 
     // add bonds between the core (i.e. the previously existing molecule) and
     // the fragment
-    for (const auto& [core_atom_tag, frag_atom_tag_to_bond_info] :
-         core_to_frag_bonds_by_tag) {
-        for (const auto& [frag_atom_tag, bond_info] :
-             frag_atom_tag_to_bond_info) {
-            const auto& [bond_func, bond_tag, frag_first] = bond_info;
-            auto begin_atom_tag = frag_atom_tag;
-            auto end_atom_tag = core_atom_tag;
+    for (const auto& [core_atom_idx, frag_atom_idx_to_bond_info] :
+         core_to_frag_bonds_by_idx) {
+        auto* core_atom = m_mol.getAtomWithIdx(core_atom_idx);
+        for (const auto& [frag_atom_idx, bond_info] :
+             frag_atom_idx_to_bond_info) {
+            const auto& [bond_func, frag_first] = bond_info;
+            auto* frag_atom = m_mol.getAtomWithIdx(frag_atom_idx);
+            auto begin_atom_tag = getTagForAtom(frag_atom);
+            auto end_atom_tag = getTagForAtom(core_atom);
             if (!frag_first) {
                 std::swap(begin_atom_tag, end_atom_tag);
             }
-            addBondFromCommand(bond_tag, begin_atom_tag, end_atom_tag,
-                               bond_func,
-                               /* finalize = */ false);
+            addBondCommandFunc(begin_atom_tag, end_atom_tag, bond_func);
         }
     }
-    finalizeMoleculeChange();
 }
 
 void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
 {
     int atom_tag = getTagForAtom(atom);
     unsigned int atomic_num = static_cast<unsigned int>(element);
-    auto redo = [this, atom_tag, atomic_num]() {
+    auto cmd_func = [this, atom_tag, atomic_num]() {
         auto create_atom = std::bind(make_new_atom, atomic_num);
-        mutateAtomFromCommand(atom_tag, create_atom);
+        mutateAtomCommandFunc(atom_tag, create_atom);
     };
-    doCommandWithMolUndo(redo, "Mutate atom");
+    doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
 }
 
 void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
 {
     int atom_tag = getTagForAtom(atom);
-    auto redo = [this, atom_tag, charge]() {
-        setAtomChargeFromCommand(atom_tag, charge);
+    auto cmd_func = [this, atom_tag, charge]() {
+        setAtomChargeCommandFunc(atom_tag, charge);
     };
-    doCommandWithMolUndo(redo, "Set atom charge");
+    doCommandUsingSnapshots(cmd_func, "Set atom charge", WhatChanged::MOLECULE);
 }
 
 void MolModel::setAtomMapping(
@@ -789,10 +678,10 @@ void MolModel::setAtomMapping(
     }
 
     auto redo = [this, atom_tags, mapping]() {
-        setAtomMappingFromCommand(atom_tags, mapping);
+        setAtomMappingCommandFunc(atom_tags, mapping);
     };
 
-    doCommandWithMolUndo(redo, "Set mapping number");
+    doCommandUsingSnapshots(redo, "Set mapping number", WhatChanged::MOLECULE);
 }
 
 void MolModel::mutateAtom(
@@ -800,23 +689,23 @@ void MolModel::mutateAtom(
     const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
 {
     int atom_tag = getTagForAtom(atom);
-    auto redo = [this, atom_tag, atom_query]() {
+    auto cmd_func = [this, atom_tag, atom_query]() {
         auto create_atom = std::bind(make_new_query_atom, atom_query);
-        mutateAtomFromCommand(atom_tag, create_atom);
+        mutateAtomCommandFunc(atom_tag, create_atom);
     };
-    doCommandWithMolUndo(redo, "Mutate atom");
+    doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
 }
 
 void MolModel::mutateRGroup(const RDKit::Atom* const atom,
                             const unsigned int r_group_num)
 {
     int atom_tag = getTagForAtom(atom);
-    auto redo = [this, atom_tag, r_group_num]() {
+    auto cmd_func = [this, atom_tag, r_group_num]() {
         auto create_atom =
             std::bind(rdkit_extensions::make_new_r_group, r_group_num);
-        mutateAtomFromCommand(atom_tag, create_atom);
+        mutateAtomCommandFunc(atom_tag, create_atom);
     };
-    doCommandWithMolUndo(redo, "Mutate atom");
+    doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
 }
 
 void MolModel::mutateBond(const RDKit::Bond* const bond,
@@ -824,11 +713,11 @@ void MolModel::mutateBond(const RDKit::Bond* const bond,
                           const RDKit::Bond::BondDir& bond_dir)
 {
     int bond_tag = getTagForBond(bond);
-    auto redo = [this, bond_tag, bond_type, bond_dir]() {
+    auto cmd_func = [this, bond_tag, bond_type, bond_dir]() {
         auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
-        mutateBondFromCommand(bond_tag, create_bond);
+        mutateBondCommandFunc(bond_tag, create_bond);
     };
-    doCommandWithMolUndo(redo, "Mutate bond");
+    doCommandUsingSnapshots(cmd_func, "Mutate bond", WhatChanged::MOLECULE);
 }
 
 void MolModel::mutateBond(
@@ -836,18 +725,18 @@ void MolModel::mutateBond(
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
     int bond_tag = getTagForBond(bond);
-    auto redo = [this, bond_tag, bond_query]() {
+    auto cmd_func = [this, bond_tag, bond_query]() {
         auto create_bond = std::bind(make_new_query_bond, bond_query);
-        mutateBondFromCommand(bond_tag, create_bond);
+        mutateBondCommandFunc(bond_tag, create_bond);
     };
-    doCommandWithMolUndo(redo, "Mutate bond");
+    doCommandUsingSnapshots(cmd_func, "Mutate bond", WhatChanged::MOLECULE);
 }
 
 void MolModel::flipBond(const RDKit::Bond* const bond)
 {
     int bond_tag = getTagForBond(bond);
-    auto redo = [this, bond_tag]() { flipBondFromCommand(bond_tag); };
-    doCommandWithMolUndo(redo, "Flip bond");
+    auto cmd_func = [this, bond_tag]() { flipBondCommandFunc(bond_tag); };
+    doCommandUsingSnapshots(cmd_func, "Flip bond", WhatChanged::MOLECULE);
 }
 
 void MolModel::regenerateCoordinates()
@@ -857,18 +746,24 @@ void MolModel::regenerateCoordinates()
         assign_CIP_labels(m_mol);
         emit moleculeChanged();
     };
-    doCommandWithMolUndo(cmd, "Clean Up Coordinates");
+    doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::MOLECULE);
 }
 
 void MolModel::clear()
 {
-    if (isEmpty()) {
-        // nothing to clear
+    WhatChangedType to_be_changed = WhatChanged::NOTHING;
+    if (m_mol.getNumAtoms()) {
+        to_be_changed |= WhatChanged::MOLECULE;
+    }
+    if (!m_pluses.empty() || m_arrow.has_value()) {
+        to_be_changed |= WhatChanged::NON_MOL_OBJS;
+    }
+    if (to_be_changed == WhatChanged::NOTHING) {
         return;
     }
     QString desc = QString("Clear");
-    auto redo = [this]() { clearFromCommand(); };
-    doCommandWithMolUndo(redo, desc);
+    auto cmd_func = [this]() { clearCommandFunc(); };
+    doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
 }
 
 void MolModel::transformCoordinatesWithFunction(
@@ -1124,13 +1019,13 @@ void MolModel::doSelectionCommand(
 
     auto redo = [this, filtered_atom_tags, filtered_bond_tags,
                  filtered_non_molecular_tags, to_select]() {
-        setSelectedFromCommand(filtered_atom_tags, filtered_bond_tags,
-                               filtered_non_molecular_tags, to_select);
+        setSelectionCommandFunc(filtered_atom_tags, filtered_bond_tags,
+                                filtered_non_molecular_tags, to_select);
     };
     auto undo = [this, filtered_atom_tags, filtered_bond_tags,
                  filtered_non_molecular_tags, to_select]() {
-        setSelectedFromCommand(filtered_atom_tags, filtered_bond_tags,
-                               filtered_non_molecular_tags, !to_select);
+        setSelectionCommandFunc(filtered_atom_tags, filtered_bond_tags,
+                                filtered_non_molecular_tags, !to_select);
     };
     doCommand(redo, undo, description);
 }
@@ -1147,7 +1042,7 @@ void MolModel::clearSelection()
         m_selected_non_molecular_tags;
 
     QString desc = QString("Clear selection");
-    auto redo = [this]() { clearSelectionFromCommand(); };
+    auto redo = [this]() { clearSelectionCommandFunc(); };
     auto undo = [this, sel_atom_tags, sel_bond_tags, sel_non_molecular_tags]() {
         m_selected_atom_tags = sel_atom_tags;
         m_selected_bond_tags = sel_bond_tags;
@@ -1209,8 +1104,16 @@ void MolModel::setTagForAtom(RDKit::Atom* const atom, const int atom_tag)
     atom->setProp(TAG_PROPERTY, atom_tag);
 }
 
-int MolModel::getTagForAtom(const RDKit::Atom* const atom)
+int MolModel::getTagForAtom(const RDKit::Atom* const atom,
+                            const bool allow_null)
 {
+    if (atom == nullptr) {
+        if (allow_null) {
+            return -1;
+        }
+        throw std::runtime_error(
+            "Cannot pass nullptr to getTagForAtom unless allow_null is true");
+    }
     return atom->getProp<int>(TAG_PROPERTY);
 }
 
@@ -1264,32 +1167,26 @@ MolModel::ensureCompleteAttachmentPoints(
     return {new_atoms, new_bonds};
 }
 
-void MolModel::addAtomChainFromCommand(
-    const std::vector<int>& atom_tags, const std::vector<int>& bond_tags,
+void MolModel::addAtomChainCommandFunc(
     const AtomFunc create_atom, const std::vector<RDGeom::Point3D>& coords,
     const BondFunc create_bond, const int bound_to_atom_tag)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     RDKit::Atom* prev_atom = nullptr;
     if (bound_to_atom_tag >= 0) {
         prev_atom = m_mol.getUniqueAtomWithBookmark(bound_to_atom_tag);
     }
 
-    int cur_atom_tag;
-    RDGeom::Point3D cur_coords;
-    auto bond_tags_iter = bond_tags.cbegin();
-    BOOST_FOREACH (boost::tie(cur_atom_tag, cur_coords),
-                   boost::combine(atom_tags, coords)) {
+    for (auto cur_coords : coords) {
         auto atom_shared = create_atom();
         auto* atom = atom_shared.get();
         unsigned int atom_index =
             m_mol.addAtom(atom, /* updateLabel = */ false);
         atom = m_mol.getAtomWithIdx(atom_index);
-        setTagForAtom(atom, cur_atom_tag);
+        setTagForAtom(atom, m_next_atom_tag++);
         m_mol.getConformer().setAtomPos(atom_index, cur_coords);
 
         if (prev_atom != nullptr) {
-            const unsigned int cur_bond_tag = *(bond_tags_iter++);
             auto bond_shared = create_bond();
             auto* bond = bond_shared.get();
             bond->setOwningMol(m_mol);
@@ -1297,31 +1194,25 @@ void MolModel::addAtomChainFromCommand(
             bond->setEndAtom(atom);
             unsigned int bond_index = m_mol.addBond(bond) - 1;
             bond = m_mol.getBondWithIdx(bond_index);
-            setTagForBond(bond, cur_bond_tag);
+            setTagForBond(bond, m_next_bond_tag++);
         }
         prev_atom = atom;
     }
-    finalizeMoleculeChange();
 }
 
-void MolModel::addNonMolecularObjectFromCommand(const NonMolecularType& type,
-                                                const RDGeom::Point3D& coords,
-                                                const int tag)
+void MolModel::addNonMolecularObjectCommandFunc(const NonMolecularType& type,
+                                                const RDGeom::Point3D& coords)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
+    auto tag = m_next_non_molecular_tag++;
     if (type == NonMolecularType::RXN_ARROW) {
         m_arrow = NonMolecularObject(type, coords, tag);
     } else { // type == NonMolecularType::RXN_PLUS
         m_pluses.emplace_back(type, coords, tag);
     }
-    updateNonMolecularTags();
-    emit nonMolecularObjectsChanged();
-    if (type == NonMolecularType::RXN_ARROW) {
-        emit reactionArrowAdded();
-    }
 }
 
-void MolModel::updateNonMolecularTags()
+void MolModel::updateNonMolecularMetadata()
 {
     m_tag_to_non_molecular_object.clear();
     for (auto& plus : m_pluses) {
@@ -1332,9 +1223,9 @@ void MolModel::updateNonMolecularTags()
     }
 }
 
-bool MolModel::removeAtomFromCommand(const int atom_tag)
+bool MolModel::removeAtomCommandFunc(const int atom_tag)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
     bool selection_changed = m_selected_atom_tags.erase(atom_tag);
     // RDKit automatically deletes all bonds involving this atom, so we have
@@ -1349,11 +1240,11 @@ bool MolModel::removeAtomFromCommand(const int atom_tag)
     return selection_changed;
 }
 
-void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
+void MolModel::addBondCommandFunc(const int start_atom_tag,
                                   const int end_atom_tag,
-                                  const BondFunc create_bond, bool finalize)
+                                  const BondFunc create_bond)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
     auto bond_shared = create_bond();
@@ -1365,17 +1256,14 @@ void MolModel::addBondFromCommand(const int bond_tag, const int start_atom_tag,
     // added bond, so we have to subtract one to get the index
     unsigned int bond_index = m_mol.addBond(bond) - 1;
     bond = m_mol.getBondWithIdx(bond_index);
-    setTagForBond(bond, bond_tag);
-    if (finalize) {
-        finalizeMoleculeChange();
-    }
+    setTagForBond(bond, m_next_bond_tag++);
 }
 
-bool MolModel::removeBondFromCommand(const int bond_tag,
+bool MolModel::removeBondCommandFunc(const int bond_tag,
                                      const int start_atom_tag,
                                      const int end_atom_tag)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
     bool selection_changed = m_selected_bond_tags.erase(bond_tag);
@@ -1383,7 +1271,7 @@ bool MolModel::removeBondFromCommand(const int bond_tag,
     return selection_changed;
 }
 
-bool MolModel::removeNonMolecularObjectFromCommand(const int cur_tag)
+bool MolModel::removeNonMolecularObjectCommandFunc(const int cur_tag)
 {
     auto* obj = m_tag_to_non_molecular_object.at(cur_tag);
     bool selected = m_selected_non_molecular_tags.erase(cur_tag);
@@ -1400,13 +1288,12 @@ bool MolModel::removeNonMolecularObjectFromCommand(const int cur_tag)
     return selected;
 }
 
-void MolModel::removeFromCommand(
+void MolModel::removeCommandFunc(
     const std::vector<int>& atom_tags,
     const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
     const std::vector<int>& non_molecular_tags)
 {
-    Q_ASSERT(m_in_command);
-    bool selection_changed = false;
+    Q_ASSERT(m_allow_edits);
     // we have to determine whether we're deleting an attachment point
     // before we delete any of the bonds, since is_attachment_point() will
     // return false for unbound atoms
@@ -1417,65 +1304,50 @@ void MolModel::removeFromCommand(
     // remove the bonds first so that they don't get implicitly deleted when
     // we remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
-        if (removeBondFromCommand(bond_tag, start_atom_tag, end_atom_tag)) {
-            selection_changed = true;
-        }
+        removeBondCommandFunc(bond_tag, start_atom_tag, end_atom_tag);
     }
     for (int cur_atom_tag : atom_tags) {
-        if (removeAtomFromCommand(cur_atom_tag)) {
-            selection_changed = true;
-        }
+        removeAtomCommandFunc(cur_atom_tag);
     }
     if (attachment_point_deleted) {
         renumber_attachment_points(&m_mol);
     }
     for (int cur_tag : non_molecular_tags) {
-        if (removeNonMolecularObjectFromCommand(cur_tag)) {
-            selection_changed = true;
-        }
+        removeNonMolecularObjectCommandFunc(cur_tag);
     }
-    bool non_molecular_objects_changed = !non_molecular_tags.empty();
-    finalizeMoleculeChange(selection_changed, non_molecular_objects_changed);
 }
 
-void MolModel::addMolFromCommand(const RDKit::ROMol& mol,
-                                 const std::vector<int>& atom_tags,
-                                 const std::vector<int>& bond_tags,
-                                 const bool finalize)
+void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     // get the starting index for the atoms and bonds to be inserted
     unsigned int atom_index = m_mol.getNumAtoms();
     unsigned int bond_index = m_mol.getNumBonds();
     m_mol.insertMol(mol);
+    unsigned int new_num_atoms = m_mol.getNumAtoms();
+    unsigned int new_num_bonds = m_mol.getNumBonds();
 
     bool attachment_point_added = false;
-    for (int cur_atom_tag : atom_tags) {
+    for (; atom_index < new_num_atoms; ++atom_index) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);
-        setTagForAtom(atom, cur_atom_tag);
+        setTagForAtom(atom, m_next_atom_tag++);
         attachment_point_added =
             attachment_point_added || is_attachment_point(atom);
-        ++atom_index;
     }
 
-    for (int cur_bond_tag : bond_tags) {
+    for (; bond_index < new_num_bonds; ++bond_index) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
-        setTagForBond(bond, cur_bond_tag);
-        ++bond_index;
+        setTagForBond(bond, m_next_bond_tag++);
     }
     if (attachment_point_added) {
         renumber_attachment_points(&m_mol);
     }
-    if (finalize) {
-        finalizeMoleculeChange();
-    }
 }
 
-void MolModel::mutateAtomFromCommand(const int atom_tag,
-                                     const AtomFunc create_atom,
-                                     const bool finalize)
+void MolModel::mutateAtomCommandFunc(const int atom_tag,
+                                     const AtomFunc create_atom)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
     int atom_index = atom->getIdx();
     auto new_atom = create_atom();
@@ -1486,16 +1358,12 @@ void MolModel::mutateAtomFromCommand(const int atom_tag,
     // (unless we passed preserveProbs = true, but that overwrites the
     // R-group property)
     mutated_atom->setProp(TAG_PROPERTY, atom_tag);
-    if (finalize) {
-        finalizeMoleculeChange();
-    }
 }
 
-void MolModel::mutateBondFromCommand(const int bond_tag,
-                                     const BondFunc create_bond,
-                                     const bool finalize)
+void MolModel::mutateBondCommandFunc(const int bond_tag,
+                                     const BondFunc create_bond)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     int bond_index = bond->getIdx();
     auto new_bond = create_bond();
@@ -1505,38 +1373,33 @@ void MolModel::mutateBondFromCommand(const int bond_tag,
     // The bookmark is automatically updated, but we have to manually copy
     // the bond tag property
     mutated_bond->setProp(TAG_PROPERTY, bond_tag);
-    if (finalize) {
-        finalizeMoleculeChange();
-    }
-}
-void MolModel::setAtomChargeFromCommand(const int atom_tag, const int charge)
-{
-    Q_ASSERT(m_in_command);
-    RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-    atom->setFormalCharge(charge);
-    finalizeMoleculeChange();
 }
 
-void MolModel::setAtomMappingFromCommand(
+void MolModel::setAtomMappingCommandFunc(
     const std::unordered_set<int>& atom_tags, const int atom_mapping)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     for (auto atom_tag : atom_tags) {
         RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
         atom->setAtomMapNum(atom_mapping);
     }
-    finalizeMoleculeChange();
 }
 
-void MolModel::flipBondFromCommand(const int bond_tag)
+void MolModel::setAtomChargeCommandFunc(const int atom_tag, const int charge)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
+    RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+    atom->setFormalCharge(charge);
+}
+
+void MolModel::flipBondCommandFunc(const int bond_tag)
+{
+    Q_ASSERT(m_allow_edits);
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     unsigned int orig_begin = bond->getBeginAtomIdx();
     unsigned int orig_end = bond->getEndAtomIdx();
     bond->setEndAtomIdx(orig_begin);
     bond->setBeginAtomIdx(orig_end);
-    finalizeMoleculeChange();
 }
 
 void MolModel::setCoordinates(
@@ -1545,7 +1408,7 @@ void MolModel::setCoordinates(
     const std::vector<int>& non_mol_tags,
     const std::vector<RDGeom::Point3D>& non_mol_coords)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     if (atom_tags.size() != atom_coords.size() ||
         non_mol_tags.size() != non_mol_coords.size()) {
         throw std::invalid_argument("setCoordinates: tags and coords must have "
@@ -1568,13 +1431,9 @@ void MolModel::setCoordinates(
     emit coordinatesChanged();
 }
 
-void MolModel::clearFromCommand()
+void MolModel::clearCommandFunc()
 {
-    Q_ASSERT(m_in_command);
-    bool selection_changed = hasSelection();
-    bool non_molecular_objects_changed =
-        !m_pluses.empty() || m_arrow.has_value();
-
+    Q_ASSERT(m_allow_edits);
     m_mol.clear();
     // clear() removes the conformer, so we have to reinitialize m_mol
     initializeMol();
@@ -1585,15 +1444,14 @@ void MolModel::clearFromCommand()
     m_selected_atom_tags.clear();
     m_selected_bond_tags.clear();
     m_selected_non_molecular_tags.clear();
-    finalizeMoleculeChange(selection_changed, non_molecular_objects_changed);
 }
 
-void MolModel::setSelectedFromCommand(
+void MolModel::setSelectionCommandFunc(
     const std::unordered_set<int>& atom_tags,
     const std::unordered_set<int>& bond_tags,
     const std::unordered_set<int>& non_molecular_tags, const bool selected)
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     if (selected) {
         for (int cur_atom_tag : atom_tags) {
             m_selected_atom_tags.insert(cur_atom_tag);
@@ -1618,9 +1476,9 @@ void MolModel::setSelectedFromCommand(
     emit selectionChanged();
 }
 
-void MolModel::clearSelectionFromCommand()
+void MolModel::clearSelectionCommandFunc()
 {
-    Q_ASSERT(m_in_command);
+    Q_ASSERT(m_allow_edits);
     bool selection_changed = hasSelection();
     m_selected_atom_tags.clear();
     m_selected_bond_tags.clear();

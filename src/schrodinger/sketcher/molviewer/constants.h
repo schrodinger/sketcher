@@ -234,7 +234,7 @@ enum : InteractiveItemFlagType { // clang-format off
     ATTACHMENT_POINT_OR_AP_BOND = ATTACHMENT_POINT | ATTACHMENT_POINT_BOND,
     MOLECULAR_NOT_AP = ATOM_NOT_AP | BOND_NOT_AP,
 };
-};
+}
 
 } // namespace sketcher
 } // namespace schrodinger

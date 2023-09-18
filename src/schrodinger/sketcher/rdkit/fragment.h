@@ -14,8 +14,25 @@ namespace schrodinger
 namespace sketcher
 {
 
+typedef std::function<std::shared_ptr<RDKit::Atom>()> AtomFunc;
+typedef std::function<std::shared_ptr<RDKit::Bond>()> BondFunc;
+
 typedef std::unordered_map<const RDKit::Atom*, const RDKit::Atom*>
     AtomToAtomMap;
+
+// a tuple of:
+//   - function that returns a Bond instance to use for the bond
+//   - whether the fragment atom is the starting atom of the bond (true) or the
+//     ending atom (false)
+typedef std::tuple<BondFunc, bool> FragmentBondInfo;
+
+typedef std::unordered_map<
+    const RDKit::Atom*,
+    std::unordered_map<const RDKit::Atom*, FragmentBondInfo>>
+    AtomPtrToFragBondMap;
+typedef std::unordered_map<unsigned int,
+                           std::unordered_map<unsigned int, FragmentBondInfo>>
+    AtomIdxToFragBondMap;
 
 /**
  * Translate the fragment so that the attachment point parent atom (i.e. the
@@ -92,6 +109,79 @@ SKETCHER_API AtomToAtomMap get_fragment_to_core_atom_map(
  */
 SKETCHER_API bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
                                            const RDKit::Atom* const core_atom);
+
+/**
+ * When adding a fragment, figure out which core atoms should be mutated to
+ * match the fragment.
+ * @param frag_atom_to_core_atom A map of fragment atoms to their
+ * corresponding core atom
+ * @return A list of (core atom index, function that returns an atom to mutate
+ * to)
+ */
+std::vector<std::pair<unsigned int, AtomFunc>>
+determine_core_atom_mutations(const AtomToAtomMap& frag_atom_to_core_atom);
+
+/**
+ * When adding a fragment, figure out which bonds involving at least one
+ * core atom should be added or mutated to match the fragment.
+ * @param core The core molecule
+ * @param fragment The fragment structure being added
+ * @param frag_atom_to_core_atom A map of fragment atoms to their
+ * corresponding core atom
+ * @return A tuple of:
+ *   - Bonds to make between the core and the fragment, formatted as a map
+ *     of {core atom: {fragment atom: info about bond to create}}
+ *   - A list of core bonds to mutate, where each bond is given as (core
+ *     bond index, function that returns a bond to mutate to)
+ *   - A list of bonds to make between two core atoms, where each bond is
+ *     given as a tuple of
+ *     - atom index for the starting atom
+ *     - atom index for the ending atom
+ *     - function that returns a bond instance for the new bond
+ */
+std::tuple<AtomPtrToFragBondMap, std::vector<std::pair<unsigned int, BondFunc>>,
+           std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>>
+determine_core_bond_additions_and_mutations(
+    const RDKit::ROMol& core, const RDKit::ROMol& fragment,
+    AtomToAtomMap frag_atom_to_core_atom);
+
+/**
+ * Convert a map of atoms-to-bond-info from using atom pointers to using atom
+ * indices.  For the fragment, the atom indices used are the indices that the
+ * fragment atoms *will have* once they are added to the core molecule.
+ * @param core The core molecule
+ * @param core_to_frag_bonds_by_ptr A map of {core atom: {fragment atom:
+ * info about bond to create}}, where both atoms are represented by pointers
+ * @return A map that is identical to core_to_frag_bonds_by_ptr, but using
+ * atom indices in place of pointers.
+ */
+AtomIdxToFragBondMap convert_bond_map_from_ptrs_to_idxs(
+    const RDKit::ROMol& core,
+    const AtomPtrToFragBondMap& core_to_frag_bonds_by_ptr);
+
+/**
+ * Figure out all changes that need to be made in order to connect a fragment to
+ * an existing core molecule.
+ * @param[in,out] fragment The fragment being added.  This function will delete
+ * any atoms from this molecule that should be replaced by the corresponding
+ * core atom.  See the get_fragment_to_core_atom_map docstring for an
+ * explanation of corresponding atoms.
+ * @param[in] frag_start_atom The "starting" atom for the fragment, i.e. the
+ * attachment point parent atom.  This atom must have the same coordinates as
+ * core_start_atom.
+ * @param[in] core The core molecule
+ * @param[in] core_start_atom The "starting" atom for the core, i.e. the atom
+ * that was clicked on.  This atom must have the same coordinates as
+ * frag_start_atom.
+ */
+std::tuple<std::vector<std::pair<unsigned int, AtomFunc>>,
+           std::vector<std::pair<unsigned int, BondFunc>>,
+           std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>,
+           AtomIdxToFragBondMap>
+get_fragment_addition_info(RDKit::RWMol& fragment,
+                           const RDKit::Atom* frag_start_atom,
+                           const RDKit::ROMol& core,
+                           const RDKit::Atom* core_start_atom);
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -44,23 +44,6 @@ enum class Format;
 namespace sketcher
 {
 
-typedef std::function<std::shared_ptr<RDKit::Atom>()> AtomFunc;
-typedef std::function<std::shared_ptr<RDKit::Bond>()> BondFunc;
-
-// a tuple of:
-//   - function that returns a Bond instance to use for the bond
-//   - the bond tag
-//   - whether the fragment atom is the starting atom of the bond (true) or the
-//     ending atom (false)
-typedef std::tuple<BondFunc, int, bool> FragmentBondInfo;
-
-typedef std::unordered_map<
-    const RDKit::Atom*,
-    std::unordered_map<const RDKit::Atom*, FragmentBondInfo>>
-    AtomPtrToFragmentBondMap;
-typedef std::unordered_map<int, std::unordered_map<int, FragmentBondInfo>>
-    AtomTagToFragmentBondMap;
-
 enum class SelectMode {
     SELECT,      // Shift + click
     DESELECT,    //
@@ -72,6 +55,46 @@ enum class MergeId {
     NO_MERGE = -1,
     ROTATE = 1,
     TRANSLATE,
+};
+
+/**
+ * Values used as parameters to doCommandUsingSnapshots that indicate what types
+ * of data will be changed by the command.
+ */
+typedef uint8_t WhatChangedType;
+namespace WhatChanged
+{
+enum : WhatChangedType { // clang-format off
+    NOTHING      = 0,
+    MOLECULE     = 1 << 0,
+    NON_MOL_OBJS = 1 << 1,
+    ALL          = MOLECULE | NON_MOL_OBJS, // clang-format on
+};
+}
+
+/**
+ * A copy of a MolModel state
+ */
+struct MolModelSnapshot {
+    RDKit::RWMol m_mol;
+    std::vector<NonMolecularObject> m_pluses;
+    std::optional<NonMolecularObject> m_arrow;
+    std::unordered_set<int> m_selected_atom_tags;
+    std::unordered_set<int> m_selected_bond_tags;
+    std::unordered_set<int> m_selected_non_molecular_tags;
+
+    MolModelSnapshot(
+        const RDKit::RWMol& mol, const std::vector<NonMolecularObject>& pluses,
+        const std::optional<NonMolecularObject>& arrow,
+        const std::unordered_set<int>& selected_atom_tags,
+        const std::unordered_set<int>& selected_bond_tags,
+        const std::unordered_set<int>& selected_non_molecular_tags);
+
+    /**
+     * @return Whether the selection in the other snapshot is identical to the
+     * selection in this snapshot.
+     */
+    bool isSelectionIdentical(const MolModelSnapshot& other);
 };
 
 /**
@@ -683,14 +706,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void setTagForAtom(RDKit::Atom* const atom, const int atom_tag);
 
     /**
-     * Find the atom tag for the specified atom.
+     * Find the atom tag for the specified atom.  The passed in value must not
+     * be nullptr.
+     * @param atom The atom to get the tag for
+     * @param allow_null If this is true, return -1 if the nullptr is passed in.
+     * Otherwise, raise an exception
      *
      * Note that this method is const, but not marked as such because RDKit
      * does not implement a const version of getAtomBookmarks.  (And because
      * this method isn't public, so it's not worth using const_cast unless we
      * need this to be const.)
      */
-    int getTagForAtom(const RDKit::Atom* const atom);
+    int getTagForAtom(const RDKit::Atom* const atom,
+                      const bool allow_null = false);
 
     /**
      * Set the bond tag for the specified bond
@@ -731,21 +759,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @throw if no bond is found with the specified bond_tag
      */
     const RDKit::Bond* getBondFromTag(int bond_tag) const;
-
-    /**
-     * Determine all atom and bond tags needed for adding an atom chain
-     * @param coords The list of coordinates for the atom chain being added
-     * @param bound_to_atom If not nullptr, a bond will be added between this
-     * atom and the first atom in the chain
-     * @return A tuple of
-     *   - The atom tags
-     *   - The bond tags
-     *   - The tag for bound_to_atom (or -1 if bound_to_atom was nullptr)
-     */
-    std::tuple<std::vector<int>, std::vector<int>, int>
-    getAtomAndBondTagsForAddingAtomChain(
-        const std::vector<RDGeom::Point3D>& coords,
-        const RDKit::Atom* const bound_to_atom);
 
     /**
      * Get the atomic number and element name for the specified element.
@@ -810,38 +823,41 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const bool to_select, const QString& description);
 
     /**
-     * Create an undo command and add it to the undo stack, which automatically
-     * executes the command.  The undo operation for this command will be
-     * carried out by restoring the entire RDKit molecule.  This preserves
-     * atom/bond indices and all atom/bond properties, but it means that an
-     * undo_stack.undo() call will invalidate all RDKit Atom and Bond objects.
+     * Execute the given function immediately, and use snapshots to provide undo
+     * and redo functionality for the changes that the function carries out.
+     * Note that doing, undoing, or redoing this command will invalidate all
+     * RDKit Atom and Bond objects.
      *
-     * @param redo The function to call on redo (or for the initial do)
-     * @param description A description of the command
+     * @param do_func The function to call for the initial do.  This function
+     * should not emit any signals, as that will be handled by the snapshots.
+     * @param description A description for the undo command
+     * @param to_be_changed Whether do_func updates the RDKit molecule,
+     * the non-molecular objects, or both.  If this value includes
+     * WhatChanged::MOLECULE, then update_molecule_metadata() will be called
+     * automatically after do_func is executed.  If this value includes
+     * WhatChanged::NON_MOL_OBJS, then updateNonMolecularMetadata() will be
+     * called automatically.
      */
-    void doCommandWithMolUndo(const std::function<void()> redo,
-                              const QString& description);
+    void doCommandUsingSnapshots(const std::function<void()> do_func,
+                                 const QString& description,
+                                 const WhatChangedType to_be_changed);
 
     /**
-     * Update all molecule metadata and notify the Scene of the changes.  This
-     * method should be called exactly once after changes to m_mol.
-     * @param selection_changed Whether or not selection was changed.  If this
-     * is true, selectionChanged will be emitted.
-     * @param non_molecular_objects_changed Whether or not any non-molecular
-     * objects were changed.  If this is true, the non-molecular tags will be
-     * updated and nonMolecularObjectsChanged will be emitted.
+     * @return a copy of the MolModel state
      */
-    void finalizeMoleculeChange(bool selection_changed = false,
-                                bool non_molecular_objects_changed = false);
+    MolModelSnapshot takeSnapshot() const;
 
     /**
-     * Generate multiple atom tags or bond tags
-     * @param[in] count The number of tags to generate
-     * @param[in,out] tag_counter Either m_next_atom_tag or m_next_bond_tag,
-     * depending on whether atom tags or bond tags are desired.
-     * @return The generated tags
+     * Update the current MolModel state to match the provided snapshot
+     * @param snapshot The snapshot to restore
+     * @param what_changed Whether this snapshot updates the RDKit molecule,
+     * the non-molecular objects, or both
+     * @param selection_changed Whether this snapshot changes the selection
+     * @param arrow_added Whether this snapshot change adds a reaction arrow.
      */
-    std::vector<int> getNextNTags(const size_t count, int& tag_counter) const;
+    void restoreSnapshot(const MolModelSnapshot& snapshot,
+                         const WhatChangedType what_changed,
+                         const bool selection_changed, const bool arrow_added);
 
     /**
      * Make sure that the returned sets include both an attachment point dummy
@@ -856,11 +872,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Add a chain of atoms, where each atom is bound to the previous and next
-     * atoms in the chain.  This method must only be called from an undo
+     * atoms in the chain.  This method must only be called as part of an undo
      * command.
      *
-     * @param atom_tags The atom tags for each newly created atom
-     * @param bond_tags The bond tags for each newly created bond
      * @param create_atom A function that will return a new atom to add.  Note
      * that this method will add a *copy* of the returned atom, as the
      * shared_ptr is responsible for deleting the returned atom.
@@ -871,79 +885,65 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bound_to_atom_tag If given, a bond will be added between the
      * existing atom with this tag and the first new atom in the chain
      */
-    void addAtomChainFromCommand(const std::vector<int>& atom_tags,
-                                 const std::vector<int>& bond_tags,
-                                 const AtomFunc create_atom,
+    void addAtomChainCommandFunc(const AtomFunc create_atom,
                                  const std::vector<RDGeom::Point3D>& coords,
                                  const BondFunc create_bond,
                                  const int bound_to_atom_tag);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This
-     * method must only be called from an undo command.
+     * method must only be called as part of an undo command.
      * @param type The type of non-molecular object to add
      * @param coords The coordinates for the new non-molecular object
-     * @param tag The tag for the new non-molecular object
      */
-    void addNonMolecularObjectFromCommand(const NonMolecularType& type,
-                                          const RDGeom::Point3D& coords,
-                                          const int tag);
+    void addNonMolecularObjectCommandFunc(const NonMolecularType& type,
+                                          const RDGeom::Point3D& coords);
 
     /**
      * Update m_tag_to_non_molecular_object so that it reflects the currently
      * existant non-molecular objects
      */
-    void updateNonMolecularTags();
+    void updateNonMolecularMetadata();
 
     /**
-     * Remove an atom from the molecule.  This method must only be called from
-     * an undo command.  Note that this method does not update ring information
-     * or emit signals, as these are intended to be done from removeFromCommand
-     * instead.
+     * Remove an atom from the molecule.  This method must only be called as
+     * part of an undo command.
      * @param atom_tag The tag of the atom to delete
      * @return whether selection was changed by this action
      */
-    bool removeAtomFromCommand(const int atom_tag);
+    bool removeAtomCommandFunc(const int atom_tag);
 
     /**
-     * Add a bond to the molecule.  This method must only be called from an undo
-     * command.
-     * @param bond_tag The tag to use for the newly added bond
+     * Add a bond to the molecule.  This method must only be called as part of
+     * an undo command.
      * @param start_atom_tag The tag of the bond's start atom
      * @param end_atom_tag The tag of the bond's end atom
      * @param create_bond A function that will return the new bond to add.  Note
      * that this method will add a *copy* of the returned bond, as the
      * shared_ptr is responsible for deleting the returned bond.
-     * @param finalize Whether to "finalize" the molecule, i.e update all
-     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void addBondFromCommand(const int bond_tag, const int start_atom_tag,
-                            const int end_atom_tag, const BondFunc create_bond,
-                            const bool finalize = true);
+    void addBondCommandFunc(const int start_atom_tag, const int end_atom_tag,
+                            const BondFunc create_bond);
 
     /**
-     * Remove a bond from the molecule.  This method must only be called from an
-     * undo command.  Note that this method does not update ring information or
-     * emit signals (as these are intended to be done from removeFromCommand
-     * instead).
+     * Remove a bond from the molecule.  This method must only be called as part
+     * of an undo command.
      * @return whether selection was changed by this action
      */
-    bool removeBondFromCommand(const int bond_tag, const int start_atom_tag,
+    bool removeBondCommandFunc(const int bond_tag, const int start_atom_tag,
                                const int end_atom_tag);
 
     /**
      * Remove a non-molecular object from the model.  This method must only be
-     * called from an undo command.  Note that this method does not update
-     * m_tag_to_non_molecular_object, as this is intended to be done from
-     * removeFromCommand instead.
+     * called as part of an undo command.
      * @param cur_tag The tag of the non-molecular object to delete
      * @return whether selection was changed by this action
      */
-    bool removeNonMolecularObjectFromCommand(const int cur_tag);
+    bool removeNonMolecularObjectCommandFunc(const int cur_tag);
 
     /**
      * set new coordinates for a set of atoms and non-molecular objects.  This
-     * method must only be called from an undo command.
+     * method must only be called as part of an undo command.
      */
     void setCoordinates(const std::vector<int>& atom_tags,
                         const std::vector<RDGeom::Point3D>& atom_coords,
@@ -952,67 +952,54 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Remove the specified atoms and bonds from the molecule.  This method
-     * must only be called from an undo command.
+     * must only be called as part of an undo command.
      * @param atom_tags The atom tags to delete
      * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
      * bond's end atom tag) for the bonds to delete
      * @param non_molecular_tags The non-molecular tags to delete
      */
-    void removeFromCommand(
+    void removeCommandFunc(
         const std::vector<int>& atom_tags,
         const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
         const std::vector<int>& non_molecular_tags);
 
     /**
      * Add all atoms and bonds from the given molecule into this molecule. This
-     * method must only be called from an undo command.
+     * method must only be called as part of an undo command.
      *
      * @param mol The molecule to add
-     * @param atom_tags A list of atom tags to use for each new atom.  The
-     * length of this list must be exactly mol.getNumAtoms().
-     * @param bond_tags A list of bond tags to use for each new bond.  The
-     * length of this list must be exactly mol.getNumBonds().
-     * @param finalize Whether to "finalize" the molecule, i.e update all
-     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void addMolFromCommand(const RDKit::ROMol& mol,
-                           const std::vector<int>& atom_tags,
-                           const std::vector<int>& bond_tags,
-                           const bool finalize = true);
+    void addMolCommandFunc(const RDKit::ROMol& mol);
 
     /**
      * Change the element of an existing atom, or change a query atom to a
-     * non-query atom.  This method must only be called from an undo command.
+     * non-query atom.  This method must only be called as part of an undo
+     * command.
      * @param atom_tag The tag of the atom to mutate
      * @param create_atom A function that will return a new atom to mutate to.
      * Note that this method will add a *copy* of the returned atom, as the
      * shared_ptr is responsible for deleting the returned atom.
-     * @param finalize Whether to "finalize" the molecule, i.e update all
-     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void mutateAtomFromCommand(const int atom_tag, const AtomFunc create_atom,
-                               const bool finalize = true);
+    void mutateAtomCommandFunc(const int atom_tag, const AtomFunc create_atom);
 
     /**
      * Change the type of an existing bond, or change a query bond to a
-     * non-query bond.  This method must only be called from an undo command.
+     * non-query bond.  This method must only be called as part of an undo
+     * command.
      * @param bond_tag The tag of the bond to mutate
      * @param create_bond A function that will return a new bond to mutate to.
      * Note that this method will add a *copy* of the returned bond, as the
      * shared_ptr is responsible for deleting the returned bond.
-     * @param finalize Whether to "finalize" the molecule, i.e update all
-     * RDKit metadata and emit a signal notifying the scene about the change.
      */
-    void mutateBondFromCommand(const int bond_tag, const BondFunc create_bond,
-                               const bool finalize = true);
+    void mutateBondCommandFunc(const int bond_tag, const BondFunc create_bond);
 
     /**
-     * Set the charge of an existing atom.  This method must only be called from
-     * an undo command.
+     * Set the charge of an existing atom.  This method must only be called as
+     * part of an undo command.
      * @param atom_tag The tag of the atom to mutate
      * @param charge The new charge of the atom
      */
-    void setAtomChargeFromCommand(const int atom_tag, const int charge);
+    void setAtomChargeCommandFunc(const int atom_tag, const int charge);
 
     /**
      * Set the mapping number of a set of atoms.  This method must only be
@@ -1021,24 +1008,24 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param mapping The new mapping number of the atom. If this is 0 the
      * mapping is removed
      */
-    void setAtomMappingFromCommand(const std::unordered_set<int>& atom_tags,
+    void setAtomMappingCommandFunc(const std::unordered_set<int>& atom_tags,
                                    const int mapping);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This
-     * method must only be called from an undo command.
+     * method must only be called as part of an undo command.
      */
-    void flipBondFromCommand(const int bond_tag);
+    void flipBondCommandFunc(const int bond_tag);
 
     /**
-     * Clear the molecule.  This method must only be called from an undo
+     * Clear the molecule.  This method must only be called as part of an undo
      * command.
      */
-    void clearFromCommand();
+    void clearCommandFunc();
 
     /**
      * Select or deselect the specified atoms and bonds.  This method must only
-     * be called from an undo command.
+     * be called as part of an undo command.
      *
      * @param atom_tags The atom tags to select or deselect
      * @param bond_tags The bond tags to select or deselect
@@ -1047,100 +1034,47 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * bonds
      */
     void
-    setSelectedFromCommand(const std::unordered_set<int>& atom_tags,
-                           const std::unordered_set<int>& bond_tags,
-                           const std::unordered_set<int>& non_molecular_tags,
-                           const bool selected);
+    setSelectionCommandFunc(const std::unordered_set<int>& atom_tags,
+                            const std::unordered_set<int>& bond_tags,
+                            const std::unordered_set<int>& non_molecular_tags,
+                            const bool selected);
 
     /**
      * Clear all selected atoms and bonds.  This method must only be called
-     * from an undo command.
+     * as part of an undo command.
      */
-    void clearSelectionFromCommand();
-
-    /**
-     * When adding a fragment, figure out which core atoms should be mutated to
-     * match the fragment.
-     * @param frag_atom_to_core_atom A map of fragment atoms to their
-     * corresponding core atom
-     * @return A list of (core atom tag, function that returns an atom to mutate
-     * to)
-     */
-    std::vector<std::pair<int, AtomFunc>>
-    determineCoreAtomMutations(const AtomToAtomMap& frag_atom_to_core_atom);
-
-    /**
-     * When adding a fragment, figure out which bonds involving at least one
-     * core atom should be added or mutated to match the fragment.
-     * @param fragment The fragment structure being added
-     * @param frag_atom_to_core_atom A map of fragment atoms to their
-     * corresponding core atom
-     * @return A tuple of:
-     *   - Bonds to make between the core and the fragment, formatted as a map
-     *     of {core atom: {fragment atom: info about bond to create}}
-     *   - A list of core bonds to mutate, where each bond is given as (core
-     *     bond tag, function that returns a bond to mutate to)
-     *   - A list of bonds to make between two core atoms, where each bond is
-     *     given as a tuple of
-     *     - new bond tag for the bond to create
-     *     - atom tag for the starting atom
-     *     - atom tag for the ending atom
-     *     - function that returns a bond instance for the new bond
-     */
-    std::tuple<AtomPtrToFragmentBondMap, std::vector<std::pair<int, BondFunc>>,
-               std::vector<std::tuple<int, int, int, BondFunc>>>
-    determineCoreBondAdditionsAndMutations(
-        const RDKit::ROMol& fragment, AtomToAtomMap frag_atom_to_core_atom);
-
-    /**
-     * Convert a map of atoms-to-bond-info from using atom pointers to using
-     * atom tags.
-     * @param core_to_frag_bonds_by_ptr A map of {core atom: {fragment atom:
-     * info about bond to create}}, where both atoms are represented by pointers
-     * @param frag_atom_tags A list of tags that will be used for the fragment
-     * atoms
-     * @return A map that is identical to core_to_frag_bonds_by_ptr, but using
-     * atom tags in place of pointers.
-     */
-    AtomTagToFragmentBondMap convertBondMapFromPtrsToTags(
-        const AtomPtrToFragmentBondMap& core_to_frag_bonds_by_ptr,
-        const std::vector<int>& frag_atom_tags);
+    void clearSelectionCommandFunc();
 
     /**
      * Add a fragment to the molecule and create new bonds between the new
      * fragment and the core (i.e. the existing molecule).  This method must
-     * only be called from an undo command.
+     * only be called as part of an undo command.
      * @param fragment The fragment to add
-     * @param atom_tags A list of atom tags for the fragment atoms
-     * @param bond_tags A list of bond tags for the fragment bonds
-     * @param core_atoms_to_mutate A list of core atoms to mutate, where each
-     *     atom is given as (core atom tag, function that returns a bond to
+     * @param mutations_to_core_atoms A list of core atoms to mutate, where each
+     *     atom is given as (core atom index, function that returns a bond to
      *     mutate to)
-     * @param core_bonds_to_mutate A list of core bonds to mutate, where each
-     * bond is given as (core bond tag, function that returns a bond to mutate
+     * @param mutations_to_core_bonds A list of core bonds to mutate, where each
+     * bond is given as (core bond index, function that returns a bond to mutate
      * to)
-     * @param core_bonds_to_add A list of bonds to make between two core atoms,
-     * where each bond is given as a tuple of
-     *   - new bond tag for the bond to create
-     *   - atom tag for the starting atom
-     *   - atom tag for the ending atom
+     * @param additions_to_core_bonds A list of bonds to make between two core
+     * atoms, where each bond is given as a tuple of
+     *   - atom index for the starting atom
+     *   - atom index for the ending atom
      *   - function that returns a bond instance for the new bond
-     * @param core_to_frag_bonds_by_tag Bonds to make between the core and the
-     * fragment, formatted as a map of {core atom tag: {fragment atom tag: info
-     * about bond to create}}, and bond info is given as a tuple of
+     * @param core_to_frag_bonds_by_idx Bonds to make between the core and the
+     * fragment, formatted as a map of {core atom index: {fragment atom index:
+     * info about bond to create}}, and bond info is given as a tuple of
      *   - function that returns a bond instance for the new bond
-     *   - new bond tag for the bond to create
      *   - whether the bond starts with the fragment atom (as opposed to
      *     starting with the core atom)
      */
-    void addFragmentFromCommand(
-        const RDKit::ROMol& fragment, const std::vector<int>& atom_tags,
-        const std::vector<int>& bond_tags,
-        std::vector<std::pair<int, AtomFunc>> mutations_to_core_atoms,
-        std::vector<std::pair<int, BondFunc>> mutations_to_core_bonds,
-        std::vector<std::tuple<int, int, int, BondFunc>>
+    void addFragmentCommandFunc(
+        const RDKit::ROMol& fragment,
+        std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms,
+        std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds,
+        std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
             additions_to_core_bonds,
-        const AtomTagToFragmentBondMap& core_to_frag_bonds_by_tag);
+        const AtomIdxToFragBondMap& core_to_frag_bonds_by_idx);
 };
 
 } // namespace sketcher

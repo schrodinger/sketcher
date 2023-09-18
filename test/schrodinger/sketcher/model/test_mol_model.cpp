@@ -175,6 +175,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(model.getTagForAtom(c_atom) == 0);
     check_coords(mol, 0, 1.0, 2.0);
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
+    c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(n_atom->getSymbol() == "N");
@@ -208,6 +209,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(model.getTagForAtom(c_atom) == 0);
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 2);
+    c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 1, 3.0, 4.0);
@@ -245,6 +247,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
                   RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
+    c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
     BOOST_TEST(model.getBondFromTag(0) == bond);
@@ -263,6 +266,7 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
+    c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(model.getBondFromTag(0) == bond);
@@ -491,6 +495,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
                std::vector<unsigned int>({1}));
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
 
+    c_atom = mol->getAtomWithIdx(0);
     model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
     const auto* attachment_atom2 = mol->getAtomWithIdx(2);
     BOOST_TEST(attachment_atom2->getAtomicNum() == 0);
@@ -509,6 +514,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(get_attachment_point_number(attachment_atom3) == 3);
     BOOST_TEST(get_next_attachment_point_number(mol) == 4);
 
+    n_atom = mol->getAtomWithIdx(3);
     model.addAttachmentPoint(RDGeom::Point3D(9.0, 0.0, 0.0), n_atom);
     const auto* attachment_atom4 = mol->getAtomWithIdx(5);
     BOOST_TEST(attachment_atom4->getAtomicNum() == 0);
@@ -520,7 +526,11 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
 
     // make sure that deleting an attachment point renumbers all remaining
     // attachment points and removes the attachment point bond
+    attachment_atom2 = mol->getAtomWithIdx(2);
     model.remove({attachment_atom2}, {}, {});
+    attachment_atom = mol->getAtomWithIdx(1);
+    attachment_atom3 = mol->getAtomWithIdx(3);
+    attachment_atom4 = mol->getAtomWithIdx(4);
     BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
     BOOST_TEST(get_attachment_point_number(attachment_atom3) == 2);
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 3);
@@ -529,6 +539,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(mol->getNumBonds() == 3);
 
     model.remove({attachment_atom, attachment_atom3}, {}, {});
+    attachment_atom4 = mol->getAtomWithIdx(2);
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 1);
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
     BOOST_TEST(mol->getNumAtoms() == 3);
@@ -561,11 +572,12 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
     model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     auto* c_atom = mol->getAtomWithIdx(0);
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
+    c_atom = mol->getAtomWithIdx(0);
     auto* n_atom = mol->getAtomWithIdx(1);
 
     model.remove({c_atom}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 1);
-    BOOST_TEST(mol->getAtomWithIdx(0) == n_atom);
+    n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
     BOOST_TEST(model.getAtomFromTag(1) == n_atom);
@@ -593,7 +605,7 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
 
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 1);
-    BOOST_TEST(mol->getAtomWithIdx(0) == n_atom);
+    n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
     BOOST_TEST(model.getAtomFromTag(1) == n_atom);
@@ -610,12 +622,15 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     const auto* c_atom = mol->getAtomWithIdx(0);
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
+    c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
     model.addBond(c_atom, n_atom, RDKit::Bond::BondType::SINGLE,
                   RDKit::Bond::BondDir::BEGINDASH);
     BOOST_TEST(mol->getNumBonds() == 1);
+    c_atom = mol->getAtomWithIdx(0);
+    n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
     BOOST_TEST(model.getBondFromTag(0) == bond);
     BOOST_TEST(model.getTagForBond(bond) == 0);
@@ -646,8 +661,8 @@ BOOST_AUTO_TEST_CASE(test_addBond_query)
     TestMolModel model(&undo_stack);
     const RDKit::ROMol* mol = model.getMol();
     model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
-    const auto* c_atom = mol->getAtomWithIdx(0);
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
+    const auto* c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -655,6 +670,8 @@ BOOST_AUTO_TEST_CASE(test_addBond_query)
         RDKit::makeBondNullQuery());
     model.addBond(c_atom, n_atom, bond_query);
     BOOST_TEST(mol->getNumBonds() == 1);
+    c_atom = mol->getAtomWithIdx(0);
+    n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
@@ -733,6 +750,7 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
     const auto* c_atom = mol->getAtomWithIdx(0);
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
+    c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -915,6 +933,8 @@ BOOST_AUTO_TEST_CASE(test_addMol_attachment_points)
     model.addMolFromText("C*.N* |$;_AP1;;_AP2$|");
     BOOST_TEST(mol->getNumAtoms() == 8);
     BOOST_TEST(mol->getNumBonds() == 4);
+    ap7_atom = mol->getAtomWithIdx(1);
+    ap3_atom = mol->getAtomWithIdx(3);
     auto* ap1_atom = mol->getAtomWithIdx(5);
     auto* ap2_atom = mol->getAtomWithIdx(7);
     // the existing _AP1 should be numbered before the new _AP1.  Same with _AP2
@@ -945,16 +965,29 @@ BOOST_AUTO_TEST_CASE(test_clear)
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
     BOOST_TEST(!model.isEmpty());
 
+    auto* atom1 = model.getAtomFromTag(1);
+    auto* plus = &model.m_pluses[0];
+    model.select({atom1}, {}, {plus}, SelectMode::SELECT);
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
+    BOOST_TEST(model.getSelectedBonds().empty());
+    BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
+
     model.clear();
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
     BOOST_TEST(model.getNonMolecularObjects().size() == 0);
     BOOST_TEST(model.isEmpty());
+    BOOST_TEST(!model.hasSelection());
 
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 3);
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
+    atom1 = model.getAtomFromTag(1);
+    plus = &model.m_pluses[0];
+    BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
+    BOOST_TEST(model.getSelectedBonds().empty());
+    BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     const RDKit::Atom* atom;
     for (int i = 1; i < 5; ++i) {
         atom = mol->getAtomWithIdx(i);
@@ -974,6 +1007,8 @@ BOOST_AUTO_TEST_CASE(test_clear)
     BOOST_TEST(mol->getNumBonds() == 0);
     BOOST_TEST(model.getNonMolecularObjects().size() == 0);
     BOOST_TEST(model.isEmpty());
+    BOOST_TEST(!model.hasSelection());
+
     // make sure we can add stuff after a clear SKETCH-2027
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
 }
@@ -1256,6 +1291,9 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     model.remove({}, {bond1}, {arrow});
+    atom1 = model.getAtomFromTag(1);
+    atom2 = model.getAtomFromTag(2);
+
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
@@ -1264,6 +1302,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);
+    arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1271,6 +1310,8 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     // removing an atom removes all of its bonds, so this removeAtomsAndBonds
     // call will implicitly remove and deselect bond1
     model.remove({model.getAtomFromTag(1)}, {}, {});
+    atom2 = model.getAtomFromTag(2);
+    arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1279,6 +1320,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);
+    arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1292,6 +1334,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);
+    arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1300,6 +1343,10 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     // selection
     auto* plus = &model.m_pluses[0];
     model.remove({model.getAtomFromTag(3)}, {}, {plus});
+    atom1 = model.getAtomFromTag(1);
+    atom2 = model.getAtomFromTag(2);
+    bond1 = model.getBondFromTag(1);
+    arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1309,6 +1356,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);
+    arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1562,6 +1610,7 @@ BOOST_AUTO_TEST_CASE(test_flipBond)
     BOOST_TEST(bond->getEndAtomIdx() == 1);
 
     undo_stack.redo();
+    bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
     BOOST_TEST(bond->getBeginAtomIdx() == 1);
@@ -1690,6 +1739,12 @@ void check_fragment_addition(const std::string& core_smiles,
                              const std::string& exp_result_smiles,
                              int core_atom_idx = -1, int core_bond_idx = -1)
 {
+    BOOST_TEST_MESSAGE("Running check_fragment_addition:"
+                       << "\n\tcore_smiles = " << core_smiles
+                       << "\n\tfrag_smiles = " << frag_smiles
+                       << "\n\texp_result_smiles = " << exp_result_smiles
+                       << "\n\tcore_atom_idx = " << core_atom_idx
+                       << "\n\tcore_bond_idx = " << core_bond_idx << "\n");
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     model.addMolFromText(core_smiles);

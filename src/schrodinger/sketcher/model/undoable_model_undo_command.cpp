@@ -35,11 +35,11 @@ template <typename T>
 void AbstractUndoableModelUndoCommand<T>::do_func(const T& func)
 {
     bool signals_blocked = m_model->blockSignals(false);
-    bool was_in_command = m_model->m_in_command;
-    m_model->m_in_command = true;
+    bool was_allowing_edits = m_model->m_allow_edits;
+    m_model->m_allow_edits = true;
     call_func(func);
     m_model->blockSignals(signals_blocked);
-    m_model->m_in_command = was_in_command;
+    m_model->m_allow_edits = was_allowing_edits;
 }
 
 UndoableModelUndoCommand::UndoableModelUndoCommand(

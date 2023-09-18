@@ -436,5 +436,141 @@ bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
     return !is_heteroatom_or_query(core_atom);
 }
 
+std::vector<std::pair<unsigned int, AtomFunc>>
+determine_core_atom_mutations(const AtomToAtomMap& frag_atom_to_core_atom)
+{
+    std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms;
+    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
+        if (should_replace_core_atom(frag_atom, core_atom)) {
+            auto& frag_atom_ref = *frag_atom;
+            auto copy_frag_atom = [frag_atom_ref]() {
+                return std::make_shared<RDKit::Atom>(frag_atom_ref);
+            };
+            mutations_to_core_atoms.emplace_back(core_atom->getIdx(),
+                                                 copy_frag_atom);
+        }
+    }
+    return mutations_to_core_atoms;
+}
+
+std::tuple<AtomPtrToFragBondMap, std::vector<std::pair<unsigned int, BondFunc>>,
+           std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>>
+determine_core_bond_additions_and_mutations(
+    const RDKit::ROMol& core, const RDKit::ROMol& fragment,
+    AtomToAtomMap frag_atom_to_core_atom)
+{
+    AtomPtrToFragBondMap core_to_frag_bonds;
+    std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds;
+    std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
+        additions_to_core_bonds;
+    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
+        for (auto* frag_bond : fragment.atomBonds(frag_atom)) {
+            auto* frag_neighbor = frag_bond->getOtherAtom(frag_atom);
+            auto& frag_bond_ref = *frag_bond;
+            auto copy_bond = [frag_bond_ref]() {
+                return std::make_shared<RDKit::Bond>(frag_bond_ref);
+            };
+            if (frag_atom_to_core_atom.count(frag_neighbor)) {
+                // both of the fragment atoms in this bond are on top of a core
+                // atom
+                auto* core_neighbor = frag_atom_to_core_atom[frag_neighbor];
+                auto* core_bond = core.getBondBetweenAtoms(
+                    core_atom->getIdx(), core_neighbor->getIdx());
+                if (core_bond == nullptr) {
+                    // there's no equivalent bond in the core, so one needs to
+                    // be added
+                    int start_atom_idx = core_atom->getIdx();
+                    int end_atom_idx = core_neighbor->getIdx();
+                    if (frag_bond->getBeginAtom() != frag_atom) {
+                        std::swap(start_atom_idx, end_atom_idx);
+                    }
+                    additions_to_core_bonds.emplace_back(
+                        start_atom_idx, end_atom_idx, copy_bond);
+                } else {
+                    // there's already a core bond between these atoms, so we
+                    // mutate it
+                    mutations_to_core_bonds.emplace_back(core_bond->getIdx(),
+                                                         copy_bond);
+                }
+            } else {
+                // this bond will be between a core atom and a fragment atom
+                core_to_frag_bonds.try_emplace(core_atom);
+                bool frag_first = frag_bond->getBeginAtom() == frag_atom;
+                FragmentBondInfo bond_info =
+                    std::make_tuple(copy_bond, frag_first);
+                core_to_frag_bonds[core_atom].emplace(frag_neighbor, bond_info);
+            }
+        }
+    }
+    return {core_to_frag_bonds, mutations_to_core_bonds,
+            additions_to_core_bonds};
+}
+
+AtomIdxToFragBondMap convert_bond_map_from_ptrs_to_idxs(
+    const RDKit::ROMol& core,
+    const AtomPtrToFragBondMap& core_to_frag_bonds_by_ptr)
+{
+    AtomIdxToFragBondMap core_to_frag_bonds_by_idx;
+    unsigned int num_core_atoms = core.getNumAtoms();
+    for (auto& [core_atom, frag_atom_to_bond_info] :
+         core_to_frag_bonds_by_ptr) {
+        auto core_atom_idx = core_atom->getIdx();
+        core_to_frag_bonds_by_idx.try_emplace(core_atom_idx);
+        auto& frag_atom_idx_to_bond_info =
+            core_to_frag_bonds_by_idx[core_atom_idx];
+        for (auto& [frag_atom, bond_info] : frag_atom_to_bond_info) {
+            auto frag_atom_idx = num_core_atoms + frag_atom->getIdx();
+            frag_atom_idx_to_bond_info.emplace(frag_atom_idx, bond_info);
+        }
+    }
+    return core_to_frag_bonds_by_idx;
+}
+
+std::tuple<std::vector<std::pair<unsigned int, AtomFunc>>,
+           std::vector<std::pair<unsigned int, BondFunc>>,
+           std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>,
+           AtomIdxToFragBondMap>
+get_fragment_addition_info(RDKit::RWMol& fragment,
+                           const RDKit::Atom* frag_start_atom,
+                           const RDKit::ROMol& core,
+                           const RDKit::Atom* core_start_atom)
+{
+    // figure out which fragment atoms correspond to which atoms in the core
+    // (i.e. the existing structure)
+    auto frag_atom_to_core_atom = get_fragment_to_core_atom_map(
+        fragment, frag_start_atom, core, core_start_atom);
+
+    // figure out which core atoms should be mutated so they match the overlayed
+    // fragment atom
+    auto mutations_to_core_atoms =
+        determine_core_atom_mutations(frag_atom_to_core_atom);
+
+    // figure out where bonds should be added and which core bonds should be
+    // mutated
+    AtomPtrToFragBondMap core_to_frag_bonds_by_ptr;
+    std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds;
+    std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
+        additions_to_core_bonds;
+    std::tie(core_to_frag_bonds_by_ptr, mutations_to_core_bonds,
+             additions_to_core_bonds) =
+        determine_core_bond_additions_and_mutations(core, fragment,
+                                                    frag_atom_to_core_atom);
+
+    // delete all fragment atoms that overlay on existing core atoms
+    for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
+        fragment.removeAtom(frag_atom->getIdx());
+    }
+
+    // core_to_frag_bonds_by_ptr uses atom pointers, so it's only valid for this
+    // exact instance of core and fragment.  Convert the pointers to atom
+    // indices so that the dictionary will still be valid even when using a copy
+    // of core or frag (which happens in MolModel::addFragmentFromCommand).
+    auto core_to_frag_bonds_by_idx =
+        convert_bond_map_from_ptrs_to_idxs(core, core_to_frag_bonds_by_ptr);
+
+    return {mutations_to_core_atoms, mutations_to_core_bonds,
+            additions_to_core_bonds, core_to_frag_bonds_by_idx};
+}
+
 } // namespace sketcher
 } // namespace schrodinger
