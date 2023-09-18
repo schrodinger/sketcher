@@ -1,5 +1,0 @@
-<RCC>
-    <qresource>
-        <file>resources/wasm_stylesheet.qss</file>
-    </qresource>
-</RCC>

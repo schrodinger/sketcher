@@ -2,7 +2,6 @@
 #include <emscripten/bind.h>
 
 #include <QApplication>
-#include <QFile>
 
 #include "schrodinger/sketcher/sketcher_widget.h"
 
@@ -25,18 +24,9 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("example_function", &example_function);
 }
 
-void apply_stylesheet(QApplication& app)
-{
-    QFile styleFile(":resources/wasm_stylesheet.qss");
-    styleFile.open(QFile::ReadOnly);
-    QString style(styleFile.readAll());
-    app.setStyleSheet(style);
-}
-
 int main(int argc, char** argv)
 {
     QApplication application(argc, argv);
-    apply_stylesheet(application);
 
     auto& sk = get_sketcher_instance();
     sk.show();
