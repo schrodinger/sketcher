@@ -173,7 +173,7 @@ void HelmParser::saveError(const unsigned int num_chars_processed,
         (num_chars_processed >= prefix_size ? prefix_size
                                             : num_chars_processed - 1);
     m_errors.push_back(fmt::format(
-        "Parsing failed around position {}:\n"
+        "Malformed HELM string: check for mistakes around position {}:\n"
         "{}\n"
         "{}^\n"
         "{}",
