@@ -1,0 +1,26 @@
+[
+    {
+        "library": "boost",
+        "version": "1.81.0"
+    },
+    {
+        "library": "maeparser",
+        "version": "1.3.1"
+    },
+    {
+        "library": "fmt",
+        "version": "6.1.2"
+    },
+    {
+        "library": "qt6",
+        "version": "6.2.5"
+    },
+    {
+        "library": "rdkit",
+        "version": "master"
+    },
+    {
+        "library": "zlib",
+        "version": "1.2.11"
+    }
+]
