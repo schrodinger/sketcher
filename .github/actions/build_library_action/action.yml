@@ -22,7 +22,7 @@ runs:
       id: cache-check
       uses: actions/cache@v3
       with:
-  build_dir:
+  path:
         key: ${{ inputs.platform }}_${{ inputs.lib_sha }}_${{ inputs.library }}
         path: ./build/dependencies/${{ inputs.platform }}_${{ inputs.lib_sha }}_${{ inputs.library }}
 
