@@ -3,16 +3,13 @@ inputs:
     description: 'platform on which we are building'
     required: true
   lib_sha:
-    description: 'commit hash of the last change to the given library'
+    description: 'commit hash of the last change to the library'
     required: true
   library:
     description: 'Name of the library to build'
     required: true
   version:
     description: 'Version of the library to build'
-    required: true
-  build_script:
-    description: 'Name of the build script to run'
     required: true
 
 runs:
@@ -22,9 +19,8 @@ runs:
       id: cache-check
       uses: actions/cache@v3
       with:
-  path:
+        path: ./dependencies/${{ inputs.platform }}_${{ inputs.lib_sha }}_${{ inputs.library }}
         key: ${{ inputs.platform }}_${{ inputs.lib_sha }}_${{ inputs.library }}
-        path: ./build/dependencies/${{ inputs.platform }}_${{ inputs.lib_sha }}_${{ inputs.library }}
 
     - name: Select shells
       id: shell-select
@@ -89,8 +85,8 @@ runs:
       shell: bash -l {0}
       run: |
         [ "${RUNNER_DEBUG}" == "1" ] && export
-        if [ -f ${{ inputs.build_script }} ]; then
-          ./${{ inputs.build_script }} ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.lib_sha }}
+        if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
+          ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.lib_sha }}
         else
           echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
           exit 1

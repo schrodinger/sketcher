@@ -13,7 +13,6 @@ jobs:
           maeparser_jobs: ${{ steps.job-gen.outputs.maeparser_jobs }}
           rdkit_jobs: ${{ steps.job-gen.outputs.rdkit_jobs }}
           lib_sha: ${{ steps.job-gen.outputs.lib_sha }}
-
         steps:
         - name: Checkout repo
           uses: actions/checkout@v3
@@ -40,7 +39,6 @@ jobs:
             lib_sha: ${{ needs.prepare_jobs.outputs.lib_sha }}
             library: ${{ matrix.library }}
             version: ${{ matrix.version }}
-            build_script: dependencies/build_${{ inputs.library }}.sh
 
     build_maeparser:
       name: Build maeparser
@@ -74,7 +72,6 @@ jobs:
           lib_sha: ${{ needs.prepare_jobs.outputs.lib_sha }}
           library: ${{ matrix.library }}
           version: ${{ matrix.version }}
-          build_script: dependencies/build_${{ inputs.library }}.sh
 
     build_rdkit:
       name: Build rdkit
@@ -115,7 +112,6 @@ jobs:
           lib_sha: ${{ needs.prepare_jobs.outputs.lib_sha }}
           library: ${{ matrix.library }}
           version: ${{ matrix.version }}
-          build_script: dependencies/build_${{ inputs.library }}.sh
 
     build_sketcher:
       name: Build Sketcher
@@ -178,7 +174,6 @@ jobs:
           lib_sha: ${{ needs.prepare_jobs.outputs.lib_sha }}
           library: sketcher
           version: master
-          build_script: build_sketcher.sh
 
       - name: Archive sketcher exectuable artifact
         uses: actions/upload-artifact@v3
