@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SketcherWidgetForm</class>
+ <widget class="QWidget" name="SketcherWidgetForm">
+  <layout class="QHBoxLayout"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
