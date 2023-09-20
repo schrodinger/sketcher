@@ -1,0 +1,9 @@
+<RCC>
+    <qresource>
+        <file>resources/wasm_stylesheet.qss</file>
+        <file>resources/fonts/Arial.ttf</file>
+        <file>resources/fonts/Arial_Bold.ttf</file>
+        <file>resources/fonts/Arial_Italic.ttf</file>
+        <file>resources/fonts/Arial_Bold_Italic.ttf</file>
+    </qresource>
+</RCC>

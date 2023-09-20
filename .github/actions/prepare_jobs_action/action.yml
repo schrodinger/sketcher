@@ -1,0 +1,88 @@
+inputs:
+  deps_file:
+    description: 'file containing the dependencies in json format'
+    required: false
+    default:  dependencies/dependencies.json
+
+outputs:
+  deps_sha:
+    description: 'commit hash of the last change to the dependencies file'
+    value: ${{ steps.get-hash.outputs.deps_sha }}
+  base_dep_jobs:
+    description: 'JSON mapping of OSs and libraries to build'
+    value: ${{ steps.job-gen.outputs.base_dep_jobs }}
+  maeparser_jobs:
+    description: 'JSON mapping of OSs to build maeparser on'
+    value: ${{ steps.job-gen.outputs.maeparser_jobs }}
+  rdkit_jobs:
+    description: 'JSON mapping of OSs to build rdkit on'
+    value: ${{ steps.job-gen.outputs.rdkit_jobs }}
+
+
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Import dependencies
+      shell: bash
+      run: |
+        {
+            echo 'DEPENDENCIES_JSON<<EOF'
+            cat ${{ inputs.DEPS_FILE }}
+            echo -e '\nEOF'
+        } >> "$GITHUB_ENV"
+
+    - name: Build job strategy matrixes
+      id: job-gen
+      uses: actions/github-script@v6
+      with:
+        script: |
+            const deps = ${{ env.DEPENDENCIES_JSON }}
+
+            base_dep_jobs = {}
+            maeparser_jobs = {}
+            rdkit_jobs = {}
+
+            for (job_list of [base_dep_jobs, maeparser_jobs, rdkit_jobs]) {
+              job_list.os = ["ubuntu-latest", "macos-latest", "windows-latest"]
+
+              job_list.include = []
+              job_list.include.push({os: "ubuntu-latest", platform: "linux"})
+              job_list.include.push({os: "macos-latest", platform: "darwin"})
+              job_list.include.push({os: "windows-latest", platform: "win32"})
+
+              job_list.library = []
+            }
+
+            for (const dep of deps) {
+                if (dep.library == "maeparser") {
+                  job_list = maeparser_jobs
+                } else if (dep.library == "rdkit") {
+                  job_list = rdkit_jobs
+                } else {
+                  job_list = base_dep_jobs
+                }
+                job_list.library.push(dep.library)
+                job_list.include.push({
+                    library: dep.library,
+                    version: dep.version,
+                })
+            }
+
+            console.log("base_dep_jobs=" + base_dep_jobs)
+            console.log("maeparser_jobs=" + maeparser_jobs)
+            console.log("rdkit_jobs=" + rdkit_jobs)
+
+            core.setOutput('base_dep_jobs', JSON.stringify(base_dep_jobs))
+            core.setOutput('maeparser_jobs', JSON.stringify(maeparser_jobs))
+            core.setOutput('rdkit_jobs', JSON.stringify(rdkit_jobs))
+
+    - name: Get dependencies sha
+      id: get-hash
+      shell: bash
+      run: |
+        deps_sha=$(cat dependencies/* | md5sum)
+        echo "deps_sha=${deps_sha:0:8}" >> $GITHUB_OUTPUT

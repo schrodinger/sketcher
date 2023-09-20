@@ -1,0 +1,94 @@
+inputs:
+  platform:
+    description: 'platform on which we are building'
+    required: true
+  deps_sha:
+    description: 'commit hash of the last change to the dependencies file'
+    required: true
+  library:
+    description: 'Name of the dependency to build'
+    required: true
+  version:
+    description: 'Version of the dependency to build'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Check for a cached build
+      id: cache-check
+      uses: actions/cache@v3
+      with:
+        path: ./dependencies/${{ inputs.platform }}_${{ inputs.deps_sha }}_${{ inputs.library }}
+        key: ${{ inputs.platform }}_${{ inputs.deps_sha }}_${{ inputs.library }}
+
+    - name: Select shells
+      id: shell-select
+      uses: actions/github-script@v6
+      with:
+        script: |
+            if ('${{ inputs.platform }}' == 'win32') {
+              core.setOutput('shells', 'bash cmd.exe')
+            } else {
+              core.setOutput('shells', 'bash')
+            }
+
+    - name: Setup the build environment
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      uses: mamba-org/setup-micromamba@v1
+      with:
+        micromamba-version: 'latest'
+        environment-file: dependencies/${{ inputs.platform }}_environment.yml
+        init-shell: ${{ steps.shell-select.outputs.shells }}
+        cache-environment: true
+        post-cleanup: 'none'
+
+    - name: Create bash VS Compiler activation script
+      if: steps.cache-check.outputs.cache-hit != 'true' && inputs.platform == 'win32'
+      shell: cmd /C call {0}
+      run: |
+        set "activation_file=%CONDA_PREFIX%\etc\conda\activate.d\vs_compiler_vars.sh"
+        echo #!/usr/bin/env bash > %activation_file%
+        echo translate_path() { p=$(realpath "$1"); echo ${p/C:\//\/c\/}; } >> %activation_file%
+        echo export CC='%CC%' >> %activation_file%
+        echo export CXX='%CXX%' >> %activation_file%
+        echo export CMAKE_GEN='%CMAKE_GEN%' >> %activation_file%
+        echo export CMAKE_GENERATOR='%CMAKE_GENERATOR%' >> %activation_file%
+        echo export CMAKE_GENERATOR_PLATFORM='%CMAKE_GENERATOR_PLATFORM%' >> %activation_file%
+        echo export CMAKE_GENERATOR_TOOLSET='%CMAKE_GENERATOR_TOOLSET%' >> %activation_file%
+        echo export CMAKE_PLAT='%CMAKE_PLAT%' >> %activation_file%
+        echo export CONDA_BUILD_CROSS_COMPILATION='%CONDA_BUILD_CROSS_COMPILATION%' >> %activation_file%
+        echo export DISTUTILS_USE_SDK='%DISTUTILS_USE_SDK%' >> %activation_file%
+        echo export INCLUDE='%INCLUDE%' >> %activation_file%
+        echo export LIB='%LIB%' >> %activation_file%
+        echo export MSSdk='%MSSdk%' >> %activation_file%
+        echo export MSYS2_ARG_CONV_EXCL='%MSYS2_ARG_CONV_EXCL%' >> %activation_file%
+        echo export MSYS2_ENV_CONV_EXCL='%MSYS2_ENV_CONV_EXCL%' >> %activation_file%
+        echo export NEWER_VS_WITH_OLDER_VC='%NEWER_VS_WITH_OLDER_VC%' >> %activation_file%
+        echo export PY_VCRUNTIME_REDIST='%PY_VCRUNTIME_REDIST%' >> %activation_file%
+        echo export USE_NEW_CMAKE_GEN_SYNTAX='%USE_NEW_CMAKE_GEN_SYNTAX%' >> %activation_file%
+        echo export VCToolsInstallDir='%VCToolsInstallDir%' >> %activation_file%
+        echo export VCVARSBAT='%VCVARSBAT%' >> %activation_file%
+        echo export VS_MAJOR='%VS_MAJOR%' >> %activation_file%
+        echo export VS_VERSION='%VS_VERSION%' >> %activation_file%
+        echo export VS_YEAR='%VS_YEAR%' >> %activation_file%
+        echo export VSINSTALLDIR='%VSINSTALLDIR%' >> %activation_file%
+        echo export WindowsSdkDir='%WindowsSdkDir%' >> %activation_file%
+        echo export WindowsSDKVer='%WindowsSDKVer%' >> %activation_file%
+        echo compiler_path=$(translate_path "${VCToolsInstallDir:-.}/bin/HostX64/x64") >> %activation_file%
+        echo sdk_path=$(translate_path "${WindowsSdkDir:-.}/bin/${WindowsSDKVer:-}/x64") >> %activation_file%
+        echo export PATH=${PATH}:"${compiler_path}":"${sdk_path}" >> %activation_file%
+        echo export VC_REDIST_VERSION=${CMAKE_GENERATOR_TOOLSET:1:3} >> %activation_file%
+
+    - name: Run build script
+      if: steps.cache-check.outputs.cache-hit != 'true' && success()
+      shell: bash -l {0}
+      run: |
+        [ "${RUNNER_DEBUG}" == "1" ] && export
+        if [ -f dependencies/build_${{ inputs.library }}.sh ]; then
+          ./dependencies/build_${{ inputs.library }}.sh ${{ inputs.platform }} ${{ inputs.version }} ${{ inputs.deps_sha }}
+        else
+          echo Failed to find an appropriate script to build ${{ inputs.library }} on ${{ inputs.platform }}
+          exit 1
+        fi
+
