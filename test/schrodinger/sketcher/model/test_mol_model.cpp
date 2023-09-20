@@ -1597,6 +1597,7 @@ BOOST_AUTO_TEST_CASE(test_flipBond)
     BOOST_TEST(bond->getEndAtomIdx() == 1);
 
     model.flipBond(bond);
+    bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
     BOOST_TEST(bond->getBeginAtomIdx() == 1);
