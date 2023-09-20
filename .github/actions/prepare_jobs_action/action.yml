@@ -2,7 +2,7 @@ inputs:
   deps_file:
     description: 'file containing the dependencies in json format'
     required: false
-    default:  dependencies/dependencies.json
+    default:  versions.json
 
 outputs:
   deps_sha:

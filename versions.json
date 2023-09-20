@@ -1,5 +1,9 @@
 [
     {
+        "library": "sketcher",
+        "version": "2023.4.0"
+    },
+    {
         "library": "boost",
         "version": "1.81.0"
     },
