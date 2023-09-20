@@ -1,0 +1,176 @@
+name: Sketcher CI
+on:
+    workflow_dispatch: ~
+    push: ~
+
+jobs:
+
+    prepare_jobs:
+        name: Prepare job distribution and variables
+        runs-on: ubuntu-latest
+        outputs:
+          base_dep_jobs: ${{ steps.job-gen.outputs.base_dep_jobs }}
+          maeparser_jobs: ${{ steps.job-gen.outputs.maeparser_jobs }}
+          rdkit_jobs: ${{ steps.job-gen.outputs.rdkit_jobs }}
+          deps_sha: ${{ steps.job-gen.outputs.deps_sha }}
+        steps:
+        - name: Checkout repo
+          uses: actions/checkout@v3
+
+        - name: "Generate dependency build jobs matrix"
+          uses: ./.github/actions/prepare_jobs_action
+          id: job-gen
+
+    build_base_deps:
+        name: Build base dependencies
+        needs: prepare_jobs
+        strategy:
+            matrix: ${{ fromJson(needs.prepare_jobs.outputs.base_dep_jobs) }}
+
+        runs-on: ${{ matrix.os }}
+        steps:
+        - name: Checkout repo
+          uses: actions/checkout@v3
+
+        - name: Build ${{ matrix.library }} v${{ matrix.version }} dependency on ${{ matrix.platform }}
+          uses: ./.github/actions/build_dependency_action
+          with:
+            platform: ${{ matrix.platform }}
+            deps_sha: ${{ needs.prepare_jobs.outputs.deps_sha }}
+            library: ${{ matrix.library }}
+            version: ${{ matrix.version }}
+
+    build_maeparser:
+      name: Build maeparser
+      needs: [prepare_jobs, build_base_deps]
+      strategy:
+          matrix: ${{ fromJson(needs.prepare_jobs.outputs.maeparser_jobs) }}
+
+      runs-on: ${{ matrix.os }}
+      steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Pull the boost dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          fail-on-cache-miss: true
+
+      - name: Pull the zlib dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          fail-on-cache-miss: true
+
+      - name: Build ${{ matrix.library }} v${{ matrix.version }} dependency on ${{ matrix.platform }}
+        uses: ./.github/actions/build_dependency_action
+        with:
+          platform: ${{ matrix.platform }}
+          deps_sha: ${{ needs.prepare_jobs.outputs.deps_sha }}
+          library: ${{ matrix.library }}
+          version: ${{ matrix.version }}
+
+    build_rdkit:
+      name: Build rdkit
+      needs: [prepare_jobs, build_base_deps, build_maeparser]
+      strategy:
+          matrix: ${{ fromJson(needs.prepare_jobs.outputs.rdkit_jobs) }}
+
+      runs-on: ${{ matrix.os }}
+      steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Pull the boost dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          fail-on-cache-miss: true
+
+      - name: Pull the maeparser dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+          fail-on-cache-miss: true
+
+      - name: Pull the zlib dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          fail-on-cache-miss: true
+
+      - name: Build ${{ matrix.library }} '${{ matrix.version }}' dependency on ${{ matrix.platform }}
+        uses: ./.github/actions/build_dependency_action
+        with:
+          platform: ${{ matrix.platform }}
+          deps_sha: ${{ needs.prepare_jobs.outputs.deps_sha }}
+          library: ${{ matrix.library }}
+          version: ${{ matrix.version }}
+
+    build_sketcher:
+      name: Build Sketcher
+      needs: [prepare_jobs, build_base_deps, build_maeparser, build_rdkit]
+      strategy:
+          matrix:
+              os: [ubuntu-latest, macos-latest, windows-latest]
+              include:
+                  - os: ubuntu-latest
+                    platform: linux
+                  - os: macos-latest
+                    platform: darwin
+                  - os: windows-latest
+                    platform: win32
+
+      runs-on: ${{ matrix.os }}
+      steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Pull the boost dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_boost
+          fail-on-cache-miss: true
+
+      - name: Pull the maeparser dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_maeparser
+          fail-on-cache-miss: true
+
+      - name: Pull the rdkit dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_rdkit
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_rdkit
+          fail-on-cache-miss: true
+
+      - name: Pull the qt6 dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_qt6
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_qt6
+          fail-on-cache-miss: true
+
+      - name: Pull the zlib dependency
+        uses: actions/cache@v3
+        with:
+          path: ./dependencies/${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          key: ${{ matrix.platform }}_${{ needs.prepare_jobs.outputs.deps_sha }}_zlib
+          fail-on-cache-miss: true
+
+      - name: Build Sketcher on ${{ matrix.platform }}
+        uses: ./.github/actions/build_dependency_action
+        with:
+          platform: ${{ matrix.platform }}
+          deps_sha: ${{ needs.prepare_jobs.outputs.deps_sha }}
+          library: sketcher
+          version: master

@@ -1,0 +1,9 @@
+name: sketcher_builder
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - cxx-compiler
+  - curl
+  - ninja
+  - pcre2
