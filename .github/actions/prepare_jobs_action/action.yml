@@ -1,13 +1,13 @@
 inputs:
-  deps_file:
-    description: 'file containing the dependencies in json format'
+  versions_file:
+    description: 'file containing the library versions in json format'
     required: false
     default:  versions.json
 
 outputs:
-  deps_sha:
-    description: 'commit hash of the last change to the dependencies file'
-    value: ${{ steps.get-hash.outputs.deps_sha }}
+  lib_sha:
+    description: 'commit hash in the versions file'
+    value: ${{ steps.get-hash.outputs.lib_sha }}
   base_dep_jobs:
     description: 'JSON mapping of OSs and libraries to build'
     value: ${{ steps.job-gen.outputs.base_dep_jobs }}
@@ -31,7 +31,7 @@ runs:
       run: |
         {
             echo 'DEPENDENCIES_JSON<<EOF'
-            cat ${{ inputs.DEPS_FILE }}
+            cat ${{ inputs.versions_file }}
             echo -e '\nEOF'
         } >> "$GITHUB_ENV"
 
@@ -80,9 +80,9 @@ runs:
             core.setOutput('maeparser_jobs', JSON.stringify(maeparser_jobs))
             core.setOutput('rdkit_jobs', JSON.stringify(rdkit_jobs))
 
-    - name: Get dependencies sha
+    - name: Get library sha
       id: get-hash
       shell: bash
       run: |
-        deps_sha=$(cat dependencies/* | md5sum)
-        echo "deps_sha=${deps_sha:0:8}" >> $GITHUB_OUTPUT
+        lib_sha=$(cat build/dependencies/* | md5sum)
+        echo "lib_sha=${lib_sha:0:8}" >> $GITHUB_OUTPUT
