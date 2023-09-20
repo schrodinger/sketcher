@@ -13,11 +13,11 @@
     },
     {
         "library": "qt6",
-        "version": "6.2.5"
+        "version": "6.2.7"
     },
     {
         "library": "rdkit",
-        "version": "master"
+        "version": "052d48e34ef6d05f730f75e6accf9093e5313cd8"
     },
     {
         "library": "zlib",

@@ -174,3 +174,9 @@ jobs:
           deps_sha: ${{ needs.prepare_jobs.outputs.deps_sha }}
           library: sketcher
           version: master
+
+      - name: Archive sketcher exectuable artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: sketcher_${{ matrix.platform }}.zip
+          path: build/sketcher_app
