@@ -1,3 +1,13 @@
+/**
+ * Tests for the MolModel class.
+ *
+ * When writing tests, note that *any* change to the MolModel's molecule will
+ * invalidate *all* Atom and Bond pointers that reference the MolModel's
+ * molecule.  For example, flipping a bond will invalidate any pointers to the
+ * flipped bond, any pointers to any other bond in the molecule, and any
+ * Atom* pointers to the molecule.
+ */
+
 #define BOOST_TEST_MODULE Test_Sketcher
 
 #include <optional>
