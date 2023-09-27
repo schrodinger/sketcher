@@ -27,10 +27,16 @@ namespace sketcher
 SketcherWidget::SketcherWidget(QWidget* parent) :
     QWidget(parent),
     m_undo_stack(new QUndoStack(this)),
-    m_mol_model(new MolModel(m_undo_stack, this)),
+    m_mol_model(new MolModel(m_undo_stack)),
     m_sketcher_model(new SketcherModel(this)),
     m_scene(new Scene(m_mol_model, m_sketcher_model, this))
 {
+    // The tools in ~Scene will access the underlying mol, so we need to
+    // make sure the mol model still exists when the scene is destroyed.
+    // This is controlled by the order in which parentship relationships
+    // are defined.
+    m_mol_model->setParent(this);
+
     m_ui.reset(new Ui::SketcherWidgetForm());
     m_ui->setupUi(this);
 
