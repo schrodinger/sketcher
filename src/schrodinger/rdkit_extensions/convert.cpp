@@ -45,8 +45,9 @@ namespace
  * Guess by attempting conversions, and returning the first valid parse
  */
 template <typename T> boost::shared_ptr<T> auto_detect(
-    const std::string& text, const std::vector<Format> formats,
-    std::function<boost::shared_ptr<T>(const std::string&, Format)> text_to_)
+    const std::string& text, const std::vector<Format>& formats,
+    std::function<boost::shared_ptr<T>(const std::string&, const Format)>
+        text_to_)
 {
     for (const auto& fmt : formats) {
         try {
@@ -345,7 +346,8 @@ std::string base64_encode(const std::string& byte_array)
 
 } // unnamed namespace
 
-boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
+boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
+                                         const Format format)
 {
     if (format == Format::AUTO_DETECT) {
         // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
@@ -456,7 +458,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text, Format format)
 }
 
 boost::shared_ptr<RDKit::ChemicalReaction>
-to_rdkit_reaction(const std::string& text, Format format)
+to_rdkit_reaction(const std::string& text, const Format format)
 {
     if (format == Format::AUTO_DETECT) {
         // NOTE: Text is always read as SMARTS. Reading text as
@@ -527,7 +529,7 @@ to_rdkit_reaction(const std::string& text, Format format)
     return reaction;
 }
 
-std::string to_string(const RDKit::ROMol& input_mol, Format format)
+std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 {
     CaptureRDErrorLog rd_error_log;
 
@@ -587,7 +589,8 @@ std::string to_string(const RDKit::ROMol& input_mol, Format format)
     throw std::invalid_argument("Invalid format specified");
 }
 
-std::string to_string(const RDKit::ChemicalReaction& reaction, Format format)
+std::string to_string(const RDKit::ChemicalReaction& reaction,
+                      const Format format)
 {
     switch (format) {
         case Format::SMILES:

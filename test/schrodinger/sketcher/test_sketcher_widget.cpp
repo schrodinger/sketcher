@@ -29,7 +29,7 @@ class TestSketcherWidget : public SketcherWidget
 BOOST_AUTO_TEST_CASE(test_importText)
 {
     TestSketcherWidget sk;
-    sk.m_mol_model->addMolFromText("c1nccc2n1ccc2", Format::SMILES);
+    sk.m_mol_model->importFromText("c1nccc2n1ccc2", Format::SMILES);
     auto mol = sk.m_mol_model->getMol();
     BOOST_TEST_REQUIRE(mol != nullptr);
     BOOST_TEST(mol->getNumAtoms() == 9);
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(test_watermark)
     sk.m_scene->changed(region);
     // sketcher starts out empty
     BOOST_TEST(sk.m_watermark_item->isVisible());
-    sk.m_mol_model->addMolFromText("c1ccncc1", Format::SMILES);
+    sk.m_mol_model->importFromText("c1ccncc1", Format::SMILES);
     sk.m_scene->changed(region);
     BOOST_TEST(!sk.m_watermark_item->isVisible());
     sk.m_mol_model->clear();

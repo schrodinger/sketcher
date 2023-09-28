@@ -154,7 +154,7 @@ void SketcherWidget::importText(const std::string& text, Format format)
     };
 
     try {
-        m_mol_model->addMolFromText(text, format);
+        m_mol_model->importFromText(text, format);
     } catch (const std::invalid_argument& exc) {
         show_import_failure(exc);
     } catch (const std::runtime_error& exc) {

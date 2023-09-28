@@ -130,15 +130,43 @@ void MolModel::initializeMol()
 
 const RDKit::ROMol* MolModel::getMol() const
 {
-    // TODO: add API to get reactions
     // TODO: add API to get selected mol
     // TODO: add API to export selection as atom/bond properties
     return &m_mol;
 }
 
-std::string MolModel::getMolText(Format format)
+std::string MolModel::getMolText(const Format format) const
 {
     return rdkit_extensions::to_string(*getMol(), format);
+}
+
+std::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
+{
+    if (!m_arrow.has_value()) {
+        throw std::runtime_error("No reaction arrow found.");
+    }
+    // get the midpoint of the arrow
+    auto arrow_x = m_arrow->getCoords().x;
+    auto all_mols =
+        RDKit::MolOps::getMolFrags(m_mol, /* sanitizeFrags = */ false);
+    auto reaction = std::make_shared<RDKit::ChemicalReaction>();
+    for (auto cur_mol : all_mols) {
+        auto cur_centroid = find_centroid(*cur_mol);
+        if (cur_centroid.x <= arrow_x) {
+            reaction->addReactantTemplate(cur_mol);
+        } else {
+            reaction->addProductTemplate(cur_mol);
+        }
+    }
+    if (reaction->getReactants().empty() || reaction->getProducts().empty()) {
+        throw std::runtime_error("Incomplete reactions cannot be copied.");
+    }
+    return reaction;
+}
+
+std::string MolModel::getReactionText(const Format format) const
+{
+    return rdkit_extensions::to_string(*getReaction(), format);
 }
 
 bool MolModel::isEmpty() const
@@ -551,22 +579,54 @@ void MolModel::remove(
 }
 
 void MolModel::addMol(RDKit::ROMol mol, const QString& description,
-                      const bool center_mol)
+                      const bool reposition_mol)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
-    if (center_mol) {
-        center_on_origin(mol);
+    if (reposition_mol) {
+        // make sure that the molecule has coordinates
+        rdkit_extensions::update_2d_coordinates(mol);
+        if (!m_mol.getNumAtoms()) {
+            // if we don't have any existing structure, center the new molecule
+            // at the origin
+            center_on_origin(mol);
+        } else {
+            // otherwise, put the new molecule to the right of the existing
+            // molecule
+            move_molecule_to_the_right_of(mol, m_mol, IMPORT_SPACING);
+        }
     }
     auto cmd_func = [this, mol]() { addMolCommandFunc(mol); };
     doCommandUsingSnapshots(cmd_func, description, WhatChanged::MOLECULE);
 }
 
-void MolModel::addMolFromText(const std::string& text, Format format)
+void MolModel::addReaction(const RDKit::ChemicalReaction& reaction)
 {
-    boost::shared_ptr<RDKit::RWMol> mol = text_to_mol(text, format);
-    addMol(*mol);
+    if (!reaction.getNumReactantTemplates() &&
+        !reaction.getNumProductTemplates()) {
+        // this reaction is empty
+        return;
+    }
+    if (m_arrow.has_value()) {
+        throw std::runtime_error(
+            "Sketcher does not support more than one reaction.");
+    }
+    auto cmd_func = [this, reaction]() { addReactionCommandFunc(reaction); };
+    doCommandUsingSnapshots(cmd_func, "Add reaction", WhatChanged::ALL);
+}
+
+void MolModel::importFromText(const std::string& text, Format format)
+{
+    auto mol_or_reaction = text_to_mol_or_reaction(text, format);
+    if (auto* reaction =
+            std::get_if<boost::shared_ptr<RDKit::ChemicalReaction>>(
+                &mol_or_reaction)) {
+        addReaction(**reaction);
+    } else {
+        auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
+        addMol(*mol);
+    }
 }
 
 void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
@@ -578,7 +638,7 @@ void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
     if (core_start_atom == nullptr) {
         // the fragment isn't attached to any existing structure, so we can just
         // add it as is
-        addMol(frag, desc, /*center_mol = */ false);
+        addMol(frag, desc, /* reposition_mol = */ false);
         return;
     }
 
@@ -1341,6 +1401,51 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
     }
     if (attachment_point_added) {
         renumber_attachment_points(&m_mol);
+    }
+}
+
+void MolModel::addReactionCommandFunc(const RDKit::ChemicalReaction& reaction)
+{
+    unsigned int num_reactants = reaction.getNumReactantTemplates();
+    unsigned int num_products = reaction.getNumProductTemplates();
+    std::vector<RDKit::ROMOL_SPTR> mols_to_add;
+    mols_to_add.reserve(num_reactants + num_products);
+    auto reactants_it = reaction.getReactants();
+    mols_to_add.insert(mols_to_add.end(), reactants_it.begin(),
+                       reactants_it.end());
+    auto products_it = reaction.getProducts();
+    mols_to_add.insert(mols_to_add.end(), products_it.begin(),
+                       products_it.end());
+
+    // insert the first molecule without drawing anything before it
+    auto first_reaction_mol = mols_to_add[0];
+    if (!m_mol.getNumAtoms()) {
+        center_on_origin(*first_reaction_mol);
+    } else {
+        move_molecule_to_the_right_of(*first_reaction_mol, m_mol,
+                                      IMPORT_SPACING);
+    }
+    addMolCommandFunc(*first_reaction_mol);
+    // insert the rest of the molecules and draw either a plus sign or an arrow
+    // before each one
+    for (size_t i = 1; i < mols_to_add.size(); ++i) {
+        auto reaction_mol = mols_to_add[i];
+        auto prev_mol = mols_to_add[i - 1];
+        double spacing;
+        NonMolecularType non_mol_type;
+        if (i == num_reactants) {
+            // this is the first product, so we draw an arrow before it
+            spacing = ARROW_SPACING;
+            non_mol_type = NonMolecularType::RXN_ARROW;
+        } else {
+            // otherwise, we draw a plus sign before it
+            spacing = PLUS_SPACING;
+            non_mol_type = NonMolecularType::RXN_PLUS;
+        }
+        auto midpoint =
+            move_molecule_to_the_right_of(*reaction_mol, *prev_mol, spacing);
+        addNonMolecularObjectCommandFunc(non_mol_type, midpoint);
+        addMolCommandFunc(*reaction_mol);
     }
 }
 

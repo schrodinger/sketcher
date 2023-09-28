@@ -183,6 +183,19 @@ const qreal ARROW_WIDTH = 10.0;
 // The dimensions of the reaction plus sign, measured in Scene units
 const qreal PLUS_LENGTH = 20.0;
 
+// The *_SPACING values indicate, when importing a molecule or a reaction, how
+// much space to leave between...  (measured in RDKit units)
+
+// ...two reactants or two products of a reaction
+const double PLUS_SPACING = BOND_LENGTH * 1.5;
+
+// ...the last reactant and the first product of a reaction
+const double ARROW_SPACING = PLUS_SPACING * 2;
+
+// ...the current model contents and the newly imported molecule (of first
+// molecule of the reaction)
+const double IMPORT_SPACING = BOND_LENGTH * 2;
+
 // The dimensions of the atom mapping tool arrow, measured in Scene units
 const qreal MAPPING_ARROW_HEAD_LENGTH = 10;
 const qreal MAPPING_ARROW_HEAD_HALF_WIDTH = 3;

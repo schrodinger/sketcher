@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/RWMol.h>
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/QueryBond.h>
@@ -138,17 +139,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     const RDKit::ROMol* getMol() const;
 
     /**
-     * create an emtpy conformer for m_mol so it's ready to be used by other
-     * functions. This is called in the constructor and whenever the model is
-     * cleared.
-     */
-    void initializeMol();
-
-    /**
      * @param format format to convert to
      * @return serialized representation of the sketcher contents
      */
-    std::string getMolText(rdkit_extensions::Format format);
+    std::string getMolText(const rdkit_extensions::Format format) const;
+
+    /**
+     * @return The RDKit reaction contained in this model
+     * @throw std::runtime_error if no reaction arrow is present
+     */
+    std::shared_ptr<RDKit::ChemicalReaction> getReaction() const;
+
+    /**
+     * @return The reaction text in the specified format
+     * @throw std::runtime_error if no reaction arrow is present
+     */
+    std::string getReactionText(const rdkit_extensions::Format format) const;
 
     /**
      * @return whether the model is completely empty, i.e. no atoms, bonds, or
@@ -470,20 +476,33 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param mol The molecule to add
      * @param description The description to use for the undo command.
-     * @param center_mol Whether to center the molecule's coordinates
+     * @param reposition_mol Whether to reposition the molecule.  The there is
+     * an existing molecular structure in this model, the new molecule will be
+     * positioned to the right of it.  Otherwise, the new molecule will be
+     * centered.
      */
     void addMol(RDKit::ROMol mol,
                 const QString& description = "Import molecule",
-                const bool center_mol = true);
+                const bool reposition_mol = true);
 
     /**
-     * Create a molecule from a text string and load that into the scene.
-     * Atomic coordinates will be automatically generated using coordgen.
+     * Undoably add the given reaction to the model.  All reactants and products
+     * from the reaction will be added, and plus signs and arrows will be added
+     * between the molecules.  Note that reaction agents will *not* be added.
+     *
+     * @throw std::runtime_error if the model already contains a reaction arrow
+     */
+    void addReaction(const RDKit::ChemicalReaction& reaction);
+
+    /**
+     * Create either a molecule or a reaction, as appropriate, from a text
+     * string and load that into the scene.  Atomic coordinates will be
+     * automatically generated using coordgen.
      *
      * @param text input data to load
      * @param format format to parse
      */
-    void addMolFromText(const std::string& text,
+    void importFromText(const std::string& text,
                         rdkit_extensions::Format format);
 
     /**
@@ -679,6 +698,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::unordered_set<int> m_selected_atom_tags;
     std::unordered_set<int> m_selected_bond_tags;
     std::unordered_set<int> m_selected_non_molecular_tags;
+
+    /**
+     * create an empty conformer for m_mol so it's ready to be used by other
+     * functions. This is called in the constructor and whenever the model is
+     * cleared.
+     */
+    void initializeMol();
 
     /**
      * Transform all coordinates using the given function.
@@ -970,6 +996,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param mol The molecule to add
      */
     void addMolCommandFunc(const RDKit::ROMol& mol);
+
+    /**
+     * Add the given reaction to the model. This method must only be called as
+     * part of an undo command.
+     */
+    void addReactionCommandFunc(const RDKit::ChemicalReaction& reaction);
 
     /**
      * Change the element of an existing atom, or change a query atom to a

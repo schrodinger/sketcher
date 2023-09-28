@@ -62,7 +62,7 @@ std::pair<std::vector<std::shared_ptr<TestBondItem>>,
 createStructure(std::string smiles)
 {
     auto test_scene = std::make_shared<TestScene>();
-    test_scene->m_mol_model->addMolFromText(smiles, Format::SMILES);
+    test_scene->m_mol_model->importFromText(smiles, Format::SMILES);
     std::vector<AtomItem*> atom_items;
     std::vector<BondItem*> scene_bond_items;
     for (auto* item : test_scene->items()) {
@@ -92,7 +92,7 @@ std::tuple<std::shared_ptr<TestBondItem>, std::shared_ptr<TestScene>, QLineF>
 createBondItem()
 {
     auto test_scene = std::make_shared<TestScene>();
-    test_scene->m_mol_model->addMolFromText("CC", Format::SMILES);
+    test_scene->m_mol_model->importFromText("CC", Format::SMILES);
     std::vector<AtomItem*> atom_items;
     for (auto* item : test_scene->items()) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {

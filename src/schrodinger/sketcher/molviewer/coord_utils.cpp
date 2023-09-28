@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <float.h>
 #include <iterator>
 
 #include <boost/range/iterator_range.hpp>
@@ -320,6 +321,44 @@ bool intersection_of_line_and_rect(const QLineF& line, const QRectF& rect,
          line.intersects(bottom, &inter_point) == QLineF::BoundedIntersection ||
          line.intersects(right, &inter_point) == QLineF::BoundedIntersection);
     return found_intersection;
+}
+
+RDGeom::Point3D
+move_molecule_to_the_right_of(RDKit::ROMol& mol_to_move,
+                              const RDKit::ROMol& stationary_mol,
+                              const double gap_size)
+{
+    auto& to_move_conf = mol_to_move.getConformer();
+    const auto& stationary_conf = stationary_mol.getConformer();
+    if (!stationary_conf.getNumAtoms() || !to_move_conf.getNumAtoms()) {
+        throw std::runtime_error("No atoms found");
+    }
+
+    double max_stationary_x = -DBL_MAX;
+    double center_stationary_y = 0.0;
+    for (const auto& cur_coords : stationary_conf.getPositions()) {
+        max_stationary_x = std::max(max_stationary_x, cur_coords.x);
+        center_stationary_y += cur_coords.y;
+    }
+    center_stationary_y /= stationary_conf.getNumAtoms();
+
+    double min_to_move_x = DBL_MAX;
+    double center_to_move_y = 0.0;
+    for (const auto& cur_coords : to_move_conf.getPositions()) {
+        min_to_move_x = std::min(min_to_move_x, cur_coords.x);
+        center_to_move_y += cur_coords.y;
+    }
+    center_to_move_y /= to_move_conf.getNumAtoms();
+
+    const double delta_x = max_stationary_x - min_to_move_x + gap_size;
+    const double delta_y = center_stationary_y - center_to_move_y;
+    const RDGeom::Point3D offset(delta_x, delta_y, 0);
+    for (auto& cur_coords : to_move_conf.getPositions()) {
+        cur_coords += offset;
+    }
+
+    return RDGeom::Point3D(max_stationary_x + gap_size / 2, center_stationary_y,
+                           0);
 }
 
 } // namespace sketcher

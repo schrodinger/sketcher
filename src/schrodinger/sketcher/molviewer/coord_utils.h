@@ -246,5 +246,23 @@ SKETCHER_API void trim_line_to_rect(QLineF& line, const QRectF& subrect);
 SKETCHER_API bool intersection_of_line_and_rect(const QLineF& line,
                                                 const QRectF& rect, QPointF& i);
 
+/**
+ * Update the coordinates of a molecule so that it's directly to the right of
+ * another molecule.
+ * @param[in,out] mol_to_move The molecule to move
+ * @param[in] stationary_mol The molecule that mol_to_move is moved to the
+ * right of
+ * @param[in] gap_size The desired distance between the right side of
+ * stationary_mol and the left side of mol_to_move
+ * @return The coordinates of the midpoint between the right side of
+ * stationary_mol and the left side of mol_to_move
+ * @throw std::runtime_error if either mol_to_move or stationary_mol have no
+ * atoms
+ */
+SKETCHER_API RDGeom::Point3D
+move_molecule_to_the_right_of(RDKit::ROMol& mol_to_move,
+                              const RDKit::ROMol& stationary_mol,
+                              const double gap_size);
+
 } // namespace sketcher
 } // namespace schrodinger
