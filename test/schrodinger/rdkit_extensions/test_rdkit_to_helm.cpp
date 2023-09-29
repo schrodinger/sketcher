@@ -105,3 +105,16 @@ BOOST_DATA_TEST_CASE(
 {
     BOOST_TEST(get_roundtripped_helm(input_helm) == expected_helm);
 }
+
+BOOST_DATA_TEST_CASE(
+    TestStrippingSurroundingWhitespace,
+    bdata::make(std::vector<std::string>{
+        "                 PEPTIDE1{A.A}$$$$V2.0",
+        "PEPTIDE1{A.A}$$$$V2.0                ",
+        "\n\n\n\n\n\n\n PEPTIDE1{A.A}$$$$V2.0        \n\t      ",
+    }),
+    input_helm)
+{
+    std::string expected_helm{"PEPTIDE1{A.A}$$$$V2.0"};
+    BOOST_TEST(get_roundtripped_helm(input_helm) == expected_helm);
+}
