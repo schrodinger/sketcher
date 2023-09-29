@@ -1,7 +1,6 @@
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
 #include <fmt/format.h>
 #include <iterator>
 #include <sstream>
@@ -13,11 +12,27 @@
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
 #include "schrodinger/rdkit_extensions/helm/validation.h"
 
+static void trim_string_view(std::string_view& value)
+{
+    while (!value.empty()) {
+        if (std::isspace(value.front())) {
+            value.remove_prefix(1);
+        } else if (std::isspace(value.back())) {
+            value.remove_suffix(1);
+        } else {
+            break;
+        }
+    }
+};
+
 namespace helm
 {
 
 helm_info HelmParser::parse()
 {
+    // strip surrounding whitespace
+    trim_string_view(m_input);
+
     std::istringstream stream(std::string{m_input});
     helm::TokenScanner scanner(&stream, m_input);
     helm::TokenParser parser(scanner, *this);
