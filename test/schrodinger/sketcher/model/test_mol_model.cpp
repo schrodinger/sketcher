@@ -1733,17 +1733,69 @@ BOOST_AUTO_TEST_CASE(test_struc_with_rings, *utf::tolerance(0.001))
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 3, 5) == 1.0);
 }
 
+BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+
+    auto mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+
+    // add explicit Hs
+    model.updateExplicitHs(ExplicitHActions::ADD);
+    BOOST_TEST(mol->getNumAtoms() == 5);
+
+    // undo the adding of Hs
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+
+    // mutate to N
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    model.mutateAtom(c_atom, Element::N);
+
+    // add explicit Hs , should add one fewer H
+    model.updateExplicitHs(ExplicitHActions::ADD);
+    BOOST_TEST(mol->getNumAtoms() == 4);
+
+    // delete an H, leaving the N with only 2 Hs
+    model.remove({mol->getAtomWithIdx(2)}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 3);
+
+    // adding Hs should do nothing since there's no implicit Hs on the N
+    model.updateExplicitHs(ExplicitHActions::ADD);
+    BOOST_TEST(mol->getNumAtoms() == 3);
+
+    // adding explicit Hs  again should not change the number of atoms
+    model.updateExplicitHs(ExplicitHActions::ADD);
+    BOOST_TEST(mol->getNumAtoms() == 3);
+
+    // remove explicit Hs
+    model.updateExplicitHs(ExplicitHActions::REMOVE);
+    BOOST_TEST(mol->getNumAtoms() == 1);
+
+    // undo the removal of Hs
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+
+    // remove explicit Hs twice, should not change the number of atoms
+    model.updateExplicitHs(ExplicitHActions::REMOVE);
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    model.updateExplicitHs(ExplicitHActions::REMOVE);
+    BOOST_TEST(mol->getNumAtoms() == 1);
+}
+
 /**
- * Make sure that adding a fragment works as expected.  This method mimics the
- * behavior of DrawFragmentSceneTool.
+ * Make sure that adding a fragment works as expected.  This method mimics
+ * the behavior of DrawFragmentSceneTool.
  * @param core_smiles The SMILES for the core structure
  * @param frag_smiles The SMILES for the fragment to be added
  * @param exp_result_smiles The canonical SMILES of the expected output
  * structure
- * @param core_atom_idx If >= 0, mimic the DrawFragmentSceneTool behavior when
- * the mouse cursor is over the specified atom.
- * @param core_bond_idx If >= 0, mimic the DrawFragmentSceneTool behavior when
- * the mouse cursor is over the specified bond.
+ * @param core_atom_idx If >= 0, mimic the DrawFragmentSceneTool behavior
+ * when the mouse cursor is over the specified atom.
+ * @param core_bond_idx If >= 0, mimic the DrawFragmentSceneTool behavior
+ * when the mouse cursor is over the specified bond.
  */
 void check_fragment_addition(const std::string& core_smiles,
                              const std::string& frag_smiles,
@@ -1756,6 +1808,7 @@ void check_fragment_addition(const std::string& core_smiles,
                        << "\n\texp_result_smiles = " << exp_result_smiles
                        << "\n\tcore_atom_idx = " << core_atom_idx
                        << "\n\tcore_bond_idx = " << core_bond_idx << "\n");
+
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     model.importFromText(core_smiles);
@@ -1764,22 +1817,22 @@ void check_fragment_addition(const std::string& core_smiles,
     RDKit::Conformer frag_conf;
     const RDKit::Atom* core_atom = nullptr;
     if (core_atom_idx >= 0 && core_bond_idx >= 0) {
-        BOOST_FAIL(
-            "core_atom_idx and core_bond_idx cannot both be greater than 0");
+        BOOST_FAIL("core_atom_idx and core_bond_idx cannot both be greater "
+                   "than 0");
     } else if (core_atom_idx >= 0) {
-        // mimic what the DrawFragmentSceneTool does when the mouse cursor is
-        // over an atom
+        // mimic what the DrawFragmentSceneTool does when the mouse cursor
+        // is over an atom
         core_atom = mol->getAtomWithIdx(core_atom_idx);
         frag_conf = align_fragment_with_atom(*frag, core_atom);
     } else if (core_bond_idx >= 0) {
-        // mimic what the DrawFragmentSceneTool does when the mouse cursor is
-        // over a bond
+        // mimic what the DrawFragmentSceneTool does when the mouse cursor
+        // is over a bond
         const auto* core_bond = mol->getBondWithIdx(core_bond_idx);
         std::tie(frag_conf, core_atom) =
             align_fragment_with_bond(*frag, core_bond);
     } else {
-        // mimic what the DrawFragmentSceneTool does when the mouse cursor is
-        // over empty space
+        // mimic what the DrawFragmentSceneTool does when the mouse cursor
+        // is over empty space
         frag_conf = translate_fragment(*frag, RDGeom::Point3D(10, 10, 0));
     }
     frag->getConformer() = frag_conf;
@@ -1808,6 +1861,7 @@ void check_fragment_addition(const std::string& core_smiles,
 
 BOOST_AUTO_TEST_CASE(test_adding_fragments)
 {
+
     check_fragment_addition(CYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
                             "C1CCCCC1.CC(N)=O", -1, -1);
     check_fragment_addition(CYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,

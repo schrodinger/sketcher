@@ -756,6 +756,50 @@ void MolModel::mutateAtom(
     doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
 }
 
+bool MolModel::hasAnyImplicitHs(
+    const std::unordered_set<const RDKit::Atom*>& atoms) const
+{
+    // RDKit calls some hydrogens "explicit" but they are not really
+    // explicit in the sense of being in the graph and we need to count them
+    // in. We count all hydrogens that are not in the graph as implicit.
+    return std::any_of(atoms.begin(), atoms.end(),
+                       [](auto atom) { return atom->getTotalNumHs() > 0; });
+}
+
+void MolModel::updateExplicitHs(ExplicitHActions action,
+                                std::unordered_set<const RDKit::Atom*> atoms)
+{
+    if (atoms.empty()) {
+        for (auto atom : m_mol.atoms()) {
+            atoms.insert(atom);
+        }
+    }
+    switch (action) {
+        case ExplicitHActions::ADD:
+            addExplicitHs(atoms);
+            break;
+        case ExplicitHActions::REMOVE:
+            removeExplicitHs(atoms);
+            break;
+    }
+}
+
+void MolModel::addExplicitHs(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    auto cmd_func = [this, atoms]() { addExplicitHsCommandFunc(atoms); };
+    doCommandUsingSnapshots(cmd_func, "Add explicit Hs", WhatChanged::MOLECULE);
+}
+
+void MolModel::removeExplicitHs(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+
+    auto cmd_func = [this, atoms]() { removeExplicitHsCommandFunc(atoms); };
+    doCommandUsingSnapshots(cmd_func, "Remove explicit Hs",
+                            WhatChanged::MOLECULE);
+}
+
 void MolModel::mutateRGroup(const RDKit::Atom* const atom,
                             const unsigned int r_group_num)
 {
@@ -1171,8 +1215,8 @@ int MolModel::getTagForAtom(const RDKit::Atom* const atom,
         if (allow_null) {
             return -1;
         }
-        throw std::runtime_error(
-            "Cannot pass nullptr to getTagForAtom unless allow_null is true");
+        throw std::runtime_error("Cannot pass nullptr to getTagForAtom "
+                                 "unless allow_null is true");
     }
     return atom->getProp<int>(TAG_PROPERTY);
 }
@@ -1591,6 +1635,53 @@ void MolModel::clearSelectionCommandFunc()
     if (selection_changed) {
         emit selectionChanged();
     }
+}
+
+void MolModel::addExplicitHsCommandFunc(
+    const std::unordered_set<const RDKit::Atom*> atoms)
+{
+    Q_ASSERT(m_allow_edits);
+    bool explicit_only = false;
+    // RDKit adds 3d coordinates, but we don't want that
+    bool add_coords = false;
+
+    for (auto atom : atoms) {
+        // figure out the 2d coordinates of the new Hs. We need to do this
+        // before calling addHs because it will change the number of
+        // neighbors
+
+        auto number_of_Hs = atom->getTotalNumHs();
+
+        auto positions = get_n_positions_around_atom(atom, number_of_Hs);
+        std::vector<unsigned> rdkit_indices = {atom->getIdx()};
+        RDKit::MolOps::addHs(m_mol, explicit_only, add_coords, &rdkit_indices);
+        // RDKit doesn't add tags for the new Hs and their bonds, so we have
+        // to do that.
+        std::vector<int> new_H_tags;
+        for (auto atom : m_mol.atoms()) {
+            if (!atom->hasProp(TAG_PROPERTY)) {
+                new_H_tags.push_back(m_next_atom_tag);
+                setTagForAtom(atom, m_next_atom_tag++);
+                auto bond = *(m_mol.atomBonds(atom).begin());
+                setTagForBond(bond, m_next_bond_tag++);
+            }
+        }
+        // this method won't cause coordinatesChanged to be emitted because
+        // doCommandUsingSnapshots doesn't unblock signals while this method
+        // is run.
+        setCoordinates(new_H_tags, positions, {}, {});
+    }
+}
+
+void MolModel::removeExplicitHsCommandFunc(
+    const std::unordered_set<const RDKit::Atom*> atoms)
+{
+    Q_ASSERT(m_allow_edits);
+    std::vector<unsigned> rdk_indices;
+    for (auto atom : atoms) {
+        rdk_indices.push_back(atom->getIdx());
+    }
+    schrodinger::rdkit_extensions::removeHs(m_mol, rdk_indices);
 }
 
 } // namespace sketcher

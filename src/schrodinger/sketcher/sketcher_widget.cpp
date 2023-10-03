@@ -101,6 +101,16 @@ void SketcherWidget::connectTopBarSlots()
 
     connect(m_ui->top_bar_wdg, &SketcherTopBar::flipVerticalRequested,
             m_mol_model, &MolModel::flipAllVertical);
+
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::addExplicitHydrogensRequested,
+            m_mol_model,
+            [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::ADD); });
+
+    connect(
+        m_ui->top_bar_wdg, &SketcherTopBar::removeExplicitHydrogensRequested,
+        m_mol_model,
+        [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::REMOVE); });
+
     connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_mol_model,
             &MolModel::selectAll);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,

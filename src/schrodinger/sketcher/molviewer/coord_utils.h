@@ -80,11 +80,38 @@ best_placing_around_origin(const std::vector<RDGeom::Point3D>& points,
                            const bool limit_to_120_for_single_neighbor = true);
 
 /**
+ * similar to best_placing_around_origin, but takes an int to specify how many
+ * points the return vector will return. These points will be equally spaced in
+ * the best angle interval. If num_new_points==1 this function is equivalent to
+ * best_placing_around_origin
+ */
+std::vector<QPointF>
+n_placings_around_origin(const std::vector<QPointF>& points, int num_new_points,
+                         const bool limit_to_120_for_single_neighbor = true);
+
+/**
+ * An overload of the above method that operates in relative MolModel
+ * coordinates instead of relative Scene coordinates.
+ */
+std::vector<RDGeom::Point3D>
+n_placings_around_origin(const std::vector<RDGeom::Point3D>& points,
+                         int num_new_points,
+                         const bool limit_to_120_for_single_neighbor = true);
+
+/**
+ * @return a vector of points that are equally spaced around the given atom, in
+ * the portion of plane that is furthest away from atom's neighbors.
+ * @param atom the atom to place around
+ * @param num_positions the number of positions to return
+ */
+std::vector<RDGeom::Point3D>
+get_n_positions_around_atom(const RDKit::Atom* const atom, int num_positions);
+
+/**
  * Create and return a path for painting a wavy line
  *
- * @param number_of_waves The number of "waves" in the squiggle, where each wave
- * goes from zero, to the maximum, to the minimum, and back to
- * zero
+ * @param number_of_waves The number of "waves" in the squiggle, where each
+ * wave goes from zero, to the maximum, to the minimum, and back to zero
  * @param width_per_wave The width of each "wave," measured in Scene units.
  * @param height The height of the wavy line, measured in Scene units
  * @param angle The angle of wavy line, measured in degrees

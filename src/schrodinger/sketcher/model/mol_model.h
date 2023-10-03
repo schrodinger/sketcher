@@ -58,6 +58,8 @@ enum class MergeId {
     TRANSLATE,
 };
 
+enum class ExplicitHActions : bool { ADD = true, REMOVE = false };
+
 /**
  * Values used as parameters to doCommandUsingSnapshots that indicate what types
  * of data will be changed by the command.
@@ -543,6 +545,24 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mutateAtom(const RDKit::Atom* const atom, const Element& element);
 
     /**
+     * @return whether there's at least one implicit H on any of the specified
+     * atoms.
+     * @param atoms The atoms to consider.
+     * @note This method is used to determine whether the set needs to have
+     * explicit Hs added or removed.
+     */
+    bool
+    hasAnyImplicitHs(const std::unordered_set<const RDKit::Atom*>& atoms) const;
+
+    /**
+     * Set explicit hydrogens on or off for the specified atoms
+     * @param atoms The atoms to consider. If empty, all atoms will be used.
+     * @param action wether to add or remove explicit Hs
+     */
+    void updateExplicitHs(const ExplicitHActions action,
+                          std::unordered_set<const RDKit::Atom*> atoms = {});
+
+    /**
      * Change the query of an existing atom.  This method can also mutate a
      * non-query atom into a query atom.
      */
@@ -725,6 +745,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         std::unordered_set<const RDKit::Atom*> atoms = {},
         std::unordered_set<const NonMolecularObject*> non_molecular_objects =
             {});
+
+    void addExplicitHs(const std::unordered_set<const RDKit::Atom*>& atoms);
+    void removeExplicitHs(const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
      * Set the atom tag for the specified atom
@@ -1042,6 +1065,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void setAtomMappingCommandFunc(const std::unordered_set<int>& atom_tags,
                                    const int mapping);
+
+    /**
+     * Add explicit hydrogens to an existing atom. This method must only be
+     * called as part of an undo command.
+     */
+    void addExplicitHsCommandFunc(
+        const std::unordered_set<const RDKit::Atom*> atom_tags);
+
+    /**
+     * Remove explicit hydrogens from an existing atom.  This method must only
+     * be called from an undo command.
+     */
+    void removeExplicitHsCommandFunc(
+        const std::unordered_set<const RDKit::Atom*> atom_tags);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This

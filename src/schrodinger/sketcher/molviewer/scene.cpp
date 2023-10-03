@@ -43,6 +43,7 @@
 #include "schrodinger/sketcher/tool/rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/translate_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
+#include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
 
 namespace schrodinger
 {
@@ -660,6 +661,8 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         return get_draw_fragment_scene_tool(
             ring_tool, m_fonts, m_atom_item_settings, m_bond_item_settings,
             this, m_mol_model);
+    } else if (draw_tool == DrawTool::EXPLICIT_H) {
+        return std::make_shared<ExplicitHsSceneTool>(this, m_mol_model);
     }
     // tool not yet implemented
     return std::make_shared<NullSceneTool>();

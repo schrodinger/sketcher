@@ -48,13 +48,20 @@ get_relative_positions_of_atom_neighbors(const RDKit::Atom* const atom)
     return positions;
 }
 
-QPointF best_placing_around_origin(const std::vector<QPointF>& points,
-                                   const bool limit_to_120_for_single_neighbor)
+std::vector<QPointF>
+n_placings_around_origin(const std::vector<QPointF>& points, int num_new_points,
+                         const bool limit_to_120_for_single_neighbor)
 {
-    if (points.empty()) {
-        return QPointF(VIEW_SCALE, 0);
-    }
+    std::vector<QPointF> new_points;
     QPointF origin(0.f, 0.f);
+    if (points.empty()) {
+        QLineF line(origin, QPointF(BOND_LENGTH * VIEW_SCALE, 0));
+        for (auto i = 0; i < num_new_points; ++i) {
+            line.setAngle(i * 360.0 / num_new_points);
+            new_points.push_back(line.p2());
+        }
+        return new_points;
+    }
     std::vector<float> angles;
     // find out the angles at which each member of points is found around the
     // origin
@@ -65,7 +72,7 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
     }
     sort(angles.begin(), angles.end());
     angles.push_back(angles.front() + 360);
-    // find the biggest angle interval and return a point in the middle of it
+    // find the biggest angle interval and return n points equally spaced in it
     int best_i = 0;
     auto best_angle = (angles[best_i + 1] - angles[best_i]) * 0.5;
     for (unsigned int i = 0; i < angles.size() - 1; ++i) {
@@ -75,29 +82,77 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
             best_angle = angle_i;
         }
     }
-    // For a single substituent, limit the angle to 120 (instead of 180)
-    bool limit_to_120 =
-        limit_to_120_for_single_neighbor && (points.size() == 1);
-    float max_angle = limit_to_120 ? 120.0 : 180.0;
-    float angle_to_use = (angles[best_i + 1] - angles[best_i]) * 0.5;
-    float angle_increment = std::min(max_angle, angle_to_use);
-    float return_angle = angles[best_i] + angle_increment;
-    QLineF line(origin, QPointF(VIEW_SCALE, 0));
-    line.setAngle(return_angle);
-    return line.p2();
+
+    float start_angle = angles[best_i];
+    float angle_increment =
+        (angles[best_i + 1] - angles[best_i]) / (num_new_points + 1);
+
+    // If the center has one substituent we need a few special-cases: If we're
+    // adding only 1 point, it should be at 120° rather then 180°. if we are
+    // adding 3 points, we want 120°, 90°, 60°, 90° angles instead of four
+    // equal intervals.
+    std::vector<float> terminal_atom_angles = {120, 210.f, 270.f};
+    for (int i = 0; i < num_new_points; ++i) {
+        auto angle = start_angle + angle_increment * (i + 1);
+        if (points.size() == 1 &&
+            ((num_new_points == 1 && limit_to_120_for_single_neighbor) ||
+             num_new_points == 3)) {
+            angle = start_angle + terminal_atom_angles.at(i);
+        }
+        QLineF line(origin, QPointF(BOND_LENGTH * VIEW_SCALE, 0));
+        line.setAngle(angle);
+        new_points.push_back(line.p2());
+    }
+    return new_points;
+}
+
+std::vector<RDGeom::Point3D>
+n_placings_around_origin(const std::vector<RDGeom::Point3D>& points,
+                         int num_new_points,
+                         const bool limit_to_120_for_single_neighbor)
+{
+    std::vector<QPointF> qpoints;
+    qpoints.reserve(points.size());
+    std::transform(points.begin(), points.end(), std::back_inserter(qpoints),
+                   to_scene_xy);
+    auto new_qpoints = n_placings_around_origin(
+        qpoints, num_new_points, limit_to_120_for_single_neighbor);
+    std::vector<RDGeom::Point3D> new_points;
+    new_points.reserve(new_qpoints.size());
+    std::transform(new_qpoints.begin(), new_qpoints.end(),
+                   std::back_inserter(new_points), to_mol_xy);
+    return new_points;
+}
+
+SKETCHER_API QPointF
+best_placing_around_origin(const std::vector<QPointF>& points,
+                           const bool limit_to_120_for_single_neighbor)
+{
+    return n_placings_around_origin(points, 1, limit_to_120_for_single_neighbor)
+        .at(0);
 }
 
 RDGeom::Point3D
 best_placing_around_origin(const std::vector<RDGeom::Point3D>& points,
                            const bool limit_to_120_for_single_neighbor)
 {
-    std::vector<QPointF> qpoints;
-    qpoints.reserve(points.size());
-    std::transform(points.begin(), points.end(), std::back_inserter(qpoints),
-                   to_scene_xy);
-    QPointF best =
-        best_placing_around_origin(qpoints, limit_to_120_for_single_neighbor);
-    return to_mol_xy(best);
+    return n_placings_around_origin(points, 1, limit_to_120_for_single_neighbor)
+        .at(0);
+}
+
+std::vector<RDGeom::Point3D>
+get_n_positions_around_atom(const RDKit::Atom* const atom,
+                            const int num_positions)
+{
+    auto mol_positions = get_relative_positions_of_atom_neighbors(atom);
+    auto positions = n_placings_around_origin(mol_positions, num_positions);
+    auto atom_pos = atom->getOwningMol().getConformer().getAtomPos(
+        atom->getIdx()); // get the atom position in mol coordinates
+    std::vector<RDGeom::Point3D> new_positions;
+    for (auto& position : positions) {
+        new_positions.push_back(position + atom_pos);
+    }
+    return new_positions;
 }
 
 RDGeom::Point3D flip_point(const RDGeom::Point3D& point,

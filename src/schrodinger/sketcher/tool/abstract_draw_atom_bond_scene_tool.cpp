@@ -155,7 +155,10 @@ AbstractDrawSceneTool::getInitialDefaultBondPosition(
 {
     auto positions = get_relative_positions_of_atom_neighbors(atom);
     RDGeom::Point3D best_offset = best_placing_around_origin(positions);
-    best_offset *= bond_length;
+    // best_offset is one BOND_LENGTH away, rescale to bond_length
+    if (bond_length != BOND_LENGTH) {
+        best_offset *= bond_length / BOND_LENGTH;
+    }
     auto& conf = m_mol_model->getMol()->getConformer();
     RDGeom::Point3D atom_pos = conf.getAtomPos(atom->getIdx());
     RDGeom::Point3D bond_end = atom_pos + best_offset;
