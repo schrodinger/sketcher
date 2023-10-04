@@ -349,6 +349,9 @@
            </property>
            <item row="3" column="1">
             <widget class="QComboBox" name="ring_count_combo">
+             <property name="toolTip">
+              <string>Number of SSSR rings that have this atom as a member</string>
+             </property>
              <item>
               <property name="text">
                <string>(any)</string>
@@ -369,7 +372,7 @@
            <item row="2" column="0">
             <widget class="QLabel" name="aromaticity_lbl">
              <property name="toolTip">
-              <string>Whether this atom must (a) or must not (A) be part of an aromatic ring</string>
+              <string/>
              </property>
              <property name="text">
               <string>Aromaticity (a/A):</string>
@@ -379,7 +382,7 @@
            <item row="1" column="0">
             <widget class="QLabel" name="num_connections_lbl">
              <property name="toolTip">
-              <string>Number of all substituents of atom, including hydrogens</string>
+              <string/>
              </property>
              <property name="text">
               <string># Connections (X):</string>
@@ -389,7 +392,7 @@
            <item row="6" column="0">
             <widget class="QLabel" name="smallest_ring_size_lbl">
              <property name="toolTip">
-              <string>Size of smallest SSSR ring that has atom as a member</string>
+              <string/>
              </property>
              <property name="text">
               <string>Smallest Ring Size (r):</string>
@@ -405,7 +408,7 @@
               </size>
              </property>
              <property name="toolTip">
-              <string>Number of hydrogen substituents of atom</string>
+              <string/>
              </property>
              <property name="text">
               <string>Total H (H):</string>
@@ -415,7 +418,7 @@
            <item row="3" column="0">
             <widget class="QLabel" name="ring_count_lbl">
              <property name="toolTip">
-              <string>Number of SSSR rings that have this atom as a member</string>
+              <string/>
              </property>
              <property name="text">
               <string>Ring Count (R):</string>
@@ -438,7 +441,7 @@
            <item row="5" column="0">
             <widget class="QLabel" name="ring_bond_count_lbl">
              <property name="toolTip">
-              <string>Number of ring bonds to this atom</string>
+              <string/>
              </property>
              <property name="text">
               <string>Ring Bond Count (rb):</string>
@@ -448,7 +451,7 @@
            <item row="7" column="0">
             <widget class="QLabel" name="smarts_query_lbl">
              <property name="toolTip">
-              <string>Custom SMARTS query applied to this atom</string>
+              <string/>
              </property>
              <property name="text">
               <string>SMARTS Query:</string>
@@ -460,6 +463,9 @@
            </item>
            <item row="5" column="2">
             <widget class="QSpinBox" name="ring_bond_count_sb">
+             <property name="toolTip">
+              <string>Number of ring bonds to this atom</string>
+             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
@@ -470,6 +476,9 @@
            </item>
            <item row="5" column="1">
             <widget class="QComboBox" name="ring_bond_count_combo">
+             <property name="toolTip">
+              <string>Number of ring bonds to this atom</string>
+             </property>
              <item>
               <property name="text">
                <string>(any)</string>
@@ -484,6 +493,9 @@
            </item>
            <item row="3" column="2">
             <widget class="QSpinBox" name="ring_count_sb">
+             <property name="toolTip">
+              <string>Number of SSSR rings that have this atom as a member</string>
+             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
@@ -494,6 +506,9 @@
            </item>
            <item row="2" column="1" colspan="2">
             <widget class="QComboBox" name="aromaticity_combo">
+             <property name="toolTip">
+              <string>Whether this atom must (a) or must not (A) be part of an aromatic ring</string>
+             </property>
              <item>
               <property name="text">
                <string>(any)</string>
@@ -513,6 +528,9 @@
            </item>
            <item row="1" column="1" colspan="2">
             <widget class="QLineEdit" name="num_connections_le">
+             <property name="toolTip">
+              <string>Number of all substituents of atom, including hydrogens</string>
+             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
@@ -523,6 +541,9 @@
            </item>
            <item row="0" column="1" colspan="2">
             <widget class="QLineEdit" name="total_H_le">
+             <property name="toolTip">
+              <string>Number of hydrogen substituents of atom</string>
+             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
@@ -533,6 +554,9 @@
            </item>
            <item row="6" column="1" colspan="2">
             <widget class="QLineEdit" name="smallest_ring_size_le">
+             <property name="toolTip">
+              <string>Size of smallest SSSR ring that has atom as a member</string>
+             </property>
              <property name="alignment">
               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
              </property>
@@ -543,6 +567,9 @@
            </item>
            <item row="7" column="1" colspan="2">
             <widget class="QLineEdit" name="smarts_query_le">
+             <property name="toolTip">
+              <string>Custom SMARTS query applied to this atom</string>
+             </property>
              <property name="clearButtonEnabled">
               <bool>true</bool>
              </property>
