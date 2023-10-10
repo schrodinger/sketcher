@@ -28,6 +28,7 @@
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/constants.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -123,15 +124,14 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 
     if (!new_attachment_dummies.empty()) {
         // generate coordinates for only the new attachment point atoms
-        RDGeom::INT_POINT2D_MAP cMap;
-        auto& conf = rdk_mol.getConformer();
+        std::vector<unsigned int> frozen_ids;
         for (auto atom : rdk_mol.atoms()) {
             auto idx = atom->getIdx();
             if (new_attachment_dummies.count(idx) == 0) {
-                cMap[idx] = conf.getAtomPos(idx);
+                frozen_ids.push_back(idx);
             }
         }
-        RDDepict::compute2DCoords(rdk_mol, &cMap);
+        rdkit_extensions::compute2DCoords(rdk_mol, frozen_ids);
 
         reapply_molblock_wedging(rdk_mol);
         RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);

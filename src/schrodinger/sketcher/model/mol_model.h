@@ -1071,14 +1071,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * called as part of an undo command.
      */
     void addExplicitHsCommandFunc(
-        const std::unordered_set<const RDKit::Atom*> atom_tags);
+        const std::unordered_set<const RDKit::Atom*>& atom_tags);
 
     /**
      * Remove explicit hydrogens from an existing atom.  This method must only
      * be called from an undo command.
      */
     void removeExplicitHsCommandFunc(
-        const std::unordered_set<const RDKit::Atom*> atom_tags);
+        const std::unordered_set<const RDKit::Atom*>& atom_tags);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This

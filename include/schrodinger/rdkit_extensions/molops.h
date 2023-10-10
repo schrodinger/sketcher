@@ -86,6 +86,14 @@ add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol);
 RDKIT_EXTENSIONS_API void reapply_molblock_wedging(RDKit::ROMol& rdk_mol);
 
 /**
+ * Adds all explicit hydrogens generating coordinates for each.
+ * @param atom_ids vector of atom indexes where Hs should be added; if the
+ *                  vector is empty, hydrogens will be added to the entire mol
+ */
+RDKIT_EXTENSIONS_API void addHs(RDKit::RWMol& rdk_mol,
+                                std::vector<unsigned int> atom_ids = {});
+
+/**
  * Removes hydrogens based on a common standard of what can be removed
  * @param rdk_mol rdkit mol
  */
@@ -100,7 +108,7 @@ RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol);
  * @note atom_ids will be sorted and uniqued
  */
 RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol,
-                                   std::vector<unsigned> atom_ids);
+                                   std::vector<unsigned int> atom_ids);
 
 /**
  * A custom wrapper around RDkit's WedgeMolBonds() that makes sure

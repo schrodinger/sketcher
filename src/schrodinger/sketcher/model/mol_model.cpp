@@ -769,11 +769,6 @@ bool MolModel::hasAnyImplicitHs(
 void MolModel::updateExplicitHs(ExplicitHActions action,
                                 std::unordered_set<const RDKit::Atom*> atoms)
 {
-    if (atoms.empty()) {
-        for (auto atom : m_mol.atoms()) {
-            atoms.insert(atom);
-        }
-    }
     switch (action) {
         case ExplicitHActions::ADD:
             addExplicitHs(atoms);
@@ -1637,51 +1632,40 @@ void MolModel::clearSelectionCommandFunc()
     }
 }
 
+static std::vector<unsigned int>
+get_atom_indices(const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    std::vector<unsigned int> indices;
+    std::transform(atoms.begin(), atoms.end(), std::back_inserter(indices),
+                   [](auto atom) { return atom->getIdx(); });
+    return indices;
+}
+
 void MolModel::addExplicitHsCommandFunc(
-    const std::unordered_set<const RDKit::Atom*> atoms)
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     Q_ASSERT(m_allow_edits);
-    bool explicit_only = false;
-    // RDKit adds 3d coordinates, but we don't want that
-    bool add_coords = false;
+    rdkit_extensions::addHs(m_mol, get_atom_indices(atoms));
 
-    for (auto atom : atoms) {
-        // figure out the 2d coordinates of the new Hs. We need to do this
-        // before calling addHs because it will change the number of
-        // neighbors
-
-        auto number_of_Hs = atom->getTotalNumHs();
-
-        auto positions = get_n_positions_around_atom(atom, number_of_Hs);
-        std::vector<unsigned> rdkit_indices = {atom->getIdx()};
-        RDKit::MolOps::addHs(m_mol, explicit_only, add_coords, &rdkit_indices);
-        // RDKit doesn't add tags for the new Hs and their bonds, so we have
-        // to do that.
-        std::vector<int> new_H_tags;
-        for (auto atom : m_mol.atoms()) {
-            if (!atom->hasProp(TAG_PROPERTY)) {
-                new_H_tags.push_back(m_next_atom_tag);
-                setTagForAtom(atom, m_next_atom_tag++);
-                auto bond = *(m_mol.atomBonds(atom).begin());
-                setTagForBond(bond, m_next_bond_tag++);
-            }
+    // Add tags for new atoms/bonds so selection continues to work in MolModel
+    for (auto atom : m_mol.atoms()) {
+        if (!atom->hasProp(TAG_PROPERTY)) {
+            setTagForAtom(atom, m_next_atom_tag++);
+            auto bond = *(m_mol.atomBonds(atom).begin());
+            setTagForBond(bond, m_next_bond_tag++);
         }
-        // this method won't cause coordinatesChanged to be emitted because
-        // doCommandUsingSnapshots doesn't unblock signals while this method
-        // is run.
-        setCoordinates(new_H_tags, positions, {}, {});
     }
 }
 
 void MolModel::removeExplicitHsCommandFunc(
-    const std::unordered_set<const RDKit::Atom*> atoms)
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     Q_ASSERT(m_allow_edits);
-    std::vector<unsigned> rdk_indices;
-    for (auto atom : atoms) {
-        rdk_indices.push_back(atom->getIdx());
+    if (atoms.empty()) {
+        rdkit_extensions::removeHs(m_mol);
+    } else {
+        rdkit_extensions::removeHs(m_mol, get_atom_indices(atoms));
     }
-    schrodinger::rdkit_extensions::removeHs(m_mol, rdk_indices);
 }
 
 } // namespace sketcher

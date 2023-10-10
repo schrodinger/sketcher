@@ -13,6 +13,7 @@
 #include <GraphMol/FileParsers/MolFileStereochem.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 
 namespace schrodinger
 {
@@ -135,6 +136,25 @@ void reapply_molblock_wedging(RDKit::ROMol& rdk_mol)
             }
         }
     }
+}
+
+void addHs(RDKit::RWMol& mol, std::vector<unsigned> atom_ids)
+{
+    // If atom_ids is empty, add Hs to all atoms
+    auto only_on_atoms = atom_ids.empty() ? nullptr : &atom_ids;
+
+    auto initial_num_atoms = mol.getNumAtoms();
+    bool explicit_only = false;
+    bool add_coords = false;
+    RDKit::MolOps::addHs(mol, explicit_only, add_coords, only_on_atoms);
+
+    // Explicitly add 2D coordinates to the new hydrogens; ids are guaranteed to
+    // be from the previous number of atoms to the current number of atoms
+    std::vector<unsigned int> frozen_ids;
+    for (unsigned int idx = 0; idx < initial_num_atoms; ++idx) {
+        frozen_ids.push_back(idx);
+    }
+    rdkit_extensions::compute2DCoords(mol, frozen_ids);
 }
 
 void removeHs(RDKit::RWMol& rdk_mol)
