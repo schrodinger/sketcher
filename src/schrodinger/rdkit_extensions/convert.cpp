@@ -280,7 +280,10 @@ void add_atom_query_sgroup(RDKit::RWMol& mol)
         if (atom->hasQuery()) {
             auto atom_smarts = RDKit::SmartsWrite::GetAtomSmarts(
                 static_cast<const RDKit::QueryAtom*>(atom));
-            if (atom_has_advanced_query(*atom, atom_smarts)) {
+            // SHARED-9306: Don't write advanced query if the MRV_SMA property
+            // is set, RDKit will write the substance group for us
+            if (atom_has_advanced_query(*atom, atom_smarts) &&
+                !atom->hasProp(RDKit::common_properties::MRV_SMA)) {
                 // Make a new data substance group with this atom that stores
                 // the smarts query
                 RDKit::SubstanceGroup sg(&mol, "DAT");
