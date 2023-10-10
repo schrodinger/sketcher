@@ -87,12 +87,6 @@ QString get_import_name_filters()
         }
     }
 
-    // Remove formats that we don't yet support with import:
-    // XYZ -- rdkit currently does not guess at bonding
-    for (const auto& result : filters.filter("XYZ")) {
-        filters.removeAll(result);
-    }
-
     // While we enforce MDL export via V3000 (see SKETCH-1453), we allow import
     // from either v2000 and v3000. Remove any V3000 label to avoid confusion.
     filters.replaceInStrings(" V3000", "");

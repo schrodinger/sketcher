@@ -44,15 +44,11 @@ namespace rdkit_extensions
 {
 
 const std::vector<Format> TEXT_FORMATS = {
-    Format::SMILES,
-    Format::EXTENDED_SMILES,
-    Format::SMARTS,
-    Format::MAESTRO,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::INCHI,
-    Format::PDB,
-    Format::RDMOL_BINARY_BASE64,
+    Format::SMILES,       Format::EXTENDED_SMILES,
+    Format::SMARTS,       Format::MAESTRO,
+    Format::MDL_MOLV2000, Format::MDL_MOLV3000,
+    Format::INCHI,        Format::PDB,
+    Format::XYZ,          Format::RDMOL_BINARY_BASE64,
 };
 
 const std::vector<Format> REACTION_TEXT_FORMATS = {

@@ -30,6 +30,7 @@ BOOST_AUTO_TEST_CASE(test_get_file_format)
     BOOST_TEST(get_file_format("test.ent") == Format::PDB);
     BOOST_TEST(get_file_format("test.rsmi") == Format::SMILES);
     BOOST_TEST(get_file_format("test.rxn") == Format::MDL_MOLV3000);
+    BOOST_TEST(get_file_format("test.xyz") == Format::XYZ);
 
     // Incomplete and unknown extensions throw
     for (const auto& filename :
@@ -41,7 +42,7 @@ BOOST_AUTO_TEST_CASE(test_get_file_format)
 
     auto filters = get_import_name_filters();
     BOOST_TEST(filters.contains(";;"));
-    BOOST_TEST(filters.split(";;").size() == 8);
+    BOOST_TEST(filters.split(";;").size() == 9);
     BOOST_TEST(filters.contains("*.sdf"));
     BOOST_TEST(filters.contains("*.mdl"));
 }

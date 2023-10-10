@@ -7,19 +7,22 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 
 #include <functional>
+#include <boost/algorithm/string.hpp>
 
 #include <boost/beast/core/detail/base64.hpp>
 
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/ChemReactions/ReactionParser.h>
+#include <GraphMol/ChemReactions/ReactionPickler.h>
 #include <GraphMol/Depictor/RDDepictor.h>
+#include <GraphMol/DetermineBonds/DetermineBonds.h>
+#include <GraphMol/DistGeomHelpers/Embedder.h>
 #include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/FileParsers/MolSupplier.h>
 #include <GraphMol/FileParsers/MolWriters.h>
 #include <GraphMol/MolOps.h>
 #include <GraphMol/MolPickler.h>
 #include <GraphMol/QueryAtom.h>
-#include <GraphMol/ChemReactions/ReactionPickler.h>
 #include <GraphMol/SmilesParse/SmartsWrite.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
@@ -297,7 +300,7 @@ void add_atom_query_sgroup(RDKit::RWMol& mol)
     }
 }
 
-void set_xyz_plus_title(RDKit::RWMol& mol)
+void set_xyz_title(RDKit::RWMol& mol)
 {
     std::string title;
     mol.getPropIfPresent(RDKit::common_properties::_Name, title);
@@ -319,6 +322,33 @@ void set_xyz_plus_title(RDKit::RWMol& mol)
     }
 
     mol.setProp(RDKit::common_properties::_Name, title);
+}
+
+/**
+ * Attempts to read the XYZ title for an encoded charge, on common convention
+ * in Schrodinger usage of .xyz files. If no "charge=" string is present,
+ * assumes total charge is 0
+ */
+int get_xyz_charge(const std::string& xyz_block)
+{
+    std::vector<std::string> lines;
+    boost::split(lines, xyz_block, boost::is_any_of("\n"));
+    if (lines.size() < 2) {
+        return 0;
+    }
+    // title should be the second line of xyz input
+    std::vector<std::string> title_tokens;
+    boost::split(title_tokens, lines[1], boost::is_any_of("; "));
+    for (const auto& token : title_tokens) {
+        if (boost::starts_with(token, "charge=")) {
+            try {
+                return std::stoi(token.substr(7));
+            } catch (const std::invalid_argument&) {
+                return 0;
+            }
+        }
+    }
+    return 0;
 }
 
 std::string base64_decode(const std::string& text)
@@ -350,12 +380,21 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                                          const Format format)
 {
     if (format == Format::AUTO_DETECT) {
-        // NOTE: Attempt SMILES before SMARTS, given not all SMARTS are SMILES
         return auto_detect<RDKit::RWMol>(
             text,
-            {Format::RDMOL_BINARY_BASE64, Format::MDL_MOLV3000, Format::MAESTRO,
-             Format::PDB, Format::INCHI, Format::SMILES, Format::SMARTS,
-             Format::HELM},
+            {
+                Format::RDMOL_BINARY_BASE64,
+                Format::MDL_MOLV3000,
+                Format::MAESTRO,
+                Format::PDB,
+                Format::INCHI,
+                Format::XYZ,
+                // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
+                Format::SMILES,
+                Format::SMARTS,
+                // Guess at HELM after guessing atomistic formats
+                Format::HELM,
+            },
             &to_rdkit);
     }
 
@@ -427,9 +466,20 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             break;
         }
         case Format::XYZ:
-            mol.reset(RDKit::XYZBlockToMol(text));
+            try {
+                mol.reset(RDKit::XYZBlockToMol(text));
+            } catch (const RDKit::FileParseException&) {
+                break; // leave mol a nullptr to trigger throw_parse_error below
+            }
+            // determineBonds requires all explicit hydrogens present; if they
+            // are not, it may get confused and throw. We assume here that if a
+            // user tries to read XYZ without explicit hydrogens, shame on them.
+            if (mol != nullptr) {
+                auto charge = get_xyz_charge(text);
+                determineBonds(*mol, /*use_huckel*/ false, charge);
+                rdkit_extensions::removeHs(*mol);
+            }
             break;
-
         case Format::HELM: {
             mol = helm::helm_to_rdkit(text);
             break;
@@ -461,11 +511,15 @@ boost::shared_ptr<RDKit::ChemicalReaction>
 to_rdkit_reaction(const std::string& text, const Format format)
 {
     if (format == Format::AUTO_DETECT) {
-        // NOTE: Text is always read as SMARTS. Reading text as
-        // SMILES should be explicitly requested
         return auto_detect<RDKit::ChemicalReaction>(
             text,
-            {Format::RDMOL_BINARY_BASE64, Format::MDL_MOLV2000, Format::SMARTS},
+            {
+                Format::RDMOL_BINARY_BASE64,
+                Format::MDL_MOLV2000,
+                // Guessing reaction text is always interpreted as SMARTS;
+                // reading reactions as SMILES should be explicitly requested
+                Format::SMARTS,
+            },
             &to_rdkit_reaction);
     }
 
@@ -574,11 +628,12 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             return base64_encode(byte_array);
         }
         case Format::XYZ:
-            // RDKit returns an empty string unless there are coordinates
-            if (!mol.getNumConformers()) {
-                throw std::invalid_argument("XYZ format requires coordinates");
-            }
-            set_xyz_plus_title(mol);
+            // Require explicit hydrogens and a complete 3D conformer on write;
+            // see GraphMol/DetermineBonds/DetermineBonds.h in the RDKit
+            RDKit::MolOps::addHs(mol);
+            RDKit::DGeomHelpers::EmbedMolecule(mol, /*maxIterations*/ 0,
+                                               /*seed*/ 1234); // constant seed
+            set_xyz_title(mol);
             return RDKit::MolToXYZBlock(mol);
         case Format::HELM:
             return helm::rdkit_to_helm(mol);
