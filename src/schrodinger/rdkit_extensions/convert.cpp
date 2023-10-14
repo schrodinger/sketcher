@@ -471,14 +471,16 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             } catch (const RDKit::FileParseException&) {
                 break; // leave mol a nullptr to trigger throw_parse_error below
             }
-            // determineBonds requires all explicit hydrogens present; if they
-            // are not, it may get confused and throw. We assume here that if a
-            // user tries to read XYZ without explicit hydrogens, shame on them.
+#ifndef __EMSCRIPTEN__ // SKETCH-2080: RDKit::determineBonds malforms the WASM
             if (mol != nullptr) {
+                // determineBonds requires all explicit hydrogens present; if
+                // they are not, it may throw. We assume here that if a user
+                // tries to read XYZ without explicit hydrogens, shame on them.
                 auto charge = get_xyz_charge(text);
-                determineBonds(*mol, /*use_huckel*/ false, charge);
+                RDKit::determineBonds(*mol, /*use_huckel*/ false, charge);
                 rdkit_extensions::removeHs(*mol);
             }
+#endif
             break;
         case Format::HELM: {
             mol = helm::helm_to_rdkit(text);
