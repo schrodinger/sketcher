@@ -8,6 +8,7 @@
 #include <GraphMol/QueryOps.h>
 
 #include "schrodinger/sketcher/model/mol_model.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 namespace schrodinger
 {
@@ -75,27 +76,9 @@ DrawAtomQuerySceneTool::DrawAtomQuerySceneTool(AtomQuery atom_query,
                                                MolModel* mol_model) :
     AbstractDrawAtomSceneTool(scene, mol_model)
 {
-    const std::unordered_map<
-        AtomQuery, std::function<RDKit::QueryAtom::QUERYATOM_QUERY*()>>
-        query_type_map = {
-            {AtomQuery::A, RDKit::makeAAtomQuery},
-            {AtomQuery::AH, RDKit::makeAHAtomQuery},
-            {AtomQuery::Q, RDKit::makeQAtomQuery},
-            {AtomQuery::QH, RDKit::makeQHAtomQuery},
-            {AtomQuery::M, RDKit::makeMAtomQuery},
-            {AtomQuery::MH, RDKit::makeMHAtomQuery},
-            {AtomQuery::X, RDKit::makeXAtomQuery},
-            {AtomQuery::XH, RDKit::makeXHAtomQuery},
-        };
-    auto query_pair = query_type_map.find(atom_query);
-    if (query_pair != query_type_map.end()) {
-        m_query_func = query_pair->second;
-        auto query = getQuery();
-        m_query_type = query->getTypeLabel();
-    } else {
-        throw std::runtime_error(
-            "Invalid AtomQuery passed to DrawAtomQuerySceneTool");
-    }
+    m_query_func = ATOM_TOOL_QUERY_MAP.at(atom_query);
+    auto query = getQuery();
+    m_query_type = query->getTypeLabel();
 }
 
 std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>

@@ -27,6 +27,7 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/tool/arrow_plus_scene_tool.h"
 #include "schrodinger/sketcher/tool/atom_mapping_scene_tool.h"
@@ -603,27 +604,16 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         }
     } else if (draw_tool == DrawTool::BOND) {
         auto bond_tool = m_sketcher_model->getBondTool();
-        switch (bond_tool) {
-            case BondTool::SINGLE:
-            case BondTool::DOUBLE:
-            case BondTool::TRIPLE:
-            case BondTool::COORDINATE:
-            case BondTool::ZERO:
-            case BondTool::SINGLE_UP:
-            case BondTool::SINGLE_DOWN:
-            case BondTool::AROMATIC:
-            case BondTool::SINGLE_EITHER:
-            case BondTool::DOUBLE_EITHER:
-                return std::make_shared<DrawBondSceneTool>(bond_tool, this,
-                                                           m_mol_model);
-            case BondTool::SINGLE_OR_DOUBLE:
-            case BondTool::SINGLE_OR_AROMATIC:
-            case BondTool::DOUBLE_OR_AROMATIC:
-            case BondTool::ANY:
-                return std::make_shared<DrawBondQuerySceneTool>(bond_tool, this,
-                                                                m_mol_model);
-            case BondTool::ATOM_CHAIN:
-                return std::make_shared<DrawChainSceneTool>(this, m_mol_model);
+        if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
+            // a non-query bond
+            return std::make_shared<DrawBondSceneTool>(bond_tool, this,
+                                                       m_mol_model);
+        } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
+            // a query bond
+            return std::make_shared<DrawBondQuerySceneTool>(bond_tool, this,
+                                                            m_mol_model);
+        } else if (bond_tool == BondTool::ATOM_CHAIN) {
+            return std::make_shared<DrawChainSceneTool>(this, m_mol_model);
         }
     } else if (draw_tool == DrawTool::ENUMERATION) {
         switch (m_sketcher_model->getEnumerationTool()) {

@@ -1783,6 +1783,15 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
     BOOST_TEST(mol->getNumAtoms() == 1);
     model.updateExplicitHs(ExplicitHActions::REMOVE);
     BOOST_TEST(mol->getNumAtoms() == 1);
+
+    // remove Hs that are selected and make sure that they're deselected
+    model.updateExplicitHs(ExplicitHActions::ADD);
+    model.selectAll();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(model.getSelectedAtoms().size() == 3);
+    model.updateExplicitHs(ExplicitHActions::REMOVE);
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(model.getSelectedAtoms().size() == 1);
 }
 
 /**

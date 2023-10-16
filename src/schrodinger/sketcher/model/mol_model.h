@@ -58,7 +58,11 @@ enum class MergeId {
     TRANSLATE,
 };
 
-enum class ExplicitHActions : bool { ADD = true, REMOVE = false };
+enum class ExplicitHActions {
+    REMOVE,
+    ADD,
+    TOGGLE // add explicit Hs if any are missing, otherwise remove them all
+};
 
 /**
  * Values used as parameters to doCommandUsingSnapshots that indicate what types
@@ -669,6 +673,55 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void invertSelection();
 
+    /**
+     * Remove all selected atoms, bonds, and non-molecular objects
+     */
+    void removeSelected();
+
+    /**
+     * Mutate all selected atoms to the specified element.
+     */
+    void mutateSelectedAtoms(const Element& element);
+
+    /**
+     * Mutate all selected atoms to the specified query.
+     */
+    void mutateSelectedAtoms(
+        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
+
+    /**
+     * Mutate all selected bonds
+     * @param bond_type The type of bond to mutate to
+     * @param bond_dir The stereochemistry to mutate to
+     * @param flip_matching_bonds If true, then any bonds that already match
+     * both bond_type and bond_dir will be flipped (i.e. their start and end
+     * atoms will be switched).  If false, then any bonds that already match
+     * will be ignored.
+     */
+    void mutateSelectedBonds(
+        const RDKit::Bond::BondType& bond_type,
+        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
+        bool flip_matching_bonds = false);
+
+    /**
+     * Mutate all selected bonds to the specified query
+     */
+    void mutateSelectedBonds(
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+
+    /**
+     * Adjust the charge on all selected atoms by the specified value.  To
+     * decrement the charge, pass in a negative number.
+     */
+    void adjustChargeOnSelectedAtoms(int increment_by);
+
+    /**
+     * If any selected atoms have implicit hydrogens, add explicit hydrogens to
+     * all selected atoms.  Otherwise, hide all explicit hydrogens on selected
+     * atoms.
+     */
+    void toggleExplicitHsOnSelectedAtoms();
+
   signals:
 
     /**
@@ -1144,6 +1197,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
             additions_to_core_bonds,
         const AtomIdxToFragBondMap& core_to_frag_bonds_by_idx);
+
+    /**
+     * Mutate all selected atoms to an Atom object returned by the provided
+     * function.
+     */
+    void mutateSelectedAtoms(const AtomFunc& create_atom);
 };
 
 } // namespace sketcher

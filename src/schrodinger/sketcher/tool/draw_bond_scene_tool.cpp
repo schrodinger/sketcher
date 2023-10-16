@@ -8,6 +8,7 @@
 
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 namespace schrodinger
 {
@@ -50,48 +51,8 @@ DrawBondSceneTool::DrawBondSceneTool(BondTool bond_tool, Scene* scene,
                                      MolModel* mol_model) :
     AbstractDrawBondSceneTool(scene, mol_model)
 {
-    // map of bond tool to {bond type, bond stereochemistry, whether the bond is
-    // flippable (i.e. does the bond change meaningfully if we swap the start
-    // and end atoms)}
-    const std::unordered_map<
-        BondTool, std::tuple<RDKit::Bond::BondType, RDKit::Bond::BondDir, bool>>
-        bond_type_map = {
-            {BondTool::SINGLE,
-             {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE,
-              false}},
-            {BondTool::DOUBLE,
-             {RDKit::Bond::BondType::DOUBLE, RDKit::Bond::BondDir::NONE,
-              false}},
-            {BondTool::TRIPLE,
-             {RDKit::Bond::BondType::TRIPLE, RDKit::Bond::BondDir::NONE,
-              false}},
-            {BondTool::COORDINATE,
-             {RDKit::Bond::BondType::DATIVE, RDKit::Bond::BondDir::NONE, true}},
-            {BondTool::ZERO,
-             {RDKit::Bond::BondType::ZERO, RDKit::Bond::BondDir::NONE, false}},
-            {BondTool::SINGLE_UP,
-             {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINWEDGE,
-              true}},
-            {BondTool::SINGLE_DOWN,
-             {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINDASH,
-              true}},
-            {BondTool::AROMATIC,
-             {RDKit::Bond::BondType::AROMATIC, RDKit::Bond::BondDir::NONE,
-              false}},
-            {BondTool::SINGLE_EITHER,
-             {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::UNKNOWN,
-              true}},
-            {BondTool::DOUBLE_EITHER,
-             {RDKit::Bond::BondType::DOUBLE, RDKit::Bond::BondDir::EITHERDOUBLE,
-              true}},
-        };
-    auto bond_info = bond_type_map.find(bond_tool);
-    if (bond_info != bond_type_map.end()) {
-        std::tie(m_bond_type, m_bond_dir, m_flippable) = bond_info->second;
-    } else {
-        throw std::runtime_error(
-            "Invalid BondTool passed to DrawBondSceneTool");
-    }
+    std::tie(m_bond_type, m_bond_dir, m_flippable) =
+        BOND_TOOL_BOND_MAP.at(bond_tool);
     m_cycle_on_click = bond_tool == BondTool::SINGLE;
 }
 
@@ -151,26 +112,7 @@ DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool, Scene* scene,
                                                MolModel* mol_model) :
     AbstractDrawBondSceneTool(scene, mol_model)
 {
-    // map of bond tool to {the label text, a function that returns the
-    // appropriate query object)}
-    std::unordered_map<
-        BondTool,
-        std::pair<std::string,
-                  std::function<RDKit::QueryBond::QUERYBOND_QUERY*()>>>
-        query_type_map = {{BondTool::SINGLE_OR_DOUBLE,
-                           {"S/D", RDKit::makeSingleOrDoubleBondQuery}},
-                          {BondTool::SINGLE_OR_AROMATIC,
-                           {"S/A", RDKit::makeSingleOrAromaticBondQuery}},
-                          {BondTool::DOUBLE_OR_AROMATIC,
-                           {"D/A", RDKit::makeDoubleOrAromaticBondQuery}},
-                          {BondTool::ANY, {"Any", RDKit::makeBondNullQuery}}};
-    auto query_info = query_type_map.find(bond_tool);
-    if (query_info != query_type_map.end()) {
-        std::tie(m_query_type, m_query_func) = query_info->second;
-    } else {
-        throw std::runtime_error(
-            "Invalid BondTool passed to DrawBondQuerySceneTool");
-    }
+    std::tie(m_query_type, m_query_func) = BOND_TOOL_QUERY_MAP.at(bond_tool);
 }
 
 std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>

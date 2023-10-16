@@ -14,6 +14,8 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 
@@ -65,6 +67,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
             &SketcherModel::onReactionArrowAdded);
     connect(m_sketcher_model, &SketcherModel::reactionCountRequested,
             m_mol_model, &MolModel::hasReactionArrow);
+    connect(m_sketcher_model, &SketcherModel::valuePinged, this,
+            &SketcherWidget::onModelValuePinged);
 
     connectTopBarSlots();
     connectSideBarSlots();
@@ -215,6 +219,64 @@ void SketcherWidget::updateWatermark()
     }
 
     m_watermark_item->setVisible(is_empty);
+}
+
+void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
+{
+    if (!m_mol_model->hasSelection()) {
+        return;
+    }
+    switch (key) {
+        case ModelKey::ELEMENT: {
+            auto element = value.value<Element>();
+            m_mol_model->mutateSelectedAtoms(element);
+            break;
+        }
+        case ModelKey::ATOM_QUERY: {
+            auto query_func = ATOM_TOOL_QUERY_MAP.at(value.value<AtomQuery>());
+            auto atom_query =
+                std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
+                    query_func());
+            m_mol_model->mutateSelectedAtoms(atom_query);
+            break;
+        }
+        case ModelKey::BOND_TOOL: {
+            auto bond_tool = value.value<BondTool>();
+            if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
+                auto [bond_type, bond_dir, flippable] =
+                    BOND_TOOL_BOND_MAP.at(bond_tool);
+                m_mol_model->mutateSelectedBonds(bond_type, bond_dir,
+                                                 flippable);
+            } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
+                auto [query_type, query_func] =
+                    BOND_TOOL_QUERY_MAP.at(bond_tool);
+                auto bond_query =
+                    std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
+                        query_func());
+                bond_query->setTypeLabel(query_type);
+                m_mol_model->mutateSelectedBonds(bond_query);
+            }
+            // Ignore BondTool::ATOM_CHAIN, which should never be pinged
+            break;
+        }
+        case ModelKey::CHARGE_TOOL: {
+            auto charge_tool = value.value<ChargeTool>();
+            int increment_by = charge_tool == ChargeTool::INCREASE ? 1 : -1;
+            m_mol_model->adjustChargeOnSelectedAtoms(increment_by);
+            break;
+        }
+        case ModelKey::DRAW_TOOL: {
+            auto tool = value.value<DrawTool>();
+            if (tool == DrawTool::ERASE) {
+                m_mol_model->removeSelected();
+            } else if (tool == DrawTool::EXPLICIT_H) {
+                m_mol_model->toggleExplicitHsOnSelectedAtoms();
+            }
+            break;
+        }
+        default:
+            break;
+    }
 }
 
 } // namespace sketcher

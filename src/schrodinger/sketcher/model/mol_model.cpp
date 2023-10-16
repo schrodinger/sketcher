@@ -769,13 +769,23 @@ bool MolModel::hasAnyImplicitHs(
 void MolModel::updateExplicitHs(ExplicitHActions action,
                                 std::unordered_set<const RDKit::Atom*> atoms)
 {
-    switch (action) {
-        case ExplicitHActions::ADD:
-            addExplicitHs(atoms);
-            break;
-        case ExplicitHActions::REMOVE:
-            removeExplicitHs(atoms);
-            break;
+    bool add_hs;
+    if (action == ExplicitHActions::TOGGLE) {
+        std::unordered_set<const RDKit::Atom*> atoms_to_check;
+        if (atoms.empty()) {
+            atoms_to_check = atoms;
+        } else {
+            auto all_atoms = m_mol.atoms();
+            atoms_to_check.insert(all_atoms.begin(), all_atoms.end());
+        }
+        add_hs = hasAnyImplicitHs(atoms_to_check);
+    } else {
+        add_hs = action == ExplicitHActions::ADD;
+    }
+    if (add_hs) {
+        addExplicitHs(atoms);
+    } else {
+        removeExplicitHs(atoms);
     }
 }
 
@@ -1195,6 +1205,109 @@ void MolModel::invertSelection()
                        m_selected_non_molecular_tags, false, "Deselect");
     doSelectionCommand(atom_tags_to_select, bond_tags_to_select,
                        non_molecular_tags_to_select, true, "Select");
+}
+
+void MolModel::removeSelected()
+{
+    remove(getSelectedAtoms(), getSelectedBonds(),
+           getSelectedNonMolecularObjects());
+}
+
+void MolModel::mutateSelectedAtoms(const Element& element)
+{
+    unsigned int atomic_num = static_cast<unsigned int>(element);
+    auto create_atom = std::bind(make_new_atom, atomic_num);
+    mutateSelectedAtoms(create_atom);
+}
+
+void MolModel::mutateSelectedAtoms(
+    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
+{
+    auto create_atom = std::bind(make_new_query_atom, atom_query);
+    mutateSelectedAtoms(create_atom);
+}
+
+void MolModel::mutateSelectedAtoms(const AtomFunc& create_atom)
+{
+    if (m_selected_atom_tags.empty()) {
+        return;
+    }
+    auto cmd_func = [this, create_atom]() {
+        for (auto atom_tag : m_selected_atom_tags) {
+            mutateAtomCommandFunc(atom_tag, create_atom);
+        }
+    };
+    doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
+}
+
+void MolModel::mutateSelectedBonds(const RDKit::Bond::BondType& bond_type,
+                                   const RDKit::Bond::BondDir& bond_dir,
+                                   bool flip_matching_bonds)
+{
+    std::unordered_set<int> matching_bond_tags, non_matching_bond_tags;
+    for (auto* bond : getSelectedBonds()) {
+        auto bond_tag = getTagForBond(bond);
+        if (bond->getBondType() == bond_type &&
+            bond->getBondDir() == bond_dir) {
+            matching_bond_tags.insert(bond_tag);
+        } else {
+            non_matching_bond_tags.insert(bond_tag);
+        }
+    }
+    if (non_matching_bond_tags.empty() &&
+        (!flip_matching_bonds || matching_bond_tags.empty())) {
+        // nothing to do
+        return;
+    }
+
+    auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
+    auto cmd_func = [this, create_bond, flip_matching_bonds, matching_bond_tags,
+                     non_matching_bond_tags]() {
+        for (auto bond_tag : non_matching_bond_tags) {
+            mutateBondCommandFunc(bond_tag, create_bond);
+        }
+        if (flip_matching_bonds) {
+            for (auto bond_tag : matching_bond_tags) {
+                flipBondCommandFunc(bond_tag);
+            }
+        }
+    };
+    doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
+}
+
+void MolModel::mutateSelectedBonds(
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
+{
+    if (m_selected_bond_tags.empty()) {
+        return;
+    }
+    auto create_bond = std::bind(make_new_query_bond, bond_query);
+    auto cmd_func = [this, create_bond]() {
+        for (auto bond_tag : m_selected_bond_tags) {
+            mutateBondCommandFunc(bond_tag, create_bond);
+        }
+    };
+    doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
+}
+
+void MolModel::adjustChargeOnSelectedAtoms(int increment_by)
+{
+    if (m_selected_atom_tags.empty()) {
+        return;
+    }
+    auto cmd_func = [this, increment_by]() {
+        Q_ASSERT(m_allow_edits);
+        for (auto atom_tag : m_selected_atom_tags) {
+            auto* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+            atom->setFormalCharge(atom->getFormalCharge() + increment_by);
+        }
+    };
+    doCommandUsingSnapshots(cmd_func, "Set atom charge", WhatChanged::MOLECULE);
+}
+
+void MolModel::toggleExplicitHsOnSelectedAtoms()
+{
+    updateExplicitHs(ExplicitHActions::TOGGLE, getSelectedAtoms());
 }
 
 void MolModel::setTagForAtom(RDKit::Atom* const atom, const int atom_tag)
@@ -1666,6 +1779,23 @@ void MolModel::removeExplicitHsCommandFunc(
     } else {
         rdkit_extensions::removeHs(m_mol, get_atom_indices(atoms));
     }
+
+    // deselect any atoms and bonds that were removed
+    std::unordered_set<int> new_atom_selection;
+    for (auto atom_tag : m_selected_atom_tags) {
+        if (m_mol.hasAtomBookmark(atom_tag)) {
+            new_atom_selection.insert(atom_tag);
+        }
+    }
+    m_selected_atom_tags = new_atom_selection;
+
+    std::unordered_set<int> new_bond_selection;
+    for (auto bond_tag : m_selected_bond_tags) {
+        if (m_mol.hasBondBookmark(bond_tag)) {
+            new_bond_selection.insert(bond_tag);
+        }
+    }
+    m_selected_bond_tags = new_bond_selection;
 }
 
 } // namespace sketcher

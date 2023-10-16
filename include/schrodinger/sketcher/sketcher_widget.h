@@ -28,6 +28,7 @@ namespace sketcher
 class MolModel;
 class Scene;
 class SketcherModel;
+enum class ModelKey;
 
 /**
  * Sketcher widget meant for use in LiveDesign and Maestro.
@@ -92,6 +93,17 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void connectTopBarSlots();
     void connectSideBarSlots();
+
+    /**
+     * Respond to the user clicking on a toolbar button when there is a
+     * selection present.  Note that this method is called whenever the user
+     * clicks on a tool button, but it's a no-op unless a selection is present.
+     *
+     * @param key The SketcherModel key associated with the button that was
+     * clicked
+     * @param value The current SketcherModel value for key
+     */
+    void onModelValuePinged(ModelKey key, QVariant value);
 };
 
 } // namespace sketcher

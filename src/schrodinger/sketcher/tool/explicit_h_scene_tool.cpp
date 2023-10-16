@@ -21,10 +21,7 @@ void ExplicitHsSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
     auto* item = m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
         auto atom = atom_item->getAtom();
-        auto action =
-            (m_mol_model->hasAnyImplicitHs({atom}) ? ExplicitHActions::ADD
-                                                   : ExplicitHActions::REMOVE);
-        m_mol_model->updateExplicitHs(action, {atom});
+        m_mol_model->updateExplicitHs(ExplicitHActions::TOGGLE, {atom});
     }
 }
 
