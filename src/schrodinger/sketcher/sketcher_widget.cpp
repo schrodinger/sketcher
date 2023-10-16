@@ -144,15 +144,6 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::clearSelection);
     connect(m_ui->side_bar_wdg, &SketcherSideBar::invertSelectionRequested,
             m_mol_model, &MolModel::invertSelection);
-
-    // TODO: Testing components to be removed from the widget
-    m_ui->font_sb->setValue(DEFAULT_FONT_SIZE);
-    connect(m_ui->font_sb, &QDoubleSpinBox::valueChanged, m_scene,
-            &Scene::setFontSize);
-    m_ui->carbon_labels_combo->addItems(
-        {"No carbon labels", "Terminal carbons only", "All atoms labeled"});
-    connect(m_ui->carbon_labels_combo, &QComboBox::currentIndexChanged,
-            [this](auto i) { m_scene->setCarbonsLabeled(CarbonLabels(i)); });
 }
 
 void SketcherWidget::importText(const std::string& text, Format format)

@@ -57,16 +57,6 @@
        </property>
       </widget>
      </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QComboBox" name="carbon_labels_combo"/>
-       </item>
-       <item>
-        <widget class="QDoubleSpinBox" name="font_sb"/>
-       </item>
-      </layout>
-     </item>
     </layout>
    </item>
   </layout>
