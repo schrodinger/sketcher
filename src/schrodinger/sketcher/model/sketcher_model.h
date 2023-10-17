@@ -13,6 +13,11 @@
 
 class QPointF;
 
+namespace RDKit
+{
+class Atom;
+} // namespace RDKit
+
 namespace schrodinger
 {
 namespace sketcher
@@ -413,6 +418,11 @@ class SKETCHER_API SketcherModel : public QObject
     QList<QGraphicsItem*> getContextMenuObjects() const;
 
     /**
+     * @return all RDKit atoms associated with the currently-open context menu
+     */
+    std::vector<const RDKit::Atom*> getContextMenuAtoms() const;
+
+    /**
      * @return Whether an undo and redo can occur
      */
     std::pair<bool, bool> getUndoStackData() const;
@@ -458,6 +468,17 @@ class SKETCHER_API SketcherModel : public QObject
      * @return context menu information from the associated scene
      */
     QList<QGraphicsItem*> contextMenuObjectsRequested() const;
+
+    /**
+     * Signal used to request context menu object information from the
+     * associated scene. These items are the subject of the currently-open
+     * context menu. If there is not a context menu open or if the context menu
+     * was opened without being associated with any scene objects, the set
+     * should remain empty.
+     *
+     * @return context menu information from the associated scene
+     */
+    std::vector<const RDKit::Atom*> contextMenuAtomsRequested() const;
 
     /**
      * @return the number of reaction arrows in the scene

@@ -3,7 +3,7 @@
 
 #include "../test_common.h"
 #include "../test_sketcherScene.h"
-#include "schrodinger/sketcher/menu/selection_context_menu.h"
+#include "schrodinger/sketcher/selection_context_menu_deprecated.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
@@ -13,14 +13,15 @@ namespace schrodinger
 namespace sketcher
 {
 
-class TestSelectionContextMenu : public SelectionContextMenu
+class TestSelectionContextMenu : public SelectionContextMenuDeprecated
 {
   public:
-    TestSelectionContextMenu(SketcherModel* model) : SelectionContextMenu(model)
+    TestSelectionContextMenu(SketcherModel* model) :
+        SelectionContextMenuDeprecated(model)
     {
     }
-    using SelectionContextMenu::m_variable_bond_action;
-    using SelectionContextMenu::updateActionsEnabled;
+    using SelectionContextMenuDeprecated::m_variable_bond_action;
+    using SelectionContextMenuDeprecated::updateActionsEnabled;
 };
 
 /**

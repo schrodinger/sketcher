@@ -6,7 +6,7 @@
 #include "../test_common.h"
 #include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/menu/atom_context_menu.h"
+#include "schrodinger/sketcher/atom_context_menu_deprecated.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 
@@ -20,7 +20,7 @@ namespace sketcher
 /**
  * @return The number of actions on this menu that are disabled
  */
-int get_disabled_action_count(ModifyAtomsMenu& menu)
+int get_disabled_action_count(ModifyAtomsMenuDeprecated& menu)
 {
     menu.updateActionsEnabled();
     int disabled_count = 0;
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(test_actions_enabled)
 {
 
     testSketcherScene scene;
-    auto menu = ModifyAtomsMenu(scene.getModel());
+    auto menu = ModifyAtomsMenuDeprecated(scene.getModel());
 
     scene.importText("CCC");
     std::vector<sketcherAtom*> atoms;

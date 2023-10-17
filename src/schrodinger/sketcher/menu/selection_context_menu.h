@@ -44,6 +44,7 @@ class SKETCHER_API SelectionContextMenu : public QMenu
 
   protected:
     void showEvent(QShowEvent* event) override;
+    SketcherModel* m_sketcher_model = nullptr;
     CutCopyActionManager* m_cut_copy_actions = nullptr;
     QAction* m_variable_bond_action = nullptr;
 
@@ -55,7 +56,6 @@ class SKETCHER_API SelectionContextMenu : public QMenu
     QMenu* createReplaceSelectionWithMenu(SketcherModel* model);
     QAction* m_bracket_group_action = nullptr;
     QAction* m_flip_action = nullptr;
-    SketcherModel* m_sketcher_model = nullptr;
 };
 
 } // namespace sketcher

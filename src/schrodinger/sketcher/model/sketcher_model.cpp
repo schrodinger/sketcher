@@ -4,6 +4,7 @@
 #include <string>
 
 #include <QPointF>
+#include <GraphMol/Atom.h>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
@@ -217,6 +218,11 @@ QList<QGraphicsItem*> SketcherModel::getSelection() const
 QList<QGraphicsItem*> SketcherModel::getContextMenuObjects() const
 {
     return emit contextMenuObjectsRequested();
+}
+
+std::vector<const RDKit::Atom*> SketcherModel::getContextMenuAtoms() const
+{
+    return emit contextMenuAtomsRequested();
 }
 
 std::pair<bool, bool> SketcherModel::getUndoStackData() const

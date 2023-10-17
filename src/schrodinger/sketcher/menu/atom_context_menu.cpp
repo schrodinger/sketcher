@@ -1,14 +1,13 @@
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 
 #include <QWidgetAction>
+#include <GraphMol/Atom.h>
 
-#include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/atom_utils.h"
 #include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/widget/set_atom_widget.h"
-
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 namespace schrodinger
 {
 namespace sketcher
@@ -67,22 +66,16 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
 
 void ModifyAtomsMenu::updateActionsEnabled()
 {
-    std::unordered_set<sketcherAtom*> atoms;
-    std::vector<sketcherAtom*> element_atoms;
-    std::vector<sketcherAtom*> atoms_that_can_have_charge;
+    auto atoms = m_sketcher_model->getContextMenuAtoms();
 
-    for (const auto& obj : m_sketcher_model->getContextMenuObjects()) {
-        auto atom = dynamic_cast<sketcherAtom*>(obj);
-        if (atom != nullptr) {
-            atoms.insert(atom);
-            if (is_atomic_number(atom->getAtomType())) {
-                element_atoms.push_back(atom);
-            }
-            if (atom->canHaveCharge()) {
-                atoms_that_can_have_charge.push_back(atom);
-            }
-        }
-    }
+    std::vector<const RDKit::Atom*> element_atoms;
+    std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(element_atoms),
+                 [](auto a) { return !a->hasQuery(); });
+
+    std::vector<const RDKit::Atom*> atoms_that_can_have_charge;
+    std::copy_if(atoms.begin(), atoms.end(),
+                 std::back_inserter(atoms_that_can_have_charge),
+                 [](auto a) { return !is_r_group(a); });
 
     // Disable hydrogen and unpaired e for non elements
     if (element_atoms.empty()) {
@@ -93,7 +86,7 @@ void ModifyAtomsMenu::updateActionsEnabled()
         // Toggle add/remove explicit hydrogens
         m_add_remove_explicit_h_act->setEnabled(true);
         if (std::any_of(element_atoms.begin(), element_atoms.end(),
-                        has_implicit_hydrogens)) {
+                        [](auto a) { return a->getTotalNumHs() > 0; })) {
             m_add_remove_explicit_h_act->setText("Add Explicit Hydrogens");
         } else {
             m_add_remove_explicit_h_act->setText("Remove Explicit Hydrogens");
@@ -103,7 +96,7 @@ void ModifyAtomsMenu::updateActionsEnabled()
         std::vector<int> unpaired_e_counts;
         std::transform(element_atoms.begin(), element_atoms.end(),
                        std::back_inserter(unpaired_e_counts),
-                       [](auto a) { return a->getUnpairedElectronsN(); });
+                       [](auto a) { return a->getNumRadicalElectrons(); });
         const auto [min_unpaired_e_count, max_unpaired_e_count] =
             std::minmax_element(unpaired_e_counts.begin(),
                                 unpaired_e_counts.end());
@@ -123,7 +116,7 @@ void ModifyAtomsMenu::updateActionsEnabled()
         std::transform(atoms_that_can_have_charge.begin(),
                        atoms_that_can_have_charge.end(),
                        std::back_inserter(charges),
-                       [](auto a) { return a->getCharge(); });
+                       [](auto a) { return a->getFormalCharge(); });
 
         const auto [min_charge, max_charge] =
             std::minmax_element(charges.begin(), charges.end());

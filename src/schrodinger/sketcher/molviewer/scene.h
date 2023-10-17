@@ -266,7 +266,7 @@ class SKETCHER_API Scene : public QGraphicsScene
      * If no context menu instance is open (or if it is not associated with any
      * objects) then this should be empty.
      */
-    QList<QGraphicsItem*> m_context_menu_objects;
+    std::vector<const RDKit::Atom*> m_context_menu_atoms;
 
   private:
     /**

@@ -142,8 +142,8 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
             [this]() { return getInteractiveItems(); });
     connect(m_sketcher_model, &SketcherModel::selectionRequested, this,
             [this]() { return selectedItems(); });
-    connect(m_sketcher_model, &SketcherModel::contextMenuObjectsRequested, this,
-            [this]() { return m_context_menu_objects; });
+    connect(m_sketcher_model, &SketcherModel::contextMenuAtomsRequested, this,
+            [this]() { return m_context_menu_atoms; });
 
     m_background_context_menu =
         new BackgroundContextMenu(m_sketcher_model, parent);

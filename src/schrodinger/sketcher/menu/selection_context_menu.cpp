@@ -1,6 +1,8 @@
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 
-#include "schrodinger/sketcher/Atom.h"
+#include <GraphMol/Atom.h>
+#include <GraphMol/ROMol.h>
+
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
@@ -54,22 +56,15 @@ void SelectionContextMenu::showEvent(QShowEvent* event)
 
 void SelectionContextMenu::updateActionsEnabled()
 {
-    std::unordered_set<sketcherAtom*> atoms;
-    for (const auto& obj : m_sketcher_model->getContextMenuObjects()) {
-        auto atom = dynamic_cast<sketcherAtom*>(obj);
-        if (atom != nullptr) {
-            atoms.insert(atom);
-        }
-    }
+    auto same_mol = [](const auto& atoms) {
+        auto mol = atoms.front()->getOwningMol();
+        return std::all_of(atoms.begin(), atoms.end(), [mol](auto atom) {
+            return &atom->getOwningMol() == &mol;
+        });
+    };
 
-    bool enable = atoms.size() >= 2;
-    if (enable) {
-        auto molecule = (*atoms.begin())->getMolecule();
-        enable = std::all_of(atoms.cbegin(), atoms.cend(),
-                             [molecule](sketcherAtom* atom) {
-                                 return atom->getMolecule() == molecule;
-                             });
-    }
+    auto atoms = m_sketcher_model->getContextMenuAtoms();
+    bool enable = atoms.size() >= 2 && same_mol(atoms);
     m_variable_bond_action->setEnabled(enable);
 }
 
