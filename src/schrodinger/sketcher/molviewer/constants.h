@@ -32,6 +32,7 @@ const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.5;
 const qreal CHIRALITY_FONT_RATIO = 0.6;
+const qreal CURSOR_HINT_FONT_RATIO = 1.0;
 
 // The font size used to display the number of bonds that the Draw Chain scene
 // tool will draw
@@ -104,13 +105,20 @@ const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 // the color of the stereo annotations (e.g. "R" and "S")
 const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
 
-// the color of hint bonds (e.g. the blue lines that show where a bond will be
-// drawn)
-const QColor HINT_COLOR = QColor("#9cbcd1");
+// the color of structure hints (e.g. the blue lines that show where a bond will
+// be drawn when using the bond tool or the fragment structure when mousing over
+// a bond when using the ring/fragment tool)
+const QColor STRUCTURE_HINT_COLOR = QColor("#9cbcd1");
 
-// the color of hint text (e.g. the element name that appears when using the
-// atom tool)
-const QColor HINT_TEXT_COLOR = QColor("#9cbcd1");
+// the color of the cursor hint (e.g. the element name that attaches to the
+// mouse cursor when using the atom tool, or the bond icon that attaches to the
+// cursor when using the bond tool)
+const QColor CURSOR_HINT_COLOR = QColor("#5191bb");
+
+// This should be set to the shade of gray used in the tool button icons.
+// cursor_hint_from_svg in scene_utils will replace this color with
+// CURSOR_HINT_COLOR.
+const QRgb TOOL_BUTTON_DARK_GRAY = qRgb(102, 102, 102);
 
 // The width of bonds for fragment hints (e.g. the blue rings that appear when
 // using the ring tool)
@@ -209,6 +217,25 @@ const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
 // distance (in MolModel coordinates) for two coordinates to be considered
 // "identical."
 const double MAX_DIST_FOR_FRAG_OVERLAP = 0.01;
+
+// The image to use for the standard arrow mouse cursor
+const QString ARROW_CURSOR_PATH = ":/icons/cursor-arrow.svg";
+
+// The "hotspot" of the above cursor image, i.e., (x, y) coordinates for where
+// in the image the click should happen
+const int CURSOR_HOTSPOT_X = 1;
+const int CURSOR_HOTSPOT_Y = 1;
+
+// When attaching a hint image to the cursor, the (x, y) coordinates of the
+// upper-left corner of the hint
+const int CURSOR_HINT_X = 14;
+const int CURSOR_HINT_Y = 14;
+
+// The maximum allowable width and height for a cursor hint image generated from
+// a toolbar icon.  Note that the cursor hint image won't necessarily be a
+// square of this exact size due to both the aspect ratio and because the image
+// is cropped after resizing.
+const int CURSOR_HINT_IMAGE_SIZE = 28;
 
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.

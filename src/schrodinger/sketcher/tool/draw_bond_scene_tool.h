@@ -9,6 +9,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/tool/abstract_draw_atom_bond_scene_tool.h"
 
 namespace RDGeom
@@ -73,6 +74,7 @@ class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
     RDKit::Bond::BondType m_bond_type;
     RDKit::Bond::BondDir m_bond_dir;
     const RDKit::Bond* m_last_bond_clicked = nullptr;
+    QString m_cursor_hint_path;
 
     // overriden AbstractDrawBondSceneTool methods
     bool bondMatches(const RDKit::Bond* const bond) override;
@@ -88,6 +90,9 @@ class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
                           const RDGeom::Point3D& pos2) override;
     void addBond(const RDKit::Atom* const start_atom,
                  const RDKit::Atom* const end_atom) override;
+
+    // overriden AbstractSceneTool method
+    QPixmap getCursorPixmap() const override;
 };
 
 /**
@@ -96,7 +101,7 @@ class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
 class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
 {
   public:
-    DrawBondQuerySceneTool(BondTool bond_tool, Scene* scene,
+    DrawBondQuerySceneTool(BondTool bond_tool, const Fonts& fonts, Scene* scene,
                            MolModel* mol_model);
 
   protected:
@@ -110,6 +115,8 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
      * The text to use for labeling the drawn queries
      */
     std::string m_query_type;
+
+    const Fonts* m_fonts;
 
     /**
      * @return the query to use for bonds
@@ -127,6 +134,9 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
                           const RDGeom::Point3D& pos2) override;
     void addBond(const RDKit::Atom* const start_atom,
                  const RDKit::Atom* const end_atom) override;
+
+    // overriden AbstractSceneTool methods
+    QPixmap getCursorPixmap() const override;
 };
 
 } // namespace sketcher

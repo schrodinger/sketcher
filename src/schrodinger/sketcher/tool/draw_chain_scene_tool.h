@@ -52,6 +52,7 @@ class SKETCHER_API DrawChainSceneTool
     void onDragStart(QGraphicsSceneMouseEvent* const event) override;
     void onDragMove(QGraphicsSceneMouseEvent* const event) override;
     void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap getCursorPixmap() const override;
 
   protected:
     HintChainItem m_hint_chain_item = HintChainItem();

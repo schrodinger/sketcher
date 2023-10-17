@@ -34,8 +34,10 @@ class SKETCHER_API DrawAttachmentPointSceneTool : public AbstractDrawSceneTool
   protected:
     HintSquiggleItem m_hint_squiggle_item = HintSquiggleItem();
 
-    // reimplemented AbstractSceneTool method
+    // reimplemented AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;
+
+    QPixmap getCursorPixmap() const override;
 
     // reimplemented AbstractDrawSceneTool methods
     void onBondClicked(const RDKit::Bond* const bond) override;

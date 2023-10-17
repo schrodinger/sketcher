@@ -22,7 +22,9 @@ class SKETCHER_API EditChargeSceneTool
                         MolModel* mol_model);
 
   protected:
+    // reimplemented AbstractSceneTool methods
     void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap getCursorPixmap() const override;
 
     ChargeTool m_charge_tool;
 };

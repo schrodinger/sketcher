@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 
+#include <QPixmap>
+
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
@@ -60,6 +62,11 @@ void AbstractSceneTool::onMouseDoubleClick(
 std::vector<QGraphicsItem*> AbstractSceneTool::getGraphicsItems()
 {
     return {};
+}
+
+QPixmap AbstractSceneTool::getCursorPixmap() const
+{
+    return QPixmap();
 }
 
 void AbstractSceneTool::onStructureUpdated()

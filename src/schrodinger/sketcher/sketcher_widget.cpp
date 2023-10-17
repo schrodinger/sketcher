@@ -1,5 +1,6 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
+#include <QCursor>
 #include <QClipboard>
 #include <QGraphicsPixmapItem>
 #include <QMimeData>
@@ -14,6 +15,8 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/molviewer/view.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
@@ -52,6 +55,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     connect(m_scene, &Scene::viewportTranslationRequested, m_ui->view,
             &View::translateViewportFromScreenCoords);
+    connect(m_scene, &Scene::newCursorHintRequested, m_ui->view,
+            &View::onNewCursorHintRequested);
 
     // Connect the SketcherModel to the undo stack
     connect(m_sketcher_model, &SketcherModel::undoStackCanUndoRequested,
@@ -82,6 +87,13 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
+
+    // use the custom cursor everywhere
+    setCursor(
+        QCursor(get_arrow_cursor_pixmap(), CURSOR_HOTSPOT_X, CURSOR_HOTSPOT_Y));
+    // force the scene to update the view's cursor now that all of the signals
+    // are connected
+    m_scene->requestCursorHintUpdate();
 }
 
 SketcherWidget::~SketcherWidget() = default;
@@ -234,7 +246,7 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
         case ModelKey::BOND_TOOL: {
             auto bond_tool = value.value<BondTool>();
             if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
-                auto [bond_type, bond_dir, flippable] =
+                auto [bond_type, bond_dir, flippable, cursor_hint_path] =
                     BOND_TOOL_BOND_MAP.at(bond_tool);
                 m_mol_model->mutateSelectedBonds(bond_type, bond_dir,
                                                  flippable);

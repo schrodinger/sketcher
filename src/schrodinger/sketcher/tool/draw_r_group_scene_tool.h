@@ -17,7 +17,8 @@ class SKETCHER_API AbstractDrawRGroupSceneTool
     : public AbstractDrawAtomSceneTool
 {
   public:
-    AbstractDrawRGroupSceneTool(Scene* scene, MolModel* mol_model);
+    AbstractDrawRGroupSceneTool(const Fonts& fonts, Scene* scene,
+                                MolModel* mol_model);
 
   protected:
     /**
@@ -41,7 +42,7 @@ class SKETCHER_API AbstractDrawRGroupSceneTool
 class SKETCHER_API DrawRGroupSceneTool : public AbstractDrawRGroupSceneTool
 {
   public:
-    DrawRGroupSceneTool(const int r_group_num, Scene* scene,
+    DrawRGroupSceneTool(const int r_group_num, const Fonts& fonts, Scene* scene,
                         MolModel* mol_model);
 
   protected:
@@ -54,6 +55,9 @@ class SKETCHER_API DrawRGroupSceneTool : public AbstractDrawRGroupSceneTool
     // reimplemented AbstractDrawSceneTool methods
     bool
     shouldDrawBondForClickOnAtom(const RDKit::Atom* const atom) const override;
+
+    // reimplemented AbstractSceneTool methods
+    QPixmap getCursorPixmap() const override;
 };
 
 /**
@@ -64,7 +68,8 @@ class SKETCHER_API DrawIncrementingRGroupSceneTool
     : public AbstractDrawRGroupSceneTool
 {
   public:
-    DrawIncrementingRGroupSceneTool(Scene* scene, MolModel* mol_model);
+    DrawIncrementingRGroupSceneTool(const Fonts& fonts, Scene* scene,
+                                    MolModel* mol_model);
 
   protected:
     // reimplemented AbstractDrawRGroupSceneTool methods
@@ -74,6 +79,7 @@ class SKETCHER_API DrawIncrementingRGroupSceneTool
     // reimplemented AbstractDrawSceneTool methods
     bool
     shouldDrawBondForClickOnAtom(const RDKit::Atom* const atom) const override;
+    QPixmap getCursorPixmap() const override;
 };
 
 } // namespace sketcher

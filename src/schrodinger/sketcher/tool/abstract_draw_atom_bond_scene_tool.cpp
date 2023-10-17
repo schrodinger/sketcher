@@ -23,7 +23,7 @@ namespace sketcher
 HintBondItem::HintBondItem(QGraphicsItem* parent) : QGraphicsLineItem(parent)
 {
     setZValue(static_cast<qreal>(ZOrder::HINT));
-    setPen(QPen(HINT_COLOR));
+    setPen(QPen(STRUCTURE_HINT_COLOR));
     setVisible(false);
 }
 

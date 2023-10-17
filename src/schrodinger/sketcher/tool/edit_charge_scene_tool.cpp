@@ -2,8 +2,10 @@
 
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include <algorithm>
 
 namespace schrodinger
@@ -31,6 +33,14 @@ void EditChargeSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
         new_charge = std::clamp(new_charge, MIN_ATOM_CHARGE, MAX_ATOM_CHARGE);
         m_mol_model->setAtomCharge(atom, new_charge);
     }
+}
+
+QPixmap EditChargeSceneTool::getCursorPixmap() const
+{
+    QString path = m_charge_tool == ChargeTool::INCREASE
+                       ? ":/icons/atom_charge_plus.svg"
+                       : ":/icons/atom_charge_minus.svg";
+    return cursor_hint_from_svg(path);
 }
 
 } // namespace sketcher

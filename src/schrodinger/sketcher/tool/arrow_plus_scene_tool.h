@@ -23,6 +23,7 @@ class SKETCHER_API ArrowPlusSceneTool : public AbstractSceneTool
 
     // reimplemented AbstractSceneTool method
     void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap getCursorPixmap() const override;
 
   protected:
     NonMolecularType m_type;

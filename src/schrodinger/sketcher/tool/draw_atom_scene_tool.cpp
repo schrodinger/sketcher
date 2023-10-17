@@ -7,17 +7,23 @@
 #include <GraphMol/QueryAtom.h>
 #include <GraphMol/QueryOps.h>
 
+#include <QPainter>
+
 #include "schrodinger/sketcher/model/mol_model.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
 
-AbstractDrawAtomSceneTool::AbstractDrawAtomSceneTool(Scene* scene,
+AbstractDrawAtomSceneTool::AbstractDrawAtomSceneTool(const Fonts& fonts,
+                                                     Scene* scene,
                                                      MolModel* mol_model) :
-    AbstractDrawSceneTool(scene, mol_model)
+    AbstractDrawSceneTool(scene, mol_model),
+    m_fonts(&fonts)
 {
 }
 
@@ -37,9 +43,10 @@ void AbstractDrawAtomSceneTool::addBond(const RDKit::Atom* const start_atom,
     m_mol_model->addBond(start_atom, end_atom, RDKit::Bond::BondType::SINGLE);
 }
 
-DrawElementSceneTool::DrawElementSceneTool(Element element, Scene* scene,
+DrawElementSceneTool::DrawElementSceneTool(const Element element,
+                                           const Fonts& fonts, Scene* scene,
                                            MolModel* mol_model) :
-    AbstractDrawAtomSceneTool(scene, mol_model),
+    AbstractDrawAtomSceneTool(fonts, scene, mol_model),
     m_element(element)
 {
 }
@@ -71,10 +78,19 @@ void DrawElementSceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                               RDKit::Bond::BondDir::NONE);
 }
 
+QPixmap DrawElementSceneTool::getCursorPixmap() const
+{
+    auto elem_name =
+        atomic_number_to_symbol(static_cast<unsigned int>(m_element));
+    auto qelem_name = QString::fromStdString(elem_name);
+    return render_text_to_pixmap(qelem_name, m_fonts->m_cursor_hint_font,
+                                 CURSOR_HINT_COLOR);
+}
+
 DrawAtomQuerySceneTool::DrawAtomQuerySceneTool(AtomQuery atom_query,
-                                               Scene* scene,
+                                               const Fonts& fonts, Scene* scene,
                                                MolModel* mol_model) :
-    AbstractDrawAtomSceneTool(scene, mol_model)
+    AbstractDrawAtomSceneTool(fonts, scene, mol_model)
 {
     m_query_func = ATOM_TOOL_QUERY_MAP.at(atom_query);
     auto query = getQuery();
@@ -112,6 +128,14 @@ void DrawAtomQuerySceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
     m_mol_model->addAtomChain(getQuery(), {pos1, pos2}, nullptr,
                               RDKit::Bond::BondType::SINGLE,
                               RDKit::Bond::BondDir::NONE);
+}
+
+QPixmap DrawAtomQuerySceneTool::getCursorPixmap() const
+{
+    QFont italics = m_fonts->m_cursor_hint_font;
+    italics.setItalic(true);
+    return render_text_to_pixmap(QString::fromStdString(m_query_type), italics,
+                                 CURSOR_HINT_COLOR);
 }
 
 } // namespace sketcher

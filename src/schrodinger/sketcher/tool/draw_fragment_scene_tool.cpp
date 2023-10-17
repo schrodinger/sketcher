@@ -78,8 +78,8 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
     m_atom_item_settings(atom_item_settings),
     m_bond_item_settings(bond_item_settings)
 {
-    m_atom_item_settings.setMonochromeColorScheme(HINT_COLOR);
-    m_bond_item_settings.m_color = HINT_COLOR;
+    m_atom_item_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
+    m_bond_item_settings.m_color = STRUCTURE_HINT_COLOR;
     m_bond_item_settings.m_bond_width = FRAGMENT_HINT_BOND_WIDTH;
 
     // We'll set this to visible once the mouse is over the scene

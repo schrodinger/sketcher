@@ -9,6 +9,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 namespace schrodinger
@@ -21,7 +22,7 @@ HintChainItem::HintChainItem(QGraphicsItem* parent) : QGraphicsItemGroup(parent)
     setZValue(static_cast<qreal>(ZOrder::HINT));
     setVisible(false);
 
-    m_bonds_item.setPen(QPen(HINT_COLOR));
+    m_bonds_item.setPen(QPen(STRUCTURE_HINT_COLOR));
     m_label_item.setFont(QFont(FONT_NAME, DRAW_CHAIN_FONT_SIZE));
 
     addToGroup(&m_bonds_item);
@@ -98,6 +99,11 @@ std::pair<QPointF, const RDKit::Atom*> DrawChainSceneTool::getStartPosAndAtom()
         atom = atom_item->getAtom();
     }
     return {start_pos, atom};
+}
+
+QPixmap DrawChainSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/bond_chain.svg");
 }
 
 QList<QPointF> get_bond_chain_atom_coords(QPointF start, QPointF end)

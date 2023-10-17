@@ -123,12 +123,24 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void onMouseLeave();
 
+    /**
+     * Emit a signal notifying the view of the current left-button scene tool's
+     * cursor
+     */
+    void requestCursorHintUpdate();
+
   signals:
     void importTextRequested(const std::string& text,
                              rdkit_extensions::Format format);
 
     void viewportTranslationRequested(const QPointF& start_screen_position,
                                       const QPointF& end_screen_position);
+
+    /**
+     * Notify the view of the appropriate cursor hint for the current
+     * left-button scene tool
+     */
+    void newCursorHintRequested(const QPixmap& pixmap);
 
   protected:
     using QGraphicsScene::clear;

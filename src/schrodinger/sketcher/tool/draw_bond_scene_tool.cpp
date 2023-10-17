@@ -8,6 +8,7 @@
 
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 namespace schrodinger
@@ -51,7 +52,7 @@ DrawBondSceneTool::DrawBondSceneTool(BondTool bond_tool, Scene* scene,
                                      MolModel* mol_model) :
     AbstractDrawBondSceneTool(scene, mol_model)
 {
-    std::tie(m_bond_type, m_bond_dir, m_flippable) =
+    std::tie(m_bond_type, m_bond_dir, m_flippable, m_cursor_hint_path) =
         BOND_TOOL_BOND_MAP.at(bond_tool);
     m_cycle_on_click = bond_tool == BondTool::SINGLE;
 }
@@ -108,9 +109,16 @@ void DrawBondSceneTool::addBond(const RDKit::Atom* const start_atom,
     m_mol_model->addBond(start_atom, end_atom, m_bond_type, m_bond_dir);
 }
 
-DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool, Scene* scene,
+QPixmap DrawBondSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(m_cursor_hint_path);
+}
+
+DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool,
+                                               const Fonts& fonts, Scene* scene,
                                                MolModel* mol_model) :
-    AbstractDrawBondSceneTool(scene, mol_model)
+    AbstractDrawBondSceneTool(scene, mol_model),
+    m_fonts(&fonts)
 {
     std::tie(m_query_type, m_query_func) = BOND_TOOL_QUERY_MAP.at(bond_tool);
 }
@@ -150,6 +158,13 @@ void DrawBondQuerySceneTool::addBond(const RDKit::Atom* const start_atom,
                                      const RDKit::Atom* const end_atom)
 {
     m_mol_model->addBond(start_atom, end_atom, getQuery());
+}
+
+QPixmap DrawBondQuerySceneTool::getCursorPixmap() const
+{
+    auto text = QString::fromStdString(m_query_type);
+    return render_text_to_pixmap(text, m_fonts->m_cursor_hint_font,
+                                 CURSOR_HINT_COLOR);
 }
 
 } // namespace sketcher

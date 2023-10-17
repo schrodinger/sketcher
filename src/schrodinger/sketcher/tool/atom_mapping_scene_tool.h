@@ -43,6 +43,7 @@ class SKETCHER_API AtomMappingSceneTool
     void onDragMove(QGraphicsSceneMouseEvent* const event) override;
     void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
     std::vector<QGraphicsItem*> getGraphicsItems() override;
+    QPixmap getCursorPixmap() const override;
 
     /**
      * update the arrow items

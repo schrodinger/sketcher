@@ -38,6 +38,7 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
     virtual void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
 
     virtual void onStructureUpdated() override;
+    QPixmap getCursorPixmap() const override;
 
   protected:
     void rotateRotationItem(QGraphicsSceneMouseEvent* const event);

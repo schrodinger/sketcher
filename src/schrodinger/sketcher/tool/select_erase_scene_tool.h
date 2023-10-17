@@ -99,6 +99,7 @@ class SKETCHER_API LassoSelectSceneTool
     void onMousePress(QGraphicsSceneMouseEvent* const event) override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap getCursorPixmap() const override;
 };
 
 /**
@@ -114,6 +115,7 @@ template <typename T> class SKETCHER_API ShapeSelectSceneTool
     ShapeSelectSceneTool(Scene* scene, MolModel* mol_model);
     virtual ~ShapeSelectSceneTool() = default;
     void onDragMove(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap getCursorPixmap() const override;
 };
 
 typedef ShapeSelectSceneTool<RectSelectionItem> RectSelectSceneTool;
@@ -126,6 +128,7 @@ class SKETCHER_API EraseSceneTool : public RectSelectSceneTool
   public:
     EraseSceneTool(Scene* scene, MolModel* mol_model);
     void onMouseDoubleClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap getCursorPixmap() const override;
 
   protected:
     void onSelectionMade(const QList<QGraphicsItem*>& items,

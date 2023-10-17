@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/molviewer/view.h"
 
+#include <algorithm>
+
 #include <QGraphicsScene>
 #include <QPainter>
 #include <QResizeEvent>
@@ -13,7 +15,7 @@
 #include <QWheelEvent>
 
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 
@@ -216,6 +218,30 @@ void View::leaveEvent(QEvent* event)
     QGraphicsScene* cur_scene = scene();
     if (auto scene = dynamic_cast<Scene*>(cur_scene)) {
         scene->onMouseLeave();
+    }
+}
+
+void View::onNewCursorHintRequested(const QPixmap& cursor_hint)
+{
+    if (cursor_hint.isNull()) {
+        unsetCursor();
+    } else {
+        auto arrow = get_arrow_cursor_pixmap();
+        // Without the +1, the right-most column and bottom-most row of inset's
+        // pixels are cut off
+        int combined_width =
+            std::max(arrow.width(), CURSOR_HINT_X + cursor_hint.width() + 1);
+        int combined_height =
+            std::max(arrow.height(), CURSOR_HINT_Y + cursor_hint.height() + 1);
+        QPixmap combined = QPixmap(combined_width, combined_height);
+        combined.fill(Qt::transparent);
+        {
+            QPainter painter(&combined);
+            painter.drawPixmap(0, 0, arrow);
+            painter.drawPixmap(CURSOR_HINT_X, CURSOR_HINT_Y, cursor_hint);
+        } // destroy the painter to finish painting
+        QCursor cursor(combined, CURSOR_HOTSPOT_X, CURSOR_HOTSPOT_Y);
+        setCursor(cursor);
     }
 }
 

@@ -4,6 +4,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
@@ -16,7 +17,7 @@ HintSquiggleItem::HintSquiggleItem(QGraphicsItem* parent) :
     QGraphicsPathItem(parent)
 {
     setZValue(static_cast<qreal>(ZOrder::HINT));
-    setPen(QPen(HINT_COLOR));
+    setPen(QPen(STRUCTURE_HINT_COLOR));
     setVisible(false);
 }
 
@@ -31,6 +32,11 @@ std::vector<QGraphicsItem*> DrawAttachmentPointSceneTool::getGraphicsItems()
     auto items = AbstractDrawSceneTool::getGraphicsItems();
     items.push_back(&m_hint_squiggle_item);
     return items;
+}
+
+QPixmap DrawAttachmentPointSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/enumeration_attachment_point.svg");
 }
 
 void DrawAttachmentPointSceneTool::onBondClicked(const RDKit::Bond* const bond)

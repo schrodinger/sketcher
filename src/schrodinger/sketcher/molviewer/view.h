@@ -48,6 +48,12 @@ class SKETCHER_API View : public QGraphicsView
     void translateViewportFromScreenCoords(const QPointF& start_screen_position,
                                            const QPointF& end_screen_position);
 
+    /**
+     * Update the cursor when the Scene requests a new cursor hint
+     * @param cursor_hint A pixmap showing the desired cursor hint
+     */
+    void onNewCursorHintRequested(const QPixmap& cursor_hint);
+
   signals:
     void resized();
 

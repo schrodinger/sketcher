@@ -18,34 +18,42 @@ namespace sketcher
 {
 
 // map of bond tool to {bond type, bond stereochemistry, whether the bond is
-// flippable (i.e. does the bond change meaningfully if we swap the start
-// and end atoms)}
+// flippable (i.e. does the bond change meaningfully if we swap the start and
+// end atoms), icon for the cursor hint}
 const std::unordered_map<
-    BondTool, std::tuple<RDKit::Bond::BondType, RDKit::Bond::BondDir, bool>>
+    BondTool,
+    std::tuple<RDKit::Bond::BondType, RDKit::Bond::BondDir, bool, QString>>
     BOND_TOOL_BOND_MAP = {
         {BondTool::SINGLE,
-         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE, false}},
+         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::NONE, false,
+          ":/icons/bond_single.svg"}},
         {BondTool::DOUBLE,
-         {RDKit::Bond::BondType::DOUBLE, RDKit::Bond::BondDir::NONE, false}},
+         {RDKit::Bond::BondType::DOUBLE, RDKit::Bond::BondDir::NONE, false,
+          ":/icons/bond_double.svg"}},
         {BondTool::TRIPLE,
-         {RDKit::Bond::BondType::TRIPLE, RDKit::Bond::BondDir::NONE, false}},
+         {RDKit::Bond::BondType::TRIPLE, RDKit::Bond::BondDir::NONE, false,
+          ":/icons/bond_triple.svg"}},
         {BondTool::COORDINATE,
-         {RDKit::Bond::BondType::DATIVE, RDKit::Bond::BondDir::NONE, true}},
+         {RDKit::Bond::BondType::DATIVE, RDKit::Bond::BondDir::NONE, true,
+          ":/icons/bond_coordinate.svg"}},
         {BondTool::ZERO,
-         {RDKit::Bond::BondType::ZERO, RDKit::Bond::BondDir::NONE, false}},
+         {RDKit::Bond::BondType::ZERO, RDKit::Bond::BondDir::NONE, false,
+          ":/icons/bond_zero.svg"}},
         {BondTool::SINGLE_UP,
-         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINWEDGE,
-          true}},
+         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINWEDGE, true,
+          ":/icons/bond_up.svg"}},
         {BondTool::SINGLE_DOWN,
-         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINDASH,
-          true}},
+         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::BEGINDASH, true,
+          ":/icons/bond_down.svg"}},
         {BondTool::AROMATIC,
-         {RDKit::Bond::BondType::AROMATIC, RDKit::Bond::BondDir::NONE, false}},
+         {RDKit::Bond::BondType::AROMATIC, RDKit::Bond::BondDir::NONE, false,
+          ":/icons/bond_aromatic.svg"}},
         {BondTool::SINGLE_EITHER,
-         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::UNKNOWN, true}},
+         {RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondDir::UNKNOWN, true,
+          ":/icons/bond_wiggly.svg"}},
         {BondTool::DOUBLE_EITHER,
          {RDKit::Bond::BondType::DOUBLE, RDKit::Bond::BondDir::EITHERDOUBLE,
-          true}},
+          true, ":/icons/bond_crossed.svg"}},
 };
 
 const std::unordered_map<AtomQuery,

@@ -13,6 +13,7 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
 
 namespace schrodinger
@@ -214,6 +215,11 @@ void LassoSelectSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
     m_select_item.clearPath();
 }
 
+QPixmap LassoSelectSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/select_lasso.svg");
+}
+
 template <typename T>
 ShapeSelectSceneTool<T>::ShapeSelectSceneTool(Scene* scene,
                                               MolModel* mol_model) :
@@ -228,6 +234,11 @@ void ShapeSelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* event)
         rect_for_points(this->m_mouse_press_scene_pos, event->scenePos());
     this->m_select_item.setRect(rect);
     SelectSceneTool<T>::onDragMove(event);
+}
+
+template <typename T> QPixmap ShapeSelectSceneTool<T>::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/select_square.svg");
 }
 
 EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :
@@ -249,6 +260,12 @@ void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
 void EraseSceneTool::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
 {
     // disable the select tool double-click behavior
+}
+
+QPixmap EraseSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/mode_erase.svg",
+                                /* recolor = */ false);
 }
 
 } // namespace sketcher

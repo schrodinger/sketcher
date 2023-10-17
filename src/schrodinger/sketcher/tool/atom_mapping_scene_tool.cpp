@@ -5,6 +5,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 
 namespace schrodinger
 {
@@ -14,17 +15,17 @@ namespace sketcher
 ArrowHeadItem::ArrowHeadItem()
 {
     setZValue(static_cast<qreal>(ZOrder::HINT));
-    auto pen = QPen(HINT_COLOR);
+    auto pen = QPen(STRUCTURE_HINT_COLOR);
     pen.setStyle(Qt::SolidLine);
     setPen(pen);
-    setBrush(QBrush(HINT_COLOR));
+    setBrush(QBrush(STRUCTURE_HINT_COLOR));
     setVisible(false);
 }
 
 ArrowLineItem::ArrowLineItem()
 {
     setZValue(static_cast<qreal>(ZOrder::HINT));
-    auto pen = QPen(HINT_COLOR);
+    auto pen = QPen(STRUCTURE_HINT_COLOR);
     pen.setStyle(Qt::DotLine);
     setPen(pen);
     setVisible(false);
@@ -188,6 +189,14 @@ int AtomMappingSceneTool::findLowestAvailableMappingNumber() const
         lowest_available_mapping_number++;
     }
     return lowest_available_mapping_number;
+}
+
+QPixmap AtomMappingSceneTool::getCursorPixmap() const
+{
+    QString path = m_action == MappingAction::ADD
+                       ? ":/icons/reaction_map_atoms.svg"
+                       : ":/icons/reaction_unmap_atoms.svg";
+    return cursor_hint_from_svg(path);
 }
 
 } // namespace sketcher

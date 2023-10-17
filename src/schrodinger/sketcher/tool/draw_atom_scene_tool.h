@@ -7,6 +7,7 @@
 #include <GraphMol/QueryAtom.h>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/tool/abstract_draw_atom_bond_scene_tool.h"
 
 namespace RDKit
@@ -31,9 +32,12 @@ namespace sketcher
 class SKETCHER_API AbstractDrawAtomSceneTool : public AbstractDrawSceneTool
 {
   public:
-    AbstractDrawAtomSceneTool(Scene* scene, MolModel* mol_model);
+    AbstractDrawAtomSceneTool(const Fonts& fonts, Scene* scene,
+                              MolModel* mol_model);
 
   protected:
+    const Fonts* m_fonts;
+
     // reimplemented AbstractDrawSceneTool methods
     void onBondClicked(const RDKit::Bond* const bond) override;
     void onEmptySpaceClicked(const RDGeom::Point3D& pos) override;
@@ -47,7 +51,8 @@ class SKETCHER_API AbstractDrawAtomSceneTool : public AbstractDrawSceneTool
 class SKETCHER_API DrawElementSceneTool : public AbstractDrawAtomSceneTool
 {
   public:
-    DrawElementSceneTool(Element element, Scene* scene, MolModel* mol_model);
+    DrawElementSceneTool(const Element element, const Fonts& fonts,
+                         Scene* scene, MolModel* mol_model);
 
   protected:
     Element m_element;
@@ -60,6 +65,9 @@ class SKETCHER_API DrawElementSceneTool : public AbstractDrawAtomSceneTool
                  const RDKit::Atom* const bound_to = nullptr) override;
     void addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                           const RDGeom::Point3D& pos2) override;
+
+    // reimplemented AbstractSceneTool method
+    QPixmap getCursorPixmap() const override;
 };
 
 /**
@@ -68,8 +76,8 @@ class SKETCHER_API DrawElementSceneTool : public AbstractDrawAtomSceneTool
 class SKETCHER_API DrawAtomQuerySceneTool : public AbstractDrawAtomSceneTool
 {
   public:
-    DrawAtomQuerySceneTool(AtomQuery atom_query, Scene* scene,
-                           MolModel* mol_model);
+    DrawAtomQuerySceneTool(AtomQuery atom_query, const Fonts& fonts,
+                           Scene* scene, MolModel* mol_model);
 
   protected:
     /**
@@ -92,6 +100,7 @@ class SKETCHER_API DrawAtomQuerySceneTool : public AbstractDrawAtomSceneTool
                  const RDKit::Atom* const bound_to = nullptr) override;
     void addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                           const RDGeom::Point3D& pos2) override;
+    QPixmap getCursorPixmap() const override;
 };
 
 } // namespace sketcher

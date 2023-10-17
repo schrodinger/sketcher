@@ -9,6 +9,8 @@
 
 #include "schrodinger/sketcher/definitions.h"
 
+class QPixmap;
+
 namespace schrodinger
 {
 namespace sketcher
@@ -101,8 +103,12 @@ class SKETCHER_API AbstractSceneTool
      */
     virtual std::vector<QGraphicsItem*> getGraphicsItems();
 
-    // TODO
-    // QCursor getCursor();
+    /**
+     * @return a pixmap of a hint image to attach to the mouse cursor.  The
+     * default implementation returns a null pixmap, which clears the cursor
+     * hint.
+     */
+    virtual QPixmap getCursorPixmap() const;
 
     /**
      * Called when the structure of the molecule changes. It does nothing

@@ -8,7 +8,9 @@
 #include <QFont>
 #include <QGraphicsSceneMouseEvent>
 #include <QMimeData>
+#include <QPainter>
 #include <QPainterPath>
+#include <QPixmap>
 #include <QString>
 #include <QTransform>
 #include <QUndoStack>
@@ -595,12 +597,12 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         auto atom_tool = m_sketcher_model->getAtomTool();
         if (atom_tool == AtomTool::ELEMENT) {
             auto element = m_sketcher_model->getElement();
-            return std::make_shared<DrawElementSceneTool>(element, this,
-                                                          m_mol_model);
+            return std::make_shared<DrawElementSceneTool>(element, m_fonts,
+                                                          this, m_mol_model);
         } else { // atom_tool == AtomTool::AtomQuery
             auto atom_query = m_sketcher_model->getAtomQuery();
-            return std::make_shared<DrawAtomQuerySceneTool>(atom_query, this,
-                                                            m_mol_model);
+            return std::make_shared<DrawAtomQuerySceneTool>(atom_query, m_fonts,
+                                                            this, m_mol_model);
         }
     } else if (draw_tool == DrawTool::BOND) {
         auto bond_tool = m_sketcher_model->getBondTool();
@@ -610,8 +612,8 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                                                        m_mol_model);
         } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
             // a query bond
-            return std::make_shared<DrawBondQuerySceneTool>(bond_tool, this,
-                                                            m_mol_model);
+            return std::make_shared<DrawBondQuerySceneTool>(bond_tool, m_fonts,
+                                                            this, m_mol_model);
         } else if (bond_tool == BondTool::ATOM_CHAIN) {
             return std::make_shared<DrawChainSceneTool>(this, m_mol_model);
         }
@@ -619,11 +621,11 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         switch (m_sketcher_model->getEnumerationTool()) {
             case EnumerationTool::NEW_RGROUP:
                 return std::make_shared<DrawIncrementingRGroupSceneTool>(
-                    this, m_mol_model);
+                    m_fonts, this, m_mol_model);
             case EnumerationTool::EXISTING_RGROUP:
                 return std::make_shared<DrawRGroupSceneTool>(
                     m_sketcher_model->getValueInt(ModelKey::RGROUP_NUMBER),
-                    this, m_mol_model);
+                    m_fonts, this, m_mol_model);
             case EnumerationTool::ATTACHMENT_POINT:
                 return std::make_shared<DrawAttachmentPointSceneTool>(
                     this, m_mol_model);
@@ -669,6 +671,13 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
     for (auto* item : m_left_button_scene_tool->getGraphicsItems()) {
         addItem(item);
     }
+    requestCursorHintUpdate();
+}
+
+void Scene::requestCursorHintUpdate()
+{
+    auto cursor_hint = m_left_button_scene_tool->getCursorPixmap();
+    emit newCursorHintRequested(cursor_hint);
 }
 
 Scene::SelectionChangeSignalBlocker::SelectionChangeSignalBlocker(

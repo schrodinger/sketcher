@@ -8,6 +8,7 @@
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 namespace schrodinger
@@ -15,9 +16,10 @@ namespace schrodinger
 namespace sketcher
 {
 
-AbstractDrawRGroupSceneTool::AbstractDrawRGroupSceneTool(Scene* scene,
+AbstractDrawRGroupSceneTool::AbstractDrawRGroupSceneTool(const Fonts& fonts,
+                                                         Scene* scene,
                                                          MolModel* mol_model) :
-    AbstractDrawAtomSceneTool(scene, mol_model)
+    AbstractDrawAtomSceneTool(fonts, scene, mol_model)
 {
 }
 
@@ -38,9 +40,10 @@ void AbstractDrawRGroupSceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
     m_mol_model->addRGroupChain(getRGroupNums(2), {pos1, pos2});
 }
 
-DrawRGroupSceneTool::DrawRGroupSceneTool(const int r_group_num, Scene* scene,
+DrawRGroupSceneTool::DrawRGroupSceneTool(const int r_group_num,
+                                         const Fonts& fonts, Scene* scene,
                                          MolModel* mol_model) :
-    AbstractDrawRGroupSceneTool(scene, mol_model),
+    AbstractDrawRGroupSceneTool(fonts, scene, mol_model),
     m_r_group_num(r_group_num)
 {
 }
@@ -58,9 +61,16 @@ bool DrawRGroupSceneTool::shouldDrawBondForClickOnAtom(
     return r_group_num.has_value() && r_group_num.value() == m_r_group_num;
 }
 
+QPixmap DrawRGroupSceneTool::getCursorPixmap() const
+{
+    return render_text_to_pixmap(QString("R%1").arg(m_r_group_num),
+                                 m_fonts->m_cursor_hint_font,
+                                 CURSOR_HINT_COLOR);
+}
+
 DrawIncrementingRGroupSceneTool::DrawIncrementingRGroupSceneTool(
-    Scene* scene, MolModel* mol_model) :
-    AbstractDrawRGroupSceneTool(scene, mol_model)
+    const Fonts& fonts, Scene* scene, MolModel* mol_model) :
+    AbstractDrawRGroupSceneTool(fonts, scene, mol_model)
 {
 }
 
@@ -74,6 +84,12 @@ bool DrawIncrementingRGroupSceneTool::shouldDrawBondForClickOnAtom(
     const RDKit::Atom* const atom) const
 {
     return false;
+}
+
+QPixmap DrawIncrementingRGroupSceneTool::getCursorPixmap() const
+{
+    return render_text_to_pixmap("R+", m_fonts->m_cursor_hint_font,
+                                 CURSOR_HINT_COLOR);
 }
 
 } // namespace sketcher

@@ -3,6 +3,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 
 namespace schrodinger
 {
@@ -206,6 +207,11 @@ RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
 void MoveRotateSceneTool::onStructureUpdated()
 {
     updateMoveSelectionItem();
+}
+
+QPixmap MoveRotateSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/select_move_rotate.svg");
 }
 
 } // namespace sketcher

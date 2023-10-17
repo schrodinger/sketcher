@@ -1,6 +1,14 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 
+#include <QBitmap>
+#include <QColor>
 #include <QGraphicsItem>
+#include <QPixmap>
+#include <QPainter>
+#include <QPen>
+#include <QRect>
+#include <QRegion>
+#include <QSvgRenderer>
 
 #include <GraphMol/ROMol.h>
 
@@ -82,6 +90,86 @@ void update_conf_for_mol_graphics_items(const QList<QGraphicsItem*>& atom_items,
         auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
         bond_item->updateCachedData();
     }
+}
+
+QPixmap render_text_to_pixmap(const QString& text, const QFont& font,
+                              const QColor& color)
+{
+    auto fm = QFontMetrics(font);
+    auto bounding_rect = fm.boundingRect(text);
+    // Add an extra pixel of width and height to the bounding rect so that we
+    // don't cut off any of the text
+    bounding_rect.adjust(0, 0, 1, 1);
+    auto pixmap = QPixmap(bounding_rect.size());
+    pixmap.fill(Qt::transparent);
+    // pixmaps always start at (0, 0), so make sure the bounding rect starts
+    // there too
+    bounding_rect.moveTopLeft({0, 0});
+    {
+        auto painter = QPainter(&pixmap);
+        painter.setFont(font);
+        painter.setPen({color});
+        painter.drawText(bounding_rect, Qt::AlignLeft | Qt::AlignTop, text);
+    } // end the painter
+    return pixmap;
+}
+
+QPixmap cursor_hint_from_svg(const QString& path, const bool recolor)
+{
+    QSvgRenderer renderer(path);
+    renderer.setAspectRatioMode(Qt::KeepAspectRatio);
+    auto size = renderer.defaultSize();
+    size.scale(CURSOR_HINT_IMAGE_SIZE, CURSOR_HINT_IMAGE_SIZE,
+               Qt::KeepAspectRatio);
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::transparent);
+    {
+        // paint the SVG image to our pixmap
+        QPainter painter(&pixmap);
+        painter.setRenderHints(QPainter::Antialiasing |
+                               QPainter::SmoothPixmapTransform);
+        renderer.render(&painter, pixmap.rect());
+    } // end the painter
+    if (recolor) {
+        // Create a mask denoting the dark gray pixels.  createMaskFromColor
+        // requires that colors match exactly, so we first convert the image to
+        // 8-bit color depth so that the mask won't miss pixels that are
+        // imperceptibly different shades of gray.
+        auto image = pixmap.toImage();
+        image.convertTo(QImage::Format_Indexed8);
+        auto image_mask =
+            image.createMaskFromColor(TOOL_BUTTON_DARK_GRAY, Qt::MaskOutColor);
+        auto mask = QBitmap::fromImage(image_mask);
+
+        // Use the mask to paint CURSOR_HINT_COLOR over all gray pixels, but
+        // keep the existing alpha channel data
+        QPainter painter(&pixmap);
+        painter.setPen(QColor(CURSOR_HINT_COLOR));
+        painter.setRenderHints(QPainter::Antialiasing |
+                               QPainter::SmoothPixmapTransform);
+        painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+        painter.drawPixmap(pixmap.rect(), mask);
+    } // end the painter
+
+    // Crop off the empty border of the image.  Otherwise the hint will wind up
+    // too far away from the cursor
+    auto bounding_rect = QRegion(pixmap.mask()).boundingRect();
+    return pixmap.copy(bounding_rect);
+}
+
+QPixmap get_arrow_cursor_pixmap()
+{
+    QSvgRenderer renderer(ARROW_CURSOR_PATH);
+    QPixmap pixmap(renderer.defaultSize());
+    pixmap.fill(Qt::transparent);
+    {
+        // paint the SVG image to our pixmap
+        QPainter painter(&pixmap);
+        painter.setRenderHints(QPainter::Antialiasing |
+                               QPainter::SmoothPixmapTransform);
+        renderer.render(&painter, pixmap.rect());
+    } // end the painter
+    return pixmap;
 }
 
 } // namespace sketcher

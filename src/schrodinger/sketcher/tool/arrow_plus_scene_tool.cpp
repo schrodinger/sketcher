@@ -2,7 +2,9 @@
 
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 
 namespace schrodinger
 {
@@ -20,6 +22,14 @@ void ArrowPlusSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
 {
     auto coords = to_mol_xy(event->scenePos());
     m_mol_model->addNonMolecularObject(m_type, coords);
+}
+
+QPixmap ArrowPlusSceneTool::getCursorPixmap() const
+{
+    QString path = m_type == NonMolecularType::RXN_ARROW
+                       ? ":/icons/reaction_arrow.svg"
+                       : ":/icons/reaction_plus.svg";
+    return cursor_hint_from_svg(path);
 }
 
 } // namespace sketcher

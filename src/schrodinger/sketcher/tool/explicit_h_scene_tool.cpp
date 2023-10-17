@@ -2,6 +2,7 @@
 
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 
 namespace schrodinger
@@ -23,6 +24,11 @@ void ExplicitHsSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
         auto atom = atom_item->getAtom();
         m_mol_model->updateExplicitHs(ExplicitHActions::TOGGLE, {atom});
     }
+}
+
+QPixmap ExplicitHsSceneTool::getCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/atom_explicit_H.svg");
 }
 
 } // namespace sketcher
