@@ -280,6 +280,16 @@ Scene::getInteractiveItems(const InteractiveItemFlagType types) const
     return interactive_items;
 }
 
+QRectF Scene::getInteractiveItemsBoundingRect(
+    const InteractiveItemFlagType types) const
+{
+    QRectF bounding_rect;
+    const auto items = getInteractiveItems(types);
+    for (QGraphicsItem* item : items)
+        bounding_rect |= item->sceneBoundingRect();
+    return bounding_rect;
+}
+
 void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
 {
     // remove all interactive items and reset the rdkit molecule; this will

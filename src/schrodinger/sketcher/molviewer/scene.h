@@ -82,6 +82,15 @@ class SKETCHER_API Scene : public QGraphicsScene
         const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
 
     /**
+     * Get the bounding rectangle of all interactive items in the scene of a
+     * specified type
+     * @param types The subset of interactive items to return.  Defaults to
+     * returning all interactive items.
+     */
+    QRectF getInteractiveItemsBoundingRect(
+        const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
+
+    /**
      * Get the topmost interactive item at a given position.  See the
      * getInteractiveItems docstring for an explanation of "interactive" items.
      *

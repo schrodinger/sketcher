@@ -129,12 +129,12 @@ void View::enlargeSceneIfNeeded()
 
 void View::adjustSceneAroundItems()
 {
-    QGraphicsScene* cur_scene = scene();
+    Scene* cur_scene = dynamic_cast<Scene*>(scene());
     if (!cur_scene) {
         return;
     }
-    // get the bounding rectangle of all items in the scene
-    QRectF items_bounding_rect = cur_scene->itemsBoundingRect();
+    // get the bounding rectangle of all molecular items in the scene
+    QRectF items_bounding_rect = cur_scene->getInteractiveItemsBoundingRect();
     if (!items_bounding_rect.isValid()) {
         return;
     }
@@ -152,12 +152,12 @@ void View::wheelEvent(QWheelEvent* event)
 
 void View::fitToScreen()
 {
-    QGraphicsScene* cur_scene = scene();
+    Scene* cur_scene = dynamic_cast<Scene*>(scene());
     if (!cur_scene) {
         return;
     }
 
-    QRectF rec = cur_scene->itemsBoundingRect();
+    QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
     // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
     // molecule too close to the border
     rec.adjust(-rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
