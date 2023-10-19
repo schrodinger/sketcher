@@ -135,12 +135,7 @@ const RDKit::ROMol* MolModel::getMol() const
     return &m_mol;
 }
 
-std::string MolModel::getMolText(const Format format) const
-{
-    return rdkit_extensions::to_string(*getMol(), format);
-}
-
-std::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
+boost::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
 {
     if (!m_arrow.has_value()) {
         throw std::runtime_error("No reaction arrow found.");
@@ -149,7 +144,7 @@ std::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
     auto arrow_x = m_arrow->getCoords().x;
     auto all_mols =
         RDKit::MolOps::getMolFrags(m_mol, /* sanitizeFrags = */ false);
-    auto reaction = std::make_shared<RDKit::ChemicalReaction>();
+    auto reaction = boost::make_shared<RDKit::ChemicalReaction>();
     for (auto cur_mol : all_mols) {
         auto cur_centroid = find_centroid(*cur_mol);
         if (cur_centroid.x <= arrow_x) {
@@ -162,11 +157,6 @@ std::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
         throw std::runtime_error("Incomplete reactions cannot be copied.");
     }
     return reaction;
-}
-
-std::string MolModel::getReactionText(const Format format) const
-{
-    return rdkit_extensions::to_string(*getReaction(), format);
 }
 
 bool MolModel::isEmpty() const
@@ -614,19 +604,6 @@ void MolModel::addReaction(const RDKit::ChemicalReaction& reaction)
     }
     auto cmd_func = [this, reaction]() { addReactionCommandFunc(reaction); };
     doCommandUsingSnapshots(cmd_func, "Add reaction", WhatChanged::ALL);
-}
-
-void MolModel::importFromText(const std::string& text, Format format)
-{
-    auto mol_or_reaction = text_to_mol_or_reaction(text, format);
-    if (auto* reaction =
-            std::get_if<boost::shared_ptr<RDKit::ChemicalReaction>>(
-                &mol_or_reaction)) {
-        addReaction(**reaction);
-    } else {
-        auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
-        addMol(*mol);
-    }
 }
 
 void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,

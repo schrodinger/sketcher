@@ -145,22 +145,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     const RDKit::ROMol* getMol() const;
 
     /**
-     * @param format format to convert to
-     * @return serialized representation of the sketcher contents
-     */
-    std::string getMolText(const rdkit_extensions::Format format) const;
-
-    /**
      * @return The RDKit reaction contained in this model
      * @throw std::runtime_error if no reaction arrow is present
      */
-    std::shared_ptr<RDKit::ChemicalReaction> getReaction() const;
-
-    /**
-     * @return The reaction text in the specified format
-     * @throw std::runtime_error if no reaction arrow is present
-     */
-    std::string getReactionText(const rdkit_extensions::Format format) const;
+    boost::shared_ptr<RDKit::ChemicalReaction> getReaction() const;
 
     /**
      * @return whether the model is completely empty, i.e. no atoms, bonds, or
@@ -499,17 +487,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @throw std::runtime_error if the model already contains a reaction arrow
      */
     void addReaction(const RDKit::ChemicalReaction& reaction);
-
-    /**
-     * Create either a molecule or a reaction, as appropriate, from a text
-     * string and load that into the scene.  Atomic coordinates will be
-     * automatically generated using coordgen.
-     *
-     * @param text input data to load
-     * @param format format to parse
-     */
-    void importFromText(const std::string& text,
-                        rdkit_extensions::Format format);
 
     /**
      * Undoably add a fragment and (optionally) bond it to the existing

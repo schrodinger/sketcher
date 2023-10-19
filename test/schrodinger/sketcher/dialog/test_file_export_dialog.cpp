@@ -11,8 +11,6 @@
 using namespace schrodinger::sketcher;
 using schrodinger::rdkit_extensions::Format;
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
-
 class TestFileExportDialog : public FileExportDialog
 {
   public:

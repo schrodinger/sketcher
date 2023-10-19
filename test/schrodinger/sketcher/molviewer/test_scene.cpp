@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
     TestScene test_scene;
     unsigned num_visible_atoms = 0;
     unsigned num_hidden_atoms = 0;
-    test_scene.m_mol_model->importFromText("CCCCC", Format::SMILES);
+    import_mol_text(test_scene.m_mol_model, "CCCCC", Format::SMILES);
 
     // all carbons should be hidden
     test_scene.setCarbonsLabeled(CarbonLabels::NONE);
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
     BOOST_TEST(items.size() == 0);
     BOOST_TEST(scene.items().size() == 3); // selection items
 
-    scene.m_mol_model->importFromText("CC", Format::SMILES);
+    import_mol_text(scene.m_mol_model, "CC", Format::SMILES);
     items = scene.getInteractiveItems();
     BOOST_TEST(items.size() == 3); // two atoms and a bond
     BOOST_TEST(scene.items().size() == 6);
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
 BOOST_AUTO_TEST_CASE(test_item_selection)
 {
     TestScene scene;
-    scene.m_mol_model->importFromText("CC", Format::SMILES);
+    import_mol_text(scene.m_mol_model, "CC", Format::SMILES);
 
     auto test_selected_items = [](const auto& scene, bool expected) {
         BOOST_TEST(scene.m_selection_highlighting_item->isVisible() ==
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(test_item_selection)
 BOOST_AUTO_TEST_CASE(test_ensureCompleteAttachmentPoints)
 {
     TestScene scene;
-    scene.m_mol_model->importFromText("CC* |$;;_AP1$|", Format::SMILES);
+    import_mol_text(scene.m_mol_model, "CC* |$;;_AP1$|", Format::SMILES);
     auto mol = scene.m_mol_model->getMol();
     auto* ap_atom = mol->getAtomWithIdx(2);
     auto* ap_atom_item = scene.m_atom_to_atom_item.at(ap_atom);

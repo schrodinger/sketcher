@@ -7,9 +7,11 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::rdkit_extensions::Format)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomQuery)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomTool)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::DrawTool)
@@ -80,6 +82,33 @@ class TestScene : public Scene
     using Scene::m_selection_highlighting_item;
     using Scene::m_sketcher_model;
 };
+
+// Helper functions to interfacing with the MolModel through serialized text
+
+void import_mol_text(
+    MolModel* mol_model, const std::string& text,
+    rdkit_extensions::Format format = rdkit_extensions::Format::AUTO_DETECT)
+{
+    mol_model->addMol(*text_to_mol(text, format));
+}
+
+void import_reaction_text(
+    MolModel* mol_model, const std::string& text,
+    rdkit_extensions::Format format = rdkit_extensions::Format::AUTO_DETECT)
+{
+    mol_model->addReaction(*to_rdkit_reaction(text, format));
+}
+
+std::string get_mol_text(MolModel* mol_model, rdkit_extensions::Format format)
+{
+    return rdkit_extensions::to_string(*mol_model->getMol(), format);
+}
+
+std::string get_reaction_text(MolModel* mol_model,
+                              rdkit_extensions::Format format)
+{
+    return rdkit_extensions::to_string(*mol_model->getReaction(), format);
+}
 
 } // namespace sketcher
 } // namespace schrodinger

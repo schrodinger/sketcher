@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE sketcher_widget_test
 
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -7,17 +8,24 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
+#include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
-
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
 using namespace schrodinger::sketcher;
 using schrodinger::rdkit_extensions::Format;
+using schrodinger::rdkit_extensions::REACTION_TEXT_FORMATS;
+using schrodinger::rdkit_extensions::TEXT_FORMATS;
+using schrodinger::rdkit_extensions::to_rdkit;
+using schrodinger::rdkit_extensions::to_rdkit_reaction;
+using schrodinger::rdkit_extensions::to_string;
+
+BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
 class TestSketcherWidget : public SketcherWidget
 {
   public:
     TestSketcherWidget() : SketcherWidget(){};
+    using SketcherWidget::addFromString;
     using SketcherWidget::importText;
     using SketcherWidget::m_mol_model;
     using SketcherWidget::m_scene;
@@ -26,10 +34,90 @@ class TestSketcherWidget : public SketcherWidget
     using SketcherWidget::m_watermark_item;
 };
 
-BOOST_AUTO_TEST_CASE(test_importText)
+BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 {
     TestSketcherWidget sk;
-    sk.m_mol_model->importFromText("c1nccc2n1ccc2", Format::SMILES);
+    auto mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    sk.addRDKitMolecule(*to_rdkit("CC"));
+    mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    sk.m_undo_stack->undo();
+    mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    sk.m_undo_stack->redo();
+    mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+}
+
+BOOST_AUTO_TEST_CASE(test_addRDKitReaction_getRDKitReaction)
+{
+    TestSketcherWidget sk;
+    // we can't get a reaction from an empty model
+    BOOST_CHECK_THROW(sk.getRDKitReaction(), std::runtime_error);
+
+    sk.addRDKitReaction(*to_rdkit_reaction("CC.CC>>CCCC"));
+    auto rxn = sk.getRDKitReaction();
+    auto reactants = rxn->getReactants();
+    BOOST_REQUIRE(reactants.size() == 2);
+    BOOST_TEST(reactants[0]->getNumAtoms() == 2);
+    BOOST_TEST(reactants[1]->getNumAtoms() == 2);
+    auto products = rxn->getProducts();
+    BOOST_REQUIRE(products.size() == 1);
+    BOOST_TEST(products[0]->getNumAtoms() == 4);
+    BOOST_TEST(sk.m_mol_model->hasReactionArrow());
+    sk.m_undo_stack->undo();
+    BOOST_CHECK_THROW(sk.getRDKitReaction(), std::runtime_error);
+    BOOST_TEST(!sk.m_mol_model->hasReactionArrow());
+    sk.m_undo_stack->redo();
+    rxn = sk.getRDKitReaction();
+    reactants = rxn->getReactants();
+    BOOST_REQUIRE(reactants.size() == 2);
+    BOOST_TEST(reactants[0]->getNumAtoms() == 2);
+    BOOST_TEST(reactants[1]->getNumAtoms() == 2);
+    products = rxn->getProducts();
+    BOOST_REQUIRE(products.size() == 1);
+    BOOST_TEST(products[0]->getNumAtoms() == 4);
+    BOOST_TEST(sk.m_mol_model->hasReactionArrow());
+}
+
+BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
+                     boost::unit_test::data::make(TEXT_FORMATS), format)
+{
+    auto mol = to_rdkit("C1=CC=CC=C1");
+    auto text = to_string(*mol, format);
+
+    TestSketcherWidget sk;
+    sk.addFromString(text);
+    BOOST_TEST(sk.getString(Format::SMILES) == "C1=CC=CC=C1");
+}
+
+BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
+                     boost::unit_test::data::make(REACTION_TEXT_FORMATS),
+                     format)
+{
+    if (format == Format::MDL_MOLV2000 || format == Format::MDL_MOLV3000) {
+        // FIXME: see SKETCH-2071, returns C~C(~O)=O.C~C~O>>C~C~O~C(~C)=O
+        return;
+    }
+
+    auto rxn = to_rdkit_reaction("CC(=O)O.OCC>>CC(=O)OCC");
+    auto text = to_string(*rxn, format);
+
+    TestSketcherWidget sk;
+    sk.addFromString(text);
+    BOOST_TEST(sk.getString(Format::SMILES) == "CC(O)=O.CCO>>CCOC(C)=O");
+}
+
+BOOST_AUTO_TEST_CASE(test_importText_slot)
+{
+    TestSketcherWidget sk;
+    sk.importText("c1nccc2n1ccc2", Format::SMILES);
     auto mol = sk.m_mol_model->getMol();
     BOOST_TEST_REQUIRE(mol != nullptr);
     BOOST_TEST(mol->getNumAtoms() == 9);
@@ -72,7 +160,7 @@ BOOST_AUTO_TEST_CASE(test_watermark)
     sk.m_scene->changed(region);
     // sketcher starts out empty
     BOOST_TEST(sk.m_watermark_item->isVisible());
-    sk.m_mol_model->importFromText("c1ccncc1", Format::SMILES);
+    sk.addFromString("c1ccncc1", Format::SMILES);
     sk.m_scene->changed(region);
     BOOST_TEST(!sk.m_watermark_item->isVisible());
     sk.m_mol_model->clear();
@@ -85,7 +173,7 @@ BOOST_AUTO_TEST_CASE(test_undo)
     TestSketcherWidget sk;
 
     // Add a structure to the scene
-    sk.importText("[H][C@@](C)(Cl)[C@@]([H])(C)C([H])(C)Br", Format::SMILES);
+    sk.addFromString("[H][C@@](C)(Cl)[C@@]([H])(C)C([H])(C)Br", Format::SMILES);
     auto num_atoms = sk.m_mol_model->getMol()->getNumAtoms();
     BOOST_TEST(num_atoms > 0);
 
@@ -147,7 +235,7 @@ BOOST_AUTO_TEST_CASE(test_toolChangeOnSelection)
     TestSketcherWidget sk;
 
     // import a molecule and select all of the atoms
-    sk.importText("CCCC", Format::SMILES);
+    sk.addFromString("CCCC", Format::SMILES);
     BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
     BOOST_TEST(sk.m_sketcher_model->getDrawTool() == DrawTool::ATOM);
     sk.m_mol_model->selectAll();

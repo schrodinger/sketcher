@@ -34,29 +34,6 @@ boost::shared_ptr<RDKit::RWMol> text_to_mol(const std::string& text,
     return mol;
 }
 
-std::variant<boost::shared_ptr<RDKit::RWMol>,
-             boost::shared_ptr<RDKit::ChemicalReaction>>
-text_to_mol_or_reaction(const std::string& text, const Format format)
-{
-    try {
-        return text_to_mol(text, format);
-    } catch (const std::exception&) {
-        try {
-            return to_rdkit_reaction(text, format);
-        } catch (const std::exception&) {
-            // parsing this text as a molecule and as a reaction have both
-            // failed, so we take a guess as to which one it is so that we can
-            // throw the more-relevant exception
-            bool probably_a_reaction =
-                boost::starts_with(text, "$RXN") || boost::contains(text, ">>");
-            if (probably_a_reaction) {
-                throw;
-            }
-        }
-        throw;
-    }
-}
-
 void update_molecule_metadata(RDKit::ROMol& mol)
 {
     mol.updatePropertyCache(false);

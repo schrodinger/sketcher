@@ -66,7 +66,7 @@ std::pair<std::vector<std::shared_ptr<TestAtomItem>>,
 createAtomItems(std::string smiles)
 {
     auto test_scene = std::make_shared<TestScene>();
-    test_scene->m_mol_model->importFromText(smiles, Format::SMILES);
+    import_mol_text(test_scene->m_mol_model, smiles, Format::SMILES);
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
     for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
         BOOST_TEST_REQUIRE(atom != nullptr);
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
                      *boost::unit_test::tolerance(0.01))
 {
     TestScene scene;
-    scene.m_mol_model->importFromText("CCC", Format::SMILES);
+    import_mol_text(scene.m_mol_model, "CCC", Format::SMILES);
     std::vector<AtomItem*> atom_items;
     for (auto* item : scene.items()) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {

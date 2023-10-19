@@ -5,8 +5,10 @@
 #include <QGraphicsPixmapItem>
 #include <QMimeData>
 #include <QWidget>
+#include <GraphMol/ROMol.h>
+#include <GraphMol/ChemReactions/Reaction.h>
+#include <boost/algorithm/string.hpp>
 
-#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
@@ -18,6 +20,7 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/view.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
+#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
@@ -158,6 +161,58 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::invertSelection);
 }
 
+void SketcherWidget::addRDKitMolecule(const RDKit::ROMol& mol)
+{
+    m_mol_model->addMol(mol);
+}
+
+void SketcherWidget::addRDKitReaction(const RDKit::ChemicalReaction& rxn)
+{
+    m_mol_model->addReaction(rxn);
+}
+
+boost::shared_ptr<RDKit::ROMol> SketcherWidget::getRDKitMolecule() const
+{
+    return boost::make_shared<RDKit::ROMol>(*m_mol_model->getMol());
+}
+
+boost::shared_ptr<RDKit::ChemicalReaction>
+SketcherWidget::getRDKitReaction() const
+{
+    return m_mol_model->getReaction();
+}
+
+void SketcherWidget::addFromString(const std::string& text, Format format)
+{
+    auto probably_a_reaction = [](const auto& text) {
+        return boost::starts_with(text, "$RXN") || boost::contains(text, ">>");
+    };
+
+    try {
+        addRDKitMolecule(*text_to_mol(text, format));
+    } catch (const std::exception&) {
+        try { // if molecule parsing fails, see if it's a reaction
+            addRDKitReaction(*to_rdkit_reaction(text, format));
+            return;
+        } catch (const std::exception&) {
+            // parsing this text as a molecule and as a reaction have both
+            // failed, so try to throw the more-relevant exception
+            if (probably_a_reaction(text)) {
+                throw;
+            }
+        }
+        throw;
+    }
+}
+
+std::string SketcherWidget::getString(Format format) const
+{
+    if (m_sketcher_model->hasReaction()) {
+        return rdkit_extensions::to_string(*getRDKitReaction(), format);
+    }
+    return rdkit_extensions::to_string(*getRDKitMolecule(), format);
+}
+
 void SketcherWidget::importText(const std::string& text, Format format)
 {
     if (m_sketcher_model->getValueBool(
@@ -171,7 +226,7 @@ void SketcherWidget::importText(const std::string& text, Format format)
     };
 
     try {
-        m_mol_model->importFromText(text, format);
+        addFromString(text, format);
     } catch (const std::invalid_argument& exc) {
         show_import_failure(exc);
     } catch (const std::runtime_error& exc) {
@@ -192,7 +247,7 @@ void SketcherWidget::showFileExportDialog()
     auto dialog = new FileExportDialog(m_sketcher_model, window());
     connect(dialog, &FileExportDialog::exportTextRequested, this,
             [this](Format format) {
-                return QString::fromStdString(m_mol_model->getMolText(format));
+                return QString::fromStdString(getString(format));
             });
     dialog->show();
 }
