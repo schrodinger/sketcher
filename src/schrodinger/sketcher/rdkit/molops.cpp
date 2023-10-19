@@ -82,7 +82,7 @@ get_connected_atoms_and_bonds(const RDKit::Atom* const atom)
     std::transform(
         connected_atom_idxs.begin(), connected_atom_idxs.end(),
         std::inserter(connected_atoms, connected_atoms.end()),
-        [mol](int atom_idx) { return mol.getAtomWithIdx(atom_idx); });
+        [&mol](int atom_idx) { return mol.getAtomWithIdx(atom_idx); });
     std::unordered_set<const RDKit::Bond*> connected_bonds;
     for (auto* atom : connected_atoms) {
         auto atom_bonds = mol.atomBonds(atom);
