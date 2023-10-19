@@ -476,8 +476,10 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 // determineBonds requires all explicit hydrogens present; if
                 // they are not, it may throw. We assume here that if a user
                 // tries to read XYZ without explicit hydrogens, shame on them.
+                // We also kekulize if possible given most users expect that.
                 auto charge = get_xyz_charge(text);
                 RDKit::determineBonds(*mol, /*use_huckel*/ false, charge);
+                RDKit::MolOps::KekulizeIfPossible(*mol);
                 rdkit_extensions::removeHs(*mol);
             }
 #endif
@@ -633,8 +635,10 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             // Require explicit hydrogens and a complete 3D conformer on write;
             // see GraphMol/DetermineBonds/DetermineBonds.h in the RDKit
             RDKit::MolOps::addHs(mol);
-            RDKit::DGeomHelpers::EmbedMolecule(mol, /*maxIterations*/ 0,
-                                               /*seed*/ 1234); // constant seed
+            if (RDKit::DGeomHelpers::EmbedMolecule(mol, /*maxIterations*/ 0,
+                                                   /*seed*/ 1234) == -1) {
+                throw std::runtime_error("Unable to export 3D coordinates");
+            }
             set_xyz_title(mol);
             return RDKit::MolToXYZBlock(mol);
         case Format::HELM:
