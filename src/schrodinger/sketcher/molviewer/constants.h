@@ -223,13 +223,13 @@ const QString ARROW_CURSOR_PATH = ":/icons/cursor-arrow.svg";
 
 // The "hotspot" of the above cursor image, i.e., (x, y) coordinates for where
 // in the image the click should happen
-const int CURSOR_HOTSPOT_X = 1;
-const int CURSOR_HOTSPOT_Y = 1;
+const int CURSOR_HOTSPOT_X = 2;
+const int CURSOR_HOTSPOT_Y = 5;
 
 // When attaching a hint image to the cursor, the (x, y) coordinates of the
 // upper-left corner of the hint
-const int CURSOR_HINT_X = 14;
-const int CURSOR_HINT_Y = 14;
+const int CURSOR_HINT_X = 16;
+const int CURSOR_HINT_Y = 18;
 
 // The maximum allowable width and height for a cursor hint image generated from
 // a toolbar icon.  Note that the cursor hint image won't necessarily be a
