@@ -22,6 +22,7 @@
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 
@@ -117,25 +118,25 @@ void SketcherWidget::connectTopBarSlots()
     // Connect "More Actions" menu
     connect(m_ui->top_bar_wdg, &SketcherTopBar::flipHorizontalRequested,
             m_mol_model, &MolModel::flipAllHorizontal);
-
     connect(m_ui->top_bar_wdg, &SketcherTopBar::flipVerticalRequested,
             m_mol_model, &MolModel::flipAllVertical);
-
     connect(m_ui->top_bar_wdg, &SketcherTopBar::addExplicitHydrogensRequested,
             m_mol_model,
             [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::ADD); });
-
     connect(
         m_ui->top_bar_wdg, &SketcherTopBar::removeExplicitHydrogensRequested,
         m_mol_model,
         [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::REMOVE); });
-
     connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_mol_model,
             &MolModel::selectAll);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,
             m_mol_model, &MolModel::clearSelection);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::invertSelectionRequested,
             m_mol_model, &MolModel::invertSelection);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::cutRequested, this,
+            &SketcherWidget::cut);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::copyRequested, this,
+            &SketcherWidget::copy);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, this,
             &SketcherWidget::paste);
 
@@ -161,6 +162,47 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::invertSelection);
 }
 
+/**
+ * @internal
+ * @param mol_model the model to extract the molecule from
+ * @param subset whether to extract everything or just the current selection
+ */
+static boost::shared_ptr<RDKit::ROMol> extract_mol(MolModel* mol_model,
+                                                   SceneSubset subset)
+{
+    // TODO: strip TAG_PROPERTY from atoms/bonds before returning
+    if (subset == SceneSubset::SELECTION) {
+        return mol_model->getSelectedMol();
+    }
+    return boost::make_shared<RDKit::ROMol>(*mol_model->getMol());
+}
+
+/**
+ * @internal
+ * @param mol_model the model to extract the molecule from
+ * @param format the format to serialize the molecule to
+ * @param subset whether to extract everything or just the current selection
+ */
+static std::string extract_string(MolModel* mol_model, Format format,
+                                  SceneSubset subset)
+{
+    if (format == Format::MDL_MOLV2000) {
+        throw std::invalid_argument(
+            "Sketcher does not support exporting MDL_MOLV2000 format");
+    }
+
+    if (mol_model->hasReactionArrow()) {
+        if (subset == SceneSubset::SELECTION) {
+            throw std::runtime_error(
+                "Reaction selection export is not supported");
+        }
+        return rdkit_extensions::to_string(*mol_model->getReaction(), format);
+    }
+
+    auto mol = extract_mol(mol_model, subset);
+    return rdkit_extensions::to_string(*mol, format);
+}
+
 void SketcherWidget::addRDKitMolecule(const RDKit::ROMol& mol)
 {
     m_mol_model->addMol(mol);
@@ -173,7 +215,7 @@ void SketcherWidget::addRDKitReaction(const RDKit::ChemicalReaction& rxn)
 
 boost::shared_ptr<RDKit::ROMol> SketcherWidget::getRDKitMolecule() const
 {
-    return boost::make_shared<RDKit::ROMol>(*m_mol_model->getMol());
+    return extract_mol(m_mol_model, SceneSubset::ALL);
 }
 
 boost::shared_ptr<RDKit::ChemicalReaction>
@@ -207,10 +249,60 @@ void SketcherWidget::addFromString(const std::string& text, Format format)
 
 std::string SketcherWidget::getString(Format format) const
 {
-    if (m_sketcher_model->hasReaction()) {
-        return rdkit_extensions::to_string(*getRDKitReaction(), format);
+    return extract_string(m_mol_model, format, SceneSubset::ALL);
+}
+
+void SketcherWidget::cut(Format format)
+{
+    copy(format, SceneSubset::SELECTION);
+    m_mol_model->removeSelected();
+}
+
+/**
+ * @internal
+ * Cut/Copy are currently the only way of extracting a partial molecule from
+ * the sketcher widget; the other methods will always extract the entirety of
+ * the scene independent of the current selection.
+ */
+void SketcherWidget::copy(Format format, SceneSubset subset)
+{
+    std::string text;
+    try {
+        text = extract_string(m_mol_model, format, subset);
+    } catch (const std::exception& exc) {
+        show_error_dialog("Copy Error", exc.what(), window());
+        return;
     }
-    return rdkit_extensions::to_string(*getRDKitMolecule(), format);
+
+    auto data = new QMimeData;
+    data->setText(QString::fromStdString(text));
+    QApplication::clipboard()->setMimeData(data);
+
+    // SKETCH-2091: Add image content to the clipboard; blocked by SKETCH-1975
+
+#ifdef __EMSCRIPTEN__
+    // Use the browser's aync clipboard api to enable copy for the wasm build
+    emscripten::val navigator = emscripten::val::global("navigator");
+    navigator["clipboard"].call<emscripten::val>("writeText",
+                                                 emscripten::val(text));
+#endif
+}
+
+/**
+ * @internal
+ * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
+ */
+void SketcherWidget::paste()
+{
+    auto data = QApplication::clipboard()->mimeData();
+    if (data->hasText()) {
+        auto text = data->text().toStdString();
+        try {
+            addFromString(text, Format::AUTO_DETECT);
+        } catch (const std::exception& exc) {
+            show_error_dialog("Paste Error", exc.what(), window());
+        }
+    }
 }
 
 void SketcherWidget::importText(const std::string& text, Format format)
@@ -220,25 +312,10 @@ void SketcherWidget::importText(const std::string& text, Format format)
         m_mol_model->clear();
     }
 
-    auto show_import_failure = [&](const auto& exc) {
-        auto text = QString("Import Failed: ") + exc.what();
-        show_error_dialog("Import Error", text, window());
-    };
-
     try {
         addFromString(text, format);
-    } catch (const std::invalid_argument& exc) {
-        show_import_failure(exc);
-    } catch (const std::runtime_error& exc) {
-        show_import_failure(exc);
-    }
-}
-
-void SketcherWidget::paste()
-{
-    auto data = QApplication::clipboard()->mimeData();
-    if (data->hasText()) {
-        importText(data->text().toStdString(), Format::AUTO_DETECT);
+    } catch (const std::exception& exc) {
+        show_error_dialog("Import Error", exc.what(), window());
     }
 }
 

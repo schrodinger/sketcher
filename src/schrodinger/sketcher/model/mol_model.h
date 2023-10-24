@@ -145,6 +145,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     const RDKit::ROMol* getMol() const;
 
     /**
+     * @return the current selection as a new RDKit molecule
+     */
+    boost::shared_ptr<RDKit::ROMol> getSelectedMol();
+
+    /**
      * @return The RDKit reaction contained in this model
      * @throw std::runtime_error if no reaction arrow is present
      */

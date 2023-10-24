@@ -28,6 +28,7 @@ namespace schrodinger
 namespace sketcher
 {
 
+enum class SceneSubset;
 class MolModel;
 class Scene;
 class SketcherModel;
@@ -69,20 +70,32 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     std::string getString(rdkit_extensions::Format format) const;
 
-  protected:
+  protected slots:
     /**
-     * Import the given text into the scene; optionally clear beforehand
-     * depending on the state of the model
+     * Copy the contents of the scene to the clipboard and delete the selection
      *
-     * @param text input data to load into the sketcher
-     * @param format format to parse
+     * @param format The format of the text structure to copy to clipboard
      */
-    void importText(const std::string& text, rdkit_extensions::Format format);
+    void cut(rdkit_extensions::Format format);
+
+    /**
+     * Copy the contents of the scene to the clipboard.
+     *
+     * @param format The format of the text structure to copy to clipboard
+     * @param subset The portion of the scene structure to copy to clipboard
+     */
+    void copy(rdkit_extensions::Format format, SceneSubset subset);
 
     /**
      * Paste clipboard content into the scene
      */
     void paste();
+
+    /**
+     * Import the given text into the scene; optionally clear beforehand
+     * depending on the state of the model
+     */
+    void importText(const std::string& text, rdkit_extensions::Format format);
 
     /**
      * Present the user with an "Export to File" dialog.
@@ -100,6 +113,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void updateWatermark();
 
+  protected:
     std::unique_ptr<Ui::SketcherWidgetForm> m_ui;
 
     /**

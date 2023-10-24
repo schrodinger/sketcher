@@ -26,12 +26,15 @@ class TestSketcherWidget : public SketcherWidget
   public:
     TestSketcherWidget() : SketcherWidget(){};
     using SketcherWidget::addFromString;
+    using SketcherWidget::copy;
+    using SketcherWidget::cut;
     using SketcherWidget::importText;
     using SketcherWidget::m_mol_model;
     using SketcherWidget::m_scene;
     using SketcherWidget::m_sketcher_model;
     using SketcherWidget::m_undo_stack;
     using SketcherWidget::m_watermark_item;
+    using SketcherWidget::paste;
 };
 
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
@@ -112,6 +115,106 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
     TestSketcherWidget sk;
     sk.addFromString(text);
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(O)=O.CCO>>CCOC(C)=O");
+}
+
+BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
+{
+    TestSketcherWidget sk;
+    std::string smiles{"C1=CC=CC=C1"};
+    sk.importText(smiles, Format::SMILES);
+
+    // no selection
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
+    // nothing cut, nothing pasted
+    sk.cut(Format::SMILES);
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    // nothing copied, nothing pasted
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    // everything copied, contents doubled
+    sk.copy(Format::SMILES, SceneSubset::ALL);
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles + "." + smiles);
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
+    sk.m_undo_stack->undo();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
+
+    // select a single bond; the cut/copy action should automatically select
+    // atoms attached to any selected bonds
+    auto bond = sk.m_mol_model->getMol()->getBondWithIdx(0);
+    sk.m_mol_model->select({}, {bond}, {}, SelectMode::SELECT);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
+    sk.cut(Format::SMILES);
+    BOOST_TEST(sk.getString(Format::SMILES) == "C=CC=C");
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == "C=C.C=CC=C");
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
+    sk.m_undo_stack->undo();
+    BOOST_TEST(sk.getString(Format::SMILES) == "C=CC=C");
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
+    sk.m_undo_stack->undo();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    // from the cut selection expansion
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 2);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
+    sk.m_mol_model->clearSelection();
+
+    // repeat, but with copy; the selection should be expanded to include
+    // atoms attached to any selected bonds, but the selection should persist
+    bond = sk.m_mol_model->getMol()->getBondWithIdx(0);
+    sk.m_mol_model->select({}, {bond}, {}, SelectMode::SELECT);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 2);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles + ".C=C");
+    BOOST_TEST(sk.m_mol_model->hasSelection());
+    sk.m_undo_stack->undo();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 2);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
+
+    // copying ALL is agnostic of an selection
+    sk.copy(Format::SMILES, SceneSubset::ALL);
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    BOOST_TEST(sk.m_mol_model->hasSelection());
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles + "." + smiles);
+    BOOST_TEST(sk.m_mol_model->hasSelection());
+    sk.m_undo_stack->undo();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 2);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
+
+    // selecting all and copying should be equivalent to doubling contents
+    sk.m_mol_model->selectAll();
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 6);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 6);
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.m_mol_model->hasSelection());
+    sk.paste();
+    BOOST_TEST(sk.getString(Format::SMILES) == smiles + "." + smiles);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 6);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 6);
+    // selecting all and cutting should be equivalent to clearing the sketcher
+    sk.m_mol_model->selectAll();
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 12);
+    BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 12);
+    sk.cut(Format::SMILES);
+    BOOST_TEST(sk.getString(Format::SMILES) == "");
+    BOOST_TEST(!sk.m_mol_model->hasSelection());
 }
 
 BOOST_AUTO_TEST_CASE(test_importText_slot)

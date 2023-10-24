@@ -1892,6 +1892,31 @@ BOOST_AUTO_TEST_CASE(test_adding_fragments)
                             "C1=CC=C2=CC=CC=C2=C1", -1, 1);
 }
 
+BOOST_AUTO_TEST_CASE(test_getSelectedMol)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CC");
+
+    // no selection returns an empty mol
+    auto mol = model.getSelectedMol();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    // partial selection
+    auto atom = model.getMol()->getAtomWithIdx(0);
+    model.select({atom}, {}, {}, SelectMode::SELECT);
+    mol = model.getSelectedMol();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    // full selection
+    model.selectAll();
+    mol = model.getSelectedMol();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+}
+
 BOOST_AUTO_TEST_CASE(test_getReaction)
 {
     QUndoStack undo_stack;
@@ -1934,11 +1959,13 @@ BOOST_AUTO_TEST_CASE(test_reactions)
     // we can't get a reaction from an empty model
     BOOST_CHECK_THROW(get_reaction_text(&model, Format::SMILES),
                       std::runtime_error);
-    import_reaction_text(&model, "CC.CC>>CCCC");
+
+    auto smarts = "CC.CC>>CCCC";
+    import_reaction_text(&model, smarts);
     BOOST_TEST(mol->getNumAtoms() == 8);
     BOOST_TEST(model.m_pluses.size() == 1);
     BOOST_TEST(model.m_arrow.has_value());
-    BOOST_TEST(get_reaction_text(&model, Format::SMILES) == "CC.CC>>CCCC");
+    BOOST_TEST(get_reaction_text(&model, Format::SMILES) == smarts);
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(model.m_pluses.size() == 0);
@@ -1947,7 +1974,7 @@ BOOST_AUTO_TEST_CASE(test_reactions)
     BOOST_TEST(mol->getNumAtoms() == 8);
     BOOST_TEST(model.m_pluses.size() == 1);
     BOOST_TEST(model.m_arrow.has_value());
-    BOOST_TEST(get_reaction_text(&model, Format::SMILES) == "CC.CC>>CCCC");
+    BOOST_TEST(get_reaction_text(&model, Format::SMILES) == smarts);
 }
 
 } // namespace sketcher

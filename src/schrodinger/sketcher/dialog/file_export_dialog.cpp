@@ -83,8 +83,7 @@ void FileExportDialog::exportFile()
     try {
         file_content = getFileContent();
     } catch (const std::exception& exc) {
-        auto text = QString("Cannot export: ") + exc.what();
-        show_error_dialog("Export Error", text, parentWidget());
+        show_error_dialog("Export Error", exc.what(), parentWidget());
         reject();
         return;
     }

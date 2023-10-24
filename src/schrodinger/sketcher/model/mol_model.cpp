@@ -130,9 +130,33 @@ void MolModel::initializeMol()
 
 const RDKit::ROMol* MolModel::getMol() const
 {
-    // TODO: add API to get selected mol
     // TODO: add API to export selection as atom/bond properties
     return &m_mol;
+}
+
+boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMol()
+{
+    // Update the selection to make sure both ends of all selected bonds
+    // are included in the selection, because RDKit will fail to create
+    // bonds which are missing ends (SKETCH-1232).
+    std::unordered_set<const RDKit::Atom*> atoms_to_select;
+    for (auto bond : getSelectedBonds()) {
+        atoms_to_select.insert(bond->getBeginAtom());
+        atoms_to_select.insert(bond->getEndAtom());
+    }
+    select(atoms_to_select, {}, {}, SelectMode::SELECT);
+
+    // Copy the entire molecule, then remove all atoms and bonds which are not
+    // selected, as to preserve any underlying features in the selection; note
+    // that RDKit will automatically remove bonds attached to deleted atoms
+    RDKit::RWMol mol_copy(m_mol);
+    auto [atom_tags, bond_tags, non_molecular_tags] = getAllUnselectedTags();
+    mol_copy.beginBatchEdit();
+    for (auto atom_tag : atom_tags) {
+        mol_copy.removeAtom(getAtomFromTag(atom_tag)->getIdx());
+    }
+    mol_copy.commitBatchEdit();
+    return boost::make_shared<RDKit::ROMol>(mol_copy);
 }
 
 boost::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
