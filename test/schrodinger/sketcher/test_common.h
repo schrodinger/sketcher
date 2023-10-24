@@ -8,6 +8,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
 
@@ -68,6 +69,22 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+class TestSketcherWidget : public SketcherWidget
+{
+  public:
+    TestSketcherWidget() : SketcherWidget(){};
+    using SketcherWidget::addFromString;
+    using SketcherWidget::copy;
+    using SketcherWidget::cut;
+    using SketcherWidget::importText;
+    using SketcherWidget::m_mol_model;
+    using SketcherWidget::m_scene;
+    using SketcherWidget::m_sketcher_model;
+    using SketcherWidget::m_undo_stack;
+    using SketcherWidget::m_watermark_item;
+    using SketcherWidget::paste;
+};
 
 class TestScene : public Scene
 {

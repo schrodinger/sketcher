@@ -21,22 +21,6 @@ using schrodinger::rdkit_extensions::to_string;
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
-class TestSketcherWidget : public SketcherWidget
-{
-  public:
-    TestSketcherWidget() : SketcherWidget(){};
-    using SketcherWidget::addFromString;
-    using SketcherWidget::copy;
-    using SketcherWidget::cut;
-    using SketcherWidget::importText;
-    using SketcherWidget::m_mol_model;
-    using SketcherWidget::m_scene;
-    using SketcherWidget::m_sketcher_model;
-    using SketcherWidget::m_undo_stack;
-    using SketcherWidget::m_watermark_item;
-    using SketcherWidget::paste;
-};
-
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 {
     TestSketcherWidget sk;

@@ -18,17 +18,16 @@
 #include "schrodinger/sketcher/molviewer/selection_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
-#include "schrodinger/sketcher/menu/background_context_menu.h"
 
 class QObject;
 class QFont;
-class QUndoStack;
 
 namespace RDKit
 {
 class Atom;
 class Bond;
 class ROMol;
+class SubstanceGroup;
 } // namespace RDKit
 
 namespace schrodinger
@@ -139,8 +138,21 @@ class SKETCHER_API Scene : public QGraphicsScene
     void requestCursorHintUpdate();
 
   signals:
+    /**
+     * Request that the widget import the given text in the given format
+     */
     void importTextRequested(const std::string& text,
                              rdkit_extensions::Format format);
+
+    /**
+     * Request the widget show the appropriate context menu at the current
+     * position given the relevant atoms/bonds/sgroups
+     */
+    void showContextMenuRequested(
+        QGraphicsSceneMouseEvent* event,
+        const std::unordered_set<const RDKit::Atom*>& atoms,
+        const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups);
 
     void viewportTranslationRequested(const QPointF& start_screen_position,
                                       const QPointF& end_screen_position);
@@ -280,8 +292,6 @@ class SKETCHER_API Scene : public QGraphicsScene
     bool m_drag_started = false;
     bool m_is_during_double_click = false;
 
-    BackgroundContextMenu* m_background_context_menu;
-
     /**
      * Objects associated with the context menu instance that is currently open.
      * If no context menu instance is open (or if it is not associated with any
@@ -308,15 +318,6 @@ class SKETCHER_API Scene : public QGraphicsScene
      * @return window for the parent widget
      */
     QWidget* window() const;
-
-    /**
-     * Connect relevant slots to signals from a context menu instance.
-     *
-     * This method should only be called once per menu instance.
-     *
-     * @param menu A context menu instance
-     */
-    void connectContextMenu(const BackgroundContextMenu& menu);
 
     /**
      * Overrides the drag/drop events to import text files of supported formats

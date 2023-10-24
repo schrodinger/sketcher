@@ -44,7 +44,7 @@ void check_nonempty_actions(TestBackgroundContextMenu& menu, bool exp_enabled)
 /**
  * Verify that the menu is properly updated to match the state of the model.
  */
-BOOST_AUTO_TEST_CASE(test_updateActions)
+BOOST_AUTO_TEST_CASE(test_updateActions_deprecated)
 {
     testSketcherScene scene;
     auto model = scene.getModel();
@@ -67,6 +67,37 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     check_nonempty_actions(menu, false);
 
     scene.redo();
+    BOOST_TEST(menu.m_undo_act->isEnabled());
+    BOOST_TEST(!menu.m_redo_act->isEnabled());
+    check_nonempty_actions(menu, true);
+
+    BOOST_TEST(menu.m_select_all_act->isEnabled() == true);
+}
+
+/**
+ * Verify that the menu is properly updated to match the state of the model.
+ */
+BOOST_AUTO_TEST_CASE(test_updateActions)
+{
+    TestSketcherWidget sk;
+    TestBackgroundContextMenu menu(sk.m_sketcher_model);
+
+    BOOST_TEST(!menu.m_undo_act->isEnabled());
+    BOOST_TEST(!menu.m_redo_act->isEnabled());
+    check_nonempty_actions(menu, false);
+
+    sk.addFromString("CCCC");
+    emit sk.m_sketcher_model->interactiveItemsChanged();
+    BOOST_TEST(menu.m_undo_act->isEnabled());
+    BOOST_TEST(!menu.m_redo_act->isEnabled());
+    check_nonempty_actions(menu, true);
+
+    sk.m_undo_stack->undo();
+    BOOST_TEST(!menu.m_undo_act->isEnabled());
+    BOOST_TEST(menu.m_redo_act->isEnabled());
+    check_nonempty_actions(menu, false);
+
+    sk.m_undo_stack->redo();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, true);

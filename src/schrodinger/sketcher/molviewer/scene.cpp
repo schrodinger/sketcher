@@ -4,6 +4,7 @@
 #include <unordered_set>
 
 #include <GraphMol/ROMol.h>
+#include <GraphMol/SubstanceGroup.h>
 #include <QApplication>
 #include <QFont>
 #include <QGraphicsSceneMouseEvent>
@@ -16,8 +17,6 @@
 #include <QUndoStack>
 #include <QUrl>
 #include <QWidget>
-#include <QtGlobal>
-#include <QScreen>
 
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -147,41 +146,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     connect(m_sketcher_model, &SketcherModel::contextMenuAtomsRequested, this,
             [this]() { return m_context_menu_atoms; });
 
-    m_background_context_menu =
-        new BackgroundContextMenu(m_sketcher_model, parent);
-    connectContextMenu(*m_background_context_menu);
-
     updateSceneTool();
-}
-
-void Scene::connectContextMenu(const BackgroundContextMenu& menu)
-{
-    /*
-    connect(&menu, &BackgroundContextMenu::saveImageRequested, this,
-            &sketcherScene::onSaveImageRequested);
-    connect(&menu, &BackgroundContextMenu::exportToFileRequested, this,
-            &sketcherScene::exportToFileRequested);
-    connect(&menu, &BackgroundContextMenu::undoRequested, this,
-            &sketcherScene::undo);
-    connect(&menu, &BackgroundContextMenu::redoRequested, this,
-            &sketcherScene::redo);
-            */
-    connect(&menu, &BackgroundContextMenu::flipHorizontalRequested, m_mol_model,
-            &MolModel::flipAllHorizontal);
-    connect(&menu, &BackgroundContextMenu::flipVerticalRequested, m_mol_model,
-            &MolModel::flipAllVertical);
-    /*
-    connect(&menu, &BackgroundContextMenu::selectAllRequested, this,
-        &sketcherScene::selectAll);
-    connect(&menu, &BackgroundContextMenu::copyRequested, this,
-        &sketcherScene::copyRequested);
-    connect(&menu, &BackgroundContextMenu::pasteRequested, this,
-        [this]() { emit pasteRequested(true); });
-    connect(&menu, &BackgroundContextMenu::clearRequested, this,
-        &sketcherScene::clearStructure);
-    connect(&menu, &BackgroundContextMenu::aboutToHide, this,
-        &sketcherScene::onContextMenuHidden);
-    */
 }
 
 Scene::~Scene()
@@ -413,7 +378,7 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
     // Collect the set of items that the context menu should interact with
     // based on the position of the cursor
-    std::unordered_set<QGraphicsItem*> context_menu_objects;
+    std::unordered_set<QGraphicsItem*> context_menu_items;
     auto top_item =
         getTopInteractiveItemAt(event->pos(), InteractiveItemFlag::ALL);
     if (top_item != nullptr) {
@@ -421,36 +386,25 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
             // If the cursor is over a selected object, the context menu
             // should be concerned with all selected objects
             for (auto item : selectedItems()) {
-                context_menu_objects.insert(item);
+                context_menu_items.insert(item);
             }
         } else {
-            context_menu_objects.insert(top_item);
+            context_menu_items.insert(top_item);
         }
     }
-    // TODO: call different menus based on context menu objects. For now,
-    // just call m_background_context_menu
-    QMenu* menu = nullptr;
-    menu = m_background_context_menu;
 
-    menu->move(event->screenPos());
-    auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
-    auto menu_rectangle = menu->geometry();
-
-    // Make sure the menu is not off the screen (or on a different screen)
-    if (menu_rectangle.left() < screen_rect.left()) {
-        menu_rectangle.moveLeft(screen_rect.left());
+    std::unordered_set<const RDKit::Atom*> atoms;
+    std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
+    for (auto* item : context_menu_items) {
+        if (const auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            atoms.insert(atom_item->getAtom());
+        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+            bonds.insert(bond_item->getBond());
+        }
+        // SKETCH-2011: collect RDKit::SubstanceGroup from SGroupItems
     }
-    if (menu_rectangle.top() < screen_rect.top()) {
-        menu_rectangle.moveTop(screen_rect.top());
-    }
-    if (menu_rectangle.right() > screen_rect.right()) {
-        menu_rectangle.moveRight(screen_rect.right());
-    }
-    if (menu_rectangle.bottom() > screen_rect.bottom()) {
-        menu_rectangle.moveBottom(screen_rect.bottom());
-    }
-    menu->move(menu_rectangle.topLeft());
-    menu->show();
+    emit showContextMenuRequested(event, atoms, bonds, sgroups);
 }
 
 AbstractGraphicsItem*

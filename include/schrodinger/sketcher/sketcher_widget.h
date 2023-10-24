@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 
 #include <boost/shared_ptr.hpp>
 #include <QWidget>
@@ -9,12 +10,16 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 
 class QGraphicsPixmapItem;
+class QGraphicsSceneMouseEvent;
 class QUndoStack;
 
 namespace RDKit
 {
+class Atom;
+class Bond;
 class ROMol;
 class ChemicalReaction;
+class SubstanceGroup;
 } // namespace RDKit
 
 namespace Ui
@@ -28,11 +33,17 @@ namespace schrodinger
 namespace sketcher
 {
 
-enum class SceneSubset;
+class AtomContextMenu;
+class BackgroundContextMenu;
+class BondContextMenu;
+class ModifyAtomsMenu;
+class ModifyBondsMenu;
 class MolModel;
 class Scene;
+class SelectionContextMenu;
 class SketcherModel;
 enum class ModelKey;
+enum class SceneSubset;
 
 /**
  * Sketcher widget meant for use in LiveDesign and Maestro.
@@ -114,6 +125,9 @@ class SKETCHER_API SketcherWidget : public QWidget
     void updateWatermark();
 
   protected:
+    /**
+     * Widget UI form and layout
+     */
     std::unique_ptr<Ui::SketcherWidgetForm> m_ui;
 
     /**
@@ -123,6 +137,14 @@ class SKETCHER_API SketcherWidget : public QWidget
     MolModel* m_mol_model = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
     Scene* m_scene = nullptr;
+
+    /**
+     * Context menus
+     */
+    AtomContextMenu* m_atom_context_menu = nullptr;
+    BondContextMenu* m_bond_context_menu = nullptr;
+    SelectionContextMenu* m_selection_context_menu = nullptr;
+    BackgroundContextMenu* m_background_context_menu = nullptr;
 
     /**
      * Watermark centered in the Scene; only shown when no atoms are present
@@ -135,6 +157,20 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void connectTopBarSlots();
     void connectSideBarSlots();
+    void connectContextMenu(const ModifyAtomsMenu& menu);
+    void connectContextMenu(const ModifyBondsMenu& menu);
+    void connectContextMenu(const SelectionContextMenu& menu);
+    void connectContextMenu(const BackgroundContextMenu& menu);
+
+    /**
+     * Show the relevant context menu given some combination of atoms, bonds,
+     * and sgroups as emitted by the scene.
+     */
+    void showContextMenu(
+        QGraphicsSceneMouseEvent* event,
+        const std::unordered_set<const RDKit::Atom*>& atoms,
+        const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups);
 
     /**
      * Respond to the user clicking on a toolbar button when there is a

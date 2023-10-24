@@ -1,12 +1,14 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
-#include <QCursor>
 #include <QClipboard>
+#include <QCursor>
 #include <QGraphicsPixmapItem>
 #include <QMimeData>
+#include <QScreen>
 #include <QWidget>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/ChemReactions/Reaction.h>
+#include <GraphMol/SubstanceGroup.h>
 #include <boost/algorithm/string.hpp>
 
 #include "schrodinger/sketcher/dialog/error_dialog.h"
@@ -14,6 +16,10 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/menu/atom_context_menu.h"
+#include "schrodinger/sketcher/menu/background_context_menu.h"
+#include "schrodinger/sketcher/menu/bond_context_menu.h"
+#include "schrodinger/sketcher/menu/selection_context_menu.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -56,7 +62,10 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_ui->view->setMolModel(m_mol_model);
     connect(m_scene, &Scene::importTextRequested, this,
             &SketcherWidget::importText);
+    connect(m_scene, &Scene::showContextMenuRequested, this,
+            &SketcherWidget::showContextMenu);
 
+    // Connect the scene to the view
     connect(m_scene, &Scene::viewportTranslationRequested, m_ui->view,
             &View::translateViewportFromScreenCoords);
     connect(m_scene, &Scene::newCursorHintRequested, m_ui->view,
@@ -81,6 +90,17 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     connectTopBarSlots();
     connectSideBarSlots();
+
+    // Create and connect the context menus
+    m_atom_context_menu = new AtomContextMenu(m_sketcher_model, this);
+    m_bond_context_menu = new BondContextMenu(this);
+    m_selection_context_menu = new SelectionContextMenu(m_sketcher_model, this);
+    m_background_context_menu =
+        new BackgroundContextMenu(m_sketcher_model, this);
+    connectContextMenu(*m_atom_context_menu);
+    connectContextMenu(*m_bond_context_menu);
+    connectContextMenu(*m_selection_context_menu);
+    connectContextMenu(*m_background_context_menu);
 
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
 
@@ -160,6 +180,48 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::clearSelection);
     connect(m_ui->side_bar_wdg, &SketcherSideBar::invertSelectionRequested,
             m_mol_model, &MolModel::invertSelection);
+}
+
+void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
+{
+    // TODO
+}
+
+void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
+{
+    // TODO
+}
+
+void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
+{
+    // TODO
+
+    connectContextMenu(*menu.m_modify_atoms_menu);
+    connectContextMenu(*menu.m_modify_bonds_menu);
+}
+
+void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
+{
+    connect(&menu, &BackgroundContextMenu::saveImageRequested, this,
+            &SketcherWidget::showFileSaveImageDialog);
+    connect(&menu, &BackgroundContextMenu::exportToFileRequested, this,
+            &SketcherWidget::showFileExportDialog);
+    connect(&menu, &BackgroundContextMenu::undoRequested, m_undo_stack,
+            &QUndoStack::undo);
+    connect(&menu, &BackgroundContextMenu::redoRequested, m_undo_stack,
+            &QUndoStack::redo);
+    connect(&menu, &BackgroundContextMenu::flipHorizontalRequested, m_mol_model,
+            &MolModel::flipAllHorizontal);
+    connect(&menu, &BackgroundContextMenu::flipVerticalRequested, m_mol_model,
+            &MolModel::flipAllVertical);
+    connect(&menu, &BackgroundContextMenu::selectAllRequested, m_mol_model,
+            &MolModel::selectAll);
+    connect(&menu, &BackgroundContextMenu::copyRequested, this,
+            &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::pasteRequested, this,
+            &SketcherWidget::paste);
+    connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,
+            &MolModel::clear);
 }
 
 /**
@@ -412,6 +474,46 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
         default:
             break;
     }
+}
+
+void SketcherWidget::showContextMenu(
+    QGraphicsSceneMouseEvent* event,
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups)
+{
+    QMenu* menu = nullptr;
+    if (sgroups.size()) {
+        throw std::runtime_error("sgroup context menu not implemented");
+    } else if (atoms.size() && bonds.size()) {
+        menu = m_selection_context_menu;
+    } else if (atoms.size()) {
+        menu = m_atom_context_menu;
+    } else if (bonds.size()) {
+        menu = m_bond_context_menu;
+    } else {
+        menu = m_background_context_menu;
+    }
+
+    menu->move(event->screenPos());
+    auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
+    auto menu_rectangle = menu->geometry();
+
+    // Make sure the menu is not off the screen (or on a different screen)
+    if (menu_rectangle.left() < screen_rect.left()) {
+        menu_rectangle.moveLeft(screen_rect.left());
+    }
+    if (menu_rectangle.top() < screen_rect.top()) {
+        menu_rectangle.moveTop(screen_rect.top());
+    }
+    if (menu_rectangle.right() > screen_rect.right()) {
+        menu_rectangle.moveRight(screen_rect.right());
+    }
+    if (menu_rectangle.bottom() > screen_rect.bottom()) {
+        menu_rectangle.moveBottom(screen_rect.bottom());
+    }
+    menu->move(menu_rectangle.topLeft());
+    menu->show();
 }
 
 } // namespace sketcher
