@@ -11,6 +11,11 @@
 #include <GraphMol/SubstanceGroup.h>
 #include <boost/algorithm/string.hpp>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#include <emscripten/val.h>
+#endif
+
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
