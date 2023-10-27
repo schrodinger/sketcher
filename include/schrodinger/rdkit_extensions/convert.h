@@ -30,19 +30,25 @@ namespace rdkit_extensions
  */
 enum class Format {
     AUTO_DETECT,
+    RDMOL_BINARY_BASE64,
     SMILES,
     EXTENDED_SMILES,
     SMARTS,
-    MAESTRO,
     MDL_MOLV2000,
     MDL_MOLV3000,
+    MAESTRO,
     INCHI,
     INCHI_KEY,
     PDB,
-    RDMOL_BINARY_BASE64,
     XYZ,
-    HELM
+    HELM,
 };
+
+/**
+ * All supported formats for both standard molecules and reactions
+ */
+extern RDKIT_EXTENSIONS_API const std::vector<Format> MOL_FORMATS;
+extern RDKIT_EXTENSIONS_API const std::vector<Format> RXN_FORMATS;
 
 /**
  * @param text input text block

@@ -13,8 +13,8 @@
 
 using namespace schrodinger::sketcher;
 using schrodinger::rdkit_extensions::Format;
-using schrodinger::rdkit_extensions::REACTION_TEXT_FORMATS;
-using schrodinger::rdkit_extensions::TEXT_FORMATS;
+using schrodinger::rdkit_extensions::MOL_FORMATS;
+using schrodinger::rdkit_extensions::RXN_FORMATS;
 using schrodinger::rdkit_extensions::to_rdkit;
 using schrodinger::rdkit_extensions::to_rdkit_reaction;
 using schrodinger::rdkit_extensions::to_string;
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(test_addRDKitReaction_getRDKitReaction)
 }
 
 BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
-                     boost::unit_test::data::make(TEXT_FORMATS), format)
+                     boost::unit_test::data::make(MOL_FORMATS), format)
 {
     auto mol = to_rdkit("C1=CC=CC=C1");
     auto text = to_string(*mol, format);
@@ -85,8 +85,7 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
 }
 
 BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
-                     boost::unit_test::data::make(REACTION_TEXT_FORMATS),
-                     format)
+                     boost::unit_test::data::make(RXN_FORMATS), format)
 {
     if (format == Format::MDL_MOLV2000 || format == Format::MDL_MOLV3000) {
         // FIXME: see SKETCH-2071, returns C~C(~O)=O.C~C~O>>C~C~O~C(~C)=O

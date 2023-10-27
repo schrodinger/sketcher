@@ -36,30 +36,8 @@ using namespace schrodinger::rdkit_extensions;
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::StereoGroupType);
 
-const std::vector<Format> CONVERT_FORMATS = {
-    Format::SMILES,
-    Format::EXTENDED_SMILES,
-    Format::SMARTS,
-    Format::MAESTRO,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::INCHI,
-    Format::PDB,
-    Format::RDMOL_BINARY_BASE64,
-    Format::XYZ,
-    // TODO: Format::HELM
-};
-
-const std::vector<Format> REACTION_CONVERT_FORMATS = {
-    Format::SMILES,
-    Format::SMARTS,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::RDMOL_BINARY_BASE64,
-};
-
 BOOST_DATA_TEST_CASE(test_auto_detect,
-                     boost::unit_test::data::make(CONVERT_FORMATS))
+                     boost::unit_test::data::make(MOL_FORMATS))
 {
     auto mol = to_rdkit("c1ccccc1", Format::SMILES);
     auto text = to_string(*mol, sample);
@@ -73,7 +51,7 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
 }
 
 BOOST_DATA_TEST_CASE(test_bypass_sanitization,
-                     boost::unit_test::data::make(CONVERT_FORMATS))
+                     boost::unit_test::data::make(MOL_FORMATS))
 {
     // Create an unsanitized mol with a pentavalent C...
     auto mol = to_rdkit("C[C](C)(C)(C)C", Format::SMILES);
@@ -94,7 +72,7 @@ BOOST_DATA_TEST_CASE(test_bypass_sanitization,
 }
 
 BOOST_DATA_TEST_CASE(test_parsing_error,
-                     boost::unit_test::data::make(CONVERT_FORMATS))
+                     boost::unit_test::data::make(MOL_FORMATS))
 {
     TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit("garbage", sample),
                                     std::invalid_argument,
@@ -138,7 +116,7 @@ BOOST_AUTO_TEST_CASE(test_INCHI_KEY)
 }
 
 BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
-                     boost::unit_test::data::make(REACTION_CONVERT_FORMATS))
+                     boost::unit_test::data::make(RXN_FORMATS))
 {
     std::string smiles = "CC(=O)O.OCC>>CC(=O)OCC";
     auto reaction = to_rdkit_reaction(smiles, Format::SMILES);
@@ -162,7 +140,7 @@ BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
 }
 
 BOOST_DATA_TEST_CASE(testDoNotForceKekulizationOnExport,
-                     boost::unit_test::data::make(CONVERT_FORMATS))
+                     boost::unit_test::data::make(MOL_FORMATS))
 {
     // SKETCH-1416
 
@@ -184,7 +162,7 @@ BOOST_DATA_TEST_CASE(testDoNotForceKekulizationOnExport,
 }
 
 BOOST_DATA_TEST_CASE(testExportPreservesKekulizationState,
-                     boost::unit_test::data::make(CONVERT_FORMATS))
+                     boost::unit_test::data::make(MOL_FORMATS))
 {
     // SKETCH-1416
 

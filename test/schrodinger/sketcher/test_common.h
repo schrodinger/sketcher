@@ -43,30 +43,6 @@ std::string read_testfile(const std::string& filename)
 
 namespace schrodinger
 {
-namespace rdkit_extensions
-{
-
-const std::vector<Format> TEXT_FORMATS = {
-    Format::SMILES,       Format::EXTENDED_SMILES,
-    Format::SMARTS,       Format::MAESTRO,
-    Format::MDL_MOLV2000, Format::MDL_MOLV3000,
-    Format::INCHI,        Format::PDB,
-    Format::XYZ,          Format::RDMOL_BINARY_BASE64,
-};
-
-const std::vector<Format> REACTION_TEXT_FORMATS = {
-    Format::SMILES,
-    Format::SMARTS,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::RDMOL_BINARY_BASE64,
-};
-
-} // namespace rdkit_extensions
-} // namespace schrodinger
-
-namespace schrodinger
-{
 namespace sketcher
 {
 

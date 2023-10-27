@@ -41,6 +41,31 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+// clang-format off
+const std::vector<Format> MOL_FORMATS = {
+    Format::RDMOL_BINARY_BASE64,
+    Format::SMILES,
+    Format::EXTENDED_SMILES,
+    Format::SMARTS,
+    Format::MDL_MOLV2000,
+    Format::MDL_MOLV3000,
+    Format::MAESTRO,
+    Format::INCHI,
+    // Exclude Format::INCHI_KEY which cannot be read back into RDKit
+    Format::PDB,
+    Format::XYZ,
+    // TODO: Format::HELM
+};
+
+const std::vector<Format> RXN_FORMATS = {
+    Format::RDMOL_BINARY_BASE64,
+    Format::SMILES,
+    Format::SMARTS,
+    Format::MDL_MOLV2000,
+    Format::MDL_MOLV3000,
+};
+// clang-format on
+
 namespace
 {
 
@@ -389,8 +414,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 Format::RDMOL_BINARY_BASE64,
                 Format::MDL_MOLV3000,
                 Format::MAESTRO,
-                Format::PDB,
                 Format::INCHI,
+                Format::PDB,
                 Format::XYZ,
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
@@ -532,30 +557,29 @@ to_rdkit_reaction(const std::string& text, const Format format)
 
     CaptureRDErrorLog rd_error_log;
 
-    boost::shared_ptr<RDKit::ChemicalReaction> reaction;
+    boost::shared_ptr<RDKit::ChemicalReaction> rxn;
+
+    bool sanitize = false;
+    bool removeHs = false;
     switch (format) {
         case Format::SMILES:
         case Format::SMARTS: {
             auto useSMILES = (format == Format::SMILES);
-            reaction.reset(
+            rxn.reset(
                 RDKit::RxnSmartsToChemicalReaction(text, nullptr, useSMILES));
 
             // Bootstrap coords to preserve double bond stereo (SKETCH-1254)
             double spacing = 2.0;
             bool updateProps = true;
-            RDDepict::compute2DCoordsForReaction(*reaction, spacing,
-                                                 updateProps);
+            RDDepict::compute2DCoordsForReaction(*rxn, spacing, updateProps);
 
             break;
         }
         case Format::MDL_MOLV2000:
-        case Format::MDL_MOLV3000: {
-            bool sanitize = false;
-            bool removeHs = false;
-            reaction.reset(
+        case Format::MDL_MOLV3000:
+            rxn.reset(
                 RDKit::RxnBlockToChemicalReaction(text, sanitize, removeHs));
             break;
-        }
         case Format::RDMOL_BINARY_BASE64: {
             const auto byte_array = base64_decode(text);
             if (byte_array.empty()) {
@@ -563,31 +587,31 @@ to_rdkit_reaction(const std::string& text, const Format format)
                 // This avoids an exception in the unpickler
                 break;
             }
-            reaction.reset(new RDKit::ChemicalReaction());
+            rxn.reset(new RDKit::ChemicalReaction());
             try {
                 RDKit::ReactionPickler::reactionFromPickle(byte_array,
-                                                           reaction.get());
+                                                           rxn.get());
             } catch (const RDKit::ReactionPicklerException&) {
-                reaction.reset();
+                rxn.reset();
             }
             break;
         }
         default:
             throw std::invalid_argument("Unsupported reaction import format");
     }
-    if (reaction == nullptr) {
+    if (rxn == nullptr) {
         throw_parse_error(rd_error_log, text);
     }
 
-    for (auto reactant : reaction->getReactants()) {
+    for (auto reactant : rxn->getReactants()) {
         fix_r0_rgroup(*reactant);
     }
 
-    for (auto product : reaction->getProducts()) {
+    for (auto product : rxn->getProducts()) {
         fix_r0_rgroup(*product);
     }
 
-    return reaction;
+    return rxn;
 }
 
 std::string to_string(const RDKit::ROMol& input_mol, const Format format)
@@ -596,8 +620,9 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 
     RDKit::RWMol mol(input_mol);
 
-    bool kekulize = false;
     bool include_stereo = true;
+    int confId = -1;
+    bool kekulize = false;
 
     switch (format) {
         case Format::SMILES:
@@ -614,7 +639,6 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(mol);
             }
-            int confId = -1;
             bool forceV3000 = format == Format::MDL_MOLV3000;
             return RDKit::SDWriter::getText(mol, confId, kekulize, forceV3000);
         }
@@ -653,25 +677,24 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
     throw std::invalid_argument("Invalid format specified");
 }
 
-std::string to_string(const RDKit::ChemicalReaction& reaction,
-                      const Format format)
+std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
 {
     switch (format) {
         case Format::SMILES:
-            return RDKit::ChemicalReactionToRxnSmiles(reaction);
+            return RDKit::ChemicalReactionToRxnSmiles(rxn);
         case Format::SMARTS:
-            return RDKit::ChemicalReactionToRxnSmarts(reaction);
+            return RDKit::ChemicalReactionToRxnSmarts(rxn);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             bool separateAgents = false;
             bool forceV3000 = format == Format::MDL_MOLV3000;
-            return RDKit::ChemicalReactionToRxnBlock(reaction, separateAgents,
+            return RDKit::ChemicalReactionToRxnBlock(rxn, separateAgents,
                                                      forceV3000);
         }
         case Format::RDMOL_BINARY_BASE64: {
             std::string byte_array;
             auto opts = RDKit::PicklerOps::AllProps;
-            RDKit::ReactionPickler::pickleReaction(reaction, byte_array, opts);
+            RDKit::ReactionPickler::pickleReaction(rxn, byte_array, opts);
             return base64_encode(byte_array);
         }
         default:
