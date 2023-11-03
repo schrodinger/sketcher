@@ -22,31 +22,44 @@ using namespace schrodinger;
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
-BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
+template <typename T> void image_gen_APIs(const T& input)
 {
-    auto rdmol = rdkit_extensions::to_rdkit("C1=CC=CC=C1");
-
     RenderOptions opts;
     opts.width_height = {400, 400};
     opts.background_color = QColor("#d4e6f1");
 
-    auto qpict = get_qpicture(*rdmol, opts);
+    auto qpict = get_qpicture(input, opts);
     BOOST_TEST(qpict.size() > 0);
 
-    auto image = get_qimage(*rdmol, opts);
+    auto image = get_qimage(input, opts);
     BOOST_TEST(image.sizeInBytes() > 0);
 
-    auto bytes = get_image_bytes(*rdmol, ImageFormat::PNG, opts);
+    auto bytes = get_image_bytes(input, ImageFormat::PNG, opts);
     BOOST_TEST(bytes.size() > 0);
 
     const auto tmp_file = "tmp_for_" + current_test_case().p_name.get();
     for (const auto& ext : {".png", ".svg"}) {
         auto outfile = tmp_file + ext;
-        save_image_file(*rdmol, outfile, opts);
+        save_image_file(input, outfile, opts);
         BOOST_TEST(boost::filesystem::exists(outfile));
     }
-    BOOST_REQUIRE_THROW(save_image_file(*rdmol, tmp_file + ".invalid", opts),
+    BOOST_REQUIRE_THROW(save_image_file(input, tmp_file + ".invalid", opts),
                         std::invalid_argument);
+}
+
+BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
+{
+    auto mol_smiles = "C1=CC=CC=C1";
+    auto rwmol = rdkit_extensions::to_rdkit(mol_smiles);
+    image_gen_APIs(*rwmol);
+    image_gen_APIs(RDKit::ROMol(*rwmol));
+    image_gen_APIs(mol_smiles);
+    image_gen_APIs(std::string(mol_smiles));
+
+    auto rxn_smiles = "CC(=O)O.OCC>>CC(=O)OCC";
+    image_gen_APIs(*rdkit_extensions::to_rdkit_reaction(rxn_smiles));
+    image_gen_APIs(rxn_smiles);
+    image_gen_APIs(std::string(rxn_smiles));
 }
 
 BOOST_AUTO_TEST_CASE(test_highlighting)

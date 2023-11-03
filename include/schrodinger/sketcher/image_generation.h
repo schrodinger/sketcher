@@ -20,7 +20,8 @@ template <typename T> class QList;
 namespace RDKit
 {
 class ROMol;
-}
+class ChemicalReaction;
+} // namespace RDKit
 
 namespace schrodinger
 {
@@ -58,37 +59,57 @@ struct RenderOptions {
 // TODO: Overload functions to allow std::string as input
 
 /**
- * @param rdmol molecule to render
+ * @param mol/rxn/text molecule to render
  * @param opts given image generation configuration
  * @return image generated from the 2D sketcher
  */
-SKETCHER_API QPicture get_qpicture(const RDKit::ROMol& rdmol,
+SKETCHER_API QPicture get_qpicture(const RDKit::ROMol& mol,
+                                   const RenderOptions& opts = RenderOptions());
+SKETCHER_API QPicture get_qpicture(const RDKit::ChemicalReaction& rxn,
+                                   const RenderOptions& opts = RenderOptions());
+SKETCHER_API QPicture get_qpicture(const std::string& text,
                                    const RenderOptions& opts = RenderOptions());
 
 /**
- * @param rdmol molecule to render
+ * @param mol/rxn/text molecule to render
  * @param opts given image generation configuration
  * @return picture generated from the 2D sketcher
  */
-SKETCHER_API QImage get_qimage(const RDKit::ROMol& rdmol,
+SKETCHER_API QImage get_qimage(const RDKit::ROMol& mol,
+                               const RenderOptions& opts = RenderOptions());
+SKETCHER_API QImage get_qimage(const RDKit::ChemicalReaction& rxn,
+                               const RenderOptions& opts = RenderOptions());
+SKETCHER_API QImage get_qimage(const std::string& text,
                                const RenderOptions& opts = RenderOptions());
 
 /**
- * @param rdmol molecule to render
+ * @param mol/rxn/text molecule to render
  * @param format format of the image
  * @param opts given image generation configuration
  * @return byte array of data generated from the 2D sketcher
  */
 SKETCHER_API QByteArray
-get_image_bytes(const RDKit::ROMol& rdmol, ImageFormat format,
+get_image_bytes(const RDKit::ROMol& mol, ImageFormat format,
+                const RenderOptions& opts = RenderOptions());
+SKETCHER_API QByteArray
+get_image_bytes(const RDKit::ChemicalReaction& rxn, ImageFormat format,
+                const RenderOptions& opts = RenderOptions());
+SKETCHER_API QByteArray
+get_image_bytes(const std::string& text, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
 
 /**
- * @param rdmol molecule to render
+ * @param mol/rxn/text molecule to render
  * @param filename path to write to; format interpreted from extension
  * @param opts given image generation configuration
  */
-SKETCHER_API void save_image_file(const RDKit::ROMol& rdmol,
+SKETCHER_API void save_image_file(const RDKit::ROMol& mol,
+                                  const std::string& filename,
+                                  const RenderOptions& opts = RenderOptions());
+SKETCHER_API void save_image_file(const RDKit::ChemicalReaction& rxn,
+                                  const std::string& filename,
+                                  const RenderOptions& opts = RenderOptions());
+SKETCHER_API void save_image_file(const std::string& text,
                                   const std::string& filename,
                                   const RenderOptions& opts = RenderOptions());
 

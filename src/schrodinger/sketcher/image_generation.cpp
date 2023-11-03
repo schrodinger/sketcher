@@ -90,14 +90,34 @@ qreal get_scale(const QRectF& scene_rect, const QSize& render_size)
     return qMin(x_ratio, y_ratio);
 }
 
-void paint_scene(QPaintDevice* device, const RDKit::ROMol& rdmol,
-                 const RenderOptions& opts)
+/**
+ * @internal
+ * Helper functions for the templated image generation APIs to inject various
+ * inputs into the given sketcher scene.
+ */
+void add_to_scene(sketcherScene* scene, const RDKit::ROMol& rdmol)
+{
+    scene->addRDKitMolecule(rdmol);
+}
+
+void add_to_scene(sketcherScene* scene, const RDKit::ChemicalReaction& rxn)
+{
+    scene->addRDKitReaction(rxn);
+}
+
+void add_to_scene(sketcherScene* scene, const std::string& text)
+{
+    scene->importText(text);
+}
+
+template <typename T> void paint_scene(QPaintDevice* device, const T& input,
+                                       const RenderOptions& opts)
 {
     sketcherScene scene;
     SketcherModel sketcher_model(&scene);
     scene.setModel(&sketcher_model);
 
-    scene.addRDKitMolecule(rdmol);
+    add_to_scene(&scene, input);
     setHighlights(scene, opts);
     setUserLabels(scene, opts);
 
@@ -139,17 +159,17 @@ ImageFormat get_format(const QString& filename)
     }
 }
 
-} // unnamed namespace
-
-QPicture get_qpicture(const RDKit::ROMol& rdmol, const RenderOptions& opts)
+template <typename T>
+QPicture get_qpicture(const T& input, const RenderOptions& opts)
 {
     QPicture picture;
     picture.setBoundingRect(QRect(QPoint(0, 0), opts.width_height));
-    paint_scene(&picture, rdmol, opts);
+    paint_scene(&picture, input, opts);
     return picture;
 }
 
-QImage get_qimage(const RDKit::ROMol& rdmol, const RenderOptions& opts)
+template <typename T>
+QImage get_qimage(const T& input, const RenderOptions& opts)
 {
     QImage image(opts.width_height, QImage::Format_ARGB32);
     {
@@ -161,18 +181,18 @@ QImage get_qimage(const RDKit::ROMol& rdmol, const RenderOptions& opts)
         painter.setCompositionMode(QPainter::CompositionMode_Source);
         painter.fillRect(target_rect, Qt::transparent);
     }
-    paint_scene(&image, rdmol, opts);
+    paint_scene(&image, input, opts);
     return image;
 }
 
-QByteArray get_image_bytes(const RDKit::ROMol& rdmol, ImageFormat format,
-                           const RenderOptions& opts)
+template <typename T> QByteArray
+get_image_bytes(const T& input, ImageFormat format, const RenderOptions& opts)
 {
     QBuffer buffer;
     buffer.open(QIODevice::WriteOnly);
 
     if (format == ImageFormat::PNG) {
-        auto image = get_qimage(rdmol, opts);
+        auto image = get_qimage(input, opts);
         image.save(&buffer, "PNG");
 
     } else if (format == ImageFormat::SVG) {
@@ -180,7 +200,7 @@ QByteArray get_image_bytes(const RDKit::ROMol& rdmol, ImageFormat format,
         svg_gen.setSize(opts.width_height);
         svg_gen.setViewBox(QRect(QPoint(0, 0), opts.width_height));
         svg_gen.setOutputDevice(&buffer);
-        paint_scene(&svg_gen, rdmol, opts);
+        paint_scene(&svg_gen, input, opts);
 
     } else {
         throw std::runtime_error("Unknown ImageFormat");
@@ -189,15 +209,85 @@ QByteArray get_image_bytes(const RDKit::ROMol& rdmol, ImageFormat format,
     return buffer.data();
 }
 
-void save_image_file(const RDKit::ROMol& rdmol, const std::string& filename,
-                     const RenderOptions& opts)
+template <typename T> void save_image_file(const T& input,
+                                           const std::string& filename,
+                                           const RenderOptions& opts)
 {
     auto path = QString::fromStdString(filename);
     auto format = get_format(path);
-    auto data = get_image_bytes(rdmol, format, opts);
+    auto data = get_image_bytes(input, format, opts);
     QFile file(path);
     file.open(QIODevice::WriteOnly);
     file.write(data);
+}
+
+} // unnamed namespace
+
+QPicture get_qpicture(const RDKit::ROMol& mol, const RenderOptions& opts)
+{
+    return get_qpicture<RDKit::ROMol>(mol, opts);
+}
+
+QPicture get_qpicture(const RDKit::ChemicalReaction& rxn,
+                      const RenderOptions& opts)
+{
+    return get_qpicture<RDKit::ChemicalReaction>(rxn, opts);
+}
+
+QPicture get_qpicture(const std::string& text, const RenderOptions& opts)
+{
+    return get_qpicture<std::string>(text, opts);
+}
+
+QImage get_qimage(const RDKit::ROMol& mol, const RenderOptions& opts)
+{
+    return get_qimage<RDKit::ROMol>(mol, opts);
+}
+
+QImage get_qimage(const RDKit::ChemicalReaction& rxn, const RenderOptions& opts)
+{
+    return get_qimage<RDKit::ChemicalReaction>(rxn, opts);
+}
+
+QImage get_qimage(const std::string& text, const RenderOptions& opts)
+{
+    return get_qimage<std::string>(text, opts);
+}
+
+QByteArray get_image_bytes(const RDKit::ROMol& mol, ImageFormat format,
+                           const RenderOptions& opts)
+{
+    return get_image_bytes<RDKit::ROMol>(mol, format, opts);
+}
+
+QByteArray get_image_bytes(const RDKit::ChemicalReaction& rxn,
+                           ImageFormat format, const RenderOptions& opts)
+{
+    return get_image_bytes<RDKit::ChemicalReaction>(rxn, format, opts);
+}
+
+QByteArray get_image_bytes(const std::string& text, ImageFormat format,
+                           const RenderOptions& opts)
+{
+    return get_image_bytes<std::string>(text, format, opts);
+}
+
+void save_image_file(const RDKit::ROMol& mol, const std::string& filename,
+                     const RenderOptions& opts)
+{
+    save_image_file<RDKit::ROMol>(mol, filename, opts);
+}
+
+void save_image_file(const RDKit::ChemicalReaction& rxn,
+                     const std::string& filename, const RenderOptions& opts)
+{
+    save_image_file<RDKit::ChemicalReaction>(rxn, filename, opts);
+}
+
+void save_image_file(const std::string& text, const std::string& filename,
+                     const RenderOptions& opts)
+{
+    save_image_file<std::string>(text, filename, opts);
 }
 
 qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
