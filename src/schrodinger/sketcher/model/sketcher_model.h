@@ -26,7 +26,7 @@ namespace sketcher
 /**
  * Whether to the entire scene or a selection subset should be used
  */
-enum class SceneSubset { ALL, SELECTION, HOVERED, SELECTED_OR_HOVERED };
+enum class SceneSubset { ALL, SELECTION };
 
 /**
  * Possible selection tools to equip

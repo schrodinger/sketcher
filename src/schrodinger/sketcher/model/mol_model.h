@@ -661,17 +661,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void removeSelected();
 
     /**
-     * Mutate a set of atoms atoms to the specified element.
-     * @param atoms The atoms to mutate
+     * Mutate all selected atoms to the specified element.
      */
-    void mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
-                     const Element& element);
+    void mutateSelectedAtoms(const Element& element);
 
     /**
-     * Mutate a set of atoms to the specified query.
+     * Mutate all selected atoms to the specified query.
      */
-    void mutateAtoms(
-        std::unordered_set<const RDKit::Atom*> atoms,
+    void mutateSelectedAtoms(
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
 
     /**
@@ -683,8 +680,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * atoms will be switched).  If false, then any bonds that already match
      * will be ignored.
      */
-    void mutateBonds(
-        std::unordered_set<const RDKit::Bond*> bonds,
+    void mutateSelectedBonds(
         const RDKit::Bond::BondType& bond_type,
         const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
         bool flip_matching_bonds = false);
@@ -692,24 +688,21 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Mutate all selected bonds to the specified query
      */
-    void mutateBonds(
-        std::unordered_set<const RDKit::Bond*> bonds,
+    void mutateSelectedBonds(
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
-     * Adjust the charge on all target atoms by the specified value. To
+     * Adjust the charge on all selected atoms by the specified value.  To
      * decrement the charge, pass in a negative number.
      */
-    void adjustChargeOnAtoms(int increment_by,
-                             std::unordered_set<const RDKit::Atom*> atoms);
+    void adjustChargeOnSelectedAtoms(int increment_by);
 
     /**
-     * If any atoms of the set have implicit hydrogens, add explicit hydrogens
-     * to all atoms of the set. Otherwise, hide all explicit hydrogens on all
-     * atoms of the set.
-     * @param atoms The atoms to consider.
+     * If any selected atoms have implicit hydrogens, add explicit hydrogens to
+     * all selected atoms.  Otherwise, hide all explicit hydrogens on selected
+     * atoms.
      */
-    void toggleExplicitHsOnAtoms(std::unordered_set<const RDKit::Atom*> atoms);
+    void toggleExplicitHsOnSelectedAtoms();
 
   signals:
 
@@ -1188,12 +1181,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const AtomIdxToFragBondMap& core_to_frag_bonds_by_idx);
 
     /**
-     * Mutate a set of atoms to an Atom object returned by the provided
+     * Mutate all selected atoms to an Atom object returned by the provided
      * function.
-     * @param atoms The atoms to mutate
      */
-    void mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
-                     const AtomFunc& create_atom);
+    void mutateSelectedAtoms(const AtomFunc& create_atom);
 };
 
 } // namespace sketcher

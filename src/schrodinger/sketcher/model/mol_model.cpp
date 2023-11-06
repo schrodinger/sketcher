@@ -1214,43 +1214,39 @@ void MolModel::removeSelected()
            getSelectedNonMolecularObjects());
 }
 
-void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
-                           const Element& element)
+void MolModel::mutateSelectedAtoms(const Element& element)
 {
     unsigned int atomic_num = static_cast<unsigned int>(element);
     auto create_atom = std::bind(make_new_atom, atomic_num);
-    mutateAtoms(atoms, create_atom);
+    mutateSelectedAtoms(create_atom);
 }
 
-void MolModel::mutateAtoms(
-    std::unordered_set<const RDKit::Atom*> atoms,
+void MolModel::mutateSelectedAtoms(
     const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
 {
     auto create_atom = std::bind(make_new_query_atom, atom_query);
-    mutateAtoms(atoms, create_atom);
+    mutateSelectedAtoms(create_atom);
 }
 
-void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
-                           const AtomFunc& create_atom)
+void MolModel::mutateSelectedAtoms(const AtomFunc& create_atom)
 {
-    if (atoms.empty()) {
+    if (m_selected_atom_tags.empty()) {
         return;
     }
-    auto cmd_func = [this, atoms, create_atom]() {
-        for (auto atom : atoms) {
-            mutateAtomCommandFunc(getTagForAtom(atom), create_atom);
+    auto cmd_func = [this, create_atom]() {
+        for (auto atom_tag : m_selected_atom_tags) {
+            mutateAtomCommandFunc(atom_tag, create_atom);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
 }
 
-void MolModel::mutateBonds(std::unordered_set<const RDKit::Bond*> bonds,
-                           const RDKit::Bond::BondType& bond_type,
-                           const RDKit::Bond::BondDir& bond_dir,
-                           bool flip_matching_bonds)
+void MolModel::mutateSelectedBonds(const RDKit::Bond::BondType& bond_type,
+                                   const RDKit::Bond::BondDir& bond_dir,
+                                   bool flip_matching_bonds)
 {
     std::unordered_set<int> matching_bond_tags, non_matching_bond_tags;
-    for (auto* bond : bonds) {
+    for (auto* bond : getSelectedBonds()) {
         auto bond_tag = getTagForBond(bond);
         if (bond->getBondType() == bond_type &&
             bond->getBondDir() == bond_dir) {
@@ -1280,43 +1276,39 @@ void MolModel::mutateBonds(std::unordered_set<const RDKit::Bond*> bonds,
     doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
 }
 
-void MolModel::mutateBonds(
-    std::unordered_set<const RDKit::Bond*> bonds,
+void MolModel::mutateSelectedBonds(
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
-    if (bonds.empty()) {
+    if (m_selected_bond_tags.empty()) {
         return;
     }
     auto create_bond = std::bind(make_new_query_bond, bond_query);
-    auto cmd_func = [this, create_bond, bonds]() {
-        for (auto bond : bonds) {
-            auto bond_tag = getTagForBond(bond);
+    auto cmd_func = [this, create_bond]() {
+        for (auto bond_tag : m_selected_bond_tags) {
             mutateBondCommandFunc(bond_tag, create_bond);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
 }
 
-void MolModel::adjustChargeOnAtoms(int increment_by,
-                                   std::unordered_set<const RDKit::Atom*> atoms)
+void MolModel::adjustChargeOnSelectedAtoms(int increment_by)
 {
-    if (atoms.empty()) {
+    if (m_selected_atom_tags.empty()) {
         return;
     }
-    auto cmd_func = [this, increment_by, atoms]() {
+    auto cmd_func = [this, increment_by]() {
         Q_ASSERT(m_allow_edits);
-        for (auto atom : atoms) {
-            setAtomChargeCommandFunc(getTagForAtom(atom),
-                                     atom->getFormalCharge() + increment_by);
+        for (auto atom_tag : m_selected_atom_tags) {
+            auto* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+            atom->setFormalCharge(atom->getFormalCharge() + increment_by);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Set atom charge", WhatChanged::MOLECULE);
 }
 
-void MolModel::toggleExplicitHsOnAtoms(
-    std::unordered_set<const RDKit::Atom*> atoms)
+void MolModel::toggleExplicitHsOnSelectedAtoms()
 {
-    updateExplicitHs(ExplicitHActions::TOGGLE, atoms);
+    updateExplicitHs(ExplicitHActions::TOGGLE, getSelectedAtoms());
 }
 
 void MolModel::setTagForAtom(RDKit::Atom* const atom, const int atom_tag)
