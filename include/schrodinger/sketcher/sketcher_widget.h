@@ -81,7 +81,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     std::string getString(rdkit_extensions::Format format) const;
 
+  protected:
+    // override QWidget methods to handle keystrokes
+    void keyPressEvent(QKeyEvent* event) override;
+
   protected slots:
+
     /**
      * Copy the contents of the scene to the clipboard and delete the selection
      *

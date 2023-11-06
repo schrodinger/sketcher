@@ -6,6 +6,7 @@
 #include <QMimeData>
 #include <QScreen>
 #include <QWidget>
+#include <QKeyEvent>
 #include <GraphMol/ROMol.h>
 #include <GraphMol/ChemReactions/Reaction.h>
 #include <GraphMol/SubstanceGroup.h>
@@ -29,11 +30,15 @@
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/bond_item.h"
+#include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/view.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 
@@ -423,15 +428,122 @@ void SketcherWidget::updateWatermark()
     m_watermark_item->setVisible(is_empty);
 }
 
+void SketcherWidget::keyPressEvent(QKeyEvent* event)
+{
+    QWidget::keyPressEvent(event);
+    auto cursor_pos =
+        m_ui->view->mapToScene(m_ui->view->mapFromGlobal(QCursor::pos()));
+    auto [atoms, bonds, sgroups, nonmolecular_objects] =
+        m_scene->getModelObjects(SceneSubset::SELECTED_OR_HOVERED, &cursor_pos);
+    bool has_target_atoms = !atoms.empty();
+    bool has_target_bonds = !bonds.empty();
+    bool has_target_nonmolecular_objects = !nonmolecular_objects.empty();
+
+    // Determine these values before interacting with model
+    bool has_targets = false;
+    std::pair<ModelKey, QVariant> kv_pair;
+    std::unordered_map<ModelKey, QVariant> kv_pairs;
+
+    // Assign has_targets, kv_pair, and kv_pairs based on key pressed
+    switch (Qt::Key(event->key())) {
+        case Qt::Key_Backspace:
+        case Qt::Key_Delete: {
+            kv_pair = {ModelKey::DRAW_TOOL,
+                       QVariant::fromValue(DrawTool::ERASE)};
+            has_targets = has_target_atoms || has_target_bonds ||
+                          has_target_nonmolecular_objects;
+            break;
+        }
+
+        case Qt::Key_Minus:
+        case Qt::Key_Plus:
+        case Qt::Key_Equal: {
+            auto tool = event->key() == Qt::Key_Minus ? ChargeTool::DECREASE
+                                                      : ChargeTool::INCREASE;
+            kv_pair = {ModelKey::CHARGE_TOOL, QVariant::fromValue(tool)};
+            kv_pairs = {
+                {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::CHARGE)}};
+            has_targets = has_target_atoms;
+            break;
+        }
+        case Qt::Key_0:
+        case Qt::Key_1:
+        case Qt::Key_2:
+        case Qt::Key_3: {
+            std::unordered_map<int, BondTool> key_to_bond_tool = {
+                {Qt::Key_0, BondTool::ZERO},
+                {Qt::Key_1, BondTool::SINGLE},
+                {Qt::Key_2, BondTool::DOUBLE},
+                {Qt::Key_3, BondTool::TRIPLE},
+            };
+            auto tool = key_to_bond_tool[event->key()];
+            kv_pair = {ModelKey::BOND_TOOL, QVariant::fromValue(tool)};
+            kv_pairs = {
+                {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::BOND)}};
+            has_targets = has_target_bonds;
+            break;
+        }
+        case Qt::Key_Space:
+            // Switch back to the last used select tool
+            if (!m_sketcher_model->sceneIsEmpty()) {
+                m_sketcher_model->setValue(ModelKey::DRAW_TOOL,
+                                           DrawTool::SELECT);
+            }
+            return;
+            /* case Qt::Key_D:
+               case Qt::Key_T:
+                   // TODO: deuterium, tritium SKETCH-2089
+               case Qt::Key_Escape:
+                   // TODO: SKETCH-1184 SKETCH-2045
+            */
+        default: {
+            // Check whether pressed key corresponds to an element
+            auto key_text = event->text().toStdString();
+            int atomic_number = -1;
+            try {
+                atomic_number = symbol_to_atomic_number(key_text);
+            } catch (Invar::Invariant const&) {
+                // Persist invalid atomic number if not an element
+            }
+            if (atomic_number != -1 && event->modifiers() == Qt::NoModifier) {
+                auto element = static_cast<Element>(atomic_number);
+                has_targets = has_target_atoms;
+                kv_pair = {ModelKey::ELEMENT, QVariant::fromValue(element)};
+                kv_pairs = {
+                    {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
+                    {ModelKey::ATOM_TOOL,
+                     QVariant::fromValue(AtomTool::ELEMENT)}};
+            } else {
+                return;
+            }
+            break;
+        }
+    }
+    // Finally, interact with model
+    if (has_targets) {
+        m_sketcher_model->pingValue(kv_pair.first, kv_pair.second);
+    } else {
+        kv_pairs.emplace(kv_pair.first, kv_pair.second);
+        m_sketcher_model->setValues(kv_pairs);
+    }
+}
+
 void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
 {
-    if (!m_mol_model->hasSelection()) {
+
+    auto view = m_ui->view;
+    if (!view) {
         return;
     }
+    auto cursor_pos =
+        view->mapToScene(m_ui->view->mapFromGlobal(QCursor::pos()));
+    auto [atoms, bonds, sgroups, nonmolecular_objects] =
+        m_scene->getModelObjects(SceneSubset::SELECTED_OR_HOVERED, &cursor_pos);
+
     switch (key) {
         case ModelKey::ELEMENT: {
             auto element = value.value<Element>();
-            m_mol_model->mutateSelectedAtoms(element);
+            m_mol_model->mutateAtoms(atoms, element);
             break;
         }
         case ModelKey::ATOM_QUERY: {
@@ -439,7 +551,7 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
             auto atom_query =
                 std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
                     query_func());
-            m_mol_model->mutateSelectedAtoms(atom_query);
+            m_mol_model->mutateAtoms(atoms, atom_query);
             break;
         }
         case ModelKey::BOND_TOOL: {
@@ -447,8 +559,7 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
             if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
                 auto [bond_type, bond_dir, flippable, cursor_hint_path] =
                     BOND_TOOL_BOND_MAP.at(bond_tool);
-                m_mol_model->mutateSelectedBonds(bond_type, bond_dir,
-                                                 flippable);
+                m_mol_model->mutateBonds(bonds, bond_type, bond_dir, flippable);
             } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
                 auto [query_type, query_func] =
                     BOND_TOOL_QUERY_MAP.at(bond_tool);
@@ -456,7 +567,7 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
                     std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
                         query_func());
                 bond_query->setTypeLabel(query_type);
-                m_mol_model->mutateSelectedBonds(bond_query);
+                m_mol_model->mutateBonds(bonds, bond_query);
             }
             // Ignore BondTool::ATOM_CHAIN, which should never be pinged
             break;
@@ -464,15 +575,15 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
         case ModelKey::CHARGE_TOOL: {
             auto charge_tool = value.value<ChargeTool>();
             int increment_by = charge_tool == ChargeTool::INCREASE ? 1 : -1;
-            m_mol_model->adjustChargeOnSelectedAtoms(increment_by);
+            m_mol_model->adjustChargeOnAtoms(increment_by, atoms);
             break;
         }
         case ModelKey::DRAW_TOOL: {
             auto tool = value.value<DrawTool>();
             if (tool == DrawTool::ERASE) {
-                m_mol_model->removeSelected();
+                m_mol_model->remove(atoms, bonds, nonmolecular_objects);
             } else if (tool == DrawTool::EXPLICIT_H) {
-                m_mol_model->toggleExplicitHsOnSelectedAtoms();
+                m_mol_model->toggleExplicitHsOnAtoms(atoms);
             }
             break;
         }

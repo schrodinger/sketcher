@@ -31,7 +31,6 @@ class AtomItem;
 class AtomItemSettings;
 class BondItem;
 class BondItemSettings;
-class Bonds;
 class Fonts;
 
 /**
