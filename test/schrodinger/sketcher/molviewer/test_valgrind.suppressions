@@ -166,3 +166,17 @@
    fun:_ZN11schrodinger8sketcher13SketcherModelC1EP7QObject
    fun:_ZN11schrodinger8sketcher9TestSceneC1Ev
 }
+
+{
+   See SHARED-10265: memory possibly lost
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN10QArrayData8allocateEPPS_xxxNS_16AllocationOptionE
+   fun:_ZN7QStringC1ExN2Qt14InitializationE
+   fun:_ZN5QUtf816convertToUnicodeE14QByteArrayView
+   fun:_ZN7QString8fromUtf8E14QByteArrayView
+   fun:_ZN7QStringC1EPKc
+   fun:_ZN11schrodinger8sketcher15import_mol_textEPNS0_8MolModelERKSsNS_16rdkit_extensions6FormatE
+   fun:_ZN11schrodinger8sketcher15createStructureESs
+}
