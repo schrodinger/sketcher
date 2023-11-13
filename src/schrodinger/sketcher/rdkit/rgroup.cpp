@@ -2,12 +2,12 @@
 
 #include <algorithm>
 
-#include <GraphMol/Atom.h>
-#include <GraphMol/Bond.h>
-#include <GraphMol/Conformer.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/RWMol.h>
-#include <RDGeneral/types.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/Bond.h>
+#include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/RDGeneral/types.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"

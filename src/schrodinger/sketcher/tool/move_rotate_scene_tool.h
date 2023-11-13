@@ -3,8 +3,8 @@
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/molviewer/rotation_item.h"
-#include <GraphMol/Atom.h>
-#include <Geometry/point.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/Geometry/point.h>
 #include <unordered_set>
 
 namespace schrodinger

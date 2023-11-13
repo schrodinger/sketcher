@@ -1,8 +1,8 @@
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
-#include <CIPLabeler/CIPLabeler.h>
-#include <CIPLabeler/TooManyNodesException.h>
-#include <GraphMol/Chirality.h>
+#include <rdkit/CIPLabeler/CIPLabeler.h>
+#include <rdkit/CIPLabeler/TooManyNodesException.h>
+#include <rdkit/GraphMol/Chirality.h>
 
 #include "schrodinger/rdkit_extensions/molops.h"
 

@@ -10,8 +10,8 @@
 #include <optional>
 #include <stdexcept>
 
-#include <GraphMol/Atom.h>
-#include <GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/QueryAtom.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 

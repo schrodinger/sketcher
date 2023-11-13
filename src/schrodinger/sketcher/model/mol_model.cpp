@@ -2,11 +2,11 @@
 
 #include <algorithm>
 
-#include <GraphMol/Atom.h>
-#include <GraphMol/Bond.h>
-#include <GraphMol/Conformer.h>
-#include <GraphMol/MolOps.h>
-#include <GraphMol/RWMol.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/Bond.h>
+#include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/RWMol.h>
 #include <QObject>
 #include <QUndoStack>
 #include <QtGlobal>

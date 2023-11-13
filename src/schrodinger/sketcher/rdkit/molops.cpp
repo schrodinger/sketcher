@@ -1,8 +1,8 @@
 #include "schrodinger/sketcher/rdkit/molops.h"
 
-#include <GraphMol/MolOps.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/RWMol.h>
+#include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include <boost/algorithm/string.hpp>
 

@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 
-#include <GraphMol/Atom.h>
+#include <rdkit/GraphMol/Atom.h>
 
 namespace schrodinger
 {

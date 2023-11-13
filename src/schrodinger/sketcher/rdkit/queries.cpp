@@ -4,10 +4,10 @@
 #include <memory>
 #include <string_view>
 
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/QueryBond.h>
-#include <GraphMol/SmilesParse/SmartsWrite.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/SmilesParse/SmartsWrite.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 
 namespace schrodinger
 {

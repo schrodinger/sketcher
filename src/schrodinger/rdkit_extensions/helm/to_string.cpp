@@ -10,11 +10,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include <GraphMol/BondIterators.h>
-#include <GraphMol/MonomerInfo.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/RWMol.h>
-#include <GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/BondIterators.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 

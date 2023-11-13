@@ -2,10 +2,10 @@
 
 #include <unordered_map>
 
-#include <Geometry/point.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/QueryOps.h>
+#include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryOps.h>
 
 #include <QPainter>
 

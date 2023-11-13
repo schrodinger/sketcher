@@ -6,9 +6,9 @@
 #include <QMimeData>
 #include <QScreen>
 #include <QWidget>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/ChemReactions/Reaction.h>
-#include <GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <boost/algorithm/string.hpp>
 
 #ifdef __EMSCRIPTEN__

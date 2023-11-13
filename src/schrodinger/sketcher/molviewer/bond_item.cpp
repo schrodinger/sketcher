@@ -5,11 +5,11 @@
 #include <cstdlib>
 #include <unordered_set>
 
-#include <Geometry/point.h>
-#include <GraphMol/Conformer.h>
-#include <GraphMol/QueryOps.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/RingInfo.h>
+#include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/QueryOps.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RingInfo.h>
 #include <QMarginsF>
 #include <QPainter>
 #include <QPointF>

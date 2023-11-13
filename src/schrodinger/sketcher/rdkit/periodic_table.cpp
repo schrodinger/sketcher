@@ -1,8 +1,8 @@
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 
-#include <GraphMol/GraphMol.h>
-#include <GraphMol/PeriodicTable.h>
-#include <GraphMol/SanitException.h>
+#include <rdkit/GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/PeriodicTable.h>
+#include <rdkit/GraphMol/SanitException.h>
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/trim.hpp>

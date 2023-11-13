@@ -10,7 +10,7 @@
 #include <string>
 #include <sstream>
 
-#include <RDGeneral/RDLog.h>
+#include <rdkit/RDGeneral/RDLog.h>
 #include <boost/core/noncopyable.hpp>
 
 #include "schrodinger/rdkit_extensions/definitions.h"

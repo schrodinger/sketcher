@@ -3,8 +3,8 @@
 #include <tuple>
 #include <unordered_map>
 
-#include <GraphMol/QueryBond.h>
-#include <GraphMol/QueryOps.h>
+#include <rdkit/GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/QueryOps.h>
 
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"

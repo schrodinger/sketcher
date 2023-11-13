@@ -3,8 +3,8 @@
 #include <string>
 #include <utility>
 
-#include <GraphMol/ROMol.h>
-#include <GraphMol/RWMol.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 #include <QMarginsF>
 #include <QRectF>
 #include <QString>

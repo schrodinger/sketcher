@@ -6,7 +6,7 @@
 
 #include <QPointF>
 
-#include <GraphMol/RWMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"

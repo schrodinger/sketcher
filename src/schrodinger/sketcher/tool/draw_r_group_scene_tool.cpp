@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <unordered_set>
 
-#include <GraphMol/ROMol.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/model/mol_model.h"

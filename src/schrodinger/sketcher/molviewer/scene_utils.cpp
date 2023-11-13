@@ -10,7 +10,7 @@
 #include <QRegion>
 #include <QSvgRenderer>
 
-#include <GraphMol/ROMol.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"

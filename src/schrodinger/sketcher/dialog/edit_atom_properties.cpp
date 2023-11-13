@@ -3,11 +3,11 @@
 #include <set>
 #include <sstream>
 
-#include <GraphMol/Atom.h>
-#include <GraphMol/Chirality.h>
-#include <GraphMol/PeriodicTable.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/PeriodicTable.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <QPushButton>
 
 #include "schrodinger/sketcher/Atom.h"

@@ -15,14 +15,14 @@
 
 #include <Eigen/Dense>
 
-#include <GraphMol/ChemReactions/Reaction.h>
-#include <GraphMol/ChemReactions/ReactionParser.h>
-#include <GraphMol/Depictor/RDDepictor.h>
-#include <GraphMol/FileParsers/FileParsers.h>
-#include <GraphMol/GraphMol.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/FileParsers/FileParsers.h>
+#include <rdkit/GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"

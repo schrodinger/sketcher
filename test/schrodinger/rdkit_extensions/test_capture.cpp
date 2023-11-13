@@ -9,9 +9,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <GraphMol/GraphMol.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <RDGeneral/RDLog.h>
+#include <rdkit/GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/RDGeneral/RDLog.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/test/boost_checks.h"

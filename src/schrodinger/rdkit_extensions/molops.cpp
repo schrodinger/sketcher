@@ -6,11 +6,11 @@
  --------------------------------------------------------------------------- */
 #include "schrodinger/rdkit_extensions/molops.h"
 
-#include <GraphMol/Chirality.h>
-#include <GraphMol/Conformer.h>
-#include <GraphMol/FileParsers/MolFileStereochem.h>
-#include <GraphMol/MolOps.h>
-#include <GraphMol/FileParsers/MolFileStereochem.h>
+#include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
+#include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"

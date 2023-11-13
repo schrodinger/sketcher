@@ -5,10 +5,10 @@
 #include <tuple>
 #include <unordered_map>
 
-#include <GraphMol/Atom.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/QueryBond.h>
-#include <GraphMol/QueryOps.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/QueryOps.h>
 
 #include "schrodinger/sketcher/model/sketcher_model.h"
 

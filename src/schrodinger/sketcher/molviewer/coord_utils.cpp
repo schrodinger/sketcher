@@ -7,8 +7,8 @@
 
 #include <boost/range/iterator_range.hpp>
 
-#include <Geometry/point.h>
-#include <GraphMol/ROMol.h>
+#include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include <QLineF>
 #include <QtMath>

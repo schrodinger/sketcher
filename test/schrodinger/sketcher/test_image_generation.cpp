@@ -5,7 +5,7 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE sketcher_image_generation
 
-#include <GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/GraphMol.h>
 #include <QList>
 #include <boost/filesystem.hpp>
 #include <boost/test/framework.hpp>

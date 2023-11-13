@@ -1,9 +1,9 @@
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 
-#include <GraphMol/Chirality.h>
-#include <GraphMol/PeriodicTable.h>
-#include <GraphMol/ROMol.h>
-#include <RDGeneral/types.h>
+#include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/PeriodicTable.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/RDGeneral/types.h>
 
 #include <QPainter>
 #include <QPointF>

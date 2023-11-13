@@ -16,10 +16,10 @@
 #include <string>
 #include <vector>
 
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/QueryBond.h>
-#include <GraphMol/MolTransforms/MolTransforms.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <QUndoStack>
 
 #include "../test_common.h"

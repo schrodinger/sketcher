@@ -1,8 +1,8 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE molops
 
-#include <GraphMol/ROMol.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 #include "schrodinger/sketcher/rdkit/molops.h"

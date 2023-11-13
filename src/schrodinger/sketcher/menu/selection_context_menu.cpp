@@ -1,7 +1,7 @@
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 
-#include <GraphMol/Atom.h>
-#include <GraphMol/ROMol.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"

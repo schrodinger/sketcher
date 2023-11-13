@@ -11,12 +11,12 @@
 #include <string>
 #include <vector>
 
-#include <GraphMol/RWMol.h>
-#include <GraphMol/Atom.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/Bond.h>
-#include <GraphMol/SubstanceGroup.h>
-#include <GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/Bond.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"

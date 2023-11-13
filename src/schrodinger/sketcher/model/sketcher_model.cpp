@@ -4,7 +4,7 @@
 #include <string>
 
 #include <QPointF>
-#include <GraphMol/Atom.h>
+#include <rdkit/GraphMol/Atom.h>
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"

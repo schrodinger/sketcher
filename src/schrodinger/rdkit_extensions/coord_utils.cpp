@@ -1,8 +1,8 @@
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 
-#include <Geometry/point.h>
-#include <GraphMol/Depictor/RDDepictor.h>
-#include <GraphMol/ROMol.h>
+#include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 namespace schrodinger
 {

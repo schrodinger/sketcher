@@ -7,7 +7,7 @@
 #include <QColor>
 #include <QString>
 
-#include <GraphMol/Depictor/DepictUtils.h>
+#include <rdkit/GraphMol/Depictor/DepictUtils.h>
 
 namespace schrodinger
 {

@@ -5,8 +5,8 @@
 #include <QtMath>
 #include <QPen>
 
-#include <Geometry/point.h>
-#include <GraphMol/ROMol.h>
+#include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"

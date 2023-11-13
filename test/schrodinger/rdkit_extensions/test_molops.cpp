@@ -12,9 +12,9 @@
 #include <memory>
 #include <vector>
 
-#include <GraphMol/RDKitBase.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/RDKitBase.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 
 #include "schrodinger/rdkit_extensions/molops.h"
 

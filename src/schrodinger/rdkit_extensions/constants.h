@@ -6,7 +6,7 @@
  --------------------------------------------------------------------------- */
 #include "schrodinger/rdkit_extensions/molops.h"
 
-#include <GraphMol/MolOps.h>
+#include <rdkit/GraphMol/MolOps.h>
 
 namespace schrodinger
 {

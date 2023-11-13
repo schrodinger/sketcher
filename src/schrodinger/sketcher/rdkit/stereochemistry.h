@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/GraphMol.h>
 #include <QString>
 
 #include "schrodinger/sketcher/definitions.h"

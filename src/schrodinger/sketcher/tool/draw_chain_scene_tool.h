@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GraphMol/ROMol.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include <QList>
 #include <QGraphicsItem>

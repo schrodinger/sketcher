@@ -11,23 +11,23 @@
 
 #include <boost/beast/core/detail/base64.hpp>
 
-#include <GraphMol/ChemReactions/Reaction.h>
-#include <GraphMol/ChemReactions/ReactionParser.h>
-#include <GraphMol/ChemReactions/ReactionPickler.h>
-#include <GraphMol/Depictor/RDDepictor.h>
-#include <GraphMol/DetermineBonds/DetermineBonds.h>
-#include <GraphMol/DistGeomHelpers/Embedder.h>
-#include <GraphMol/FileParsers/FileParsers.h>
-#include <GraphMol/FileParsers/MolSupplier.h>
-#include <GraphMol/FileParsers/MolWriters.h>
-#include <GraphMol/MolOps.h>
-#include <GraphMol/MolPickler.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/SmilesParse/SmartsWrite.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <GraphMol/SmilesParse/SmilesWrite.h>
-#include <GraphMol/SubstanceGroup.h>
-#include <GraphMol/inchi.h>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
+#include <rdkit/GraphMol/ChemReactions/ReactionPickler.h>
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/DetermineBonds/DetermineBonds.h>
+#include <rdkit/GraphMol/DistGeomHelpers/Embedder.h>
+#include <rdkit/GraphMol/FileParsers/FileParsers.h>
+#include <rdkit/GraphMol/FileParsers/MolSupplier.h>
+#include <rdkit/GraphMol/FileParsers/MolWriters.h>
+#include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/MolPickler.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/SmilesParse/SmartsWrite.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/inchi.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/constants.h"

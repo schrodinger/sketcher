@@ -1,6 +1,6 @@
 #pragma once
 
-#include <GraphMol/ROMol.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"

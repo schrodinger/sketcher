@@ -6,7 +6,7 @@
 
 #include <QDesktopServices>
 #include <QUrl> // required with Qt5
-#include <RDGeneral/versions.h>
+#include <rdkit/RDGeneral/versions.h>
 
 #include "mmshare-version.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"

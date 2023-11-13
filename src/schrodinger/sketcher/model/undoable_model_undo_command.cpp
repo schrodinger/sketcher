@@ -3,7 +3,7 @@
 
 #include <QString>
 
-#include <Geometry/point.h>
+#include <rdkit/Geometry/point.h>
 
 namespace schrodinger
 {

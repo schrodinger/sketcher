@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 
-#include <GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryAtom.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"

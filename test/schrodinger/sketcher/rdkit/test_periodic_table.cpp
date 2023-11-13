@@ -1,8 +1,8 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE periodic_table
 
-#include <GraphMol/SmilesParse/SmilesParse.h>
-#include <RDGeneral/Invariant.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/RDGeneral/Invariant.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>

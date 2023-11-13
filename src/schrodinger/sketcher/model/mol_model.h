@@ -10,10 +10,10 @@
 #include <utility>
 #include <vector>
 
-#include <GraphMol/ChemReactions/Reaction.h>
-#include <GraphMol/RWMol.h>
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryBond.h>
 #include <QUndoStack>
 
 #include "schrodinger/sketcher/definitions.h"

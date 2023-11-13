@@ -4,8 +4,8 @@
 #include <memory>
 #include <string>
 
-#include <GraphMol/ROMol.h>
-#include <GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/QueryBond.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"

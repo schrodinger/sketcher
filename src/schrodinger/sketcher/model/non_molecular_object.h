@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Geometry/point.h>
+#include <rdkit/Geometry/point.h>
 
 #include "schrodinger/sketcher/definitions.h"
 

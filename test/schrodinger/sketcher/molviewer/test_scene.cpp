@@ -1,8 +1,8 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 
-#include <GraphMol/Depictor/RDDepictor.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <QRectF>
 
 #include "../test_common.h"

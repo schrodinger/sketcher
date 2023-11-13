@@ -3,8 +3,8 @@
 #include <functional>
 #include <unordered_set>
 
-#include <GraphMol/ROMol.h>
-#include <GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <QApplication>
 #include <QFont>
 #include <QGraphicsSceneMouseEvent>

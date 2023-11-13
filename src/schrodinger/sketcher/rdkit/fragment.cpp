@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <tuple>
 
-#include <GraphMol/QueryOps.h>
+#include <rdkit/GraphMol/QueryOps.h>
 
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"

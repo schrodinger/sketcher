@@ -5,7 +5,7 @@
 
 #include <QtGlobal>
 
-#include <RDGeneral/RDLog.h>
+#include <rdkit/RDGeneral/RDLog.h>
 
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"

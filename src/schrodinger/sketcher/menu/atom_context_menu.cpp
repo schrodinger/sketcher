@@ -1,7 +1,7 @@
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 
 #include <QWidgetAction>
-#include <GraphMol/Atom.h>
+#include <rdkit/GraphMol/Atom.h>
 
 #include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
