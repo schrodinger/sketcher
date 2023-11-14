@@ -14,7 +14,6 @@
 
 #include <GraphMol/RWMol.h>
 
-#include "schrodinger/rdkit_extensions/fasta/monomers.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 
 namespace
@@ -25,18 +24,22 @@ struct [[nodiscard]] fasta_sequence {
 };
 } // namespace
 
+[[nodiscard]] static std::unordered_map<char, std::string>
+get_fasta_to_helm_nucleotide_map(std::string_view sugar_helm_monomer);
+
 [[nodiscard]] static std::vector<fasta_sequence>
 get_fasta_sequences(const std::string& generic_fasta);
 
-template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
-    [[nodiscard]] (const std::vector<fasta_sequence>& fasta_sequences,
-                   T get_helm_monomer_function,
-                   std::string_view polymer_prefix);
+[[nodiscard]] static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol(
+    const std::vector<fasta_sequence>& fasta_sequences,
+    const std::unordered_map<char, std::string>& fasta_to_helm_map,
+    std::string_view polymer_prefix, std::string_view unknown_monomer_id);
 
-template <class T> static std::string get_polymer_helm
-    [[nodiscard]] (const fasta_sequence& generic_fasta,
-                   T get_helm_monomer_function, std::string_view polymer_prefix,
-                   int polymer_number);
+[[nodiscard]] static std::string
+get_polymer_helm(const fasta_sequence& generic_fasta,
+                 const std::unordered_map<char, std::string>& fasta_to_helm_map,
+                 std::string_view polymer_prefix, int polymer_number,
+                 std::string_view unknown_monomer_id);
 
 [[nodiscard]] static std::string get_error_message(std::string_view sequence,
                                                    int num_chars_processed,
@@ -47,41 +50,71 @@ namespace fasta
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
 peptide_fasta_to_rdkit(const std::string& peptide_fasta)
 {
+    static const std::unordered_map<char, std::string>
+        fasta_to_helm_amino_acid_map{
+            {'A', "A"}, // alanine
+            {'C', "C"}, // cystine
+            {'D', "D"}, // aspartate
+            {'E', "E"}, // glutamate
+            {'F', "F"}, // phenylalanine
+            {'G', "G"}, // glycine
+            {'H', "H"}, // histidine
+            {'I', "I"}, // isoleucine
+            {'K', "K"}, // lysine
+            {'L', "L"}, // leucine
+            {'M', "M"}, // methionine
+            {'N', "N"}, // asparagine
+            {'P', "P"}, // proline
+            {'Q', "Q"}, // glutamine
+            {'R', "R"}, // arginine
+            {'S', "S"}, // serine
+            {'T', "T"}, // threonine
+            {'V', "V"}, // valine
+            {'W', "W"}, // tryptophan
+            {'Y', "Y"}, // tyrosine
+            // Non-standard
+            {'O', "O"}, // pyrrolysine
+            {'U', "U"}, // selenocysteine
+            // Ambiguous
+            {'B', "(D+N)"}, // aspartate or asparagine
+            {'J', "(I+L)"}, // isoleucine or leucine
+            {'Z', "(E+Q)"}, // glutamate or glutamine
+        };
+
     static constexpr std::string_view peptide_polymer_prefix{"PEPTIDE"};
+    static constexpr std::string_view unknown_amino_acid{"X"};
 
     return get_coarse_grain_rwmol(get_fasta_sequences(peptide_fasta),
-                                  get_fasta_to_helm_amino_acid,
-                                  peptide_polymer_prefix);
+                                  fasta_to_helm_amino_acid_map,
+                                  peptide_polymer_prefix, unknown_amino_acid);
 };
 
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
 rna_fasta_to_rdkit(const std::string& rna_fasta)
 {
     static constexpr std::string_view rna_polymer_prefix{"RNA"};
+    static constexpr std::string_view unknown_nucleotide{"N"};
     static constexpr std::string_view sugar_helm_monomer{"R"};
 
-    return get_coarse_grain_rwmol(
-        get_fasta_sequences(rna_fasta),
-        [](char one_letter_monomer) {
-            return get_fasta_to_helm_nucleotide(one_letter_monomer,
-                                                sugar_helm_monomer);
-        },
-        rna_polymer_prefix);
+    static const auto fasta_to_helm_rna_nucleotide_map =
+        get_fasta_to_helm_nucleotide_map(sugar_helm_monomer);
+    return get_coarse_grain_rwmol(get_fasta_sequences(rna_fasta),
+                                  fasta_to_helm_rna_nucleotide_map,
+                                  rna_polymer_prefix, unknown_nucleotide);
 }
 
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
 dna_fasta_to_rdkit(const std::string& dna_fasta)
 {
     static constexpr std::string_view dna_polymer_prefix{"RNA"};
+    static constexpr std::string_view unknown_nucleotide{"N"};
     static constexpr std::string_view sugar_helm_monomer{"[dR]"};
 
-    return get_coarse_grain_rwmol(
-        get_fasta_sequences(dna_fasta),
-        [](char one_letter_monomer) {
-            return get_fasta_to_helm_nucleotide(one_letter_monomer,
-                                                sugar_helm_monomer);
-        },
-        dna_polymer_prefix);
+    static const auto fasta_to_helm_dna_nucleotide_map =
+        get_fasta_to_helm_nucleotide_map(sugar_helm_monomer);
+    return get_coarse_grain_rwmol(get_fasta_sequences(dna_fasta),
+                                  fasta_to_helm_dna_nucleotide_map,
+                                  dna_polymer_prefix, unknown_nucleotide);
 }
 } // namespace fasta
 
@@ -147,27 +180,32 @@ get_fasta_sequences(const std::string& generic_fasta)
     return fasta_sequences;
 }
 
-template <class T> static std::string get_polymer_helm
-    [[nodiscard]] (const fasta_sequence& generic_fasta,
-                   T get_helm_monomer_function, std::string_view polymer_prefix,
-                   int polymer_number)
+[[nodiscard]] static std::string
+get_polymer_helm(const fasta_sequence& generic_fasta,
+                 const std::unordered_map<char, std::string>& fasta_to_helm_map,
+                 std::string_view polymer_prefix, int polymer_number,
+                 std::string_view unknown_monomer_id)
 {
     using namespace fmt::literals;
 
     std::vector<std::string_view> monomers;
     monomers.reserve(generic_fasta.sequence.size());
-    std::transform(
-        generic_fasta.sequence.begin(), generic_fasta.sequence.end(),
-        std::back_inserter(monomers), [&, i = 0](auto monomer) mutable {
-            ++i;
-            if (auto helm_monomer = get_helm_monomer_function(monomer);
-                helm_monomer != std::nullopt) {
-                return *helm_monomer;
-            }
+    std::transform(generic_fasta.sequence.begin(), generic_fasta.sequence.end(),
+                   std::back_inserter(monomers),
+                   [&, i = 0](auto monomer) mutable -> std::string_view {
+                       ++i;
+                       if (fasta_to_helm_map.count(monomer)) {
+                           return fasta_to_helm_map.at(monomer);
+                       }
 
-            throw std::invalid_argument(get_error_message(
-                generic_fasta.sequence, i, "Unsupported monomer"));
-        });
+                       // char vs string_view
+                       if (monomer == unknown_monomer_id[0]) {
+                           return unknown_monomer_id;
+                       }
+
+                       throw std::invalid_argument(get_error_message(
+                           generic_fasta.sequence, i, "Unsupported monomer"));
+                   });
 
     static constexpr std::string_view monomer_separator{"."};
     auto monomer_sequence = fmt::join(monomers, monomer_separator);
@@ -191,9 +229,10 @@ template <class T> static std::string get_polymer_helm
     }
 }
 
-template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
-    [[nodiscard]] (const std::vector<fasta_sequence>& fasta_sequences,
-                   T get_helm_monomer_function, std::string_view polymer_prefix)
+[[nodiscard]] static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol(
+    const std::vector<fasta_sequence>& fasta_sequences,
+    const std::unordered_map<char, std::string>& fasta_to_helm_map,
+    std::string_view polymer_prefix, std::string_view unknown_monomer_id)
 {
     using namespace fmt::literals;
 
@@ -201,8 +240,8 @@ template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
     std::transform(
         fasta_sequences.begin(), fasta_sequences.end(),
         std::back_inserter(polymers), [&, i = 0](const auto& sequence) mutable {
-            return get_polymer_helm(sequence, get_helm_monomer_function,
-                                    polymer_prefix, ++i);
+            return get_polymer_helm(sequence, fasta_to_helm_map, polymer_prefix,
+                                    ++i, unknown_monomer_id);
         });
 
     if (polymers.empty()) {
@@ -252,3 +291,42 @@ template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
         num_chars_processed, truncate_input(sequence, num_chars_processed - 1),
         std::string(num_dashes, '-'), err_msg);
 }
+
+[[nodiscard]] static std::unordered_map<char, std::string>
+get_fasta_to_helm_nucleotide_map(std::string_view sugar_helm_monomer)
+{
+    // NOTE: the helm entries have to separate the phosphate, sugar and
+    // nucleotide base subunits
+    static const std::unordered_map<char, std::string_view>
+        fasta_to_helm_nucleotide_template_map{
+            {'A', "{}(A)P"}, // adenosine
+            {'C', "{}(C)P"}, // cytidine
+            {'G', "{}(G)P"}, // guanine
+            {'U', "{}(U)P"}, // uridine
+            {'T', "{}(T)P"}, // thymidine
+            // Ambiguous
+            {'K', "{}((G+T))P"},   // keto
+            {'S', "{}((G+C))P"},   // strong
+            {'Y', "{}((T+C))P"},   // pyrimidine
+            {'M', "{}((A+C))P"},   // amino
+            {'W', "{}((A+T))P"},   // weak
+            {'R', "{}((G+A))P"},   // purine
+            {'B', "{}((G+T+C))P"}, // G/T/C
+            {'D', "{}((G+A+T))P"}, // G/A/T
+            {'H', "{}((A+C+T))P"}, // A/C/T
+            {'V', "{}((G+C+A))P"}, // G/C/A
+        };
+
+    std::unordered_map<char, std::string> nucleotide_map;
+    std::transform(
+        fasta_to_helm_nucleotide_template_map.begin(),
+        fasta_to_helm_nucleotide_template_map.end(),
+        std::inserter(nucleotide_map, nucleotide_map.end()),
+        [&](const auto& fasta_to_helm_pair) {
+            auto& [fasta_nucleotide, helm_template] = fasta_to_helm_pair;
+            return std::make_pair(
+                fasta_nucleotide,
+                fmt::format(fmt::runtime(helm_template), sugar_helm_monomer));
+        });
+    return nucleotide_map;
+};
