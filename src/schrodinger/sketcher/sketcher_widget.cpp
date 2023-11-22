@@ -132,108 +132,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
 SketcherWidget::~SketcherWidget() = default;
 
-void SketcherWidget::connectTopBarSlots()
-{
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::undoRequested, m_undo_stack,
-            &QUndoStack::undo);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::redoRequested, m_undo_stack,
-            &QUndoStack::redo);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested, [this]() {
-        m_mol_model->regenerateCoordinates();
-        m_ui->view->fitToScreen();
-    });
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
-            m_ui->view, &View::fitToScreen);
-
-    // Connect "More Actions" menu
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::flipHorizontalRequested,
-            m_mol_model, &MolModel::flipAllHorizontal);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::flipVerticalRequested,
-            m_mol_model, &MolModel::flipAllVertical);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::addExplicitHydrogensRequested,
-            m_mol_model,
-            [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::ADD); });
-    connect(
-        m_ui->top_bar_wdg, &SketcherTopBar::removeExplicitHydrogensRequested,
-        m_mol_model,
-        [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::REMOVE); });
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_mol_model,
-            &MolModel::selectAll);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,
-            m_mol_model, &MolModel::clearSelection);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::invertSelectionRequested,
-            m_mol_model, &MolModel::invertSelection);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::cutRequested, this,
-            &SketcherWidget::cut);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::copyRequested, this,
-            &SketcherWidget::copy);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, this,
-            &SketcherWidget::paste);
-
-    // Clear/Import/Export
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested,
-            m_mol_model, &MolModel::clear);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::importTextRequested, this,
-            &SketcherWidget::importText);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, this,
-            &SketcherWidget::showFileSaveImageDialog);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, this,
-            &SketcherWidget::showFileExportDialog);
-}
-
-void SketcherWidget::connectSideBarSlots()
-{
-    // Connect "Select Options" widget
-    connect(m_ui->side_bar_wdg, &SketcherSideBar::selectAllRequested,
-            m_mol_model, &MolModel::selectAll);
-    connect(m_ui->side_bar_wdg, &SketcherSideBar::clearSelectionRequested,
-            m_mol_model, &MolModel::clearSelection);
-    connect(m_ui->side_bar_wdg, &SketcherSideBar::invertSelectionRequested,
-            m_mol_model, &MolModel::invertSelection);
-}
-
-void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
-{
-    // TODO
-}
-
-void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
-{
-    // TODO
-}
-
-void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
-{
-    // TODO
-
-    connectContextMenu(*menu.m_modify_atoms_menu);
-    connectContextMenu(*menu.m_modify_bonds_menu);
-}
-
-void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
-{
-    connect(&menu, &BackgroundContextMenu::saveImageRequested, this,
-            &SketcherWidget::showFileSaveImageDialog);
-    connect(&menu, &BackgroundContextMenu::exportToFileRequested, this,
-            &SketcherWidget::showFileExportDialog);
-    connect(&menu, &BackgroundContextMenu::undoRequested, m_undo_stack,
-            &QUndoStack::undo);
-    connect(&menu, &BackgroundContextMenu::redoRequested, m_undo_stack,
-            &QUndoStack::redo);
-    connect(&menu, &BackgroundContextMenu::flipHorizontalRequested, m_mol_model,
-            &MolModel::flipAllHorizontal);
-    connect(&menu, &BackgroundContextMenu::flipVerticalRequested, m_mol_model,
-            &MolModel::flipAllVertical);
-    connect(&menu, &BackgroundContextMenu::selectAllRequested, m_mol_model,
-            &MolModel::selectAll);
-    connect(&menu, &BackgroundContextMenu::copyRequested, this,
-            &SketcherWidget::copy);
-    connect(&menu, &BackgroundContextMenu::pasteRequested, this,
-            &SketcherWidget::paste);
-    connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,
-            &MolModel::clear);
-}
-
 /**
  * @internal
  * @param mol_model the model to extract the molecule from
@@ -428,6 +326,148 @@ void SketcherWidget::updateWatermark()
     m_watermark_item->setVisible(is_empty);
 }
 
+void SketcherWidget::connectTopBarSlots()
+{
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::undoRequested, m_undo_stack,
+            &QUndoStack::undo);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::redoRequested, m_undo_stack,
+            &QUndoStack::redo);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested, [this]() {
+        m_mol_model->regenerateCoordinates();
+        m_ui->view->fitToScreen();
+    });
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
+            m_ui->view, &View::fitToScreen);
+
+    // Connect "More Actions" menu
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::flipHorizontalRequested,
+            m_mol_model, &MolModel::flipAllHorizontal);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::flipVerticalRequested,
+            m_mol_model, &MolModel::flipAllVertical);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::addExplicitHydrogensRequested,
+            m_mol_model,
+            [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::ADD); });
+    connect(
+        m_ui->top_bar_wdg, &SketcherTopBar::removeExplicitHydrogensRequested,
+        m_mol_model,
+        [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::REMOVE); });
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::selectAllRequested, m_mol_model,
+            &MolModel::selectAll);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSelectionRequested,
+            m_mol_model, &MolModel::clearSelection);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::invertSelectionRequested,
+            m_mol_model, &MolModel::invertSelection);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::cutRequested, this,
+            &SketcherWidget::cut);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::copyRequested, this,
+            &SketcherWidget::copy);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, this,
+            &SketcherWidget::paste);
+
+    // Clear/Import/Export
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::clearSketcherRequested,
+            m_mol_model, &MolModel::clear);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::importTextRequested, this,
+            &SketcherWidget::importText);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, this,
+            &SketcherWidget::showFileSaveImageDialog);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, this,
+            &SketcherWidget::showFileExportDialog);
+}
+
+void SketcherWidget::connectSideBarSlots()
+{
+    // Connect "Select Options" widget
+    connect(m_ui->side_bar_wdg, &SketcherSideBar::selectAllRequested,
+            m_mol_model, &MolModel::selectAll);
+    connect(m_ui->side_bar_wdg, &SketcherSideBar::clearSelectionRequested,
+            m_mol_model, &MolModel::clearSelection);
+    connect(m_ui->side_bar_wdg, &SketcherSideBar::invertSelectionRequested,
+            m_mol_model, &MolModel::invertSelection);
+}
+
+void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
+{
+    // TODO
+}
+
+void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
+{
+    // TODO
+}
+
+void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
+{
+    // TODO
+
+    connectContextMenu(*menu.m_modify_atoms_menu);
+    connectContextMenu(*menu.m_modify_bonds_menu);
+}
+
+void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
+{
+    connect(&menu, &BackgroundContextMenu::saveImageRequested, this,
+            &SketcherWidget::showFileSaveImageDialog);
+    connect(&menu, &BackgroundContextMenu::exportToFileRequested, this,
+            &SketcherWidget::showFileExportDialog);
+    connect(&menu, &BackgroundContextMenu::undoRequested, m_undo_stack,
+            &QUndoStack::undo);
+    connect(&menu, &BackgroundContextMenu::redoRequested, m_undo_stack,
+            &QUndoStack::redo);
+    connect(&menu, &BackgroundContextMenu::flipHorizontalRequested, m_mol_model,
+            &MolModel::flipAllHorizontal);
+    connect(&menu, &BackgroundContextMenu::flipVerticalRequested, m_mol_model,
+            &MolModel::flipAllVertical);
+    connect(&menu, &BackgroundContextMenu::selectAllRequested, m_mol_model,
+            &MolModel::selectAll);
+    connect(&menu, &BackgroundContextMenu::copyRequested, this,
+            &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::pasteRequested, this,
+            &SketcherWidget::paste);
+    connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,
+            &MolModel::clear);
+}
+
+void SketcherWidget::showContextMenu(
+    QGraphicsSceneMouseEvent* event,
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups)
+{
+    QMenu* menu = nullptr;
+    if (sgroups.size()) {
+        throw std::runtime_error("sgroup context menu not implemented");
+    } else if (atoms.size() && bonds.size()) {
+        menu = m_selection_context_menu;
+    } else if (atoms.size()) {
+        menu = m_atom_context_menu;
+    } else if (bonds.size()) {
+        menu = m_bond_context_menu;
+    } else {
+        menu = m_background_context_menu;
+    }
+
+    menu->move(event->screenPos());
+    auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
+    auto menu_rectangle = menu->geometry();
+
+    // Make sure the menu is not off the screen (or on a different screen)
+    if (menu_rectangle.left() < screen_rect.left()) {
+        menu_rectangle.moveLeft(screen_rect.left());
+    }
+    if (menu_rectangle.top() < screen_rect.top()) {
+        menu_rectangle.moveTop(screen_rect.top());
+    }
+    if (menu_rectangle.right() > screen_rect.right()) {
+        menu_rectangle.moveRight(screen_rect.right());
+    }
+    if (menu_rectangle.bottom() > screen_rect.bottom()) {
+        menu_rectangle.moveBottom(screen_rect.bottom());
+    }
+    menu->move(menu_rectangle.topLeft());
+    menu->show();
+}
+
 void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
     QWidget::keyPressEvent(event);
@@ -590,46 +630,6 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
         default:
             break;
     }
-}
-
-void SketcherWidget::showContextMenu(
-    QGraphicsSceneMouseEvent* event,
-    const std::unordered_set<const RDKit::Atom*>& atoms,
-    const std::unordered_set<const RDKit::Bond*>& bonds,
-    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups)
-{
-    QMenu* menu = nullptr;
-    if (sgroups.size()) {
-        throw std::runtime_error("sgroup context menu not implemented");
-    } else if (atoms.size() && bonds.size()) {
-        menu = m_selection_context_menu;
-    } else if (atoms.size()) {
-        menu = m_atom_context_menu;
-    } else if (bonds.size()) {
-        menu = m_bond_context_menu;
-    } else {
-        menu = m_background_context_menu;
-    }
-
-    menu->move(event->screenPos());
-    auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
-    auto menu_rectangle = menu->geometry();
-
-    // Make sure the menu is not off the screen (or on a different screen)
-    if (menu_rectangle.left() < screen_rect.left()) {
-        menu_rectangle.moveLeft(screen_rect.left());
-    }
-    if (menu_rectangle.top() < screen_rect.top()) {
-        menu_rectangle.moveTop(screen_rect.top());
-    }
-    if (menu_rectangle.right() > screen_rect.right()) {
-        menu_rectangle.moveRight(screen_rect.right());
-    }
-    if (menu_rectangle.bottom() > screen_rect.bottom()) {
-        menu_rectangle.moveBottom(screen_rect.bottom());
-    }
-    menu->move(menu_rectangle.topLeft());
-    menu->show();
 }
 
 } // namespace sketcher

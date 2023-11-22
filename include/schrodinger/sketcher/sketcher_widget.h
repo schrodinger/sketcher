@@ -81,10 +81,6 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     std::string getString(rdkit_extensions::Format format) const;
 
-  protected:
-    // override QWidget methods to handle keystrokes
-    void keyPressEvent(QKeyEvent* event) override;
-
   protected slots:
 
     /**
@@ -176,6 +172,11 @@ class SKETCHER_API SketcherWidget : public QWidget
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups);
+
+    /**
+     * Override QWidget methods to handle keystrokes
+     */
+    void keyPressEvent(QKeyEvent* event) override;
 
     /**
      * Respond to the user clicking on a toolbar button when there is a
