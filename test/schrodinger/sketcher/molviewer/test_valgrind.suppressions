@@ -180,3 +180,15 @@
    fun:_ZN11schrodinger8sketcher15import_mol_textEPNS0_8MolModelERKSsNS_16rdkit_extensions6FormatE
    fun:_ZN11schrodinger8sketcher15createStructureESs
 }
+
+{
+   See SHARED-10300: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher21AbstractUndoableModel9doCommandESt8functionIFvvEES4_RK7QString
+   fun:_ZN11schrodinger8sketcher8MolModel23doCommandUsingSnapshotsESt8functionIFvvEERK7QStringh
+   fun:_ZN11schrodinger8sketcher8MolModel6addMolEN5RDKit5ROMolERK7QStringb
+   fun:_ZN11schrodinger8sketcher15import_mol_textEPNS0_8MolModelERKSsNS_16rdkit_extensions6FormatE
+   fun:_ZN11schrodinger8sketcher15createAtomItemsESs
+}
