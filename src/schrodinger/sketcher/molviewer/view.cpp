@@ -195,7 +195,7 @@ void View::translateViewport(const QPointF& delta)
 void View::keyPressEvent(QKeyEvent* event)
 {
     auto distance = VIEW_SCALE * KEY_SCROLL_BOND_LENGTH_RATIO;
-    switch (event->key()) {
+    switch (Qt::Key(event->key())) {
         case Qt::Key_Up:
             translateViewport(QPointF(0, distance));
             break;
@@ -208,8 +208,11 @@ void View::keyPressEvent(QKeyEvent* event)
         case Qt::Key_Left:
             translateViewport(QPointF(distance, 0));
             break;
+        default:
+            break;
     }
     event->accept();
+    QGraphicsView::keyPressEvent(event);
 }
 
 void View::leaveEvent(QEvent* event)

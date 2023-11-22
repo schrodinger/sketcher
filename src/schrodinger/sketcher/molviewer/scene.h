@@ -81,6 +81,11 @@ class SKETCHER_API Scene : public QGraphicsScene
         const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
 
     /**
+     * @return a set of all selected interactive items in the scene
+     */
+    std::unordered_set<QGraphicsItem*> getSelectedInteractiveItems() const;
+
+    /**
      * Get the bounding rectangle of all interactive items in the scene of a
      * specified type
      * @param types The subset of interactive items to return.  Defaults to
@@ -90,14 +95,31 @@ class SKETCHER_API Scene : public QGraphicsScene
         const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
 
     /**
+     * get atoms, bonds, sgroups and non-molecular objects in the scene
+     * @param subset The subset of objects to return (all, selected, selected or
+    hovered).  Defaults to returning all
+     * objects.
+     * @param pos The position of the mouse cursor, this is needed to figure
+    out which items are hovered
+     * @return a tuple of sets of atoms, bonds, sgroups and non-molecular
+     * objects
+     */
+    std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
+               std::unordered_set<const RDKit::SubstanceGroup*>,
+               std::unordered_set<const NonMolecularObject*>>
+    getModelObjects(SceneSubset subset = SceneSubset::ALL,
+                    QPointF* pos = nullptr) const;
+    /**
      * Get the topmost interactive item at a given position.  See the
-     * getInteractiveItems docstring for an explanation of "interactive" items.
+     * getInteractiveItems docstring for an explanation of "interactive"
+     * items.
      *
      * @param pos The Scene coordinates to use
-     * @param types The subset of interactive item types to return.  Any item
-     * types that are not specified by this flag will be ignored.
-     * @return the top interactive graphics item of the requested type(s) at the
-     * given position, or nullptr if none is found
+     * @param types The subset of interactive item types to return.  Any
+     * item types that are not specified by this flag will be ignored.
+     * @return the top interactive graphics item of the requested type(s) at
+     * the given position, or nullptr if none is found
      */
     AbstractGraphicsItem*
     getTopInteractiveItemAt(const QPointF& pos,

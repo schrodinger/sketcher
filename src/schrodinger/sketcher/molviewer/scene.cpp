@@ -30,6 +30,7 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/tool/arrow_plus_scene_tool.h"
 #include "schrodinger/sketcher/tool/atom_mapping_scene_tool.h"
 #include "schrodinger/sketcher/tool/attachment_point_scene_tool.h"
@@ -337,7 +338,6 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     if (m_drag_started) {
         scene_tool->onDragMove(event);
     }
-
     event->accept();
 }
 
@@ -345,9 +345,9 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     if (m_is_during_double_click) {
         // This event is the mouse release for the second click of a double
-        // click, so we never got a corresponding mousePressEvent (since it was
-        // a mouseDoubleClickEvent instead) and we've already handled the
-        // double-click (in mouseDoubleClickEvent).
+        // click, so we never got a corresponding mousePressEvent (since it
+        // was a mouseDoubleClickEvent instead) and we've already handled
+        // the double-click (in mouseDoubleClickEvent).
         m_is_during_double_click = false;
         return;
     }
@@ -376,35 +376,80 @@ void Scene::onMouseLeave()
 
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
-    // Collect the set of items that the context menu should interact with
-    // based on the position of the cursor
-    std::unordered_set<QGraphicsItem*> context_menu_items;
-    auto top_item =
-        getTopInteractiveItemAt(event->pos(), InteractiveItemFlag::ALL);
-    if (top_item != nullptr) {
-        if (top_item->isSelected()) {
-            // If the cursor is over a selected object, the context menu
-            // should be concerned with all selected objects
-            for (auto item : selectedItems()) {
-                context_menu_items.insert(item);
+    auto pos = event->scenePos();
+    auto [atoms, bonds, sgroups, nonmolecular_objects] =
+        getModelObjects(SceneSubset::HOVERED, &pos);
+    emit showContextMenuRequested(event, atoms, bonds, sgroups);
+}
+
+std::unordered_set<QGraphicsItem*> Scene::getSelectedInteractiveItems() const
+{
+    std::unordered_set<QGraphicsItem*> selected_items;
+    std::copy_if(m_interactive_items.begin(), m_interactive_items.end(),
+                 std::inserter(selected_items, selected_items.begin()),
+                 [](QGraphicsItem* item) { return item->isSelected(); });
+    return selected_items;
+}
+
+std::tuple<std::unordered_set<const RDKit::Atom*>,
+           std::unordered_set<const RDKit::Bond*>,
+           std::unordered_set<const RDKit::SubstanceGroup*>,
+           std::unordered_set<const NonMolecularObject*>>
+Scene::getModelObjects(SceneSubset subset, QPointF* pos) const
+{
+    if ((subset == SceneSubset::HOVERED ||
+         subset == SceneSubset::SELECTED_OR_HOVERED) &&
+        pos == nullptr) {
+        throw std::runtime_error("Hovered items require a QPointF position");
+    }
+
+    std::unordered_set<QGraphicsItem*> items;
+    switch (subset) {
+        case SceneSubset::ALL:
+            items = m_interactive_items;
+            break;
+        case SceneSubset::SELECTION:
+            items = getSelectedInteractiveItems();
+            break;
+        case SceneSubset::HOVERED:
+            if (auto top_item =
+                    getTopInteractiveItemAt(*pos, InteractiveItemFlag::ALL)) {
+                if (top_item->isSelected()) {
+                    items = getSelectedInteractiveItems();
+                } else {
+                    items = {top_item};
+                }
             }
-        } else {
-            context_menu_items.insert(top_item);
-        }
+            break;
+        case SceneSubset::SELECTED_OR_HOVERED:
+            items = getSelectedInteractiveItems();
+            if (items.empty()) {
+                if (auto top_item = getTopInteractiveItemAt(
+                        *pos, InteractiveItemFlag::ALL)) {
+                    items = {top_item};
+                }
+            }
+            break;
     }
 
     std::unordered_set<const RDKit::Atom*> atoms;
     std::unordered_set<const RDKit::Bond*> bonds;
     std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
-    for (auto* item : context_menu_items) {
-        if (const auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+    std::unordered_set<const NonMolecularObject*> nonmolecular_objects;
+    for (auto item : items) {
+        if (const auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             atoms.insert(atom_item->getAtom());
-        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+        } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
             bonds.insert(bond_item->getBond());
         }
-        // SKETCH-2011: collect RDKit::SubstanceGroup from SGroupItems
+        // SKETCH-2011: extract RDKit::SubstanceGroup from SGroupItems
+        else if (auto nonmolecular_item =
+                     qgraphicsitem_cast<NonMolecularItem*>(item)) {
+            nonmolecular_objects.insert(
+                nonmolecular_item->getNonMolecularObject());
+        }
     }
-    emit showContextMenuRequested(event, atoms, bonds, sgroups);
+    return std::make_tuple(atoms, bonds, sgroups, nonmolecular_objects);
 }
 
 AbstractGraphicsItem*
@@ -414,8 +459,8 @@ Scene::getTopInteractiveItemAt(const QPointF& pos,
     for (auto* item : items(pos)) {
         if (m_interactive_items.count(item) &&
             item_matches_type_flag(item, types)) {
-            // all interactive items are AbstractGraphicsItem subclasses, so we
-            // can safely use static_cast here
+            // all interactive items are AbstractGraphicsItem subclasses, so
+            // we can safely use static_cast here
             return static_cast<AbstractGraphicsItem*>(item);
         }
     }
