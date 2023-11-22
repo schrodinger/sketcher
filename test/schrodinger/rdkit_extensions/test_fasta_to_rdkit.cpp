@@ -71,7 +71,7 @@ BOOST_DATA_TEST_CASE(TestHelmConversionOfRNAFasta,
                          ">\nAAB",
                      }) ^ bdata::make(std::vector<std::string>{
                               "RNA1{R(A)P.R(A)P.R((G+T))P}$$$$V2.0",
-                              "RNA1{R(A)P.R(A)P.R((G+T+C))P}$$$$V2.0",
+                              "RNA1{R(A)P.R(A)P.R((C+G+T))P}$$$$V2.0",
                           }),
                      nucleotide_fasta, equivalent_helm)
 {
@@ -85,7 +85,7 @@ BOOST_DATA_TEST_CASE(TestHelmConversionOfDNAFasta,
                          ">\nAAB",
                      }) ^ bdata::make(std::vector<std::string>{
                               "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T))P}$$$$V2.0",
-                              "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T+C))P}$$$$V2.0",
+                              "RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T))P}$$$$V2.0",
                           }),
                      nucleotide_fasta, equivalent_helm)
 {

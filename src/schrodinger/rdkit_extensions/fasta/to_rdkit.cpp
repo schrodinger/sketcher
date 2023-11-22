@@ -154,7 +154,7 @@ template <class T> static std::string get_polymer_helm
 {
     using namespace fmt::literals;
 
-    std::vector<std::string_view> monomers;
+    std::vector<std::string> monomers;
     monomers.reserve(generic_fasta.sequence.size());
     std::transform(
         generic_fasta.sequence.begin(), generic_fasta.sequence.end(),
