@@ -1715,6 +1715,91 @@ BOOST_AUTO_TEST_CASE(test_flipAroundAxis, *utf::tolerance(0.0001))
 }
 
 /**
+ * Pass one pair of atoms to mergeAtoms and confirm that they are correctly
+ * merged.
+ */
+BOOST_AUTO_TEST_CASE(test_merge_one_atom_pair, *utf::tolerance(0.001))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(
+        RDKit::SmilesToMol("C1CCCCC1.C1CCNC1"));
+    model.addMol(*mol_to_add);
+    const RDKit::ROMol* mol = model.getMol();
+    auto conf = mol->getConformer();
+    const auto* n_atom = mol->getAtomWithIdx(9);
+    BOOST_TEST(n_atom->getSymbol() == "N");
+    const auto* atom_to_replace = mol->getAtomWithIdx(0);
+    BOOST_TEST(atom_to_replace->getSymbol() == "C");
+    auto exp_coords = conf.getAtomPos(0);
+    model.mergeAtoms({{n_atom, atom_to_replace}});
+
+    // make sure that the resulting connectivity is correct
+    auto result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "C1CCN2(CC1)CCCC2");
+
+    // the merged atom replaced atom 9, but we also deleted atom 0, so the
+    // resulting merged atom should have index 8
+    n_atom = mol->getAtomWithIdx(8);
+    // make sure that the merged atoms takes its element from the first atom of
+    // the input pair and the coordinates from the second atom of the input pair
+    BOOST_TEST(n_atom->getSymbol() == "N");
+    conf = mol->getConformer();
+    auto actual_coords = conf.getAtomPos(8);
+    auto dist = (actual_coords - exp_coords).length();
+    BOOST_TEST(dist == 0.0);
+
+    // confirm that undo and redo work as expected
+    undo_stack.undo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "C1CCCCC1.C1CCNC1");
+    undo_stack.redo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "C1CCN2(CC1)CCCC2");
+}
+
+/**
+ * Pass two pairs of atoms to mergeAtoms and confirm that both pairs are
+ * correctly merged.
+ */
+BOOST_AUTO_TEST_CASE(test_merge_two_atom_pairs)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(
+        RDKit::SmilesToMol("C1CCCCC1.C1CCNC1"));
+    model.addMol(*mol_to_add);
+    const RDKit::ROMol* mol = model.getMol();
+    const auto* n_atom = mol->getAtomWithIdx(9);
+    BOOST_TEST(n_atom->getSymbol() == "N");
+    const auto* other_atom_to_move = mol->getAtomWithIdx(8);
+
+    const auto* atom_to_replace = mol->getAtomWithIdx(0);
+    const auto* other_atom_to_replace = mol->getAtomWithIdx(1);
+
+    model.mergeAtoms({{n_atom, atom_to_replace},
+                      {other_atom_to_move, other_atom_to_replace}});
+
+    // make sure that the resulting connectivity is correct
+    auto result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "C1CCN2CCCC2C1");
+
+    // confirm that undo and redo work as expected
+    undo_stack.undo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "C1CCCCC1.C1CCNC1");
+    undo_stack.redo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "C1CCN2CCCC2C1");
+}
+
+/**
  * Make sure an SDF structure with rings is imported with correct bond lengths.
  * See SKETCH-1651 and SKETCH-2025.
  */

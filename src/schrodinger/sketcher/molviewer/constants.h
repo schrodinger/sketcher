@@ -218,6 +218,23 @@ const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
 // "identical."
 const double MAX_DIST_FOR_FRAG_OVERLAP = 0.01;
 
+// At the end of a drag-and-drop with the Move/Rotate tool, overlapping atoms
+// from different molecules will be merged.  This is the maximum distance (and
+// squared maximum distance) for two atoms to be considered overlapping.  Both
+// values are in MolModel coordinates.
+const double MAX_DIST_FOR_DRAG_MERGE = 0.2 * BOND_LENGTH;
+const double MAX_DIST_SQ_FOR_DRAG_MERGE =
+    MAX_DIST_FOR_DRAG_MERGE * MAX_DIST_FOR_DRAG_MERGE;
+
+// The radius of the circle drawn around overlapping atoms during a
+// drag-and-drop with the Merge/Rotate tool.  Given in Scene coordinates.
+const qreal DRAG_MERGE_HINT_RADIUS = VIEW_SCALE * MAX_DIST_FOR_DRAG_MERGE;
+
+// The thickness of the pen used to draw the circles drawn around overlapping
+// atoms during a drag-and-drop with the Merge/Rotate tool.  Given in Scene
+// coordinates.
+const qreal DRAG_MERGE_HINT_WIDTH = 4.0;
+
 // The image to use for the standard arrow mouse cursor
 const QString ARROW_CURSOR_PATH = ":/icons/cursor-arrow.svg";
 

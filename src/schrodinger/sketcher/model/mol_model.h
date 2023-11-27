@@ -470,6 +470,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                           non_molecular_objects = {});
 
     /**
+     * Combine pairs of atoms into single atoms with all bonds from both
+     * original atoms.  This is typically used to merge overlapping atoms at the
+     * end of a rotation or translation.
+     *
+     * @param atoms_to_merge A vector of {atom to keep, stationary atom} pairs.
+     * The resulting merged atom has the coordinates of the stationary atom, but
+     * all other properties (e.g. element, charge) are taken from the atom to
+     * keep.
+     */
+    void mergeAtoms(
+        const std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>&
+            atoms_to_merge);
+
+    /**
      * Undoably add all atoms and bonds from the given molecule into this
      * molecule. The molecule will be centered at the origin.
      *
@@ -1194,6 +1208,21 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
                      const AtomFunc& create_atom);
+
+    /**
+     * Combine pairs of atoms into single atoms with all bonds from both
+     * original atoms.  This is typically used to merge overlapping atoms at the
+     * end of a rotation or translation.  This method must only be called as
+     * part of an undo command.
+     *
+     * @param atoms_to_merge A vector of {atom to keep, stationary atom} pairs.
+     * The resulting merged atom has the coordinates of the stationary atom, but
+     * all other properties (e.g. element, charge) are taken from the atom to
+     * keep.
+     */
+    void mergeAtomsCommandFunc(
+        const std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>&
+            atoms_to_merge);
 };
 
 } // namespace sketcher

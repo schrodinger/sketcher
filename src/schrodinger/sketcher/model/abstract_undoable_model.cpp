@@ -60,6 +60,16 @@ UndoMacroRAII AbstractUndoableModel::createUndoMacro(const QString& description)
     return UndoMacroRAII(m_undo_stack, description);
 }
 
+void AbstractUndoableModel::beginUndoMacro(const QString& description)
+{
+    m_undo_stack->beginMacro(description);
+}
+
+void AbstractUndoableModel::endUndoMacro()
+{
+    m_undo_stack->endMacro();
+}
+
 UndoMacroRAII::UndoMacroRAII(QUndoStack* undo_stack,
                              const QString& description) :
     m_undo_stack(undo_stack)

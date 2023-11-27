@@ -1,4 +1,10 @@
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
+
+#include <algorithm>
+
+#include <GraphMol/MolOps.h>
+
+#include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
@@ -16,9 +22,39 @@ MoveSelectionItem::MoveSelectionItem() : QGraphicsRectItem()
     setZValue(static_cast<qreal>(ZOrder::SELECTION_HIGHLIGHTING));
 }
 
+MergeHintItem::MergeHintItem(QGraphicsItem* parent) : QGraphicsItemGroup(parent)
+{
+    setZValue(static_cast<qreal>(ZOrder::HINT));
+    m_circle_pen.setColor(STRUCTURE_HINT_COLOR);
+    m_circle_pen.setWidthF(DRAG_MERGE_HINT_WIDTH);
+}
+
+void MergeHintItem::setCoordinates(std::vector<QPointF> centers)
+{
+    clear();
+    for (auto cur_center : centers) {
+        auto circle = new QGraphicsEllipseItem(
+            cur_center.x() - DRAG_MERGE_HINT_RADIUS,
+            cur_center.y() - DRAG_MERGE_HINT_RADIUS, 2 * DRAG_MERGE_HINT_RADIUS,
+            2 * DRAG_MERGE_HINT_RADIUS);
+        circle->setPen(m_circle_pen);
+        addToGroup(circle);
+    }
+}
+
+void MergeHintItem::clear()
+{
+    for (auto* child : childItems()) {
+        removeFromGroup(child);
+        delete child;
+    }
+}
+
 MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
     AbstractSceneTool(scene, mol_model)
 {
+    updateRotationItem();
+    updateMoveSelectionItem();
 }
 
 // TODO: remove this, for testing only until context menus are implemented
@@ -53,15 +89,20 @@ void MoveRotateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
     auto selected_atoms = m_mol_model->getSelectedAtoms();
     auto selected_non_mol_objs = m_mol_model->getSelectedNonMolecularObjects();
 
+    QString description;
     if (m_rotation_item.isInsideHandle(event->scenePos())) {
         m_action = Action::ROTATE;
+        description = "Rotate";
         setObjectsToMove(selected_atoms, selected_non_mol_objs);
     } else {
         m_action = Action::TRANSLATE;
+        description = "Translate";
         if (m_move_selection_item.rect().contains(event->scenePos())) {
             setObjectsToMove(selected_atoms, selected_non_mol_objs);
         }
     }
+    // begin an undo macro in case we have to merge atoms at the end of the drag
+    m_mol_model->beginUndoMacro(description);
 }
 
 void MoveRotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
@@ -77,13 +118,17 @@ void MoveRotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
         default:
             break;
     }
+    updateMergeHintItem();
     updateMoveSelectionItem();
 }
 
 void MoveRotateSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
 {
+    mergeOverlappingAtoms();
+    m_mol_model->endUndoMacro();
     m_action = Action::NONE;
     setObjectsToMove({}, {});
+    updateMergeHintItem();
 }
 
 void MoveRotateSceneTool::setObjectsToMove(
@@ -165,10 +210,7 @@ void MoveRotateSceneTool::updateMoveSelectionItem()
 
 std::vector<QGraphicsItem*> MoveRotateSceneTool::getGraphicsItems()
 {
-    updateRotationItem();
-    updateMoveSelectionItem();
-
-    return {&m_rotation_item, &m_move_selection_item};
+    return {&m_rotation_item, &m_move_selection_item, &m_merge_hint_item};
 }
 
 RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
@@ -206,12 +248,104 @@ RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
 
 void MoveRotateSceneTool::onStructureUpdated()
 {
+    updateRotationItem();
     updateMoveSelectionItem();
 }
 
 QPixmap MoveRotateSceneTool::getCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/select_move_rotate.svg");
+}
+
+std::vector<std::pair<unsigned int, unsigned int>>
+MoveRotateSceneTool::getOverlappingAtomIdxs()
+{
+    return get_overlapping_atom_idxs(m_mol_model->getMol(), m_atoms_to_move);
+}
+
+void MoveRotateSceneTool::updateMergeHintItem()
+{
+    auto overlapping_idxs = getOverlappingAtomIdxs();
+    std::vector<QPointF> circle_centers;
+    const auto& conf = m_mol_model->getMol()->getConformer();
+    // for each atom pair, get the coordinates of the stationary atom
+    std::transform(overlapping_idxs.begin(), overlapping_idxs.end(),
+                   std::back_inserter(circle_centers),
+                   [&conf](std::pair<unsigned int, unsigned int> idxs) {
+                       auto [to_move_idx, stationary_idx] = idxs;
+                       const auto& stationary_coords =
+                           conf.getAtomPos(stationary_idx);
+                       return to_scene_xy(stationary_coords);
+                   });
+    m_merge_hint_item.setCoordinates(circle_centers);
+}
+
+void MoveRotateSceneTool::mergeOverlappingAtoms()
+{
+    auto overlapping_idxs = getOverlappingAtomIdxs();
+    auto* mol = m_mol_model->getMol();
+    std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>
+        overlapping_atoms;
+    // convert from atom indices to Atom*
+    std::transform(overlapping_idxs.begin(), overlapping_idxs.end(),
+                   std::back_inserter(overlapping_atoms),
+                   [&mol](std::pair<unsigned int, unsigned int> idxs) {
+                       return std::make_pair(mol->getAtomWithIdx(idxs.first),
+                                             mol->getAtomWithIdx(idxs.second));
+                   });
+    m_mol_model->mergeAtoms(overlapping_atoms);
+}
+
+std::vector<std::pair<unsigned int, unsigned int>> get_overlapping_atom_idxs(
+    const RDKit::ROMol* const mol,
+    const std::unordered_set<const RDKit::Atom*> atoms_to_move)
+{
+    std::vector<std::pair<unsigned int, unsigned int>> overlaps;
+    if (atoms_to_move.empty()) {
+        // nothing is being moved, so there are no overlaps to report
+        return overlaps;
+    }
+    // figure out the indices of the moving and stationary atoms
+    std::unordered_set<unsigned int> to_move_indices;
+    std::unordered_set<unsigned int> stationary_indices;
+    std::transform(atoms_to_move.begin(), atoms_to_move.end(),
+                   std::inserter(to_move_indices, to_move_indices.begin()),
+                   [](auto atom) { return atom->getIdx(); });
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        if (!to_move_indices.count(i)) {
+            stationary_indices.insert(i);
+        }
+    }
+
+    // figure out which atoms are actually overlapping
+    std::vector<int> frag_map;
+    const auto& conf = mol->getConformer();
+    RDKit::MolOps::getMolFrags(*mol, frag_map);
+    for (auto to_move_idx : to_move_indices) {
+        auto to_move_frag_num = frag_map[to_move_idx];
+        const auto& to_move_coords = conf.getAtomPos(to_move_idx);
+        // we're looking for the closest overlapping atom
+        int idx_to_merge = -1;
+        double best_dist_sq = MAX_DIST_SQ_FOR_DRAG_MERGE;
+        for (auto stationary_idx : stationary_indices) {
+            if (frag_map[stationary_idx] == to_move_frag_num) {
+                // these two atoms are from the same molecule, so we never
+                // consider them overlapping
+                continue;
+            }
+            const auto& stationary_coords = conf.getAtomPos(stationary_idx);
+            auto dist_sq = (stationary_coords - to_move_coords).lengthSq();
+            if (dist_sq <= best_dist_sq) {
+                idx_to_merge = stationary_idx;
+                best_dist_sq = dist_sq;
+            }
+        }
+        if (idx_to_merge >= 0) {
+            // there was an overlapping atom, so record the pair
+            overlaps.emplace_back(to_move_idx, idx_to_merge);
+        }
+    }
+    return overlaps;
 }
 
 } // namespace sketcher

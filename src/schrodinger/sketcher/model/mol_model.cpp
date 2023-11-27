@@ -1023,6 +1023,57 @@ void MolModel::flipAllVertical()
     transformCoordinatesWithFunction("Flip all vertical", flip_y);
 }
 
+void MolModel::mergeAtoms(
+    const std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>&
+        atoms_to_merge)
+{
+    auto cmd = [this, atoms_to_merge]() {
+        mergeAtomsCommandFunc(atoms_to_merge);
+    };
+    doCommandUsingSnapshots(cmd, "Merge dragged atoms", WhatChanged::MOLECULE);
+}
+
+void MolModel::mergeAtomsCommandFunc(
+    const std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>&
+        atoms_to_merge)
+{
+    auto& conf = m_mol.getConformer();
+    for (auto [atom_to_keep, stationary_atom] : atoms_to_merge) {
+        auto atom_to_keep_idx = atom_to_keep->getIdx();
+        auto stationary_atom_idx = stationary_atom->getIdx();
+
+        // move the atom_to_keep to stationary_atom's coordinates
+        auto& coords = conf.getAtomPos(stationary_atom_idx);
+        conf.setAtomPos(atom_to_keep_idx, coords);
+
+        // move all bonds of stationary_atom to atom_to_keep
+        for (auto* bond : m_mol.atomBonds(stationary_atom)) {
+            auto other_atom_idx = bond->getOtherAtomIdx(stationary_atom_idx);
+            if (m_mol.getBondBetweenAtoms(atom_to_keep_idx, other_atom_idx)) {
+                // There's already a bond between this atom and atom_to_keep, so
+                // skip this bond.  It'll get deleted when we remove
+                // stationary_atom.
+                continue;
+            }
+            // the molecule won't update its connectivity graph if we edit
+            // the bond in place, so we instead remove it and add a copy
+            auto* replacement_bond = new RDKit::Bond(*bond);
+            if (bond->getBeginAtomIdx() == stationary_atom_idx) {
+                replacement_bond->setBeginAtomIdx(atom_to_keep_idx);
+            } else {
+                replacement_bond->setEndAtomIdx(atom_to_keep_idx);
+            }
+            auto bond_tag = getTagForBond(bond);
+            m_mol.removeBond(bond->getBeginAtomIdx(), bond->getEndAtomIdx());
+            m_mol.addBond(replacement_bond, /* take_ownership = */ true);
+            setTagForBond(replacement_bond, bond_tag);
+        }
+
+        // erase stationary_atom
+        removeAtomCommandFunc(getTagForAtom(stationary_atom));
+    }
+}
+
 void MolModel::select(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,

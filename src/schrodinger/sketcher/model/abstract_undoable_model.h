@@ -104,6 +104,20 @@ class SKETCHER_API AbstractUndoableModel : public QObject
      */
     UndoMacroRAII createUndoMacro(const QString& description);
 
+    /**
+     * Begin an undo macro.  If beginning and ending the macro in the same
+     * scope, use createUndoMacro instead.
+     *
+     * @param description A description of the macro
+     */
+    void beginUndoMacro(const QString& description);
+
+    /**
+     * End an undo macro.  If beginning and ending the macro in the same
+     * scope, use createUndoMacro instead.
+     */
+    void endUndoMacro();
+
   protected:
     /**
      * Create an undo command and add it to the undo stack, which automatically

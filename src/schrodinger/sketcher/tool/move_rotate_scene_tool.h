@@ -1,11 +1,17 @@
 #pragma once
-#include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
-#include "schrodinger/sketcher/model/non_molecular_object.h"
-#include "schrodinger/sketcher/molviewer/rotation_item.h"
+
+#include <unordered_set>
+#include <vector>
+
+#include <QPen>
+
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/Geometry/point.h>
-#include <unordered_set>
+
+#include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/model/non_molecular_object.h"
+#include "schrodinger/sketcher/molviewer/rotation_item.h"
+#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
 
 namespace schrodinger
 {
@@ -18,6 +24,30 @@ class MoveSelectionItem : public QGraphicsRectItem
 {
   public:
     MoveSelectionItem();
+};
+
+/**
+ * A graphics item group that displays circles around all pairs of atoms that
+ * will be merged at the end of the drag.
+ */
+class MergeHintItem : public QGraphicsItemGroup
+{
+  public:
+    MergeHintItem(QGraphicsItem* parent = nullptr);
+
+    /**
+     * Draw circles centered at each of the given coordinates.  All previously
+     * drawn circles will be cleared.
+     */
+    void setCoordinates(std::vector<QPointF> centers);
+
+    /**
+     * Clear all circles
+     */
+    void clear();
+
+  protected:
+    QPen m_circle_pen;
 };
 
 enum class Action { ROTATE, TRANSLATE, NONE };
@@ -71,6 +101,12 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
     void updateMoveSelectionItem();
 
     /**
+     * Update the merge hint item so it draws circles around all currently
+     * overlapping atoms.
+     */
+    void updateMergeHintItem();
+
+    /**
      * Sets the atoms to be moved by this tool on a drag action. This is set
      * on mouse down by onDragStart and reset on mouse release by
      * onDragRelease and is used when a selection is present to distinguish
@@ -89,6 +125,7 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
 
     RotationItem m_rotation_item = RotationItem();
     MoveSelectionItem m_move_selection_item = MoveSelectionItem();
+    MergeHintItem m_merge_hint_item = MergeHintItem();
 
     /**
      * compute the pivot point for a rotation. This is the selected atom that
@@ -98,9 +135,39 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
      */
     RDGeom::Point3D findPivotPointForRotation();
 
+    /**
+     * @return the atom indices for all currently overlapping pairs of atoms.
+     * The atom being moved will always be the first element of the pair.
+     *
+     * Two atoms are considered to be overlapping if
+     *   - one atom is being moved and one atom is stationary
+     *   - they are from different fragments
+     *   - they are within MAX_DIST_FOR_DRAG_MERGE distance of each other.
+     *
+     * If an atom to move can potentially overlap with multiple stationary atoms
+     * (e.g. there are two stationary atoms MAX_DIST_FOR_DRAG_MERGE from each
+     * other), it will only be considered overlapping with the closest
+     * stationary atom.
+     */
+    std::vector<std::pair<unsigned int, unsigned int>> getOverlappingAtomIdxs();
+
+    /**
+     * Merge all overlapping atoms at the end of a rotation or translation.
+     */
+    void mergeOverlappingAtoms();
+
     std::unordered_set<const RDKit::Atom*> m_atoms_to_move;
     std::unordered_set<const NonMolecularObject*> m_non_mol_objs_to_move;
 };
+
+/**
+ * Contains the implementation for MoveRotateSceneTool::getOverlappingAtomIdxs
+ * for unit testing purposes.
+ */
+SKETCHER_API std::vector<std::pair<unsigned int, unsigned int>>
+get_overlapping_atom_idxs(
+    const RDKit::ROMol* const mol,
+    const std::unordered_set<const RDKit::Atom*> atoms_to_move);
 
 } // namespace sketcher
 } // namespace schrodinger
