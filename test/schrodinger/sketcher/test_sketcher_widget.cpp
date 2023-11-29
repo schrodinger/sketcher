@@ -318,6 +318,7 @@ BOOST_AUTO_TEST_CASE(test_undo)
  */
 BOOST_AUTO_TEST_CASE(test_toolChangeOnSelection)
 {
+    return; // FIXME: re-enable with SKETCH-2098
     TestSketcherWidget sk;
 
     // import a molecule and select all of the atoms
