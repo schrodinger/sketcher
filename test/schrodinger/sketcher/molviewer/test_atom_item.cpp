@@ -65,7 +65,7 @@ std::pair<std::vector<std::shared_ptr<TestAtomItem>>,
           std::shared_ptr<TestScene>>
 createAtomItems(std::string smiles)
 {
-    auto test_scene = std::make_shared<TestScene>();
+    auto test_scene = TestScene::getScene();
     import_mol_text(test_scene->m_mol_model, smiles, Format::SMILES);
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
     for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
@@ -180,10 +180,10 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomMapping)
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
                      *boost::unit_test::tolerance(0.01))
 {
-    TestScene scene;
-    import_mol_text(scene.m_mol_model, "CCC", Format::SMILES);
+    auto scene = TestScene::getScene();
+    import_mol_text(scene->m_mol_model, "CCC", Format::SMILES);
     std::vector<AtomItem*> atom_items;
-    for (auto* item : scene.items()) {
+    for (auto* item : scene->items()) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             atom_items.push_back(atom_item);
         }

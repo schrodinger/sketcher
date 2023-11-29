@@ -65,7 +65,9 @@ class TestSketcherWidget : public SketcherWidget
 class TestScene : public Scene
 {
   public:
-    TestScene() : Scene(new MolModel(new QUndoStack()), new SketcherModel()){};
+    TestScene(MolModel* mol_model, SketcherModel* sketcher_model,
+              QWidget* parent = nullptr) :
+        Scene(mol_model, sketcher_model, parent){};
     using Scene::m_atom_item_settings;
     using Scene::m_atom_to_atom_item;
     using Scene::m_bond_item_settings;
@@ -74,6 +76,18 @@ class TestScene : public Scene
     using Scene::m_mol_model;
     using Scene::m_selection_highlighting_item;
     using Scene::m_sketcher_model;
+
+    static std::shared_ptr<TestScene> getScene()
+    {
+        auto undo_stack = new QUndoStack();
+        auto mol_model = new MolModel(undo_stack);
+        auto sketcher_model = new SketcherModel();
+        auto scene = std::make_shared<TestScene>(mol_model, sketcher_model);
+        undo_stack->setParent(mol_model);
+        mol_model->setParent(scene.get());
+        sketcher_model->setParent(scene.get());
+        return scene;
+    }
 };
 
 // Helper functions to interfacing with the MolModel through serialized text
