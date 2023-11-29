@@ -1,7 +1,7 @@
 #include "schrodinger/sketcher/rdkit/fragment.h"
 
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 #include <queue>
 #include <stdexcept>
 #include <tuple>

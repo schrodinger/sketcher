@@ -2,7 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <float.h>
+#include <cfloat>
 #include <iterator>
 
 #include <boost/range/iterator_range.hpp>
