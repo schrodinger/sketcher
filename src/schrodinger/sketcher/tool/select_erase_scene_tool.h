@@ -74,6 +74,7 @@ template <typename T> class SKETCHER_API SelectSceneTool
 
     std::tuple<std::unordered_set<const RDKit::Atom*>,
                std::unordered_set<const RDKit::Bond*>,
+               std::unordered_set<const RDKit::SubstanceGroup*>,
                std::unordered_set<const NonMolecularObject*>>
     getModelObjectsForGraphicsItems(const QList<QGraphicsItem*>& items) const;
 

@@ -533,7 +533,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     // make sure that deleting an attachment point renumbers all remaining
     // attachment points and removes the attachment point bond
     attachment_atom2 = mol->getAtomWithIdx(2);
-    model.remove({attachment_atom2}, {}, {});
+    model.remove({attachment_atom2}, {}, {}, {});
     attachment_atom = mol->getAtomWithIdx(1);
     attachment_atom3 = mol->getAtomWithIdx(3);
     attachment_atom4 = mol->getAtomWithIdx(4);
@@ -544,7 +544,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 3);
 
-    model.remove({attachment_atom, attachment_atom3}, {}, {});
+    model.remove({attachment_atom, attachment_atom3}, {}, {}, {});
     attachment_atom4 = mol->getAtomWithIdx(2);
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 1);
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
@@ -554,7 +554,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     // make sure that deleting an attachment point bond also removes the
     // attachment point itself
     auto* ap4_bond = *(mol->atomBonds(attachment_atom4).begin());
-    model.remove({}, {ap4_bond}, {});
+    model.remove({}, {ap4_bond}, {}, {});
     BOOST_TEST(get_next_attachment_point_number(mol) == 1);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 0);
@@ -581,14 +581,14 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
     c_atom = mol->getAtomWithIdx(0);
     auto* n_atom = mol->getAtomWithIdx(1);
 
-    model.remove({c_atom}, {}, {});
+    model.remove({c_atom}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 1);
     n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
     BOOST_TEST(model.getAtomFromTag(1) == n_atom);
     BOOST_TEST(model.getTagForAtom(n_atom) == 1);
-    model.remove({n_atom}, {}, {});
+    model.remove({n_atom}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 0);
 
     undo_stack.undo();
@@ -764,7 +764,7 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* bond = mol->getBondWithIdx(0);
 
-    model.remove({}, {bond}, {});
+    model.remove({}, {bond}, {}, {});
     BOOST_TEST(mol->getNumBonds() == 0);
 
     undo_stack.undo();
@@ -799,7 +799,7 @@ BOOST_AUTO_TEST_CASE(test_removeNonMolecularObject)
     BOOST_TEST(model.hasReactionArrow());
 
     auto* arrow = model.getReactionArrow();
-    model.remove({}, {}, {arrow});
+    model.remove({}, {}, {}, {arrow});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
     BOOST_TEST(!model.hasReactionArrow());
@@ -810,13 +810,13 @@ BOOST_AUTO_TEST_CASE(test_removeNonMolecularObject)
     BOOST_TEST(model.hasReactionArrow());
 
     auto* plus2 = &model.m_pluses[1];
-    model.remove({}, {}, {plus2});
+    model.remove({}, {}, {}, {plus2});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
     BOOST_TEST(model.hasReactionArrow());
 
     auto* plus1 = &model.m_pluses[0];
-    model.remove({}, {}, {plus1});
+    model.remove({}, {}, {}, {plus1});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 1);
     BOOST_TEST(model.hasReactionArrow());
@@ -848,7 +848,7 @@ BOOST_AUTO_TEST_CASE(test_removeAtomsAndBonds)
     const auto* c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
-    model.remove({c_atom, n_atom}, {bond}, {});
+    model.remove({c_atom, n_atom}, {bond}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -1296,7 +1296,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
-    model.remove({}, {bond1}, {arrow});
+    model.remove({}, {bond1}, {}, {arrow});
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
 
@@ -1315,7 +1315,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
 
     // removing an atom removes all of its bonds, so this removeAtomsAndBonds
     // call will implicitly remove and deselect bond1
-    model.remove({model.getAtomFromTag(1)}, {}, {});
+    model.remove({model.getAtomFromTag(1)}, {}, {}, {});
     atom2 = model.getAtomFromTag(2);
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
@@ -1348,7 +1348,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     // removing non-selected atoms and bonds shouldn't have any effect on the
     // selection
     auto* plus = &model.m_pluses[0];
-    model.remove({model.getAtomFromTag(3)}, {}, {plus});
+    model.remove({model.getAtomFromTag(3)}, {}, {}, {plus});
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);
@@ -1358,7 +1358,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     undo_stack.undo();
-    model.remove({}, {model.getBondFromTag(2)}, {});
+    model.remove({}, {model.getBondFromTag(2)}, {}, {});
     atom1 = model.getAtomFromTag(1);
     atom2 = model.getAtomFromTag(2);
     bond1 = model.getBondFromTag(1);
@@ -1840,7 +1840,7 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
     BOOST_TEST(mol->getNumAtoms() == 4);
 
     // delete an H, leaving the N with only 2 Hs
-    model.remove({mol->getAtomWithIdx(2)}, {}, {});
+    model.remove({mol->getAtomWithIdx(2)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 3);
 
     // adding Hs should do nothing since there's no implicit Hs on the N

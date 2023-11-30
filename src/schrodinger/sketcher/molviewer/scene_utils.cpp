@@ -16,6 +16,7 @@
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
+#include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
@@ -72,12 +73,19 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         all_items.push_back(bond_item);
     }
 
+    // create substance group items
+    for (auto& sgroup : getSubstanceGroups(*mol)) {
+        SGroupItem* sgroup_item = new SGroupItem(sgroup, fonts);
+        all_items.push_back(sgroup_item);
+    }
+
     return {all_items, atom_to_atom_item, bond_to_bond_item};
 }
 
-void update_conf_for_mol_graphics_items(const QList<QGraphicsItem*>& atom_items,
-                                        const QList<QGraphicsItem*>& bond_items,
-                                        const RDKit::ROMol& mol)
+void update_conf_for_mol_graphics_items(
+    const QList<QGraphicsItem*>& atom_items,
+    const QList<QGraphicsItem*>& bond_items,
+    const QList<QGraphicsItem*>& sgroup_items, const RDKit::ROMol& mol)
 {
     auto conf = mol.getConformer();
     for (auto* item : atom_items) {
@@ -89,6 +97,10 @@ void update_conf_for_mol_graphics_items(const QList<QGraphicsItem*>& atom_items,
     for (auto* item : bond_items) {
         auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
         bond_item->updateCachedData();
+    }
+    for (auto* item : sgroup_items) {
+        auto* sgroup_item = qgraphicsitem_cast<SGroupItem*>(item);
+        sgroup_item->updateCachedData();
     }
 }
 

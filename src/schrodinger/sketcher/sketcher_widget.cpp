@@ -621,7 +621,8 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
         case ModelKey::DRAW_TOOL: {
             auto tool = value.value<DrawTool>();
             if (tool == DrawTool::ERASE) {
-                m_mol_model->remove(atoms, bonds, nonmolecular_objects);
+                m_mol_model->remove(atoms, bonds, sgroups,
+                                    nonmolecular_objects);
             } else if (tool == DrawTool::EXPLICIT_H) {
                 m_mol_model->toggleExplicitHsOnAtoms(atoms);
             }

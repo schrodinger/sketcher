@@ -104,7 +104,7 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
 void HintFragmentItem::updateConformer(const RDKit::Conformer& conformer)
 {
     m_frag.getConformer() = conformer;
-    update_conf_for_mol_graphics_items(m_atom_items, m_bond_items, m_frag);
+    update_conf_for_mol_graphics_items(m_atom_items, m_bond_items, {}, m_frag);
 }
 
 DrawFragmentSceneTool::DrawFragmentSceneTool(

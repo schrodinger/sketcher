@@ -11,6 +11,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
+#include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
@@ -152,27 +153,34 @@ SelectSceneTool<T>::getSelectMode(QGraphicsSceneMouseEvent* const event) const
     }
 }
 
-template <typename T> std::tuple<std::unordered_set<const RDKit::Atom*>,
-                                 std::unordered_set<const RDKit::Bond*>,
-                                 std::unordered_set<const NonMolecularObject*>>
+template <typename T>
+std::tuple<std::unordered_set<const RDKit::Atom*>,
+           std::unordered_set<const RDKit::Bond*>,
+           std::unordered_set<const RDKit::SubstanceGroup*>,
+
+           std::unordered_set<const NonMolecularObject*>>
 SelectSceneTool<T>::getModelObjectsForGraphicsItems(
     const QList<QGraphicsItem*>& items) const
 {
     std::unordered_set<const RDKit::Atom*> atoms;
     std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
     std::unordered_set<const NonMolecularObject*> non_molecular_objects;
     for (auto cur_item : items) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(cur_item)) {
             atoms.insert(atom_item->getAtom());
         } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(cur_item)) {
             bonds.insert(bond_item->getBond());
+        } else if (auto* sgroup_item =
+                       qgraphicsitem_cast<SGroupItem*>(cur_item)) {
+            sgroups.insert(sgroup_item->getSubstanceGroup());
         } else if (auto* non_molecular_item =
                        qgraphicsitem_cast<NonMolecularItem*>(cur_item)) {
             non_molecular_objects.insert(
                 non_molecular_item->getNonMolecularObject());
         }
     }
-    return {atoms, bonds, non_molecular_objects};
+    return {atoms, bonds, sgroups, non_molecular_objects};
 }
 
 template <typename T>
@@ -180,7 +188,7 @@ void SelectSceneTool<T>::onSelectionMade(const QList<QGraphicsItem*>& items,
                                          QGraphicsSceneMouseEvent* const event)
 {
     auto select_mode = getSelectMode(event);
-    auto [atoms, bonds, non_molecular_objects] =
+    auto [atoms, bonds, sgroups, non_molecular_objects] =
         getModelObjectsForGraphicsItems(items);
     m_mol_model->select(atoms, bonds, non_molecular_objects, select_mode);
 }
@@ -252,9 +260,9 @@ void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
     // immediately clear the predictive highlighting, since the highlighted
     // items won't exist after the removeAtomsAndBonds call
     m_predictive_highlighting_item.clearHighlightingPath();
-    auto [atoms, bonds, non_molecular_objects] =
+    auto [atoms, bonds, sgroups, non_molecular_objects] =
         getModelObjectsForGraphicsItems(items);
-    m_mol_model->remove(atoms, bonds, non_molecular_objects);
+    m_mol_model->remove(atoms, bonds, sgroups, non_molecular_objects);
 }
 
 void EraseSceneTool::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)

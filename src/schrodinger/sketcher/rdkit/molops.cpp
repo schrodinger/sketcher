@@ -7,6 +7,7 @@
 #include <boost/algorithm/string.hpp>
 
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
@@ -38,6 +39,10 @@ void update_molecule_metadata(RDKit::ROMol& mol)
 {
     mol.updatePropertyCache(false);
     RDKit::MolOps::fastFindRings(mol);
+    // update the brackets for the sgroups
+    for (auto& sgroup : getSubstanceGroups(mol)) {
+        rdkit_extensions::update_s_group_brackets(sgroup);
+    }
 }
 
 std::pair<std::unordered_set<const RDKit::Atom*>,

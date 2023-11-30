@@ -24,6 +24,7 @@
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
+#include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
@@ -92,6 +93,8 @@ bool item_matches_type_flag(QGraphicsItem* item,
                    static_cast<bool>(
                        type_flag & InteractiveItemFlag::ATTACHMENT_POINT_BOND);
         }
+    } else if (type == SGroupItem::Type) {
+        return type_flag & InteractiveItemFlag::S_GROUP;
     } else if (type == NonMolecularItem::Type) {
         return type_flag & InteractiveItemFlag::NON_MOLECULAR;
     }
@@ -166,10 +169,11 @@ Scene::~Scene()
 
 void Scene::moveInteractiveItems()
 {
-
     update_conf_for_mol_graphics_items(
         getInteractiveItems(InteractiveItemFlag::ATOM),
-        getInteractiveItems(InteractiveItemFlag::BOND), *m_mol_model->getMol());
+        getInteractiveItems(InteractiveItemFlag::BOND),
+        getInteractiveItems(InteractiveItemFlag::S_GROUP),
+        *m_mol_model->getMol());
     for (auto* non_mol_obj : m_mol_model->getNonMolecularObjects()) {
         auto* non_mol_item =
             m_non_molecular_to_non_molecular_item.at(non_mol_obj);
@@ -213,6 +217,14 @@ void Scene::updateNonMolecularItems()
     updateItemSelection();
     updateSelectionHighlighting();
     m_left_button_scene_tool->onStructureUpdated();
+}
+
+AtomItem* Scene::getAtomItemForAtom(const RDKit::Atom* atom) const
+{
+    if (m_atom_to_atom_item.count(atom)) {
+        return m_atom_to_atom_item.at(atom);
+    }
+    return nullptr;
 }
 
 void Scene::updateItemSelection()

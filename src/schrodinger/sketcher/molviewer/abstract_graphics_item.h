@@ -52,6 +52,7 @@ class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
         // mix and match old and new graphics items
         ATOM = QGraphicsItem::UserType + 1000,
         BOND,
+        S_GROUP,
         NON_MOLECULAR,
     };
 

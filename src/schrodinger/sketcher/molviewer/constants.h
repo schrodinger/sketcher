@@ -9,6 +9,8 @@
 
 #include <rdkit/GraphMol/Depictor/DepictUtils.h>
 
+#include "schrodinger/rdkit_extensions/sgroup.h"
+
 namespace schrodinger
 {
 namespace sketcher
@@ -32,6 +34,7 @@ const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.5;
 const qreal CHIRALITY_FONT_RATIO = 0.6;
+const qreal SGROUP_FONT_RATIO = 1.0;
 const qreal CURSOR_HINT_FONT_RATIO = 1.0;
 
 // The font size used to display the number of bonds that the Draw Chain scene
@@ -218,6 +221,11 @@ const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
 // "identical."
 const double MAX_DIST_FOR_FRAG_OVERLAP = 0.01;
 
+// the dimensions of brackets around substance groups. BRAKETS_LONG_SIDE is
+// defined in rdkit_extensions/sgroup.h
+const qreal BRACKETS_SHORT_SIDE = rdkit_extensions::BRACKETS_LONG_SIDE * 0.2;
+const qreal LABEL_DISTANCE_FROM_BRACKETS = BRACKETS_SHORT_SIDE * 0.5;
+
 // At the end of a drag-and-drop with the Move/Rotate tool, overlapping atoms
 // from different molecules will be merged.  This is the maximum distance (and
 // squared maximum distance) for two atoms to be considered overlapping.  Both
@@ -262,6 +270,7 @@ enum class ZOrder {
     PREDICTIVE_HIGHLIGHTING,
     BOND,
     ATOM,
+    SGROUP,
     RXN_ARROW_AND_PLUS,
     DRAG_SELECT_OUTLINE,
     HINT,
@@ -279,14 +288,15 @@ namespace InteractiveItemFlag
 enum : InteractiveItemFlagType { // clang-format off
     ATOM_NOT_R_NOT_AP     = 1 << 0,
     R_GROUP               = 1 << 1,
-    ATTACHMENT_POINT      = 1 << 2,
-    BOND_NOT_AP           = 1 << 3,
-    ATTACHMENT_POINT_BOND = 1 << 4,
-    NON_MOLECULAR         = 1 << 5, // clang-format on
+    S_GROUP               = 1 << 2,
+    ATTACHMENT_POINT      = 1 << 3,
+    BOND_NOT_AP           = 1 << 4,
+    ATTACHMENT_POINT_BOND = 1 << 5,
+    NON_MOLECULAR         = 1 << 6, // clang-format on
     ATOM_NOT_AP = ATOM_NOT_R_NOT_AP | R_GROUP,
     ATOM = ATOM_NOT_AP | ATTACHMENT_POINT,
     BOND = BOND_NOT_AP | ATTACHMENT_POINT_BOND,
-    MOLECULAR = ATOM | BOND,
+    MOLECULAR = ATOM | BOND | S_GROUP,
     ALL = MOLECULAR | NON_MOLECULAR,
     ATTACHMENT_POINT_OR_AP_BOND = ATTACHMENT_POINT | ATTACHMENT_POINT_BOND,
     MOLECULAR_NOT_AP = ATOM_NOT_AP | BOND_NOT_AP,

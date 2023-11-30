@@ -19,6 +19,7 @@
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
+#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
@@ -551,10 +552,11 @@ void MolModel::addNonMolecularObject(const NonMolecularType& type,
 void MolModel::remove(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
     WhatChangedType to_be_changed = WhatChanged::NOTHING;
-    if (!(atoms.empty() && bonds.empty())) {
+    if (!(atoms.empty() && bonds.empty() && sgroups.empty())) {
         to_be_changed |= WhatChanged::MOLECULE;
     }
     if (!non_molecular_objects.empty()) {
@@ -586,9 +588,11 @@ void MolModel::remove(
     }
 
     QString desc = QString("Erase");
-    auto cmd_func = [this, atom_tags, bond_tags, non_molecular_tags]() {
-        removeCommandFunc(atom_tags, bond_tags, non_molecular_tags);
+    auto cmd_func = [this, atom_tags, bond_tags, sgroups,
+                     non_molecular_tags]() {
+        removeCommandFunc(atom_tags, bond_tags, sgroups, non_molecular_tags);
     };
+
     doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
 }
 
@@ -1261,7 +1265,7 @@ void MolModel::invertSelection()
 
 void MolModel::removeSelected()
 {
-    remove(getSelectedAtoms(), getSelectedBonds(),
+    remove(getSelectedAtoms(), getSelectedBonds(), {},
            getSelectedNonMolecularObjects());
 }
 
@@ -1563,6 +1567,7 @@ bool MolModel::removeNonMolecularObjectCommandFunc(const int cur_tag)
 void MolModel::removeCommandFunc(
     const std::vector<int>& atom_tags,
     const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
     const std::vector<int>& non_molecular_tags)
 {
     Q_ASSERT(m_allow_edits);
@@ -1587,6 +1592,7 @@ void MolModel::removeCommandFunc(
     for (int cur_tag : non_molecular_tags) {
         removeNonMolecularObjectCommandFunc(cur_tag);
     }
+    rdkit_extensions::remove_sgroups_from_molecule(m_mol, sgroups);
 }
 
 void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
@@ -1599,6 +1605,25 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
     unsigned int new_num_atoms = m_mol.getNumAtoms();
     unsigned int new_num_bonds = m_mol.getNumBonds();
 
+    // insertMol only copies the atoms and bonds, so we need to add the sgroups
+    for (auto sgroup : getSubstanceGroups(mol)) {
+        // update the sgroup's atom and bond indices
+        std::vector<unsigned int> new_atom_indices;
+        std::transform(sgroup.getAtoms().begin(), sgroup.getAtoms().end(),
+                       std::back_inserter(new_atom_indices),
+                       [atom_index](unsigned int old_index) {
+                           return old_index + atom_index;
+                       });
+        sgroup.setAtoms(new_atom_indices);
+        std::vector<unsigned int> new_bond_indices;
+        std::transform(sgroup.getBonds().begin(), sgroup.getBonds().end(),
+                       std::back_inserter(new_bond_indices),
+                       [bond_index](unsigned int old_index) {
+                           return old_index + bond_index;
+                       });
+        sgroup.setBonds(new_bond_indices);
+        addSubstanceGroup(m_mol, sgroup);
+    }
     bool attachment_point_added = false;
     for (; atom_index < new_num_atoms; ++atom_index) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);
@@ -1745,6 +1770,10 @@ void MolModel::setCoordinates(
         non_mol_obj->setCoords(cur_coords);
     }
 
+    // update the brackets for the sgroups with the new coordinates
+    for (auto& sgroup : getSubstanceGroups(m_mol)) {
+        rdkit_extensions::update_s_group_brackets(sgroup);
+    }
     emit coordinatesChanged();
 }
 

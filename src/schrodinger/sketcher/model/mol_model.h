@@ -407,10 +407,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                const RDGeom::Point3D& coords);
 
     /**
-     * Undoably remove the given atoms, bonds, and non-molecular objects (pluses
-     * and/or the reaction arrow).  Note that, even though this method accepts
-     * pointers to const objects, the Atoms, Bonds, and NonMolecularObjects will
-     * be destroyed as a result of this method and will no longer be valid.
+     * Undoably remove the given atoms, bonds, sgroups and non-molecular objects
+     * (pluses and/or the reaction arrow).  Note that, even though this method
+     * accepts pointers to const objects, the passed in objects will be
+     * destroyed as a result of this method and will no longer be valid.
      * (Without the const, it wouldn't be possible to pass in values returned
      * from getMol.)
      *
@@ -419,6 +419,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void remove(const std::unordered_set<const RDKit::Atom*>& atoms,
                 const std::unordered_set<const RDKit::Bond*>& bonds,
+                const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
                 const std::unordered_set<const NonMolecularObject*>&
                     non_molecular_objects);
 
@@ -539,12 +540,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                      const RDKit::Atom* const core_start_atom = nullptr);
 
     /**
-     * Change the element of an existing atom.  This method can also mutate a
-     * query atom into a non-query atom.
-     */
-    void mutateAtom(const RDKit::Atom* const atom, const Element& element);
-
-    /**
      * @return whether there's at least one implicit H on any of the specified
      * atoms.
      * @param atoms The atoms to consider.
@@ -561,6 +556,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void updateExplicitHs(const ExplicitHActions action,
                           std::unordered_set<const RDKit::Atom*> atoms = {});
+
+    /**
+     * Change the element of an existing atom.  This method can also mutate a
+     * query atom into a non-query atom.
+     */
+    void mutateAtom(const RDKit::Atom* const atom, const Element& element);
 
     /**
      * Change the query of an existing atom.  This method can also mutate a
@@ -1061,11 +1062,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atom_tags The atom tags to delete
      * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
      * bond's end atom tag) for the bonds to delete
+     * @param sgroups The substance groups to delete
      * @param non_molecular_tags The non-molecular tags to delete
      */
     void removeCommandFunc(
         const std::vector<int>& atom_tags,
         const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::vector<int>& non_molecular_tags);
 
     /**

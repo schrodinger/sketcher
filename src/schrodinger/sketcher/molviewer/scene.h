@@ -159,6 +159,8 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void requestCursorHintUpdate();
 
+    AtomItem* getAtomItemForAtom(const RDKit::Atom* atom) const;
+
   signals:
     /**
      * Request that the widget import the given text in the given format

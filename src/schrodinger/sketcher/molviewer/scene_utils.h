@@ -58,11 +58,13 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
  * Update all graphics items to represent an updated conformer
  * @param atom_items All atom items to update
  * @param bond_items All bond items to update
+ * @param sgroup_items All sgroup items to update
  * @param mol The molecule containing the updated conformer
  */
 SKETCHER_API void
 update_conf_for_mol_graphics_items(const QList<QGraphicsItem*>& atom_items,
                                    const QList<QGraphicsItem*>& bond_items,
+                                   const QList<QGraphicsItem*>& sgroup_items,
                                    const RDKit::ROMol& mol);
 
 /**
