@@ -26,6 +26,7 @@
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
+#include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -559,9 +560,10 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
             break;
         }
     }
-    // Finally, interact with model
+    // Finally, interact with models
     if (has_targets) {
-        m_sketcher_model->pingValue(kv_pair.first, kv_pair.second);
+        applyModelValuePingToTargets(kv_pair.first, kv_pair.second, atoms,
+                                     bonds, sgroups, nonmolecular_objects);
     } else {
         kv_pairs.emplace(kv_pair.first, kv_pair.second);
         m_sketcher_model->setValues(kv_pairs);
@@ -575,11 +577,19 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
     if (!view) {
         return;
     }
-    auto cursor_pos =
-        view->mapToScene(m_ui->view->mapFromGlobal(QCursor::pos()));
     auto [atoms, bonds, sgroups, nonmolecular_objects] =
-        m_scene->getModelObjects(SceneSubset::SELECTED_OR_HOVERED, &cursor_pos);
+        m_scene->getModelObjects(SceneSubset::SELECTION);
+    applyModelValuePingToTargets(key, value, atoms, bonds, sgroups,
+                                 nonmolecular_objects);
+}
 
+void SketcherWidget::applyModelValuePingToTargets(
+    const ModelKey key, const QVariant value,
+    const std::unordered_set<const RDKit::Atom*> atoms,
+    const std::unordered_set<const RDKit::Bond*> bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
+    const std::unordered_set<const NonMolecularObject*> nonmolecular_objects)
+{
     switch (key) {
         case ModelKey::ELEMENT: {
             auto element = value.value<Element>();
