@@ -39,7 +39,6 @@ class BondContextMenu;
 class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class MolModel;
-class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
 class SketcherModel;
@@ -189,26 +188,6 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @param value The current SketcherModel value for key
      */
     void onModelValuePinged(ModelKey key, QVariant value);
-
-    /**
-     * Apply the specified SketcherModel operation to the given targets (i.e.
-     * atoms, bonds, etc)
-     *
-     * @param key The SketcherModel key that corresponds to the action to take
-     * @param value The SketcherModel value for key
-     * @param atoms The atoms, if any, to apply the action to
-     * @param bonds The bonds, if any, to apply the action to
-     * @param sgroups The substance groups, if any, to apply the action to
-     * @param nonmolecular_objects The non-molecular objects (e.g. a reaction
-     * arrow or plus sign), if any, to apply the action to
-     */
-    void applyModelValuePingToTargets(
-        const ModelKey key, const QVariant value,
-        const std::unordered_set<const RDKit::Atom*> atoms,
-        const std::unordered_set<const RDKit::Bond*> bonds,
-        const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
-        const std::unordered_set<const NonMolecularObject*>
-            nonmolecular_objects);
 };
 
 } // namespace sketcher
