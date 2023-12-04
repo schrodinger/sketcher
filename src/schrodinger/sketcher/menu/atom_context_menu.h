@@ -30,7 +30,7 @@ class SKETCHER_API ModifyAtomsMenu : public QMenu
      * Disable menu actions that don't make sense given the selected atoms.
      * That is, disable removing unpaired electrons if none are present, etc.
      */
-    void updateActionsEnabled();
+    virtual void updateActionsEnabled();
 
   signals:
     void increaseChargeRequested();

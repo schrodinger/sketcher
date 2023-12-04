@@ -49,7 +49,7 @@ class SKETCHER_API SelectionContextMenu : public QMenu
     QAction* m_variable_bond_action = nullptr;
 
   protected slots:
-    void updateActionsEnabled();
+    virtual void updateActionsEnabled();
 
   private:
     QMenu* createAddToSelectionMenu(SketcherModel* model);
