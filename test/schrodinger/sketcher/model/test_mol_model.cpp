@@ -1501,6 +1501,41 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     BOOST_TEST(get_r_group_number(c_atom) == no_r_group_num);
 }
 
+BOOST_AUTO_TEST_CASE(test_mutateAtomsToHIsotopes)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CCC");
+    const RDKit::ROMol* mol = model.getMol();
+    std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(0),
+                                                    mol->getAtomWithIdx(2)};
+    auto to_atom = RDKit::Atom("H");
+    to_atom.setIsotope(2);
+    model.mutateAtoms(atoms, to_atom);
+    auto result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "[2H]C[2H]");
+    undo_stack.undo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "CCC");
+    undo_stack.redo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "[2H]C[2H]");
+
+    atoms = {mol->getAtomWithIdx(0), mol->getAtomWithIdx(2)};
+    to_atom.setIsotope(3);
+    model.mutateAtoms(atoms, to_atom);
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "[3H]C[3H]");
+    undo_stack.undo();
+    result_smiles =
+        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    BOOST_TEST(result_smiles == "[2H]C[2H]");
+}
+
 BOOST_AUTO_TEST_CASE(test_mutateBond)
 {
     QUndoStack undo_stack;

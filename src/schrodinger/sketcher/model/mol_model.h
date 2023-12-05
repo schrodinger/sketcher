@@ -572,6 +572,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
 
     /**
+     * Mutate an existing atom.  This method can also mutate a query atom into a
+     * non-query atom.
+     */
+    void mutateAtom(const RDKit::Atom* const from_atom,
+                    const RDKit::Atom& to_atom);
+
+    /**
      * Change the R-group of an existing atom.  This method can also mutate a
      * non-R-group atom into an R-group atom.
      */
@@ -688,6 +695,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mutateAtoms(
         std::unordered_set<const RDKit::Atom*> atoms,
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
+
+    /**
+     * Mutate a set of atoms to the specified atom.
+     */
+    void mutateAtoms(std::unordered_set<const RDKit::Atom*> from_atoms,
+                     const RDKit::Atom& to_atom);
 
     /**
      * Mutate all selected bonds

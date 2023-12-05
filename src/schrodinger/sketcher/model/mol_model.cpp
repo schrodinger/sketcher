@@ -722,6 +722,12 @@ void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
     doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
 }
 
+void MolModel::mutateAtom(const RDKit::Atom* const from_atom,
+                          const RDKit::Atom& to_atom)
+{
+    mutateAtoms({from_atom}, to_atom);
+}
+
 void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
 {
     int atom_tag = getTagForAtom(atom);
@@ -1283,6 +1289,15 @@ void MolModel::mutateAtoms(
 {
     auto create_atom = std::bind(make_new_query_atom, atom_query);
     mutateAtoms(atoms, create_atom);
+}
+
+void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> from_atoms,
+                           const RDKit::Atom& to_atom)
+{
+    auto create_atom = [to_atom]() {
+        return std::make_shared<RDKit::Atom>(to_atom);
+    };
+    mutateAtoms(from_atoms, create_atom);
 }
 
 void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,

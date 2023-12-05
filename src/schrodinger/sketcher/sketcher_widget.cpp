@@ -531,12 +531,21 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
                                            DrawTool::SELECT);
             }
             return;
-            /* case Qt::Key_D:
-               case Qt::Key_T:
-                   // TODO: deuterium, tritium SKETCH-2089
-               case Qt::Key_Escape:
-                   // TODO: SKETCH-1184 SKETCH-2045
-            */
+        case Qt::Key_D: {
+            auto to_atom = RDKit::Atom("H");
+            to_atom.setIsotope(2);
+            m_mol_model->mutateAtoms(atoms, to_atom);
+            return;
+        }
+        case Qt::Key_T: {
+            auto to_atom = RDKit::Atom("H");
+            to_atom.setIsotope(3);
+            m_mol_model->mutateAtoms(atoms, to_atom);
+            return;
+        }
+        /* case Qt::Key_Escape:
+            // TODO: SKETCH-1184 SKETCH-2045
+        */
         default: {
             // Check whether pressed key corresponds to an element
             auto key_text = event->text().toStdString();
