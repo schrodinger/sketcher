@@ -114,7 +114,8 @@ std::string get_mol_text(MolModel* mol_model, rdkit_extensions::Format format)
 std::string get_reaction_text(MolModel* mol_model,
                               rdkit_extensions::Format format)
 {
-    return rdkit_extensions::to_string(*mol_model->getReaction(), format);
+    return rdkit_extensions::to_string(*mol_model->getReactionForExport(),
+                                       format);
 }
 
 } // namespace sketcher

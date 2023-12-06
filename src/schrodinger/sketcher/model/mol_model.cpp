@@ -91,6 +91,22 @@ std::shared_ptr<RDKit::Bond> make_new_query_bond(
     return bond;
 };
 
+/**
+ * Remove all internal MolModel properties and bookmarks from the given
+ * molecule.
+ */
+void strip_mol_model_tags(RDKit::ROMol& mol)
+{
+    for (auto* atom : mol.atoms()) {
+        atom->clearProp(TAG_PROPERTY);
+    }
+    for (auto* bond : mol.bonds()) {
+        bond->clearProp(TAG_PROPERTY);
+    }
+    mol.clearAllAtomBookmarks();
+    mol.clearAllBondBookmarks();
+}
+
 } // namespace
 
 MolModelSnapshot::MolModelSnapshot(
@@ -131,11 +147,18 @@ void MolModel::initializeMol()
 
 const RDKit::ROMol* MolModel::getMol() const
 {
-    // TODO: add API to export selection as atom/bond properties
     return &m_mol;
 }
 
-boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMol()
+boost::shared_ptr<RDKit::ROMol> MolModel::getMolForExport() const
+{
+    // TODO: add API to export selection as atom/bond properties
+    auto mol_copy = boost::make_shared<RDKit::ROMol>(m_mol);
+    strip_mol_model_tags(*mol_copy);
+    return mol_copy;
+}
+
+boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMolForExport()
 {
     // Update the selection to make sure both ends of all selected bonds
     // are included in the selection, because RDKit will fail to create
@@ -157,10 +180,12 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMol()
         mol_copy.removeAtom(getAtomFromTag(atom_tag)->getIdx());
     }
     mol_copy.commitBatchEdit();
+    strip_mol_model_tags(mol_copy);
     return boost::make_shared<RDKit::ROMol>(mol_copy);
 }
 
-boost::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
+boost::shared_ptr<RDKit::ChemicalReaction>
+MolModel::getReactionForExport() const
 {
     if (!m_arrow.has_value()) {
         throw std::runtime_error("No reaction arrow found.");
@@ -171,6 +196,7 @@ boost::shared_ptr<RDKit::ChemicalReaction> MolModel::getReaction() const
         RDKit::MolOps::getMolFrags(m_mol, /* sanitizeFrags = */ false);
     auto reaction = boost::make_shared<RDKit::ChemicalReaction>();
     for (auto cur_mol : all_mols) {
+        strip_mol_model_tags(*cur_mol);
         auto cur_centroid = find_centroid(*cur_mol);
         if (cur_centroid.x <= arrow_x) {
             reaction->addReactantTemplate(cur_mol);

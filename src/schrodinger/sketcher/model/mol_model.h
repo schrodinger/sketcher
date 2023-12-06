@@ -140,20 +140,28 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /******************************** GETTERS *******************************/
 
     /**
-     * @return the RDKit molecule
+     * @return a pointer to the actual RDKit molecule (i.e. not a copy)
      */
     const RDKit::ROMol* getMol() const;
 
     /**
-     * @return the current selection as a new RDKit molecule
+     * @return the copy of the RDKit molecule with all internal MolModel
+     * properties removed
      */
-    boost::shared_ptr<RDKit::ROMol> getSelectedMol();
+    boost::shared_ptr<RDKit::ROMol> getMolForExport() const;
 
     /**
-     * @return The RDKit reaction contained in this model
+     * @return the current selection as a new RDKit molecule with all internal
+     * MolModel properties removed
+     */
+    boost::shared_ptr<RDKit::ROMol> getSelectedMolForExport();
+
+    /**
+     * @return The RDKit reaction contained in this model.  The reaction
+     * molecules will have all internal MolModel properties removed.
      * @throw std::runtime_error if no reaction arrow is present
      */
-    boost::shared_ptr<RDKit::ChemicalReaction> getReaction() const;
+    boost::shared_ptr<RDKit::ChemicalReaction> getReactionForExport() const;
 
     /**
      * @return whether the model is completely empty, i.e. no atoms, bonds, or

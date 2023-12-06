@@ -141,11 +141,10 @@ SketcherWidget::~SketcherWidget() = default;
 static boost::shared_ptr<RDKit::ROMol> extract_mol(MolModel* mol_model,
                                                    SceneSubset subset)
 {
-    // TODO: strip TAG_PROPERTY from atoms/bonds before returning
     if (subset == SceneSubset::SELECTION) {
-        return mol_model->getSelectedMol();
+        return mol_model->getSelectedMolForExport();
     }
-    return boost::make_shared<RDKit::ROMol>(*mol_model->getMol());
+    return mol_model->getMolForExport();
 }
 
 /**
@@ -167,7 +166,8 @@ static std::string extract_string(MolModel* mol_model, Format format,
             throw std::runtime_error(
                 "Reaction selection export is not supported");
         }
-        return rdkit_extensions::to_string(*mol_model->getReaction(), format);
+        return rdkit_extensions::to_string(*mol_model->getReactionForExport(),
+                                           format);
     }
 
     auto mol = extract_mol(mol_model, subset);
@@ -192,7 +192,7 @@ boost::shared_ptr<RDKit::ROMol> SketcherWidget::getRDKitMolecule() const
 boost::shared_ptr<RDKit::ChemicalReaction>
 SketcherWidget::getRDKitReaction() const
 {
-    return m_mol_model->getReaction();
+    return m_mol_model->getReactionForExport();
 }
 
 void SketcherWidget::addFromString(const std::string& text, Format format)

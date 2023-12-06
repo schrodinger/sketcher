@@ -2012,47 +2012,72 @@ BOOST_AUTO_TEST_CASE(test_adding_fragments)
                             "C1=CC=C2=CC=CC=C2=C1", -1, 1);
 }
 
-BOOST_AUTO_TEST_CASE(test_getSelectedMol)
+/**
+ * Make sure that getMolForExport returns the expected molecule and properly
+ * strips all internal properties and bookmarks.
+ */
+BOOST_AUTO_TEST_CASE(test_getMolForExport)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CC");
+    auto mol = model.getMolForExport();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(mol->getAtomBookmarks()->empty());
+    BOOST_TEST(mol->getBondBookmarks()->empty());
+    BOOST_TEST(!mol->getAtomWithIdx(0)->hasProp("SKETCHER_TAG"));
+    BOOST_TEST(!mol->getBondWithIdx(0)->hasProp("SKETCHER_TAG"));
+}
+
+BOOST_AUTO_TEST_CASE(test_getSelectedMolForExport)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
     import_mol_text(&model, "CC");
 
     // no selection returns an empty mol
-    auto mol = model.getSelectedMol();
+    auto mol = model.getSelectedMolForExport();
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
 
     // partial selection
     auto atom = model.getMol()->getAtomWithIdx(0);
     model.select({atom}, {}, {}, SelectMode::SELECT);
-    mol = model.getSelectedMol();
+    mol = model.getSelectedMolForExport();
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getNumBonds() == 0);
+    BOOST_TEST(mol->getAtomBookmarks()->empty());
+    BOOST_TEST(mol->getBondBookmarks()->empty());
+    BOOST_TEST(!mol->getAtomWithIdx(0)->hasProp("SKETCHER_TAG"));
 
     // full selection
     model.selectAll();
-    mol = model.getSelectedMol();
+    mol = model.getSelectedMolForExport();
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(mol->getAtomBookmarks()->empty());
+    BOOST_TEST(mol->getBondBookmarks()->empty());
+    BOOST_TEST(!mol->getAtomWithIdx(0)->hasProp("SKETCHER_TAG"));
+    BOOST_TEST(!mol->getBondWithIdx(0)->hasProp("SKETCHER_TAG"));
 }
 
-BOOST_AUTO_TEST_CASE(test_getReaction)
+BOOST_AUTO_TEST_CASE(test_getReactionForExport)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
 
     // we can't get a reaction from an empty model
-    BOOST_CHECK_THROW(model.getReaction(), std::runtime_error);
+    BOOST_CHECK_THROW(model.getReactionForExport(), std::runtime_error);
 
     // add reactants
     import_mol_text(&model, "CC");
     import_mol_text(&model, "CC");
     // we need an arrow to have a reaction
-    BOOST_CHECK_THROW(model.getReaction(), std::runtime_error);
+    BOOST_CHECK_THROW(model.getReactionForExport(), std::runtime_error);
     model.addNonMolecularObject(NonMolecularType::RXN_ARROW, {500, 0, 0});
     // we need a product to have a reaction
-    BOOST_CHECK_THROW(model.getReaction(), std::runtime_error);
+    BOOST_CHECK_THROW(model.getReactionForExport(), std::runtime_error);
 
     // add product
     import_mol_text(&model, "CCCC");
@@ -2065,9 +2090,21 @@ BOOST_AUTO_TEST_CASE(test_getReaction)
     // move the product so it's to the right of the arrow
     model.translateByVector({750, 0, 0}, product_atoms);
 
-    auto reaction = model.getReaction();
+    auto reaction = model.getReactionForExport();
     BOOST_TEST(reaction->getReactants().size() == 2);
     BOOST_TEST(reaction->getProducts().size() == 1);
+
+    auto reactant = reaction->getReactants()[0];
+    BOOST_TEST(reactant->getAtomBookmarks()->empty());
+    BOOST_TEST(reactant->getBondBookmarks()->empty());
+    BOOST_TEST(!reactant->getAtomWithIdx(0)->hasProp("SKETCHER_TAG"));
+    BOOST_TEST(!reactant->getBondWithIdx(0)->hasProp("SKETCHER_TAG"));
+
+    auto product = reaction->getProducts()[0];
+    BOOST_TEST(product->getAtomBookmarks()->empty());
+    BOOST_TEST(product->getBondBookmarks()->empty());
+    BOOST_TEST(!product->getAtomWithIdx(0)->hasProp("SKETCHER_TAG"));
+    BOOST_TEST(!product->getBondWithIdx(0)->hasProp("SKETCHER_TAG"));
 }
 
 BOOST_AUTO_TEST_CASE(test_reactions)
