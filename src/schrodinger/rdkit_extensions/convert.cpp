@@ -286,48 +286,6 @@ void adjust_for_mdl_v2k_format(RDKit::RWMol& mol)
     mol.setStereoGroups({});
 }
 
-bool atom_has_advanced_query(const RDKit::Atom& at, std::string atom_smarts)
-{
-    if (atom_smarts.empty()) {
-        return false;
-    }
-
-    // make sure this isn't a wildcard atom
-    return at.getQueryType().empty() && atom_smarts != "*";
-}
-
-void add_atom_query_sgroup(RDKit::RWMol& mol)
-{
-    // Temporary function (see SHARED-9306) to translate atom ring query
-    // information into a data sgroup so that the information can be
-    // roundtripped through SDF.
-    for (const auto& atom : mol.atoms()) {
-        if (atom->hasQuery()) {
-            auto atom_smarts = RDKit::SmartsWrite::GetAtomSmarts(
-                static_cast<const RDKit::QueryAtom*>(atom));
-            // SHARED-9306: Don't write advanced query if the MRV_SMA property
-            // is set, RDKit will write the substance group for us
-            if (atom_has_advanced_query(*atom, atom_smarts) &&
-                !atom->hasProp(RDKit::common_properties::MRV_SMA)) {
-                // Make a new data substance group with this atom that stores
-                // the smarts query
-                RDKit::SubstanceGroup sg(&mol, "DAT");
-                std::vector<std::string> data_fields{atom_smarts};
-                sg.setProp("DATAFIELDS", data_fields);
-                sg.setProp("QUERYTYPE", "SMARTSQ");
-
-                // to stay consistent with what sketcher was outputting
-                sg.setProp("QUERYOP", "=");
-                sg.setProp("FIELDDISP",
-                           "    0.0000    0.0000    DR    ALL  0 0");
-
-                sg.addAtomWithIdx(atom->getIdx());
-                RDKit::addSubstanceGroup(mol, sg);
-            }
-        }
-    }
-}
-
 void set_xyz_title(RDKit::RWMol& mol)
 {
     std::string title;
@@ -635,7 +593,6 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             attachment_point_dummies_to_molattachpt_property(mol);
-            add_atom_query_sgroup(mol);
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(mol);
             }
