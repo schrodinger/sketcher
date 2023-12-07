@@ -13,6 +13,7 @@
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
+#include <rdkit/RDGeneral/Invariant.h>
 
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -402,3 +403,14 @@ BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
                annotation_sgroup.template getProp<std::vector<std::string>>(
                    "DATAFIELDS")[1]);
 };
+
+BOOST_DATA_TEST_CASE(
+    TestInputsWithSelfBond,
+    bdata::make(std::vector<std::string>{
+        "RNA1{d(C)P.d(A)P}|RNA2{d(G)P.d(T)P}$RNA1,RNA1,1:R3-1:R3$$$V2.0",
+        "RNA1{R(C)P.R(A)P}|RNA2{R(G)P.R(U)P}$RNA1,RNA1,1:R3-1:R3$$$V2.0",
+    }),
+    input_helm)
+{
+    BOOST_CHECK_THROW(helm_to_rdkit(input_helm), Invar::Invariant);
+}
