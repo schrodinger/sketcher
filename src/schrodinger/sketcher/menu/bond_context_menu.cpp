@@ -1,5 +1,8 @@
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 
+#include <rdkit/GraphMol/Bond.h>
+#include <rdkit/GraphMol/ROMol.h>
+
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 namespace schrodinger
@@ -10,13 +13,15 @@ namespace sketcher
 ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
 {
     auto addBondAction = [this](auto text, auto type) {
-        addAction(text, this,
-                  [this, type]() { emit changeTypeRequested(type); });
+        addAction(text, this, [this, type]() {
+            emit changeTypeRequested(type, m_context_bonds);
+        });
     };
 
     setTitle("Modify Bonds");
-    m_flip_action =
-        addAction("Flip Substituent", this, &ModifyBondsMenu::flipRequested);
+    m_flip_action = addAction("Flip Substituent", this, [this]() {
+        emit flipRequested(m_context_bonds);
+    });
     addSeparator();
     addBondAction("Single", BondTool::SINGLE);
     addBondAction("Double", BondTool::DOUBLE);
@@ -29,6 +34,21 @@ ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
     addMenu(createQueryMenu());
 }
 
+void ModifyBondsMenu::setContextBonds(
+    const std::unordered_set<const RDKit::Bond*>& bonds)
+{
+    m_context_bonds = bonds;
+
+    // exactly 1 bonds should be selected and only non-ring bonds can be
+    // flipped to avoid distorting the structure
+    auto is_in_ring = [](auto bond) {
+        auto& mol = bond->getOwningMol();
+        return mol.getRingInfo()->numBondRings(bond->getIdx()) > 0;
+    };
+    auto flip_enabled = bonds.size() == 1 && !is_in_ring(*bonds.begin());
+    m_flip_action->setEnabled(flip_enabled);
+}
+
 void ModifyBondsMenu::setFlipEnabled(bool b)
 {
     m_flip_action->setEnabled(b);
@@ -39,8 +59,9 @@ QMenu* ModifyBondsMenu::createOtherTypeMenu()
     auto other_type_menu = new QMenu("Other Type", this);
 
     auto addBondAction = [this, other_type_menu](auto text, auto type) {
-        other_type_menu->addAction(
-            text, this, [this, type]() { emit changeTypeRequested(type); });
+        other_type_menu->addAction(text, this, [this, type]() {
+            emit changeTypeRequested(type, m_context_bonds);
+        });
     };
 
     addBondAction("Coordinate", BondTool::COORDINATE);
@@ -57,8 +78,9 @@ QMenu* ModifyBondsMenu::createQueryMenu()
     auto query_menu = new QMenu("Query", this);
 
     auto addBondAction = [this, query_menu](auto text, auto type) {
-        query_menu->addAction(
-            text, this, [this, type]() { emit changeTypeRequested(type); });
+        query_menu->addAction(text, this, [this, type]() {
+            emit changeTypeRequested(type, m_context_bonds);
+        });
     };
 
     addBondAction("Any", BondTool::ANY);
@@ -72,7 +94,8 @@ QMenu* ModifyBondsMenu::createQueryMenu()
 BondContextMenu::BondContextMenu(QWidget* parent) : ModifyBondsMenu(parent)
 {
     addSeparator();
-    addAction("Delete", this, &BondContextMenu::deleteRequested);
+    addAction("Delete", this,
+              [this]() { emit deleteRequested(m_context_bonds); });
 }
 
 } // namespace sketcher

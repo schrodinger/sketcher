@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
+#include <fmt/format.h>
+
 #include <QClipboard>
 #include <QCursor>
 #include <QGraphicsPixmapItem>
@@ -392,11 +394,42 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
     // TODO
 }
 
-void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
+static void mutate_bonds(MolModel* mol_model, BondTool bond_tool,
+                         const std::unordered_set<const RDKit::Bond*>& bonds)
 {
-    // TODO
+    if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
+        auto [bond_type, bond_dir, flippable, cursor_hint_path] =
+            BOND_TOOL_BOND_MAP.at(bond_tool);
+        mol_model->mutateBonds(bonds, bond_type, bond_dir, flippable);
+    } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
+        auto [query_type, query_func] = BOND_TOOL_QUERY_MAP.at(bond_tool);
+        auto bond_query =
+            std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(query_func());
+        bond_query->setTypeLabel(query_type);
+        mol_model->mutateBonds(bonds, bond_query);
+    } else {
+        throw std::runtime_error(
+            fmt::format("Cannot mutate bonds for the given tool {}",
+                        static_cast<int>(bond_tool)));
+    }
 }
 
+void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
+{
+    connect(&menu, &ModifyBondsMenu::changeTypeRequested, this,
+            [this](auto bond_tool, auto bonds) {
+                mutate_bonds(m_mol_model, bond_tool, bonds);
+            });
+
+    connect(&menu, &ModifyBondsMenu::flipRequested, this, []() {
+        // TODO: SKETCH-1981
+    });
+
+    if (auto context_menu = dynamic_cast<const BondContextMenu*>(&menu)) {
+        connect(context_menu, &BondContextMenu::deleteRequested, this,
+                [this](auto bonds) { m_mol_model->remove({}, bonds, {}, {}); });
+    }
+}
 void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
 {
     // TODO
@@ -439,10 +472,12 @@ void SketcherWidget::showContextMenu(
     if (sgroups.size()) {
         throw std::runtime_error("sgroup context menu not implemented");
     } else if (atoms.size() && bonds.size()) {
+        m_selection_context_menu->m_modify_bonds_menu->setContextBonds(bonds);
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
         menu = m_atom_context_menu;
     } else if (bonds.size()) {
+        m_bond_context_menu->setContextBonds(bonds);
         menu = m_bond_context_menu;
     } else {
         menu = m_background_context_menu;
@@ -615,20 +650,7 @@ void SketcherWidget::applyModelValuePingToTargets(
         }
         case ModelKey::BOND_TOOL: {
             auto bond_tool = value.value<BondTool>();
-            if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
-                auto [bond_type, bond_dir, flippable, cursor_hint_path] =
-                    BOND_TOOL_BOND_MAP.at(bond_tool);
-                m_mol_model->mutateBonds(bonds, bond_type, bond_dir, flippable);
-            } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
-                auto [query_type, query_func] =
-                    BOND_TOOL_QUERY_MAP.at(bond_tool);
-                auto bond_query =
-                    std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
-                        query_func());
-                bond_query->setTypeLabel(query_type);
-                m_mol_model->mutateBonds(bonds, bond_query);
-            }
-            // Ignore BondTool::ATOM_CHAIN, which should never be pinged
+            mutate_bonds(m_mol_model, bond_tool, bonds);
             break;
         }
         case ModelKey::CHARGE_TOOL: {
