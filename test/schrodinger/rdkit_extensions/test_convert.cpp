@@ -26,6 +26,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/test/boost_checks.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"

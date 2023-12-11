@@ -12,11 +12,11 @@
 
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 namespace schrodinger
@@ -238,7 +238,8 @@ QPainterPath AtomItem::getWavyLine() const
 
 void AtomItem::updateChiralityLabel()
 {
-    auto chirality = get_atom_chirality_label(*m_atom);
+    auto chirality = QString::fromStdString(
+        rdkit_extensions::get_atom_chirality_label(*m_atom));
     if (!chirality.isEmpty()) {
         // add parentheses around chiral label
         chirality = "(" + chirality + ")";

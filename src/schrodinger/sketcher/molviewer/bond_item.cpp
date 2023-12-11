@@ -18,9 +18,9 @@
 #include <QtGlobal>
 #include <QtMath>
 
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
-#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
 namespace schrodinger
 {
@@ -117,7 +117,8 @@ void BondItem::updateCachedData()
     if (is_query) {
         label_text = QString::fromStdString(m_bond->getQuery()->getTypeLabel());
     } else {
-        label_text = get_bond_stereo_label(*m_bond);
+        label_text = QString::fromStdString(
+            rdkit_extensions::get_bond_stereo_label(*m_bond));
     }
 
     // add the label (if present) to the bounding rect

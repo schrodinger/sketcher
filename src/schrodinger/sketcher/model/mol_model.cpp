@@ -20,13 +20,13 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
-#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -889,7 +889,7 @@ void MolModel::regenerateCoordinates()
 {
     auto cmd = [this]() {
         rdkit_extensions::compute2DCoords(m_mol);
-        assign_CIP_labels(m_mol);
+        rdkit_extensions::assign_CIP_labels(m_mol);
         emit moleculeChanged();
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::MOLECULE);

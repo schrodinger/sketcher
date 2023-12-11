@@ -20,6 +20,14 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+bool is_attachment_point_dummy(const RDKit::Atom& atom)
+{
+    std::string label;
+    return atom.getAtomicNum() == 0 && atom.getTotalDegree() == 1 &&
+           atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
+           label.find(ATTACHMENT_POINT_LABEL_PREFIX) == 0;
+}
+
 [[nodiscard]] std::shared_ptr<RDKit::Atom>
 make_new_r_group(const unsigned int r_group_num)
 {

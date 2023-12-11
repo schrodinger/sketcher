@@ -6,10 +6,10 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
-#include "schrodinger/rdkit_extensions/coord_utils.h"
-#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 namespace schrodinger
 {
@@ -24,7 +24,7 @@ boost::shared_ptr<RDKit::RWMol> text_to_mol(const std::string& text,
     // present (ie specified via molblock, SMILES extension, etc.)
     rdkit_extensions::update_2d_coordinates(*mol);
 
-    assign_CIP_labels(*mol);
+    rdkit_extensions::assign_CIP_labels(*mol);
 
     // SHARED-8774: Deal with chiral flag
     rdkit_extensions::add_enhanced_stereo_to_chiral_atoms(*mol);

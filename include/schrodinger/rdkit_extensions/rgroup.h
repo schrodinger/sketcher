@@ -23,6 +23,12 @@ namespace rdkit_extensions
 {
 
 /**
+ * @param atom rdkit atom
+ * @return whether the atom is an attachment point
+ */
+RDKIT_EXTENSIONS_API bool is_attachment_point_dummy(const RDKit::Atom& atom);
+
+/**
  * @return The R-group number of the specified atom.  If the atom is not an
  * R-group, an empty `r_group_num_t` object will be returned.
  */

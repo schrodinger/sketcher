@@ -35,6 +35,8 @@
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 namespace schrodinger
 {
