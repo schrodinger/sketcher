@@ -140,6 +140,9 @@ MolModel::MolModel(QUndoStack* const undo_stack, QObject* parent) :
 void MolModel::initializeMol()
 {
     auto* conf = new RDKit::Conformer();
+    // If we don't explicitly set the conformer to 2D, molfiles will be exported
+    // with the 3D flag set
+    conf->set3D(false);
     // RDKit takes ownership of this conformer, so we don't have to worry about
     // deleting it
     m_mol.addConformer(conf, true);

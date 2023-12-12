@@ -1,5 +1,7 @@
 #define BOOST_TEST_MODULE sketcher_widget_test
 
+#include <string>
+
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -98,6 +100,18 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
     TestSketcherWidget sk;
     sk.addFromString(text);
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(O)=O.CCO>>CCOC(C)=O");
+}
+
+/**
+ * Make sure that molfiles are exported using 2D conformations rather than 3D
+ */
+BOOST_AUTO_TEST_CASE(test_2D_molfile)
+{
+    TestSketcherWidget sk;
+    sk.addFromString("C");
+    auto molfile = sk.getString(Format::MDL_MOLV3000);
+    BOOST_TEST(molfile.find("2D") != std::string::npos);
+    BOOST_TEST(molfile.find("3D") == std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
