@@ -42,6 +42,11 @@ enum class Format {
     PDB,
     XYZ,
     HELM,
+    // these are used for reading
+    FASTA_PEPTIDE,
+    FASTA_DNA,
+    FASTA_RNA,
+    FASTA, // this is used for writing
 };
 
 /**

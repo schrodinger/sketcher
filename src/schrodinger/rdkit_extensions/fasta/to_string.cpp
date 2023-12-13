@@ -136,7 +136,7 @@ static void check_for_supplementary_info(
 
 static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
 {
-    if (!mol.hasProp(HELM_MODEL)) {
+    if (!schrodinger::rdkit_extensions::is_coarse_grain_mol(mol)) {
         throw std::invalid_argument("FASTA conversions with atomistic "
                                     "mols are currently unsupported");
     }

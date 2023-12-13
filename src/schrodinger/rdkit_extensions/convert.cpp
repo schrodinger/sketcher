@@ -32,6 +32,9 @@
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/fasta/to_rdkit.h"
+#include "schrodinger/rdkit_extensions/fasta/to_string.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -476,6 +479,23 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             mol = helm::helm_to_rdkit(text);
             break;
         }
+        case Format::FASTA_PEPTIDE: {
+            mol = fasta::peptide_fasta_to_rdkit(text);
+            break;
+        }
+        case Format::FASTA_DNA: {
+            mol = fasta::dna_fasta_to_rdkit(text);
+            break;
+        }
+        case Format::FASTA_RNA: {
+            mol = fasta::rna_fasta_to_rdkit(text);
+            break;
+        }
+        case Format::FASTA:
+            throw std::invalid_argument(
+                "Can't determine FASTA format. Please use any of the "
+                "FASTA_PEPTIDE, FASTA_DNA or FASTA_RNA formats to convert "
+                "input.");
         default:
             throw std::invalid_argument("Unsupported import format");
     }
@@ -509,7 +529,8 @@ to_rdkit_reaction(const std::string& text, const Format format)
                 Format::RDMOL_BINARY_BASE64,
                 Format::MDL_MOLV2000,
                 // Guessing reaction text is always interpreted as SMARTS;
-                // reading reactions as SMILES should be explicitly requested
+                // reading reactions as SMILES should be explicitly
+                // requested
                 Format::SMARTS,
             },
             &to_rdkit_reaction);
@@ -574,9 +595,28 @@ to_rdkit_reaction(const std::string& text, const Format format)
     return rxn;
 }
 
+static void check_non_coarse_grained_output(const RDKit::ROMol& input_mol,
+                                            const Format format)
+{
+    static constexpr std::array<Format, 6> cg_formats{
+        Format::HELM,      Format::FASTA,         Format::FASTA_DNA,
+        Format::FASTA_RNA, Format::FASTA_PEPTIDE, Format::RDMOL_BINARY_BASE64};
+
+    auto cg_formats_end = std::end(cg_formats);
+    if (is_coarse_grain_mol(input_mol) &&
+        std::find(std::begin(cg_formats), cg_formats_end, format) ==
+            cg_formats_end) {
+        throw std::invalid_argument("Conversions from coarse grained "
+                                    "formats to atomistic formats are "
+                                    "currently unsupported");
+    }
+}
+
 std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 {
     CaptureRDErrorLog rd_error_log;
+
+    check_non_coarse_grained_output(input_mol, format);
 
     RDKit::RWMol mol(input_mol);
 
@@ -588,7 +628,8 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::SMILES:
             return RDKit::MolToSmiles(mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            mol.clearConformers(); // Don't pollute extension with coordinates
+            mol.clearConformers(); // Don't pollute extension with
+                                   // coordinates
             return RDKit::MolToCXSmiles(mol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(mol);
@@ -618,8 +659,9 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             return base64_encode(byte_array);
         }
         case Format::XYZ:
-            // Require explicit hydrogens and a complete 3D conformer on write;
-            // see GraphMol/DetermineBonds/DetermineBonds.h in the RDKit
+            // Require explicit hydrogens and a complete 3D conformer on
+            // write; see GraphMol/DetermineBonds/DetermineBonds.h in the
+            // RDKit
             RDKit::MolOps::addHs(mol);
             if (RDKit::DGeomHelpers::EmbedMolecule(mol, /*maxIterations*/ 0,
                                                    /*seed*/ 1234) == -1) {
@@ -629,6 +671,14 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             return RDKit::MolToXYZBlock(mol);
         case Format::HELM:
             return helm::rdkit_to_helm(mol);
+        case Format::FASTA:
+            return fasta::rdkit_to_fasta(mol);
+        case Format::FASTA_PEPTIDE:
+        case Format::FASTA_DNA:
+        case Format::FASTA_RNA:
+            throw std::invalid_argument("FASTA formats are auto-detected on "
+                                        "write, so please use the FASTA format"
+                                        "to write output.");
         default:
             throw std::invalid_argument("Unsupported export format");
     }
@@ -662,5 +712,9 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
     throw std::invalid_argument("Invalid format specified");
 }
 
+[[nodiscard]] bool is_coarse_grain_mol(const RDKit::ROMol& mol)
+{
+    return mol.hasProp(HELM_MODEL);
+}
 } // namespace rdkit_extensions
 } // namespace schrodinger

@@ -36,7 +36,7 @@ template <class PropType, class RDKitObject> PropType get_property
 
 [[nodiscard]] std::string rdkit_to_helm(const ::RDKit::ROMol& mol)
 {
-    if (!mol.hasProp(HELM_MODEL)) {
+    if (!schrodinger::rdkit_extensions::is_coarse_grain_mol(mol)) {
         throw std::invalid_argument(
             "Atomistic conversions are currently unsupported");
     }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "schrodinger/rdkit_extensions/definitions.h"
+
 #include <string>
 
 const std::string ANNOTATION{"ANNOTATION"};
@@ -17,3 +19,17 @@ const std::string BRANCH_MONOMER{"isBranchMonomer"};
 const std::string SMILES_MONOMER{"isSmilesMonomer"};
 const std::string CUSTOM_BOND{"customBond"};
 const std::string EXTENDED_ANNOTATIONS{"extended_annotations"};
+
+namespace RDKit
+{
+class ROMol;
+} // namespace RDKit
+
+namespace schrodinger
+{
+namespace rdkit_extensions
+{
+[[nodiscard]] RDKIT_EXTENSIONS_API bool
+is_coarse_grain_mol(const RDKit::ROMol& mol);
+}
+} // namespace schrodinger
