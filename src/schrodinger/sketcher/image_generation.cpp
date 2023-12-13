@@ -56,16 +56,14 @@ void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
     for (auto atom : atoms) {
         atom->removeHighlight();
     }
-    for (auto [index, color] :
-         asKeyValue(opts.rdatom_index_to_highlight_color)) {
+    for (auto [index, color] : asKeyValue(opts.rdatom_index_to_halo_color)) {
         atoms.at(index)->setHighlightColor(color);
     }
     auto bonds = scene.quickGetBonds();
     for (auto bond : bonds) {
         bond->removeHighlight();
     }
-    for (auto [index, color] :
-         asKeyValue(opts.rdbond_index_to_highlight_color)) {
+    for (auto [index, color] : asKeyValue(opts.rdbond_index_to_halo_color)) {
         bonds.at(index)->setHighlightColor(color);
     }
 }
@@ -76,7 +74,7 @@ void setUserLabels(const sketcherScene& scene, const RenderOptions& opts)
     for (auto atom : atoms) {
         atom->removeUserLabel();
     }
-    for (auto [index, text] : asKeyValue(opts.rdatom_index_to_atom_label)) {
+    for (auto [index, text] : asKeyValue(opts.rdatom_index_to_label)) {
         atoms.at(index)->setUserLabel(text);
     }
 }

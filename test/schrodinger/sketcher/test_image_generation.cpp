@@ -77,14 +77,14 @@ BOOST_AUTO_TEST_CASE(test_highlighting)
     QColor purple(255, 0, 25);
     highlights[3] = purple;
     highlights[4] = purple;
-    opts.rdatom_index_to_highlight_color = highlights;
+    opts.rdatom_index_to_halo_color = highlights;
 
     QHash<int, QColor> highlights_2;
     QColor yellow(255, 255, 0);
     highlights[0] = yellow;
     highlights[1] = yellow;
 
-    opts.rdbond_index_to_highlight_color = highlights_2;
+    opts.rdbond_index_to_halo_color = highlights_2;
 
     auto qimage = get_qimage(*rdmol, opts);
     BOOST_TEST(!qimage.allGray());

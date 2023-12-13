@@ -50,9 +50,18 @@ struct RenderOptions {
      * instead.
      */
     qreal scale = AUTOSCALE;
-    QHash<int, std::string> rdatom_index_to_atom_label;
-    QHash<int, QColor> rdatom_index_to_highlight_color;
-    QHash<int, QColor> rdbond_index_to_highlight_color;
+    /**
+     * User annotations and colorings based on atom and bond indices.
+     * Bonds between haloed atoms will not be haloed unless separately
+     * specified. Bonds lines between atoms will have split color based
+     * on the line color of connected atoms, unless bond line coloring is
+     * separately specified.
+     */
+    QHash<int, std::string> rdatom_index_to_label;
+    QHash<int, QColor> rdatom_index_to_halo_color;
+    QHash<int, QColor> rdbond_index_to_halo_color;
+    QHash<int, QColor> rdatom_index_to_line_color;
+    QHash<int, QColor> rdbond_index_to_line_color;
     // TODO: incorporate both RendererSettings and additional LiveDesign options
 };
 
