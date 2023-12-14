@@ -100,8 +100,8 @@ void AbstractDrawSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
     SceneToolWithPredictiveHighlighting::onDragMove(event);
     auto [should_drag, start_pos, start_atom] = getDragStartInfo();
     if (should_drag) {
-        auto [end_pos, end_atom] =
-            getBondEndInMousedDirection(start_pos, event->scenePos());
+        auto [end_pos, end_atom] = getBondEndInMousedDirection(
+            start_pos, start_atom, event->scenePos());
         updateHintBondPath(start_pos, end_pos);
     }
 }
@@ -111,10 +111,19 @@ void AbstractDrawSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
     SceneToolWithPredictiveHighlighting::onDragRelease(event);
     auto [should_drag, start_pos, start_atom] = getDragStartInfo();
     if (should_drag) {
-        auto [end_pos, end_atom] =
-            getBondEndInMousedDirection(start_pos, event->scenePos());
+        auto [end_pos, end_atom] = getBondEndInMousedDirection(
+            start_pos, start_atom, event->scenePos());
         if (start_atom && end_atom) {
-            addBond(start_atom, end_atom);
+            auto* mol = m_mol_model->getMol();
+            auto* existing_bond = mol->getBondBetweenAtoms(start_atom->getIdx(),
+                                                           end_atom->getIdx());
+            if (existing_bond == nullptr) {
+                addBond(start_atom, end_atom);
+            } else {
+                // The user dragged along an existing bond, so we respond as if
+                // that bond was clicked
+                onBondClicked(existing_bond);
+            }
         } else if (start_atom) {
             addAtom(to_mol_xy(end_pos), start_atom);
         } else if (end_atom) {
@@ -197,19 +206,38 @@ AbstractDrawSceneTool::getDragStartInfo() const
 
 std::pair<QPointF, const RDKit::Atom*>
 AbstractDrawSceneTool::getBondEndInMousedDirection(
-    const QPointF& start, const QPointF& mouse_pos) const
+    const QPointF& start_pos, const RDKit::Atom* const start_atom,
+    const QPointF& mouse_pos) const
 {
     auto* item = m_scene->getTopInteractiveItemAt(
-        mouse_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
+        mouse_pos, InteractiveItemFlag::ATOM_NOT_AP);
+    bool force_default_direction = false;
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-        return {atom_item->pos(), atom_item->getAtom()};
+        auto* atom = atom_item->getAtom();
+        auto* mol = m_mol_model->getMol();
+        if (start_atom != nullptr && atom == start_atom) {
+            // The user is mousing over the start atom, so we'll use the default
+            // bond direction below
+            force_default_direction = true;
+        } else {
+            // The user is mousing over an atom, but not the start atom
+            return {atom_item->pos(), atom};
+        }
     }
-    QPointF bond_offset =
-        getDefaultBondOffsetInMousedDirection(start, mouse_pos);
-    QPointF bond_end = start + bond_offset;
-    item = m_scene->getTopInteractiveItemAt(
-        bond_end, InteractiveItemFlag::MOLECULAR_NOT_AP);
+
+    QPointF bond_end;
+    if (force_default_direction) {
+        // The user is mousing over the start atom
+        bond_end = getInitialDefaultBondPosition(start_atom).second;
+    } else {
+        QPointF bond_offset =
+            getDefaultBondOffsetInMousedDirection(start_pos, mouse_pos);
+        bond_end = start_pos + bond_offset;
+    }
+    item = m_scene->getTopInteractiveItemAt(bond_end,
+                                            InteractiveItemFlag::ATOM_NOT_AP);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+        // there's already an atom where we're planning on ending the bond
         return {atom_item->pos(), atom_item->getAtom()};
     }
     return {bond_end, nullptr};
@@ -229,7 +257,18 @@ void AbstractDrawSceneTool::onAtomClicked(const RDKit::Atom* const atom)
         auto [mol_pos, scene_pos, end_atom] = getDefaultBondPosition(atom);
         if (end_atom) {
             // there's already an atom where the default bond position ends
-            addBond(atom, end_atom);
+            auto* mol = m_mol_model->getMol();
+            auto* existing_bond =
+                mol->getBondBetweenAtoms(atom->getIdx(), end_atom->getIdx());
+            // If there's already an existing bond between these two atoms, then
+            // it means that the start atom already has so many bonds that we
+            // can't find enough free space to draw a new one.  If that's
+            // happened, just ignore the click.  This normally doesn't happen
+            // until the 25th bond, so there's no point in trying to find
+            // reasonable chemistry.
+            if (existing_bond == nullptr) {
+                addBond(atom, end_atom);
+            }
         } else {
             addAtom(mol_pos, atom);
         }

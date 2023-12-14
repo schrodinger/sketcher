@@ -116,17 +116,22 @@ class SKETCHER_API AbstractDrawSceneTool
 
     /**
      * Determine where we should draw the end of the hint bond during a drag.
-     * If the user is currently mousing-over an atom, this will be the atom's
-     * coordinates.  Otherwise, a bond of the appropriate length is drawn at the
-     * nearest 30 degree interval.
-     * @param start The start of the drag in Scene coordinates
+     * If the user is currently mousing over the start atom, we'll use the
+     * default bond location (i.e. where we would've drawn the bond if the user
+     * clicked instead of dragged).  If the user is currently mousing over any
+     * other atom, this will be that atom's coordinates.  Otherwise, a bond of
+     * the appropriate length is drawn at the nearest 30 degree interval.
+     * @param start_pos The start of the drag in Scene coordinates
+     * @param start_atom The atom that the cursor was over when starting the
+     * drag.  Should be nullptr if the drag didn't start over an atom.
      * @param event_pos The current mouse location in Scene coordinates
      * @return A tuple of
      *   - The location for the end of the hint bond in Scene coordinates.
      *   - The moused-over atom, if any.  Nullptr otherwise.
      */
     virtual std::pair<QPointF, const RDKit::Atom*>
-    getBondEndInMousedDirection(const QPointF& start,
+    getBondEndInMousedDirection(const QPointF& start_pos,
+                                const RDKit::Atom* const start_atom,
                                 const QPointF& event_pos) const;
 
     /**
