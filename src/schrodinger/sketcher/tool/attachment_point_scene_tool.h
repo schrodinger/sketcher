@@ -49,7 +49,8 @@ class SKETCHER_API DrawAttachmentPointSceneTool : public AbstractDrawSceneTool
                  const RDKit::Atom* const bound_to) override;
 
     std::pair<QPointF, const RDKit::Atom*>
-    getBondEndInMousedDirection(const QPointF& start,
+    getBondEndInMousedDirection(const QPointF& start_pos,
+                                const RDKit::Atom* const start_atom,
                                 const QPointF& mouse_pos) const override;
 
     std::tuple<RDGeom::Point3D, QPointF, const RDKit::Atom*>

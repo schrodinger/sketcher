@@ -64,7 +64,8 @@ void DrawAttachmentPointSceneTool::addAtom(const RDGeom::Point3D& pos,
 
 std::pair<QPointF, const RDKit::Atom*>
 DrawAttachmentPointSceneTool::getBondEndInMousedDirection(
-    const QPointF& start, const QPointF& mouse_pos) const
+    const QPointF& start, const RDKit::Atom* const start_atom,
+    const QPointF& mouse_pos) const
 {
     QPointF bond_offset =
         getDefaultBondOffsetInMousedDirection(start, mouse_pos);
