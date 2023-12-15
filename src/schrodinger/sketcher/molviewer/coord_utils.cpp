@@ -105,7 +105,7 @@ RDGeom::Point3D flip_point(const RDGeom::Point3D& point,
                            const RDGeom::Point3D& end)
 {
     auto angle = get_angle_radians(end, start, point);
-    if (std::isnan(angle)) {
+    if (isnan(angle)) {
         return point;
     }
     return rotate_point_radians(point, start, -2.0 * angle);
