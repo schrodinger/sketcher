@@ -11,8 +11,6 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/core/detail/base64.hpp>
 
-#include <fmt/core.h>
-
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionPickler.h>
@@ -406,12 +404,6 @@ std::string zstd_compress(std::string&& byte_array)
 
     // trim the output to the actual compressed size
     compressed_byte_array.resize(cSize);
-
-    const auto log = fmt::format(
-        "Compressing {} bytes to {}. Ratio is {:0.3f}.", byte_array.size(),
-        compressed_byte_array.size(),
-        static_cast<double>(compressed_byte_array.size()) / byte_array.size());
-    std::cerr << log << std::endl;
 
     return compressed_byte_array;
 }
