@@ -7,9 +7,11 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 
 #include <functional>
-#include <boost/algorithm/string.hpp>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/beast/core/detail/base64.hpp>
+
+#include <fmt/core.h>
 
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
@@ -28,6 +30,8 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/inchi.h>
+
+#include <zstd.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/constants.h"
@@ -73,6 +77,35 @@ const std::vector<Format> RXN_FORMATS = {
 
 namespace
 {
+
+template <auto CreateFn, auto ResetFn, auto FreeFn, typename Ptr_t>
+class ZstdContextMgr : private boost::noncopyable
+{
+  public:
+    ZstdContextMgr() = default;
+    ~ZstdContextMgr()
+    {
+        FreeFn(m_ctx);
+    }
+
+    Ptr_t get()
+    {
+        return m_ctx;
+    }
+    void reset()
+    {
+        ResetFn(m_ctx, ZSTD_reset_session_only);
+    }
+
+  private:
+    Ptr_t m_ctx = CreateFn();
+};
+
+using ZstdCompressionContext =
+    ZstdContextMgr<ZSTD_createCCtx, ZSTD_CCtx_reset, ZSTD_freeCCtx, ZSTD_CCtx*>;
+
+using ZstdDecompressionContext =
+    ZstdContextMgr<ZSTD_createDCtx, ZSTD_DCtx_reset, ZSTD_freeDCtx, ZSTD_DCtx*>;
 
 /**
  * @internal
@@ -342,25 +375,118 @@ int get_xyz_charge(const std::string& xyz_block)
     return 0;
 }
 
-std::string base64_decode(const std::string& text)
+std::string zstd_compress(std::string&& byte_array)
+{
+    static ZstdCompressionContext cctx;
+
+    constexpr int zstd_compression_level = 1;
+
+    const auto cBuffSize = ZSTD_compressBound(byte_array.size());
+    if (ZSTD_isError(cBuffSize)) {
+        // failed to calculate the compression bounds
+        return byte_array;
+    }
+
+    std::string compressed_byte_array(cBuffSize, '\0');
+    const auto cSize = ZSTD_compressCCtx(
+        cctx.get(), compressed_byte_array.data(), cBuffSize, byte_array.data(),
+        byte_array.size(), zstd_compression_level);
+
+    if (ZSTD_isError(cSize)) {
+        // Compression failed; reset the context and just return the
+        // uncompressed array, in case it works?
+        cctx.reset();
+        return byte_array;
+    } else if (cSize >= byte_array.size()) {
+        // The compression worked, but not enough to offset the extra size due
+        // to the header. If this is the case, prefer the uncompressed data,
+        // which will be smaller and we won't have to decompress.
+        return byte_array;
+    }
+
+    // trim the output to the actual compressed size
+    compressed_byte_array.resize(cSize);
+
+    const auto log = fmt::format(
+        "Compressing {} bytes to {}. Ratio is {:0.3f}.", byte_array.size(),
+        compressed_byte_array.size(),
+        static_cast<double>(compressed_byte_array.size()) / byte_array.size());
+    std::cerr << log << std::endl;
+
+    return compressed_byte_array;
+}
+
+std::string zstd_decompress(std::string&& byte_array)
+{
+    static ZstdDecompressionContext dctx;
+
+    const auto rSize =
+        ZSTD_getFrameContentSize(byte_array.data(), byte_array.size());
+
+    if (rSize == ZSTD_CONTENTSIZE_ERROR) {
+        // Probably not compressed by zstd -- just return the byte array
+        return byte_array;
+    } else if (ZSTD_isError(rSize)) {
+        // failed to read the uncompressed size. Maybe not compressed?
+        return byte_array;
+    }
+
+    std::string decompressed_byte_array(rSize, '\0');
+    const auto dSize =
+        ZSTD_decompressDCtx(dctx.get(), decompressed_byte_array.data(), rSize,
+                            byte_array.data(), byte_array.size());
+
+    if (ZSTD_isError(dSize)) {
+        // Decompression failed; reset the context and return the uncompressed
+        // array, in case it works?
+        dctx.reset();
+        return byte_array;
+    }
+
+    return decompressed_byte_array;
+}
+
+template <typename T, typename U> boost::shared_ptr<T>
+base64_to_mol(const std::string& text,
+              std::function<void(const std::string&, U*)> from_pickle_func)
 {
     // text is about 1/3 longer than the decoded data
     std::string byte_array(text.size(), '\0');
     const auto& [sz, read_sz] = boost::beast::detail::base64::decode(
         byte_array.data(), text.data(), text.size());
     byte_array.resize(sz);
-    return byte_array;
+
+    if (byte_array.empty()) {
+        return nullptr; // failed decoding
+    }
+
+    const auto decompressed_byte_array = zstd_decompress(std::move(byte_array));
+    boost::shared_ptr<T> mol_or_rxn(new T());
+    try {
+        from_pickle_func(decompressed_byte_array, mol_or_rxn.get());
+    } catch (const std::exception&) {
+        return nullptr; // PicklerException base class
+    }
+    return mol_or_rxn;
 }
 
-std::string base64_encode(const std::string& byte_array)
+template <typename T> std::string mol_to_base64(
+    const T* mol_or_rxn,
+    std::function<void(const T*, std::string&, unsigned int)> pickle_func)
 {
+    std::string byte_array;
+    pickle_func(mol_or_rxn, byte_array, RDKit::PicklerOps::AllProps);
+    auto compressed_byte_array = zstd_compress(std::move(byte_array));
+
     // base64 has a 1/3 size overhead in respect to binary, but we give
     // it some extra space to be safe. Base64 is also padded, which makes
     // the minimum output size 4 bytes.
     constexpr size_t min_padded_size = 4;
-    std::string text(std::max(2 * byte_array.size(), min_padded_size), '\0');
+    std::string text(
+        std::max(2 * compressed_byte_array.size(), min_padded_size), '\0');
     const auto sz = boost::beast::detail::base64::encode(
-        text.data(), byte_array.data(), byte_array.size());
+        text.data(), compressed_byte_array.data(),
+        compressed_byte_array.size());
     text.resize(sz);
     return text;
 }
@@ -442,18 +568,9 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             mol.reset(RDKit::PDBBlockToMol(text, sanitize, removeHs));
             break;
         case Format::RDMOL_BINARY_BASE64: {
-            const auto byte_array = base64_decode(text);
-            if (byte_array.empty()) {
-                // Early exit on a failed decoding.
-                // This avoids an exception in the unpickler
-                break;
-            }
-            mol.reset(new RDKit::RWMol());
-            try {
-                RDKit::MolPickler::molFromPickle(byte_array, mol.get());
-            } catch (const RDKit::MolPicklerException&) {
-                mol.reset();
-            }
+            mol = base64_to_mol<RDKit::RWMol, RDKit::ROMol>(
+                text, (void (*)(const std::string&, RDKit::ROMol*)) &
+                          RDKit::MolPickler::molFromPickle);
             break;
         }
         case Format::XYZ:
@@ -562,19 +679,11 @@ to_rdkit_reaction(const std::string& text, const Format format)
                 RDKit::RxnBlockToChemicalReaction(text, sanitize, removeHs));
             break;
         case Format::RDMOL_BINARY_BASE64: {
-            const auto byte_array = base64_decode(text);
-            if (byte_array.empty()) {
-                // Early exit on a failed decoding.
-                // This avoids an exception in the unpickler
-                break;
-            }
-            rxn.reset(new RDKit::ChemicalReaction());
-            try {
-                RDKit::ReactionPickler::reactionFromPickle(byte_array,
-                                                           rxn.get());
-            } catch (const RDKit::ReactionPicklerException&) {
-                rxn.reset();
-            }
+            rxn =
+                base64_to_mol<RDKit::ChemicalReaction, RDKit::ChemicalReaction>(
+                    text,
+                    (void (*)(const std::string&, RDKit::ChemicalReaction*)) &
+                        RDKit::ReactionPickler::reactionFromPickle);
             break;
         }
         default:
@@ -653,10 +762,10 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::PDB:
             return RDKit::MolToPDBBlock(mol);
         case Format::RDMOL_BINARY_BASE64: {
-            std::string byte_array;
-            auto opts = RDKit::PicklerOps::AllProps;
-            RDKit::MolPickler::pickleMol(mol, byte_array, opts);
-            return base64_encode(byte_array);
+            return mol_to_base64<RDKit::ROMol>(
+                &mol,
+                (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
+                    RDKit::MolPickler::pickleMol);
         }
         case Format::XYZ:
             // Require explicit hydrogens and a complete 3D conformer on
@@ -701,10 +810,10 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
                                                      forceV3000);
         }
         case Format::RDMOL_BINARY_BASE64: {
-            std::string byte_array;
-            auto opts = RDKit::PicklerOps::AllProps;
-            RDKit::ReactionPickler::pickleReaction(rxn, byte_array, opts);
-            return base64_encode(byte_array);
+            return mol_to_base64<RDKit::ChemicalReaction>(
+                &rxn, (void (*)(const RDKit::ChemicalReaction*, std::string&,
+                                unsigned int)) &
+                          RDKit::ReactionPickler::pickleReaction);
         }
         default:
             throw std::invalid_argument("Unsupported reaction export format");
