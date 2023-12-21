@@ -421,10 +421,14 @@ void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
                 mutate_bonds(m_mol_model, bond_tool, bonds);
             });
 
-    connect(&menu, &ModifyBondsMenu::flipRequested, this, []() {
-        // TODO: SKETCH-1981
+    connect(&menu, &ModifyBondsMenu::flipRequested, this, [this](auto bonds) {
+        // flip substituent only makes sense if there is only one bond
+        if (bonds.size() != 1) {
+            throw std::runtime_error(
+                "Cannot flip substituent for multiple bonds");
+        }
+        m_mol_model->flipSubstituent(*(bonds.begin()));
     });
-
     if (auto context_menu = dynamic_cast<const BondContextMenu*>(&menu)) {
         connect(context_menu, &BondContextMenu::deleteRequested, this,
                 [this](auto bonds) { m_mol_model->remove({}, bonds, {}, {}); });
@@ -616,7 +620,6 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
 
 void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
 {
-
     auto view = m_ui->view;
     if (!view) {
         return;

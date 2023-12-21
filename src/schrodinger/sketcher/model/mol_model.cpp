@@ -27,6 +27,7 @@
 #include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/subset.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -1037,6 +1038,17 @@ void MolModel::translateByVector(
     auto translate = [vector](auto& coord) { coord += vector; };
     transformCoordinatesWithFunction("Translate", translate, MergeId::TRANSLATE,
                                      atoms, non_molecular_objects);
+}
+
+void MolModel::flipSubstituent(const RDKit::Bond* const bond)
+{
+    auto atoms = get_smaller_substituent_atoms(m_mol, *bond);
+    if (atoms.empty()) {
+        return;
+    }
+    flipAroundSegment(
+        m_mol.getConformer().getAtomPos(bond->getBeginAtom()->getIdx()),
+        m_mol.getConformer().getAtomPos(bond->getEndAtom()->getIdx()), atoms);
 }
 
 void MolModel::flipAroundSegment(

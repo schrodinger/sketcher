@@ -432,6 +432,15 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                     non_molecular_objects);
 
     /**
+     * Undoably flip the given bond, mirroring the coordinates of the
+     * substituent identified by it and leaving the core of the molecule
+     * unchanged. Substituent and core are defined as all the atoms and
+     * bonds connected to one of the bond's atoms, excluding the bond itself.
+     * The substituent is the set with the smaller number of atoms.
+     */
+    void flipSubstituent(const RDKit::Bond* const bond);
+
+    /**
      * Undoably flip all atoms coordinates around the given axis.
      * @param p1 first point on the axis
      * @param p2 second point on the axis

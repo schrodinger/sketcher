@@ -1,4 +1,5 @@
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
+#include "schrodinger/sketcher/menu/selection_context_menu.h"
 
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/ROMol.h>
@@ -17,11 +18,11 @@ ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
             emit changeTypeRequested(type, m_context_bonds);
         });
     };
-
     setTitle("Modify Bonds");
     m_flip_action = addAction("Flip Substituent", this, [this]() {
         emit flipRequested(m_context_bonds);
     });
+
     addSeparator();
     addBondAction("Single", BondTool::SINGLE);
     addBondAction("Double", BondTool::DOUBLE);
@@ -47,6 +48,11 @@ void ModifyBondsMenu::setContextBonds(
     };
     auto flip_enabled = bonds.size() == 1 && !is_in_ring(*bonds.begin());
     m_flip_action->setEnabled(flip_enabled);
+}
+
+void ModifyBondsMenu::setFlipVisible(bool b)
+{
+    m_flip_action->setVisible(b);
 }
 
 void ModifyBondsMenu::setFlipEnabled(bool b)

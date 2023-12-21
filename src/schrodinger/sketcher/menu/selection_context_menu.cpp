@@ -25,6 +25,7 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
     m_cut_copy_actions->setModel(model);
     m_modify_atoms_menu = new ModifyAtomsMenu(model, this);
     m_modify_bonds_menu = new ModifyBondsMenu(this);
+    m_modify_bonds_menu->setFlipVisible(false);
 
     addAction("Invert Selection", this,
               &SelectionContextMenu::invertSelectionRequested);

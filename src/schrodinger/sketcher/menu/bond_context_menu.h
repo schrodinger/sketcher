@@ -38,6 +38,10 @@ class SKETCHER_API ModifyBondsMenu : public QMenu
      */
     void setContextBonds(const std::unordered_set<const RDKit::Bond*>& bonds);
 
+    /**
+     * Set whether the flip action is visible.
+     */
+    void setFlipVisible(bool b);
     // TODO: remove when enabling molviewer
     void setFlipEnabled(bool b);
 
@@ -53,7 +57,7 @@ class SKETCHER_API ModifyBondsMenu : public QMenu
   private:
     QMenu* createOtherTypeMenu();
     QMenu* createQueryMenu();
-    QAction* m_flip_action;
+    QAction* m_flip_action = nullptr;
 };
 
 class BondContextMenu : public ModifyBondsMenu
