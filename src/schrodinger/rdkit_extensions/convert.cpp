@@ -637,9 +637,8 @@ to_rdkit_reaction(const std::string& text, const Format format)
             {
                 Format::RDMOL_BINARY_BASE64,
                 Format::MDL_MOLV2000,
-                // Guessing reaction text is always interpreted as SMARTS;
-                // reading reactions as SMILES should be explicitly
-                // requested
+                // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
+                Format::SMILES,
                 Format::SMARTS,
             },
             &to_rdkit_reaction);

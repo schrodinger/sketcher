@@ -89,17 +89,16 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
 BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
                      boost::unit_test::data::make(RXN_FORMATS), format)
 {
-    if (format == Format::MDL_MOLV2000 || format == Format::MDL_MOLV3000) {
-        // FIXME: see SKETCH-2071, returns C~C(~O)=O.C~C~O>>C~C~O~C(~C)=O
-        return;
-    }
-
     auto rxn = to_rdkit_reaction("CC(=O)O.OCC>>CC(=O)OCC");
     auto text = to_string(*rxn, format);
 
     TestSketcherWidget sk;
     sk.addFromString(text);
-    BOOST_TEST(sk.getString(Format::SMILES) == "CC(O)=O.CCO>>CCOC(C)=O");
+    if (format == Format::SMARTS) {
+        BOOST_TEST(sk.getString(Format::SMILES) == "CC(O)=O.CCO>>CCOC(C)=O");
+    } else {
+        BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
+    }
 }
 
 /**
