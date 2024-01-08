@@ -699,9 +699,11 @@ void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
 
 void MolModel::addFragmentCommandFunc(
     const RDKit::ROMol& fragment,
-    std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms,
-    std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds,
-    std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
+    const std::vector<std::pair<unsigned int, AtomFunc>>&
+        mutations_to_core_atoms,
+    const std::vector<std::pair<unsigned int, BondFunc>>&
+        mutations_to_core_bonds,
+    const std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>&
         additions_to_core_bonds,
     const AtomIdxToFragBondMap& core_to_frag_bonds_by_idx)
 {
@@ -1316,7 +1318,7 @@ void MolModel::removeSelected()
            getSelectedNonMolecularObjects());
 }
 
-void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
+void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
                            const Element& element)
 {
     unsigned int atomic_num = static_cast<unsigned int>(element);
@@ -1325,15 +1327,16 @@ void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
 }
 
 void MolModel::mutateAtoms(
-    std::unordered_set<const RDKit::Atom*> atoms,
+    const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
 {
     auto create_atom = std::bind(make_new_query_atom, atom_query);
     mutateAtoms(atoms, create_atom);
 }
 
-void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> from_atoms,
-                           const RDKit::Atom& to_atom)
+void MolModel::mutateAtoms(
+    const std::unordered_set<const RDKit::Atom*>& from_atoms,
+    const RDKit::Atom& to_atom)
 {
     auto create_atom = [to_atom]() {
         return std::make_shared<RDKit::Atom>(to_atom);
@@ -1341,7 +1344,7 @@ void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> from_atoms,
     mutateAtoms(from_atoms, create_atom);
 }
 
-void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
+void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
                            const AtomFunc& create_atom)
 {
     if (atoms.empty()) {
@@ -1355,7 +1358,7 @@ void MolModel::mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
     doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
 }
 
-void MolModel::mutateBonds(std::unordered_set<const RDKit::Bond*> bonds,
+void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
                            const RDKit::Bond::BondType& bond_type,
                            const RDKit::Bond::BondDir& bond_dir,
                            bool flip_matching_bonds)
@@ -1392,7 +1395,7 @@ void MolModel::mutateBonds(std::unordered_set<const RDKit::Bond*> bonds,
 }
 
 void MolModel::mutateBonds(
-    std::unordered_set<const RDKit::Bond*> bonds,
+    const std::unordered_set<const RDKit::Bond*>& bonds,
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
     if (bonds.empty()) {
@@ -1408,8 +1411,8 @@ void MolModel::mutateBonds(
     doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
 }
 
-void MolModel::adjustChargeOnAtoms(int increment_by,
-                                   std::unordered_set<const RDKit::Atom*> atoms)
+void MolModel::adjustChargeOnAtoms(
+    const int increment_by, const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     if (atoms.empty()) {
         return;
@@ -1425,7 +1428,7 @@ void MolModel::adjustChargeOnAtoms(int increment_by,
 }
 
 void MolModel::toggleExplicitHsOnAtoms(
-    std::unordered_set<const RDKit::Atom*> atoms)
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     updateExplicitHs(ExplicitHActions::TOGGLE, atoms);
 }

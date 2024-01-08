@@ -703,20 +703,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Mutate a set of atoms atoms to the specified element.
      * @param atoms The atoms to mutate
      */
-    void mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
+    void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
                      const Element& element);
 
     /**
      * Mutate a set of atoms to the specified query.
      */
     void mutateAtoms(
-        std::unordered_set<const RDKit::Atom*> atoms,
+        const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
 
     /**
      * Mutate a set of atoms to the specified atom.
      */
-    void mutateAtoms(std::unordered_set<const RDKit::Atom*> from_atoms,
+    void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& from_atoms,
                      const RDKit::Atom& to_atom);
 
     /**
@@ -729,7 +729,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * will be ignored.
      */
     void mutateBonds(
-        std::unordered_set<const RDKit::Bond*> bonds,
+        const std::unordered_set<const RDKit::Bond*>& bonds,
         const RDKit::Bond::BondType& bond_type,
         const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
         bool flip_matching_bonds = false);
@@ -738,15 +738,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Mutate all selected bonds to the specified query
      */
     void mutateBonds(
-        std::unordered_set<const RDKit::Bond*> bonds,
+        const std::unordered_set<const RDKit::Bond*>& bonds,
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
      * Adjust the charge on all target atoms by the specified value. To
      * decrement the charge, pass in a negative number.
      */
-    void adjustChargeOnAtoms(int increment_by,
-                             std::unordered_set<const RDKit::Atom*> atoms);
+    void
+    adjustChargeOnAtoms(const int increment_by,
+                        const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
      * If any atoms of the set have implicit hydrogens, add explicit hydrogens
@@ -754,7 +755,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * atoms of the set.
      * @param atoms The atoms to consider.
      */
-    void toggleExplicitHsOnAtoms(std::unordered_set<const RDKit::Atom*> atoms);
+    void toggleExplicitHsOnAtoms(
+        const std::unordered_set<const RDKit::Atom*>& atoms);
 
   signals:
 
@@ -1228,9 +1230,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void addFragmentCommandFunc(
         const RDKit::ROMol& fragment,
-        std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms,
-        std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds,
-        std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
+        const std::vector<std::pair<unsigned int, AtomFunc>>&
+            mutations_to_core_atoms,
+        const std::vector<std::pair<unsigned int, BondFunc>>&
+            mutations_to_core_bonds,
+        const std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>&
             additions_to_core_bonds,
         const AtomIdxToFragBondMap& core_to_frag_bonds_by_idx);
 
@@ -1239,7 +1243,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * function.
      * @param atoms The atoms to mutate
      */
-    void mutateAtoms(std::unordered_set<const RDKit::Atom*> atoms,
+    void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
                      const AtomFunc& create_atom);
 
     /**
