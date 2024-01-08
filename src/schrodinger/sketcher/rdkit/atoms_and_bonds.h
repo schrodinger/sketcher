@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <string>
@@ -10,6 +9,7 @@
 #include <rdkit/GraphMol/QueryBond.h>
 #include <rdkit/GraphMol/QueryOps.h>
 
+#include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 namespace schrodinger
@@ -69,18 +69,31 @@ const std::unordered_map<AtomQuery,
         {AtomQuery::XH, RDKit::makeXHAtomQuery},
 };
 
-// map of bond tool to {the label text, a function that returns the appropriate
-// query object)}
-const std::unordered_map<
-    BondTool,
-    std::pair<std::string, std::function<RDKit::QueryBond::QUERYBOND_QUERY*()>>>
-    BOND_TOOL_QUERY_MAP = {{BondTool::SINGLE_OR_DOUBLE,
-                            {"S/D", RDKit::makeSingleOrDoubleBondQuery}},
-                           {BondTool::SINGLE_OR_AROMATIC,
-                            {"S/A", RDKit::makeSingleOrAromaticBondQuery}},
-                           {BondTool::DOUBLE_OR_AROMATIC,
-                            {"D/A", RDKit::makeDoubleOrAromaticBondQuery}},
-                           {BondTool::ANY, {"Any", RDKit::makeBondNullQuery}}};
+const std::unordered_map<BondTool,
+                         std::function<RDKit::QueryBond::QUERYBOND_QUERY*()>>
+    BOND_TOOL_QUERY_MAP = {
+        {BondTool::SINGLE_OR_DOUBLE, RDKit::makeSingleOrDoubleBondQuery},
+        {BondTool::SINGLE_OR_AROMATIC, RDKit::makeSingleOrAromaticBondQuery},
+        {BondTool::DOUBLE_OR_AROMATIC, RDKit::makeDoubleOrAromaticBondQuery},
+        {BondTool::ANY, RDKit::makeBondNullQuery}};
+
+/**
+ * For a given bond, returns a pair of
+ *   - the type of bond we should draw this as, which will be SINGLE for all
+ *     bonds with a query label
+ *   - the appropriate query label for the bond
+ * @param bond The bond to examine.  Must be non-null.
+ */
+SKETCHER_API std::pair<RDKit::Bond::BondType, std::string>
+get_bond_type_and_query_label(const RDKit::Bond* const bond);
+
+/**
+ * Get the label string to display for the given bond query.  Returns "Query" if
+ * the query cannot be parsed.
+ * @param query The query to parse.  Must be non-null.
+ */
+SKETCHER_API std::string
+get_label_for_bond_query(const RDKit::Bond::QUERYBOND_QUERY* const query);
 
 } // namespace sketcher
 } // namespace schrodinger

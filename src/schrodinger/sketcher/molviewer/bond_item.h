@@ -136,10 +136,13 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      * done in `paint`.)
      *
      * @param bond_line A line from m_start_item to m_end_item
+     * @param bond_type The type of bond to paint
      * @return All of the lines and polygons to paint, along with the pens to be
      * used for painting.
      */
-    std::vector<ToPaint> calculateLinesToPaint(const QLineF& bond_line) const;
+    std::vector<ToPaint>
+    calculateLinesToPaint(const QLineF& bond_line,
+                          const RDKit::Bond::BondType bond_type) const;
 
     /**
      * Calculate the polygon for an arrow tip on the end of trimmed_line

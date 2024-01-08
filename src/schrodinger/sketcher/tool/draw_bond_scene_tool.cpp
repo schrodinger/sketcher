@@ -120,21 +120,22 @@ DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool,
     AbstractDrawBondSceneTool(scene, mol_model),
     m_fonts(&fonts)
 {
-    std::tie(m_query_type, m_query_func) = BOND_TOOL_QUERY_MAP.at(bond_tool);
+    m_query_func = BOND_TOOL_QUERY_MAP.at(bond_tool);
+    m_query_type = get_label_for_bond_query(getQuery().get());
 }
 
 std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>
 DrawBondQuerySceneTool::getQuery()
 {
-    auto query =
-        std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(m_query_func());
-    query->setTypeLabel(m_query_type);
+    std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> query;
+    query.reset(m_query_func());
     return query;
 }
 
 bool DrawBondQuerySceneTool::bondMatches(const RDKit::Bond* const bond)
 {
-    return bond->hasQuery() && bond->getQuery()->getTypeLabel() == m_query_type;
+    auto [bond_type, query_type] = get_bond_type_and_query_label(bond);
+    return query_type == m_query_type;
 }
 
 void DrawBondQuerySceneTool::mutateBond(const RDKit::Bond* const bond)

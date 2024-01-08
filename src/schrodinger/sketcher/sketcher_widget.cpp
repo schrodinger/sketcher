@@ -402,10 +402,9 @@ static void mutate_bonds(MolModel* mol_model, BondTool bond_tool,
             BOND_TOOL_BOND_MAP.at(bond_tool);
         mol_model->mutateBonds(bonds, bond_type, bond_dir, flippable);
     } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
-        auto [query_type, query_func] = BOND_TOOL_QUERY_MAP.at(bond_tool);
-        auto bond_query =
-            std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(query_func());
-        bond_query->setTypeLabel(query_type);
+        auto query_func = BOND_TOOL_QUERY_MAP.at(bond_tool);
+        std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query;
+        bond_query.reset(query_func());
         mol_model->mutateBonds(bonds, bond_query);
     } else {
         throw std::runtime_error(

@@ -100,7 +100,9 @@ DrawAtomQuerySceneTool::DrawAtomQuerySceneTool(AtomQuery atom_query,
 std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>
 DrawAtomQuerySceneTool::getQuery()
 {
-    return std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(m_query_func());
+    std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> query;
+    query.reset(m_query_func());
+    return query;
 }
 
 bool DrawAtomQuerySceneTool::shouldDrawBondForClickOnAtom(

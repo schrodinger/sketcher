@@ -21,6 +21,7 @@
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 namespace schrodinger
 {
@@ -98,13 +99,22 @@ void BondItem::updateCachedData()
     m_solid_pen.setWidthF(m_settings.m_bond_width);
     m_dashed_pen.setWidthF(m_settings.m_bond_width);
 
+    auto [bond_type, query_label] = get_bond_type_and_query_label(m_bond);
+    std::string label_text;
+    if (!query_label.empty()) {
+        label_text = query_label;
+    } else {
+        label_text = rdkit_extensions::get_bond_stereo_label(*m_bond);
+    }
+    m_label_text = QString::fromStdString(label_text);
+
     // move this item so it's on top of the start atom
     setPos(m_start_item.pos());
     // the bond line and bounding rect must both be relative to the start atom
     // since we just set that as the pos of this item
     QPointF bond_end = m_end_item.pos() - m_start_item.pos();
     QLineF bond_line = QLineF(QPointF(0, 0), bond_end);
-    m_to_paint = calculateLinesToPaint(bond_line);
+    m_to_paint = calculateLinesToPaint(bond_line, bond_type);
     m_selection_highlighting_path =
         pathAroundLine(bond_line, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
     m_predictive_highlighting_path =
@@ -112,21 +122,11 @@ void BondItem::updateCachedData()
     m_shape = QPainterPath(m_predictive_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
 
-    QString label_text;
-    bool is_query = m_bond->hasQuery();
-    if (is_query) {
-        label_text = QString::fromStdString(m_bond->getQuery()->getTypeLabel());
-    } else {
-        label_text = QString::fromStdString(
-            rdkit_extensions::get_bond_stereo_label(*m_bond));
-    }
-
     // add the label (if present) to the bounding rect
-    if (!label_text.isEmpty()) {
-
-        // TODO: make bond partially transparent behind query label
+    if (!m_label_text.isEmpty()) {
+        // TODO: make bond partially transparent behind label
         std::tie(m_text_angle, m_text_pos, m_text_size) =
-            getStereoAnnotationParameters(label_text, !is_query);
+            getStereoAnnotationParameters(m_label_text, query_label.empty());
         auto rect = QRectF(m_text_pos, m_text_size);
         rect.moveCenter(QPointF(0, 0));
         auto rotation = QTransform().rotate(m_text_angle);
@@ -135,16 +135,15 @@ void BondItem::updateCachedData()
         bounding_rect.moveCenter(m_text_pos);
         m_bounding_rect = m_bounding_rect.united(bounding_rect);
     }
-    m_label_text = label_text;
 
     // TODO: calculate bond intersections, store clipping path
     // TODO: deal with atom radii for aromatics
 }
 
 std::vector<ToPaint>
-BondItem::calculateLinesToPaint(const QLineF& bond_line) const
+BondItem::calculateLinesToPaint(const QLineF& bond_line,
+                                const RDKit::Bond::BondType bond_type) const
 {
-    RDKit::Bond::BondType bond_type = m_bond->getBondType();
     RDKit::Bond::BondDir bond_direction = m_bond->getBondDir();
     QLineF trimmed_line = trimLineToBoundAtoms(bond_line);
 
