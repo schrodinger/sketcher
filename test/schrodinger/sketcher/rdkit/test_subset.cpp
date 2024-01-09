@@ -1,11 +1,11 @@
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE molops
+#define BOOST_TEST_MODULE subset
 
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/subset.h"
 
 using namespace boost::unit_test;
 

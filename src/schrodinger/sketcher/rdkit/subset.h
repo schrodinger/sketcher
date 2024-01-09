@@ -1,6 +1,8 @@
 #pragma once
 #include <unordered_set>
 
+#include "schrodinger/sketcher/definitions.h"
+
 namespace RDKit
 {
 class Atom;
@@ -14,13 +16,20 @@ namespace sketcher
 {
 
 /**
+ * @return all atoms and bonds that are connected to the specified atom
+ */
+SKETCHER_API std::pair<std::unordered_set<const RDKit::Atom*>,
+                       std::unordered_set<const RDKit::Bond*>>
+get_connected_atoms_and_bonds(const RDKit::Atom* const atom);
+
+/**
  * @return a set of the atoms in the smaller of the two subset that the given
  * bond divides the molecule into. If the bond is part of a ring, an empty set
  * is returned.
  * @param mol The molecule to be split
  * @param bond The bond that divides the molecule into two subsets
  */
-std::unordered_set<const RDKit::Atom*>
+SKETCHER_API std::unordered_set<const RDKit::Atom*>
 get_smaller_substituent_atoms(const RDKit::ROMol& mol, const RDKit::Bond& bond);
 
 } // namespace sketcher

@@ -15,7 +15,7 @@
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/subset.h"
 
 namespace schrodinger
 {
