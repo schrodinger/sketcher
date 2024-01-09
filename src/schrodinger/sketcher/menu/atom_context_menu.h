@@ -119,7 +119,6 @@ class AtomContextMenu : public ModifyAtomsMenu
 
   signals:
     void deleteRequested();
-    void atomSelectionInvertRequested();
     void existingRGroupRequested(unsigned int rgroup_number);
     void bracketSubgroupDialogRequested();
 

@@ -234,14 +234,6 @@ void ExistingRGroupMenu::updateItems()
 AtomContextMenu::AtomContextMenu(SketcherModel* model, QWidget* parent) :
     ModifyAtomsMenu(model, parent)
 {
-    // Prepend 'Invert Selection' and separator
-    auto top_action = actions().first();
-    auto invert_selection_action = new QAction("Invert Selection", this);
-    connect(invert_selection_action, &QAction::triggered, this,
-            &AtomContextMenu::atomSelectionInvertRequested);
-    insertAction(top_action, invert_selection_action);
-    insertAction(top_action, addSeparator());
-
     // Rename replace menu to 'Replace with'
     m_replace_with_menu->setTitle("Replace with");
 
@@ -253,9 +245,6 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, QWidget* parent) :
     // Append 'Delete' action
     addSeparator();
     addAction("Delete", this, &AtomContextMenu::deleteRequested);
-
-    // Show 'Invert Selection' only if there is an active selection
-    invert_selection_action->setVisible(model->hasActiveSelection());
 }
 
 void AtomContextMenu::setAddToBracketGroupEnabled(bool enabled)
