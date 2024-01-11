@@ -14,11 +14,14 @@
 #include <QPainter>
 #include <boost/algorithm/string/predicate.hpp>
 #include <qsvggenerator.h>
+#include <unordered_map>
 
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/highlighting_item.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/sketcher.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
 {
@@ -49,6 +52,67 @@ template <typename T> class asKeyValue
   private:
     const T& m_data;
 };
+
+/**
+ * @internal
+ * Helper function to inject line colors data from the given RenderOptions into
+ * the given MolModel
+ */
+[[maybe_unused]] void setLineColors(MolModel& model, const RenderOptions& opts)
+{
+    auto mol = model.getMol();
+    // clear all line colors
+    for (auto atom : mol->atoms()) {
+        atom->clearProp(USER_COLOR);
+    }
+    for (auto bond : mol->bonds()) {
+        bond->clearProp(USER_COLOR);
+    }
+    // set line colors
+    for (auto [index, color] : asKeyValue(opts.rdatom_index_to_line_color)) {
+        mol->getAtomWithIdx(index)->setProp(USER_COLOR, color);
+    }
+    for (auto [index, color] : asKeyValue(opts.rdbond_index_to_line_color)) {
+        mol->getBondWithIdx(index)->setProp(USER_COLOR, color);
+    }
+}
+
+/**
+ * @internal
+ * Helper function to inject halo highlighting data from the given RenderOptions
+ * into the given MolModel
+ */
+[[maybe_unused]] void setHaloHighlightings(MolModel& model,
+                                           const RenderOptions& opts)
+{
+    model.clearHaloHighlighting();
+    std::unordered_map<
+        QColor, std::pair<std::unordered_set<int>, std::unordered_set<int>>>
+        color_to_indices;
+    for (auto [index, color] : asKeyValue(opts.rdatom_index_to_halo_color)) {
+        color_to_indices[color].first.insert(index);
+    }
+    for (auto [index, color] : asKeyValue(opts.rdbond_index_to_halo_color)) {
+        color_to_indices[color].second.insert(index);
+    }
+    for (const auto& [color, indices] : color_to_indices) {
+        model.addHaloHighlighting(indices.first, indices.second, color);
+    }
+}
+
+/**
+ * @internal
+ * Helper function to inject atom labels data from the given RenderOptions into
+ * the given MolModel
+ */
+[[maybe_unused]] void setAtomLabels(MolModel& model, const RenderOptions& opts)
+{
+    auto mol = model.getMol();
+    for (auto [index, text] : asKeyValue(opts.rdatom_index_to_label)) {
+        auto atom = mol->getAtomWithIdx(index);
+        atom->setProp(RDKit::common_properties::_displayLabel, text);
+    }
+}
 
 void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
 {

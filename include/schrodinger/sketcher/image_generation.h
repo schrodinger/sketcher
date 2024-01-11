@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include <QByteArray>
 #include <QColor>
 #include <QHash>

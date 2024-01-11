@@ -100,9 +100,11 @@ void strip_mol_model_tags(RDKit::ROMol& mol)
 {
     for (auto* atom : mol.atoms()) {
         atom->clearProp(TAG_PROPERTY);
+        atom->clearProp(USER_COLOR);
     }
     for (auto* bond : mol.bonds()) {
         bond->clearProp(TAG_PROPERTY);
+        bond->clearProp(USER_COLOR);
     }
     mol.clearAllAtomBookmarks();
     mol.clearAllBondBookmarks();
@@ -115,13 +117,15 @@ MolModelSnapshot::MolModelSnapshot(
     const std::optional<NonMolecularObject>& arrow,
     const std::unordered_set<int>& selected_atom_tags,
     const std::unordered_set<int>& selected_bond_tags,
-    const std::unordered_set<int>& selected_non_molecular_tags) :
+    const std::unordered_set<int>& selected_non_molecular_tags,
+    const std::vector<HighlightingInfo>& highlighting_info) :
     m_mol(mol),
     m_pluses(pluses),
     m_arrow(arrow),
     m_selected_atom_tags(selected_atom_tags),
     m_selected_bond_tags(selected_bond_tags),
-    m_selected_non_molecular_tags(selected_non_molecular_tags)
+    m_selected_non_molecular_tags(selected_non_molecular_tags),
+    m_highlighting_info(highlighting_info)
 {
 }
 
@@ -254,6 +258,49 @@ MolModel::getSelectedNonMolecularObjects() const
     return selected;
 }
 
+std::vector<std::tuple<std::unordered_set<const RDKit::Atom*>,
+                       std::unordered_set<const RDKit::Bond*>, QColor>>
+MolModel::getHaloHighlighting() const
+{
+    std::vector<std::tuple<std::unordered_set<const RDKit::Atom*>,
+                           std::unordered_set<const RDKit::Bond*>, QColor>>
+        highlights;
+    for (const auto& info : m_highlighting_info) {
+        std::unordered_set<const RDKit::Atom*> atoms;
+        std::unordered_set<const RDKit::Bond*> bonds;
+        for (int atom_tag : info.atom_tags) {
+            atoms.insert(getAtomFromTag(atom_tag));
+        }
+        for (int bond_tag : info.bond_tags) {
+            bonds.insert(getBondFromTag(bond_tag));
+        }
+        highlights.push_back(std::make_tuple(atoms, bonds, info.color));
+    }
+    return highlights;
+}
+
+void MolModel::clearHaloHighlighting()
+{
+    m_highlighting_info.clear();
+}
+
+void MolModel::addHaloHighlighting(const std::unordered_set<int>& atom_indices,
+                                   const std::unordered_set<int>& bond_indices,
+                                   const QColor& color)
+{
+    // translate indices to tags
+    std::unordered_set<int> atoms;
+    std::unordered_set<int> bonds;
+    for (auto atom_idx : atom_indices) {
+        atoms.insert(getTagForAtom(m_mol.getAtomWithIdx(atom_idx)));
+    }
+    for (auto bond_idx : bond_indices) {
+        bonds.insert(getTagForBond(m_mol.getBondWithIdx(bond_idx)));
+    }
+
+    m_highlighting_info.push_back(HighlightingInfo(atoms, bonds, color));
+}
+
 bool MolModel::hasReactionArrow() const
 {
     return m_arrow.has_value();
@@ -325,8 +372,8 @@ void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
 MolModelSnapshot MolModel::takeSnapshot() const
 {
     return MolModelSnapshot(m_mol, m_pluses, m_arrow, m_selected_atom_tags,
-                            m_selected_bond_tags,
-                            m_selected_non_molecular_tags);
+                            m_selected_bond_tags, m_selected_non_molecular_tags,
+                            m_highlighting_info);
 }
 
 void MolModel::restoreSnapshot(const MolModelSnapshot& snapshot,

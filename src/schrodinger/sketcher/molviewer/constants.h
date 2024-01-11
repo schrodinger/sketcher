@@ -16,6 +16,10 @@ namespace schrodinger
 namespace sketcher
 {
 
+// the name of the rdkit property that holds user-defined colors for atoms and
+// bonds
+const std::string USER_COLOR = "USER_COLOR";
+
 // The default bond length as defined by RDKit
 const float BOND_LENGTH = RDDepict::BOND_LEN;
 

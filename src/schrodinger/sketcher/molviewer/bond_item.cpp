@@ -91,7 +91,6 @@ void BondItem::updateCachedData()
     // schedule a recheck of our bounding rect.  It must be called *before* the
     // bounding rect changes.
     prepareGeometryChange();
-
     m_solid_pen.setColor(m_settings.m_color);
     m_dashed_pen.setColor(m_settings.m_color);
     m_solid_brush.setColor(m_settings.m_color);
@@ -135,6 +134,8 @@ void BondItem::updateCachedData()
         bounding_rect.moveCenter(m_text_pos);
         m_bounding_rect = m_bounding_rect.united(bounding_rect);
     }
+
+    m_colors = getColors();
 
     // TODO: calculate bond intersections, store clipping path
     // TODO: deal with atom radii for aromatics
@@ -577,21 +578,61 @@ QPainterPath BondItem::pathAroundLine(const QLineF& line,
     return path;
 }
 
+std::vector<QColor> BondItem::getColors() const
+{
+    if (m_bond->hasProp(USER_COLOR)) {
+        QColor highlight_color;
+        m_bond->getProp(USER_COLOR, highlight_color);
+        return {highlight_color};
+    }
+    QColor start_color = m_settings.m_color;
+    QColor end_color = m_settings.m_color;
+    m_bond->getBeginAtom()->getPropIfPresent(USER_COLOR, start_color);
+    m_bond->getEndAtom()->getPropIfPresent(USER_COLOR, end_color);
+
+    if (start_color != end_color) {
+        return {start_color, end_color};
+    }
+    return {start_color};
+}
+
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
-    painter->save();
-    painter->setBrush(m_solid_brush);
-    for (auto to_paint : m_to_paint) {
-        painter->setPen(to_paint.pen);
-        for (auto line : to_paint.lines) {
-            painter->drawLine(line);
+    auto colors = m_colors;
+    /* colors can contain one or two colors.  If it has only one
+      color, we just paint the bond with that color.  If it has two colors, we
+     paint the bond with both colors, clipping the bond in half and painting
+     each half with a different color.*/
+    for (unsigned int i = 0; i < colors.size(); ++i) {
+        painter->save();
+        // if the bond is painted with two colors, we need to clip the bond
+        // and paint it twice
+        if (colors.size() == 2) {
+            auto mid_point = (m_end_item.pos() - m_start_item.pos()) * 0.5;
+            QLineF first_half(QPointF(0, 0), mid_point);
+            QLineF second_half(mid_point, 2 * mid_point);
+            painter->setClipPath(
+                pathAroundLine((i == 0 ? first_half : second_half),
+                               BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH));
         }
-        for (auto polygon : to_paint.polygons) {
-            painter->drawPolygon(polygon);
+        auto brush = m_solid_brush;
+        brush.setColor(colors.at(i));
+        painter->setBrush(brush);
+
+        for (auto to_paint : m_to_paint) {
+            auto pen = to_paint.pen;
+            pen.setColor(colors.at(i));
+            painter->setPen(pen);
+            for (auto line : to_paint.lines) {
+                painter->drawLine(line);
+            }
+            for (auto polygon : to_paint.polygons) {
+                painter->drawPolygon(polygon);
+            }
         }
+        painter->restore();
     }
-    painter->restore();
     if (!m_label_text.isEmpty()) {
         painter->save();
         painter->setPen(m_chirality_pen);
@@ -628,12 +669,12 @@ BondItem::getStereoAnnotationParameters(const QString& label,
         offset_vector = -offset_vector;
     }
 
-    // Calculate the position of the text as the midpoint between the two points
-    // plus the offset
+    // Calculate the position of the text as the midpoint between the two
+    // points plus the offset
     auto text_pos = bond_end * 0.5 + offset_vector;
 
-    // Calculate the angle between the x-axis and the line segment in degrees so
-    // that the angle is between -90 and 90
+    // Calculate the angle between the x-axis and the line segment in
+    // degrees so that the angle is between -90 and 90
     auto angle = std::remainder(bond_line.angle(), 180.0);
     QFont font = m_fonts.m_chirality_font;
     auto text_size = QFontMetrics(font).size(Qt::TextSingleLine, label);

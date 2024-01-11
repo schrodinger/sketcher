@@ -129,6 +129,18 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
 
     QString m_label_text;
 
+    std::vector<QColor> m_colors;
+
+    /**
+     * @return a list of the colors to be used for painting this bond. If the
+     * user has selected a color for this bond, then the list will contain only
+     * that. If the user has not selected a color for the bond, but has selected
+     * colors for the atoms, then the list will contain both (if they differ)
+     * and the bond color will change at its half point. If the user has not
+     * selected a color, m_setting.color will be used.
+     */
+    std::vector<QColor> getColors() const;
+
     /**
      * Calculate the lines and polygons needed to paint this bond.  Note that
      * this method does *not* do any actual painting.  (The output of this

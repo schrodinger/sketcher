@@ -247,6 +247,11 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void updateSelectionHighlighting();
 
+    /**
+     * Update the path drawn to show item colored highlights
+     */
+    void updateHaloHighlighting();
+
     // Override the QGraphicsScene mouse event methods
     void mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) override;
     void mouseMoveEvent(QGraphicsSceneMouseEvent* event) override;
@@ -298,6 +303,10 @@ class SKETCHER_API Scene : public QGraphicsScene
     MolModel* m_mol_model = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
+    // a QGraphicsItem that groups all the user halo highlights. Each item can
+    // highlight atoms and bonds with a single color, so we might need multiple
+    // child items
+    QGraphicsItemGroup* m_halo_highlighting_item = nullptr;
     QPointF m_mouse_down_screen_pos;
 
     /// A set of all "interactive" graphics items that are currently in the

@@ -79,6 +79,18 @@ enum : WhatChangedType { // clang-format off
 };
 }
 
+struct HighlightingInfo {
+    HighlightingInfo(const std::unordered_set<int>& atom_tags,
+                     const std::unordered_set<int>& bond_tags,
+                     const QColor& color) :
+        atom_tags(atom_tags),
+        bond_tags(bond_tags),
+        color(color){};
+    std::unordered_set<int> atom_tags;
+    std::unordered_set<int> bond_tags;
+    QColor color;
+};
+
 /**
  * A copy of a MolModel state
  */
@@ -89,13 +101,15 @@ struct MolModelSnapshot {
     std::unordered_set<int> m_selected_atom_tags;
     std::unordered_set<int> m_selected_bond_tags;
     std::unordered_set<int> m_selected_non_molecular_tags;
+    std::vector<HighlightingInfo> m_highlighting_info;
 
-    MolModelSnapshot(
-        const RDKit::RWMol& mol, const std::vector<NonMolecularObject>& pluses,
-        const std::optional<NonMolecularObject>& arrow,
-        const std::unordered_set<int>& selected_atom_tags,
-        const std::unordered_set<int>& selected_bond_tags,
-        const std::unordered_set<int>& selected_non_molecular_tags);
+    MolModelSnapshot(const RDKit::RWMol& mol,
+                     const std::vector<NonMolecularObject>& pluses,
+                     const std::optional<NonMolecularObject>& arrow,
+                     const std::unordered_set<int>& selected_atom_tags,
+                     const std::unordered_set<int>& selected_bond_tags,
+                     const std::unordered_set<int>& selected_non_molecular_tags,
+                     const std::vector<HighlightingInfo>& m_highlighting_info);
 
     /**
      * @return Whether the selection in the other snapshot is identical to the
@@ -174,6 +188,28 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * selected
      */
     bool hasSelection() const;
+
+    /**
+     * @return halo highlighting information
+     */
+    std::vector<std::tuple<std::unordered_set<const RDKit::Atom*>,
+                           std::unordered_set<const RDKit::Bond*>, QColor>>
+    getHaloHighlighting() const;
+
+    /**
+     * clear all halo highlighting
+     */
+    void clearHaloHighlighting();
+
+    /**
+     * add halo highlighting
+     * @param atoms atoms to highlight
+     * @param bonds bonds to highlight
+     * @param color color to highlight with
+     */
+    void addHaloHighlighting(const std::unordered_set<int>& atoms,
+                             const std::unordered_set<int>& bonds,
+                             const QColor& color);
 
     /**
      * @return A set of all currently selected atoms
@@ -807,6 +843,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::unordered_set<int> m_selected_atom_tags;
     std::unordered_set<int> m_selected_bond_tags;
     std::unordered_set<int> m_selected_non_molecular_tags;
+
+    std::vector<HighlightingInfo> m_highlighting_info;
 
     /**
      * create an empty conformer for m_mol so it's ready to be used by other

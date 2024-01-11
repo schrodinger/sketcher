@@ -48,6 +48,7 @@
 #include "schrodinger/sketcher/tool/translate_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
+#include "schrodinger/sketcher/molviewer/halo_highlighting_item.h"
 
 namespace schrodinger
 {
@@ -114,6 +115,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     m_sketcher_model(sketcher_model)
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
+    m_halo_highlighting_item = new QGraphicsItemGroup();
     m_left_button_scene_tool = std::make_shared<NullSceneTool>();
     m_middle_button_scene_tool =
         std::make_shared<RotateSceneTool>(this, m_mol_model);
@@ -121,6 +123,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
         std::make_shared<TranslateSceneTool>(this, m_mol_model);
 
     addItem(m_selection_highlighting_item);
+    addItem(m_halo_highlighting_item);
 
     if (m_mol_model == nullptr || m_sketcher_model == nullptr) {
         throw std::runtime_error("Cannot construct without valid models");
@@ -181,6 +184,7 @@ void Scene::moveInteractiveItems()
         non_mol_item->updateCachedData();
     }
     updateSelectionHighlighting();
+    updateHaloHighlighting();
     m_left_button_scene_tool->onStructureUpdated();
 }
 
@@ -198,6 +202,7 @@ void Scene::updateMolecularItems()
     }
     updateItemSelection();
     updateSelectionHighlighting();
+    updateHaloHighlighting();
     m_left_button_scene_tool->onStructureUpdated();
 }
 
@@ -314,6 +319,28 @@ void Scene::updateBondItems()
 void Scene::updateSelectionHighlighting()
 {
     m_selection_highlighting_item->highlightItems(selectedItems());
+}
+
+void Scene::updateHaloHighlighting()
+{
+    for (auto* item : m_halo_highlighting_item->childItems()) {
+        m_halo_highlighting_item->removeFromGroup(item);
+        delete item;
+    }
+    for (auto [atoms, bonds, color] : m_mol_model->getHaloHighlighting()) {
+        auto* item = new HaloHighlightingItem();
+        item->setPen(color);
+        item->setBrush(color);
+        QList<QGraphicsItem*> items;
+        for (auto atom : atoms) {
+            items.append(m_atom_to_atom_item.at(atom));
+        }
+        for (auto bond : bonds) {
+            items.append(m_bond_to_bond_item.at(bond));
+        }
+        item->highlightItems(items);
+        m_halo_highlighting_item->addToGroup(item);
+    };
 }
 
 void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
