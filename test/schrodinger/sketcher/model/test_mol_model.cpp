@@ -2136,5 +2136,49 @@ BOOST_AUTO_TEST_CASE(test_reactions)
     BOOST_TEST(get_reaction_text(&model, Format::SMILES) == smarts);
 }
 
+/**
+ * Ensure that atoms and nonmolecular objects can correctly be translated
+ */
+BOOST_AUTO_TEST_CASE(test_translateByVector)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CC"));
+    model.addMol(*mol_to_add);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    auto atom1_start_position = mol->getConformer().getAtomPos(0);
+    auto atom2_start_position = mol->getConformer().getAtomPos(1);
+    const RDGeom::Point3D plus_position(1.0, 2.0, 0.0);
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS, plus_position);
+
+    auto plus = &model.m_pluses[0];
+    BOOST_TEST(plus->getType() == NonMolecularType::RXN_PLUS);
+    check_coords(plus->getCoords(), plus_position.x, plus_position.y);
+
+    auto atom1 = mol->getAtomWithIdx(0);
+    // translate the first atom and the plus sign by 10, 10
+    const RDGeom::Point3D translation_vector(10.0, 10.0, 0.0);
+    model.translateByVector(translation_vector, {atom1}, {plus});
+
+    // make sure that the first atom and plus sign were translated
+    auto atom1_end_position = mol->getConformer().getAtomPos(0);
+    check_coords(atom1_end_position,
+                 atom1_start_position.x + translation_vector.x,
+                 atom1_start_position.y + translation_vector.y);
+    check_coords(plus->getCoords(), plus_position.x + translation_vector.x,
+                 plus_position.y + translation_vector.y);
+    // make sure the second atom was not translated
+    check_coords(mol->getConformer().getAtomPos(1), atom2_start_position.x,
+                 atom2_start_position.y);
+
+    // undo the translation and check that the coordinates are back to their old
+    // values
+    undo_stack.undo();
+    check_coords(mol->getConformer().getAtomPos(0), atom1_start_position.x,
+                 atom1_start_position.y);
+    check_coords(plus->getCoords(), plus_position.x, plus_position.y);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

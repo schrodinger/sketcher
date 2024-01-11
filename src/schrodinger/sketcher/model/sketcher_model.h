@@ -400,6 +400,7 @@ class SKETCHER_API SketcherModel : public QObject
     bool hasActiveSelection() const;
     virtual bool hasAtomSelection() const;
     virtual bool hasBondSelection() const;
+    virtual bool hasNonMolecularObjectSelection() const;
 
     /**
      * @return all interactive graphics items in the scene.

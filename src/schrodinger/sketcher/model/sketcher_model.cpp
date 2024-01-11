@@ -8,6 +8,7 @@
 
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
+#include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 
 namespace schrodinger
 {
@@ -203,6 +204,11 @@ bool SketcherModel::hasAtomSelection() const
 bool SketcherModel::hasBondSelection() const
 {
     return contains_item<BondItem>(*this);
+}
+
+bool SketcherModel::hasNonMolecularObjectSelection() const
+{
+    return contains_item<NonMolecularItem>(*this);
 }
 
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const

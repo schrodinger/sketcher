@@ -54,8 +54,10 @@ void SelectOptionsWidget::updateWidgetsEnabled()
     ui->select_lasso_btn->setEnabled(has_contents);
     ui->erase_btn->setEnabled(has_contents);
 
-    // Move tool should only enabled if there are atoms selected
-    bool movable_selection = !has_selection || model->hasAtomSelection();
+    // Move tool should only be enabled if there are atoms or non-molecular
+    // objects selected
+    bool movable_selection = !has_selection || model->hasAtomSelection() ||
+                             model->hasNonMolecularObjectSelection();
     ui->move_rotate_btn->setEnabled(has_contents && movable_selection);
 
     ui->select_all_btn->setEnabled(has_contents);
