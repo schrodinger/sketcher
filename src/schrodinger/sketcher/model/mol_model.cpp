@@ -862,7 +862,7 @@ void MolModel::updateExplicitHs(ExplicitHActions action,
     bool add_hs;
     if (action == ExplicitHActions::TOGGLE) {
         std::unordered_set<const RDKit::Atom*> atoms_to_check;
-        if (atoms.empty()) {
+        if (!atoms.empty()) {
             atoms_to_check = atoms;
         } else {
             auto all_atoms = m_mol.atoms();
@@ -1477,6 +1477,9 @@ void MolModel::adjustChargeOnAtoms(
 void MolModel::toggleExplicitHsOnAtoms(
     const std::unordered_set<const RDKit::Atom*>& atoms)
 {
+    if (atoms.empty()) {
+        return;
+    }
     updateExplicitHs(ExplicitHActions::TOGGLE, atoms);
 }
 

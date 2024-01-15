@@ -1913,6 +1913,27 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
 }
 
 /**
+ * Test toggling explicit Hs to a single atom works as expected SKETCH-2125
+ */
+BOOST_AUTO_TEST_CASE(test_updateExplictiHsSingleAtom)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("C1CCCCC1"));
+    model.addMol(*mol_to_add);
+    auto mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 6);
+
+    // toggling Hs should add two explicit Hs
+    model.updateExplicitHs(ExplicitHActions::TOGGLE, {mol->getAtomWithIdx(0)});
+    BOOST_TEST(mol->getNumAtoms() == 8);
+
+    // toggling Hs again should remove the two explicit Hs
+    model.updateExplicitHs(ExplicitHActions::TOGGLE, {mol->getAtomWithIdx(0)});
+    BOOST_TEST(mol->getNumAtoms() == 6);
+}
+
+/**
  * Make sure that adding a fragment works as expected.  This method mimics
  * the behavior of DrawFragmentSceneTool.
  * @param core_smiles The SMILES for the core structure
@@ -1988,7 +2009,6 @@ void check_fragment_addition(const std::string& core_smiles,
 
 BOOST_AUTO_TEST_CASE(test_adding_fragments)
 {
-
     check_fragment_addition(CYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
                             "C1CCCCC1.CC(N)=O", -1, -1);
     check_fragment_addition(CYCLOHEXANE_MOL_SMILES, AMIDE_FRAG_SMILES,
