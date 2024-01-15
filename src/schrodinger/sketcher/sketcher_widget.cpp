@@ -397,6 +397,14 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 static void mutate_bonds(MolModel* mol_model, BondTool bond_tool,
                          const std::unordered_set<const RDKit::Bond*>& bonds)
 {
+    // make sure the target set is not empty
+    if (bonds.empty()) {
+        return;
+    }
+    // nothing to do for the atom chain tool
+    if (bond_tool == BondTool::ATOM_CHAIN) {
+        return;
+    }
     if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
         auto [bond_type, bond_dir, flippable, cursor_hint_path] =
             BOND_TOOL_BOND_MAP.at(bond_tool);

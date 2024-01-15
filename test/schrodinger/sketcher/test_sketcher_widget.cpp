@@ -375,3 +375,44 @@ BOOST_AUTO_TEST_CASE(test_toolChangeOnSelection)
     BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 4);
     BOOST_TEST(sk.m_sketcher_model->getDrawTool() == DrawTool::MOVE_ROTATE);
 }
+
+/**
+ * Verify hitting the atom chain tool doesn't change the bonds in a selection
+ */
+BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
+{
+    TestSketcherWidget sk;
+
+    // import a molecule
+    sk.addFromString("CCC", Format::SMILES);
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
+    auto model = sk.m_mol_model;
+
+    // trigger the atom chain tool and make sure there's no crash (SKETCH-2113)
+    sk.m_sketcher_model->pingValue(ModelKey::BOND_TOOL,
+                                   QVariant::fromValue(BondTool::ATOM_CHAIN));
+    // select everything
+    model->selectAll();
+    BOOST_TEST(model->getSelectedBonds().size() == 2);
+    // trigger the atom chain tool again and make sure all bonds stay as single
+    // bonds
+    sk.m_sketcher_model->pingValue(ModelKey::BOND_TOOL,
+                                   QVariant::fromValue(BondTool::ATOM_CHAIN));
+    for (auto bond : model->getSelectedBonds()) {
+        BOOST_TEST(bond->getBondType() == RDKit::Bond::SINGLE);
+    }
+    // trigger the double bond tool and make sure all bonds are turned into
+    // double bonds
+    sk.m_sketcher_model->pingValue(ModelKey::BOND_TOOL,
+                                   QVariant::fromValue(BondTool::DOUBLE));
+
+    for (auto bond : model->getSelectedBonds()) {
+        BOOST_TEST(bond->getBondType() == RDKit::Bond::DOUBLE);
+    }
+    // trigger the atom chain tool again and make sure all bonds stay double
+    sk.m_sketcher_model->pingValue(ModelKey::BOND_TOOL,
+                                   QVariant::fromValue(BondTool::ATOM_CHAIN));
+    for (auto bond : model->getSelectedBonds()) {
+        BOOST_TEST(bond->getBondType() == RDKit::Bond::DOUBLE);
+    }
+}
