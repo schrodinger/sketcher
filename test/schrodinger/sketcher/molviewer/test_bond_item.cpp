@@ -21,6 +21,7 @@
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QPoints
@@ -59,10 +60,10 @@ class TestBondItem : public BondItem
 
 std::pair<std::vector<std::shared_ptr<TestBondItem>>,
           std::shared_ptr<TestScene>>
-createStructure(std::string smiles)
+createStructure(std::string input_text)
 {
     auto test_scene = TestScene::getScene();
-    import_mol_text(test_scene->m_mol_model, smiles, Format::SMILES);
+    import_mol_text(test_scene->m_mol_model, input_text);
     std::vector<AtomItem*> atom_items;
     std::vector<BondItem*> scene_bond_items;
     for (auto* item : test_scene->items()) {
@@ -92,7 +93,7 @@ std::tuple<std::shared_ptr<TestBondItem>, std::shared_ptr<TestScene>, QLineF>
 createBondItem()
 {
     auto test_scene = TestScene::getScene();
-    import_mol_text(test_scene->m_mol_model, "CC", Format::SMILES);
+    import_mol_text(test_scene->m_mol_model, "CC");
     std::vector<AtomItem*> atom_items;
     for (auto* item : test_scene->items()) {
         if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
@@ -223,20 +224,85 @@ BOOST_AUTO_TEST_CASE(test_findBestRingForBond)
 
 BOOST_AUTO_TEST_CASE(test_stereo_label)
 {
+    // from a given input text, create sketcher objects and check that the
+    // bond types, directions, and labels are correctly set for each bond
+    auto check_bond_items = [](auto input_text, auto expected) {
+        auto [bond_items, scene] = createStructure(input_text);
+        BOOST_REQUIRE(bond_items.size() == expected.size());
+        for (size_t i = 0; i < bond_items.size(); ++i) {
+            auto bond_item = bond_items[i];
+            auto bond = bond_item->m_bond;
+            auto [bond_type, bond_dir, bond_label] = expected[i];
+            BOOST_TEST(get_bond_type_and_query_label(bond).first == bond_type);
+            BOOST_TEST(bond->getBondDir() == bond_dir);
+            BOOST_TEST(bond_item->m_label_text.toStdString() == bond_label);
+        }
+    };
+
+    using RDKit::Bond;
+    std::vector<std::tuple<Bond::BondType, Bond::BondDir, std::string>>
+        expected;
+
     // test that the stereo labels are correctly set for each bond of two
     // structures (non stereo bonds should have an empty label)
-    std::map<std::string, std::string> stereo_labels = {{"C\\C=C\\C", "E"},
-                                                        {"C\\C=C/C", "Z"}};
+    expected = {{Bond::BondType::SINGLE, Bond::BondDir::ENDUPRIGHT, ""},
+                {Bond::BondType::DOUBLE, Bond::BondDir::NONE, "E"},
+                {Bond::BondType::SINGLE, Bond::BondDir::ENDUPRIGHT, ""}};
+    check_bond_items("C\\C=C\\C", expected);
 
-    for (const auto& [smiles, expected_label] : stereo_labels) {
-        auto [bond_items, scene] = createStructure(smiles);
-        auto stereo_bond = bond_items.at(1);
-        for (auto bond_item : bond_items) {
-            auto stereo_label =
-                QString(bond_item == stereo_bond ? expected_label.c_str() : "");
-            BOOST_TEST(bond_item->m_label_text == stereo_label);
-        }
-    }
+    expected = {{Bond::BondType::SINGLE, Bond::BondDir::ENDUPRIGHT, ""},
+                {Bond::BondType::DOUBLE, Bond::BondDir::NONE, "Z"},
+                {Bond::BondType::SINGLE, Bond::BondDir::ENDDOWNRIGHT, ""}};
+    check_bond_items("C\\C=C/C", expected);
+
+    // test that stereo wedging is correctly set on each bond; for input SMILES
+    // wedging is explicitly calculated by the sketcher code from the input
+    // parities detected by RDKit on SMILES read
+    expected = {{Bond::BondType::SINGLE, Bond::BondDir::NONE, ""},
+                {Bond::BondType::SINGLE, Bond::BondDir::NONE, ""},
+                {Bond::BondType::SINGLE, Bond::BondDir::NONE, ""},
+                {Bond::BondType::SINGLE, Bond::BondDir::BEGINDASH, ""},
+                {Bond::BondType::SINGLE, Bond::BondDir::NONE, ""},
+                {Bond::BondType::SINGLE, Bond::BondDir::BEGINWEDGE, ""},
+                {Bond::BondType::SINGLE, Bond::BondDir::NONE, ""}};
+    check_bond_items("CC(C)[C@@H](C)[C@H](C)N", expected);
+
+    // test the above with MDL input where the bond directions are explicitly
+    // set in the mol block (as opposed to calculated from parities)
+    std::swap(expected[3], expected[5]); // the wedge/dash are swapped in MDL!
+    std::string molblock{R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -1.301429 6.542858 0.000000 0
+M  V30 2 C -1.304286 5.114286 0.000000 0
+M  V30 3 C -2.542857 4.402572 0.000000 0
+M  V30 4 C -0.068572 4.397429 0.000000 0
+M  V30 5 C 1.170000 5.109429 0.000000 0
+M  V30 6 C -0.071429 2.968857 0.000000 0
+M  V30 7 C 1.164285 2.252286 0.000000 0
+M  V30 8 N -1.310286 2.257143 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 2 4
+M  V30 4 1 4 5 CFG=1
+M  V30 5 1 4 6
+M  V30 6 1 6 7 CFG=3
+M  V30 7 1 6 8
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STEABS ATOMS=(2 4 6)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+$$$$
+)MDL"};
+    check_bond_items(molblock, expected);
 }
 
 } // namespace sketcher

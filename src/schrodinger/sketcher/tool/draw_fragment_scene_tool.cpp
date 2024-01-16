@@ -8,6 +8,7 @@
 
 #include <rdkit/GraphMol/RWMol.h>
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -15,7 +16,7 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 namespace schrodinger
@@ -40,7 +41,8 @@ get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
                              const BondItemSettings& bond_item_settings,
                              Scene* scene, MolModel* mol_model)
 {
-    auto mol = text_to_mol(text_mol);
+    auto mol = rdkit_extensions::to_rdkit(text_mol);
+    prepare_mol(*mol);
     return std::make_shared<DrawFragmentSceneTool>(
         *mol, fonts, atom_item_settings, bond_item_settings, scene, mol_model);
 }

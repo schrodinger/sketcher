@@ -3,7 +3,6 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 

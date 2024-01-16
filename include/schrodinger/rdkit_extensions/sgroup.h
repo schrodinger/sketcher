@@ -13,15 +13,13 @@ namespace rdkit_extensions
 const float BRACKETS_LONG_SIDE = RDDepict::BOND_LEN * 0.9;
 
 /**
- * add the coordinates of the corners of brackets to display for an
- * S-group
- * @param  sgroup the substance group to add brackets to
+ * Sets the coordinates of the corners of brackets to display for all S-groups
+ * @param  mol the molecule for which all substance groups should be updated
  */
-RDKIT_EXTENSIONS_API void
-update_s_group_brackets(RDKit::SubstanceGroup& sgroup);
+RDKIT_EXTENSIONS_API void update_s_group_brackets(RDKit::ROMol& mol);
 
 /**
- * remove a set of sgroups from a molecule
+ * Removes a set of sgroups from a molecule
  * @param mol the molecule to remove the sgroups from
  * @param sgroups the set of sgroups to remove
  */

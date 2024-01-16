@@ -5,7 +5,6 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
-#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <QObject>
 #include <QUndoStack>
@@ -24,7 +23,7 @@
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/subset.h"
@@ -337,7 +336,7 @@ void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
     m_allow_edits = true;
     do_func();
     if (to_be_changed & WhatChanged::MOLECULE) {
-        update_molecule_metadata(m_mol);
+        update_molecule_on_change(m_mol);
     }
     // We don't need to call updateNonMolecularMetadata here since
     // m_tag_to_non_molecular_object (which is what updateNonMolecularMetadata
@@ -384,8 +383,8 @@ void MolModel::restoreSnapshot(const MolModelSnapshot& snapshot,
     Q_ASSERT(m_allow_edits);
     if (what_changed & WhatChanged::MOLECULE) {
         m_mol = snapshot.m_mol;
-        // we don't need to call update_molecule_metadata since all metadata was
-        // updated before we took the snapshot
+        // we don't need to call update_molecule_on_change since all metadata
+        // was updated before we took the snapshot
     }
     if (what_changed & WhatChanged::NON_MOL_OBJS) {
         m_pluses = snapshot.m_pluses;
@@ -673,15 +672,17 @@ void MolModel::remove(
     doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
 }
 
-void MolModel::addMol(RDKit::ROMol mol, const QString& description,
+void MolModel::addMol(RDKit::RWMol mol, const QString& description,
                       const bool reposition_mol)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
+
+    // Ensure the newly added mol has coords and necessary stereo information
+    prepare_mol(mol);
+
     if (reposition_mol) {
-        // make sure that the molecule has coordinates
-        rdkit_extensions::update_2d_coordinates(mol);
         if (!m_mol.getNumAtoms()) {
             // if we don't have any existing structure, center the new molecule
             // at the origin
@@ -942,7 +943,6 @@ void MolModel::regenerateCoordinates()
 {
     auto cmd = [this]() {
         rdkit_extensions::compute2DCoords(m_mol);
-        rdkit_extensions::assign_CIP_labels(m_mol);
         emit moleculeChanged();
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::MOLECULE);
@@ -1879,10 +1879,11 @@ void MolModel::setCoordinates(
         non_mol_obj->setCoords(cur_coords);
     }
 
-    // update the brackets for the sgroups with the new coordinates
-    for (auto& sgroup : getSubstanceGroups(m_mol)) {
-        rdkit_extensions::update_s_group_brackets(sgroup);
-    }
+    // update the brackets for the sgroups with the new coordinates; this is
+    // otherwise called when WhatChanged::MOLECULE but needs to be explicitly
+    // done here to update the bracket positions
+    rdkit_extensions::update_s_group_brackets(m_mol);
+
     emit coordinatesChanged();
 }
 

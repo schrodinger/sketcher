@@ -16,9 +16,10 @@
 #include <string>
 #include <vector>
 
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/QueryBond.h>
-#include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <QUndoStack>
 
@@ -29,7 +30,7 @@
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
@@ -47,6 +48,8 @@ static auto no_r_group_num = std::nullopt;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(r_group_num_t);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(decltype(no_r_group_num));
+
+using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -1961,7 +1964,8 @@ void check_fragment_addition(const std::string& core_smiles,
     TestMolModel model(&undo_stack);
     import_mol_text(&model, core_smiles);
     auto* mol = model.getMol();
-    auto frag = text_to_mol(frag_smiles);
+    auto frag = rdkit_extensions::to_rdkit(frag_smiles);
+    prepare_mol(*frag);
     RDKit::Conformer frag_conf;
     const RDKit::Atom* core_atom = nullptr;
     if (core_atom_idx >= 0 && core_bond_idx >= 0) {

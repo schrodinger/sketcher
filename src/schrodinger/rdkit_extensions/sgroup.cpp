@@ -13,7 +13,10 @@ const std::string RDKIT_KEY_PARENT = "PARENT";
 const std::string RDKIT_KEY_SUBTYPE = "SUBTYPE";
 const std::string RDKIT_KEY_TYPE = "TYPE";
 
-void update_s_group_brackets(RDKit::SubstanceGroup& sgroup)
+/**
+ * @param sgroup the SGroup for which to update bracket coordinates
+ */
+static void update_bracket_coordinates(RDKit::SubstanceGroup& sgroup)
 {
     if (!sgroup.hasOwningMol()) {
         throw std::runtime_error("S-group does not belong to a molecule");
@@ -41,6 +44,13 @@ void update_s_group_brackets(RDKit::SubstanceGroup& sgroup)
         normal *= BRACKETS_LONG_SIDE * 0.5;
         sgroup.addBracket(
             {mid_point + normal, mid_point - normal, RDGeom::Point3D(0, 0, 0)});
+    }
+}
+
+void update_s_group_brackets(RDKit::ROMol& mol)
+{
+    for (auto& sgroup : getSubstanceGroups(mol)) {
+        update_bracket_coordinates(sgroup);
     }
 }
 

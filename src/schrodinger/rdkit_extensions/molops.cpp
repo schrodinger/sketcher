@@ -30,6 +30,8 @@ void apply_sanitization(RDKit::RWMol& mol, Sanitization sanitization)
               RDKit::MolOps::SANITIZE_ADJUSTHS;
     }
     RDKit::MolOps::sanitizeMol(mol, failed_op, ops);
+    // Regardless of sanitization level, ensure property cache is updated
+    mol.updatePropertyCache(false);
 }
 
 void addHs(RDKit::RWMol& mol, std::vector<unsigned> atom_ids)

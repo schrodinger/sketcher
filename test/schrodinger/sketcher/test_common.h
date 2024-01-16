@@ -7,7 +7,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/test/testfiles.h"
 #include "test_markers.h"
@@ -96,7 +96,7 @@ void import_mol_text(
     MolModel* mol_model, const std::string& text,
     rdkit_extensions::Format format = rdkit_extensions::Format::AUTO_DETECT)
 {
-    mol_model->addMol(*text_to_mol(text, format));
+    mol_model->addMol(*to_rdkit(text, format));
 }
 
 void import_reaction_text(

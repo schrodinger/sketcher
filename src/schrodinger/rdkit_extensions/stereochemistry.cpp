@@ -85,8 +85,7 @@ std::string get_atom_chirality_label(const RDKit::Atom& atom)
         for (auto atom_idx : stereo_info.controllingAtoms) {
             auto controlling_atom = mol.getAtomWithIdx(atom_idx);
             if (RDKit::getAtomRLabel(controlling_atom) != 0 ||
-                schrodinger::rdkit_extensions::is_attachment_point_dummy(
-                    *controlling_atom)) {
+                is_attachment_point_dummy(*controlling_atom)) {
                 return true;
             }
         }
@@ -175,7 +174,7 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
 {
     std::vector<RDKit::Bond*> attachment_dummy_bonds;
     for (auto atom : mol.atoms()) {
-        if (rdkit_extensions::is_attachment_point_dummy(*atom)) {
+        if (is_attachment_point_dummy(*atom)) {
             auto bonds = mol.atomBonds(atom);
             auto bond = *bonds.begin();
             if (bond->getBondType() == RDKit::Bond::SINGLE) {

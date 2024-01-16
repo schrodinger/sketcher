@@ -548,7 +548,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * positioned to the right of it.  Otherwise, the new molecule will be
      * centered.
      */
-    void addMol(RDKit::ROMol mol,
+    void addMol(RDKit::RWMol mol,
                 const QString& description = "Import molecule",
                 const bool reposition_mol = true);
 
@@ -1009,7 +1009,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param description A description for the undo command
      * @param to_be_changed Whether do_func updates the RDKit molecule,
      * the non-molecular objects, or both.  If this value includes
-     * WhatChanged::MOLECULE, then update_molecule_metadata() will be called
+     * WhatChanged::MOLECULE, then update_molecule_on_change() will be called
      * automatically after do_func is executed.  If this value includes
      * WhatChanged::NON_MOL_OBJS, then updateNonMolecularMetadata() will be
      * called automatically.

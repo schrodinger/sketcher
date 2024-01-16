@@ -38,9 +38,8 @@
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/view.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
@@ -204,7 +203,7 @@ void SketcherWidget::addFromString(const std::string& text, Format format)
     };
 
     try {
-        addRDKitMolecule(*text_to_mol(text, format));
+        addRDKitMolecule(*to_rdkit(text, format));
     } catch (const std::exception&) {
         try { // if molecule parsing fails, see if it's a reaction
             addRDKitReaction(*to_rdkit_reaction(text, format));

@@ -84,6 +84,12 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
     TestSketcherWidget sk;
     sk.addFromString(text);
     BOOST_TEST(sk.getString(Format::SMILES) == "C1=CC=CC=C1");
+
+    // test roundtripping stereochemistry
+    std::string stereo_smiles = "CC(C)[C@@H](C)[C@H](C)N";
+    sk.m_mol_model->clear();
+    sk.addFromString(stereo_smiles);
+    BOOST_TEST(sk.getString(Format::SMILES) == stereo_smiles);
 }
 
 BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,

@@ -39,7 +39,9 @@ class RDKIT_EXTENSIONS_API UseModernStereoPerception : public boost::noncopyable
 RDKIT_EXTENSIONS_API void assign_stereochemistry(RDKit::ROMol& mol);
 
 /**
- * assign CIP labels to the given molecule
+ * Sketcher-specific assignment of CIP labels, which bypasses the assignment
+ * after a certain number of cycles or certain exceptions are hit. For this
+ * function to work properly, the input mol must have had stereo assigned.
  */
 RDKIT_EXTENSIONS_API void assign_CIP_labels(RDKit::RWMol& mol);
 

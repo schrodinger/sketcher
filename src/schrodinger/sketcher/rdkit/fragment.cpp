@@ -11,7 +11,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 #include <iostream>
@@ -384,7 +384,7 @@ RDKit::Atom* prepare_fragment_for_insertion(RDKit::RWMol& fragment)
     // remove the attachment point atom, which will automatically remove the
     // attachment point bond
     fragment.removeAtom(frag_ap_dummy_atom->getIdx());
-    update_molecule_metadata(fragment);
+    update_molecule_on_change(fragment);
     // strip constness from frag_ap_parent_atom, since get_frag_info returns
     // const values
     return fragment.getAtomWithIdx(frag_ap_parent_atom->getIdx());

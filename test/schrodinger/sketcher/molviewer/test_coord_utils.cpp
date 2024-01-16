@@ -2,11 +2,13 @@
 
 #include <cmath>
 
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
+
 #include <QPointF>
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
-#include "schrodinger/sketcher/rdkit/molops.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QPoints
@@ -36,7 +38,8 @@ BOOST_AUTO_TEST_CASE(test_are_points_on_same_side_of_line)
 BOOST_AUTO_TEST_CASE(test_rotate_conformer_radians,
                      *boost::unit_test::tolerance(0.0001))
 {
-    auto mol = text_to_mol("C");
+    auto mol = rdkit_extensions::to_rdkit("C");
+    RDDepict::compute2DCoords(*mol);
     auto& conf = mol->getConformer();
     auto& coord = conf.getAtomPos(0);
     coord = RDGeom::Point3D(0.0, 2.0, 0.0);
