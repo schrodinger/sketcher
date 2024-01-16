@@ -34,7 +34,7 @@ BOOST_DATA_TEST_CASE(
         bdata::make(std::vector<std::string>{"S/D", "D/A", "S/D/A"}),
     query_func, exp_label)
 {
-    auto* mol = RDKit::SmartsToMol("C=C");
+    std::unique_ptr<RDKit::ROMol> mol{RDKit::SmartsToMol("C=C")};
     auto* bond = mol->getBondWithIdx(0);
     bond->setQuery(query_func());
     auto [bond_type, label] = get_bond_type_and_query_label(bond);
@@ -59,7 +59,7 @@ BOOST_DATA_TEST_CASE(
             RDKit::Bond::BondType::SINGLE}),
     smarts, exp_label, exp_bond_type)
 {
-    auto mol = RDKit::SmartsToMol(smarts);
+    std::unique_ptr<RDKit::ROMol> mol{RDKit::SmartsToMol(smarts)};
     auto bond = mol->getBondWithIdx(0);
     auto [bond_type, label] = get_bond_type_and_query_label(bond);
     BOOST_TEST(bond_type == exp_bond_type);
