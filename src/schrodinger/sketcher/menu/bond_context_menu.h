@@ -52,7 +52,7 @@ class SKETCHER_API ModifyBondsMenu : public QMenu
     void flipRequested(const std::unordered_set<const RDKit::Bond*>& bonds);
 
   protected:
-    std::unordered_set<const RDKit::Bond*> m_context_bonds;
+    std::unordered_set<const RDKit::Bond*> m_bonds;
 
   private:
     QMenu* createOtherTypeMenu();

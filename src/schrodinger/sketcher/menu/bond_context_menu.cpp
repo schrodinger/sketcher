@@ -14,14 +14,12 @@ namespace sketcher
 ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
 {
     auto addBondAction = [this](auto text, auto type) {
-        addAction(text, this, [this, type]() {
-            emit changeTypeRequested(type, m_context_bonds);
-        });
+        addAction(text, this,
+                  [this, type]() { emit changeTypeRequested(type, m_bonds); });
     };
     setTitle("Modify Bonds");
-    m_flip_action = addAction("Flip Substituent", this, [this]() {
-        emit flipRequested(m_context_bonds);
-    });
+    m_flip_action = addAction("Flip Substituent", this,
+                              [this]() { emit flipRequested(m_bonds); });
 
     addSeparator();
     addBondAction("Single", BondTool::SINGLE);
@@ -38,7 +36,7 @@ ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
 void ModifyBondsMenu::setContextBonds(
     const std::unordered_set<const RDKit::Bond*>& bonds)
 {
-    m_context_bonds = bonds;
+    m_bonds = bonds;
 
     // exactly 1 bonds should be selected and only non-ring bonds can be
     // flipped to avoid distorting the structure
@@ -66,7 +64,7 @@ QMenu* ModifyBondsMenu::createOtherTypeMenu()
 
     auto addBondAction = [this, other_type_menu](auto text, auto type) {
         other_type_menu->addAction(text, this, [this, type]() {
-            emit changeTypeRequested(type, m_context_bonds);
+            emit changeTypeRequested(type, m_bonds);
         });
     };
 
@@ -85,7 +83,7 @@ QMenu* ModifyBondsMenu::createQueryMenu()
 
     auto addBondAction = [this, query_menu](auto text, auto type) {
         query_menu->addAction(text, this, [this, type]() {
-            emit changeTypeRequested(type, m_context_bonds);
+            emit changeTypeRequested(type, m_bonds);
         });
     };
 
@@ -100,8 +98,7 @@ QMenu* ModifyBondsMenu::createQueryMenu()
 BondContextMenu::BondContextMenu(QWidget* parent) : ModifyBondsMenu(parent)
 {
     addSeparator();
-    addAction("Delete", this,
-              [this]() { emit deleteRequested(m_context_bonds); });
+    addAction("Delete", this, [this]() { emit deleteRequested(m_bonds); });
 }
 
 } // namespace sketcher

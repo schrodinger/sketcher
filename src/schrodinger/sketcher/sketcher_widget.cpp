@@ -390,7 +390,34 @@ void SketcherWidget::connectSideBarSlots()
 
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
-    // TODO
+    using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
+
+    connect(
+        &menu, &ModifyAtomsMenu::requestElementChange, m_mol_model,
+        qOverload<const RDKitAtoms&, const Element>(&MolModel::mutateAtoms));
+    connect(&menu, &ModifyAtomsMenu::adjustChargeRequested, m_mol_model,
+            &MolModel::adjustChargeOnAtoms);
+
+    connect(&menu, &ModifyAtomsMenu::addRemoveExplicitHydrogensRequested,
+            m_mol_model, &MolModel::toggleExplicitHsOnAtoms);
+    connect(&menu, &ModifyAtomsMenu::adjustRadicalElectronsRequested,
+            m_mol_model, &MolModel::adjustRadicalElectronsOnAtoms);
+
+    // TODO: SKETCH-2010 connect showEditAtomPropertiesRequested
+    connect(
+        &menu, &ModifyAtomsMenu::changeTypeRequested, m_mol_model,
+        qOverload<const RDKitAtoms&, const AtomQuery>(&MolModel::mutateAtoms));
+    connect(&menu, &ModifyAtomsMenu::newRGroupRequested, m_mol_model,
+            qOverload<const RDKitAtoms&>(&MolModel::mutateRGroups));
+    connect(&menu, &ModifyAtomsMenu::existingRGroupRequested, m_mol_model,
+            qOverload<const RDKitAtoms&, const unsigned int>(
+                &MolModel::mutateRGroups));
+
+    if (auto context_menu = dynamic_cast<const AtomContextMenu*>(&menu)) {
+        // TODO: SKETCH-2117 connect bracketSubgroupDialogRequested
+        connect(context_menu, &AtomContextMenu::deleteRequested, this,
+                [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}); });
+    }
 }
 
 static void mutate_bonds(MolModel* mol_model, BondTool bond_tool,
@@ -482,9 +509,11 @@ void SketcherWidget::showContextMenu(
     if (sgroups.size()) {
         throw std::runtime_error("sgroup context menu not implemented");
     } else if (atoms.size() && bonds.size()) {
+        m_selection_context_menu->m_modify_atoms_menu->setContextAtoms(atoms);
         m_selection_context_menu->m_modify_bonds_menu->setContextBonds(bonds);
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
+        m_atom_context_menu->setContextAtoms(atoms);
         menu = m_atom_context_menu;
     } else if (bonds.size()) {
         m_bond_context_menu->setContextBonds(bonds);
@@ -650,10 +679,7 @@ void SketcherWidget::applyModelValuePingToTargets(
             break;
         }
         case ModelKey::ATOM_QUERY: {
-            auto query_func = ATOM_TOOL_QUERY_MAP.at(value.value<AtomQuery>());
-            auto atom_query =
-                std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
-                    query_func());
+            auto atom_query = value.value<AtomQuery>();
             m_mol_model->mutateAtoms(atoms, atom_query);
             break;
         }
@@ -665,7 +691,7 @@ void SketcherWidget::applyModelValuePingToTargets(
         case ModelKey::CHARGE_TOOL: {
             auto charge_tool = value.value<ChargeTool>();
             int increment_by = charge_tool == ChargeTool::INCREASE ? 1 : -1;
-            m_mol_model->adjustChargeOnAtoms(increment_by, atoms);
+            m_mol_model->adjustChargeOnAtoms(atoms, increment_by);
             break;
         }
         case ModelKey::DRAW_TOOL: {

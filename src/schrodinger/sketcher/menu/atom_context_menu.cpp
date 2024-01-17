@@ -2,6 +2,7 @@
 
 #include <QWidgetAction>
 #include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -28,27 +29,36 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
                 showEditAtomPropertiesDialogWithAllowedListRequested,
             this, [this]() { emit showEditAtomPropertiesRequested(true); });
     connect(m_replace_with_menu, &ReplaceAtomsWithMenu::newRGroupRequested,
-            this, &ModifyAtomsMenu::newRGroupRequested);
+            this, [this]() { emit newRGroupRequested(m_atoms); });
     connect(m_replace_with_menu, &ReplaceAtomsWithMenu::existingRGroupRequested,
-            this, &ModifyAtomsMenu::existingRGroupRequested);
-
+            this, [this](auto rgroup_number) {
+                emit existingRGroupRequested(m_atoms, rgroup_number);
+            });
+    connect(m_replace_with_menu, &ReplaceAtomsWithMenu::changeTypeRequested,
+            this,
+            [this](auto type) { emit changeTypeRequested(m_atoms, type); });
     setTitle("Modify Atoms");
 
     addMenu(createElementMenu());
-    m_increase_charge_act =
-        addAction("+ Charge", this, &ModifyAtomsMenu::increaseChargeRequested);
-    m_decrease_charge_act =
-        addAction("– Charge", this, &ModifyAtomsMenu::decreaseChargeRequested);
+    m_increase_charge_act = addAction("+ Charge", this, [this]() {
+        emit adjustChargeRequested(m_atoms, +1);
+    });
+    m_decrease_charge_act = addAction("– Charge", this, [this]() {
+        emit adjustChargeRequested(m_atoms, -1);
+    });
     addSeparator();
     m_add_remove_explicit_h_act =
-        addAction("Add Explicit Hydrogens", this,
-                  &ModifyAtomsMenu::addRemoveExplicitHydrogensRequested);
+        addAction("Add Explicit Hydrogens", this, [this]() {
+            emit addRemoveExplicitHydrogensRequested(m_atoms);
+        });
     m_add_unpaired_electrons_act =
-        addAction("Add Unpaired Electron", this,
-                  &ModifyAtomsMenu::addUnpairedElectronRequested);
+        addAction("Add Unpaired Electron", this, [this]() {
+            emit adjustRadicalElectronsRequested(m_atoms, +1);
+        });
     m_remove_unpaired_electrons_act =
-        addAction("Remove Unpaired Electron", this,
-                  &ModifyAtomsMenu::removeUnpairedElectronRequested);
+        addAction("Remove Unpaired Electron", this, [this]() {
+            emit adjustRadicalElectronsRequested(m_atoms, -1);
+        });
     addSeparator();
     m_edit_atom_properties_act =
         addAction("Edit Atom Properties...", this,
@@ -64,9 +74,22 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
             &ModifyAtomsMenu::onSetAtomModelPinged);
 }
 
+void ModifyAtomsMenu::setContextAtoms(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    m_atoms = atoms;
+    updateActionsEnabled();
+}
+
+void ModifyAtomsMenu::showEvent(QShowEvent* event)
+{
+    updateActionsEnabled();
+    QMenu::showEvent(event);
+}
+
 void ModifyAtomsMenu::updateActionsEnabled()
 {
-    auto atoms = m_sketcher_model->getContextMenuAtoms();
+    auto atoms = m_atoms;
 
     std::vector<const RDKit::Atom*> element_atoms;
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(element_atoms),
@@ -134,14 +157,8 @@ void ModifyAtomsMenu::onSetAtomModelPinged(ModelKey key, QVariant value)
 {
     if (key == ModelKey::ELEMENT) {
         auto element = Element(value.toInt());
-        emit requestContextMenuElementChange(element);
+        emit requestElementChange(m_atoms, element);
     }
-}
-
-void ModifyAtomsMenu::showEvent(QShowEvent* event)
-{
-    updateActionsEnabled();
-    QMenu::showEvent(event);
 }
 
 QMenu* ModifyAtomsMenu::createElementMenu()
@@ -244,12 +261,19 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, QWidget* parent) :
 
     // Append 'Delete' action
     addSeparator();
-    addAction("Delete", this, &AtomContextMenu::deleteRequested);
+    addAction("Delete", this, [this]() { emit deleteRequested(m_atoms); });
 }
 
-void AtomContextMenu::setAddToBracketGroupEnabled(bool enabled)
+void AtomContextMenu::updateActionsEnabled()
 {
-    m_add_brackets_act->setEnabled(enabled);
+    auto has_two_bonds = [](auto atom) {
+        auto [begin, end] = atom->getOwningMol().getAtomBonds(atom);
+        return std::distance(begin, end) == 2;
+    };
+    bool enable = m_atoms.size() == 1 && has_two_bonds(*m_atoms.begin());
+    m_add_brackets_act->setEnabled(enable);
+
+    ModifyAtomsMenu::updateActionsEnabled();
 }
 
 } // namespace sketcher

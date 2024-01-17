@@ -170,6 +170,12 @@ void check_coords(const RDKit::ROMol* mol, unsigned int atom_index,
     check_coords(point, exp_x, exp_y);
 }
 
+std::string get_smiles(const MolModel& mol_model)
+{
+    auto mol = mol_model.getMolForExport();
+    return rdkit_extensions::to_string(*mol, Format::EXTENDED_SMILES);
+}
+
 BOOST_AUTO_TEST_CASE(test_addAtom)
 {
     QUndoStack undo_stack;
@@ -1478,7 +1484,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     BOOST_TEST(c_atom->getSymbol() == "C");
     BOOST_TEST(get_r_group_number(c_atom) == no_r_group_num);
 
-    model.mutateRGroup(c_atom, 2);
+    model.mutateRGroups({c_atom}, 2);
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getAtomicNum() == 0);
     BOOST_TEST(get_r_group_number(c_atom) == 2);
@@ -1515,28 +1521,60 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsToHIsotopes)
     auto to_atom = RDKit::Atom("H");
     to_atom.setIsotope(2);
     model.mutateAtoms(atoms, to_atom);
-    auto result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "[2H]C[2H]");
+    BOOST_TEST(get_smiles(model) == "[2H]C[2H]");
     undo_stack.undo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "CCC");
+    BOOST_TEST(get_smiles(model) == "CCC");
     undo_stack.redo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "[2H]C[2H]");
+    BOOST_TEST(get_smiles(model) == "[2H]C[2H]");
 
     atoms = {mol->getAtomWithIdx(0), mol->getAtomWithIdx(2)};
     to_atom.setIsotope(3);
     model.mutateAtoms(atoms, to_atom);
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "[3H]C[3H]");
+    BOOST_TEST(get_smiles(model) == "[3H]C[3H]");
     undo_stack.undo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "[2H]C[2H]");
+    BOOST_TEST(get_smiles(model) == "[2H]C[2H]");
+}
+
+BOOST_AUTO_TEST_CASE(test_mutateAtomsCharge)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "C");
+    const RDKit::ROMol* mol = model.getMol();
+    std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(0)};
+    model.adjustChargeOnAtoms(atoms, +1);
+    BOOST_TEST(get_smiles(model) == "[CH3+]");
+    undo_stack.undo();
+    BOOST_TEST(get_smiles(model) == "C");
+    undo_stack.redo();
+    BOOST_TEST(get_smiles(model) == "[CH3+]");
+
+    atoms = {mol->getAtomWithIdx(0)};
+    model.adjustChargeOnAtoms(atoms, -2);
+    BOOST_TEST(get_smiles(model) == "[CH3-]");
+    undo_stack.undo();
+    BOOST_TEST(get_smiles(model) == "[CH3+]");
+}
+
+BOOST_AUTO_TEST_CASE(test_mutateAtomsRadicalElectrons)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "C");
+    const RDKit::ROMol* mol = model.getMol();
+    std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(0)};
+    model.adjustRadicalElectronsOnAtoms(atoms, +2);
+    BOOST_TEST(get_smiles(model) == "[CH2] |^2:0|");
+    undo_stack.undo();
+    BOOST_TEST(get_smiles(model) == "C");
+    undo_stack.redo();
+    BOOST_TEST(get_smiles(model) == "[CH2] |^2:0|");
+
+    atoms = {mol->getAtomWithIdx(0)};
+    model.adjustRadicalElectronsOnAtoms(atoms, -1);
+    BOOST_TEST(get_smiles(model) == "[CH3] |^1:0|");
+    undo_stack.undo();
+    BOOST_TEST(get_smiles(model) == "[CH2] |^2:0|");
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateBond)
@@ -1765,9 +1803,7 @@ BOOST_AUTO_TEST_CASE(test_merge_one_atom_pair, *utf::tolerance(0.001))
     model.mergeAtoms({{n_atom, atom_to_replace}});
 
     // make sure that the resulting connectivity is correct
-    auto result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "C1CCN2(CC1)CCCC2");
+    BOOST_TEST(get_smiles(model) == "C1CCN2(CC1)CCCC2");
 
     // the merged atom replaced atom 9, but we also deleted atom 0, so the
     // resulting merged atom should have index 8
@@ -1782,13 +1818,9 @@ BOOST_AUTO_TEST_CASE(test_merge_one_atom_pair, *utf::tolerance(0.001))
 
     // confirm that undo and redo work as expected
     undo_stack.undo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "C1CCCCC1.C1CCNC1");
+    BOOST_TEST(get_smiles(model) == "C1CCCCC1.C1CCNC1");
     undo_stack.redo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "C1CCN2(CC1)CCCC2");
+    BOOST_TEST(get_smiles(model) == "C1CCN2(CC1)CCCC2");
 }
 
 /**
@@ -1814,19 +1846,13 @@ BOOST_AUTO_TEST_CASE(test_merge_two_atom_pairs)
                       {other_atom_to_move, other_atom_to_replace}});
 
     // make sure that the resulting connectivity is correct
-    auto result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "C1CCN2CCCC2C1");
+    BOOST_TEST(get_smiles(model) == "C1CCN2CCCC2C1");
 
     // confirm that undo and redo work as expected
     undo_stack.undo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "C1CCCCC1.C1CCNC1");
+    BOOST_TEST(get_smiles(model) == "C1CCCCC1.C1CCNC1");
     undo_stack.redo();
-    result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
-    BOOST_TEST(result_smiles == "C1CCN2CCCC2C1");
+    BOOST_TEST(get_smiles(model) == "C1CCN2CCCC2C1");
 }
 
 /**
@@ -1989,8 +2015,7 @@ void check_fragment_addition(const std::string& core_smiles,
     }
     frag->getConformer() = frag_conf;
     model.addFragment(*frag, core_atom);
-    auto result_smiles =
-        schrodinger::rdkit_extensions::to_string(*mol, Format::SMILES);
+    auto result_smiles = get_smiles(model);
     // clang-format off
     BOOST_TEST(result_smiles == exp_result_smiles,
                "FAILURE: expected result = " <<  exp_result_smiles

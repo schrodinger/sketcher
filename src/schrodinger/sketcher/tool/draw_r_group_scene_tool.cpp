@@ -25,7 +25,7 @@ AbstractDrawRGroupSceneTool::AbstractDrawRGroupSceneTool(const Fonts& fonts,
 
 void AbstractDrawRGroupSceneTool::mutateAtom(const RDKit::Atom* const atom)
 {
-    m_mol_model->mutateRGroup(atom, getRGroupNums(1)[0]);
+    m_mol_model->mutateRGroups({atom}, getRGroupNums(1)[0]);
 }
 
 void AbstractDrawRGroupSceneTool::addAtom(const RDGeom::Point3D& pos,

@@ -632,11 +632,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                     const RDKit::Atom& to_atom);
 
     /**
-     * Change the R-group of an existing atom.  This method can also mutate a
-     * non-R-group atom into an R-group atom.
+     * Change the R-group of existing atoms. This method can also mutate
+     * non-R-group atoms into R-group atoms. If an explicit number is not
+     * specified, the next available R-group number will be used.
      */
-    void mutateRGroup(const RDKit::Atom* const atom,
-                      const unsigned int r_group_num);
+    void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms);
+    void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms,
+                       const unsigned int r_group_num);
 
     /**
      * Change the type of an existing bond.  This method can also mutate a
@@ -740,14 +742,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atoms The atoms to mutate
      */
     void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
-                     const Element& element);
+                     const Element element);
 
     /**
      * Mutate a set of atoms to the specified query.
      */
-    void mutateAtoms(
-        const std::unordered_set<const RDKit::Atom*>& atoms,
-        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
+    void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                     const AtomQuery atom_query);
 
     /**
      * Mutate a set of atoms to the specified atom.
@@ -782,8 +783,15 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * decrement the charge, pass in a negative number.
      */
     void
-    adjustChargeOnAtoms(const int increment_by,
-                        const std::unordered_set<const RDKit::Atom*>& atoms);
+    adjustChargeOnAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                        const int increment_by);
+
+    /**
+     * Adjust the number of unpaired electrons on all target atoms by the
+     * specified value. To decrement the charge, pass in a negative number.
+     */
+    void adjustRadicalElectronsOnAtoms(
+        const std::unordered_set<const RDKit::Atom*>& atoms, int increment_by);
 
     /**
      * If any atoms of the set have implicit hydrogens, add explicit hydrogens
@@ -1176,14 +1184,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * shared_ptr is responsible for deleting the returned bond.
      */
     void mutateBondCommandFunc(const int bond_tag, const BondFunc create_bond);
-
-    /**
-     * Set the charge of an existing atom.  This method must only be called as
-     * part of an undo command.
-     * @param atom_tag The tag of the atom to mutate
-     * @param charge The new charge of the atom
-     */
-    void setAtomChargeCommandFunc(const int atom_tag, const int charge);
 
     /**
      * Set the mapping number of a set of atoms.  This method must only be

@@ -22,6 +22,7 @@
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
@@ -810,9 +811,11 @@ void MolModel::mutateAtom(const RDKit::Atom* const from_atom,
 
 void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
 {
-    int atom_tag = getTagForAtom(atom);
-    auto cmd_func = [this, atom_tag, charge]() {
-        setAtomChargeCommandFunc(atom_tag, charge);
+    auto cmd_func = [this, atom, charge]() {
+        // TODO: remove bookmarks as part of SKETCH-2135
+        auto atom_tag = getTagForAtom(atom);
+        auto mol_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+        mol_atom->setFormalCharge(charge);
     };
     doCommandUsingSnapshots(cmd_func, "Set atom charge", WhatChanged::MOLECULE);
 }
@@ -896,16 +899,25 @@ void MolModel::removeExplicitHs(
                             WhatChanged::MOLECULE);
 }
 
-void MolModel::mutateRGroup(const RDKit::Atom* const atom,
-                            const unsigned int r_group_num)
+void MolModel::mutateRGroups(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
-    int atom_tag = getTagForAtom(atom);
-    auto cmd_func = [this, atom_tag, r_group_num]() {
+    auto next_r_group_num = get_next_r_group_numbers(&m_mol, 1)[0];
+    mutateRGroups(atoms, next_r_group_num);
+}
+
+void MolModel::mutateRGroups(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const unsigned int r_group_num)
+{
+    auto cmd_func = [this, atoms, r_group_num]() {
         auto create_atom =
             std::bind(rdkit_extensions::make_new_r_group, r_group_num);
-        mutateAtomCommandFunc(atom_tag, create_atom);
+        for (auto atom : atoms) {
+            mutateAtomCommandFunc(getTagForAtom(atom), create_atom);
+        }
     };
-    doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
+    doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
 }
 
 void MolModel::mutateBond(const RDKit::Bond* const bond,
@@ -1366,18 +1378,20 @@ void MolModel::removeSelected()
 }
 
 void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
-                           const Element& element)
+                           const Element element)
 {
     unsigned int atomic_num = static_cast<unsigned int>(element);
     auto create_atom = std::bind(make_new_atom, atomic_num);
     mutateAtoms(atoms, create_atom);
 }
 
-void MolModel::mutateAtoms(
-    const std::unordered_set<const RDKit::Atom*>& atoms,
-    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
+void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                           const AtomQuery atom_query)
 {
-    auto create_atom = std::bind(make_new_query_atom, atom_query);
+    auto query_func = ATOM_TOOL_QUERY_MAP.at(atom_query);
+    auto query_func_ptr =
+        std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(query_func());
+    auto create_atom = std::bind(make_new_query_atom, query_func_ptr);
     mutateAtoms(atoms, create_atom);
 }
 
@@ -1459,19 +1473,40 @@ void MolModel::mutateBonds(
 }
 
 void MolModel::adjustChargeOnAtoms(
-    const int increment_by, const std::unordered_set<const RDKit::Atom*>& atoms)
+    const std::unordered_set<const RDKit::Atom*>& atoms, const int increment_by)
 {
     if (atoms.empty()) {
         return;
     }
     auto cmd_func = [this, increment_by, atoms]() {
-        Q_ASSERT(m_allow_edits);
         for (auto atom : atoms) {
-            setAtomChargeCommandFunc(getTagForAtom(atom),
-                                     atom->getFormalCharge() + increment_by);
+            // TODO: remove bookmarks as part of SKETCH-2135
+            auto atom_tag = getTagForAtom(atom);
+            auto mol_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+            mol_atom->setFormalCharge(atom->getFormalCharge() + increment_by);
         }
     };
-    doCommandUsingSnapshots(cmd_func, "Set atom charge", WhatChanged::MOLECULE);
+    doCommandUsingSnapshots(cmd_func, "Set atomic charge",
+                            WhatChanged::MOLECULE);
+}
+
+void MolModel::adjustRadicalElectronsOnAtoms(
+    const std::unordered_set<const RDKit::Atom*>& atoms, int increment_by)
+{
+    if (atoms.empty()) {
+        return;
+    }
+    auto cmd_func = [this, atoms, increment_by]() {
+        for (auto atom : atoms) {
+            // TODO: remove bookmarks as part of SKETCH-2135
+            auto atom_tag = getTagForAtom(atom);
+            auto mol_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+            mol_atom->setNumRadicalElectrons(atom->getNumRadicalElectrons() +
+                                             increment_by);
+        }
+    };
+    doCommandUsingSnapshots(cmd_func, "Set unpaired electrons",
+                            WhatChanged::MOLECULE);
 }
 
 void MolModel::toggleExplicitHsOnAtoms(
@@ -1834,13 +1869,6 @@ void MolModel::setAtomMappingCommandFunc(
         RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
         atom->setAtomMapNum(atom_mapping);
     }
-}
-
-void MolModel::setAtomChargeCommandFunc(const int atom_tag, const int charge)
-{
-    Q_ASSERT(m_allow_edits);
-    RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-    atom->setFormalCharge(charge);
 }
 
 void MolModel::flipBondCommandFunc(const int bond_tag)
