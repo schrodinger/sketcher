@@ -1,7 +1,6 @@
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 
-#include <rdkit/CIPLabeler/CIPLabeler.h>
-#include <rdkit/CIPLabeler/TooManyNodesException.h>
+#include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 
@@ -52,25 +51,6 @@ void assign_stereochemistry(RDKit::ROMol& mol)
     // The general case, valid both no conformation and calculate
     // stereochemistry from parity, and stereo bonds from bond directions.
     RDKit::MolOps::assignStereochemistry(mol);
-}
-
-void assign_CIP_labels(RDKit::RWMol& mol)
-{
-    try {
-        // This number of calculation cycles takes:
-        // ~1s on a Linux Intel(R) Xeon(R) W-2123 CPU @ 3.60GHz.
-        // ~0.5s on a 2019 Mac Book Pro with a Intel i7 @ 2.6 GHz.
-        // ~1.5s using the WASM sketcher on either of these.
-        unsigned max_cycles = 1000000;
-
-        RDKit::CIPLabeler::assignCIPLabels(mol, max_cycles);
-    } catch (const RDKit::CIPLabeler::MaxIterationsExceeded&) {
-        // CIP label calculation "timed out". Some labels will be omitted.
-    } catch (const RDKit::CIPLabeler::TooManyNodesException&) {
-        // CIP label calculation graph became too big. It's unlikely we hit
-        // this, we'll most probably hit the "time out' before. Still,
-        // keep any labels we found so far.
-    }
 }
 
 std::string get_atom_chirality_label(const RDKit::Atom& atom)
@@ -129,45 +109,8 @@ void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
     }
 
     RDKit::translateChiralFlagToStereoGroups(mol);
-}
 
-void reapply_molblock_wedging(RDKit::ROMol& rdk_mol)
-{
-    for (auto& bond : rdk_mol.bonds()) {
-        // only change the wedging if the bond was wedged in the input data (we
-        // recognize that by looking for the properties the mol file parser
-        // sets):
-        unsigned int bond_dir_val{0};
-        if (bond->getPropIfPresent(RDKit::common_properties::_MolFileBondStereo,
-                                   bond_dir_val)) {
-            // v2000
-            if (bond_dir_val == 1) {
-                bond->setBondDir(RDKit::Bond::BondDir::BEGINWEDGE);
-            } else if (bond_dir_val == 6) {
-                bond->setBondDir(RDKit::Bond::BondDir::BEGINDASH);
-            } else if (bond_dir_val == 4) {
-                bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
-            }
-        } else if (bond->getPropIfPresent(
-                       RDKit::common_properties::_MolFileBondCfg,
-                       bond_dir_val)) {
-            // v3000
-            if (bond_dir_val == 1) {
-                bond->setBondDir(RDKit::Bond::BondDir::BEGINWEDGE);
-            } else if (bond_dir_val == 3) {
-                bond->setBondDir(RDKit::Bond::BondDir::BEGINDASH);
-            } else if (bond_dir_val == 2) {
-                bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
-            }
-        } else {
-            auto bond_dir = bond->getBondDir();
-            if (bond_dir == RDKit::Bond::BondDir::BEGINWEDGE ||
-                bond_dir == RDKit::Bond::BondDir::BEGINDASH ||
-                bond_dir == RDKit::Bond::BondDir::UNKNOWN) {
-                bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
-            }
-        }
-    }
+    // TODO: make sure new groups have IDS
 }
 
 void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)

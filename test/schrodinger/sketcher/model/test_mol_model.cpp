@@ -25,6 +25,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -2227,6 +2228,61 @@ BOOST_AUTO_TEST_CASE(test_translateByVector)
     check_coords(mol->getConformer().getAtomPos(0), atom1_start_position.x,
                  atom1_start_position.y);
     check_coords(plus->getCoords(), plus_position.x, plus_position.y);
+}
+
+BOOST_AUTO_TEST_CASE(test_attachment_point_stereo)
+{
+    // SKETCH-1477
+    std::string molblock{R"CTAB(
+  Mrv1908 02082207072D
+
+  0  0  0     0  0            999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 4 3 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 F -0.5458 -2.1523 0 0
+M  V30 2 C -0.5458 -0.6123 0 0 ATTCHPT=1
+M  V30 3 N -0.5458 0.9277 0 0
+M  V30 4 Cl 0.9942 -0.6123 0 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1
+M  V30 2 1 2 3 CFG=1
+M  V30 3 1 2 4 CFG=3
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)CTAB"};
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, molblock);
+    auto mol = model.getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 5);
+    BOOST_REQUIRE(mol->getNumBonds() == 4);
+
+    // C atom should be chiral on import and after cleanup (SKETCH-1477)
+    // but not have a label since the attachment is ambiguous (SKETCH-1729)
+
+    auto assert_wedging_and_chiral_labels = [](auto mol) {
+        for (auto atom : mol->atoms()) {
+            BOOST_TEST(rdkit_extensions::get_atom_chirality_label(*atom) == "");
+        }
+        std::vector<RDKit::Bond::BondDir> expected_dir = {
+            RDKit::Bond::BondDir::NONE,
+            RDKit::Bond::BondDir::BEGINWEDGE,
+            RDKit::Bond::BondDir::BEGINDASH,
+            RDKit::Bond::BondDir::NONE,
+        };
+        for (auto bond : mol->bonds()) {
+            BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+            BOOST_TEST(bond->getBondDir() == expected_dir[bond->getIdx()]);
+        }
+    };
+
+    assert_wedging_and_chiral_labels(mol);
+    model.regenerateCoordinates();
+    assert_wedging_and_chiral_labels(mol);
 }
 
 } // namespace sketcher

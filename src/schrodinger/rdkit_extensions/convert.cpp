@@ -18,6 +18,7 @@
 #include <rdkit/GraphMol/DetermineBonds/DetermineBonds.h>
 #include <rdkit/GraphMol/DistGeomHelpers/Embedder.h>
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
+#include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 #include <rdkit/GraphMol/FileParsers/MolSupplier.h>
 #include <rdkit/GraphMol/FileParsers/MolWriters.h>
 #include <rdkit/GraphMol/MolOps.h>
@@ -197,7 +198,7 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
         }
         rdkit_extensions::compute2DCoords(rdk_mol, frozen_ids);
 
-        reapply_molblock_wedging(rdk_mol);
+        RDKit::reapplyMolBlockWedging(rdk_mol);
         RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);
         rdk_mol.updatePropertyCache(false);
         return true;

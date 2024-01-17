@@ -4,8 +4,6 @@
 
 #include <boost/noncopyable.hpp>
 
-#include <rdkit/GraphMol/GraphMol.h>
-
 #include "schrodinger/rdkit_extensions/definitions.h"
 
 // Forward declarations:
@@ -13,8 +11,8 @@ namespace RDKit
 {
 class Atom;
 class Conformer;
+class Bond;
 class ROMol;
-class RWMol;
 } // namespace RDKit
 
 namespace schrodinger
@@ -39,13 +37,6 @@ class RDKIT_EXTENSIONS_API UseModernStereoPerception : public boost::noncopyable
 RDKIT_EXTENSIONS_API void assign_stereochemistry(RDKit::ROMol& mol);
 
 /**
- * Sketcher-specific assignment of CIP labels, which bypasses the assignment
- * after a certain number of cycles or certain exceptions are hit. For this
- * function to work properly, the input mol must have had stereo assigned.
- */
-RDKIT_EXTENSIONS_API void assign_CIP_labels(RDKit::RWMol& mol);
-
-/**
  * @return the chiral label for the given atom.
  */
 RDKIT_EXTENSIONS_API std::string
@@ -64,12 +55,6 @@ RDKIT_EXTENSIONS_API std::string get_bond_stereo_label(const RDKit::Bond& bond);
  */
 RDKIT_EXTENSIONS_API void
 add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol);
-
-/**
- * Set bond directions based on the input data from SDF
- * @param rdk_mol rdkit mol
- */
-RDKIT_EXTENSIONS_API void reapply_molblock_wedging(RDKit::ROMol& rdk_mol);
 
 /**
  * A custom wrapper around RDkit's WedgeMolBonds() that makes sure
