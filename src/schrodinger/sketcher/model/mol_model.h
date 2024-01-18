@@ -1298,6 +1298,25 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mergeAtomsCommandFunc(
         const std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>&
             atoms_to_merge);
+
+    /**
+     * Clean up coordinates for the current reaction.  This method must only be
+     * called when an arrow is present in the workspace, and as part of an undo
+     * command.
+     */
+    void regenerateReactionCoordinatesCommandFunc();
+
+    /**
+     * Create an RDKit reaction object containing this model's contents.  This
+     * method must only be called when an arrow is present in the workspace.
+     *
+     * @param strip_tags Whether to remove all internal MolModel atom and bond
+     * properties (e.g. atom and bond tags).  These properties should always be
+     * removed before passing the reaction to the user, but may be helpful if
+     * the reaction object is for internal MolModel use only.
+     */
+    boost::shared_ptr<RDKit::ChemicalReaction>
+    createReaction(const bool strip_tags) const;
 };
 
 } // namespace sketcher

@@ -198,22 +198,52 @@ MolModel::getReactionForExport() const
     if (!m_arrow.has_value()) {
         throw std::runtime_error("No reaction arrow found.");
     }
+    auto reaction = createReaction(/* strip_tags = */ true);
+    if (reaction->getReactants().empty() || reaction->getProducts().empty()) {
+        throw std::runtime_error("Incomplete reactions cannot be copied.");
+    }
+    return reaction;
+}
+
+boost::shared_ptr<RDKit::ChemicalReaction>
+MolModel::createReaction(const bool strip_tags) const
+{
     // get the midpoint of the arrow
     auto arrow_x = m_arrow->getCoords().x;
     auto all_mols =
         RDKit::MolOps::getMolFrags(m_mol, /* sanitizeFrags = */ false);
     auto reaction = boost::make_shared<RDKit::ChemicalReaction>();
+    // sort the molecules left-to-right so that they'll be in visual order
+    // in the reaction object
+    std::vector<std::pair<boost::shared_ptr<RDKit::ROMol>, RDGeom::Point3D>>
+        reactants_and_centroids;
+    std::vector<std::pair<boost::shared_ptr<RDKit::ROMol>, RDGeom::Point3D>>
+        products_and_centroids;
     for (auto cur_mol : all_mols) {
-        strip_mol_model_tags(*cur_mol);
+        if (strip_tags) {
+            strip_mol_model_tags(*cur_mol);
+        }
         auto cur_centroid = find_centroid(*cur_mol);
         if (cur_centroid.x <= arrow_x) {
-            reaction->addReactantTemplate(cur_mol);
+            reactants_and_centroids.emplace_back(cur_mol, cur_centroid);
         } else {
-            reaction->addProductTemplate(cur_mol);
+            products_and_centroids.emplace_back(cur_mol, cur_centroid);
         }
     }
-    if (reaction->getReactants().empty() || reaction->getProducts().empty()) {
-        throw std::runtime_error("Incomplete reactions cannot be copied.");
+    auto centroid_x_less_than =
+        [](std::pair<boost::shared_ptr<RDKit::ROMol>, RDGeom::Point3D> a,
+           std::pair<boost::shared_ptr<RDKit::ROMol>, RDGeom::Point3D> b) {
+            return a.second.x < b.second.x;
+        };
+    std::sort(reactants_and_centroids.begin(), reactants_and_centroids.end(),
+              centroid_x_less_than);
+    std::sort(products_and_centroids.begin(), products_and_centroids.end(),
+              centroid_x_less_than);
+    for (auto [reactant, centroid] : reactants_and_centroids) {
+        reaction->addReactantTemplate(reactant);
+    }
+    for (auto [product, centroid] : products_and_centroids) {
+        reaction->addProductTemplate(product);
     }
     return reaction;
 }
@@ -954,10 +984,112 @@ void MolModel::flipBond(const RDKit::Bond* const bond)
 void MolModel::regenerateCoordinates()
 {
     auto cmd = [this]() {
-        rdkit_extensions::compute2DCoords(m_mol);
-        emit moleculeChanged();
+        // if this is a reaction, we'll generate new pluses
+        m_pluses.clear();
+        m_selected_non_molecular_tags.clear();
+        if (!hasReactionArrow()) {
+            rdkit_extensions::compute2DCoords(m_mol);
+        } else {
+            regenerateReactionCoordinatesCommandFunc();
+        }
     };
-    doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::MOLECULE);
+    doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
+}
+
+/**
+ * @return a list of x coordinates for each atom in the given mol
+ */
+static std::vector<double>
+get_x_coords(const boost::shared_ptr<RDKit::ROMol> mol)
+{
+    const auto positions = mol->getConformer().getPositions();
+    std::vector<double> x_vals;
+    std::transform(positions.begin(), positions.end(),
+                   std::back_inserter(x_vals), [](auto pos) { return pos.x; });
+    return x_vals;
+}
+
+/**
+ * @return the maximum x coordinate of all atoms in the given mol
+ */
+static double max_x_of_mol(const boost::shared_ptr<RDKit::ROMol> mol)
+{
+    auto x_vals = get_x_coords(mol);
+    return *std::max_element(x_vals.begin(), x_vals.end());
+}
+
+/**
+ * @return the minimum x coordinate of all atoms in the given mol
+ */
+static double min_x_of_mol(const boost::shared_ptr<RDKit::ROMol> mol)
+{
+    auto x_vals = get_x_coords(mol);
+    return *std::min_element(x_vals.begin(), x_vals.end());
+}
+
+void MolModel::regenerateReactionCoordinatesCommandFunc()
+{
+    Q_ASSERT(m_allow_edits);
+    auto reaction = createReaction(/* strip_tags = */ false);
+    RDDepict::compute2DCoordsForReaction(*reaction,
+                                         /* spacing = */ PLUS_SPACING);
+    // move all of the products to the right to make room for the arrow (which
+    // is wider than a plus)
+    const auto PRODUCT_OFFSET = ARROW_SPACING - PLUS_SPACING;
+    for (auto product : reaction->getProducts()) {
+        auto& conf = product->getConformer();
+        for (auto& pos : conf.getPositions()) {
+            pos.x += PRODUCT_OFFSET;
+        }
+    }
+    // copy the coordinates from the cleaned up reaction back to our molecule
+    auto& mol_model_conf = m_mol.getConformer();
+    for (const auto& molecules :
+         {reaction->getReactants(), reaction->getProducts()}) {
+        for (const auto& rxn_mol : molecules) {
+            const auto& rxn_conf = rxn_mol->getConformer();
+            for (const auto* rxn_atom : rxn_mol->atoms()) {
+                const auto& pos = rxn_conf.getAtomPos(rxn_atom->getIdx());
+                auto atom_tag = rxn_atom->getProp<int>(TAG_PROPERTY);
+                auto* mol_model_atom = getAtomFromTag(atom_tag);
+                mol_model_conf.setAtomPos(mol_model_atom->getIdx(), pos);
+            }
+        }
+    }
+
+    // generate new pluses (the old pluses were already cleared in
+    // regenerateCoordinates)
+    for (const auto& molecules :
+         {reaction->getReactants(), reaction->getProducts()}) {
+        if (molecules.empty()) {
+            continue;
+        }
+        // add pluses to the right of everything but the last molecule (since
+        // the last reactant gets an arrow to the right of it and the last
+        // product doesn't get anything to the right of it)
+        for (auto left_mol_it = molecules.begin();
+             left_mol_it < (molecules.end() - 1); ++left_mol_it) {
+            auto plus_x = max_x_of_mol(*left_mol_it) + PLUS_SPACING / 2.0;
+            m_pluses.push_back({NonMolecularType::RXN_PLUS,
+                                {plus_x, 0.0, 0.0},
+                                ++m_next_non_molecular_tag});
+        }
+    }
+
+    // re-position the arrow
+    double arrow_x = 0.0;
+    if (reaction->getNumReactantTemplates() > 0) {
+        // move the arrow to the right of the last reactant
+        auto last_reactant = reaction->getReactants().back();
+        arrow_x = max_x_of_mol(last_reactant) + ARROW_SPACING / 2.0;
+    } else if (reaction->getNumProductTemplates() > 0) {
+        // there aren't any reactants, so move the arrow to the left of the
+        // first product
+        auto first_product = reaction->getProducts().front();
+        arrow_x = min_x_of_mol(first_product) - ARROW_SPACING / 2.0;
+    }
+    // if we have neither reactants nor products, then just leave arrow_x at 0.0
+    m_arrow->setCoords({arrow_x, 0.0, 0.0});
 }
 
 void MolModel::clear()

@@ -1745,6 +1745,81 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.01))
     BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(), 0, 1) == 1.5);
 }
 
+/**
+ * Make sure that regenerateCoords doesn't crash and that it properly generates
+ * plus signs
+ */
+BOOST_AUTO_TEST_CASE(test_regenerate_coords_reaction)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    auto mol = model.getMol();
+
+    // no reactants or products, just an arrow
+    model.addNonMolecularObject(NonMolecularType::RXN_ARROW, {0, 0, 0});
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.empty());
+    BOOST_TEST(mol->getNumAtoms() == 0);
+
+    // add a single reactant
+    model.addAtomChain(Element::C, {{-10.0, 0.0, 0.0}, {-9.0, 0.0, 0.0}});
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.empty());
+    BOOST_TEST(mol->getNumAtoms() == 2);
+
+    // add another reactant
+    model.addAtomChain(Element::C, {{-8.0, 0.0, 0.0}, {-7.0, 0.0, 0.0}});
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.size() == 1);
+    BOOST_TEST(mol->getNumAtoms() == 4);
+
+    // add an extraneous plus
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS, {-5, 0, 0});
+    BOOST_TEST(model.m_pluses.size() == 2);
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.size() == 1);
+    BOOST_TEST(mol->getNumAtoms() == 4);
+
+    // add a product
+    model.addAtomChain(Element::C, {{25.0, 0.0, 0.0}, {26.0, 0.0, 0.0}});
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.size() == 1);
+    BOOST_TEST(mol->getNumAtoms() == 6);
+
+    // add another product
+    model.addAtomChain(Element::C, {{28.0, 0.0, 0.0}, {29.0, 0.0, 0.0}});
+    BOOST_TEST(mol->getNumAtoms() == 8);
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.size() == 2);
+    BOOST_TEST(mol->getNumAtoms() == 8);
+
+    // test undo and redo
+    undo_stack.undo();
+    BOOST_TEST(model.m_pluses.size() == 1);
+    undo_stack.redo();
+    BOOST_TEST(model.m_pluses.size() == 2);
+
+    // delete the reactants
+    std::unordered_set<const RDKit::Atom*> reactant_atoms = {
+        mol->getAtomWithIdx(0), mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
+        mol->getAtomWithIdx(3)};
+    model.remove(reactant_atoms, {}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    model.regenerateCoordinates();
+    BOOST_TEST(model.m_arrow.has_value());
+    BOOST_TEST(model.m_pluses.size() == 1);
+    BOOST_TEST(mol->getNumAtoms() == 4);
+}
+
 BOOST_AUTO_TEST_CASE(test_flipAroundAxis, *utf::tolerance(0.0001))
 {
     QUndoStack undo_stack;
