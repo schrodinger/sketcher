@@ -31,6 +31,33 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
 }
 
 /**
+ * Sketcher-specific clearing of stereo properties and markers so that
+ * rdkit_extensions::assign_stereochemistry can recalculate them. This would
+ * normally be taken care of by passing cleanIt=true to
+ * RDKit::MolOps::assignStereochemistry, but we don't do that to preserve all
+ * drawn bond types (which includes existing wedges and dashes).
+ */
+static void cleanup_stereo_markers(RDKit::RWMol& mol)
+{
+    for (auto atom : mol.atoms()) {
+        atom->clearProp(RDKit::common_properties::_CIPCode);
+        atom->clearProp(RDKit::common_properties::_ChiralityPossible);
+        atom->setChiralTag(RDKit::Atom::CHI_UNSPECIFIED);
+    }
+    for (auto bond : mol.bonds()) {
+        bond->clearProp(RDKit::common_properties::_CIPCode);
+        if (bond->getStereo() > RDKit::Bond::STEREOANY) {
+            bond->setStereo(RDKit::Bond::STEREONONE);
+            bond->getStereoAtoms().clear();
+        }
+        if (bond->getBondDir() == RDKit::Bond::BondDir::ENDDOWNRIGHT ||
+            bond->getBondDir() == RDKit::Bond::BondDir::ENDUPRIGHT) {
+            bond->setBondDir(RDKit::Bond::BondDir::NONE);
+        }
+    }
+}
+
+/**
  * Sketcher-specific assignment of CIP labels, which bypasses the assignment
  * after a certain number of cycles or certain exceptions are hit. For this
  * function to work properly, the input mol must have had stereo assigned.
@@ -54,6 +81,9 @@ static void assign_CIP_labels(RDKit::RWMol& mol)
     }
 }
 
+/**
+ * Called once when a mol is first brought into the sketcher
+ */
 void prepare_mol(RDKit::RWMol& mol)
 {
     // Add 2D coordinates only if the molecule does not already have them
@@ -74,6 +104,9 @@ void prepare_mol(RDKit::RWMol& mol)
     }
 }
 
+/**
+ * Called every time the mol is changed in the sketcher
+ */
 void update_molecule_on_change(RDKit::RWMol& mol)
 {
     // Explicitly update the brackets for the sgroups
@@ -84,6 +117,9 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // keep the sketcher's input as close to the original as possible.
     rdkit_extensions::apply_sanitization(
         mol, rdkit_extensions::Sanitization::PARTIAL);
+
+    // Cleanup before recalculating stereo
+    cleanup_stereo_markers(mol);
 
     // Convert up/down bonds into parities
     RDKit::MolOps::assignChiralTypesFromBondDirs(mol);

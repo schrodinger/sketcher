@@ -50,7 +50,11 @@ void assign_stereochemistry(RDKit::ROMol& mol)
 
     // The general case, valid both no conformation and calculate
     // stereochemistry from parity, and stereo bonds from bond directions.
-    RDKit::MolOps::assignStereochemistry(mol);
+    bool cleanIt = false;
+    bool force = true;
+    bool flagPossibleStereoCenters = true;
+    RDKit::MolOps::assignStereochemistry(mol, cleanIt, force,
+                                         flagPossibleStereoCenters);
 }
 
 std::string get_atom_chirality_label(const RDKit::Atom& atom)

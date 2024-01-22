@@ -2300,6 +2300,93 @@ BOOST_AUTO_TEST_CASE(test_translateByVector)
     check_coords(plus->getCoords(), plus_position.x, plus_position.y);
 }
 
+/**
+ * Given a mol, confirm that all atoms have the given chirality labels, and all
+ * bonds have the given type and direction
+ */
+void assert_wedging_and_chiral_labels(
+    const RDKit::ROMol& mol,
+    const std::vector<std::string>& atom_chirality_labels,
+    const std::vector<RDKit::Bond::BondType>& bond_types,
+    const std::vector<RDKit::Bond::BondDir>& bond_dirs)
+{
+    BOOST_REQUIRE(mol.getNumAtoms() == atom_chirality_labels.size());
+    for (auto atom : mol.atoms()) {
+        auto actual = rdkit_extensions::get_atom_chirality_label(*atom);
+        BOOST_TEST(actual == atom_chirality_labels[atom->getIdx()]);
+    }
+    BOOST_REQUIRE(mol.getNumBonds() == bond_types.size());
+    BOOST_REQUIRE(mol.getNumBonds() == bond_dirs.size());
+    for (auto bond : mol.bonds()) {
+        BOOST_TEST(bond->getBondType() == bond_types[bond->getIdx()]);
+        BOOST_TEST(bond->getBondDir() == bond_dirs[bond->getIdx()]);
+    }
+};
+
+/**
+ * Tests that chiral centers lacking wedging are appropriately labeled with
+ * undefined labels (ie ?), both on import of molecules, and on edit.
+ */
+BOOST_AUTO_TEST_CASE(test_undefined_stereo)
+{
+    using RDKit::Bond;
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    import_mol_text(&model, "CC(C)[C@@H](C)[C@H](C)N");
+    auto mol = model.getMol();
+    std::vector<std::string> atom_labels = {"", "", "", "R", "", "S", "", ""};
+    std::vector<Bond::BondType> bond_types(7, Bond::BondType::SINGLE);
+    std::vector<Bond::BondDir> bond_dirs(7, Bond::BondDir::NONE);
+    bond_dirs[3] = Bond::BondDir::BEGINDASH;
+    bond_dirs[5] = Bond::BondDir::BEGINWEDGE;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    model.clear();
+
+    // Start with the mol again, but with no wedging and 2 undefined centers
+    import_mol_text(&model, "CC(C)C(C)C(C)N");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)C(C)C(C)N");
+
+    mol = model.getMol();
+    atom_labels = {"", "", "", "?", "", "?", "", ""};
+    bond_dirs = std::vector<Bond::BondDir>(7, Bond::BondDir::NONE);
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    model.mutateBonds({model.getMol()->getBondWithIdx(3)},
+                      BondTool::SINGLE_DOWN);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)[C@@H](C)C(C)N");
+
+    atom_labels[3] = "R";
+    bond_dirs[3] = Bond::BondDir::BEGINDASH;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    model.mutateBonds({model.getMol()->getBondWithIdx(5)}, BondTool::SINGLE_UP);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) ==
+               "CC(C)[C@@H](C)[C@H](C)N");
+
+    atom_labels[5] = "S";
+    bond_dirs[5] = Bond::BondDir::BEGINWEDGE;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    // try again in the opposite direction; start with defined centers
+
+    // Clear the dashed bond, confirm that center goes back to undefined
+    model.mutateBonds({model.getMol()->getBondWithIdx(3)}, BondTool::SINGLE);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)C(C)[C@H](C)N");
+
+    atom_labels[3] = "?";
+    bond_dirs[3] = Bond::BondDir::NONE;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    // Clear the wedged bond, both centers should be undefined
+    model.mutateBonds({model.getMol()->getBondWithIdx(5)}, BondTool::SINGLE);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)C(C)C(C)N");
+
+    atom_labels[5] = "?";
+    bond_dirs[5] = Bond::BondDir::NONE;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+}
+
 BOOST_AUTO_TEST_CASE(test_attachment_point_stereo)
 {
     // SKETCH-1477
@@ -2334,25 +2421,23 @@ M  END
     // C atom should be chiral on import and after cleanup (SKETCH-1477)
     // but not have a label since the attachment is ambiguous (SKETCH-1729)
 
-    auto assert_wedging_and_chiral_labels = [](auto mol) {
-        for (auto atom : mol->atoms()) {
-            BOOST_TEST(rdkit_extensions::get_atom_chirality_label(*atom) == "");
-        }
-        std::vector<RDKit::Bond::BondDir> expected_dir = {
-            RDKit::Bond::BondDir::NONE,
-            RDKit::Bond::BondDir::BEGINWEDGE,
-            RDKit::Bond::BondDir::BEGINDASH,
-            RDKit::Bond::BondDir::NONE,
-        };
-        for (auto bond : mol->bonds()) {
-            BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
-            BOOST_TEST(bond->getBondDir() == expected_dir[bond->getIdx()]);
-        }
+    std::vector<std::string> atom_labels = {"", "", "", "", ""};
+    std::vector<RDKit::Bond::BondType> bond_types = {
+        RDKit::Bond::BondType::SINGLE,
+        RDKit::Bond::BondType::SINGLE,
+        RDKit::Bond::BondType::SINGLE,
+        RDKit::Bond::BondType::SINGLE,
+    };
+    std::vector<RDKit::Bond::BondDir> bond_dirs = {
+        RDKit::Bond::BondDir::NONE,
+        RDKit::Bond::BondDir::BEGINWEDGE,
+        RDKit::Bond::BondDir::BEGINDASH,
+        RDKit::Bond::BondDir::NONE,
     };
 
-    assert_wedging_and_chiral_labels(mol);
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
     model.regenerateCoordinates();
-    assert_wedging_and_chiral_labels(mol);
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 }
 
 } // namespace sketcher
