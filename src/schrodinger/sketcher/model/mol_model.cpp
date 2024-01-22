@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include <fmt/format.h>
+
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
@@ -822,23 +824,6 @@ void MolModel::addFragmentCommandFunc(
     }
 }
 
-void MolModel::mutateAtom(const RDKit::Atom* const atom, const Element& element)
-{
-    int atom_tag = getTagForAtom(atom);
-    unsigned int atomic_num = static_cast<unsigned int>(element);
-    auto cmd_func = [this, atom_tag, atomic_num]() {
-        auto create_atom = std::bind(make_new_atom, atomic_num);
-        mutateAtomCommandFunc(atom_tag, create_atom);
-    };
-    doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
-}
-
-void MolModel::mutateAtom(const RDKit::Atom* const from_atom,
-                          const RDKit::Atom& to_atom)
-{
-    mutateAtoms({from_atom}, to_atom);
-}
-
 void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
 {
     auto cmd_func = [this, atom, charge]() {
@@ -866,18 +851,6 @@ void MolModel::setAtomMapping(
     };
 
     doCommandUsingSnapshots(redo, "Set mapping number", WhatChanged::MOLECULE);
-}
-
-void MolModel::mutateAtom(
-    const RDKit::Atom* const atom,
-    const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
-{
-    int atom_tag = getTagForAtom(atom);
-    auto cmd_func = [this, atom_tag, atom_query]() {
-        auto create_atom = std::bind(make_new_query_atom, atom_query);
-        mutateAtomCommandFunc(atom_tag, create_atom);
-    };
-    doCommandUsingSnapshots(cmd_func, "Mutate atom", WhatChanged::MOLECULE);
 }
 
 bool MolModel::hasAnyImplicitHs(
@@ -927,51 +900,6 @@ void MolModel::removeExplicitHs(
     auto cmd_func = [this, atoms]() { removeExplicitHsCommandFunc(atoms); };
     doCommandUsingSnapshots(cmd_func, "Remove explicit Hs",
                             WhatChanged::MOLECULE);
-}
-
-void MolModel::mutateRGroups(
-    const std::unordered_set<const RDKit::Atom*>& atoms)
-{
-    auto next_r_group_num = get_next_r_group_numbers(&m_mol, 1)[0];
-    mutateRGroups(atoms, next_r_group_num);
-}
-
-void MolModel::mutateRGroups(
-    const std::unordered_set<const RDKit::Atom*>& atoms,
-    const unsigned int r_group_num)
-{
-    auto cmd_func = [this, atoms, r_group_num]() {
-        auto create_atom =
-            std::bind(rdkit_extensions::make_new_r_group, r_group_num);
-        for (auto atom : atoms) {
-            mutateAtomCommandFunc(getTagForAtom(atom), create_atom);
-        }
-    };
-    doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
-}
-
-void MolModel::mutateBond(const RDKit::Bond* const bond,
-                          const RDKit::Bond::BondType& bond_type,
-                          const RDKit::Bond::BondDir& bond_dir)
-{
-    int bond_tag = getTagForBond(bond);
-    auto cmd_func = [this, bond_tag, bond_type, bond_dir]() {
-        auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
-        mutateBondCommandFunc(bond_tag, create_bond);
-    };
-    doCommandUsingSnapshots(cmd_func, "Mutate bond", WhatChanged::MOLECULE);
-}
-
-void MolModel::mutateBond(
-    const RDKit::Bond* const bond,
-    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
-{
-    int bond_tag = getTagForBond(bond);
-    auto cmd_func = [this, bond_tag, bond_query]() {
-        auto create_bond = std::bind(make_new_query_bond, bond_query);
-        mutateBondCommandFunc(bond_tag, create_bond);
-    };
-    doCommandUsingSnapshots(cmd_func, "Mutate bond", WhatChanged::MOLECULE);
 }
 
 void MolModel::flipBond(const RDKit::Bond* const bond)
@@ -1551,54 +1479,84 @@ void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
     doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
 }
 
-void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
-                           const RDKit::Bond::BondType& bond_type,
-                           const RDKit::Bond::BondDir& bond_dir,
-                           bool flip_matching_bonds)
+void MolModel::mutateRGroups(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
-    std::unordered_set<int> matching_bond_tags, non_matching_bond_tags;
-    for (auto* bond : bonds) {
-        auto bond_tag = getTagForBond(bond);
-        if (bond->getBondType() == bond_type &&
-            bond->getBondDir() == bond_dir) {
-            matching_bond_tags.insert(bond_tag);
-        } else {
-            non_matching_bond_tags.insert(bond_tag);
+    auto next_r_group_num = get_next_r_group_numbers(&m_mol, 1)[0];
+    mutateRGroups(atoms, next_r_group_num);
+}
+
+void MolModel::mutateRGroups(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const unsigned int r_group_num)
+{
+    auto cmd_func = [this, atoms, r_group_num]() {
+        auto create_atom =
+            std::bind(rdkit_extensions::make_new_r_group, r_group_num);
+        for (auto atom : atoms) {
+            mutateAtomCommandFunc(getTagForAtom(atom), create_atom);
         }
-    }
-    if (non_matching_bond_tags.empty() &&
-        (!flip_matching_bonds || matching_bond_tags.empty())) {
-        // nothing to do
+    };
+    doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
+}
+
+void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
+                           BondTool bond_tool)
+{
+    if (bonds.empty()) {
         return;
     }
 
-    auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
-    auto cmd_func = [this, create_bond, flip_matching_bonds, matching_bond_tags,
-                     non_matching_bond_tags]() {
-        for (auto bond_tag : non_matching_bond_tags) {
-            mutateBondCommandFunc(bond_tag, create_bond);
+    if (bond_tool == BondTool::ATOM_CHAIN) {
+        return; // nothing to do for the atom chain tool
+    }
+
+    if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
+        auto [bond_type, bond_dir, flip_matching_bonds, cursor_hint_path] =
+            BOND_TOOL_BOND_MAP.at(bond_tool);
+        auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
+        mutateBonds(bonds, create_bond, flip_matching_bonds);
+
+    } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
+        auto query_func = BOND_TOOL_QUERY_MAP.at(bond_tool);
+        auto bond_query =
+            std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(query_func());
+        auto create_bond = std::bind(make_new_query_bond, bond_query);
+        mutateBonds(bonds, create_bond);
+
+    } else {
+        throw std::runtime_error(
+            fmt::format("Cannot mutate bonds for the given type {}",
+                        static_cast<int>(bond_tool)));
+    }
+}
+
+void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
+                           const BondFunc& create_bond,
+                           bool flip_matching_bonds)
+{
+    if (bonds.empty()) {
+        return;
+    }
+
+    auto new_bond = create_bond();
+    std::unordered_set<int> matching_bond_tags;
+    for (auto bond : bonds) {
+        if (bond->getBondType() == new_bond->getBondType() &&
+            bond->getBondDir() == new_bond->getBondDir()) {
+            matching_bond_tags.insert(getTagForBond(bond));
+        }
+    }
+
+    auto cmd_func = [this, bonds, create_bond, flip_matching_bonds,
+                     matching_bond_tags]() {
+        for (auto bond : bonds) {
+            mutateBondCommandFunc(getTagForBond(bond), create_bond);
         }
         if (flip_matching_bonds) {
             for (auto bond_tag : matching_bond_tags) {
                 flipBondCommandFunc(bond_tag);
             }
-        }
-    };
-    doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
-}
-
-void MolModel::mutateBonds(
-    const std::unordered_set<const RDKit::Bond*>& bonds,
-    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
-{
-    if (bonds.empty()) {
-        return;
-    }
-    auto create_bond = std::bind(make_new_query_bond, bond_query);
-    auto cmd_func = [this, create_bond, bonds]() {
-        for (auto bond : bonds) {
-            auto bond_tag = getTagForBond(bond);
-            mutateBondCommandFunc(bond_tag, create_bond);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);

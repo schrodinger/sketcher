@@ -60,7 +60,7 @@ bool DrawElementSceneTool::shouldDrawBondForClickOnAtom(
 
 void DrawElementSceneTool::mutateAtom(const RDKit::Atom* const atom)
 {
-    m_mol_model->mutateAtom(atom, m_element);
+    m_mol_model->mutateAtoms({atom}, m_element);
 }
 
 void DrawElementSceneTool::addAtom(const RDGeom::Point3D& pos,
@@ -92,17 +92,15 @@ DrawAtomQuerySceneTool::DrawAtomQuerySceneTool(AtomQuery atom_query,
                                                MolModel* mol_model) :
     AbstractDrawAtomSceneTool(fonts, scene, mol_model)
 {
-    m_query_func = ATOM_TOOL_QUERY_MAP.at(atom_query);
-    auto query = getQuery();
-    m_query_type = query->getTypeLabel();
+    m_atom_query = atom_query;
+    m_query_type = getQuery()->getTypeLabel();
 }
 
 std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>
 DrawAtomQuerySceneTool::getQuery()
 {
-    std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> query;
-    query.reset(m_query_func());
-    return query;
+    auto query_func = ATOM_TOOL_QUERY_MAP.at(m_atom_query);
+    return std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(query_func());
 }
 
 bool DrawAtomQuerySceneTool::shouldDrawBondForClickOnAtom(
@@ -113,7 +111,7 @@ bool DrawAtomQuerySceneTool::shouldDrawBondForClickOnAtom(
 
 void DrawAtomQuerySceneTool::mutateAtom(const RDKit::Atom* const atom)
 {
-    m_mol_model->mutateAtom(atom, getQuery());
+    m_mol_model->mutateAtoms({atom}, m_atom_query);
 }
 
 void DrawAtomQuerySceneTool::addAtom(const RDGeom::Point3D& pos,

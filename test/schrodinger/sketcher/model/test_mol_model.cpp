@@ -1410,7 +1410,7 @@ BOOST_AUTO_TEST_CASE(test_select_attachment_point)
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
 }
 
-BOOST_AUTO_TEST_CASE(test_mutateAtom)
+BOOST_AUTO_TEST_CASE(test_mutateAtoms)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
@@ -1421,7 +1421,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom)
     BOOST_TEST(!c_atom->hasQuery());
     BOOST_TEST(c_atom->getSymbol() == "C");
 
-    model.mutateAtom(c_atom, Element::N);
+    model.mutateAtoms({c_atom}, Element::N);
     BOOST_TEST(mol->getNumAtoms() == 1);
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getSymbol() == "N");
@@ -1437,23 +1437,19 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom)
     BOOST_TEST(c_atom->getSymbol() == "N");
 
     // mutate atom to query atom
-    auto atom_query = std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
-        RDKit::makeAAtomQuery());
-    model.mutateAtom(c_atom, atom_query);
+    model.mutateAtoms({c_atom}, AtomQuery::A);
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->hasQuery());
     BOOST_TEST(c_atom->getQueryType() == "A");
 
     // mutate query atom to a different query
-    atom_query = std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY>(
-        RDKit::makeMHAtomQuery());
-    model.mutateAtom(c_atom, atom_query);
+    model.mutateAtoms({c_atom}, AtomQuery::MH);
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->hasQuery());
     BOOST_TEST(c_atom->getQueryType() == "MH");
 
     // mutate query atom to an element
-    model.mutateAtom(c_atom, Element::C);
+    model.mutateAtoms({c_atom}, Element::C);
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(!c_atom->hasQuery());
     BOOST_TEST(c_atom->getSymbol() == "C");
@@ -1504,7 +1500,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtom_r_group)
     BOOST_TEST(c_atom->getAtomicNum() == 0);
     BOOST_TEST(get_r_group_number(c_atom) == 2);
 
-    model.mutateAtom(c_atom, Element::C);
+    model.mutateAtoms({c_atom}, Element::C);
     c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getAtomicNum() == 6);
     BOOST_TEST(c_atom->getSymbol() == "C");
@@ -1593,7 +1589,7 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
-    model.mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
+    model.mutateBonds({bond}, BondTool::DOUBLE);
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
@@ -1615,8 +1611,7 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
 
-    model.mutateBond(bond, RDKit::Bond::BondType::SINGLE,
-                     RDKit::Bond::BondDir::BEGINWEDGE);
+    model.mutateBonds({bond}, BondTool::SINGLE_UP);
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
@@ -1640,7 +1635,7 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     // mutate regular bond to query bond
     auto bond_any_query = std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
         RDKit::makeBondNullQuery());
-    model.mutateBond(bond, bond_any_query);
+    model.mutateBonds({bond}, BondTool::ANY);
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->hasQuery());
     BOOST_TEST(bond->getQuery()->getFullDescription() ==
@@ -1649,14 +1644,14 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     // mutate to a different query
     auto bond_sd_query = std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(
         RDKit::makeSingleOrDoubleBondQuery());
-    model.mutateBond(bond, bond_sd_query);
+    model.mutateBonds({bond}, BondTool::SINGLE_OR_DOUBLE);
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(bond->hasQuery());
     BOOST_TEST(bond->getQuery()->getFullDescription() ==
                bond_sd_query->getFullDescription());
 
     // mutate query bond to regular bond
-    model.mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
+    model.mutateBonds({bond}, BondTool::DOUBLE);
     bond = mol->getBondWithIdx(0);
     BOOST_TEST(!bond->hasQuery());
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
@@ -1975,7 +1970,7 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
 
     // mutate to N
     const auto* c_atom = mol->getAtomWithIdx(0);
-    model.mutateAtom(c_atom, Element::N);
+    model.mutateAtoms({c_atom}, Element::N);
 
     // add explicit Hs , should add one fewer H
     model.updateExplicitHs(ExplicitHActions::ADD);

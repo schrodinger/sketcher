@@ -150,11 +150,11 @@ void AbstractDrawSceneTool::cycleBond(const RDKit::Bond* const bond)
 {
     auto bond_type = bond->getBondType();
     if (bond_type == RDKit::Bond::BondType::SINGLE) {
-        m_mol_model->mutateBond(bond, RDKit::Bond::BondType::DOUBLE);
+        m_mol_model->mutateBonds({bond}, BondTool::DOUBLE);
     } else if (bond_type == RDKit::Bond::BondType::DOUBLE) {
-        m_mol_model->mutateBond(bond, RDKit::Bond::BondType::TRIPLE);
+        m_mol_model->mutateBonds({bond}, BondTool::TRIPLE);
     } else {
-        m_mol_model->mutateBond(bond, RDKit::Bond::BondType::SINGLE);
+        m_mol_model->mutateBonds({bond}, BondTool::SINGLE);
     }
 }
 

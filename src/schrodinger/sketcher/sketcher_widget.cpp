@@ -420,40 +420,12 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
     }
 }
 
-static void mutate_bonds(MolModel* mol_model, BondTool bond_tool,
-                         const std::unordered_set<const RDKit::Bond*>& bonds)
-{
-    // make sure the target set is not empty
-    if (bonds.empty()) {
-        return;
-    }
-    // nothing to do for the atom chain tool
-    if (bond_tool == BondTool::ATOM_CHAIN) {
-        return;
-    }
-    if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
-        auto [bond_type, bond_dir, flippable, cursor_hint_path] =
-            BOND_TOOL_BOND_MAP.at(bond_tool);
-        mol_model->mutateBonds(bonds, bond_type, bond_dir, flippable);
-    } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
-        auto query_func = BOND_TOOL_QUERY_MAP.at(bond_tool);
-        std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query;
-        bond_query.reset(query_func());
-        mol_model->mutateBonds(bonds, bond_query);
-    } else {
-        throw std::runtime_error(
-            fmt::format("Cannot mutate bonds for the given tool {}",
-                        static_cast<int>(bond_tool)));
-    }
-}
-
 void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
 {
     connect(&menu, &ModifyBondsMenu::changeTypeRequested, this,
             [this](auto bond_tool, auto bonds) {
-                mutate_bonds(m_mol_model, bond_tool, bonds);
+                m_mol_model->mutateBonds(bonds, bond_tool);
             });
-
     connect(&menu, &ModifyBondsMenu::flipRequested, this, [this](auto bonds) {
         // flip substituent only makes sense if there is only one bond
         if (bonds.size() != 1) {
@@ -685,7 +657,7 @@ void SketcherWidget::applyModelValuePingToTargets(
         }
         case ModelKey::BOND_TOOL: {
             auto bond_tool = value.value<BondTool>();
-            mutate_bonds(m_mol_model, bond_tool, bonds);
+            m_mol_model->mutateBonds(bonds, bond_tool);
             break;
         }
         case ModelKey::CHARGE_TOOL: {

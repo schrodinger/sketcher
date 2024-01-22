@@ -52,6 +52,7 @@ DrawBondSceneTool::DrawBondSceneTool(BondTool bond_tool, Scene* scene,
                                      MolModel* mol_model) :
     AbstractDrawBondSceneTool(scene, mol_model)
 {
+    m_bond_tool = bond_tool;
     std::tie(m_bond_type, m_bond_dir, m_flippable, m_cursor_hint_path) =
         BOND_TOOL_BOND_MAP.at(bond_tool);
     m_cycle_on_click = bond_tool == BondTool::SINGLE;
@@ -87,7 +88,7 @@ bool DrawBondSceneTool::bondMatches(const RDKit::Bond* const bond)
 
 void DrawBondSceneTool::mutateBond(const RDKit::Bond* const bond)
 {
-    m_mol_model->mutateBond(bond, m_bond_type, m_bond_dir);
+    m_mol_model->mutateBonds({bond}, m_bond_tool);
 }
 
 void DrawBondSceneTool::addAtom(const RDGeom::Point3D& pos,
@@ -120,16 +121,15 @@ DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool,
     AbstractDrawBondSceneTool(scene, mol_model),
     m_fonts(&fonts)
 {
-    m_query_func = BOND_TOOL_QUERY_MAP.at(bond_tool);
+    m_bond_tool = bond_tool;
     m_query_type = get_label_for_bond_query(getQuery().get());
 }
 
 std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>
 DrawBondQuerySceneTool::getQuery()
 {
-    std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> query;
-    query.reset(m_query_func());
-    return query;
+    auto query_func = BOND_TOOL_QUERY_MAP.at(m_bond_tool);
+    return std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(query_func());
 }
 
 bool DrawBondQuerySceneTool::bondMatches(const RDKit::Bond* const bond)
@@ -140,7 +140,7 @@ bool DrawBondQuerySceneTool::bondMatches(const RDKit::Bond* const bond)
 
 void DrawBondQuerySceneTool::mutateBond(const RDKit::Bond* const bond)
 {
-    m_mol_model->mutateBond(bond, getQuery());
+    m_mol_model->mutateBonds({bond}, m_bond_tool);
 }
 
 void DrawBondQuerySceneTool::addAtom(const RDGeom::Point3D& pos,

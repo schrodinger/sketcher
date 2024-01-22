@@ -81,10 +81,13 @@ class SKETCHER_API DrawAtomQuerySceneTool : public AbstractDrawAtomSceneTool
 
   protected:
     /**
-     * A function that returns an RDKit Query object containing the appropriate
-     * atom query
+     * Sketcher atom query type enum
      */
-    std::function<RDKit::QueryAtom::QUERYATOM_QUERY*()> m_query_func;
+    AtomQuery m_atom_query;
+
+    /**
+     * The text to use for labeling the drawn queries
+     */
     std::string m_query_type;
 
     /**

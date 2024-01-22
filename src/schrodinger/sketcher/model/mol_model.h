@@ -611,59 +611,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                           std::unordered_set<const RDKit::Atom*> atoms = {});
 
     /**
-     * Change the element of an existing atom.  This method can also mutate a
-     * query atom into a non-query atom.
-     */
-    void mutateAtom(const RDKit::Atom* const atom, const Element& element);
-
-    /**
-     * Change the query of an existing atom.  This method can also mutate a
-     * non-query atom into a query atom.
-     */
-    void mutateAtom(
-        const RDKit::Atom* const atom,
-        const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query);
-
-    /**
-     * Mutate an existing atom.  This method can also mutate a query atom into a
-     * non-query atom.
-     */
-    void mutateAtom(const RDKit::Atom* const from_atom,
-                    const RDKit::Atom& to_atom);
-
-    /**
-     * Change the R-group of existing atoms. This method can also mutate
-     * non-R-group atoms into R-group atoms. If an explicit number is not
-     * specified, the next available R-group number will be used.
-     */
-    void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms);
-    void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms,
-                       const unsigned int r_group_num);
-
-    /**
-     * Change the type of an existing bond.  This method can also mutate a
-     * query bond into a non-query bond.
-     *
-     * @param bond The bond to mutate
-     * @param bond_type The type of bond to mutate to
-     * @param bond_dir The stereochemistry to mutate to
-     */
-    void mutateBond(
-        const RDKit::Bond* const bond, const RDKit::Bond::BondType& bond_type,
-        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE);
-
-    /**
-     * Change the query of an existing bond.  This method can also mutate a
-     * non-query bond into a query bond.
-     *
-     * @param bond The bond to mutate
-     * @param bond_query The query for the bond
-     */
-    void mutateBond(
-        const RDKit::Bond* const bond,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
-
-    /**
      * Change the charge of an existing atom.
      * @param atom The atom to mutate
      * @param charge The charge to be set
@@ -757,26 +704,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                      const RDKit::Atom& to_atom);
 
     /**
-     * Mutate all selected bonds
-     * @param bond_type The type of bond to mutate to
-     * @param bond_dir The stereochemistry to mutate to
-     * @param flip_matching_bonds If true, then any bonds that already match
-     * both bond_type and bond_dir will be flipped (i.e. their start and end
-     * atoms will be switched).  If false, then any bonds that already match
-     * will be ignored.
+     * Change the R-group of existing atoms. This method can also mutate
+     * non-R-group atoms into R-group atoms. If an explicit number is not
+     * specified, the next available R-group number will be used.
      */
-    void mutateBonds(
-        const std::unordered_set<const RDKit::Bond*>& bonds,
-        const RDKit::Bond::BondType& bond_type,
-        const RDKit::Bond::BondDir& bond_dir = RDKit::Bond::BondDir::NONE,
-        bool flip_matching_bonds = false);
+    void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms);
+    void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms,
+                       const unsigned int r_group_num);
 
     /**
-     * Mutate all selected bonds to the specified query
+     * Mutate all selected bonds
+     * @param bond_tool The type of bond to mutate to
      */
-    void mutateBonds(
-        const std::unordered_set<const RDKit::Bond*>& bonds,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+    void mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
+                     BondTool bond_tool);
 
     /**
      * Adjust the charge on all target atoms by the specified value. To
@@ -1283,6 +1224,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
                      const AtomFunc& create_atom);
+
+    /**
+     * Mutate a set of bonds to a Bond object returned by the provided
+     * function.
+     * @param bonds The bonds to mutate
+     * @param flip_matching_bonds If true, then any bonds that already match
+     * both bond_type and bond_dir will be flipped (i.e. their start and end
+     * atoms will be switched).  If false, then any bonds that already match
+     * will be ignored.
+     */
+    void mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
+                     const BondFunc& create_bond,
+                     bool flip_matching_bonds = false);
 
     /**
      * Combine pairs of atoms into single atoms with all bonds from both

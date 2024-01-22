@@ -71,6 +71,7 @@ class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
     DrawBondSceneTool(BondTool bond_tool, Scene* scene, MolModel* mol_model);
 
   protected:
+    BondTool m_bond_tool;
     RDKit::Bond::BondType m_bond_type;
     RDKit::Bond::BondDir m_bond_dir;
     const RDKit::Bond* m_last_bond_clicked = nullptr;
@@ -106,10 +107,9 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
 
   protected:
     /**
-     * A function that returns an RDKit Query object containing the appropriate
-     * bond query
+     * Sketcher bond type enum
      */
-    std::function<RDKit::QueryBond::QUERYBOND_QUERY*()> m_query_func;
+    BondTool m_bond_tool;
 
     /**
      * The text to use for labeling the drawn queries
