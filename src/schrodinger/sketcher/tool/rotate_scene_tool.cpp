@@ -13,11 +13,19 @@ RotateSceneTool::RotateSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
+void RotateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
+{
+    // if a selection is present, rotate only the selection
+    setCurrentSelectionAsObjectsToMove();
+    MoveRotateSceneTool::onDragStart(event);
+}
+
 void RotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 {
     auto center_of_rotation = find_centroid(
-        *(m_mol_model->getMol()), m_mol_model->getNonMolecularObjects());
-    rotate(event, to_scene_xy(center_of_rotation));
+        *(m_mol_model->getMol()), m_atoms_to_move, m_non_mol_objs_to_move);
+    rotate(event, to_scene_xy(center_of_rotation), m_atoms_to_move,
+           m_non_mol_objs_to_move);
 }
 
 } // namespace sketcher

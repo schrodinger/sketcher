@@ -13,9 +13,18 @@ TranslateSceneTool::TranslateSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
+void TranslateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
+{
+    // if the translate drag starts inside a selection, move only the selction
+    if (m_scene->getSelectionRect().contains(m_mouse_press_scene_pos)) {
+        setCurrentSelectionAsObjectsToMove();
+    }
+    MoveRotateSceneTool::onDragStart(event);
+}
+
 void TranslateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 {
-    translate(event);
+    translate(event, m_atoms_to_move, m_non_mol_objs_to_move);
 }
 
 void TranslateSceneTool::onMouseClick(QGraphicsSceneMouseEvent* event)

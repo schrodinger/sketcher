@@ -117,6 +117,12 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
         const std::unordered_set<const RDKit::Atom*>& atoms_to_move,
         const std::unordered_set<const NonMolecularObject*>& non_mol_objects);
 
+    /**
+     * if a selection is present, set the selected objects to be moved by this
+     * tool.
+     */
+    void setCurrentSelectionAsObjectsToMove();
+
     /** this variable is used to determine if the mouse is being performed in a
      * mouse drag (rotate, translate or none). It gets set in onDragStart and
      *reset to Action::NONE on mouse release

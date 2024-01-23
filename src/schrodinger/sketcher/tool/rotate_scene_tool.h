@@ -16,6 +16,7 @@ class SKETCHER_API RotateSceneTool : public MoveRotateSceneTool
 {
   public:
     RotateSceneTool(Scene* scene, MolModel* mol_model);
+    void onDragStart(QGraphicsSceneMouseEvent* event) override;
     virtual void onDragMove(QGraphicsSceneMouseEvent* const event) override;
 };
 

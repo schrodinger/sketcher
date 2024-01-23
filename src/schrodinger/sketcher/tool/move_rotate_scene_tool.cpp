@@ -139,6 +139,15 @@ void MoveRotateSceneTool::setObjectsToMove(
     m_non_mol_objs_to_move = non_mol_objects;
 }
 
+void MoveRotateSceneTool::setCurrentSelectionAsObjectsToMove()
+{
+    auto selected_atoms = m_mol_model->getSelectedAtoms();
+    auto selected_non_mol_objs = m_mol_model->getSelectedNonMolecularObjects();
+    if (!selected_atoms.empty() || !selected_non_mol_objs.empty()) {
+        setObjectsToMove(selected_atoms, selected_non_mol_objs);
+    }
+}
+
 void MoveRotateSceneTool::rotate(
     QGraphicsSceneMouseEvent* const event, QPointF pivot_point,
     const std::unordered_set<const RDKit::Atom*>& atoms_to_move,
