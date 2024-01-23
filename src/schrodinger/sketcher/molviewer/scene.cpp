@@ -507,6 +507,27 @@ Scene::getTopInteractiveItemAt(const QPointF& pos,
 }
 
 QList<QGraphicsItem*>
+Scene::getCollidingItemsUsingBondMidpoints(QGraphicsItem* item) const
+{
+    auto items = collidingItems(item);
+    auto polygon = item->shape().toFillPolygon();
+
+    // Exclude all bonds whose center point is outside the polygon
+    auto is_not_bond_with_center_outside_polygon = [&polygon](auto item) {
+        auto bond = dynamic_cast<BondItem*>(item);
+        if (bond == nullptr) {
+            return true;
+        }
+        return polygon.containsPoint(bond->mapToScene(bond->getMidPoint()),
+                                     Qt::WindingFill);
+    };
+    QList<QGraphicsItem*> filtered_items;
+    std::copy_if(items.begin(), items.end(), std::back_inserter(filtered_items),
+                 is_not_bond_with_center_outside_polygon);
+    return filtered_items;
+}
+
+QList<QGraphicsItem*>
 Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
 {
     // make sure that .find() calls are O(1) instead of O(N)

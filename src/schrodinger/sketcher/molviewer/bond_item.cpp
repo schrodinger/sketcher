@@ -596,6 +596,11 @@ std::vector<QColor> BondItem::getColors() const
     return {start_color};
 }
 
+QPointF BondItem::getMidPoint() const
+{
+    return (m_end_item.pos() - m_start_item.pos()) * 0.5;
+}
+
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
@@ -609,7 +614,7 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         // if the bond is painted with two colors, we need to clip the bond
         // and paint it twice
         if (colors.size() == 2) {
-            auto mid_point = (m_end_item.pos() - m_start_item.pos()) * 0.5;
+            auto mid_point = getMidPoint();
             QLineF first_half(QPointF(0, 0), mid_point);
             QLineF second_half(mid_point, 2 * mid_point);
             painter->setClipPath(

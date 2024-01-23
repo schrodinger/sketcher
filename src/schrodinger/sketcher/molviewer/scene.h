@@ -125,6 +125,14 @@ class SKETCHER_API Scene : public QGraphicsScene
     getTopInteractiveItemAt(const QPointF& pos,
                             const InteractiveItemFlagType types) const;
 
+    //*
+    /* @return a list of all graphics items in the scene that collied with the
+     * given item, excluding bond items whose center doesn't fall within the
+     * bounds of the item
+     */
+    QList<QGraphicsItem*>
+    getCollidingItemsUsingBondMidpoints(QGraphicsItem* item) const;
+
     /**
      * Make sure that the returned list includes graphics items for both an
      * attachment point dummy atom *and* the associated bond if either the atom

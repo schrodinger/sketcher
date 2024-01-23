@@ -100,6 +100,11 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      */
     const RDKit::Bond* getBond() const;
 
+    /**
+     * @return the mid point of the bond (in local coordinates)
+     */
+    QPointF getMidPoint() const;
+
   protected:
     // Creating a shared_ptr to an RDKit Bond (or Atom) implicitly creates a
     // copy of the Bond, which means that the new Bond is no longer part of the

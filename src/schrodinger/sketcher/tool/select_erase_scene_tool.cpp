@@ -74,7 +74,7 @@ template <typename T>
 void SelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* const event)
 {
     SceneToolWithPredictiveHighlighting::onDragMove(event);
-    QList<QGraphicsItem*> items = m_scene->collidingItems(&m_select_item);
+    auto items = m_scene->getCollidingItemsUsingBondMidpoints(&m_select_item);
     m_predictive_highlighting_item.highlightItems(items);
 }
 
@@ -84,8 +84,7 @@ void SelectSceneTool<T>::onDragRelease(QGraphicsSceneMouseEvent* const event)
     SceneToolWithPredictiveHighlighting::onDragRelease(event);
     m_select_item.setVisible(false);
     m_predictive_highlighting_item.clearHighlightingPath();
-
-    QList<QGraphicsItem*> items = m_scene->collidingItems(&m_select_item);
+    auto items = m_scene->getCollidingItemsUsingBondMidpoints(&m_select_item);
     onSelectionMade(items, event);
 }
 
