@@ -3,7 +3,10 @@
 
 #include <QString>
 
+#include <rdkit/GraphMol/Atom.h>
 #include <rdkit/Geometry/point.h>
+
+#include "schrodinger/sketcher/model/non_molecular_object.h"
 
 namespace schrodinger
 {
@@ -105,10 +108,10 @@ template class UndoableModelMergeableUndoCommand<float>;
 template class UndoableModelMergeableUndoCommand<RDGeom::Point3D>;
 template class UndoableModelMergeableUndoCommand<
     std::pair<float, RDGeom::Point3D>>;
-template class UndoableModelMergeableUndoCommand<
-    std::tuple<std::vector<int>, std::vector<RDGeom::Point3D>,
-               std::vector<RDGeom::Point3D>, std::vector<int>,
-               std::vector<RDGeom::Point3D>, std::vector<RDGeom::Point3D>>>;
+template class UndoableModelMergeableUndoCommand<std::tuple<
+    std::vector<const RDKit::Atom*>, std::vector<RDGeom::Point3D>,
+    std::vector<RDGeom::Point3D>, std::vector<const NonMolecularObject*>,
+    std::vector<RDGeom::Point3D>, std::vector<RDGeom::Point3D>>>;
 
 } // namespace sketcher
 } // namespace schrodinger

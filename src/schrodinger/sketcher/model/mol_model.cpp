@@ -827,10 +827,7 @@ void MolModel::addFragmentCommandFunc(
 void MolModel::setAtomCharge(const RDKit::Atom* const atom, int charge)
 {
     auto cmd_func = [this, atom, charge]() {
-        // TODO: remove bookmarks as part of SKETCH-2135
-        auto atom_tag = getTagForAtom(atom);
-        auto mol_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-        mol_atom->setFormalCharge(charge);
+        getMutableAtom(atom)->setFormalCharge(charge);
     };
     doCommandUsingSnapshots(cmd_func, "Set atom charge", WhatChanged::MOLECULE);
 }
@@ -841,13 +838,12 @@ void MolModel::setAtomMapping(
     if (atoms.empty()) {
         return;
     }
-    std::unordered_set<int> atom_tags(atoms.size());
-    for (const RDKit::Atom* atom : atoms) {
-        atom_tags.insert(getTagForAtom(atom));
-    }
 
-    auto redo = [this, atom_tags, mapping]() {
-        setAtomMappingCommandFunc(atom_tags, mapping);
+    auto redo = [this, atoms, mapping]() {
+        Q_ASSERT(m_allow_edits);
+        for (auto atom : atoms) {
+            getMutableAtom(atom)->setAtomMapNum(mapping);
+        }
     };
 
     doCommandUsingSnapshots(redo, "Set mapping number", WhatChanged::MOLECULE);
@@ -904,8 +900,7 @@ void MolModel::removeExplicitHs(
 
 void MolModel::flipBond(const RDKit::Bond* const bond)
 {
-    int bond_tag = getTagForBond(bond);
-    auto cmd_func = [this, bond_tag]() { flipBondCommandFunc(bond_tag); };
+    auto cmd_func = [this, bond]() { flipBondCommandFunc(bond); };
     doCommandUsingSnapshots(cmd_func, "Flip bond", WhatChanged::MOLECULE);
 }
 
@@ -1061,16 +1056,6 @@ void MolModel::transformCoordinatesWithFunction(
     std::vector<const NonMolecularObject*> non_mol_vec(
         non_molecular_objects.begin(), non_molecular_objects.end());
 
-    // get tags
-    std::vector<int> atom_tags(atom_vec.size());
-    transform(atom_vec.begin(), atom_vec.end(), atom_tags.begin(),
-              [this](const RDKit::Atom* atom) { return getTagForAtom(atom); });
-    std::vector<int> non_mol_tags(non_mol_vec.size());
-    transform(non_mol_vec.begin(), non_mol_vec.end(), non_mol_tags.begin(),
-              [](const NonMolecularObject* non_mol_obj) {
-                  return non_mol_obj->getTag();
-              });
-
     // get coordinates
     auto& conf = m_mol.getConformer();
     std::vector<RDGeom::Point3D> atom_coords;
@@ -1091,35 +1076,34 @@ void MolModel::transformCoordinatesWithFunction(
 
     // if no merge_id is provided, issue a non-mergeable command
     if (merge_id == MergeId::NO_MERGE) {
-        auto redo = [this, atom_tags, atom_coords, non_mol_tags,
+        auto redo = [this, atom_vec, atom_coords, non_mol_vec,
                      non_mol_coords]() {
-            this->setCoordinates(atom_tags, atom_coords, non_mol_tags,
-                                 non_mol_coords);
+            setCoordinates(atom_vec, atom_coords, non_mol_vec, non_mol_coords);
         };
-        auto undo = [this, atom_tags, current_atom_coords, non_mol_tags,
+        auto undo = [this, atom_vec, current_atom_coords, non_mol_vec,
                      current_non_mol_coords]() {
-            this->setCoordinates(atom_tags, current_atom_coords, non_mol_tags,
-                                 current_non_mol_coords);
+            setCoordinates(atom_vec, current_atom_coords, non_mol_vec,
+                           current_non_mol_coords);
         };
         doCommand(redo, undo, desc);
     } else {
         // issue a mergeable command
-        typedef std::tuple<std::vector<int>, std::vector<RDGeom::Point3D>,
-                           std::vector<RDGeom::Point3D>, std::vector<int>,
-                           std::vector<RDGeom::Point3D>,
-                           std::vector<RDGeom::Point3D>>
+        typedef std::tuple<
+            std::vector<const RDKit::Atom*>, std::vector<RDGeom::Point3D>,
+            std::vector<RDGeom::Point3D>,
+            std::vector<const NonMolecularObject*>,
+            std::vector<RDGeom::Point3D>, std::vector<RDGeom::Point3D>>
             MergeData;
         auto redo = [this](MergeData data) {
-            auto& [atom_tags, atom_coords, current_atom_coords, non_mol_tags,
+            auto& [atom_vec, atom_coords, current_atom_coords, non_mol_vec,
                    non_mol_coords, current_non_mol_coords] = data;
-            this->setCoordinates(atom_tags, atom_coords, non_mol_tags,
-                                 non_mol_coords);
+            setCoordinates(atom_vec, atom_coords, non_mol_vec, non_mol_coords);
         };
         auto undo = [this](MergeData data) {
-            auto& [atom_tags, atom_coords, current_atom_coords, non_mol_tags,
+            auto& [atom_vec, atom_coords, current_atom_coords, non_mol_vec,
                    non_mol_coords, current_non_mol_coords] = data;
-            this->setCoordinates(atom_tags, current_atom_coords, non_mol_tags,
-                                 current_non_mol_coords);
+            setCoordinates(atom_vec, current_atom_coords, non_mol_vec,
+                           current_non_mol_coords);
         };
         auto merge_func = [](MergeData this_data, MergeData other_data) {
             // update atom_coords
@@ -1129,7 +1113,7 @@ void MolModel::transformCoordinatesWithFunction(
             return this_data;
         };
         MergeData command_data = std::make_tuple(
-            atom_tags, atom_coords, current_atom_coords, non_mol_tags,
+            atom_vec, atom_coords, current_atom_coords, non_mol_vec,
             non_mol_coords, current_non_mol_coords);
         doMergeableCommand<MergeData>(redo, undo, merge_func,
                                       static_cast<int>(merge_id), command_data,
@@ -1540,22 +1524,22 @@ void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
     }
 
     auto new_bond = create_bond();
-    std::unordered_set<int> matching_bond_tags;
+    std::unordered_set<const RDKit::Bond*> matching_bonds;
     for (auto bond : bonds) {
         if (bond->getBondType() == new_bond->getBondType() &&
             bond->getBondDir() == new_bond->getBondDir()) {
-            matching_bond_tags.insert(getTagForBond(bond));
+            matching_bonds.insert(bond);
         }
     }
 
     auto cmd_func = [this, bonds, create_bond, flip_matching_bonds,
-                     matching_bond_tags]() {
+                     matching_bonds]() {
         for (auto bond : bonds) {
             mutateBondCommandFunc(getTagForBond(bond), create_bond);
         }
         if (flip_matching_bonds) {
-            for (auto bond_tag : matching_bond_tags) {
-                flipBondCommandFunc(bond_tag);
+            for (auto bond : matching_bonds) {
+                flipBondCommandFunc(bond);
             }
         }
     };
@@ -1570,10 +1554,8 @@ void MolModel::adjustChargeOnAtoms(
     }
     auto cmd_func = [this, increment_by, atoms]() {
         for (auto atom : atoms) {
-            // TODO: remove bookmarks as part of SKETCH-2135
-            auto atom_tag = getTagForAtom(atom);
-            auto mol_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-            mol_atom->setFormalCharge(atom->getFormalCharge() + increment_by);
+            getMutableAtom(atom)->setFormalCharge(atom->getFormalCharge() +
+                                                  increment_by);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Set atomic charge",
@@ -1588,11 +1570,8 @@ void MolModel::adjustRadicalElectronsOnAtoms(
     }
     auto cmd_func = [this, atoms, increment_by]() {
         for (auto atom : atoms) {
-            // TODO: remove bookmarks as part of SKETCH-2135
-            auto atom_tag = getTagForAtom(atom);
-            auto mol_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-            mol_atom->setNumRadicalElectrons(atom->getNumRadicalElectrons() +
-                                             increment_by);
+            getMutableAtom(atom)->setNumRadicalElectrons(
+                atom->getNumRadicalElectrons() + increment_by);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Set unpaired electrons",
@@ -1654,6 +1633,15 @@ const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
     // we use const_cast.  (See SHARED-9673.)
     return const_cast<RDKit::RWMol*>(&m_mol)->getUniqueBondWithBookmark(
         bond_tag);
+}
+
+RDKit::Atom* MolModel::getMutableAtom(const RDKit::Atom* const atom)
+{
+    return m_mol.getUniqueAtomWithBookmark(getTagForAtom(atom));
+}
+RDKit::Bond* MolModel::getMutableBond(const RDKit::Bond* const bond)
+{
+    return m_mol.getUniqueBondWithBookmark(getTagForBond(bond));
 }
 
 std::pair<std::unordered_set<const RDKit::Atom*>,
@@ -1951,50 +1939,41 @@ void MolModel::mutateBondCommandFunc(const int bond_tag,
     mutated_bond->setProp(TAG_PROPERTY, bond_tag);
 }
 
-void MolModel::setAtomMappingCommandFunc(
-    const std::unordered_set<int>& atom_tags, const int atom_mapping)
+void MolModel::flipBondCommandFunc(const RDKit::Bond* bond)
 {
     Q_ASSERT(m_allow_edits);
-    for (auto atom_tag : atom_tags) {
-        RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-        atom->setAtomMapNum(atom_mapping);
-    }
-}
-
-void MolModel::flipBondCommandFunc(const int bond_tag)
-{
-    Q_ASSERT(m_allow_edits);
-    RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
-    unsigned int orig_begin = bond->getBeginAtomIdx();
-    unsigned int orig_end = bond->getEndAtomIdx();
-    bond->setEndAtomIdx(orig_begin);
-    bond->setBeginAtomIdx(orig_end);
+    auto mol_bond = getMutableBond(bond);
+    unsigned int orig_begin = mol_bond->getBeginAtomIdx();
+    unsigned int orig_end = mol_bond->getEndAtomIdx();
+    mol_bond->setEndAtomIdx(orig_begin);
+    mol_bond->setBeginAtomIdx(orig_end);
 }
 
 void MolModel::setCoordinates(
-    const std::vector<int>& atom_tags,
+    const std::vector<const RDKit::Atom*>& atoms,
     const std::vector<RDGeom::Point3D>& atom_coords,
-    const std::vector<int>& non_mol_tags,
+    const std::vector<const NonMolecularObject*> non_molecular_objects,
     const std::vector<RDGeom::Point3D>& non_mol_coords)
 {
     Q_ASSERT(m_allow_edits);
-    if (atom_tags.size() != atom_coords.size() ||
-        non_mol_tags.size() != non_mol_coords.size()) {
+    if (atoms.size() != atom_coords.size() ||
+        non_molecular_objects.size() != non_mol_coords.size()) {
         throw std::invalid_argument("setCoordinates: tags and coords must have "
                                     "the same size");
     }
 
-    int cur_tag;
+    const RDKit::Atom* atom;
     RDGeom::Point3D cur_coords;
-    BOOST_FOREACH (boost::tie(cur_tag, cur_coords),
-                   boost::combine(atom_tags, atom_coords)) {
-        RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(cur_tag);
+    BOOST_FOREACH (boost::tie(atom, cur_coords),
+                   boost::combine(atoms, atom_coords)) {
         m_mol.getConformer().setAtomPos(atom->getIdx(), cur_coords);
     }
-    BOOST_FOREACH (boost::tie(cur_tag, cur_coords),
-                   boost::combine(non_mol_tags, non_mol_coords)) {
-        auto* non_mol_obj = m_tag_to_non_molecular_object.at(cur_tag);
-        non_mol_obj->setCoords(cur_coords);
+    const NonMolecularObject* non_mol_obj;
+    BOOST_FOREACH (boost::tie(non_mol_obj, cur_coords),
+                   boost::combine(non_molecular_objects, non_mol_coords)) {
+        auto cur_tag = non_mol_obj->getTag();
+        auto mutable_non_mol_obj = m_tag_to_non_molecular_object.at(cur_tag);
+        mutable_non_mol_obj->setCoords(cur_coords);
     }
 
     // update the brackets for the sgroups with the new coordinates; this is

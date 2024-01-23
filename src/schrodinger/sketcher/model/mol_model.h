@@ -886,6 +886,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     const RDKit::Bond* getBondFromTag(int bond_tag) const;
 
     /**
+     * Helpers that return a non-const pointer to the specified atom or bond
+     * by round-tripping through bookmarks of the model's underlying mol.
+     *
+     * Because MolModel's public APIs return const pointers to m_mol and its
+     * contents, the scene and all widgets only have access to these non-const
+     * pointers. When they are then passed back to MolModel (regardless of
+     * whether the method wants to change the underlying mol or not), we need
+     * to accept const pointers, confirm that it is in fact part of the
+     * underlying mol, and work on non-const pointers.
+     */
+    RDKit::Atom* getMutableAtom(const RDKit::Atom* const atom);
+    RDKit::Bond* getMutableBond(const RDKit::Bond* const bond);
+
+    /**
      * Get the atomic number and element name for the specified element.
      */
     std::pair<unsigned int, QString> getAddElementInfo(const Element& element);
@@ -1070,10 +1084,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * set new coordinates for a set of atoms and non-molecular objects.  This
      * method must only be called as part of an undo command.
      */
-    void setCoordinates(const std::vector<int>& atom_tags,
-                        const std::vector<RDGeom::Point3D>& atom_coords,
-                        const std::vector<int>& non_mol_tags,
-                        const std::vector<RDGeom::Point3D>& non_mol_coords);
+    void setCoordinates(
+        const std::vector<const RDKit::Atom*>& atoms,
+        const std::vector<RDGeom::Point3D>& atom_coords,
+        const std::vector<const NonMolecularObject*> non_molecular_objects,
+        const std::vector<RDGeom::Point3D>& non_mol_coords);
 
     /**
      * Remove the specified atoms and bonds from the molecule.  This method
@@ -1154,7 +1169,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Reverse an existing bond (i.e. swap the start and end atoms).  This
      * method must only be called as part of an undo command.
      */
-    void flipBondCommandFunc(const int bond_tag);
+    void flipBondCommandFunc(const RDKit::Bond* bond);
 
     /**
      * Clear the molecule.  This method must only be called as part of an undo
