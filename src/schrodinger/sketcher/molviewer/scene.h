@@ -184,7 +184,9 @@ class SKETCHER_API Scene : public QGraphicsScene
         QGraphicsSceneMouseEvent* event,
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
-        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups);
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+        const std::unordered_set<const NonMolecularObject*>&
+            non_molecular_objects);
 
     void viewportTranslationRequested(const QPointF& start_screen_position,
                                       const QPointF& end_screen_position);

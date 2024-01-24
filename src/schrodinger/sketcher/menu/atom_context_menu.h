@@ -5,6 +5,7 @@
 #include <QMenu>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/menu/abstract_context_menu.h"
 
 namespace RDKit
 {
@@ -25,23 +26,12 @@ enum class AtomQuery;
 enum class Element;
 enum class ModelKey;
 
-class SKETCHER_API ModifyAtomsMenu : public QMenu
+class SKETCHER_API ModifyAtomsMenu : public AbstractContextMenu
 {
     Q_OBJECT
   public:
     ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
                     QWidget* parent = nullptr);
-
-    /**
-     * Update the atoms associated with the context menu actions, updating
-     * enabled actions as appropriate.
-     */
-    void setContextAtoms(const std::unordered_set<const RDKit::Atom*>& atoms);
-
-    /**
-     * Overrides the show event to also call updateActionsEnabled
-     */
-    void showEvent(QShowEvent* event);
 
   signals:
     /**
@@ -116,14 +106,13 @@ class SKETCHER_API ModifyAtomsMenu : public QMenu
     QAction* m_add_remove_explicit_h_act = nullptr;
     QAction* m_add_unpaired_electrons_act = nullptr;
     QAction* m_remove_unpaired_electrons_act = nullptr;
-    std::unordered_set<const RDKit::Atom*> m_atoms;
 
-  protected slots:
+  protected:
     /**
      * Disable menu actions that don't make sense given the selected atoms.
      * That is, disable removing unpaired electrons if none are present, etc.
      */
-    virtual void updateActionsEnabled();
+    virtual void updateActions();
 
     void onSetAtomModelPinged(ModelKey key, QVariant value);
 
@@ -131,12 +120,12 @@ class SKETCHER_API ModifyAtomsMenu : public QMenu
     QMenu* createElementMenu();
 };
 
-class ReplaceAtomsWithMenu : public QMenu
+class ReplaceAtomsWithMenu : public AbstractContextMenu
 {
     Q_OBJECT
   public:
     ReplaceAtomsWithMenu(MolModel* mol_model, QWidget* parent = nullptr);
-    void showEvent(QShowEvent* event);
+
     QAction* m_allowed_list_act = nullptr;
 
   signals:
@@ -145,25 +134,29 @@ class ReplaceAtomsWithMenu : public QMenu
     void newRGroupRequested();
     void existingRGroupRequested(unsigned int rgroup_number);
 
+  protected:
+    virtual void updateActions();
+
   private:
     QMenu* createWildcardMenu();
     ExistingRGroupMenu* m_existing_rgroup_menu = nullptr;
     MolModel* m_mol_model = nullptr;
 };
 
-class SKETCHER_API ExistingRGroupMenu : public QMenu
+class SKETCHER_API ExistingRGroupMenu : public AbstractContextMenu
 {
     Q_OBJECT
   public:
     ExistingRGroupMenu(MolModel* model, QWidget* parent = nullptr);
-    void showEvent(QShowEvent* event);
 
   signals:
     void existingRGroupRequested(unsigned int rgroup_number);
 
+  protected:
+    virtual void updateActions();
+
   private:
     MolModel* m_mol_model = nullptr;
-    void updateItems();
 };
 
 class AtomContextMenu : public ModifyAtomsMenu
@@ -177,8 +170,8 @@ class AtomContextMenu : public ModifyAtomsMenu
     void bracketSubgroupDialogRequested();
     void deleteRequested(const std::unordered_set<const RDKit::Atom*>& atoms);
 
-  protected slots:
-    void updateActionsEnabled();
+  protected:
+    virtual void updateActions();
 
   private:
     QAction* m_add_brackets_act = nullptr;

@@ -3,6 +3,7 @@
 #include <QMenu>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/menu/abstract_context_menu.h"
 
 namespace schrodinger
 {
@@ -20,7 +21,7 @@ class MolModel;
 class SketcherModel;
 enum class SceneSubset;
 
-class SKETCHER_API SelectionContextMenu : public QMenu
+class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
 {
     Q_OBJECT
   public:
@@ -45,13 +46,12 @@ class SKETCHER_API SelectionContextMenu : public QMenu
     void existingRGroupRequested(unsigned int rgroup_number);
 
   protected:
-    void showEvent(QShowEvent* event) override;
     SketcherModel* m_sketcher_model = nullptr;
     CutCopyActionManager* m_cut_copy_actions = nullptr;
     QAction* m_variable_bond_action = nullptr;
 
   protected slots:
-    virtual void updateActionsEnabled();
+    virtual void updateActions();
 
   private:
     QMenu* createAddToSelectionMenu();

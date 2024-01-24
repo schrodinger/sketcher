@@ -1,10 +1,7 @@
 #pragma once
 
-#include <unordered_set>
-
-#include <QMenu>
-
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/menu/abstract_context_menu.h"
 
 namespace schrodinger
 {
@@ -20,7 +17,7 @@ class CutCopyActionManager;
 class SketcherModel;
 enum class SceneSubset;
 
-class SKETCHER_API BackgroundContextMenu : public QMenu
+class SKETCHER_API BackgroundContextMenu : public AbstractContextMenu
 {
     Q_OBJECT
   public:
@@ -54,7 +51,7 @@ class SKETCHER_API BackgroundContextMenu : public QMenu
      * Update actions to be enabled or checked depending on the state of the
      * model.
      */
-    void updateActions();
+    virtual void updateActions();
 };
 
 } // namespace sketcher

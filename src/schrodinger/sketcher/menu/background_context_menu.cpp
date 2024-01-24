@@ -1,7 +1,5 @@
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 
-#include <QActionGroup>
-
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -15,7 +13,7 @@ namespace sketcher
 
 BackgroundContextMenu::BackgroundContextMenu(SketcherModel* model,
                                              QWidget* parent) :
-    QMenu(parent),
+    AbstractContextMenu(parent),
     m_sketcher_model(model)
 {
     // Add actions to the menu
@@ -49,14 +47,6 @@ BackgroundContextMenu::BackgroundContextMenu(SketcherModel* model,
     addAction("Clear Sketcher", this, &BackgroundContextMenu::clearRequested);
     connect(m_cut_copy_manager, &CutCopyActionManager::copyRequested, this,
             &BackgroundContextMenu::copyRequested);
-
-    connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
-            &BackgroundContextMenu::updateActions);
-    connect(m_sketcher_model, &SketcherModel::interactiveItemsChanged, this,
-            &BackgroundContextMenu::updateActions);
-    connect(m_sketcher_model, &SketcherModel::undoStackDataChanged, this,
-            &BackgroundContextMenu::updateActions);
-    updateActions();
 }
 
 void BackgroundContextMenu::updateActions()

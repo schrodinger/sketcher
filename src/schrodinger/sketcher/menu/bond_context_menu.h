@@ -5,6 +5,7 @@
 #include <QMenu>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/menu/abstract_context_menu.h"
 
 namespace RDKit
 {
@@ -18,32 +19,15 @@ namespace sketcher
 
 enum class BondTool;
 
-class SKETCHER_API ModifyBondsMenu : public QMenu
+class SKETCHER_API ModifyBondsMenu : public AbstractContextMenu
 {
     Q_OBJECT
   public:
     ModifyBondsMenu(QWidget* parent = nullptr);
-
-    /**
-     * Update the bonds associated with the context menu actions, updating
-     * enabled actions as appropriate.
-     *
-     * These items are pointers to components of the model as derived from
-     * the graphical objects in the scene. We expect these context menus to:
-     * 1. be populated with these references when shown
-     * 2. block all other interactions with the scene while shown
-     * 3. immediately hidden when an action is clicked
-     * In other words, we expect that the model will not change for the
-     * duration of the context menu being shown.
-     */
-    void setContextBonds(const std::unordered_set<const RDKit::Bond*>& bonds);
-
     /**
      * Set whether the flip action is visible.
      */
     void setFlipVisible(bool b);
-    // TODO: remove when enabling molviewer
-    void setFlipEnabled(bool b);
 
   signals:
     void
@@ -52,12 +36,16 @@ class SKETCHER_API ModifyBondsMenu : public QMenu
     void flipRequested(const std::unordered_set<const RDKit::Bond*>& bonds);
 
   protected:
-    std::unordered_set<const RDKit::Bond*> m_bonds;
+    QAction* m_flip_action = nullptr;
 
   private:
+    /**
+     * Disable menu actions that don't make sense given the selected bonds
+     */
+    virtual void updateActions();
+
     QMenu* createOtherTypeMenu();
     QMenu* createQueryMenu();
-    QAction* m_flip_action = nullptr;
 };
 
 class BondContextMenu : public ModifyBondsMenu

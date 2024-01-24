@@ -11,7 +11,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
+ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : AbstractContextMenu(parent)
 {
     auto addBondAction = [this](auto text, auto type) {
         addAction(text, this,
@@ -33,29 +33,21 @@ ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : QMenu(parent)
     addMenu(createQueryMenu());
 }
 
-void ModifyBondsMenu::setContextBonds(
-    const std::unordered_set<const RDKit::Bond*>& bonds)
+void ModifyBondsMenu::updateActions()
 {
-    m_bonds = bonds;
-
     // exactly 1 bonds should be selected and only non-ring bonds can be
     // flipped to avoid distorting the structure
     auto is_in_ring = [](auto bond) {
         auto& mol = bond->getOwningMol();
         return mol.getRingInfo()->numBondRings(bond->getIdx()) > 0;
     };
-    auto flip_enabled = bonds.size() == 1 && !is_in_ring(*bonds.begin());
+    auto flip_enabled = m_bonds.size() == 1 && !is_in_ring(*m_bonds.begin());
     m_flip_action->setEnabled(flip_enabled);
 }
 
 void ModifyBondsMenu::setFlipVisible(bool b)
 {
     m_flip_action->setVisible(b);
-}
-
-void ModifyBondsMenu::setFlipEnabled(bool b)
-{
-    m_flip_action->setEnabled(b);
 }
 
 QMenu* ModifyBondsMenu::createOtherTypeMenu()

@@ -22,7 +22,7 @@ class TestModifyAtomsMenu : public ModifyAtomsMenu
   public:
     TestModifyAtomsMenu(SketcherModel* model, MolModel* mol_model) :
         ModifyAtomsMenu(model, mol_model){};
-    using ModifyAtomsMenu::updateActionsEnabled;
+    using ModifyAtomsMenu::updateActions;
 };
 
 /**
@@ -30,7 +30,7 @@ class TestModifyAtomsMenu : public ModifyAtomsMenu
  */
 int get_disabled_action_count(TestModifyAtomsMenu& menu)
 {
-    menu.updateActionsEnabled();
+    menu.updateActions();
     int disabled_count = 0;
     for (auto action : menu.actions()) {
         if (!action->isEnabled()) {
@@ -77,7 +77,7 @@ $$$$
     std::unordered_set<const RDKit::Atom*> atoms = {c_atom, a_atom, r_atom};
 
     // Without anything selected, the actions should all be disabled
-    menu.setContextAtoms({});
+    menu.setContextItems({}, {}, {}, {});
     int disabled_count = get_disabled_action_count(menu);
     BOOST_TEST(disabled_count == 6);
 
@@ -96,13 +96,13 @@ $$$$
             exp_disabled_count = 1;
         }
 
-        menu.setContextAtoms({atom});
+        menu.setContextItems({atom}, {}, {}, {});
         disabled_count = get_disabled_action_count(menu);
         BOOST_TEST(disabled_count == exp_disabled_count);
     }
 
     // Test after altering the state of the element atom
-    menu.setContextAtoms({c_atom});
+    menu.setContextItems({c_atom}, {}, {}, {});
     for (unsigned int unpaired_e_count = MIN_UNPAIRED_E;
          unpaired_e_count <= MAX_UNPAIRED_E; ++unpaired_e_count) {
         c_atom->setNumRadicalElectrons(unpaired_e_count);
@@ -119,11 +119,11 @@ $$$$
                 1 + unpaired_at_extreme + charge_at_extreme;
 
             // Assign all objects in the scene to the context menu
-            menu.setContextAtoms(atoms);
+            menu.setContextItems(atoms, {}, {}, {});
             disabled_count = get_disabled_action_count(menu);
             BOOST_TEST(disabled_count == exp_disabled_count);
 
-            menu.setContextAtoms({c_atom});
+            menu.setContextItems({c_atom}, {}, {}, {});
             --exp_disabled_count;
             disabled_count = get_disabled_action_count(menu);
             BOOST_TEST(disabled_count == exp_disabled_count);

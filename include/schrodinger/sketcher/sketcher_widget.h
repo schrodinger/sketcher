@@ -172,7 +172,9 @@ class SKETCHER_API SketcherWidget : public QWidget
         QGraphicsSceneMouseEvent* event,
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
-        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups);
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+        const std::unordered_set<const NonMolecularObject*>&
+            non_molecular_objects);
 
     /**
      * Override QWidget methods to handle keystrokes
@@ -199,7 +201,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @param atoms The atoms, if any, to apply the action to
      * @param bonds The bonds, if any, to apply the action to
      * @param sgroups The substance groups, if any, to apply the action to
-     * @param nonmolecular_objects The non-molecular objects (e.g. a reaction
+     * @param non_molecular_objects The non-molecular objects (e.g. a reaction
      * arrow or plus sign), if any, to apply the action to
      */
     void applyModelValuePingToTargets(
@@ -208,7 +210,7 @@ class SKETCHER_API SketcherWidget : public QWidget
         const std::unordered_set<const RDKit::Bond*> bonds,
         const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
         const std::unordered_set<const NonMolecularObject*>
-            nonmolecular_objects);
+            non_molecular_objects);
 };
 
 } // namespace sketcher

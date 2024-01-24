@@ -20,7 +20,7 @@ namespace sketcher
 SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
                                            MolModel* mol_model,
                                            QWidget* parent) :
-    QMenu(parent),
+    AbstractContextMenu(parent),
     m_sketcher_model(model)
 {
     m_cut_copy_actions = new CutCopyActionManager(this);
@@ -51,13 +51,7 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
             &SelectionContextMenu::copyRequested);
 }
 
-void SelectionContextMenu::showEvent(QShowEvent* event)
-{
-    QMenu::showEvent(event);
-    updateActionsEnabled();
-}
-
-void SelectionContextMenu::updateActionsEnabled()
+void SelectionContextMenu::updateActions()
 {
     auto same_mol = [](const auto& atoms) {
         auto mol = atoms.front()->getOwningMol();

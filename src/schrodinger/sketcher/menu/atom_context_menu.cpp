@@ -19,7 +19,7 @@ namespace sketcher
 
 ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
                                  QWidget* parent) :
-    QMenu(parent),
+    AbstractContextMenu(parent),
     m_sketcher_model(model)
 {
     // Create new sketcher model for the set atom menu widget.
@@ -70,28 +70,13 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
 
     addMenu(m_replace_with_menu);
 
-    connect(m_sketcher_model, &SketcherModel::selectionChanged, this,
-            &ModifyAtomsMenu::updateActionsEnabled);
     connect(m_element_widget, &SetAtomMenuWidget::anyButtonClicked, this,
             &QMenu::close);
     connect(m_set_atom_model, &SketcherModel::valuePinged, this,
             &ModifyAtomsMenu::onSetAtomModelPinged);
 }
 
-void ModifyAtomsMenu::setContextAtoms(
-    const std::unordered_set<const RDKit::Atom*>& atoms)
-{
-    m_atoms = atoms;
-    updateActionsEnabled();
-}
-
-void ModifyAtomsMenu::showEvent(QShowEvent* event)
-{
-    updateActionsEnabled();
-    QMenu::showEvent(event);
-}
-
-void ModifyAtomsMenu::updateActionsEnabled()
+void ModifyAtomsMenu::updateActions()
 {
     auto atoms = m_atoms;
 
@@ -178,7 +163,7 @@ QMenu* ModifyAtomsMenu::createElementMenu()
 
 ReplaceAtomsWithMenu::ReplaceAtomsWithMenu(MolModel* mol_model,
                                            QWidget* parent) :
-    QMenu(parent),
+    AbstractContextMenu(parent),
     m_mol_model(mol_model)
 {
     setTitle("Replace Atoms with");
@@ -199,11 +184,10 @@ ReplaceAtomsWithMenu::ReplaceAtomsWithMenu(MolModel* mol_model,
             &ReplaceAtomsWithMenu::existingRGroupRequested);
 }
 
-void ReplaceAtomsWithMenu::showEvent(QShowEvent* event)
+void ReplaceAtomsWithMenu::updateActions()
 {
     auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
     m_existing_rgroup_menu->setEnabled(!rgroup_numbers.empty());
-    QMenu::showEvent(event);
 }
 
 QMenu* ReplaceAtomsWithMenu::createWildcardMenu()
@@ -228,19 +212,13 @@ QMenu* ReplaceAtomsWithMenu::createWildcardMenu()
 }
 
 ExistingRGroupMenu::ExistingRGroupMenu(MolModel* mol_model, QWidget* parent) :
-    QMenu(parent),
+    AbstractContextMenu(parent),
     m_mol_model(mol_model)
 {
     setTitle("Existing R-Group");
 }
 
-void ExistingRGroupMenu::showEvent(QShowEvent* event)
-{
-    updateItems();
-    QMenu::showEvent(event);
-}
-
-void ExistingRGroupMenu::updateItems()
+void ExistingRGroupMenu::updateActions()
 {
     clear();
     auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
@@ -269,7 +247,7 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, MolModel* mol_model,
     addAction("Delete", this, [this]() { emit deleteRequested(m_atoms); });
 }
 
-void AtomContextMenu::updateActionsEnabled()
+void AtomContextMenu::updateActions()
 {
     auto has_two_bonds = [](auto atom) {
         auto [begin, end] = atom->getOwningMol().getAtomBonds(atom);
@@ -278,7 +256,7 @@ void AtomContextMenu::updateActionsEnabled()
     bool enable = m_atoms.size() == 1 && has_two_bonds(*m_atoms.begin());
     m_add_brackets_act->setEnabled(enable);
 
-    ModifyAtomsMenu::updateActionsEnabled();
+    ModifyAtomsMenu::updateActions();
 }
 
 } // namespace sketcher

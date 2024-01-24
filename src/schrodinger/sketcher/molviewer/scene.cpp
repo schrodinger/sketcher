@@ -416,9 +416,10 @@ void Scene::onMouseLeave()
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
     auto pos = event->scenePos();
-    auto [atoms, bonds, sgroups, nonmolecular_objects] =
+    auto [atoms, bonds, sgroups, non_molecular_objects] =
         getModelObjects(SceneSubset::HOVERED, &pos);
-    emit showContextMenuRequested(event, atoms, bonds, sgroups);
+    emit showContextMenuRequested(event, atoms, bonds, sgroups,
+                                  non_molecular_objects);
 }
 
 std::unordered_set<QGraphicsItem*> Scene::getSelectedInteractiveItems() const
@@ -474,7 +475,7 @@ Scene::getModelObjects(SceneSubset subset, QPointF* pos) const
     std::unordered_set<const RDKit::Atom*> atoms;
     std::unordered_set<const RDKit::Bond*> bonds;
     std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
-    std::unordered_set<const NonMolecularObject*> nonmolecular_objects;
+    std::unordered_set<const NonMolecularObject*> non_molecular_objects;
     for (auto item : items) {
         if (const auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             atoms.insert(atom_item->getAtom());
@@ -484,11 +485,11 @@ Scene::getModelObjects(SceneSubset subset, QPointF* pos) const
         // SKETCH-2011: extract RDKit::SubstanceGroup from SGroupItems
         else if (auto nonmolecular_item =
                      qgraphicsitem_cast<NonMolecularItem*>(item)) {
-            nonmolecular_objects.insert(
+            non_molecular_objects.insert(
                 nonmolecular_item->getNonMolecularObject());
         }
     }
-    return std::make_tuple(atoms, bonds, sgroups, nonmolecular_objects);
+    return std::make_tuple(atoms, bonds, sgroups, non_molecular_objects);
 }
 
 AbstractGraphicsItem*

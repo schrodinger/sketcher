@@ -477,24 +477,26 @@ void SketcherWidget::showContextMenu(
     QGraphicsSceneMouseEvent* event,
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
-    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups)
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
-    QMenu* menu = nullptr;
+    AbstractContextMenu* menu = nullptr;
     if (sgroups.size()) {
         throw std::runtime_error("sgroup context menu not implemented");
     } else if (atoms.size() && bonds.size()) {
-        m_selection_context_menu->m_modify_atoms_menu->setContextAtoms(atoms);
-        m_selection_context_menu->m_modify_bonds_menu->setContextBonds(bonds);
+        m_selection_context_menu->m_modify_atoms_menu->setContextItems(
+            atoms, bonds, sgroups, non_molecular_objects);
+        m_selection_context_menu->m_modify_bonds_menu->setContextItems(
+            atoms, bonds, sgroups, non_molecular_objects);
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
-        m_atom_context_menu->setContextAtoms(atoms);
         menu = m_atom_context_menu;
     } else if (bonds.size()) {
-        m_bond_context_menu->setContextBonds(bonds);
         menu = m_bond_context_menu;
     } else {
         menu = m_background_context_menu;
     }
+    menu->setContextItems(atoms, bonds, sgroups, non_molecular_objects);
 
     menu->move(event->screenPos());
     auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
@@ -522,11 +524,11 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
     QWidget::keyPressEvent(event);
     auto cursor_pos =
         m_ui->view->mapToScene(m_ui->view->mapFromGlobal(QCursor::pos()));
-    auto [atoms, bonds, sgroups, nonmolecular_objects] =
+    auto [atoms, bonds, sgroups, non_molecular_objects] =
         m_scene->getModelObjects(SceneSubset::SELECTED_OR_HOVERED, &cursor_pos);
     bool has_target_atoms = !atoms.empty();
     bool has_target_bonds = !bonds.empty();
-    bool has_target_nonmolecular_objects = !nonmolecular_objects.empty();
+    bool has_target_non_molecular_objects = !non_molecular_objects.empty();
 
     // Determine these values before interacting with model
     bool has_targets = false;
@@ -540,7 +542,7 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
             kv_pair = {ModelKey::DRAW_TOOL,
                        QVariant::fromValue(DrawTool::ERASE)};
             has_targets = has_target_atoms || has_target_bonds ||
-                          has_target_nonmolecular_objects;
+                          has_target_non_molecular_objects;
             break;
         }
 
@@ -620,7 +622,7 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
     // Finally, interact with models
     if (has_targets) {
         applyModelValuePingToTargets(kv_pair.first, kv_pair.second, atoms,
-                                     bonds, sgroups, nonmolecular_objects);
+                                     bonds, sgroups, non_molecular_objects);
     } else {
         kv_pairs.emplace(kv_pair.first, kv_pair.second);
         m_sketcher_model->setValues(kv_pairs);
@@ -633,10 +635,10 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
     if (!view) {
         return;
     }
-    auto [atoms, bonds, sgroups, nonmolecular_objects] =
+    auto [atoms, bonds, sgroups, non_molecular_objects] =
         m_scene->getModelObjects(SceneSubset::SELECTION);
     applyModelValuePingToTargets(key, value, atoms, bonds, sgroups,
-                                 nonmolecular_objects);
+                                 non_molecular_objects);
 }
 
 void SketcherWidget::applyModelValuePingToTargets(
@@ -644,7 +646,7 @@ void SketcherWidget::applyModelValuePingToTargets(
     const std::unordered_set<const RDKit::Atom*> atoms,
     const std::unordered_set<const RDKit::Bond*> bonds,
     const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
-    const std::unordered_set<const NonMolecularObject*> nonmolecular_objects)
+    const std::unordered_set<const NonMolecularObject*> non_molecular_objects)
 {
     switch (key) {
         case ModelKey::ELEMENT: {
@@ -672,7 +674,7 @@ void SketcherWidget::applyModelValuePingToTargets(
             auto tool = value.value<DrawTool>();
             if (tool == DrawTool::ERASE) {
                 m_mol_model->remove(atoms, bonds, sgroups,
-                                    nonmolecular_objects);
+                                    non_molecular_objects);
             } else if (tool == DrawTool::EXPLICIT_H) {
                 m_mol_model->toggleExplicitHsOnAtoms(atoms);
             }

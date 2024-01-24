@@ -51,22 +51,26 @@ BOOST_AUTO_TEST_CASE(test_updateActions_deprecated)
     TestBackgroundContextMenu menu(model);
     scene.connectContextMenu(menu);
 
+    menu.updateActions();
     BOOST_TEST(!menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, false);
 
     scene.importText("CCCC");
-    emit model->interactiveItemsChanged();
+    // Use updateActions() as a placeholder for showEvent()
+    menu.updateActions();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, true);
 
     scene.undo();
+    menu.updateActions();
     BOOST_TEST(!menu.m_undo_act->isEnabled());
     BOOST_TEST(menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, false);
 
     scene.redo();
+    menu.updateActions();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, true);
@@ -82,22 +86,25 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     TestSketcherWidget sk;
     TestBackgroundContextMenu menu(sk.m_sketcher_model);
 
+    menu.updateActions();
     BOOST_TEST(!menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, false);
 
     sk.addFromString("CCCC");
-    emit sk.m_sketcher_model->interactiveItemsChanged();
+    menu.updateActions();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, true);
 
     sk.m_undo_stack->undo();
+    menu.updateActions();
     BOOST_TEST(!menu.m_undo_act->isEnabled());
     BOOST_TEST(menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, false);
 
     sk.m_undo_stack->redo();
+    menu.updateActions();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, true);
