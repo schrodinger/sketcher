@@ -95,5 +95,15 @@ get_bond_type_and_query_label(const RDKit::Bond* const bond);
 SKETCHER_API std::string
 get_label_for_bond_query(const RDKit::Bond::QUERYBOND_QUERY* const query);
 
+/**
+ * @return whether there's at least one implicit H on any of the specified
+ * atoms.
+ * @param atoms The atoms to consider.
+ * @note This method is used to determine whether the set needs to have
+ * explicit Hs added or removed.
+ */
+SKETCHER_API bool
+has_any_implicit_Hs(const std::unordered_set<const RDKit::Atom*>& atoms);
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -7,6 +7,7 @@
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 using ::schrodinger::rdkit_extensions::Format;
@@ -17,13 +18,14 @@ namespace sketcher
 {
 
 SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
+                                           MolModel* mol_model,
                                            QWidget* parent) :
     QMenu(parent),
     m_sketcher_model(model)
 {
     m_cut_copy_actions = new CutCopyActionManager(this);
     m_cut_copy_actions->setModel(model);
-    m_modify_atoms_menu = new ModifyAtomsMenu(model, this);
+    m_modify_atoms_menu = new ModifyAtomsMenu(model, mol_model, this);
     m_modify_bonds_menu = new ModifyBondsMenu(this);
     m_modify_bonds_menu->setFlipVisible(false);
 
@@ -38,8 +40,8 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
         addAction("Flip", this, &SelectionContextMenu::flipRequested);
     addMenu(m_modify_atoms_menu);
     addMenu(m_modify_bonds_menu);
-    addMenu(createAddToSelectionMenu(model));
-    addMenu(createReplaceSelectionWithMenu(model));
+    addMenu(createAddToSelectionMenu());
+    addMenu(createReplaceSelectionWithMenu(mol_model));
     addSeparator();
     addAction("Delete", this, &SelectionContextMenu::deleteRequested);
 
@@ -79,7 +81,7 @@ void SelectionContextMenu::setFlipEnabled(bool b)
     m_flip_action->setEnabled(b);
 }
 
-QMenu* SelectionContextMenu::createAddToSelectionMenu(SketcherModel* model)
+QMenu* SelectionContextMenu::createAddToSelectionMenu()
 {
     auto add_to_selection_menu = new QMenu("Add to Selection", this);
     m_bracket_group_action = add_to_selection_menu->addAction(
@@ -91,13 +93,12 @@ QMenu* SelectionContextMenu::createAddToSelectionMenu(SketcherModel* model)
     return add_to_selection_menu;
 }
 
-QMenu*
-SelectionContextMenu::createReplaceSelectionWithMenu(SketcherModel* model)
+QMenu* SelectionContextMenu::createReplaceSelectionWithMenu(MolModel* mol_model)
 {
     auto replace_selection_menu = new QMenu("Replace Selection with", this);
 
     auto existing_rgroup_menu =
-        new ExistingRGroupMenu(model, replace_selection_menu);
+        new ExistingRGroupMenu(mol_model, replace_selection_menu);
 
     connect(existing_rgroup_menu, &ExistingRGroupMenu::existingRGroupRequested,
             this, &SelectionContextMenu::existingRGroupRequested);

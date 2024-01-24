@@ -593,16 +593,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                      const RDKit::Atom* const core_start_atom = nullptr);
 
     /**
-     * @return whether there's at least one implicit H on any of the specified
-     * atoms.
-     * @param atoms The atoms to consider.
-     * @note This method is used to determine whether the set needs to have
-     * explicit Hs added or removed.
-     */
-    bool
-    hasAnyImplicitHs(const std::unordered_set<const RDKit::Atom*>& atoms) const;
-
-    /**
      * Set explicit hydrogens on or off for the specified atoms
      * @param atoms The atoms to consider. If empty, all atoms will be used.
      * @param action wether to add or remove explicit Hs

@@ -16,6 +16,7 @@ namespace sketcher
 class CutCopyActionManager;
 class ModifyAtomsMenu;
 class ModifyBondsMenu;
+class MolModel;
 class SketcherModel;
 enum class SceneSubset;
 
@@ -23,7 +24,8 @@ class SKETCHER_API SelectionContextMenu : public QMenu
 {
     Q_OBJECT
   public:
-    SelectionContextMenu(SketcherModel* model, QWidget* parent = nullptr);
+    SelectionContextMenu(SketcherModel* model, MolModel* mol_model,
+                         QWidget* parent = nullptr);
 
     void setConvertToBracketGroupEnabled(bool b);
     void setFlipEnabled(bool b);
@@ -52,8 +54,8 @@ class SKETCHER_API SelectionContextMenu : public QMenu
     virtual void updateActionsEnabled();
 
   private:
-    QMenu* createAddToSelectionMenu(SketcherModel* model);
-    QMenu* createReplaceSelectionWithMenu(SketcherModel* model);
+    QMenu* createAddToSelectionMenu();
+    QMenu* createReplaceSelectionWithMenu(MolModel* mol_model);
     QAction* m_bracket_group_action = nullptr;
     QAction* m_flip_action = nullptr;
 };

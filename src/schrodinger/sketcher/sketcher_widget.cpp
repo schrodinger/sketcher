@@ -104,9 +104,11 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connectSideBarSlots();
 
     // Create and connect the context menus
-    m_atom_context_menu = new AtomContextMenu(m_sketcher_model, this);
+    m_atom_context_menu =
+        new AtomContextMenu(m_sketcher_model, m_mol_model, this);
     m_bond_context_menu = new BondContextMenu(this);
-    m_selection_context_menu = new SelectionContextMenu(m_sketcher_model, this);
+    m_selection_context_menu =
+        new SelectionContextMenu(m_sketcher_model, m_mol_model, this);
     m_background_context_menu =
         new BackgroundContextMenu(m_sketcher_model, this);
     connectContextMenu(*m_atom_context_menu);

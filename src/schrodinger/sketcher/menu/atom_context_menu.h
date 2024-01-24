@@ -17,6 +17,7 @@ namespace sketcher
 {
 
 class ExistingRGroupMenu;
+class MolModel;
 class ReplaceAtomsWithMenu;
 class SetAtomMenuWidget;
 class SketcherModel;
@@ -28,7 +29,8 @@ class SKETCHER_API ModifyAtomsMenu : public QMenu
 {
     Q_OBJECT
   public:
-    ModifyAtomsMenu(SketcherModel* model, QWidget* parent = nullptr);
+    ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
+                    QWidget* parent = nullptr);
 
     /**
      * Update the atoms associated with the context menu actions, updating
@@ -133,7 +135,7 @@ class ReplaceAtomsWithMenu : public QMenu
 {
     Q_OBJECT
   public:
-    ReplaceAtomsWithMenu(SketcherModel* model, QWidget* parent = nullptr);
+    ReplaceAtomsWithMenu(MolModel* mol_model, QWidget* parent = nullptr);
     void showEvent(QShowEvent* event);
     QAction* m_allowed_list_act = nullptr;
 
@@ -146,21 +148,21 @@ class ReplaceAtomsWithMenu : public QMenu
   private:
     QMenu* createWildcardMenu();
     ExistingRGroupMenu* m_existing_rgroup_menu = nullptr;
-    SketcherModel* m_sketcher_model = nullptr;
+    MolModel* m_mol_model = nullptr;
 };
 
 class SKETCHER_API ExistingRGroupMenu : public QMenu
 {
     Q_OBJECT
   public:
-    ExistingRGroupMenu(SketcherModel* model, QWidget* parent = nullptr);
+    ExistingRGroupMenu(MolModel* model, QWidget* parent = nullptr);
     void showEvent(QShowEvent* event);
 
   signals:
     void existingRGroupRequested(unsigned int rgroup_number);
 
   private:
-    SketcherModel* m_sketcher_model = nullptr;
+    MolModel* m_mol_model = nullptr;
     void updateItems();
 };
 
@@ -168,7 +170,8 @@ class AtomContextMenu : public ModifyAtomsMenu
 {
     Q_OBJECT
   public:
-    AtomContextMenu(SketcherModel* model, QWidget* parent = nullptr);
+    AtomContextMenu(SketcherModel* model, MolModel* mol_model,
+                    QWidget* parent = nullptr);
 
   signals:
     void bracketSubgroupDialogRequested();

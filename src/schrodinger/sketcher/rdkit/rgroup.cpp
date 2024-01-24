@@ -88,14 +88,15 @@ bool is_r_group(const RDKit::Atom* const atom)
 
 std::vector<unsigned int> get_all_r_group_numbers(const RDKit::ROMol* const mol)
 {
-    std::vector<unsigned int> r_groups;
+    std::unordered_set<unsigned int> r_groups;
     for (auto* atom : mol->atoms()) {
         if (auto r_group_num = rdkit_extensions::get_r_group_number(atom)) {
-            r_groups.push_back(r_group_num.value());
+            r_groups.insert(r_group_num.value());
         }
     }
-    std::sort(r_groups.begin(), r_groups.end());
-    return r_groups;
+    std::vector<unsigned int> sorted_r_groups(r_groups.begin(), r_groups.end());
+    std::sort(sorted_r_groups.begin(), sorted_r_groups.end());
+    return sorted_r_groups;
 }
 
 std::vector<unsigned int>

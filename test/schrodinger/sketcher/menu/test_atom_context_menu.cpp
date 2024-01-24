@@ -20,7 +20,8 @@ namespace sketcher
 class TestModifyAtomsMenu : public ModifyAtomsMenu
 {
   public:
-    TestModifyAtomsMenu(SketcherModel* model) : ModifyAtomsMenu(model){};
+    TestModifyAtomsMenu(SketcherModel* model, MolModel* mol_model) :
+        ModifyAtomsMenu(model, mol_model){};
     using ModifyAtomsMenu::updateActionsEnabled;
 };
 
@@ -45,7 +46,9 @@ int get_disabled_action_count(TestModifyAtomsMenu& menu)
 BOOST_AUTO_TEST_CASE(test_actions_enabled)
 {
     SketcherModel model;
-    auto menu = TestModifyAtomsMenu(&model);
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    auto menu = TestModifyAtomsMenu(&model, &mol_model);
 
     // Element, query, and an R group
     auto mdl = R"(

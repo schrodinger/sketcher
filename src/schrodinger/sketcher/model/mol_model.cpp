@@ -849,16 +849,6 @@ void MolModel::setAtomMapping(
     doCommandUsingSnapshots(redo, "Set mapping number", WhatChanged::MOLECULE);
 }
 
-bool MolModel::hasAnyImplicitHs(
-    const std::unordered_set<const RDKit::Atom*>& atoms) const
-{
-    // RDKit calls some hydrogens "explicit" but they are not really
-    // explicit in the sense of being in the graph and we need to count them
-    // in. We count all hydrogens that are not in the graph as implicit.
-    return std::any_of(atoms.begin(), atoms.end(),
-                       [](auto atom) { return atom->getTotalNumHs() > 0; });
-}
-
 void MolModel::updateExplicitHs(ExplicitHActions action,
                                 std::unordered_set<const RDKit::Atom*> atoms)
 {
@@ -871,7 +861,7 @@ void MolModel::updateExplicitHs(ExplicitHActions action,
             auto all_atoms = m_mol.atoms();
             atoms_to_check.insert(all_atoms.begin(), all_atoms.end());
         }
-        add_hs = hasAnyImplicitHs(atoms_to_check);
+        add_hs = has_any_implicit_Hs(atoms_to_check);
     } else {
         add_hs = action == ExplicitHActions::ADD;
     }

@@ -5,16 +5,20 @@
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/widget/set_atom_widget.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/widget/set_atom_widget.h"
+
 namespace schrodinger
 {
 namespace sketcher
 {
 
-ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
+ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
+                                 QWidget* parent) :
     QMenu(parent),
     m_sketcher_model(model)
 {
@@ -23,7 +27,7 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, QWidget* parent) :
     // Assign non-atom draw tool so that none of the buttons in the set atoms
     // menu widget will be highlighted.
     m_set_atom_model->setValue(ModelKey::DRAW_TOOL, DrawTool::BOND);
-    m_replace_with_menu = new ReplaceAtomsWithMenu(model, this);
+    m_replace_with_menu = new ReplaceAtomsWithMenu(mol_model, this);
     connect(m_replace_with_menu,
             &ReplaceAtomsWithMenu::
                 showEditAtomPropertiesDialogWithAllowedListRequested,
@@ -91,8 +95,9 @@ void ModifyAtomsMenu::updateActionsEnabled()
 {
     auto atoms = m_atoms;
 
-    std::vector<const RDKit::Atom*> element_atoms;
-    std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(element_atoms),
+    std::unordered_set<const RDKit::Atom*> element_atoms;
+    std::copy_if(atoms.begin(), atoms.end(),
+                 std::inserter(element_atoms, element_atoms.begin()),
                  [](auto a) { return !a->hasQuery(); });
 
     std::vector<const RDKit::Atom*> atoms_that_can_have_charge;
@@ -108,8 +113,7 @@ void ModifyAtomsMenu::updateActionsEnabled()
     } else {
         // Toggle add/remove explicit hydrogens
         m_add_remove_explicit_h_act->setEnabled(true);
-        if (std::any_of(element_atoms.begin(), element_atoms.end(),
-                        [](auto a) { return a->getTotalNumHs() > 0; })) {
+        if (has_any_implicit_Hs(element_atoms)) {
             m_add_remove_explicit_h_act->setText("Add Explicit Hydrogens");
         } else {
             m_add_remove_explicit_h_act->setText("Remove Explicit Hydrogens");
@@ -172,10 +176,10 @@ QMenu* ModifyAtomsMenu::createElementMenu()
     return element_menu;
 }
 
-ReplaceAtomsWithMenu::ReplaceAtomsWithMenu(SketcherModel* model,
+ReplaceAtomsWithMenu::ReplaceAtomsWithMenu(MolModel* mol_model,
                                            QWidget* parent) :
     QMenu(parent),
-    m_sketcher_model(model)
+    m_mol_model(mol_model)
 {
     setTitle("Replace Atoms with");
 
@@ -187,7 +191,7 @@ ReplaceAtomsWithMenu::ReplaceAtomsWithMenu(SketcherModel* model,
     addSeparator();
 
     addAction("New R-Group", this, &ReplaceAtomsWithMenu::newRGroupRequested);
-    m_existing_rgroup_menu = new ExistingRGroupMenu(model, this);
+    m_existing_rgroup_menu = new ExistingRGroupMenu(mol_model, this);
     addMenu(m_existing_rgroup_menu);
 
     connect(m_existing_rgroup_menu,
@@ -197,7 +201,7 @@ ReplaceAtomsWithMenu::ReplaceAtomsWithMenu(SketcherModel* model,
 
 void ReplaceAtomsWithMenu::showEvent(QShowEvent* event)
 {
-    auto rgroup_numbers = m_sketcher_model->getRGroupNumbers();
+    auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
     m_existing_rgroup_menu->setEnabled(!rgroup_numbers.empty());
     QMenu::showEvent(event);
 }
@@ -223,9 +227,9 @@ QMenu* ReplaceAtomsWithMenu::createWildcardMenu()
     return wildcard_menu;
 }
 
-ExistingRGroupMenu::ExistingRGroupMenu(SketcherModel* model, QWidget* parent) :
+ExistingRGroupMenu::ExistingRGroupMenu(MolModel* mol_model, QWidget* parent) :
     QMenu(parent),
-    m_sketcher_model(model)
+    m_mol_model(mol_model)
 {
     setTitle("Existing R-Group");
 }
@@ -239,7 +243,7 @@ void ExistingRGroupMenu::showEvent(QShowEvent* event)
 void ExistingRGroupMenu::updateItems()
 {
     clear();
-    auto rgroup_numbers = m_sketcher_model->getRGroupNumbers();
+    auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
     for (auto rgroup_number : rgroup_numbers) {
         auto title = QString("R%1").arg(rgroup_number);
         addAction(title, [this, rgroup_number]() {
@@ -248,8 +252,9 @@ void ExistingRGroupMenu::updateItems()
     }
 }
 
-AtomContextMenu::AtomContextMenu(SketcherModel* model, QWidget* parent) :
-    ModifyAtomsMenu(model, parent)
+AtomContextMenu::AtomContextMenu(SketcherModel* model, MolModel* mol_model,
+                                 QWidget* parent) :
+    ModifyAtomsMenu(model, mol_model, parent)
 {
     // Rename replace menu to 'Replace with'
     m_replace_with_menu->setTitle("Replace with");

@@ -162,5 +162,14 @@ static std::string parse_all_children_of_bond_query_node(
     return boost::algorithm::join(child_text, join_string);
 }
 
+bool has_any_implicit_Hs(const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    // RDKit calls some hydrogens "explicit" but they are not really
+    // explicit in the sense of being in the graph and we need to count them
+    // in. We count all hydrogens that are not in the graph as implicit.
+    return std::any_of(atoms.begin(), atoms.end(),
+                       [](auto atom) { return atom->getTotalNumHs() > 0; });
+}
+
 } // namespace sketcher
 } // namespace schrodinger
