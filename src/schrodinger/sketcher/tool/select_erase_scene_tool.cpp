@@ -253,6 +253,27 @@ EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
+void EraseSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+{
+    QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
+        event->scenePos(), InteractiveItemFlag::ALL);
+    // if clicking a triple or double bond, do not erase but decrease bond order
+    std::unordered_map<RDKit::Bond::BondType, BondTool> bond_tool_map = {
+        {RDKit::Bond::TRIPLE, BondTool::DOUBLE},
+        {RDKit::Bond::DOUBLE, BondTool::SINGLE},
+    };
+    if (BondItem* bond = qgraphicsitem_cast<BondItem*>(item)) {
+        auto bond_order = bond->getBond()->getBondType();
+        if (bond_tool_map.count(bond_order)) {
+            m_mol_model->mutateBonds({bond->getBond()},
+                                     bond_tool_map[bond_order]);
+            // return early to avoid erasing the bond
+            return;
+        }
+    }
+    RectSelectSceneTool::onMouseClick(event);
+}
+
 void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
                                      QGraphicsSceneMouseEvent* const event)
 {

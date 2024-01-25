@@ -128,6 +128,7 @@ class SKETCHER_API EraseSceneTool : public RectSelectSceneTool
 {
   public:
     EraseSceneTool(Scene* scene, MolModel* mol_model);
+    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
     void onMouseDoubleClick(QGraphicsSceneMouseEvent* const event) override;
     QPixmap getCursorPixmap() const override;
 
