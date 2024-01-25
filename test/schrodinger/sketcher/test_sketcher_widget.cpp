@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
     // select a single bond; the cut/copy action should automatically select
     // atoms attached to any selected bonds
     auto bond = sk.m_mol_model->getMol()->getBondWithIdx(0);
-    sk.m_mol_model->select({}, {bond}, {}, SelectMode::SELECT);
+    sk.m_mol_model->select({}, {bond}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
     BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
     sk.cut(Format::SMILES);
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
     // repeat, but with copy; the selection should be expanded to include
     // atoms attached to any selected bonds, but the selection should persist
     bond = sk.m_mol_model->getMol()->getBondWithIdx(0);
-    sk.m_mol_model->select({}, {bond}, {}, SelectMode::SELECT);
+    sk.m_mol_model->select({}, {bond}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 0);
     BOOST_TEST(sk.m_mol_model->getSelectedBonds().size() == 1);
     sk.copy(Format::SMILES, SceneSubset::SELECTION);

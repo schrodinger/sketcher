@@ -3,6 +3,7 @@
 #include <rdkit/Geometry/point.h>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/model/tags.h"
 
 namespace schrodinger
 {
@@ -34,7 +35,8 @@ class SKETCHER_API NonMolecularObject
      * @param tag The unique tag used to identify this non-molecular object
      */
     NonMolecularObject(const NonMolecularType& type,
-                       const RDGeom::Point3D& coords, const int tag);
+                       const RDGeom::Point3D& coords,
+                       const NonMolecularTag tag);
 
     NonMolecularType getType() const;
 
@@ -43,9 +45,9 @@ class SKETCHER_API NonMolecularObject
   protected:
     NonMolecularType m_type;
     RDGeom::Point3D m_coords;
-    int m_tag;
+    NonMolecularTag m_tag;
 
-    int getTag() const;
+    NonMolecularTag getTag() const;
 
     void setCoords(const RDGeom::Point3D& coords);
 

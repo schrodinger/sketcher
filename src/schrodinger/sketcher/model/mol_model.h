@@ -20,6 +20,7 @@
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/model/tags.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 
 class QObject;
@@ -80,14 +81,14 @@ enum : WhatChangedType { // clang-format off
 }
 
 struct HighlightingInfo {
-    HighlightingInfo(const std::unordered_set<int>& atom_tags,
-                     const std::unordered_set<int>& bond_tags,
+    HighlightingInfo(const std::unordered_set<AtomTag>& atom_tags,
+                     const std::unordered_set<BondTag>& bond_tags,
                      const QColor& color) :
         atom_tags(atom_tags),
         bond_tags(bond_tags),
         color(color){};
-    std::unordered_set<int> atom_tags;
-    std::unordered_set<int> bond_tags;
+    std::unordered_set<AtomTag> atom_tags;
+    std::unordered_set<BondTag> bond_tags;
     QColor color;
 };
 
@@ -98,18 +99,20 @@ struct MolModelSnapshot {
     RDKit::RWMol m_mol;
     std::vector<NonMolecularObject> m_pluses;
     std::optional<NonMolecularObject> m_arrow;
-    std::unordered_set<int> m_selected_atom_tags;
-    std::unordered_set<int> m_selected_bond_tags;
-    std::unordered_set<int> m_selected_non_molecular_tags;
+    std::unordered_set<AtomTag> m_selected_atom_tags;
+    std::unordered_set<BondTag> m_selected_bond_tags;
+    std::unordered_set<SGroupTag> m_selected_s_group_tags;
+    std::unordered_set<NonMolecularTag> m_selected_non_molecular_tags;
     std::vector<HighlightingInfo> m_highlighting_info;
 
-    MolModelSnapshot(const RDKit::RWMol& mol,
-                     const std::vector<NonMolecularObject>& pluses,
-                     const std::optional<NonMolecularObject>& arrow,
-                     const std::unordered_set<int>& selected_atom_tags,
-                     const std::unordered_set<int>& selected_bond_tags,
-                     const std::unordered_set<int>& selected_non_molecular_tags,
-                     const std::vector<HighlightingInfo>& m_highlighting_info);
+    MolModelSnapshot(
+        const RDKit::RWMol& mol, const std::vector<NonMolecularObject>& pluses,
+        const std::optional<NonMolecularObject>& arrow,
+        const std::unordered_set<AtomTag>& selected_atom_tags,
+        const std::unordered_set<BondTag>& selected_bond_tags,
+        const std::unordered_set<SGroupTag>& selected_s_group_tags,
+        const std::unordered_set<NonMolecularTag>& selected_non_molecular_tags,
+        const std::vector<HighlightingInfo>& m_highlighting_info);
 
     /**
      * @return Whether the selection in the other snapshot is identical to the
@@ -226,6 +229,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     std::unordered_set<const NonMolecularObject*>
     getSelectedNonMolecularObjects() const;
+
+    /**
+     * @return A set of all currently selected substance groups (i.e. brackets)
+     */
+    std::unordered_set<const RDKit::SubstanceGroup*> getSelectedSGroups() const;
 
     /**
      * @return whether the model contains a reaction arrow
@@ -451,9 +459,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                const RDGeom::Point3D& coords);
 
     /**
-     * Undoably remove the given atoms, bonds, sgroups and non-molecular objects
-     * (pluses and/or the reaction arrow).  Note that, even though this method
-     * accepts pointers to const objects, the passed in objects will be
+     * Undoably remove the given atoms, bonds, S-groups and non-molecular
+     * objects (pluses and/or the reaction arrow).  Note that, even though this
+     * method accepts pointers to const objects, the passed in objects will be
      * destroyed as a result of this method and will no longer be valid.
      * (Without the const, it wouldn't be possible to pass in values returned
      * from getMol.)
@@ -461,11 +469,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @note If either an attachment point dummy atom or the associated bond are
      * removed, then the other will automatically be removed as well.
      */
-    void remove(const std::unordered_set<const RDKit::Atom*>& atoms,
-                const std::unordered_set<const RDKit::Bond*>& bonds,
-                const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-                const std::unordered_set<const NonMolecularObject*>&
-                    non_molecular_objects);
+    void
+    remove(const std::unordered_set<const RDKit::Atom*>& atoms,
+           const std::unordered_set<const RDKit::Bond*>& bonds,
+           const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
+           const std::unordered_set<const NonMolecularObject*>&
+               non_molecular_objects);
 
     /**
      * Undoably flip the given bond, mirroring the coordinates of the
@@ -641,6 +650,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bonds The bonds to select or deselect
      * @param non_molecular_objects The non-molecular objects to select or
      * deselect
+     * @param s_groups The substance groups (i.e. brackets) to select or
+     * deselect
      * @param select_mode Whether to select, deselect, toggle selection, or
      * select-only (i.e. clear the selection and then select)
      *
@@ -648,11 +659,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * selected (or deselected, etc.), then the other will automatically be
      * selected (or deselected, etc.) as well.
      */
-    void select(const std::unordered_set<const RDKit::Atom*>& atoms,
-                const std::unordered_set<const RDKit::Bond*>& bonds,
-                const std::unordered_set<const NonMolecularObject*>&
-                    non_molecular_objects,
-                const SelectMode select_mode);
+    void
+    select(const std::unordered_set<const RDKit::Atom*>& atoms,
+           const std::unordered_set<const RDKit::Bond*>& bonds,
+           const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
+           const std::unordered_set<const NonMolecularObject*>&
+               non_molecular_objects,
+           const SelectMode select_mode);
 
     /**
      * Undoably clear all selected atoms, bonds, and non-molecular objects.
@@ -774,14 +787,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     RDKit::RWMol m_mol = RDKit::RWMol();
     std::vector<NonMolecularObject> m_pluses;
     std::optional<NonMolecularObject> m_arrow;
-    std::unordered_map<int, NonMolecularObject*> m_tag_to_non_molecular_object;
+    std::unordered_map<NonMolecularTag, NonMolecularObject*>
+        m_tag_to_non_molecular_object;
 
-    int m_next_atom_tag = 0;
-    int m_next_bond_tag = 0;
-    int m_next_non_molecular_tag = 0;
-    std::unordered_set<int> m_selected_atom_tags;
-    std::unordered_set<int> m_selected_bond_tags;
-    std::unordered_set<int> m_selected_non_molecular_tags;
+    AtomTag m_next_atom_tag;
+    BondTag m_next_bond_tag;
+    SGroupTag m_next_s_group_tag;
+    NonMolecularTag m_next_non_molecular_tag;
+    std::unordered_set<AtomTag> m_selected_atom_tags;
+    std::unordered_set<BondTag> m_selected_bond_tags;
+    std::unordered_set<SGroupTag> m_selected_s_group_tags;
+    std::unordered_set<NonMolecularTag> m_selected_non_molecular_tags;
 
     std::vector<HighlightingInfo> m_highlighting_info;
 
@@ -818,7 +834,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Set the atom tag for the specified atom
      */
-    void setTagForAtom(RDKit::Atom* const atom, const int atom_tag);
+    void setTagForAtom(RDKit::Atom* const atom, const AtomTag atom_tag);
 
     /**
      * Find the atom tag for the specified atom.  The passed in value must not
@@ -832,13 +848,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * this method isn't public, so it's not worth using const_cast unless we
      * need this to be const.)
      */
-    int getTagForAtom(const RDKit::Atom* const atom,
-                      const bool allow_null = false);
+    AtomTag getTagForAtom(const RDKit::Atom* const atom,
+                          const bool allow_null = false);
 
     /**
      * Set the bond tag for the specified bond
      */
-    void setTagForBond(RDKit::Bond* const bond, const int bond_tag);
+    void setTagForBond(RDKit::Bond* const bond, const BondTag bond_tag);
 
     /**
      * Find the bond tag for the specified bond.
@@ -848,7 +864,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * this method isn't public, so it's not worth using const_cast unless we
      * need this to be const.)
      */
-    int getTagForBond(const RDKit::Bond* const bond);
+    BondTag getTagForBond(const RDKit::Bond* const bond);
 
     /**
      * Return the atom identified by the given atom tag.  Note that an atom tag
@@ -861,7 +877,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @throw if no atom is found with the specified atom_tag
      */
-    const RDKit::Atom* getAtomFromTag(int atom_tag) const;
+    const RDKit::Atom* getAtomFromTag(AtomTag atom_tag) const;
 
     /**
      * Return the bond identified by the given bond tag.  Note that a bond tag
@@ -873,7 +889,31 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @throw if no bond is found with the specified bond_tag
      */
-    const RDKit::Bond* getBondFromTag(int bond_tag) const;
+    const RDKit::Bond* getBondFromTag(BondTag bond_tag) const;
+
+    /**
+     * Get the tag for the specified substance group
+     */
+    SGroupTag getTagForSGroup(const RDKit::SubstanceGroup& s_group) const;
+
+    /**
+     * Set the tag for the specified substance group
+     */
+    void setTagForSGroup(const RDKit::SubstanceGroup& s_group,
+                         const SGroupTag s_group_tag);
+
+    /**
+     * Return the substance group identified by the given tag.  Note that a tag
+     * uniquely identifies a single substance group in the molecule.  No two
+     * S-groups in the same molecule will ever have identical tags, even if the
+     * two S-group don't exist at the same time.
+     *
+     * @param s_group_tag A tag for a substance group that is currently in the
+     * molecule.
+     *
+     * @throw if no S-group is found with the specified tag
+     */
+    RDKit::SubstanceGroup getSGroupFromTag(const SGroupTag s_group_tag) const;
 
     /**
      * Helpers that return a non-const pointer to the specified atom or bond
@@ -908,28 +948,31 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * that both the dummy atom and the bond are included).  That is instead
      * handled in the select method.
      */
-    void selectTags(const std::unordered_set<int>& atom_tags,
-                    const std::unordered_set<int>& bond_tags,
-                    const std::unordered_set<int>& non_molecular_tags,
-                    const SelectMode select_mode);
+    void
+    selectTags(const std::unordered_set<AtomTag>& atom_tags,
+               const std::unordered_set<BondTag>& bond_tags,
+               const std::unordered_set<SGroupTag>& s_group_tags,
+               const std::unordered_set<NonMolecularTag>& non_molecular_tags,
+               const SelectMode select_mode);
 
     /**
      * Divide the given set of tags into two sets: one containing selected tags
      * and one containing unselected tags
-     * @param tags_to_divide The atom or bond tags to divide
-     * @param selected_tags The atom or bond tags that are currently selected
+     * @param tags_to_divide The tags to divide
+     * @param selected_tags The tags that are currently selected
      * @return the selected and unselected sets, in that order
      */
-    std::pair<std::unordered_set<int>, std::unordered_set<int>>
-    divideBySelected(const std::unordered_set<int>& tags_to_divide,
-                     const std::unordered_set<int>& selected_tags);
+    template <class T> std::pair<std::unordered_set<T>, std::unordered_set<T>>
+    divideBySelected(const std::unordered_set<T>& tags_to_divide,
+                     const std::unordered_set<T>& selected_tags);
 
     /**
-     * @return The atom, bond, and non-molecular tags for all objects that are
-     * not currently selected
+     * @return The atom, bond, substance group, and non-molecular tags for all
+     * objects that are not currently selected
      */
-    std::tuple<std::unordered_set<int>, std::unordered_set<int>,
-               std::unordered_set<int>>
+    std::tuple<std::unordered_set<AtomTag>, std::unordered_set<BondTag>,
+               std::unordered_set<SGroupTag>,
+               std::unordered_set<NonMolecularTag>>
     getAllUnselectedTags();
 
     /**
@@ -939,6 +982,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param filtered_atom_tags Tags for the atoms to select or deselect.
      * @param filtered_bond_tags Tags for the bonds to select or deselect.
+     * @param filtered_s_group_tags Tags for the substance groups to select or
+     * deselect.
      * @param filtered_non_molecular_tags Tags for the non-molecular objects to
      * select or deselect.
      * @param to_select Whether to select or deselect the specified atoms and
@@ -946,9 +991,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param description The description for the undo command
      */
     void doSelectionCommand(
-        const std::unordered_set<int>& filtered_atom_tags,
-        const std::unordered_set<int>& filtered_bond_tags,
-        const std::unordered_set<int>& filtered_non_molecular_tags,
+        const std::unordered_set<AtomTag>& filtered_atom_tags,
+        const std::unordered_set<BondTag>& filtered_bond_tags,
+        const std::unordered_set<SGroupTag>& filtered_s_group_tags,
+        const std::unordered_set<NonMolecularTag>& filtered_non_molecular_tags,
         const bool to_select, const QString& description);
 
     /**
@@ -1017,7 +1063,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addAtomChainCommandFunc(const AtomFunc create_atom,
                                  const std::vector<RDGeom::Point3D>& coords,
                                  const BondFunc create_bond,
-                                 const int bound_to_atom_tag);
+                                 const AtomTag bound_to_atom_tag);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This
@@ -1040,7 +1086,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atom_tag The tag of the atom to delete
      * @return whether selection was changed by this action
      */
-    bool removeAtomCommandFunc(const int atom_tag);
+    bool removeAtomCommandFunc(const AtomTag atom_tag);
 
     /**
      * Add a bond to the molecule.  This method must only be called as part of
@@ -1051,7 +1097,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * that this method will add a *copy* of the returned bond, as the
      * shared_ptr is responsible for deleting the returned bond.
      */
-    void addBondCommandFunc(const int start_atom_tag, const int end_atom_tag,
+    void addBondCommandFunc(const AtomTag start_atom_tag,
+                            const AtomTag end_atom_tag,
                             const BondFunc create_bond);
 
     /**
@@ -1059,8 +1106,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * of an undo command.
      * @return whether selection was changed by this action
      */
-    bool removeBondCommandFunc(const int bond_tag, const int start_atom_tag,
-                               const int end_atom_tag);
+    bool removeBondCommandFunc(const BondTag bond_tag,
+                               const AtomTag start_atom_tag,
+                               const AtomTag end_atom_tag);
 
     /**
      * Remove a non-molecular object from the model.  This method must only be
@@ -1068,7 +1116,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param cur_tag The tag of the non-molecular object to delete
      * @return whether selection was changed by this action
      */
-    bool removeNonMolecularObjectCommandFunc(const int cur_tag);
+    bool removeNonMolecularObjectCommandFunc(const NonMolecularTag cur_tag);
 
     /**
      * set new coordinates for a set of atoms and non-molecular objects.  This
@@ -1086,14 +1134,34 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atom_tags The atom tags to delete
      * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
      * bond's end atom tag) for the bonds to delete
-     * @param sgroups The substance groups to delete
+     * @param s_groups The substance groups to delete
      * @param non_molecular_tags The non-molecular tags to delete
      */
     void removeCommandFunc(
-        const std::vector<int>& atom_tags,
-        const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
-        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-        const std::vector<int>& non_molecular_tags);
+        const std::vector<AtomTag>& atom_tags,
+        const std::vector<std::tuple<BondTag, AtomTag, AtomTag>>&
+            bond_tags_with_atoms,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
+        const std::vector<NonMolecularTag>& non_molecular_tags);
+
+    /**
+     * Remove and deselect the specified S-groups
+     */
+    void removeSGroupsCommandFunc(
+        const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups);
+
+    /**
+     * Deselect any S-groups that are going to be implicitly removed when we
+     * erase the specified atoms and bonds.  Note that this method does *not*
+     * remove the atoms or bonds; it only handles deselecting the S-groups.
+     * @param atom_tags The atom tags to be deleted
+     * @param bond_tags_with_atoms A list of (bond tag, bond's start atom tag,
+     * bond's end atom tag) for the bonds to be deleted.
+     */
+    void deselectSGroupsThatWillBeImplicitlyDeleted(
+        const std::vector<AtomTag>& atom_tags,
+        const std::vector<std::tuple<BondTag, AtomTag, AtomTag>>&
+            bond_tags_with_atoms);
 
     /**
      * Add all atoms and bonds from the given molecule into this molecule. This
@@ -1118,7 +1186,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Note that this method will add a *copy* of the returned atom, as the
      * shared_ptr is responsible for deleting the returned atom.
      */
-    void mutateAtomCommandFunc(const int atom_tag, const AtomFunc create_atom);
+    void mutateAtomCommandFunc(const AtomTag atom_tag,
+                               const AtomFunc create_atom);
 
     /**
      * Change the type of an existing bond, or change a query bond to a
@@ -1129,7 +1198,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Note that this method will add a *copy* of the returned bond, as the
      * shared_ptr is responsible for deleting the returned bond.
      */
-    void mutateBondCommandFunc(const int bond_tag, const BondFunc create_bond);
+    void mutateBondCommandFunc(const BondTag bond_tag,
+                               const BondFunc create_bond);
 
     /**
      * Set the mapping number of a set of atoms.  This method must only be
@@ -1138,7 +1208,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param mapping The new mapping number of the atom. If this is 0 the
      * mapping is removed
      */
-    void setAtomMappingCommandFunc(const std::unordered_set<int>& atom_tags,
+    void setAtomMappingCommandFunc(const std::unordered_set<AtomTag>& atom_tags,
                                    const int mapping);
 
     /**
@@ -1146,14 +1216,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * called as part of an undo command.
      */
     void addExplicitHsCommandFunc(
-        const std::unordered_set<const RDKit::Atom*>& atom_tags);
+        const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
      * Remove explicit hydrogens from an existing atom.  This method must only
      * be called from an undo command.
      */
     void removeExplicitHsCommandFunc(
-        const std::unordered_set<const RDKit::Atom*>& atom_tags);
+        const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
      * Reverse an existing bond (i.e. swap the start and end atoms).  This
@@ -1177,11 +1247,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param selected Whether to select or deselect the specified atoms and
      * bonds
      */
-    void
-    setSelectionCommandFunc(const std::unordered_set<int>& atom_tags,
-                            const std::unordered_set<int>& bond_tags,
-                            const std::unordered_set<int>& non_molecular_tags,
-                            const bool selected);
+    void setSelectionCommandFunc(
+        const std::unordered_set<AtomTag>& atom_tags,
+        const std::unordered_set<BondTag>& bond_tags,
+        const std::unordered_set<SGroupTag>& s_group_tags,
+        const std::unordered_set<NonMolecularTag>& non_molecular_tags,
+        const bool selected);
 
     /**
      * Clear all selected atoms and bonds.  This method must only be called

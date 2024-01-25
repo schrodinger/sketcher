@@ -99,5 +99,24 @@ std::string get_polymer_label(const RDKit::SubstanceGroup& sgroup)
     return get_string_property(sgroup, RDKIT_KEY_LABEL);
 }
 
+std::unordered_set<const RDKit::Bond*>
+get_s_group_atom_bonds(const RDKit::SubstanceGroup& s_group)
+{
+    std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<int> s_group_atom_idxs(s_group.getAtoms().begin(),
+                                              s_group.getAtoms().end());
+    auto& mol = s_group.getOwningMol();
+    for (auto atom_idx : s_group.getAtoms()) {
+        auto* atom = mol.getAtomWithIdx(atom_idx);
+        for (auto* cur_bond : mol.atomBonds(atom)) {
+            unsigned int other_atom_idx = cur_bond->getOtherAtomIdx(atom_idx);
+            if (s_group_atom_idxs.count(other_atom_idx)) {
+                bonds.insert(cur_bond);
+            }
+        }
+    }
+    return bonds;
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

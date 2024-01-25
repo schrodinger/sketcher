@@ -58,6 +58,8 @@ class HintFragmentItem : public QGraphicsItemGroup
     QList<QGraphicsItem*> m_atom_items;
     /// A list of all child BondItems
     QList<QGraphicsItem*> m_bond_items;
+    /// A list of all child SGroupItems
+    QList<QGraphicsItem*> m_s_group_items;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
 };

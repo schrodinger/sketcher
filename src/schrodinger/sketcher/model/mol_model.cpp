@@ -8,6 +8,7 @@
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <QObject>
 #include <QUndoStack>
 #include <QtGlobal>
@@ -110,6 +111,11 @@ void strip_mol_model_tags(RDKit::ROMol& mol)
     }
     mol.clearAllAtomBookmarks();
     mol.clearAllBondBookmarks();
+
+    // remove the tags from all S-groups
+    for (auto& s_group : getSubstanceGroups(mol)) {
+        s_group.clearProp(TAG_PROPERTY);
+    }
 }
 
 } // namespace
@@ -117,15 +123,17 @@ void strip_mol_model_tags(RDKit::ROMol& mol)
 MolModelSnapshot::MolModelSnapshot(
     const RDKit::RWMol& mol, const std::vector<NonMolecularObject>& pluses,
     const std::optional<NonMolecularObject>& arrow,
-    const std::unordered_set<int>& selected_atom_tags,
-    const std::unordered_set<int>& selected_bond_tags,
-    const std::unordered_set<int>& selected_non_molecular_tags,
+    const std::unordered_set<AtomTag>& selected_atom_tags,
+    const std::unordered_set<BondTag>& selected_bond_tags,
+    const std::unordered_set<SGroupTag>& selected_s_group_tags,
+    const std::unordered_set<NonMolecularTag>& selected_non_molecular_tags,
     const std::vector<HighlightingInfo>& highlighting_info) :
     m_mol(mol),
     m_pluses(pluses),
     m_arrow(arrow),
     m_selected_atom_tags(selected_atom_tags),
     m_selected_bond_tags(selected_bond_tags),
+    m_selected_s_group_tags(selected_s_group_tags),
     m_selected_non_molecular_tags(selected_non_molecular_tags),
     m_highlighting_info(highlighting_info)
 {
@@ -135,6 +143,7 @@ bool MolModelSnapshot::isSelectionIdentical(const MolModelSnapshot& other)
 {
     return m_selected_atom_tags == other.m_selected_atom_tags &&
            m_selected_bond_tags == other.m_selected_bond_tags &&
+           m_selected_s_group_tags == other.m_selected_s_group_tags &&
            m_selected_non_molecular_tags == other.m_selected_non_molecular_tags;
 }
 
@@ -178,13 +187,14 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMolForExport()
         atoms_to_select.insert(bond->getBeginAtom());
         atoms_to_select.insert(bond->getEndAtom());
     }
-    select(atoms_to_select, {}, {}, SelectMode::SELECT);
+    select(atoms_to_select, {}, {}, {}, SelectMode::SELECT);
 
     // Copy the entire molecule, then remove all atoms and bonds which are not
     // selected, as to preserve any underlying features in the selection; note
     // that RDKit will automatically remove bonds attached to deleted atoms
     RDKit::RWMol mol_copy(m_mol);
-    auto [atom_tags, bond_tags, non_molecular_tags] = getAllUnselectedTags();
+    auto [atom_tags, bond_tags, s_group_tags, non_molecular_tags] =
+        getAllUnselectedTags();
     mol_copy.beginBatchEdit();
     for (auto atom_tag : atom_tags) {
         mol_copy.removeAtom(getAtomFromTag(atom_tag)->getIdx());
@@ -258,13 +268,14 @@ bool MolModel::isEmpty() const
 bool MolModel::hasSelection() const
 {
     return !(m_selected_atom_tags.empty() && m_selected_bond_tags.empty() &&
+             m_selected_s_group_tags.empty() &&
              m_selected_non_molecular_tags.empty());
 }
 
 std::unordered_set<const RDKit::Atom*> MolModel::getSelectedAtoms() const
 {
     std::unordered_set<const RDKit::Atom*> sel_atoms;
-    for (int atom_tag : m_selected_atom_tags) {
+    for (auto atom_tag : m_selected_atom_tags) {
         sel_atoms.insert(getAtomFromTag(atom_tag));
     }
     return sel_atoms;
@@ -273,10 +284,26 @@ std::unordered_set<const RDKit::Atom*> MolModel::getSelectedAtoms() const
 std::unordered_set<const RDKit::Bond*> MolModel::getSelectedBonds() const
 {
     std::unordered_set<const RDKit::Bond*> sel_bonds;
-    for (int bond_tag : m_selected_bond_tags) {
+    for (auto bond_tag : m_selected_bond_tags) {
         sel_bonds.insert(getBondFromTag(bond_tag));
     }
     return sel_bonds;
+}
+
+std::unordered_set<const RDKit::SubstanceGroup*>
+MolModel::getSelectedSGroups() const
+{
+    std::unordered_set<const RDKit::SubstanceGroup*> sel_s_groups;
+    if (m_selected_s_group_tags.empty()) {
+        return sel_s_groups;
+    }
+    for (auto& cur_s_group : getSubstanceGroups(m_mol)) {
+        auto cur_tag = getTagForSGroup(cur_s_group);
+        if (m_selected_s_group_tags.count(cur_tag)) {
+            sel_s_groups.insert(&cur_s_group);
+        }
+    }
+    return sel_s_groups;
 }
 
 std::unordered_set<const NonMolecularObject*>
@@ -284,7 +311,7 @@ MolModel::getSelectedNonMolecularObjects() const
 {
     std::unordered_set<const NonMolecularObject*> selected;
 
-    for (int tag : m_selected_non_molecular_tags) {
+    for (auto tag : m_selected_non_molecular_tags) {
         selected.insert(m_tag_to_non_molecular_object.at(tag));
     }
     return selected;
@@ -300,10 +327,10 @@ MolModel::getHaloHighlighting() const
     for (const auto& info : m_highlighting_info) {
         std::unordered_set<const RDKit::Atom*> atoms;
         std::unordered_set<const RDKit::Bond*> bonds;
-        for (int atom_tag : info.atom_tags) {
+        for (auto atom_tag : info.atom_tags) {
             atoms.insert(getAtomFromTag(atom_tag));
         }
-        for (int bond_tag : info.bond_tags) {
+        for (auto bond_tag : info.bond_tags) {
             bonds.insert(getBondFromTag(bond_tag));
         }
         highlights.push_back(std::make_tuple(atoms, bonds, info.color));
@@ -321,8 +348,8 @@ void MolModel::addHaloHighlighting(const std::unordered_set<int>& atom_indices,
                                    const QColor& color)
 {
     // translate indices to tags
-    std::unordered_set<int> atoms;
-    std::unordered_set<int> bonds;
+    std::unordered_set<AtomTag> atoms;
+    std::unordered_set<BondTag> bonds;
     for (auto atom_idx : atom_indices) {
         atoms.insert(getTagForAtom(m_mol.getAtomWithIdx(atom_idx)));
     }
@@ -404,8 +431,8 @@ void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
 MolModelSnapshot MolModel::takeSnapshot() const
 {
     return MolModelSnapshot(m_mol, m_pluses, m_arrow, m_selected_atom_tags,
-                            m_selected_bond_tags, m_selected_non_molecular_tags,
-                            m_highlighting_info);
+                            m_selected_bond_tags, m_selected_s_group_tags,
+                            m_selected_non_molecular_tags, m_highlighting_info);
 }
 
 void MolModel::restoreSnapshot(const MolModelSnapshot& snapshot,
@@ -427,6 +454,7 @@ void MolModel::restoreSnapshot(const MolModelSnapshot& snapshot,
     if (selection_changed) {
         m_selected_atom_tags = snapshot.m_selected_atom_tags;
         m_selected_bond_tags = snapshot.m_selected_bond_tags;
+        m_selected_s_group_tags = snapshot.m_selected_s_group_tags;
         m_selected_non_molecular_tags = snapshot.m_selected_non_molecular_tags;
     }
 
@@ -487,7 +515,7 @@ void MolModel::addRGroup(const unsigned int r_group_num,
 void MolModel::addAttachmentPoint(const RDGeom::Point3D& coords,
                                   const RDKit::Atom* const bound_to_atom)
 {
-    int bound_to_atom_tag = getTagForAtom(bound_to_atom);
+    auto bound_to_atom_tag = getTagForAtom(bound_to_atom);
     unsigned int ap_num = get_next_attachment_point_number(&m_mol);
 
     auto cmd_func = [this, coords, bound_to_atom_tag, ap_num]() {
@@ -506,7 +534,7 @@ void MolModel::addAtomChain(const Element& element,
                             const RDKit::Bond::BondType& bond_type,
                             const RDKit::Bond::BondDir& bond_dir)
 {
-    int bound_to_atom_tag =
+    auto bound_to_atom_tag =
         getTagForAtom(bound_to_atom, /* allow_null = */ true);
     // structured binding doesn't work with lambda captures until C++20, so we
     // use ties here instead to unpack the return values (same with the ties in
@@ -531,7 +559,7 @@ void MolModel::addAtomChain(
     const RDKit::Bond::BondType& bond_type,
     const RDKit::Bond::BondDir& bond_dir)
 {
-    int bound_to_atom_tag =
+    auto bound_to_atom_tag =
         getTagForAtom(bound_to_atom, /* allow_null = */ true);
     QString desc = QString("Add %1").arg(
         QString::fromStdString(atom_query->getTypeLabel()));
@@ -552,7 +580,7 @@ void MolModel::addAtomChain(
 {
     unsigned int atomic_num;
     QString desc;
-    int bound_to_atom_tag =
+    auto bound_to_atom_tag =
         getTagForAtom(bound_to_atom, /* allow_null = */ true);
     std::tie(atomic_num, desc) = getAddElementInfo(element);
     auto cmd_func = [this, atomic_num, coords, bond_query,
@@ -571,7 +599,7 @@ void MolModel::addAtomChain(
     const RDKit::Atom* const bound_to_atom,
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
-    int bound_to_atom_tag =
+    auto bound_to_atom_tag =
         getTagForAtom(bound_to_atom, /* allow_null = */ true);
     QString desc = QString("Add %1").arg(
         QString::fromStdString(atom_query->getTypeLabel()));
@@ -589,7 +617,7 @@ void MolModel::addRGroupChain(const std::vector<unsigned int> r_group_nums,
                               const std::vector<RDGeom::Point3D>& coords,
                               const RDKit::Atom* const bound_to_atom)
 {
-    int bound_to_atom_tag =
+    auto bound_to_atom_tag =
         getTagForAtom(bound_to_atom, /* allow_null = */ true);
     auto cmd_func = [this, r_group_nums, coords, bound_to_atom_tag]() {
         auto r_group_iter = r_group_nums.cbegin();
@@ -618,8 +646,8 @@ void MolModel::addBond(const RDKit::Atom* const start_atom,
                        const RDKit::Bond::BondType& bond_type,
                        const RDKit::Bond::BondDir& bond_dir)
 {
-    int start_atom_tag = getTagForAtom(start_atom);
-    int end_atom_tag = getTagForAtom(end_atom);
+    auto start_atom_tag = getTagForAtom(start_atom);
+    auto end_atom_tag = getTagForAtom(end_atom);
 
     QString desc = QString("Add bond");
     auto cmd_func = [this, start_atom_tag, end_atom_tag, bond_type,
@@ -634,8 +662,8 @@ void MolModel::addBond(
     const RDKit::Atom* const start_atom, const RDKit::Atom* const end_atom,
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query)
 {
-    int start_atom_tag = getTagForAtom(start_atom);
-    int end_atom_tag = getTagForAtom(end_atom);
+    auto start_atom_tag = getTagForAtom(start_atom);
+    auto end_atom_tag = getTagForAtom(end_atom);
 
     QString desc = QString("Add query bond");
     auto cmd_func = [this, start_atom_tag, end_atom_tag, bond_query]() {
@@ -661,11 +689,11 @@ void MolModel::addNonMolecularObject(const NonMolecularType& type,
 void MolModel::remove(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
-    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
     WhatChangedType to_be_changed = WhatChanged::NOTHING;
-    if (!(atoms.empty() && bonds.empty() && sgroups.empty())) {
+    if (!(atoms.empty() && bonds.empty() && s_groups.empty())) {
         to_be_changed |= WhatChanged::MOLECULE;
     }
     if (!non_molecular_objects.empty()) {
@@ -678,28 +706,28 @@ void MolModel::remove(
     auto [expanded_atoms, expanded_bonds] =
         ensureCompleteAttachmentPoints(atoms, bonds);
 
-    std::vector<int> atom_tags;
+    std::vector<AtomTag> atom_tags;
     for (auto cur_atom : expanded_atoms) {
         atom_tags.push_back(getTagForAtom(cur_atom));
     }
 
-    std::vector<std::tuple<int, int, int>> bond_tags;
+    std::vector<std::tuple<BondTag, AtomTag, AtomTag>> bond_tags;
     for (auto cur_bond : expanded_bonds) {
-        int bond_tag = getTagForBond(cur_bond);
-        int start_atom_tag = getTagForAtom(cur_bond->getBeginAtom());
-        int end_atom_tag = getTagForAtom(cur_bond->getEndAtom());
+        auto bond_tag = getTagForBond(cur_bond);
+        auto start_atom_tag = getTagForAtom(cur_bond->getBeginAtom());
+        auto end_atom_tag = getTagForAtom(cur_bond->getEndAtom());
         bond_tags.push_back({bond_tag, start_atom_tag, end_atom_tag});
     }
 
-    std::vector<int> non_molecular_tags;
+    std::vector<NonMolecularTag> non_molecular_tags;
     for (auto* cur_obj : non_molecular_objects) {
         non_molecular_tags.push_back(cur_obj->getTag());
     }
 
     QString desc = QString("Erase");
-    auto cmd_func = [this, atom_tags, bond_tags, sgroups,
+    auto cmd_func = [this, atom_tags, bond_tags, s_groups,
                      non_molecular_tags]() {
-        removeCommandFunc(atom_tags, bond_tags, sgroups, non_molecular_tags);
+        removeCommandFunc(atom_tags, bond_tags, s_groups, non_molecular_tags);
     };
 
     doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
@@ -963,7 +991,7 @@ void MolModel::regenerateReactionCoordinatesCommandFunc()
             const auto& rxn_conf = rxn_mol->getConformer();
             for (const auto* rxn_atom : rxn_mol->atoms()) {
                 const auto& pos = rxn_conf.getAtomPos(rxn_atom->getIdx());
-                auto atom_tag = rxn_atom->getProp<int>(TAG_PROPERTY);
+                auto atom_tag = AtomTag(rxn_atom->getProp<int>(TAG_PROPERTY));
                 auto* mol_model_atom = getAtomFromTag(atom_tag);
                 mol_model_conf.setAtomPos(mol_model_atom->getIdx(), pos);
             }
@@ -1223,43 +1251,51 @@ void MolModel::mergeAtomsCommandFunc(
 void MolModel::select(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
     const SelectMode select_mode)
 {
     auto [expanded_atoms, expanded_bonds] =
         ensureCompleteAttachmentPoints(atoms, bonds);
-    std::unordered_set<int> atom_tags;
+    std::unordered_set<AtomTag> atom_tags;
     for (auto* cur_atom : expanded_atoms) {
         atom_tags.insert(getTagForAtom(cur_atom));
     }
-    std::unordered_set<int> bond_tags;
+    std::unordered_set<BondTag> bond_tags;
     for (auto* cur_bond : expanded_bonds) {
         bond_tags.insert(getTagForBond(cur_bond));
     }
-    std::unordered_set<int> non_molecular_tags;
+    std::unordered_set<SGroupTag> s_group_tags;
+    for (auto* cur_s_group : s_groups) {
+        s_group_tags.insert(getTagForSGroup(*cur_s_group));
+    }
+    std::unordered_set<NonMolecularTag> non_molecular_tags;
     for (auto* cur_non_molecular_obj : non_molecular_objects) {
         non_molecular_tags.insert(cur_non_molecular_obj->getTag());
     }
-    selectTags(atom_tags, bond_tags, non_molecular_tags, select_mode);
+    selectTags(atom_tags, bond_tags, s_group_tags, non_molecular_tags,
+               select_mode);
 }
 
-void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
-                          const std::unordered_set<int>& bond_tags,
-                          const std::unordered_set<int>& non_molecular_tags,
-                          const SelectMode select_mode)
+void MolModel::selectTags(
+    const std::unordered_set<AtomTag>& atom_tags,
+    const std::unordered_set<BondTag>& bond_tags,
+    const std::unordered_set<SGroupTag>& s_group_tags,
+    const std::unordered_set<NonMolecularTag>& non_molecular_tags,
+    const SelectMode select_mode)
 {
     // note that we do not ensure that attachment points are complete here.
     // That happens in select, not selectTags
-    bool no_tags_specified =
-        atom_tags.empty() && bond_tags.empty() && non_molecular_tags.empty();
+    bool no_tags_specified = atom_tags.empty() && bond_tags.empty() &&
+                             s_group_tags.empty() && non_molecular_tags.empty();
     if (select_mode == SelectMode::SELECT_ONLY) {
         if (no_tags_specified) {
             clearSelection();
         } else {
             auto undo_macro_raii = createUndoMacro("Select only");
             clearSelection();
-            doSelectionCommand(atom_tags, bond_tags, non_molecular_tags, true,
-                               "Select");
+            doSelectionCommand(atom_tags, bond_tags, s_group_tags,
+                               non_molecular_tags, true, "Select");
         }
         return;
     }
@@ -1271,6 +1307,8 @@ void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
         divideBySelected(atom_tags, m_selected_atom_tags);
     auto [selected_bond_tags, deselected_bond_tags] =
         divideBySelected(bond_tags, m_selected_bond_tags);
+    auto [selected_s_group_tags, deselected_s_group_tags] =
+        divideBySelected(s_group_tags, m_selected_s_group_tags);
     auto [selected_non_molecular_tags, deselected_non_molecular_tags] =
         divideBySelected(non_molecular_tags, m_selected_non_molecular_tags);
     if (select_mode == SelectMode::SELECT) {
@@ -1279,6 +1317,7 @@ void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
         // undoing the command could deselect atoms and bonds that should've
         // remained selected.
         doSelectionCommand(deselected_atom_tags, deselected_bond_tags,
+                           deselected_s_group_tags,
                            deselected_non_molecular_tags, true, "Select");
     } else if (select_mode == SelectMode::DESELECT) {
         // if we passed atom_tags and bond_tags to doSelectionCommand
@@ -1286,23 +1325,26 @@ void MolModel::selectTags(const std::unordered_set<int>& atom_tags,
         // undoing the command could select atoms and bonds that should've
         // remained deselected.
         doSelectionCommand(selected_atom_tags, selected_bond_tags,
-                           selected_non_molecular_tags, false, "Deselect");
+                           selected_s_group_tags, selected_non_molecular_tags,
+                           false, "Deselect");
     } else { // select_mode == SelectMode::TOGGLE
         auto undo_macro_raii = createUndoMacro("Toggle selection");
         doSelectionCommand(deselected_atom_tags, deselected_bond_tags,
+                           deselected_s_group_tags,
                            deselected_non_molecular_tags, true, "Select");
         doSelectionCommand(selected_atom_tags, selected_bond_tags,
-                           selected_non_molecular_tags, false, "Deselect");
+                           selected_s_group_tags, selected_non_molecular_tags,
+                           false, "Deselect");
     }
 }
 
-std::pair<std::unordered_set<int>, std::unordered_set<int>>
-MolModel::divideBySelected(const std::unordered_set<int>& tags_to_divide,
-                           const std::unordered_set<int>& selected_tags)
+template <class T> std::pair<std::unordered_set<T>, std::unordered_set<T>>
+MolModel::divideBySelected(const std::unordered_set<T>& tags_to_divide,
+                           const std::unordered_set<T>& selected_tags)
 {
-    std::unordered_set<int> selected;
-    std::unordered_set<int> deselected;
-    for (int cur_tag : tags_to_divide) {
+    std::unordered_set<T> selected;
+    std::unordered_set<T> deselected;
+    for (T cur_tag : tags_to_divide) {
         if (selected_tags.find(cur_tag) != selected_tags.end()) {
             selected.insert(cur_tag);
         } else {
@@ -1313,25 +1355,30 @@ MolModel::divideBySelected(const std::unordered_set<int>& tags_to_divide,
 }
 
 void MolModel::doSelectionCommand(
-    const std::unordered_set<int>& filtered_atom_tags,
-    const std::unordered_set<int>& filtered_bond_tags,
-    const std::unordered_set<int>& filtered_non_molecular_tags,
+    const std::unordered_set<AtomTag>& filtered_atom_tags,
+    const std::unordered_set<BondTag>& filtered_bond_tags,
+    const std::unordered_set<SGroupTag>& filtered_s_group_tags,
+    const std::unordered_set<NonMolecularTag>& filtered_non_molecular_tags,
     const bool to_select, const QString& description)
 {
     if (filtered_atom_tags.empty() && filtered_bond_tags.empty() &&
-        filtered_non_molecular_tags.empty()) {
+        filtered_non_molecular_tags.empty() && filtered_s_group_tags.empty()) {
         // nothing to select or deselect
         return;
     }
 
     auto redo = [this, filtered_atom_tags, filtered_bond_tags,
-                 filtered_non_molecular_tags, to_select]() {
+                 filtered_s_group_tags, filtered_non_molecular_tags,
+                 to_select]() {
         setSelectionCommandFunc(filtered_atom_tags, filtered_bond_tags,
+                                filtered_s_group_tags,
                                 filtered_non_molecular_tags, to_select);
     };
     auto undo = [this, filtered_atom_tags, filtered_bond_tags,
-                 filtered_non_molecular_tags, to_select]() {
+                 filtered_s_group_tags, filtered_non_molecular_tags,
+                 to_select]() {
         setSelectionCommandFunc(filtered_atom_tags, filtered_bond_tags,
+                                filtered_s_group_tags,
                                 filtered_non_molecular_tags, !to_select);
     };
     doCommand(redo, undo, description);
@@ -1343,16 +1390,18 @@ void MolModel::clearSelection()
         // nothing to clear
         return;
     }
-    std::unordered_set<int> sel_atom_tags = m_selected_atom_tags;
-    std::unordered_set<int> sel_bond_tags = m_selected_bond_tags;
-    std::unordered_set<int> sel_non_molecular_tags =
-        m_selected_non_molecular_tags;
+    auto sel_atom_tags = m_selected_atom_tags;
+    auto sel_bond_tags = m_selected_bond_tags;
+    auto sel_s_group_tags = m_selected_s_group_tags;
+    auto sel_non_molecular_tags = m_selected_non_molecular_tags;
 
     QString desc = QString("Clear selection");
     auto redo = [this]() { clearSelectionCommandFunc(); };
-    auto undo = [this, sel_atom_tags, sel_bond_tags, sel_non_molecular_tags]() {
+    auto undo = [this, sel_atom_tags, sel_bond_tags, sel_s_group_tags,
+                 sel_non_molecular_tags]() {
         m_selected_atom_tags = sel_atom_tags;
         m_selected_bond_tags = sel_bond_tags;
+        m_selected_s_group_tags = sel_s_group_tags;
         m_selected_non_molecular_tags = sel_non_molecular_tags;
     };
     doCommand(redo, undo, desc);
@@ -1360,54 +1409,67 @@ void MolModel::clearSelection()
 
 void MolModel::selectAll()
 {
-    auto [atom_tags_to_select, bond_tags_to_select,
+    auto [atom_tags_to_select, bond_tags_to_select, s_group_tags_to_select,
           non_molecular_tags_to_select] = getAllUnselectedTags();
     doSelectionCommand(atom_tags_to_select, bond_tags_to_select,
-                       non_molecular_tags_to_select, true, "Select all");
+                       s_group_tags_to_select, non_molecular_tags_to_select,
+                       true, "Select all");
 }
 
-std::tuple<std::unordered_set<int>, std::unordered_set<int>,
-           std::unordered_set<int>>
+std::tuple<std::unordered_set<AtomTag>, std::unordered_set<BondTag>,
+           std::unordered_set<SGroupTag>, std::unordered_set<NonMolecularTag>>
 MolModel::getAllUnselectedTags()
 {
-    std::unordered_set<int> deselected_atoms;
-    for (const auto& [atom_tag, atom] : *m_mol.getAtomBookmarks()) {
+    std::unordered_set<AtomTag> deselected_atoms;
+    for (const auto& [atom_tag_int, atom] : *m_mol.getAtomBookmarks()) {
+        auto atom_tag = AtomTag(atom_tag_int);
         if (m_selected_atom_tags.find(atom_tag) == m_selected_atom_tags.end()) {
             deselected_atoms.insert(atom_tag);
         }
     }
-    std::unordered_set<int> deselected_bonds;
-    for (const auto& [bond_tag, bond] : *m_mol.getBondBookmarks()) {
+    std::unordered_set<BondTag> deselected_bonds;
+    for (const auto& [bond_tag_int, bond] : *m_mol.getBondBookmarks()) {
+        auto bond_tag = BondTag(bond_tag_int);
         if (m_selected_bond_tags.find(bond_tag) == m_selected_bond_tags.end()) {
             deselected_bonds.insert(bond_tag);
         }
     }
-    std::unordered_set<int> deselected_non_molecular_objects;
+    std::unordered_set<SGroupTag> deselected_s_groups;
+    for (const auto& s_group : getSubstanceGroups(m_mol)) {
+        auto s_group_tag = getTagForSGroup(s_group);
+        if (m_selected_s_group_tags.find(s_group_tag) ==
+            m_selected_s_group_tags.end()) {
+            deselected_s_groups.insert(s_group_tag);
+        }
+    }
+    std::unordered_set<NonMolecularTag> deselected_non_molecular_objects;
     for (const auto* non_molecular_obj : getNonMolecularObjects()) {
-        int tag = non_molecular_obj->getTag();
+        auto tag = non_molecular_obj->getTag();
         if (m_selected_non_molecular_tags.find(tag) ==
             m_selected_non_molecular_tags.end()) {
             deselected_non_molecular_objects.insert(tag);
         }
     }
-    return {deselected_atoms, deselected_bonds,
+    return {deselected_atoms, deselected_bonds, deselected_s_groups,
             deselected_non_molecular_objects};
 }
 
 void MolModel::invertSelection()
 {
-    auto [atom_tags_to_select, bond_tags_to_select,
+    auto [atom_tags_to_select, bond_tags_to_select, s_group_tags_to_select,
           non_molecular_tags_to_select] = getAllUnselectedTags();
     auto undo_macro_raii = createUndoMacro("Invert selection");
     doSelectionCommand(m_selected_atom_tags, m_selected_bond_tags,
-                       m_selected_non_molecular_tags, false, "Deselect");
+                       m_selected_s_group_tags, m_selected_non_molecular_tags,
+                       false, "Deselect");
     doSelectionCommand(atom_tags_to_select, bond_tags_to_select,
-                       non_molecular_tags_to_select, true, "Select");
+                       s_group_tags_to_select, non_molecular_tags_to_select,
+                       true, "Select");
 }
 
 void MolModel::removeSelected()
 {
-    remove(getSelectedAtoms(), getSelectedBonds(), {},
+    remove(getSelectedAtoms(), getSelectedBonds(), getSelectedSGroups(),
            getSelectedNonMolecularObjects());
 }
 
@@ -1577,37 +1639,37 @@ void MolModel::toggleExplicitHsOnAtoms(
     updateExplicitHs(ExplicitHActions::TOGGLE, atoms);
 }
 
-void MolModel::setTagForAtom(RDKit::Atom* const atom, const int atom_tag)
+void MolModel::setTagForAtom(RDKit::Atom* const atom, const AtomTag atom_tag)
 {
     m_mol.setAtomBookmark(atom, atom_tag);
-    atom->setProp(TAG_PROPERTY, atom_tag);
+    atom->setProp<int>(TAG_PROPERTY, atom_tag);
 }
 
-int MolModel::getTagForAtom(const RDKit::Atom* const atom,
-                            const bool allow_null)
+AtomTag MolModel::getTagForAtom(const RDKit::Atom* const atom,
+                                const bool allow_null)
 {
     if (atom == nullptr) {
         if (allow_null) {
-            return -1;
+            return AtomTag(-1);
         }
         throw std::runtime_error("Cannot pass nullptr to getTagForAtom "
                                  "unless allow_null is true");
     }
-    return atom->getProp<int>(TAG_PROPERTY);
+    return AtomTag(atom->getProp<int>(TAG_PROPERTY));
 }
 
-void MolModel::setTagForBond(RDKit::Bond* const bond, const int bond_tag)
+void MolModel::setTagForBond(RDKit::Bond* const bond, const BondTag bond_tag)
 {
     m_mol.setBondBookmark(bond, bond_tag);
-    bond->setProp(TAG_PROPERTY, bond_tag);
+    bond->setProp<int>(TAG_PROPERTY, bond_tag);
 }
 
-int MolModel::getTagForBond(const RDKit::Bond* const bond)
+BondTag MolModel::getTagForBond(const RDKit::Bond* const bond)
 {
-    return bond->getProp<int>(TAG_PROPERTY);
+    return BondTag(bond->getProp<int>(TAG_PROPERTY));
 }
 
-const RDKit::Atom* MolModel::getAtomFromTag(int atom_tag) const
+const RDKit::Atom* MolModel::getAtomFromTag(AtomTag atom_tag) const
 {
     // RDKit is missing const versions of bookmark getters, even though it
     // has const atom getters that take an atom index.  To get around this,
@@ -1616,13 +1678,35 @@ const RDKit::Atom* MolModel::getAtomFromTag(int atom_tag) const
         atom_tag);
 }
 
-const RDKit::Bond* MolModel::getBondFromTag(int bond_tag) const
+const RDKit::Bond* MolModel::getBondFromTag(BondTag bond_tag) const
 {
     // RDKit is missing const versions of bookmark getters, even though it
     // has const bond getters that take a bond index.  To get around this,
     // we use const_cast.  (See SHARED-9673.)
     return const_cast<RDKit::RWMol*>(&m_mol)->getUniqueBondWithBookmark(
         bond_tag);
+}
+
+SGroupTag MolModel::getTagForSGroup(const RDKit::SubstanceGroup& s_group) const
+{
+    return SGroupTag(s_group.getProp<int>(TAG_PROPERTY));
+}
+
+void MolModel::setTagForSGroup(const RDKit::SubstanceGroup& s_group,
+                               const SGroupTag s_group_tag)
+{
+    s_group.setProp<int>(TAG_PROPERTY, s_group_tag);
+}
+
+RDKit::SubstanceGroup
+MolModel::getSGroupFromTag(const SGroupTag s_group_tag) const
+{
+    for (const auto& s_group : getSubstanceGroups(m_mol)) {
+        if (getTagForSGroup(s_group) == s_group_tag) {
+            return s_group;
+        }
+    }
+    throw std::out_of_range("No S-group found");
 }
 
 RDKit::Atom* MolModel::getMutableAtom(const RDKit::Atom* const atom)
@@ -1657,7 +1741,7 @@ MolModel::ensureCompleteAttachmentPoints(
 
 void MolModel::addAtomChainCommandFunc(
     const AtomFunc create_atom, const std::vector<RDGeom::Point3D>& coords,
-    const BondFunc create_bond, const int bound_to_atom_tag)
+    const BondFunc create_bond, const AtomTag bound_to_atom_tag)
 {
     Q_ASSERT(m_allow_edits);
     RDKit::Atom* prev_atom = nullptr;
@@ -1711,7 +1795,7 @@ void MolModel::updateNonMolecularMetadata()
     }
 }
 
-bool MolModel::removeAtomCommandFunc(const int atom_tag)
+bool MolModel::removeAtomCommandFunc(const AtomTag atom_tag)
 {
     Q_ASSERT(m_allow_edits);
     RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
@@ -1719,7 +1803,7 @@ bool MolModel::removeAtomCommandFunc(const int atom_tag)
     // RDKit automatically deletes all bonds involving this atom, so we have
     // to remove those from the selection as well
     for (auto cur_bond : m_mol.atomBonds(atom)) {
-        int bond_tag = getTagForBond(cur_bond);
+        auto bond_tag = getTagForBond(cur_bond);
         if (m_selected_bond_tags.erase(bond_tag)) {
             selection_changed = true;
         }
@@ -1728,8 +1812,8 @@ bool MolModel::removeAtomCommandFunc(const int atom_tag)
     return selection_changed;
 }
 
-void MolModel::addBondCommandFunc(const int start_atom_tag,
-                                  const int end_atom_tag,
+void MolModel::addBondCommandFunc(const AtomTag start_atom_tag,
+                                  const AtomTag end_atom_tag,
                                   const BondFunc create_bond)
 {
     Q_ASSERT(m_allow_edits);
@@ -1747,9 +1831,9 @@ void MolModel::addBondCommandFunc(const int start_atom_tag,
     setTagForBond(bond, m_next_bond_tag++);
 }
 
-bool MolModel::removeBondCommandFunc(const int bond_tag,
-                                     const int start_atom_tag,
-                                     const int end_atom_tag)
+bool MolModel::removeBondCommandFunc(const BondTag bond_tag,
+                                     const AtomTag start_atom_tag,
+                                     const AtomTag end_atom_tag)
 {
     Q_ASSERT(m_allow_edits);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
@@ -1759,7 +1843,8 @@ bool MolModel::removeBondCommandFunc(const int bond_tag,
     return selection_changed;
 }
 
-bool MolModel::removeNonMolecularObjectCommandFunc(const int cur_tag)
+bool MolModel::removeNonMolecularObjectCommandFunc(
+    const NonMolecularTag cur_tag)
 {
     auto* obj = m_tag_to_non_molecular_object.at(cur_tag);
     bool selected = m_selected_non_molecular_tags.erase(cur_tag);
@@ -1777,34 +1862,111 @@ bool MolModel::removeNonMolecularObjectCommandFunc(const int cur_tag)
 }
 
 void MolModel::removeCommandFunc(
-    const std::vector<int>& atom_tags,
-    const std::vector<std::tuple<int, int, int>>& bond_tags_with_atoms,
-    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-    const std::vector<int>& non_molecular_tags)
+    const std::vector<AtomTag>& atom_tags,
+    const std::vector<std::tuple<BondTag, AtomTag, AtomTag>>&
+        bond_tags_with_atoms,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
+    const std::vector<NonMolecularTag>& non_molecular_tags)
 {
     Q_ASSERT(m_allow_edits);
     // we have to determine whether we're deleting an attachment point
     // before we delete any of the bonds, since is_attachment_point() will
     // return false for unbound atoms
     bool attachment_point_deleted =
-        std::any_of(atom_tags.begin(), atom_tags.end(), [this](int tag) {
+        std::any_of(atom_tags.begin(), atom_tags.end(), [this](AtomTag tag) {
             return is_attachment_point(getAtomFromTag(tag));
         });
-    // remove the bonds first so that they don't get implicitly deleted when
-    // we remove an atom
+
+    // handle the S-groups first so that they don't get implicitly deleted when
+    // we remove an atom or a bond
+    removeSGroupsCommandFunc(s_groups);
+    deselectSGroupsThatWillBeImplicitlyDeleted(atom_tags, bond_tags_with_atoms);
+
+    // then remove the bonds so that they don't get implicitly deleted when we
+    // remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
         removeBondCommandFunc(bond_tag, start_atom_tag, end_atom_tag);
     }
-    for (int cur_atom_tag : atom_tags) {
+    for (auto cur_atom_tag : atom_tags) {
         removeAtomCommandFunc(cur_atom_tag);
     }
     if (attachment_point_deleted) {
         renumber_attachment_points(&m_mol);
     }
-    for (int cur_tag : non_molecular_tags) {
+    for (auto cur_tag : non_molecular_tags) {
         removeNonMolecularObjectCommandFunc(cur_tag);
     }
-    rdkit_extensions::remove_sgroups_from_molecule(m_mol, sgroups);
+}
+
+void MolModel::removeSGroupsCommandFunc(
+    const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups)
+{
+    Q_ASSERT(m_allow_edits);
+    if (s_groups.empty()) {
+        return;
+    }
+    for (auto* s_group : s_groups) {
+        auto tag = getTagForSGroup(*s_group);
+        m_selected_s_group_tags.erase(tag);
+    }
+    rdkit_extensions::remove_sgroups_from_molecule(m_mol, s_groups);
+}
+
+void MolModel::deselectSGroupsThatWillBeImplicitlyDeleted(
+    const std::vector<AtomTag>& atom_tags,
+    const std::vector<std::tuple<BondTag, AtomTag, AtomTag>>&
+        bond_tags_with_atoms)
+{
+    Q_ASSERT(m_allow_edits);
+    if (m_selected_s_group_tags.empty()) {
+        // there are no selected S-groups, so we don't have to worry about
+        // deselecting any of them
+        return;
+    }
+
+    // build sets of indices for all of the atoms and bonds that are going to be
+    // removed
+    std::unordered_set<unsigned int> atom_idxs_to_delete;
+    std::transform(
+        atom_tags.begin(), atom_tags.end(),
+        std::inserter(atom_idxs_to_delete, atom_idxs_to_delete.begin()),
+        [this](AtomTag tag) { return getAtomFromTag(tag)->getIdx(); });
+    std::unordered_set<unsigned int> bond_idxs_to_delete;
+    std::transform(
+        bond_tags_with_atoms.begin(), bond_tags_with_atoms.end(),
+        std::inserter(bond_idxs_to_delete, bond_idxs_to_delete.begin()),
+        [this](auto tags) {
+            auto bond_tag = std::get<0>(tags);
+            return getBondFromTag(bond_tag)->getIdx();
+        });
+
+    // figure out which of the selected S-groups are going to be implicitly
+    // deleted
+    std::unordered_set<SGroupTag> tags_to_deselect;
+    for (auto sel_tag : m_selected_s_group_tags) {
+        auto cur_s_group = getSGroupFromTag(sel_tag);
+        bool s_group_contains_atom_to_be_deleted = std::any_of(
+            cur_s_group.getAtoms().begin(), cur_s_group.getAtoms().end(),
+            [&atom_idxs_to_delete](auto idx) {
+                return atom_idxs_to_delete.count(idx);
+            });
+        bool s_group_contains_bond_to_be_deleted = std::any_of(
+            cur_s_group.getBonds().begin(), cur_s_group.getBonds().end(),
+            [&bond_idxs_to_delete](auto idx) {
+                return bond_idxs_to_delete.count(idx);
+            });
+
+        if (s_group_contains_atom_to_be_deleted ||
+            s_group_contains_bond_to_be_deleted) {
+            // this S-group is going to be implicitly deleted
+            tags_to_deselect.insert(sel_tag);
+            continue;
+        }
+    }
+    // finally, actually do the deselection
+    for (auto tag : tags_to_deselect) {
+        m_selected_s_group_tags.erase(tag);
+    }
 }
 
 void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
@@ -1834,6 +1996,7 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
                            return old_index + bond_index;
                        });
         sgroup.setBonds(new_bond_indices);
+        setTagForSGroup(sgroup, m_next_s_group_tag++);
         addSubstanceGroup(m_mol, sgroup);
     }
     bool attachment_point_added = false;
@@ -1898,7 +2061,7 @@ void MolModel::addReactionCommandFunc(const RDKit::ChemicalReaction& reaction)
     }
 }
 
-void MolModel::mutateAtomCommandFunc(const int atom_tag,
+void MolModel::mutateAtomCommandFunc(const AtomTag atom_tag,
                                      const AtomFunc create_atom)
 {
     Q_ASSERT(m_allow_edits);
@@ -1911,10 +2074,10 @@ void MolModel::mutateAtomCommandFunc(const int atom_tag,
     // The bookmark is automatically updated, but the property is not
     // (unless we passed preserveProbs = true, but that overwrites the
     // R-group property)
-    mutated_atom->setProp(TAG_PROPERTY, atom_tag);
+    mutated_atom->setProp<int>(TAG_PROPERTY, atom_tag);
 }
 
-void MolModel::mutateBondCommandFunc(const int bond_tag,
+void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
                                      const BondFunc create_bond)
 {
     Q_ASSERT(m_allow_edits);
@@ -1926,7 +2089,7 @@ void MolModel::mutateBondCommandFunc(const int bond_tag,
     auto* mutated_bond = m_mol.getBondWithIdx(bond_index);
     // The bookmark is automatically updated, but we have to manually copy
     // the bond tag property
-    mutated_bond->setProp(TAG_PROPERTY, bond_tag);
+    mutated_bond->setProp<int>(TAG_PROPERTY, bond_tag);
 }
 
 void MolModel::flipBondCommandFunc(const RDKit::Bond* bond)
@@ -1990,29 +2153,37 @@ void MolModel::clearCommandFunc()
 }
 
 void MolModel::setSelectionCommandFunc(
-    const std::unordered_set<int>& atom_tags,
-    const std::unordered_set<int>& bond_tags,
-    const std::unordered_set<int>& non_molecular_tags, const bool selected)
+    const std::unordered_set<AtomTag>& atom_tags,
+    const std::unordered_set<BondTag>& bond_tags,
+    const std::unordered_set<SGroupTag>& s_group_tags,
+    const std::unordered_set<NonMolecularTag>& non_molecular_tags,
+    const bool selected)
 {
     Q_ASSERT(m_allow_edits);
     if (selected) {
-        for (int cur_atom_tag : atom_tags) {
+        for (auto cur_atom_tag : atom_tags) {
             m_selected_atom_tags.insert(cur_atom_tag);
         }
-        for (int cur_bond_tag : bond_tags) {
+        for (auto cur_bond_tag : bond_tags) {
             m_selected_bond_tags.insert(cur_bond_tag);
         }
-        for (int cur_tag : non_molecular_tags) {
+        for (auto cur_tag : s_group_tags) {
+            m_selected_s_group_tags.insert(cur_tag);
+        }
+        for (auto cur_tag : non_molecular_tags) {
             m_selected_non_molecular_tags.insert(cur_tag);
         }
     } else {
-        for (int cur_atom_tag : atom_tags) {
+        for (auto cur_atom_tag : atom_tags) {
             m_selected_atom_tags.erase(cur_atom_tag);
         }
-        for (int cur_bond_tag : bond_tags) {
+        for (auto cur_bond_tag : bond_tags) {
             m_selected_bond_tags.erase(cur_bond_tag);
         }
-        for (int cur_tag : non_molecular_tags) {
+        for (auto cur_tag : s_group_tags) {
+            m_selected_s_group_tags.erase(cur_tag);
+        }
+        for (auto cur_tag : non_molecular_tags) {
             m_selected_non_molecular_tags.erase(cur_tag);
         }
     }
@@ -2025,6 +2196,7 @@ void MolModel::clearSelectionCommandFunc()
     bool selection_changed = hasSelection();
     m_selected_atom_tags.clear();
     m_selected_bond_tags.clear();
+    m_selected_s_group_tags.clear();
     m_selected_non_molecular_tags.clear();
     if (selection_changed) {
         emit selectionChanged();
@@ -2067,7 +2239,7 @@ void MolModel::removeExplicitHsCommandFunc(
     }
 
     // deselect any atoms and bonds that were removed
-    std::unordered_set<int> new_atom_selection;
+    std::unordered_set<AtomTag> new_atom_selection;
     for (auto atom_tag : m_selected_atom_tags) {
         if (m_mol.hasAtomBookmark(atom_tag)) {
             new_atom_selection.insert(atom_tag);
@@ -2075,7 +2247,7 @@ void MolModel::removeExplicitHsCommandFunc(
     }
     m_selected_atom_tags = new_atom_selection;
 
-    std::unordered_set<int> new_bond_selection;
+    std::unordered_set<BondTag> new_bond_selection;
     for (auto bond_tag : m_selected_bond_tags) {
         if (m_mol.hasBondBookmark(bond_tag)) {
             new_bond_selection.insert(bond_tag);

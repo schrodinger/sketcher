@@ -7,7 +7,7 @@ namespace sketcher
 
 NonMolecularObject::NonMolecularObject(const NonMolecularType& type,
                                        const RDGeom::Point3D& coords,
-                                       const int tag) :
+                                       const NonMolecularTag tag) :
     m_type(type),
     m_coords(coords),
     m_tag(tag)
@@ -29,7 +29,7 @@ void NonMolecularObject::setCoords(const RDGeom::Point3D& coords)
     m_coords = coords;
 }
 
-int NonMolecularObject::getTag() const
+NonMolecularTag NonMolecularObject::getTag() const
 {
     return m_tag;
 }

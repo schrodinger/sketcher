@@ -39,5 +39,11 @@ get_repeat_pattern_label(const RDKit::SubstanceGroup& sgroup);
 RDKIT_EXTENSIONS_API std::string
 get_polymer_label(const RDKit::SubstanceGroup& sgroup);
 
+/**
+ * @return all bonds between the atoms contained in the S-group
+ */
+RDKIT_EXTENSIONS_API std::unordered_set<const RDKit::Bond*>
+get_s_group_atom_bonds(const RDKit::SubstanceGroup& s_group);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

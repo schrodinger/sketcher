@@ -219,6 +219,10 @@ const qreal MAPPING_ARROW_HEAD_HALF_WIDTH = 3;
 // selection highlighting
 const qreal NON_MOLECULAR_HIGHLIGHT_PADDING = 6.0;
 
+// The width of the path drawn around substance groups for predictive and
+// selection highlighting
+const qreal S_GROUP_HIGHLIGHT_PADDING = 6.0;
+
 // When inserting a fragment (e.g. the Draw Ring tool), we look for fragment
 // atoms that have identical coordinates to core atoms.  This is the max
 // distance (in MolModel coordinates) for two coordinates to be considered

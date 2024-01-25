@@ -1,5 +1,6 @@
 #include "schrodinger/sketcher/model/undoable_model_undo_command.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
+#include "schrodinger/sketcher/model/tags.h"
 
 #include <QString>
 

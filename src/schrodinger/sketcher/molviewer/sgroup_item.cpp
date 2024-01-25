@@ -2,9 +2,12 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include <GraphMol/ROMol.h>
+#include <QMarginsF>
 #include <QPainter>
 
 namespace schrodinger
@@ -12,14 +15,20 @@ namespace schrodinger
 namespace sketcher
 {
 
-SGroupItem::SGroupItem(const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
-                       QGraphicsItem* parent) :
+SGroupItem::SGroupItem(
+    const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
+    std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item,
+    std::unordered_map<const RDKit::Bond*, BondItem*> bond_to_bond_item,
+    QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
     m_sgroup(sgroup),
     m_fonts(fonts)
 {
     setZValue(static_cast<qreal>(ZOrder::SGROUP));
-    updateCachedData();
+    auto atom_and_bond_pred_path =
+        get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
+            sgroup, atom_to_atom_item, bond_to_bond_item);
+    updateCachedData(atom_and_bond_pred_path);
 }
 
 const RDKit::SubstanceGroup* SGroupItem::getSubstanceGroup() const
@@ -47,25 +56,19 @@ int SGroupItem::type() const
     return Type;
 }
 
-QPainterPath SGroupItem::computePredictiveHighlightingPath() const
+void SGroupItem::updateCachedData()
 {
-    QPainterPath path = shape();
-    auto& molecule = m_sgroup.getOwningMol();
+    QPainterPath atom_and_bond_pred_path;
     auto scene_ptr = dynamic_cast<Scene*>(scene());
     if (scene_ptr) {
-        for (auto atom_idx : m_sgroup.getAtoms()) {
-            auto atom_item = scene_ptr->getAtomItemForAtom(
-                molecule.getAtomWithIdx(atom_idx));
-            if (atom_item) {
-                path.addPath(mapFromItem(
-                    atom_item, atom_item->predictiveHighlightingPath()));
-            }
-        }
+        atom_and_bond_pred_path =
+            scene_ptr->getPredictiveHighlightingPathForSGroupAtomsAndBonds(
+                m_sgroup);
     }
-    return path;
+    updateCachedData(atom_and_bond_pred_path);
 }
 
-void SGroupItem::updateCachedData()
+void SGroupItem::updateCachedData(const QPainterPath& atom_and_bond_pred_path)
 {
     prepareGeometryChange();
     m_repeat = QString::fromStdString(
@@ -73,7 +76,6 @@ void SGroupItem::updateCachedData()
     m_label =
         QString::fromStdString(rdkit_extensions::get_polymer_label(m_sgroup));
     m_brackets_path = getBracketPath();
-    m_predictive_highlighting_path = computePredictiveHighlightingPath();
     auto [positions, displacement] = getPositionsForLabels();
     auto brackets_half_height = positions.length() * 0.5;
     auto translation_offset = (positions.p1() + positions.p2()) * 0.5;
@@ -102,21 +104,39 @@ void SGroupItem::updateCachedData()
     transform.translate(translation_offset.x(), translation_offset.y());
     transform.rotate(rotation_angle);
     m_labels_transform = transform;
+
+    // generate the shape and highlights after everything else, since they
+    // incorporate the above values
+    m_shape = getShapeWithWidth(S_GROUP_HIGHLIGHT_PADDING);
+    m_bounding_rect = m_shape.boundingRect();
+    m_selection_highlighting_path = m_shape;
+    m_predictive_highlighting_path =
+        m_shape + mapFromScene(atom_and_bond_pred_path);
 }
 
-QPainterPath SGroupItem::shape() const
+QPainterPath SGroupItem::getShapeWithWidth(qreal width) const
 {
     QPainterPathStroker stroker;
-    stroker.setWidth(4);
+    stroker.setWidth(width);
     auto path = stroker.createStroke(m_brackets_path);
-    path.addPolygon(m_labels_transform.map(m_untransformed_label_rect));
-    path.addPolygon(m_labels_transform.map(m_untransformed_repeat_rect));
+    // we intentionally add a little extra highlighting to the right of the
+    // labels.  Otherwise, it looks unbalanced because the brackets are to the
+    // left of the labels.
+    const QMarginsF expand_labels_by(width / 2.0, width / 2.0, width,
+                                     width / 2.0);
+    if (!m_label.isEmpty()) {
+        auto expanded_label =
+            m_untransformed_label_rect.marginsAdded(expand_labels_by);
+        auto transformed_label = m_labels_transform.map(expanded_label);
+        path.addPolygon(transformed_label);
+    }
+    if (!m_repeat.isEmpty()) {
+        auto expanded_repeat =
+            m_untransformed_repeat_rect.marginsAdded(expand_labels_by);
+        auto transformed_repeat = m_labels_transform.map(expanded_repeat);
+        path.addPolygon(transformed_repeat);
+    }
     return path;
-}
-
-QRectF SGroupItem::boundingRect() const
-{
-    return shape().boundingRect();
 }
 
 QPainterPath SGroupItem::getBracketPath() const

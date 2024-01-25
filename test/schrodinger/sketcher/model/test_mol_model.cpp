@@ -187,8 +187,8 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(mol->getNumAtoms() == 1);
     auto* c_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
     check_coords(mol, 0, 1.0, 2.0);
     model.addAtom(Element::N, RDGeom::Point3D(3.0, 4.0, 0.0));
     c_atom = mol->getAtomWithIdx(0);
@@ -196,12 +196,12 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     auto* n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 1, 3.0, 4.0);
-    BOOST_TEST(model.getAtomFromTag(1) == n_atom);
-    BOOST_TEST(model.getTagForAtom(n_atom) == 1);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
+    BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
     // make sure c_atom is still valid
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
 
     undo_stack.undo();
     c_atom = mol->getAtomWithIdx(0);
@@ -210,8 +210,8 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(c_atom->getSymbol() == "C");
     check_coords(mol, 0, 1.0, 2.0);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 0);
 
@@ -221,19 +221,19 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(c_atom->getSymbol() == "C");
     check_coords(mol, 0, 1.0, 2.0);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 2);
     c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 1, 3.0, 4.0);
-    BOOST_TEST(model.getAtomFromTag(1) == n_atom);
-    BOOST_TEST(model.getTagForAtom(n_atom) == 1);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
+    BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
 
     // undo again to make sure that redoing hasn't modified the structures
     // stored in the undo lambda
@@ -244,8 +244,8 @@ BOOST_AUTO_TEST_CASE(test_addAtom)
     BOOST_TEST(c_atom->getSymbol() == "C");
     check_coords(mol, 0, 1.0, 2.0);
     BOOST_TEST(c_atom->getSymbol() == "C");
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 0);
 }
@@ -266,8 +266,8 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
-    BOOST_TEST(model.getBondFromTag(0) == bond);
-    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(model.getBondFromTag(BondTag(0)) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == BondTag(0));
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
@@ -285,8 +285,8 @@ BOOST_AUTO_TEST_CASE(test_addAtomWithBond)
     c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     bond = mol->getBondWithIdx(0);
-    BOOST_TEST(model.getBondFromTag(0) == bond);
-    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(model.getBondFromTag(BondTag(0)) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == BondTag(0));
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
@@ -596,8 +596,8 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
     n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
-    BOOST_TEST(model.getAtomFromTag(1) == n_atom);
-    BOOST_TEST(model.getTagForAtom(n_atom) == 1);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
+    BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
     model.remove({n_atom}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 0);
 
@@ -606,26 +606,26 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
     n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
-    BOOST_TEST(model.getAtomFromTag(1) == n_atom);
-    BOOST_TEST(model.getTagForAtom(n_atom) == 1);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
+    BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 2);
     c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(c_atom->getSymbol() == "C");
     check_coords(mol, 0, 1.0, 2.0);
-    BOOST_TEST(model.getAtomFromTag(0) == c_atom);
-    BOOST_TEST(model.getTagForAtom(c_atom) == 0);
-    BOOST_TEST(model.getAtomFromTag(1) == n_atom);
-    BOOST_TEST(model.getTagForAtom(n_atom) == 1);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(0)) == c_atom);
+    BOOST_TEST(model.getTagForAtom(c_atom) == AtomTag(0));
+    BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
+    BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
 
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 1);
     n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
-    BOOST_TEST(model.getAtomFromTag(1) == n_atom);
-    BOOST_TEST(model.getTagForAtom(n_atom) == 1);
+    BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
+    BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 0);
 }
@@ -648,8 +648,8 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
-    BOOST_TEST(model.getBondFromTag(0) == bond);
-    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(model.getBondFromTag(BondTag(0)) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == BondTag(0));
     BOOST_TEST(bond->getBeginAtom() == c_atom);
     BOOST_TEST(bond->getEndAtom() == n_atom);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
@@ -661,8 +661,8 @@ BOOST_AUTO_TEST_CASE(test_addBond)
     undo_stack.redo();
     BOOST_TEST(mol->getNumBonds() == 1);
     bond = mol->getBondWithIdx(0);
-    BOOST_TEST(model.getBondFromTag(0) == bond);
-    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(model.getBondFromTag(BondTag(0)) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == BondTag(0));
     c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(bond->getBeginAtom() == c_atom);
@@ -724,7 +724,8 @@ BOOST_AUTO_TEST_CASE(test_addNonMolecularObject)
     auto* plus1 = &model.m_pluses[0];
     BOOST_TEST(plus1->getType() == NonMolecularType::RXN_PLUS);
     check_coords(plus1->getCoords(), 1.0, 2.0);
-    BOOST_TEST(model.m_tag_to_non_molecular_object[0] == plus1);
+    BOOST_TEST(model.m_tag_to_non_molecular_object[NonMolecularTag(0)] ==
+               plus1);
 
     model.addNonMolecularObject(NonMolecularType::RXN_PLUS,
                                 RDGeom::Point3D(3.0, 4.0, 0.0));
@@ -734,11 +735,13 @@ BOOST_AUTO_TEST_CASE(test_addNonMolecularObject)
     plus1 = &model.m_pluses[0];
     BOOST_TEST(plus1->getType() == NonMolecularType::RXN_PLUS);
     check_coords(plus1->getCoords(), 1.0, 2.0);
-    BOOST_TEST(model.m_tag_to_non_molecular_object[0] == plus1);
+    BOOST_TEST(model.m_tag_to_non_molecular_object[NonMolecularTag(0)] ==
+               plus1);
     auto* plus2 = &model.m_pluses[1];
     BOOST_TEST(plus2->getType() == NonMolecularType::RXN_PLUS);
     check_coords(plus2->getCoords(), 3.0, 4.0);
-    BOOST_TEST(model.m_tag_to_non_molecular_object[1] == plus2);
+    BOOST_TEST(model.m_tag_to_non_molecular_object[NonMolecularTag(1)] ==
+               plus2);
 
     model.addNonMolecularObject(NonMolecularType::RXN_ARROW,
                                 RDGeom::Point3D(5.0, 6.0, 0.0));
@@ -749,7 +752,8 @@ BOOST_AUTO_TEST_CASE(test_addNonMolecularObject)
     BOOST_TEST(non_mol_objects.count(arrow) == 1);
     BOOST_TEST(arrow->getType() == NonMolecularType::RXN_ARROW);
     check_coords(arrow->getCoords(), 5.0, 6.0);
-    BOOST_TEST(model.m_tag_to_non_molecular_object[2] == arrow);
+    BOOST_TEST(model.m_tag_to_non_molecular_object[NonMolecularTag(2)] ==
+               arrow);
 
     // make sure that we can't add a second arrow
     BOOST_CHECK_THROW(
@@ -780,8 +784,8 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     undo_stack.undo();
     BOOST_TEST(mol->getNumBonds() == 1);
     bond = mol->getBondWithIdx(0);
-    BOOST_TEST(model.getBondFromTag(0) == bond);
-    BOOST_TEST(model.getTagForBond(bond) == 0);
+    BOOST_TEST(model.getBondFromTag(BondTag(0)) == bond);
+    BOOST_TEST(model.getTagForBond(bond) == BondTag(0));
     c_atom = mol->getAtomWithIdx(0);
     n_atom = mol->getAtomWithIdx(1);
     BOOST_TEST(bond->getBeginAtom() == c_atom);
@@ -889,14 +893,14 @@ BOOST_AUTO_TEST_CASE(test_addMol)
     for (int i = 1; i < 5; ++i) {
         atom = mol->getAtomWithIdx(i);
         BOOST_TEST(atom->getSymbol() == "C");
-        BOOST_TEST(model.getAtomFromTag(i) == atom);
-        BOOST_TEST(model.getTagForAtom(atom) == i);
+        BOOST_TEST(model.getAtomFromTag(AtomTag(i)) == atom);
+        BOOST_TEST(model.getTagForAtom(atom) == AtomTag(i));
     }
     const RDKit::Bond* bond;
     for (int i = 0; i < 3; ++i) {
         bond = mol->getBondWithIdx(i);
-        BOOST_TEST(model.getBondFromTag(i) == bond);
-        BOOST_TEST(model.getTagForBond(bond) == i);
+        BOOST_TEST(model.getBondFromTag(BondTag(i)) == bond);
+        BOOST_TEST(model.getTagForBond(bond) == BondTag(i));
     }
 
     undo_stack.undo();
@@ -910,13 +914,13 @@ BOOST_AUTO_TEST_CASE(test_addMol)
     for (int i = 1; i < 5; ++i) {
         atom = mol->getAtomWithIdx(i);
         BOOST_TEST(atom->getSymbol() == "C");
-        BOOST_TEST(model.getAtomFromTag(i) == atom);
-        BOOST_TEST(model.getTagForAtom(atom) == i);
+        BOOST_TEST(model.getAtomFromTag(AtomTag(i)) == atom);
+        BOOST_TEST(model.getTagForAtom(atom) == AtomTag(i));
     }
     for (int i = 0; i < 3; ++i) {
         bond = mol->getBondWithIdx(i);
-        BOOST_TEST(model.getBondFromTag(i) == bond);
-        BOOST_TEST(model.getTagForBond(bond) == i);
+        BOOST_TEST(model.getBondFromTag(BondTag(i)) == bond);
+        BOOST_TEST(model.getTagForBond(bond) == BondTag(i));
     }
 }
 
@@ -981,9 +985,9 @@ BOOST_AUTO_TEST_CASE(test_clear)
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
     BOOST_TEST(!model.isEmpty());
 
-    auto* atom1 = model.getAtomFromTag(1);
+    auto* atom1 = model.getAtomFromTag(AtomTag(1));
     auto* plus = &model.m_pluses[0];
-    model.select({atom1}, {}, {plus}, SelectMode::SELECT);
+    model.select({atom1}, {}, {}, {plus}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
@@ -999,7 +1003,7 @@ BOOST_AUTO_TEST_CASE(test_clear)
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 3);
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
-    atom1 = model.getAtomFromTag(1);
+    atom1 = model.getAtomFromTag(AtomTag(1));
     plus = &model.m_pluses[0];
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds().empty());
@@ -1008,14 +1012,14 @@ BOOST_AUTO_TEST_CASE(test_clear)
     for (int i = 1; i < 5; ++i) {
         atom = mol->getAtomWithIdx(i);
         BOOST_TEST(atom->getSymbol() == "C");
-        BOOST_TEST(model.getAtomFromTag(i) == atom);
-        BOOST_TEST(model.getTagForAtom(atom) == i);
+        BOOST_TEST(model.getAtomFromTag(AtomTag(i)) == atom);
+        BOOST_TEST(model.getTagForAtom(atom) == AtomTag(i));
     }
     const RDKit::Bond* bond;
     for (int i = 0; i < 3; ++i) {
         bond = mol->getBondWithIdx(i);
-        BOOST_TEST(model.getBondFromTag(i) == bond);
-        BOOST_TEST(model.getTagForBond(bond) == i);
+        BOOST_TEST(model.getBondFromTag(BondTag(i)) == bond);
+        BOOST_TEST(model.getTagForBond(bond) == BondTag(i));
     }
 
     undo_stack.redo();
@@ -1043,9 +1047,9 @@ BOOST_AUTO_TEST_CASE(test_selection)
     // stack
     model.clearSelection();
     BOOST_TEST(!undo_stack.count());
-    model.select({}, {}, {}, SelectMode::SELECT);
+    model.select({}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(!undo_stack.count());
-    model.select({}, {}, {}, SelectMode::SELECT_ONLY);
+    model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(!undo_stack.count());
 
     std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCCCC"));
@@ -1065,23 +1069,23 @@ BOOST_AUTO_TEST_CASE(test_selection)
     // stack
     model.clearSelection();
     BOOST_TEST(undo_stack.count() == 3);
-    model.select({}, {}, {}, SelectMode::SELECT);
+    model.select({}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(undo_stack.count() == 3);
-    model.select({}, {}, {}, SelectMode::SELECT_ONLY);
+    model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(undo_stack.count() == 3);
 
-    auto* atom1 = model.getAtomFromTag(1);
-    auto* atom2 = model.getAtomFromTag(2);
-    auto* bond1 = model.getBondFromTag(1);
+    auto* atom1 = model.getAtomFromTag(AtomTag(1));
+    auto* atom2 = model.getAtomFromTag(AtomTag(2));
+    auto* bond1 = model.getBondFromTag(BondTag(1));
     auto* arrow = &model.m_arrow.value();
     auto* plus = &model.m_pluses[0];
-    model.select({atom1, atom2}, {bond1}, {arrow}, SelectMode::SELECT);
+    model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     BOOST_TEST(model.hasSelection());
 
-    model.select({atom1}, {bond1}, {arrow}, SelectMode::DESELECT);
+    model.select({atom1}, {bond1}, {}, {arrow}, SelectMode::DESELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
@@ -1118,7 +1122,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(!model.hasSelection());
 
-    model.select({atom2}, {bond1}, {plus}, SelectMode::SELECT);
+    model.select({atom2}, {bond1}, {}, {plus}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
@@ -1133,8 +1137,8 @@ BOOST_AUTO_TEST_CASE(test_selection)
 
     // make sure that selecting atoms/bonds that are already selected can be
     // undone correctly
-    auto* bond2 = model.getBondFromTag(2);
-    model.select({atom1, atom2}, {bond1, bond2}, {arrow, plus},
+    auto* bond2 = model.getBondFromTag(BondTag(2));
+    model.select({atom1, atom2}, {bond1, bond2}, {}, {arrow, plus},
                  SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1, bond2}));
@@ -1152,10 +1156,11 @@ BOOST_AUTO_TEST_CASE(test_selection)
 
     // make sure that deselecting atoms/bonds that are already deselected can be
     // undone correctly
-    model.select({}, {}, {arrow}, SelectMode::DESELECT);
-    auto* atom3 = model.getAtomFromTag(3);
-    auto* bond3 = model.getBondFromTag(3);
-    model.select({atom2, atom3}, {bond2, bond3}, {arrow}, SelectMode::DESELECT);
+    model.select({}, {}, {}, {arrow}, SelectMode::DESELECT);
+    auto* atom3 = model.getAtomFromTag(AtomTag(3));
+    auto* bond3 = model.getBondFromTag(BondTag(3));
+    model.select({atom2, atom3}, {bond2, bond3}, {}, {arrow},
+                 SelectMode::DESELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
@@ -1169,12 +1174,12 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
 
     // toggle the selection
-    model.select({atom1}, {}, {arrow}, SelectMode::TOGGLE);
+    model.select({atom1}, {}, {}, {arrow}, SelectMode::TOGGLE);
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() ==
                nmo_set({arrow, plus}));
-    model.select({atom1}, {}, {arrow}, SelectMode::TOGGLE);
+    model.select({atom1}, {}, {}, {arrow}, SelectMode::TOGGLE);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
@@ -1189,7 +1194,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
 
     // select-only
-    model.select({atom2}, {bond3}, {arrow}, SelectMode::SELECT_ONLY);
+    model.select({atom2}, {bond3}, {}, {arrow}, SelectMode::SELECT_ONLY);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond3}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1203,7 +1208,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     // select-only with no atoms or bonds specified should clear the selection
-    model.select({}, {}, {}, SelectMode::SELECT_ONLY);
+    model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
@@ -1237,11 +1242,11 @@ BOOST_AUTO_TEST_CASE(test_select_all_and_invert)
     BOOST_TEST(model.getSelectedBonds().size() == 4);
     BOOST_TEST(model.getSelectedNonMolecularObjects().size() == 2);
 
-    auto* atom1 = model.getAtomFromTag(1);
-    auto* atom2 = model.getAtomFromTag(2);
-    auto* bond1 = model.getBondFromTag(1);
+    auto* atom1 = model.getAtomFromTag(AtomTag(1));
+    auto* atom2 = model.getAtomFromTag(AtomTag(2));
+    auto* bond1 = model.getBondFromTag(BondTag(1));
     auto* arrow = &model.m_arrow.value();
-    model.select({atom1, atom2}, {bond1}, {arrow}, SelectMode::SELECT_ONLY);
+    model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT_ONLY);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1262,12 +1267,12 @@ BOOST_AUTO_TEST_CASE(test_select_all_and_invert)
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
-    auto* atom3 = model.getAtomFromTag(3);
-    auto* atom4 = model.getAtomFromTag(4);
-    auto* atom0 = model.getAtomFromTag(0);
-    auto* bond2 = model.getBondFromTag(2);
-    auto* bond3 = model.getBondFromTag(3);
-    auto* bond0 = model.getBondFromTag(0);
+    auto* atom3 = model.getAtomFromTag(AtomTag(3));
+    auto* atom4 = model.getAtomFromTag(AtomTag(4));
+    auto* atom0 = model.getAtomFromTag(AtomTag(0));
+    auto* bond2 = model.getBondFromTag(BondTag(2));
+    auto* bond3 = model.getBondFromTag(BondTag(3));
+    auto* bond0 = model.getBondFromTag(BondTag(0));
     auto* plus = &model.m_pluses[0];
     model.invertSelection();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom3, atom4, atom0}));
@@ -1297,27 +1302,27 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
                                 RDGeom::Point3D(7.0, 8.0, 0.0));
     model.addNonMolecularObject(NonMolecularType::RXN_PLUS,
                                 RDGeom::Point3D(5.0, 6.0, 0.0));
-    auto* atom1 = model.getAtomFromTag(1);
-    auto* atom2 = model.getAtomFromTag(2);
-    auto* bond1 = model.getBondFromTag(1);
+    auto* atom1 = model.getAtomFromTag(AtomTag(1));
+    auto* atom2 = model.getAtomFromTag(AtomTag(2));
+    auto* bond1 = model.getBondFromTag(BondTag(1));
     auto* arrow = &model.m_arrow.value();
-    model.select({atom1, atom2}, {bond1}, {arrow}, SelectMode::SELECT);
+    model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     model.remove({}, {bond1}, {}, {arrow});
-    atom1 = model.getAtomFromTag(1);
-    atom2 = model.getAtomFromTag(2);
+    atom1 = model.getAtomFromTag(AtomTag(1));
+    atom2 = model.getAtomFromTag(AtomTag(2));
 
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
 
     undo_stack.undo();
-    atom1 = model.getAtomFromTag(1);
-    atom2 = model.getAtomFromTag(2);
-    bond1 = model.getBondFromTag(1);
+    atom1 = model.getAtomFromTag(AtomTag(1));
+    atom2 = model.getAtomFromTag(AtomTag(2));
+    bond1 = model.getBondFromTag(BondTag(1));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
@@ -1325,17 +1330,17 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
 
     // removing an atom removes all of its bonds, so this removeAtomsAndBonds
     // call will implicitly remove and deselect bond1
-    model.remove({model.getAtomFromTag(1)}, {}, {}, {});
-    atom2 = model.getAtomFromTag(2);
+    model.remove({model.getAtomFromTag(AtomTag(1))}, {}, {}, {});
+    atom2 = model.getAtomFromTag(AtomTag(2));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     undo_stack.undo();
-    atom1 = model.getAtomFromTag(1);
-    atom2 = model.getAtomFromTag(2);
-    bond1 = model.getBondFromTag(1);
+    atom1 = model.getAtomFromTag(AtomTag(1));
+    atom2 = model.getAtomFromTag(AtomTag(2));
+    bond1 = model.getBondFromTag(BondTag(1));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
@@ -1347,9 +1352,9 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
 
     undo_stack.undo();
-    atom1 = model.getAtomFromTag(1);
-    atom2 = model.getAtomFromTag(2);
-    bond1 = model.getBondFromTag(1);
+    atom1 = model.getAtomFromTag(AtomTag(1));
+    atom2 = model.getAtomFromTag(AtomTag(2));
+    bond1 = model.getBondFromTag(BondTag(1));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
@@ -1358,20 +1363,20 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     // removing non-selected atoms and bonds shouldn't have any effect on the
     // selection
     auto* plus = &model.m_pluses[0];
-    model.remove({model.getAtomFromTag(3)}, {}, {}, {plus});
-    atom1 = model.getAtomFromTag(1);
-    atom2 = model.getAtomFromTag(2);
-    bond1 = model.getBondFromTag(1);
+    model.remove({model.getAtomFromTag(AtomTag(3))}, {}, {}, {plus});
+    atom1 = model.getAtomFromTag(AtomTag(1));
+    atom2 = model.getAtomFromTag(AtomTag(2));
+    bond1 = model.getBondFromTag(BondTag(1));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     undo_stack.undo();
-    model.remove({}, {model.getBondFromTag(2)}, {}, {});
-    atom1 = model.getAtomFromTag(1);
-    atom2 = model.getAtomFromTag(2);
-    bond1 = model.getBondFromTag(1);
+    model.remove({}, {model.getBondFromTag(BondTag(2))}, {}, {});
+    atom1 = model.getAtomFromTag(AtomTag(1));
+    atom2 = model.getAtomFromTag(AtomTag(2));
+    bond1 = model.getBondFromTag(BondTag(1));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
@@ -1391,21 +1396,21 @@ BOOST_AUTO_TEST_CASE(test_select_attachment_point)
     const auto* c_atom = mol->getAtomWithIdx(0);
     const auto* ap_atom = mol->getAtomWithIdx(2);
     const auto* ap_bond = mol->getBondWithIdx(1);
-    model.select({c_atom, ap_atom}, {}, {}, SelectMode::SELECT);
+    model.select({c_atom, ap_atom}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
-    model.select({}, {ap_bond}, {}, SelectMode::DESELECT);
+    model.select({}, {ap_bond}, {}, {}, SelectMode::DESELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom}));
     BOOST_TEST(model.getSelectedBonds().empty());
 
-    model.select({}, {ap_bond}, {}, SelectMode::SELECT);
+    model.select({}, {ap_bond}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
-    model.select({ap_atom}, {}, {}, SelectMode::TOGGLE);
+    model.select({ap_atom}, {}, {}, {}, SelectMode::TOGGLE);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom}));
     BOOST_TEST(model.getSelectedBonds().empty());
 
-    model.select({ap_atom}, {ap_bond}, {}, SelectMode::SELECT);
+    model.select({ap_atom}, {ap_bond}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
 }
@@ -2165,7 +2170,7 @@ BOOST_AUTO_TEST_CASE(test_getSelectedMolForExport)
 
     // partial selection
     auto atom = model.getMol()->getAtomWithIdx(0);
-    model.select({atom}, {}, {}, SelectMode::SELECT);
+    model.select({atom}, {}, {}, {}, SelectMode::SELECT);
     mol = model.getSelectedMolForExport();
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getNumBonds() == 0);
@@ -2438,6 +2443,90 @@ M  END
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
     model.regenerateCoordinates();
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+}
+
+/**
+ * Make sure that we can select S-groups.  Also ensure that deleting a selected
+ * S-group properly deselects it, and that undoing the deletion reselects it.
+ */
+BOOST_AUTO_TEST_CASE(test_s_group_selection)
+{
+    const std::string S_GROUP_SMILES = "CCCCCCCCC |Sg:n:3,4,5:1:ht:::|";
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, S_GROUP_SMILES);
+    auto mol = model.getMol();
+    BOOST_TEST(model.getSelectedSGroups().empty());
+    BOOST_TEST(!model.hasSelection());
+    auto& s_group = RDKit::getSubstanceGroups(*mol)[0];
+
+    // select an S-group
+    model.select({}, {}, {&s_group}, {}, SelectMode::SELECT);
+    auto selected = model.getSelectedSGroups();
+    BOOST_TEST(selected.size() == 1);
+    BOOST_TEST(selected.count(&s_group) == 1);
+    BOOST_TEST(model.hasSelection());
+
+    // clear selection and undo
+    model.clearSelection();
+    BOOST_TEST(model.getSelectedSGroups().empty());
+    BOOST_TEST(!model.hasSelection());
+    undo_stack.undo();
+    selected = model.getSelectedSGroups();
+    BOOST_TEST(selected.size() == 1);
+    BOOST_TEST(selected.count(&s_group) == 1);
+    BOOST_TEST(model.hasSelection());
+
+    // remove the selected S-group and undo
+    model.remove({}, {}, {&s_group}, {});
+    BOOST_TEST(RDKit::getSubstanceGroups(*mol).empty());
+    BOOST_TEST(model.getSelectedSGroups().empty());
+    BOOST_TEST(!model.hasSelection());
+    undo_stack.undo();
+    auto& s_group2 = RDKit::getSubstanceGroups(*mol)[0];
+    selected = model.getSelectedSGroups();
+    BOOST_TEST(selected.size() == 1);
+    BOOST_TEST(selected.count(&s_group2) == 1);
+    BOOST_TEST(model.hasSelection());
+
+    // remove an atom in the S-group (which implicitly deletes the S-group) and
+    // undo
+    auto* atom = mol->getAtomWithIdx(4);
+    model.remove({atom}, {}, {}, {});
+    BOOST_TEST(RDKit::getSubstanceGroups(*mol).empty());
+    BOOST_TEST(model.getSelectedSGroups().empty());
+    BOOST_TEST(!model.hasSelection());
+    undo_stack.undo();
+    auto& s_group3 = RDKit::getSubstanceGroups(*mol)[0];
+    selected = model.getSelectedSGroups();
+    BOOST_TEST(selected.size() == 1);
+    BOOST_TEST(selected.count(&s_group3) == 1);
+    BOOST_TEST(model.hasSelection());
+
+    // remove a bond at the S-group boundary (which implicitly deletes the
+    // S-group) and undo
+    auto* bond = mol->getBondWithIdx(2);
+    model.remove({}, {bond}, {}, {});
+    BOOST_TEST(RDKit::getSubstanceGroups(*mol).empty());
+    BOOST_TEST(model.getSelectedSGroups().empty());
+    BOOST_TEST(!model.hasSelection());
+    undo_stack.undo();
+    auto& s_group4 = RDKit::getSubstanceGroups(*mol)[0];
+    selected = model.getSelectedSGroups();
+    BOOST_TEST(selected.size() == 1);
+    BOOST_TEST(selected.count(&s_group4) == 1);
+    BOOST_TEST(model.hasSelection());
+
+    // remove atoms and bonds that aren't in the S-group and make sure that the
+    // S-group isn't deselected
+    auto* different_atom = mol->getAtomWithIdx(8);
+    auto* different_bond = mol->getBondWithIdx(7);
+    model.remove({different_atom}, {different_bond}, {}, {});
+    auto& s_group5 = RDKit::getSubstanceGroups(*mol)[0];
+    selected = model.getSelectedSGroups();
+    BOOST_TEST(selected.size() == 1);
+    BOOST_TEST(selected.count(&s_group5) == 1);
+    BOOST_TEST(model.hasSelection());
 }
 
 } // namespace sketcher

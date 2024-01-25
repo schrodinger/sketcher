@@ -15,6 +15,7 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
@@ -88,7 +89,8 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
     setVisible(false);
     setZValue(static_cast<qreal>(ZOrder::HINT));
 
-    auto [all_items, atom_to_atom_item, bond_to_bond_item] =
+    auto [all_items, atom_to_atom_item, bond_to_bond_item,
+          s_group_to_s_group_item] =
         create_graphics_items_for_mol(&m_frag, fonts, m_atom_item_settings,
                                       m_bond_item_settings,
                                       /*draw_attachment_points = */ false);
@@ -101,12 +103,16 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
     for (auto& kv : bond_to_bond_item) {
         m_bond_items.append(kv.second);
     }
+    for (auto& kv : s_group_to_s_group_item) {
+        m_s_group_items.append(kv.second);
+    }
 }
 
 void HintFragmentItem::updateConformer(const RDKit::Conformer& conformer)
 {
     m_frag.getConformer() = conformer;
-    update_conf_for_mol_graphics_items(m_atom_items, m_bond_items, {}, m_frag);
+    update_conf_for_mol_graphics_items(m_atom_items, m_bond_items,
+                                       m_s_group_items, m_frag);
 }
 
 DrawFragmentSceneTool::DrawFragmentSceneTool(

@@ -41,6 +41,7 @@ class AtomItem;
 class BondItem;
 class MolModel;
 class NonMolecularItem;
+class SGroupItem;
 class SketcherModel;
 enum class DrawTool;
 enum class ModelKey;
@@ -167,7 +168,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void requestCursorHintUpdate();
 
-    AtomItem* getAtomItemForAtom(const RDKit::Atom* atom) const;
+    /**
+     * Get a predictive hightlighting path for all atoms and bonds contained
+     * within the given S-group
+     */
+    QPainterPath getPredictiveHighlightingPathForSGroupAtomsAndBonds(
+        const RDKit::SubstanceGroup& s_group);
 
   signals:
     /**
@@ -326,6 +332,8 @@ class SKETCHER_API Scene : public QGraphicsScene
 
     std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
+    std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
+        m_s_group_to_s_group_item;
     std::unordered_map<const NonMolecularObject*, NonMolecularItem*>
         m_non_molecular_to_non_molecular_item;
     std::shared_ptr<AbstractSceneTool> m_left_button_scene_tool;

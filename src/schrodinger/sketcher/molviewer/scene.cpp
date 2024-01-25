@@ -193,7 +193,8 @@ void Scene::updateMolecularItems()
     clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
     const auto* mol = m_mol_model->getMol();
     std::vector<QGraphicsItem*> all_items;
-    std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item) =
+    std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
+             m_s_group_to_s_group_item) =
         create_graphics_items_for_mol(mol, m_fonts, m_atom_item_settings,
                                       m_bond_item_settings);
     for (auto* item : all_items) {
@@ -224,12 +225,11 @@ void Scene::updateNonMolecularItems()
     m_left_button_scene_tool->onStructureUpdated();
 }
 
-AtomItem* Scene::getAtomItemForAtom(const RDKit::Atom* atom) const
+QPainterPath Scene::getPredictiveHighlightingPathForSGroupAtomsAndBonds(
+    const RDKit::SubstanceGroup& s_group)
 {
-    if (m_atom_to_atom_item.count(atom)) {
-        return m_atom_to_atom_item.at(atom);
-    }
-    return nullptr;
+    return get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
+        s_group, m_atom_to_atom_item, m_bond_to_bond_item);
 }
 
 void Scene::updateItemSelection()
@@ -240,6 +240,9 @@ void Scene::updateItemSelection()
     }
     for (auto* bond : m_mol_model->getSelectedBonds()) {
         m_bond_to_bond_item[bond]->setSelected(true);
+    }
+    for (auto* s_group : m_mol_model->getSelectedSGroups()) {
+        m_s_group_to_s_group_item[s_group]->setSelected(true);
     }
     for (auto* non_molecular_object :
          m_mol_model->getSelectedNonMolecularObjects()) {
@@ -287,6 +290,8 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
         m_atom_to_atom_item.clear();
     } else if (types & InteractiveItemFlag::BOND) {
         m_bond_to_bond_item.clear();
+    } else if (types & InteractiveItemFlag::S_GROUP) {
+        m_s_group_to_s_group_item.clear();
     } else if (types & InteractiveItemFlag::NON_MOLECULAR) {
         m_non_molecular_to_non_molecular_item.clear();
     }
@@ -474,22 +479,22 @@ Scene::getModelObjects(SceneSubset subset, QPointF* pos) const
 
     std::unordered_set<const RDKit::Atom*> atoms;
     std::unordered_set<const RDKit::Bond*> bonds;
-    std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
+    std::unordered_set<const RDKit::SubstanceGroup*> s_groups;
     std::unordered_set<const NonMolecularObject*> non_molecular_objects;
     for (auto item : items) {
         if (const auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             atoms.insert(atom_item->getAtom());
         } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
             bonds.insert(bond_item->getBond());
-        }
-        // SKETCH-2011: extract RDKit::SubstanceGroup from SGroupItems
-        else if (auto nonmolecular_item =
-                     qgraphicsitem_cast<NonMolecularItem*>(item)) {
+        } else if (auto s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
+            s_groups.insert(s_group_item->getSubstanceGroup());
+        } else if (auto nonmolecular_item =
+                       qgraphicsitem_cast<NonMolecularItem*>(item)) {
             non_molecular_objects.insert(
                 nonmolecular_item->getNonMolecularObject());
         }
     }
-    return std::make_tuple(atoms, bonds, sgroups, non_molecular_objects);
+    return std::make_tuple(atoms, bonds, s_groups, non_molecular_objects);
 }
 
 AbstractGraphicsItem*

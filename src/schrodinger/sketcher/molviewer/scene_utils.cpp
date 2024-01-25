@@ -5,6 +5,7 @@
 #include <QGraphicsItem>
 #include <QPixmap>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QRect>
 #include <QRegion>
@@ -12,6 +13,7 @@
 
 #include <rdkit/GraphMol/ROMol.h>
 
+#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
@@ -28,7 +30,8 @@ namespace sketcher
 
 std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Atom*, AtomItem*>,
-           std::unordered_map<const RDKit::Bond*, BondItem*>>
+           std::unordered_map<const RDKit::Bond*, BondItem*>,
+           std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               AtomItemSettings& atom_item_settings,
                               BondItemSettings& bond_item_settings,
@@ -39,13 +42,15 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         // If there are no atoms, then there's nothing more to do.  Also, if
         // there are no atoms, then shorten_attachment_point_bonds() will raise
         // a ConformerException.
-        return {{}, {}, {}};
+        return {{}, {}, {}, {}};
     }
     RDKit::Conformer conformer = shorten_attachment_point_bonds(mol);
 
     std::vector<QGraphicsItem*> all_items;
     std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, BondItem*> bond_to_bond_item;
+    std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
+        s_group_to_s_group_items;
 
     // create atom items
     for (std::size_t i = 0; i < num_atoms; ++i) {
@@ -75,11 +80,14 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
 
     // create substance group items
     for (auto& sgroup : getSubstanceGroups(*mol)) {
-        SGroupItem* sgroup_item = new SGroupItem(sgroup, fonts);
+        SGroupItem* sgroup_item =
+            new SGroupItem(sgroup, fonts, atom_to_atom_item, bond_to_bond_item);
+        s_group_to_s_group_items[&sgroup] = sgroup_item;
         all_items.push_back(sgroup_item);
     }
 
-    return {all_items, atom_to_atom_item, bond_to_bond_item};
+    return {all_items, atom_to_atom_item, bond_to_bond_item,
+            s_group_to_s_group_items};
 }
 
 void update_conf_for_mol_graphics_items(
@@ -182,6 +190,30 @@ QPixmap get_arrow_cursor_pixmap()
         renderer.render(&painter, pixmap.rect());
     } // end the painter
     return pixmap;
+}
+
+QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
+    const RDKit::SubstanceGroup& s_group,
+    const std::unordered_map<const RDKit::Atom*, AtomItem*>& atom_to_atom_item,
+    const std::unordered_map<const RDKit::Bond*, BondItem*>& bond_to_bond_item)
+{
+    QPainterPath path;
+    path.setFillRule(Qt::WindingFill);
+    auto& mol = s_group.getOwningMol();
+    for (auto atom_idx : s_group.getAtoms()) {
+        auto* atom = mol.getAtomWithIdx(atom_idx);
+        auto* atom_item = atom_to_atom_item.at(atom);
+        auto cur_path = atom_item->predictiveHighlightingPath();
+        cur_path = atom_item->mapToScene(cur_path);
+        path.addPath(cur_path);
+    }
+    for (auto* bond : rdkit_extensions::get_s_group_atom_bonds(s_group)) {
+        auto* bond_item = bond_to_bond_item.at(bond);
+        auto cur_path = bond_item->predictiveHighlightingPath();
+        cur_path = bond_item->mapToScene(cur_path);
+        path.addPath(cur_path);
+    }
+    return path;
 }
 
 } // namespace sketcher

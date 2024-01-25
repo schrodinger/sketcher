@@ -108,7 +108,10 @@ SelectSceneTool<T>::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
     QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
         event->scenePos(), InteractiveItemFlag::MOLECULAR);
     if (item == nullptr) {
-        // double click was on empty space, so we don't do anything
+        // double click wasn't on the molecule, so we do nothing
+        return;
+    } else if (auto* s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
+        // TODO: double-click on an s-group should open up the dialog
         return;
     }
 
@@ -128,7 +131,7 @@ SelectSceneTool<T>::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
         // Ctrl-click as a regular click here
         select_mode = SelectMode::SELECT_ONLY;
     }
-    m_mol_model->select(atoms_to_select, bonds_to_select, {}, select_mode);
+    m_mol_model->select(atoms_to_select, bonds_to_select, {}, {}, select_mode);
 }
 
 template <typename T>
@@ -189,7 +192,8 @@ void SelectSceneTool<T>::onSelectionMade(const QList<QGraphicsItem*>& items,
     auto select_mode = getSelectMode(event);
     auto [atoms, bonds, sgroups, non_molecular_objects] =
         getModelObjectsForGraphicsItems(items);
-    m_mol_model->select(atoms, bonds, non_molecular_objects, select_mode);
+    m_mol_model->select(atoms, bonds, sgroups, non_molecular_objects,
+                        select_mode);
 }
 
 LassoSelectSceneTool::LassoSelectSceneTool(Scene* scene, MolModel* mol_model) :

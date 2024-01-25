@@ -1,7 +1,9 @@
 #pragma once
 
-#include <vector>
+#include <tuple>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include <QList>
 
@@ -11,6 +13,7 @@
 class QColor;
 class QFont;
 class QGraphicsItem;
+class QPainterPath;
 class QPixmap;
 class QString;
 
@@ -32,6 +35,7 @@ class AtomItemSettings;
 class BondItem;
 class BondItemSettings;
 class Fonts;
+class SGroupItem;
 
 /**
  * Create all graphics items needed to represent the given molecule
@@ -45,10 +49,13 @@ class Fonts;
  *   - A list of all newly created graphics items.
  *   - A map of atom -> the graphics item used to represent that atom
  *   - A map of bond -> the graphics item used to represent that bond
+ *   - A map of S-group -> the graphics item used to represent that S-group
  */
-SKETCHER_API std::tuple<std::vector<QGraphicsItem*>,
-                        std::unordered_map<const RDKit::Atom*, AtomItem*>,
-                        std::unordered_map<const RDKit::Bond*, BondItem*>>
+SKETCHER_API
+std::tuple<std::vector<QGraphicsItem*>,
+           std::unordered_map<const RDKit::Atom*, AtomItem*>,
+           std::unordered_map<const RDKit::Bond*, BondItem*>,
+           std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               AtomItemSettings& atom_item_settings,
                               BondItemSettings& bond_item_settings,
@@ -95,6 +102,20 @@ SKETCHER_API QPixmap cursor_hint_from_svg(const QString& path,
  * @return A pixmap containing the arrow cursor
  */
 SKETCHER_API QPixmap get_arrow_cursor_pixmap();
+
+/**
+ * Get a predictive hightlighting path for all atoms and bonds contained within
+ * the given S-group
+ * @param s_group The S-group to generate the path for
+ * @param atom_to_atom_item A map of the AtomItems representing each atom
+ * @param bond_to_bond_item A map of the BondItems representing each bond
+ * @return The newly generated highlighting path
+ */
+SKETCHER_API QPainterPath
+get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
+    const RDKit::SubstanceGroup& s_group,
+    const std::unordered_map<const RDKit::Atom*, AtomItem*>& atom_to_atom_item,
+    const std::unordered_map<const RDKit::Bond*, BondItem*>& bond_to_bond_item);
 
 } // namespace sketcher
 } // namespace schrodinger
