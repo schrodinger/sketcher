@@ -2,9 +2,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "../test_sketcherScene.h"
-#include "schrodinger/sketcher/selection_context_menu_deprecated.h"
-#include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/menu/selection_context_menu.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
@@ -13,32 +11,32 @@ namespace schrodinger
 namespace sketcher
 {
 
-class TestSelectionContextMenu : public SelectionContextMenuDeprecated
+class TestSelectionContextMenu : public SelectionContextMenu
 {
   public:
-    TestSelectionContextMenu(SketcherModel* model) :
-        SelectionContextMenuDeprecated(model)
+    TestSelectionContextMenu(SketcherModel* model, MolModel* mol_model) :
+        SelectionContextMenu(model, mol_model)
     {
     }
-    using SelectionContextMenuDeprecated::m_variable_bond_action;
-    using SelectionContextMenuDeprecated::updateActionsEnabled;
+    using SelectionContextMenu::m_variable_bond_action;
+    using SelectionContextMenu::updateActions;
 };
 
 /**
  * Verify that the menu is properly updated to match the state of the model.
  */
-BOOST_AUTO_TEST_CASE(test_updateActionsEnabled)
+BOOST_AUTO_TEST_CASE(test_updateActions)
 {
-    testSketcherScene scene;
-    scene.importText("NN.CCC");
-    auto model = scene.getModel();
-    TestSelectionContextMenu menu(model);
-    scene.connectContextMenu(menu);
+    SketcherModel model;
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    auto menu = TestSelectionContextMenu(&model, &mol_model);
+    import_mol_text(&mol_model, "NN.CCC");
 
-    std::unordered_set<sketcherAtom*> c_atoms;
-    std::unordered_set<sketcherAtom*> n_atoms;
-    for (auto atom : scene.quickGetAtoms()) {
-        switch (atom->getAtomType()) {
+    std::unordered_set<const RDKit::Atom*> c_atoms;
+    std::unordered_set<const RDKit::Atom*> n_atoms;
+    for (auto atom : mol_model.getMol()->atoms()) {
+        switch (atom->getAtomicNum()) {
             case static_cast<int>(Element::C): {
                 c_atoms.insert(atom);
                 break;
@@ -51,51 +49,30 @@ BOOST_AUTO_TEST_CASE(test_updateActionsEnabled)
     }
 
     // Variable bond will be disabled if fewer than 2 atoms are selected
-    std::unordered_set<sketcherAtom*> selection;
 
     // Select nothing
-    scene.setSelection(selection);
-    scene.clearContextMenuObjects();
-    menu.updateActionsEnabled();
+    menu.setContextItems({}, {}, {}, {});
+    // Use updateActions() as a placeholder for showEvent()
+    menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
 
     // Select 1 atom
-    selection.insert(*c_atoms.begin());
-    scene.setSelection(selection);
-    scene.clearContextMenuObjects();
-    for (const auto& obj : scene.getSelectedObjects()) {
-        scene.m_context_menu_objects.insert(obj);
-    }
-    menu.updateActionsEnabled();
+    menu.setContextItems({*c_atoms.begin()}, {}, {}, {});
+    menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
 
     // Select all atoms on the same molecule
-    scene.setSelection(n_atoms);
-    scene.clearContextMenuObjects();
-    for (const auto& obj : scene.getSelectedObjects()) {
-        scene.m_context_menu_objects.insert(obj);
-    }
-    menu.updateActionsEnabled();
+    menu.setContextItems(n_atoms, {}, {}, {});
+    menu.updateActions();
     BOOST_TEST(menu.m_variable_bond_action->isEnabled());
 
-    scene.setSelection(c_atoms);
-    scene.clearContextMenuObjects();
-    for (const auto& obj : scene.getSelectedObjects()) {
-        scene.m_context_menu_objects.insert(obj);
-    }
-    menu.updateActionsEnabled();
+    menu.setContextItems(c_atoms, {}, {}, {});
+    menu.updateActions();
     BOOST_TEST(menu.m_variable_bond_action->isEnabled());
 
     // Select atoms from different molecules
-    selection.clear();
-    selection.insert(*c_atoms.begin());
-    selection.insert(*n_atoms.begin());
-    scene.setSelection(selection);
-    scene.clearContextMenuObjects();
-    for (const auto& obj : scene.getSelectedObjects()) {
-        scene.m_context_menu_objects.insert(obj);
-    }
-    menu.updateActionsEnabled();
+    menu.setContextItems({*c_atoms.begin(), *n_atoms.begin()}, {}, {}, {});
+    menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
 }
 

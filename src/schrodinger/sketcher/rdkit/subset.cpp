@@ -35,6 +35,24 @@ get_connected_atoms_and_bonds(const RDKit::Atom* const atom)
     return {connected_atoms, connected_bonds};
 }
 
+bool in_same_fragment(const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    auto& mol = (*atoms.begin())->getOwningMol();
+    std::vector<int> frags;
+    std::vector<std::vector<int>> frags_mol_atom_mapping;
+    // note that RDKit treats zero-order and dative bonds as "real" bonds for
+    // connectivity purposes
+    RDKit::MolOps::getMolFrags(mol, /* sanitizeFrags = */ false, &frags,
+                               &frags_mol_atom_mapping,
+                               /* copyConformers = */ false);
+    std::unordered_set<int> atom_frags;
+    for (auto atom : atoms) {
+        auto frag_idx = frags[atom->getIdx()];
+        atom_frags.insert(frag_idx);
+    }
+    return atom_frags.size() == 1;
+}
+
 std::unordered_set<const RDKit::Atom*>
 get_smaller_substituent_atoms(const RDKit::ROMol& mol, const RDKit::Bond& bond)
 {

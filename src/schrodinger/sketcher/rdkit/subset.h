@@ -23,6 +23,12 @@ SKETCHER_API std::pair<std::unordered_set<const RDKit::Atom*>,
 get_connected_atoms_and_bonds(const RDKit::Atom* const atom);
 
 /**
+ * @return whether the atoms are part of the same fragment or not
+ */
+SKETCHER_API bool
+in_same_fragment(const std::unordered_set<const RDKit::Atom*>& atoms);
+
+/**
  * @return a set of the atoms in the smaller of the two subset that the given
  * bond divides the molecule into. If the bond is part of a ring, an empty set
  * is returned.

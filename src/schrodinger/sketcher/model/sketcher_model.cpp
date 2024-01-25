@@ -226,11 +226,6 @@ QList<QGraphicsItem*> SketcherModel::getContextMenuObjects() const
     return emit contextMenuObjectsRequested();
 }
 
-std::vector<const RDKit::Atom*> SketcherModel::getContextMenuAtoms() const
-{
-    return emit contextMenuAtomsRequested();
-}
-
 std::pair<bool, bool> SketcherModel::getUndoStackData() const
 {
     bool can_undo = emit undoStackCanUndoRequested();

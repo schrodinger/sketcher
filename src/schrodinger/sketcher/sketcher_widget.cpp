@@ -395,7 +395,6 @@ void SketcherWidget::connectSideBarSlots()
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
-
     connect(
         &menu, &ModifyAtomsMenu::requestElementChange, m_mol_model,
         qOverload<const RDKitAtoms&, const Element>(&MolModel::mutateAtoms));
@@ -445,10 +444,28 @@ void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
 }
 void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
 {
-    // TODO
+    connect(&menu, &SelectionContextMenu::invertSelectionRequested, m_mol_model,
+            &MolModel::invertSelection);
+    connect(&menu, &SelectionContextMenu::cutRequested, this,
+            &SketcherWidget::cut);
+    connect(&menu, &SelectionContextMenu::copyRequested, this,
+            &SketcherWidget::copy);
 
+    // TODO: SKETCH-1981 connect flipRequested
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
+    // TODO: SKETCH-2117 connect bracketSubgroupDialogRequested
+    // TODO: SKETCH-2118 connect variableAttachmentBondRequested
+    using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
+    connect(&menu, &SelectionContextMenu::newRGroupRequested, m_mol_model,
+            qOverload<const RDKitAtoms&>(&MolModel::mutateRGroups));
+    connect(&menu, &SelectionContextMenu::existingRGroupRequested, m_mol_model,
+            qOverload<const RDKitAtoms&, const unsigned int>(
+                &MolModel::mutateRGroups));
+    connect(&menu, &SelectionContextMenu::deleteRequested, this,
+            [this](auto atoms, auto bonds, auto sgroups, auto non_mol_objs) {
+                m_mol_model->remove(atoms, bonds, sgroups, non_mol_objs);
+            });
 }
 
 void SketcherWidget::connectContextMenu(const BracketSubgroupContextMenu& menu)
@@ -501,10 +518,6 @@ void SketcherWidget::showContextMenu(
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
     } else if (atoms.size() && bonds.size()) {
-        m_selection_context_menu->m_modify_atoms_menu->setContextItems(
-            atoms, bonds, sgroups, non_molecular_objects);
-        m_selection_context_menu->m_modify_bonds_menu->setContextItems(
-            atoms, bonds, sgroups, non_molecular_objects);
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
         menu = m_atom_context_menu;

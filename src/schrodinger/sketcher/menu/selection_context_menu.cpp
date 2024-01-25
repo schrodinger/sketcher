@@ -9,6 +9,8 @@
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/subset.h"
 
 using ::schrodinger::rdkit_extensions::Format;
 
@@ -21,7 +23,8 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
                                            MolModel* mol_model,
                                            QWidget* parent) :
     AbstractContextMenu(parent),
-    m_sketcher_model(model)
+    m_sketcher_model(model),
+    m_mol_model(mol_model)
 {
     m_cut_copy_actions = new CutCopyActionManager(this);
     m_cut_copy_actions->setModel(model);
@@ -41,9 +44,12 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
     addMenu(m_modify_atoms_menu);
     addMenu(m_modify_bonds_menu);
     addMenu(createAddToSelectionMenu());
-    addMenu(createReplaceSelectionWithMenu(mol_model));
+    addMenu(createReplaceSelectionWithMenu());
     addSeparator();
-    addAction("Delete", this, &SelectionContextMenu::deleteRequested);
+    addAction("Delete", this, [this]() {
+        emit deleteRequested(m_atoms, m_bonds, m_sgroups,
+                             m_non_molecular_objects);
+    });
 
     connect(m_cut_copy_actions, &CutCopyActionManager::cutRequested, this,
             &SelectionContextMenu::cutRequested);
@@ -51,28 +57,30 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
             &SelectionContextMenu::copyRequested);
 }
 
+void SelectionContextMenu::setContextItems(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+{
+    m_modify_atoms_menu->setContextItems(atoms, bonds, sgroups,
+                                         non_molecular_objects);
+    m_modify_bonds_menu->setContextItems(atoms, bonds, sgroups,
+                                         non_molecular_objects);
+    AbstractContextMenu::setContextItems(atoms, bonds, sgroups,
+                                         non_molecular_objects);
+}
+
 void SelectionContextMenu::updateActions()
 {
-    auto same_mol = [](const auto& atoms) {
-        auto mol = atoms.front()->getOwningMol();
-        return std::all_of(atoms.begin(), atoms.end(), [mol](auto atom) {
-            return &atom->getOwningMol() == &mol;
-        });
-    };
-
-    auto atoms = m_sketcher_model->getContextMenuAtoms();
-    bool enable = atoms.size() >= 2 && same_mol(atoms);
+    bool enable = m_atoms.size() >= 2 && in_same_fragment(m_atoms);
     m_variable_bond_action->setEnabled(enable);
-}
 
-void SelectionContextMenu::setConvertToBracketGroupEnabled(bool b)
-{
-    m_bracket_group_action->setEnabled(b);
-}
+    // TODO: selectionCanDefineSGroup -> m_bracket_group_action->setEnabled;
+    // TODO: selectionCanBeFlipped -> m_flip_action->setEnabled;
 
-void SelectionContextMenu::setFlipEnabled(bool b)
-{
-    m_flip_action->setEnabled(b);
+    auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
+    m_existing_rgroup_menu->setEnabled(!rgroup_numbers.empty());
 }
 
 QMenu* SelectionContextMenu::createAddToSelectionMenu()
@@ -87,19 +95,21 @@ QMenu* SelectionContextMenu::createAddToSelectionMenu()
     return add_to_selection_menu;
 }
 
-QMenu* SelectionContextMenu::createReplaceSelectionWithMenu(MolModel* mol_model)
+QMenu* SelectionContextMenu::createReplaceSelectionWithMenu()
 {
     auto replace_selection_menu = new QMenu("Replace Selection with", this);
-
-    auto existing_rgroup_menu =
-        new ExistingRGroupMenu(mol_model, replace_selection_menu);
-
-    connect(existing_rgroup_menu, &ExistingRGroupMenu::existingRGroupRequested,
-            this, &SelectionContextMenu::existingRGroupRequested);
-
     replace_selection_menu->addAction(
-        "New R-Group", this, &SelectionContextMenu::newRGroupRequested);
-    replace_selection_menu->addMenu(existing_rgroup_menu);
+        "New R-Group", this, [this]() { emit newRGroupRequested(m_atoms); });
+
+    m_existing_rgroup_menu =
+        new ExistingRGroupMenu(m_mol_model, replace_selection_menu);
+    connect(m_existing_rgroup_menu,
+            &ExistingRGroupMenu::existingRGroupRequested, this,
+            [this](auto rgroup_number) {
+                emit existingRGroupRequested(m_atoms, rgroup_number);
+            });
+    replace_selection_menu->addMenu(m_existing_rgroup_menu);
+
     // SKETCH-951 TODO: add QAction for "Aromatized Structure"
     // SKETCH-951 TODO: add QAction for "Kekulized Structure"
     return replace_selection_menu;

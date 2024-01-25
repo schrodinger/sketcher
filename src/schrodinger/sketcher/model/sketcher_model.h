@@ -419,11 +419,6 @@ class SKETCHER_API SketcherModel : public QObject
     QList<QGraphicsItem*> getContextMenuObjects() const;
 
     /**
-     * @return all RDKit atoms associated with the currently-open context menu
-     */
-    std::vector<const RDKit::Atom*> getContextMenuAtoms() const;
-
-    /**
      * @return Whether an undo and redo can occur
      */
     std::pair<bool, bool> getUndoStackData() const;

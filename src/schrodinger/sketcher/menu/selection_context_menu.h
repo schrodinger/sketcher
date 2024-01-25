@@ -1,9 +1,17 @@
 #pragma once
 
+#include <unordered_set>
+
 #include <QMenu>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/menu/abstract_context_menu.h"
+
+namespace RDKit
+{
+class Atom;
+class Bond;
+} // namespace RDKit
 
 namespace schrodinger
 {
@@ -15,6 +23,7 @@ namespace sketcher
 {
 
 class CutCopyActionManager;
+class ExistingRGroupMenu;
 class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class MolModel;
@@ -28,8 +37,15 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     SelectionContextMenu(SketcherModel* model, MolModel* mol_model,
                          QWidget* parent = nullptr);
 
-    void setConvertToBracketGroupEnabled(bool b);
-    void setFlipEnabled(bool b);
+    /**
+     * Update the items associated with the context menu and its submenus
+     */
+    virtual void setContextItems(
+        const std::unordered_set<const RDKit::Atom*>& atoms,
+        const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+        const std::unordered_set<const NonMolecularObject*>&
+            non_molecular_objects);
 
     ModifyAtomsMenu* m_modify_atoms_menu = nullptr;
     ModifyBondsMenu* m_modify_bonds_menu = nullptr;
@@ -38,24 +54,34 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     void flipRequested();
     void cutRequested(rdkit_extensions::Format format);
     void copyRequested(rdkit_extensions::Format format, SceneSubset subset);
-    void deleteRequested();
+    void deleteRequested(
+        const std::unordered_set<const RDKit::Atom*>& atoms,
+        const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+        const std::unordered_set<const NonMolecularObject*>&
+            non_molecular_objects);
     void variableAttachmentBondRequested();
     void bracketSubgroupDialogRequested();
     void invertSelectionRequested();
-    void newRGroupRequested();
-    void existingRGroupRequested(unsigned int rgroup_number);
+    void
+    newRGroupRequested(const std::unordered_set<const RDKit::Atom*>& atoms);
+    void
+    existingRGroupRequested(const std::unordered_set<const RDKit::Atom*>& atoms,
+                            unsigned int rgroup_number);
 
   protected:
     SketcherModel* m_sketcher_model = nullptr;
+    MolModel* m_mol_model = nullptr;
     CutCopyActionManager* m_cut_copy_actions = nullptr;
     QAction* m_variable_bond_action = nullptr;
+    ExistingRGroupMenu* m_existing_rgroup_menu = nullptr;
 
   protected slots:
     virtual void updateActions();
 
   private:
     QMenu* createAddToSelectionMenu();
-    QMenu* createReplaceSelectionWithMenu(MolModel* mol_model);
+    QMenu* createReplaceSelectionWithMenu();
     QAction* m_bracket_group_action = nullptr;
     QAction* m_flip_action = nullptr;
 };
