@@ -1,20 +1,25 @@
 
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
 
-#include "schrodinger/rdkit_extensions/convert.h"
-
 namespace schrodinger
 {
 namespace sketcher
 {
 
 BracketSubgroupContextMenu::BracketSubgroupContextMenu(QWidget* parent) :
-    QMenu(parent)
+    AbstractContextMenu(parent)
 {
-    addAction("Modify Notation...", this,
-              &BracketSubgroupContextMenu::bracketSubgroupDialogRequested);
+    m_modify_notation_action = addAction("Modify Notation...", this, [this]() {
+        emit bracketSubgroupDialogRequested(m_sgroups);
+    });
+
     addAction("Remove Brackets", this,
-              &BracketSubgroupContextMenu::deleteRequested);
+              [this]() { emit deleteRequested(m_sgroups); });
+}
+
+void BracketSubgroupContextMenu::updateActions()
+{
+    m_modify_notation_action->setEnabled(m_sgroups.size() == 1);
 }
 
 } // namespace sketcher

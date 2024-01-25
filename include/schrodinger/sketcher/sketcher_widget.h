@@ -36,6 +36,7 @@ namespace sketcher
 class AtomContextMenu;
 class BackgroundContextMenu;
 class BondContextMenu;
+class BracketSubgroupContextMenu;
 class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class MolModel;
@@ -146,6 +147,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     AtomContextMenu* m_atom_context_menu = nullptr;
     BondContextMenu* m_bond_context_menu = nullptr;
     SelectionContextMenu* m_selection_context_menu = nullptr;
+    BracketSubgroupContextMenu* m_sgroup_context_menu = nullptr;
     BackgroundContextMenu* m_background_context_menu = nullptr;
 
     /**
@@ -162,6 +164,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     void connectContextMenu(const ModifyAtomsMenu& menu);
     void connectContextMenu(const ModifyBondsMenu& menu);
     void connectContextMenu(const SelectionContextMenu& menu);
+    void connectContextMenu(const BracketSubgroupContextMenu& menu);
     void connectContextMenu(const BackgroundContextMenu& menu);
 
     /**

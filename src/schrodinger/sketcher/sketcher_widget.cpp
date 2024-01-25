@@ -27,20 +27,21 @@
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
+#include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/view.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
-#include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 
@@ -114,6 +115,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connectContextMenu(*m_atom_context_menu);
     connectContextMenu(*m_bond_context_menu);
     connectContextMenu(*m_selection_context_menu);
+    connectContextMenu(*m_sgroup_context_menu);
     connectContextMenu(*m_background_context_menu);
 
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
@@ -449,6 +451,21 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
     connectContextMenu(*menu.m_modify_bonds_menu);
 }
 
+void SketcherWidget::connectContextMenu(const BracketSubgroupContextMenu& menu)
+{
+    connect(&menu, &BracketSubgroupContextMenu::bracketSubgroupDialogRequested,
+            this, [](auto sgroups) {
+                // modification dialog only makes sense for one sgroup
+                if (sgroups.size() != 1) {
+                    throw std::runtime_error(
+                        "Cannot modify more multiple bracket groups");
+                }
+                // TODO: SKETCH-2117 show the dialog with *(sgroups.begin())
+            });
+    connect(&menu, &BracketSubgroupContextMenu::deleteRequested, this,
+            [this](auto sgroups) { m_mol_model->remove({}, {}, sgroups, {}); });
+}
+
 void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
 {
     connect(&menu, &BackgroundContextMenu::saveImageRequested, this,
@@ -482,7 +499,7 @@ void SketcherWidget::showContextMenu(
 {
     AbstractContextMenu* menu = nullptr;
     if (sgroups.size()) {
-        throw std::runtime_error("sgroup context menu not implemented");
+        menu = m_sgroup_context_menu;
     } else if (atoms.size() && bonds.size()) {
         m_selection_context_menu->m_modify_atoms_menu->setContextItems(
             atoms, bonds, sgroups, non_molecular_objects);
