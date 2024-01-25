@@ -110,6 +110,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_bond_context_menu = new BondContextMenu(this);
     m_selection_context_menu =
         new SelectionContextMenu(m_sketcher_model, m_mol_model, this);
+    m_sgroup_context_menu = new BracketSubgroupContextMenu(this);
     m_background_context_menu =
         new BackgroundContextMenu(m_sketcher_model, this);
     connectContextMenu(*m_atom_context_menu);
