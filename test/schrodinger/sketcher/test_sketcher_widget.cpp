@@ -422,3 +422,25 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
         BOOST_TEST(bond->getBondType() == RDKit::Bond::DOUBLE);
     }
 }
+
+/**
+ * Verify that the select, move-rotate, and erase tools are switched to draw C
+ * when the scene is emptied
+ */
+BOOST_AUTO_TEST_CASE(test_switch_to_C_on_empty_scene)
+{
+    TestSketcherWidget sk;
+    for (auto drawTool :
+         {DrawTool::SELECT, DrawTool::MOVE_ROTATE, DrawTool::ERASE}) {
+        sk.addFromString("CCC", Format::SMILES);
+        sk.m_sketcher_model->setValue(ModelKey::DRAW_TOOL, drawTool);
+        BOOST_TEST(sk.m_sketcher_model->getDrawTool() == drawTool);
+        sk.m_mol_model->clear();
+        // Without the event loop, we need to manually trigger Scene::changed
+        QList<QRectF> region;
+        sk.m_scene->changed(region);
+        BOOST_TEST(sk.m_sketcher_model->getDrawTool() == DrawTool::ATOM);
+        BOOST_TEST(sk.m_sketcher_model->getAtomTool() == AtomTool::ELEMENT);
+        BOOST_TEST(sk.m_sketcher_model->getElement() == Element::C);
+    }
+}

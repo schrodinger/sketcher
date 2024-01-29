@@ -66,6 +66,8 @@ SketcherModel::SketcherModel(QObject* parent) : QObject(parent)
 
     connect(this, &SketcherModel::selectionChanged, this,
             &SketcherModel::onSelectionChanged);
+    connect(this, &SketcherModel::interactiveItemsChanged, this,
+            &SketcherModel::onInteractiveItemsChanged);
 }
 
 QVariant SketcherModel::getValue(ModelKey key) const
@@ -261,6 +263,26 @@ void SketcherModel::onSelectionChanged()
     if (hasActiveSelection() && draw_tool != DrawTool::SELECT &&
         draw_tool != DrawTool::MOVE_ROTATE) {
         setValue(ModelKey::DRAW_TOOL, DrawTool::SELECT);
+    }
+}
+
+void SketcherModel::onInteractiveItemsChanged()
+{
+    if (!sceneIsEmpty()) {
+        return;
+    }
+    // If the scene is empty, select, move-rotate and delete tools should be
+    // disabled. Switch to a default (draw C) tool instead
+    auto draw_tool = getDrawTool();
+
+    if ((draw_tool == DrawTool::SELECT || draw_tool == DrawTool::MOVE_ROTATE ||
+         draw_tool == DrawTool::ERASE)) {
+        std::unordered_map<ModelKey, QVariant> kv_pairs = {
+            {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
+            {ModelKey::ATOM_TOOL, QVariant::fromValue(AtomTool::ELEMENT)},
+            {ModelKey::ELEMENT, QVariant::fromValue(Element::C)},
+        };
+        setValues(kv_pairs);
     }
 }
 

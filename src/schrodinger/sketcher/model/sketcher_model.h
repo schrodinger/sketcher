@@ -520,6 +520,10 @@ class SKETCHER_API SketcherModel : public QObject
      * Update active tool based on change in selection
      */
     void onSelectionChanged();
+    /**
+     * Update active tool when items are deleted
+     */
+    void onInteractiveItemsChanged();
 
     std::unordered_map<ModelKey, QVariant> m_model_map;
 };
