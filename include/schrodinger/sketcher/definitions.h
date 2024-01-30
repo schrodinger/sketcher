@@ -13,7 +13,7 @@
 #endif
 
 #ifdef IN_SKETCHER_DLL
-#define SKETCHER_API API_HELPER_EXPORT
+#define SKETCHER_API
 #else
 #define SKETCHER_API API_HELPER_IMPORT
 #endif
