@@ -1,0 +1,59 @@
+name: Sketcher Build and Test
+
+on:
+  workflow_dispatch: ~
+  push: ~
+
+jobs:
+  # TODO: clang-format hook
+  build_test_sketcher:
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "Ubuntu",
+            os: ubuntu-latest,
+            app: "build/sketcher_app",
+          }
+        - {
+            name: "macOS",
+            os: macos-latest,
+            app: "build/sketcher_app",
+          }
+        - {
+            name: "Windows",
+            os: windows-latest,
+            # TODO: why does windows drop this in Debug?
+            app: 'build/Debug/sketcher_app.exe',
+          }
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: store/read versions in cmake-accessible way
+      - name: Dependency cache - fmt-10.1.0
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/fmt-*
+          key: fmt-10.1.0-${{ matrix.config.os }}
+
+      - name: Dependency cache - zstd-1.5.5
+        uses: actions/cache@v4
+        with:
+          path: build/_deps/zstd-*
+          key: zstd-1.5.5-${{ matrix.config.os }}
+
+      - name: Build sketcher
+        run: |
+          cmake . -B build -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+      - name: Run tests
+        run: ${{ matrix.config.app }}
+
+      - name: Download sketcher executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketcher_${{ matrix.config.name }}
+          path: ${{ matrix.config.app }}

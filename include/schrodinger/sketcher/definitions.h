@@ -1,5 +1,4 @@
 /**
- * @brief
  * Public definitions for schrodinger::sketcher:: library
  */
 
