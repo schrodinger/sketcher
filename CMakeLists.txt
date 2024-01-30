@@ -66,7 +66,7 @@ file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_INC}/*.h
 set(CMAKE_AUTOUIC_SEARCH_PATHS ${SKETCHER_SRC}/ui)
 add_library(${LIB_TARGET} ${SOURCE_LIST})
 target_compile_options(${LIB_TARGET} PRIVATE ${SKETCHER_COMPILE_FLAGS})
-target_compile_definitions(${LIB_TARGET} PRIVATE IN_SKETCHER_DLL)
+# TODO: update defines for static vs shared
 target_include_directories(${LIB_TARGET} PRIVATE ${SKETCHER_LIB_INCLUDES})
 target_link_libraries(${LIB_TARGET} PRIVATE ${SKETCHER_DEP_LIBS})
 
