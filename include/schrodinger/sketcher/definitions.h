@@ -15,5 +15,5 @@
 #ifdef IN_SKETCHER_DLL
 #define SKETCHER_API
 #else
-#define SKETCHER_API API_HELPER_IMPORT
+#define SKETCHER_API
 #endif
