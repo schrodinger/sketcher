@@ -65,12 +65,18 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
     }
     sort(angles.begin(), angles.end());
     angles.push_back(angles.front() + 360);
-    // find the biggest angle interval and return a point in the middle of it
+    /**
+     * find the biggest angle interval and return a point in the middle of it.
+     * It is common that two or more intervals are nearly identical in size.
+     * In that case, return the first one to avoid numerical instability in the
+     * angle calculations.
+     */
+    const float TOLERANCE = 1.01;
     int best_i = 0;
     auto best_angle = (angles[best_i + 1] - angles[best_i]) * 0.5;
     for (unsigned int i = 0; i < angles.size() - 1; ++i) {
         auto angle_i = (angles[i + 1] - angles[i]) * 0.5;
-        if (angle_i > best_angle) {
+        if (angle_i > best_angle * TOLERANCE) {
             best_i = i;
             best_angle = angle_i;
         }
