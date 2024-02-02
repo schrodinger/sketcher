@@ -14,6 +14,27 @@ set(ZSTD_VERSION 1.5.5)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Boost Dependency set(Boost_DEBUG ON)
+set(BOOST_ENABLE_CMAKE ON)
+set(Boost_USE_STATIC_LIBS ${BUILD_STATIC_LIBS})
+set(Boost_USE_SHARED_LIBS ${BUILD_SHARED_LIBS})
+set(BOOST_INCLUDE_LIBRARIES
+    assign
+    beast
+    bimap
+    filesystem
+    serialization
+    system
+    test)
+set(BOOST_PACKAGE_COMPONENTS filesystem serialization system
+                             unit_test_framework)
+FetchContent_Declare(
+  Boost
+  GIT_REPOSITORY https://github.com/boostorg/boost.git
+  GIT_TAG boost-${BOOST_VERSION}
+  GIT_SHALLOW TRUE
+  FIND_PACKAGE_ARGS ${BOOST_VERSION} COMPONENTS ${BOOST_PACKAGE_COMPONENTS})
+
 # fmt Dependency
 set(FMT_DOC OFF)
 set(FMT_TEST OFF)
@@ -36,7 +57,7 @@ FetchContent_Declare(
   GIT_SHALLOW TRUE
   SOURCE_SUBDIR build/cmake FIND_PACKAGE_ARGS ${ZSTD_VERSION})
 
-FetchContent_MakeAvailable(fmt zstd)
+FetchContent_MakeAvailable(Boost fmt zstd)
 
 # ##############################################################################
 # namespace for install packages but not when building subdir?
@@ -47,7 +68,7 @@ endif()
 set(SKETCHER_LIB_INCLUDES ${PROJECT_SOURCE_DIR}/include ${zstd_SOURCE_DIR}/lib)
 # ##############################################################################
 
-# Platform-specific compiler Flags
+# Platform-specific compiler flags
 if(MSVC)
   set(SKETCHER_COMPILE_FLAGS -WX)
 else()
@@ -57,7 +78,15 @@ endif()
 set(SKETCHER_INC ${PROJECT_SOURCE_DIR}/include/schrodinger/sketcher)
 set(SKETCHER_SRC ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher)
 set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger/sketcher)
-set(SKETCHER_DEP_LIBS fmt::fmt zstd::libzstd_static)
+set(SKETCHER_DEP_LIBS
+    Boost::assign
+    Boost::beast
+    Boost::bimap
+    Boost::filesystem
+    Boost::serialization
+    Boost::system
+    fmt::fmt
+    zstd::libzstd_static)
 
 # Sketcher Library
 set(LIB_TARGET ${CMAKE_PROJECT_NAME})
