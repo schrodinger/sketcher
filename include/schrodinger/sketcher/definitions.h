@@ -12,12 +12,12 @@
 #define API_HELPER_EXPORT __attribute__((visibility("default")))
 #endif
 
-#ifdef SKETCHER_SHARED_DEFINE
+#ifdef SKETCHER_STATIC_DEFINE
+#define SKETCHER_API
+#else
 #ifdef IN_SKETCHER_DLL
 #define SKETCHER_API API_HELPER_EXPORT
 #else
 #define SKETCHER_API API_HELPER_IMPORT
 #endif
-#else
-#define SKETCHER_API
 #endif

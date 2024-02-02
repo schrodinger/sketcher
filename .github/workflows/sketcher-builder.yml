@@ -53,7 +53,7 @@ jobs:
 
       - name: Build sketcher
         run: |
-          cmake . -B build -DBUILD_SHARED_LIBS=OFF
+          cmake . -B build
           cmake --build build
 
       - name: Run tests
