@@ -933,6 +933,7 @@ void MolModel::regenerateCoordinates()
         } else {
             regenerateReactionCoordinatesCommandFunc();
         }
+        rdkit_extensions::wedgeMolBonds(m_mol, &m_mol.getConformer());
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
 }
