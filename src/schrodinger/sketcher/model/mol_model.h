@@ -633,7 +633,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void flipBond(const RDKit::Bond* const bond);
 
     /**
-     * Fully generate coordinates for the current molecule
+     * Fully generate coordinates for the current molecule and regenerate
+     * wedges/dashes according to the new coordinates.
      */
     void regenerateCoordinates();
 

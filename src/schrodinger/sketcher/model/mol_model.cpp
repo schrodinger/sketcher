@@ -933,6 +933,11 @@ void MolModel::regenerateCoordinates()
         } else {
             regenerateReactionCoordinatesCommandFunc();
         }
+        // when coordinates are updated, the wedged/dashed bonds must
+        // be updated to match the new coordinates, or else stereochemistry
+        // might be inverted if the new coordinates change the parity around
+        // any of the chiral centers.
+        rdkit_extensions::wedgeMolBonds(m_mol, &m_mol.getConformer());
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
 }

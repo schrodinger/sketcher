@@ -2424,7 +2424,8 @@ M  END
     BOOST_REQUIRE(mol->getNumBonds() == 4);
 
     // C atom should be chiral on import and after cleanup (SKETCH-1477)
-    // but not have a label since the attachment is ambiguous (SKETCH-1729)
+    // but not have a label since the attachment is ambiguous (SKETCH-1729).
+    // Bond directions may change after cleanup (SKETCH-2147)
 
     std::vector<std::string> atom_labels = {"", "", "", "", ""};
     std::vector<RDKit::Bond::BondType> bond_types = {
@@ -2442,6 +2443,8 @@ M  END
 
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
     model.regenerateCoordinates();
+
+    bond_dirs[2] = RDKit::Bond::BondDir::NONE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 }
 
