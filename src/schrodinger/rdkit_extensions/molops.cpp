@@ -44,6 +44,12 @@ void addHs(RDKit::RWMol& mol, std::vector<unsigned> atom_ids)
     bool add_coords = false;
     RDKit::MolOps::addHs(mol, explicit_only, add_coords, only_on_atoms);
 
+    // Workaround for RDKit Issue #7123:
+    // addHs sets the NoImplicit flag to true for all atoms; reset it to false
+    for (auto idx : atom_ids) {
+        mol.getAtomWithIdx(idx)->setNoImplicit(false);
+    }
+
     // Explicitly add 2D coordinates to the new hydrogens; ids are guaranteed to
     // be from the previous number of atoms to the current number of atoms
     std::vector<unsigned int> frozen_ids;

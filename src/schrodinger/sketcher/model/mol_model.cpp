@@ -2121,6 +2121,25 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     m_mol.replaceBond(bond_index, new_bond.get());
     // replaceBond creates a copy, so we need to fetch the "real" new bond
     auto* mutated_bond = m_mol.getBondWithIdx(bond_index);
+
+    // SKETCH-2146: when we mutate a bond, we need to make sure the number of
+    // explicit Hs adapts to the change in bond orders. We only care about this
+    // when we increase the bond order, as decreasing it can be compensated with
+    // implicit Hs.
+    // This is a workaround for rdkit issue #7128. We will remove it once we
+    // get an updated build of rdkit.
+    auto order_difference =
+        mutated_bond->getBondTypeAsDouble() - bond->getBondTypeAsDouble();
+
+    if (order_difference > 0) {
+        for (auto atom : {bond->getBeginAtom(), bond->getEndAtom()}) {
+            if (auto explicit_hs = atom->getNumExplicitHs(); explicit_hs > 0) {
+                auto new_hs = static_cast<int>(explicit_hs - order_difference);
+                atom->setNumExplicitHs(std::max(new_hs, 0));
+            }
+        }
+    }
+
     // The bookmark is automatically updated, but we have to manually copy
     // the bond tag property
     mutated_bond->setProp<int>(TAG_PROPERTY, bond_tag);

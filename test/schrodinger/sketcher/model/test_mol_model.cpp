@@ -2532,5 +2532,84 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     BOOST_TEST(model.hasSelection());
 }
 
+BOOST_AUTO_TEST_CASE(test_addHs_hydrogen_counts)
+{
+    // SKETCH-2146
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "C");
+
+    auto atom = [&model]() { return model.getMol()->getAtomWithIdx(0); };
+    auto count_hs = [&atom]() {
+        bool include_node_hs = true;
+        return atom()->getTotalNumHs(include_node_hs);
+    };
+
+    BOOST_REQUIRE(count_hs() == 4);
+
+    // Set charge to alter the number of Hs
+    model.setAtomCharge(atom(), 1);
+    BOOST_REQUIRE(count_hs() == 3);
+
+    // Show the Hs
+    model.updateExplicitHs(ExplicitHActions::ADD, {atom()});
+    BOOST_REQUIRE(count_hs() == 3);
+
+    // Reset charge to restore Hs
+    model.setAtomCharge(atom(), 0);
+    BOOST_TEST(count_hs() == 4);
+}
+
+BOOST_AUTO_TEST_CASE(test_wedge_bond_replacement)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    auto smiles = "CC(C)C";
+    import_mol_text(&model, smiles);
+
+    auto bond = [&model]() { return model.getMol()->getBondWithIdx(1); };
+    auto begin_atom_h_count = [&bond]() {
+        return bond()->getBeginAtom()->getTotalNumHs();
+    };
+    auto end_atom_h_count = [&bond]() {
+        return bond()->getEndAtom()->getTotalNumHs();
+    };
+
+    BOOST_REQUIRE(begin_atom_h_count() == 1);
+    BOOST_REQUIRE(end_atom_h_count() == 3);
+
+    // Add a wedge bond
+    model.mutateBonds({bond()}, BondTool::SINGLE_UP);
+    BOOST_REQUIRE(begin_atom_h_count() == 1);
+    BOOST_REQUIRE(end_atom_h_count() == 3);
+
+    // Make it a double bond
+    model.mutateBonds({bond()}, BondTool::DOUBLE);
+    BOOST_TEST(begin_atom_h_count() == 0);
+    BOOST_TEST(end_atom_h_count() == 2);
+
+    // Revert to a wedge bond
+    model.mutateBonds({bond()}, BondTool::SINGLE_UP);
+    BOOST_REQUIRE(begin_atom_h_count() == 1);
+    BOOST_REQUIRE(end_atom_h_count() == 3);
+
+    // Make it a triple bond now
+    // note this has a valence error on the starting atom!
+    model.mutateBonds({bond()}, BondTool::TRIPLE);
+    BOOST_TEST(begin_atom_h_count() == 0);
+    BOOST_TEST(end_atom_h_count() == 1);
+
+    // Revert to a wedge bond again
+    model.mutateBonds({bond()}, BondTool::SINGLE_UP);
+    BOOST_REQUIRE(begin_atom_h_count() == 1);
+    BOOST_REQUIRE(end_atom_h_count() == 3);
+
+    // Try a zero order bond now
+    model.mutateBonds({bond()}, BondTool::ZERO);
+    BOOST_TEST(begin_atom_h_count() == 2);
+    BOOST_TEST(end_atom_h_count() == 4);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
