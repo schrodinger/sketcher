@@ -23,6 +23,12 @@ class SKETCHER_API RotationItem : public QGraphicsPathItem
     void setHandlePoint(const QPointF& point);
     QPointF getHandlePoint() const;
 
+    /**
+     * override the paint method to draw the angle value
+     */
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
+               QWidget* widget) override;
+
     /*
      * @return whether the given point is inside the handle circle
      */
@@ -48,10 +54,19 @@ class SKETCHER_API RotationItem : public QGraphicsPathItem
      */
     void setDrawRotationHandle(bool has_handle);
 
+    /**
+     * set the angle value to be displayed in the middle of the pivot circle.
+     * @param angle_value
+     */
+    void setAngleValue(const QString& angle_value);
+
   protected:
     QPointF m_pivot_point;
     float m_arm_length = 130;
     float m_rotation_angle = 0;
+
+    // the angle value that is displayed in the middle of the pivot circle.
+    QString m_angle_value = "";
 
     /**
      * @return the line from the pivot point to the handle

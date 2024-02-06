@@ -77,10 +77,23 @@ void SelectionContextMenu::updateActions()
     m_variable_bond_action->setEnabled(enable);
 
     // TODO: selectionCanDefineSGroup -> m_bracket_group_action->setEnabled;
-    // TODO: selectionCanBeFlipped -> m_flip_action->setEnabled;
 
     auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
     m_existing_rgroup_menu->setEnabled(!rgroup_numbers.empty());
+
+    /**
+     * enable flip action if the selection is in one fragment and there is
+     * exactly one bond that connects selected atoms to atoms outside the
+     * selection
+     */
+    auto all_bonds = m_mol_model->getMol()->bonds();
+    auto crossing_bonds_count =
+        std::count_if(all_bonds.begin(), all_bonds.end(), [this](auto bond) {
+            return m_atoms.count(bond->getBeginAtom()) !=
+                   m_atoms.count(bond->getEndAtom());
+        });
+    m_flip_action->setEnabled(crossing_bonds_count == 1 &&
+                              in_same_fragment(m_atoms));
 }
 
 QMenu* SelectionContextMenu::createAddToSelectionMenu()

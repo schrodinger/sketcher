@@ -451,8 +451,8 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::cut);
     connect(&menu, &SelectionContextMenu::copyRequested, this,
             &SketcherWidget::copy);
-
-    // TODO: SKETCH-1981 connect flipRequested
+    connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
+            &MolModel::flipSelection);
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
     // TODO: SKETCH-2117 connect bracketSubgroupDialogRequested

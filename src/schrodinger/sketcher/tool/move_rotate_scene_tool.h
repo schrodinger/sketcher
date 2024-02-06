@@ -62,11 +62,6 @@ class SKETCHER_API MoveRotateSceneTool : public AbstractSceneTool
     virtual void onDragStart(QGraphicsSceneMouseEvent* const event) override;
     virtual void onDragMove(QGraphicsSceneMouseEvent* const event) override;
     virtual void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
-
-    // TODO: remove this function, for testing only until context menus are
-    // implemented
-    virtual void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-
     virtual void onStructureUpdated() override;
     QPixmap getCursorPixmap() const override;
 

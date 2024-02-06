@@ -1179,6 +1179,35 @@ void MolModel::flipSubstituent(const RDKit::Bond* const bond)
         m_mol.getConformer().getAtomPos(bond->getEndAtom()->getIdx()), atoms);
 }
 
+void MolModel::flipSelection()
+{
+    auto selected_atoms = getSelectedAtoms();
+    if (selected_atoms.empty()) {
+        return;
+    }
+    auto mol = getMol();
+    // Find all bonds with one selected atom and one unselected atom
+    std::unordered_set<const RDKit::Bond*> crossing_bonds;
+    for (auto bond : mol->bonds()) {
+        if (selected_atoms.count(bond->getBeginAtom()) !=
+            selected_atoms.count(bond->getEndAtom())) {
+            crossing_bonds.insert(bond);
+        }
+    }
+    // If there is only one, use it as the point
+    if (crossing_bonds.size() == 1) {
+        auto bond = *crossing_bonds.begin();
+        auto start_coord =
+            mol->getConformer().getAtomPos(bond->getBeginAtom()->getIdx());
+        auto end_coord =
+            mol->getConformer().getAtomPos(bond->getEndAtom()->getIdx());
+        flipAroundSegment(start_coord, end_coord, selected_atoms);
+    } else {
+        // throw an exception
+        throw std::runtime_error("Exactly one bond must be selected");
+    }
+}
+
 void MolModel::flipAroundSegment(
     const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
     const std::unordered_set<const RDKit::Atom*>& atoms)

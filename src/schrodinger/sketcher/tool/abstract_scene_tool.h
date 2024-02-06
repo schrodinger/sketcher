@@ -123,6 +123,7 @@ class SKETCHER_API AbstractSceneTool
     bool m_mouse_pressed = false;
     bool m_drag_started = false;
     QPointF m_mouse_press_scene_pos = QPointF();
+    QPointF m_drag_start_scene_pos = QPointF();
 };
 
 } // namespace sketcher

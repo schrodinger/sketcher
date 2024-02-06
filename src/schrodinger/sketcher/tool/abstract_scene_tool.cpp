@@ -39,6 +39,7 @@ void AbstractSceneTool::onMouseLeave()
 void AbstractSceneTool::onDragStart(QGraphicsSceneMouseEvent* const event)
 {
     m_drag_started = true;
+    m_drag_start_scene_pos = event->scenePos();
 }
 
 void AbstractSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)

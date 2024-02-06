@@ -33,6 +33,31 @@ void RotationItem::updatePath()
     setPath(path);
 }
 
+void RotationItem::paint(QPainter* painter,
+                         const QStyleOptionGraphicsItem* option,
+                         QWidget* widget)
+{
+    QGraphicsPathItem::paint(painter, option, widget);
+    // draw the angle value if it is not empty
+    if (!m_angle_value.isEmpty()) {
+        painter->save();
+        painter->setPen(ROTATION_ITEM_TEXT_COLOR);
+        QFont font = painter->font();
+        font.setPointSize(ROTATION_ITEM_FONT_SIZE);
+        painter->setFont(font);
+        QFontMetricsF fm(font);
+        auto rect = fm.boundingRect(m_angle_value);
+        rect.moveCenter(m_pivot_point);
+        painter->drawText(rect, Qt::AlignCenter, m_angle_value);
+        painter->restore();
+    }
+}
+
+void RotationItem::setAngleValue(const QString& angle_value)
+{
+    m_angle_value = angle_value;
+}
+
 void RotationItem::setPivotPoint(const QPointF& point)
 {
     m_pivot_point = point;

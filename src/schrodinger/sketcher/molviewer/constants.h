@@ -187,6 +187,10 @@ const float ROTATION_ITEM_HANDLE_RADIUS = 12.f;
 const float ROTATION_ITEM_PIVOT_RADIUS = 8.f;
 const float ROTATION_ITEM_PEN_WIDTH = 3.f;
 
+// The font size and color used to display the angle value for the rotation item
+const qreal ROTATION_ITEM_FONT_SIZE = 11.0;
+const QColor ROTATION_ITEM_TEXT_COLOR = CHIRALITY_LABEL_COLOR;
+
 // The width of the pen used for painting non-molecular objects (reaction arrows
 // and pluses) measured in Scene units
 const qreal NON_MOLECULAR_PEN_WIDTH = 3.0;

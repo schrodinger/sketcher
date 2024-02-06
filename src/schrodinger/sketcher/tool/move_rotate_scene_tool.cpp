@@ -57,33 +57,6 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
     updateMoveSelectionItem();
 }
 
-// TODO: remove this, for testing only until context menus are implemented
-void MoveRotateSceneTool::onMouseClick(QGraphicsSceneMouseEvent* event)
-{
-    auto mol = m_mol_model->getMol();
-    auto selected_atoms = m_mol_model->getSelectedAtoms();
-    if (selected_atoms.empty()) {
-        return;
-    }
-    // Find all bonds with one selected atom and one unselected atom
-    std::unordered_set<const RDKit::Bond*> crossing_bonds;
-    for (auto bond : mol->bonds()) {
-        if (selected_atoms.count(bond->getBeginAtom()) !=
-            selected_atoms.count(bond->getEndAtom())) {
-            crossing_bonds.insert(bond);
-        }
-    }
-    // If there is only one, use it as the point
-    if (crossing_bonds.size() == 1) {
-        auto bond = *crossing_bonds.begin();
-        auto start_coord =
-            mol->getConformer().getAtomPos(bond->getBeginAtom()->getIdx());
-        auto end_coord =
-            mol->getConformer().getAtomPos(bond->getEndAtom()->getIdx());
-        m_mol_model->flipAroundSegment(start_coord, end_coord, selected_atoms);
-    }
-}
-
 void MoveRotateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
 {
     auto selected_atoms = m_mol_model->getSelectedAtoms();
@@ -103,6 +76,7 @@ void MoveRotateSceneTool::onDragStart(QGraphicsSceneMouseEvent* event)
     }
     // begin an undo macro in case we have to merge atoms at the end of the drag
     m_mol_model->beginUndoMacro(description);
+    AbstractSceneTool::onDragStart(event);
 }
 
 void MoveRotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
@@ -118,6 +92,7 @@ void MoveRotateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
         default:
             break;
     }
+
     updateMergeHintItem();
     updateMoveSelectionItem();
 }
@@ -128,6 +103,7 @@ void MoveRotateSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
     m_mol_model->endUndoMacro();
     m_action = Action::NONE;
     setObjectsToMove({}, {});
+    m_rotation_item.setAngleValue("");
     updateMergeHintItem();
 }
 
@@ -170,6 +146,11 @@ void MoveRotateSceneTool::rotateRotationItem(QGraphicsSceneMouseEvent* event)
     auto angle = QLineF(center, event->scenePos()).angle();
     m_rotation_item.setArmAngle(m_rotation_item.getArmAngle() + angle -
                                 prev_angle);
+
+    auto angle_to_display =
+        QLineF(center, event->scenePos())
+            .angleTo(QLineF(center, m_drag_start_scene_pos));
+    m_rotation_item.setAngleValue(QString::number(angle_to_display, 'f', 0));
 }
 
 void MoveRotateSceneTool::translate(
@@ -258,7 +239,13 @@ RDGeom::Point3D MoveRotateSceneTool::findPivotPointForRotation()
 
 void MoveRotateSceneTool::onStructureUpdated()
 {
-    updateRotationItem();
+    /**
+     * don't update the rotation item if we're in the middle of
+     * a drag othewise it will get reset to the original position.
+     */
+    if (!m_mouse_pressed) {
+        updateRotationItem();
+    }
     updateMoveSelectionItem();
 }
 

@@ -684,6 +684,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void invertSelection();
 
     /**
+     * flip the coordinates of all selected atoms if there's a bond between them
+     * and the unselected region to use as axis
+     */
+    void flipSelection();
+
+    /**
      * Remove all selected atoms, bonds, and non-molecular objects
      */
     void removeSelected();
