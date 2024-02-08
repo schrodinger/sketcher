@@ -12,9 +12,6 @@
 #include <QObject>
 #include <QUndoStack>
 #include <QtGlobal>
-// Qt's foreach macro conflicts with Boost's foreach, so disable Qt's here
-#undef foreach
-#include <boost/foreach.hpp>
 #include <boost/range/combine.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -2179,16 +2176,13 @@ void MolModel::setCoordinates(
                                     "the same size");
     }
 
-    AtomTag cur_tag;
-    RDGeom::Point3D cur_coords;
-    BOOST_FOREACH (boost::tie(cur_tag, cur_coords),
-                   boost::combine(atom_tags, atom_coords)) {
+    for (auto const& [cur_tag, cur_coords] :
+         boost::combine(atom_tags, atom_coords)) {
         RDKit::Atom* atom = m_mol.getUniqueAtomWithBookmark(cur_tag);
         m_mol.getConformer().setAtomPos(atom->getIdx(), cur_coords);
     }
-    NonMolecularTag cur_non_mol_tag;
-    BOOST_FOREACH (boost::tie(cur_non_mol_tag, cur_coords),
-                   boost::combine(non_mol_tags, non_mol_coords)) {
+    for (auto const& [cur_non_mol_tag, cur_coords] :
+         boost::combine(non_mol_tags, non_mol_coords)) {
         auto* non_mol_obj = m_tag_to_non_molecular_object.at(cur_non_mol_tag);
         non_mol_obj->setCoords(cur_coords);
     }
