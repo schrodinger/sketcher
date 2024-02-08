@@ -2126,6 +2126,10 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     int bond_index = bond->getIdx();
     auto new_bond = create_bond();
+
+    auto order_difference =
+        new_bond->getBondTypeAsDouble() - bond->getBondTypeAsDouble();
+
     m_mol.replaceBond(bond_index, new_bond.get());
     // replaceBond creates a copy, so we need to fetch the "real" new bond
     auto* mutated_bond = m_mol.getBondWithIdx(bond_index);
@@ -2136,11 +2140,10 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     // implicit Hs.
     // This is a workaround for rdkit issue #7128. We will remove it once we
     // get an updated build of rdkit.
-    auto order_difference =
-        mutated_bond->getBondTypeAsDouble() - bond->getBondTypeAsDouble();
 
     if (order_difference > 0) {
-        for (auto atom : {bond->getBeginAtom(), bond->getEndAtom()}) {
+        for (auto atom :
+             {mutated_bond->getBeginAtom(), mutated_bond->getEndAtom()}) {
             if (auto explicit_hs = atom->getNumExplicitHs(); explicit_hs > 0) {
                 auto new_hs = static_cast<int>(explicit_hs - order_difference);
                 atom->setNumExplicitHs(std::max(new_hs, 0));
