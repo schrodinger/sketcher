@@ -816,7 +816,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void initializeMol();
 
     /**
-     * Transform all coordinates using the given function.
+     * Transform all coordinates using the given function. Note that this
+     * function issues undo commands that do not use snapshots (because they
+     * might need to be merged and performance is an issue).
      * @param desc The description to use for the redo/undo command.
      * @param function The function to use to transform the coordinates.
      * @param merge_id The merge id to use for the redo/undo command. If this is
@@ -1127,13 +1129,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * set new coordinates for a set of atoms and non-molecular objects.  This
-     * method must only be called as part of an undo command.
+     * method must only be called as part of an undo command. Note that this
+     * method uses tags because it is called by commands that don't use model
+     * snapshots (see transformCoordinatesWithFunction).
      */
-    void setCoordinates(
-        const std::vector<const RDKit::Atom*>& atoms,
-        const std::vector<RDGeom::Point3D>& atom_coords,
-        const std::vector<const NonMolecularObject*> non_molecular_objects,
-        const std::vector<RDGeom::Point3D>& non_mol_coords);
+    void setCoordinates(const std::vector<AtomTag>& atom_tags,
+                        const std::vector<RDGeom::Point3D>& atom_coords,
+                        const std::vector<NonMolecularTag>& non_mol_tags,
+                        const std::vector<RDGeom::Point3D>& non_mol_coords);
 
     /**
      * Remove the specified atoms and bonds from the molecule.  This method

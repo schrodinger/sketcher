@@ -33,6 +33,7 @@
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings
@@ -2532,6 +2533,63 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     BOOST_TEST(model.hasSelection());
 }
 
+/**
+ * Make sure that translateByVector and rotateByAngle don't crash on undo/redo
+ * (SKETCH-2155)
+ */
+BOOST_AUTO_TEST_CASE(test_translate_rotate_crash)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    std::shared_ptr<RDKit::ROMol> mol_to_add(
+        RDKit::SmilesToMol("CCCCC.CCCCCCC.CCCCCCCC"));
+    model.addMol(*mol_to_add);
+    const RDGeom::Point3D plus_position(1.0, 2.0, 0.0);
+
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS, plus_position);
+    model.selectAll();
+
+    unsigned int iterations = 50u;
+    const RDGeom::Point3D translation_vector(2.0, 10.0, 0.0);
+    auto centroid = find_centroid(*mol);
+    check_coords(centroid, 0, 0);
+    for (unsigned int i = 0; i < iterations; i++) {
+        model.translateByVector(translation_vector, model.getSelectedAtoms(),
+                                model.getSelectedNonMolecularObjects());
+        centroid = find_centroid(*mol);
+        check_coords(centroid, translation_vector.x * (i + 1),
+                     translation_vector.y * (i + 1));
+
+        model.rotateByAngle(1.1, centroid, model.getSelectedAtoms(),
+                            model.getSelectedNonMolecularObjects());
+    }
+
+    /** make sure accessing the conformer coordinates doesn't cause a crash.
+     * Also check that undo properly updates the coordinates. Note that commands
+     * are not being merged together because we issued alternating translate and
+     * rotate commands, so we can undo them one by one
+     */
+    double dummy = 0;
+    for (unsigned int i = 0; i < iterations; i++) {
+        // undo the rotation
+        undo_stack.undo();
+        centroid = find_centroid(*mol);
+        check_coords(centroid, translation_vector.x * (iterations - i),
+                     translation_vector.y * (iterations - i));
+        // undo the translation
+        undo_stack.undo();
+        centroid = find_centroid(*mol);
+        check_coords(centroid, translation_vector.x * (iterations - i - 1),
+                     translation_vector.y * (iterations - i - 1));
+
+        dummy += mol->getConformer().getAtomPos(2).x;
+    }
+    for (unsigned int i = 0; i < iterations * 2; i++) {
+        undo_stack.redo();
+        dummy += mol->getConformer().getAtomPos(2).x;
+    }
+}
 BOOST_AUTO_TEST_CASE(test_addHs_hydrogen_counts)
 {
     // SKETCH-2146
