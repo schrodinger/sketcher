@@ -221,22 +221,25 @@ void condense_monomer_list(const std::string_view& polymer_id,
         const auto& [start, size, num_repetitions, annotation] = repetition;
         const auto repeated_atoms = boost::irange(start, start + size);
         sru_sgroup.setAtoms({repeated_atoms.begin(), repeated_atoms.end()});
+
         // NOTE: SRU sgroups only allow 2 or 4 bonds so we should handle this
         unsigned int bond1 = 0; // prev bond to non-repeated group
         unsigned int bond2 = 0; // next bond to non-repeated group
+        // Do the end first, so we don't have to care
+        // about the start adding a QueryAtom or not
+        if (start + size == mol.getNumAtoms()) {
+            auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
+            mol.addBond(start + size - 1, idx, ::RDKit::Bond::BondType::SINGLE);
+            bond2 = mol.getNumBonds() - 1;
+        } else {
+            bond2 = start + size - 1;
+        }
         if (start == 0) {
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
             mol.addBond(0, idx, ::RDKit::Bond::BondType::SINGLE);
             bond1 = mol.getNumBonds() - 1;
         } else {
             bond1 = start - 1;
-        }
-        if (start + size == mol.getNumAtoms()) {
-            auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
-            mol.addBond(start + size - 1, idx, ::RDKit::Bond::BondType::SINGLE);
-            bond2 = mol.getNumBonds() - 1;
-        } else {
-            bond2 = start + size;
         }
         sru_sgroup.setBonds({bond1, bond2});
 
@@ -323,6 +326,9 @@ void add_polymer_sgroups_to_mol(::RDKit::RWMol& mol,
             polymer_sgroups.begin(), polymer_sgroups.end(),
             [&](auto& polymer_sgroup) {
                 auto atoms = polymer_sgroup.getAtoms();
+                // Ownership must be updated first so that atom/bond ownership
+                // checks do not trigger errors.
+                polymer_sgroup.setOwningMol(&mol);
                 std::for_each(atoms.begin(), atoms.end(),
                               [&](auto& atom) { atom += prev_num_atoms; });
                 polymer_sgroup.setAtoms({atoms.begin(), atoms.end()});
@@ -330,7 +336,6 @@ void add_polymer_sgroups_to_mol(::RDKit::RWMol& mol,
                 std::for_each(bonds.begin(), bonds.end(),
                               [&](auto& bond) { bond += prev_num_bonds; });
                 polymer_sgroup.setBonds({bonds.begin(), bonds.end()});
-                polymer_sgroup.setOwningMol(&mol);
                 ::RDKit::addSubstanceGroup(mol, polymer_sgroup);
             });
         prev_num_atoms += polymer.getNumAtoms();

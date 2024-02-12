@@ -275,7 +275,7 @@ BOOST_DATA_TEST_CASE(TestMonomerRepetitions,
                          "(X,C,L)'3-5'",
                          "(A.C.K.L)'3'",
                          "(A.C.K.L)'3-5'",
-                     }) ^ bdata::make(std::vector<int>{2, 2, 5, 5}),
+                     }) ^ bdata::make(std::vector<int>{3, 3, 6, 6}),
                      repeated_monomers, num_monomers)
 {
     const auto mol =
@@ -292,7 +292,7 @@ BOOST_DATA_TEST_CASE(TestMonomerRepetitions,
         // NOTE: not doing a check for the sru_group because test introspection
         // will want me to create a << operator
         BOOST_TEST(sru_sgroup.getAtoms().size() ==
-                   static_cast<int>(mol->getNumAtoms() - 1));
+                   static_cast<int>(mol->getNumAtoms() - 2));
         BOOST_TEST(
             (sru_sgroup.template getProp<std::string>("LABEL") == "3" ||
              sru_sgroup.template getProp<std::string>("LABEL") == "3-5"));
