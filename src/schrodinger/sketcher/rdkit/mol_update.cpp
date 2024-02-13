@@ -2,6 +2,7 @@
 
 #include <rdkit/CIPLabeler/CIPLabeler.h>
 #include <rdkit/CIPLabeler/TooManyNodesException.h>
+#include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
@@ -98,7 +99,7 @@ void prepare_mol(RDKit::RWMol& mol)
 
     // Convert parities back to wedges/dashes
     if (has_molblock_cfgs(mol)) {
-        RDKit::reapplyMolBlockWedging(mol);
+        RDKit::Chirality::reapplyMolBlockWedging(mol);
     } else { // Otherwise recalculate chiral bond directions
         rdkit_extensions::wedgeMolBonds(mol, &mol.getConformer());
     }

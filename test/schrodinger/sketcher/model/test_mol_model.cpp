@@ -1982,17 +1982,17 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
     model.updateExplicitHs(ExplicitHActions::ADD);
     BOOST_TEST(mol->getNumAtoms() == 4);
 
-    // delete an H, leaving the N with only 2 Hs
+    // delete an H, making it implicit, and leaving the N with only 2 Hs
     model.remove({mol->getAtomWithIdx(2)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 3);
 
-    // adding Hs should do nothing since there's no implicit Hs on the N
+    // adding Hs should add the H we deleted
     model.updateExplicitHs(ExplicitHActions::ADD);
-    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumAtoms() == 4);
 
-    // adding explicit Hs  again should not change the number of atoms
+    // adding explicit Hs again should not change the number of atoms
     model.updateExplicitHs(ExplicitHActions::ADD);
-    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumAtoms() == 4);
 
     // remove explicit Hs
     model.updateExplicitHs(ExplicitHActions::REMOVE);
@@ -2000,7 +2000,7 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
 
     // undo the removal of Hs
     undo_stack.undo();
-    BOOST_TEST(mol->getNumAtoms() == 3);
+    BOOST_TEST(mol->getNumAtoms() == 4);
 
     // remove explicit Hs twice, should not change the number of atoms
     model.updateExplicitHs(ExplicitHActions::REMOVE);
@@ -2011,8 +2011,8 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
     // remove Hs that are selected and make sure that they're deselected
     model.updateExplicitHs(ExplicitHActions::ADD);
     model.selectAll();
-    BOOST_TEST(mol->getNumAtoms() == 3);
-    BOOST_TEST(model.getSelectedAtoms().size() == 3);
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    BOOST_TEST(model.getSelectedAtoms().size() == 4);
     model.updateExplicitHs(ExplicitHActions::REMOVE);
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getSelectedAtoms().size() == 1);

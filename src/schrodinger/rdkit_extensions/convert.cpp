@@ -14,6 +14,7 @@
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionPickler.h>
+#include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/DetermineBonds/DetermineBonds.h>
 #include <rdkit/GraphMol/DistGeomHelpers/Embedder.h>
@@ -198,7 +199,7 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
         }
         rdkit_extensions::compute2DCoords(rdk_mol, frozen_ids);
 
-        RDKit::reapplyMolBlockWedging(rdk_mol);
+        RDKit::Chirality::reapplyMolBlockWedging(rdk_mol);
         RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);
         rdk_mol.updatePropertyCache(false);
         return true;
@@ -548,6 +549,12 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 break;
             }
             mol.reset(read_mol(reader, rd_error_log));
+
+            // workaround for SHARED-10515
+            if (mol != nullptr && mol->hasProp("i_m_ct_stereo_status")) {
+                mol->clearProp("i_m_ct_stereo_status");
+            }
+
             break;
         }
         case Format::INCHI: {

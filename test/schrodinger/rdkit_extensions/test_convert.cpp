@@ -44,10 +44,10 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
     auto text = to_string(*mol, sample);
 
     // Check roundtripping and auto-detect
-    for (auto mol : {to_rdkit(text, sample), to_rdkit(text)}) {
-        BOOST_TEST(mol->getNumAtoms() == 6);
-        BOOST_TEST(mol->getNumBonds() == 6);
-        BOOST_TEST(to_string(*mol, sample) == text);
+    for (auto tmp_mol : {to_rdkit(text, sample), to_rdkit(text)}) {
+        BOOST_TEST(tmp_mol->getNumAtoms() == 6);
+        BOOST_TEST(tmp_mol->getNumBonds() == 6);
+        BOOST_TEST(to_string(*tmp_mol, sample) == text);
     }
 }
 
