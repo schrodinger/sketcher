@@ -100,11 +100,8 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
 
     TestSketcherWidget sk;
     sk.addFromString(text);
-    if (format == Format::SMARTS) {
-        BOOST_TEST(sk.getString(Format::SMILES) == "CC(O)=O.CCO>>CCOC(C)=O");
-    } else {
-        BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
-    }
+
+    BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
 }
 
 /**

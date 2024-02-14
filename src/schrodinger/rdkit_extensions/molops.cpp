@@ -25,6 +25,7 @@ void apply_sanitization(RDKit::RWMol& mol, Sanitization sanitization)
     int ops = RDKit::MolOps::SANITIZE_ALL;
     if (sanitization == Sanitization::PARTIAL) {
         ops = RDKit::MolOps::SANITIZE_SYMMRINGS |
+              RDKit::MolOps::SANITIZE_FINDRADICALS |
               RDKit::MolOps::SANITIZE_SETCONJUGATION |
               RDKit::MolOps::SANITIZE_SETHYBRIDIZATION |
               RDKit::MolOps::SANITIZE_ADJUSTHS;

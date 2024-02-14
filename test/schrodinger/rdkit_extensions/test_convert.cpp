@@ -749,3 +749,14 @@ BOOST_AUTO_TEST_CASE(TestConvertingHELM)
     const auto mol = to_rdkit(text, Format::HELM);
     BOOST_TEST(to_string(*mol, Format::HELM) == text);
 }
+
+BOOST_AUTO_TEST_CASE(test_cannot_be_smiles)
+{
+    // SHARED-10397
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        to_rdkit("[#6]-[#6]-[#7]-[#6]", Format::SMILES), std::invalid_argument,
+        "[#6]-[#6]-[#7]-[#6] is not a valid SMILES");
+
+    auto mol = to_rdkit("[#6]-[#6]-[#7]-[#6]", Format::AUTO_DETECT);
+    BOOST_TEST(mol != nullptr);
+}

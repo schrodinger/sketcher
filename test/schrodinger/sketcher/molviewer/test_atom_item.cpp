@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_ChargeAndIsotope)
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
     BOOST_TEST(!atom_item->m_charge_and_radical_label_rect.isNull());
     BOOST_TEST(!atom_item->m_isotope_label_rect.isNull());
-    BOOST_TEST(atom_item->m_charge_and_radical_label_text == "2+");
+    BOOST_TEST(atom_item->m_charge_and_radical_label_text == "(2•) 2+");
     BOOST_TEST(atom_item->m_isotope_label_text == "13");
     BOOST_TEST(!atom_item->m_subrects.empty());
 }

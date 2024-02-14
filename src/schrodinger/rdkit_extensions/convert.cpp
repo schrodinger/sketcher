@@ -485,6 +485,14 @@ template <typename T> std::string mol_to_base64(
     return text;
 }
 
+// A very simple check to see if a string can be parsed as SMILES without
+// actually trying to parse it. We want this function because RDKit can
+// parse (e.g.) "[#6]" as a valid SMILES (!!!)
+bool can_be_smiles(const std::string& text)
+{
+    // "[#" is a valid pattern in SMARTS, but not in SMILES.
+    return text.find("[#") == std::string::npos;
+}
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
@@ -518,6 +526,10 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     switch (format) {
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
+            if (!can_be_smiles(text)) {
+                throw std::invalid_argument(text + " is not a valid SMILES");
+            }
+
             int debugParse = 0;
             mol.reset(RDKit::SmilesToMol(text, debugParse, sanitize));
             if (mol != nullptr) {
@@ -661,7 +673,7 @@ to_rdkit_reaction(const std::string& text, const Format format)
     switch (format) {
         case Format::SMILES:
         case Format::SMARTS: {
-            auto useSMILES = (format == Format::SMILES);
+            auto useSMILES = (format == Format::SMILES) && can_be_smiles(text);
             rxn.reset(
                 RDKit::RxnSmartsToChemicalReaction(text, nullptr, useSMILES));
 
