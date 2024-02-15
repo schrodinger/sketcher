@@ -68,6 +68,7 @@ class TestMolModel : public MolModel
     TestMolModel(QUndoStack* const undo_stack) : MolModel(undo_stack)
     {
     }
+    using MolModel::flipBondStereo;
     using MolModel::getAtomFromTag;
     using MolModel::getBondFromTag;
     using MolModel::getTagForAtom;
@@ -1700,6 +1701,41 @@ BOOST_AUTO_TEST_CASE(test_flipBond)
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
     BOOST_TEST(bond->getBeginAtomIdx() == 1);
     BOOST_TEST(bond->getEndAtomIdx() == 0);
+}
+
+/**
+ * make sure that flipBondStereo works as expected, turning wedges to dashes and
+ * vice-versa as a single undoable operation
+ */
+BOOST_AUTO_TEST_CASE(test_flipBondStereo)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CCCC");
+    const RDKit::ROMol* mol = model.getMol();
+    model.mutateBonds({mol->getBondWithIdx(0), mol->getBondWithIdx(1)},
+                      BondTool::SINGLE_DOWN);
+    std::vector<RDKit::Bond::BondDir> dirs{RDKit::Bond::BondDir::BEGINDASH,
+                                           RDKit::Bond::BondDir::BEGINDASH,
+                                           RDKit::Bond::BondDir::NONE};
+    for (unsigned int i = 0; i < dirs.size(); ++i) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == dirs.at(i));
+    }
+    model.flipBondStereo({mol->beginBonds(), mol->endBonds()});
+    std::vector<RDKit::Bond::BondDir> flipped_dirs{
+        RDKit::Bond::BondDir::BEGINWEDGE, RDKit::Bond::BondDir::BEGINWEDGE,
+        RDKit::Bond::BondDir::NONE};
+    for (unsigned int i = 0; i < flipped_dirs.size(); ++i) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == flipped_dirs.at(i));
+    }
+    undo_stack.undo();
+    for (unsigned int i = 0; i < dirs.size(); ++i) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == dirs.at(i));
+    }
+    undo_stack.redo();
+    for (unsigned int i = 0; i < flipped_dirs.size(); ++i) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == flipped_dirs.at(i));
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_regenerate_coords, *utf::tolerance(0.01))

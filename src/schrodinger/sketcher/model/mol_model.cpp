@@ -913,6 +913,26 @@ void MolModel::removeExplicitHs(
                             WhatChanged::MOLECULE);
 }
 
+void MolModel::flipBondStereo(std::unordered_set<const RDKit::Bond*> bonds)
+{
+    std::unordered_set<const RDKit::Bond*> wedges;
+    std::unordered_set<const RDKit::Bond*> dashes;
+    for (auto& bond : bonds) {
+        if (bond->getBondDir() == RDKit::Bond::BEGINWEDGE) {
+            wedges.insert(bond);
+        }
+        if (bond->getBondDir() == RDKit::Bond::BEGINDASH) {
+            dashes.insert(bond);
+        }
+    }
+    if (wedges.empty() && dashes.empty()) {
+        return;
+    }
+    auto undo_macro_raii = createUndoMacro("Flip bonds");
+    mutateBonds(wedges, BondTool::SINGLE_DOWN);
+    mutateBonds(dashes, BondTool::SINGLE_UP);
+}
+
 void MolModel::flipBond(const RDKit::Bond* const bond)
 {
     auto cmd_func = [this, bond]() { flipBondCommandFunc(bond); };
@@ -1220,23 +1240,42 @@ void MolModel::flipAroundSegment(
     const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
     const std::unordered_set<const RDKit::Atom*>& atoms)
 {
+    if (atoms.empty()) {
+        return;
+    }
     auto flip = [p1, p2](auto& coord) { coord = flip_point(coord, p1, p2); };
-    transformCoordinatesWithFunction("Flip selection", flip, MergeId::NO_MERGE,
-                                     atoms);
+    auto undo_macro_raii = createUndoMacro("Flip selection");
+    transformCoordinatesWithFunction("", flip, MergeId::NO_MERGE, atoms);
+    // get all bonds between atoms and flip wedges to dashes and vice-versa
+    std::unordered_set<const RDKit::Bond*> bonds;
+    auto& mol = (*atoms.begin())->getOwningMol();
+    for (auto& atom : atoms) {
+        for (auto& bond : mol.atomBonds(atom)) {
+            if (atoms.count(bond->getBeginAtom()) &&
+                atoms.count(bond->getEndAtom())) {
+                bonds.insert(bond);
+            }
+        }
+    }
+    flipBondStereo(bonds);
 }
 
 void MolModel::flipAllHorizontal()
 {
+    auto undo_macro_raii = createUndoMacro("Flip all horizontal");
     auto center = find_centroid(m_mol, getNonMolecularObjects());
     auto flip_x = [center](auto& coord) { coord.x = 2 * center.x - coord.x; };
-    transformCoordinatesWithFunction("Flip all horizontal", flip_x);
+    transformCoordinatesWithFunction("", flip_x);
+    flipBondStereo({m_mol.beginBonds(), m_mol.endBonds()});
 }
 
 void MolModel::flipAllVertical()
 {
+    auto undo_macro_raii = createUndoMacro("Flip all vertical");
     auto center = find_centroid(m_mol, getNonMolecularObjects());
     auto flip_y = [center](auto& coord) { coord.y = 2 * center.y - coord.y; };
-    transformCoordinatesWithFunction("Flip all vertical", flip_y);
+    transformCoordinatesWithFunction("", flip_y);
+    flipBondStereo({m_mol.beginBonds(), m_mol.endBonds()});
 }
 
 void MolModel::mergeAtoms(
@@ -1271,8 +1310,8 @@ void MolModel::mergeAtomsCommandFunc(
                 // stationary_atom.
                 continue;
             }
-            // the molecule won't update its connectivity graph if we edit
-            // the bond in place, so we instead remove it and add a copy
+            // the molecule won't update its connectivity graph if we edit the
+            // bond in place, so we instead remove it and add a copy
             auto* replacement_bond = new RDKit::Bond(*bond);
             if (bond->getBeginAtomIdx() == stationary_atom_idx) {
                 replacement_bond->setBeginAtomIdx(atom_to_keep_idx);
@@ -1911,9 +1950,9 @@ void MolModel::removeCommandFunc(
     const std::vector<NonMolecularTag>& non_molecular_tags)
 {
     Q_ASSERT(m_allow_edits);
-    // we have to determine whether we're deleting an attachment point
-    // before we delete any of the bonds, since is_attachment_point() will
-    // return false for unbound atoms
+    // we have to determine whether we're deleting an attachment point before we
+    // delete any of the bonds, since is_attachment_point() will return false
+    // for unbound atoms
     bool attachment_point_deleted =
         std::any_of(atom_tags.begin(), atom_tags.end(), [this](AtomTag tag) {
             return is_attachment_point(getAtomFromTag(tag));
@@ -2113,9 +2152,8 @@ void MolModel::mutateAtomCommandFunc(const AtomTag atom_tag,
     m_mol.replaceAtom(atom_index, new_atom.get());
     // replaceAtom creates a copy, so we need to fetch the "real" new atom
     auto* mutated_atom = m_mol.getAtomWithIdx(atom_index);
-    // The bookmark is automatically updated, but the property is not
-    // (unless we passed preserveProbs = true, but that overwrites the
-    // R-group property)
+    // The bookmark is automatically updated, but the property is not (unless we
+    // passed preserveProps = true, but that overwrites the R-group property)
     mutated_atom->setProp<int>(TAG_PROPERTY, atom_tag);
 }
 
@@ -2129,8 +2167,8 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     m_mol.replaceBond(bond_index, new_bond.get());
     // replaceBond creates a copy, so we need to fetch the "real" new bond
     auto* mutated_bond = m_mol.getBondWithIdx(bond_index);
-    // The bookmark is automatically updated, but we have to manually copy
-    // the bond tag property
+    // The bookmark is automatically updated, but we have to manually copy the
+    // bond tag property
     mutated_bond->setProp<int>(TAG_PROPERTY, bond_tag);
 }
 

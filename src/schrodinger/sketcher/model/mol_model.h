@@ -841,6 +841,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void removeExplicitHs(const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
+     * set all wedges to dashes and vice-versa. This is used when flipping a
+     * molecule or a portion of it to maintain chirality
+     */
+    void flipBondStereo(std::unordered_set<const RDKit::Bond*> bonds);
+
+    /**
      * Set the atom tag for the specified atom
      */
     void setTagForAtom(RDKit::Atom* const atom, const AtomTag atom_tag);
