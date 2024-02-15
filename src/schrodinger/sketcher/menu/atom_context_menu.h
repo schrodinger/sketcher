@@ -99,7 +99,6 @@ class SKETCHER_API ModifyAtomsMenu : public AbstractContextMenu
     SketcherModel* m_sketcher_model = nullptr;
     QAction* m_edit_atom_properties_act = nullptr;
     SketcherModel* m_set_atom_model = nullptr;
-    SetAtomMenuWidget* m_element_widget = nullptr;
     ReplaceAtomsWithMenu* m_replace_with_menu = nullptr;
     QAction* m_increase_charge_act = nullptr;
     QAction* m_decrease_charge_act = nullptr;

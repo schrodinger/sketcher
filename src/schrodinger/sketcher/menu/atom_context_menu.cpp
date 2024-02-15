@@ -69,9 +69,6 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
                   [this]() { emit showEditAtomPropertiesRequested(false); });
 
     addMenu(m_replace_with_menu);
-
-    connect(m_element_widget, &SetAtomMenuWidget::anyButtonClicked, this,
-            &QMenu::close);
     connect(m_set_atom_model, &SketcherModel::valuePinged, this,
             &ModifyAtomsMenu::onSetAtomModelPinged);
 }
@@ -154,10 +151,12 @@ QMenu* ModifyAtomsMenu::createElementMenu()
 {
     auto element_menu = new QMenu("Set Element", this);
     auto action = new QWidgetAction(element_menu);
-    m_element_widget = new SetAtomMenuWidget(element_menu);
-    m_element_widget->setModel(m_set_atom_model);
-    action->setDefaultWidget(m_element_widget);
+    auto element_widget = new SetAtomMenuWidget(element_menu);
+    element_widget->setModel(m_set_atom_model);
+    action->setDefaultWidget(element_widget);
     element_menu->addAction(action);
+    connect(element_widget, &SetAtomMenuWidget::anyButtonClicked, action,
+            &QAction::trigger);
     return element_menu;
 }
 
