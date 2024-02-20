@@ -5,9 +5,10 @@
 
 #include <QString>
 
+#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/numeric_label_validator.h"
-#include "schrodinger/sketcher/s_group_constants.h"
+#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::RepeatPattern);
@@ -43,7 +44,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-BracketSubgroupDialog::BracketSubgroupDialog(QWidget* parent) :
+AbstractBracketSubgroupDialog::AbstractBracketSubgroupDialog(QWidget* parent) :
     ModalDialog(parent)
 {
     ui.reset(new Ui::BracketSubgroupDialog());
@@ -69,9 +70,9 @@ BracketSubgroupDialog::BracketSubgroupDialog(QWidget* parent) :
     updateWidgets();
 }
 
-BracketSubgroupDialog::~BracketSubgroupDialog() = default;
+AbstractBracketSubgroupDialog::~AbstractBracketSubgroupDialog() = default;
 
-void BracketSubgroupDialog::updateWidgets()
+void AbstractBracketSubgroupDialog::updateWidgets()
 {
     auto subgroup_type = getSubgroupType();
     bool is_sru = subgroup_type == SubgroupType::SRU_POLYMER;
@@ -92,7 +93,7 @@ void BracketSubgroupDialog::updateWidgets()
     ui->polymer_label_le->setEnabled(is_sru);
 }
 
-void BracketSubgroupDialog::setSubgroupType(SubgroupType subgroup_type)
+void AbstractBracketSubgroupDialog::setSubgroupType(SubgroupType subgroup_type)
 {
     auto idx =
         ui->subgroup_type_combo->findData(QVariant::fromValue(subgroup_type));
@@ -103,12 +104,13 @@ void BracketSubgroupDialog::setSubgroupType(SubgroupType subgroup_type)
     ui->subgroup_type_combo->setCurrentIndex(idx);
 }
 
-SubgroupType BracketSubgroupDialog::getSubgroupType() const
+SubgroupType AbstractBracketSubgroupDialog::getSubgroupType() const
 {
     return ui->subgroup_type_combo->currentData().value<SubgroupType>();
 }
 
-void BracketSubgroupDialog::setRepeatPattern(RepeatPattern repeat_pattern)
+void AbstractBracketSubgroupDialog::setRepeatPattern(
+    RepeatPattern repeat_pattern)
 {
     auto idx =
         ui->repeat_pattern_combo->findData(QVariant::fromValue(repeat_pattern));
@@ -119,25 +121,17 @@ void BracketSubgroupDialog::setRepeatPattern(RepeatPattern repeat_pattern)
     ui->repeat_pattern_combo->setCurrentIndex(idx);
 }
 
-RepeatPattern BracketSubgroupDialog::getRepeatPattern() const
+RepeatPattern AbstractBracketSubgroupDialog::getRepeatPattern() const
 {
     return ui->repeat_pattern_combo->currentData().value<RepeatPattern>();
 }
 
-void BracketSubgroupDialog::accept()
-{
-    emit bracketSubgroupAccepted(getSubgroupType(), getRepeatPattern(),
-                                 getPolymerLabel(), m_atoms);
-
-    QDialog::accept();
-}
-
-QString BracketSubgroupDialog::getPolymerLabel() const
+QString AbstractBracketSubgroupDialog::getPolymerLabel() const
 {
     return ui->polymer_label_le->text();
 }
 
-void BracketSubgroupDialog::setPolymerLabel(const QString& text)
+void AbstractBracketSubgroupDialog::setPolymerLabel(const QString& text)
 {
     int pos = 0;
     QString test_text{text};
@@ -151,9 +145,98 @@ void BracketSubgroupDialog::setPolymerLabel(const QString& text)
     }
 }
 
-void BracketSubgroupDialog::setAtoms(std::unordered_set<sketcherAtom*> atoms)
+BracketSubgroupDialogDeprecated::BracketSubgroupDialogDeprecated(
+    QWidget* parent) :
+    AbstractBracketSubgroupDialog(parent)
+{
+}
+
+void BracketSubgroupDialogDeprecated::setAtoms(
+    const std::unordered_set<sketcherAtom*>& atoms)
 {
     m_atoms = atoms;
+}
+
+void BracketSubgroupDialogDeprecated::accept()
+{
+    emit bracketSubgroupAccepted(getSubgroupType(), getRepeatPattern(),
+                                 getPolymerLabel(), m_atoms);
+
+    QDialog::accept();
+}
+
+BracketSubgroupDialog::BracketSubgroupDialog(MolModel* const mol_model,
+                                             QWidget* parent) :
+    AbstractBracketSubgroupDialog(parent),
+    m_mol_model(mol_model)
+{
+}
+
+void BracketSubgroupDialog::accept()
+{
+    if (auto* atoms = std::get_if<std::unordered_set<const RDKit::Atom*>>(
+            &m_atoms_or_s_group)) {
+        m_mol_model->addSGroup(*atoms, getSubgroupType(), getRepeatPattern(),
+                               getPolymerLabel().toStdString());
+    } else if (auto* s_group = std::get_if<const RDKit::SubstanceGroup*>(
+                   &m_atoms_or_s_group)) {
+        m_mol_model->modifySGroup(*s_group, getSubgroupType(),
+                                  getRepeatPattern(),
+                                  getPolymerLabel().toStdString());
+    }
+    QDialog::accept();
+}
+
+void BracketSubgroupDialog::setAtoms(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    m_atoms_or_s_group = atoms;
+}
+
+/**
+ * @return the relevant data from the given S-group
+ * @throw std::out_of_bounds if the S-group type or repeat pattern can not be
+ * represented using their respective constants (which means that the settings
+ * from this S-group cannot be loaded into this dialog)
+ */
+static std::tuple<SubgroupType, QString, RepeatPattern>
+get_sgroup_data(const RDKit::SubstanceGroup* const s_group)
+{
+    auto subgroup_type_str = rdkit_extensions::get_sgroup_type(*s_group);
+    auto subgroup_type =
+        SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.at(subgroup_type_str);
+
+    auto polymer_label_str = rdkit_extensions::get_polymer_label(*s_group);
+    auto polymer_label = QString::fromStdString(polymer_label_str);
+
+    auto repeat_pattern_str =
+        rdkit_extensions::get_repeat_pattern_label(*s_group);
+    auto repeat_pattern =
+        REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.at(repeat_pattern_str);
+
+    return {subgroup_type, polymer_label, repeat_pattern};
+}
+
+void BracketSubgroupDialog::setSubgroup(
+    const RDKit::SubstanceGroup* const s_group)
+{
+    m_atoms_or_s_group = s_group;
+
+    // load S-group settings into dialog
+    SubgroupType subgroup_type;
+    QString polymer_label;
+    RepeatPattern repeat_pattern;
+    try {
+        std::tie(subgroup_type, polymer_label, repeat_pattern) =
+            get_sgroup_data(s_group);
+    } catch (std::out_of_range&) {
+        // if the dialog doesn't support this S-group's settings, then leave the
+        // dialog settings at their defaults
+        return;
+    }
+    setSubgroupType(subgroup_type);
+    setPolymerLabel(polymer_label);
+    setRepeatPattern(repeat_pattern);
 }
 
 } // namespace sketcher
