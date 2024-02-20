@@ -127,20 +127,6 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void updateWatermark();
 
-    /**
-     * Show the substance group bracket dialog.  If the dialog is accepted, a
-     * new S-group will be created for the specified atoms.
-     */
-    void showBracketSubgroupDialogForAtoms(
-        const std::unordered_set<const RDKit::Atom*>& atoms);
-
-    /**
-     * Show the substance group bracket dialog.  If the dialog is accepted, the
-     * specified S-group will be modified.
-     */
-    void showBracketSubgroupDialogForSGroup(
-        const RDKit::SubstanceGroup* const s_group);
-
   protected:
     /**
      * Widget UI form and layout

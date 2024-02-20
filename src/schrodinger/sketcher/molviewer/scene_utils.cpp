@@ -207,7 +207,7 @@ QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
         cur_path = atom_item->mapToScene(cur_path);
         path.addPath(cur_path);
     }
-    for (auto* bond : rdkit_extensions::get_bonds_within_sgroup(s_group)) {
+    for (auto* bond : rdkit_extensions::get_s_group_atom_bonds(s_group)) {
         auto* bond_item = bond_to_bond_item.at(bond);
         auto cur_path = bond_item->predictiveHighlightingPath();
         cur_path = bond_item->mapToScene(cur_path);

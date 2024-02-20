@@ -46,9 +46,6 @@ enum class Format;
 namespace sketcher
 {
 
-enum class SubgroupType;
-enum class RepeatPattern;
-
 enum class SelectMode {
     SELECT,      // Shift + click
     DESELECT,    //
@@ -756,23 +753,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void toggleExplicitHsOnAtoms(
         const std::unordered_set<const RDKit::Atom*>& atoms);
 
-    /**
-     * Add an S-group with the specified settings that applies to the given
-     * atoms.  The atoms must be contiguous and the molecule must contain
-     * exactly two bonds between the specific atoms and all non-specified atoms.
-     */
-    void addSGroup(const std::unordered_set<const RDKit::Atom*>& atoms,
-                   SubgroupType subgroup_type, RepeatPattern repeat_pattern,
-                   std::string polymer_label);
-
-    /**
-     * Update the existing S-group to the specified settings.  The S-group's
-     * atoms and bonds will not be changed.
-     */
-    void modifySGroup(const RDKit::SubstanceGroup* substance_group,
-                      SubgroupType subgroup_type, RepeatPattern repeat_pattern,
-                      std::string polymer_label);
-
   signals:
 
     /**
@@ -951,10 +931,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     RDKit::SubstanceGroup getSGroupFromTag(const SGroupTag s_group_tag) const;
 
     /**
-     * Helpers that return a non-const pointer to the specified atom, bond, or
-     * S-group by round-tripping through bookmarks of the model's underlying
-     * mol.  (For S-groups, we use indices instead, as RDKit doesn't support
-     * bookmarks for S-group.)
+     * Helpers that return a non-const pointer to the specified atom or bond
+     * by round-tripping through bookmarks of the model's underlying mol.
      *
      * Because MolModel's public APIs return const pointers to m_mol and its
      * contents, the scene and all widgets only have access to these non-const
@@ -965,8 +943,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     RDKit::Atom* getMutableAtom(const RDKit::Atom* const atom);
     RDKit::Bond* getMutableBond(const RDKit::Bond* const bond);
-    RDKit::SubstanceGroup*
-    getMutableSGroup(const RDKit::SubstanceGroup* const s_group);
 
     /**
      * Get the atomic number and element name for the specified element.

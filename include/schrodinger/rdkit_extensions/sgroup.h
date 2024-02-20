@@ -39,62 +39,11 @@ get_repeat_pattern_label(const RDKit::SubstanceGroup& sgroup);
 RDKIT_EXTENSIONS_API std::string
 get_polymer_label(const RDKit::SubstanceGroup& sgroup);
 
-RDKIT_EXTENSIONS_API void set_sgroup_type(const RDKit::SubstanceGroup& sgroup,
-                                          const std::string& value);
-
-RDKIT_EXTENSIONS_API void
-set_sgroup_subtype(const RDKit::SubstanceGroup& sgroup,
-                   const std::string& value);
-
-RDKIT_EXTENSIONS_API void
-set_repeat_pattern_label(const RDKit::SubstanceGroup& sgroup,
-                         const std::string& value);
-
-RDKIT_EXTENSIONS_API void set_polymer_label(const RDKit::SubstanceGroup& sgroup,
-                                            const std::string& value);
-
-/**
- * If the molecule contains an S-group that covers exactly the specified atoms,
- * then return that S-group.  Otherwise, return nullptr.
- */
-RDKIT_EXTENSIONS_API const RDKit::SubstanceGroup*
-get_existing_sgroup_for_atoms(std::unordered_set<const RDKit::Atom*> atoms,
-                              const RDKit::ROMol& mol);
-
-/**
- * Determine whether the specified atoms can form an S-group.  A group of atoms
- * can form an S-group if the following two conditions are met:
- * - the atoms are contiguous
- * - there are exactly two bonds between the specified atoms and all other atoms
- *   in the molecule
- */
-RDKIT_EXTENSIONS_API bool
-can_atoms_form_sgroup(std::unordered_set<const RDKit::Atom*> specified_atoms,
-                      const RDKit::ROMol& mol);
-
-/**
- * @return the atoms contained in the given S-group
- */
-RDKIT_EXTENSIONS_API std::unordered_set<const RDKit::Atom*>
-get_sgroup_atoms(const RDKit::SubstanceGroup* const s_group,
-                 const RDKit::ROMol& mol);
-
-/**
- * Find the bond indices of the two bonds that cross between the specified
- * atoms and all other atoms in the molecule.  This methods assumes that the
- * specified atoms are contiguous and that there are exactly two such bonds.  In
- * other words, can_atoms_form_s_group() should return true for these atoms.
- * This method *may* throw otherwise, but is not guaranteed to.
- */
-RDKIT_EXTENSIONS_API std::vector<unsigned int>
-get_bonds_for_sgroup_atoms(const std::unordered_set<const RDKit::Atom*>& atoms,
-                           const RDKit::ROMol& mol);
-
 /**
  * @return all bonds between the atoms contained in the S-group
  */
 RDKIT_EXTENSIONS_API std::unordered_set<const RDKit::Bond*>
-get_bonds_within_sgroup(const RDKit::SubstanceGroup& s_group);
+get_s_group_atom_bonds(const RDKit::SubstanceGroup& s_group);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

@@ -4,7 +4,6 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/ROMol.h>
 
-#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -239,7 +238,7 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, MolModel* mol_model,
 
     m_add_brackets_act = new QAction("Add Brackets...", this);
     connect(m_add_brackets_act, &QAction::triggered, this,
-            [this]() { emit bracketSubgroupDialogRequested(m_atoms); });
+            &AtomContextMenu::bracketSubgroupDialogRequested);
     insertAction(m_replace_with_menu->menuAction(), m_add_brackets_act);
 
     // Append 'Delete' action
@@ -249,11 +248,12 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, MolModel* mol_model,
 
 void AtomContextMenu::updateActions()
 {
-    auto& mol = (*m_atoms.begin())->getOwningMol();
-    bool enable_bracket =
-        rdkit_extensions::can_atoms_form_sgroup(m_atoms, mol) &&
-        !rdkit_extensions::get_existing_sgroup_for_atoms(m_atoms, mol);
-    m_add_brackets_act->setEnabled(enable_bracket);
+    auto has_two_bonds = [](auto atom) {
+        auto [begin, end] = atom->getOwningMol().getAtomBonds(atom);
+        return std::distance(begin, end) == 2;
+    };
+    bool enable = m_atoms.size() == 1 && has_two_bonds(*m_atoms.begin());
+    m_add_brackets_act->setEnabled(enable);
 
     ModifyAtomsMenu::updateActions();
 }

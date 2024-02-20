@@ -4,7 +4,6 @@
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
@@ -77,22 +76,17 @@ void SelectionContextMenu::updateActions()
     bool enable = m_atoms.size() >= 2 && in_same_fragment(m_atoms);
     m_variable_bond_action->setEnabled(enable);
 
+    // TODO: selectionCanDefineSGroup -> m_bracket_group_action->setEnabled;
+
     auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
     m_existing_rgroup_menu->setEnabled(!rgroup_numbers.empty());
-
-    auto* mol = m_mol_model->getMol();
-    bool enable_bracket =
-        !m_atoms.empty() && m_sgroups.empty() &&
-        rdkit_extensions::can_atoms_form_sgroup(m_atoms, *mol) &&
-        !rdkit_extensions::get_existing_sgroup_for_atoms(m_atoms, *mol);
-    m_bracket_group_action->setEnabled(enable_bracket);
 
     /**
      * enable flip action if the selection is in one fragment and there is
      * exactly one bond that connects selected atoms to atoms outside the
      * selection
      */
-    auto all_bonds = mol->bonds();
+    auto all_bonds = m_mol_model->getMol()->bonds();
     auto crossing_bonds_count =
         std::count_if(all_bonds.begin(), all_bonds.end(), [this](auto bond) {
             return m_atoms.count(bond->getBeginAtom()) !=
@@ -105,10 +99,9 @@ void SelectionContextMenu::updateActions()
 QMenu* SelectionContextMenu::createAddToSelectionMenu()
 {
     auto add_to_selection_menu = new QMenu("Add to Selection", this);
-    m_bracket_group_action =
-        add_to_selection_menu->addAction("Bracket Subgroup...", this, [this]() {
-            emit bracketSubgroupDialogRequested(m_atoms);
-        });
+    m_bracket_group_action = add_to_selection_menu->addAction(
+        "Bracket Subgroup...", this,
+        &SelectionContextMenu::bracketSubgroupDialogRequested);
     m_variable_bond_action = add_to_selection_menu->addAction(
         "Variable Attachment Bond", this,
         &SelectionContextMenu::variableAttachmentBondRequested);

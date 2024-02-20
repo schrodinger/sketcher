@@ -19,7 +19,6 @@
 #include <emscripten/val.h>
 #endif
 
-#include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
@@ -334,24 +333,6 @@ void SketcherWidget::updateWatermark()
     m_watermark_item->setVisible(is_empty);
 }
 
-void SketcherWidget::showBracketSubgroupDialogForAtoms(
-    const std::unordered_set<const RDKit::Atom*>& atoms)
-{
-    auto dialog = new BracketSubgroupDialog(m_mol_model, this);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setAtoms(atoms);
-    dialog->show();
-}
-
-void SketcherWidget::showBracketSubgroupDialogForSGroup(
-    const RDKit::SubstanceGroup* const s_group)
-{
-    auto dialog = new BracketSubgroupDialog(m_mol_model, this);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setSubgroup(s_group);
-    dialog->show();
-}
-
 void SketcherWidget::connectTopBarSlots()
 {
     connect(m_ui->top_bar_wdg, &SketcherTopBar::undoRequested, m_undo_stack,
@@ -437,8 +418,7 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
                 &MolModel::mutateRGroups));
 
     if (auto context_menu = dynamic_cast<const AtomContextMenu*>(&menu)) {
-        connect(context_menu, &AtomContextMenu::bracketSubgroupDialogRequested,
-                this, &SketcherWidget::showBracketSubgroupDialogForAtoms);
+        // TODO: SKETCH-2117 connect bracketSubgroupDialogRequested
         connect(context_menu, &AtomContextMenu::deleteRequested, this,
                 [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}); });
     }
@@ -475,8 +455,7 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &MolModel::flipSelection);
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
-    connect(&menu, &SelectionContextMenu::bracketSubgroupDialogRequested, this,
-            &SketcherWidget::showBracketSubgroupDialogForAtoms);
+    // TODO: SKETCH-2117 connect bracketSubgroupDialogRequested
     // TODO: SKETCH-2118 connect variableAttachmentBondRequested
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
     connect(&menu, &SelectionContextMenu::newRGroupRequested, m_mol_model,
@@ -493,13 +472,13 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
 void SketcherWidget::connectContextMenu(const BracketSubgroupContextMenu& menu)
 {
     connect(&menu, &BracketSubgroupContextMenu::bracketSubgroupDialogRequested,
-            this, [this](auto sgroups) {
+            this, [](auto sgroups) {
                 // modification dialog only makes sense for one sgroup
                 if (sgroups.size() != 1) {
                     throw std::runtime_error(
                         "Cannot modify more multiple bracket groups");
                 }
-                showBracketSubgroupDialogForSGroup(*sgroups.begin());
+                // TODO: SKETCH-2117 show the dialog with *(sgroups.begin())
             });
     connect(&menu, &BracketSubgroupContextMenu::deleteRequested, this,
             [this](auto sgroups) { m_mol_model->remove({}, {}, sgroups, {}); });
