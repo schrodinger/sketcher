@@ -20,6 +20,7 @@
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
@@ -1720,6 +1721,56 @@ void MolModel::toggleExplicitHsOnAtoms(
     updateExplicitHs(ExplicitHActions::TOGGLE, atoms);
 }
 
+void MolModel::addSGroup(const std::unordered_set<const RDKit::Atom*>& atoms,
+                         SubgroupType subgroup_type,
+                         RepeatPattern repeat_pattern,
+                         std::string polymer_label)
+{
+    std::vector<unsigned int> atom_idxs;
+    std::transform(atoms.begin(), atoms.end(), std::back_inserter(atom_idxs),
+                   [](auto atom) { return atom->getIdx(); });
+    std::vector<unsigned int> bond_idxs =
+        rdkit_extensions::get_bonds_for_sgroup_atoms(atoms, m_mol);
+    auto subgroup_type_str =
+        SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.left.at(subgroup_type);
+    auto repeat_pattern_str =
+        REPEATPATTERN_TO_RDKITSTRING_BIMAP.left.at(repeat_pattern);
+    auto cmd_func = [this, atom_idxs, bond_idxs, subgroup_type_str,
+                     repeat_pattern_str, polymer_label]() {
+        RDKit::SubstanceGroup s_group(&m_mol, subgroup_type_str);
+        s_group.setAtoms(atom_idxs);
+        s_group.setBonds(bond_idxs);
+        rdkit_extensions::set_repeat_pattern_label(s_group, repeat_pattern_str);
+        rdkit_extensions::set_polymer_label(s_group, polymer_label);
+        setTagForSGroup(s_group, m_next_s_group_tag++);
+        addSubstanceGroup(m_mol, s_group);
+    };
+    doCommandUsingSnapshots(cmd_func, "Add substance group",
+                            WhatChanged::MOLECULE);
+}
+
+void MolModel::modifySGroup(const RDKit::SubstanceGroup* substance_group,
+                            SubgroupType subgroup_type,
+                            RepeatPattern repeat_pattern,
+                            std::string polymer_label)
+{
+    auto subgroup_type_str =
+        SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.left.at(subgroup_type);
+    auto repeat_pattern_str =
+        REPEATPATTERN_TO_RDKITSTRING_BIMAP.left.at(repeat_pattern);
+    auto* s_group = getMutableSGroup(substance_group);
+    auto cmd_func = [this, s_group, subgroup_type_str, repeat_pattern_str,
+                     polymer_label]() {
+        rdkit_extensions::set_sgroup_type(*s_group, subgroup_type_str);
+        rdkit_extensions::set_sgroup_subtype(*s_group, "");
+        rdkit_extensions::set_repeat_pattern_label(*s_group,
+                                                   repeat_pattern_str);
+        rdkit_extensions::set_polymer_label(*s_group, polymer_label);
+    };
+    doCommandUsingSnapshots(cmd_func, "Modify substance group",
+                            WhatChanged::MOLECULE);
+}
+
 void MolModel::setTagForAtom(RDKit::Atom* const atom, const AtomTag atom_tag)
 {
     m_mol.setAtomBookmark(atom, atom_tag);
@@ -1794,9 +1845,17 @@ RDKit::Atom* MolModel::getMutableAtom(const RDKit::Atom* const atom)
 {
     return m_mol.getUniqueAtomWithBookmark(getTagForAtom(atom));
 }
+
 RDKit::Bond* MolModel::getMutableBond(const RDKit::Bond* const bond)
 {
     return m_mol.getUniqueBondWithBookmark(getTagForBond(bond));
+}
+
+RDKit::SubstanceGroup*
+MolModel::getMutableSGroup(const RDKit::SubstanceGroup* const s_group)
+{
+    auto idx = s_group->getIndexInMol();
+    return &getSubstanceGroups(m_mol)[idx];
 }
 
 std::pair<std::unordered_set<const RDKit::Atom*>,

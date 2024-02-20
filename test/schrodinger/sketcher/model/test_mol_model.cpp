@@ -27,6 +27,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
+#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -2570,6 +2571,66 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
 }
 
 /**
+ * Ensure that addSGroup and modifySGroup work as expected
+ */
+BOOST_AUTO_TEST_CASE(test_s_group_creation_and_modification)
+{
+    const std::string S_GROUP_SMILES = "CCCCCCCCC |Sg:n:3,4,5:1:ht:::|";
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, S_GROUP_SMILES);
+    auto mol = model.getMol();
+    auto& all_s_groups = RDKit::getSubstanceGroups(*mol);
+    BOOST_TEST(all_s_groups.size() == 1);
+    auto& s_group = all_s_groups[0];
+    BOOST_TEST(rdkit_extensions::get_sgroup_type(s_group) == "SRU");
+    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(s_group) == "HT");
+    BOOST_TEST(rdkit_extensions::get_polymer_label(s_group) == "1");
+
+    // modify an S-group that came from the SMILES input
+    model.modifySGroup(&s_group, SubgroupType::SRU_POLYMER,
+                       RepeatPattern::HEAD_TO_HEAD, "10,11");
+    auto& all_s_groups2 = RDKit::getSubstanceGroups(*mol);
+    BOOST_TEST(all_s_groups2.size() == 1);
+    auto& s_group2 = all_s_groups2[0];
+    BOOST_TEST(rdkit_extensions::get_sgroup_type(s_group2) == "SRU");
+    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(s_group2) == "HH");
+    BOOST_TEST(rdkit_extensions::get_polymer_label(s_group) == "10,11");
+
+    // create a new S-group
+    std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(4)};
+    model.addSGroup({mol->getAtomWithIdx(4)}, SubgroupType::COPOLYMER,
+                    RepeatPattern::EITHER_UNKNOWN, "co");
+    auto& all_s_groups3 = RDKit::getSubstanceGroups(*mol);
+    BOOST_TEST(all_s_groups3.size() == 2);
+    auto& new_s_group = all_s_groups3[1];
+    BOOST_TEST(rdkit_extensions::get_sgroup_type(new_s_group) == "COP");
+    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(new_s_group) == "EU");
+    BOOST_TEST(rdkit_extensions::get_polymer_label(new_s_group) == "co");
+
+    // modify the newly created S-group
+    model.modifySGroup(&new_s_group, SubgroupType::SRU_POLYMER,
+                       RepeatPattern::HEAD_TO_TAIL, "999");
+    auto& all_s_groups4 = RDKit::getSubstanceGroups(*mol);
+    BOOST_TEST(all_s_groups4.size() == 2);
+    auto& new_s_group2 = all_s_groups4[1];
+    BOOST_TEST(rdkit_extensions::get_sgroup_type(new_s_group2) == "SRU");
+    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(new_s_group2) ==
+               "HT");
+    BOOST_TEST(rdkit_extensions::get_polymer_label(new_s_group2) == "999");
+
+    // undo the modifications
+    undo_stack.undo();
+    auto& all_s_groups5 = RDKit::getSubstanceGroups(*mol);
+    BOOST_TEST(all_s_groups5.size() == 2);
+    auto& new_s_group3 = all_s_groups5[1];
+    BOOST_TEST(rdkit_extensions::get_sgroup_type(new_s_group3) == "COP");
+    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(new_s_group3) ==
+               "EU");
+    BOOST_TEST(rdkit_extensions::get_polymer_label(new_s_group3) == "co");
+}
+
+/**
  * Make sure that translateByVector and rotateByAngle don't crash on undo/redo
  * (SKETCH-2155)
  */
@@ -2626,6 +2687,7 @@ BOOST_AUTO_TEST_CASE(test_translate_rotate_crash)
         dummy += mol->getConformer().getAtomPos(2).x;
     }
 }
+
 BOOST_AUTO_TEST_CASE(test_addHs_hydrogen_counts)
 {
     // SKETCH-2146

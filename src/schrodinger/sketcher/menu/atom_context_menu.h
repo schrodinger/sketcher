@@ -166,7 +166,8 @@ class AtomContextMenu : public ModifyAtomsMenu
                     QWidget* parent = nullptr);
 
   signals:
-    void bracketSubgroupDialogRequested();
+    void bracketSubgroupDialogRequested(
+        const std::unordered_set<const RDKit::Atom*>& atoms);
     void deleteRequested(const std::unordered_set<const RDKit::Atom*>& atoms);
 
   protected:
