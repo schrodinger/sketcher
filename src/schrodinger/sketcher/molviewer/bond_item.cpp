@@ -250,7 +250,7 @@ BondItem::calcDashedWedgeParams(const QLineF& trimmed_line) const
 {
     auto [wedge_start, p2, p3] = calcWedgeEnds(trimmed_line);
     unsigned int num_dashes = trimmed_line.length() / m_settings.m_hash_spacing;
-    num_dashes = std::clamp(num_dashes, 0u, 100u);
+    num_dashes = std::clamp(num_dashes, 1u, 100u);
     QPointF offset_towards_p2 = (p2 - wedge_start) / num_dashes;
     QPointF offset_towards_p3 = (p3 - wedge_start) / num_dashes;
     std::vector<QLineF> dashes;

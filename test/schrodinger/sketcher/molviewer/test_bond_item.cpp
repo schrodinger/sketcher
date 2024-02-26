@@ -305,5 +305,17 @@ $$$$
     check_bond_items(molblock, expected);
 }
 
+/**
+ * test that the dashed wedge is calculated for a bond with a zero length
+ * without crashing and that the result is a single dash (SKETCH-2148)
+ */
+BOOST_AUTO_TEST_CASE(test_dashed_bond_zero_length)
+{
+    auto [bond_item, test_scene, trimmed_line] = createBondItem();
+    auto [num_dashes, wedge_start, offset_towards_p2, offset_towards_p3,
+          dashes] = bond_item->calcDashedWedgeParams(QLineF(0, 0, 0, 0));
+    BOOST_TEST(num_dashes == 1);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
