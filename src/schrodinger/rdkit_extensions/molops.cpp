@@ -23,12 +23,17 @@ void apply_sanitization(RDKit::RWMol& mol, Sanitization sanitization)
 
     unsigned failed_op{0};
     int ops = RDKit::MolOps::SANITIZE_ALL;
+    // Partial sanitization runs all operations except:
+    // - properties: so we don't freak out about invalid valences,
+    // - aromaticity and kekulization, to preserve the state the input comes in,
+    // - chirality cleanup, to avoid changing stereo of the input.
+    // We do it this way so we get any new ops that might be added to
+    // SANITIZE_ALL.
     if (sanitization == Sanitization::PARTIAL) {
-        ops = RDKit::MolOps::SANITIZE_SYMMRINGS |
-              RDKit::MolOps::SANITIZE_FINDRADICALS |
-              RDKit::MolOps::SANITIZE_SETCONJUGATION |
-              RDKit::MolOps::SANITIZE_SETHYBRIDIZATION |
-              RDKit::MolOps::SANITIZE_ADJUSTHS;
+        ops &= ~(RDKit::MolOps::SANITIZE_PROPERTIES |
+                 RDKit::MolOps::SANITIZE_KEKULIZE |
+                 RDKit::MolOps::SANITIZE_SETAROMATICITY |
+                 RDKit::MolOps::SANITIZE_CLEANUPCHIRALITY);
     }
     RDKit::MolOps::sanitizeMol(mol, failed_op, ops);
     // Regardless of sanitization level, ensure property cache is updated
