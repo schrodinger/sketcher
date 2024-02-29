@@ -2116,38 +2116,19 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
     unsigned int atom_index = m_mol.getNumAtoms();
     unsigned int bond_index = m_mol.getNumBonds();
     m_mol.insertMol(mol);
-    unsigned int new_num_atoms = m_mol.getNumAtoms();
-    unsigned int new_num_bonds = m_mol.getNumBonds();
 
-    // insertMol only copies the atoms and bonds, so we need to add the sgroups
-    for (auto sgroup : getSubstanceGroups(mol)) {
-        // update the sgroup's atom and bond indices
-        std::vector<unsigned int> new_atom_indices;
-        std::transform(sgroup.getAtoms().begin(), sgroup.getAtoms().end(),
-                       std::back_inserter(new_atom_indices),
-                       [atom_index](unsigned int old_index) {
-                           return old_index + atom_index;
-                       });
-        sgroup.setAtoms(new_atom_indices);
-        std::vector<unsigned int> new_bond_indices;
-        std::transform(sgroup.getBonds().begin(), sgroup.getBonds().end(),
-                       std::back_inserter(new_bond_indices),
-                       [bond_index](unsigned int old_index) {
-                           return old_index + bond_index;
-                       });
-        sgroup.setBonds(new_bond_indices);
+    for (auto& sgroup : getSubstanceGroups(m_mol)) {
         setTagForSGroup(sgroup, m_next_s_group_tag++);
-        addSubstanceGroup(m_mol, sgroup);
     }
     bool attachment_point_added = false;
-    for (; atom_index < new_num_atoms; ++atom_index) {
+    for (; atom_index < m_mol.getNumAtoms(); ++atom_index) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);
         setTagForAtom(atom, m_next_atom_tag++);
         attachment_point_added =
             attachment_point_added || is_attachment_point(atom);
     }
 
-    for (; bond_index < new_num_bonds; ++bond_index) {
+    for (; bond_index < m_mol.getNumBonds(); ++bond_index) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
         setTagForBond(bond, m_next_bond_tag++);
     }

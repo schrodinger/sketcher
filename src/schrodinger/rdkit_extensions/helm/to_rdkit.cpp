@@ -65,14 +65,10 @@ namespace
 [[nodiscard]] std::vector<::RDKit::RWMol>
 create_helm_polymers(const std::vector<polymer>& polymers);
 
-void add_polymer_sgroups_to_mol(::RDKit::RWMol& mol,
-                                const std::vector<::RDKit::RWMol>& polymers);
-
 [[nodiscard]] ::RDKit::RWMol create_helm_polymer(const polymer& polymer);
 
 void add_helm_connections(::RDKit::RWMol& mol,
-                          const std::vector<connection>& connections,
-                          const std::vector<::RDKit::SubstanceGroup>& sgroups);
+                          const std::vector<connection>& connections);
 
 void add_polymer_groups_and_extended_annotations(
     ::RDKit::RWMol& mol, const std::vector<polymer_group> polymer_groups,
@@ -90,28 +86,16 @@ template <class PropType, class RDKitObject> PropType get_property
 helm_to_rdkit(const std::string& helm_string)
 {
     const auto parsed_info = helm::HelmParser(helm_string).parse();
+    const auto polymers = create_helm_polymers(parsed_info.polymers);
 
     std::unique_ptr<::RDKit::RWMol> mol(new ::RDKit::RWMol);
-    const auto polymers = create_helm_polymers(parsed_info.polymers);
     std::for_each(polymers.begin(), polymers.end(),
                   [&](const auto& polymer) { mol->insertMol(polymer); });
 
     // TODO: Keep track of unused rgroups
-    std::vector<::RDKit::SubstanceGroup> polymer_sgroups;
-    std::transform(
-        polymers.begin(), polymers.end(), std::back_inserter(polymer_sgroups),
-        [&](const auto& polymer) {
-            const auto& sgroups = ::RDKit::getSubstanceGroups(polymer);
-            return *std::find_if(
-                sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
-                    return get_property<std::string>(&sgroup, "TYPE") == "COP";
-                });
-        });
 
-    add_helm_connections(*mol, parsed_info.connections, polymer_sgroups);
+    add_helm_connections(*mol, parsed_info.connections);
 
-    // Do this here since atom and bond addition will clear the sgroups
-    add_polymer_sgroups_to_mol(*mol, polymers);
     add_polymer_groups_and_extended_annotations(
         *mol, parsed_info.polymer_groups, parsed_info.extended_annotations);
 
@@ -315,63 +299,33 @@ void condense_monomer_list(const std::string_view& polymer_id,
     return mol;
 }
 
-void add_polymer_sgroups_to_mol(::RDKit::RWMol& mol,
-                                const std::vector<::RDKit::RWMol>& polymers)
-{
-    size_t prev_num_atoms = 0;
-    size_t prev_num_bonds = 0;
-    std::for_each(polymers.begin(), polymers.end(), [&](const auto& polymer) {
-        auto polymer_sgroups = ::RDKit::getSubstanceGroups(polymer);
-        std::for_each(
-            polymer_sgroups.begin(), polymer_sgroups.end(),
-            [&](auto& polymer_sgroup) {
-                auto atoms = polymer_sgroup.getAtoms();
-                // Ownership must be updated first so that atom/bond ownership
-                // checks do not trigger errors.
-                polymer_sgroup.setOwningMol(&mol);
-                std::for_each(atoms.begin(), atoms.end(),
-                              [&](auto& atom) { atom += prev_num_atoms; });
-                polymer_sgroup.setAtoms({atoms.begin(), atoms.end()});
-                auto bonds = polymer_sgroup.getBonds();
-                std::for_each(bonds.begin(), bonds.end(),
-                              [&](auto& bond) { bond += prev_num_bonds; });
-                polymer_sgroup.setBonds({bonds.begin(), bonds.end()});
-                ::RDKit::addSubstanceGroup(mol, polymer_sgroup);
-            });
-        prev_num_atoms += polymer.getNumAtoms();
-        prev_num_bonds += polymer.getNumBonds();
-    });
-}
-
 // <from_atom_idx, to_atom_idx, linkage_property, annotation>
 using linkage_info =
     std::tuple<unsigned int, unsigned int, std::string, std::string>;
 
-std::vector<linkage_info> enumerate_connection_monomers(
-    const ::RDKit::RWMol& mol, const connection& connection,
-    const std::vector<::RDKit::SubstanceGroup>& sgroups)
+std::vector<linkage_info>
+enumerate_connection_monomers(const ::RDKit::RWMol& mol,
+                              const connection& connection)
 {
+
     // Utility function to map residue numbers to atom indices
     static auto get_monomers =
-        [](const auto& mol, const auto& polymer_id, const auto& residues,
-           const auto& sgroups) -> std::vector<unsigned int> {
-        std::vector<unsigned int> atom_indices;
-        auto offset = 0;
+        [](const auto& mol, const auto& polymer_id,
+           const auto& residues) -> std::vector<unsigned int> {
+        const auto& sgroups = ::RDKit::getSubstanceGroups(mol);
         const auto& polymer = *std::find_if(
             sgroups.begin(), sgroups.end(), [&](const auto& sgroup) {
-                offset += sgroup.getAtoms().size();
-                return get_property<std::string>(&sgroup, "ID") == polymer_id;
+                return get_property<std::string>(&sgroup, "TYPE") == "COP" &&
+                       get_property<std::string>(&sgroup, "ID") == polymer_id;
             });
-
-        auto atoms = polymer.getAtoms();
-        offset -= atoms.size();
-        std::for_each(atoms.begin(), atoms.end(),
-                      [&](auto& idx) { idx += offset; });
 
         std::vector<std::string> residue_list;
         boost::split(residue_list,
                      std::string{residues.begin(), residues.end()},
                      boost::is_any_of(",+"));
+
+        std::vector<unsigned int> atom_indices;
+        const auto& atoms = polymer.getAtoms();
         for (const auto& residue : residue_list) {
             auto is_residue_number =
                 std::all_of(residue.begin(), residue.end(),
@@ -396,9 +350,9 @@ std::vector<linkage_info> enumerate_connection_monomers(
     };
 
     const auto source_monomers =
-        get_monomers(mol, connection.from_id, connection.from_res, sgroups);
+        get_monomers(mol, connection.from_id, connection.from_res);
     const auto target_monomers =
-        get_monomers(mol, connection.to_id, connection.to_res, sgroups);
+        get_monomers(mol, connection.to_id, connection.to_res);
 
     std::vector<linkage_info> connected_monomers;
     const std::string linkage =
@@ -417,14 +371,12 @@ std::vector<linkage_info> enumerate_connection_monomers(
 }
 
 void add_helm_connections(::RDKit::RWMol& mol,
-                          const std::vector<connection>& connections,
-                          const std::vector<::RDKit::SubstanceGroup>& sgroups)
+                          const std::vector<connection>& connections)
 {
     std::vector<linkage_info> connected_monomers;
     std::for_each(
         connections.begin(), connections.end(), [&](const auto& connection) {
-            auto bonds_info =
-                enumerate_connection_monomers(mol, connection, sgroups);
+            auto bonds_info = enumerate_connection_monomers(mol, connection);
             connected_monomers.insert(connected_monomers.end(),
                                       bonds_info.begin(), bonds_info.end());
         });
