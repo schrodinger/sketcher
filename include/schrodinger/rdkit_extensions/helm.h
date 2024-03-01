@@ -3,6 +3,8 @@
 #include "schrodinger/rdkit_extensions/definitions.h"
 
 #include <string>
+#include <string_view>
+#include <vector>
 
 const std::string ANNOTATION{"ANNOTATION"};
 const std::string LINKAGE{"attachmentPoints"};
@@ -31,5 +33,15 @@ namespace rdkit_extensions
 {
 [[nodiscard]] RDKIT_EXTENSIONS_API bool
 is_coarse_grain_mol(const RDKit::ROMol& mol);
-}
+
+// Helper apis to get atom indices belonging to the inputs polymers
+[[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
+get_atoms_in_polymer_chain(const RDKit::ROMol& mol,
+                           std::string_view polymer_id);
+
+// NOTE: Duplicate polymer ids will be ignored
+[[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
+get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
+                            const std::vector<std::string_view>& polymer_ids);
+} // namespace rdkit_extensions
 } // namespace schrodinger

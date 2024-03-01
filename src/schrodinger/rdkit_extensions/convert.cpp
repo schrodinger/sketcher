@@ -832,9 +832,5 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
     throw std::invalid_argument("Invalid format specified");
 }
 
-[[nodiscard]] bool is_coarse_grain_mol(const RDKit::ROMol& mol)
-{
-    return mol.hasProp(HELM_MODEL);
-}
 } // namespace rdkit_extensions
 } // namespace schrodinger
