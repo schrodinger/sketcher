@@ -420,6 +420,14 @@ void Scene::onMouseLeave()
 
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
+    /**
+     * disable the context menu if the move-rotate tool is active
+     */
+    auto draw_tool = m_sketcher_model->getDrawTool();
+    if (draw_tool == DrawTool::MOVE_ROTATE) {
+        return;
+    }
+
     auto pos = event->scenePos();
     auto [atoms, bonds, sgroups, non_molecular_objects] =
         getModelObjects(SceneSubset::HOVERED, &pos);

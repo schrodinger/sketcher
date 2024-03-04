@@ -29,6 +29,9 @@ void TranslateSceneTool::onDragMove(QGraphicsSceneMouseEvent* event)
 
 void TranslateSceneTool::onMouseClick(QGraphicsSceneMouseEvent* event)
 {
+    /*
+     * clicking with the right mouse button shows the context menu
+     */
     m_scene->showContextMenu(event);
 }
 
