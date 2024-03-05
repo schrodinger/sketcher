@@ -160,5 +160,31 @@ BOOST_AUTO_TEST_CASE(test_ensureCompleteAttachmentPoints)
     BOOST_TEST(complete_items.contains(cc_bond_item));
 }
 
+/**
+ * Make sure that undoing the deletion of a selected reaction doesn't crash
+ * (SKETCH-2150)
+ */
+BOOST_AUTO_TEST_CASE(test_undo_reaction_delete)
+{
+    // create a scene with an undo stack
+    auto undo_stack = new QUndoStack();
+    auto mol_model = new MolModel(undo_stack);
+    auto sketcher_model = new SketcherModel();
+    auto test_scene = std::make_shared<TestScene>(mol_model, sketcher_model);
+    undo_stack->setParent(mol_model);
+    mol_model->setParent(test_scene.get());
+    sketcher_model->setParent(test_scene.get());
+
+    // add a reaction to the scene
+    import_reaction_text(test_scene->m_mol_model, "CC.CC>>CC", Format::SMILES);
+    BOOST_TEST(test_scene->getInteractiveItems().size() == 11);
+    // select evertyhing, then delete and undo
+    test_scene->m_mol_model->selectAll();
+    test_scene->m_mol_model->removeSelected();
+    BOOST_TEST(test_scene->getInteractiveItems().size() == 0);
+    undo_stack->undo();
+    BOOST_TEST(test_scene->getInteractiveItems().size() == 11);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

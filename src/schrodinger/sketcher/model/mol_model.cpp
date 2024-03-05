@@ -456,11 +456,9 @@ void MolModel::restoreSnapshot(const MolModelSnapshot& snapshot,
         m_selected_non_molecular_tags = snapshot.m_selected_non_molecular_tags;
     }
 
-    if (what_changed & WhatChanged::MOLECULE) {
-        emit moleculeChanged();
-    }
-    if (what_changed & WhatChanged::NON_MOL_OBJS) {
-        emit nonMolecularObjectsChanged();
+    if (what_changed & WhatChanged::MOLECULE ||
+        what_changed & WhatChanged::NON_MOL_OBJS) {
+        emit modelChanged(what_changed);
     }
     if (selection_changed) {
         emit selectionChanged();

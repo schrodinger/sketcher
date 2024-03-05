@@ -133,10 +133,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     connect(this, &Scene::selectionChanged, m_sketcher_model,
             &SketcherModel::selectionChanged);
 
-    connect(m_mol_model, &MolModel::moleculeChanged, this,
-            &Scene::updateMolecularItems);
-    connect(m_mol_model, &MolModel::nonMolecularObjectsChanged, this,
-            &Scene::updateNonMolecularItems);
+    connect(m_mol_model, &MolModel::modelChanged, this, &Scene::updateItems);
 
     connect(m_mol_model, &MolModel::coordinatesChanged, this,
             &Scene::moveInteractiveItems);
@@ -188,40 +185,39 @@ void Scene::moveInteractiveItems()
     m_left_button_scene_tool->onStructureUpdated();
 }
 
-void Scene::updateMolecularItems()
+void Scene::updateItems(const WhatChangedType what_changed)
 {
-    clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
-    const auto* mol = m_mol_model->getMol();
-    std::vector<QGraphicsItem*> all_items;
-    std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
-             m_s_group_to_s_group_item) =
-        create_graphics_items_for_mol(mol, m_fonts, m_atom_item_settings,
-                                      m_bond_item_settings);
-    for (auto* item : all_items) {
-        addItem(item);
-        m_interactive_items.insert(item);
+    if (what_changed & WhatChanged::MOLECULE) {
+
+        clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
+        const auto* mol = m_mol_model->getMol();
+        std::vector<QGraphicsItem*> all_items;
+        std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
+                 m_s_group_to_s_group_item) =
+            create_graphics_items_for_mol(mol, m_fonts, m_atom_item_settings,
+                                          m_bond_item_settings);
+        for (auto* item : all_items) {
+            addItem(item);
+            m_interactive_items.insert(item);
+        }
+    }
+    if (what_changed & WhatChanged::NON_MOL_OBJS) {
+        clearInteractiveItems(InteractiveItemFlag::NON_MOLECULAR);
+        QColor color = m_atom_item_settings.getAtomColor(-1);
+        for (const auto* model_obj : m_mol_model->getNonMolecularObjects()) {
+            auto* item = new NonMolecularItem(model_obj, color);
+            auto rd_coords = model_obj->getCoords();
+            auto qpos = to_scene_xy(rd_coords);
+            item->setPos(qpos);
+            m_non_molecular_to_non_molecular_item[model_obj] = item;
+            addItem(item);
+            m_interactive_items.insert(item);
+        }
     }
     updateItemSelection();
     updateSelectionHighlighting();
     updateHaloHighlighting();
-    m_left_button_scene_tool->onStructureUpdated();
-}
 
-void Scene::updateNonMolecularItems()
-{
-    clearInteractiveItems(InteractiveItemFlag::NON_MOLECULAR);
-    QColor color = m_atom_item_settings.getAtomColor(-1);
-    for (const auto* model_obj : m_mol_model->getNonMolecularObjects()) {
-        auto* item = new NonMolecularItem(model_obj, color);
-        auto rd_coords = model_obj->getCoords();
-        auto qpos = to_scene_xy(rd_coords);
-        item->setPos(qpos);
-        m_non_molecular_to_non_molecular_item[model_obj] = item;
-        addItem(item);
-        m_interactive_items.insert(item);
-    }
-    updateItemSelection();
-    updateSelectionHighlighting();
     m_left_button_scene_tool->onStructureUpdated();
 }
 

@@ -149,7 +149,7 @@ struct MolModelSnapshot {
  * which is wrong!  addGraphicsItemForAtom will be called when the atom is
  * initially added, but it will *not* be called if the user undoes and
  * redoes the addAtom call.  Instead, the calling class should listen for
- * the moleculeChanged signal.
+ * the modelChanged signal.
  */
 class SKETCHER_API MolModel : public AbstractUndoableModel
 {
@@ -776,19 +776,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
   signals:
 
     /**
-     * Signal emitted when the molecule is changed (e.g. by adding or removing
-     * atoms or bonds), excluding selection changes, which will trigger
-     * selectionChanged instead and coordinates changes which will trigger
-     * coordinatesChanged.
+     * Signal emitted when the molecule and/or non-molecular objects are
+     * changed, excluding selection changes, which will trigger selectionChanged
+     * instead and coordinates changes which will trigger coordinatesChanged.
      */
-    void moleculeChanged();
-
-    /**
-     * Signal emitted when the non-molecular objects are changed, excluding
-     * selection changes, which will trigger selectionChanged instead, and
-     * coordinate changes, which will trigger coordinatesChanged.
-     */
-    void nonMolecularObjectsChanged();
+    void modelChanged(const WhatChangedType what_changed);
 
     /**
      * Signal emitted when the coordinates of the molecule or the non-molecular

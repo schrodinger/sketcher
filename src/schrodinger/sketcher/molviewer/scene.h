@@ -223,16 +223,11 @@ class SKETCHER_API Scene : public QGraphicsScene
         const InteractiveItemFlagType types = InteractiveItemFlag::ALL);
 
     /**
-     * Clear all atom and bond graphics items and regenerate them from the
-     * MolModel molecule.
+     * Update all atoms and bond graphics items and/or arrow and plus graphics
+     * items and regenerate them from the MolModel data
+     * @param what_changed The type of change that occurred in the MolModel
      */
-    void updateMolecularItems();
-
-    /**
-     * Clear all arrow and plus graphics items and regenerate them from the
-     * MolModel.
-     */
-    void updateNonMolecularItems();
+    void updateItems(const WhatChangedType what_changed);
 
     /**
      * update the positions of all interactive items in the scene
