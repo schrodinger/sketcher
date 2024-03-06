@@ -154,6 +154,40 @@ M  V30 END CTAB
 M  END
 )";
 
+/**
+ * A molecule with a variable attachment bond
+ */
+const std::string VAR_ATTACH_MOL = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.065751 0.028571 0.000000 0
+M  V30 2 C 1.302930 0.742857 0.000000 0
+M  V30 3 C 1.302930 2.171429 0.000000 0
+M  V30 4 C 0.065751 2.885714 0.000000 0
+M  V30 5 C -1.171429 2.171429 0.000000 0
+M  V30 6 C -1.171429 0.742857 0.000000 0
+M  V30 7 C 1.398626 3.765751 0.000000 0
+M  V30 8 * 0.327197 1.909982 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 1 5 6
+M  V30 6 1 6 1
+M  V30 7 1 8 7 ENDPTS=(3 2 3 4) ATTACH=ANY
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+$$$$
+
+)";
+
 const std::string AMIDE_FRAG_SMILES = "*CC(N)=O |$_AP1;;;;$|";
 const std::string CYCLOHEXANE_MOL_SMILES = "C1CCCCC1";
 const std::string CYCLOHEXANE_FRAG_SMILES = "*C1CCCCC1 |$_AP1;;;;;;$|";
@@ -877,6 +911,106 @@ BOOST_AUTO_TEST_CASE(test_removeAtomsAndBonds)
     undo_stack.redo();
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
+}
+
+/**
+ * Make sure that we remove a variable attachment bond and its dummy atom
+ * whenever the bond is invalidated
+ */
+BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, VAR_ATTACH_MOL);
+    const RDKit::ROMol* mol = model.getMol();
+
+    auto sanity_check = [&mol]() {
+        BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(
+            mol->getBondWithIdx(6)));
+        BOOST_TEST(mol->getNumAtoms() == 8);
+        BOOST_TEST(mol->getNumBonds() == 7);
+    };
+    auto test_no_variable_attachment_bond_nor_dummy_atom = [&mol]() {
+        BOOST_TEST(std::none_of(
+            mol->bonds().begin(), mol->bonds().end(), [](auto* bond) {
+                return rdkit_extensions::is_variable_attachment_bond(bond);
+            }));
+        BOOST_TEST(
+            std::none_of(mol->atoms().begin(), mol->atoms().end(),
+                         [](auto* atom) { return atom->getAtomicNum() == 0; }));
+    };
+
+    sanity_check();
+
+    // delete the variable attachment bond itself
+    model.remove({}, {mol->getBondWithIdx(6)}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 7);
+    BOOST_TEST(mol->getNumBonds() == 6);
+    test_no_variable_attachment_bond_nor_dummy_atom();
+    undo_stack.undo();
+    sanity_check();
+
+    // delete one of the variable attachment atoms
+    model.remove({mol->getAtomWithIdx(2)}, {}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 4);
+    test_no_variable_attachment_bond_nor_dummy_atom();
+    undo_stack.undo();
+    sanity_check();
+
+    // delete a bond between two variable attachment atoms
+    model.remove({}, {mol->getBondWithIdx(1)}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 7);
+    BOOST_TEST(mol->getNumBonds() == 5);
+    test_no_variable_attachment_bond_nor_dummy_atom();
+    undo_stack.undo();
+    sanity_check();
+
+    // delete a bond involving one variable attachment atoms
+    model.remove({}, {mol->getBondWithIdx(0)}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 7);
+    BOOST_TEST(mol->getNumBonds() == 5);
+    test_no_variable_attachment_bond_nor_dummy_atom();
+    undo_stack.undo();
+    sanity_check();
+
+    // delete an atom bound to one of the variable attachment atoms, which
+    // implicitly deletes a bond from a variable attachment atom
+    model.remove({mol->getAtomWithIdx(0)}, {}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 4);
+    test_no_variable_attachment_bond_nor_dummy_atom();
+    undo_stack.undo();
+    sanity_check();
+
+    // delete the variable attachment bond's non-dummy atom, which implicitly
+    // deletes the variable attachment bond
+    model.remove({mol->getAtomWithIdx(6)}, {}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 6);
+    test_no_variable_attachment_bond_nor_dummy_atom();
+    undo_stack.undo();
+    sanity_check();
+
+    // delete an atom that has nothing to do with the variable attachment bond
+    // and make sure that the variable attachment bond isn't deleted
+    model.remove({mol->getAtomWithIdx(5)}, {}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 7);
+    BOOST_TEST(mol->getNumBonds() == 5);
+    BOOST_TEST(
+        rdkit_extensions::is_variable_attachment_bond(mol->getBondWithIdx(4)));
+    undo_stack.undo();
+    sanity_check();
+
+    // delete a bond that has nothing to do with the variable attachment bond
+    // and make sure that the variable attachment bond isn't deleted
+    model.remove({}, {mol->getBondWithIdx(4)}, {}, {});
+    BOOST_TEST(mol->getNumAtoms() == 8);
+    BOOST_TEST(mol->getNumBonds() == 6);
+    BOOST_TEST(
+        rdkit_extensions::is_variable_attachment_bond(mol->getBondWithIdx(5)));
+    undo_stack.undo();
+    sanity_check();
 }
 
 BOOST_AUTO_TEST_CASE(test_addMol)

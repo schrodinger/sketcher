@@ -14,6 +14,7 @@
 #include <QtGlobal>
 #include <boost/range/combine.hpp>
 
+#include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -717,6 +718,8 @@ void MolModel::remove(
     }
     auto [expanded_atoms, expanded_bonds] =
         ensureCompleteAttachmentPoints(atoms, bonds);
+    expanded_atoms = addDummyAtomsFromInvalidatedVariableAttachmentBonds(
+        expanded_atoms, expanded_bonds);
 
     std::vector<AtomTag> atom_tags;
     for (auto cur_atom : expanded_atoms) {
@@ -1894,6 +1897,61 @@ MolModel::ensureCompleteAttachmentPoints(
         }
     }
     return {new_atoms, new_bonds};
+}
+
+std::unordered_set<const RDKit::Atom*>
+MolModel::addDummyAtomsFromInvalidatedVariableAttachmentBonds(
+    const std::unordered_set<const RDKit::Atom*>& atoms_to_be_deleted,
+    const std::unordered_set<const RDKit::Bond*>& bonds_to_be_deleted)
+{
+    auto get_dummy_atom_from_variable_attachment_bond =
+        [](const RDKit::Bond* bond) {
+            return bond->getBeginAtom()->getAtomicNum() ==
+                           rdkit_extensions::DUMMY_ATOMIC_NUMBER
+                       ? bond->getBeginAtom()
+                       : bond->getEndAtom();
+        };
+
+    // make a list of all bonds that are going to be deleted either explicitly
+    // or implicitly (because one of the bond's atoms is being deleted)
+    auto all_bonds_to_be_deleted = bonds_to_be_deleted;
+    for (auto* cur_atom : atoms_to_be_deleted) {
+        auto bonds_it = m_mol.atomBonds(cur_atom);
+        all_bonds_to_be_deleted.insert(bonds_it.begin(), bonds_it.end());
+    }
+    // make a list of invalidated atoms, which are atoms that are either going
+    // to be deleted or have a bond deleted
+    auto atoms_to_be_invalidated = atoms_to_be_deleted;
+    auto updated_atoms_to_be_deleted = atoms_to_be_deleted;
+    for (auto* cur_bond : all_bonds_to_be_deleted) {
+        atoms_to_be_invalidated.insert(cur_bond->getBeginAtom());
+        atoms_to_be_invalidated.insert(cur_bond->getEndAtom());
+        if (rdkit_extensions::is_variable_attachment_bond(cur_bond)) {
+            // if we're deleting a variable attachment bond directly, then we
+            // need to delete the dummy atom as well
+            auto* dummy_atom =
+                get_dummy_atom_from_variable_attachment_bond(cur_bond);
+            updated_atoms_to_be_deleted.insert(dummy_atom);
+        }
+    }
+
+    // find all of the variable attachment bonds with invalidated variable
+    // attachment atoms and mark the bond's dummy atom for deletion
+    for (auto* cur_bond : m_mol.bonds()) {
+        auto variable_attachment_atoms =
+            rdkit_extensions::get_variable_attachment_atoms(cur_bond);
+        bool bond_invalidated = std::any_of(
+            variable_attachment_atoms.begin(), variable_attachment_atoms.end(),
+            [&atoms_to_be_invalidated](auto* cur_atom) {
+                return atoms_to_be_invalidated.count(cur_atom);
+            });
+        if (bond_invalidated) {
+            auto* dummy_atom =
+                get_dummy_atom_from_variable_attachment_bond(cur_bond);
+            updated_atoms_to_be_deleted.insert(dummy_atom);
+        }
+    }
+    return updated_atoms_to_be_deleted;
 }
 
 void MolModel::addAtomChainCommandFunc(

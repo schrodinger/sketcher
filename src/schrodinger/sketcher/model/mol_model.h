@@ -1084,6 +1084,32 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::unordered_set<const RDKit::Bond*>& bonds);
 
     /**
+     * Find all of the variable attachment bonds that should be deleted based on
+     * the lists of atoms and bonds to be deleted.  A variable attachment bond
+     * *and* the associated dummy atom should be deleted whenever:
+     *   - the variable attachment bond itself is deleted, either explcitly or
+     *     implicitly (because a bound atom was deleted)
+     *   - one of the variable attachment atoms is deleted
+     *   - a bond to one of the variable attachment atoms is deleted, either
+     *     explicitly or implicitly (because a bound atom was deleted)
+     *
+     * If we don't delete the variable attachment bonds and dummy atoms in these
+     * scenarios, then we can wind up with an unbound dummy atom or with a
+     * variable attachment bond that can't be rendered correctly because there
+     * are no bonds to draw it across.
+     *
+     * @return An updated list of atoms to be deleted that contains all of the
+     * input atoms_to_be_deleted plus the dummy atoms for any variable
+     * attachment bonds that should be deleted.  Deleting these dummy atoms will
+     * implicitly delete the variable attachment bond itself (but the reverse
+     * isn't true).
+     */
+    std::unordered_set<const RDKit::Atom*>
+    addDummyAtomsFromInvalidatedVariableAttachmentBonds(
+        const std::unordered_set<const RDKit::Atom*>& atoms_to_be_deleted,
+        const std::unordered_set<const RDKit::Bond*>& bonds_to_be_deleted);
+
+    /**
      * Add a chain of atoms, where each atom is bound to the previous and next
      * atoms in the chain.  This method must only be called as part of an undo
      * command.
