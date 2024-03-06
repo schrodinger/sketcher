@@ -19,8 +19,10 @@
 #include <QtMath>
 
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
+#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 namespace schrodinger
@@ -115,10 +117,10 @@ void BondItem::updateCachedData()
     QLineF bond_line = QLineF(QPointF(0, 0), bond_end);
     m_to_paint = calculateLinesToPaint(bond_line, bond_type);
     m_selection_highlighting_path =
-        pathAroundLine(bond_line, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
+        get_selection_highlighting_path_for_bond(m_bond);
     m_predictive_highlighting_path =
-        pathAroundLine(bond_line, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
-    m_shape = QPainterPath(m_predictive_highlighting_path);
+        get_predictive_highlighting_path_for_bond(m_bond);
+    m_shape = QPainterPath(m_selection_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
 
     // add the label (if present) to the bounding rect
@@ -561,23 +563,6 @@ QLineF BondItem::trimLineToBoundAtoms(const QLineF& line) const
     return trimmed_line;
 }
 
-QPainterPath BondItem::pathAroundLine(const QLineF& line,
-                                      const qreal half_width) const
-{
-    QLineF normal = line.normalVector();
-    normal.setLength(half_width);
-    QPointF offset = normal.p2() - normal.p1();
-    QPointF p1 = line.p1();
-    QPointF p2 = line.p2();
-    QPainterPath path;
-    path.moveTo(p1 + offset);
-    path.lineTo(p2 + offset);
-    path.lineTo(p2 - offset);
-    path.lineTo(p1 - offset);
-    path.closeSubpath();
-    return path;
-}
-
 std::vector<QColor> BondItem::getColors() const
 {
     if (m_bond->hasProp(USER_COLOR)) {
@@ -618,8 +603,8 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
             QLineF first_half(QPointF(0, 0), mid_point);
             QLineF second_half(mid_point, 2 * mid_point);
             painter->setClipPath(
-                pathAroundLine((i == 0 ? first_half : second_half),
-                               BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH));
+                path_around_line((i == 0 ? first_half : second_half),
+                                 BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH));
         }
         auto brush = m_solid_brush;
         brush.setColor(colors.at(i));

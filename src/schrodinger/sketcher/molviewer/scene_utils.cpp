@@ -3,17 +3,21 @@
 #include <QBitmap>
 #include <QColor>
 #include <QGraphicsItem>
+#include <QLineF>
 #include <QPixmap>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
+#include <QPointF>
 #include <QRect>
 #include <QRegion>
 #include <QSvgRenderer>
+#include <QTransform>
 
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
@@ -62,6 +66,11 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         auto* atom_item = new AtomItem(atom, fonts, atom_item_settings);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
+        if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
+                atom)) {
+            // hide the dummy atoms for variable attachment bonds
+            atom_item->setVisible(false);
+        }
         all_items.push_back(atom_item);
     }
 
@@ -80,8 +89,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
 
     // create substance group items
     for (auto& sgroup : getSubstanceGroups(*mol)) {
-        SGroupItem* sgroup_item =
-            new SGroupItem(sgroup, fonts, atom_to_atom_item, bond_to_bond_item);
+        SGroupItem* sgroup_item = new SGroupItem(sgroup, fonts);
         s_group_to_s_group_items[&sgroup] = sgroup_item;
         all_items.push_back(sgroup_item);
     }
@@ -193,26 +201,140 @@ QPixmap get_arrow_cursor_pixmap()
 }
 
 QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
-    const RDKit::SubstanceGroup& s_group,
-    const std::unordered_map<const RDKit::Atom*, AtomItem*>& atom_to_atom_item,
-    const std::unordered_map<const RDKit::Bond*, BondItem*>& bond_to_bond_item)
+    const RDKit::SubstanceGroup& s_group)
 {
     QPainterPath path;
     path.setFillRule(Qt::WindingFill);
-    auto& mol = s_group.getOwningMol();
+    const auto& mol = s_group.getOwningMol();
+    const auto& conf = mol.getConformer();
     for (auto atom_idx : s_group.getAtoms()) {
         auto* atom = mol.getAtomWithIdx(atom_idx);
-        auto* atom_item = atom_to_atom_item.at(atom);
-        auto cur_path = atom_item->predictiveHighlightingPath();
-        cur_path = atom_item->mapToScene(cur_path);
+        auto cur_path = get_predictive_highlighting_path_for_atom(atom);
+        auto& atom_pos = conf.getAtomPos(atom_idx);
+        // translate the path out of the atom's local coordinate system
+        cur_path.translate(to_scene_xy(atom_pos));
         path.addPath(cur_path);
     }
     for (auto* bond : rdkit_extensions::get_bonds_within_sgroup(s_group)) {
-        auto* bond_item = bond_to_bond_item.at(bond);
-        auto cur_path = bond_item->predictiveHighlightingPath();
-        cur_path = bond_item->mapToScene(cur_path);
+        auto cur_path = get_predictive_highlighting_path_for_bond(bond);
+        auto& bond_pos = conf.getAtomPos(bond->getBeginAtomIdx());
+        // translate the path out of the bond's local coordinate system
+        cur_path.translate(to_scene_xy(bond_pos));
         path.addPath(cur_path);
     }
+    return path;
+}
+
+static QPainterPath get_highlighting_path_for_atom(const RDKit::Atom* atom,
+                                                   const qreal radius)
+{
+    QPainterPath path;
+    if (!is_attachment_point(atom)) {
+        path.addEllipse(QPointF(0, 0), radius, radius);
+        return path;
+    } else {
+        path.setFillRule(Qt::WindingFill);
+        qreal squiggle_width = ATTACHMENT_POINT_SQUIGGLE_NUMBER_OF_WAVES *
+                               ATTACHMENT_POINT_SQUIGGLE_WIDTH_PER_WAVE;
+        qreal half_squiggle_width = 0.5 * squiggle_width;
+        path.addRect(-half_squiggle_width, -radius, squiggle_width, 2 * radius);
+        path.addEllipse(QPointF(-half_squiggle_width, 0.0), radius, radius);
+        path.addEllipse(QPointF(half_squiggle_width, 0.0), radius, radius);
+
+        qreal angle = get_attachment_point_line_angle(atom);
+        QTransform transform;
+        transform.rotate(angle);
+        return transform.map(path);
+    }
+}
+
+QPainterPath get_selection_highlighting_path_for_atom(const RDKit::Atom* atom)
+{
+    return get_highlighting_path_for_atom(atom,
+                                          ATOM_SELECTION_HIGHLIGHTING_RADIUS);
+}
+
+QPainterPath get_predictive_highlighting_path_for_atom(const RDKit::Atom* atom)
+{
+    return get_highlighting_path_for_atom(atom,
+                                          ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS);
+}
+
+static QPainterPath get_highlighting_path_for_bond(const RDKit::Bond* bond,
+                                                   const qreal half_width)
+{
+    const auto& conf = bond->getOwningMol().getConformer();
+    const auto& begin_pos = conf.getAtomPos(bond->getBeginAtomIdx());
+    const auto& end_pos = conf.getAtomPos(bond->getEndAtomIdx());
+    auto bond_vector = end_pos - begin_pos;
+    QLineF bond_line = QLineF(QPointF(0, 0), to_scene_xy(bond_vector));
+    return path_around_line(bond_line, half_width);
+}
+
+QPainterPath get_selection_highlighting_path_for_bond(const RDKit::Bond* bond)
+{
+    return get_highlighting_path_for_bond(
+        bond, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
+}
+
+QPainterPath get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond)
+{
+    auto path = get_highlighting_path_for_bond(
+        bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+    auto atoms = rdkit_extensions::get_variable_attachment_atoms(bond);
+    if (atoms.empty()) {
+        // this isn't a variable attachment bond, so we don't need to add
+        // anything else to the path
+        return path;
+    }
+
+    // this is a variable attachment bond, so we want to add highlighting for
+    // all of the variable attachment atoms and any bonds between those atoms
+    path.setFillRule(Qt::WindingFill);
+    std::unordered_set<RDKit::Bond*> added_bonds;
+    const auto& mol = (*atoms.begin())->getOwningMol();
+    const auto& conf = mol.getConformer();
+    // we'll need to translate all of the paths below to use the same local
+    // coordinate system as bond, so we fetch the bond's coordinates
+    auto local_origin = conf.getAtomPos(bond->getBeginAtomIdx());
+    for (auto* cur_atom : atoms) {
+        auto atom_path = get_predictive_highlighting_path_for_atom(cur_atom);
+        auto& atom_pos = conf.getAtomPos(cur_atom->getIdx());
+        auto translate_by = to_scene_xy(atom_pos - local_origin);
+        atom_path.translate(translate_by);
+        path.addPath(atom_path);
+        for (auto* cur_bond : mol.atomBonds(cur_atom)) {
+            if (!added_bonds.count(cur_bond) &&
+                atoms.count(cur_bond->getOtherAtom(cur_atom))) {
+                // we haven't added a path for this bond yet and it's between
+                // two variable attachment atoms, so we want to highlight it
+                added_bonds.insert(cur_bond);
+                auto bond_path = get_highlighting_path_for_bond(
+                    cur_bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+                const auto& bond_pos =
+                    conf.getAtomPos(cur_bond->getBeginAtomIdx());
+                auto translate_by = to_scene_xy(bond_pos - local_origin);
+                bond_path.translate(translate_by);
+                path.addPath(bond_path);
+            }
+        }
+    }
+    return path;
+}
+
+QPainterPath path_around_line(const QLineF& line, const qreal half_width)
+{
+    QLineF normal = line.normalVector();
+    normal.setLength(half_width);
+    QPointF offset = normal.p2() - normal.p1();
+    QPointF p1 = line.p1();
+    QPointF p2 = line.p2();
+    QPainterPath path;
+    path.moveTo(p1 + offset);
+    path.lineTo(p2 + offset);
+    path.lineTo(p2 - offset);
+    path.lineTo(p1 - offset);
+    path.closeSubpath();
     return path;
 }
 

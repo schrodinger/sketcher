@@ -29,6 +29,16 @@ bool is_variable_attachment_bond(const RDKit::Bond* bond)
     return !get_variable_attachment_atoms(bond).empty();
 }
 
+bool is_dummy_atom_for_variable_attachment_bond(const RDKit::Atom* atom)
+{
+    // is this a dummy atom with exactly one bond that's a variable attachment
+    // bond?
+    return (atom->getAtomicNum() == DUMMY_ATOMIC_NUMBER &&
+            atom->getDegree() == 1 &&
+            is_variable_attachment_bond(
+                *(atom->getOwningMol().atomBonds(atom).begin())));
+}
+
 std::unordered_set<const RDKit::Atom*>
 get_variable_attachment_atoms(const RDKit::Bond* bond)
 {

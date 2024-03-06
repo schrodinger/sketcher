@@ -2770,7 +2770,8 @@ BOOST_AUTO_TEST_CASE(test_wedge_bond_replacement)
 
 /**
  * Make sure that addVariableAttachmentBond adds two atoms and a variable
- * attachment bond.
+ * attachment bond.  Also ensure that mutating the bond preserves the variable
+ * attachment properties.
  */
 BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
 {
@@ -2795,6 +2796,7 @@ BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
              mol->getAtomWithIdx(3)};
     BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
 
+    // sanity check undo and redo
     undo_stack.undo();
     BOOST_TEST(mol->getNumAtoms() == 6);
     BOOST_TEST(mol->getNumBonds() == 6);
@@ -2802,6 +2804,15 @@ BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
     BOOST_TEST(mol->getNumAtoms() == 8);
     BOOST_TEST(mol->getNumBonds() == 7);
     bond = mol->getBondWithIdx(6);
+    atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
+             mol->getAtomWithIdx(3)};
+    BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+
+    // mutate the bond and make sure that it remains a variable attachment bond
+    model.mutateBonds({bond}, BondTool::DOUBLE);
+    bond = mol->getBondWithIdx(6);
+    BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(bond));
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
     atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
              mol->getAtomWithIdx(3)};
     BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);

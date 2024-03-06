@@ -221,13 +221,6 @@ void Scene::updateItems(const WhatChangedType what_changed)
     m_left_button_scene_tool->onStructureUpdated();
 }
 
-QPainterPath Scene::getPredictiveHighlightingPathForSGroupAtomsAndBonds(
-    const RDKit::SubstanceGroup& s_group)
-{
-    return get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
-        s_group, m_atom_to_atom_item, m_bond_to_bond_item);
-}
-
 void Scene::updateItemSelection()
 {
     clearSelection();

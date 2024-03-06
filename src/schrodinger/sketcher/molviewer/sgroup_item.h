@@ -35,21 +35,12 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
      *
      * @param sgroup The RDKit substance group that this item should represent.
      * @param fonts to render the labels
-     * @param atom_to_atom_item A map of the AtomItem representing each atom.
-     * Used to highlight the relevant atoms when the user hovers over the
-     * brackets.
-     * @param bond_to_bond_item A map of the BondItem representing each bond.
-     * Used to highlight the relevant bonds when the user hovers over the
-     * brackets.
      * @param parent The Qt parent for this item.  See the QGraphicsItem
      * documentation for additional information.
      *
      */
-    SGroupItem(
-        const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
-        std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item,
-        std::unordered_map<const RDKit::Bond*, BondItem*> bond_to_bond_item,
-        QGraphicsItem* parent = nullptr);
+    SGroupItem(const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
+               QGraphicsItem* parent = nullptr);
 
     const RDKit::SubstanceGroup* getSubstanceGroup() const;
 
@@ -64,13 +55,6 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
                QWidget* widget) override;
 
   protected:
-    /**
-     * Update all cached data using the provided path
-     * @param atom_and_bond_pred_path The predictive highlighting path for all
-     * atoms and bonds included in the S-group
-     */
-    void updateCachedData(const QPainterPath& atom_and_bond_pred_path);
-
     /**
      * Create a path representing the shape of brackets and labels
      * @param width How much padding we should include in the path

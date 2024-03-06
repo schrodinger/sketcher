@@ -386,16 +386,6 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     QLineF trimLineToBoundAtoms(const QLineF& line) const;
 
     /**
-     * Calculate a painter path around the perimeter of `line` if `line` were
-     * drawn with a pen width of `2 * half_width`.
-     *
-     * @param line The line for the path to go around
-     * @param half_width The desired half-width for the painter path
-     */
-    QPainterPath pathAroundLine(const QLineF& line,
-                                const qreal half_width) const;
-
-    /**
      * Determine the parameters to be used for painting the stereo or query
      * annotation.  The label is always drawn parallel to the bond.
      * @param label The label text to be displayed.

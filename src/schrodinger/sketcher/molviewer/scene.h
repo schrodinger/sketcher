@@ -168,13 +168,6 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void requestCursorHintUpdate();
 
-    /**
-     * Get a predictive hightlighting path for all atoms and bonds contained
-     * within the given S-group
-     */
-    QPainterPath getPredictiveHighlightingPathForSGroupAtomsAndBonds(
-        const RDKit::SubstanceGroup& s_group);
-
   signals:
     /**
      * Request that the widget import the given text in the given format

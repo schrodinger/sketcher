@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include <QtGlobal>
 #include <QList>
 
 #include "schrodinger/sketcher/definitions.h"
@@ -13,6 +14,7 @@
 class QColor;
 class QFont;
 class QGraphicsItem;
+class QLineF;
 class QPainterPath;
 class QPixmap;
 class QString;
@@ -107,15 +109,33 @@ SKETCHER_API QPixmap get_arrow_cursor_pixmap();
  * Get a predictive hightlighting path for all atoms and bonds contained within
  * the given S-group
  * @param s_group The S-group to generate the path for
- * @param atom_to_atom_item A map of the AtomItems representing each atom
- * @param bond_to_bond_item A map of the BondItems representing each bond
  * @return The newly generated highlighting path
  */
 SKETCHER_API QPainterPath
 get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
-    const RDKit::SubstanceGroup& s_group,
-    const std::unordered_map<const RDKit::Atom*, AtomItem*>& atom_to_atom_item,
-    const std::unordered_map<const RDKit::Bond*, BondItem*>& bond_to_bond_item);
+    const RDKit::SubstanceGroup& s_group);
+
+SKETCHER_API QPainterPath
+get_selection_highlighting_path_for_atom(const RDKit::Atom* atom);
+
+SKETCHER_API QPainterPath
+get_predictive_highlighting_path_for_atom(const RDKit::Atom* atom);
+
+SKETCHER_API QPainterPath
+get_selection_highlighting_path_for_bond(const RDKit::Bond* bond);
+
+SKETCHER_API QPainterPath
+get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond);
+
+/**
+ * Calculate a painter path around the perimeter of `line` if `line` were drawn
+ * with a pen width of `2 * half_width`.
+ *
+ * @param line The line for the path to go around
+ * @param half_width The desired half-width for the painter path
+ */
+SKETCHER_API QPainterPath path_around_line(const QLineF& line,
+                                           const qreal half_width);
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -15,20 +15,14 @@ namespace schrodinger
 namespace sketcher
 {
 
-SGroupItem::SGroupItem(
-    const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
-    std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item,
-    std::unordered_map<const RDKit::Bond*, BondItem*> bond_to_bond_item,
-    QGraphicsItem* parent) :
+SGroupItem::SGroupItem(const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
+                       QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
     m_sgroup(sgroup),
     m_fonts(fonts)
 {
     setZValue(static_cast<qreal>(ZOrder::SGROUP));
-    auto atom_and_bond_pred_path =
-        get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
-            sgroup, atom_to_atom_item, bond_to_bond_item);
-    updateCachedData(atom_and_bond_pred_path);
+    updateCachedData();
 }
 
 const RDKit::SubstanceGroup* SGroupItem::getSubstanceGroup() const
@@ -57,18 +51,6 @@ int SGroupItem::type() const
 }
 
 void SGroupItem::updateCachedData()
-{
-    QPainterPath atom_and_bond_pred_path;
-    auto scene_ptr = dynamic_cast<Scene*>(scene());
-    if (scene_ptr) {
-        atom_and_bond_pred_path =
-            scene_ptr->getPredictiveHighlightingPathForSGroupAtomsAndBonds(
-                m_sgroup);
-    }
-    updateCachedData(atom_and_bond_pred_path);
-}
-
-void SGroupItem::updateCachedData(const QPainterPath& atom_and_bond_pred_path)
 {
     prepareGeometryChange();
     m_repeat = QString::fromStdString(
@@ -110,6 +92,9 @@ void SGroupItem::updateCachedData(const QPainterPath& atom_and_bond_pred_path)
     m_shape = getShapeWithWidth(S_GROUP_HIGHLIGHT_PADDING);
     m_bounding_rect = m_shape.boundingRect();
     m_selection_highlighting_path = m_shape;
+
+    auto atom_and_bond_pred_path =
+        get_predictive_highlighting_path_for_s_group_atoms_and_bonds(m_sgroup);
     m_predictive_highlighting_path =
         m_shape + mapFromScene(atom_and_bond_pred_path);
 }

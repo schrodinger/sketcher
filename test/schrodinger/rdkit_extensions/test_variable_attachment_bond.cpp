@@ -78,6 +78,10 @@ BOOST_AUTO_TEST_CASE(test_add_variable_attachment_bond_to_mol)
 
     BOOST_TEST(is_variable_attachment_bond(bond));
     BOOST_TEST(get_variable_attachment_atoms(bond) == atoms);
+    BOOST_TEST(is_dummy_atom_for_variable_attachment_bond(dummy_atom));
+    BOOST_TEST(!is_dummy_atom_for_variable_attachment_bond(carbon_atom));
+    BOOST_TEST(
+        !is_dummy_atom_for_variable_attachment_bond(mol->getAtomWithIdx(1)));
 }
 
 /**

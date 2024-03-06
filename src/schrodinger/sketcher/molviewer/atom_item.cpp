@@ -14,9 +14,11 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
+#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
@@ -120,9 +122,9 @@ void AtomItem::updateCachedData()
     prepareGeometryChange();
     clearLabels();
     m_selection_highlighting_path =
-        calcHighlightingPath(ATOM_SELECTION_HIGHLIGHTING_RADIUS);
+        get_selection_highlighting_path_for_atom(m_atom);
     m_predictive_highlighting_path =
-        calcHighlightingPath(ATOM_PREDICTIVE_HIGHLIGHTING_RADIUS);
+        get_predictive_highlighting_path_for_atom(m_atom);
 
     bool needs_additional_labels;
     std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,
@@ -165,28 +167,6 @@ void AtomItem::updateCachedData()
     m_bounding_rect = m_shape.boundingRect();
 }
 
-QPainterPath AtomItem::calcHighlightingPath(qreal radius)
-{
-    QPainterPath path;
-    if (!is_attachment_point(m_atom)) {
-        path.addEllipse(QPointF(0, 0), radius, radius);
-        return path;
-    } else {
-        path.setFillRule(Qt::WindingFill);
-        qreal squiggle_width = ATTACHMENT_POINT_SQUIGGLE_NUMBER_OF_WAVES *
-                               ATTACHMENT_POINT_SQUIGGLE_WIDTH_PER_WAVE;
-        qreal half_squiggle_width = 0.5 * squiggle_width;
-        path.addRect(-half_squiggle_width, -radius, squiggle_width, 2 * radius);
-        path.addEllipse(QPointF(-half_squiggle_width, 0.0), radius, radius);
-        path.addEllipse(QPointF(half_squiggle_width, 0.0), radius, radius);
-
-        qreal angle = get_attachment_point_line_angle(m_atom);
-        QTransform transform;
-        transform.rotate(angle);
-        return transform.map(path);
-    }
-}
-
 std::tuple<QString, QPainterPath, bool, bool, bool>
 AtomItem::determineLabelType() const
 {
@@ -210,6 +190,12 @@ AtomItem::determineLabelType() const
         } else if (auto r_group_num =
                        rdkit_extensions::get_r_group_number(m_atom)) {
             main_label_text = "R" + std::to_string(r_group_num.value());
+        } else if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
+                       m_atom)) {
+            // dummy atoms for variable attachment bonds aren't shown, but we
+            // still need to set label_is_visible to false here so that the
+            // bound BondItem knows not to make space for the "*" label
+            label_is_visible = false;
         } else {
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();

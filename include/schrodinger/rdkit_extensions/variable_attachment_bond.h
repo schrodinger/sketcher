@@ -23,6 +23,13 @@ namespace rdkit_extensions
 RDKIT_EXTENSIONS_API bool is_variable_attachment_bond(const RDKit::Bond* bond);
 
 /**
+ * @return Whether the specified atom is a dummy atom (used to represent the
+ * ring center) for a variable attachment bond
+ */
+RDKIT_EXTENSIONS_API bool
+is_dummy_atom_for_variable_attachment_bond(const RDKit::Atom* atom);
+
+/**
  * @return All variable attachment atoms for the specified variable attachment
  * bond. Will return an empty set if the bond is not a variable attachment bond,
  * or if the variable attachment atom property cannot be parsed.

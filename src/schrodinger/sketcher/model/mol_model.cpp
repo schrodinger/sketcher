@@ -2217,6 +2217,19 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     int bond_index = bond->getIdx();
     auto new_bond = create_bond();
+    if (rdkit_extensions::is_variable_attachment_bond(bond)) {
+        // make sure we preserve variable attachment bond properties, otherwise
+        // the bond will no longer be a variable attachment bond after mutation
+        std::string endpts_prop, attach_prop;
+        bond->getPropIfPresent(RDKit::common_properties::_MolFileBondEndPts,
+                               endpts_prop);
+        bond->getPropIfPresent(RDKit::common_properties::_MolFileBondAttach,
+                               attach_prop);
+        new_bond->setProp(RDKit::common_properties::_MolFileBondEndPts,
+                          endpts_prop);
+        new_bond->setProp(RDKit::common_properties::_MolFileBondAttach,
+                          attach_prop);
+    }
     m_mol.replaceBond(bond_index, new_bond.get());
     // replaceBond creates a copy, so we need to fetch the "real" new bond
     auto* mutated_bond = m_mol.getBondWithIdx(bond_index);
