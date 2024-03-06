@@ -477,7 +477,13 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
     connectContextMenu(*menu.m_modify_bonds_menu);
     connect(&menu, &SelectionContextMenu::bracketSubgroupDialogRequested, this,
             &SketcherWidget::showBracketSubgroupDialogForAtoms);
-    // TODO: SKETCH-2118 connect variableAttachmentBondRequested
+    connect(&menu, &SelectionContextMenu::variableAttachmentBondRequested, this,
+            [this](const auto& atoms) {
+                auto undo_raii = m_mol_model->createUndoMacro(
+                    "Add variable attachment bond");
+                m_mol_model->addVariableAttachmentBond(atoms);
+                m_mol_model->clearSelection();
+            });
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
     connect(&menu, &SelectionContextMenu::newRGroupRequested, m_mol_model,
             qOverload<const RDKitAtoms&>(&MolModel::mutateRGroups));

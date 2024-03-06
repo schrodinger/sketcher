@@ -27,13 +27,14 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
-#include "schrodinger/sketcher/rdkit/s_group_constants.h"
+#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
@@ -2765,6 +2766,45 @@ BOOST_AUTO_TEST_CASE(test_wedge_bond_replacement)
     model.mutateBonds({bond()}, BondTool::ZERO);
     BOOST_TEST(begin_atom_h_count() == 2);
     BOOST_TEST(end_atom_h_count() == 4);
+}
+
+/**
+ * Make sure that addVariableAttachmentBond adds two atoms and a variable
+ * attachment bond.
+ */
+BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "C1CCCCC1");
+    const RDKit::ROMol* mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 6);
+    std::unordered_set<const RDKit::Atom*> atoms{
+        mol->getAtomWithIdx(1), mol->getAtomWithIdx(2), mol->getAtomWithIdx(3)};
+    model.addVariableAttachmentBond(atoms);
+    BOOST_TEST(mol->getNumAtoms() == 8);
+    BOOST_TEST(mol->getNumBonds() == 7);
+    // make sure that the new atoms and bond have tags
+    BOOST_TEST(model.getTagForAtom(mol->getAtomWithIdx(6)) == 6);
+    BOOST_TEST(model.getTagForAtom(mol->getAtomWithIdx(7)) == 7);
+    const auto* bond = mol->getBondWithIdx(6);
+    BOOST_TEST(model.getTagForBond(bond) == 6);
+    BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(bond));
+    atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
+             mol->getAtomWithIdx(3)};
+    BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 6);
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 8);
+    BOOST_TEST(mol->getNumBonds() == 7);
+    bond = mol->getBondWithIdx(6);
+    atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
+             mol->getAtomWithIdx(3)};
+    BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
 }
 
 } // namespace sketcher

@@ -176,8 +176,10 @@ void BracketSubgroupDialog::accept()
 {
     if (auto* atoms = std::get_if<std::unordered_set<const RDKit::Atom*>>(
             &m_atoms_or_s_group)) {
+        auto undo_raii = m_mol_model->createUndoMacro("Add substance group");
         m_mol_model->addSGroup(*atoms, getSubgroupType(), getRepeatPattern(),
                                getPolymerLabel().toStdString());
+        m_mol_model->clearSelection();
     } else if (auto* s_group = std::get_if<const RDKit::SubstanceGroup*>(
                    &m_atoms_or_s_group)) {
         m_mol_model->modifySGroup(*s_group, getSubgroupType(),

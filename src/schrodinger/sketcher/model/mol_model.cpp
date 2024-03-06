@@ -21,6 +21,7 @@
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
+#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
@@ -665,6 +666,20 @@ void MolModel::addBond(
     auto cmd_func = [this, start_atom_tag, end_atom_tag, bond_query]() {
         auto create_bond = std::bind(make_new_query_bond, bond_query);
         addBondCommandFunc(start_atom_tag, end_atom_tag, create_bond);
+    };
+    doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
+}
+
+void MolModel::addVariableAttachmentBond(
+    const std::unordered_set<const RDKit::Atom*> atoms)
+{
+    QString desc = QString("Add variable attachment bond");
+    auto cmd_func = [this, atoms]() {
+        auto [dummy_atom, carbon_atom, bond] =
+            rdkit_extensions::add_variable_attachment_bond_to_mol(m_mol, atoms);
+        setTagForAtom(dummy_atom, m_next_atom_tag++);
+        setTagForAtom(carbon_atom, m_next_atom_tag++);
+        setTagForBond(bond, m_next_bond_tag++);
     };
     doCommandUsingSnapshots(cmd_func, desc, WhatChanged::MOLECULE);
 }

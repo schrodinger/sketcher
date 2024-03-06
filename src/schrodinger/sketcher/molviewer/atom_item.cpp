@@ -10,6 +10,7 @@
 #include <QString>
 #include <Qt>
 
+#include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
@@ -201,7 +202,8 @@ AtomItem::determineLabelType() const
             RDKit::common_properties::_displayLabel);
     } else if (m_atom->hasQuery() && !m_atom->getQueryType().empty()) {
         main_label_text = m_atom->getQueryType();
-    } else if (m_atom->getAtomicNum() == DUMMY_ATOMIC_NUMBER) {
+    } else if (m_atom->getAtomicNum() ==
+               rdkit_extensions::DUMMY_ATOMIC_NUMBER) {
         if (is_attachment_point(m_atom)) {
             label_is_visible = false;
             squiggle_path = getWavyLine();

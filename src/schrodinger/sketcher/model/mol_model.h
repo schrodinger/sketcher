@@ -454,6 +454,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
 
     /**
+     * Add a variable attachment bond between a new carbon atom and all of the
+     * specified atoms.
+     */
+    void addVariableAttachmentBond(
+        const std::unordered_set<const RDKit::Atom*> atoms);
+
+    /**
      * Undoably add a non-molecular object (a plus sign or a reaction arrow)
      * @param type The type of non-molecular object to add
      * @param coords The coordinates for the new non-molecular object

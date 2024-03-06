@@ -5,6 +5,7 @@
 #include <rdkit/Geometry/point.h>
 #include <rdkit/GraphMol/Depictor/DepictUtils.h>
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/ROMol.h>
 
 namespace schrodinger
@@ -113,6 +114,45 @@ void rescale_bond_length_if_needed(RDKit::ROMol& mol)
     for (auto& coord : mol.getConformer().getPositions()) {
         coord *= scale;
     }
+}
+
+RDGeom::Point3D
+find_centroid(const RDKit::ROMol& mol,
+              const std::unordered_set<const RDKit::Atom*>& atoms)
+
+{
+    return find_centroid(mol.getConformer(), atoms);
+}
+
+RDGeom::Point3D
+find_centroid(const RDKit::Conformer& conf,
+              const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    std::vector<RDGeom::Point3D> positions;
+    if (atoms.empty()) {
+        positions = conf.getPositions();
+    } else {
+        positions.reserve(atoms.size());
+        for (const auto& atom : atoms) {
+            positions.push_back(conf.getAtomPos(atom->getIdx()));
+        }
+    }
+    return find_centroid(positions);
+}
+
+RDGeom::Point3D find_centroid(const std::vector<RDGeom::Point3D>& positions)
+{
+    // Calculate the centroid by averaging the coordinates
+    size_t num_atoms = positions.size();
+    RDGeom::Point3D centroid;
+    for (const auto& coord : positions) {
+        centroid += coord;
+    }
+    // avoid division by zero
+    if (num_atoms > 0) {
+        centroid /= static_cast<double>(num_atoms);
+    }
+    return centroid;
 }
 
 } // namespace rdkit_extensions

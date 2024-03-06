@@ -1,14 +1,21 @@
 #pragma once
 
+#include <unordered_set>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
 
 namespace RDKit
 {
+class Atom;
 class Conformer;
 class ROMol;
 } // namespace RDKit
+
+namespace RDGeom
+{
+class Point3D;
+}
 
 namespace schrodinger
 {
@@ -48,6 +55,35 @@ get_most_common_bond_length(const RDKit::ROMol& mol);
  * coordinates or no bonds.
  */
 RDKIT_EXTENSIONS_API void rescale_bond_length_if_needed(RDKit::ROMol& mol);
+
+/**
+ * Calculate the centroid of a set of atoms. If no atoms are given, the centroid
+ * of the whole molecule will be returned.
+ * @param mol the molecule to compute the centroid for
+ * @param atoms the atoms to compute the centroid for
+ * @return the centroid
+ */
+RDKIT_EXTENSIONS_API RDGeom::Point3D
+find_centroid(const RDKit::ROMol& mol,
+              const std::unordered_set<const RDKit::Atom*>& atoms = {});
+
+/**
+ * An overload of find_centroid that takes a conformer in place of a molecule
+ *
+ * @overload
+ */
+RDKIT_EXTENSIONS_API RDGeom::Point3D
+find_centroid(const RDKit::Conformer& conf,
+              const std::unordered_set<const RDKit::Atom*>& atoms = {});
+
+/**
+ * An overload of find_centroid that takes a list of points in place of a
+ * molecule
+ *
+ * @overload
+ */
+RDKIT_EXTENSIONS_API RDGeom::Point3D
+find_centroid(const std::vector<RDGeom::Point3D>& positions);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

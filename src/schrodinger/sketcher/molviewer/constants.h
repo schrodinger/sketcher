@@ -289,9 +289,6 @@ enum class ZOrder {
     ROTATION_HANDLE,
 };
 
-// The atomic number of RDKit dummy atoms
-const int DUMMY_ATOMIC_NUMBER = 0;
-
 // Bit flags for specifying subsets of Scene items based on the type of model
 // object they represent
 typedef uint8_t InteractiveItemFlagType;

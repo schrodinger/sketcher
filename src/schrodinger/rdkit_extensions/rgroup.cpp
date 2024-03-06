@@ -14,6 +14,7 @@
 #include <rdkit/GraphMol/QueryAtom.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
+#include "schrodinger/rdkit_extensions/dummy_atom.h"
 
 namespace schrodinger
 {
@@ -35,12 +36,7 @@ make_new_r_group(const unsigned int r_group_num)
         throw std::invalid_argument("Rgroups can't have an index of '0'.");
     }
 
-    auto atom = std::make_shared<RDKit::QueryAtom>();
-    atom->setAtomicNum(DUMMY_ATOMIC_NUMBER);
-    // This prevents the atom from being shown in SMARTS as [#0]
-    atom->setQuery(RDKit::makeAtomNullQuery());
-    // This prevents the RGroup from having a VAL in MOL file output
-    atom->setNoImplicit(false);
+    auto atom = create_dummy_atom();
 
     // we need to set the atom and dummy labels in the formats _RX and RX
     // respectively

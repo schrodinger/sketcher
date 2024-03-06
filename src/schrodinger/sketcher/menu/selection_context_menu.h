@@ -61,7 +61,8 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
             non_molecular_objects);
-    void variableAttachmentBondRequested();
+    void variableAttachmentBondRequested(
+        const std::unordered_set<const RDKit::Atom*>& atoms);
     void bracketSubgroupDialogRequested(
         const std::unordered_set<const RDKit::Atom*>&);
     void invertSelectionRequested();

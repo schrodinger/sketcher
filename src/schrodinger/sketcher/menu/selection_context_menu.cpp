@@ -111,7 +111,7 @@ QMenu* SelectionContextMenu::createAddToSelectionMenu()
         });
     m_variable_bond_action = add_to_selection_menu->addAction(
         "Variable Attachment Bond", this,
-        &SelectionContextMenu::variableAttachmentBondRequested);
+        [this]() { emit variableAttachmentBondRequested(m_atoms); });
     return add_to_selection_menu;
 }
 

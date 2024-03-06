@@ -13,6 +13,7 @@
 #include <QLineF>
 #include <QtMath>
 
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
@@ -165,17 +166,7 @@ RDGeom::Point3D find_centroid(
             positions.push_back(non_mol_obj->getCoords());
         }
     }
-    // Calculate the centroid by averaging the coordinates
-    size_t numAtoms = positions.size();
-    RDGeom::Point3D centroid;
-    for (const auto& coord : positions) {
-        centroid += coord;
-    }
-    // avoid division by zero
-    if (numAtoms > 0) {
-        centroid /= static_cast<double>(numAtoms);
-    }
-    return centroid;
+    return rdkit_extensions::find_centroid(positions);
 }
 
 RDGeom::Point3D find_centroid(

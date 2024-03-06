@@ -11,6 +11,7 @@
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/dummy_atom.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -50,12 +51,7 @@ unsigned int get_numerical_suffix(const std::string& label,
 std::shared_ptr<RDKit::Atom>
 make_new_attachment_point(const unsigned int ap_num)
 {
-    auto atom = std::make_shared<RDKit::QueryAtom>();
-    atom->setAtomicNum(DUMMY_ATOMIC_NUMBER);
-    // This prevents the atom from being shown in SMARTS as [#0]
-    atom->setQuery(RDKit::makeAtomNullQuery());
-    // This prevents the RGroup from having a VAL in MOL file output
-    atom->setNoImplicit(false);
+    auto atom = rdkit_extensions::create_dummy_atom();
     atom->setProp(RDKit::common_properties::atomLabel,
                   ATTACHMENT_POINT_LABEL_PREFIX + std::to_string(ap_num));
     return atom;
