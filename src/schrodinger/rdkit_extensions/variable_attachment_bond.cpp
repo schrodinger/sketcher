@@ -109,7 +109,7 @@ get_variable_attachment_atoms(const RDKit::Bond* bond)
  * involved in any bonds
  */
 static std::unordered_set<const RDKit::Bond*> get_potential_crossing_bonds(
-    const RDKit::RWMol& mol,
+    const RDKit::ROMol& mol,
     const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     std::unordered_set<const RDKit::Bond*> bonds_between_specified_atoms;
@@ -130,7 +130,7 @@ static std::unordered_set<const RDKit::Bond*> get_potential_crossing_bonds(
         // we're guaranteed to never hit this if all variable attachment atoms
         // are in the same molecule, since that ensures that the atoms have at
         // least one bond
-        throw std::runtime_error("No bonds found");
+        throw variable_attachment_bond_error("No bonds found");
     }
 }
 
@@ -187,7 +187,7 @@ static const RDKit::Bond* get_best_crossing_bond(
  *   - the coordinates for the variable attachment bond's carbon atom
  */
 static std::pair<RDGeom::Point3D, RDGeom::Point3D>
-get_variable_bond_endpoints(const RDKit::RWMol& mol,
+get_variable_bond_endpoints(const RDKit::ROMol& mol,
                             const std::unordered_set<const RDKit::Atom*>& atoms,
                             const RDKit::Bond* crossing_bond)
 {
@@ -306,20 +306,28 @@ create_and_add_atoms_and_variable_attachment_bond(
             mol.getBondWithIdx(bond_idx)};
 }
 
-std::tuple<RDKit::Atom*, RDKit::Atom*, RDKit::Bond*>
-add_variable_attachment_bond_to_mol(
-    RDKit::RWMol& mol, const std::unordered_set<const RDKit::Atom*>& atoms)
+std::pair<RDGeom::Point3D, RDGeom::Point3D>
+get_coordinates_for_variable_attachment_bond(
+    const RDKit::ROMol& mol,
+    const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     if (atoms.size() < 2) {
-        throw std::runtime_error(
+        throw variable_attachment_bond_error(
             "Variable attachment bonds require at least two attachment atoms.");
     }
     auto centroid = find_centroid(mol, atoms);
     auto potential_crossing_bonds = get_potential_crossing_bonds(mol, atoms);
     auto crossing_bond =
         get_best_crossing_bond(potential_crossing_bonds, centroid);
+    return get_variable_bond_endpoints(mol, atoms, crossing_bond);
+}
+
+std::tuple<RDKit::Atom*, RDKit::Atom*, RDKit::Bond*>
+add_variable_attachment_bond_to_mol(
+    RDKit::RWMol& mol, const std::unordered_set<const RDKit::Atom*>& atoms)
+{
     auto [dummy_coords, real_atom_coords] =
-        get_variable_bond_endpoints(mol, atoms, crossing_bond);
+        get_coordinates_for_variable_attachment_bond(mol, atoms);
     auto bond_end_pts_text = generate_bond_end_pts_property_text(atoms);
     return create_and_add_atoms_and_variable_attachment_bond(
         mol, dummy_coords, real_atom_coords, bond_end_pts_text);

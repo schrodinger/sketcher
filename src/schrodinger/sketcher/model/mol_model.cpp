@@ -30,6 +30,7 @@
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/subset.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -969,6 +970,9 @@ void MolModel::regenerateCoordinates()
         // might be inverted if the new coordinates change the parity around
         // any of the chiral centers.
         rdkit_extensions::wedgeMolBonds(m_mol, &m_mol.getConformer());
+        // compute2DCoords doesn't know about variable attachment bonds, so we
+        // have to fix up the coordinates for those if any are present
+        fix_variable_attachment_bond_coordinates(m_mol);
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
 }
