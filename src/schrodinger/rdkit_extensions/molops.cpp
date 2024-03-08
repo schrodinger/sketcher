@@ -6,10 +6,7 @@
  --------------------------------------------------------------------------- */
 #include "schrodinger/rdkit_extensions/molops.h"
 
-#include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/MolOps.h>
-
-#include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 
 namespace schrodinger
