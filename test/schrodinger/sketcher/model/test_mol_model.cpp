@@ -43,6 +43,7 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(QString);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(RDGeom::Point3D);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularObject);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularType);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::Bond::BondDir);
 
 namespace utf = boost::unit_test;
 namespace tt = boost::test_tools;
@@ -2796,7 +2797,6 @@ BOOST_AUTO_TEST_CASE(test_translate_rotate_crash)
         model.rotateByAngle(1.1, centroid, model.getSelectedAtoms(),
                             model.getSelectedNonMolecularObjects());
     }
-
     /** make sure accessing the conformer coordinates doesn't cause a crash.
      * Also check that undo properly updates the coordinates. Note that commands
      * are not being merged together because we issued alternating translate and
@@ -2950,6 +2950,64 @@ BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
     atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
              mol->getAtomWithIdx(3)};
     BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+}
+
+/**
+ * test that both version of flip all works as expected, mirroring atom
+ * coordinates and inverting bond dashes and wedges
+ */
+BOOST_AUTO_TEST_CASE(test_flip_all, *utf::tolerance(0.001))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+    std::shared_ptr<RDKit::ROMol> mol_to_add(
+        RDKit::SmilesToMol("CC(C)[C@@H](C)[C@H](C)N"));
+    model.addMol(*mol_to_add);
+    BOOST_TEST(mol->getNumAtoms() == 8);
+    auto positions = mol->getConformer().getPositions();
+    std::vector<RDKit::Bond::BondDir> bond_dirs;
+    for (auto* bond : mol->bonds()) {
+        bond_dirs.push_back(bond->getBondDir());
+    }
+    std::map<RDKit::Bond::BondDir, RDKit::Bond::BondDir>
+        opposite_bond_direction = {
+            {RDKit::Bond::BondDir::NONE, RDKit::Bond::BondDir::NONE},
+            {RDKit::Bond::BondDir::BEGINWEDGE, RDKit::Bond::BondDir::BEGINDASH},
+            {RDKit::Bond::BondDir::BEGINDASH, RDKit::Bond::BondDir::BEGINWEDGE},
+        };
+    model.flipAllVertical();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(pos.y == -atom_coords.y);
+    }
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() ==
+                   opposite_bond_direction[bond_dirs[i]]);
+    }
+    model.flipAllVertical();
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == bond_dirs[i]);
+    }
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+    model.flipAllHorizontal();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == -atom_coords.x);
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() ==
+                   opposite_bond_direction[bond_dirs[i]]);
+    }
 }
 
 } // namespace sketcher

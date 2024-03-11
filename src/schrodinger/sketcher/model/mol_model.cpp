@@ -933,22 +933,34 @@ void MolModel::removeExplicitHs(
 
 void MolModel::flipBondStereo(std::unordered_set<const RDKit::Bond*> bonds)
 {
-    std::unordered_set<const RDKit::Bond*> wedges;
-    std::unordered_set<const RDKit::Bond*> dashes;
+    /* we need to switch to tags to keep track of the bonds, since we might
+     * need to issue two mutateBonds commands, and the first one will invalidate
+     * the pointers to the bonds by using snapshots*/
+    std::unordered_set<BondTag> wedge_tags;
+    std::unordered_set<BondTag> dash_tags;
     for (auto& bond : bonds) {
         if (bond->getBondDir() == RDKit::Bond::BEGINWEDGE) {
-            wedges.insert(bond);
+            wedge_tags.insert(getTagForBond(bond));
         }
         if (bond->getBondDir() == RDKit::Bond::BEGINDASH) {
-            dashes.insert(bond);
+            dash_tags.insert(getTagForBond(bond));
         }
     }
-    if (wedges.empty() && dashes.empty()) {
+    if (wedge_tags.empty() && dash_tags.empty()) {
         return;
     }
     auto undo_macro_raii = createUndoMacro("Flip bonds");
-    mutateBonds(wedges, BondTool::SINGLE_DOWN);
-    mutateBonds(dashes, BondTool::SINGLE_UP);
+    /* mutate all the wedge bonds to dashes (single down) and all the dash bonds
+     * to wedges(single up)
+     **/
+    for (auto [tags, tool] : {std::make_pair(wedge_tags, BondTool::SINGLE_DOWN),
+                              std::make_pair(dash_tags, BondTool::SINGLE_UP)}) {
+        std::unordered_set<const RDKit::Bond*> bonds;
+        std::transform(tags.begin(), tags.end(),
+                       std::inserter(bonds, bonds.begin()),
+                       [this](BondTag tag) { return getBondFromTag(tag); });
+        mutateBonds(bonds, tool);
+    }
 }
 
 void MolModel::flipBond(const RDKit::Bond* const bond)
