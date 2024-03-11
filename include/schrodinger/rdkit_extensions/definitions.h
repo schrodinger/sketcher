@@ -1,5 +1,5 @@
 /**
- * Public definitions for schrodinger::sketcher:: library
+ * Public definitions for schrodinger::rdkit_extensions:: library
  */
 
 #pragma once
@@ -12,12 +12,12 @@
 #define API_HELPER_EXPORT __attribute__((visibility("default")))
 #endif
 
-#ifdef SKETCHER_STATIC_DEFINE
-#define SKETCHER_API
+#ifdef RDKIT_EXTENSIONS_STATIC_DEFINE
+#define RDKIT_EXTENSIONS_API
 #else
-#ifdef IN_SKETCHER_DLL
-#define SKETCHER_API API_HELPER_EXPORT
+#ifdef IN_RDKIT_EXTENSIONS_DLL
+#define RDKIT_EXTENSIONS_API API_HELPER_EXPORT
 #else
-#define SKETCHER_API API_HELPER_IMPORT
+#define RDKIT_EXTENSIONS_API API_HELPER_IMPORT
 #endif
 #endif
