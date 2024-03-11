@@ -19,6 +19,7 @@
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
+#include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
@@ -26,7 +27,6 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/test/boost_checks.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
@@ -285,7 +285,7 @@ M  END)MDL"_ctab;
 
         mol->setProp(RDKit::common_properties::_MolFileChiralFlag, chiral_flag);
 
-        add_enhanced_stereo_to_chiral_atoms(*mol);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
 
         auto sgs = mol->getStereoGroups();
         BOOST_REQUIRE_EQUAL(sgs.size(), 1);
@@ -361,7 +361,7 @@ M  END
         mol->setProp(RDKit::common_properties::_MolFileChiralFlag,
                      ref.chiral_flag);
 
-        add_enhanced_stereo_to_chiral_atoms(*mol);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
 
         unsigned abs_group_count{0};
         unsigned and_group_count{0};
@@ -389,7 +389,7 @@ M  END
 
 BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedChiralAtomsSafety)
 {
-    // add_enhanced_stereo_to_chiral_atoms() should always add ABS groups
+    // RDKit::translateChiralFlagToStereoGroups() should always add ABS groups
     // unless the input is coming from a mol block with chiral_flag=0.
 
     const auto smiles = "N[C@@H](CS)C(=O)O";
@@ -398,7 +398,11 @@ BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedChiralAtomsSafety)
         const std::unique_ptr<RDKit::RWMol> mol(RDKit::SmilesToMol(smiles));
         BOOST_REQUIRE_EQUAL(
             mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), false);
-        add_enhanced_stereo_to_chiral_atoms(*mol);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
+        BOOST_REQUIRE_EQUAL(mol->getStereoGroups().size(), 0);
+
+        mol->setProp(RDKit::common_properties::_MolFileChiralFlag, 1);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
         const auto estg = mol->getStereoGroups();
         BOOST_REQUIRE_EQUAL(estg.size(), 1);
         BOOST_CHECK_EQUAL(estg.front().getGroupType(),
@@ -410,7 +414,11 @@ BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedChiralAtomsSafety)
         const auto mol = to_rdkit(smiles);
         BOOST_REQUIRE_EQUAL(
             mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), false);
-        add_enhanced_stereo_to_chiral_atoms(*mol);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
+        BOOST_REQUIRE_EQUAL(mol->getStereoGroups().size(), 0);
+
+        mol->setProp(RDKit::common_properties::_MolFileChiralFlag, 1);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
         const auto estg = mol->getStereoGroups();
         BOOST_REQUIRE_EQUAL(estg.size(), 1);
         BOOST_CHECK_EQUAL(estg.front().getGroupType(),
@@ -450,7 +458,7 @@ M  END
             mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), true);
         BOOST_CHECK_EQUAL(
             mol->getProp<int>(RDKit::common_properties::_MolFileChiralFlag), 0);
-        add_enhanced_stereo_to_chiral_atoms(*mol);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
         const auto estg = mol->getStereoGroups();
         BOOST_REQUIRE_EQUAL(estg.size(), 1);
         BOOST_CHECK_EQUAL(estg.front().getGroupType(),
@@ -497,7 +505,7 @@ M  END
             mol->hasProp(RDKit::common_properties::_MolFileChiralFlag), true);
         BOOST_CHECK_EQUAL(
             mol->getProp<int>(RDKit::common_properties::_MolFileChiralFlag), 1);
-        add_enhanced_stereo_to_chiral_atoms(*mol);
+        RDKit::translateChiralFlagToStereoGroups(*mol);
         const auto estg = mol->getStereoGroups();
         BOOST_REQUIRE_EQUAL(estg.size(), 1);
         BOOST_CHECK_EQUAL(estg.front().getGroupType(),

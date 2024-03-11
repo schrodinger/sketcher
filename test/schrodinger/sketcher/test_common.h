@@ -108,7 +108,7 @@ void import_reaction_text(
 
 std::string get_mol_text(MolModel* mol_model, rdkit_extensions::Format format)
 {
-    return rdkit_extensions::to_string(*mol_model->getMol(), format);
+    return rdkit_extensions::to_string(*mol_model->getMolForExport(), format);
 }
 
 std::string get_reaction_text(MolModel* mol_model,

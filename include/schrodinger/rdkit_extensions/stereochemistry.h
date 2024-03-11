@@ -49,15 +49,6 @@ get_atom_chirality_label(const RDKit::Atom& atom);
 RDKIT_EXTENSIONS_API std::string get_bond_stereo_label(const RDKit::Bond& bond);
 
 /**
- * Set enhanced stereo for any chiral atoms that don't already have it.
- * If the chiral flag is on, ungrouped chiral atoms will go into the ABS
- * group. If the flag is off or not present, ungrouped atoms will go into
- * a new AND group.
- */
-RDKIT_EXTENSIONS_API void
-add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol);
-
-/**
  * A custom wrapper around RDkit's WedgeMolBonds() that makes sure
  * we don't wedge attachment point dummy atoms
  */

@@ -18,6 +18,29 @@ namespace sketcher
 {
 
 /**
+ * Sketcher-specific assignment of enhanced stereo to all chiral centers. This
+ * preserves any assigned enhanced stereo group and their numbering, while
+ * assigning new enhanced stereo groups to any chiral centers that lack them.
+ */
+static void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
+{
+    // If the chiral flag property is present (i.e. MDL), leave it as-is;
+    // otherwise, force the chiral flag "on" (i.e. SMILES, MAE, etc.)
+    // The chiral flag state controls how enhanced stereo is assigned below,
+    // where the "off" state assigns AND and the "on" state assigns ABS to
+    // ungrouped chiral centers.
+    int chiral_flag{1};
+    if (!mol.getPropIfPresent(RDKit::common_properties::_MolFileChiralFlag,
+                              chiral_flag)) {
+        mol.setProp(RDKit::common_properties::_MolFileChiralFlag, chiral_flag);
+    }
+
+    // Assign enhanced stereo groups to all centers that lack it
+    // NOTE: this clears the chiral flag property on the mol
+    RDKit::translateChiralFlagToStereoGroups(mol);
+}
+
+/**
  * @return whether the given mol has CFG/stereo properties present that would
  * have been read from MDL molblock input
  */
@@ -91,11 +114,8 @@ void prepare_mol(RDKit::RWMol& mol)
     // present (ie specified via molblock, SMILES extension, etc.)
     rdkit_extensions::update_2d_coordinates(mol);
 
-    // SHARED-8774: Deal with chiral flag
-    rdkit_extensions::add_enhanced_stereo_to_chiral_atoms(mol);
-
-    // Preserve IDs of enhanced stereo groups from input
-    RDKit::forwardStereoGroupIds(mol);
+    // Update all input chiral centers to have enhanced stereo; honors MDL input
+    add_enhanced_stereo_to_chiral_atoms(mol);
 
     // Convert parities back to wedges/dashes
     if (has_molblock_cfgs(mol)) {
@@ -112,6 +132,10 @@ void update_molecule_on_change(RDKit::RWMol& mol)
 {
     // Explicitly update the brackets for the sgroups
     rdkit_extensions::update_s_group_brackets(mol);
+
+    // Preserve IDs of any new enhanced stereo groups, which includes any
+    // groups newly inserted from file/paste input
+    RDKit::forwardStereoGroupIds(mol);
 
     // Apply a limited sanitization on molecule to update internal properties
     // while avoiding any changes to the molecule that would alter it to

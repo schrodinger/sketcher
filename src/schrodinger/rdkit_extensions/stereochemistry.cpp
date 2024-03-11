@@ -100,23 +100,6 @@ std::string get_bond_stereo_label(const RDKit::Bond& bond)
     return label;
 }
 
-void add_enhanced_stereo_to_chiral_atoms(RDKit::ROMol& mol)
-{
-    // translateChiralFlagToStereoGroups() works based on the chiral flag, so
-    // make sure it is set. We default to chiral flag on (absolute stereo) if
-    // the flag is not present, or else we'll flip stereo on things that don't
-    // come from .sdf.
-    int chiral_flag{1};
-    if (!mol.getPropIfPresent(RDKit::common_properties::_MolFileChiralFlag,
-                              chiral_flag)) {
-        mol.setProp(RDKit::common_properties::_MolFileChiralFlag, chiral_flag);
-    }
-
-    RDKit::translateChiralFlagToStereoGroups(mol);
-
-    // TODO: make sure new groups have IDS
-}
-
 void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
 {
     std::vector<RDKit::Bond*> attachment_dummy_bonds;

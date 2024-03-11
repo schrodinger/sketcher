@@ -16,6 +16,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/algorithm/string.hpp>
+
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
 #include <rdkit/GraphMol/QueryAtom.h>
@@ -208,12 +210,6 @@ void check_coords(const RDKit::ROMol* mol, unsigned int atom_index,
 {
     const RDGeom::Point3D& point = mol->getConformer().getAtomPos(atom_index);
     check_coords(point, exp_x, exp_y);
-}
-
-std::string get_smiles(const MolModel& mol_model)
-{
-    auto mol = mol_model.getMolForExport();
-    return rdkit_extensions::to_string(*mol, Format::EXTENDED_SMILES);
 }
 
 BOOST_AUTO_TEST_CASE(test_addAtom)
@@ -1662,18 +1658,18 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsToHIsotopes)
     auto to_atom = RDKit::Atom("H");
     to_atom.setIsotope(2);
     model.mutateAtoms(atoms, to_atom);
-    BOOST_TEST(get_smiles(model) == "[2H]C[2H]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[2H]C[2H]");
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "CCC");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CCC");
     undo_stack.redo();
-    BOOST_TEST(get_smiles(model) == "[2H]C[2H]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[2H]C[2H]");
 
     atoms = {mol->getAtomWithIdx(0), mol->getAtomWithIdx(2)};
     to_atom.setIsotope(3);
     model.mutateAtoms(atoms, to_atom);
-    BOOST_TEST(get_smiles(model) == "[3H]C[3H]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[3H]C[3H]");
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "[2H]C[2H]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[2H]C[2H]");
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateAtomsCharge)
@@ -1684,17 +1680,17 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsCharge)
     const RDKit::ROMol* mol = model.getMol();
     std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(0)};
     model.adjustChargeOnAtoms(atoms, +1);
-    BOOST_TEST(get_smiles(model) == "[CH3+]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[CH3+]");
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "C");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C");
     undo_stack.redo();
-    BOOST_TEST(get_smiles(model) == "[CH3+]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[CH3+]");
 
     atoms = {mol->getAtomWithIdx(0)};
     model.adjustChargeOnAtoms(atoms, -2);
-    BOOST_TEST(get_smiles(model) == "[CH3-]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[CH3-]");
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "[CH3+]");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "[CH3+]");
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateAtomsRadicalElectrons)
@@ -1705,17 +1701,17 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsRadicalElectrons)
     const RDKit::ROMol* mol = model.getMol();
     std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(0)};
     model.adjustRadicalElectronsOnAtoms(atoms, +2);
-    BOOST_TEST(get_smiles(model) == "[CH2] |^2:0|");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) == "[CH2] |^2:0|");
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "C");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) == "C");
     undo_stack.redo();
-    BOOST_TEST(get_smiles(model) == "[CH2] |^2:0|");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) == "[CH2] |^2:0|");
 
     atoms = {mol->getAtomWithIdx(0)};
     model.adjustRadicalElectronsOnAtoms(atoms, -1);
-    BOOST_TEST(get_smiles(model) == "[CH3] |^1:0|");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) == "[CH3] |^1:0|");
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "[CH2] |^2:0|");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) == "[CH2] |^2:0|");
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateBond)
@@ -2053,7 +2049,7 @@ BOOST_AUTO_TEST_CASE(test_merge_one_atom_pair, *utf::tolerance(0.001))
     model.mergeAtoms({{n_atom, atom_to_replace}});
 
     // make sure that the resulting connectivity is correct
-    BOOST_TEST(get_smiles(model) == "C1CCN2(CC1)CCCC2");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C1CCN2(CC1)CCCC2");
 
     // the merged atom replaced atom 9, but we also deleted atom 0, so the
     // resulting merged atom should have index 8
@@ -2068,9 +2064,9 @@ BOOST_AUTO_TEST_CASE(test_merge_one_atom_pair, *utf::tolerance(0.001))
 
     // confirm that undo and redo work as expected
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "C1CCCCC1.C1CCNC1");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C1CCCCC1.C1CCNC1");
     undo_stack.redo();
-    BOOST_TEST(get_smiles(model) == "C1CCN2(CC1)CCCC2");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C1CCN2(CC1)CCCC2");
 }
 
 /**
@@ -2096,13 +2092,13 @@ BOOST_AUTO_TEST_CASE(test_merge_two_atom_pairs)
                       {other_atom_to_move, other_atom_to_replace}});
 
     // make sure that the resulting connectivity is correct
-    BOOST_TEST(get_smiles(model) == "C1CCN2CCCC2C1");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C1CCN2CCCC2C1");
 
     // confirm that undo and redo work as expected
     undo_stack.undo();
-    BOOST_TEST(get_smiles(model) == "C1CCCCC1.C1CCNC1");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C1CCCCC1.C1CCNC1");
     undo_stack.redo();
-    BOOST_TEST(get_smiles(model) == "C1CCN2CCCC2C1");
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "C1CCN2CCCC2C1");
 }
 
 /**
@@ -2265,7 +2261,7 @@ void check_fragment_addition(const std::string& core_smiles,
     }
     frag->getConformer() = frag_conf;
     model.addFragment(*frag, core_atom);
-    auto result_smiles = get_smiles(model);
+    auto result_smiles = get_mol_text(&model, Format::SMILES);
     // clang-format off
     BOOST_TEST(result_smiles == exp_result_smiles,
                "FAILURE: expected result = " <<  exp_result_smiles
@@ -2950,6 +2946,165 @@ BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
     atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
              mol->getAtomWithIdx(3)};
     BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+}
+BOOST_AUTO_TEST_CASE(test_enhanced_stereo_groups_smiles)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Round-tripped centers through the sketcher should mark them as ABS
+    import_mol_text(&model, "CC(C)[C@@H](C)[C@H](C)N");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "CC(C)[C@@H](C)[C@H](C)N |a:3,5|");
+    // make sure that the stereo groups are preserved on old and new molecules
+    import_mol_text(&model, "N[C@@H](CS)C(=O)O");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "CC(C)[C@@H](C)[C@H](C)N.N[C@@H](CS)C(=O)O |a:3,5,9|");
+    model.clear();
+
+    // Ensure that enh stereo group numbers are preserved through the sketcher
+    auto smiles_with_enh_stereo =
+        "C[C@H](N)[C@H](C)[C@H](C)[C@@H](N)[C@H](C)N |a:1,3,o3:7,9,&1:5|";
+    import_mol_text(&model, smiles_with_enh_stereo);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               smiles_with_enh_stereo);
+}
+
+BOOST_AUTO_TEST_CASE(test_enhanced_stereo_groups_mdl)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Exercise import from v2000 molblocks with and without the chiral flag
+    std::string v2k_mb = R"MDL(
+     RDKit          2D
+
+  4  3  0  0  0  0  0  0  0  0999 V2000
+    1.2990    0.7500    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    2.5981   -0.0000    0.0000 O   0  0  0  0  0  0  0  0  0  0  0  0
+    1.2990    2.2500    0.0000 Cl  0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  1
+  1  3  1  0
+  1  4  1  0
+M  END
+)MDL";
+    // chiral flag off, AND center
+    import_mol_text(&model, v2k_mb);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "C[C@H](O)Cl |&1:1|");
+    model.clear();
+
+    // chiral flag on, ABS center
+    boost::algorithm::replace_all(v2k_mb,
+                                  "  4  3  0  0  0  0  0  0  0  0999 V2000",
+                                  "  4  3  0  0  1  0  0  0  0  0999 V2000");
+    import_mol_text(&model, v2k_mb);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "C[C@H](O)Cl |a:1|");
+    model.clear();
+
+    // Exercise import from v3000 molblocks with and without the chiral flag
+    std::string v3k_mb = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 F -2.216000 -2.382857 0.000000 0
+M  V30 2 C -2.218857 -0.954286 0.000000 0
+M  V30 3 C -0.983143 -0.237429 0.000000 0
+M  V30 4 C 0.255429 -0.949429 0.000000 0
+M  V30 5 Cl 0.258286 -2.377714 0.000000 0
+M  V30 6 C -3.457429 -0.242571 0.000000 0
+M  V30 7 C -0.986000 1.191143 0.000000 0
+M  V30 8 C 1.491143 -0.232571 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 4 5
+M  V30 5 1 2 6 CFG=1
+M  V30 6 1 3 7 CFG=1
+M  V30 7 1 4 8 CFG=1
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STEABS ATOMS=(1 2)
+M  V30 MDLV30/STERAC1 ATOMS=(1 4)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+)MDL";
+    // chiral flag off, the unlabeled center becomes AND2
+    import_mol_text(&model, v3k_mb);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "C[C@H](F)[C@H](C)[C@H](C)Cl |a:1,&2:3,&1:5|");
+    model.clear();
+
+    // chiral flag on, the unlabeled center becomes ABS
+    boost::algorithm::replace_all(v3k_mb, "M  V30 COUNTS 8 7 0 0 0",
+                                  "M  V30 COUNTS 8 7 0 0 1");
+    import_mol_text(&model, v3k_mb);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "C[C@H](F)[C@@H](C)[C@H](C)Cl |a:1,3,&1:5|");
+}
+
+BOOST_AUTO_TEST_CASE(test_enhanced_stereo_groups_mdl_canonicalization)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Showcase how SMILES canonicalization differs for enhanced stereo groups
+    std::string molblock = R"CTAB(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 7 6 0 0 1
+M  V30 BEGIN ATOM
+M  V30 1 N 1.299038 2.250000 0.000000 0
+M  V30 2 C 1.299038 0.750000 0.000000 0
+M  V30 3 C 0.000000 0.000000 0.000000 0
+M  V30 4 S -1.299038 0.750000 0.000000 0
+M  V30 5 C 2.598076 -0.000000 0.000000 0
+M  V30 6 O 2.598076 -1.500000 0.000000 0
+M  V30 7 O 3.897114 0.750000 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 2 1 CFG=3
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 2 5
+M  V30 5 2 5 6
+M  V30 6 1 5 7
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+)CTAB";
+
+    auto get_regular_smiles = [](const auto& mol_model) {
+        auto mol = mol_model.getMolForExport();
+        return rdkit_extensions::to_string(*mol, Format::SMILES);
+    };
+
+    // chiral flag on, ABS center
+    import_mol_text(&model, molblock);
+    // NOTE: standard SMILES matches extended SMILES canonicalization
+    BOOST_TEST(get_regular_smiles(model) == "N[C@@H](CS)C(=O)O");
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "N[C@@H](CS)C(=O)O |a:1|");
+    model.clear();
+
+    // chiral flag off, AND center
+    boost::algorithm::replace_all(molblock, "M  V30 COUNTS 7 6 0 0 1",
+                                  "M  V30 COUNTS 7 6 0 0 0");
+    import_mol_text(&model, molblock);
+    BOOST_TEST(get_regular_smiles(model) == "N[C@@H](CS)C(=O)O");
+    // NOTE: extended SMILES are canonicalized where parity is reversed!
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "N[C@H](CS)C(=O)O |&1:1|");
 }
 
 /**
