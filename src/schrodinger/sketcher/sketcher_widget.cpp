@@ -677,13 +677,15 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
             break;
         }
     }
+    // unless we are working on a selection, switch model tool
+    if (!m_mol_model->hasSelection()) {
+        kv_pairs.emplace(kv_pair.first, kv_pair.second);
+        m_sketcher_model->setValues(kv_pairs);
+    }
     // Finally, interact with models
     if (has_targets) {
         applyModelValuePingToTargets(kv_pair.first, kv_pair.second, atoms,
                                      bonds, sgroups, non_molecular_objects);
-    } else {
-        kv_pairs.emplace(kv_pair.first, kv_pair.second);
-        m_sketcher_model->setValues(kv_pairs);
     }
 }
 
