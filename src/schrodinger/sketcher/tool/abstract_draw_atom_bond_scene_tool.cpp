@@ -29,21 +29,21 @@ HintBondItem::HintBondItem(QGraphicsItem* parent) : QGraphicsLineItem(parent)
 
 AbstractDrawSceneTool::AbstractDrawSceneTool(Scene* scene,
                                              MolModel* mol_model) :
-    SceneToolWithPredictiveHighlighting(scene, mol_model)
+    StandardSceneToolBase(scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::MOLECULAR_NOT_AP;
 }
 
 std::vector<QGraphicsItem*> AbstractDrawSceneTool::getGraphicsItems()
 {
-    auto items = SceneToolWithPredictiveHighlighting::getGraphicsItems();
+    auto items = StandardSceneToolBase::getGraphicsItems();
     items.push_back(&m_hint_bond_item);
     return items;
 }
 
 void AbstractDrawSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMouseMove(event);
+    StandardSceneToolBase::onMouseMove(event);
     if (m_mouse_pressed) {
         // drag logic is handled in onDragMove
         return;
@@ -63,16 +63,17 @@ void AbstractDrawSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
     setHintBondVisible(drew_hint);
 }
 
-void AbstractDrawSceneTool::onMouseRelease(
+void AbstractDrawSceneTool::onLeftButtonRelease(
     QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMouseRelease(event);
+    StandardSceneToolBase::onLeftButtonRelease(event);
     setHintBondVisible(false);
 }
 
-void AbstractDrawSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void AbstractDrawSceneTool::onLeftButtonClick(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMouseClick(event);
+    StandardSceneToolBase::onLeftButtonClick(event);
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(
         scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
@@ -88,16 +89,18 @@ void AbstractDrawSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
     }
 }
 
-void AbstractDrawSceneTool::onDragStart(QGraphicsSceneMouseEvent* const event)
+void AbstractDrawSceneTool::onLeftButtonDragStart(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragStart(event);
+    StandardSceneToolBase::onLeftButtonDragStart(event);
     auto [should_drag, start_pos, start_atom] = getDragStartInfo();
     setHintBondVisible(should_drag);
 }
 
-void AbstractDrawSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
+void AbstractDrawSceneTool::onLeftButtonDragMove(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragMove(event);
+    StandardSceneToolBase::onLeftButtonDragMove(event);
     auto [should_drag, start_pos, start_atom] = getDragStartInfo();
     if (should_drag) {
         auto [end_pos, end_atom] = getBondEndInMousedDirection(
@@ -106,9 +109,10 @@ void AbstractDrawSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
     }
 }
 
-void AbstractDrawSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
+void AbstractDrawSceneTool::onLeftButtonDragRelease(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragRelease(event);
+    StandardSceneToolBase::onLeftButtonDragRelease(event);
     auto [should_drag, start_pos, start_atom] = getDragStartInfo();
     if (should_drag) {
         auto [end_pos, end_atom] = getBondEndInMousedDirection(

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 #include <QGraphicsLineItem>
 #include <QGraphicsPolygonItem>
 
@@ -30,20 +30,20 @@ enum class MappingAction : bool { ADD, REMOVE };
 /**
  * A scene tool for adding and removing atom mapping numbers
  */
-class SKETCHER_API AtomMappingSceneTool
-    : public SceneToolWithPredictiveHighlighting
+class SKETCHER_API AtomMappingSceneTool : public StandardSceneToolBase
 {
   public:
     AtomMappingSceneTool(const MappingAction& action, Scene* scene,
                          MolModel* mol_model);
 
     // reimplemented AbstractSceneTool method
-    void onMousePress(QGraphicsSceneMouseEvent* const event) override;
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    void onDragMove(QGraphicsSceneMouseEvent* const event) override;
-    void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonPress(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
+    void
+    onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
     std::vector<QGraphicsItem*> getGraphicsItems() override;
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 
     /**
      * update the arrow items

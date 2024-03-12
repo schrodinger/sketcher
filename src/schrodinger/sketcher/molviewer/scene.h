@@ -277,14 +277,6 @@ class SKETCHER_API Scene : public QGraphicsScene
     void setColorHeteroatoms(const bool color_heteroatoms);
 
     /**
-     * Return the scene tool that should be used for a mouse event, based on the
-     * button (left, middle or right) that was pressed
-     * @param event The mouse event
-     */
-    std::shared_ptr<AbstractSceneTool>
-    getSceneTool(QGraphicsSceneMouseEvent* const event);
-
-    /**
      * Update the scene tool (i.e. the mouse cursor mode) based on the
      * current SketcherModel settings
      */
@@ -324,12 +316,7 @@ class SKETCHER_API Scene : public QGraphicsScene
         m_s_group_to_s_group_item;
     std::unordered_map<const NonMolecularObject*, NonMolecularItem*>
         m_non_molecular_to_non_molecular_item;
-    std::shared_ptr<AbstractSceneTool> m_left_button_scene_tool;
-    std::shared_ptr<AbstractSceneTool> m_middle_button_scene_tool;
-    std::shared_ptr<AbstractSceneTool> m_right_button_scene_tool;
-
-    bool m_drag_started = false;
-    bool m_is_during_double_click = false;
+    std::shared_ptr<AbstractSceneTool> m_scene_tool;
 
     /**
      * Objects associated with the context menu instance that is currently open.

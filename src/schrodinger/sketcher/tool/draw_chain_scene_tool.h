@@ -10,7 +10,7 @@
 #include <QGraphicsSimpleTextItem>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace schrodinger
 {
@@ -41,18 +41,18 @@ class HintChainItem : public QGraphicsItemGroup
 /**
  * A scene tool for drawing a non-branched chain of carbons all at once
  */
-class SKETCHER_API DrawChainSceneTool
-    : public SceneToolWithPredictiveHighlighting
+class SKETCHER_API DrawChainSceneTool : public StandardSceneToolBase
 {
   public:
     DrawChainSceneTool(Scene* scene, MolModel* mol_model);
 
     // Overridden AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;
-    void onDragStart(QGraphicsSceneMouseEvent* const event) override;
-    void onDragMove(QGraphicsSceneMouseEvent* const event) override;
-    void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
+    void
+    onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 
   protected:
     HintChainItem m_hint_chain_item = HintChainItem();

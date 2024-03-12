@@ -78,7 +78,7 @@ void DrawElementSceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                               RDKit::Bond::BondDir::NONE);
 }
 
-QPixmap DrawElementSceneTool::getCursorPixmap() const
+QPixmap DrawElementSceneTool::createDefaultCursorPixmap() const
 {
     auto elem_name =
         atomic_number_to_symbol(static_cast<unsigned int>(m_element));
@@ -130,7 +130,7 @@ void DrawAtomQuerySceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                               RDKit::Bond::BondDir::NONE);
 }
 
-QPixmap DrawAtomQuerySceneTool::getCursorPixmap() const
+QPixmap DrawAtomQuerySceneTool::createDefaultCursorPixmap() const
 {
     QFont italics = m_fonts->m_cursor_hint_font;
     italics.setItalic(true);

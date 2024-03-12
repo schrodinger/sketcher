@@ -58,40 +58,41 @@ get_select_scene_tool(SelectionTool selection_type, Scene* scene,
 
 template <typename T>
 SelectSceneTool<T>::SelectSceneTool(Scene* scene, MolModel* mol_model) :
-    SceneToolWithPredictiveHighlighting(scene, mol_model)
+    StandardSceneToolBase(scene, mol_model)
 {
+    m_highlight_types = InteractiveItemFlag::ALL;
     m_select_item.setVisible(false);
 }
 
-template <typename T>
-void SelectSceneTool<T>::onDragStart(QGraphicsSceneMouseEvent* const event)
+template <typename T> void
+SelectSceneTool<T>::onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragStart(event);
+    StandardSceneToolBase::onLeftButtonDragStart(event);
     m_select_item.setVisible(true);
 }
 
-template <typename T>
-void SelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* const event)
+template <typename T> void
+SelectSceneTool<T>::onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragMove(event);
+    StandardSceneToolBase::onLeftButtonDragMove(event);
     auto items = m_scene->getCollidingItemsUsingBondMidpoints(&m_select_item);
     m_predictive_highlighting_item.highlightItems(items);
 }
 
-template <typename T>
-void SelectSceneTool<T>::onDragRelease(QGraphicsSceneMouseEvent* const event)
+template <typename T> void SelectSceneTool<T>::onLeftButtonDragRelease(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragRelease(event);
+    StandardSceneToolBase::onLeftButtonDragRelease(event);
     m_select_item.setVisible(false);
     m_predictive_highlighting_item.clearHighlightingPath();
     auto items = m_scene->getCollidingItemsUsingBondMidpoints(&m_select_item);
     onSelectionMade(items, event);
 }
 
-template <typename T>
-void SelectSceneTool<T>::onMouseClick(QGraphicsSceneMouseEvent* const event)
+template <typename T> void
+SelectSceneTool<T>::onLeftButtonClick(QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMouseClick(event);
+    StandardSceneToolBase::onLeftButtonClick(event);
     QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
         event->scenePos(), InteractiveItemFlag::ALL);
     if (item != nullptr) {
@@ -101,10 +102,10 @@ void SelectSceneTool<T>::onMouseClick(QGraphicsSceneMouseEvent* const event)
     }
 }
 
-template <typename T> void
-SelectSceneTool<T>::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
+template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMouseDoubleClick(event);
+    StandardSceneToolBase::onLeftButtonDoubleClick(event);
     QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
         event->scenePos(), InteractiveItemFlag::MOLECULAR);
     if (item == nullptr) {
@@ -137,7 +138,7 @@ SelectSceneTool<T>::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
 template <typename T>
 std::vector<QGraphicsItem*> SelectSceneTool<T>::getGraphicsItems()
 {
-    auto items = SceneToolWithPredictiveHighlighting::getGraphicsItems();
+    auto items = StandardSceneToolBase::getGraphicsItems();
     items.push_back(&m_select_item);
     return items;
 }
@@ -201,9 +202,9 @@ LassoSelectSceneTool::LassoSelectSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
-void LassoSelectSceneTool::onMousePress(QGraphicsSceneMouseEvent* event)
+void LassoSelectSceneTool::onLeftButtonPress(QGraphicsSceneMouseEvent* event)
 {
-    SelectSceneTool<LassoSelectionItem>::onMousePress(event);
+    SelectSceneTool<LassoSelectionItem>::onLeftButtonPress(event);
     m_select_item.clearPath();
     m_select_item.addPoint(event->scenePos());
 }
@@ -220,13 +221,14 @@ void LassoSelectSceneTool::onMouseMove(QGraphicsSceneMouseEvent* event)
     }
 }
 
-void LassoSelectSceneTool::onDragRelease(QGraphicsSceneMouseEvent* event)
+void LassoSelectSceneTool::onLeftButtonDragRelease(
+    QGraphicsSceneMouseEvent* event)
 {
-    SelectSceneTool<LassoSelectionItem>::onDragRelease(event);
+    SelectSceneTool<LassoSelectionItem>::onLeftButtonDragRelease(event);
     m_select_item.clearPath();
 }
 
-QPixmap LassoSelectSceneTool::getCursorPixmap() const
+QPixmap LassoSelectSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/select_lasso.svg");
 }
@@ -238,16 +240,17 @@ ShapeSelectSceneTool<T>::ShapeSelectSceneTool(Scene* scene,
 {
 }
 
-template <typename T>
-void ShapeSelectSceneTool<T>::onDragMove(QGraphicsSceneMouseEvent* event)
+template <typename T> void
+ShapeSelectSceneTool<T>::onLeftButtonDragMove(QGraphicsSceneMouseEvent* event)
 {
     QRectF rect =
         rect_for_points(this->m_mouse_press_scene_pos, event->scenePos());
     this->m_select_item.setRect(rect);
-    SelectSceneTool<T>::onDragMove(event);
+    SelectSceneTool<T>::onLeftButtonDragMove(event);
 }
 
-template <typename T> QPixmap ShapeSelectSceneTool<T>::getCursorPixmap() const
+template <typename T>
+QPixmap ShapeSelectSceneTool<T>::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/select_square.svg");
 }
@@ -257,7 +260,7 @@ EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :
 {
 }
 
-void EraseSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void EraseSceneTool::onLeftButtonClick(QGraphicsSceneMouseEvent* const event)
 {
     QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
         event->scenePos(), InteractiveItemFlag::ALL);
@@ -275,7 +278,7 @@ void EraseSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
             return;
         }
     }
-    RectSelectSceneTool::onMouseClick(event);
+    RectSelectSceneTool::onLeftButtonClick(event);
 }
 
 void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
@@ -289,12 +292,13 @@ void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
     m_mol_model->remove(atoms, bonds, sgroups, non_molecular_objects);
 }
 
-void EraseSceneTool::onMouseDoubleClick(QGraphicsSceneMouseEvent* const event)
+void EraseSceneTool::onLeftButtonDoubleClick(
+    QGraphicsSceneMouseEvent* const event)
 {
     // disable the select tool double-click behavior
 }
 
-QPixmap EraseSceneTool::getCursorPixmap() const
+QPixmap EraseSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/mode_erase.svg",
                                 /* recolor = */ false);

@@ -9,7 +9,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/selection_items.h"
-#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace RDKit
 {
@@ -47,19 +47,22 @@ get_select_scene_tool(SelectionTool selection_type, Scene* scene,
  * it's being drawn
  */
 template <typename T> class SKETCHER_API SelectSceneTool
-    : public SceneToolWithPredictiveHighlighting
+    : public StandardSceneToolBase
 {
   public:
     SelectSceneTool(Scene* scene, MolModel* mol_model);
-    virtual ~SelectSceneTool() = default;
 
-    virtual void onDragStart(QGraphicsSceneMouseEvent* const event) override;
-    virtual void onDragMove(QGraphicsSceneMouseEvent* const event) override;
-    virtual void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
-
-    virtual void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
     virtual void
-    onMouseDoubleClick(QGraphicsSceneMouseEvent* const event) override;
+    onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event) override;
+    virtual void
+    onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
+    virtual void
+    onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
+
+    virtual void
+    onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    virtual void
+    onLeftButtonDoubleClick(QGraphicsSceneMouseEvent* const event) override;
 
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
 
@@ -97,10 +100,11 @@ class SKETCHER_API LassoSelectSceneTool
 {
   public:
     LassoSelectSceneTool(Scene* scene, MolModel* mol_model);
-    void onMousePress(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonPress(QGraphicsSceneMouseEvent* const event) override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
-    void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void
+    onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 /**
@@ -114,9 +118,8 @@ template <typename T> class SKETCHER_API ShapeSelectSceneTool
 {
   public:
     ShapeSelectSceneTool(Scene* scene, MolModel* mol_model);
-    virtual ~ShapeSelectSceneTool() = default;
-    void onDragMove(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 typedef ShapeSelectSceneTool<RectSelectionItem> RectSelectSceneTool;
@@ -128,9 +131,10 @@ class SKETCHER_API EraseSceneTool : public RectSelectSceneTool
 {
   public:
     EraseSceneTool(Scene* scene, MolModel* mol_model);
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    void onMouseDoubleClick(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    void
+    onLeftButtonDoubleClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 
   protected:
     void onSelectionMade(const QList<QGraphicsItem*>& items,

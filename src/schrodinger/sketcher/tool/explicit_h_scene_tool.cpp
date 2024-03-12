@@ -11,12 +11,13 @@ namespace sketcher
 {
 
 ExplicitHsSceneTool::ExplicitHsSceneTool(Scene* scene, MolModel* mol_model) :
-    SceneToolWithPredictiveHighlighting(scene, mol_model)
+    StandardSceneToolBase(scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
 }
 
-void ExplicitHsSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void ExplicitHsSceneTool::onLeftButtonClick(
+    QGraphicsSceneMouseEvent* const event)
 {
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
@@ -24,9 +25,10 @@ void ExplicitHsSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
         auto atom = atom_item->getAtom();
         m_mol_model->updateExplicitHs(ExplicitHActions::TOGGLE, {atom});
     }
+    StandardSceneToolBase::onLeftButtonClick(event);
 }
 
-QPixmap ExplicitHsSceneTool::getCursorPixmap() const
+QPixmap ExplicitHsSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/atom_explicit_H.svg");
 }

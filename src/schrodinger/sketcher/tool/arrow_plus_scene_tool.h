@@ -1,7 +1,7 @@
 #pragma once
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace schrodinger
 {
@@ -15,15 +15,15 @@ enum class NonMolecularType;
 /**
  * A scene tool for drawing arrows and plus signs
  */
-class SKETCHER_API ArrowPlusSceneTool : public AbstractSceneTool
+class SKETCHER_API ArrowPlusSceneTool : public StandardSceneToolBase
 {
   public:
     ArrowPlusSceneTool(const NonMolecularType& type, Scene* scene,
                        MolModel* mol_model);
 
     // reimplemented AbstractSceneTool method
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 
   protected:
     NonMolecularType m_type;

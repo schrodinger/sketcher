@@ -37,7 +37,7 @@ class SKETCHER_API DrawAttachmentPointSceneTool : public AbstractDrawSceneTool
     // reimplemented AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;
 
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 
     // reimplemented AbstractDrawSceneTool methods
     void onBondClicked(const RDKit::Bond* const bond) override;

@@ -67,7 +67,7 @@ class SKETCHER_API DrawElementSceneTool : public AbstractDrawAtomSceneTool
                           const RDGeom::Point3D& pos2) override;
 
     // reimplemented AbstractSceneTool method
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 /**
@@ -103,7 +103,7 @@ class SKETCHER_API DrawAtomQuerySceneTool : public AbstractDrawAtomSceneTool
                  const RDKit::Atom* const bound_to = nullptr) override;
     void addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                           const RDGeom::Point3D& pos2) override;
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 } // namespace sketcher

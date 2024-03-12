@@ -15,13 +15,14 @@ namespace sketcher
 
 EditChargeSceneTool::EditChargeSceneTool(ChargeTool charge_tool, Scene* scene,
                                          MolModel* mol_model) :
-    SceneToolWithPredictiveHighlighting(scene, mol_model),
+    StandardSceneToolBase(scene, mol_model),
     m_charge_tool(charge_tool)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
 }
 
-void EditChargeSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void EditChargeSceneTool::onLeftButtonClick(
+    QGraphicsSceneMouseEvent* const event)
 {
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
@@ -33,9 +34,10 @@ void EditChargeSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
         new_charge = std::clamp(new_charge, MIN_ATOM_CHARGE, MAX_ATOM_CHARGE);
         m_mol_model->setAtomCharge(atom, new_charge);
     }
+    StandardSceneToolBase::onLeftButtonClick(event);
 }
 
-QPixmap EditChargeSceneTool::getCursorPixmap() const
+QPixmap EditChargeSceneTool::createDefaultCursorPixmap() const
 {
     QString path = m_charge_tool == ChargeTool::INCREASE
                        ? ":/icons/atom_charge_plus.svg"

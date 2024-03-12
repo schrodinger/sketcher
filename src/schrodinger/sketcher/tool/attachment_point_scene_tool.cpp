@@ -34,7 +34,7 @@ std::vector<QGraphicsItem*> DrawAttachmentPointSceneTool::getGraphicsItems()
     return items;
 }
 
-QPixmap DrawAttachmentPointSceneTool::getCursorPixmap() const
+QPixmap DrawAttachmentPointSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/enumeration_attachment_point.svg");
 }

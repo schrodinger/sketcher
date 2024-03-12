@@ -13,18 +13,19 @@ namespace sketcher
 
 ArrowPlusSceneTool::ArrowPlusSceneTool(const NonMolecularType& type,
                                        Scene* scene, MolModel* mol_model) :
-    AbstractSceneTool(scene, mol_model),
+    StandardSceneToolBase(scene, mol_model),
     m_type(type)
 {
 }
 
-void ArrowPlusSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void ArrowPlusSceneTool::onLeftButtonClick(
+    QGraphicsSceneMouseEvent* const event)
 {
     auto coords = to_mol_xy(event->scenePos());
     m_mol_model->addNonMolecularObject(m_type, coords);
 }
 
-QPixmap ArrowPlusSceneTool::getCursorPixmap() const
+QPixmap ArrowPlusSceneTool::createDefaultCursorPixmap() const
 {
     QString path = m_type == NonMolecularType::RXN_ARROW
                        ? ":/icons/reaction_arrow.svg"

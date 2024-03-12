@@ -93,7 +93,7 @@ class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
                  const RDKit::Atom* const end_atom) override;
 
     // overriden AbstractSceneTool method
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 /**
@@ -136,7 +136,7 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
                  const RDKit::Atom* const end_atom) override;
 
     // overriden AbstractSceneTool methods
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 } // namespace sketcher

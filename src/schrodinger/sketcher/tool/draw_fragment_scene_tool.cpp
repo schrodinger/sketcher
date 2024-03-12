@@ -120,7 +120,7 @@ DrawFragmentSceneTool::DrawFragmentSceneTool(
     const AtomItemSettings& atom_item_settings,
     const BondItemSettings& bond_item_settings, Scene* scene,
     MolModel* mol_model) :
-    AbstractSceneTool(scene, mol_model),
+    StandardSceneToolBase(scene, mol_model),
     m_frag(fragment),
     m_hint_item(m_frag, fonts, atom_item_settings, bond_item_settings)
 {
@@ -133,7 +133,7 @@ std::vector<QGraphicsItem*> DrawFragmentSceneTool::getGraphicsItems()
 
 void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
-    AbstractSceneTool::onMouseMove(event);
+    StandardSceneToolBase::onMouseMove(event);
     if (m_mouse_pressed) {
         // drag actions are handled in onDragMove
         return;
@@ -146,21 +146,23 @@ void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 
 void DrawFragmentSceneTool::onMouseLeave()
 {
-    AbstractSceneTool::onMouseLeave();
+    StandardSceneToolBase::onMouseLeave();
     m_hint_item.hide();
 }
 
-void DrawFragmentSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void DrawFragmentSceneTool::onLeftButtonClick(
+    QGraphicsSceneMouseEvent* const event)
 {
-    AbstractSceneTool::onMouseClick(event);
+    StandardSceneToolBase::onLeftButtonClick(event);
     auto [new_conf, overlay_atom] =
         getFragConfAndCoreAtomForScenePos(event->scenePos());
     addFragToModel(new_conf, overlay_atom);
 }
 
-void DrawFragmentSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
+void DrawFragmentSceneTool::onLeftButtonDragMove(
+    QGraphicsSceneMouseEvent* const event)
 {
-    AbstractSceneTool::onDragMove(event);
+    StandardSceneToolBase::onLeftButtonDragMove(event);
     auto maybe_conf = getConformerForDragToScenePos(event->scenePos());
     if (maybe_conf.has_value()) {
         // we only perform a drag action if the mouse press was over empty space
@@ -169,9 +171,10 @@ void DrawFragmentSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
     m_hint_item.setVisible(maybe_conf.has_value());
 }
 
-void DrawFragmentSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
+void DrawFragmentSceneTool::onLeftButtonDragRelease(
+    QGraphicsSceneMouseEvent* const event)
 {
-    AbstractSceneTool::onDragRelease(event);
+    StandardSceneToolBase::onLeftButtonDragRelease(event);
     auto maybe_conf = getConformerForDragToScenePos(event->scenePos());
     if (maybe_conf.has_value()) {
         // we only perform a drag action if the mouse press was over empty space

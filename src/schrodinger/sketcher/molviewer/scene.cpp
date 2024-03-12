@@ -43,9 +43,6 @@
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 
-#include "schrodinger/sketcher/molviewer/rotation_item.h"
-#include "schrodinger/sketcher/tool/rotate_scene_tool.h"
-#include "schrodinger/sketcher/tool/translate_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
 #include "schrodinger/sketcher/molviewer/halo_highlighting_item.h"
@@ -116,11 +113,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
     m_halo_highlighting_item = new QGraphicsItemGroup();
-    m_left_button_scene_tool = std::make_shared<NullSceneTool>();
-    m_middle_button_scene_tool =
-        std::make_shared<RotateSceneTool>(this, m_mol_model);
-    m_right_button_scene_tool =
-        std::make_shared<TranslateSceneTool>(this, m_mol_model);
+    m_scene_tool = std::make_shared<NullSceneTool>();
 
     addItem(m_selection_highlighting_item);
     addItem(m_halo_highlighting_item);
@@ -182,7 +175,7 @@ void Scene::moveInteractiveItems()
     }
     updateSelectionHighlighting();
     updateHaloHighlighting();
-    m_left_button_scene_tool->onStructureUpdated();
+    m_scene_tool->onStructureUpdated();
 }
 
 void Scene::updateItems(const WhatChangedType what_changed)
@@ -218,7 +211,7 @@ void Scene::updateItems(const WhatChangedType what_changed)
     updateSelectionHighlighting();
     updateHaloHighlighting();
 
-    m_left_button_scene_tool->onStructureUpdated();
+    m_scene_tool->onStructureUpdated();
 }
 
 void Scene::updateItemSelection()
@@ -339,9 +332,7 @@ void Scene::updateHaloHighlighting()
 
 void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
-    m_mouse_down_screen_pos = event->screenPos();
-    auto scene_tool = getSceneTool(event);
-    scene_tool->onMousePress(event);
+    m_scene_tool->mousePressEvent(event);
     event->accept();
 }
 
@@ -350,73 +341,29 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     // TODO: don't pass events to the scene tool if a context menu is
     // visible
 
-    auto scene_tool = getSceneTool(event);
-    if (event->buttons() != Qt::NoButton && !m_drag_started) {
-        // check to see whether the mouse has moved far enough to start a
-        // drag
-        int drag_dist =
-            (m_mouse_down_screen_pos - event->screenPos()).manhattanLength();
-        if (drag_dist >= QApplication::startDragDistance()) {
-            m_drag_started = true;
-            scene_tool->onDragStart(event);
-        }
-    }
-    scene_tool->onMouseMove(event);
-    /*make sure  m_left_button_scene_tool->onMouseMove gets always called,
-     * regardless of the button which is actually being used, to update
-     * predictive highlighting */
-    if (scene_tool != m_left_button_scene_tool) {
-        m_left_button_scene_tool->onMouseMove(event);
-    }
-    if (m_drag_started) {
-        scene_tool->onDragMove(event);
-    }
+    m_scene_tool->mouseMoveEvent(event);
     event->accept();
 }
 
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    if (m_is_during_double_click) {
-        // This event is the mouse release for the second click of a double
-        // click, so we never got a corresponding mousePressEvent (since it
-        // was a mouseDoubleClickEvent instead) and we've already handled
-        // the double-click (in mouseDoubleClickEvent).
-        m_is_during_double_click = false;
-        return;
-    }
-    auto scene_tool = getSceneTool(event);
-    if (m_drag_started) {
-        scene_tool->onDragRelease(event);
-    } else {
-        scene_tool->onMouseClick(event);
-    }
-    scene_tool->onMouseRelease(event);
-    m_mouse_down_screen_pos = QPointF();
-    m_drag_started = false;
+    m_scene_tool->mouseReleaseEvent(event);
     event->accept();
 }
 
 void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 {
-    m_is_during_double_click = true;
-    m_left_button_scene_tool->onMouseDoubleClick(event);
+    m_scene_tool->mouseDoubleClickEvent(event);
+    event->accept();
 }
 
 void Scene::onMouseLeave()
 {
-    m_left_button_scene_tool->onMouseLeave();
+    m_scene_tool->onMouseLeave();
 }
 
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
-    /**
-     * disable the context menu if the move-rotate tool is active
-     */
-    auto draw_tool = m_sketcher_model->getDrawTool();
-    if (draw_tool == DrawTool::MOVE_ROTATE) {
-        return;
-    }
-
     auto pos = event->scenePos();
     auto [atoms, bonds, sgroups, non_molecular_objects] =
         getModelObjects(SceneSubset::HOVERED, &pos);
@@ -635,22 +582,6 @@ void Scene::setCarbonsLabeled(const CarbonLabels value)
     updateAtomAndBondItems();
 }
 
-std::shared_ptr<AbstractSceneTool>
-Scene::getSceneTool(QGraphicsSceneMouseEvent* const event)
-{
-    // the button for a release event is stored in event->button(), while
-    // the one for a drag event is stored in event->buttons()
-    if ((event->buttons() & Qt::MiddleButton) ||
-        (event->button() == Qt::MiddleButton)) {
-        return m_middle_button_scene_tool;
-    } else if ((event->buttons() & Qt::RightButton) ||
-               (event->button() == Qt::RightButton)) {
-        return m_right_button_scene_tool;
-    } else {
-        return m_left_button_scene_tool;
-    }
-}
-
 void Scene::updateSceneTool()
 {
     std::shared_ptr<AbstractSceneTool> new_scene_tool = getNewSceneTool();
@@ -735,20 +666,28 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
 void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
 {
     // remove any graphics items associated with the old scene tool
-    for (auto* item : m_left_button_scene_tool->getGraphicsItems()) {
+    for (auto* item : m_scene_tool->getGraphicsItems()) {
         removeItem(item);
     }
-    m_left_button_scene_tool = new_scene_tool;
+    disconnect(m_scene_tool.get(), &AbstractSceneTool::contextMenuRequested,
+               this, &Scene::showContextMenu);
+    disconnect(m_scene_tool.get(), &AbstractSceneTool::newCursorHintRequested,
+               this, &Scene::newCursorHintRequested);
+    m_scene_tool = new_scene_tool;
     // add graphics items from the new scene tool
-    for (auto* item : m_left_button_scene_tool->getGraphicsItems()) {
+    for (auto* item : m_scene_tool->getGraphicsItems()) {
         addItem(item);
     }
+    connect(new_scene_tool.get(), &AbstractSceneTool::contextMenuRequested,
+            this, &Scene::showContextMenu);
+    connect(new_scene_tool.get(), &AbstractSceneTool::newCursorHintRequested,
+            this, &Scene::newCursorHintRequested);
     requestCursorHintUpdate();
 }
 
 void Scene::requestCursorHintUpdate()
 {
-    auto cursor_hint = m_left_button_scene_tool->getCursorPixmap();
+    auto cursor_hint = m_scene_tool->getDefaultCursorPixmap();
     emit newCursorHintRequested(cursor_hint);
 }
 

@@ -15,7 +15,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item_settings.h"
-#include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 class QPointF;
 
@@ -68,7 +68,7 @@ class HintFragmentItem : public QGraphicsItemGroup
  * A scene tool for drawing molecule fragments.  These fragments must have
  * exactly one attachment point, showing where the fragment will be attached.
  */
-class SKETCHER_API DrawFragmentSceneTool : public AbstractSceneTool
+class SKETCHER_API DrawFragmentSceneTool : public StandardSceneToolBase
 {
   public:
     /**
@@ -94,9 +94,10 @@ class SKETCHER_API DrawFragmentSceneTool : public AbstractSceneTool
     std::vector<QGraphicsItem*> getGraphicsItems() override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onMouseLeave() override;
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    void onDragMove(QGraphicsSceneMouseEvent* const event) override;
-    void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
+    void
+    onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
 
   protected:
     RDKit::ROMol m_frag;

@@ -61,7 +61,7 @@ bool DrawRGroupSceneTool::shouldDrawBondForClickOnAtom(
     return r_group_num.has_value() && r_group_num.value() == m_r_group_num;
 }
 
-QPixmap DrawRGroupSceneTool::getCursorPixmap() const
+QPixmap DrawRGroupSceneTool::createDefaultCursorPixmap() const
 {
     return render_text_to_pixmap(QString("R%1").arg(m_r_group_num),
                                  m_fonts->m_cursor_hint_font,
@@ -86,7 +86,7 @@ bool DrawIncrementingRGroupSceneTool::shouldDrawBondForClickOnAtom(
     return false;
 }
 
-QPixmap DrawIncrementingRGroupSceneTool::getCursorPixmap() const
+QPixmap DrawIncrementingRGroupSceneTool::createDefaultCursorPixmap() const
 {
     return render_text_to_pixmap("R+", m_fonts->m_cursor_hint_font,
                                  CURSOR_HINT_COLOR);

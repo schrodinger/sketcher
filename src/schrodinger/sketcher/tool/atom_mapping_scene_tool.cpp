@@ -32,7 +32,7 @@ ArrowLineItem::ArrowLineItem()
 
 AtomMappingSceneTool::AtomMappingSceneTool(const MappingAction& action,
                                            Scene* scene, MolModel* mol_model) :
-    SceneToolWithPredictiveHighlighting(scene, mol_model),
+    StandardSceneToolBase(scene, mol_model),
     m_action(action)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
@@ -56,9 +56,10 @@ void AtomMappingSceneTool::updateArrowItems(const QLineF& line)
     m_arrow_head_item.setPolygon(arrow_head);
 }
 
-void AtomMappingSceneTool::onMousePress(QGraphicsSceneMouseEvent* const event)
+void AtomMappingSceneTool::onLeftButtonPress(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMousePress(event);
+    StandardSceneToolBase::onLeftButtonPress(event);
     QPointF scene_pos = event->scenePos();
     auto* item = m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
     if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
@@ -66,9 +67,10 @@ void AtomMappingSceneTool::onMousePress(QGraphicsSceneMouseEvent* const event)
     }
 }
 
-void AtomMappingSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
+void AtomMappingSceneTool::onLeftButtonClick(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onMouseClick(event);
+    StandardSceneToolBase::onLeftButtonClick(event);
     if (m_action != MappingAction::REMOVE) {
         return;
     }
@@ -91,9 +93,10 @@ void AtomMappingSceneTool::onMouseClick(QGraphicsSceneMouseEvent* const event)
     m_mol_model->setAtomMapping(atoms_to_remove, 0);
 }
 
-void AtomMappingSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
+void AtomMappingSceneTool::onLeftButtonDragMove(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragMove(event);
+    StandardSceneToolBase::onLeftButtonDragMove(event);
     if (m_action != MappingAction::ADD) {
         return;
     }
@@ -144,9 +147,10 @@ void AtomMappingSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
     m_arrow_line_item.setVisible(true);
 }
 
-void AtomMappingSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
+void AtomMappingSceneTool::onLeftButtonDragRelease(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragRelease(event);
+    StandardSceneToolBase::onLeftButtonDragRelease(event);
     if (m_pressed_atom_item && m_release_atom_item) {
         // if the clicked atom is mapped, use that mapping for both atoms
         int mapping = m_pressed_atom_item->getAtom()->getAtomMapNum();
@@ -165,7 +169,7 @@ void AtomMappingSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
 
 std::vector<QGraphicsItem*> AtomMappingSceneTool::getGraphicsItems()
 {
-    auto items = SceneToolWithPredictiveHighlighting::getGraphicsItems();
+    auto items = StandardSceneToolBase::getGraphicsItems();
     items.push_back(&m_arrow_line_item);
     items.push_back(&m_arrow_head_item);
 
@@ -190,7 +194,7 @@ int AtomMappingSceneTool::findLowestAvailableMappingNumber() const
     return lowest_available_mapping_number;
 }
 
-QPixmap AtomMappingSceneTool::getCursorPixmap() const
+QPixmap AtomMappingSceneTool::createDefaultCursorPixmap() const
 {
     QString path = m_action == MappingAction::ADD
                        ? ":/icons/reaction_map_atoms.svg"

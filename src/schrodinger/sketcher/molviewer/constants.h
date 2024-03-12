@@ -298,6 +298,7 @@ typedef uint8_t InteractiveItemFlagType;
 namespace InteractiveItemFlag
 {
 enum : InteractiveItemFlagType { // clang-format off
+    NONE                  = 0,
     ATOM_NOT_R_NOT_AP     = 1 << 0,
     R_GROUP               = 1 << 1,
     S_GROUP               = 1 << 2,

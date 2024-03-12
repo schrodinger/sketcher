@@ -7,7 +7,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace RDKit
 {
@@ -39,8 +39,7 @@ class HintBondItem : public QGraphicsLineItem
  * A base class for scene tools that draw atoms or bonds (including query atoms
  * and query bonds).
  */
-class SKETCHER_API AbstractDrawSceneTool
-    : public SceneToolWithPredictiveHighlighting
+class SKETCHER_API AbstractDrawSceneTool : public StandardSceneToolBase
 {
   public:
     AbstractDrawSceneTool(Scene* scene, MolModel* mol_model);
@@ -48,11 +47,12 @@ class SKETCHER_API AbstractDrawSceneTool
     // Reimplemented AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
-    void onMouseRelease(QGraphicsSceneMouseEvent* const event) override;
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    void onDragStart(QGraphicsSceneMouseEvent* const event) override;
-    void onDragMove(QGraphicsSceneMouseEvent* const event) override;
-    void onDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonRelease(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
+    void
+    onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
 
   protected:
     HintBondItem m_hint_bond_item = HintBondItem();

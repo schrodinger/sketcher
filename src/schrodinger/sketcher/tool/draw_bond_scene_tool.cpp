@@ -110,7 +110,7 @@ void DrawBondSceneTool::addBond(const RDKit::Atom* const start_atom,
     m_mol_model->addBond(start_atom, end_atom, m_bond_type, m_bond_dir);
 }
 
-QPixmap DrawBondSceneTool::getCursorPixmap() const
+QPixmap DrawBondSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(m_cursor_hint_path);
 }
@@ -161,7 +161,7 @@ void DrawBondQuerySceneTool::addBond(const RDKit::Atom* const start_atom,
     m_mol_model->addBond(start_atom, end_atom, getQuery());
 }
 
-QPixmap DrawBondQuerySceneTool::getCursorPixmap() const
+QPixmap DrawBondQuerySceneTool::createDefaultCursorPixmap() const
 {
     auto text = QString::fromStdString(m_query_type);
     return render_text_to_pixmap(text, m_fonts->m_cursor_hint_font,

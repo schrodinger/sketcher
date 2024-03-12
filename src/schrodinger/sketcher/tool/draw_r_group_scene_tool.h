@@ -57,7 +57,7 @@ class SKETCHER_API DrawRGroupSceneTool : public AbstractDrawRGroupSceneTool
     shouldDrawBondForClickOnAtom(const RDKit::Atom* const atom) const override;
 
     // reimplemented AbstractSceneTool methods
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 /**
@@ -79,7 +79,7 @@ class SKETCHER_API DrawIncrementingRGroupSceneTool
     // reimplemented AbstractDrawSceneTool methods
     bool
     shouldDrawBondForClickOnAtom(const RDKit::Atom* const atom) const override;
-    QPixmap getCursorPixmap() const override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 } // namespace sketcher

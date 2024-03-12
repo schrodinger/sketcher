@@ -60,6 +60,7 @@
     <file>icons/ring_cyclopentane_dis.svg</file>
     <file>icons/ring_cyclopropane.svg</file>
     <file>icons/ring_cyclopropane_dis.svg</file>
+    <file>icons/rotate.svg</file>
     <file>icons/select_lasso.svg</file>
     <file>icons/select_lasso_dis.svg</file>
     <file>icons/select_move_rotate.svg</file>
@@ -86,6 +87,7 @@
     <file>icons/topbar_settings_dis.svg</file>
     <file>icons/topbar_undo.svg</file>
     <file>icons/topbar_undo_dis.svg</file>
+    <file>icons/translate.svg</file>
 
     <file>icons/add_particle.png</file>
     <file>icons/reset.png</file>

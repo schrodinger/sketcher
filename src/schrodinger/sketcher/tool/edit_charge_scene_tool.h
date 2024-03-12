@@ -4,7 +4,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace schrodinger
 {
@@ -14,8 +14,7 @@ namespace sketcher
 /**
  * A scene tool for editing atom charges
  */
-class SKETCHER_API EditChargeSceneTool
-    : public SceneToolWithPredictiveHighlighting
+class SKETCHER_API EditChargeSceneTool : public StandardSceneToolBase
 {
   public:
     EditChargeSceneTool(ChargeTool bond_tool, Scene* scene,
@@ -23,8 +22,8 @@ class SKETCHER_API EditChargeSceneTool
 
   protected:
     // reimplemented AbstractSceneTool methods
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 
     ChargeTool m_charge_tool;
 };

@@ -43,35 +43,38 @@ void HintChainItem::setCoords(QList<QPointF> coords)
 }
 
 DrawChainSceneTool::DrawChainSceneTool(Scene* scene, MolModel* mol_model) :
-    SceneToolWithPredictiveHighlighting(scene, mol_model)
+    StandardSceneToolBase(scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_AP;
 }
 
 std::vector<QGraphicsItem*> DrawChainSceneTool::getGraphicsItems()
 {
-    auto items = SceneToolWithPredictiveHighlighting::getGraphicsItems();
+    auto items = StandardSceneToolBase::getGraphicsItems();
     items.push_back(&m_hint_chain_item);
     return items;
 }
 
-void DrawChainSceneTool::onDragStart(QGraphicsSceneMouseEvent* const event)
+void DrawChainSceneTool::onLeftButtonDragStart(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragStart(event);
+    StandardSceneToolBase::onLeftButtonDragStart(event);
     m_hint_chain_item.show();
 }
 
-void DrawChainSceneTool::onDragMove(QGraphicsSceneMouseEvent* const event)
+void DrawChainSceneTool::onLeftButtonDragMove(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragMove(event);
+    StandardSceneToolBase::onLeftButtonDragMove(event);
     auto [start_pos, start_atom] = getStartPosAndAtom();
     auto atom_coords = get_bond_chain_atom_coords(start_pos, event->scenePos());
     m_hint_chain_item.setCoords(atom_coords);
 }
 
-void DrawChainSceneTool::onDragRelease(QGraphicsSceneMouseEvent* const event)
+void DrawChainSceneTool::onLeftButtonDragRelease(
+    QGraphicsSceneMouseEvent* const event)
 {
-    SceneToolWithPredictiveHighlighting::onDragRelease(event);
+    StandardSceneToolBase::onLeftButtonDragRelease(event);
     m_hint_chain_item.hide();
 
     auto [start_pos, start_atom] = getStartPosAndAtom();
@@ -101,7 +104,7 @@ std::pair<QPointF, const RDKit::Atom*> DrawChainSceneTool::getStartPosAndAtom()
     return {start_pos, atom};
 }
 
-QPixmap DrawChainSceneTool::getCursorPixmap() const
+QPixmap DrawChainSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/bond_chain.svg");
 }

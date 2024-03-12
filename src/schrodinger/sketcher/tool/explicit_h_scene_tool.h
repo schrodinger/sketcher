@@ -5,7 +5,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
-#include "schrodinger/sketcher/tool/scene_tool_with_predictive_highlighting.h"
+#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace schrodinger
 {
@@ -15,15 +15,14 @@ namespace sketcher
 /**
  * A scene tool for adding/removing explicit Hs
  */
-class SKETCHER_API ExplicitHsSceneTool
-    : public SceneToolWithPredictiveHighlighting
+class SKETCHER_API ExplicitHsSceneTool : public StandardSceneToolBase
 {
   public:
     ExplicitHsSceneTool(Scene* scene, MolModel* mol_model);
 
   protected:
-    void onMouseClick(QGraphicsSceneMouseEvent* const event) override;
-    QPixmap getCursorPixmap() const override;
+    void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    QPixmap createDefaultCursorPixmap() const override;
 };
 
 } // namespace sketcher
