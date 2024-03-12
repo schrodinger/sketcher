@@ -132,7 +132,7 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
 
     BondItemSettings& m_settings;
 
-    QString m_label_text;
+    QString m_annotation_text;
 
     std::vector<QColor> m_colors;
 
@@ -145,6 +145,16 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      * selected a color, m_setting.color will be used.
      */
     std::vector<QColor> getColors() const;
+
+    /**
+     * paint all bond lines and polygons using the given painter. This function
+     * is called by paint() before painting the bond annotation. If an
+     * annotation is present the bond lines need to be partially transparent
+     * behind it to make the annotation readable, so this function will be
+     * called twice with different painter opacities and using the annotation
+     * polygon as a clipping region.
+     */
+    void paintBondLinesAndPolygons(QPainter* painter);
 
     /**
      * Calculate the lines and polygons needed to paint this bond.  Note that
@@ -399,6 +409,12 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
     std::tuple<qreal, QPointF, QSizeF>
     getStereoAnnotationParameters(const QString& label,
                                   const bool draw_text_above_bond) const;
+
+    /** return the annotation bounding polygon for the bond. Note that the text
+     * could be rotated, so we need a polygon rather than a rectangle. The text
+     * painted by paintAnnotation() is guaranteed to stay within this polygon.
+     */
+    QPolygonF getAnnotationPolygon();
 
     /** Paint text annontation .
      *

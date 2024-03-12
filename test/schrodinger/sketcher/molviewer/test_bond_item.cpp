@@ -47,8 +47,8 @@ class TestBondItem : public BondItem
     using BondItem::calcWedgeEnds;
     using BondItem::findBestRingForBond;
     using BondItem::findRingCenter;
+    using BondItem::m_annotation_text;
     using BondItem::m_bond;
-    using BondItem::m_label_text;
 
     TestBondItem(RDKit::Bond* bond, const AtomItem& start_atom_item,
                  const AtomItem& end_atom_item, Fonts& fonts,
@@ -232,10 +232,11 @@ BOOST_AUTO_TEST_CASE(test_stereo_label)
         for (size_t i = 0; i < bond_items.size(); ++i) {
             auto bond_item = bond_items[i];
             auto bond = bond_item->m_bond;
-            auto [bond_type, bond_dir, bond_label] = expected[i];
+            auto [bond_type, bond_dir, bond_annotation] = expected[i];
             BOOST_TEST(get_bond_type_and_query_label(bond).first == bond_type);
             BOOST_TEST(bond->getBondDir() == bond_dir);
-            BOOST_TEST(bond_item->m_label_text.toStdString() == bond_label);
+            BOOST_TEST(bond_item->m_annotation_text.toStdString() ==
+                       bond_annotation);
         }
     };
 

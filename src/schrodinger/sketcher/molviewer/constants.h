@@ -157,6 +157,9 @@ const float KEY_SCROLL_BOND_LENGTH_RATIO = 0.5;
 /// The width of the pen to use for drawing bond lines
 const qreal BOND_DEFAULT_PEN_WIDTH = 2.2;
 
+/// The opacity of the portion of bonds that are behind bond labels
+const qreal OPACITY_OF_BOND_BEHIND_LABEL = 0.15;
+
 // The length of the bond to an attachment point in bond length units
 const qreal ATTACHMENT_POINT_BOND_DISTANCE_RATIO = 0.5;
 

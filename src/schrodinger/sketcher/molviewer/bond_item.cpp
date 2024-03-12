@@ -107,7 +107,7 @@ void BondItem::updateCachedData()
     } else {
         label_text = rdkit_extensions::get_bond_stereo_label(*m_bond);
     }
-    m_label_text = QString::fromStdString(label_text);
+    m_annotation_text = QString::fromStdString(label_text);
 
     // move this item so it's on top of the start atom
     setPos(m_start_item.pos());
@@ -123,11 +123,11 @@ void BondItem::updateCachedData()
     m_shape = QPainterPath(m_selection_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
 
-    // add the label (if present) to the bounding rect
-    if (!m_label_text.isEmpty()) {
-        // TODO: make bond partially transparent behind label
+    // add the annotation (if present) to the bounding rect
+    if (!m_annotation_text.isEmpty()) {
         std::tie(m_text_angle, m_text_pos, m_text_size) =
-            getStereoAnnotationParameters(m_label_text, query_label.empty());
+            getStereoAnnotationParameters(m_annotation_text,
+                                          query_label.empty());
         auto rect = QRectF(m_text_pos, m_text_size);
         rect.moveCenter(QPointF(0, 0));
         auto rotation = QTransform().rotate(m_text_angle);
@@ -589,6 +589,32 @@ QPointF BondItem::getMidPoint() const
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
+    if (!m_annotation_text.isEmpty()) {
+        /*An annotation is present, so we need to paint the bond twice to make
+         * the portion of the bond behind the label partially transparent.*/
+        painter->save();
+        QPainterPath annotation_region;
+        annotation_region.addPolygon(getAnnotationPolygon());
+        painter->setClipPath(shape() - annotation_region);
+        paintBondLinesAndPolygons(painter);
+        painter->setOpacity(OPACITY_OF_BOND_BEHIND_LABEL);
+        painter->setClipPath(annotation_region);
+        paintBondLinesAndPolygons(painter);
+        painter->restore();
+        // paint the annotation
+        painter->save();
+        painter->setPen(m_chirality_pen);
+        painter->setFont(m_fonts.m_chirality_font);
+        paintAnnotation(painter, m_text_angle, m_text_pos, m_text_size,
+                        m_annotation_text);
+        painter->restore();
+    } else {
+        paintBondLinesAndPolygons(painter);
+    }
+}
+
+void BondItem::paintBondLinesAndPolygons(QPainter* painter)
+{
     auto colors = m_colors;
     /* colors can contain one or two colors.  If it has only one
       color, we just paint the bond with that color.  If it has two colors, we
@@ -596,15 +622,18 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
      each half with a different color.*/
     for (unsigned int i = 0; i < colors.size(); ++i) {
         painter->save();
-        // if the bond is painted with two colors, we need to clip the bond
-        // and paint it twice
+        /** if the bond is painted with two colors, we need to clip the bond
+         * and paint it twice. Note that we need Qt::IntersectClip here because
+         * we might already have a clip path set for the label's transparency
+         */
         if (colors.size() == 2) {
             auto mid_point = getMidPoint();
             QLineF first_half(QPointF(0, 0), mid_point);
             QLineF second_half(mid_point, 2 * mid_point);
             painter->setClipPath(
                 path_around_line((i == 0 ? first_half : second_half),
-                                 BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH));
+                                 BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH),
+                Qt::IntersectClip);
         }
         auto brush = m_solid_brush;
         brush.setColor(colors.at(i));
@@ -621,14 +650,6 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                 painter->drawPolygon(polygon);
             }
         }
-        painter->restore();
-    }
-    if (!m_label_text.isEmpty()) {
-        painter->save();
-        painter->setPen(m_chirality_pen);
-        painter->setFont(m_fonts.m_chirality_font);
-        paintAnnotation(painter, m_text_angle, m_text_pos, m_text_size,
-                        m_label_text);
         painter->restore();
     }
 }
@@ -671,6 +692,15 @@ BondItem::getStereoAnnotationParameters(const QString& label,
     return std::make_tuple(angle, text_pos, text_size);
 }
 
+QPolygonF BondItem::getAnnotationPolygon()
+{
+    QRectF bounding_rect = QRectF(QPointF(0, 0), m_text_size);
+    bounding_rect.moveCenter(QPointF(0, 0));
+    auto transform = QTransform();
+    transform.translate(m_text_pos.x(), m_text_pos.y());
+    transform.rotate(-m_text_angle);
+    return transform.map(QPolygonF(bounding_rect));
+}
 void BondItem::paintAnnotation(QPainter* painter, qreal angle,
                                const QPointF& text_pos, const QSizeF& text_size,
                                const QString& text)
