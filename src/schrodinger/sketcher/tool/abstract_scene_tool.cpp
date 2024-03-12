@@ -12,9 +12,9 @@ namespace sketcher
 {
 
 AbstractSceneTool::AbstractSceneTool(Scene* scene, MolModel* mol_model) :
+    QObject(),
     m_scene(scene),
-    m_mol_model(mol_model),
-    QObject()
+    m_mol_model(mol_model)
 {
 }
 
