@@ -47,6 +47,11 @@ jobs:
           with open(os.getenv("GITHUB_ENV"), "a") as fh:
             fh.write(f"CPU_COUNT={multiprocessing.cpu_count()}")
 
+      - name: Configure Dependency CMake
+        run: |
+            cmake -B build/external/ -S external/ -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
       - name: Fetch fmt
         id: fetch-fmt
         uses: ./.github/actions/build-external

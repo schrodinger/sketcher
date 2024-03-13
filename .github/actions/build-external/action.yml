@@ -24,13 +24,6 @@ runs:
         path: build/external/${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ inputs.os }}
 
-    - name: Configure CMake
-      if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
-      shell: bash
-      run: |
-        cmake -B build/external/ -S external/ -G Ninja \
-              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-
     - name: Build
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
