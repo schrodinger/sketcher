@@ -36,5 +36,5 @@ runs:
       shell: bash
       run: |
         cmake --build build/external/ \
-              --target ${{ inputs.library }} \
+              --target ${{ inputs.library }} -G Ninja \
               --config ${{ env.BUILD_TYPE }} -j ${{ env.CPU_COUNT }}
