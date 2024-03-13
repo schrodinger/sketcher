@@ -91,15 +91,15 @@ jobs:
                                 ${{ steps.fetch-rdkit.outputs.path }};\
                                 ${{ steps.fetch-qt.outputs.path }}"
         run: |
-          cmake -B build -S . \
+          cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
         shell: bash
         run: |
-          cmake --build build -G Ninja \
-                --config ${{ env.BUILD_TYPE }} -j ${{ env.CPU_COUNT }}
+          cmake --build build --config ${{ env.BUILD_TYPE }} \
+                -j ${{ env.CPU_COUNT }}
 
       - name: Test
         shell: bash

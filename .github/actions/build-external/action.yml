@@ -28,7 +28,7 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
-        cmake -B build/external/ -S external/ \
+        cmake -B build/external/ -S external/ -G Ninja \
               -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
     - name: Build
@@ -36,5 +36,5 @@ runs:
       shell: bash
       run: |
         cmake --build build/external/ \
-              --target ${{ inputs.library }} -G Ninja \
+              --target ${{ inputs.library }} \
               --config ${{ env.BUILD_TYPE }} -j ${{ env.CPU_COUNT }}
