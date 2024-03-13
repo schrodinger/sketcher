@@ -13,6 +13,9 @@ jobs:
   build_test_sketcher:
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       fail-fast: false
       matrix:
@@ -26,13 +29,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Read external/versions.json
-        shell: bash
         run: |
           {
               echo 'VERSIONS_JSON<<EOF'
               cat external/versions.json
               echo -e '\nEOF'
           } >> "$GITHUB_ENV"
+
+      - name: Install Ninja
+        run: python -m pip install ninja
 
       - name: CPU count
         shell: python
@@ -83,7 +88,6 @@ jobs:
           os: ${{ matrix.config.os }}
 
       - name: Configure CMake
-        shell: bash
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zstd.outputs.path }};\
@@ -96,13 +100,11 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        shell: bash
         run: |
           cmake --build build --config ${{ env.BUILD_TYPE }} \
                 -j ${{ env.CPU_COUNT }}
 
       - name: Test
-        shell: bash
         working-directory: build
         run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
