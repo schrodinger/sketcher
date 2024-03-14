@@ -1,0 +1,10 @@
+diff --git a/dependencies.yaml b/dependencies.yaml
+index fee29a4..afd22e0 100644
+--- a/dependencies.yaml
++++ b/dependencies.yaml
+@@ -1,4 +1,4 @@
+ dependencies:
+-  ../tqtc-qtbase:
++  ../qtbase:
+     ref: 694575a59b5370afc494fbf700eee8db1d1ec091
+     required: true

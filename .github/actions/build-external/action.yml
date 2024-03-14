@@ -1,0 +1,32 @@
+inputs:
+  library:
+    description: "Name of the dependency to build"
+    required: true
+  version:
+    description: "Version of the dependency to build"
+    required: true
+  os:
+    description: "Platform on which we are building"
+    required: true
+
+outputs:
+  path:
+    description: "Path to the installed dependency"
+    # FIXME: collapse this with cache-check.path
+    value: build/external/${{ inputs.library }}-${{ inputs.version }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/cache@v4
+      id: cache-check
+      with:
+        path: build/external/${{ inputs.library }}-${{ inputs.version }}
+        key: ${{ inputs.library }}-${{ inputs.version }}-${{ inputs.os }}
+
+    - name: Build
+      if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
+      shell: bash
+      run: |
+        cmake --build build/external/ --target ${{ inputs.library }} \
+              --config ${{ env.BUILD_TYPE }}

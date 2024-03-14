@@ -1,0 +1,110 @@
+name: Sketcher Build and Test
+
+on:
+  workflow_dispatch: ~
+  push: ~
+  pull_request: ~
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  # TODO: clang-format hook
+  build_test_sketcher:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "macOS",
+            os: macos-latest,
+            app: "build/sketcher_app",
+          }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read external/versions.json
+        run: |
+          {
+              echo 'VERSIONS_JSON<<EOF'
+              cat external/versions.json
+              echo -e '\nEOF'
+          } >> "$GITHUB_ENV"
+
+      - name: Install Ninja
+        run: python -m pip install ninja
+
+      - name: Configure Dependency CMake
+        run: |
+            cmake -B build/external/ -S external/ -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+
+      - name: Fetch fmt
+        id: fetch-fmt
+        uses: ./.github/actions/build-external
+        with:
+          library: fmt
+          version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
+          os: ${{ matrix.config.os }}
+
+      - name: Fetch zstd
+        id: fetch-zstd
+        uses: ./.github/actions/build-external
+        with:
+          library: zstd
+          version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
+          os: ${{ matrix.config.os }}
+
+      - name: Fetch Boost
+        id: fetch-boost
+        uses: ./.github/actions/build-external
+        with:
+          library: boost
+          version: ${{ fromJson(env.VERSIONS_JSON).boost }}
+          os: ${{ matrix.config.os }}
+
+      - name: Fetch RDKit
+        id: fetch-rdkit
+        uses: ./.github/actions/build-external
+        with:
+          library: rdkit
+          version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
+          os: ${{ matrix.config.os }}
+
+      - name: Fetch Qt
+        id: fetch-qt
+        uses: ./.github/actions/build-external
+        with:
+          library: qt
+          version: ${{ fromJson(env.VERSIONS_JSON).qt }}
+          os: ${{ matrix.config.os }}
+
+      - name: Configure CMake
+        env:
+            CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
+                                ${{ steps.fetch-zstd.outputs.path }};\
+                                ${{ steps.fetch-boost.outputs.path }};\
+                                ${{ steps.fetch-rdkit.outputs.path }};\
+                                ${{ steps.fetch-qt.outputs.path }}"
+        run: |
+          cmake -B build -S . -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }}
+
+      - name: Test
+        working-directory: build
+        run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+
+      - name: Download sketcher executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketcher_${{ matrix.config.name }}
+          path: ${{ steps.fetch-qt.outputs.path }}
