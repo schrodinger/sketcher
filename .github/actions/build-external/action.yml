@@ -28,6 +28,5 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
-        cmake --build build/external/ \
-              --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }} -j ${{ env.CPU_COUNT }}
+        cmake --build build/external/ --target ${{ inputs.library }} \
+              --config ${{ env.BUILD_TYPE }}

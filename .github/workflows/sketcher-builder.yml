@@ -39,14 +39,6 @@ jobs:
       - name: Install Ninja
         run: python -m pip install ninja
 
-      - name: CPU count
-        shell: python
-        run: |
-          import os
-          import multiprocessing
-          with open(os.getenv("GITHUB_ENV"), "a") as fh:
-            fh.write(f"CPU_COUNT={multiprocessing.cpu_count()}")
-
       - name: Configure Dependency CMake
         run: |
             cmake -B build/external/ -S external/ -G Ninja \
@@ -105,9 +97,7 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        run: |
-          cmake --build build --config ${{ env.BUILD_TYPE }} \
-                -j ${{ env.CPU_COUNT }}
+        run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
         working-directory: build
