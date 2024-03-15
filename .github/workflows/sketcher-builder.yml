@@ -107,4 +107,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.config.name }}
-          path: ${{ steps.fetch-qt.outputs.path }}
+          path: ${{ matrix.config.app }}
