@@ -29,9 +29,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Python packages
-        run: |
-          python3 -m pip install ninja
-          python3 -m pip install clang-format
+        run: python3 -m pip install ninja clang-format
 
       - name: Code formatting check
         run: find . -name *.h -o -name *.cpp | xargs clang-format -n --Werror
