@@ -552,7 +552,7 @@ std::vector<QRectF> AtomItem::getLabelRects() const
 
 bool AtomItem::determineValenceErrorIsVisible() const
 {
-    return m_settings.m_valence_errors_shown && has_valence_violation(m_atom);
+    return m_settings.m_valence_errors_shown && m_atom->hasValenceViolation();
 }
 
 } // namespace sketcher

@@ -42,11 +42,5 @@ SKETCHER_API int symbol_to_atomic_number(std::string element_symbol);
  */
 SKETCHER_API bool is_atomic_number(int atomic_number);
 
-/**
- * @param m_atom the atom to check
- * @return whether or not the given atom has a valence violation
- */
-SKETCHER_API bool has_valence_violation(const RDKit::Atom* m_atom);
-
 } // namespace sketcher
 } // namespace schrodinger

@@ -47,24 +47,5 @@ bool is_atomic_number(int atomic_number)
     return (atomic_number > 0 && atomic_number <= HEAVIEST_ELEMENT_NUMBER);
 }
 
-bool has_valence_violation(const RDKit::Atom* atom)
-{
-    // Ignore dummy atoms, query atoms, or atoms attached to query bonds
-    auto bonds = atom->getOwningMol().atomBonds(atom);
-    auto is_query = [](auto b) { return b->hasQuery(); };
-    if (atom->getAtomicNum() == 0 || atom->hasQuery() ||
-        std::any_of(bonds.begin(), bonds.end(), is_query)) {
-        return false;
-    }
-
-    try {
-        bool strict = true;
-        const_cast<RDKit::Atom*>(atom)->updatePropertyCache(strict);
-    } catch (const RDKit::AtomValenceException&) {
-        return true;
-    }
-    return false;
-}
-
 } // namespace sketcher
 } // namespace schrodinger
