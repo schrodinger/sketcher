@@ -1,3 +1,5 @@
+// @copyright Schrodinger, LLC - All Rights Reserved
+
 #include "schrodinger/rdkit_extensions/example.h"
 
 #include <string>

@@ -1,3 +1,5 @@
+// @copyright Schrodinger, LLC - All Rights Reserved
+
 #include "schrodinger/sketcher/example_widget.h"
 
 #include <QWidget>

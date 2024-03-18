@@ -1,6 +1,4 @@
-/**
- * Public definitions for schrodinger::sketcher:: library
- */
+// @copyright Schrodinger, LLC - All Rights Reserved
 
 #pragma once
 

@@ -7,7 +7,7 @@
 
 ----
 
-# Dependencies
+## Dependencies
 
 * Qt
 * RDKit
@@ -16,6 +16,10 @@
 * boost
 * emsdk (to build WASM)
 
-# Build and Install
+## Build and Install
 
 TBD.
+
+## License
+
+Code released under the [BSD license](https://github.com/schrodinger/sketcher/blob/master/LICENSE)

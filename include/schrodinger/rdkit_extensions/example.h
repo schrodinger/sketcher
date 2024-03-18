@@ -1,3 +1,5 @@
+// @copyright Schrodinger, LLC - All Rights Reserved
+
 #pragma once
 
 #include <string>

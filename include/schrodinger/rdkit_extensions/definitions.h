@@ -1,6 +1,4 @@
-/**
- * Public definitions for schrodinger::rdkit_extensions:: library
- */
+// @copyright Schrodinger, LLC - All Rights Reserved
 
 #pragma once
 
