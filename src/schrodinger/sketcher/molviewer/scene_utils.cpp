@@ -32,6 +32,10 @@ namespace schrodinger
 namespace sketcher
 {
 
+static QPainterPath
+get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
+                                          const RDKit::Conformer& conf);
+
 std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Atom*, AtomItem*>,
            std::unordered_map<const RDKit::Bond*, BondItem*>,
@@ -48,7 +52,8 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         // a ConformerException.
         return {{}, {}, {}, {}};
     }
-    RDKit::Conformer conformer = shorten_attachment_point_bonds(mol);
+    RDKit::Conformer conformer =
+        get_conformer_with_shortened_attachment_point_bonds(*mol);
 
     std::vector<QGraphicsItem*> all_items;
     std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item;
@@ -103,7 +108,7 @@ void update_conf_for_mol_graphics_items(
     const QList<QGraphicsItem*>& bond_items,
     const QList<QGraphicsItem*>& sgroup_items, const RDKit::ROMol& mol)
 {
-    auto conf = mol.getConformer();
+    auto conf = get_conformer_with_shortened_attachment_point_bonds(mol);
     for (auto* item : atom_items) {
         auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
         auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
@@ -206,7 +211,7 @@ QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
     QPainterPath path;
     path.setFillRule(Qt::WindingFill);
     const auto& mol = s_group.getOwningMol();
-    const auto& conf = mol.getConformer();
+    const auto conf = get_conformer_with_shortened_attachment_point_bonds(mol);
     for (auto atom_idx : s_group.getAtoms()) {
         auto* atom = mol.getAtomWithIdx(atom_idx);
         auto cur_path = get_predictive_highlighting_path_for_atom(atom);
@@ -216,7 +221,7 @@ QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
         path.addPath(cur_path);
     }
     for (auto* bond : rdkit_extensions::get_bonds_within_sgroup(s_group)) {
-        auto cur_path = get_predictive_highlighting_path_for_bond(bond);
+        auto cur_path = get_predictive_highlighting_path_for_bond(bond, conf);
         auto& bond_pos = conf.getAtomPos(bond->getBeginAtomIdx());
         // translate the path out of the bond's local coordinate system
         cur_path.translate(to_scene_xy(bond_pos));
@@ -261,9 +266,9 @@ QPainterPath get_predictive_highlighting_path_for_atom(const RDKit::Atom* atom)
 }
 
 static QPainterPath get_highlighting_path_for_bond(const RDKit::Bond* bond,
-                                                   const qreal half_width)
+                                                   const qreal half_width,
+                                                   const RDKit::Conformer& conf)
 {
-    const auto& conf = bond->getOwningMol().getConformer();
     const auto& begin_pos = conf.getAtomPos(bond->getBeginAtomIdx());
     const auto& end_pos = conf.getAtomPos(bond->getEndAtomIdx());
     auto bond_vector = end_pos - begin_pos;
@@ -273,14 +278,30 @@ static QPainterPath get_highlighting_path_for_bond(const RDKit::Bond* bond,
 
 QPainterPath get_selection_highlighting_path_for_bond(const RDKit::Bond* bond)
 {
+    const auto conf = get_conformer_with_shortened_attachment_point_bonds(
+        bond->getOwningMol());
     return get_highlighting_path_for_bond(
-        bond, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
+        bond, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH, conf);
 }
 
 QPainterPath get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond)
 {
+    const auto conf = get_conformer_with_shortened_attachment_point_bonds(
+        bond->getOwningMol());
+    return get_predictive_highlighting_path_for_bond(bond, conf);
+}
+
+/**
+ * @overload This overload accepts a conformer where the attachment point bonds
+ * have already been shortened.  This avoids the need to recalculate the
+ * conformer on a per-bond basis, as that could lead to O(N^2) behavior.
+ */
+static QPainterPath
+get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
+                                          const RDKit::Conformer& conf)
+{
     auto path = get_highlighting_path_for_bond(
-        bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+        bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH, conf);
     auto atoms = rdkit_extensions::get_variable_attachment_atoms(bond);
     if (atoms.empty()) {
         // this isn't a variable attachment bond, so we don't need to add
@@ -292,8 +313,7 @@ QPainterPath get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond)
     // all of the variable attachment atoms and any bonds between those atoms
     path.setFillRule(Qt::WindingFill);
     std::unordered_set<RDKit::Bond*> added_bonds;
-    const auto& mol = (*atoms.begin())->getOwningMol();
-    const auto& conf = mol.getConformer();
+    const auto& mol = bond->getOwningMol();
     // we'll need to translate all of the paths below to use the same local
     // coordinate system as bond, so we fetch the bond's coordinates
     auto local_origin = conf.getAtomPos(bond->getBeginAtomIdx());
@@ -310,7 +330,7 @@ QPainterPath get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond)
                 // two variable attachment atoms, so we want to highlight it
                 added_bonds.insert(cur_bond);
                 auto bond_path = get_highlighting_path_for_bond(
-                    cur_bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+                    cur_bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH, conf);
                 const auto& bond_pos =
                     conf.getAtomPos(cur_bond->getBeginAtomIdx());
                 auto translate_by = to_scene_xy(bond_pos - local_origin);
