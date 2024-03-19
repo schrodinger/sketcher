@@ -261,6 +261,25 @@ MolModel::createReaction(const bool strip_tags) const
     return reaction;
 }
 
+bool MolModel::isReactantAtom(const RDKit::Atom* atom) const
+{
+    if (!hasReactionArrow()) {
+        return false;
+    }
+    std::vector<int> frags;
+    auto all_mols =
+        RDKit::MolOps::getMolFrags(m_mol, /* sanitizeFrags = */ false, &frags);
+    auto frag_num = frags[atom->getIdx()];
+    auto frag_centroid = find_centroid(*all_mols[frag_num]);
+    auto arrow_x = m_arrow->getCoords().x;
+    return (frag_centroid.x <= arrow_x);
+}
+
+bool MolModel::isProductAtom(const RDKit::Atom* atom) const
+{
+    return (hasReactionArrow() && !isReactantAtom(atom));
+}
+
 bool MolModel::isEmpty() const
 {
     return !m_mol.getNumAtoms() && m_pluses.empty() && !m_arrow.has_value();

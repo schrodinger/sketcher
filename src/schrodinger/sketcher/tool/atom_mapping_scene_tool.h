@@ -65,6 +65,22 @@ class SKETCHER_API AtomMappingSceneTool : public StandardSceneToolBase
     AtomItem* m_pressed_atom_item = nullptr;
     AtomItem* m_release_atom_item = nullptr;
     MappingAction m_action;
+
+    /**
+     * Determine whether the click-and-drag atom items represent a pair of atoms
+     * that can be mapped. This will be true if and only if:
+     *   - the hovered atom item is not nullptr
+     *   - the two atom items are distinct (i.e. the user isn't hovering where
+     *     the drag was started)
+     *   - one of the atom items represents a reactant atom and one of the atom
+     *     items represents a product atom.
+     * @param pressed_atom_item The atom item where the click-and-drag was
+     * started. This atom item must not be nullptr.
+     * @param hovered_atom_item The atom item where the cursor currently is.
+     * This atom item may be nullptr if the cursor isn't over an atom.
+     */
+    bool isValidMappingPair(const AtomItem* const pressed_atom_item,
+                            const AtomItem* const hovered_atom_item);
 };
 
 } // namespace sketcher

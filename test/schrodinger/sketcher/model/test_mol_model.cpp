@@ -2363,6 +2363,7 @@ BOOST_AUTO_TEST_CASE(test_getReactionForExport)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
+    auto* mol = model.getMol();
 
     // we can't get a reaction from an empty model
     BOOST_CHECK_THROW(model.getReactionForExport(), std::runtime_error);
@@ -2371,14 +2372,17 @@ BOOST_AUTO_TEST_CASE(test_getReactionForExport)
     import_mol_text(&model, "CC");
     import_mol_text(&model, "CC");
     // we need an arrow to have a reaction
+    BOOST_TEST(!model.isReactantAtom(mol->getAtomWithIdx(0)));
+    BOOST_TEST(!model.isProductAtom(mol->getAtomWithIdx(0)));
     BOOST_CHECK_THROW(model.getReactionForExport(), std::runtime_error);
     model.addNonMolecularObject(NonMolecularType::RXN_ARROW, {500, 0, 0});
+    BOOST_TEST(model.isReactantAtom(mol->getAtomWithIdx(0)));
+    BOOST_TEST(!model.isProductAtom(mol->getAtomWithIdx(0)));
     // we need a product to have a reaction
     BOOST_CHECK_THROW(model.getReactionForExport(), std::runtime_error);
 
     // add product
     import_mol_text(&model, "CCCC");
-    auto* mol = model.getMol();
     auto atom_iter = mol->atoms();
     std::vector<const RDKit::Atom*> all_atoms(atom_iter.begin(),
                                               atom_iter.end());
@@ -2386,6 +2390,8 @@ BOOST_AUTO_TEST_CASE(test_getReactionForExport)
                                                          all_atoms.end());
     // move the product so it's to the right of the arrow
     model.translateByVector({750, 0, 0}, product_atoms);
+    BOOST_TEST(!model.isReactantAtom(mol->getAtomWithIdx(4)));
+    BOOST_TEST(model.isProductAtom(mol->getAtomWithIdx(4)));
 
     auto reaction = model.getReactionForExport();
     BOOST_TEST(reaction->getReactants().size() == 2);

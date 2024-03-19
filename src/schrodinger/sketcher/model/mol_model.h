@@ -184,6 +184,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     boost::shared_ptr<RDKit::ChemicalReaction> getReactionForExport() const;
 
     /**
+     * Determine whether an atom is part of a reactant or a product. Note that
+     * both isReactantAtom and isProductAtom will return false if no reaction
+     * arrow is present.
+     */
+    bool isReactantAtom(const RDKit::Atom* atom) const;
+    bool isProductAtom(const RDKit::Atom* atom) const;
+
+    /**
      * @return whether the model is completely empty, i.e. no atoms, bonds, or
      * non-molecular objects
      */

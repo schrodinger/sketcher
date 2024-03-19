@@ -78,19 +78,47 @@ void AtomMappingSceneTool::onLeftButtonClick(
     if (m_pressed_atom_item == nullptr) {
         return;
     }
-    int mapping_n = m_pressed_atom_item->getAtom()->getAtomMapNum();
+    auto* clicked_atom = m_pressed_atom_item->getAtom();
+    int mapping_n = clicked_atom->getAtomMapNum();
     if (mapping_n < 1) {
         return;
     }
-    std::unordered_set<const RDKit::Atom*> atoms_to_remove;
+    // count the number of product atoms with the same mapping number as the
+    // clicked atom
+    unsigned int num_other_product_atoms = 0;
+    std::unordered_set<const RDKit::Atom*> atoms_to_remove = {clicked_atom};
     auto mol = m_mol_model->getMol();
-    auto all_atoms = mol->atoms();
-    copy_if(all_atoms.begin(), all_atoms.end(),
-            std::inserter(atoms_to_remove, atoms_to_remove.begin()),
-            [mapping_n](const RDKit::Atom* atom) {
-                return atom->getAtomMapNum() == mapping_n;
-            });
+    for (auto* cur_atom : mol->atoms()) {
+        if (cur_atom == clicked_atom ||
+            cur_atom->getAtomMapNum() != mapping_n) {
+            continue;
+        }
+        atoms_to_remove.insert(cur_atom);
+        if (m_mol_model->isProductAtom(cur_atom)) {
+            ++num_other_product_atoms;
+        }
+    }
+    if (num_other_product_atoms > 0 &&
+        m_mol_model->isProductAtom(clicked_atom)) {
+        // there will still be remaining product atoms with this mapping
+        // number, so only remove the mapping from the clicked atom
+        atoms_to_remove = {clicked_atom};
+    }
     m_mol_model->setAtomMapping(atoms_to_remove, 0);
+}
+
+bool AtomMappingSceneTool::isValidMappingPair(
+    const AtomItem* const pressed_atom_item,
+    const AtomItem* const hovered_atom_item)
+{
+    if (hovered_atom_item == nullptr ||
+        hovered_atom_item == pressed_atom_item) {
+        return false;
+    }
+    auto* pressed_atom = pressed_atom_item->getAtom();
+    auto* hovered_atom = hovered_atom_item->getAtom();
+    return (m_mol_model->isReactantAtom(pressed_atom) !=
+            m_mol_model->isReactantAtom(hovered_atom));
 }
 
 void AtomMappingSceneTool::onLeftButtonDragMove(
@@ -109,15 +137,14 @@ void AtomMappingSceneTool::onLeftButtonDragMove(
         m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
     auto atom_item = qgraphicsitem_cast<AtomItem*>(item);
 
-    // TODO:  in reactions avoid mapping within products or within reactants
-
-    if (atom_item != m_pressed_atom_item) {
+    if (isValidMappingPair(m_pressed_atom_item, atom_item)) {
         m_release_atom_item = atom_item;
-    }
-
-    // snap the line to hovered atom if valid
-    if (atom_item != nullptr) {
+        // snap the line to the hovered atom
         scene_pos = atom_item->scenePos();
+    } else {
+        // the hovered atom item isn't valid for mapping, so ignore it
+        atom_item = nullptr;
+        m_release_atom_item = nullptr;
     }
 
     // shorten line to avoid overlapping with atoms
