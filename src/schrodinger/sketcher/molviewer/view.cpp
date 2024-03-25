@@ -156,6 +156,14 @@ void View::fitToScreen()
     if (!cur_scene) {
         return;
     }
+    /** reset the viewport (which gets translated by right-mouse drags). From
+     * Qt's documentation:
+     * "If unset, or if set to a null *QRectF, sceneRect() will return the
+     * largest bounding rect of all items on the scene since the scene *was
+     * created (i.e., a rectangle that grows when items are added to or moved in
+     * the scene, but never *shrinks)."
+     */
+    setSceneRect(QRectF());
 
     QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
     // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
