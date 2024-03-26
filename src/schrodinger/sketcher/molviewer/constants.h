@@ -277,6 +277,11 @@ const int CURSOR_HINT_Y = 18;
 // is cropped after resizing.
 const int CURSOR_HINT_IMAGE_SIZE = 28;
 
+// The maximum number of atoms that can be imported at once. Attempting to
+// import a molecule or reaction with too many atoms will result in an error
+// dialog informing the user of the problem.
+const unsigned int MAX_NUM_ATOMS_FOR_IMPORT = 200;
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
