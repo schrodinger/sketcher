@@ -128,7 +128,9 @@ DrawFragmentSceneTool::DrawFragmentSceneTool(
 
 std::vector<QGraphicsItem*> DrawFragmentSceneTool::getGraphicsItems()
 {
-    return {&m_hint_item};
+    auto items = StandardSceneToolBase::getGraphicsItems();
+    items.push_back(&m_hint_item);
+    return items;
 }
 
 void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)

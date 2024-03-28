@@ -15,6 +15,20 @@ namespace schrodinger
 namespace sketcher
 {
 
+AngleTextItem::AngleTextItem() : QGraphicsSimpleTextItem()
+{
+    setZValue(static_cast<qreal>(ZOrder::ROTATION_HANDLE));
+    setBrush(ROTATION_ITEM_TEXT_COLOR);
+    auto angle_font = font();
+    angle_font.setPointSize(ROTATION_ITEM_FONT_SIZE);
+    setFont(angle_font);
+}
+
+void AngleTextItem::centerOn(const QPointF& point)
+{
+    setPos(point - boundingRect().center());
+}
+
 MergeHintItem::MergeHintItem(QGraphicsItem* parent) : QGraphicsItemGroup(parent)
 {
     setZValue(static_cast<qreal>(ZOrder::HINT));
@@ -60,7 +74,9 @@ void StandardSceneToolBase::onRightButtonClick(
 
 void StandardSceneToolBase::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
-    if (!m_mouse_pressed && m_highlight_types != InteractiveItemFlag::NONE) {
+    if (m_mouse_pressed) {
+        m_predictive_highlighting_item.clearHighlightingPath();
+    } else if (m_highlight_types != InteractiveItemFlag::NONE) {
         QPointF scene_pos = event->scenePos();
         QGraphicsItem* item =
             m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
@@ -82,8 +98,7 @@ void StandardSceneToolBase::onMiddleButtonDragStart(
 void StandardSceneToolBase::onMiddleButtonDragMove(
     QGraphicsSceneMouseEvent* const event)
 {
-    auto center_of_rotation = find_centroid(
-        *(m_mol_model->getMol()), m_atoms_to_move, m_non_mol_objs_to_move);
+    auto center_of_rotation = findPivotPointForRotation();
     rotate(event, to_scene_xy(center_of_rotation), m_atoms_to_move,
            m_non_mol_objs_to_move);
     AbstractSceneTool::onMiddleButtonDragMove(event);
@@ -93,6 +108,7 @@ void StandardSceneToolBase::onMiddleButtonDragRelease(
     QGraphicsSceneMouseEvent* const event)
 {
     finishDrag();
+    m_angle_text_item.setText("");
     AbstractSceneTool::onMiddleButtonDragRelease(event);
 }
 
@@ -184,6 +200,12 @@ void StandardSceneToolBase::translate(
 void StandardSceneToolBase::updateGraphicsItemsDuringRotation(
     QGraphicsSceneMouseEvent* const event)
 {
+    auto center = to_scene_xy(findPivotPointForRotation());
+    auto angle_to_display =
+        QLineF(center, event->scenePos())
+            .angleTo(QLineF(center, m_drag_start_scene_pos));
+    m_angle_text_item.setText(QString::number(angle_to_display, 'f', 0));
+    m_angle_text_item.centerOn(center);
 }
 
 void StandardSceneToolBase::updateGraphicsItemsDuringTranslation(
@@ -193,7 +215,8 @@ void StandardSceneToolBase::updateGraphicsItemsDuringTranslation(
 
 std::vector<QGraphicsItem*> StandardSceneToolBase::getGraphicsItems()
 {
-    return {&m_predictive_highlighting_item, &m_merge_hint_item};
+    return {&m_predictive_highlighting_item, &m_merge_hint_item,
+            &m_angle_text_item};
 }
 
 RDGeom::Point3D StandardSceneToolBase::findPivotPointForRotation()

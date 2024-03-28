@@ -25,6 +25,16 @@ class Scene;
 class MolModel;
 
 /**
+ * A graphics item that shows the rotation angle's value
+ */
+class AngleTextItem : public QGraphicsSimpleTextItem
+{
+  public:
+    AngleTextItem();
+    void centerOn(const QPointF& center);
+};
+
+/**
  * A graphics item group that displays circles around all pairs of atoms that
  * will be merged at the end of the drag.
  */
@@ -143,6 +153,7 @@ class SKETCHER_API StandardSceneToolBase : public AbstractSceneTool
     void setCurrentSelectionAsObjectsToMove();
 
     MergeHintItem m_merge_hint_item = MergeHintItem();
+    AngleTextItem m_angle_text_item = AngleTextItem();
 
     /**
      * compute the pivot point for a rotation. This is the selected atom that

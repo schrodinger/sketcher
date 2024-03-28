@@ -26,9 +26,30 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
     StandardSceneToolBase(scene, mol_model)
 {
     m_allow_context_menu = false;
-    m_highlight_types = InteractiveItemFlag::ALL;
+    m_highlight_types = InteractiveItemFlag::NONE;
     updateRotationItem();
     updateMoveSelectionItem();
+}
+
+void MoveRotateSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
+{
+    StandardSceneToolBase::onMouseMove(event);
+    if (m_mouse_pressed) {
+        return;
+    }
+    if (m_rotation_item.isInsideHandle(event->scenePos())) {
+        emit newCursorHintRequested(m_rotate_cursor_hint);
+        /* override base class predictive highlighting to the whole selection or
+         * the whole scene if there's no selection*/
+        auto items_to_highlight = m_scene->selectedItems();
+        if (items_to_highlight.empty()) {
+            items_to_highlight = m_scene->getInteractiveItems();
+        }
+        m_predictive_highlighting_item.highlightItems(items_to_highlight);
+    } else {
+        emit newCursorHintRequested(m_translate_cursor_hint);
+        m_predictive_highlighting_item.highlightItems({});
+    }
 }
 
 void MoveRotateSceneTool::onLeftButtonDragStart(
@@ -38,7 +59,7 @@ void MoveRotateSceneTool::onLeftButtonDragStart(
     auto selected_non_mol_objs = m_mol_model->getSelectedNonMolecularObjects();
 
     QString description;
-    if (m_rotation_item.isInsideHandle(event->scenePos())) {
+    if (m_rotation_item.isInsideHandle(m_mouse_press_scene_pos)) {
         emit newCursorHintRequested(m_rotate_cursor_hint);
         m_action = Action::ROTATE;
         description = "Rotate";
@@ -51,7 +72,8 @@ void MoveRotateSceneTool::onLeftButtonDragStart(
             setObjectsToMove(selected_atoms, selected_non_mol_objs);
         }
     }
-    // begin an undo macro in case we have to merge atoms at the end of the drag
+    // begin an undo macro in case we have to merge atoms at the end of the
+    // drag
     m_mol_model->beginUndoMacro(description);
     StandardSceneToolBase::onLeftButtonDragStart(event);
 }
@@ -81,7 +103,7 @@ void MoveRotateSceneTool::onLeftButtonDragRelease(
 {
     finishDrag();
     m_action = Action::NONE;
-    m_rotation_item.setAngleValue("");
+    m_angle_text_item.setText("");
     updateMergeHintItem();
     StandardSceneToolBase::onLeftButtonDragMove(event);
 }
@@ -94,11 +116,8 @@ void MoveRotateSceneTool::updateGraphicsItemsDuringRotation(
     auto angle = QLineF(center, event->scenePos()).angle();
     m_rotation_item.setArmAngle(m_rotation_item.getArmAngle() + angle -
                                 prev_angle);
-
-    auto angle_to_display =
-        QLineF(center, event->scenePos())
-            .angleTo(QLineF(center, m_drag_start_scene_pos));
-    m_rotation_item.setAngleValue(QString::number(angle_to_display, 'f', 0));
+    // update rotation angle text
+    StandardSceneToolBase::updateGraphicsItemsDuringRotation(event);
 }
 
 void MoveRotateSceneTool::updateGraphicsItemsDuringTranslation(
@@ -117,8 +136,8 @@ void MoveRotateSceneTool::updateRotationItem()
     m_rotation_item.setPivotPoint(to_scene_xy(pivot_point));
 
     // Show the rotation handle if there is more than one selected atom or
-    // non-molecular object, or if there is no selection and the molecule has
-    // more than one atom or non-molecular object
+    // non-molecular object, or if there is no selection and the molecule
+    // has more than one atom or non-molecular object
     auto sel_atoms = m_mol_model->getSelectedAtoms();
     auto sel_nmo = m_mol_model->getSelectedNonMolecularObjects();
     int num_atoms = sel_atoms.empty() && sel_nmo.empty()
@@ -155,7 +174,7 @@ void MoveRotateSceneTool::onStructureUpdated()
 
 QPixmap MoveRotateSceneTool::createDefaultCursorPixmap() const
 {
-    return cursor_hint_from_svg(":/icons/select_move_rotate.svg");
+    return m_translate_cursor_hint;
 }
 
 } // namespace sketcher
