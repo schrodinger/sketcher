@@ -87,7 +87,8 @@ const QString BOND_QUERY_STYLE{
     "QToolButton { font: bold 12px; color: #333333; }"};
 
 const QString ENUMERATION_STYLE{
-    "QToolButton { font: bold 14px; color: #444444; }"};
+    "QToolButton { font: bold 14px; color: #444444; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
 
 } // namespace sketcher
 } // namespace schrodinger

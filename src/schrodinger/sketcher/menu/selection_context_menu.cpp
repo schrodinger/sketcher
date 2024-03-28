@@ -45,7 +45,6 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
     addMenu(m_modify_atoms_menu);
     addMenu(m_modify_bonds_menu);
     addMenu(createAddToSelectionMenu());
-    addMenu(createReplaceSelectionWithMenu());
     addSeparator();
     addAction("Delete", this, [this]() {
         emit deleteRequested(m_atoms, m_bonds, m_sgroups,
@@ -76,9 +75,6 @@ void SelectionContextMenu::updateActions()
 {
     bool enable = m_atoms.size() >= 2 && in_same_fragment(m_atoms);
     m_variable_bond_action->setEnabled(enable);
-
-    auto rgroup_numbers = get_all_r_group_numbers(m_mol_model->getMol());
-    m_existing_rgroup_menu->setEnabled(!rgroup_numbers.empty());
 
     auto* mol = m_mol_model->getMol();
     bool enable_bracket =
@@ -113,26 +109,6 @@ QMenu* SelectionContextMenu::createAddToSelectionMenu()
         "Variable Attachment Bond", this,
         [this]() { emit variableAttachmentBondRequested(m_atoms); });
     return add_to_selection_menu;
-}
-
-QMenu* SelectionContextMenu::createReplaceSelectionWithMenu()
-{
-    auto replace_selection_menu = new QMenu("Replace Selection with", this);
-    replace_selection_menu->addAction(
-        "New R-Group", this, [this]() { emit newRGroupRequested(m_atoms); });
-
-    m_existing_rgroup_menu =
-        new ExistingRGroupMenu(m_mol_model, replace_selection_menu);
-    connect(m_existing_rgroup_menu,
-            &ExistingRGroupMenu::existingRGroupRequested, this,
-            [this](auto rgroup_number) {
-                emit existingRGroupRequested(m_atoms, rgroup_number);
-            });
-    replace_selection_menu->addMenu(m_existing_rgroup_menu);
-
-    // SKETCH-951 TODO: add QAction for "Aromatized Structure"
-    // SKETCH-951 TODO: add QAction for "Kekulized Structure"
-    return replace_selection_menu;
 }
 
 } // namespace sketcher

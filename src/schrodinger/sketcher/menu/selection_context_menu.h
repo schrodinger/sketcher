@@ -66,25 +66,18 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     void bracketSubgroupDialogRequested(
         const std::unordered_set<const RDKit::Atom*>&);
     void invertSelectionRequested();
-    void
-    newRGroupRequested(const std::unordered_set<const RDKit::Atom*>& atoms);
-    void
-    existingRGroupRequested(const std::unordered_set<const RDKit::Atom*>& atoms,
-                            unsigned int rgroup_number);
 
   protected:
     SketcherModel* m_sketcher_model = nullptr;
     MolModel* m_mol_model = nullptr;
     CutCopyActionManager* m_cut_copy_actions = nullptr;
     QAction* m_variable_bond_action = nullptr;
-    ExistingRGroupMenu* m_existing_rgroup_menu = nullptr;
 
   protected slots:
     virtual void updateActions();
 
   private:
     QMenu* createAddToSelectionMenu();
-    QMenu* createReplaceSelectionWithMenu();
     QAction* m_bracket_group_action = nullptr;
     QAction* m_flip_action = nullptr;
 };

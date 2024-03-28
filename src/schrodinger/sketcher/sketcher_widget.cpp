@@ -484,12 +484,6 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
                 m_mol_model->addVariableAttachmentBond(atoms);
                 m_mol_model->clearSelection();
             });
-    using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
-    connect(&menu, &SelectionContextMenu::newRGroupRequested, m_mol_model,
-            qOverload<const RDKitAtoms&>(&MolModel::mutateRGroups));
-    connect(&menu, &SelectionContextMenu::existingRGroupRequested, m_mol_model,
-            qOverload<const RDKitAtoms&, const unsigned int>(
-                &MolModel::mutateRGroups));
     connect(&menu, &SelectionContextMenu::deleteRequested, this,
             [this](auto atoms, auto bonds, auto sgroups, auto non_mol_objs) {
                 m_mol_model->remove(atoms, bonds, sgroups, non_mol_objs);
