@@ -119,8 +119,11 @@ static void check_for_supplementary_info(
 
     static const std::string sgroup_datafields{"DATAFIELDS"};
 
-    const auto& supplementary_info = get_property<std::vector<std::string>>(
-        &*supplementary_info_sgroup, sgroup_datafields);
+    std::vector<std::string> supplementary_info;
+    if (!supplementary_info_sgroup->getPropIfPresent(sgroup_datafields,
+                                                     supplementary_info)) {
+        return;
+    }
 
     if (!supplementary_info[0].empty()) {
         errors.push_back("FASTA conversions with HELMV2.0 polymer "

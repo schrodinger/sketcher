@@ -21,6 +21,9 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
+#include "schrodinger/rdkit_extensions/coarse_grain.h"
+
+using namespace schrodinger::rdkit_extensions;
 
 /*
  * The structure of the output romol is as follows:
@@ -169,34 +172,6 @@ void condense_monomer_list(const std::string_view& polymer_id,
 
 [[nodiscard]] ::RDKit::RWMol create_helm_polymer(const polymer& polymer)
 {
-
-    static auto create_helm_monomer = [](const auto& polymer_id,
-                                         const auto& monomer,
-                                         const int residue_number) {
-        auto atom = std::make_unique<::RDKit::Atom>();
-        const auto monomer_id = get_monomer_id(polymer_id, monomer);
-        atom->setProp(ATOM_LABEL, monomer_id);
-        if (!monomer.annotation.empty()) {
-            atom->setProp(ANNOTATION, std::string{monomer.annotation});
-        }
-        // NOTE: Doing it this way since it has no functional use at the
-        // moment.
-        if (monomer.is_list) {
-            atom->setProp(MONOMER_LIST, std::string{monomer.id});
-        }
-
-        // NOTE: These are to allow replacing the python api
-        atom->setProp(BRANCH_MONOMER, monomer.is_branch);
-        atom->setProp(SMILES_MONOMER, monomer.is_smiles);
-
-        auto* residue_info = new ::RDKit::AtomPDBResidueInfo();
-        residue_info->setResidueNumber(residue_number);
-        residue_info->setResidueName(monomer_id);
-        residue_info->setChainId(std::string{polymer_id});
-        atom->setMonomerInfo(residue_info);
-        return atom;
-    };
-
     // NOTE: Not making this static because gcc complains it's unused
     auto create_ambiguous_repetition_sru = [](auto& mol,
                                               const auto& repetition) {
@@ -239,29 +214,34 @@ void condense_monomer_list(const std::string_view& polymer_id,
         return sru_sgroup;
     };
 
-    static auto add_substructure_search_props = [](auto* atom,
-                                                   const auto& monomer) {
-        static boost::hash<std::string_view> hasher;
-        atom->setIsotope(hasher(monomer.id));
-    };
-
     std::vector<::RDKit::SubstanceGroup> monomer_lists;
     ::RDKit::RWMol mol;
-    int residue_number = 1;
     int prev_backbone_idx = -1;
+    auto& polymer_sgroup = add_chain(mol, polymer.id);
     for (const auto& monomer : polymer.monomers) {
-        auto atom = create_helm_monomer(polymer.id, monomer, residue_number);
-        add_substructure_search_props(atom.get(), monomer);
-        auto idx = mol.addAtom(atom.release(), true, true);
+        auto idx =
+            add_monomer(polymer_sgroup, get_monomer_id(polymer.id, monomer));
+        auto atom = mol.getAtomWithIdx(idx);
+        if (!monomer.annotation.empty()) {
+            atom->setProp(ANNOTATION, std::string{monomer.annotation});
+        }
+        // NOTE: Doing it this way since it has no functional use at the
+        // moment.
+        if (monomer.is_list) {
+            atom->setProp(MONOMER_LIST, std::string{monomer.id});
+        }
+
+        // NOTE: These are to allow replacing the python layout api
+        atom->setProp(BRANCH_MONOMER, monomer.is_branch);
+        atom->setProp(SMILES_MONOMER, monomer.is_smiles);
+
         if (prev_backbone_idx != -1) {
-            idx = mol.addBond(prev_backbone_idx, idx,
-                              ::RDKit::Bond::BondType::SINGLE);
-            mol.getBondWithIdx(idx - 1)->setProp(
-                LINKAGE, std::string{monomer.is_branch ? BRANCH_LINKAGE
-                                                       : BACKBONE_LINKAGE});
+            const auto connection_type = monomer.is_branch
+                                             ? ConnectionType::SIDECHAIN
+                                             : ConnectionType::FORWARD;
+            add_connection(mol, prev_backbone_idx, idx, connection_type);
         }
         prev_backbone_idx = (monomer.is_branch ? prev_backbone_idx : idx);
-        ++residue_number;
     }
 
     // if the monomer sequence has ambiguous repetitions, create an SRU
@@ -274,18 +254,15 @@ void condense_monomer_list(const std::string_view& polymer_id,
                        return create_ambiguous_repetition_sru(mol, repetition);
                    });
 
-    // Store polymer information as sgroup for easier access to polymer-level
-    // information
-    ::RDKit::SubstanceGroup polymer_sgroup(&mol, "COP");
+    // re-add atoms and bonds because wildcard atoms are skipped:
     const auto atom_indices = boost::irange(mol.getNumAtoms());
     polymer_sgroup.setAtoms({atom_indices.begin(), atom_indices.end()});
     const auto bond_indices = boost::irange(mol.getNumBonds());
     polymer_sgroup.setBonds({bond_indices.begin(), bond_indices.end()});
-    polymer_sgroup.setProp("ID", std::string{polymer.id});
+
     if (!polymer.annotation.empty()) {
         polymer_sgroup.setProp(ANNOTATION, std::string{polymer.annotation});
     }
-    ::RDKit::addSubstanceGroup(mol, polymer_sgroup);
 
     std::for_each(repeated_monomers.begin(), repeated_monomers.end(),
                   [&](const auto& sru_sgroup) {

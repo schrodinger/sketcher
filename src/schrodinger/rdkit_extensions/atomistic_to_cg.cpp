@@ -11,6 +11,9 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 
+#include "schrodinger/rdkit_extensions/coarse_grain.h"
+#include "schrodinger/rdkit_extensions/helm.h"
+
 namespace schrodinger
 {
 namespace rdkit_extensions
@@ -198,17 +201,12 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
                   boost::shared_ptr<RDKit::RWMol> cg_mol,
                   std::vector<std::pair<unsigned int, unsigned int>>& linkages)
 {
-    // There are sort of two options here -- we could build this to take an
-    // RWMol that we collapse in-place, or we could build a new CG mol from
-    // scratch. The former may be better if we ever want to partially
-    // coarse-grain a molecule, but the latter makes more sense in the context
-    // of how we currently expect to use coarsegrain mols.
-    constexpr bool update_label = false;
-    constexpr bool take_ownership = true;
+    // Start with all atoms in a single peptide chain
+    cg_mol->setProp<bool>(HELM_MODEL, true);
+    auto& chain = add_chain(*cg_mol, ChainType::PEPTIDE);
+
     constexpr bool isomeric_smiles = false;
     for (const auto& monomer : monomers) {
-        auto at_idx =
-            cg_mol->addAtom(new RDKit::Atom(0), update_label, take_ownership);
         auto monomer_smiles = RDKit::MolFragmentToSmiles(
             atomistic_mol, monomer, nullptr, nullptr, nullptr, isomeric_smiles);
         // roundtrip to canonicalize smiles
@@ -219,23 +217,17 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
         // NOTE: Setting the smilesSymbol is temporary & for testing purposes --
         // I think we'd actually want to set the atomLabel here
         if (amino_acids.find(monomer_smiles) != amino_acids.end()) {
-            cg_mol->getAtomWithIdx(at_idx)->setProp<std::string>(
-                "smilesSymbol", amino_acids.at(monomer_smiles));
+            add_monomer(chain, amino_acids.at(monomer_smiles));
         } else {
-            // setting monomer_smiles as property for now to see in CG smiles
-            // string
-            cg_mol->getAtomWithIdx(at_idx)->setProp<std::string>(
-                "smilesSymbol", monomer_smiles);
+            add_monomer(chain, monomer_smiles, MonomerType::SMILES);
         }
 
         // TODO: Check for known nucleic acids and CHEM monomers
-
-        // TODO: Set properties needed by the HELM writer
     }
 
     for (const auto& [monomer_idx1, monomer_idx2] : linkages) {
-        cg_mol->addBond(monomer_idx1, monomer_idx2, RDKit::Bond::SINGLE);
-        // TODO: Set linkage information needed by the HELM writer
+        // TODO: Non forward linkages
+        add_connection(*cg_mol, monomer_idx1, monomer_idx2);
     }
 }
 
@@ -251,6 +243,7 @@ boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol)
 
     boost::shared_ptr<RDKit::RWMol> cg_mol = boost::make_shared<RDKit::RWMol>();
     build_cg_mol(atomistic_mol, monomers, cg_mol, linkages);
+    assign_chains(*cg_mol);
 
     // TODO
     // Now that we have the CG mol, we need to set the properties needed by the

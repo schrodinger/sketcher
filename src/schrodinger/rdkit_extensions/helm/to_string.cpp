@@ -77,16 +77,21 @@ template <class PropType, class RDKitObject> PropType get_property
 
     ss << "$" << boost::join(connections_helm, "|");
     const auto& sgroup =
-        *std::find_if(sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
+        std::find_if(sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
             return get_property<std::string>(&sgroup, "TYPE") == "DAT" &&
                    get_property<std::string>(&sgroup, "FIELDNAME") ==
                        SUPPLEMENTARY_INFORMATION;
         });
 
-    const auto& supplementary_info =
-        get_property<std::vector<std::string>>(&sgroup, "DATAFIELDS");
-    ss << "$" << supplementary_info[0];
-    ss << "$" << supplementary_info[1];
+    std::vector<std::string> supplementary_info;
+    if (sgroup != sgroups.end() &&
+        sgroup->getPropIfPresent("DATAFIELDS", supplementary_info)) {
+        ss << '$' << supplementary_info[0];
+        ss << '$' << supplementary_info[1];
+    } else {
+        ss << "$$";
+    }
+
     ss << "$V2.0";
     return ss.str();
 }
