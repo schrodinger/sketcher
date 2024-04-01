@@ -197,6 +197,7 @@ const std::string CYCLOHEXANE_FRAG_SMILES = "*C1CCCCC1 |$_AP1;;;;;;$|";
 const std::string BENZENE_MOL_SMILES = "C1=CC=CC=C1";
 const std::string BENZENE_FRAG_SMILES = "*C1=CC=CC=C1 |$_AP1;;;;;;$|";
 const std::string METHYLCYCLOHEXANE_MOL_SMILES = "CC1CCCCC1";
+const std::string TWO_RINGS_SMILES = "C1=CC=C2C=CC=CC2=C1";
 
 void check_coords(const RDGeom::Point3D& point, const double exp_x,
                   const double exp_y)
@@ -2320,7 +2321,18 @@ BOOST_AUTO_TEST_CASE(test_adding_fragments)
     check_fragment_addition(BENZENE_MOL_SMILES, BENZENE_FRAG_SMILES,
                             "C1=CC2=C(C=C1)C=CC=C2", -1, 0);
     check_fragment_addition(BENZENE_MOL_SMILES, BENZENE_FRAG_SMILES,
-                            "C1=CC=C2=CC=CC=C2=C1", -1, 1);
+                            TWO_RINGS_SMILES, -1, 1);
+
+    // add a third ring and make sure that we don't introduce valence errors
+    check_fragment_addition(TWO_RINGS_SMILES, BENZENE_FRAG_SMILES,
+                            "C1=CC2=CC=CC3=C2C(=C1)C=CC3", -1, 3);
+    check_fragment_addition(TWO_RINGS_SMILES, BENZENE_FRAG_SMILES,
+                            "C1=CC2=CC=CC3=C2C(=C1)CC=C3", -1, 2);
+
+    // add a benzene ring to a sulfur atom and make sure that we keep the
+    // benzene's double bond
+    check_fragment_addition("CC(C)S", BENZENE_FRAG_SMILES, "CC(C)S1=CC=CC=C1",
+                            3, -1);
 }
 
 /**

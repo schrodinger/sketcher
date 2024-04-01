@@ -85,6 +85,10 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
     m_bond_item_settings.m_color = STRUCTURE_HINT_COLOR;
     m_bond_item_settings.m_bond_width = FRAGMENT_HINT_BOND_WIDTH;
 
+    std::transform(m_frag.bonds().begin(), m_frag.bonds().end(),
+                   std::back_inserter(m_orig_bond_types),
+                   [](const auto* bond) { return bond->getBondType(); });
+
     // We'll set this to visible once the mouse is over the scene
     setVisible(false);
     setZValue(static_cast<qreal>(ZOrder::HINT));
@@ -115,6 +119,34 @@ void HintFragmentItem::updateConformer(const RDKit::Conformer& conformer)
                                        m_s_group_items, m_frag);
 }
 
+void HintFragmentItem::updateSingleBondMutations(
+    const std::unordered_set<RDKit::Bond*>& bonds_to_mutate)
+{
+    // this class stores a copy of the molecule, so we need to use bond indices
+    // rather than bond pointers
+    std::vector<unsigned int> bond_idxs_to_mutate;
+    std::transform(bonds_to_mutate.begin(), bonds_to_mutate.end(),
+                   std::back_inserter(bond_idxs_to_mutate),
+                   [](const auto* bond) { return bond->getIdx(); });
+    std::sort(bond_idxs_to_mutate.begin(), bond_idxs_to_mutate.end());
+    auto bonds_idxs_to_mutate_it = bond_idxs_to_mutate.begin();
+    for (unsigned int bond_idx = 0; bond_idx < m_frag.getNumBonds();
+         ++bond_idx) {
+        RDKit::Bond::Bond::BondType cur_bond_type =
+            RDKit::Bond::Bond::BondType::SINGLE;
+        if (bonds_idxs_to_mutate_it != bond_idxs_to_mutate.end() &&
+            bond_idx == *bonds_idxs_to_mutate_it) {
+            ++bonds_idxs_to_mutate_it;
+        } else {
+            cur_bond_type = m_orig_bond_types[bond_idx];
+        }
+        m_frag.getBondWithIdx(bond_idx)->setBondType(cur_bond_type);
+    }
+    for (auto cur_bond_item : m_bond_items) {
+        static_cast<BondItem*>(cur_bond_item)->updateCachedData();
+    }
+}
+
 DrawFragmentSceneTool::DrawFragmentSceneTool(
     const RDKit::ROMol& fragment, const Fonts& fonts,
     const AtomItemSettings& atom_item_settings,
@@ -143,6 +175,12 @@ void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
     auto [new_conf, overlay_atom] =
         getFragConfAndCoreAtomForScenePos(event->scenePos());
     m_hint_item.updateConformer(new_conf);
+    std::unordered_set<RDKit::Bond*> bonds_to_mutate;
+    if (overlay_atom != nullptr) {
+        bonds_to_mutate = determine_fragment_bonds_to_mutate_to_single_bonds(
+            m_frag, new_conf, *m_mol_model->getMol(), overlay_atom);
+    }
+    m_hint_item.updateSingleBondMutations(bonds_to_mutate);
     m_hint_item.show();
 }
 

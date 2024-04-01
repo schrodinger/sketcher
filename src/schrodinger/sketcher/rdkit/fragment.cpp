@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <tuple>
 
+#include <rdkit/GraphMol/PeriodicTable.h>
 #include <rdkit/GraphMol/QueryOps.h>
 
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -13,8 +14,6 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
-
-#include <iostream>
 
 namespace schrodinger
 {
@@ -143,34 +142,6 @@ bool should_flip_ring_fragment(const RDKit::ROMol& fragment,
 }
 
 /**
- * Determine whether the ring containing the given bond consists entirely of
- * single bonds.  If this bond is in multiple rings, only the smallest ring will
- * be considered.
- * @param mol The molecule containing bond
- * @param bond The bond to examine
- */
-bool smallest_ring_contains_only_single_bonds(const RDKit::ROMol& mol,
-                                              const RDKit::Bond* bond)
-{
-    const auto* ring_info = mol.getRingInfo();
-    const auto& bond_rings = ring_info->bondRings();
-    const auto bond_members = ring_info->bondMembers(bond->getIdx());
-    size_t smallest_ring_idx = *std::min_element(
-        bond_members.begin(), bond_members.end(),
-        [&bond_rings](const size_t idx1, const size_t idx2) {
-            return bond_rings[idx1].size() < bond_rings[idx2].size();
-        });
-    for (int bond_idx : bond_rings[smallest_ring_idx]) {
-        const auto* ring_bond = mol.getBondWithIdx(bond_idx);
-        if (ring_bond->hasQuery() ||
-            ring_bond->getBondType() != RDKit::Bond::BondType::SINGLE) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
  * Get a list of candidate bonds from the fragment that could possibly be used
  * for aligning the fragment with the core.  The bonds are all between the
  * attachment point parent atom and a non-attachment-point atom.  If the
@@ -221,11 +192,9 @@ const RDKit::Bond* get_frag_bond_to_align_to(
     auto frag_bonds = get_candidate_frag_bonds_for_alignment(
         fragment, frag_ap_parent_atom, frag_is_ring);
 
-    if (frag_is_ring && RDKit::queryIsBondInRing(core_bond) &&
-        smallest_ring_contains_only_single_bonds(core, core_bond)) {
-        // if the fragment is a ring fragment and the core atom is in a ring
-        // that contains only single bonds, then frag_bond should be the bond
-        // with the highest order
+    if (frag_is_ring && RDKit::queryIsBondInRing(core_bond)) {
+        // if the fragment and the core are both rings, then frag_bond should be
+        // the bond with the highest order
         return *std::max_element(
             frag_bonds.begin(), frag_bonds.end(),
             [](const RDKit::Bond* const bond1, const RDKit::Bond* const bond2) {
@@ -283,6 +252,46 @@ bool is_heteroatom_or_query(const RDKit::Atom* const atom)
 }
 
 } // namespace
+
+static std::unordered_set<RDKit::Bond*>
+determine_fragment_bonds_to_mutate_to_single_bonds(
+    RDKit::ROMol& fragment, const RDKit::ROMol& core,
+    const AtomToAtomMap& frag_atom_to_core_atom);
+
+static std::tuple<const RDKit::Atom*, const RDKit::Atom*, const RDKit::Bond*>
+get_frag_neighbor_and_corresponding_core_neighbor_and_bond(
+    const RDKit::Atom* const frag_atom, const RDKit::Bond* const frag_bond,
+    const RDKit::Atom* const core_atom,
+    const AtomToAtomMap& frag_atom_to_core_atom);
+
+static bool should_replace_core_bond(const RDKit::Bond* const frag_bond,
+                                     const RDKit::Bond* const core_bond);
+
+static AtomToAtomMap get_fragment_to_core_atom_map(
+    const RDKit::ROMol& fragment, const RDKit::Conformer& frag_conf,
+    const RDKit::Atom* frag_start_atom, const RDKit::ROMol& core,
+    const RDKit::Atom* core_start_atom);
+
+static AtomToAtomMap get_fragment_to_core_atom_map(
+    const RDKit::ROMol& fragment, const RDKit::Atom* frag_start_atom,
+    const RDKit::ROMol& core, const RDKit::Atom* core_start_atom);
+
+static bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
+                                     const RDKit::Atom* const core_atom);
+
+static std::vector<std::pair<unsigned int, AtomFunc>>
+determine_core_atom_mutations(const AtomToAtomMap& frag_atom_to_core_atom);
+
+static std::tuple<AtomPtrToFragBondMap,
+                  std::vector<std::pair<unsigned int, BondFunc>>,
+                  std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>>
+determine_core_bond_additions_and_mutations(
+    const RDKit::ROMol& core, const RDKit::ROMol& fragment,
+    AtomToAtomMap frag_atom_to_core_atom);
+
+static AtomIdxToFragBondMap convert_bond_map_from_ptrs_to_idxs(
+    const RDKit::ROMol& core,
+    const AtomPtrToFragBondMap& core_to_frag_bonds_by_ptr);
 
 RDKit::Conformer translate_fragment(const RDKit::ROMol& fragment,
                                     const RDGeom::Point3D& point)
@@ -377,6 +386,146 @@ align_fragment_with_bond(const RDKit::ROMol& fragment,
     return {new_conf, core_atom};
 }
 
+std::unordered_set<RDKit::Bond*>
+determine_fragment_bonds_to_mutate_to_single_bonds(
+    RDKit::ROMol& fragment, const RDKit::Conformer& frag_conf,
+    const RDKit::ROMol& core, const RDKit::Atom* const core_start_atom)
+{
+    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
+        get_frag_info(fragment);
+    auto frag_atom_to_core_atom = get_fragment_to_core_atom_map(
+        fragment, frag_conf, frag_ap_parent_atom, core, core_start_atom);
+    return determine_fragment_bonds_to_mutate_to_single_bonds(
+        fragment, core, frag_atom_to_core_atom);
+}
+
+/**
+ * @overload An overload that takes a mapping between core and fragment atoms
+ * instead of using the conformers.
+ */
+static std::unordered_set<RDKit::Bond*>
+determine_fragment_bonds_to_mutate_to_single_bonds(
+    RDKit::ROMol& fragment, const RDKit::ROMol& core,
+    const AtomToAtomMap& frag_atom_to_core_atom)
+{
+    std::unordered_set<RDKit::Bond*> frag_bonds_to_mutate;
+    auto bond_order_gt_one = [](const auto* bond) {
+        return bond->getBondTypeAsDouble() > 1;
+    };
+    const auto* table = RDKit::PeriodicTable::getTable();
+    for (auto [cur_frag_atom, cur_core_atom] : frag_atom_to_core_atom) {
+        if (fragment.getAtomDegree(cur_frag_atom) <= 1) {
+            continue;
+        }
+        auto cur_final_atom =
+            should_replace_core_atom(cur_frag_atom, cur_core_atom)
+                ? cur_frag_atom
+                : cur_core_atom;
+        auto valences = table->getValenceList(cur_final_atom->getAtomicNum());
+        auto max_valence = *std::max_element(valences.begin(), valences.end());
+
+        float cur_valence = 0.0;
+        std::unordered_set<const RDKit::Bond*>
+            core_bonds_that_overlap_frag_bonds;
+
+        // count the total valence contribution of the fragment bonds (and any
+        // core bonds that overlap fragment bonds) at this atom
+        for (auto* frag_bond : fragment.atomBonds(cur_frag_atom)) {
+            auto [frag_neighbor, core_neighbor, core_bond] =
+                get_frag_neighbor_and_corresponding_core_neighbor_and_bond(
+                    cur_frag_atom, frag_bond, cur_core_atom,
+                    frag_atom_to_core_atom);
+            if (core_bond == nullptr ||
+                should_replace_core_bond(frag_bond, core_bond)) {
+                cur_valence += frag_bond->getBondTypeAsDouble();
+            } else {
+                cur_valence += core_bond->getBondTypeAsDouble();
+            }
+            if (core_bond != nullptr) {
+                core_bonds_that_overlap_frag_bonds.insert(core_bond);
+                if (core_bond->getBondType() == RDKit::Bond::BondType::DOUBLE &&
+                    frag_bond->getBondType() == RDKit::Bond::BondType::DOUBLE) {
+                    // Mutate this fragment bond to avoid showing a blue
+                    // fragment hint double bond on top of a core double bond.
+                    // If the bonds are asymmetrical, then they'll wind up
+                    // looking like a triple bond when they're overlayed, since
+                    // the fragment bond's second line will be on the opposite
+                    // side from the core bond's second line. Note that this
+                    // mutation will *not* affect the actual structure that's
+                    // inserted, since the core's double bond will "win" over
+                    // the fragment's (post-mutation) single bond.
+                    frag_bonds_to_mutate.insert(frag_bond);
+                }
+            }
+        }
+
+        // count the total valence contribution of the remaining core bonds at
+        // this atom
+        for (auto* core_bond : core.atomBonds(cur_core_atom)) {
+            if (!core_bonds_that_overlap_frag_bonds.count(core_bond)) {
+                cur_valence += core_bond->getBondTypeAsDouble();
+            }
+        }
+
+        if (cur_valence > max_valence) {
+            // this atom is going to have too high of a valence if we don't do
+            // any mutations, so mutate all non-single fragment bonds to single
+            // bonds
+            auto frag_bonds_it = fragment.atomBonds(cur_frag_atom);
+            std::copy_if(frag_bonds_it.begin(), frag_bonds_it.end(),
+                         std::inserter(frag_bonds_to_mutate,
+                                       frag_bonds_to_mutate.begin()),
+                         bond_order_gt_one);
+        }
+    }
+    return frag_bonds_to_mutate;
+}
+
+/**
+ * @brief Find the core bond, if any, that corresponds to the given fragment
+ * bond
+ * @param frag_atom The fragment atom that corresponds to core_atom
+ * @param frag_bond A fragment bond involving frag_atom
+ * @param core_atom The core atom that corresponds to frag_atom
+ * @param frag_atom_to_core_atom  A map of fragment atoms to their
+ * corresponding core atom
+ * @return A tuple of
+ *   - The other fragment atom (i.e. not frag_atom) from frag_bond
+ *   - The core atom that corresponds to the other fragment atom from frag_bond.
+ *     Will be nullptr if there is no corresponding atom.
+ *   - The core bond that corresponds to frag_bond. Will be nullptr if there is
+ *     no corresponding bond.
+ */
+static std::tuple<const RDKit::Atom*, const RDKit::Atom*, const RDKit::Bond*>
+get_frag_neighbor_and_corresponding_core_neighbor_and_bond(
+    const RDKit::Atom* const frag_atom, const RDKit::Bond* const frag_bond,
+    const RDKit::Atom* const core_atom,
+    const AtomToAtomMap& frag_atom_to_core_atom)
+{
+    auto* frag_neighbor = frag_bond->getOtherAtom(frag_atom);
+    const RDKit::Atom* core_neighbor = nullptr;
+    const RDKit::Bond* core_bond = nullptr;
+    if (frag_atom_to_core_atom.count(frag_neighbor)) {
+        core_neighbor = frag_atom_to_core_atom.at(frag_neighbor);
+        auto& core = core_atom->getOwningMol();
+        core_bond = core.getBondBetweenAtoms(core_atom->getIdx(),
+                                             core_neighbor->getIdx());
+    }
+    return {frag_neighbor, core_neighbor, core_bond};
+}
+
+/**
+ * Determine whether we should replace a core bond with the corresponding
+ * fragment bond
+ * @param frag_bond The fragment bond that corresponds to core_bond
+ * @param core_bond The core bond that corresponds to frag_bond
+ */
+static bool should_replace_core_bond(const RDKit::Bond* const frag_bond,
+                                     const RDKit::Bond* const core_bond)
+{
+    return frag_bond->getBondType() != RDKit::Bond::BondType::SINGLE;
+}
+
 RDKit::Atom* prepare_fragment_for_insertion(RDKit::RWMol& fragment)
 {
     auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
@@ -390,16 +539,35 @@ RDKit::Atom* prepare_fragment_for_insertion(RDKit::RWMol& fragment)
     return fragment.getAtomWithIdx(frag_ap_parent_atom->getIdx());
 }
 
-AtomToAtomMap get_fragment_to_core_atom_map(const RDKit::ROMol& fragment,
-                                            const RDKit::Atom* frag_start_atom,
-                                            const RDKit::ROMol& core,
-                                            const RDKit::Atom* core_start_atom)
+/**
+ * When adding a fragment, figure out which fragment atoms correspond to core
+ * atoms.  In order to "correspond," the two atoms must have the same
+ * coordinates.  Additionally, all corresponding atoms must be connected.  In
+ * other words, frag_start_atom always corresponds to core_start_atom.
+ * Neighbors of frag_start_atom may correspond to neighbors of core_start_atom,
+ * assuming they have the same coordinates.  If a pair of those atoms are
+ * corresponding, then any neighbors of *those* atoms may correspond if they
+ * have the same coordinates, etc.
+ * @param fragment The fragment being added
+ * @param frag_conf The conformer of the fragment
+ * @param frag_start_atom The "starting" atom for the fragment, i.e. the
+ * attachment point parent atom.  This atom must have the same coordinates as
+ * core_start_atom.
+ * @param core The core molecule
+ * @param core_start_atom The "starting" atom for the core, i.e. the atom
+ * that was clicked on.  This atom must have the same coordinates as
+ * frag_start_atom.
+ * @return A map of fragment atoms to their corresponding core atom
+ */
+static AtomToAtomMap get_fragment_to_core_atom_map(
+    const RDKit::ROMol& fragment, const RDKit::Conformer& frag_conf,
+    const RDKit::Atom* frag_start_atom, const RDKit::ROMol& core,
+    const RDKit::Atom* core_start_atom)
 {
     AtomToAtomMap frag_atom_to_core_atom{{frag_start_atom, core_start_atom}};
     std::queue<std::pair<const RDKit::Atom*, const RDKit::Atom*>> to_examine;
     to_examine.emplace(frag_start_atom, core_start_atom);
 
-    const auto& frag_conf = fragment.getConformer();
     const auto& core_conf = core.getConformer();
     while (!to_examine.empty()) {
         auto [frag_atom, core_atom] = to_examine.front();
@@ -427,8 +595,25 @@ AtomToAtomMap get_fragment_to_core_atom_map(const RDKit::ROMol& fragment,
     return frag_atom_to_core_atom;
 }
 
-bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
-                              const RDKit::Atom* const core_atom)
+/**
+ * @overload An overload of that uses the default conformer for the fragment
+ */
+static AtomToAtomMap get_fragment_to_core_atom_map(
+    const RDKit::ROMol& fragment, const RDKit::Atom* frag_start_atom,
+    const RDKit::ROMol& core, const RDKit::Atom* core_start_atom)
+{
+    const auto& frag_conf = fragment.getConformer();
+    return get_fragment_to_core_atom_map(fragment, frag_conf, frag_start_atom,
+                                         core, core_start_atom);
+}
+
+/**
+ * Determine whether we should replace a core atom with a fragment atom
+ * @param frag_atom The fragment atom that corresponds to core_atom
+ * @param core_atom The core atom that corresponds to frag_atom
+ */
+static bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
+                                     const RDKit::Atom* const core_atom)
 {
     if (is_heteroatom_or_query(frag_atom)) {
         return true;
@@ -436,7 +621,15 @@ bool should_replace_core_atom(const RDKit::Atom* const frag_atom,
     return !is_heteroatom_or_query(core_atom);
 }
 
-std::vector<std::pair<unsigned int, AtomFunc>>
+/**
+ * When adding a fragment, figure out which core atoms should be mutated to
+ * match the fragment.
+ * @param frag_atom_to_core_atom A map of fragment atoms to their
+ * corresponding core atom
+ * @return A list of (core atom index, function that returns an atom to mutate
+ * to)
+ */
+static std::vector<std::pair<unsigned int, AtomFunc>>
 determine_core_atom_mutations(const AtomToAtomMap& frag_atom_to_core_atom)
 {
     std::vector<std::pair<unsigned int, AtomFunc>> mutations_to_core_atoms;
@@ -453,8 +646,27 @@ determine_core_atom_mutations(const AtomToAtomMap& frag_atom_to_core_atom)
     return mutations_to_core_atoms;
 }
 
-std::tuple<AtomPtrToFragBondMap, std::vector<std::pair<unsigned int, BondFunc>>,
-           std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>>
+/**
+ * When adding a fragment, figure out which bonds involving at least one
+ * core atom should be added or mutated to match the fragment.
+ * @param core The core molecule
+ * @param fragment The fragment structure being added
+ * @param frag_atom_to_core_atom A map of fragment atoms to their
+ * corresponding core atom
+ * @return A tuple of:
+ *   - Bonds to make between the core and the fragment, formatted as a map
+ *     of {core atom: {fragment atom: info about bond to create}}
+ *   - A list of core bonds to mutate, where each bond is given as (core
+ *     bond index, function that returns a bond to mutate to)
+ *   - A list of bonds to make between two core atoms, where each bond is
+ *     given as a tuple of
+ *     - atom index for the starting atom
+ *     - atom index for the ending atom
+ *     - function that returns a bond instance for the new bond
+ */
+static std::tuple<AtomPtrToFragBondMap,
+                  std::vector<std::pair<unsigned int, BondFunc>>,
+                  std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>>
 determine_core_bond_additions_and_mutations(
     const RDKit::ROMol& core, const RDKit::ROMol& fragment,
     AtomToAtomMap frag_atom_to_core_atom)
@@ -465,17 +677,16 @@ determine_core_bond_additions_and_mutations(
         additions_to_core_bonds;
     for (auto [frag_atom, core_atom] : frag_atom_to_core_atom) {
         for (auto* frag_bond : fragment.atomBonds(frag_atom)) {
-            auto* frag_neighbor = frag_bond->getOtherAtom(frag_atom);
+            auto [frag_neighbor, core_neighbor, core_bond] =
+                get_frag_neighbor_and_corresponding_core_neighbor_and_bond(
+                    frag_atom, frag_bond, core_atom, frag_atom_to_core_atom);
             auto& frag_bond_ref = *frag_bond;
             auto copy_bond = [frag_bond_ref]() {
                 return std::make_shared<RDKit::Bond>(frag_bond_ref);
             };
-            if (frag_atom_to_core_atom.count(frag_neighbor)) {
+            if (core_neighbor != nullptr) {
                 // both of the fragment atoms in this bond are on top of a core
                 // atom
-                auto* core_neighbor = frag_atom_to_core_atom[frag_neighbor];
-                auto* core_bond = core.getBondBetweenAtoms(
-                    core_atom->getIdx(), core_neighbor->getIdx());
                 if (core_bond == nullptr) {
                     // there's no equivalent bond in the core, so one needs to
                     // be added
@@ -486,9 +697,10 @@ determine_core_bond_additions_and_mutations(
                     }
                     additions_to_core_bonds.emplace_back(
                         start_atom_idx, end_atom_idx, copy_bond);
-                } else {
-                    // there's already a core bond between these atoms, so we
-                    // mutate it
+                } else if (should_replace_core_bond(frag_bond, core_bond)) {
+                    // there's already a core bond between these atoms but the
+                    // fragment bond is "interesting" (i.e. not a single bond),
+                    // so we mutate the core bond to match the fragment bond
                     mutations_to_core_bonds.emplace_back(core_bond->getIdx(),
                                                          copy_bond);
                 }
@@ -506,7 +718,17 @@ determine_core_bond_additions_and_mutations(
             additions_to_core_bonds};
 }
 
-AtomIdxToFragBondMap convert_bond_map_from_ptrs_to_idxs(
+/**
+ * Convert a map of atoms-to-bond-info from using atom pointers to using atom
+ * indices.  For the fragment, the atom indices used are the indices that the
+ * fragment atoms *will have* once they are added to the core molecule.
+ * @param core The core molecule
+ * @param core_to_frag_bonds_by_ptr A map of {core atom: {fragment atom:
+ * info about bond to create}}, where both atoms are represented by pointers
+ * @return A map that is identical to core_to_frag_bonds_by_ptr, but using
+ * atom indices in place of pointers.
+ */
+static AtomIdxToFragBondMap convert_bond_map_from_ptrs_to_idxs(
     const RDKit::ROMol& core,
     const AtomPtrToFragBondMap& core_to_frag_bonds_by_ptr)
 {
@@ -540,6 +762,15 @@ get_fragment_addition_info(RDKit::RWMol& fragment,
     auto frag_atom_to_core_atom = get_fragment_to_core_atom_map(
         fragment, frag_start_atom, core, core_start_atom);
 
+    // convert fragment bonds to single bonds to try to avoid valence errors on
+    // the core atoms where the fragment is added
+    auto frag_bonds_to_mutate =
+        determine_fragment_bonds_to_mutate_to_single_bonds(
+            fragment, core, frag_atom_to_core_atom);
+    for (auto* cur_bond : frag_bonds_to_mutate) {
+        cur_bond->setBondType(RDKit::Bond::BondType::SINGLE);
+    }
+
     // figure out which core atoms should be mutated so they match the overlayed
     // fragment atom
     auto mutations_to_core_atoms =
@@ -547,12 +778,8 @@ get_fragment_addition_info(RDKit::RWMol& fragment,
 
     // figure out where bonds should be added and which core bonds should be
     // mutated
-    AtomPtrToFragBondMap core_to_frag_bonds_by_ptr;
-    std::vector<std::pair<unsigned int, BondFunc>> mutations_to_core_bonds;
-    std::vector<std::tuple<unsigned int, unsigned int, BondFunc>>
-        additions_to_core_bonds;
-    std::tie(core_to_frag_bonds_by_ptr, mutations_to_core_bonds,
-             additions_to_core_bonds) =
+    auto [core_to_frag_bonds_by_ptr, mutations_to_core_bonds,
+          additions_to_core_bonds] =
         determine_core_bond_additions_and_mutations(core, fragment,
                                                     frag_atom_to_core_atom);
 

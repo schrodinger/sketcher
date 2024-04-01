@@ -52,6 +52,15 @@ class HintFragmentItem : public QGraphicsItemGroup
                      QGraphicsItem* parent = nullptr);
     void updateConformer(const RDKit::Conformer& conformer);
 
+    /**
+     * Convert all specified bonds to single bonds, and convert all other bonds
+     * back to their original type (in case they were changed by a previous call
+     * to this method).  This is used to avoid valence errors where the fragment
+     * is joined to the core.
+     */
+    void updateSingleBondMutations(
+        const std::unordered_set<RDKit::Bond*>& bonds_to_mutate);
+
   protected:
     RDKit::ROMol m_frag;
     /// A list of all child AtomItems
@@ -60,6 +69,7 @@ class HintFragmentItem : public QGraphicsItemGroup
     QList<QGraphicsItem*> m_bond_items;
     /// A list of all child SGroupItems
     QList<QGraphicsItem*> m_s_group_items;
+    std::vector<RDKit::Bond::Bond::BondType> m_orig_bond_types;
     AtomItemSettings m_atom_item_settings;
     BondItemSettings m_bond_item_settings;
 };
