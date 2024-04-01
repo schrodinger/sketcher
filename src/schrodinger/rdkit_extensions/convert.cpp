@@ -487,12 +487,30 @@ template <typename T> std::string mol_to_base64(
 
 // A very simple check to see if a string can be parsed as SMILES without
 // actually trying to parse it. We want this function because RDKit can
-// parse (e.g.) "[#6]" as a valid SMILES (!!!)
+// parse things containing (e.g.) "[#6]" or "~" as a valid SMILES (!!!)
 bool can_be_smiles(const std::string& text)
 {
-    // "[#" is a valid pattern in SMARTS, but not in SMILES.
-    return text.find("[#") == std::string::npos;
+    for (auto c = text.begin(); c != text.end(); ++c) {
+        if (*c == ' ' || *c == '\t') {
+            // If the first thing we see is the separator between the
+            // SMILES/SMARTS and the extension, it means any non-SMILES symbol
+            // would be in the extension, so this can be a SMILES.
+            return true;
+        } else if (*c == '~') { // "Any" bond
+            return false;
+        } else if (*c == '[') { // e.g. [#6] or [13#6]
+            for (++c; c != text.end() && *c >= '0' && *c <= '9'; ++c)
+                ; // Skip isotope if present
+            if (*c == '#') {
+                // Not a SMILES either
+                return false;
+            }
+        }
+    }
+    // We didn't see any of the forbidden symbols
+    return true;
 }
+
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,

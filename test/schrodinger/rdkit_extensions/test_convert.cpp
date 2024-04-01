@@ -15,6 +15,8 @@
 
 #include <Eigen/Dense>
 
+#include <fmt/core.h>
+
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
@@ -758,13 +760,20 @@ BOOST_AUTO_TEST_CASE(TestConvertingHELM)
     BOOST_TEST(to_string(*mol, Format::HELM) == text);
 }
 
-BOOST_AUTO_TEST_CASE(test_cannot_be_smiles)
+BOOST_DATA_TEST_CASE(test_cannot_be_smiles,
+                     boost::unit_test::data::make({"[#6]-[#6]-[#7]-[#6]", "C~C",
+                                                   "[13#6]-[#6]"}),
+                     pseudo_smiles)
 {
-    // SHARED-10397
+    // SHARED-10397, SKETCH-2190
     TEST_CHECK_EXCEPTION_MSG_SUBSTR(
-        to_rdkit("[#6]-[#6]-[#7]-[#6]", Format::SMILES), std::invalid_argument,
-        "[#6]-[#6]-[#7]-[#6] is not a valid SMILES");
+        to_rdkit(pseudo_smiles, Format::SMILES), std::invalid_argument,
+        fmt::format("{} is not a valid SMILES", pseudo_smiles));
 
-    auto mol = to_rdkit("[#6]-[#6]-[#7]-[#6]", Format::AUTO_DETECT);
+    auto mol = to_rdkit(pseudo_smiles, Format::AUTO_DETECT);
+    auto smarts_mol = to_rdkit(pseudo_smiles, Format::SMARTS);
     BOOST_TEST(mol != nullptr);
+    BOOST_TEST(smarts_mol != nullptr);
+    BOOST_TEST(to_string(*mol, Format::SMARTS) ==
+               to_string(*smarts_mol, Format::SMARTS));
 }
