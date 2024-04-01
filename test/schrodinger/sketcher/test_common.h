@@ -60,6 +60,18 @@ class TestSketcherWidget : public SketcherWidget
     using SketcherWidget::m_undo_stack;
     using SketcherWidget::m_watermark_item;
     using SketcherWidget::paste;
+
+    // using the system clipboard during tests leads to intermittent test
+    // failures on buildbot, so we create our own clipboard
+    mutable std::string m_clipboard;
+    std::string getClipboardContents() const override
+    {
+        return m_clipboard;
+    }
+    void setClipboardContents(std::string text) const override
+    {
+        m_clipboard = text;
+    }
 };
 
 class TestScene : public Scene

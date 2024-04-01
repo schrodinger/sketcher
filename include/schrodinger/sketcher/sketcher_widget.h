@@ -169,6 +169,14 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     QGraphicsPixmapItem* m_watermark_item = nullptr;
 
+    /**
+     * Methods for getting and setting the system clipboard. These methods are
+     * overriden in the unit test since using the real clipboard can lead to
+     * intermittent failures on buildbot.
+     */
+    virtual std::string getClipboardContents() const;
+    virtual void setClipboardContents(std::string text) const;
+
   private:
     /**
      *  Connects slots to the model and various widget tool bars

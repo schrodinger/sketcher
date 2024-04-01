@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <QApplication>
 #include <QClipboard>
 #include <QCursor>
 #include <QGraphicsPixmapItem>
@@ -230,6 +231,22 @@ std::string SketcherWidget::getString(Format format) const
     return extract_string(m_mol_model, format, SceneSubset::ALL);
 }
 
+std::string SketcherWidget::getClipboardContents() const
+{
+    auto data = QApplication::clipboard()->mimeData();
+    if (data->hasText()) {
+        return data->text().toStdString();
+    }
+    return "";
+}
+
+void SketcherWidget::setClipboardContents(std::string text) const
+{
+    auto data = new QMimeData;
+    data->setText(QString::fromStdString(text));
+    QApplication::clipboard()->setMimeData(data);
+}
+
 void SketcherWidget::cut(Format format)
 {
     copy(format, SceneSubset::SELECTION);
@@ -251,11 +268,7 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
         show_error_dialog("Copy Error", exc.what(), window());
         return;
     }
-
-    auto data = new QMimeData;
-    data->setText(QString::fromStdString(text));
-    QApplication::clipboard()->setMimeData(data);
-
+    setClipboardContents(text);
     // SKETCH-2091: Add image content to the clipboard; blocked by SKETCH-1975
 
 #ifdef __EMSCRIPTEN__
@@ -272,9 +285,8 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
  */
 void SketcherWidget::paste()
 {
-    auto data = QApplication::clipboard()->mimeData();
-    if (data->hasText()) {
-        auto text = data->text().toStdString();
+    auto text = getClipboardContents();
+    if (!text.empty()) {
         try {
             addFromString(text, Format::AUTO_DETECT);
         } catch (const std::exception& exc) {
