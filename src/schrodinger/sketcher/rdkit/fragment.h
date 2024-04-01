@@ -41,8 +41,19 @@ typedef std::unordered_map<unsigned int,
  * @return A newly generated conformer.  Note that this conformer has *not* been
  * added to the molecule.
  */
-SKETCHER_API RDKit::Conformer translate_fragment(const RDKit::ROMol& fragment,
-                                                 const RDGeom::Point3D& point);
+SKETCHER_API RDKit::Conformer
+translate_fragment_ap_to(const RDKit::ROMol& fragment,
+                         const RDGeom::Point3D& point);
+
+/**
+ * Translate the fragment so that the fragment center (calculated over all atoms
+ * *other than* the attachment point dummy atom) is at the specified point
+ * @return A newly generated conformer.  Note that this conformer has *not* been
+ * added to the molecule.
+ */
+SKETCHER_API RDKit::Conformer
+translate_fragment_center_to(const RDKit::ROMol& fragment,
+                             const RDGeom::Point3D& point);
 
 /**
  * Align the fragment so that it grows out of the specified atom

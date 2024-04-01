@@ -72,7 +72,7 @@ RDKit::Conformer overlay_fragment_on_core(const RDKit::ROMol& fragment,
     const auto& core_conf = core.getConformer();
     const auto core_atom_idx = core_atom->getIdx();
     const auto& core_atom_coords = core_conf.getAtomPos(core_atom_idx);
-    auto frag_conf = translate_fragment(fragment, core_atom_coords);
+    auto frag_conf = translate_fragment_ap_to(fragment, core_atom_coords);
 
     const auto frag_atom_idx = frag_atom->getIdx();
     const auto other_frag_atom_idx = frag_bond->getOtherAtomIdx(frag_atom_idx);
@@ -293,18 +293,46 @@ static AtomIdxToFragBondMap convert_bond_map_from_ptrs_to_idxs(
     const RDKit::ROMol& core,
     const AtomPtrToFragBondMap& core_to_frag_bonds_by_ptr);
 
-RDKit::Conformer translate_fragment(const RDKit::ROMol& fragment,
-                                    const RDGeom::Point3D& point)
+/**
+ * Make a copy of the conformer and add the offset to it
+ */
+static RDKit::Conformer get_conformer_plus_offset(RDKit::Conformer conf,
+                                                  const RDGeom::Point3D& offset)
 {
-    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
-        get_frag_info(fragment);
     // note that this makes a copy of the conformer
-    auto conf = fragment.getConformer();
-    auto offset = point - conf.getAtomPos(frag_ap_parent_atom->getIdx());
     for (auto& coords : conf.getPositions()) {
         coords += offset;
     }
     return conf;
+}
+
+RDKit::Conformer translate_fragment_ap_to(const RDKit::ROMol& fragment,
+                                          const RDGeom::Point3D& point)
+{
+    auto [frag_ap_parent_atom, frag_ap_dummy_atom, is_ring] =
+        get_frag_info(fragment);
+    auto& conf = fragment.getConformer();
+    auto offset = point - conf.getAtomPos(frag_ap_parent_atom->getIdx());
+    return get_conformer_plus_offset(conf, offset);
+}
+
+RDKit::Conformer translate_fragment_center_to(const RDKit::ROMol& fragment,
+                                              const RDGeom::Point3D& point)
+{
+    const RDKit::Atom* frag_ap_parent_atom;
+    const RDKit::Atom* frag_ap_dummy_atom;
+    bool is_ring;
+    std::tie(frag_ap_parent_atom, frag_ap_dummy_atom, is_ring) =
+        get_frag_info(fragment);
+    std::unordered_set<const RDKit::Atom*> non_ap_atoms;
+    auto all_atoms_it = fragment.atoms();
+    std::copy_if(all_atoms_it.begin(), all_atoms_it.end(),
+                 std::inserter(non_ap_atoms, non_ap_atoms.begin()),
+                 [frag_ap_dummy_atom](auto* cur_atom) {
+                     return cur_atom != frag_ap_dummy_atom;
+                 });
+    auto offset = point - find_centroid(fragment, non_ap_atoms);
+    return get_conformer_plus_offset(fragment.getConformer(), offset);
 }
 
 RDKit::Conformer align_fragment_with_atom(const RDKit::ROMol& fragment,
@@ -331,7 +359,8 @@ RDKit::Conformer align_fragment_with_atom(const RDKit::ROMol& fragment,
             fragment, frag_ap_parent_atom, is_ring);
     }
 
-    RDKit::Conformer frag_conf = translate_fragment(fragment, core_atom_coords);
+    RDKit::Conformer frag_conf =
+        translate_fragment_ap_to(fragment, core_atom_coords);
     auto frag_other_atom_coords =
         frag_conf.getAtomPos(frag_other_atom->getIdx());
     auto rotate_by = get_angle_radians(frag_other_atom_coords, core_atom_coords,

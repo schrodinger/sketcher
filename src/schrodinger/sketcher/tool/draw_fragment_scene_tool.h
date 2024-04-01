@@ -27,10 +27,9 @@ namespace sketcher
 class Fonts;
 
 /**
- * A graphics item that follows the mouse cursor and shows where the fragment
- * would be added if the user were to click.
+ * A graphics item for displaying the fragment
  */
-class HintFragmentItem : public QGraphicsItemGroup
+class AbstractHintFragmentItem : public QGraphicsItemGroup
 {
   public:
     /**
@@ -46,6 +45,50 @@ class HintFragmentItem : public QGraphicsItemGroup
      * ignored, as hints are always displayed in blue.
      * @param parent The parent graphics item, if any.
      */
+    AbstractHintFragmentItem(const RDKit::ROMol& fragment, const Fonts& fonts,
+                             const AtomItemSettings& atom_item_settings,
+                             const BondItemSettings& bond_item_settings,
+                             QGraphicsItem* parent = nullptr);
+
+    /**
+     * Create a copy of the specified graphics item.  Note that the copy will
+     * *not* be parented and will not be added to any scene.
+     */
+    AbstractHintFragmentItem(const AbstractHintFragmentItem& frag_item);
+
+  protected:
+    RDKit::ROMol m_frag;
+    const Fonts* m_fonts = nullptr;
+    /// A list of all child AtomItems
+    QList<QGraphicsItem*> m_atom_items;
+    /// A list of all child BondItems
+    QList<QGraphicsItem*> m_bond_items;
+    /// A list of all child SGroupItems
+    QList<QGraphicsItem*> m_s_group_items;
+    AtomItemSettings m_atom_item_settings;
+    BondItemSettings m_bond_item_settings;
+
+    /**
+     * Create all graphics items required to represent the fragment
+     */
+    void createGraphicsItems();
+
+    /**
+     * Update the atom item and bond item settings (e.g. color scheme, bond line
+     * width) to override the passed-in settings.  Subclasses may override this
+     * method to change additional settings.
+     */
+    virtual void updateSettings();
+};
+
+/**
+ * A graphics item that that shows the fragment in blue at same scale as the
+ * core.  This graphics item is used to, e.g., display where the fragment would
+ * be added if the user were to click on an atom or bond.
+ */
+class HintFragmentItem : public AbstractHintFragmentItem
+{
+  public:
     HintFragmentItem(const RDKit::ROMol& fragment, const Fonts& fonts,
                      const AtomItemSettings& atom_item_settings,
                      const BondItemSettings& bond_item_settings,
@@ -62,16 +105,26 @@ class HintFragmentItem : public QGraphicsItemGroup
         const std::unordered_set<RDKit::Bond*>& bonds_to_mutate);
 
   protected:
-    RDKit::ROMol m_frag;
-    /// A list of all child AtomItems
-    QList<QGraphicsItem*> m_atom_items;
-    /// A list of all child BondItems
-    QList<QGraphicsItem*> m_bond_items;
-    /// A list of all child SGroupItems
-    QList<QGraphicsItem*> m_s_group_items;
     std::vector<RDKit::Bond::Bond::BondType> m_orig_bond_types;
-    AtomItemSettings m_atom_item_settings;
-    BondItemSettings m_bond_item_settings;
+    void updateSettings() override;
+};
+
+/**
+ * A graphics item that renders the fragment using extra wide lines, suitable
+ * for rendering the cursor hint pixmap.  (The wider lines are required because
+ * the pixmap is only 28x28 pixels.)
+ */
+class HintPixmapFragmentItem : public AbstractHintFragmentItem
+{
+  public:
+    HintPixmapFragmentItem(const RDKit::ROMol& fragment, const Fonts& fonts,
+                           const AtomItemSettings& atom_item_settings,
+                           const BondItemSettings& bond_item_settings,
+                           QGraphicsItem* parent = nullptr);
+    HintPixmapFragmentItem(const AbstractHintFragmentItem& frag_item);
+
+  protected:
+    void updateSettings() override;
 };
 
 /**
@@ -102,8 +155,11 @@ class SKETCHER_API DrawFragmentSceneTool : public StandardSceneToolBase
 
     // Overridden AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;
+    QPixmap createDefaultCursorPixmap() const override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onMouseLeave() override;
+    void onLeftButtonPress(QGraphicsSceneMouseEvent* const event) override;
+    void onLeftButtonRelease(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
     void
@@ -112,6 +168,7 @@ class SKETCHER_API DrawFragmentSceneTool : public StandardSceneToolBase
   protected:
     RDKit::ROMol m_frag;
     HintFragmentItem m_hint_item;
+    bool m_cursor_pixmap_shown = true;
 
     /**
      * Determine the appropriate fragment conformer for a given set of Scene

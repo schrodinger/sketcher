@@ -128,8 +128,16 @@ const QColor CURSOR_HINT_COLOR = QColor("#5191bb");
 const QRgb TOOL_BUTTON_DARK_GRAY = qRgb(102, 102, 102);
 
 // The width of bonds for fragment hints (e.g. the blue rings that appear when
-// using the ring tool)
+// using the ring tool and hovering over an atom or bond)
 const qreal FRAGMENT_HINT_BOND_WIDTH = 1.0;
+
+// The width of bonds and the bond line spacing for the fragment cursor pixmap
+// (i.e. the small fragment image that follows the mouse cursor when hovering
+// over empty space).  Note that these values should be much larger than the
+// typical bond width and spacing because the image will be scaled down to only
+// CURSOR_HINT_IMAGE_SIZE x CURSOR_HINT_IMAGE_SIZE pixels.
+const qreal FRAGMENT_CURSOR_HINT_BOND_WIDTH = 7.0;
+const qreal FRAGMENT_CURSOR_HINT_BOND_SPACING = 12.0;
 
 // the distance between the stereo annotation and the atom in bond length units
 const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.25;

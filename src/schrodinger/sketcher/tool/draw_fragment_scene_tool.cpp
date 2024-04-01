@@ -4,6 +4,9 @@
 
 #include <boost/shared_ptr.hpp>
 
+#include <QGraphicsScene>
+#include <QPainter>
+#include <QPixmap>
 #include <QPointF>
 
 #include <rdkit/GraphMol/RWMol.h>
@@ -71,31 +74,37 @@ std::string get_smiles_for_ring_tool(const RingTool& ring_tool)
     throw std::runtime_error("Unrecognized ring type");
 }
 
-HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
-                                   const Fonts& fonts,
-                                   const AtomItemSettings& atom_item_settings,
-                                   const BondItemSettings& bond_item_settings,
-                                   QGraphicsItem* parent) :
+AbstractHintFragmentItem::AbstractHintFragmentItem(
+    const RDKit::ROMol& fragment, const Fonts& fonts,
+    const AtomItemSettings& atom_item_settings,
+    const BondItemSettings& bond_item_settings, QGraphicsItem* parent) :
     QGraphicsItemGroup(parent),
     m_frag(fragment),
+    m_fonts(&fonts),
     m_atom_item_settings(atom_item_settings),
     m_bond_item_settings(bond_item_settings)
 {
+}
+
+AbstractHintFragmentItem::AbstractHintFragmentItem(
+    const AbstractHintFragmentItem& frag_item) :
+    AbstractHintFragmentItem(frag_item.m_frag, *frag_item.m_fonts,
+                             frag_item.m_atom_item_settings,
+                             frag_item.m_bond_item_settings, nullptr)
+{
+}
+
+void AbstractHintFragmentItem::updateSettings()
+{
     m_atom_item_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
     m_bond_item_settings.m_color = STRUCTURE_HINT_COLOR;
-    m_bond_item_settings.m_bond_width = FRAGMENT_HINT_BOND_WIDTH;
+}
 
-    std::transform(m_frag.bonds().begin(), m_frag.bonds().end(),
-                   std::back_inserter(m_orig_bond_types),
-                   [](const auto* bond) { return bond->getBondType(); });
-
-    // We'll set this to visible once the mouse is over the scene
-    setVisible(false);
-    setZValue(static_cast<qreal>(ZOrder::HINT));
-
+void AbstractHintFragmentItem::createGraphicsItems()
+{
     auto [all_items, atom_to_atom_item, bond_to_bond_item,
           s_group_to_s_group_item] =
-        create_graphics_items_for_mol(&m_frag, fonts, m_atom_item_settings,
+        create_graphics_items_for_mol(&m_frag, *m_fonts, m_atom_item_settings,
                                       m_bond_item_settings,
                                       /*draw_attachment_points = */ false);
     for (auto* item : all_items) {
@@ -110,6 +119,32 @@ HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
     for (auto& kv : s_group_to_s_group_item) {
         m_s_group_items.append(kv.second);
     }
+}
+
+HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
+                                   const Fonts& fonts,
+                                   const AtomItemSettings& atom_item_settings,
+                                   const BondItemSettings& bond_item_settings,
+                                   QGraphicsItem* parent) :
+    AbstractHintFragmentItem(fragment, fonts, atom_item_settings,
+                             bond_item_settings, parent)
+{
+    std::transform(m_frag.bonds().begin(), m_frag.bonds().end(),
+                   std::back_inserter(m_orig_bond_types),
+                   [](const auto* bond) { return bond->getBondType(); });
+
+    // We'll set this to visible once the mouse is over the scene
+    setVisible(false);
+    setZValue(static_cast<qreal>(ZOrder::HINT));
+
+    updateSettings();
+    createGraphicsItems();
+}
+
+void HintFragmentItem::updateSettings()
+{
+    AbstractHintFragmentItem::updateSettings();
+    m_bond_item_settings.m_bond_width = FRAGMENT_HINT_BOND_WIDTH;
 }
 
 void HintFragmentItem::updateConformer(const RDKit::Conformer& conformer)
@@ -147,6 +182,33 @@ void HintFragmentItem::updateSingleBondMutations(
     }
 }
 
+HintPixmapFragmentItem::HintPixmapFragmentItem(
+    const RDKit::ROMol& fragment, const Fonts& fonts,
+    const AtomItemSettings& atom_item_settings,
+    const BondItemSettings& bond_item_settings, QGraphicsItem* parent) :
+    AbstractHintFragmentItem(fragment, fonts, atom_item_settings,
+                             bond_item_settings, parent)
+{
+    updateSettings();
+    createGraphicsItems();
+}
+
+HintPixmapFragmentItem::HintPixmapFragmentItem(
+    const AbstractHintFragmentItem& frag_item) :
+    AbstractHintFragmentItem(frag_item)
+{
+    updateSettings();
+    createGraphicsItems();
+}
+
+void HintPixmapFragmentItem::updateSettings()
+{
+    AbstractHintFragmentItem::updateSettings();
+    m_bond_item_settings.m_bond_width = FRAGMENT_CURSOR_HINT_BOND_WIDTH;
+    m_bond_item_settings.m_double_bond_spacing =
+        FRAGMENT_CURSOR_HINT_BOND_SPACING;
+}
+
 DrawFragmentSceneTool::DrawFragmentSceneTool(
     const RDKit::ROMol& fragment, const Fonts& fonts,
     const AtomItemSettings& atom_item_settings,
@@ -165,6 +227,27 @@ std::vector<QGraphicsItem*> DrawFragmentSceneTool::getGraphicsItems()
     return items;
 }
 
+QPixmap DrawFragmentSceneTool::createDefaultCursorPixmap() const
+{
+    HintPixmapFragmentItem frag_item(m_hint_item);
+    QGraphicsScene scene;
+    QPixmap pixmap(CURSOR_HINT_IMAGE_SIZE, CURSOR_HINT_IMAGE_SIZE);
+    scene.addItem(&frag_item);
+    pixmap.fill(Qt::transparent);
+    {
+        QPainter painter(&pixmap);
+        painter.setRenderHints(QPainter::Antialiasing |
+                               QPainter::SmoothPixmapTransform);
+        scene.render(&painter);
+    }
+
+    // remove frag_item from the scene, otherwise it'll potentially get
+    // destroying by both Qt (when the scene is destroyed) and by C++ (when we
+    // leave this scope)
+    scene.removeItem(&frag_item);
+    return pixmap;
+}
+
 void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
     StandardSceneToolBase::onMouseMove(event);
@@ -181,13 +264,41 @@ void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
             m_frag, new_conf, *m_mol_model->getMol(), overlay_atom);
     }
     m_hint_item.updateSingleBondMutations(bonds_to_mutate);
-    m_hint_item.show();
+    bool show_hint_structure = overlay_atom != nullptr;
+    m_hint_item.setVisible(show_hint_structure);
+    if (show_hint_structure == m_cursor_pixmap_shown) {
+        // we want to hide the cursor pixmap while the full-sized hint structure
+        // is shown
+        emit newCursorHintRequested(
+            show_hint_structure ? QPixmap() : getDefaultCursorPixmap());
+        m_cursor_pixmap_shown = !show_hint_structure;
+    }
 }
 
 void DrawFragmentSceneTool::onMouseLeave()
 {
     StandardSceneToolBase::onMouseLeave();
     m_hint_item.hide();
+}
+
+void DrawFragmentSceneTool::onLeftButtonPress(
+    QGraphicsSceneMouseEvent* const event)
+{
+    StandardSceneToolBase::onLeftButtonPress(event);
+    m_hint_item.show();
+    // hide the cursor pixmap while we're showing the full-sized hint structure
+    if (m_cursor_pixmap_shown) {
+        emit newCursorHintRequested({});
+        m_cursor_pixmap_shown = false;
+    }
+}
+
+void DrawFragmentSceneTool::onLeftButtonRelease(
+    QGraphicsSceneMouseEvent* const event)
+{
+    StandardSceneToolBase::onLeftButtonRelease(event);
+    emit newCursorHintRequested(getDefaultCursorPixmap());
+    m_cursor_pixmap_shown = true;
 }
 
 void DrawFragmentSceneTool::onLeftButtonClick(
@@ -219,6 +330,7 @@ void DrawFragmentSceneTool::onLeftButtonDragRelease(
     if (maybe_conf.has_value()) {
         // we only perform a drag action if the mouse press was over empty space
         addFragToModel(*maybe_conf);
+        m_hint_item.setVisible(false);
     }
 }
 
@@ -229,7 +341,7 @@ DrawFragmentSceneTool::getFragConfAndCoreAtomForScenePos(
     auto* item = m_scene->getTopInteractiveItemAt(
         scene_pos, InteractiveItemFlag::MOLECULAR_NOT_AP);
     if (auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-        const auto core_atom = atom_item->getAtom();
+        const auto* core_atom = atom_item->getAtom();
         const auto& core = core_atom->getOwningMol();
         // if the atom has three or more neighbors, then don't try to add to it.
         // Instead, allow the fragment to follow the mouse cursor.
@@ -243,7 +355,7 @@ DrawFragmentSceneTool::getFragConfAndCoreAtomForScenePos(
     // we're not over any part of the molecule, or we're over an atom with 3 or
     // more bonds
     auto mol_pos = to_mol_xy(scene_pos);
-    auto new_conf = translate_fragment(m_frag, mol_pos);
+    auto new_conf = translate_fragment_center_to(m_frag, mol_pos);
     return {new_conf, nullptr};
 }
 
@@ -258,7 +370,7 @@ DrawFragmentSceneTool::getConformerForDragToScenePos(
         // the drag was started from empty space, so we rotate the conformer
         auto mouse_press_mol_pos = to_mol_xy(m_mouse_press_scene_pos);
         // first, translate the conformer to where it was when the drag started
-        maybe_conf = translate_fragment(m_frag, mouse_press_mol_pos);
+        maybe_conf = translate_fragment_center_to(m_frag, mouse_press_mol_pos);
 
         // find the centroid of the fragment, but ignore the attachment point,
         // which isn't being painted

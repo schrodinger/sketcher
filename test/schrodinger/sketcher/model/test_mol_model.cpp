@@ -2272,7 +2272,7 @@ void check_fragment_addition(const std::string& core_smiles,
     } else {
         // mimic what the DrawFragmentSceneTool does when the mouse cursor
         // is over empty space
-        frag_conf = translate_fragment(*frag, RDGeom::Point3D(10, 10, 0));
+        frag_conf = translate_fragment_center_to(*frag, {10, 10, 0});
     }
     frag->getConformer() = frag_conf;
     model.addFragment(*frag, core_atom);
