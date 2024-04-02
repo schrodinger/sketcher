@@ -651,9 +651,14 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
         throw_parse_error(rd_error_log, text);
     }
 
-    // TODO: Add sanitization option as an argument to this function,
-    // ideally FULL as a default for most callers
-    apply_sanitization(*mol, Sanitization::PARTIAL);
+    // SKETCH-2190: we don't want to sanitize SMARTS because they are not
+    // complete molecules, and sanitization may, e.g. create radicals on
+    // (query) atoms that do not have their valence completely satisfied.
+    if (format != Format::SMARTS) {
+        apply_sanitization(*mol, Sanitization::PARTIAL);
+    } else {
+        mol->updatePropertyCache(false);
+    }
 
     bool has_attchpt = molattachpt_property_to_attachment_point_dummies(*mol);
     if (!has_attchpt) {

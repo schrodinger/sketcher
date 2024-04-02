@@ -777,3 +777,24 @@ BOOST_DATA_TEST_CASE(test_cannot_be_smiles,
     BOOST_TEST(to_string(*mol, Format::SMARTS) ==
                to_string(*smarts_mol, Format::SMARTS));
 }
+
+BOOST_AUTO_TEST_CASE(test_smarts_no_radicals)
+{
+    // SKETCH-2190
+    const auto smarts = "[CH3]~[CH2]~*";
+
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        to_rdkit(smarts, Format::SMILES), std::invalid_argument,
+        fmt::format("{} is not a valid SMILES", smarts));
+
+    auto mol = to_rdkit(smarts, Format::AUTO_DETECT);
+    auto smarts_mol = to_rdkit(smarts, Format::SMARTS);
+    BOOST_REQUIRE(mol != nullptr);
+    BOOST_REQUIRE(smarts_mol != nullptr);
+    BOOST_TEST(to_string(*mol, Format::SMARTS) ==
+               to_string(*smarts_mol, Format::SMARTS));
+
+    for (auto atom : mol->atoms()) {
+        BOOST_TEST(atom->getNumRadicalElectrons() == 0);
+    }
+}
