@@ -228,12 +228,8 @@ void AtomItem::updateChiralityLabel()
 {
     auto chirality = QString::fromStdString(
         rdkit_extensions::get_atom_chirality_label(*m_atom));
-    if (!chirality.isEmpty()) {
-        // add parentheses around chiral label
-        chirality = "(" + chirality + ")";
-        // TODO: enhanced stereo labels - SKETCH-1960
-    }
     m_chirality_label_text = chirality;
+
     auto chirality_label_position =
         findPositionInEmptySpace(true) * CHIRALITY_LABEL_DISTANCE_RATIO;
     m_chirality_label_rect =

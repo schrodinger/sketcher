@@ -234,5 +234,21 @@ BOOST_AUTO_TEST_CASE(test_chirality_label)
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_enhanced_chirality_labels)
+{
+    // test that enhanced chirality labels are correctly set, replacing the
+    // chirality label for OR and AND but not for ABS
+    std::string smiles =
+        "C[C@H](N)[C@H](C)[C@H](C)[C@@H](N)[C@H](C)N |a:1,3,o3:7,9,&1:5|";
+    auto [atom_items, scene] = createAtomItems(smiles);
+    std::vector<std::string> labels = {"", "(S)",  "", "(R)",  "", "and 1",
+                                       "", "or 3", "", "or 3", "", ""};
+
+    for (unsigned int i = 0; i < atom_items.size(); ++i) {
+        BOOST_TEST(atom_items.at(i)->m_chirality_label_text.toStdString() ==
+                   labels.at(i));
+    }
+}
+
 } // namespace sketcher
 } // namespace schrodinger

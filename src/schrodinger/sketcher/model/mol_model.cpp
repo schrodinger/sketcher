@@ -97,18 +97,20 @@ std::shared_ptr<RDKit::Bond> make_new_query_bond(
 };
 
 /**
- * Remove all internal MolModel properties and bookmarks from the given
- * molecule.
+ * Remove all atom and bond notes and internal MolModel properties and bookmarks
+ * from the given molecule.
  */
-void strip_mol_model_tags(RDKit::ROMol& mol)
+void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
 {
     for (auto* atom : mol.atoms()) {
         atom->clearProp(TAG_PROPERTY);
         atom->clearProp(USER_COLOR);
+        atom->clearProp(RDKit::common_properties::atomNote);
     }
     for (auto* bond : mol.bonds()) {
         bond->clearProp(TAG_PROPERTY);
         bond->clearProp(USER_COLOR);
+        bond->clearProp(RDKit::common_properties::bondNote);
     }
     mol.clearAllAtomBookmarks();
     mol.clearAllBondBookmarks();
@@ -174,7 +176,7 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getMolForExport() const
 {
     // TODO: add API to export selection as atom/bond properties
     auto mol_copy = boost::make_shared<RDKit::ROMol>(m_mol);
-    strip_mol_model_tags(*mol_copy);
+    strip_notes_and_mol_model_tags(*mol_copy);
     return mol_copy;
 }
 
@@ -201,7 +203,7 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMolForExport()
         mol_copy.removeAtom(getAtomFromTag(atom_tag)->getIdx());
     }
     mol_copy.commitBatchEdit();
-    strip_mol_model_tags(mol_copy);
+    strip_notes_and_mol_model_tags(mol_copy);
     return boost::make_shared<RDKit::ROMol>(mol_copy);
 }
 
@@ -234,7 +236,7 @@ MolModel::createReaction(const bool strip_tags) const
         products_and_centroids;
     for (auto cur_mol : all_mols) {
         if (strip_tags) {
-            strip_mol_model_tags(*cur_mol);
+            strip_notes_and_mol_model_tags(*cur_mol);
         }
         auto cur_centroid = find_centroid(*cur_mol);
         if (cur_centroid.x <= arrow_x) {
@@ -2248,22 +2250,24 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
 {
     Q_ASSERT(m_allow_edits);
     // get the starting index for the atoms and bonds to be inserted
-    unsigned int atom_index = m_mol.getNumAtoms();
-    unsigned int bond_index = m_mol.getNumBonds();
+    unsigned int old_num_atoms = m_mol.getNumAtoms();
+    unsigned int old_num_bonds = m_mol.getNumBonds();
     m_mol.insertMol(mol);
 
     for (auto& sgroup : getSubstanceGroups(m_mol)) {
         setTagForSGroup(sgroup, m_next_s_group_tag++);
     }
     bool attachment_point_added = false;
-    for (; atom_index < m_mol.getNumAtoms(); ++atom_index) {
+    for (auto atom_index = old_num_atoms; atom_index < m_mol.getNumAtoms();
+         ++atom_index) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);
         setTagForAtom(atom, m_next_atom_tag++);
         attachment_point_added =
             attachment_point_added || is_attachment_point(atom);
     }
 
-    for (; bond_index < m_mol.getNumBonds(); ++bond_index) {
+    for (auto bond_index = old_num_bonds; bond_index < m_mol.getNumBonds();
+         ++bond_index) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
         setTagForBond(bond, m_next_bond_tag++);
     }

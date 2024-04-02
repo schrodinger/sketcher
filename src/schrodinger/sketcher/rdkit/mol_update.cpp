@@ -12,6 +12,8 @@
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 
+#include <boost/format.hpp>
+
 namespace schrodinger
 {
 namespace sketcher
@@ -153,6 +155,11 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     rdkit_extensions::assign_stereochemistry(mol);
     // Generate R/S/E/Z labels
     assign_CIP_labels(mol);
+    std::string abs_label = "({cip})";
+    std::string or_label = "or {id}";   // U+200A HAIR SPACE
+    std::string and_label = "and {id}"; // U+200A HAIR SPACE
+
+    RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label, and_label);
 }
 
 } // namespace sketcher

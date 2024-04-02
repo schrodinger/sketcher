@@ -59,12 +59,9 @@ void assign_stereochemistry(RDKit::ROMol& mol)
 
 std::string get_atom_chirality_label(const RDKit::Atom& atom)
 {
-    std::string chirality;
-    auto stereo_info = RDKit::Chirality::detail::getStereoInfo(&atom);
-
-    // non-CIP ranked atoms have no priority, so potentially chiral
-    // atoms should always show an 'undefined' label (SKETCH-1825)
-    auto has_non_CIP_neighbor = [](const auto& atom, const auto& stereo_info) {
+    // SKETCH-1729: non-CIP ranked atoms have no priority; do not show any label
+    auto has_non_CIP_neighbor = [](const auto& atom) {
+        auto stereo_info = RDKit::Chirality::detail::getStereoInfo(&atom);
         auto& mol = atom.getOwningMol();
         for (auto atom_idx : stereo_info.controllingAtoms) {
             auto controlling_atom = mol.getAtomWithIdx(atom_idx);
@@ -75,28 +72,30 @@ std::string get_atom_chirality_label(const RDKit::Atom& atom)
         }
         return false;
     };
-
-    if (has_non_CIP_neighbor(atom, stereo_info)) {
-        return ""; // SKETCH-1729: Don't show a defined label
+    if (has_non_CIP_neighbor(atom)) {
+        return "";
     }
 
-    if (int possible = 0;
-        !atom.getPropIfPresent(RDKit::common_properties::_CIPCode, chirality) &&
+    auto possible_but_not_specified = [](const auto& atom) {
+        int possible = 0;
         atom.getPropIfPresent(RDKit::common_properties::_ChiralityPossible,
-                              possible) &&
-        possible) {
-        return "?"; // possible, but not specified
+                              possible);
+        return !atom.hasProp(RDKit::common_properties::_CIPCode) && possible;
+    };
+    if (possible_but_not_specified(atom)) {
+        return "(?)";
     }
+
+    std::string chirality;
+    atom.getPropIfPresent<std::string>(RDKit::common_properties::atomNote,
+                                       chirality);
     return chirality;
 }
 
 std::string get_bond_stereo_label(const RDKit::Bond& bond)
 {
     std::string label;
-    // bond stereo can never be undefined because we always
-    // have 2d coords, so double bonds will always be either
-    // STEREOANY (no label), E/Z or non-stereo capable (no label).
-    bond.getPropIfPresent(RDKit::common_properties::_CIPCode, label);
+    bond.getPropIfPresent(RDKit::common_properties::bondNote, label);
     return label;
 }
 

@@ -247,12 +247,12 @@ BOOST_AUTO_TEST_CASE(test_stereo_label)
     // test that the stereo labels are correctly set for each bond of two
     // structures (non stereo bonds should have an empty label)
     expected = {{Bond::BondType::SINGLE, Bond::BondDir::ENDUPRIGHT, ""},
-                {Bond::BondType::DOUBLE, Bond::BondDir::NONE, "E"},
+                {Bond::BondType::DOUBLE, Bond::BondDir::NONE, "(E)"},
                 {Bond::BondType::SINGLE, Bond::BondDir::ENDUPRIGHT, ""}};
     check_bond_items("C\\C=C\\C", expected);
 
     expected = {{Bond::BondType::SINGLE, Bond::BondDir::ENDUPRIGHT, ""},
-                {Bond::BondType::DOUBLE, Bond::BondDir::NONE, "Z"},
+                {Bond::BondType::DOUBLE, Bond::BondDir::NONE, "(Z)"},
                 {Bond::BondType::SINGLE, Bond::BondDir::ENDDOWNRIGHT, ""}};
     check_bond_items("C\\C=C/C", expected);
 

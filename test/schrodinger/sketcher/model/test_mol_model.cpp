@@ -2567,7 +2567,8 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
 
     import_mol_text(&model, "CC(C)[C@@H](C)[C@H](C)N");
     auto mol = model.getMol();
-    std::vector<std::string> atom_labels = {"", "", "", "R", "", "S", "", ""};
+    std::vector<std::string> atom_labels = {"", "",    "", "(R)",
+                                            "", "(S)", "", ""};
     std::vector<Bond::BondType> bond_types(7, Bond::BondType::SINGLE);
     std::vector<Bond::BondDir> bond_dirs(7, Bond::BondDir::NONE);
     bond_dirs[3] = Bond::BondDir::BEGINDASH;
@@ -2580,7 +2581,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)C(C)C(C)N");
 
     mol = model.getMol();
-    atom_labels = {"", "", "", "?", "", "?", "", ""};
+    atom_labels = {"", "", "", "(?)", "", "(?)", "", ""};
     bond_dirs = std::vector<Bond::BondDir>(7, Bond::BondDir::NONE);
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2588,7 +2589,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
                       BondTool::SINGLE_DOWN);
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)[C@@H](C)C(C)N");
 
-    atom_labels[3] = "R";
+    atom_labels[3] = "(R)";
     bond_dirs[3] = Bond::BondDir::BEGINDASH;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2596,7 +2597,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     BOOST_TEST(get_mol_text(&model, Format::SMILES) ==
                "CC(C)[C@@H](C)[C@H](C)N");
 
-    atom_labels[5] = "S";
+    atom_labels[5] = "(S)";
     bond_dirs[5] = Bond::BondDir::BEGINWEDGE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2606,7 +2607,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     model.mutateBonds({model.getMol()->getBondWithIdx(3)}, BondTool::SINGLE);
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)C(C)[C@H](C)N");
 
-    atom_labels[3] = "?";
+    atom_labels[3] = "(?)";
     bond_dirs[3] = Bond::BondDir::NONE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2614,7 +2615,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     model.mutateBonds({model.getMol()->getBondWithIdx(5)}, BondTool::SINGLE);
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)C(C)C(C)N");
 
-    atom_labels[5] = "?";
+    atom_labels[5] = "(?)";
     bond_dirs[5] = Bond::BondDir::NONE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 }
