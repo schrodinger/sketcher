@@ -557,7 +557,13 @@ void SketcherWidget::showContextMenu(
         menu = m_atom_context_menu;
     } else if (bonds.size()) {
         menu = m_bond_context_menu;
+    } else if (non_molecular_objects.size()) {
+        /** a non molecular object is clicked, do nothing as there's no context
+         * menu for it.
+         * */
+        return;
     } else {
+        // show the background context menu
         menu = m_background_context_menu;
     }
     menu->setContextItems(atoms, bonds, sgroups, non_molecular_objects);

@@ -58,6 +58,8 @@ template <typename T> class SKETCHER_API SelectSceneTool
     onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
     virtual void
     onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
+    virtual void
+    onRightButtonClick(QGraphicsSceneMouseEvent* const event) override;
 
     virtual void
     onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
@@ -134,6 +136,7 @@ class SKETCHER_API EraseSceneTool : public RectSelectSceneTool
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
     void
     onLeftButtonDoubleClick(QGraphicsSceneMouseEvent* const event) override;
+    void onRightButtonClick(QGraphicsSceneMouseEvent* const event) override;
     QPixmap createDefaultCursorPixmap() const override;
 
   protected:

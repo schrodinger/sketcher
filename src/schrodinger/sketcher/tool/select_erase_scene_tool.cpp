@@ -135,6 +135,22 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
     m_mol_model->select(atoms_to_select, bonds_to_select, {}, {}, select_mode);
 }
 
+template <typename T> void
+SelectSceneTool<T>::onRightButtonClick(QGraphicsSceneMouseEvent* const event)
+{
+    // when right-clicking on an atom or bond that's not part of the selection,
+    // select it
+    auto pos = event->scenePos();
+    auto item =
+        m_scene->getTopInteractiveItemAt(pos, InteractiveItemFlag::MOLECULAR);
+    if (item && !item->isSelected()) {
+        auto [atoms, bonds, sgroups, non_molecular_objects] =
+            m_scene->getModelObjects(SceneSubset::HOVERED, &pos);
+        m_mol_model->select(atoms, bonds, sgroups, {}, SelectMode::SELECT_ONLY);
+    }
+    StandardSceneToolBase::onRightButtonClick(event);
+}
+
 template <typename T>
 std::vector<QGraphicsItem*> SelectSceneTool<T>::getGraphicsItems()
 {
@@ -296,6 +312,12 @@ void EraseSceneTool::onLeftButtonDoubleClick(
     QGraphicsSceneMouseEvent* const event)
 {
     // disable the select tool double-click behavior
+}
+
+void EraseSceneTool::onRightButtonClick(QGraphicsSceneMouseEvent* const event)
+{
+    // disable the select tool right-click behavior
+    StandardSceneToolBase::onRightButtonClick(event);
 }
 
 QPixmap EraseSceneTool::createDefaultCursorPixmap() const
