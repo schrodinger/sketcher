@@ -89,8 +89,7 @@ void add_matches_to_monomers(
     std::vector<std::pair<unsigned int, unsigned int>>& linkages)
 {
     // TODO: maybe the query mol itself should be const somewhere
-    std::unique_ptr<RDKit::RWMol> query =
-        std::make_unique<RDKit::RWMol>(*RDKit::SmartsToMol(smarts_query));
+    std::unique_ptr<RDKit::RWMol> query(RDKit::SmartsToMol(smarts_query));
     auto matches = RDKit::SubstructMatch(atomistic_mol, *query);
 
     for (const auto& match : matches) {
@@ -210,8 +209,9 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
         auto monomer_smiles = RDKit::MolFragmentToSmiles(
             atomistic_mol, monomer, nullptr, nullptr, nullptr, isomeric_smiles);
         // roundtrip to canonicalize smiles
-        monomer_smiles =
-            RDKit::MolToSmiles(*RDKit::SmilesToMol(monomer_smiles));
+        std::unique_ptr<RDKit::RWMol> canon_mol(
+            RDKit::SmilesToMol(monomer_smiles));
+        monomer_smiles = RDKit::MolToSmiles(*canon_mol);
 
         // If the monomer is a known amino acid, use the 1-letter code
         // NOTE: Setting the smilesSymbol is temporary & for testing purposes --
