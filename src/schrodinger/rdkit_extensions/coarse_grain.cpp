@@ -5,7 +5,8 @@
 #include <GraphMol/RWMol.h>
 #include <GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
-#include <absl/hash/hash.h>
+
+#include <boost/functional/hash.hpp>
 #include <fmt/format.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -59,10 +60,9 @@ std::unique_ptr<Monomer> make_monomer(std::string_view name,
     a->setProp("Name", n);
     a->setProp("smilesSymbol", n);
 
-    // hack to get some level of canonicalization for CG molecules.
-    // gives us 2^23 possible values.
-    size_t hash = absl::Hash<std::string>()(n);
-    a->setIsotope((hash >> 7) % (2 << 15));
+    // hack to get some level of canonicalization for CG molecules
+    static boost::hash<std::string> hasher;
+    a->setIsotope(hasher(n));
     a->setNoImplicit(true);
 
     auto* residue_info = new ::RDKit::AtomPDBResidueInfo();
