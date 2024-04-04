@@ -80,7 +80,10 @@ size_t add_monomer(Chain& chain, std::string_view name,
     int residue_number = chain.getAtoms().size() + 1;
     auto& cg_mol = static_cast<RDKit::RWMol&>(chain.getOwningMol());
     auto monomer = make_monomer(name, chain_id, residue_number);
-    auto new_index = cg_mol.addAtom(monomer.release());
+    bool update_label = true;
+    bool take_ownership = true;
+    auto new_index =
+        cg_mol.addAtom(monomer.release(), update_label, take_ownership);
     chain.addAtomWithIdx(new_index);
     return new_index;
 }

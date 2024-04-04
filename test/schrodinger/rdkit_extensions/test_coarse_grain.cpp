@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
 BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
 {
     {
-        auto mol = ::RDKit::SmilesToMol(
+        std::unique_ptr<::RDKit::RWMol> mol(::RDKit::SmilesToMol(
             "CC[C@H](C)[C@H](NC(=O)[C@H](CC(C)C)NC(=O)[C@H](CCC(=O)O)NC(=O)[C@"
             "H](CCC(=O)O)NC(=O)[C@@H](NC(=O)[C@H](CC(C)C)NC(=O)[C@H](CO)NC(=O)["
             "C@@H](NC(=O)[C@H](Cc1ccc(O)cc1)NC(C)=O)[C@@H](C)O)[C@@H](C)CC)C(="
@@ -117,7 +117,8 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
             "H](CC(C)C)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H](CCC(=O)O)C(=O)N[C@@H]"
             "(Cc1c[nH]c2ccccc12)C(=O)N[C@@H](C)C(=O)N[C@@H](CCCCN)C(=O)N[C@@H]("
             "CCCCN)C(=O)N[C@@H](Cc1c[nH]c2ccccc12)C(=O)N[C@@H](CC(N)=O)C(=O)N["
-            "C@@H](Cc1c[nH]c2ccccc12)C(=O)N[C@@H](Cc1ccccc1)C(N)=O)[C@@H](C)O");
+            "C@@H](Cc1c[nH]c2ccccc12)C(=O)N[C@@H](Cc1ccccc1)C(N)=O)[C@@H](C)"
+            "O"));
         auto cg_mol = atomistic_to_cg(*mol);
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
                           "PEPTIDE1{I.L.E.E.I.L.S.T.Y.K.K.T.E.E.Q.Q.K.K.N.E.E."
@@ -128,10 +129,10 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
 
     {
         // cyclic peptide with non-standard (or just unrecognized) monomer
-        auto mol = ::RDKit::SmilesToMol(
+        std::unique_ptr<::RDKit::RWMol> mol(::RDKit::SmilesToMol(
             "CC(C)C[C@@H]1NC(=O)[C@H](CCCN)NC(=O)[C@H](C(C)C)NC(=O)[C@@H]"
             "2CCCN2C(=O)[C@@H](Cc2ccccc2)NC(=O)[C@H](CC(C)C)NC(=O)[C@H](CCCN)"
-            "NC(=O)[C@H](C(C)C)NC(=O)[C@@H]2CCCN2C(=O)[C@@H](Cc2ccccc2)NC1=O");
+            "NC(=O)[C@H](C(C)C)NC(=O)[C@@H]2CCCN2C(=O)[C@@H](Cc2ccccc2)NC1=O"));
         auto cg_mol = atomistic_to_cg(*mol);
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
                           "PEPTIDE1{L.[NCCCC(N)C(N)=O].V.P.F.L.[NCCCC(N)C(N)=O]"
