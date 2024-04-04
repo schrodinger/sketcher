@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <boost/shared_ptr.hpp>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
@@ -13,6 +14,7 @@
 // Forward declarations:
 namespace RDKit
 {
+class ROMol;
 class RWMol;
 } // namespace RDKit
 
@@ -68,5 +70,19 @@ RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol);
 RDKIT_EXTENSIONS_API void removeHs(RDKit::RWMol& rdk_mol,
                                    std::vector<unsigned int> atom_ids);
 
+//
+// Helper api to extract a subgraph from an ROMol. Bonds, substance groups and
+// stereo groups are only extracted to the subgraph if all participant atoms
+// are selected by the `atom_ids` parameter.
+//
+// @param mol starting mol
+// @param atom_ids the indices of atoms to extract. If an atom index falls
+//                 outside of the acceptable atom indices, it is ignored.
+// @param sanitize whether to sanitize the extracted mol.
+//
+RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
+ExtractMolFragment(const RDKit::ROMol& mol,
+                   const std::vector<unsigned int>& atom_ids,
+                   bool sanitize = true);
 } // namespace rdkit_extensions
 } // namespace schrodinger
