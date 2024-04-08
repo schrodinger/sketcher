@@ -317,6 +317,13 @@ class SKETCHER_API Scene : public QGraphicsScene
     std::unordered_map<const NonMolecularObject*, NonMolecularItem*>
         m_non_molecular_to_non_molecular_item;
     std::shared_ptr<AbstractSceneTool> m_scene_tool;
+    /**
+     * Some mouse events require m_scene_tool to change (e.g. clicking with the
+     * add reaction arrow tool equips the add plus tool). In order for the tool
+     * to be still present when the mouse is released, we store the tool that
+     * was active when the mouse was pressed and clear it on mouse release.
+     */
+    std::shared_ptr<AbstractSceneTool> m_scene_tool_from_mouse_press;
 
     /**
      * Objects associated with the context menu instance that is currently open.

@@ -334,6 +334,7 @@ void Scene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     m_scene_tool->mousePressEvent(event);
     event->accept();
+    m_scene_tool_from_mouse_press = m_scene_tool;
 }
 
 void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
@@ -349,6 +350,7 @@ void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
     m_scene_tool->mouseReleaseEvent(event);
     event->accept();
+    m_scene_tool_from_mouse_press = nullptr;
 }
 
 void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)

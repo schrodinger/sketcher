@@ -186,5 +186,44 @@ BOOST_AUTO_TEST_CASE(test_undo_reaction_delete)
     BOOST_TEST(test_scene->getInteractiveItems().size() == 11);
 }
 
+/**
+ * make sure that using the mouse with the plus-arrow tool doesn't crash
+ * (SKETCH-2194)
+ */
+BOOST_AUTO_TEST_CASE(test_arrow_plus_tool_no_crash)
+{
+    auto undo_stack = new QUndoStack();
+    auto mol_model = new MolModel(undo_stack);
+    auto sketcher_model = new SketcherModel();
+    /**
+     * connect reactionArrowAdded. This connection is made by the
+     * sketcherWidget, so we need to do it manually here
+     */
+    mol_model->connect(mol_model, &MolModel::reactionArrowAdded, sketcher_model,
+                       &SketcherModel::onReactionArrowAdded);
+
+    auto test_scene = std::make_shared<TestScene>(mol_model, sketcher_model);
+    // equip the arrow tool
+    sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ENUMERATION)},
+         {ModelKey::ENUMERATION_TOOL,
+          QVariant::fromValue(EnumerationTool::RXN_ARROW)}});
+
+    // simulate a mouse click, the scene should equip the plus tool
+    QGraphicsSceneMouseEvent pressEvent(QEvent::GraphicsSceneMousePress);
+    QGraphicsSceneMouseEvent releaseEvent(QEvent::GraphicsSceneMouseRelease);
+    for (auto event : {&pressEvent, &releaseEvent}) {
+        event->setScenePos(QPointF(0, 0));
+        event->setButton(Qt::LeftButton);
+        event->setButtons(Qt::LeftButton);
+    }
+    test_scene->mousePressEvent(&pressEvent);
+
+    test_scene->mouseReleaseEvent(&releaseEvent);
+    BOOST_TEST(mol_model->getNonMolecularObjects().size() == 1);
+    BOOST_TEST(sketcher_model->getEnumerationTool() ==
+               EnumerationTool::RXN_PLUS);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

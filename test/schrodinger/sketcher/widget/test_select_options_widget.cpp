@@ -1,6 +1,5 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 #include <QButtonGroup>
-#include <QTest>
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
