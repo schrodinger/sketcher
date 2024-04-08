@@ -14,6 +14,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
 #include "test_common.h"
 
 using boost::unit_test::framework::current_test_case;
@@ -60,6 +61,18 @@ BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
     image_gen_APIs(*rdkit_extensions::to_rdkit_reaction(rxn_smiles));
     image_gen_APIs(rxn_smiles);
     image_gen_APIs(std::string(rxn_smiles));
+}
+
+BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)
+{
+    RenderOptions opts;
+    auto test_scene = TestScene::getScene();
+    import_mol_text(test_scene->m_mol_model, "CCCCC");
+    BOOST_TEST(get_image_bytes(*test_scene, ImageFormat::PNG, opts).size() > 0);
+
+    test_scene->m_mol_model->clear();
+    import_reaction_text(test_scene->m_mol_model, "CC.CC>>CC");
+    BOOST_TEST(get_image_bytes(*test_scene, ImageFormat::PNG, opts).size() > 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_highlighting)

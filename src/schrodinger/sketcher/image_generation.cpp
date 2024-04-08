@@ -172,6 +172,36 @@ void add_to_scene(sketcherScene* scene, const std::string& text)
     scene->importText(text);
 }
 
+void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
+                 const QRectF& scene_rect, const RenderOptions& opts)
+{
+    QPainter painter(device);
+    auto target_rect = painter.viewport();
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
+    painter.fillRect(target_rect, opts.background_color);
+
+    // center the scene within the painter's viewport
+    qreal scale = get_scale(scene_rect, opts.width_height);
+    if (opts.scale > 0 && opts.scale < scale) {
+        // if the user has specified a scale, use that unless it would make the
+        // molecule too big for the image
+        scale = opts.scale;
+    }
+    QRectF centered_rect(0, 0, scene_rect.width() * scale,
+                         scene_rect.height() * scale);
+    centered_rect.moveCenter(target_rect.center());
+
+    // QGraphicsScene::render is non-const, but we have to jump through const
+    // hoops to consistently pass a QGraphicsScene through get_image_bytes and
+    // the various const mol/rxn/text interfaces. The former public API
+    // specifies that the QGraphicsScene parameter is non-const, and the later
+    // all create a local Scene object within the static image generation,
+    // so removing the const-ness from this scene seems like an acceptable
+    // compromise to avoid duping the templated code for a non-const Scene.
+    const_cast<QGraphicsScene*>(&scene)->render(&painter, centered_rect,
+                                                scene_rect);
+}
+
 template <typename T> void paint_scene(QPaintDevice* device, const T& input,
                                        const RenderOptions& opts)
 {
@@ -188,24 +218,16 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
     // Using Qt's black-transparent causes these to turn into black smudges.
     scene._backgroundColor = QColor(255, 255, 255, 0);
 
-    QPainter painter(device);
-    auto target_rect = painter.viewport();
-    painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
-    painter.fillRect(target_rect, opts.background_color);
-
-    // center the scene within the painter's viewport
     auto scene_rect = scene.findBoundingRect();
-    qreal scale = get_scale(scene_rect, opts.width_height);
-    if (opts.scale > 0 && opts.scale < scale) {
-        // if the user has specified a scale, use that unless it would make the
-        // molecule too big for the image
-        scale = opts.scale;
-    }
-    QRectF centered_rect(0, 0, scene_rect.width() * scale,
-                         scene_rect.height() * scale);
-    centered_rect.moveCenter(target_rect.center());
+    paint_scene(device, scene, scene_rect, opts);
+}
 
-    scene.render(&painter, centered_rect, scene_rect);
+template <> void paint_scene<QGraphicsScene>(QPaintDevice* device,
+                                             const QGraphicsScene& input,
+                                             const RenderOptions& opts)
+{
+    auto scene_rect = input.sceneRect();
+    paint_scene(device, input, scene_rect, opts);
 }
 
 ImageFormat get_format(const QString& filename)
@@ -332,6 +354,12 @@ QByteArray get_image_bytes(const std::string& text, ImageFormat format,
                            const RenderOptions& opts)
 {
     return get_image_bytes<std::string>(text, format, opts);
+}
+
+QByteArray get_image_bytes(QGraphicsScene& scene, ImageFormat format,
+                           const RenderOptions& opts)
+{
+    return get_image_bytes<QGraphicsScene>(scene, format, opts);
 }
 
 void save_image_file(const RDKit::ROMol& mol, const std::string& filename,

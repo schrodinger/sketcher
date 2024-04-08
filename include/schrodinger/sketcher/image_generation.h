@@ -6,6 +6,7 @@
 
 #include <QByteArray>
 #include <QColor>
+#include <QGraphicsScene>
 #include <QHash>
 #include <QImage>
 #include <QPicture>
@@ -103,6 +104,9 @@ get_image_bytes(const RDKit::ChemicalReaction& rxn, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
 SKETCHER_API QByteArray
 get_image_bytes(const std::string& text, ImageFormat format,
+                const RenderOptions& opts = RenderOptions());
+SKETCHER_API QByteArray
+get_image_bytes(QGraphicsScene& scene, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
 
 /**

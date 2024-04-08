@@ -324,9 +324,7 @@ void SketcherWidget::showFileSaveImageDialog()
     auto dialog = new FileSaveImageDialog(m_sketcher_model, window());
     connect(dialog, &FileSaveImageDialog::exportImageRequested, this,
             [this](auto format, const auto& opts) {
-                // SKETCH-1975: this call uses the existing sketcherScene class;
-                // update to render directly from this Scene instance
-                return get_image_bytes(*m_mol_model->getMol(), format, opts);
+                return get_image_bytes(*m_scene, format, opts);
             });
     dialog->show();
 }
