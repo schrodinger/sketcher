@@ -85,18 +85,18 @@ class SKETCHER_API View : public QGraphicsView
     void leaveEvent(QEvent* event) override;
 
     /**
-     * Make sure that the scene is at least as large as the view.  If the
-     * scene is smaller than the view, then the view will center the scene.
-     * Then, if a new item gets added that causes the scene to grow, the
-     * view will re-center, which causes the molecule to jump around.
+     * Make sure that the scene rectangle contains everything that is currently
+     * displayed in the viewport (including empty space). This prevents visual
+     * artefacts when the selection rectangle or lasso is drawn outside of the
+     * scene rect.
      */
     void enlargeSceneIfNeeded();
 
     /**
-     * Make sure that the scene has enough space around the items so that it can
-     * be centered.
+     * Center the view on the center of the bounding box of all items in the
+     * scene.
      */
-    void adjustSceneAroundItems();
+    void centerViewportOnItems();
 
     /**
      * Scale the matrix, multiply the current zoom level by scale_factor, but

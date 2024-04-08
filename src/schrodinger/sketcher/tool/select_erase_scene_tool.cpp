@@ -25,22 +25,6 @@ namespace sketcher
 namespace
 {
 
-/**
- * Create a QRectF with corners of the two given point.  Note that the
- * QRectF(QPointF, QPointF) constructor expects that the two arguments are the
- * upper-left and lower-right corners, respectively.  `rect_for_points` avoids
- * that requirement: any two corners in any order will result in a QRect with a
- * positive width and height.
- */
-QRectF rect_for_points(const QPointF& a, const QPointF& b)
-{
-    qreal x = qMin(a.x(), b.x());
-    qreal y = qMin(a.y(), b.y());
-    qreal width = qAbs(a.x() - b.x());
-    qreal height = qAbs(a.y() - b.y());
-    return QRectF(x, y, width, height);
-}
-
 } // unnamed namespace
 
 std::shared_ptr<AbstractSceneTool>
@@ -260,7 +244,7 @@ template <typename T> void
 ShapeSelectSceneTool<T>::onLeftButtonDragMove(QGraphicsSceneMouseEvent* event)
 {
     QRectF rect =
-        rect_for_points(this->m_mouse_press_scene_pos, event->scenePos());
+        QRectF(this->m_mouse_press_scene_pos, event->scenePos()).normalized();
     this->m_select_item.setRect(rect);
     SelectSceneTool<T>::onLeftButtonDragMove(event);
 }

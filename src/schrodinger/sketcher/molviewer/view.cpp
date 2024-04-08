@@ -36,6 +36,12 @@ View::View(QGraphicsScene* scene, QWidget* parent) :
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
+    /**
+     * Set the viewport (since we don't have scrollbars, this is the same as
+     * the scene rect for now)
+     */
+    setSceneRect(mapToScene(rect()).boundingRect());
+
     // We don't need to call enlargeSceneIfNeeded here since the View doesn't
     // have a size yet, so we're guaranteed to get a resizeEvent call before
     // View is painted.
@@ -71,7 +77,9 @@ bool View::gestureEvent(QGestureEvent* event)
 
 void View::scaleSafely(qreal scale_factor)
 {
+
     scale(scale_factor, scale_factor);
+
     float zoom_threshold = 1.0;
     auto matrix = transform();
     float m11 = matrix.m11();
@@ -82,6 +90,7 @@ void View::scaleSafely(qreal scale_factor)
                          matrix.m31(), matrix.m32(), matrix.m33());
         setTransform(matrix);
     }
+    enlargeSceneIfNeeded();
 }
 
 void View::pinchTriggered(QPinchGesture* gesture)
@@ -112,22 +121,11 @@ void View::enlargeSceneIfNeeded()
         return;
     }
     QRectF scene_rect = cur_scene->sceneRect();
-    QSizeF view_size = size();
-    qreal extra_width = view_size.width() - scene_rect.width();
-    extra_width = qMax(0.0, extra_width);
-    qreal extra_height = view_size.height() - scene_rect.height();
-    extra_height = qMax(0.0, extra_height);
-    if (extra_width == 0.0 && extra_height == 0.0) {
-        // The scene is already at least as large as the view
-        return;
-    }
-    qreal half_width = extra_width / 2;
-    qreal half_height = extra_height / 2;
-    scene_rect.adjust(-half_width, -half_height, half_width, half_height);
-    cur_scene->setSceneRect(scene_rect);
+    QRectF view_rect = mapToScene(rect()).boundingRect();
+    cur_scene->setSceneRect(scene_rect.united(view_rect));
 }
 
-void View::adjustSceneAroundItems()
+void View::centerViewportOnItems()
 {
     Scene* cur_scene = dynamic_cast<Scene*>(scene());
     if (!cur_scene) {
@@ -138,7 +136,9 @@ void View::adjustSceneAroundItems()
     if (!items_bounding_rect.isValid()) {
         return;
     }
-    cur_scene->setSceneRect(items_bounding_rect);
+    auto scene_rect = sceneRect();
+    scene_rect.moveCenter(items_bounding_rect.center());
+    setSceneRect(scene_rect);
 }
 
 void View::wheelEvent(QWheelEvent* event)
@@ -156,15 +156,6 @@ void View::fitToScreen()
     if (!cur_scene) {
         return;
     }
-    /** reset the viewport (which gets translated by right-mouse drags). From
-     * Qt's documentation:
-     * "If unset, or if set to a null *QRectF, sceneRect() will return the
-     * largest bounding rect of all items on the scene since the scene *was
-     * created (i.e., a rectangle that grows when items are added to or moved in
-     * the scene, but never *shrinks)."
-     */
-    setSceneRect(QRectF());
-
     QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
     // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
     // molecule too close to the border
@@ -178,7 +169,7 @@ void View::fitToScreen()
         // avoid zooming in too much
         scaleSafely(1.0);
     }
-    adjustSceneAroundItems();
+    centerViewportOnItems();
     enlargeSceneIfNeeded();
 }
 
@@ -198,6 +189,7 @@ void View::translateViewportFromScreenCoords(
 void View::translateViewport(const QPointF& delta)
 {
     setSceneRect(sceneRect().translated(delta));
+    enlargeSceneIfNeeded();
 }
 
 void View::keyPressEvent(QKeyEvent* event)
