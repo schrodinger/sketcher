@@ -27,11 +27,6 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
 {
     m_allow_context_menu = false;
     m_highlight_types = InteractiveItemFlag::NONE;
-    // this tool uses a specific color for predictive highlighting
-    m_predictive_highlighting_item.setPen(
-        MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR);
-    m_predictive_highlighting_item.setBrush(
-        MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR);
     updateRotationItem();
     updateMoveSelectionItem();
 }
@@ -39,41 +34,21 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
 void MoveRotateSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
     StandardSceneToolBase::onMouseMove(event);
-    if (m_rotation_item.isInsideHandle(event->scenePos())) {
-        emit newCursorHintRequested(m_rotate_cursor_hint);
-
-    } else {
-        emit newCursorHintRequested(m_translate_cursor_hint);
-    }
-    updatePredictiveHighlightingForMouseAt(event->scenePos());
-}
-
-void MoveRotateSceneTool::updatePredictiveHighlightingForMouseAt(
-    const QPointF& pos)
-{
-    /**
-     *  if rotating on translating highlight the selection or all items,
-     * depending on what is being acted on
-     * */
-    if (m_action != Action::NONE) {
-        bool moving_selection =
-            m_atoms_to_move.size() || m_non_mol_objs_to_move.size();
-        m_predictive_highlighting_item.highlightItems(
-            moving_selection ? m_scene->selectedItems()
-                             : m_scene->getInteractiveItems());
+    if (m_mouse_pressed) {
         return;
     }
-    auto selected_items = m_scene->selectedItems();
-    if (!selected_items.empty()) {
-        if (m_rotation_item.isInsideHandle(pos) ||
-            m_move_selection_item.rect().contains(pos)) {
-            m_predictive_highlighting_item.highlightItems(selected_items);
-        } else {
-            m_predictive_highlighting_item.clearHighlightingPath();
+    if (m_rotation_item.isInsideHandle(event->scenePos())) {
+        emit newCursorHintRequested(m_rotate_cursor_hint);
+        /* override base class predictive highlighting to the whole selection or
+         * the whole scene if there's no selection*/
+        auto items_to_highlight = m_scene->selectedItems();
+        if (items_to_highlight.empty()) {
+            items_to_highlight = m_scene->getInteractiveItems();
         }
+        m_predictive_highlighting_item.highlightItems(items_to_highlight);
     } else {
-        m_predictive_highlighting_item.highlightItems(
-            m_scene->getInteractiveItems());
+        emit newCursorHintRequested(m_translate_cursor_hint);
+        m_predictive_highlighting_item.highlightItems({});
     }
 }
 
@@ -97,8 +72,6 @@ void MoveRotateSceneTool::onLeftButtonDragStart(
             setObjectsToMove(selected_atoms, selected_non_mol_objs);
         }
     }
-    updatePredictiveHighlightingForMouseAt(event->scenePos());
-
     // begin an undo macro in case we have to merge atoms at the end of the
     // drag
     m_mol_model->beginUndoMacro(description);
@@ -132,7 +105,6 @@ void MoveRotateSceneTool::onLeftButtonDragRelease(
     m_action = Action::NONE;
     m_angle_text_item.setText("");
     updateMergeHintItem();
-    updatePredictiveHighlightingForMouseAt(event->scenePos());
     StandardSceneToolBase::onLeftButtonDragMove(event);
 }
 
@@ -191,8 +163,8 @@ std::vector<QGraphicsItem*> MoveRotateSceneTool::getGraphicsItems()
 void MoveRotateSceneTool::onStructureUpdated()
 {
     /**
-     * don't update the rotation item if we're in the middle of a drag otherwise
-     * it will get reset to the original position.
+     * don't update the rotation item if we're in the middle of
+     * a drag othewise it will get reset to the original position.
      */
     if (!m_mouse_pressed) {
         updateRotationItem();

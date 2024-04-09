@@ -106,9 +106,6 @@ const QColor SELECTION_OUTLINE_COLOR = QColor("#779c59");
 // both the outline and the background.
 const QColor PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#e2eadb");
 
-// the color for drawing predictive highlighting for the move-rotate tool
-const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#eaeaea");
-
 // the color of the dotted line around valence errors
 const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 
