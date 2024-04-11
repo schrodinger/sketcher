@@ -3,14 +3,21 @@
 //
 //
 // Copyright Schrodinger LLC, All Rights Reserved.
-
 #include "schrodinger/rdkit_extensions/helm.h"
 
+#include <algorithm>
+#include <boost/dynamic_bitset.hpp>
 #include <optional>
-#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "schrodinger/container/dynamic_bitset_on_bits_wrapper.hpp"
+#include "schrodinger/rdkit_extensions/molops.h"
+
+using ::RDKit::RWMol;
 
 namespace schrodinger
 {
@@ -76,5 +83,56 @@ get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
     schrodinger::dynamic_bitset_on_bits_wrapper on_bits(selected_atoms);
     return {on_bits.begin(), on_bits.end()};
 }
+
+static void
+check_for_polymer_groups_and_extended_annotations(const ::RDKit::ROMol& mol)
+{
+    std::string type;
+    std::string fieldname;
+    for (auto& sgroup : ::RDKit::getSubstanceGroups(mol)) {
+        static const std::string TYPE{"TYPE"};
+        static const std::string FIELDNAME{"FIELDNAME"};
+        if (!(sgroup.getPropIfPresent(TYPE, type) &&
+              sgroup.getPropIfPresent(FIELDNAME, fieldname) &&
+              fieldname == SUPPLEMENTARY_INFORMATION)) {
+            continue;
+        }
+
+        std::vector<std::string> datafields;
+        static const std::string DATAFIELDS{"DATAFIELDS"};
+        if (!sgroup.getPropIfPresent(DATAFIELDS, datafields) ||
+            datafields.size() < 2u) {
+            continue;
+        }
+
+        if (!datafields[0].empty()) {
+            throw std::invalid_argument(
+                "Polymer groups are currently unsupported");
+        }
+
+        if (!datafields[1].empty()) {
+            throw std::invalid_argument(
+                "Extended annotations are currently unsupported");
+        }
+        return;
+    }
+}
+
+[[nodiscard]] boost::shared_ptr<RDKit::RWMol>
+extract_helm_polymers(const RDKit::ROMol& mol,
+                      const std::vector<std::string_view>& polymer_ids)
+{
+    check_if_input_is_atomistic(mol);
+    check_for_polymer_groups_and_extended_annotations(mol);
+
+    auto selected_atom_indices = get_atoms_in_polymer_chains(mol, polymer_ids);
+    constexpr bool sanitize{false};
+
+    auto extracted_mol =
+        ExtractMolFragment(mol, selected_atom_indices, sanitize);
+    extracted_mol->setProp(HELM_MODEL, true);
+    return extracted_mol;
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

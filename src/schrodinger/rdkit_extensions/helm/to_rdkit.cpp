@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
-#include <boost/functional/hash.hpp>
 #include <boost/range/irange.hpp>
 #include <charconv>
 #include <fmt/format.h>
@@ -16,7 +15,6 @@
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
-#include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
@@ -60,6 +58,16 @@ using namespace schrodinger::rdkit_extensions;
  * TODO: Add example use cases
  */
 
+namespace
+{
+
+template <class PropType, class RDKitObject> PropType get_property
+    [[nodiscard]] (const RDKitObject* obj, const std::string& propname)
+{
+    return obj->template getProp<PropType>(propname);
+}
+} // namespace
+
 namespace helm
 {
 
@@ -76,12 +84,6 @@ void add_helm_connections(::RDKit::RWMol& mol,
 void add_polymer_groups_and_extended_annotations(
     ::RDKit::RWMol& mol, const std::vector<polymer_group> polymer_groups,
     const std::string_view& extended_annotations);
-
-template <class PropType, class RDKitObject> PropType get_property
-    [[nodiscard]] (const RDKitObject* obj, const std::string& propname)
-{
-    return obj->template getProp<PropType>(propname);
-}
 
 } // namespace
 

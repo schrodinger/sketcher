@@ -2,6 +2,7 @@
 
 #include "schrodinger/rdkit_extensions/definitions.h"
 
+#include <boost/shared_ptr.hpp>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,9 +23,13 @@ const std::string SMILES_MONOMER{"isSmilesMonomer"};
 const std::string CUSTOM_BOND{"customBond"};
 const std::string EXTENDED_ANNOTATIONS{"extended_annotations"};
 
+const std::string ARM_PAIR_KEY{"Antibody arms"};
+const std::string STRAND_PAIR_KEY{"Double Helix"};
+
 namespace RDKit
 {
 class ROMol;
+class RWMol;
 } // namespace RDKit
 
 namespace schrodinger
@@ -43,5 +48,14 @@ get_atoms_in_polymer_chain(const RDKit::ROMol& mol,
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
 get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
                             const std::vector<std::string_view>& polymer_ids);
+
+// Extracts polymers with the provided ids from a coarse grain mol. Polymer
+// information that span across non-selected polymers will be deleted.
+//
+// NOTE: Polymer groups are unsupported
+[[nodiscard]] RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
+extract_helm_polymers(const RDKit::ROMol& mol,
+                      const std::vector<std::string_view>& polymer_ids);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

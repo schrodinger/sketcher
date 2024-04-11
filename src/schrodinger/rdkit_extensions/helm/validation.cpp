@@ -4,9 +4,11 @@
 #include <charconv> // from_chars
 #include <cctype>
 #include <fmt/format.h>
+#include <json/json.h>
+#include <regex>
+#include <sstream>
 #include <string>
 #include <string_view>
-#include <regex>
 #include <unordered_set>
 #include <vector>
 
@@ -279,6 +281,24 @@ void validate_polymer_group_items(
         }
     }
 }
+
+void validate_extended_annotations(std::string_view extended_annotations,
+                                   HelmParser& parser)
+{
+    if (extended_annotations.empty()) {
+        return;
+    }
+
+    ::Json::CharReaderBuilder builder;
+    ::Json::Value value;
+    std::istringstream annotations(std::string{extended_annotations});
+    std::string errors;
+    if (!::Json::parseFromStream(builder, annotations, &value, &errors)) {
+        parser.saveError(
+            extended_annotations,
+            fmt::format("Invalid extended annotations due to:\n {}", errors));
+    }
+}
 } // namespace
 
 void validate_parsed_info(const helm_info& parsed_info, HelmParser& parser)
@@ -326,5 +346,7 @@ void validate_parsed_info(const helm_info& parsed_info, HelmParser& parser)
                       validate_polymer_group_items(polymer_group, polymer_ids,
                                                    group_ids, parser);
                   });
+
+    validate_extended_annotations(parsed_info.extended_annotations, parser);
 }
 } // namespace helm

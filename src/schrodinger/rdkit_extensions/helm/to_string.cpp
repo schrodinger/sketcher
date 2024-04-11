@@ -66,6 +66,7 @@ template <class PropType, class RDKitObject> PropType get_property
     ::RDKit::RWMol mutable_mol(mol);
     for (const auto idx : intra_polymer_bonds) {
         const auto* bond = mutable_mol.getBondWithIdx(idx);
+
         mutable_mol.removeBond(bond->getBeginAtom()->getIdx(),
                                bond->getEndAtom()->getIdx());
     }

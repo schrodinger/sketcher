@@ -135,7 +135,7 @@ static const std::vector<std::string>
         R"(PEPTIDE1{C.C}|BLOB1{Gold Particle}"Au10, Diameter:10nm"$PEPTIDE1,BLOB1,C:R3-?:?$G1(PEPTIDE1:20-34+BLOB1)${"Name":"Gold particle conjugated with peptides","Load":26}$V2.0)",
         R"(PEPTIDE1{L.V.A}$$${"PEPTIDE1":{"ChainType":"hc"}}$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$RNA1,RNA2,2:pair-9:pair|RNA1,RNA2,5:pair-6:pair|RNA1,RNA2,8:pair-3:pair$${"RNA1":{"strandtype":"ss"}}$V2.0)",
-        R"(RNA1{R(A)P.R(C)P.R(G)}$$${"my annotation"}$V2.0)",
+        R"(RNA1{R(A)P.R(C)P.R(G)}$$${"my chain":"my annotation"}$V2.0)",
         /* Monomer repetitions */
         R"(PEPTIDE1{A'11'}$$$$V2.0)",
         R"(PEPTIDE1{A'2'}$$$$V2.0)",
