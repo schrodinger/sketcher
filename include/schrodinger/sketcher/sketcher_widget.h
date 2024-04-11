@@ -44,6 +44,7 @@ class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
 class SketcherModel;
+enum class ImageFormat;
 enum class ModelKey;
 enum class SceneSubset;
 
@@ -82,6 +83,27 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @return the sketcher contents in the request serialized format
      */
     std::string getString(rdkit_extensions::Format format) const;
+
+    /**
+     * @return the sketcher contents as an image in the requested format
+     */
+    QByteArray getImageBytes(ImageFormat format) const;
+
+    /**
+     * Clear the scene in its entirety
+     */
+    void clear();
+
+    /**
+     * @return true if the scene is empty
+     */
+    bool isEmpty() const;
+
+  signals:
+    /**
+     * Emitted when the contents of the sketcher scene has changed
+     */
+    void sketcherChanged();
 
   protected slots:
 

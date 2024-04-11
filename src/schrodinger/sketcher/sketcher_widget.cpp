@@ -5,15 +5,16 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QCursor>
+#include <QFontDatabase>
 #include <QGraphicsPixmapItem>
+#include <QKeyEvent>
 #include <QMimeData>
 #include <QScreen>
 #include <QWidget>
-#include <QKeyEvent>
-#include <rdkit/GraphMol/ROMol.h>
-#include <rdkit/GraphMol/ChemReactions/Reaction.h>
-#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <boost/algorithm/string.hpp>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -63,7 +64,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 {
     // The tools in ~Scene will access the underlying mol, so we need to
     // make sure the mol model still exists when the scene is destroyed.
-    // This is controlled by the order in which parentship relationships
+    // This is controlled by the order in which parent relationships
     // are defined.
     m_mol_model->setParent(this);
 
@@ -137,6 +138,14 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     // force the scene to update the view's cursor now that all of the signals
     // are connected
     m_scene->requestCursorHintUpdate();
+
+    // Update stylesheet and fonts
+    setStyleSheet(schrodinger::sketcher::TOOL_BUTTON_STYLE +
+                  schrodinger::sketcher::GENERAL_STYLE);
+    QFontDatabase::addApplicationFont(":resources/fonts/Arial.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arial_Italic.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold_Italic.ttf");
 }
 
 SketcherWidget::~SketcherWidget() = default;
@@ -229,6 +238,21 @@ void SketcherWidget::addFromString(const std::string& text, Format format)
 std::string SketcherWidget::getString(Format format) const
 {
     return extract_string(m_mol_model, format, SceneSubset::ALL);
+}
+
+QByteArray SketcherWidget::getImageBytes(ImageFormat format) const
+{
+    return get_image_bytes(*m_scene, format, RenderOptions());
+}
+
+void SketcherWidget::clear()
+{
+    m_mol_model->clear();
+}
+
+bool SketcherWidget::isEmpty() const
+{
+    return m_mol_model->isEmpty();
 }
 
 std::string SketcherWidget::getClipboardContents() const
