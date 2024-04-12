@@ -192,9 +192,9 @@ BOOST_AUTO_TEST_CASE(test_undo_reaction_delete)
  */
 BOOST_AUTO_TEST_CASE(test_arrow_plus_tool_no_crash)
 {
-    auto undo_stack = new QUndoStack();
-    auto mol_model = new MolModel(undo_stack);
-    auto sketcher_model = new SketcherModel();
+    auto scene = TestScene::getScene();
+    auto mol_model = scene->m_mol_model;
+    auto sketcher_model = scene->m_sketcher_model;
     /**
      * connect reactionArrowAdded. This connection is made by the
      * sketcherWidget, so we need to do it manually here

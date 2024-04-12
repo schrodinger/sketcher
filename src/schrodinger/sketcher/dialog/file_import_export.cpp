@@ -95,5 +95,3 @@ QString get_import_name_filters()
 
 } // namespace sketcher
 } // namespace schrodinger
-
-#include "schrodinger/sketcher/dialog/file_import_export.moc"

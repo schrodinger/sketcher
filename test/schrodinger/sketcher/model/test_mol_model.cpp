@@ -2875,6 +2875,7 @@ BOOST_AUTO_TEST_CASE(test_translate_rotate_crash)
         undo_stack.redo();
         dummy += mol->getConformer().getAtomPos(2).x;
     }
+    BOOST_TEST(dummy > 0.0);
 }
 
 BOOST_AUTO_TEST_CASE(test_addHs_hydrogen_counts)
