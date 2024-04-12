@@ -67,6 +67,12 @@ class SKETCHER_API MoveRotateSceneTool : public StandardSceneToolBase
      */
     void updateMoveSelectionItem();
 
+    /**
+     * update the predictive highlighting when the mouse is moved to a new
+     * position
+     */
+    void updatePredictiveHighlightingForMouseAt(const QPointF& pos);
+
     /** this variable is used to determine if the mouse is being performed in a
      * mouse drag (rotate, translate or none). It gets set in onDragStart and
      *reset to Action::NONE on mouse release
