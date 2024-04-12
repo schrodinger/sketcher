@@ -128,4 +128,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.config.name }}
-          path: build/external
+          path: ${{ matrix.config.app }}
