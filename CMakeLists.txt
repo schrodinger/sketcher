@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 file(READ external/versions.json VERSIONS)
 string(JSON BOOST_VERSION GET ${VERSIONS} boost)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)
+string(JSON JSON_VERSION GET ${VERSIONS} jsoncpp)
 string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
@@ -23,6 +24,7 @@ find_package(Boost ${BOOST_VERSION} REQUIRED
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
+find_package(jsoncpp REQUIRED) # version not implemented
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
@@ -65,6 +67,7 @@ target_link_libraries(
           RDKit::DistGeomHelpers
           RDKit::RDInchiLib
           fmt::fmt
+          jsoncpp_lib_static
           zstd::libzstd_static)
 
 set(SKETCHER_LIB sketcher)

@@ -15,8 +15,10 @@ endif()
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
 string(JSON BOOST_VERSION GET ${VERSIONS} boost)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)
+string(JSON JSON_VERSION GET ${VERSIONS} jsoncpp)
 string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
 ExternalProject_Add(
@@ -27,6 +29,24 @@ ExternalProject_Add(
   CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fmt-${FMT_VERSION}
     -DCMAKE_BUILD_TYPE=Release -DFMT_DOC=OFF -DFMT_TEST=OFF -DFMT_INSTALL=ON)
+
+ExternalProject_Add(
+  jsoncpp
+  GIT_REPOSITORY https://github.com/open-source-parsers/jsoncpp.git
+  GIT_TAG ${JSON_VERSION}
+  GIT_SHALLOW TRUE
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/jsoncpp-${JSON_VERSION}
+    -DCMAKE_BUILD_TYPE=Release -DJSONCPP_WITH_CMAKE_PACKAGE=ON)
+
+ExternalProject_Add(
+  zlib
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG v${ZLIB_VERSION}
+  GIT_SHALLOW TRUE
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+    -DCMAKE_BUILD_TYPE=Release)
 
 ExternalProject_Add(
   zstd

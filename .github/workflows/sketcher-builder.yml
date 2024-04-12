@@ -55,6 +55,22 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
           os: ${{ matrix.config.os }}
 
+      - name: Fetch jsoncpp
+        id: fetch-jsoncpp
+        uses: ./.github/actions/build-external
+        with:
+          library: jsoncpp
+          version: ${{ fromJson(env.VERSIONS_JSON).jsoncpp }}
+          os: ${{ matrix.config.os }}
+
+      - name: Fetch zlib
+        id: fetch-zlib
+        uses: ./.github/actions/build-external
+        with:
+          library: zlib
+          version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
+          os: ${{ matrix.config.os }}
+
       - name: Fetch zstd
         id: fetch-zstd
         uses: ./.github/actions/build-external
@@ -90,6 +106,8 @@ jobs:
       - name: Configure CMake
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
+                                ${{ steps.fetch-jsoncpp.outputs.path }};\
+                                ${{ steps.fetch-zlib.outputs.path }};\
                                 ${{ steps.fetch-zstd.outputs.path }};\
                                 ${{ steps.fetch-boost.outputs.path }};\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
@@ -110,4 +128,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.config.name }}
-          path: ${{ matrix.config.app }}
+          path: build/external

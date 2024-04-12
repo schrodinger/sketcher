@@ -19,6 +19,7 @@
 #include <boost/serialization/strong_typedef.hpp>
 #include <boost/shared_ptr.hpp>
 #include <fmt/format.h>
+#include <json/json.h>
 #include <rdkit/CIPLabeler/CIPLabeler.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
@@ -47,6 +48,10 @@ static std::string check_zstd(std::string&& input)
 
 bool dependency_test(const std::string& smiles)
 {
+    // json
+    ::Json::Value foo;
+    foo["bar"] = "baz";
+
     // fmt
     auto test = fmt::format("foo{}.{}.{}", 10, 1, 1);
 
