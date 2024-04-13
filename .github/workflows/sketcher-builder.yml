@@ -6,19 +6,25 @@ on:
   pull_request: ~
 
 env:
-  BUILD_CONFIG: Release
+  BUILD_TYPE: Release
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  # TODO: clang-format hook
+  build_test_sketcher:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
     defaults:
       run:
         shell: bash
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
-        build-output: [app]  # TODO: wasm
+        config:
+        - {
+            name: "macOS",
+            os: macos-latest,
+            app: "build/sketcher_app",
+          }
     steps:
       - uses: actions/checkout@v4
 
@@ -39,7 +45,7 @@ jobs:
       - name: Configure Dependency CMake
         run: |
             cmake -B build/external/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_CONFIG }}
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Fetch fmt
         id: fetch-fmt
@@ -47,7 +53,7 @@ jobs:
         with:
           library: fmt
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Fetch jsoncpp
         id: fetch-jsoncpp
@@ -55,7 +61,7 @@ jobs:
         with:
           library: jsoncpp
           version: ${{ fromJson(env.VERSIONS_JSON).jsoncpp }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Fetch zlib
         id: fetch-zlib
@@ -63,7 +69,7 @@ jobs:
         with:
           library: zlib
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Fetch zstd
         id: fetch-zstd
@@ -71,7 +77,7 @@ jobs:
         with:
           library: zstd
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Fetch Boost
         id: fetch-boost
@@ -79,7 +85,7 @@ jobs:
         with:
           library: boost
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Fetch RDKit
         id: fetch-rdkit
@@ -87,7 +93,7 @@ jobs:
         with:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Fetch Qt
         id: fetch-qt
@@ -95,7 +101,7 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          build-output: ${{ matrix.build-output }}
+          os: ${{ matrix.config.os }}
 
       - name: Configure CMake
         env:
@@ -108,18 +114,18 @@ jobs:
                                 ${{ steps.fetch-qt.outputs.path }}"
         run: |
           cmake -B build -S . -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_CONFIG }} \
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_CONFIG }}
+        run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
         working-directory: build
-        run: ctest --build-config ${{ env.BUILD_CONFIG }} --output-on-failure
+        run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
       - name: Download sketcher executable
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.config.name }}
-          path: build/sketcher_app
+          path: ${{ matrix.config.app }}

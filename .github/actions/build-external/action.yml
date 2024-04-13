@@ -5,8 +5,8 @@ inputs:
   version:
     description: "Version of the dependency to build"
     required: true
-  build-output:
-    description: "Build output target"
+  os:
+    description: "Platform on which we are building"
     required: true
 
 outputs:
@@ -22,11 +22,11 @@ runs:
       id: cache-check
       with:
         path: build/external/${{ inputs.library }}-${{ inputs.version }}
-        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}
+        key: ${{ inputs.library }}-${{ inputs.version }}-${{ inputs.os }}
 
     - name: Build
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
         cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_CONFIG }}
+              --config ${{ env.BUILD_TYPE }}
