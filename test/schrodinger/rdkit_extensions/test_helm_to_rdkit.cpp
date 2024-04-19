@@ -391,10 +391,13 @@ BOOST_DATA_TEST_CASE(TestPolymerGroups,
 
 BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
 {
-    // NOTE: We currently don't validate the json inputs.
-    // We capture everything in the extended annotations
-    // section
-    std::string annotations = R"({"PEPTIDE1":{"ChainType":"hc"}})";
+    // check invalid json
+    std::string annotations = "{some invalid json here}";
+    BOOST_CHECK_THROW(helm_to_rdkit("PEPTIDE1{L}$$$" + annotations + "$V2.0"),
+                      std::invalid_argument);
+
+    // this should pass
+    annotations = R"({"PEPTIDE1":{"ChainType":"hc"}})";
     const auto mol =
         helm_to_rdkit("PEPTIDE1{L.V.A}$$$" + annotations + "$V2.0");
 

@@ -1,10 +1,10 @@
 #include "schrodinger/rdkit_extensions/helm/validation.h"
 
 #include <algorithm>
+#include <boost/json.hpp>
 #include <charconv> // from_chars
 #include <cctype>
 #include <fmt/format.h>
-#include <json/json.h>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -289,14 +289,11 @@ void validate_extended_annotations(std::string_view extended_annotations,
         return;
     }
 
-    ::Json::CharReaderBuilder builder;
-    ::Json::Value value;
-    std::istringstream annotations(std::string{extended_annotations});
-    std::string errors;
-    if (!::Json::parseFromStream(builder, annotations, &value, &errors)) {
-        parser.saveError(
-            extended_annotations,
-            fmt::format("Invalid extended annotations due to:\n {}", errors));
+    boost::json::stream_parser p;
+    boost::system::error_code ec;
+    p.write(extended_annotations.data(), extended_annotations.size(), ec);
+    if (ec) {
+        parser.saveError(extended_annotations, "Invalid extended annotations");
     }
 }
 } // namespace
