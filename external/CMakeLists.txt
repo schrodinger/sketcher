@@ -47,6 +47,7 @@ set(BOOST_INCLUDE_LIBS
     flyweight
     graph
     iostreams
+    json
     multi_array
     multiprecision
     program_options

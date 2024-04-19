@@ -12,6 +12,7 @@
 #include <boost/bimap.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/json.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/operators.hpp>
 #include <boost/range/combine.hpp>
@@ -78,6 +79,9 @@ bool dependency_test(const std::string& smiles)
     std::string byte_array(test.size(), '\0');
     boost::beast::detail::base64::decode(byte_array.data(), test.data(),
                                          test.size());
+    boost::json::stream_parser p;
+    boost::system::error_code ec;
+    p.write(byte_array.data(), byte_array.size(), ec);
 
     // RDKit
     boost::shared_ptr<RDKit::RWMol> mol;
