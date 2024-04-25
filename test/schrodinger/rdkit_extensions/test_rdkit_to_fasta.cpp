@@ -94,16 +94,16 @@ BOOST_DATA_TEST_CASE(
          ">some description\nAAA\n>something\nDDD\n",
      }) ^
      bdata::make(std::vector<std::string>{
-         "RNA1{R(A)P.R(A)P.R((G+T))P}$$$$V2.0",
-         R"(RNA1{R(A)P.R(A)P.R((C+G+T))P}"something"$$$$V2.0)",
+         "RNA1{R(A)P.R(A)P.R((G+T+U))P}$$$$V2.0",
+         R"(RNA1{R(A)P.R(A)P.R((C+G+T+U))P}"something"$$$$V2.0)",
          R"(RNA1{R(A)P.R(A)P.R(A)P}"some description"$$$$V2.0)",
-         R"(RNA1{R(A)P.R(A)P.R(A)P}"some description"|RNA2{R((A+G+T))P.R((A+G+T))P.R((A+G+T))P}"something"$$$$V2.0)",
+         R"(RNA1{R(A)P.R(A)P.R(A)P}"some description"|RNA2{R((A+G+T+U))P.R((A+G+T+U))P.R((A+G+T+U))P}"something"$$$$V2.0)",
      })) ^
         bdata::make(std::vector<std::string>{
-            "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T))P}$$$$V2.0",
-            R"(RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T))P}"something"$$$$V2.0)",
+            "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T+U))P}$$$$V2.0",
+            R"(RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T+U))P}"something"$$$$V2.0)",
             R"(RNA1{[dR](A)P.[dR](A)P.[dR](A)P}"some description"$$$$V2.0)",
-            R"(RNA1{[dR](A)P.[dR](A)P.[dR](A)P}"some description"|RNA2{[dR]((A+G+T))P.[dR]((A+G+T))P.[dR]((A+G+T))P}"something"$$$$V2.0)",
+            R"(RNA1{[dR](A)P.[dR](A)P.[dR](A)P}"some description"|RNA2{[dR]((A+G+T+U))P.[dR]((A+G+T+U))P.[dR]((A+G+T+U))P}"something"$$$$V2.0)",
         }),
     input_fasta, rna_helm, dna_helm)
 {

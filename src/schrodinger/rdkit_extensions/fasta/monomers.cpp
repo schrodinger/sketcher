@@ -48,19 +48,19 @@ static const boost::bimap<char, std::string> supported_nucleotides_bimap =
         ('A', "A")    // adenine
         ('C', "C")    // cytosine
         ('G', "G")    // guanine
-        ('U', "U")    // uracil
         ('T', "T")    // thymine
+        ('U', "U")    // uracil
         // Ambiguous
-        ('K', "(G+T)")   // keto
-        ('S', "(C+G)")   // strong
-        ('Y', "(C+T)")   // pyrimidine
-        ('M', "(A+C)")   // amino
-        ('W', "(A+T)")   // weak
-        ('R', "(A+G)")   // purine
-        ('B', "(C+G+T)") // C/G/T
-        ('D', "(A+G+T)") // A/G/T
-        ('H', "(A+C+T)") // A/C/T
-        ('V', "(A+C+G)") // A/C/G
+        ('R', "(A+G)")     // purines
+        ('Y', "(C+T+U)")   // pyrimidines
+        ('K', "(G+T+U)")   // ketones
+        ('M', "(A+C)")     // amino groups
+        ('S', "(C+G)")     // strong interaction
+        ('W', "(A+T+U)")   // weak interaction
+        ('B', "(C+G+T+U)") // not A
+        ('D', "(A+G+T+U)") // not C
+        ('H', "(A+C+T+U)") // not G
+        ('V', "(A+C+G)")   // neither T nor U
         // Unknown monomer
         ('N', "N"); // any, meaning one single unknown base
 // clang-format on

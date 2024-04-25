@@ -90,36 +90,38 @@ BOOST_DATA_TEST_CASE(TestBadPolymerIds,
                      bdata::make(std::vector<std::string>{"", "UNSUPPORTED"}),
                      polymer_id)
 {
-    auto mol = helm_to_rdkit("RNA1{d(C)P.d(A)P}|RNA2{d(G)P.d(T)P}$$$$V2.0");
+    auto mol = helm_to_rdkit(
+        "RNA1{[dR](C)P.[dR](A)P}|RNA2{[dR](G)P.[dR](T)P}$$$$V2.0");
     auto extracted_polymers = extract_helm_polymers(*mol, {polymer_id});
     BOOST_TEST(extracted_polymers->getNumAtoms() == 0);
 }
 
-BOOST_DATA_TEST_CASE(TestExtractionOfPolymers,
-                     bdata::make(std::vector<std::string>{
-                         "PEPTIDE1{A'3'}$$$$V2.0",
-                         "PEPTIDE1{G}|PEPTIDE2{A'3'}$$$$V2.0",
-                         "RNA1{R(C)P}$$$$V2.0",
-                         "CHEM1{*}$$$$V2.0",
-                         "BLOB1{Bead}$$$$V2.0",
-                         "PEPTIDE1{(X:?+A:5)}$$$$V2.0",
-                         "CHEM1{*}|CHEM2{*}$$$$V2.0",
-                         "RNA1{d(C)P.d(A)P}|RNA2{d(G)P.d(T)P}$$$$V2.0",
-                         "PEPTIDE1{A.G.J.K.L}|BLOB1{Bead}$$$$V2.0",
-                         R"(PEPTIDE1{A'3'}"something here"$$$$V2.0)",
-                     }) ^ bdata::make(std::vector<std::string>{
-                              "PEPTIDE1{A'3'}$$$$V2.0",
-                              "PEPTIDE1{G}$$$$V2.0",
-                              "RNA1{R(C)P}$$$$V2.0",
-                              "CHEM1{*}$$$$V2.0",
-                              "BLOB1{Bead}$$$$V2.0",
-                              "PEPTIDE1{(X:?+A:5)}$$$$V2.0",
-                              "CHEM1{*}$$$$V2.0",
-                              "RNA1{d(C)P.d(A)P}$$$$V2.0",
-                              "PEPTIDE1{A.G.J.K.L}|BLOB1{Bead}$$$$V2.0",
-                              R"(PEPTIDE1{A'3'}"something here"$$$$V2.0)",
-                          }),
-                     input_helm, expected_helm)
+BOOST_DATA_TEST_CASE(
+    TestExtractionOfPolymers,
+    bdata::make(std::vector<std::string>{
+        "PEPTIDE1{A'3'}$$$$V2.0",
+        "PEPTIDE1{G}|PEPTIDE2{A'3'}$$$$V2.0",
+        "RNA1{R(C)P}$$$$V2.0",
+        "CHEM1{*}$$$$V2.0",
+        "BLOB1{Bead}$$$$V2.0",
+        "PEPTIDE1{(X:?+A:5)}$$$$V2.0",
+        "CHEM1{*}|CHEM2{*}$$$$V2.0",
+        "RNA1{[dR](C)P.[dR](A)P}|RNA2{[dR](G)P.[dR](T)P}$$$$V2.0",
+        "PEPTIDE1{A.G.J.K.L}|BLOB1{Bead}$$$$V2.0",
+        R"(PEPTIDE1{A'3'}"something here"$$$$V2.0)",
+    }) ^ bdata::make(std::vector<std::string>{
+             "PEPTIDE1{A'3'}$$$$V2.0",
+             "PEPTIDE1{G}$$$$V2.0",
+             "RNA1{R(C)P}$$$$V2.0",
+             "CHEM1{*}$$$$V2.0",
+             "BLOB1{Bead}$$$$V2.0",
+             "PEPTIDE1{(X:?+A:5)}$$$$V2.0",
+             "CHEM1{*}$$$$V2.0",
+             "RNA1{[dR](C)P.[dR](A)P}$$$$V2.0",
+             "PEPTIDE1{A.G.J.K.L}|BLOB1{Bead}$$$$V2.0",
+             R"(PEPTIDE1{A'3'}"something here"$$$$V2.0)",
+         }),
+    input_helm, expected_helm)
 {
     auto mol = helm_to_rdkit(input_helm);
     auto extracted_polymers =

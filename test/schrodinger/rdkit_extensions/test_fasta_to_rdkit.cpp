@@ -70,8 +70,8 @@ BOOST_DATA_TEST_CASE(TestHelmConversionOfRNAFasta,
                          ">\nAAK",
                          ">\nAAB",
                      }) ^ bdata::make(std::vector<std::string>{
-                              "RNA1{R(A)P.R(A)P.R((G+T))P}$$$$V2.0",
-                              "RNA1{R(A)P.R(A)P.R((C+G+T))P}$$$$V2.0",
+                              "RNA1{R(A)P.R(A)P.R((G+T+U))P}$$$$V2.0",
+                              "RNA1{R(A)P.R(A)P.R((C+G+T+U))P}$$$$V2.0",
                           }),
                      nucleotide_fasta, equivalent_helm)
 {
@@ -83,10 +83,11 @@ BOOST_DATA_TEST_CASE(TestHelmConversionOfDNAFasta,
                      bdata::make(std::vector<std::string>{
                          ">\nAAK",
                          ">\nAAB",
-                     }) ^ bdata::make(std::vector<std::string>{
-                              "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T))P}$$$$V2.0",
-                              "RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T))P}$$$$V2.0",
-                          }),
+                     }) ^
+                         bdata::make(std::vector<std::string>{
+                             "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T+U))P}$$$$V2.0",
+                             "RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T+U))P}$$$$V2.0",
+                         }),
                      nucleotide_fasta, equivalent_helm)
 {
     auto mol = fasta::dna_fasta_to_rdkit(nucleotide_fasta);

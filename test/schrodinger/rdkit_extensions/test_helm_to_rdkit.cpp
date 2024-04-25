@@ -410,7 +410,8 @@ BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
 BOOST_DATA_TEST_CASE(
     TestInputsWithSelfBond,
     bdata::make(std::vector<std::string>{
-        "RNA1{d(C)P.d(A)P}|RNA2{d(G)P.d(T)P}$RNA1,RNA1,1:R3-1:R3$$$V2.0",
+        "RNA1{[dR](C)P.[dR](A)P}|RNA2{[dR](G)P.[dR](T)P}$RNA1,RNA1,1:R3-1:R3$$$"
+        "V2.0",
         "RNA1{R(C)P.R(A)P}|RNA2{R(G)P.R(U)P}$RNA1,RNA1,1:R3-1:R3$$$V2.0",
     }),
     input_helm)
