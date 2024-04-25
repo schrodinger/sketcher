@@ -139,11 +139,13 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // groups newly inserted from file/paste input
     RDKit::forwardStereoGroupIds(mol);
 
-    // Apply a limited sanitization on molecule to update internal properties
-    // while avoiding any changes to the molecule that would alter it to
-    // keep the sketcher's input as close to the original as possible.
-    rdkit_extensions::apply_sanitization(
-        mol, rdkit_extensions::Sanitization::PARTIAL);
+    // DO NOT REPLACE THIS WITH rdkit_extensions::apply_sanitization(PARTIAL):
+    // it will turn atoms with unsatisfied valences (coming from SMARTS)
+    // into RADICALs, and we don't want that.
+    // This is the bare mininimum we need to do to be able to detect stereo.
+    bool no_strict = false;
+    mol.updatePropertyCache(no_strict);
+    RDKit::MolOps::symmetrizeSSSR(mol);
 
     // Cleanup before recalculating stereo
     cleanup_stereo_markers(mol);

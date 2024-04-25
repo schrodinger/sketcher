@@ -3224,5 +3224,19 @@ BOOST_AUTO_TEST_CASE(test_flip_all, *utf::tolerance(0.001))
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_smarts_no_radicals)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    import_mol_text(&model, "[CH3]~[CH2]~*");
+    BOOST_TEST(get_mol_text(&model, Format::SMARTS) == "[C&H3]~[C&H2]~*");
+
+    auto mol = model.getMol();
+    for (auto atom : mol->atoms()) {
+        BOOST_TEST(atom->getNumRadicalElectrons() == 0);
+    }
+}
+
 } // namespace sketcher
 } // namespace schrodinger
