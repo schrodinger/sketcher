@@ -3027,6 +3027,16 @@ BOOST_AUTO_TEST_CASE(test_enhanced_stereo_groups_smiles)
     import_mol_text(&model, smiles_with_enh_stereo);
     BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
                smiles_with_enh_stereo);
+
+    // SKETCH-2191
+    // Changing the last atom to carbon removes one of the atoms from OR3
+    model.mutateAtoms({model.getMol()->getAtomWithIdx(11)}, Element::C);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "CC(C)[C@H](N)[C@H](C)[C@@H](C)[C@H](C)N |a:7,9,o3:3,&1:5|");
+    // Changing the central wedge to double bond removes AND1 entirely
+    model.mutateBonds({model.getMol()->getBondWithIdx(5)}, BondTool::DOUBLE);
+    BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) ==
+               "C=C([C@@H](C)[C@H](C)N)[C@H](N)C(C)C |a:2,4,o3:7|");
 }
 
 BOOST_AUTO_TEST_CASE(test_enhanced_stereo_groups_mdl)
@@ -3236,6 +3246,110 @@ BOOST_AUTO_TEST_CASE(test_smarts_no_radicals)
     for (auto atom : mol->atoms()) {
         BOOST_TEST(atom->getNumRadicalElectrons() == 0);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_extra_bond_stereo)
+{
+    // CRDGEN-366
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    const std::string molblock = R"CTAB(V2018903
+  Mrv1908 02252117302D
+
+ 27 32  0  0  1  0            999 V2000
+   -1.7672    2.9732    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.9978    3.2713    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.4795    2.6232    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.3512    2.6627    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.8596    2.0286    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.6425    1.2171    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+    1.3340    0.7668    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.3735   -0.0639    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7394   -0.5722    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7653   -1.3967    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.0040   -1.6948    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.5225   -1.0468    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.0723   -0.3553    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.6055    0.7895    0.0000 Sn  0  0  0  0  0  4  0  0  0  0  0  0
+   -0.9297    1.9317    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.7414    2.1489    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.3756    1.6404    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.3358    0.8097    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.6444    0.3595    0.0000 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.8615   -0.4522    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.3532   -1.0863    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.6859   -0.4780    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.9840    0.2914    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.2052    0.3198    0.0000 Cl  0  0  0  0  0  0  0  0  0  0  0  0
+    1.9821    1.2852    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.6840    2.0545    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.0180    0.0751    0.0000 Cl  0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  2  0  0  0  0
+  2  3  1  0  0  0  0
+  3  4  2  0  0  0  0
+  4  5  1  0  0  0  0
+  5  6  2  0  0  0  0
+  6  7  1  0  0  0  0
+  7  8  2  0  0  0  0
+  8  9  1  0  0  0  0
+  9 10  2  0  0  0  0
+ 10 11  1  0  0  0  0
+ 11 12  2  0  0  0  0
+ 12 13  1  0  0  0  0
+  9 13  1  0  0  0  0
+ 13 14  1  0  0  0  0
+ 14 15  1  0  0  0  0
+  3 15  1  0  0  0  0
+ 15 16  1  0  0  0  0
+  1 16  1  0  0  0  0
+ 16 17  2  0  0  0  0
+ 17 18  1  0  0  0  0
+ 18 19  2  0  0  0  0
+ 19 20  1  0  0  0  0
+ 20 21  2  0  0  0  0
+ 12 21  1  0  0  0  0
+ 20 22  1  0  0  0  0
+ 22 23  2  0  0  0  0
+ 18 23  1  0  0  0  0
+ 14 24  1  0  0  0  0
+  7 25  1  0  0  0  0
+ 25 26  2  0  0  0  0
+  5 26  1  0  0  0  0
+ 14 27  1  0  0  0  0
+M  END
+$$$$
+
+)CTAB";
+
+    const std::unordered_map<unsigned, RDKit::Bond::BondStereo> expected = {
+        {2, RDKit::Bond::BondStereo::STEREOTRANS},
+        {6, RDKit::Bond::BondStereo::STEREOCIS},
+        {18, RDKit::Bond::BondStereo::STEREOCIS},
+        {22, RDKit::Bond::BondStereo::STEREOCIS},
+
+    };
+
+    import_mol_text(&model, molblock);
+    BOOST_TEST(
+        get_mol_text(&model, Format::SMILES) ==
+        R"SMI(Cl[Sn]1(Cl)N2C3=CC=C2/C=C2/C=CC(=N2)/C=C2/C=C/C(=C/C4=N/C(=C\3)C=C4)N21)SMI");
+
+    auto mol = model.getMol();
+
+    unsigned num_stereo_bonds = 0;
+    for (auto bond : mol->bonds()) {
+        auto it = expected.find(bond->getIdx());
+        if (it == expected.end()) {
+            BOOST_TEST(bond->getStereo() ==
+                       RDKit::Bond::BondStereo::STEREONONE);
+        } else {
+            BOOST_TEST(bond->getStereo() == it->second);
+            ++num_stereo_bonds;
+        }
+    }
+    BOOST_TEST(num_stereo_bonds == expected.size());
 }
 
 } // namespace sketcher

@@ -57,28 +57,54 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
 }
 
 /**
- * Sketcher-specific clearing of stereo properties and markers so that
- * rdkit_extensions::assign_stereochemistry can recalculate them. This would
- * normally be taken care of by passing cleanIt=true to
- * RDKit::MolOps::assignStereochemistry, but we don't do that to preserve all
- * drawn bond types (which includes existing wedges and dashes).
+ * Uses coordinates and bond directions to calculate stereochemistry from
+ * scratch.
  */
-static void cleanup_stereo_markers(RDKit::RWMol& mol)
+static void
+assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
 {
+
+    // Reset the calculated intermediate stereo markers RDKit uses in its stereo
+    // assignment so we can recalculate them from scratch. Also store
+    // UP/DOWN/WIGGLY bond directions so we can restore them after cleanIt=true.
     for (auto atom : mol.atoms()) {
-        atom->clearProp(RDKit::common_properties::_CIPCode);
-        atom->clearProp(RDKit::common_properties::_ChiralityPossible);
         atom->setChiralTag(RDKit::Atom::CHI_UNSPECIFIED);
     }
+    std::vector<RDKit::Bond::BondDir> bond_dirs;
+    bond_dirs.reserve(mol.getNumBonds());
     for (auto bond : mol.bonds()) {
-        bond->clearProp(RDKit::common_properties::_CIPCode);
-        if (bond->getStereo() > RDKit::Bond::STEREOANY) {
-            bond->setStereo(RDKit::Bond::STEREONONE);
-            bond->getStereoAtoms().clear();
-        }
+        bond_dirs.push_back(bond->getBondDir());
         if (bond->getBondDir() == RDKit::Bond::BondDir::ENDDOWNRIGHT ||
             bond->getBondDir() == RDKit::Bond::BondDir::ENDUPRIGHT) {
             bond->setBondDir(RDKit::Bond::BondDir::NONE);
+        }
+    }
+
+    // Convert up/down bonds into parities
+    RDKit::MolOps::assignChiralTypesFromBondDirs(mol);
+
+    // Calculate stereo bond cues from coordinates. RDKit can't calculate
+    // stereo bonds without these.
+    auto conf = mol.getConformer();
+    RDKit::MolOps::setDoubleBondNeighborDirections(mol, &conf);
+
+    // Assign stereo from those parities (primarily for bond stereo)
+    rdkit_extensions::UseModernStereoPerception use_modern_stereo;
+
+    bool cleanIt = true;
+    bool force = true;
+    bool flagPossibleStereoCenters = true;
+    RDKit::MolOps::assignStereochemistry(mol, cleanIt, force,
+                                         flagPossibleStereoCenters);
+
+    // Restore bond directions
+    auto bond_it = bond_dirs.begin();
+    for (auto bond : mol.bonds()) {
+        if (auto bond_dir = *bond_it++;
+            bond_dir == RDKit::Bond::BondDir::BEGINDASH ||
+            bond_dir == RDKit::Bond::BondDir::BEGINWEDGE ||
+            bond_dir == RDKit::Bond::BondDir::UNKNOWN) {
+            bond->setBondDir(bond_dir);
         }
     }
 }
@@ -135,32 +161,27 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // Explicitly update the brackets for the sgroups
     rdkit_extensions::update_s_group_brackets(mol);
 
-    // Preserve IDs of any new enhanced stereo groups, which includes any
-    // groups newly inserted from file/paste input
-    RDKit::forwardStereoGroupIds(mol);
-
     // DO NOT REPLACE THIS WITH rdkit_extensions::apply_sanitization(PARTIAL):
     // it will turn atoms with unsatisfied valences (coming from SMARTS)
     // into RADICALs, and we don't want that.
-    // This is the bare mininimum we need to do to be able to detect stereo.
+    // This is the bare minimum we need to do to be able to detect stereo.
     bool no_strict = false;
     mol.updatePropertyCache(no_strict);
     RDKit::MolOps::symmetrizeSSSR(mol);
 
-    // Cleanup before recalculating stereo
-    cleanup_stereo_markers(mol);
+    assign_stereochemistry_with_bond_directions_and_coordinates(mol);
 
-    // Convert up/down bonds into parities
-    RDKit::MolOps::assignChiralTypesFromBondDirs(mol);
-    // Assign stereo from those parities (primarily for bond stereo)
-    rdkit_extensions::UseModernStereoPerception use_modern_stereo;
-    rdkit_extensions::assign_stereochemistry(mol);
     // Generate R/S/E/Z labels
     assign_CIP_labels(mol);
+
+    // Preserve IDs of any new enhanced stereo groups, which includes any
+    // groups newly inserted from file/paste input. Run this after
+    // cleanupStereoGroups(), because that one only preserves input ids
+    RDKit::forwardStereoGroupIds(mol);
+
     std::string abs_label = "({cip})";
     std::string or_label = "or {id}";   // U+200A HAIR SPACE
     std::string and_label = "and {id}"; // U+200A HAIR SPACE
-
     RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label, and_label);
 }
 
