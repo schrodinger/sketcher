@@ -38,9 +38,9 @@ template <class T> static std::string get_polymer_helm
                    T get_helm_monomer_function, std::string_view polymer_prefix,
                    int polymer_number);
 
-[[nodiscard]] static std::string get_error_message(std::string_view sequence,
-                                                   int num_chars_processed,
-                                                   std::string_view err_msg);
+[[nodiscard]] static std::string
+get_error_message(std::string_view sequence, unsigned int num_chars_processed,
+                  std::string_view err_msg);
 
 namespace fasta
 {
@@ -158,7 +158,7 @@ template <class T> static std::string get_polymer_helm
     monomers.reserve(generic_fasta.sequence.size());
     std::transform(
         generic_fasta.sequence.begin(), generic_fasta.sequence.end(),
-        std::back_inserter(monomers), [&, i = 0](auto monomer) mutable {
+        std::back_inserter(monomers), [&, i = 0u](auto monomer) mutable {
             ++i;
             if (auto helm_monomer = get_helm_monomer_function(monomer);
                 helm_monomer != std::nullopt) {
@@ -221,15 +221,15 @@ template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
     }
 }
 
-[[nodiscard]] static std::string get_error_message(std::string_view sequence,
-                                                   int num_chars_processed,
-                                                   std::string_view err_msg)
+[[nodiscard]] static std::string
+get_error_message(std::string_view sequence, unsigned int num_chars_processed,
+                  std::string_view err_msg)
 {
     // NOTE: If the input is very long, the pointer to the failed location
     // becomes less useful. We should truncate the length of the error message
     // to 101 chars.
     static constexpr int error_size{101};
-    static constexpr int prefix_size{error_size / 2};
+    static constexpr unsigned int prefix_size{error_size / 2};
     static auto truncate_input = [](const auto& input, const unsigned int pos) {
         if ((pos >= prefix_size) && (pos + prefix_size) < input.size()) {
             return input.substr(pos - prefix_size, error_size);
