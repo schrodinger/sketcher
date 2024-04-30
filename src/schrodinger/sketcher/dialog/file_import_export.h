@@ -40,11 +40,6 @@ extern SKETCHER_API const FormatList<ImageFormat> IMAGE_FORMATS;
 SKETCHER_API std::string get_file_text(const std::string& file_path);
 
 /**
- * @return format based on the file's extension
- */
-SKETCHER_API rdkit_extensions::Format get_file_format(const QString& file_path);
-
-/**
  * @return concatenated name filters to use for the import file dialog
  */
 SKETCHER_API QString get_import_name_filters();

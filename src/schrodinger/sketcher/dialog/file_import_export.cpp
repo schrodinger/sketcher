@@ -60,24 +60,6 @@ std::string get_file_text(const std::string& file_path)
     return text;
 }
 
-Format get_file_format(const QString& file_path)
-{
-    auto ext = "." + QFileInfo(file_path).completeSuffix();
-    for (const auto& [format, _, extensions] : IMPORT_FORMATS) {
-        if (extensions.contains(ext)) {
-            return format;
-        }
-    }
-    for (const auto& [format, _, extensions] : REACTION_FORMATS) {
-        if (extensions.contains(ext)) {
-            return format;
-        }
-    }
-
-    throw std::runtime_error("Unknown file extension: " +
-                             file_path.toStdString());
-}
-
 QString get_import_name_filters()
 {
     QStringList filters;

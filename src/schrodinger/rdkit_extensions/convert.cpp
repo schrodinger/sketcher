@@ -50,31 +50,6 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
-// clang-format off
-const std::vector<Format> MOL_FORMATS = {
-    Format::RDMOL_BINARY_BASE64,
-    Format::SMILES,
-    Format::EXTENDED_SMILES,
-    Format::SMARTS,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-    Format::MAESTRO,
-    Format::INCHI,
-    // Exclude Format::INCHI_KEY which cannot be read back into RDKit
-    Format::PDB,
-    Format::XYZ,
-    // TODO: Format::HELM
-};
-
-const std::vector<Format> RXN_FORMATS = {
-    Format::RDMOL_BINARY_BASE64,
-    Format::SMILES,
-    Format::SMARTS,
-    Format::MDL_MOLV2000,
-    Format::MDL_MOLV3000,
-};
-// clang-format on
-
 namespace
 {
 
@@ -741,13 +716,9 @@ to_rdkit_reaction(const std::string& text, const Format format)
 static void check_non_coarse_grained_output(const RDKit::ROMol& input_mol,
                                             const Format format)
 {
-    static constexpr std::array<Format, 6> cg_formats{
-        Format::HELM,      Format::FASTA,         Format::FASTA_DNA,
-        Format::FASTA_RNA, Format::FASTA_PEPTIDE, Format::RDMOL_BINARY_BASE64};
-
-    auto cg_formats_end = std::end(cg_formats);
+    auto cg_formats_end = std::end(SEQ_FORMATS);
     if (is_coarse_grain_mol(input_mol) &&
-        std::find(std::begin(cg_formats), cg_formats_end, format) ==
+        std::find(std::begin(SEQ_FORMATS), cg_formats_end, format) ==
             cg_formats_end) {
         throw std::invalid_argument("Conversions from coarse grained "
                                     "formats to atomistic formats are "

@@ -11,6 +11,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
+#include "schrodinger/rdkit_extensions/file_format.h"
 
 // Forward declarations:
 namespace RDKit
@@ -24,36 +25,6 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
-
-/**
- * Available input/output formats for import/export
- */
-enum class Format {
-    AUTO_DETECT,
-    RDMOL_BINARY_BASE64,
-    SMILES,
-    EXTENDED_SMILES,
-    SMARTS,
-    MDL_MOLV2000,
-    MDL_MOLV3000,
-    MAESTRO,
-    INCHI,
-    INCHI_KEY,
-    PDB,
-    XYZ,
-    HELM,
-    // these are used for reading
-    FASTA_PEPTIDE,
-    FASTA_DNA,
-    FASTA_RNA,
-    FASTA, // this is used for writing
-};
-
-/**
- * All supported formats for both standard molecules and reactions
- */
-extern RDKIT_EXTENSIONS_API const std::vector<Format> MOL_FORMATS;
-extern RDKIT_EXTENSIONS_API const std::vector<Format> RXN_FORMATS;
 
 /**
  * @param text input text block

@@ -1,0 +1,56 @@
+/* -------------------------------------------------------------------------
+ * Copyright Schrodinger LLC, All Rights Reserved.
+ --------------------------------------------------------------------------- */
+
+#define BOOST_TEST_DYN_LINK
+#define BOOST_TEST_MODULE test_file_format
+
+#include <fmt/format.h>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/test/checkexceptionmsg.h"
+
+using namespace schrodinger::rdkit_extensions;
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
+
+/**
+ * These test roundtrip all extensions through the public APIs to make sure
+ * that all extensions are uniquely associated with a single format.
+ */
+BOOST_DATA_TEST_CASE(test_get_mol_extensions,
+                     boost::unit_test::data::make(MOL_FORMATS))
+{
+    for (const auto& file_extension : get_mol_extensions(sample)) {
+        BOOST_TEST(get_file_format(file_extension) == sample);
+    }
+}
+
+BOOST_DATA_TEST_CASE(test_get_rxn_extensions,
+                     boost::unit_test::data::make(RXN_FORMATS))
+{
+    for (const auto& file_extension : get_rxn_extensions(sample)) {
+        BOOST_TEST(get_file_format(file_extension) == sample);
+    }
+}
+
+BOOST_DATA_TEST_CASE(test_get_seq_extensions,
+                     boost::unit_test::data::make(SEQ_FORMATS))
+{
+    for (const auto& file_extension : get_seq_extensions(sample)) {
+        BOOST_TEST(get_file_format(file_extension) == sample);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_unsupported_extensions)
+{
+    // Incomplete and unknown extensions throw
+    for (const auto& filename :
+         {"", ".", ".foo", "pdb", "test.cx", "test.sdf.gz", "test.inchikey"}) {
+        TEST_CHECK_EXCEPTION_MSG_SUBSTR(get_file_format(filename),
+                                        std::invalid_argument,
+                                        "Unsupported file extension");
+    }
+}

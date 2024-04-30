@@ -42,6 +42,10 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::StereoGroupType);
 BOOST_DATA_TEST_CASE(test_auto_detect,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
+    if (sample == Format::INCHI_KEY) {
+        return; // skip, never readable
+    }
+
     auto mol = to_rdkit("c1ccccc1", Format::SMILES);
     auto text = to_string(*mol, sample);
 
@@ -56,6 +60,10 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
 BOOST_DATA_TEST_CASE(test_bypass_sanitization,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
+    if (sample == Format::INCHI_KEY) {
+        return; // skip, never readable
+    }
+
     // Create an unsanitized mol with a pentavalent C...
     auto mol = to_rdkit("C[C](C)(C)(C)C", Format::SMILES);
 
@@ -77,6 +85,10 @@ BOOST_DATA_TEST_CASE(test_bypass_sanitization,
 BOOST_DATA_TEST_CASE(test_parsing_error,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
+    if (sample == Format::INCHI_KEY) {
+        return; // skip, never readable
+    }
+
     TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit("garbage", sample),
                                     std::invalid_argument,
                                     "Failed to parse text");
@@ -153,8 +165,8 @@ BOOST_DATA_TEST_CASE(testDoNotForceKekulizationOnExport,
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 5);
 
     // Formats that force kekulization are expected to throw
-    if (sample == Format::INCHI || sample == Format::PDB ||
-        sample == Format::XYZ) {
+    if (sample == Format::INCHI || sample == Format::INCHI_KEY ||
+        sample == Format::PDB || sample == Format::XYZ) {
         TEST_CHECK_EXCEPTION_MSG_SUBSTR(
             to_string(*mol, sample), RDKit::KekulizeException,
             "Can't kekulize mol.  Unkekulized atoms: 0 1 2 3 4");

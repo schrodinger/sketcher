@@ -18,6 +18,7 @@
 #include <QUrl>
 #include <QWidget>
 
+#include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -42,7 +43,6 @@
 #include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
-
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
 #include "schrodinger/sketcher/molviewer/halo_highlighting_item.h"
@@ -717,9 +717,9 @@ void Scene::dropEvent(QGraphicsSceneDragDropEvent* event)
     auto mime_data = event->mimeData();
     for (auto url : mime_data->urls()) {
         if (url.isLocalFile()) { // File drop event
-            auto file_path = url.toLocalFile();
-            auto contents = get_file_text(file_path.toStdString());
-            auto format = get_file_format(file_path);
+            auto file_path = url.toLocalFile().toStdString();
+            auto contents = get_file_text(file_path);
+            auto format = rdkit_extensions::get_file_format(file_path);
             emit importTextRequested(contents, format);
         }
     }

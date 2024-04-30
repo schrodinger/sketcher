@@ -206,7 +206,8 @@ void SketcherTopBar::onImportFromFileClicked()
     auto file_open_completed = [this](const auto& file_path,
                                       const auto& content) {
         try {
-            auto format = get_file_format(file_path);
+            auto format =
+                rdkit_extensions::get_file_format(file_path.toStdString());
             emit importTextRequested(content.toStdString(), format);
         } catch (const std::exception& exc) {
             show_error_dialog("File Error", exc.what(), this);
