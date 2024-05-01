@@ -11,9 +11,11 @@
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/test/checkexceptionmsg.h"
+#include "schrodinger/test/testfiles.h"
 
 using namespace schrodinger::rdkit_extensions;
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(CompressionType);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 
 /**
@@ -53,4 +55,31 @@ BOOST_AUTO_TEST_CASE(test_unsupported_extensions)
                                         std::invalid_argument,
                                         "Unsupported file extension");
     }
+}
+
+BOOST_DATA_TEST_CASE(
+    TestGetCompressionType,
+    boost::unit_test::data::make(std::vector<std::string>{
+        "structure/test.csv", "structure/test.mae", "structure/test.mol2",
+        "structure/test.pdb", "structure/test.sdf", "structure/test.smi",
+        "structure/test2.csv", "structure/test.smigz", "structure/test.csvgz",
+        "structure/metalInteractions_test.maegz", "methane.mae.zst"}) ^
+        boost::unit_test::data::make(std::vector<CompressionType>{
+            CompressionType::UNKNOWN,
+            CompressionType::UNKNOWN,
+            CompressionType::UNKNOWN,
+            CompressionType::UNKNOWN,
+            CompressionType::UNKNOWN,
+            CompressionType::UNKNOWN,
+            CompressionType::UNKNOWN,
+            CompressionType::GZIP,
+            CompressionType::GZIP,
+            CompressionType::GZIP,
+            CompressionType::ZSTD,
+        }),
+    testfile, expected_compression_type)
+{
+
+    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    BOOST_TEST(get_compression_type(fname) == expected_compression_type);
 }

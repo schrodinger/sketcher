@@ -1,8 +1,7 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 
-#include <fstream>
-
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/image_generation.h"
 
 using ::schrodinger::rdkit_extensions::Format;
@@ -51,7 +50,7 @@ const FormatList<ImageFormat> IMAGE_FORMATS{
 
 std::string get_file_text(const std::string& file_path)
 {
-    std::ifstream file(file_path);
+    rdkit_extensions::maybe_compressed_istream file(file_path);
     if (file.fail()) {
         throw std::runtime_error("Cannot open the file: " + file_path);
     }

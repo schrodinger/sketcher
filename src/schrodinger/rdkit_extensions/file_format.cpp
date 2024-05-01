@@ -4,10 +4,11 @@
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 
-#include <iostream>
+#include <fstream>
 #include <unordered_map>
 
 #include <boost/algorithm/string.hpp>
+#include <fmt/format.h>
 
 namespace schrodinger
 {
@@ -112,6 +113,38 @@ Format get_file_format(const boost::filesystem::path& filename)
     }
     throw std::invalid_argument("Unsupported file extension: " +
                                 filename.string());
+}
+
+CompressionType get_compression_type(const boost::filesystem::path& filename)
+{
+    constexpr unsigned char GZIP_MAGIC[2] = {0x1f, 0x8b};
+    constexpr unsigned char ZSTD_MAGIC[4] = {0x28, 0xb5, 0x2f, 0xfd};
+
+    // Read the first two bytes from the file to determine the compression type
+    std::ifstream file(filename.string(), std::ios::in | std::ios::binary);
+    if (!file.good()) {
+        throw std::invalid_argument(
+            fmt::format("Unable to open file {}", filename.string()));
+    }
+
+    char magic[2];
+    file.read(magic, 2);
+    if (!file.good() || file.gcount() != 2) {
+        return CompressionType::UNKNOWN;
+    }
+
+    auto u_magic = reinterpret_cast<unsigned char*>(magic);
+    if (u_magic[0] == GZIP_MAGIC[0] && u_magic[1] == GZIP_MAGIC[1]) {
+        return CompressionType::GZIP;
+    } else if (u_magic[0] == ZSTD_MAGIC[0] && u_magic[1] == ZSTD_MAGIC[1]) {
+        // zstd magic number is 4 bytes long, so read another 2 bytes
+        file.read(magic, 2);
+        if (file.gcount() == 2 && u_magic[0] == ZSTD_MAGIC[2] &&
+            u_magic[1] == ZSTD_MAGIC[3]) {
+            return CompressionType::ZSTD;
+        }
+    }
+    return CompressionType::UNKNOWN;
 }
 
 } // namespace rdkit_extensions

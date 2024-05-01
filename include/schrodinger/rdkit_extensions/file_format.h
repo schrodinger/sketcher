@@ -40,6 +40,14 @@ enum class Format {
 };
 
 /**
+ * Enum class specifying supported compression types
+ *
+ * 'UNKNOWN' means the file is either not compressed, or uses an unknown
+ * compression method.
+ */
+enum class RDKIT_EXTENSIONS_API CompressionType { UNKNOWN, GZIP, ZSTD };
+
+/**
  * All supported formats for standard atomistic molecules, monomeristic
  * sequences, and chemical reactions
  */
@@ -63,6 +71,17 @@ RDKIT_EXTENSIONS_API std::vector<std::string> get_seq_extensions(Format format);
  */
 RDKIT_EXTENSIONS_API Format
 get_file_format(const boost::filesystem::path& filename);
+
+/**
+ * Determines the type of the compression applied to a given file
+ * by reading the magic number from the beginning of the file.
+ *
+ * @param filename file path
+ * @return corresponding compression type enum
+ * @throw std::invalid_argument if file cannot be opened
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API CompressionType
+get_compression_type(const boost::filesystem::path& filename);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger
