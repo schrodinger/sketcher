@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <memory>
 
+#include <fmt/format.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/MolOps.h>
@@ -22,13 +23,19 @@ namespace rdkit_extensions
 namespace
 {
 
-// Assume that all of these queries are completely disjoint
-// On these SMARTS queries, map no 1 exists on side chain
+const std::string ATTACH_FROM{"attachFrom"};
+const std::string MONOMER_IDX1{"monomerIndex1"};
+const std::string MONOMER_IDX2{"monomerIndex2"};
+
 constexpr int SIDECHAIN_IDX = 2;
+constexpr auto NO_ATTACHMENT = std::numeric_limits<unsigned int>::max();
+
+// attachment points 1 and 2 are backbone attachment points
+// and 3 is the side chain attachment point
 const std::string GENERIC_AMINO_ACID_QUERY =
-    "[NX3,NX4+][CX4H]([*:1])[CX3](=[OX1])[O,N]";
+    "[NX3,NX4+:1][CX4H]([*:3])[CX3](=[OX1])[O,N:2]";
 const std::string GLYCINE_AMINO_ACID_QUERY =
-    "N[CX4H2][CX3](=[OX1])[O,N]"; // no side chain
+    "[N:1][CX4H2][CX3](=[OX1])[O,N:2]"; // no side chain
 
 // SMILES monomer to CG monomer abbreviation mapping
 // temporary for now, for proof of concept
@@ -77,6 +84,34 @@ const std::unordered_map<std::string, std::string> amino_acids = {
     {"NC(=O)C(N)Cc1ccc(O)cc1", "Y"},
     {"CC(C)C(N)C(N)=O", "V"}};
 
+struct Linkage {
+    unsigned int monomer_idx1;
+    unsigned int monomer_idx2;
+    unsigned int attach_from;
+    unsigned int attach_to;
+    std::string to_string() const
+    {
+        return fmt::format("R{}-R{}", attach_from, attach_to);
+    }
+};
+
+bool already_matched(const RDKit::ROMol& mol,
+                     const std::vector<unsigned int>& ids)
+{
+    // Make sure this match hasn't already been accounted for by a previous
+    // match
+    for (auto id : ids) {
+        auto at = mol.getAtomWithIdx(id);
+        unsigned int attch;
+        if (at->hasProp(MONOMER_IDX1) &&
+            at->getPropIfPresent(ATTACH_FROM, attch) &&
+            attch == NO_ATTACHMENT) {
+            return false;
+        }
+    }
+    return true;
+}
+
 /*
  * Function that takes the SMARTS query and atomistic molecule and adds the atom
  * indices of the matches to the monomers vector
@@ -86,29 +121,49 @@ void add_matches_to_monomers(
     const std::string& smarts_query, RDKit::ROMol& atomistic_mol,
     std::vector<std::vector<int>>& monomers,
     std::unordered_map<unsigned int, unsigned int>& attch_pts,
-    std::vector<std::pair<unsigned int, unsigned int>>& linkages)
+    std::vector<Linkage>& linkages)
 {
-    // TODO: maybe the query mol itself should be const somewhere
     std::unique_ptr<RDKit::RWMol> query(RDKit::SmartsToMol(smarts_query));
-    auto matches = RDKit::SubstructMatch(atomistic_mol, *query);
+    // maps SMARTS query index to attachment point #
+    std::vector<unsigned int> attch_map(query->getNumAtoms(), NO_ATTACHMENT);
+    for (const auto atom : query->atoms()) {
+        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+            attch_map[atom->getIdx()] = atom->getProp<unsigned int>(
+                RDKit::common_properties::molAtomMapNumber);
+        }
+    }
+
+    // Set a final function check that ensures the entire match has not
+    // already been accounted for by a previous SMARTS search.
+    RDKit::SubstructMatchParameters params;
+    params.useChirality = false;
+    params.extraFinalCheck = &already_matched;
+    auto matches = RDKit::SubstructMatch(atomistic_mol, *query, params);
 
     for (const auto& match : matches) {
         std::vector<int> monomer;
         auto monomer_idx = monomers.size();
         for (const auto& [query_idx, atom_idx] : match) {
             auto atom = atomistic_mol.getAtomWithIdx(atom_idx);
-            if (atom->hasProp(MONOMER_IDX_PROP1) &&
-                atom->hasProp(MONOMER_IDX_PROP2)) {
-                throw std::runtime_error(
-                    "Atom belongs to more than 2 monomers");
-            } else if (atom->hasProp(MONOMER_IDX_PROP1)) {
-                atom->setProp<unsigned int>(MONOMER_IDX_PROP2, monomer_idx);
+            if (atom->hasProp(MONOMER_IDX1) && atom->hasProp(MONOMER_IDX2)) {
+                // This shouldn't happen, sanity check
+                throw std::runtime_error(fmt::format(
+                    "Atom {} belongs to more than 2 monomers", atom->getIdx()));
+            }
+
+            if (atom->hasProp(MONOMER_IDX1)) {
+                atom->setProp<unsigned int>(MONOMER_IDX2, monomer_idx);
+                Linkage link = {atom->getProp<unsigned int>(MONOMER_IDX1),
+                                static_cast<unsigned int>(monomer_idx),
+                                atom->getProp<unsigned int>(ATTACH_FROM),
+                                attch_map[query_idx]};
                 // this is a linkage between two monomers
-                linkages.push_back(
-                    {atom->getProp<unsigned int>(MONOMER_IDX_PROP1),
-                     monomer_idx});
+                linkages.push_back(link);
             } else {
-                atom->setProp<unsigned int>(MONOMER_IDX_PROP1, monomer_idx);
+                atom->setProp<unsigned int>(MONOMER_IDX1, monomer_idx);
+                if (attch_map[query_idx] != NO_ATTACHMENT) {
+                    atom->setProp(ATTACH_FROM, attch_map[query_idx]);
+                }
             }
             monomer.push_back(atom_idx);
 
@@ -132,19 +187,19 @@ void add_sidechain_to_monomer(const RDKit::ROMol& atomistic_mol,
                               unsigned int attch_at_idx)
 {
 
-    // BFS but use MONOMER_IDX_PROP as visited marker
+    // BFS but use MONOMER_IDX as visited marker
     std::queue<unsigned int> q;
     q.push(attch_at_idx);
     while (!q.empty()) {
         auto at_idx = q.front();
         q.pop();
         auto at = atomistic_mol.getAtomWithIdx(at_idx);
-        if (!at->hasProp(MONOMER_IDX_PROP1)) {
-            at->setProp<unsigned int>(MONOMER_IDX_PROP1, monomer_idx);
+        if (!at->hasProp(MONOMER_IDX1)) {
+            at->setProp<unsigned int>(MONOMER_IDX1, monomer_idx);
             monomer.push_back(at_idx);
         }
         for (const auto& nbr : atomistic_mol.atomNeighbors(at)) {
-            if (!nbr->hasProp(MONOMER_IDX_PROP1)) {
+            if (!nbr->hasProp(MONOMER_IDX1)) {
                 q.push(nbr->getIdx());
             }
         }
@@ -165,9 +220,9 @@ void add_sidechain_to_monomer(const RDKit::ROMol& atomistic_mol,
  * Returns a list monomer index sets, which represents the atom indices of each
  * monomer.
  */
-void identify_monomers(
-    RDKit::ROMol& atomistic_mol, std::vector<std::vector<int>>& monomers,
-    std::vector<std::pair<unsigned int, unsigned int>>& linkages)
+void identify_monomers(RDKit::ROMol& atomistic_mol,
+                       std::vector<std::vector<int>>& monomers,
+                       std::vector<Linkage>& linkages)
 {
     // Approach for identifying monomers:
     // 1. Find all matches with SMARTS queries for amino acids (TODO: Nucleic
@@ -191,14 +246,12 @@ void identify_monomers(
                                      monomer_idx, attch_pts[monomer_idx]);
         }
     }
-
-    // TODO: gather extraneous atoms into unclassified monomers
 }
 
 void build_cg_mol(const RDKit::ROMol& atomistic_mol,
                   std::vector<std::vector<int>>& monomers,
                   boost::shared_ptr<RDKit::RWMol> cg_mol,
-                  std::vector<std::pair<unsigned int, unsigned int>>& linkages)
+                  std::vector<Linkage>& linkages)
 {
     // Start with all atoms in a single peptide chain
     cg_mol->setProp<bool>(HELM_MODEL, true);
@@ -208,7 +261,7 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
     for (const auto& monomer : monomers) {
         auto monomer_smiles = RDKit::MolFragmentToSmiles(
             atomistic_mol, monomer, nullptr, nullptr, nullptr, isomeric_smiles);
-        // roundtrip to canonicalize smiles
+        // We have to roundtrip to canonicalize smiles -- see RDKit issue #7214
         std::unique_ptr<RDKit::RWMol> canon_mol(
             RDKit::SmilesToMol(monomer_smiles));
         monomer_smiles = RDKit::MolToSmiles(*canon_mol);
@@ -228,9 +281,10 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
         // TODO: Check for known nucleic acids and CHEM monomers
     }
 
-    for (const auto& [monomer_idx1, monomer_idx2] : linkages) {
+    for (const auto& link : linkages) {
         // TODO: Non forward linkages
-        add_connection(*cg_mol, monomer_idx1, monomer_idx2);
+        add_connection(*cg_mol, link.monomer_idx1, link.monomer_idx2,
+                       link.to_string());
     }
 }
 
@@ -241,7 +295,7 @@ boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol)
     // Work on copy, for now
     RDKit::ROMol atomistic_mol(mol);
     std::vector<std::vector<int>> monomers;
-    std::vector<std::pair<unsigned int, unsigned int>> linkages;
+    std::vector<Linkage> linkages;
     identify_monomers(atomistic_mol, monomers, linkages);
 
     boost::shared_ptr<RDKit::RWMol> cg_mol = boost::make_shared<RDKit::RWMol>();
@@ -266,7 +320,7 @@ std::vector<std::vector<int>> get_monomers(const RDKit::ROMol& mol)
 {
     RDKit::ROMol atomistic_mol(mol);
     std::vector<std::vector<int>> monomers;
-    std::vector<std::pair<unsigned int, unsigned int>> linkages;
+    std::vector<Linkage> linkages;
     identify_monomers(atomistic_mol, monomers, linkages);
     return monomers;
 }

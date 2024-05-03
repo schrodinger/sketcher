@@ -9,9 +9,6 @@
 
 #include "schrodinger/rdkit_extensions/definitions.h"
 
-const std::string MONOMER_IDX_PROP1{"monomerIndex1"};
-const std::string MONOMER_IDX_PROP2{"monomerIndex2"};
-
 namespace RDKit
 {
 class ROMol;
