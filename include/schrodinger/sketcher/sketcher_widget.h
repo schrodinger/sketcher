@@ -144,6 +144,15 @@ class SKETCHER_API SketcherWidget : public QWidget
     void showFileSaveImageDialog();
 
     /**
+     * Show the Edit Atom Properties dialog for the specified atom
+     * @param atom The atom to load into the dialog
+     * @param set_to_allowed_list Whether to switch the dialog to display an
+     * allowed list query
+     */
+    void showEditAtomPropertiesDialog(const RDKit::Atom* const atom,
+                                      const bool set_to_allowed_list);
+
+    /**
      * Updates the watermark on user drawing atoms or deleting all
      * atoms from the scene
      */

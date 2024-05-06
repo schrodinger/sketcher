@@ -22,6 +22,7 @@
 #endif
 
 #include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
+#include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
@@ -353,6 +354,16 @@ void SketcherWidget::showFileSaveImageDialog()
     dialog->show();
 }
 
+void SketcherWidget::showEditAtomPropertiesDialog(
+    const RDKit::Atom* const atom, const bool set_to_allowed_list)
+{
+    auto dialog = new EditAtomPropertiesDialog(atom, m_mol_model, this);
+    if (set_to_allowed_list) {
+        dialog->switchToAllowedList();
+    }
+    dialog->show();
+}
+
 void SketcherWidget::updateWatermark()
 {
     bool is_empty = m_sketcher_model->sceneIsEmpty();
@@ -460,7 +471,8 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
     connect(&menu, &ModifyAtomsMenu::adjustRadicalElectronsRequested,
             m_mol_model, &MolModel::adjustRadicalElectronsOnAtoms);
 
-    // TODO: SKETCH-2010 connect showEditAtomPropertiesRequested
+    connect(&menu, &ModifyAtomsMenu::showEditAtomPropertiesRequested, this,
+            &SketcherWidget::showEditAtomPropertiesDialog);
     connect(
         &menu, &ModifyAtomsMenu::changeTypeRequested, m_mol_model,
         qOverload<const RDKitAtoms&, const AtomQuery>(&MolModel::mutateAtoms));

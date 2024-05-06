@@ -93,7 +93,8 @@ class SKETCHER_API ModifyAtomsMenu : public AbstractContextMenu
      * @param set_to_allowed_list If `true`, show the dialog with the "Allowed
      * List" option set in the "Elements:" combo.
      */
-    void showEditAtomPropertiesRequested(bool set_to_allowed_list);
+    void showEditAtomPropertiesRequested(const RDKit::Atom* const atom,
+                                         const bool set_to_allowed_list);
 
   protected:
     SketcherModel* m_sketcher_model = nullptr;

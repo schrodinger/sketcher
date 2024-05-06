@@ -1,758 +1,745 @@
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 
-#include <set>
-#include <sstream>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include <rdkit/GraphMol/Atom.h>
-#include <rdkit/GraphMol/Chirality.h>
-#include <rdkit/GraphMol/PeriodicTable.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+
+#include <QProxyStyle>
 #include <QPushButton>
+#include <QStringList>
+#include <QTimer>
 
-#include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/ChemicalKnowledge.h"
-#include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/atom_type_mappings.h"
-#include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/model/mol_model.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/ui/ui_common_atom_properties_widget.h"
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
-#include "schrodinger/sketcher/undoable_structure_change_wrapper.h"
 #include "schrodinger/sketcher/widget/periodic_table_widget.h"
+#include "schrodinger/sketcher/widget/blankable_spin_box.h"
 
+Q_DECLARE_METATYPE(schrodinger::sketcher::EnhancedStereoType);
 Q_DECLARE_METATYPE(schrodinger::sketcher::QueryType);
 Q_DECLARE_METATYPE(schrodinger::sketcher::AtomQuery);
-
-namespace
-{
-
-using schrodinger::sketcher::AtomQuery;
-using schrodinger::sketcher::QueryType;
-
-const QString ANY_COMBO_KEY{"(any)"};
-const QString AROMATIC_COMBO_KEY{"Aromatic (a)"};
-const QString ALIPHATIC_COMBO_KEY{"Aliphatic (A)"};
-const QString NONZERO_COMBO_KEY{">0"};
-const QString EXACT_COMBO_KEY{"exactly"};
-
-const std::vector<std::pair<QueryType, QString>> query_type_titles = {
-    {QueryType::ALLOWED_LIST, "Allowed List"},
-    {QueryType::NOT_ALLOWED_LIST, "Not Allowed List"},
-    {QueryType::WILDCARD, "Wildcard"},
-    {QueryType::SPECIFIC_ELEMENT, "Specific Element"},
-    {QueryType::RGROUP, "R-Group"},
-};
-
-const std::vector<std::pair<AtomQuery, QString>> atomquery_titles = {
-    {AtomQuery::A, "Any heavy atom (A)"}, {AtomQuery::Q, "Heteroatom (Q)"},
-    {AtomQuery::M, "Metal (M)"},          {AtomQuery::X, "Halogen (X)"},
-    {AtomQuery::AH, "Any or H (AH)"},     {AtomQuery::QH, "Hetero or H (QH)"},
-    {AtomQuery::MH, "Metal or H (MH)"},   {AtomQuery::XH, "Halogen or H (XH)"},
-};
-
-void update_ring_count_spinbox(QSpinBox* sb, const QString& combo_key_text)
-{
-    if (combo_key_text == EXACT_COMBO_KEY) {
-        sb->setValue(sb->value());
-        sb->setEnabled(true);
-    } else {
-        sb->clear();
-        sb->setEnabled(false);
-    }
-}
-
-bool has_atom_specified_chirality(const RDKit::Atom* atom)
-{
-    auto sinfo = RDKit::Chirality::detail::getStereoInfo(atom);
-    return sinfo.type == RDKit::Chirality::StereoType::Atom_Tetrahedral &&
-           sinfo.specified == RDKit::Chirality::StereoSpecified::Specified;
-}
-
-} // anonymous namespace
+Q_DECLARE_METATYPE(schrodinger::sketcher::QueryAromaticity);
+Q_DECLARE_METATYPE(schrodinger::sketcher::QueryCount);
 
 namespace schrodinger
 {
 namespace sketcher
 {
 
-const uint SET_AS_ATOM_ID = 0;
-const uint SET_AS_QUERY_ID = 1;
+// these constants define the display text and the Qt.UserRole data for all
+// combo boxes in the dialog
+const std::vector<std::pair<QString, EnhancedStereoType>> STEREO_COMBO_DATA = {
+    {"ABS", EnhancedStereoType::ABS},
+    {"AND", EnhancedStereoType::AND},
+    {"OR", EnhancedStereoType::OR},
+};
 
-CommonAtomPropertiesWidget::CommonAtomPropertiesWidget(QWidget* parent) :
-    QWidget(parent)
+const std::vector<std::pair<QString, QueryType>> QUERY_TYPE_COMBO_DATA = {
+    {"Allowed List", QueryType::ALLOWED_LIST},
+    {"Not Allowed List", QueryType::NOT_ALLOWED_LIST},
+    {"Wildcard", QueryType::WILDCARD},
+    {"Specific Element", QueryType::SPECIFIC_ELEMENT},
+    {"R-Group", QueryType::RGROUP},
+};
+
+const std::vector<std::pair<QString, AtomQuery>> WILDCARD_COMBO_DATA = {
+    {"Any heavy atom (A)", AtomQuery::A}, {"Heteroatom (Q)", AtomQuery::Q},
+    {"Metal (M)", AtomQuery::M},          {"Halogen (X)", AtomQuery::X},
+    {"Any or H (AH)", AtomQuery::AH},     {"Hetero or H (QH)", AtomQuery::QH},
+    {"Metal or H (MH)", AtomQuery::MH},   {"Halogen or H (XH)", AtomQuery::XH},
+};
+
+const std::vector<std::pair<QString, QueryAromaticity>> AROMATICITY_COMBO_DATA =
+    {
+        {"(any)", QueryAromaticity::ANY},
+        {"Aromatic (a)", QueryAromaticity::AROMATIC},
+        {"Aliphatic (A)", QueryAromaticity::ALIPHATIC},
+};
+
+const std::vector<std::pair<QString, QueryCount>> RING_COUNT_COMBO_DATA = {
+    {"(any)", QueryCount::ANY},
+    {">0", QueryCount::POSITIVE},
+    {"exactly", QueryCount::EXACTLY},
+};
+
+const std::vector<std::pair<QString, QueryCount>> RING_BOND_COUNT_COMBO_DATA = {
+    {"(any)", QueryCount::ANY},
+    {"exactly", QueryCount::EXACTLY},
+};
+
+// Tooltips that apply to more than one widget. Other tooltips are set in the
+// ui file
+const QString ISOTOPE_TOOLTIP = "Isotope number";
+const QString CHARGE_TOOLTIP = "Formal charge";
+const QString UNPAIRED_TOOLTIP =
+    "Number of unpaired electrons - defines the radical "
+    "character of the system";
+const QString STEREO_TOOLTIP =
+    "Chiral center label for enhanced stereochemistry - ABS (absolute) is the "
+    "default; AND / OR require a group identifier";
+
+const unsigned int DEFAULT_ENHANCED_STEREO_GROUP_ID = 1;
+
+/**
+ * Load the specified data into the combo box
+ * @param combo The combo box to populate
+ * @param data The data to load, which should be formatted as a vector of
+ * (display text, Qt.UserRole data)
+ */
+template <typename T> static void
+load_data_into_combo_box(QComboBox* const combo,
+                         const std::vector<std::pair<QString, T>>& data)
 {
-    ui.reset(new Ui::CommonAtomPropertiesWidget());
-    ui->setupUi(this);
-
-    const std::map<QString, EnhancedStereoType> items = {
-        {"ABS", EnhancedStereoType::ABS},
-        {"AND", EnhancedStereoType::AND},
-        {"OR", EnhancedStereoType::OR},
-    };
-    for (const auto& item_pair : items) {
-        ui->enhanced_stereo_combo->addItem(
-            item_pair.first, QVariant::fromValue(item_pair.second));
-    }
-
-    connect(ui->enhanced_stereo_combo,
-            QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-            &CommonAtomPropertiesWidget::updateEnhancedStereoSpinBox);
-
-    setEnhancedStereoTypeComboValue(EnhancedStereoType::ABS);
-
-    // Cap charges
-    ui->charge_sb->setMinimum(-ATOM_CHARGE_LIMIT);
-    ui->charge_sb->setMaximum(ATOM_CHARGE_LIMIT);
-}
-
-void CommonAtomPropertiesWidget::setEnhancedStereoTypeComboValue(
-    const EnhancedStereoType& enhanced_stereo_type)
-{
-    auto index = ui->enhanced_stereo_combo->findData(
-        QVariant::fromValue(enhanced_stereo_type));
-    ui->enhanced_stereo_combo->setCurrentIndex(index);
-    updateEnhancedStereoSpinBox();
-}
-
-void CommonAtomPropertiesWidget::onQueryTypeComboValueChanged(
-    QueryType query_type)
-{
-    auto in_specific_element = query_type == QueryType::SPECIFIC_ELEMENT;
-    auto in_wildcard = query_type == QueryType::WILDCARD;
-
-    bool isotope_enabled = in_specific_element || in_wildcard;
-    ui->isotope_lbl->setEnabled(isotope_enabled);
-    ui->isotope_le->setEnabled(isotope_enabled);
-
-    bool charge_enabled = in_specific_element || in_wildcard ||
-                          query_type == QueryType::ALLOWED_LIST ||
-                          query_type == QueryType::NOT_ALLOWED_LIST;
-    ui->charge_lbl->setEnabled(charge_enabled);
-    ui->charge_sb->setEnabled(charge_enabled);
-
-    ui->unpaired_electrons_lbl->setEnabled(in_specific_element);
-    ui->unpaired_elec_sb->setEnabled(in_specific_element);
-}
-
-void CommonAtomPropertiesWidget::setEnhancedStereoTypeComboEnabled(bool enable)
-{
-    ui->enhanced_stereo_lbl->setEnabled(enable);
-    ui->enhanced_stereo_combo->setEnabled(enable);
-}
-
-CommonAtomPropertiesWidget::~CommonAtomPropertiesWidget() = default;
-
-void CommonAtomPropertiesWidget::readAtomInfo(const sketcherAtom& atom)
-{
-    ui->isotope_le->setText(QString::number(atom.getIsotope()));
-    if (atom.getIsotope() == 0) {
-        ui->isotope_le->clear();
-    }
-    ui->charge_sb->setValue(atom.getCharge());
-    ui->unpaired_elec_sb->setValue(atom.getUnpairedElectronsN());
-
-    // Atoms must have a defined chirality in order to get enhanced stereo
-    auto rdk_atom = atom.getRDKAtom();
-    auto enhanced_stereo_type = EnhancedStereoType::ABS;
-    auto enhanced_stereo_group_id = 0;
-    if (rdk_atom != nullptr && has_atom_specified_chirality(rdk_atom)) {
-        auto enh_stereo = atom.getEnhancedStereo();
-        enhanced_stereo_type = enh_stereo.type;
-        enhanced_stereo_group_id = enh_stereo.group_id;
-    }
-
-    // Set the combo value last because altering this combo box will signal
-    // `updateEnhancedStereoSpinBox()` which may then update the enhanced stereo
-    // spin box anyway.
-    ui->enhanced_stereo_sb->setValue(enhanced_stereo_group_id);
-    setEnhancedStereoTypeComboValue(enhanced_stereo_type);
-}
-
-void CommonAtomPropertiesWidget::writeAtomInfo(sketcherAtom& atom) const
-{
-    auto get_value = [](auto widget) {
-        if (!widget->isEnabled() || widget->text().isEmpty()) {
-            return 0; // Reset if the widget is inappropriate (disabled)
-        }
-        return widget->text().toInt();
-    };
-
-    // TODO: Add isotope validator though RDKit::getAbundanceForIsotope
-    int ui_isotope_value = get_value(ui->isotope_le);
-
-    atom.setIsotope(std::min(std::abs(ui_isotope_value), MAX_ISOTOPE_VALUE));
-    atom.setCharge(get_value(ui->charge_sb));
-    atom.setUnpairedElectronsN(get_value(ui->unpaired_elec_sb));
-
-    auto type =
-        ui->enhanced_stereo_combo->currentData().value<EnhancedStereoType>();
-    unsigned int group_id = ui->enhanced_stereo_sb->value();
-    if (type == EnhancedStereoType::ABS) {
-        group_id = 0;
-    }
-    atom.setEnhancedStereo({type, group_id});
-}
-
-void CommonAtomPropertiesWidget::updateEnhancedStereoSpinBox()
-{
-    auto enhanced_stereo_type =
-        ui->enhanced_stereo_combo->currentData().value<EnhancedStereoType>();
-    switch (enhanced_stereo_type) {
-        // Absolute enhanced stereo does not allow groups
-        case EnhancedStereoType::ABS:
-            ui->enhanced_stereo_sb->clear();
-            ui->enhanced_stereo_sb->setEnabled(false);
-            break;
-        case EnhancedStereoType::AND:
-        case EnhancedStereoType::OR:
-            // show value should it have been previously cleared
-            ui->enhanced_stereo_sb->setValue(ui->enhanced_stereo_sb->value());
-            ui->enhanced_stereo_sb->setEnabled(true);
-            break;
+    for (auto [text, val] : data) {
+        combo->addItem(text, QVariant::fromValue(val));
     }
 }
 
-template <typename Func1, typename Func2> void
-link_widgets(const typename QtPrivate::FunctionPointer<Func1>::Object* widget_a,
-             const typename QtPrivate::FunctionPointer<Func2>::Object* widget_b,
-             Func1 signal, Func2 slot)
+/**
+ * Connect signals such that the spin box is only visible when
+ * QueryCount::EXACTLY is selected in the combo box (as the Qt.UserRole data)
+ */
+static void
+show_spin_box_when_exactly_is_selected_in_combo_box(QComboBox* const combo,
+                                                    QSpinBox* const sb)
 {
-    QObject::connect(widget_a, signal, widget_b, slot);
-    QObject::connect(widget_b, signal, widget_a, slot);
+    combo->connect(combo, &QComboBox::currentIndexChanged, sb,
+                   [sb, combo](const int index) {
+                       auto variant = combo->itemData(index);
+                       auto data = variant.value<QueryCount>();
+                       sb->setVisible(data == QueryCount::EXACTLY);
+                   });
 }
 
-EditAtomPropertiesDialog::EditAtomPropertiesDialog(SketcherModel* model,
-                                                   sketcherAtom& atom,
-                                                   QWidget* parent,
-                                                   Qt::WindowFlags f) :
-    ModalDialog(parent, f),
+/**
+ * Connect signals such that the spin box is only visible when anything other
+ * than EnhancedStereoType::ABS is selected in the combo box (as the Qt.UserRole
+ * data)
+ */
+static void
+hide_spin_box_when_abs_is_selected_in_combo_box(QComboBox* const combo,
+                                                QSpinBox* const sb)
+{
+    combo->connect(combo, &QComboBox::currentIndexChanged, sb,
+                   [sb, combo](const int index) {
+                       auto variant = combo->itemData(index);
+                       auto data = variant.value<EnhancedStereoType>();
+                       sb->setVisible(data != EnhancedStereoType::ABS);
+                   });
+}
+
+// TODO: query fields should be disabled depending on what is selected for query
+//       type
+// TODO: validate SMARTS query
+
+EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
+                                                   MolModel* const mol_model,
+                                                   QWidget* parent) :
+    ModalDialog(parent),
     m_atom(atom),
-    m_sketcher_model(model)
+    m_mol_model(mol_model)
 {
-    if (model == nullptr) {
-        throw std::runtime_error("This dialog cannot be created without a"
-                                 " model");
-    }
-
     ui.reset(new Ui::EditAtomPropertiesDialog());
     setupDialogUI(*ui);
 
-    ui->set_as_group->setId(ui->set_as_atom_rb, SET_AS_ATOM_ID);
-    ui->set_as_group->setId(ui->set_as_query_rb, SET_AS_QUERY_ID);
+    m_update_buttons_enabled_timer = new QTimer(this);
+    m_update_buttons_enabled_timer->setSingleShot(true);
+    m_update_buttons_enabled_timer->setInterval(0);
+    connect(m_update_buttons_enabled_timer, &QTimer::timeout, this,
+            &EditAtomPropertiesDialog::updateButtonsEnabled);
 
-    // Connect radio buttons to stacked widget
-    auto stack_wgt = ui->atom_query_stacked_wdg;
-    connect(ui->set_as_atom_rb, &QRadioButton::clicked, stack_wgt,
-            std::bind(&QStackedWidget::setCurrentWidget, stack_wgt,
-                      ui->edit_atom_page));
-    connect(ui->set_as_query_rb, &QRadioButton::clicked, stack_wgt,
-            std::bind(&QStackedWidget::setCurrentWidget, stack_wgt,
-                      ui->edit_query_page));
+    // connect combo boxes that update whether other widgets are visible
+    show_spin_box_when_exactly_is_selected_in_combo_box(ui->ring_count_combo,
+                                                        ui->ring_count_sb);
+    show_spin_box_when_exactly_is_selected_in_combo_box(
+        ui->ring_bond_count_combo, ui->ring_bond_count_sb);
+    hide_spin_box_when_abs_is_selected_in_combo_box(ui->atom_stereo_combo,
+                                                    ui->atom_stereo_sb);
+    hide_spin_box_when_abs_is_selected_in_combo_box(ui->query_stereo_combo,
+                                                    ui->query_stereo_sb);
+    connect(ui->query_type_combo, &QComboBox::currentIndexChanged, this,
+            &EditAtomPropertiesDialog::onQueryTypeComboBoxChanged);
 
-    auto resetButton = ui->buttonBox->button(QDialogButtonBox::Reset);
-    connect(resetButton, &QPushButton::clicked, this,
+    // populate the combo boxes
+    load_data_into_combo_box(ui->atom_stereo_combo, STEREO_COMBO_DATA);
+    load_data_into_combo_box(ui->query_stereo_combo, STEREO_COMBO_DATA);
+    load_data_into_combo_box(ui->query_type_combo, QUERY_TYPE_COMBO_DATA);
+    load_data_into_combo_box(ui->wildcard_combo, WILDCARD_COMBO_DATA);
+    load_data_into_combo_box(ui->aromaticity_combo, AROMATICITY_COMBO_DATA);
+    load_data_into_combo_box(ui->ring_count_combo, RING_COUNT_COMBO_DATA);
+    load_data_into_combo_box(ui->ring_bond_count_combo,
+                             RING_BOND_COUNT_COMBO_DATA);
+
+    // set the tooltips that would have to be duplicated if we set them in the
+    // ui file
+    ui->atom_isotope_lbl->setToolTip(ISOTOPE_TOOLTIP);
+    ui->query_isotope_lbl->setToolTip(ISOTOPE_TOOLTIP);
+    ui->atom_charge_lbl->setToolTip(CHARGE_TOOLTIP);
+    ui->query_charge_lbl->setToolTip(CHARGE_TOOLTIP);
+    ui->atom_unpaired_lbl->setToolTip(UNPAIRED_TOOLTIP);
+    ui->query_unpaired_lbl->setToolTip(UNPAIRED_TOOLTIP);
+    ui->atom_stereo_lbl->setToolTip(STEREO_TOOLTIP);
+    ui->query_stereo_lbl->setToolTip(STEREO_TOOLTIP);
+
+    // set the spin box ranges
+    ui->atom_isotope_sb->setRange(0, MAX_ISOTOPE_VALUE);
+    ui->query_isotope_sb->setRange(0, MAX_ISOTOPE_VALUE);
+    ui->atom_charge_sb->setRange(-ATOM_CHARGE_LIMIT, ATOM_CHARGE_LIMIT);
+    ui->query_charge_sb->setRange(-ATOM_CHARGE_LIMIT, ATOM_CHARGE_LIMIT);
+    ui->atom_unpaired_sb->setRange(MIN_UNPAIRED_E, MAX_UNPAIRED_E);
+    ui->query_unpaired_sb->setRange(MIN_UNPAIRED_E, MAX_UNPAIRED_E);
+    ui->atom_stereo_sb->setRange(1, MAX_STEREO_GROUP_ID);
+    ui->query_stereo_sb->setRange(1, MAX_STEREO_GROUP_ID);
+    ui->total_h_sb->setRange(0, MAX_QUERY_TOTAL_H);
+    ui->num_connections_sb->setRange(0, MAX_QUERY_NUM_CONNECTIONS);
+    ui->ring_count_sb->setRange(0, MAX_QUERY_RING_COUNT);
+    ui->ring_bond_count_sb->setRange(0, MAX_QUERY_RING_BOND_COUNT);
+    ui->smallest_ring_size_sb->setRange(0, MAX_QUERY_SMALLEST_RING_SIZE);
+
+    // add validators to the line edits used for entering elements
+    auto* element_validator =
+        new ElementValidator(/*allow_list = */ false, this);
+    auto* element_list_validator =
+        new ElementValidator(/*allow_list = */ true, this);
+    ui->atom_element_le->setValidator(element_validator);
+    ui->query_element_le->setValidator(element_validator);
+    ui->element_list_le->setValidator(element_list_validator);
+
+    // hook up the atom/query radio buttons
+    ui->set_as_group->setId(
+        ui->set_as_atom_rb,
+        ui->atom_query_stacked_wdg->indexOf(ui->edit_atom_page));
+    ui->set_as_group->setId(
+        ui->set_as_query_rb,
+        ui->atom_query_stacked_wdg->indexOf(ui->edit_query_page));
+    connect(ui->set_as_group, &QButtonGroup::idClicked,
+            ui->atom_query_stacked_wdg, &QStackedWidget::setCurrentIndex);
+    connect(ui->atom_query_stacked_wdg, &QStackedWidget::currentChanged, this,
+            &EditAtomPropertiesDialog::onAtomOrQueryToggled);
+
+    // update whether the OK and reset buttons are enabled any time anything
+    // changes in the dialog. We use a timer to prevent updateButtonsEnabled
+    // from running every time loadProperties updates each individual widget
+    QList<QObject*> descendents = children();
+    while (!descendents.isEmpty()) {
+        auto* child = descendents.takeFirst();
+        if (auto* cb = qobject_cast<QComboBox*>(child)) {
+            connect(cb, &QComboBox::currentIndexChanged,
+                    m_update_buttons_enabled_timer,
+                    qOverload<>(&QTimer::start));
+        } else if (auto* sb = qobject_cast<QSpinBox*>(child)) {
+            connect(sb, &QSpinBox::valueChanged, m_update_buttons_enabled_timer,
+                    qOverload<>(&QTimer::start));
+        } else if (auto* le = qobject_cast<QLineEdit*>(child)) {
+            connect(le, &QLineEdit::textChanged, m_update_buttons_enabled_timer,
+                    qOverload<>(&QTimer::start));
+        } else {
+            descendents.append(child->children());
+        }
+    }
+
+    // Set up the periodic table buttons and widgets
+    std::vector<std::pair<ToolButtonWithPopup*,
+                          void (EditAtomPropertiesDialog::*)(Element)>>
+        periodic_table_mappings = {
+            {ui->atom_periodic_table_btn,
+             &EditAtomPropertiesDialog::onAtomPeriodicTableElementSelected},
+            {ui->query_periodic_table_btn,
+             &EditAtomPropertiesDialog::onQueryPeriodicTableElementSelected}};
+    for (auto [btn, slot_func] : periodic_table_mappings) {
+        auto* periodic_table_widget = new PeriodicTableWidget(this);
+        periodic_table_widget->setWindowFlags(Qt::Popup);
+        // we'll close the widget manually in the slots since we want it to stay
+        // open when we're selecting into a list
+        periodic_table_widget->setCloseOnClick(false);
+        btn->setPopupDelay(0);
+        btn->showPopupIndicator(false);
+        btn->setPopupWidget(periodic_table_widget);
+        connect(periodic_table_widget, &PeriodicTableWidget::elementSelected,
+                this, slot_func);
+    }
+
+    auto* reset_btn = ui->buttonBox->button(QDialogButtonBox::Reset);
+    connect(reset_btn, &QPushButton::clicked, this,
             &EditAtomPropertiesDialog::reset);
-
-    auto& atom_ui = ui->atom_common_props_wdg->ui;
-    auto& query_ui = ui->query_common_props_wdg->ui;
-
-    // Link the properties common to both the atom and query pages
-    link_widgets(atom_ui->isotope_le, query_ui->isotope_le,
-                 &QLineEdit::textChanged, &QLineEdit::setText);
-
-    link_widgets(atom_ui->enhanced_stereo_combo,
-                 query_ui->enhanced_stereo_combo,
-                 QOverload<int>::of(&QComboBox::currentIndexChanged),
-                 &QComboBox::setCurrentIndex);
-
-    const std::vector<std::pair<QSpinBox*, QSpinBox*>> spin_boxes = {
-        {atom_ui->charge_sb, query_ui->charge_sb},
-        {atom_ui->unpaired_elec_sb, query_ui->unpaired_elec_sb},
-        {atom_ui->enhanced_stereo_sb, query_ui->enhanced_stereo_sb}};
-
-    for (const auto& sb : spin_boxes) {
-        link_widgets(sb.first, sb.second,
-                     QOverload<int>::of(&QSpinBox::valueChanged),
-                     &QSpinBox::setValue);
-    }
-
-    // Set up the periodic table button/widget
-    m_periodic_table_wdg = new PeriodicTableWidget(this);
-    m_periodic_table_wdg->setWindowFlags(Qt::Popup);
-    connect(m_periodic_table_wdg, &PeriodicTableWidget::elementSelected, this,
-            &EditAtomPropertiesDialog::onPeriodicTableElementSelected);
-    ui->periodic_table_btn->setPopupDelay(0);
-    ui->periodic_table_btn->setPopupWidget(m_periodic_table_wdg);
-    ui->periodic_table_btn->showPopupIndicator(false);
-
-    // Set up the query type combo box
-    for (auto& pair : ::query_type_titles) {
-        ui->query_type_combo->addItem(pair.second,
-                                      QVariant::fromValue(pair.first));
-    }
-    connect(ui->query_type_combo,
-            QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-            &EditAtomPropertiesDialog::onQueryTypeComboValueChanged);
-    setQueryTypeComboValue(QueryType::SPECIFIC_ELEMENT); // Default
-    onQueryTypeComboValueChanged();
-
-    // Set up the wildcard combo box
-    for (auto& pair : ::atomquery_titles) {
-        ui->wildcard_combo->addItem(pair.second,
-                                    QVariant::fromValue(pair.first));
-    }
-
-    auto rdk_atom = m_atom.getRDKAtom();
-    bool enable = rdk_atom != nullptr && has_atom_specified_chirality(rdk_atom);
-    ui->atom_common_props_wdg->setEnhancedStereoTypeComboEnabled(enable);
-    ui->query_common_props_wdg->setEnhancedStereoTypeComboEnabled(enable);
-
-    connect(ui->ring_count_combo, &QComboBox::currentTextChanged, this,
-            std::bind(::update_ring_count_spinbox, ui->ring_count_sb,
-                      std::placeholders::_1));
-    connect(ui->ring_bond_count_combo, &QComboBox::currentTextChanged, this,
-            std::bind(::update_ring_count_spinbox, ui->ring_bond_count_sb,
-                      std::placeholders::_1));
-
-    // Update whether the OK button is enabled when relevant widgets change
-    std::vector<QLineEdit*> objects{ui->specific_element_le,
-                                    ui->element_list_le, ui->element_le};
-    for (auto object : objects) {
-        connect(object, &QLineEdit::textChanged, this,
-                &EditAtomPropertiesDialog::updateOKButtonEnabled);
-    }
-
-    connect(ui->set_as_atom_rb, &QRadioButton::toggled, this,
-            &EditAtomPropertiesDialog::updateOKButtonEnabled);
-    connect(ui->set_as_query_rb, &QRadioButton::toggled, this,
-            &EditAtomPropertiesDialog::updateOKButtonEnabled);
-
+    // load in settings from the atom
     reset();
 }
 
 EditAtomPropertiesDialog::~EditAtomPropertiesDialog() = default;
 
-void EditAtomPropertiesDialog::accept()
+/**
+ * Switch the combo box to the entry with the specified Qt.UserRole data
+ */
+template <typename T>
+static void set_combo_box_data(QComboBox* const combo, T data)
 {
-    UndoableStructureChangeWrapper undo_wrapper(*m_atom.getSketcherScene(),
-                                                "Edit Atom Properties");
-    auto current_page = ui->atom_query_stacked_wdg->currentWidget();
+    auto variant = QVariant::fromValue(data);
+    combo->setCurrentIndex(combo->findData(variant));
+}
 
-    try {
-        if (current_page == ui->edit_atom_page) {
-            writeAtomInfo();
-        } else { // ui->edit_query_page
-            writeQueryInfo();
-        }
-    } catch (const std::runtime_error&) {
-        // The provided element text is not understood
-    }
-    m_atom.getSketcherScene()->invalidateStructure();
-    QDialog::accept();
+void EditAtomPropertiesDialog::switchToAllowedList()
+{
+    ui->set_as_query_rb->click();
+    set_combo_box_data(ui->query_type_combo, QueryType::ALLOWED_LIST);
 }
 
 void EditAtomPropertiesDialog::reset()
 {
-    // Reset the "Set as" radio buttons
-    if (m_atom.isQuery() || m_atom.hasAdvancedQueryFeatures()) {
+    auto props = read_properties_from_atom(m_atom);
+    loadProperties(props);
+    updateButtonsEnabled();
+}
+
+/**
+ * Convert the given text to an Element enum value
+ * @throw InvalidElementError if the text does not specify a valid element (e.g
+ * "Qz", "banana", or the empty string)
+ */
+static Element get_element_from_text(const QString& qtext)
+{
+    if (qtext.isEmpty()) {
+        throw InvalidElementError("No element specified.");
+    }
+    auto text = qtext.toStdString();
+    int element_num;
+    try {
+        // note that symbol_to_atomic_num is case insensitive
+        element_num = symbol_to_atomic_number(text);
+    } catch (std::runtime_error&) {
+        throw InvalidElementError(text + " is not a valid element.");
+    }
+    return Element(element_num);
+}
+
+/**
+ * Split the given string that contains a list of element names into a list of
+ * strings that contain element names (e.g. convert "C, N, O" into ["C", "N",
+ * "O"])
+ */
+static QStringList split_element_list(const QString& text)
+{
+    return text.split(QRegularExpression(R"(\W+)"), Qt::SkipEmptyParts);
+}
+
+/**
+ * Convert the given text into a vector of Element enum values
+ * @throw InvalidElementError if the text does not specify any elements (e.g.
+ * the string is empty) or if the text specifies any invalid element (e.g.
+ * "C, N, Qz")
+ */
+static std::vector<Element> get_elements_from_list(const QString& text)
+{
+    auto split_element_text = split_element_list(text);
+    std::vector<Element> elements;
+    std::transform(split_element_text.begin(), split_element_text.end(),
+                   std::back_inserter(elements), get_element_from_text);
+    if (elements.empty()) {
+        throw InvalidElementError("No elements specified.");
+    }
+    return elements;
+}
+
+/**
+ * Set the enhanced stereo properties based on the values selected in the combo
+ * box and spin box
+ */
+static void set_enhanced_stereo_properties(const QComboBox* const combo,
+                                           const QSpinBox* const sb,
+                                           AbstractAtomProperties& props)
+{
+    if (combo->isEnabled()) {
+        props.enhanced_stereo_type =
+            combo->currentData().value<EnhancedStereoType>();
+        props.enhanced_stereo_group_id = sb->value();
+    }
+}
+
+/**
+ * Load the given enhanced stereo properties into the combo box and spin box
+ */
+static void set_enhanced_stereo_widgets(QComboBox* const combo,
+                                        QSpinBox* const sb,
+                                        const AbstractAtomProperties& props)
+{
+    sb->setValue(props.enhanced_stereo_group_id);
+    if (props.enhanced_stereo_type.has_value()) {
+        combo->setEnabled(true);
+        set_combo_box_data(combo, *props.enhanced_stereo_type);
+    } else {
+        sb->setValue(DEFAULT_ENHANCED_STEREO_GROUP_ID);
+        combo->setEnabled(false);
+        set_combo_box_data(combo, EnhancedStereoType::ABS);
+    }
+}
+
+void EditAtomPropertiesDialog::accept()
+{
+    auto props = getDialogSettings();
+    auto new_atom = create_atom_with_properties(props);
+    m_mol_model->mutateAtoms({m_atom}, new_atom);
+    QDialog::accept();
+}
+
+std::shared_ptr<AbstractAtomProperties>
+EditAtomPropertiesDialog::getDialogSettings() const
+{
+    if (ui->set_as_atom_rb->isChecked()) {
+        AtomProperties atom_props;
+        auto element_text = ui->atom_element_le->text();
+        atom_props.element = get_element_from_text(element_text);
+
+        atom_props.isotope = ui->atom_isotope_sb->optionalValue();
+        atom_props.charge = ui->atom_charge_sb->value();
+        atom_props.unpaired_electrons = ui->atom_unpaired_sb->value();
+        set_enhanced_stereo_properties(ui->atom_stereo_combo,
+                                       ui->atom_stereo_sb, atom_props);
+        return std::make_shared<AtomProperties>(atom_props);
+    } else {
+
+        AtomQueryProperties query_props;
+        query_props.query_type =
+            ui->query_type_combo->currentData().value<QueryType>();
+        switch (query_props.query_type) {
+            case QueryType::ALLOWED_LIST:
+            case QueryType::NOT_ALLOWED_LIST: {
+                auto element_list = ui->element_list_le->text();
+                query_props.allowed_list = get_elements_from_list(element_list);
+                break;
+            }
+            case QueryType::WILDCARD:
+                query_props.wildcard =
+                    ui->wildcard_combo->currentData().value<AtomQuery>();
+                break;
+            case QueryType::SPECIFIC_ELEMENT: {
+                auto element_text = ui->query_element_le->text();
+                query_props.element = get_element_from_text(element_text);
+                break;
+            }
+            case QueryType::RGROUP:
+                query_props.r_group = ui->rgroup_sb->value();
+                break;
+        }
+        query_props.isotope = ui->query_isotope_sb->optionalValue();
+        query_props.charge = ui->query_charge_sb->optionalValue();
+        query_props.unpaired_electrons = ui->query_unpaired_sb->optionalValue();
+        set_enhanced_stereo_properties(ui->query_stereo_combo,
+                                       ui->query_stereo_sb, query_props);
+        query_props.total_h = ui->total_h_sb->optionalValue();
+        query_props.num_connections = ui->num_connections_sb->optionalValue();
+        query_props.aromaticity =
+            ui->aromaticity_combo->currentData().value<QueryAromaticity>();
+        query_props.ring_count_type =
+            ui->ring_count_combo->currentData().value<QueryCount>();
+        query_props.ring_count_exact_val = ui->ring_count_sb->value();
+        query_props.ring_bond_count_type =
+            ui->ring_bond_count_combo->currentData().value<QueryCount>();
+        query_props.ring_bond_count_exact_val = ui->ring_bond_count_sb->value();
+        query_props.smallest_ring_size =
+            ui->smallest_ring_size_sb->optionalValue();
+        query_props.smarts_query = ui->smarts_query_le->text().toStdString();
+        return std::make_shared<AtomQueryProperties>(query_props);
+    }
+}
+
+void EditAtomPropertiesDialog::loadProperties(
+    const std::shared_ptr<AbstractAtomProperties> props)
+{
+    if (props->isQuery()) {
         ui->set_as_query_rb->click();
+        loadAtomProperties(AtomProperties());
+        // reset the query page to defaults
+        loadQueryProperties(
+            *static_cast<const AtomQueryProperties*>(props.get()));
     } else {
         ui->set_as_atom_rb->click();
+        // reset the atom page to defaults
+        loadAtomProperties(*static_cast<const AtomProperties*>(props.get()));
+        loadQueryProperties(AtomQueryProperties());
     }
-
-    // Reset the "Set as atom" subwidgets
-    auto atom_type = m_atom.getAtomType();
-    std::string element_text;
-    if (is_atomic_number(atom_type)) {
-        element_text = atomic_number_to_symbol(atom_type);
-    }
-    ui->element_le->setText(QString::fromStdString(element_text));
-
-    ui->atom_common_props_wdg->readAtomInfo(m_atom);
-
-    resetGeneralQuerySubwidgets();
-    resetAdvancedQuerySubwidgets();
+    updateButtonsEnabled();
 }
 
-void EditAtomPropertiesDialog::resetGeneralQuerySubwidgets()
+/**
+ * @return the atomic symbol for the given Element enum
+ */
+static QString get_atomic_symbol_from_element(Element element)
 {
-    auto query_type = QueryType::SPECIFIC_ELEMENT;
-    if (m_atom.isAllowedAtomListQuery()) {
-        query_type = QueryType::ALLOWED_LIST;
-    } else if (m_atom.isDisallowedAtomListQuery()) {
-        query_type = QueryType::NOT_ALLOWED_LIST;
-    } else if (m_atom.isRGroup()) {
-        query_type = QueryType::RGROUP;
-    } else if (m_atom.isAnyAtomWildcard() || m_atom.isHeavyAtomWildcard() ||
-               m_atom.isAnyNonCarbonWildcard() ||
-               m_atom.isNonCarbonHeavyAtomWildcard() ||
-               m_atom.isMetalOrHWildcard() || m_atom.isMetalWildcard() ||
-               m_atom.isHalogenOrHWildcard() || m_atom.isHalogenWildcard()) {
-        query_type = QueryType::WILDCARD;
-    }
-    setQueryTypeComboValue(query_type);
-
-    auto atom_type = m_atom.getAtomType();
-    auto wildcard_combo_idx = 0;
-    if (query_type == QueryType::WILDCARD) {
-        auto atom_type_qvariant = QVariant::fromValue(
-            get_atomquery_for_atomtype(AtomTypes(atom_type)));
-        wildcard_combo_idx = ui->wildcard_combo->findData(atom_type_qvariant);
-    }
-    ui->wildcard_combo->setCurrentIndex(wildcard_combo_idx);
-
-    std::string element_list_text;
-    std::string element_text;
-    if (is_atomic_number(atom_type)) {
-        element_text = atomic_number_to_symbol(atom_type);
-    }
-    if (!m_atom.isQuery()) {
-        element_list_text = element_text;
-    } else if (m_atom.isAllowedAtomListQuery() ||
-               m_atom.isDisallowedAtomListQuery()) {
-        element_list_text = m_atom.getAtomicNumbersListString();
-    }
-    ui->element_list_le->setText(QString::fromStdString(element_list_text));
-
-    ui->specific_element_le->setText(QString::fromStdString(element_text));
-
-    auto r_group_number = m_sketcher_model->getNextRGroupNumber();
-    if (m_atom.isRGroup()) {
-        r_group_number = m_atom.getRGroupNumber();
-    }
-    ui->rgroup_sb->setValue(r_group_number);
-
-    ui->query_common_props_wdg->readAtomInfo(m_atom);
+    auto symbol = atomic_number_to_symbol(static_cast<unsigned int>(element));
+    return QString::fromStdString(symbol);
 }
 
-void EditAtomPropertiesDialog::resetAdvancedQuerySubwidgets()
+void EditAtomPropertiesDialog::loadAtomProperties(
+    const AtomProperties& atom_props)
 {
-    std::string atom_smarts;
-    m_atom.getStringProperty(ATOM_SMARTS_KEY, atom_smarts);
+    auto atomic_symbol = get_atomic_symbol_from_element(atom_props.element);
+    ui->atom_element_le->setText(atomic_symbol);
+    ui->atom_isotope_sb->setOptionalValue(atom_props.isotope);
+    ui->atom_charge_sb->setValue(atom_props.charge);
+    ui->atom_unpaired_sb->setValue(atom_props.unpaired_electrons);
+    set_enhanced_stereo_widgets(ui->atom_stereo_combo, ui->atom_stereo_sb,
+                                atom_props);
+}
 
-    QString total_h_text = "";
-    if (atom_smarts.empty()) {
-        int total_h = -1;
-        if (m_atom.getIntProperty(TOTAL_H_COUNT_KEY, total_h) && total_h > -1) {
-            total_h_text = QString::number(total_h);
+void EditAtomPropertiesDialog::loadQueryProperties(
+    const AtomQueryProperties& query_props)
+{
+    set_combo_box_data(ui->query_type_combo, query_props.query_type);
+    clearQueryTypeFields();
+    switch (query_props.query_type) {
+        case QueryType::ALLOWED_LIST:
+        case QueryType::NOT_ALLOWED_LIST: {
+            QStringList atomic_symbols;
+            std::transform(query_props.allowed_list.begin(),
+                           query_props.allowed_list.end(),
+                           std::back_inserter(atomic_symbols),
+                           get_atomic_symbol_from_element);
+            auto allowed_list = atomic_symbols.join(", ");
+            ui->element_list_le->setText(allowed_list);
+            break;
         }
-    }
-    ui->total_H_le->setText(total_h_text);
-
-    QString num_connections_text{""};
-    if (atom_smarts.empty()) {
-        int num_connections = -1;
-        if (m_atom.getIntProperty(NUMBER_OF_CONNECTIONS_KEY, num_connections) &&
-            num_connections > -1) {
-            num_connections_text = QString::number(num_connections);
+        case QueryType::WILDCARD:
+            set_combo_box_data(ui->wildcard_combo, query_props.wildcard);
+            break;
+        case QueryType::SPECIFIC_ELEMENT: {
+            auto atomic_symbol =
+                get_atomic_symbol_from_element(query_props.element);
+            ui->query_element_le->setText(atomic_symbol);
+            break;
         }
+        case QueryType::RGROUP:
+            ui->rgroup_sb->setValue(query_props.r_group);
+            break;
     }
-    ui->num_connections_le->setText(num_connections_text);
 
-    auto aromaticity_key = ANY_COMBO_KEY;
-    if (atom_smarts.empty()) {
-        int aromaticity = -1;
-        if (m_atom.getIntProperty(AROMATICITY_KEY, aromaticity)) {
-            if (aromaticity == sketcherAtom::ALIPHATIC_ATOM) {
-                aromaticity_key = ALIPHATIC_COMBO_KEY;
-            } else if (aromaticity == sketcherAtom::AROMATIC_ATOM) {
-                aromaticity_key = AROMATIC_COMBO_KEY;
-            }
-        }
-    }
-    auto aromaticity_index = ui->aromaticity_combo->findText(aromaticity_key);
-    ui->aromaticity_combo->setCurrentIndex(aromaticity_index);
+    ui->query_isotope_sb->setOptionalValue(query_props.isotope);
+    ui->query_charge_sb->setOptionalValue(query_props.charge);
+    ui->query_unpaired_sb->setOptionalValue(query_props.unpaired_electrons);
+    set_enhanced_stereo_widgets(ui->query_stereo_combo, ui->query_stereo_sb,
+                                query_props);
+    ui->total_h_sb->setOptionalValue(query_props.total_h);
+    ui->num_connections_sb->setOptionalValue(query_props.num_connections);
+    set_combo_box_data(ui->aromaticity_combo, query_props.aromaticity);
+    set_combo_box_data(ui->ring_count_combo, query_props.ring_count_type);
+    ui->ring_count_sb->setValue(query_props.ring_count_exact_val);
 
-    auto ring_count_key = ANY_COMBO_KEY;
-    int ring_count = 0;
-    if (atom_smarts.empty()) {
-        int min_rings = -1;
-        if (m_atom.getIntProperty(MINIMUM_NUMBER_OF_RINGS_KEY, min_rings)) {
-            int max_rings = -1;
-            if (m_atom.getIntProperty(MAXIMUM_NUMBER_OF_RINGS_KEY, max_rings)) {
-                if (min_rings == max_rings && min_rings > -1) {
-                    ring_count_key = EXACT_COMBO_KEY;
-                    ring_count = min_rings;
-                }
-            } else if (min_rings == 1 && max_rings == -1) {
-                ring_count_key = NONZERO_COMBO_KEY;
-            }
-        }
-    }
-    ui->ring_count_sb->setValue(ring_count);
-    auto ring_count_index = ui->ring_count_combo->findText(ring_count_key);
-    ui->ring_count_combo->setCurrentIndex(ring_count_index);
-    update_ring_count_spinbox(ui->ring_count_sb, ring_count_key);
-
-    auto ring_bonds_key = ANY_COMBO_KEY;
-    int ring_bond_count = 0;
-    if (atom_smarts.empty()) {
-        int ring_bonds = -1;
-        if (m_atom.getIntProperty(RING_BOND_COUNT_KEY, ring_bonds) &&
-            ring_bonds > -1) {
-            ring_bonds_key = EXACT_COMBO_KEY;
-            ring_bond_count = ring_bonds;
-        }
-    }
-    ui->ring_bond_count_sb->setValue(ring_bond_count);
-    auto ring_bonds_index = ui->ring_bond_count_combo->findText(ring_bonds_key);
-    ui->ring_bond_count_combo->setCurrentIndex(ring_bonds_index);
-    update_ring_count_spinbox(ui->ring_bond_count_sb, ring_bonds_key);
-
-    QString ring_size_text{""};
-    if (atom_smarts.empty()) {
-        int ring_size = -1;
-        if (m_atom.getIntProperty(MINIMUM_SIZE_OF_RINGS_KEY, ring_size) &&
-            ring_size > -1) {
-            ring_size_text = QString::number(ring_size);
-        }
-    }
-    ui->smallest_ring_size_le->setText(ring_size_text);
-
-    ui->smarts_query_le->setText(QString::fromStdString(atom_smarts));
+    set_combo_box_data(ui->ring_bond_count_combo,
+                       query_props.ring_bond_count_type);
+    ui->ring_bond_count_sb->setValue(query_props.ring_bond_count_exact_val);
+    ui->smallest_ring_size_sb->setOptionalValue(query_props.smallest_ring_size);
+    ui->smarts_query_le->setText(
+        QString::fromStdString(query_props.smarts_query));
 }
 
-QueryType EditAtomPropertiesDialog::getQueryTypeComboValue() const
+void EditAtomPropertiesDialog::clearQueryTypeFields()
 {
-    return ui->query_type_combo->currentData().value<QueryType>();
+    ui->element_list_le->clear();
+    ui->query_element_le->clear();
+    ui->rgroup_sb->setValue(1);
+    ui->wildcard_combo->setCurrentIndex(0);
 }
 
-AtomQuery EditAtomPropertiesDialog::getWildcardComboValue() const
+void EditAtomPropertiesDialog::onAtomOrQueryToggled(const int page_id)
 {
-    return ui->wildcard_combo->currentData().value<AtomQuery>();
-}
-
-void EditAtomPropertiesDialog::setQueryTypeComboValue(QueryType etype)
-{
-    auto idx = ui->query_type_combo->findData(QVariant::fromValue(etype));
-    ui->query_type_combo->setCurrentIndex(idx);
-}
-
-void EditAtomPropertiesDialog::onQueryTypeComboValueChanged()
-{
-    auto query_type = getQueryTypeComboValue();
-    auto in_specific_element = query_type == QueryType::SPECIFIC_ELEMENT;
-    auto in_element_list = query_type == QueryType::ALLOWED_LIST ||
-                           query_type == QueryType::NOT_ALLOWED_LIST;
-
-    ui->element_list_le->setVisible(in_element_list);
-    ui->specific_element_le->setVisible(in_specific_element);
-    ui->wildcard_combo->setVisible(query_type == QueryType::WILDCARD);
-    ui->rgroup_sb->setVisible(query_type == QueryType::RGROUP);
-
-    // Only show the periodic table when applicable
-    m_periodic_table_wdg->setCloseOnClick(in_specific_element);
-    ui->periodic_table_btn->setVisible(in_specific_element || in_element_list);
-
-    // Only certain items are sensible for each query type
-    ui->query_common_props_wdg->onQueryTypeComboValueChanged(query_type);
-    updateOKButtonEnabled();
-}
-
-void EditAtomPropertiesDialog::onPeriodicTableElementSelected(Element element)
-{
-    auto symbol = QString::fromStdString(
-        atomic_number_to_symbol(static_cast<int>(element)));
-    if (getQueryTypeComboValue() == QueryType::SPECIFIC_ELEMENT) {
-        // Replace text with element
-        ui->specific_element_le->setText(symbol);
+    auto page = ui->atom_query_stacked_wdg->widget(page_id);
+    auto query_type = ui->query_type_combo->currentData().value<QueryType>();
+    if (page == ui->edit_atom_page) {
+        // we're switching to the atom page
+        if (query_type == QueryType::SPECIFIC_ELEMENT) {
+            ui->atom_element_le->setText(ui->query_element_le->text());
+        } else if (query_type == QueryType::ALLOWED_LIST ||
+                   query_type == QueryType::NOT_ALLOWED_LIST) {
+            transferElementListToSpecificElement(ui->atom_element_le);
+        }
     } else {
-        QString text = ui->element_list_le->text();
-        // Append element symbol to existing text
-        if (!text.isEmpty()) {
-            text += ", ";
+        // we're switching to the query page
+        if (query_type == QueryType::SPECIFIC_ELEMENT) {
+            auto atom_element_text = ui->atom_element_le->text();
+            try {
+                get_element_from_text(atom_element_text);
+                ui->query_element_le->setText(atom_element_text);
+            } catch (InvalidElementError&) {
+                // the element isn't valid, so don't bother to transfer it
+            }
+        } else if (query_type == QueryType::ALLOWED_LIST ||
+                   query_type == QueryType::NOT_ALLOWED_LIST) {
+            transferSpecificElementToElementList(ui->atom_element_le);
         }
-        text += symbol;
+    }
+    updateButtonsEnabled();
+}
+
+void EditAtomPropertiesDialog::transferSpecificElementToElementList(
+    const QLineEdit* const element_le)
+{
+    auto element_text = element_le->text();
+    try {
+        get_element_from_text(element_text);
+    } catch (InvalidElementError&) {
+        // the line edit doesn't specify a valid element, so don't bother to
+        // transfer it
+        return;
+    }
+    // don't transfer the element list if the element list already starts with
+    // that element, in case the specific element field was populated by
+    // truncating the element list
+    auto element_list = split_element_list(ui->element_list_le->text());
+    if (element_list.isEmpty() || element_text != element_list[0]) {
+        ui->element_list_le->setText(element_text);
+    }
+}
+
+void EditAtomPropertiesDialog::transferElementListToSpecificElement(
+    QLineEdit* const element_le)
+{
+    auto element_list = split_element_list(ui->element_list_le->text());
+    if (element_list.isEmpty()) {
+        // there's nothing to transfer
+        return;
+    }
+    auto first_atomic_symbol = element_list[0];
+    try {
+        get_element_from_text(first_atomic_symbol);
+    } catch (InvalidElementError&) {
+        // the atomic symbol is invalid, so don't bother to transfer it
+        return;
+    }
+    element_le->setText(first_atomic_symbol);
+}
+
+void EditAtomPropertiesDialog::updateButtonsEnabled()
+{
+    // if the timer was started and then this method was called explicitly,
+    // there's no need to call it again when the timer goes off
+    m_update_buttons_enabled_timer->stop();
+
+    bool enable_ok = true;
+    bool enable_reset = true;
+    std::string ok_tooltip;
+    std::string reset_tooltip;
+    std::shared_ptr<AbstractAtomProperties> props = nullptr;
+
+    // check if the settings are valid
+    try {
+        props = getDialogSettings();
+    } catch (InvalidElementError& e) {
+        enable_ok = false;
+        ok_tooltip = e.what();
+    }
+
+    // check if the user has changed any settings
+    if (enable_ok && *props == *read_properties_from_atom(m_atom)) {
+        enable_ok = false;
+        enable_reset = false;
+        ok_tooltip = reset_tooltip = "No settings have been changed.";
+    }
+
+    auto* ok_btn = ui->buttonBox->button(QDialogButtonBox::Ok);
+    ok_btn->setEnabled(enable_ok);
+    ok_btn->setToolTip(QString::fromStdString(ok_tooltip));
+
+    auto* reset_btn = ui->buttonBox->button(QDialogButtonBox::Reset);
+    reset_btn->setEnabled(enable_reset);
+    reset_btn->setToolTip(QString::fromStdString(reset_tooltip));
+}
+
+void EditAtomPropertiesDialog::onQueryTypeComboBoxChanged(const int combo_index)
+{
+    // figure out which stacked widget page we're switching to
+    auto variant = ui->query_type_combo->itemData(combo_index);
+    QWidget* switch_to_page = nullptr;
+    bool show_periodic_table_btn = false;
+    switch (variant.value<QueryType>()) {
+        case QueryType::ALLOWED_LIST:
+        case QueryType::NOT_ALLOWED_LIST:
+            switch_to_page = ui->element_list_page;
+            show_periodic_table_btn = true;
+            break;
+        case QueryType::WILDCARD:
+            switch_to_page = ui->wildcard_page;
+            break;
+        case QueryType::SPECIFIC_ELEMENT:
+            switch_to_page = ui->query_element_page;
+            show_periodic_table_btn = true;
+            break;
+        case QueryType::RGROUP:
+            switch_to_page = ui->rgroup_page;
+            break;
+    }
+
+    // transfer elements between specific element and element list
+    auto switch_from_page = ui->query_type_stacked_widget->currentWidget();
+    if (switch_from_page == ui->query_element_page) {
+        transferSpecificElementToElementList(ui->query_element_le);
+    } else if (switch_from_page == ui->element_list_page &&
+               switch_to_page != ui->element_list_page) {
+        transferElementListToSpecificElement(ui->query_element_le);
+    }
+
+    ui->query_type_stacked_widget->setCurrentWidget(switch_to_page);
+    ui->query_periodic_table_btn->setVisible(show_periodic_table_btn);
+    updateButtonsEnabled();
+}
+
+void EditAtomPropertiesDialog::onAtomPeriodicTableElementSelected(
+    Element element)
+{
+    auto symbol = get_atomic_symbol_from_element(element);
+    ui->atom_element_le->setText(symbol);
+    ui->atom_periodic_table_btn->getPopupWidget()->close();
+}
+
+void EditAtomPropertiesDialog::onQueryPeriodicTableElementSelected(
+    Element element)
+{
+    auto symbol = get_atomic_symbol_from_element(element);
+    auto query_type = ui->query_type_combo->currentData().value<QueryType>();
+    if (query_type == QueryType::SPECIFIC_ELEMENT) {
+        ui->query_element_le->setText(symbol);
+        ui->query_periodic_table_btn->getPopupWidget()->close();
+    } else {
+        auto text = ui->element_list_le->text();
+        // trim unnecessary whitespace
+        text = text.simplified();
+        if (!text.isEmpty() && !text.endsWith(',')) {
+            text.append(", ");
+        }
+        text.append(symbol);
         ui->element_list_le->setText(text);
     }
 }
 
-void EditAtomPropertiesDialog::setToAllowedList()
+ElementValidator::ElementValidator(const bool allow_list, QObject* parent) :
+    QValidator(parent),
+    m_allow_list(allow_list)
 {
-    ui->set_as_query_rb->click();
-    ui->edit_query_tab_wdg->setCurrentWidget(ui->general_tab);
-    setQueryTypeComboValue(QueryType::ALLOWED_LIST);
 }
 
-void updateAtomicNumber(sketcherAtom& atom, std::string symbol)
+QValidator::State ElementValidator::validate(QString& input, int& pos) const
 {
-    auto atomic_number = symbol_to_atomic_number(symbol);
-    atom.setAtomType(atomic_number);
-}
-
-std::set<unsigned int> parseElementList(const std::string& symbol_list)
-{
-    std::stringstream ss(symbol_list);
-    std::set<unsigned int> atomic_nums;
-    std::string symbol;
-    while (ss.good()) {
-        getline(ss, symbol, ',');
-        auto atomic_number = symbol_to_atomic_number(symbol);
-        atomic_nums.insert(atomic_number);
-    }
-    return atomic_nums;
-}
-
-void EditAtomPropertiesDialog::writeAtomInfo()
-{
-    updateAtomicNumber(m_atom, ui->element_le->text().toStdString());
-    ui->atom_common_props_wdg->writeAtomInfo(m_atom);
-
-    auto rdk_atom = m_atom.getRDKAtom();
-    if (rdk_atom != nullptr && rdk_atom->hasQuery()) {
-        rdk_atom->setQuery(nullptr);
-    }
-}
-
-void EditAtomPropertiesDialog::writeQueryInfo()
-{
-    switch (getQueryTypeComboValue()) {
-        case QueryType::SPECIFIC_ELEMENT: {
-            updateAtomicNumber(m_atom,
-                               ui->specific_element_le->text().toStdString());
-            break;
-        }
-        case QueryType::ALLOWED_LIST: {
-            auto atomic_nums =
-                parseElementList(ui->element_list_le->text().toStdString());
-            if (!atomic_nums.empty()) {
-                m_atom.setAsAllowedAtomListQuery(atomic_nums);
-            }
-            break;
-        }
-        case QueryType::NOT_ALLOWED_LIST: {
-            auto atomic_nums =
-                parseElementList(ui->element_list_le->text().toStdString());
-            if (!atomic_nums.empty()) {
-                m_atom.setAsDisallowedAtomListQuery(atomic_nums);
-            }
-            break;
-        }
-        case QueryType::WILDCARD: {
-            auto atom_query = getWildcardComboValue();
-            m_atom.setAtomType(get_atomtype_for_atomquery(atom_query));
-            break;
-        }
-        case QueryType::RGROUP: {
-            unsigned int rgroup_number =
-                static_cast<unsigned int>(ui->rgroup_sb->value());
-            m_atom.setAsRGroup(rgroup_number);
-            break;
+    // check for invalid characters
+    for (auto& cur_char : input) {
+        if (!cur_char.isLetter() &&
+            !(m_allow_list && (cur_char == ',' || cur_char == ' '))) {
+            // don't allow the invalid characters to be added to the line edit
+            return QValidator::Invalid;
         }
     }
 
-    // A literal SMARTS query overrides the other options
-    auto smarts_query = ui->smarts_query_le->text();
-    if (smarts_query.isEmpty()) {
-
-        m_atom.unsetStringProperty(ATOM_SMARTS_KEY);
-
-        auto total_h = ui->total_H_le->text();
-        if (total_h.isEmpty()) {
-            m_atom.unsetIntProperty(TOTAL_H_COUNT_KEY);
-        } else {
-            auto h_count = total_h.toUInt();
-            m_atom.setIntProperty(TOTAL_H_COUNT_KEY, h_count);
-        }
-
-        auto num_connections = ui->num_connections_le->text();
-        if (num_connections.isEmpty()) {
-            m_atom.unsetIntProperty(NUMBER_OF_CONNECTIONS_KEY);
-        } else {
-            auto connections = num_connections.toUInt();
-            m_atom.setIntProperty(NUMBER_OF_CONNECTIONS_KEY, connections);
-        }
-
-        auto aromaticity = ui->aromaticity_combo->currentText();
-        if (aromaticity == AROMATIC_COMBO_KEY) {
-            m_atom.setIntProperty(AROMATICITY_KEY, sketcherAtom::AROMATIC_ATOM);
-        } else if (aromaticity == ALIPHATIC_COMBO_KEY) {
-            m_atom.setIntProperty(AROMATICITY_KEY,
-                                  sketcherAtom::ALIPHATIC_ATOM);
-        } else {
-            m_atom.unsetIntProperty(AROMATICITY_KEY);
-        }
-
-        auto ring_count = ui->ring_count_combo->currentText();
-        if (ring_count == NONZERO_COMBO_KEY) {
-            m_atom.setIntProperty(MINIMUM_NUMBER_OF_RINGS_KEY, 1);
-            m_atom.setIntProperty(MAXIMUM_NUMBER_OF_RINGS_KEY,
-                                  MAXIMUM_RING_NUMBER_LIMIT);
-        } else if (ring_count == EXACT_COMBO_KEY) {
-            auto num_rings = ui->ring_count_sb->value();
-            m_atom.setIntProperty(MINIMUM_NUMBER_OF_RINGS_KEY, num_rings);
-            m_atom.setIntProperty(MAXIMUM_NUMBER_OF_RINGS_KEY, num_rings);
-        } else {
-            m_atom.unsetIntProperty(MINIMUM_NUMBER_OF_RINGS_KEY);
-            m_atom.unsetIntProperty(MAXIMUM_NUMBER_OF_RINGS_KEY);
-        }
-
-        auto ring_bond_count = ui->ring_bond_count_combo->currentText();
-        if (ring_bond_count == EXACT_COMBO_KEY) {
-            auto num_ring_bonds = ui->ring_bond_count_sb->value();
-            m_atom.setIntProperty(RING_BOND_COUNT_KEY, num_ring_bonds);
-        } else {
-            m_atom.unsetIntProperty(RING_BOND_COUNT_KEY);
-        }
-
-        auto smallest_ring_size = ui->smallest_ring_size_le->text();
-        if (smallest_ring_size.isEmpty()) {
-            m_atom.unsetIntProperty(MINIMUM_SIZE_OF_RINGS_KEY);
-            m_atom.unsetIntProperty(MAXIMUM_SIZE_OF_RINGS_KEY);
-        } else {
-            auto ring_size = smallest_ring_size.toUInt();
-            m_atom.setIntProperty(MINIMUM_SIZE_OF_RINGS_KEY, ring_size);
-            m_atom.setIntProperty(MAXIMUM_SIZE_OF_RINGS_KEY,
-                                  MAXIMUM_RING_SIZE_LIMIT);
-        }
-    } else {
-
-        // Make sure the SMARTS is parseable, or do nothing
-        auto smarts = smarts_query.toStdString();
-        std::unique_ptr<RDKit::Atom> atom{RDKit::SmartsToAtom(smarts)};
-        if (atom != nullptr && atom->hasQuery()) {
-            parse_rdk_atom_queries(&m_atom, atom.get());
-
-            // if we parsed a SMARTS, skip writing the info from the other
-            // tab, since the SMARTS might have overwritten some of the info
-            return;
-        }
+    // find out if the atomic symbols are valid (i.e. are they real elements)
+    try {
+        get_elements_from_list(input);
+    } catch (InvalidElementError&) {
+        return QValidator::Intermediate;
     }
-
-    ui->query_common_props_wdg->writeAtomInfo(m_atom);
-}
-
-void EditAtomPropertiesDialog::updateOKButtonEnabled()
-{
-    bool enable = false;
-    if (ui->set_as_query_rb->isChecked()) {
-        // Atom object will be set as a query. Some queries require further
-        // input.
-        switch (getQueryTypeComboValue()) {
-            case QueryType::SPECIFIC_ELEMENT: {
-                enable = !ui->specific_element_le->text().isEmpty();
-                break;
-            }
-            case QueryType::ALLOWED_LIST:
-            case QueryType::NOT_ALLOWED_LIST: {
-                enable = !ui->element_list_le->text().isEmpty();
-                break;
-            }
-            case QueryType::RGROUP:
-            case QueryType::WILDCARD: {
-                enable = true;
-                break;
-            }
-        }
-    } else {
-        // Atom object will be set as proper atom
-        enable = !ui->element_le->text().isEmpty();
-    }
-    ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(enable);
+    return QValidator::Acceptable;
 }
 
 } // namespace sketcher
 } // namespace schrodinger
-
-#include "schrodinger/sketcher/dialog/edit_atom_properties.moc"

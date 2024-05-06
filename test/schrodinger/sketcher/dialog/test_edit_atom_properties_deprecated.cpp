@@ -12,18 +12,18 @@
 #include "../test_common.h"
 #include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/dialog/edit_atom_properties.h"
+#include "schrodinger/sketcher/dialog/edit_atom_properties_deprecated.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/ui/ui_common_atom_properties_widget.h"
-#include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
+#include "schrodinger/sketcher/ui/ui_edit_atom_properties_deprecated.h"
 
 using namespace schrodinger::sketcher;
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
 // Allow testing of equality operator
-BOOST_TEST_DONT_PRINT_LOG_VALUE(EnhancedStereoType)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(::EnhancedStereoType)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QueryType)
 
 /**
@@ -39,11 +39,11 @@ class TestCommonAtomPropertiesWidget : public CommonAtomPropertiesWidget
     using CommonAtomPropertiesWidget::setEnhancedStereoTypeComboValue;
 };
 
-class TestEditAtomPropertiesDialog : public EditAtomPropertiesDialog
+class TestEditAtomPropertiesDialog : public EditAtomPropertiesDialogDeprecated
 {
   public:
     TestEditAtomPropertiesDialog(SketcherModel* model, sketcherAtom& atom) :
-        EditAtomPropertiesDialog(model, atom)
+        EditAtomPropertiesDialogDeprecated(model, atom)
     {
     }
     Ui::CommonAtomPropertiesWidget* getAtomPropsUI() const
@@ -54,16 +54,16 @@ class TestEditAtomPropertiesDialog : public EditAtomPropertiesDialog
     {
         return ui->query_common_props_wdg->ui.get();
     }
-    Ui::EditAtomPropertiesDialog* getUI() const
+    Ui::EditAtomPropertiesDialogDeprecated* getUI() const
     {
         return ui.get();
     }
-    using EditAtomPropertiesDialog::accept;
-    using EditAtomPropertiesDialog::getQueryTypeComboValue;
-    using EditAtomPropertiesDialog::m_atom;
-    using EditAtomPropertiesDialog::reset;
-    using EditAtomPropertiesDialog::setQueryTypeComboValue;
-    using EditAtomPropertiesDialog::updateOKButtonEnabled;
+    using EditAtomPropertiesDialogDeprecated::accept;
+    using EditAtomPropertiesDialogDeprecated::getQueryTypeComboValue;
+    using EditAtomPropertiesDialogDeprecated::m_atom;
+    using EditAtomPropertiesDialogDeprecated::reset;
+    using EditAtomPropertiesDialogDeprecated::setQueryTypeComboValue;
+    using EditAtomPropertiesDialogDeprecated::updateOKButtonEnabled;
 };
 
 /**
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(test_CommonAtomPropertiesWidget)
     BOOST_TEST(atom.getCharge() == -2);
     BOOST_TEST(atom.getUnpairedElectronsN() == 1);
     auto enh_st = atom.getEnhancedStereo();
-    BOOST_TEST(enh_st.type == EnhancedStereoType::OR);
+    BOOST_TEST(enh_st.type == ::EnhancedStereoType::OR);
     BOOST_TEST(enh_st.group_id == 2);
 
     // Test setting isotope out of range
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(read_and_write_atom_info)
     BOOST_TEST(c_atom->getRDKAtom() != nullptr);
 
     // Verify that we can assign stereo properties on the atom itself
-    EnhancedStereo exp_enhanced_stereo{EnhancedStereoType::AND, 1};
+    EnhancedStereo exp_enhanced_stereo{::EnhancedStereoType::AND, 1};
     c_atom->setEnhancedStereo(exp_enhanced_stereo);
     auto enhanced_stereo = c_atom->getEnhancedStereo();
     BOOST_TEST(enhanced_stereo.type == exp_enhanced_stereo.type);
@@ -152,11 +152,11 @@ BOOST_AUTO_TEST_CASE(read_and_write_atom_info)
     BOOST_TEST(ui->enhanced_stereo_combo->currentText().toStdString() == "AND");
     BOOST_TEST(ui->enhanced_stereo_sb->value() == exp_enhanced_stereo.group_id);
 
-    widget.setEnhancedStereoTypeComboValue(EnhancedStereoType::ABS);
+    widget.setEnhancedStereoTypeComboValue(::EnhancedStereoType::ABS);
     widget.writeAtomInfo(*c_atom);
 
     enhanced_stereo = c_atom->getEnhancedStereo();
-    BOOST_TEST(enhanced_stereo.type == EnhancedStereoType::ABS);
+    BOOST_TEST(enhanced_stereo.type == ::EnhancedStereoType::ABS);
     BOOST_TEST(enhanced_stereo.group_id == 0);
 }
 
@@ -495,8 +495,8 @@ void assign_subwidget_values(TestEditAtomPropertiesDialog& dlg)
 
 /**
  * For a given atom (element or query or whatever), verify that an
- * `EditAtomPropertiesDialog` instance opened with this atom is properly reset
- * after all subwidgets have been modified.
+ * `EditAtomPropertiesDialogDeprecated` instance opened with this atom is
+ * properly reset after all subwidgets have been modified.
  */
 void check_dialog_subwidgets(SketcherModel* model, sketcherAtom* atom)
 {

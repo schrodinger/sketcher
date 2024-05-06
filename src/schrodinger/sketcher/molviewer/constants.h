@@ -293,6 +293,14 @@ const int CURSOR_HINT_IMAGE_SIZE = 28;
 // dialog informing the user of the problem.
 const unsigned int MAX_NUM_ATOMS_FOR_IMPORT = 200;
 
+// maximum allowed values for spin boxes in the Edit Aom Properties dialog
+const unsigned int MAX_STEREO_GROUP_ID = 99;
+const unsigned int MAX_QUERY_TOTAL_H = 99;
+const unsigned int MAX_QUERY_NUM_CONNECTIONS = 99;
+const unsigned int MAX_QUERY_RING_COUNT = 99;
+const unsigned int MAX_QUERY_RING_BOND_COUNT = 99;
+const unsigned int MAX_QUERY_SMALLEST_RING_SIZE = 999;
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)

@@ -32,7 +32,9 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
     connect(m_replace_with_menu,
             &ReplaceAtomsWithMenu::
                 showEditAtomPropertiesDialogWithAllowedListRequested,
-            this, [this]() { emit showEditAtomPropertiesRequested(true); });
+            this, [this]() {
+                emit showEditAtomPropertiesRequested(*m_atoms.begin(), true);
+            });
     connect(m_replace_with_menu, &ReplaceAtomsWithMenu::newRGroupRequested,
             this, [this]() { emit newRGroupRequested(m_atoms); });
     connect(m_replace_with_menu, &ReplaceAtomsWithMenu::existingRGroupRequested,
@@ -66,8 +68,9 @@ ModifyAtomsMenu::ModifyAtomsMenu(SketcherModel* model, MolModel* mol_model,
         });
     addSeparator();
     m_edit_atom_properties_act =
-        addAction("Edit Atom Properties...", this,
-                  [this]() { emit showEditAtomPropertiesRequested(false); });
+        addAction("Edit Atom Properties...", this, [this]() {
+            emit showEditAtomPropertiesRequested(*m_atoms.begin(), false);
+        });
 
     addMenu(m_replace_with_menu);
     connect(m_set_atom_model, &SketcherModel::valuePinged, this,
