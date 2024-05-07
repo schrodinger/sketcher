@@ -175,8 +175,8 @@ void condense_monomer_list(const std::string_view& polymer_id,
 [[nodiscard]] ::RDKit::RWMol create_helm_polymer(const polymer& polymer)
 {
     // NOTE: Not making this static because gcc complains it's unused
-    auto create_ambiguous_repetition_sru = [](auto& mol,
-                                              const auto& repetition) {
+    auto create_ambiguous_repetition_sru = [](auto& mol, const auto& repetition,
+                                              std::string_view polymer_id) {
         ::RDKit::SubstanceGroup sru_sgroup(&mol, "SRU");
 
         const auto& [start, size, num_repetitions, annotation] = repetition;
@@ -190,6 +190,8 @@ void condense_monomer_list(const std::string_view& polymer_id,
         // about the start adding a QueryAtom or not
         if (start + size == mol.getNumAtoms()) {
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
+            mol.getAtomWithIdx(idx)->setProp(REPETITION_DUMMY_ID,
+                                             std::string{polymer_id});
             mol.addBond(start + size - 1, idx, ::RDKit::Bond::BondType::SINGLE);
             bond2 = mol.getNumBonds() - 1;
         } else {
@@ -197,6 +199,8 @@ void condense_monomer_list(const std::string_view& polymer_id,
         }
         if (start == 0) {
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
+            mol.getAtomWithIdx(idx)->setProp(REPETITION_DUMMY_ID,
+                                             std::string{polymer_id});
             mol.addBond(0, idx, ::RDKit::Bond::BondType::SINGLE);
             bond1 = mol.getNumBonds() - 1;
         } else {
@@ -219,10 +223,11 @@ void condense_monomer_list(const std::string_view& polymer_id,
     std::vector<::RDKit::SubstanceGroup> monomer_lists;
     ::RDKit::RWMol mol;
     int prev_backbone_idx = -1;
-    auto& polymer_sgroup = add_chain(mol, polymer.id);
+    unsigned int residue_number = 1;
     for (const auto& monomer : polymer.monomers) {
-        auto idx =
-            add_monomer(polymer_sgroup, get_monomer_id(polymer.id, monomer));
+        auto idx = add_monomer(mol, get_monomer_id(polymer.id, monomer),
+                               residue_number, polymer.id);
+        ++residue_number;
         auto atom = mol.getAtomWithIdx(idx);
         if (!monomer.annotation.empty()) {
             atom->setProp(ANNOTATION, std::string{monomer.annotation});
@@ -250,20 +255,17 @@ void condense_monomer_list(const std::string_view& polymer_id,
     // sgroup to store that information
     std::vector<::RDKit::SubstanceGroup> repeated_monomers;
     const auto& repetitions = polymer.repetitions;
-    std::transform(repetitions.begin(), repetitions.end(),
-                   std::back_inserter(repeated_monomers),
-                   [&](const auto& repetition) {
-                       return create_ambiguous_repetition_sru(mol, repetition);
-                   });
-
-    // re-add atoms and bonds because wildcard atoms are skipped:
-    const auto atom_indices = boost::irange(mol.getNumAtoms());
-    polymer_sgroup.setAtoms({atom_indices.begin(), atom_indices.end()});
-    const auto bond_indices = boost::irange(mol.getNumBonds());
-    polymer_sgroup.setBonds({bond_indices.begin(), bond_indices.end()});
+    std::transform(
+        repetitions.begin(), repetitions.end(),
+        std::back_inserter(repeated_monomers), [&](const auto& repetition) {
+            return create_ambiguous_repetition_sru(mol, repetition, polymer.id);
+        });
 
     if (!polymer.annotation.empty()) {
-        polymer_sgroup.setProp(ANNOTATION, std::string{polymer.annotation});
+        RDKit::SubstanceGroup annotation_sgroup{&mol, "COP"};
+        annotation_sgroup.setProp("ID", std::string{polymer.id});
+        annotation_sgroup.setProp(ANNOTATION, std::string{polymer.annotation});
+        ::RDKit::addSubstanceGroup(mol, annotation_sgroup);
     }
 
     std::for_each(repeated_monomers.begin(), repeated_monomers.end(),
@@ -291,12 +293,7 @@ enumerate_connection_monomers(const ::RDKit::RWMol& mol,
     static auto get_monomers =
         [](const auto& mol, const auto& polymer_id,
            const auto& residues) -> std::vector<unsigned int> {
-        const auto& sgroups = ::RDKit::getSubstanceGroups(mol);
-        const auto& polymer = *std::find_if(
-            sgroups.begin(), sgroups.end(), [&](const auto& sgroup) {
-                return get_property<std::string>(&sgroup, "TYPE") == "COP" &&
-                       get_property<std::string>(&sgroup, "ID") == polymer_id;
-            });
+        const auto polymer = get_polymer(mol, polymer_id);
 
         std::vector<std::string> residue_list;
         boost::split(residue_list,
@@ -304,17 +301,16 @@ enumerate_connection_monomers(const ::RDKit::RWMol& mol,
                      boost::is_any_of(",+"));
 
         std::vector<unsigned int> atom_indices;
-        const auto& atoms = polymer.getAtoms();
         for (const auto& residue : residue_list) {
             auto is_residue_number =
                 std::all_of(residue.begin(), residue.end(),
                             [&](unsigned char c) { return std::isdigit(c); });
             if (is_residue_number) {
-                atom_indices.push_back(atoms[std::stoi(residue) - 1]);
+                atom_indices.push_back(polymer.atoms[std::stoi(residue) - 1]);
             } else {
                 // if it's a residue name, we have to look for all atoms with
                 // said residue name. Select everything for wildcard values
-                std::copy_if(atoms.begin(), atoms.end(),
+                std::copy_if(polymer.atoms.begin(), polymer.atoms.end(),
                              std::back_inserter(atom_indices),
                              [&](const auto& idx) {
                                  auto* atom = mol.getAtomWithIdx(idx);

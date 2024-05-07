@@ -16,6 +16,7 @@ const std::string BACKBONE_LINKAGE{"R2-R1"};
 const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
+const std::string REPETITION_DUMMY_ID{"REPETITION_DUMMY_ID"};
 
 // NOTE: These are to allow replacement of the python api
 const std::string BRANCH_MONOMER{"isBranchMonomer"};
@@ -30,12 +31,24 @@ namespace RDKit
 {
 class ROMol;
 class RWMol;
+class Atom;
+class Bond;
 } // namespace RDKit
 
 namespace schrodinger
 {
 namespace rdkit_extensions
 {
+
+// acts as a view to a polymer chain, and is only valid as long as the owning
+// mol is valid.
+struct Chain {
+    std::vector<unsigned int> atoms;
+    std::vector<unsigned int> bonds;
+    std::string annotation;
+    // std::string polymer_id;
+};
+
 [[nodiscard]] RDKIT_EXTENSIONS_API bool
 is_coarse_grain_mol(const RDKit::ROMol& mol);
 
@@ -57,5 +70,32 @@ get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
 extract_helm_polymers(const RDKit::ROMol& mol,
                       const std::vector<std::string_view>& polymer_ids);
 
+[[nodiscard]] RDKIT_EXTENSIONS_API std::string
+get_polymer_id(const ::RDKit::Atom* atom);
+
+[[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
+get_residue_number(const ::RDKit::Atom* atom);
+
+/**
+ * Connections (in the HELM context) are bonds that are written in the
+ * connection section of a HELM string. These are bonds that either connect
+ * two polymers together or complete a loop in a polymer.
+ *
+ * In order to call this function, chain and residue information needs to be
+ * assigned to the atoms. If this CG molecule was not created using the HELM
+ * parser, assign_chains needs to be called first.
+ *
+ * @param cg_mol Coarse grain molecule
+ * @return All 'connection' bonds that will be in the connection section of
+ * a HELM string
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
+get_connections(const ::RDKit::ROMol& cg_mol);
+
+std::vector<std::string>
+    RDKIT_EXTENSIONS_API get_polymer_ids(const RDKit::ROMol& cg_mol);
+
+Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& cg_mol,
+                                       std::string_view polymer_id);
 } // namespace rdkit_extensions
 } // namespace schrodinger

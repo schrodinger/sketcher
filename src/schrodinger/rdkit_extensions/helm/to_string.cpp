@@ -18,12 +18,21 @@
 
 #include "schrodinger/rdkit_extensions/helm.h"
 
+using schrodinger::rdkit_extensions::get_connections;
+using schrodinger::rdkit_extensions::get_polymer;
+using schrodinger::rdkit_extensions::get_polymer_id;
+using schrodinger::rdkit_extensions::get_polymer_ids;
+using schrodinger::rdkit_extensions::get_residue_number;
+
 namespace helm
 {
 namespace
 {
 [[nodiscard]] std::string
-get_polymer_helm(const ::RDKit::SubstanceGroup& polymer);
+get_polymer_helm(const ::RDKit::ROMol& mol,
+                 const std::vector<unsigned int>& atoms,
+                 const std::vector<unsigned int>& bonds,
+                 const std::string& polymer_annotation);
 
 [[nodiscard]] std::string get_connection_helm(const ::RDKit::Bond* bond);
 
@@ -41,42 +50,28 @@ template <class PropType, class RDKitObject> PropType get_property
             "Atomistic conversions are currently unsupported");
     }
 
-    const auto& sgroups = ::RDKit::getSubstanceGroups(mol);
-    std::vector<::RDKit::SubstanceGroup> polymers;
-    std::copy_if(sgroups.begin(), sgroups.end(), std::back_inserter(polymers),
-                 [](const auto& sgroup) {
-                     return get_property<std::string>(&sgroup, "TYPE") == "COP";
-                 });
-
+    // creates HELM for each polymer
     std::vector<std::string> polymers_helm;
-    std::vector<unsigned int> intra_polymer_bonds;
-    std::transform(polymers.begin(), polymers.end(),
-                   std::back_inserter(polymers_helm), [&](const auto& polymer) {
-                       const auto& bonds = polymer.getBonds();
-                       std::copy(bonds.begin(), bonds.end(),
-                                 std::back_inserter(intra_polymer_bonds));
-                       return get_polymer_helm(polymer);
-                   });
+    const auto polymer_ids = get_polymer_ids(mol);
+    std::transform(
+        polymer_ids.begin(), polymer_ids.end(),
+        std::back_inserter(polymers_helm), [&](const auto& polymer_id) {
+            const auto polymer = get_polymer(mol, polymer_id);
+            return get_polymer_helm(mol, polymer.atoms, polymer.bonds,
+                                    polymer.annotation);
+        });
 
     std::stringstream ss;
     ss << boost::join(polymers_helm, "|");
 
-    std::sort(intra_polymer_bonds.begin(), intra_polymer_bonds.end(),
-              std::greater<unsigned int>());
-    ::RDKit::RWMol mutable_mol(mol);
-    for (const auto idx : intra_polymer_bonds) {
-        const auto* bond = mutable_mol.getBondWithIdx(idx);
-
-        mutable_mol.removeBond(bond->getBeginAtom()->getIdx(),
-                               bond->getEndAtom()->getIdx());
-    }
     std::vector<std::string> connections_helm;
-    for (size_t idx = 0; idx < mutable_mol.getNumBonds(); ++idx) {
+    for (auto idx : get_connections(mol)) {
         connections_helm.push_back(
-            get_connection_helm(mutable_mol.getBondWithIdx(idx)));
+            get_connection_helm(mol.getBondWithIdx(idx)));
     }
 
     ss << "$" << boost::join(connections_helm, "|");
+    const auto& sgroups = ::RDKit::getSubstanceGroups(mol);
     const auto& sgroup =
         std::find_if(sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
             return get_property<std::string>(&sgroup, "TYPE") == "DAT" &&
@@ -100,12 +95,6 @@ template <class PropType, class RDKitObject> PropType get_property
 namespace
 {
 
-[[nodiscard]] std::string get_polymer_id(const ::RDKit::Atom* atom)
-{
-    return static_cast<const RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo())
-        ->getChainId();
-}
-
 [[nodiscard]] std::string get_monomer_id(const ::RDKit::Atom* atom)
 {
     std::string monomer_id;
@@ -126,11 +115,12 @@ namespace
 }
 
 [[nodiscard]] std::string
-get_polymer_helm(const ::RDKit::SubstanceGroup& polymer)
+get_polymer_helm(const ::RDKit::ROMol& mol,
+                 const std::vector<unsigned int>& atoms,
+                 const std::vector<unsigned int>& bonds,
+                 const std::string& polymer_annotation)
 {
-    const auto& mol = polymer.getOwningMol();
     std::unordered_set<int> branch_monomers;
-    const auto bonds = polymer.getBonds();
     std::for_each(bonds.begin(), bonds.end(), [&](const auto& idx) {
         const auto bond = mol.getBondWithIdx(idx);
         const auto atom2 = bond->getEndAtom();
@@ -156,7 +146,6 @@ get_polymer_helm(const ::RDKit::SubstanceGroup& polymer)
 
     int sru_idx = -1;
     bool prev_is_branch = false;
-    const auto& atoms = polymer.getAtoms();
     ss << get_polymer_id(mol.getAtomWithIdx(atoms.front())) << "{";
 
     std::for_each(atoms.begin(), atoms.end(), [&](const auto& idx) {
@@ -194,8 +183,8 @@ get_polymer_helm(const ::RDKit::SubstanceGroup& polymer)
         }
     });
     ss << "}";
-    if (polymer.hasProp(ANNOTATION)) {
-        ss << '"' << get_property<std::string>(&polymer, ANNOTATION) << '"';
+    if (!polymer_annotation.empty()) {
+        ss << '"' << polymer_annotation << '"';
     }
     return ss.str();
 };

@@ -202,9 +202,9 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
 {
     // Start with all atoms in a single peptide chain
     cg_mol->setProp<bool>(HELM_MODEL, true);
-    auto& chain = add_chain(*cg_mol, ChainType::PEPTIDE);
 
     constexpr bool isomeric_smiles = false;
+    int residue_num = 1;
     for (const auto& monomer : monomers) {
         auto monomer_smiles = RDKit::MolFragmentToSmiles(
             atomistic_mol, monomer, nullptr, nullptr, nullptr, isomeric_smiles);
@@ -217,10 +217,13 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
         // NOTE: Setting the smilesSymbol is temporary & for testing purposes --
         // I think we'd actually want to set the atomLabel here
         if (amino_acids.find(monomer_smiles) != amino_acids.end()) {
-            add_monomer(chain, amino_acids.at(monomer_smiles));
+            add_monomer(*cg_mol, amino_acids.at(monomer_smiles), residue_num,
+                        "PEPTIDE1");
         } else {
-            add_monomer(chain, monomer_smiles, MonomerType::SMILES);
+            add_monomer(*cg_mol, monomer_smiles, residue_num, "PEPTIDE1",
+                        MonomerType::SMILES);
         }
+        ++residue_num;
 
         // TODO: Check for known nucleic acids and CHEM monomers
     }

@@ -31,7 +31,6 @@ namespace schrodinger::rdkit_extensions
 {
 
 using Monomer = RDKit::Atom;
-using Chain = RDKit::SubstanceGroup;
 
 enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
 enum class ConnectionType { FORWARD, SIDECHAIN };
@@ -40,12 +39,30 @@ enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
 /*
  * Add a monomer to the molecule
  *
- * @param chain The chain to add the monomer to
+ * @param cg_mol The CG to add the monomer to
+ * @param name The name of the monomer
+ * @param residue_number The residue number of the monomer
+ * @param chain_id The chain ID of the monomer
+ * @param monomer_type The type of monomer to add
+ *
+ * @return The index of the added monomer
+ */
+RDKIT_EXTENSIONS_API size_t add_monomer(
+    RDKit::RWMol& cg_mol, std::string_view name, int residue_number,
+    std::string_view chain_id, MonomerType monomer_type = MonomerType::REGULAR);
+
+/*
+ * Add a monomer to the molecule. Overload that uses the last monomer
+ * added to the molecule to determine the chain ID and residue number.
+ *
+ * @param cg_mol The CG to add the monomer to
  * @param name The name of the monomer
  * @param monomer_type The type of monomer to add
+ *
+ * @return The index of the added monomer
  */
 RDKIT_EXTENSIONS_API size_t
-add_monomer(Chain& chain, std::string_view name,
+add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
             MonomerType monomer_type = MonomerType::REGULAR);
 
 /*
@@ -64,15 +81,6 @@ add_connection(RDKit::RWMol& mol, size_t monomer1, size_t monomer2,
 RDKIT_EXTENSIONS_API void add_connection(RDKit::RWMol& mol, size_t monomer1,
                                          size_t monomer2,
                                          const std::string& linkage);
-
-/*
- * Create a new chain (COP substance group) and add it to the molecule
- */
-RDKIT_EXTENSIONS_API Chain& add_chain(RDKit::RWMol&, ChainType chain_type);
-
-// overload for helm writer
-RDKIT_EXTENSIONS_API Chain& add_chain(RDKit::RWMol&,
-                                      std::string_view chain_name);
 
 // Discards existing chains and reassigns monomers to sequential chains.
 // (in HELM world, "chains" are called "polymers")

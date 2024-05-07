@@ -10,18 +10,27 @@
 #include "schrodinger/rdkit_extensions/fasta/monomers.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 
-static constexpr std::string_view POLYMER_SGROUP{"COP"};
+using schrodinger::rdkit_extensions::get_connections;
+using schrodinger::rdkit_extensions::get_polymer;
+using schrodinger::rdkit_extensions::get_polymer_id;
+using schrodinger::rdkit_extensions::get_polymer_ids;
+using schrodinger::rdkit_extensions::get_residue_number;
+
 static const std::string SGROUP_TYPE{"TYPE"};
 
 static void check_for_unsupported_features(const ::RDKit::ROMol& mol);
 
-static void check_nucleotide_structure(const ::RDKit::SubstanceGroup& sgroup);
+static void
+check_nucleotide_structure(const RDKit::ROMol& mol,
+                           const schrodinger::rdkit_extensions::Chain& chain);
 
 [[nodiscard]] static std::string
-get_peptide_fasta(const ::RDKit::SubstanceGroup& sgroup);
+get_peptide_fasta(const RDKit::ROMol& mol,
+                  const schrodinger::rdkit_extensions::Chain& chain);
 
 [[nodiscard]] static std::string
-get_nucleotide_fasta(const ::RDKit::SubstanceGroup& sgroup);
+get_nucleotide_fasta(const RDKit::ROMol& mol,
+                     const schrodinger::rdkit_extensions::Chain& chain);
 
 template <class PropType, class RDKitObject> [[nodiscard]] static auto
 get_property(const RDKitObject* obj, const std::string& propname)
@@ -48,32 +57,22 @@ get_property(const RDKitObject* obj, const std::string& propname)
     }
 }
 
-[[nodiscard]] static std::string
-get_polymer_id(const ::RDKit::SubstanceGroup& sgroup)
+[[nodiscard]] static bool is_biopolymer(std::string_view polymer_id)
 {
-    static const std::string polymer_id{"ID"};
-    return get_property<std::string>(&sgroup, polymer_id);
-}
-
-[[nodiscard]] static bool is_biopolymer(const ::RDKit::SubstanceGroup& sgroup)
-{
-    if (get_property<std::string>(&sgroup, SGROUP_TYPE) != POLYMER_SGROUP) {
-        return false;
-    }
-
-    auto polymer_id = get_polymer_id(sgroup);
     // PEPTIDE[0-9]* or RNA[0-9]*
     return polymer_id.front() == 'P' || polymer_id.front() == 'R';
 }
 
 [[nodiscard]] static std::string
-get_fasta_from_biopolymer(const ::RDKit::SubstanceGroup& sgroup)
+get_fasta_from_biopolymer(const RDKit::ROMol& mol,
+                          const schrodinger::rdkit_extensions::Chain& chain,
+                          std::string_view polymer_id)
 {
     // PEPTIDE[0-9]*
-    if (get_polymer_id(sgroup).front() == 'P') {
-        return get_peptide_fasta(sgroup);
+    if (polymer_id.front() == 'P') {
+        return get_peptide_fasta(mol, chain);
     }
-    return get_nucleotide_fasta(sgroup);
+    return get_nucleotide_fasta(mol, chain);
 }
 
 namespace fasta
@@ -84,13 +83,12 @@ namespace fasta
     check_for_unsupported_features(mol);
 
     fmt::memory_buffer output_fasta;
-    for (const auto& sgroup : ::RDKit::getSubstanceGroups(mol)) {
-        if (!is_biopolymer(sgroup)) {
-            continue;
-        }
+    // constexpy bool sanitize = false;
+    for (const auto& polymer_id : get_polymer_ids(mol)) {
+        auto chain = get_polymer(mol, polymer_id);
 
         format_to(std::back_inserter(output_fasta), "{}\n",
-                  get_fasta_from_biopolymer(sgroup));
+                  get_fasta_from_biopolymer(mol, chain, polymer_id));
     }
 
     return {output_fasta.data(), output_fasta.size()};
@@ -161,21 +159,17 @@ static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
     check_for_supplementary_info(sgroups, errors);
 
     // BLOB and CHEM polymers are unsupported
-    if (std::any_of(sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
-            return get_property<std::string>(&sgroup, SGROUP_TYPE) ==
-                       POLYMER_SGROUP &&
-                   !is_biopolymer(sgroup);
-        })) {
+    auto polymer_ids = get_polymer_ids(mol);
+    if (std::any_of(polymer_ids.begin(), polymer_ids.end(),
+                    [](const auto& polymer_id) {
+                        return !is_biopolymer(polymer_id);
+                    })) {
         errors.push_back("FASTA conversions with HELMV2.0 BLOB and "
                          "CHEM polymers are currently unsupported.");
     }
 
-    auto num_intra_polymer_bonds = std::accumulate(
-        sgroups.begin(), sgroups.end(), 0, [](int result, const auto& sgroup) {
-            return result + sgroup.getBonds().size();
-        });
-
-    if (num_intra_polymer_bonds != static_cast<int>(mol.getNumBonds())) {
+    auto connections = get_connections(mol);
+    if (!connections.empty()) {
         errors.push_back("FASTA conversions with HELMV2.0 custom "
                          "connections are currently unsupported.");
     }
@@ -186,14 +180,13 @@ static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
 }
 
 [[nodiscard]] static std::string
-get_peptide_fasta(const ::RDKit::SubstanceGroup& sgroup)
+get_peptide_fasta(const RDKit::ROMol& mol,
+                  const schrodinger::rdkit_extensions::Chain& chain)
 {
     using namespace fmt::literals;
 
     std::string peptide_fasta;
-    auto monomers = sgroup.getAtoms();
-    auto& mol = sgroup.getOwningMol();
-    std::transform(monomers.begin(), monomers.end(),
+    std::transform(chain.atoms.begin(), chain.atoms.end(),
                    std::back_inserter(peptide_fasta), [&](auto monomer_idx) {
                        auto monomer_id =
                            get_monomer_id(mol.getAtomWithIdx(monomer_idx));
@@ -206,26 +199,23 @@ get_peptide_fasta(const ::RDKit::SubstanceGroup& sgroup)
                        return *fasta_monomer;
                    });
 
-    std::string annotation;
-    sgroup.getPropIfPresent(ANNOTATION, annotation);
-    return fmt::format(">{annotation}\n{monomers}", "annotation"_a = annotation,
+    return fmt::format(">{annotation}\n{monomers}",
+                       "annotation"_a = chain.annotation,
                        "monomers"_a = peptide_fasta);
 }
 
 [[nodiscard]] static std::string
-get_nucleotide_fasta(const ::RDKit::SubstanceGroup& sgroup)
+get_nucleotide_fasta(const RDKit::ROMol& mol,
+                     const schrodinger::rdkit_extensions::Chain& chain)
 {
     using namespace fmt::literals;
 
-    check_nucleotide_structure(sgroup);
-
-    auto& monomers = sgroup.getAtoms();
-    auto& mol = sgroup.getOwningMol();
+    check_nucleotide_structure(mol, chain);
 
     std::string nucleotide_fasta;
-    for (size_t i = 0; i < monomers.size(); i += 3) {
+    for (size_t i = 0; i < chain.atoms.size(); i += 3) {
         auto helm_nucleotide =
-            get_monomer_id(mol.getAtomWithIdx(monomers[i + 1]));
+            get_monomer_id(mol.getAtomWithIdx(chain.atoms[i + 1]));
 
         auto fasta_monomer =
             fasta::get_helm_to_fasta_nucleotide(helm_nucleotide);
@@ -237,34 +227,32 @@ get_nucleotide_fasta(const ::RDKit::SubstanceGroup& sgroup)
         nucleotide_fasta.push_back(*fasta_monomer);
     }
 
-    std::string annotation;
-    sgroup.getPropIfPresent(ANNOTATION, annotation);
-    return fmt::format(">{annotation}\n{monomers}", "annotation"_a = annotation,
+    return fmt::format(">{annotation}\n{monomers}",
+                       "annotation"_a = chain.annotation,
                        "monomers"_a = nucleotide_fasta);
 }
 
-static void check_nucleotide_structure(const ::RDKit::SubstanceGroup& sgroup)
+static void
+check_nucleotide_structure(const RDKit::ROMol& mol,
+                           const schrodinger::rdkit_extensions::Chain& chain)
 {
-    auto& monomers = sgroup.getAtoms();
-    if (monomers.size() % 3 != 0) {
+    if (chain.atoms.size() % 3 != 0) {
         throw std::invalid_argument(
             "FASTA conversions with nucleotides expect all monomers to form "
             "part of a nucleotide unit i.e. R(?)P or [dR](?)P");
     }
 
-    auto& mol = sgroup.getOwningMol();
-    auto reference_sugar =
-        get_property<std::string>(mol.getAtomWithIdx(monomers[0]), ATOM_LABEL);
+    auto reference_sugar = get_property<std::string>(
+        mol.getAtomWithIdx(chain.atoms[0]), ATOM_LABEL);
     if (reference_sugar != "R" && reference_sugar != "dR") {
         throw std::invalid_argument(
             "FASTA conversions with nucleotide sugars that aren't 'R' or 'dR' "
             "are currently unsupported.");
     }
 
-    auto& bonds = sgroup.getBonds();
-    for (size_t i = 0; i < monomers.size(); i += 3) {
-        auto sugar = get_property<std::string>(mol.getAtomWithIdx(monomers[i]),
-                                               ATOM_LABEL);
+    for (size_t i = 0; i < chain.atoms.size(); i += 3) {
+        auto sugar = get_property<std::string>(
+            mol.getAtomWithIdx(chain.atoms[i]), ATOM_LABEL);
         if (sugar != reference_sugar) {
             throw std::invalid_argument(fmt::format(
                 "FASTA conversions with nucleotides must have a uniform sugar "
@@ -272,7 +260,7 @@ static void check_nucleotide_structure(const ::RDKit::SubstanceGroup& sgroup)
         }
 
         auto phosphate = get_property<std::string>(
-            mol.getAtomWithIdx(monomers[i + 2]), ATOM_LABEL);
+            mol.getAtomWithIdx(chain.atoms[i + 2]), ATOM_LABEL);
         if (phosphate != "P") {
             throw std::invalid_argument(
                 "FASTA conversions with nucleotides expect the nucleotide "
@@ -283,7 +271,7 @@ static void check_nucleotide_structure(const ::RDKit::SubstanceGroup& sgroup)
         // we can do this because there are two bonds in the nucleotide subunit
         // and another bond to the next nucleotide subunit. bonds with indices
         // 0, 3, 6, ... should be the first bond in the nucleotide subunit.
-        auto bond_to_base = mol.getBondWithIdx(bonds[i]);
+        auto bond_to_base = mol.getBondWithIdx(chain.bonds[i]);
         if (get_property<std::string>(bond_to_base, LINKAGE) !=
             BRANCH_LINKAGE) {
             throw std::invalid_argument(

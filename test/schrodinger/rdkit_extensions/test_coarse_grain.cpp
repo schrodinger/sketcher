@@ -25,10 +25,9 @@ using namespace schrodinger::rdkit_extensions;
 BOOST_AUTO_TEST_CASE(TestBasicCoarseGrainMol)
 {
     ::RDKit::RWMol cg_mol;
-    auto& chain = add_chain(cg_mol, ChainType::PEPTIDE);
-    auto monomer_idx1 = add_monomer(chain, "A");
-    auto monomer_idx2 = add_monomer(chain, "G");
-    auto monomer_idx3 = add_monomer(chain, "C");
+    auto monomer_idx1 = add_monomer(cg_mol, "A", 1, "PEPTIDE1");
+    auto monomer_idx2 = add_monomer(cg_mol, "G");
+    auto monomer_idx3 = add_monomer(cg_mol, "C");
     add_connection(cg_mol, monomer_idx1, monomer_idx2);
     add_connection(cg_mol, monomer_idx2, monomer_idx3);
     assign_chains(cg_mol);
@@ -50,12 +49,11 @@ BOOST_AUTO_TEST_CASE(TestBasicCoarseGrainMol)
 BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
 {
     ::RDKit::RWMol cg_mol;
-    auto& chain = add_chain(cg_mol, ChainType::PEPTIDE);
-    auto monomer_idx1 = add_monomer(chain, "A");
-    auto monomer_idx2 = add_monomer(chain, "G");
-    auto monomer_branch = add_monomer(chain, "A");
-    auto monomer_idx3 = add_monomer(chain, "C");
-    auto monomer_idx4 = add_monomer(chain, "T");
+    auto monomer_idx1 = add_monomer(cg_mol, "A", 1, "PEPTIDE1");
+    auto monomer_idx2 = add_monomer(cg_mol, "G");
+    auto monomer_branch = add_monomer(cg_mol, "A");
+    auto monomer_idx3 = add_monomer(cg_mol, "C");
+    auto monomer_idx4 = add_monomer(cg_mol, "T");
 
     add_connection(cg_mol, monomer_idx1, monomer_idx2);
     add_connection(cg_mol, monomer_idx2, monomer_idx3);
@@ -68,7 +66,7 @@ BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
 
     // a monomer not in connectivity order will be placed
     // incorrectly in the HELM string, so for now we throw
-    auto monomer_branch2 = add_monomer(chain, "A");
+    auto monomer_branch2 = add_monomer(cg_mol, "A");
     add_connection(cg_mol, monomer_idx3, monomer_branch2,
                    ConnectionType::SIDECHAIN);
     assign_chains(cg_mol);
@@ -79,17 +77,15 @@ BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
 BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
 {
     ::RDKit::RWMol cg_mol;
-    auto& chain = add_chain(cg_mol, ChainType::PEPTIDE);
-    auto monomer_idx1 = add_monomer(chain, "A");
-    auto monomer_idx2 = add_monomer(chain, "G");
-    auto monomer_idx3 = add_monomer(chain, "C");
+    auto monomer_idx1 = add_monomer(cg_mol, "A", 1, "PEPTIDE1");
+    auto monomer_idx2 = add_monomer(cg_mol, "G");
+    auto monomer_idx3 = add_monomer(cg_mol, "C");
     add_connection(cg_mol, monomer_idx1, monomer_idx2);
     add_connection(cg_mol, monomer_idx2, monomer_idx3);
 
-    auto& chain2 = add_chain(cg_mol, ChainType::PEPTIDE);
-    auto monomer_idx4 = add_monomer(chain2, "T");
-    auto monomer_idx5 = add_monomer(chain2, "C");
-    auto monomer_idx6 = add_monomer(chain2, "A");
+    auto monomer_idx4 = add_monomer(cg_mol, "T", 1, "PEPTIDE2");
+    auto monomer_idx5 = add_monomer(cg_mol, "C");
+    auto monomer_idx6 = add_monomer(cg_mol, "A");
     add_connection(cg_mol, monomer_idx4, monomer_idx5);
     add_connection(cg_mol, monomer_idx5, monomer_idx6);
 
