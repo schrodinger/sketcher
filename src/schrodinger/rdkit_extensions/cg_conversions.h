@@ -38,5 +38,16 @@ atomistic_to_cg(const RDKit::ROMol& atomistic_mol);
 RDKIT_EXTENSIONS_API std::vector<std::vector<int>>
 get_monomers(const RDKit::ROMol& mol);
 
+/**
+ * Build an atomistic molecule from a CG molecule
+ *
+ * For now, assumes that the CG molecule was built using the HELM parser.
+ *
+ * @param cg_mol CG molecule to convert to atomistic
+ * @return Atomistic molecule
+ */
+RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
+cg_to_atomistic(const RDKit::ROMol& cg_mol);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

@@ -16,7 +16,7 @@
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
-#include "schrodinger/rdkit_extensions/atomistic_to_cg.h"
+#include "schrodinger/rdkit_extensions/cg_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/test/boost_checks.h"
 

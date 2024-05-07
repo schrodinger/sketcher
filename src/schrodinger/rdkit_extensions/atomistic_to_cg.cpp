@@ -1,8 +1,9 @@
-#include "schrodinger/rdkit_extensions/atomistic_to_cg.h"
+#include "schrodinger/rdkit_extensions/cg_conversions.h"
 
 #include <queue>
 #include <unordered_map>
 #include <memory>
+#include <fmt/format.h>
 
 #include <fmt/format.h>
 #include <rdkit/GraphMol/RWMol.h>
