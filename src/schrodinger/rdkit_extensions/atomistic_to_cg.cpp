@@ -154,17 +154,25 @@ void add_matches_to_monomers(
 
             if (atom->hasProp(MONOMER_IDX1)) {
                 atom->setProp<unsigned int>(MONOMER_IDX2, monomer_idx);
-                Linkage link = {atom->getProp<unsigned int>(MONOMER_IDX1),
-                                static_cast<unsigned int>(monomer_idx),
-                                atom->getProp<unsigned int>(ATTACH_FROM),
-                                attch_map[query_idx]};
-                // this is a linkage between two monomers
-                linkages.push_back(link);
+                // ATTACH_FROM property should be set when MONOMER_IDX1 is set
+                auto attach_from_idx = atom->getProp<unsigned int>(ATTACH_FROM);
+
+                // Make sure linkages are directionally correct, so R2-R1 or
+                // R3-R1 instead of R1-R2 or R1-R3
+                if (attach_from_idx >= attch_map[query_idx]) {
+                    Linkage link = {atom->getProp<unsigned int>(MONOMER_IDX1),
+                                    static_cast<unsigned int>(monomer_idx),
+                                    attach_from_idx, attch_map[query_idx]};
+                    linkages.push_back(link);
+                } else {
+                    Linkage link = {static_cast<unsigned int>(monomer_idx),
+                                    atom->getProp<unsigned int>(MONOMER_IDX1),
+                                    attch_map[query_idx], attach_from_idx};
+                    linkages.push_back(link);
+                }
             } else {
                 atom->setProp<unsigned int>(MONOMER_IDX1, monomer_idx);
-                if (attch_map[query_idx] != NO_ATTACHMENT) {
-                    atom->setProp(ATTACH_FROM, attch_map[query_idx]);
-                }
+                atom->setProp(ATTACH_FROM, attch_map[query_idx]);
             }
             monomer.push_back(atom_idx);
 

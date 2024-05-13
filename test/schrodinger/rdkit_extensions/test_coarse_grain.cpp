@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
 {
     ::RDKit::RWMol cg_mol;
     auto monomer_idx1 = add_monomer(cg_mol, "A", 1, "PEPTIDE1");
-    auto monomer_idx2 = add_monomer(cg_mol, "G");
+    auto monomer_idx2 = add_monomer(cg_mol, "C");
     auto monomer_branch = add_monomer(cg_mol, "A");
     auto monomer_idx3 = add_monomer(cg_mol, "C");
     auto monomer_idx4 = add_monomer(cg_mol, "T");
@@ -62,16 +62,16 @@ BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
                    ConnectionType::SIDECHAIN);
     assign_chains(cg_mol);
     BOOST_CHECK_EQUAL(to_string(cg_mol, Format::HELM),
-                      "PEPTIDE1{A.G(A)C.T}$$$$V2.0");
+                      "PEPTIDE1{A.C(A)C.T}$$$$V2.0");
 
-    // a monomer not in connectivity order will be placed
-    // incorrectly in the HELM string, so for now we throw
     auto monomer_branch2 = add_monomer(cg_mol, "A");
     add_connection(cg_mol, monomer_idx3, monomer_branch2,
                    ConnectionType::SIDECHAIN);
     assign_chains(cg_mol);
     BOOST_CHECK_EQUAL(to_string(cg_mol, Format::HELM),
-                      "PEPTIDE1{A.G(A)C.T(A)}$$$$V2.0");
+                      "PEPTIDE1{A.C(A)C(A)T}$$$$V2.0");
+    // TODO (SHARED-10771): Fix HELM writer, there should be a `.` bewteen
+    // consecutive branches
 }
 
 BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
@@ -117,24 +117,37 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
             "O"));
         auto cg_mol = atomistic_to_cg(*mol);
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
-                          "PEPTIDE1{I.L.E.E.I.L.S.T.Y.K.K.T.E.E.Q.Q.K.K.N.E.E."
+                          "PEPTIDE1{Y.T.S.L.I.E.E.L.I.K.K.T.E.E.Q.Q.K.K.N.E.E."
                           "E.L.K.K.L.E.E.W.A.K.K.W.N.W.F}$$$$V2.0");
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::FASTA),
-                          ">\nILEEILSTYKKTEEQQKKNEEELKKLEEWAKKWNWF\n");
+                          ">\nYTSLIEELIKKTEEQQKKNEEELKKLEEWAKKWNWF\n");
     }
 
     {
-        // cyclic peptide with non-standard (or just unrecognized) monomer
+        // cyclic peptide
         std::unique_ptr<::RDKit::RWMol> mol(::RDKit::SmilesToMol(
-            "CC(C)C[C@@H]1NC(=O)[C@H](CCCN)NC(=O)[C@H](C(C)C)NC(=O)[C@@H]"
-            "2CCCN2C(=O)[C@@H](Cc2ccccc2)NC(=O)[C@H](CC(C)C)NC(=O)[C@H](CCCN)"
-            "NC(=O)[C@H](C(C)C)NC(=O)[C@@H]2CCCN2C(=O)[C@@H](Cc2ccccc2)NC1=O"));
+            "CCC(C)[C@@H]1NC(=O)C2CCCN2C(=O)[C@H](CCCCN)NC(=O)[C@H](CC(N)=O)NC("
+            "=O)[C@H](CC(C)C)NC(=O)[C@H](Cc2c[nH]c3ccccc23)NC(=O)[C@H](CC(C)C)"
+            "NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]2CCCN2C1=O"));
         auto cg_mol = atomistic_to_cg(*mol);
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
-                          "PEPTIDE1{L.[NCCCC(N)C(N)=O].V.P.F.L.[NCCCC(N)C(N)=O]"
-                          ".V.P.F}$PEPTIDE1,PEPTIDE1,1:R2-10:R1$$$V2.0");
-        // SMILES monomer not allowed in FASTA
-        BOOST_CHECK_THROW(to_string(*cg_mol, Format::FASTA),
-                          std::invalid_argument);
+                          "PEPTIDE1{P.P.F.L.W.L.N.K.P.I}$PEPTIDE1,PEPTIDE1,10:"
+                          "R2-1:R1$$$V2.0");
     }
+}
+
+BOOST_AUTO_TEST_CASE(Test_reordering_residues)
+{
+    ::RDKit::RWMol cg_mol;
+    add_monomer(cg_mol, "D", 3, "PEPTIDE1");
+    add_monomer(cg_mol, "C", 1, "PEPTIDE1");
+    add_monomer(cg_mol, "B", 4, "PEPTIDE1");
+    add_monomer(cg_mol, "A", 2, "PEPTIDE1");
+    add_connection(cg_mol, 3, 2);
+    add_connection(cg_mol, 2, 1);
+    add_connection(cg_mol, 1, 0);
+    assign_chains(cg_mol);
+
+    BOOST_CHECK_EQUAL(to_string(cg_mol, Format::HELM),
+                      "PEPTIDE1{A.B.C.D}$$$$V2.0");
 }

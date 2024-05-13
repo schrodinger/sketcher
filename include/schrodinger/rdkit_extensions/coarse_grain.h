@@ -66,7 +66,8 @@ add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
             MonomerType monomer_type = MonomerType::REGULAR);
 
 /*
- * Add a connection between two monomers in the molecule
+ * Add a connection between two monomers in the molecule. The connection has
+ * directionality that starts at monomer1 and ends at monomer2.
  *
  * @param mol The molecule to add the connection to
  * @param monomer1 The index of the first monomer

@@ -214,6 +214,12 @@ Chain get_polymer(const RDKit::ROMol& cg_mol, std::string_view polymer_id)
             atoms.push_back(atom->getIdx());
         }
     }
+    // Sort by get_residue_num
+    std::sort(atoms.begin(), atoms.end(),
+              [&cg_mol](unsigned int a, unsigned int b) {
+                  return get_residue_number(cg_mol.getAtomWithIdx(a)) <
+                         get_residue_number(cg_mol.getAtomWithIdx(b));
+              });
     std::vector<unsigned int> bonds;
     for (auto bond : cg_mol.bonds()) {
         if (is_dummy_bond(bond)) {
