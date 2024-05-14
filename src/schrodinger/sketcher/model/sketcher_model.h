@@ -10,8 +10,6 @@
 #include <boost/functional/hash.hpp>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
-#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
 
 class QPointF;
 
@@ -425,20 +423,9 @@ class SKETCHER_API SketcherModel : public QObject
      */
     std::pair<bool, bool> getUndoStackData() const;
 
-    const AtomDisplaySettings* getAtomDisplaySettingsPtr() const;
-    const BondDisplaySettings* getBondDisplaySettingsPtr() const;
-    void setAtomDisplaySettings(const AtomDisplaySettings& settings);
-
   signals:
     void valuePinged(ModelKey key, QVariant value);
     void valuesChanged(const std::unordered_set<ModelKey>& key);
-
-    /**
-     * Signal to notify the scene that the display settings have changed. This
-     * triggers an update of the scene's atom and bond items so they can be
-     * displayed with the new settings.
-     */
-    void displaySettingsChanged() const;
 
     /**
      * Signal to notify views when the interactive items of the scene have
@@ -538,16 +525,7 @@ class SKETCHER_API SketcherModel : public QObject
      */
     void onInteractiveItemsChanged();
 
-    /**
-     * Update the atom display settings when the model is updated.
-     * @param keys The keys that have been updated.
-     */
-    void updateAtomDisplaySettings(const std::unordered_set<ModelKey>& keys);
-
     std::unordered_map<ModelKey, QVariant> m_model_map;
-
-    AtomDisplaySettings m_atom_display_settings;
-    BondDisplaySettings m_bond_display_settings;
 };
 
 } // namespace sketcher

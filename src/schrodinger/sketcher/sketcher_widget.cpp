@@ -102,7 +102,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
             &SketcherModel::onReactionArrowAdded);
     connect(m_sketcher_model, &SketcherModel::reactionCountRequested,
             m_mol_model, &MolModel::hasReactionArrow);
-
     connect(m_sketcher_model, &SketcherModel::valuePinged, this,
             &SketcherWidget::onModelValuePinged);
 
@@ -242,31 +241,9 @@ std::string SketcherWidget::getString(Format format) const
     return extract_string(m_mol_model, format, SceneSubset::ALL);
 }
 
-void load_settings(SketcherModel& sketcher_model, MolModel& mol_model,
-                   const RenderOptions& opts)
-{
-    //   setAtomLabels(mol_model, opts);
-    //   setLineColors(mol_model, opts);
-    //   setHaloHighlightings(mol_model, opts);
-    sketcher_model.setValue(ModelKey::SHOW_STEREOCENTER_LABELS,
-                            opts.show_stereo_annotations);
-
-    AtomDisplaySettings display_settings(
-        *sketcher_model.getAtomDisplaySettingsPtr());
-    display_settings.m_carbon_labels =
-        (opts.show_terminal_methyls ? CarbonLabels::TERMINAL
-                                    : CarbonLabels::NONE);
-    display_settings.m_explicit_abs_labels_shown =
-        opts.show_absolute_stereo_groups;
-    display_settings.m_show_simplified_stereo_annotation =
-        opts.show_simplified_stereo_annotation;
-    sketcher_model.setAtomDisplaySettings(display_settings);
-}
-
 QByteArray SketcherWidget::getImageBytes(ImageFormat format) const
 {
-    RenderOptions renderOptions;
-    return get_image_bytes(*m_scene, format, renderOptions);
+    return get_image_bytes(*m_scene, format, RenderOptions());
 }
 
 void SketcherWidget::clear()
@@ -372,7 +349,6 @@ void SketcherWidget::showFileSaveImageDialog()
     auto dialog = new FileSaveImageDialog(m_sketcher_model, window());
     connect(dialog, &FileSaveImageDialog::exportImageRequested, this,
             [this](auto format, const auto& opts) {
-                load_settings(*m_sketcher_model, *m_mol_model, opts);
                 return get_image_bytes(*m_scene, format, opts);
             });
     dialog->show();

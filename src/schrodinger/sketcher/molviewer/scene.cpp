@@ -47,8 +47,6 @@
 #include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
 #include "schrodinger/sketcher/molviewer/halo_highlighting_item.h"
 
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
-
 namespace schrodinger
 {
 namespace sketcher
@@ -115,8 +113,6 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
 {
     m_selection_highlighting_item = new SelectionHighlightingItem();
     m_halo_highlighting_item = new QGraphicsItemGroup();
-    m_simplified_stereo_label = addText("");
-    m_simplified_stereo_label->setDefaultTextColor(Qt::black);
     m_scene_tool = std::make_shared<NullSceneTool>();
 
     addItem(m_selection_highlighting_item);
@@ -140,8 +136,6 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
 
     connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
             &Scene::onModelValuesChanged);
-    connect(m_sketcher_model, &SketcherModel::displaySettingsChanged, this,
-            &Scene::onDisplaySettingsChanged);
     connect(m_sketcher_model, &SketcherModel::interactiveItemsRequested, this,
             [this]() { return getInteractiveItems(); });
     connect(m_sketcher_model, &SketcherModel::selectionRequested, this,
@@ -187,18 +181,14 @@ void Scene::moveInteractiveItems()
 void Scene::updateItems(const WhatChangedType what_changed)
 {
     if (what_changed & WhatChanged::MOLECULE) {
+
         clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
         const auto* mol = m_mol_model->getMol();
         std::vector<QGraphicsItem*> all_items;
-        auto atom_display_settings_ptr =
-            m_sketcher_model->getAtomDisplaySettingsPtr();
-        auto bond_display_settings_ptr =
-            m_sketcher_model->getBondDisplaySettingsPtr();
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
                  m_s_group_to_s_group_item) =
-            create_graphics_items_for_mol(mol, m_fonts,
-                                          *atom_display_settings_ptr,
-                                          *bond_display_settings_ptr);
+            create_graphics_items_for_mol(mol, m_fonts, m_atom_item_settings,
+                                          m_bond_item_settings);
         for (auto* item : all_items) {
             addItem(item);
             m_interactive_items.insert(item);
@@ -206,8 +196,7 @@ void Scene::updateItems(const WhatChangedType what_changed)
     }
     if (what_changed & WhatChanged::NON_MOL_OBJS) {
         clearInteractiveItems(InteractiveItemFlag::NON_MOLECULAR);
-        QColor color =
-            m_sketcher_model->getAtomDisplaySettingsPtr()->getAtomColor(-1);
+        QColor color = m_atom_item_settings.getAtomColor(-1);
         for (const auto* model_obj : m_mol_model->getNonMolecularObjects()) {
             auto* item = new NonMolecularItem(model_obj, color);
             auto rd_coords = model_obj->getCoords();
@@ -290,45 +279,27 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
     }
 }
 
-void Scene::onDisplaySettingsChanged()
+void Scene::updateAtomAndBondItems()
 {
-    bool show_simplified_stereo_annotation =
-        m_sketcher_model->getAtomDisplaySettingsPtr()
-            ->m_show_simplified_stereo_annotation;
-    QString simplified_stereo_annotation;
-    if (show_simplified_stereo_annotation) {
-        simplified_stereo_annotation =
-            QString(rdkit_extensions::get_simplified_stereo_annotation(
-                        *m_mol_model->getMol())
-                        .c_str());
-    }
-    m_simplified_stereo_label->setPlainText(simplified_stereo_annotation);
-    m_simplified_stereo_label->setVisible(
-        !simplified_stereo_annotation.isEmpty());
-    m_simplified_stereo_label->setPos(
-        getInteractiveItemsBoundingRect().bottomLeft());
-
     // we need to update all of the atom items before we update any bond
     // items, since bond items pull information from their associated atom
     // items
     for (auto item : getInteractiveItems(InteractiveItemFlag::ATOM)) {
-        // if the scene displays a simplified stereo annotation, we hide the
-        // atomic ones
-        auto atom_item = static_cast<AtomItem*>(item);
-        atom_item->setHideStereoLabels(!simplified_stereo_annotation.isEmpty());
-        atom_item->updateCachedData();
+        static_cast<AtomItem*>(item)->updateCachedData();
     }
+    updateBondItems();
+}
 
+void Scene::updateBondItems()
+{
     for (auto item : getInteractiveItems(InteractiveItemFlag::BOND)) {
         static_cast<BondItem*>(item)->updateCachedData();
     }
-
     // DrawFragmentSceneTool inherits most of the settings from the Scene's
-    // AtomDisplaySettings and BondDisplaySettings.  Since this method gets
-    // called whenever any of those settings are changed, we call
-    // updateSceneTool here to regenerate the active scene tool in case
-    // DrawFragmentSceneTool is active.  That way, it can inherit the updated
-    // settings.
+    // AtomItemSettings and BondItemSettings.  Since this method gets called
+    // whenever any of those settings are changed, we call updateSceneTool here
+    // to regenerate the active scene tool in case DrawFragmentSceneTool is
+    // active.  That way, it can inherit the updated settings.
     updateSceneTool();
 }
 
@@ -551,6 +522,8 @@ void Scene::onMolModelSelectionChanged()
 
 void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
 {
+    bool update_atom_and_bond_items = false;
+
     for (auto key : keys) {
         switch (key) {
             case ModelKey::SELECTION_TOOL:
@@ -565,10 +538,50 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::RGROUP_NUMBER:
                 updateSceneTool();
                 break;
+
+            case ModelKey::COLOR_HETEROATOMS:
+                setColorHeteroatoms(m_sketcher_model->getValueBool(key));
+                update_atom_and_bond_items = true;
+                break;
+            case ModelKey::SHOW_STEREOCENTER_LABELS:
+                m_atom_item_settings.m_stereo_labels_shown =
+                    m_sketcher_model->getValueBool(key);
+                update_atom_and_bond_items = true;
+                break;
+            case ModelKey::SHOW_VALENCE_ERRORS:
+                m_atom_item_settings.m_valence_errors_shown =
+                    m_sketcher_model->getValueBool(key);
+                update_atom_and_bond_items = true;
+                break;
             default:
                 break;
         }
     }
+    if (update_atom_and_bond_items) {
+        updateAtomAndBondItems();
+    }
+}
+
+void Scene::setColorHeteroatoms(const bool color_heteroatoms)
+{
+    if (color_heteroatoms) {
+        m_atom_item_settings.setColorScheme(ColorScheme::DEFAULT);
+    } else {
+        m_atom_item_settings.setMonochromeColorScheme(
+            m_atom_item_settings.getAtomColor(-1));
+    }
+}
+
+void Scene::setFontSize(const qreal size)
+{
+    m_fonts.setSize(size);
+    updateAtomAndBondItems();
+}
+
+void Scene::setCarbonsLabeled(const CarbonLabels value)
+{
+    m_atom_item_settings.m_carbon_labels = value;
+    updateAtomAndBondItems();
 }
 
 void Scene::updateSceneTool()
@@ -643,8 +656,8 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
     } else if (draw_tool == DrawTool::RING) {
         auto ring_tool = m_sketcher_model->getRingTool();
         return get_draw_fragment_scene_tool(
-            ring_tool, m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
-            *m_sketcher_model->getBondDisplaySettingsPtr(), this, m_mol_model);
+            ring_tool, m_fonts, m_atom_item_settings, m_bond_item_settings,
+            this, m_mol_model);
     } else if (draw_tool == DrawTool::EXPLICIT_H) {
         return std::make_shared<ExplicitHsSceneTool>(this, m_mol_model);
     }

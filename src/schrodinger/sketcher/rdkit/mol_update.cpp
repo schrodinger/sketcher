@@ -179,19 +179,9 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // cleanupStereoGroups(), because that one only preserves input ids
     RDKit::forwardStereoGroupIds(mol);
 
-    /**
-     * note that the ABSOLUTE_STEREO_PREFIX might be stripped away by the
-     * rendering code depending on rendering preferences. Note that the molModel
-     * remains unaware of these rendering preferences (which are part of
-     * sketcherModel) because we want everything in the molModel to be savable
-     * as an undoable snapshot. The rendering preferences might get exposed to
-     * the GUI in the future and we don't want them to be undoable.
-     */
-    std::string abs_label =
-        rdkit_extensions::ABSOLUTE_STEREO_PREFIX + "({cip})";
-    std::string or_label = rdkit_extensions::OR_STEREO_PREFIX + "{id}";
-    std::string and_label = rdkit_extensions::AND_STEREO_PREFIX + "{id}";
-
+    std::string abs_label = "({cip})";
+    std::string or_label = "or {id}";   // U+200A HAIR SPACE
+    std::string and_label = "and {id}"; // U+200A HAIR SPACE
     RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label, and_label);
 }
 

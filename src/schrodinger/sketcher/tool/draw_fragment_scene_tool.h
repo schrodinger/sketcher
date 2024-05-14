@@ -13,8 +13,8 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
-#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/atom_item_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 class QPointF;
@@ -37,17 +37,17 @@ class AbstractHintFragmentItem : public QGraphicsItemGroup
      * will not be painted.
      * @param fonts The fonts to use for displaying the fragment.  This object
      * must not be destroyed while this graphics item is in use.
-     * @param atom_display_settings The settings for displaying atom items. This
+     * @param atom_item_settings The settings for displaying atom items.  This
      * object will be copied.  Note that the color scheme will be ignored, as
      * hints are always displayed in blue.
-     * @param bond_display_settings The settings for displaying bond items. This
+     * @param bond_item_settings The settings for displaying bond items.  This
      * object will be copied.  Note that the bond width and color will be
      * ignored, as hints are always displayed in blue.
      * @param parent The parent graphics item, if any.
      */
     AbstractHintFragmentItem(const RDKit::ROMol& fragment, const Fonts& fonts,
-                             const AtomDisplaySettings& atom_display_settings,
-                             const BondDisplaySettings& bond_display_settings,
+                             const AtomItemSettings& atom_item_settings,
+                             const BondItemSettings& bond_item_settings,
                              QGraphicsItem* parent = nullptr);
 
     /**
@@ -65,8 +65,8 @@ class AbstractHintFragmentItem : public QGraphicsItemGroup
     QList<QGraphicsItem*> m_bond_items;
     /// A list of all child SGroupItems
     QList<QGraphicsItem*> m_s_group_items;
-    AtomDisplaySettings m_atom_display_settings;
-    BondDisplaySettings m_bond_display_settings;
+    AtomItemSettings m_atom_item_settings;
+    BondItemSettings m_bond_item_settings;
 
     /**
      * Create all graphics items required to represent the fragment
@@ -90,8 +90,8 @@ class HintFragmentItem : public AbstractHintFragmentItem
 {
   public:
     HintFragmentItem(const RDKit::ROMol& fragment, const Fonts& fonts,
-                     const AtomDisplaySettings& atom_display_settings,
-                     const BondDisplaySettings& bond_display_settings,
+                     const AtomItemSettings& atom_item_settings,
+                     const BondItemSettings& bond_item_settings,
                      QGraphicsItem* parent = nullptr);
     void updateConformer(const RDKit::Conformer& conformer);
 
@@ -118,8 +118,8 @@ class HintPixmapFragmentItem : public AbstractHintFragmentItem
 {
   public:
     HintPixmapFragmentItem(const RDKit::ROMol& fragment, const Fonts& fonts,
-                           const AtomDisplaySettings& atom_display_settings,
-                           const BondDisplaySettings& bond_display_settings,
+                           const AtomItemSettings& atom_item_settings,
+                           const BondItemSettings& bond_item_settings,
                            QGraphicsItem* parent = nullptr);
     HintPixmapFragmentItem(const AbstractHintFragmentItem& frag_item);
 
@@ -139,18 +139,18 @@ class SKETCHER_API DrawFragmentSceneTool : public StandardSceneToolBase
      * one attachment point
      * @param fonts The fonts to use for displaying the fragment hint.  This
      * object must not be destroyed while this scene tool is in use.
-     * @param atom_display_settings The settings for displaying atom item hints.
+     * @param atom_item_settings The settings for displaying atom item hints.
      * This object will be copied.  Note that the color scheme will be ignored,
      * as hints are always displayed in blue.
-     * @param bond_display_settings The settings for displaying bond item hints.
+     * @param bond_item_settings The settings for displaying bond item hints.
      * This object will be copied.  Note that the bond width and color will be
      * ignored, as hints are always displayed in blue.
      * @param scene The scene that this tool will be used with
      * @param mol_model The MolModel used in scene
      */
     DrawFragmentSceneTool(const RDKit::ROMol& fragment, const Fonts& fonts,
-                          const AtomDisplaySettings& atom_display_settings,
-                          const BondDisplaySettings& bond_display_settings,
+                          const AtomItemSettings& atom_item_settings,
+                          const BondItemSettings& bond_item_settings,
                           Scene* scene, MolModel* mol_model);
 
     // Overridden AbstractSceneTool methods
@@ -213,8 +213,8 @@ class SKETCHER_API DrawFragmentSceneTool : public StandardSceneToolBase
  */
 std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const RingTool& ring_tool, const Fonts& fonts,
-                             const AtomDisplaySettings& atom_display_settings,
-                             const BondDisplaySettings& bond_display_settings,
+                             const AtomItemSettings& atom_item_settings,
+                             const BondItemSettings& bond_item_settings,
                              Scene* scene, MolModel* mol_model);
 
 /**
@@ -225,8 +225,8 @@ get_draw_fragment_scene_tool(const RingTool& ring_tool, const Fonts& fonts,
  */
 std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
-                             const AtomDisplaySettings& atom_display_settings,
-                             const BondDisplaySettings& bond_display_settings,
+                             const AtomItemSettings& atom_item_settings,
+                             const BondItemSettings& bond_item_settings,
                              Scene* scene, MolModel* mol_model);
 
 /**

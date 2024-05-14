@@ -152,7 +152,6 @@ void SketcherModel::setValues(
             changed_keys.insert(key);
         }
     }
-    updateAtomDisplaySettings(changed_keys);
 
     // Finally, emit necessary signals all at once
     for (const auto& [key, value] : key_value_map) {
@@ -160,41 +159,6 @@ void SketcherModel::setValues(
     }
     if (changed_keys.size() > 0) {
         emit valuesChanged(changed_keys);
-    }
-}
-
-void SketcherModel::updateAtomDisplaySettings(
-    const std::unordered_set<ModelKey>& keys)
-{
-    bool emit_display_settings_changed = false;
-    for (auto key : keys) {
-        switch (key) {
-            case ModelKey::COLOR_HETEROATOMS:
-                if (getValueBool(key)) {
-                    m_atom_display_settings.setColorScheme(
-                        ColorScheme::DEFAULT);
-                } else {
-                    m_atom_display_settings.setMonochromeColorScheme(
-                        m_atom_display_settings.getAtomColor(-1));
-                }
-                emit_display_settings_changed = true;
-                break;
-            case ModelKey::SHOW_STEREOCENTER_LABELS:
-                m_atom_display_settings.m_stereo_labels_shown =
-                    getValueBool(key);
-                emit_display_settings_changed = true;
-                break;
-            case ModelKey::SHOW_VALENCE_ERRORS:
-                m_atom_display_settings.m_valence_errors_shown =
-                    getValueBool(key);
-                emit_display_settings_changed = true;
-                break;
-            default:
-                break;
-        }
-    }
-    if (emit_display_settings_changed) {
-        emit displaySettingsChanged();
     }
 }
 
@@ -320,23 +284,6 @@ void SketcherModel::onInteractiveItemsChanged()
         };
         setValues(kv_pairs);
     }
-}
-
-void SketcherModel::setAtomDisplaySettings(
-    const AtomDisplaySettings& atom_display_settings)
-{
-    m_atom_display_settings = atom_display_settings;
-    emit displaySettingsChanged();
-}
-
-const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const
-{
-    return &m_atom_display_settings;
-}
-
-const BondDisplaySettings* SketcherModel::getBondDisplaySettingsPtr() const
-{
-    return &m_bond_display_settings;
 }
 
 } // namespace sketcher

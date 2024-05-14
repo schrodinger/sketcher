@@ -33,9 +33,9 @@ namespace sketcher
 {
 
 class AtomItem;
-class AtomDisplaySettings;
+class AtomItemSettings;
 class BondItem;
-class BondDisplaySettings;
+class BondItemSettings;
 class Fonts;
 class SGroupItem;
 
@@ -43,8 +43,8 @@ class SGroupItem;
  * Create all graphics items needed to represent the given molecule
  * @param mol The molecule to draw
  * @param fonts The fonts to use for rendering the molecule
- * @param atom_display_settings The settings for displaying atoms
- * @param bond_display_settings The settings for displaying bonds
+ * @param atom_item_settings The settings for displaying atoms
+ * @param bond_item_settings The settings for displaying bonds
  * @param draw_attachment_points Whether to create graphics items for
  * attachment point atoms.
  * @return A tuple of
@@ -59,8 +59,8 @@ std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, BondItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
-                              const AtomDisplaySettings& atom_display_settings,
-                              const BondDisplaySettings& bond_display_settings,
+                              AtomItemSettings& atom_item_settings,
+                              BondItemSettings& bond_item_settings,
                               const bool draw_attachment_points = true);
 
 /**

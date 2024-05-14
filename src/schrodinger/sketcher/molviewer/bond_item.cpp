@@ -62,7 +62,7 @@ struct NumBondsInRing {
 
 BondItem::BondItem(const RDKit::Bond* bond, const AtomItem& start_item,
                    const AtomItem& end_item, const Fonts& fonts,
-                   const BondDisplaySettings& settings, QGraphicsItem* parent) :
+                   BondItemSettings& settings, QGraphicsItem* parent) :
 
     AbstractGraphicsItem(parent),
     m_bond(bond),
@@ -553,21 +553,10 @@ QLineF BondItem::trimLineToBoundAtoms(const QLineF& line) const
     for (const QRectF& subrect : m_start_item.getSubrects()) {
         // this bond uses the same local coordinate system as the start
         // atom, so we don't need to map these subrects
-
-        if (subrect == m_start_item.getChiralityLabelRect()) {
-            // don't trim to the chirality label, the bond will be drawn behind
-            // it partially transparent
-            continue;
-        }
         trim_line_to_rect(trimmed_line, subrect);
     }
     // trim to the end atom
     for (const QRectF& subrect : m_end_item.getSubrects()) {
-        if (subrect == m_end_item.getChiralityLabelRect()) {
-            // don't trim to the chirality label, the bond will be drawn behind
-            // it partially transparent
-            continue;
-        }
         QRectF mapped_rect = mapRectFromItem(&m_end_item, subrect);
         trim_line_to_rect(trimmed_line, mapped_rect);
     }
@@ -600,25 +589,12 @@ QPointF BondItem::getMidPoint() const
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
-    if (!m_annotation_text.isEmpty() ||
-        !m_start_item.getChiralityLabelText().isEmpty() ||
-        !m_end_item.getChiralityLabelText().isEmpty()) {
+    if (!m_annotation_text.isEmpty()) {
         /*An annotation is present, so we need to paint the bond twice to make
          * the portion of the bond behind the label partially transparent.*/
         painter->save();
         QPainterPath annotation_region;
-        if (!m_annotation_text.isEmpty()) {
-            annotation_region.addPolygon(getAnnotationPolygon());
-        }
-        if (!m_start_item.getChiralityLabelText().isEmpty()) {
-            // no mapping needed since the start atom is in the same position as
-            // the bond
-            annotation_region.addRect(m_start_item.getChiralityLabelRect());
-        }
-        if (!m_end_item.getChiralityLabelText().isEmpty()) {
-            annotation_region.addPolygon(mapRectFromItem(
-                &m_end_item, m_end_item.getChiralityLabelRect()));
-        }
+        annotation_region.addPolygon(getAnnotationPolygon());
         painter->setClipPath(shape() - annotation_region);
         paintBondLinesAndPolygons(painter);
         painter->setOpacity(OPACITY_OF_BOND_BEHIND_LABEL);

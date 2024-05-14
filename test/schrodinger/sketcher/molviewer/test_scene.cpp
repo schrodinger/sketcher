@@ -21,6 +21,16 @@ namespace schrodinger
 namespace sketcher
 {
 
+BOOST_AUTO_TEST_CASE(test_font_size)
+{
+    auto test_scene = TestScene::getScene();
+    BOOST_TEST(test_scene->m_fonts.size() == DEFAULT_FONT_SIZE);
+    test_scene->setFontSize(8);
+    BOOST_TEST(test_scene->m_fonts.size() == 8);
+    test_scene->setFontSize(45);
+    BOOST_TEST(test_scene->m_fonts.size() == 45);
+}
+
 void count_visible_atoms(const std::shared_ptr<Scene> test_scene,
                          unsigned& num_visible_atoms,
                          unsigned& num_hidden_atoms)
@@ -43,24 +53,21 @@ BOOST_AUTO_TEST_CASE(test_all_atoms_shown)
     unsigned num_visible_atoms = 0;
     unsigned num_hidden_atoms = 0;
     import_mol_text(test_scene->m_mol_model, "CCCCC", Format::SMILES);
-    auto display_settings(
-        *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
 
     // all carbons should be hidden
-    display_settings.m_carbon_labels = CarbonLabels::NONE;
-    test_scene->m_sketcher_model->setAtomDisplaySettings(display_settings);
+    test_scene->setCarbonsLabeled(CarbonLabels::NONE);
     count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 0);
     BOOST_TEST(num_hidden_atoms == 5);
+
     // only terminal carbons should be visible
-    display_settings.m_carbon_labels = CarbonLabels::TERMINAL;
-    test_scene->m_sketcher_model->setAtomDisplaySettings(display_settings);
+    test_scene->setCarbonsLabeled(CarbonLabels::TERMINAL);
     count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 2);
     BOOST_TEST(num_hidden_atoms == 3);
+
     // all carbons should be visible
-    display_settings.m_carbon_labels = CarbonLabels::ALL;
-    test_scene->m_sketcher_model->setAtomDisplaySettings(display_settings);
+    test_scene->setCarbonsLabeled(CarbonLabels::ALL);
     count_visible_atoms(test_scene, num_visible_atoms, num_hidden_atoms);
     BOOST_TEST(num_visible_atoms == 5);
     BOOST_TEST(num_hidden_atoms == 0);
@@ -71,17 +78,17 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
     auto scene = TestScene::getScene();
     auto items = scene->getInteractiveItems();
     BOOST_TEST(items.size() == 0);
-    BOOST_TEST(scene->items().size() == 7); // selection and highlighting items
+    BOOST_TEST(scene->items().size() == 6); // selection and highlighting items
 
     import_mol_text(scene->m_mol_model, "CC", Format::SMILES);
     items = scene->getInteractiveItems();
     BOOST_TEST(items.size() == 3); // two atoms and a bond
-    BOOST_TEST(scene->items().size() == 10);
+    BOOST_TEST(scene->items().size() == 9);
 
     scene->m_mol_model->clear();
     items = scene->getInteractiveItems();
     BOOST_TEST(items.size() == 0);
-    BOOST_TEST(scene->items().size() == 7);
+    BOOST_TEST(scene->items().size() == 6);
 }
 
 BOOST_AUTO_TEST_CASE(test_item_selection)

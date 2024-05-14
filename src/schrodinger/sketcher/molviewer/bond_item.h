@@ -13,7 +13,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
-#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 
@@ -80,8 +80,7 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      */
     BondItem(const RDKit::Bond* bond, const AtomItem& start_atom_item,
              const AtomItem& end_atom_item, const Fonts& fonts,
-             const BondDisplaySettings& settings,
-             QGraphicsItem* parent = nullptr);
+             BondItemSettings& settings, QGraphicsItem* parent = nullptr);
 
     // Type and type() are required for qgraphicsitem_cast.  Note that this
     // implementation is based on the sample code from the QGraphicsItem::Type
@@ -131,7 +130,7 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
 
     const Fonts& m_fonts;
 
-    const BondDisplaySettings& m_settings;
+    BondItemSettings& m_settings;
 
     QString m_annotation_text;
 

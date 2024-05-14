@@ -18,7 +18,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
-#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
@@ -52,8 +52,7 @@ class TestBondItem : public BondItem
 
     TestBondItem(RDKit::Bond* bond, const AtomItem& start_atom_item,
                  const AtomItem& end_atom_item, Fonts& fonts,
-                 const BondDisplaySettings& settings,
-                 QGraphicsItem* parent = nullptr) :
+                 BondItemSettings& settings, QGraphicsItem* parent = nullptr) :
         BondItem(bond, start_atom_item, end_atom_item, fonts, settings, parent)
     {
     }
@@ -83,8 +82,7 @@ createStructure(std::string input_text)
         auto end_atom_idx = bond->getEndAtomIdx();
         auto bond_item = std::make_shared<TestBondItem>(
             bond, *atom_items[start_atom_idx], *atom_items[end_atom_idx],
-            test_scene->m_fonts,
-            *test_scene->m_sketcher_model->getBondDisplaySettingsPtr());
+            test_scene->m_fonts, test_scene->m_bond_item_settings);
         bond_item->setPos(scene_bond_items.at(idx++)->pos());
         bond_items.push_back(bond_item);
     }
@@ -107,7 +105,7 @@ createBondItem()
     BOOST_TEST_REQUIRE(bond != nullptr);
     auto bond_item = std::make_shared<TestBondItem>(
         bond, *atom_items[0], *atom_items[1], test_scene->m_fonts,
-        *test_scene->m_sketcher_model->getBondDisplaySettingsPtr());
+        test_scene->m_bond_item_settings);
     QLineF trimmed_line(10, 0, 10, 100);
     return std::make_tuple(bond_item, test_scene, trimmed_line);
 }

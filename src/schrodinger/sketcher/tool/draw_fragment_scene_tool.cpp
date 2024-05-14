@@ -30,27 +30,25 @@ namespace sketcher
 
 std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const RingTool& ring_tool, const Fonts& fonts,
-                             const AtomDisplaySettings& atom_display_settings,
-                             const BondDisplaySettings& bond_display_settings,
+                             const AtomItemSettings& atom_item_settings,
+                             const BondItemSettings& bond_item_settings,
                              Scene* scene, MolModel* mol_model)
 {
     std::string smiles = get_smiles_for_ring_tool(ring_tool);
-    return get_draw_fragment_scene_tool(smiles, fonts, atom_display_settings,
-                                        bond_display_settings, scene,
-                                        mol_model);
+    return get_draw_fragment_scene_tool(smiles, fonts, atom_item_settings,
+                                        bond_item_settings, scene, mol_model);
 }
 
 std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
-                             const AtomDisplaySettings& atom_display_settings,
-                             const BondDisplaySettings& bond_display_settings,
+                             const AtomItemSettings& atom_item_settings,
+                             const BondItemSettings& bond_item_settings,
                              Scene* scene, MolModel* mol_model)
 {
     auto mol = rdkit_extensions::to_rdkit(text_mol);
     prepare_mol(*mol);
     return std::make_shared<DrawFragmentSceneTool>(
-        *mol, fonts, atom_display_settings, bond_display_settings, scene,
-        mol_model);
+        *mol, fonts, atom_item_settings, bond_item_settings, scene, mol_model);
 }
 
 std::string get_smiles_for_ring_tool(const RingTool& ring_tool)
@@ -78,37 +76,37 @@ std::string get_smiles_for_ring_tool(const RingTool& ring_tool)
 
 AbstractHintFragmentItem::AbstractHintFragmentItem(
     const RDKit::ROMol& fragment, const Fonts& fonts,
-    const AtomDisplaySettings& atom_display_settings,
-    const BondDisplaySettings& bond_display_settings, QGraphicsItem* parent) :
+    const AtomItemSettings& atom_item_settings,
+    const BondItemSettings& bond_item_settings, QGraphicsItem* parent) :
     QGraphicsItemGroup(parent),
     m_frag(fragment),
     m_fonts(&fonts),
-    m_atom_display_settings(atom_display_settings),
-    m_bond_display_settings(bond_display_settings)
+    m_atom_item_settings(atom_item_settings),
+    m_bond_item_settings(bond_item_settings)
 {
 }
 
 AbstractHintFragmentItem::AbstractHintFragmentItem(
     const AbstractHintFragmentItem& frag_item) :
     AbstractHintFragmentItem(frag_item.m_frag, *frag_item.m_fonts,
-                             frag_item.m_atom_display_settings,
-                             frag_item.m_bond_display_settings, nullptr)
+                             frag_item.m_atom_item_settings,
+                             frag_item.m_bond_item_settings, nullptr)
 {
 }
 
 void AbstractHintFragmentItem::updateSettings()
 {
-    m_atom_display_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
-    m_bond_display_settings.m_color = STRUCTURE_HINT_COLOR;
+    m_atom_item_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
+    m_bond_item_settings.m_color = STRUCTURE_HINT_COLOR;
 }
 
 void AbstractHintFragmentItem::createGraphicsItems()
 {
     auto [all_items, atom_to_atom_item, bond_to_bond_item,
           s_group_to_s_group_item] =
-        create_graphics_items_for_mol(
-            &m_frag, *m_fonts, m_atom_display_settings, m_bond_display_settings,
-            /*draw_attachment_points = */ false);
+        create_graphics_items_for_mol(&m_frag, *m_fonts, m_atom_item_settings,
+                                      m_bond_item_settings,
+                                      /*draw_attachment_points = */ false);
     for (auto* item : all_items) {
         addToGroup(item);
     }
@@ -123,12 +121,13 @@ void AbstractHintFragmentItem::createGraphicsItems()
     }
 }
 
-HintFragmentItem::HintFragmentItem(
-    const RDKit::ROMol& fragment, const Fonts& fonts,
-    const AtomDisplaySettings& atom_display_settings,
-    const BondDisplaySettings& bond_display_settings, QGraphicsItem* parent) :
-    AbstractHintFragmentItem(fragment, fonts, atom_display_settings,
-                             bond_display_settings, parent)
+HintFragmentItem::HintFragmentItem(const RDKit::ROMol& fragment,
+                                   const Fonts& fonts,
+                                   const AtomItemSettings& atom_item_settings,
+                                   const BondItemSettings& bond_item_settings,
+                                   QGraphicsItem* parent) :
+    AbstractHintFragmentItem(fragment, fonts, atom_item_settings,
+                             bond_item_settings, parent)
 {
     std::transform(m_frag.bonds().begin(), m_frag.bonds().end(),
                    std::back_inserter(m_orig_bond_types),
@@ -145,7 +144,7 @@ HintFragmentItem::HintFragmentItem(
 void HintFragmentItem::updateSettings()
 {
     AbstractHintFragmentItem::updateSettings();
-    m_bond_display_settings.m_bond_width = FRAGMENT_HINT_BOND_WIDTH;
+    m_bond_item_settings.m_bond_width = FRAGMENT_HINT_BOND_WIDTH;
 }
 
 void HintFragmentItem::updateConformer(const RDKit::Conformer& conformer)
@@ -185,10 +184,10 @@ void HintFragmentItem::updateSingleBondMutations(
 
 HintPixmapFragmentItem::HintPixmapFragmentItem(
     const RDKit::ROMol& fragment, const Fonts& fonts,
-    const AtomDisplaySettings& atom_display_settings,
-    const BondDisplaySettings& bond_display_settings, QGraphicsItem* parent) :
-    AbstractHintFragmentItem(fragment, fonts, atom_display_settings,
-                             bond_display_settings, parent)
+    const AtomItemSettings& atom_item_settings,
+    const BondItemSettings& bond_item_settings, QGraphicsItem* parent) :
+    AbstractHintFragmentItem(fragment, fonts, atom_item_settings,
+                             bond_item_settings, parent)
 {
     updateSettings();
     createGraphicsItems();
@@ -205,19 +204,19 @@ HintPixmapFragmentItem::HintPixmapFragmentItem(
 void HintPixmapFragmentItem::updateSettings()
 {
     AbstractHintFragmentItem::updateSettings();
-    m_bond_display_settings.m_bond_width = FRAGMENT_CURSOR_HINT_BOND_WIDTH;
-    m_bond_display_settings.m_double_bond_spacing =
+    m_bond_item_settings.m_bond_width = FRAGMENT_CURSOR_HINT_BOND_WIDTH;
+    m_bond_item_settings.m_double_bond_spacing =
         FRAGMENT_CURSOR_HINT_BOND_SPACING;
 }
 
 DrawFragmentSceneTool::DrawFragmentSceneTool(
     const RDKit::ROMol& fragment, const Fonts& fonts,
-    const AtomDisplaySettings& atom_display_settings,
-    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    const AtomItemSettings& atom_item_settings,
+    const BondItemSettings& bond_item_settings, Scene* scene,
     MolModel* mol_model) :
     StandardSceneToolBase(scene, mol_model),
     m_frag(fragment),
-    m_hint_item(m_frag, fonts, atom_display_settings, bond_display_settings)
+    m_hint_item(m_frag, fonts, atom_item_settings, bond_item_settings)
 {
 }
 

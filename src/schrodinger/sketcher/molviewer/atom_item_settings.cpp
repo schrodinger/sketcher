@@ -1,16 +1,16 @@
-#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
+#include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
 
-AtomDisplaySettings::AtomDisplaySettings()
+AtomItemSettings::AtomItemSettings()
 {
     setColorScheme(ColorScheme::DEFAULT);
 }
 
-void AtomDisplaySettings::setColorScheme(ColorScheme scheme)
+void AtomItemSettings::setColorScheme(ColorScheme scheme)
 {
     switch (scheme) {
         case ColorScheme::DEFAULT:
@@ -31,16 +31,16 @@ void AtomDisplaySettings::setColorScheme(ColorScheme scheme)
     }
 }
 
-void AtomDisplaySettings::setMonochromeColorScheme(QColor color)
+void AtomItemSettings::setMonochromeColorScheme(QColor color)
 {
     m_color_palette.clear();
     m_color_palette[-1] =
         RDKit::DrawColour(color.redF(), color.greenF(), color.blueF());
 }
 
-QColor AtomDisplaySettings::getAtomColor(int atomic_number) const
+QColor AtomItemSettings::getAtomColor(int atomic_number)
 {
-    auto color = m_color_palette.at(-1); // default
+    auto color = m_color_palette[-1]; // default
     auto it = m_color_palette.find(atomic_number);
     if (it != m_color_palette.end()) {
         color = it->second;

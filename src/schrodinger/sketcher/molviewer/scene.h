@@ -10,8 +10,8 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/mol_model.h"
-#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
-#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/atom_item_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
@@ -142,6 +142,12 @@ class SKETCHER_API Scene : public QGraphicsScene
     QList<QGraphicsItem*>
     ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const;
 
+    // These setters are public because the corresponding setting doesn't yet
+    // exist in SketcherModel, so they're called directly from SketcherWidget.
+    // These setters should be made private as part of SKETCH-2066.
+    void setFontSize(const qreal size);
+    void setCarbonsLabeled(const CarbonLabels value);
+
     /**
      * display the appropriate context menu at the given position
      * @param event The mouse event that triggered the context menu
@@ -230,10 +236,15 @@ class SKETCHER_API Scene : public QGraphicsScene
     /**
      * Call updateCachedData() on all AtomItems and BondItems in the scene.
      * (BondItems always need updating after their bound AtomItems are modified
-     * in any way.). Also show or hide simplified stereochemistry annotations
-     * based on the current settings.
+     * in any way.)
      */
-    void onDisplaySettingsChanged();
+    void updateAtomAndBondItems();
+
+    /**
+     * Call updateCachedData() on all BondItems (but not AtomItems) in the
+     * scene.
+     */
+    void updateBondItems();
 
     /**
      * Update the path drawn to show selection highlighting.
@@ -263,6 +274,8 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void onModelValuesChanged(const std::unordered_set<ModelKey>& keys);
 
+    void setColorHeteroatoms(const bool color_heteroatoms);
+
     /**
      * Update the scene tool (i.e. the mouse cursor mode) based on the
      * current SketcherModel settings
@@ -281,6 +294,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     void setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool);
 
     Fonts m_fonts;
+    AtomItemSettings m_atom_item_settings;
+    BondItemSettings m_bond_item_settings;
     MolModel* m_mol_model = nullptr;
     SketcherModel* m_sketcher_model = nullptr;
     SelectionHighlightingItem* m_selection_highlighting_item = nullptr;
@@ -288,7 +303,6 @@ class SKETCHER_API Scene : public QGraphicsScene
     // highlight atoms and bonds with a single color, so we might need multiple
     // child items
     QGraphicsItemGroup* m_halo_highlighting_item = nullptr;
-    QGraphicsTextItem* m_simplified_stereo_label = nullptr;
     QPointF m_mouse_down_screen_pos;
 
     /// A set of all "interactive" graphics items that are currently in the

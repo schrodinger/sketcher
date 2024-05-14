@@ -28,16 +28,16 @@ enum class CarbonLabels {
 enum class ColorScheme { DEFAULT, AVALON, CDK, DARK_MODE, BLACK_WHITE };
 
 /**
- * An object used to store all settings relevant to the display of atoms
+ * An object used to store all settings relevant to AtomItems
  */
-class AtomDisplaySettings
+class AtomItemSettings
 {
   public:
-    AtomDisplaySettings();
+    AtomItemSettings();
 
     // Prevent implicit copies, since that could cause bugs, as the Scene shares
-    // a single AtomDisplaySettings object with all AtomItems.
-    explicit AtomDisplaySettings(const AtomDisplaySettings&) = default;
+    // a single AtomItemSettings object with all AtomItems.
+    explicit AtomItemSettings(const AtomItemSettings&) = default;
 
     /**
      * Set a pre-defined RDKit color scheme
@@ -55,7 +55,7 @@ class AtomDisplaySettings
      * @param atomic_number the atomic number of the atom
      * @return atom color based on the active color scheme
      */
-    QColor getAtomColor(int atomic_number) const;
+    QColor getAtomColor(int atomic_number);
 
     /**
      * Which carbon atoms should be labeled
@@ -72,20 +72,6 @@ class AtomDisplaySettings
      * labels when present
      */
     bool m_stereo_labels_shown = true;
-
-    /**
-     * Whether to display the word "abs" in enhanced stereo absolute
-     * stereochemistry labels
-     */
-    bool m_explicit_abs_labels_shown = false;
-
-    /**
-     * Whether to display a simplified stereochemistry annotation for a compound
-     * with only one ehnaced stereo group that is either "or" or "and". If this
-     * is true a label like "or enantiomer" or "end enantiomer" will be
-     * displayed insted of the atom labels.
-     */
-    bool m_show_simplified_stereo_annotation = false;
 
   private:
     RDKit::ColourPalette m_color_palette;

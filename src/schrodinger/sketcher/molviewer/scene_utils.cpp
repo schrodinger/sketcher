@@ -19,9 +19,9 @@
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
-#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
+#include "schrodinger/sketcher/molviewer/atom_item_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
-#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_item_settings.h"
 #include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -41,8 +41,8 @@ std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, BondItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
-                              const AtomDisplaySettings& atom_display_settings,
-                              const BondDisplaySettings& bond_display_settings,
+                              AtomItemSettings& atom_item_settings,
+                              BondItemSettings& bond_item_settings,
                               const bool draw_attachment_points)
 {
     unsigned int num_atoms = mol->getNumAtoms();
@@ -68,7 +68,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             continue;
         }
         const auto pos = conformer.getAtomPos(i);
-        auto* atom_item = new AtomItem(atom, fonts, atom_display_settings);
+        auto* atom_item = new AtomItem(atom, fonts, atom_item_settings);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
         if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
@@ -87,7 +87,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         const auto* from_atom_item = atom_to_atom_item[bond->getBeginAtom()];
         const auto* to_atom_item = atom_to_atom_item[bond->getEndAtom()];
         auto* bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
-                                       fonts, bond_display_settings);
+                                       fonts, bond_item_settings);
         bond_to_bond_item[bond] = bond_item;
         all_items.push_back(bond_item);
     }
