@@ -13,7 +13,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
-#include "schrodinger/sketcher/molviewer/atom_item_settings.h"
+#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 
@@ -54,7 +54,8 @@ class TestAtomItem : public AtomItem
     using AtomItem::m_shape;
     using AtomItem::m_subrects;
 
-    TestAtomItem(RDKit::Atom* atom, Fonts& fonts, AtomItemSettings& settings,
+    TestAtomItem(RDKit::Atom* atom, Fonts& fonts,
+                 const AtomDisplaySettings& settings,
                  QGraphicsItem* parent = nullptr) :
         AtomItem(atom, fonts, settings, parent)
     {
@@ -70,8 +71,10 @@ createAtomItems(std::string smiles)
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
     for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
         BOOST_TEST_REQUIRE(atom != nullptr);
+
         auto atom_item = std::make_shared<TestAtomItem>(
-            atom, test_scene->m_fonts, test_scene->m_atom_item_settings);
+            atom, test_scene->m_fonts,
+            *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
         atom_items.push_back(atom_item);
     }
     return std::make_pair(atom_items, test_scene);
@@ -218,8 +221,8 @@ BOOST_AUTO_TEST_CASE(test_chirality_label)
 {
     // test that the chirality are correctly set for each atom of two
     // enantiomers (non chiral atoms should have an empty label and null rect)
-    std::map<std::string, std::string> chiralities = {{"C[C@H](N)S", "(R)"},
-                                                      {"C[C@@H](N)S", "(S)"}};
+    std::map<std::string, std::string> chiralities = {
+        {"C[C@H](N)S", "abs (R)"}, {"C[C@@H](N)S", "abs (S)"}};
     for (const auto& [smiles, expected_chirality] : chiralities) {
         auto [atom_items, scene] = createAtomItems(smiles);
         auto chiral_center = atom_items.at(1);
@@ -241,8 +244,9 @@ BOOST_AUTO_TEST_CASE(test_enhanced_chirality_labels)
     std::string smiles =
         "C[C@H](N)[C@H](C)[C@H](C)[C@@H](N)[C@H](C)N |a:1,3,o3:7,9,&1:5|";
     auto [atom_items, scene] = createAtomItems(smiles);
-    std::vector<std::string> labels = {"", "(S)",  "", "(R)",  "", "and 1",
-                                       "", "or 3", "", "or 3", "", ""};
+    std::vector<std::string> labels = {"", "abs (S)", "", "abs (R)",
+                                       "", "and 1",   "", "or 3",
+                                       "", "or 3",    "", ""};
 
     for (unsigned int i = 0; i < atom_items.size(); ++i) {
         BOOST_TEST(atom_items.at(i)->m_chirality_label_text.toStdString() ==

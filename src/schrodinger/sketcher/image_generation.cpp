@@ -187,6 +187,7 @@ void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
         // molecule too big for the image
         scale = opts.scale;
     }
+
     QRectF centered_rect(0, 0, scene_rect.width() * scale,
                          scene_rect.height() * scale);
     centered_rect.moveCenter(target_rect.center());

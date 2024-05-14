@@ -80,9 +80,7 @@ class TestScene : public Scene
     TestScene(MolModel* mol_model, SketcherModel* sketcher_model,
               QWidget* parent = nullptr) :
         Scene(mol_model, sketcher_model, parent){};
-    using Scene::m_atom_item_settings;
     using Scene::m_atom_to_atom_item;
-    using Scene::m_bond_item_settings;
     using Scene::m_bond_to_bond_item;
     using Scene::m_fonts;
     using Scene::m_mol_model;
