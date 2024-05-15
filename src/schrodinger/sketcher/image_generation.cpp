@@ -226,7 +226,7 @@ template <> void paint_scene<QGraphicsScene>(QPaintDevice* device,
                                              const QGraphicsScene& input,
                                              const RenderOptions& opts)
 {
-    auto scene_rect = input.sceneRect();
+    auto scene_rect = input.itemsBoundingRect();
     paint_scene(device, input, scene_rect, opts);
 }
 
