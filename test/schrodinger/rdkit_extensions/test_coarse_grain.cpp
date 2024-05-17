@@ -136,6 +136,35 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
     }
 }
 
+BOOST_AUTO_TEST_CASE(Test_cg_to_atomistic)
+{
+    // More tests validation tests are available in python, these are to ensure
+    // memtest is ran
+    {
+        auto cg_mol =
+            to_rdkit("PEPTIDE1{C.A.A.A.C}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
+                     Format::HELM);
+        auto atomistic_mol = cg_to_atomistic(*cg_mol);
+        BOOST_CHECK_EQUAL(::RDKit::MolToSmiles(*atomistic_mol),
+                          "C[C@@H]1NC(=O)[C@H](C)NC(=O)[C@@H](N)CSSC[C@@H](C(="
+                          "O)O)NC(=O)[C@H](C)NC1=O");
+    }
+    {
+        auto cg_mol = to_rdkit("PEPTIDE1{D.E.F.G}|PEPTIDE2{C.E}$PEPTIDE1,"
+                               "PEPTIDE2,2:R3-1:R1$$$V2.0");
+        auto atomistic_mol = cg_to_atomistic(*cg_mol);
+        BOOST_CHECK_EQUAL(
+            ::RDKit::MolToSmiles(*atomistic_mol),
+            "N[C@@H](CC(=O)O)C(=O)N[C@@H](CCC(=O)N[C@@H](CS)C(=O)N[C@@H](CCC(="
+            "O)O)C(=O)O)C(=O)N[C@@H](Cc1ccccc1)C(=O)NCC(=O)O");
+    }
+    {
+        // error condition -- invalid monomer
+        auto cg_mol = to_rdkit("PEPTIDE1{F.Y.Z.G.R.L}$$$$V2.0");
+        BOOST_CHECK_THROW(cg_to_atomistic(*cg_mol), std::out_of_range);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(Test_reordering_residues)
 {
     ::RDKit::RWMol cg_mol;
