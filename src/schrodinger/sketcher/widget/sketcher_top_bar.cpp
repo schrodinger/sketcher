@@ -8,6 +8,7 @@
 #include <QWidget>
 
 #include "mmshare-version.h"
+#include "schrodinger/qt6_compat.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
@@ -215,7 +216,11 @@ void SketcherTopBar::onImportFromFileClicked()
     };
 
     QString name_filter = get_import_name_filters();
+#if QT_6_5_5
+    QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
+#else
     QFileDialog::getOpenFileContent(name_filter, file_open_completed);
+#endif
 }
 
 void SketcherTopBar::onPasteInTextClicked()
