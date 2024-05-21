@@ -2567,8 +2567,8 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
 
     import_mol_text(&model, "CC(C)[C@@H](C)[C@H](C)N");
     auto mol = model.getMol();
-    std::vector<std::string> atom_labels = {"", "",    "", "(R)",
-                                            "", "(S)", "", ""};
+    std::vector<std::string> atom_labels = {"", "",        "", "abs (R)",
+                                            "", "abs (S)", "", ""};
     std::vector<Bond::BondType> bond_types(7, Bond::BondType::SINGLE);
     std::vector<Bond::BondDir> bond_dirs(7, Bond::BondDir::NONE);
     bond_dirs[3] = Bond::BondDir::BEGINDASH;

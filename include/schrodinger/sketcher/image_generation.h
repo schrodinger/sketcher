@@ -62,6 +62,10 @@ struct RenderOptions {
     QHash<int, QColor> rdatom_index_to_line_color;
     QHash<int, QColor> rdbond_index_to_line_color;
     // TODO: incorporate both RendererSettings and additional LiveDesign options
+    bool show_terminal_methyls = false;
+    bool show_stereo_annotations = false;
+    bool show_absolute_stereo_groups = false;
+    bool show_simplified_stereo_annotation = false;
 };
 
 // TODO: Overload functions to allow std::string as input

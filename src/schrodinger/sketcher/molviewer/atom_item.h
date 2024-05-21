@@ -8,7 +8,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
-#include "schrodinger/sketcher/molviewer/atom_item_settings.h"
+#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 
@@ -70,7 +70,8 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * @pre atom->hasOwningMol()
      */
     AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
-             AtomItemSettings& settings, QGraphicsItem* parent = nullptr);
+             const AtomDisplaySettings& settings,
+             QGraphicsItem* parent = nullptr);
 
     // Type and type() are required for qgraphicsitem_cast.  Note that this enum
     // implementation is based on the sample code from the QGraphicsItem::Type
@@ -118,6 +119,17 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      */
     bool labelIsVisible() const;
 
+    /**
+     * Do not show the stereochemistry labels for this atom. This is used when
+     * the scene is displaying a simplified molecular stereo annotation. Note
+     * that this method won't trigger the AtomItem to update itself, so the
+     * change won't take effect until updateCachedData is called.
+     */
+    void setHideStereoLabels(bool hide);
+
+    QRectF getChiralityLabelRect() const;
+    QString getChiralityLabelText() const;
+
   protected:
     /**
      * @return the direction Hs labels would be drawn on this atom if the label
@@ -154,7 +166,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
 
     std::vector<QRectF> m_subrects;
     const Fonts& m_fonts;
-    AtomItemSettings& m_settings;
+    const AtomDisplaySettings& m_settings;
     bool m_label_is_visible;
     bool m_valence_error_is_visible;
     QPen m_pen;
@@ -162,6 +174,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QPen m_chirality_pen;
     QPen m_squiggle_pen;
     QBrush m_valence_error_brush;
+    bool m_hide_stereo_labels = false;
 
     /**
      * @return A painter path with the specified radius for use with either

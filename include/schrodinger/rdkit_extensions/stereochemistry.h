@@ -20,6 +20,11 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+const std::string HAIR_SPACE = " ";
+const std::string ABSOLUTE_STEREO_PREFIX = "abs" + HAIR_SPACE;
+const std::string OR_STEREO_PREFIX = "or" + HAIR_SPACE;
+const std::string AND_STEREO_PREFIX = "and" + HAIR_SPACE;
+
 class RDKIT_EXTENSIONS_API UseModernStereoPerception : public boost::noncopyable
 {
   public:
@@ -37,10 +42,20 @@ class RDKIT_EXTENSIONS_API UseModernStereoPerception : public boost::noncopyable
 RDKIT_EXTENSIONS_API void assign_stereochemistry(RDKit::ROMol& mol);
 
 /**
+ * @param strip_abs if true, the absolute stereo label is stripped from the
+ * "abs" label
  * @return the chiral label for the given atom.
  */
 RDKIT_EXTENSIONS_API std::string
-get_atom_chirality_label(const RDKit::Atom& atom);
+get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs = false);
+
+/**
+ * @return the simplified stereo annotation for the given molecule if the
+ * molecule has only one enhanced stereo group that is either an 'or' or 'and'
+ * stereo group, otherwise return an empty string.
+ */
+RDKIT_EXTENSIONS_API std::string
+get_simplified_stereo_annotation(const RDKit::ROMol& mol);
 
 /**
  * @return the chiral label for the given bond.

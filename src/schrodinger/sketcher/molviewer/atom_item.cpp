@@ -45,7 +45,7 @@ QRectF make_text_rect(QFontMetricsF fm, QString label)
 };
 
 AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
-                   AtomItemSettings& settings, QGraphicsItem* parent) :
+                   const AtomDisplaySettings& settings, QGraphicsItem* parent) :
     AbstractGraphicsItem(parent),
     m_atom(atom),
     m_fonts(fonts),
@@ -114,6 +114,11 @@ HsDirection AtomItem::findHsDirection() const
     }
 }
 
+void AtomItem::setHideStereoLabels(bool hide)
+{
+    m_hide_stereo_labels = hide;
+}
+
 void AtomItem::updateCachedData()
 {
     // prepareGeometryChange notifies the scene to schedule a repaint and to
@@ -130,11 +135,8 @@ void AtomItem::updateCachedData()
     std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,
              m_valence_error_is_visible, needs_additional_labels) =
         determineLabelType();
-
     if (m_label_is_visible) {
-
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
-
         m_main_label_rect =
             make_text_rect(m_fonts.m_main_label_fm, m_main_label_text);
         m_main_label_rect.moveCenter(QPointF(0, 0));
@@ -145,17 +147,15 @@ void AtomItem::updateCachedData()
             updateMappingLabel();
             positionLabels();
         }
-
-        for (auto rect : getLabelRects()) {
-            if (rect.isValid()) {
-                m_subrects.push_back(rect);
-            }
-        }
     }
-    if (m_settings.m_stereo_labels_shown) {
+    if (m_settings.m_stereo_labels_shown && !m_hide_stereo_labels) {
         updateChiralityLabel();
     }
-
+    for (auto rect : getLabelRects()) {
+        if (rect.isValid()) {
+            m_subrects.push_back(rect);
+        }
+    }
     // merge all of the subrects with the predictive highlighting path to create
     // the shape and bounding rect
     m_shape = QPainterPath(m_predictive_highlighting_path);
@@ -226,8 +226,9 @@ QPainterPath AtomItem::getWavyLine() const
 
 void AtomItem::updateChiralityLabel()
 {
-    auto chirality = QString::fromStdString(
-        rdkit_extensions::get_atom_chirality_label(*m_atom));
+    auto chirality =
+        QString::fromStdString(rdkit_extensions::get_atom_chirality_label(
+            *m_atom, m_settings.m_explicit_abs_labels_shown));
     m_chirality_label_text = chirality;
 
     auto chirality_label_position =
@@ -455,6 +456,15 @@ bool AtomItem::determineLabelIsVisible() const
 const std::vector<QRectF>& AtomItem::getSubrects() const
 {
     return m_subrects;
+}
+
+QRectF AtomItem::getChiralityLabelRect() const
+{
+    return m_chirality_label_rect;
+}
+QString AtomItem::getChiralityLabelText() const
+{
+    return m_chirality_label_text;
 }
 
 bool AtomItem::labelIsVisible() const
