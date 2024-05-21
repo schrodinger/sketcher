@@ -257,6 +257,26 @@ void identify_monomers(RDKit::ROMol& atomistic_mol,
     }
 }
 
+void neutralize_atoms(RDKit::ROMol& mol)
+{
+    // Algorithm for neutralizing molecules from
+    // https://www.rdkit.org/docs/Cookbook.html#neutralizing-molecules by Noel
+    // O’Boyle Will neutralize the molecule by adding or removing hydrogens as
+    // needed. This will ensure SMILES can be used to match atomistic structures
+    // to the correct monomer.
+    static const std::unique_ptr<RDKit::RWMol> neutralize_query(
+        RDKit::SmartsToMol(
+            "[+1!h0!$([*]~[-1,-2,-3,-4]),-1!$([*]~[+1,+2,+3,+4])]"));
+    for (const auto& match : RDKit::SubstructMatch(mol, *neutralize_query)) {
+        auto atom = mol.getAtomWithIdx(match[0].second);
+        auto chg = atom->getFormalCharge();
+        auto hcount = atom->getTotalNumHs();
+        atom->setFormalCharge(0);
+        atom->setNumExplicitHs(hcount - chg);
+        atom->updatePropertyCache();
+    }
+}
+
 void build_cg_mol(const RDKit::ROMol& atomistic_mol,
                   std::vector<std::vector<int>>& monomers,
                   boost::shared_ptr<RDKit::RWMol> cg_mol,
@@ -273,11 +293,10 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
         // We have to roundtrip to canonicalize smiles -- see RDKit issue #7214
         std::unique_ptr<RDKit::RWMol> canon_mol(
             RDKit::SmilesToMol(monomer_smiles));
+        neutralize_atoms(*canon_mol);
         monomer_smiles = RDKit::MolToSmiles(*canon_mol);
 
         // If the monomer is a known amino acid, use the 1-letter code
-        // NOTE: Setting the smilesSymbol is temporary & for testing purposes --
-        // I think we'd actually want to set the atomLabel here
         if (amino_acids.find(monomer_smiles) != amino_acids.end()) {
             add_monomer(*cg_mol, amino_acids.at(monomer_smiles), residue_num,
                         "PEPTIDE1");
