@@ -226,10 +226,9 @@ QPainterPath AtomItem::getWavyLine() const
 
 void AtomItem::updateChiralityLabel()
 {
-    auto chirality =
-        QString::fromStdString(rdkit_extensions::get_atom_chirality_label(
-            *m_atom, m_settings.m_explicit_abs_labels_shown));
-    m_chirality_label_text = chirality;
+    auto strip_abs = !m_settings.m_explicit_abs_labels_shown;
+    auto label = rdkit_extensions::get_atom_chirality_label(*m_atom, strip_abs);
+    m_chirality_label_text = QString::fromStdString(label);
 
     auto chirality_label_position =
         findPositionInEmptySpace(true) * CHIRALITY_LABEL_DISTANCE_RATIO;
