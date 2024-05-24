@@ -221,8 +221,8 @@ BOOST_AUTO_TEST_CASE(test_chirality_label)
 {
     // test that the chirality are correctly set for each atom of two
     // enantiomers (non chiral atoms should have an empty label and null rect)
-    std::map<std::string, std::string> chiralities = {
-        {"C[C@H](N)S", "abs (R)"}, {"C[C@@H](N)S", "abs (S)"}};
+    std::map<std::string, std::string> chiralities = {{"C[C@H](N)S", "(R)"},
+                                                      {"C[C@@H](N)S", "(S)"}};
     for (const auto& [smiles, expected_chirality] : chiralities) {
         auto [atom_items, scene] = createAtomItems(smiles);
         auto chiral_center = atom_items.at(1);
@@ -244,9 +244,8 @@ BOOST_AUTO_TEST_CASE(test_enhanced_chirality_labels)
     std::string smiles =
         "C[C@H](N)[C@H](C)[C@H](C)[C@@H](N)[C@H](C)N |a:1,3,o3:7,9,&1:5|";
     auto [atom_items, scene] = createAtomItems(smiles);
-    std::vector<std::string> labels = {"", "abs (S)", "", "abs (R)",
-                                       "", "and 1",   "", "or 3",
-                                       "", "or 3",    "", ""};
+    std::vector<std::string> labels = {"", "(S)",  "", "(R)",  "", "and 1",
+                                       "", "or 3", "", "or 3", "", ""};
 
     for (unsigned int i = 0; i < atom_items.size(); ++i) {
         BOOST_TEST(atom_items.at(i)->m_chirality_label_text.toStdString() ==
