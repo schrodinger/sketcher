@@ -121,5 +121,5 @@ jobs:
       - name: Download sketcher executable
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher_${{ matrix.config.name }}
+          name: sketcher_${{ matrix.build-output }}
           path: build/sketcher_app
