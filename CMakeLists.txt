@@ -14,15 +14,18 @@ string(JSON BOOST_VERSION GET ${VERSIONS} boost)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)
 string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 
-find_package(Boost ${BOOST_VERSION} REQUIRED
-             COMPONENTS filesystem json serialization unit_test_framework)
+find_package(
+  Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
+                                             serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
+find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
@@ -66,6 +69,7 @@ target_link_libraries(
           RDKit::DistGeomHelpers
           RDKit::RDInchiLib
           fmt::fmt
+          ZLIB::ZLIB
           zstd::libzstd_static)
 
 set(SKETCHER_LIB sketcher)
