@@ -1365,6 +1365,10 @@ void MolModel::mergeAtoms(
     const std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>&
         atoms_to_merge)
 {
+    if (atoms_to_merge.empty()) {
+        // nothing to do
+        return;
+    }
     auto cmd = [this, atoms_to_merge]() {
         mergeAtomsCommandFunc(atoms_to_merge);
     };

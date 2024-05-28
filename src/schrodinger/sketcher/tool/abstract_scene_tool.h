@@ -99,6 +99,18 @@ class SKETCHER_API AbstractSceneTool : public QObject
      */
     void newCursorHintRequested(const QPixmap& pixmap);
 
+    /**
+     * A signal emitted when a rotation or translation drag is started.
+     */
+    void atomDragStarted();
+
+    /**
+     * A signal emitted when a rotation or translation drag is finished.
+     * @param were_atoms_merged whether or not the drag resulted in atoms being
+     * merged
+     */
+    void atomDragFinished(const bool were_atoms_merged);
+
   protected:
     /**
      * @return a pixmap of a hint image to attach to the mouse cursor.

@@ -813,7 +813,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Signal emitted when a reaction arrow is added.  Note that this signal
-     * will be emitted *in addition to* nonMolecularObjectsChanged.
+     * will be emitted *in addition to* modelChanged.
      */
     void reactionArrowAdded();
 

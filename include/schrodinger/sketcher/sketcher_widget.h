@@ -100,10 +100,43 @@ class SKETCHER_API SketcherWidget : public QWidget
     bool isEmpty() const;
 
   signals:
+
     /**
-     * Emitted when the contents of the sketcher scene has changed
+     * Emitted when an atom or bond is added to, modified, or removed from the
+     * molecule shown in the Sketcher.  This signal is *not* emitted, however,
+     * when the two-dimensional coordinates are changed, or when reaction arrows
+     * or plus signs are added or removed.
+     *
+     * In other words, this signal will be emitted when the SMILES string for
+     * the molecule changes (but not necessarily emitted when the *reaction*
+     * SMILES string changes, since that can be affected by the position of the
+     * reaction arrow).
      */
-    void sketcherChanged();
+    void moleculeChanged();
+
+    /**
+     * Emitted when any of the following happen
+     *   - the two-dimensional coordinates of the molecule are changed
+     *   - a reaction arrow or a plus sign is added or removed
+     *   - the two-dimensional coordinates of the reaction arrow or plus signs
+     *     are changed
+     *
+     * This signal will *not* be emitted when
+     *   -  an atom or bond is added to, modified, or removed from the molecule
+     *     (Use the moleculeChanged signal to receive notifications for this.)
+     *   - selection changes
+     *   - the entire molecule is translated or zoomed.  These actions change
+     *     the viewport, but have no effect on the coordinates of the molecule
+     *     itself.  Note that rotating the entire molecule *does* affect the
+     *     coordinates and *will* cause this signal to be emitted
+     *   - display options are changed, such as displaying valence errors,
+     *     heteroatom colors, or stereocenter labels
+     *   - *during* a click-and-drag operation that affects coordinates, such as
+     *     rotating the entire molecule, rotating a portion of the molecule, or
+     *     translating a portion of the molecule.  Instead, this signal will
+     *     be emitted *at the end* of the click-and-drag.
+     */
+    void representationChanged();
 
   protected slots:
 

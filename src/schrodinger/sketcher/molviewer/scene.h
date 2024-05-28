@@ -162,6 +162,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void requestCursorHintUpdate();
 
+    /**
+     * @return true if the user is in the middle of a drag-and-drop rotation or
+     * translation.  False otherwise.
+     */
+    bool isDuringAtomDrag();
+
   signals:
     /**
      * Request that the widget import the given text in the given format
@@ -189,6 +195,15 @@ class SKETCHER_API Scene : public QGraphicsScene
      * left-button scene tool
      */
     void newCursorHintRequested(const QPixmap& pixmap);
+
+    /**
+     * Emitted when a drag-and-drop operation has completed *if and only if* the
+     * drag-and-drop did not affect atom connectivity (i.e. if no atoms were
+     * merged as a result of the rotation or translation).  If connectivity was
+     * affected, then MolModel::modelChanged will notify listeners of the
+     * change.
+     */
+    void representationChangingAtomDragFinished();
 
   protected:
     using QGraphicsScene::clear;
@@ -275,6 +290,9 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     std::shared_ptr<AbstractSceneTool> getNewSceneTool();
 
+    void onAtomDragStarted();
+    void onAtomDragFinished(const bool were_atoms_merged);
+
     /**
      * Set the scene tool (i.e. the mouse cursor mode) to the given value
      */
@@ -317,6 +335,7 @@ class SKETCHER_API Scene : public QGraphicsScene
      * objects) then this should be empty.
      */
     std::vector<const RDKit::Atom*> m_context_menu_atoms;
+    bool m_currently_dragging_atom;
 
   private:
     /**

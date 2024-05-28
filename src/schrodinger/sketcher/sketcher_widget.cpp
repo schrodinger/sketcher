@@ -106,6 +106,26 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_sketcher_model, &SketcherModel::valuePinged, this,
             &SketcherWidget::onModelValuePinged);
 
+    connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
+        if (what_changed & WhatChanged::MOLECULE) {
+            emit moleculeChanged();
+        } else {
+            emit representationChanged();
+        }
+    });
+    connect(m_mol_model, &MolModel::coordinatesChanged, [this]() {
+        if (!m_ui->view->isDuringPinchGesture() &&
+            !m_scene->isDuringAtomDrag()) {
+            // if we're in the middle of a mouse drag or a trackpad gesture,
+            // wait until that's finished to emit the signal
+            emit representationChanged();
+        }
+    });
+    connect(m_ui->view, &View::pinchGestureFinished, this,
+            &SketcherWidget::representationChanged);
+    connect(m_scene, &Scene::representationChangingAtomDragFinished, this,
+            &SketcherWidget::representationChanged);
+
     connectTopBarSlots();
     connectSideBarSlots();
 

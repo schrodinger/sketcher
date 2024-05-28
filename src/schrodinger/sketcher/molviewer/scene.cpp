@@ -662,6 +662,10 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
                this, &Scene::showContextMenu);
     disconnect(m_scene_tool.get(), &AbstractSceneTool::newCursorHintRequested,
                this, &Scene::newCursorHintRequested);
+    disconnect(m_scene_tool.get(), &AbstractSceneTool::atomDragStarted, this,
+               &Scene::onAtomDragStarted);
+    disconnect(m_scene_tool.get(), &AbstractSceneTool::atomDragFinished, this,
+               &Scene::onAtomDragFinished);
     m_scene_tool = new_scene_tool;
     // add graphics items from the new scene tool
     for (auto* item : m_scene_tool->getGraphicsItems()) {
@@ -671,6 +675,10 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
             this, &Scene::showContextMenu);
     connect(new_scene_tool.get(), &AbstractSceneTool::newCursorHintRequested,
             this, &Scene::newCursorHintRequested);
+    connect(new_scene_tool.get(), &AbstractSceneTool::atomDragStarted, this,
+            &Scene::onAtomDragStarted);
+    connect(new_scene_tool.get(), &AbstractSceneTool::atomDragFinished, this,
+            &Scene::onAtomDragFinished);
     requestCursorHintUpdate();
 }
 
@@ -678,6 +686,24 @@ void Scene::requestCursorHintUpdate()
 {
     auto cursor_hint = m_scene_tool->getDefaultCursorPixmap();
     emit newCursorHintRequested(cursor_hint);
+}
+
+bool Scene::isDuringAtomDrag()
+{
+    return m_currently_dragging_atom;
+}
+
+void Scene::onAtomDragStarted()
+{
+    m_currently_dragging_atom = true;
+}
+
+void Scene::onAtomDragFinished(const bool were_atoms_merged)
+{
+    m_currently_dragging_atom = false;
+    if (!were_atoms_merged) {
+        emit representationChangingAtomDragFinished();
+    }
 }
 
 Scene::SelectionChangeSignalBlocker::SelectionChangeSignalBlocker(

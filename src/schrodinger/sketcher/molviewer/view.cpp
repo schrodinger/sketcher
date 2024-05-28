@@ -51,6 +51,11 @@ View::View(QWidget* parent) : View(nullptr, parent)
 {
 }
 
+bool View::isDuringPinchGesture()
+{
+    return m_currently_pinching_trackpad;
+}
+
 void View::resizeEvent(QResizeEvent* event)
 {
     QGraphicsView::resizeEvent(event);
@@ -101,7 +106,9 @@ void View::pinchTriggered(QPinchGesture* gesture)
     }
 
     auto state = gesture->state();
-    if (state != Qt::GestureStarted) {
+    if (state == Qt::GestureStarted) {
+        m_currently_pinching_trackpad = true;
+    } else {
         // zoom
         auto scale_factor = gesture->scaleFactor();
         scaleSafely(scale_factor);
@@ -111,6 +118,10 @@ void View::pinchTriggered(QPinchGesture* gesture)
         auto center_of_rotation = find_centroid(
             *(m_mol_model->getMol()), m_mol_model->getNonMolecularObjects());
         m_mol_model->rotateByAngle(-angle, center_of_rotation);
+        if (state == Qt::GestureFinished) {
+            m_currently_pinching_trackpad = false;
+            emit pinchGestureFinished();
+        }
     }
 }
 

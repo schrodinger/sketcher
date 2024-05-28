@@ -28,6 +28,12 @@ class SKETCHER_API View : public QGraphicsView
     View(QWidget* parent = nullptr);
     void setMolModel(MolModel* mol_model);
 
+    /**
+     * @return true if the user is in the middle of a pinch gesture rotation or
+     * translation.  False otherwise.
+     */
+    bool isDuringPinchGesture();
+
   public slots:
     /**
      * Scale and center the view matrix so that all objects in the scene are
@@ -56,6 +62,11 @@ class SKETCHER_API View : public QGraphicsView
 
   signals:
     void resized();
+
+    /**
+     * Emitted when a pinch gesture has completed
+     */
+    void pinchGestureFinished();
 
   protected:
     // Override the QGraphicsView method so we can call enlargeSceneIfNeeded
@@ -107,6 +118,7 @@ class SKETCHER_API View : public QGraphicsView
     void scaleSafely(qreal scale_factor);
 
     MolModel* m_mol_model = nullptr;
+    bool m_currently_pinching_trackpad = false;
 };
 
 } // namespace sketcher

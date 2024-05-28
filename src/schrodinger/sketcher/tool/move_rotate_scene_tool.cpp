@@ -98,7 +98,7 @@ void MoveRotateSceneTool::onLeftButtonDragStart(
         }
     }
     updatePredictiveHighlightingForMouseAt(event->scenePos());
-
+    emit atomDragStarted();
     // begin an undo macro in case we have to merge atoms at the end of the
     // drag
     m_mol_model->beginUndoMacro(description);

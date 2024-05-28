@@ -91,6 +91,7 @@ void StandardSceneToolBase::onMiddleButtonDragStart(
     // if a selection is present, rotate only the selection
     setCurrentSelectionAsObjectsToMove();
     emit newCursorHintRequested(m_rotate_cursor_hint);
+    emit atomDragStarted();
     m_mol_model->beginUndoMacro("Rotate");
     AbstractSceneTool::onMiddleButtonDragStart(event);
 }
@@ -120,6 +121,7 @@ void StandardSceneToolBase::onRightButtonDragStart(
         setCurrentSelectionAsObjectsToMove();
     }
     emit newCursorHintRequested(m_translate_cursor_hint);
+    emit atomDragStarted();
     m_mol_model->beginUndoMacro("Translate");
     AbstractSceneTool::onRightButtonDragStart(event);
 }
@@ -278,17 +280,22 @@ void StandardSceneToolBase::updateMergeHintItem()
 void StandardSceneToolBase::mergeOverlappingAtoms()
 {
     auto overlapping_idxs = getOverlappingAtomIdxs();
-    auto* mol = m_mol_model->getMol();
-    std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>
-        overlapping_atoms;
-    // convert from atom indices to Atom*
-    std::transform(overlapping_idxs.begin(), overlapping_idxs.end(),
-                   std::back_inserter(overlapping_atoms),
-                   [&mol](std::pair<unsigned int, unsigned int> idxs) {
-                       return std::make_pair(mol->getAtomWithIdx(idxs.first),
-                                             mol->getAtomWithIdx(idxs.second));
-                   });
-    m_mol_model->mergeAtoms(overlapping_atoms);
+    bool have_atoms_to_merge = !overlapping_idxs.empty();
+    if (have_atoms_to_merge) {
+        auto* mol = m_mol_model->getMol();
+        std::vector<std::pair<const RDKit::Atom*, const RDKit::Atom*>>
+            overlapping_atoms;
+        // convert from atom indices to Atom*
+        std::transform(overlapping_idxs.begin(), overlapping_idxs.end(),
+                       std::back_inserter(overlapping_atoms),
+                       [&mol](std::pair<unsigned int, unsigned int> idxs) {
+                           return std::make_pair(
+                               mol->getAtomWithIdx(idxs.first),
+                               mol->getAtomWithIdx(idxs.second));
+                       });
+        m_mol_model->mergeAtoms(overlapping_atoms);
+    }
+    emit atomDragFinished(have_atoms_to_merge);
 }
 
 std::vector<std::pair<unsigned int, unsigned int>> get_overlapping_atom_idxs(
