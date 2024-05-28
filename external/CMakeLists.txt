@@ -17,10 +17,11 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
 # Ensure args passed to ExternalProject_Add's CMAKE_ARGS support semicolons
 function(set_cmake_arg VAR_NAME)
+  set(CMAKE_ARG ${ARGN})
+  string(REPLACE ";" "$<SEMICOLON>" CMAKE_ARG "${CMAKE_ARG}")
   set(${VAR_NAME}
-      ${ARGN}
+      "${CMAKE_ARG}"
       PARENT_SCOPE)
-  string(REPLACE ";" "$<SEMICOLON>" ${VAR_NAME} "${${VAR_NAME}}")
 endfunction()
 
 ExternalProject_Add(
