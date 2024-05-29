@@ -459,6 +459,10 @@ void SketcherWidget::connectTopBarSlots()
             m_mol_model, &MolModel::flipAllHorizontal);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::flipVerticalRequested,
             m_mol_model, &MolModel::flipAllVertical);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::aromatizeRequested, m_mol_model,
+            &MolModel::aromatize);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::kekulizeRequested, m_mol_model,
+            &MolModel::kekulize);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::addExplicitHydrogensRequested,
             m_mol_model,
             [this]() { m_mol_model->updateExplicitHs(ExplicitHActions::ADD); });

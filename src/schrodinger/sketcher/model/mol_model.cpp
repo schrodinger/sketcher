@@ -5,6 +5,7 @@
 #include <fmt/format.h>
 
 #include <rdkit/GraphMol/Atom.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/RWMol.h>
@@ -2527,6 +2528,19 @@ void MolModel::removeExplicitHsCommandFunc(
         }
     }
     m_selected_bond_tags = new_bond_selection;
+}
+
+void MolModel::aromatize()
+{
+    auto set_aromaticity = [this]() { RDKit::MolOps::setAromaticity(m_mol); };
+    doCommandUsingSnapshots(set_aromaticity, "Aromatize",
+                            WhatChanged::MOLECULE);
+}
+
+void MolModel::kekulize()
+{
+    auto kekulize = [this]() { RDKit::MolOps::KekulizeIfPossible(m_mol); };
+    doCommandUsingSnapshots(kekulize, "Kekulize", WhatChanged::MOLECULE);
 }
 
 } // namespace sketcher

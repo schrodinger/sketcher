@@ -3352,5 +3352,44 @@ $$$$
     BOOST_TEST(num_stereo_bonds == expected.size());
 }
 
+BOOST_AUTO_TEST_CASE(test_aromatize)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    const std::string smiles = "C1=CC=CC=C1";
+    const std::string aromatized_smiles = "c1ccccc1";
+
+    import_mol_text(&model, smiles);
+    model.aromatize();
+
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == aromatized_smiles);
+
+    undo_stack.undo();
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == smiles);
+
+    undo_stack.redo();
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == aromatized_smiles);
+}
+
+BOOST_AUTO_TEST_CASE(test_kekulize)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    const std::string smiles = "c1ccccc1";
+    const std::string kekulized_smiles = "C1=CC=CC=C1";
+
+    import_mol_text(&model, smiles);
+    model.kekulize();
+
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == kekulized_smiles);
+
+    undo_stack.undo();
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == smiles);
+
+    undo_stack.redo();
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == kekulized_smiles);
+}
 } // namespace sketcher
 } // namespace schrodinger

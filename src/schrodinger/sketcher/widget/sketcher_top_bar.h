@@ -65,7 +65,8 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     void pasteRequested();
     void flipHorizontalRequested();
     void flipVerticalRequested();
-    void aromatizeRequested(bool aromatize);
+    void aromatizeRequested();
+    void kekulizeRequested();
     void addExplicitHydrogensRequested();
     void removeExplicitHydrogensRequested();
     void addCustomFragmentRequested(const std::string& text);

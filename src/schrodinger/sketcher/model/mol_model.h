@@ -788,6 +788,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                       SubgroupType subgroup_type, RepeatPattern repeat_pattern,
                       std::string polymer_label);
 
+    /**
+     * Undoably set aromaticity for the molecule
+     */
+    void aromatize();
+
+    /**
+     * Undoably kekulize the molecule
+     */
+    void kekulize();
+
   signals:
 
     /**

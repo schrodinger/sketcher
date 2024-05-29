@@ -93,6 +93,10 @@ void SketcherTopBar::initMenus()
     connect(m_more_actions_menu->m_add_explicit_hydrogens_act,
             &QAction::triggered, this,
             &SketcherTopBar::addExplicitHydrogensRequested);
+    connect(m_more_actions_menu->m_aromatize_act, &QAction::triggered, this,
+            &SketcherTopBar::aromatizeRequested);
+    connect(m_more_actions_menu->m_kekulize_act, &QAction::triggered, this,
+            &SketcherTopBar::kekulizeRequested);
     connect(m_more_actions_menu->m_remove_explicit_hydrogens_act,
             &QAction::triggered, this,
             &SketcherTopBar::removeExplicitHydrogensRequested);
@@ -119,9 +123,6 @@ void SketcherTopBar::initMenus()
     for (auto action :
          {// TODO: SKETCH-1013
           m_more_actions_menu->m_expand_selection_menu->menuAction(),
-          // TODO: SKETCH-951
-          m_more_actions_menu->m_aromatize_act,
-          m_more_actions_menu->m_kekulize_act,
           // TODO: SKETCH-1015
           m_more_actions_menu->m_add_custom_fragment_act,
           // TODO: SKETCH-1017
