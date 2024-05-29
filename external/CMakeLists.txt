@@ -6,18 +6,23 @@ project(schrodinger_sketcher_external)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if(MSVC)
-  # Workaround until boost 1.83 which fixes the issue with std::unary_function
-  add_definitions(-D_HAS_AUTO_PTR_ETC=0)
-endif()
-
 # Collect dependency versions
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
 string(JSON BOOST_VERSION GET ${VERSIONS} boost)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)
 string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+
+# Ensure args passed to ExternalProject_Add's CMAKE_ARGS support semicolons
+function(set_cmake_arg VAR_NAME)
+  set(CMAKE_ARG ${ARGN})
+  string(REPLACE ";" "$<SEMICOLON>" CMAKE_ARG "${CMAKE_ARG}")
+  set(${VAR_NAME}
+      "${CMAKE_ARG}"
+      PARENT_SCOPE)
+endfunction()
 
 ExternalProject_Add(
   fmt
@@ -27,6 +32,17 @@ ExternalProject_Add(
   CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fmt-${FMT_VERSION}
     -DCMAKE_BUILD_TYPE=Release -DFMT_DOC=OFF -DFMT_TEST=OFF -DFMT_INSTALL=ON)
+
+ExternalProject_Add(
+  zlib
+  GIT_REPOSITORY https://github.com/madler/zlib.git
+  GIT_TAG v${ZLIB_VERSION}
+  GIT_SHALLOW TRUE
+  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
+  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+    -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF)
 
 ExternalProject_Add(
   zstd
@@ -39,26 +55,28 @@ ExternalProject_Add(
     -DCMAKE_BUILD_TYPE=Release -DZSTD_BUILD_SHARED=OFF
     -DZSTD_BUILD_PROGRAMS=OFF)
 
-set(BOOST_INCLUDE_LIBS
-    # RDKit required libraries
-    assign
-    crc
-    format
-    flyweight
-    graph
-    iostreams
-    json
-    multi_array
-    multiprecision
-    program_options
-    serialization
-    # rdkit_extensions required libraries
-    beast
-    bimap
-    filesystem
-    test)
-# Use generator expression to sidestep CMAKE_ARGS removing semicolons
-string(REPLACE ";" "$<SEMICOLON>" BOOST_INCLUDE_LIBS "${BOOST_INCLUDE_LIBS}")
+set_cmake_arg(
+  BOOST_INCLUDE_LIBS
+  # RDKit required libraries
+  assign
+  crc
+  format
+  flyweight
+  graph
+  iostreams
+  json
+  multi_array
+  multiprecision
+  program_options
+  serialization
+  # rdkit_extensions required libraries
+  beast
+  bimap
+  filesystem
+  test)
+set_cmake_arg(
+  BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+  ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 ExternalProject_Add(
   boost
   GIT_REPOSITORY https://github.com/boostorg/boost.git
@@ -66,10 +84,17 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
-    -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-    -DBOOST_INCLUDE_LIBRARIES=${BOOST_INCLUDE_LIBS})
+    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_PREFIX_PATH=${BOOST_CMAKE_PREFIX}
+    -DBUILD_SHARED_LIBS=OFF
+    -DBOOST_INCLUDE_LIBRARIES=${BOOST_INCLUDE_LIBS}
+    -DBOOST_RUNTIME_LINK=static
+    -DBOOST_IOSTREAMS_ENABLE_BZIP2=OFF)
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
+set_cmake_arg(
+  RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
+  ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
 ExternalProject_Add(
   rdkit
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
@@ -80,7 +105,7 @@ ExternalProject_Add(
   CMAKE_ARGS
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
     -DCMAKE_BUILD_TYPE=Release
-    -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
+    -DCMAKE_PREFIX_PATH=${RDKIT_CMAKE_PREFIX}
     -DBUILD_SHARED_LIBS=OFF
     -DBoost_USE_STATIC_LIBS=ON
     -DRDK_BUILD_CPP_TESTS=OFF
@@ -97,19 +122,18 @@ ExternalProject_Add(
     -DRDK_OPTIMIZE_POPCNT=OFF
     -DRDK_USE_BOOST_STACKTRACE=OFF)
 
+set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
 ExternalProject_Add(
   qt
   GIT_REPOSITORY https://github.com/qt/qt5.git
-  GIT_TAG v${QT_VERSION}-lts-lgpl
+  GIT_TAG v${QT_VERSION}
   GIT_SUBMODULES qtbase qtsvg
   GIT_SHALLOW TRUE
-  PATCH_COMMAND cd qtsvg && git apply ${CMAKE_CURRENT_SOURCE_DIR}/qtsvg.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}
              -DCMAKE_BUILD_TYPE=Release
              -DBUILD_SHARED_LIBS=OFF
              -DQT_BUILD_EXAMPLES=OFF
-             -DQT_BUILD_SUBMODULES=qtbase$<SEMICOLON>qtsvg
+             -DQT_BUILD_SUBMODULES=${QT_SUBMODULES}
              -DQT_BUILD_TESTS=OFF
              -DQT_FEATURE_brotli=OFF
              -DQT_FEATURE_sql=OFF
