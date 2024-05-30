@@ -2294,6 +2294,11 @@ void MolModel::addReactionCommandFunc(const RDKit::ChemicalReaction& reaction)
     mols_to_add.insert(mols_to_add.end(), products_it.begin(),
                        products_it.end());
 
+    // Ensure all extracted mols are properly initialized
+    for (auto mol : mols_to_add) {
+        mol->updatePropertyCache(false);
+    }
+
     // insert the first molecule without drawing anything before it
     auto first_reaction_mol = mols_to_add[0];
     if (!m_mol.getNumAtoms()) {
