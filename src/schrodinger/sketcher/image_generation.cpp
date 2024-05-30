@@ -58,7 +58,7 @@ template <typename T> class asKeyValue
  * Helper function to inject line colors data from the given RenderOptions into
  * the given MolModel
  */
-[[maybe_unused]] void setLineColors(MolModel& model, const RenderOptions& opts)
+void setLineColors(MolModel& model, const RenderOptions& opts)
 {
     auto mol = model.getMol();
     // clear all line colors
@@ -82,8 +82,7 @@ template <typename T> class asKeyValue
  * Helper function to inject halo highlighting data from the given RenderOptions
  * into the given MolModel
  */
-[[maybe_unused]] void setHaloHighlightings(MolModel& model,
-                                           const RenderOptions& opts)
+void setHaloHighlightings(MolModel& model, const RenderOptions& opts)
 {
     model.clearHaloHighlighting();
     std::unordered_map<
@@ -105,7 +104,7 @@ template <typename T> class asKeyValue
  * Helper function to inject atom labels data from the given RenderOptions into
  * the given MolModel
  */
-[[maybe_unused]] void setAtomLabels(MolModel& model, const RenderOptions& opts)
+void setAtomLabels(MolModel& model, const RenderOptions& opts)
 {
     auto mol = model.getMol();
     for (auto [index, text] : asKeyValue(opts.rdatom_index_to_label)) {
@@ -361,6 +360,52 @@ QByteArray get_image_bytes(QGraphicsScene& scene, ImageFormat format,
                            const RenderOptions& opts)
 {
     return get_image_bytes<QGraphicsScene>(scene, format, opts);
+}
+
+namespace
+{
+void add_to_molmodel(MolModel* mol_model, const RDKit::ROMol& rdmol)
+{
+    mol_model->addMol(rdmol);
+}
+
+void add_to_molmodel(MolModel* mol_model, const RDKit::ChemicalReaction& rxn)
+{
+    mol_model->addReaction(rxn);
+}
+
+template <typename T>
+QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
+                                      const RenderOptions& opts)
+{
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    SketcherModel sketcher_model;
+    Scene scene(&mol_model, &sketcher_model);
+
+    add_to_molmodel(&mol_model, input);
+    setLineColors(mol_model, opts);
+    setHaloHighlightings(mol_model, opts);
+    setAtomLabels(mol_model, opts);
+    sketcher_model.loadRenderOptions(opts);
+
+    return get_image_bytes<QGraphicsScene>(scene, format, opts);
+}
+} // namespace
+
+QByteArray get_LiveDesign_image_bytes(const RDKit::ROMol& mol,
+                                      ImageFormat format,
+                                      const RenderOptions& opts)
+{
+    return get_LiveDesign_image_bytes<RDKit::ROMol>(mol, format, opts);
+}
+
+QByteArray get_LiveDesign_image_bytes(const RDKit::ChemicalReaction& rxn,
+                                      ImageFormat format,
+                                      const RenderOptions& opts)
+{
+    return get_LiveDesign_image_bytes<RDKit::ChemicalReaction>(rxn, format,
+                                                               opts);
 }
 
 void save_image_file(const RDKit::ROMol& mol, const std::string& filename,

@@ -25,6 +25,8 @@ namespace schrodinger
 namespace sketcher
 {
 
+struct RenderOptions;
+
 /**
  * Whether to the entire scene or a selection subset should be used
  */
@@ -428,6 +430,11 @@ class SKETCHER_API SketcherModel : public QObject
     const AtomDisplaySettings* getAtomDisplaySettingsPtr() const;
     const BondDisplaySettings* getBondDisplaySettingsPtr() const;
     void setAtomDisplaySettings(const AtomDisplaySettings& settings);
+
+    /**
+     * @param opts render options to load into the model
+     */
+    void loadRenderOptions(const RenderOptions& opts);
 
   signals:
     void valuePinged(ModelKey key, QVariant value);

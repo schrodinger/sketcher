@@ -6,6 +6,7 @@
 #include <QPointF>
 #include <rdkit/GraphMol/Atom.h>
 
+#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
@@ -327,6 +328,19 @@ void SketcherModel::setAtomDisplaySettings(
 {
     m_atom_display_settings = atom_display_settings;
     emit displaySettingsChanged();
+}
+
+void SketcherModel::loadRenderOptions(const RenderOptions& opts)
+{
+    AtomDisplaySettings display_settings(m_atom_display_settings);
+    display_settings.m_carbon_labels =
+        (opts.show_terminal_methyls ? CarbonLabels::TERMINAL
+                                    : CarbonLabels::NONE);
+    display_settings.m_explicit_abs_labels_shown =
+        opts.show_absolute_stereo_groups;
+    display_settings.m_show_simplified_stereo_annotation =
+        opts.show_simplified_stereo_annotation;
+    setAtomDisplaySettings(display_settings);
 }
 
 const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const

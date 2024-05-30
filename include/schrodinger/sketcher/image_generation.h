@@ -41,27 +41,23 @@ const qreal AUTOSCALE = -1.0;
 struct RenderOptions {
     QSize width_height = QSize(400, 400);
     QColor background_color = Qt::transparent;
-    /**
-     * The scale used to size the molecule to width_height.  If < 0, the
-     * molecule will be scaled automatically to fill the space.  If the scale is
-     * too large for the current molecule (i.e if it would make the image larger
-     * than width_height), then it will be ignored and auto scaling will be used
-     * instead.
-     */
+    // The scale used to size the molecule to width_height.  If < 0, the
+    // molecule will be scaled automatically to fill the space.  If the scale is
+    // too large for the current molecule (i.e if it would make the image larger
+    // than width_height), then it will be ignored and auto scaling will be used
+    // instead.
     qreal scale = AUTOSCALE;
-    /**
-     * User annotations and colorings based on atom and bond indices.
-     * Bonds between haloed atoms will not be haloed unless separately
-     * specified. Bonds lines between atoms will have split color based
-     * on the line color of connected atoms, unless bond line coloring is
-     * separately specified.
-     */
+    // User annotations and colorings based on atom and bond indices.
+    // Bonds between haloed atoms will not be haloed unless separately
+    // specified. Bonds lines between atoms will have split color based
+    // on the line color of connected atoms, unless bond line coloring is
+    // separately specified.
     QHash<int, std::string> rdatom_index_to_label;
     QHash<int, QColor> rdatom_index_to_halo_color;
     QHash<int, QColor> rdbond_index_to_halo_color;
     QHash<int, QColor> rdatom_index_to_line_color;
     QHash<int, QColor> rdbond_index_to_line_color;
-    // TODO: incorporate both RendererSettings and additional LiveDesign options
+    // Molecular rendering options
     bool show_terminal_methyls = false;
     bool show_stereo_annotations = false;
     bool show_absolute_stereo_groups = false;
@@ -112,6 +108,14 @@ get_image_bytes(const std::string& text, ImageFormat format,
 SKETCHER_API QByteArray
 get_image_bytes(QGraphicsScene& scene, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
+
+// FIXME: Remove this once image_generation is fully switched over to molviewer
+SKETCHER_API QByteArray
+get_LiveDesign_image_bytes(const RDKit::ROMol& mol, ImageFormat format,
+                           const RenderOptions& opts = RenderOptions());
+SKETCHER_API QByteArray get_LiveDesign_image_bytes(
+    const RDKit::ChemicalReaction& rxn, ImageFormat format,
+    const RenderOptions& opts = RenderOptions());
 
 /**
  * @param mol/rxn/text molecule to render
