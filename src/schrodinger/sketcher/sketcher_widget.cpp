@@ -144,8 +144,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connectContextMenu(*m_sgroup_context_menu);
     connectContextMenu(*m_background_context_menu);
 
-    setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
-
     // Set up the watermark
     m_watermark_item = new QGraphicsPixmapItem();
     m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
@@ -162,8 +160,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_scene->requestCursorHintUpdate();
 
     // Update stylesheet and fonts
-    setStyleSheet(schrodinger::sketcher::TOOL_BUTTON_STYLE +
-                  schrodinger::sketcher::GENERAL_STYLE);
+    setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
     QFontDatabase::addApplicationFont(":resources/fonts/Arial.ttf");
     QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold.ttf");
     QFontDatabase::addApplicationFont(":resources/fonts/Arial_Italic.ttf");

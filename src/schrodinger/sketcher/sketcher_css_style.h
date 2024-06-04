@@ -9,21 +9,14 @@ namespace schrodinger
 namespace sketcher
 {
 
-const QString GENERAL_STYLE{
-    "QMainWindow { background-color: white; }"
-    "schrodinger--sketcher--ModularPopup { background-color: white; }"};
-
-const QString TOOL_BUTTON_STYLE{
+const QString SKETCHER_WIDGET_STYLE{
+    "schrodinger--sketcher--SketcherWidget { background-color: white; }"
+    "schrodinger--sketcher--View { background: transparent; }"
+    "schrodinger--sketcher--ModularPopup { background-color: white; }"
     "QToolButton { border: none; }"
     "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:checked { background-color: #d4e6f1; }"
     "QToolButton:hover:!checked { background-color: #edf7fc; }"};
-
-const QString SKETCHER_WIDGET_STYLE{
-    "schrodinger--sketcher--SketcherWidget { background-color: white; }"
-    "schrodinger--sketcher--View { background: transparent; }"
-    "schrodinger--sketcher--ModularPopup { background-color: white; }" +
-    TOOL_BUTTON_STYLE};
 
 const QString SELECTION_ACTIVE_STYLE{
     "QWidget { background-color: #f3f6f0; }"
