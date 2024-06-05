@@ -141,6 +141,12 @@ std::pair<QLineF, QPointF> SGroupItem::getPositionsForLabels() const
 {
     // find the bracket that has the point with the highest x
     auto brackets = m_sgroup.getBrackets();
+    // DAT substance groups on CG mols have no brackets since they apply to the
+    // entire structure
+    if (brackets.size() == 0) {
+        return {QLineF(), QPointF()};
+    }
+
     typedef std::array<RDGeom::Point3D, 3> Bracket;
     auto rightmost_x = [](const Bracket& bracket) {
         return std::max(bracket[0].x, bracket[1].x);
