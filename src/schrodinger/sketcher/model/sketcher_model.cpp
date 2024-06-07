@@ -303,6 +303,15 @@ void SketcherModel::onSelectionChanged()
     }
 }
 
+bool SketcherModel::allItemsSelected() const
+{
+    auto selection = getSelection();
+    auto contents = getInteractiveItems();
+    return std::unordered_set<QGraphicsItem*>{selection.begin(),
+                                              selection.end()} ==
+           std::unordered_set<QGraphicsItem*>{contents.begin(), contents.end()};
+}
+
 void SketcherModel::onInteractiveItemsChanged()
 {
     if (!sceneIsEmpty()) {

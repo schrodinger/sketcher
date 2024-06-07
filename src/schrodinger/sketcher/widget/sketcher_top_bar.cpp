@@ -176,6 +176,8 @@ void SketcherTopBar::updateWidgetsEnabled()
                      m_more_actions_menu->m_fit_to_screen_act}) {
         act->setEnabled(scene_has_contents);
     }
+    m_more_actions_menu->m_select_all_act->setEnabled(
+        scene_has_contents && !model->allItemsSelected());
 
     ui->clear_btn->setDisabled(!scene_has_contents);
 }

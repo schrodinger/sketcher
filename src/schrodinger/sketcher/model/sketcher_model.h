@@ -407,6 +407,11 @@ class SKETCHER_API SketcherModel : public QObject
     virtual bool hasNonMolecularObjectSelection() const;
 
     /**
+     * @return Whether all items in the scene are selected.
+     */
+    bool allItemsSelected() const;
+
+    /**
      * @return all interactive graphics items in the scene.
      */
     QList<QGraphicsItem*> getInteractiveItems() const;

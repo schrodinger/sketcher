@@ -100,13 +100,9 @@ void CutCopyActionManager::updateActions()
     // and 2) if a selection is to be exported, everything must be selected
     bool show_reaction = m_sketcher_model->hasReaction();
     if (show_reaction && export_selection) {
-        auto selection = m_sketcher_model->getSelection();
-        auto contents = m_sketcher_model->getInteractiveItems();
-        show_reaction = std::unordered_set<QGraphicsItem*>{selection.begin(),
-                                                           selection.end()} ==
-                        std::unordered_set<QGraphicsItem*>{contents.begin(),
-                                                           contents.end()};
+        show_reaction = m_sketcher_model->allItemsSelected();
     }
+
     for (auto act : m_copy_as_menu->actions()) {
         act->setVisible(act->data().toBool() == show_reaction);
     }

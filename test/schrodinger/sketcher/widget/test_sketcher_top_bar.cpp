@@ -193,12 +193,12 @@ BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
     BOOST_CHECK_EQUAL(select_all_spy.count(), 1);
 
     scene.selectAll();
-    BOOST_CHECK_EQUAL(menu->m_select_all_act->isEnabled(), true);
+    BOOST_CHECK_EQUAL(menu->m_select_all_act->isEnabled(), false);
     BOOST_CHECK_EQUAL(menu->m_clear_selection_act->isEnabled(), true);
     BOOST_CHECK_EQUAL(top_bar.handleShortcutAction(clear_all_seq), true);
     BOOST_CHECK_EQUAL(clear_spy.count(), 1);
     BOOST_CHECK_EQUAL(top_bar.handleShortcutAction(select_all_seq), true);
-    BOOST_CHECK_EQUAL(select_all_spy.count(), 2);
+    BOOST_CHECK_EQUAL(select_all_spy.count(), 1);
 
     QKeySequence undo_seq{Qt::CTRL | Qt::Key_Z};
     QSignalSpy undo_spy{&top_bar, &SketcherTopBar::undoRequested};

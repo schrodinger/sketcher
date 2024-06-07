@@ -60,7 +60,7 @@ void SelectOptionsWidget::updateWidgetsEnabled()
                              model->hasNonMolecularObjectSelection();
     ui->move_rotate_btn->setEnabled(has_contents && movable_selection);
 
-    ui->select_all_btn->setEnabled(has_contents);
+    ui->select_all_btn->setEnabled(has_contents && !model->allItemsSelected());
     ui->clear_selection_btn->setEnabled(has_selection);
     ui->invert_selection_btn->setEnabled(has_selection);
 
