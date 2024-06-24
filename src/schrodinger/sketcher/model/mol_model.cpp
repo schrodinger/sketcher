@@ -366,21 +366,27 @@ void MolModel::clearHaloHighlighting()
     m_highlighting_info.clear();
 }
 
-void MolModel::addHaloHighlighting(const std::unordered_set<int>& atom_indices,
-                                   const std::unordered_set<int>& bond_indices,
-                                   const QColor& color)
+void MolModel::addHaloHighlighting(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::unordered_set<const RDKit::Bond*>& bonds, const QColor& color)
 {
-    // translate indices to tags
-    std::unordered_set<AtomTag> atoms;
-    std::unordered_set<BondTag> bonds;
-    for (auto atom_idx : atom_indices) {
-        atoms.insert(getTagForAtom(m_mol.getAtomWithIdx(atom_idx)));
+    std::unordered_set<AtomTag> atom_tags;
+    std::unordered_set<BondTag> bond_tags;
+    for (auto atom : atoms) {
+        atom_tags.insert(getTagForAtom(atom));
     }
-    for (auto bond_idx : bond_indices) {
-        bonds.insert(getTagForBond(m_mol.getBondWithIdx(bond_idx)));
+    for (auto bond : bonds) {
+        bond_tags.insert(getTagForBond(bond));
     }
-
-    m_highlighting_info.push_back(HighlightingInfo(atoms, bonds, color));
+    // we need to add the highlighting info in a command so that the scene can
+    // properly update itself (molmodel signals are only emitted when a command
+    // is executed)
+    doCommandUsingSnapshots(
+        [this, atom_tags, bond_tags, color]() {
+            m_highlighting_info.push_back(
+                HighlightingInfo(atom_tags, bond_tags, color));
+        },
+        "Add halo highlighting", WhatChanged::NON_MOL_OBJS);
 }
 
 bool MolModel::hasReactionArrow() const
