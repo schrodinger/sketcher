@@ -221,9 +221,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bonds bonds to highlight
      * @param color color to highlight with
      */
-    void addHaloHighlighting(const std::unordered_set<int>& atoms,
-                             const std::unordered_set<int>& bonds,
-                             const QColor& color);
+    void
+    addHaloHighlighting(const std::unordered_set<const RDKit::Atom*>& atoms,
+                        const std::unordered_set<const RDKit::Bond*>& bonds,
+                        const QColor& color);
 
     /**
      * @return A set of all currently selected atoms

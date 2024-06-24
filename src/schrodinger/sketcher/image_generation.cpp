@@ -85,17 +85,22 @@ void setLineColors(MolModel& model, const RenderOptions& opts)
 void setHaloHighlightings(MolModel& model, const RenderOptions& opts)
 {
     model.clearHaloHighlighting();
-    std::unordered_map<
-        QColor, std::pair<std::unordered_set<int>, std::unordered_set<int>>>
-        color_to_indices;
+    std::unordered_map<QColor,
+                       std::pair<std::unordered_set<const RDKit::Atom*>,
+                                 std::unordered_set<const RDKit::Bond*>>>
+        color_to_atoms_and_bonds;
+    auto mol = model.getMol();
     for (auto [index, color] : asKeyValue(opts.rdatom_index_to_halo_color)) {
-        color_to_indices[color].first.insert(index);
+        color_to_atoms_and_bonds[color].first.insert(
+            mol->getAtomWithIdx(index));
     }
     for (auto [index, color] : asKeyValue(opts.rdbond_index_to_halo_color)) {
-        color_to_indices[color].second.insert(index);
+        color_to_atoms_and_bonds[color].second.insert(
+            mol->getBondWithIdx(index));
     }
-    for (const auto& [color, indices] : color_to_indices) {
-        model.addHaloHighlighting(indices.first, indices.second, color);
+    for (const auto& [color, atoms_and_bonds] : color_to_atoms_and_bonds) {
+        model.addHaloHighlighting(atoms_and_bonds.first, atoms_and_bonds.second,
+                                  color);
     }
 }
 
