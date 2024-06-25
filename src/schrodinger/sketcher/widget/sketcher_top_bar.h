@@ -47,6 +47,8 @@ class SKETCHER_API SketcherTopBar : public SketcherView
      */
     bool handleShortcutAction(const QKeySequence& key_seq);
 
+    MoreActionsMenu* m_more_actions_menu = nullptr;
+
   signals:
     void clearSketcherRequested();
     void importTextRequested(const std::string& text,
@@ -77,7 +79,6 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     std::unique_ptr<Ui::SketcherTopBar> ui;
     ImportMenu* m_import_menu = nullptr;
     ExportMenu* m_export_menu = nullptr;
-    MoreActionsMenu* m_more_actions_menu = nullptr;
     ConfigureViewMenu* m_configure_view_menu = nullptr;
     HelpMenu* m_help_menu = nullptr;
 
