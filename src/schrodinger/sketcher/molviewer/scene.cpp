@@ -330,6 +330,11 @@ void Scene::onDisplaySettingsChanged()
     // DrawFragmentSceneTool is active.  That way, it can inherit the updated
     // settings.
     updateSceneTool();
+
+    // refresh the scene's items in case something changed: e.g. when valence
+    // errors are hidden on a C the label disappears and all bonds need to be
+    // updated
+    updateItems(WhatChanged::MOLECULE);
 }
 
 void Scene::updateSelectionHighlighting()
