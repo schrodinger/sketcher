@@ -1670,9 +1670,22 @@ void MolModel::mutateAtoms(
     const std::unordered_set<const RDKit::Atom*>& from_atoms,
     const RDKit::Atom& to_atom)
 {
-    auto create_atom = [to_atom]() {
-        return std::make_shared<RDKit::Atom>(to_atom);
-    };
+    AtomFunc create_atom;
+    if (to_atom.hasQuery()) {
+        // the query would get stripped if we implicitly copied an Atom
+        // reference to a QueryAtom instance, so we first have to cast to a
+        // QueryAtom before passing the atom into the lambda, and the lambda has
+        // to explicitly create a QueryAtom, not an Atom
+        auto* query_atom_ptr = static_cast<const RDKit::QueryAtom*>(&to_atom);
+        auto query_atom = RDKit::QueryAtom(*query_atom_ptr);
+        create_atom = [query_atom]() {
+            return std::make_shared<RDKit::QueryAtom>(query_atom);
+        };
+    } else {
+        create_atom = [to_atom]() {
+            return std::make_shared<RDKit::Atom>(to_atom);
+        };
+    }
     mutateAtoms(from_atoms, create_atom);
 }
 
