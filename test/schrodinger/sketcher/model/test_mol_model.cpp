@@ -1729,36 +1729,6 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsRadicalElectrons)
     BOOST_TEST(get_mol_text(&model, Format::EXTENDED_SMILES) == "[CH2] |^2:0|");
 }
 
-/**
- * Make sure that we can mutate atoms to and from a query
- */
-BOOST_AUTO_TEST_CASE(test_mutateAtomsQuery)
-{
-    QUndoStack undo_stack;
-    TestMolModel model(&undo_stack);
-    import_mol_text(&model, "C");
-    auto* mol = model.getMol();
-    auto* c_atom = mol->getAtomWithIdx(0);
-    BOOST_TEST(!c_atom->hasQuery());
-    auto query_atom = RDKit::QueryAtom(7);
-    query_atom.setQuery(RDKit::makeAtomFormalChargeQuery(5));
-    BOOST_TEST(query_atom.hasQuery());
-    BOOST_TEST(query_atom.getQuery()->getDescription() == "AtomFormalCharge");
-    model.mutateAtoms({c_atom}, query_atom);
-
-    auto* query_atom_from_model = mol->getAtomWithIdx(0);
-    BOOST_TEST(query_atom_from_model->hasQuery());
-    auto* query = query_atom_from_model->getQuery();
-    BOOST_TEST(query->getDescription() == "AtomFormalCharge");
-    BOOST_TEST(dynamic_cast<const RDKit::ATOM_EQUALS_QUERY*>(query)->getVal() ==
-               5);
-
-    undo_stack.undo();
-    BOOST_TEST(!mol->getAtomWithIdx(0)->hasQuery());
-    undo_stack.redo();
-    BOOST_TEST(mol->getAtomWithIdx(0)->hasQuery());
-}
-
 BOOST_AUTO_TEST_CASE(test_mutateBond)
 {
     QUndoStack undo_stack;

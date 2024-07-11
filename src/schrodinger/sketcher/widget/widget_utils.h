@@ -1,7 +1,5 @@
 #pragma once
 
-#include <QComboBox>
-
 #include "schrodinger/sketcher/definitions.h"
 
 class QAbstractButton;
@@ -25,19 +23,6 @@ namespace sketcher
  */
 void SKETCHER_API check_button_or_uncheck_group(QAbstractButton* button,
                                                 QButtonGroup* group);
-
-/**
- * Switch the combo box to the entry with the specified Qt.UserRole data
- *
- * Note that this method is intentionally defined in the header so that the
- * template can be specialized in other files.
- */
-template <typename T>
-static void set_combo_box_data(QComboBox* const combo, T data)
-{
-    auto variant = QVariant::fromValue(data);
-    combo->setCurrentIndex(combo->findData(variant));
-};
 
 } // namespace sketcher
 } // namespace schrodinger

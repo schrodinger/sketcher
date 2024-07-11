@@ -3,7 +3,7 @@
  --------------------------------------------------------------------------- */
 
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE edit_atom_properties_deprecated
+#define BOOST_TEST_MODULE edit_atom_properties
 
 #include <QPushButton>
 #include <QSignalSpy>
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(read_and_write_atom_info)
     BOOST_TEST(c_atom->getRDKAtom() != nullptr);
 
     // Verify that we can assign stereo properties on the atom itself
-    ::EnhancedStereo exp_enhanced_stereo{::EnhancedStereoType::AND, 1};
+    EnhancedStereo exp_enhanced_stereo{::EnhancedStereoType::AND, 1};
     c_atom->setEnhancedStereo(exp_enhanced_stereo);
     auto enhanced_stereo = c_atom->getEnhancedStereo();
     BOOST_TEST(enhanced_stereo.type == exp_enhanced_stereo.type);

@@ -73,23 +73,11 @@ class SKETCHER_API EditAtomPropertiesDialog : public ModalDialog
     void reset();
 
     /**
-     * Replace the dark gray icon used for the clear button for all line edits
-     * in the dialog with a light gray version
-     */
-    void changeAllLineEditClearButtonIcons();
-
-    /**
      * Get the atom properties that are currently set in the dialog
-     * @throw InvalidAtomPropertyError if the user has entered an invalid
-     * element
+     *
+     * @throw InvalidElementError if the user has entered an invalid element
      */
     std::shared_ptr<AbstractAtomProperties> getDialogSettings() const;
-
-    /**
-     * Get the SMARTS query entered by the user
-     * @throw InvalidAtomPropertyError if the SMARTS query cannot be parsed
-     */
-    std::string getSmartsQuery() const;
 
     /**
      * Load the specified atom or atom query properties into the dialog
@@ -183,7 +171,7 @@ class SKETCHER_API EditAtomPropertiesDialog : public ModalDialog
  * A validator for line edits used to enter atomic symbols. The validator only
  * allows letters to be entered (as well as space and comma when allow_list is
  * true), and only reports the input as acceptable if it specifies real
- * elements. (E.g., "C" is acceptable input, "Qz" is not.)
+ * elements.  (E.g., "C" is acceptable input, "Qz" is not.)
  */
 class ElementValidator : public QValidator
 {
@@ -201,10 +189,9 @@ class ElementValidator : public QValidator
 };
 
 /**
- * An exception thrown when the user enters an invalid value for a property
- * (e.g. an atomic symbol that doesn't correspond to any element)
+ * An exception thrown when the user enters an invalid atomic symbol
  */
-class InvalidAtomPropertyError : public std::runtime_error
+class InvalidElementError : public std::runtime_error
 {
   public:
     using std::runtime_error::runtime_error;

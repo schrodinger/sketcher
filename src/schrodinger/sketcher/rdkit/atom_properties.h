@@ -1,11 +1,8 @@
 #pragma once
-#include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
-
-#include <rdkit/GraphMol/StereoGroup.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -29,6 +26,8 @@ enum class QueryType {
     RGROUP,
 };
 
+enum class EnhancedStereoType { ABS, AND, OR };
+
 enum class QueryAromaticity {
     ANY,
     AROMATIC,
@@ -42,39 +41,19 @@ enum class QueryCount {
 };
 
 /**
- * A data class for storing an atom's enhanced stereo data
- */
-struct EnhancedStereo {
-    RDKit::StereoGroupType type = RDKit::StereoGroupType::STEREO_ABSOLUTE;
-    unsigned int group_id = 1;
-
-    bool operator==(const EnhancedStereo& other) const;
-    bool operator!=(const EnhancedStereo& other) const;
-};
-
-/**
  * A data class representing atom properties that can be specified in the Edit
  * Atom Properties dialog
  */
 struct SKETCHER_API AbstractAtomProperties {
     Element element = Element::C;
     std::optional<unsigned int> isotope = std::nullopt;
-    std::optional<EnhancedStereo> enhanced_stereo = std::nullopt;
+    std::optional<EnhancedStereoType> enhanced_stereo_type = std::nullopt;
+    unsigned int enhanced_stereo_group_id = 0;
 
     virtual ~AbstractAtomProperties() = default;
     virtual bool isQuery() const = 0;
     bool operator==(const AbstractAtomProperties& other) const;
-    bool operator!=(const AbstractAtomProperties& other) const;
-    friend SKETCHER_API std::ostream&
-    operator<<(std::ostream& os, const AbstractAtomProperties& props);
 };
-
-/**
- * Print out all contents of an atom properties object. This output is
- * primarily intended for debugging use, not for displaying to the user.
- */
-SKETCHER_API std::ostream& operator<<(std::ostream& os,
-                                      const AbstractAtomProperties& props);
 
 /**
  * Atom properties that can be specified in the atom (i.e. non-query) page of
@@ -126,7 +105,7 @@ read_properties_from_atom(const RDKit::Atom* const atom);
 /**
  * @return a new atom with the specified properties
  */
-SKETCHER_API std::shared_ptr<RDKit::Atom> create_atom_with_properties(
+SKETCHER_API RDKit::Atom create_atom_with_properties(
     const std::shared_ptr<AbstractAtomProperties> properties);
 
 } // namespace sketcher

@@ -7,7 +7,7 @@
 #include <QStyle>
 #include <QToolButton>
 
-#include <schrodinger/sketcher/molviewer/constants.h>
+#include <iostream>
 
 namespace schrodinger
 {
@@ -35,8 +35,9 @@ BlankableSpinBox::BlankableSpinBox(QWidget* parent) : QSpinBox(parent)
 {
     setButtonSymbols(QSpinBox::NoButtons);
 
+    auto clear_icon = style()->standardIcon(QStyle::SP_LineEditClearButton);
     m_clear_btn = new QToolButton(this);
-    m_clear_btn->setIcon(QIcon(LINE_EDIT_CLEAR_ICON_PATH));
+    m_clear_btn->setIcon(clear_icon);
     m_clear_btn->setCursor(Qt::ArrowCursor);
     m_clear_btn->setStyleSheet("QToolButton { border: none; padding: 0px; }");
     updateClearButtonVisibility();

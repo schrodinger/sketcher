@@ -301,9 +301,6 @@ const unsigned int MAX_QUERY_RING_COUNT = 99;
 const unsigned int MAX_QUERY_RING_BOND_COUNT = 99;
 const unsigned int MAX_QUERY_SMALLEST_RING_SIZE = 999;
 
-// the icon to use for the clear button on line edits and BlankableSpinBoxes
-const QString LINE_EDIT_CLEAR_ICON_PATH = ":icons/clear_line_edit.png";
-
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
