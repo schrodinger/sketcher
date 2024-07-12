@@ -7,6 +7,7 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/StereoGroup.h>
 
 #include <QProxyStyle>
 #include <QPushButton>
@@ -20,8 +21,9 @@
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
 #include "schrodinger/sketcher/widget/periodic_table_widget.h"
 #include "schrodinger/sketcher/widget/blankable_spin_box.h"
+#include "schrodinger/sketcher/widget/widget_utils.h"
 
-Q_DECLARE_METATYPE(schrodinger::sketcher::EnhancedStereoType);
+Q_DECLARE_METATYPE(RDKit::StereoGroupType);
 Q_DECLARE_METATYPE(schrodinger::sketcher::QueryType);
 Q_DECLARE_METATYPE(schrodinger::sketcher::AtomQuery);
 Q_DECLARE_METATYPE(schrodinger::sketcher::QueryAromaticity);
@@ -34,10 +36,11 @@ namespace sketcher
 
 // these constants define the display text and the Qt.UserRole data for all
 // combo boxes in the dialog
-const std::vector<std::pair<QString, EnhancedStereoType>> STEREO_COMBO_DATA = {
-    {"ABS", EnhancedStereoType::ABS},
-    {"AND", EnhancedStereoType::AND},
-    {"OR", EnhancedStereoType::OR},
+const std::vector<std::pair<QString, RDKit::StereoGroupType>>
+    STEREO_COMBO_DATA = {
+        {"ABS", RDKit::StereoGroupType::STEREO_ABSOLUTE},
+        {"AND", RDKit::StereoGroupType::STEREO_AND},
+        {"OR", RDKit::StereoGroupType::STEREO_OR},
 };
 
 const std::vector<std::pair<QString, QueryType>> QUERY_TYPE_COMBO_DATA = {
@@ -84,8 +87,6 @@ const QString STEREO_TOOLTIP =
     "Chiral center label for enhanced stereochemistry - ABS (absolute) is the "
     "default; AND / OR require a group identifier";
 
-const unsigned int DEFAULT_ENHANCED_STEREO_GROUP_ID = 1;
-
 /**
  * Load the specified data into the combo box
  * @param combo The combo box to populate
@@ -129,14 +130,11 @@ hide_spin_box_when_abs_is_selected_in_combo_box(QComboBox* const combo,
     combo->connect(combo, &QComboBox::currentIndexChanged, sb,
                    [sb, combo](const int index) {
                        auto variant = combo->itemData(index);
-                       auto data = variant.value<EnhancedStereoType>();
-                       sb->setVisible(data != EnhancedStereoType::ABS);
+                       auto data = variant.value<RDKit::StereoGroupType>();
+                       sb->setVisible(data !=
+                                      RDKit::StereoGroupType::STEREO_ABSOLUTE);
                    });
 }
-
-// TODO: query fields should be disabled depending on what is selected for query
-//       type
-// TODO: validate SMARTS query
 
 EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
                                                    MolModel* const mol_model,
@@ -261,9 +259,19 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
         btn->setPopupDelay(0);
         btn->showPopupIndicator(false);
         btn->setPopupWidget(periodic_table_widget);
+        // We still want to leave space for the query periodic table button even
+        // when it's hidden. Otherwise, all of the other widgets will be moved
+        // slightly whenever the button's visibility is toggled. (The atom
+        // periodic table button is never hidden, so this property has no effect
+        // on that button.)
+        auto size_policy = btn->sizePolicy();
+        size_policy.setRetainSizeWhenHidden(true);
+        btn->setSizePolicy(size_policy);
         connect(periodic_table_widget, &PeriodicTableWidget::elementSelected,
                 this, slot_func);
     }
+
+    changeAllLineEditClearButtonIcons();
 
     auto* reset_btn = ui->buttonBox->button(QDialogButtonBox::Reset);
     connect(reset_btn, &QPushButton::clicked, this,
@@ -273,16 +281,6 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
 }
 
 EditAtomPropertiesDialog::~EditAtomPropertiesDialog() = default;
-
-/**
- * Switch the combo box to the entry with the specified Qt.UserRole data
- */
-template <typename T>
-static void set_combo_box_data(QComboBox* const combo, T data)
-{
-    auto variant = QVariant::fromValue(data);
-    combo->setCurrentIndex(combo->findData(variant));
-}
 
 void EditAtomPropertiesDialog::switchToAllowedList()
 {
@@ -297,15 +295,26 @@ void EditAtomPropertiesDialog::reset()
     updateButtonsEnabled();
 }
 
+void EditAtomPropertiesDialog::changeAllLineEditClearButtonIcons()
+{
+    QIcon new_icon(LINE_EDIT_CLEAR_ICON_PATH);
+    for (auto* line_edit : findChildren<QLineEdit*>()) {
+        auto* clear_btn = line_edit->findChild<QToolButton*>();
+        if (clear_btn != nullptr) {
+            clear_btn->setIcon(new_icon);
+        }
+    }
+}
+
 /**
  * Convert the given text to an Element enum value
- * @throw InvalidElementError if the text does not specify a valid element (e.g
- * "Qz", "banana", or the empty string)
+ * @throw InvalidAtomPropertyError if the text does not specify a valid element
+ * (e.g "Qz", "banana", or the empty string)
  */
 static Element get_element_from_text(const QString& qtext)
 {
     if (qtext.isEmpty()) {
-        throw InvalidElementError("No element specified.");
+        throw InvalidAtomPropertyError("No element specified.");
     }
     auto text = qtext.toStdString();
     int element_num;
@@ -313,7 +322,7 @@ static Element get_element_from_text(const QString& qtext)
         // note that symbol_to_atomic_num is case insensitive
         element_num = symbol_to_atomic_number(text);
     } catch (std::runtime_error&) {
-        throw InvalidElementError(text + " is not a valid element.");
+        throw InvalidAtomPropertyError(text + " is not a valid element.");
     }
     return Element(element_num);
 }
@@ -330,8 +339,8 @@ static QStringList split_element_list(const QString& text)
 
 /**
  * Convert the given text into a vector of Element enum values
- * @throw InvalidElementError if the text does not specify any elements (e.g.
- * the string is empty) or if the text specifies any invalid element (e.g.
+ * @throw InvalidAtomPropertyError if the text does not specify any elements
+ * (e.g. the string is empty) or if the text specifies any invalid element (e.g.
  * "C, N, Qz")
  */
 static std::vector<Element> get_elements_from_list(const QString& text)
@@ -341,7 +350,7 @@ static std::vector<Element> get_elements_from_list(const QString& text)
     std::transform(split_element_text.begin(), split_element_text.end(),
                    std::back_inserter(elements), get_element_from_text);
     if (elements.empty()) {
-        throw InvalidElementError("No elements specified.");
+        throw InvalidAtomPropertyError("No elements specified.");
     }
     return elements;
 }
@@ -355,35 +364,41 @@ static void set_enhanced_stereo_properties(const QComboBox* const combo,
                                            AbstractAtomProperties& props)
 {
     if (combo->isEnabled()) {
-        props.enhanced_stereo_type =
-            combo->currentData().value<EnhancedStereoType>();
-        props.enhanced_stereo_group_id = sb->value();
+        EnhancedStereo enhanced_stereo;
+        enhanced_stereo.type =
+            combo->currentData().value<RDKit::StereoGroupType>();
+        if (sb->isEnabled()) {
+            enhanced_stereo.group_id = sb->value();
+        }
+        props.enhanced_stereo = enhanced_stereo;
     }
 }
 
 /**
- * Load the given enhanced stereo properties into the combo box and spin box
+ * Load the given enhanced stereo properties into the specified widgets
  */
-static void set_enhanced_stereo_widgets(QComboBox* const combo,
+static void set_enhanced_stereo_widgets(QLabel* const label,
+                                        QComboBox* const combo,
                                         QSpinBox* const sb,
                                         const AbstractAtomProperties& props)
 {
-    sb->setValue(props.enhanced_stereo_group_id);
-    if (props.enhanced_stereo_type.has_value()) {
-        combo->setEnabled(true);
-        set_combo_box_data(combo, *props.enhanced_stereo_type);
-    } else {
-        sb->setValue(DEFAULT_ENHANCED_STEREO_GROUP_ID);
-        combo->setEnabled(false);
-        set_combo_box_data(combo, EnhancedStereoType::ABS);
+    bool enable = props.enhanced_stereo.has_value();
+    EnhancedStereo enhanced_stereo;
+    if (enable) {
+        enhanced_stereo = *props.enhanced_stereo;
     }
+    label->setEnabled(enable);
+    combo->setEnabled(enable);
+    set_combo_box_data(combo, enhanced_stereo.type);
+    // setting the combo box data will automatically show or hide the spin box
+    sb->setValue(enhanced_stereo.group_id);
 }
 
 void EditAtomPropertiesDialog::accept()
 {
     auto props = getDialogSettings();
     auto new_atom = create_atom_with_properties(props);
-    m_mol_model->mutateAtoms({m_atom}, new_atom);
+    m_mol_model->mutateAtoms({m_atom}, *new_atom);
     QDialog::accept();
 }
 
@@ -443,9 +458,22 @@ EditAtomPropertiesDialog::getDialogSettings() const
         query_props.ring_bond_count_exact_val = ui->ring_bond_count_sb->value();
         query_props.smallest_ring_size =
             ui->smallest_ring_size_sb->optionalValue();
-        query_props.smarts_query = ui->smarts_query_le->text().toStdString();
+        query_props.smarts_query = getSmartsQuery();
         return std::make_shared<AtomQueryProperties>(query_props);
     }
+}
+
+std::string EditAtomPropertiesDialog::getSmartsQuery() const
+{
+    auto smarts = ui->smarts_query_le->text().trimmed().toStdString();
+    if (!smarts.empty()) {
+        auto* atom = RDKit::SmartsToAtom(smarts);
+        if (atom == nullptr) {
+            throw InvalidAtomPropertyError("Invalid SMARTS query.");
+        }
+        delete atom;
+    }
+    return smarts;
 }
 
 void EditAtomPropertiesDialog::loadProperties(
@@ -463,6 +491,14 @@ void EditAtomPropertiesDialog::loadProperties(
         loadAtomProperties(*static_cast<const AtomProperties*>(props.get()));
         loadQueryProperties(AtomQueryProperties());
     }
+
+    // load the enhanced stereo properties into both pages so that the label and
+    // combo box are correctly enabled or disabled
+    set_enhanced_stereo_widgets(ui->atom_stereo_lbl, ui->atom_stereo_combo,
+                                ui->atom_stereo_sb, *props);
+    set_enhanced_stereo_widgets(ui->query_stereo_lbl, ui->query_stereo_combo,
+                                ui->query_stereo_sb, *props);
+
     updateButtonsEnabled();
 }
 
@@ -483,8 +519,6 @@ void EditAtomPropertiesDialog::loadAtomProperties(
     ui->atom_isotope_sb->setOptionalValue(atom_props.isotope);
     ui->atom_charge_sb->setValue(atom_props.charge);
     ui->atom_unpaired_sb->setValue(atom_props.unpaired_electrons);
-    set_enhanced_stereo_widgets(ui->atom_stereo_combo, ui->atom_stereo_sb,
-                                atom_props);
 }
 
 void EditAtomPropertiesDialog::loadQueryProperties(
@@ -521,14 +555,12 @@ void EditAtomPropertiesDialog::loadQueryProperties(
     ui->query_isotope_sb->setOptionalValue(query_props.isotope);
     ui->query_charge_sb->setOptionalValue(query_props.charge);
     ui->query_unpaired_sb->setOptionalValue(query_props.unpaired_electrons);
-    set_enhanced_stereo_widgets(ui->query_stereo_combo, ui->query_stereo_sb,
-                                query_props);
+
     ui->total_h_sb->setOptionalValue(query_props.total_h);
     ui->num_connections_sb->setOptionalValue(query_props.num_connections);
     set_combo_box_data(ui->aromaticity_combo, query_props.aromaticity);
     set_combo_box_data(ui->ring_count_combo, query_props.ring_count_type);
     ui->ring_count_sb->setValue(query_props.ring_count_exact_val);
-
     set_combo_box_data(ui->ring_bond_count_combo,
                        query_props.ring_bond_count_type);
     ui->ring_bond_count_sb->setValue(query_props.ring_bond_count_exact_val);
@@ -545,6 +577,36 @@ void EditAtomPropertiesDialog::clearQueryTypeFields()
     ui->wildcard_combo->setCurrentIndex(0);
 }
 
+/**
+ * Transfer enhanced stereo settings between the "Set as: Atom" page and the
+ * "Set as: Query" page.
+ */
+static void transfer_enhanced_stereo_settings(const QComboBox* const from_combo,
+                                              const QSpinBox* const from_sb,
+                                              QComboBox* const to_combo,
+                                              QSpinBox* const to_sb)
+{
+    if (to_combo->isEnabled()) {
+        to_combo->setCurrentIndex(from_combo->currentIndex());
+        to_sb->setValue(from_sb->value());
+    }
+}
+
+/**
+ * Transfer settings from a QSpinBox to a BlankableSpinBox. This method will
+ * not overwrite a blank value with a zero since there's no way to distinguish
+ * those two settings in a non-blankable spin box. In that scenario, this
+ * method will be a no-op.
+ */
+static void transfer_sb_to_optional_sb(const QSpinBox* const from_sb,
+                                       BlankableSpinBox* const to_sb)
+{
+    auto value = from_sb->value();
+    if (value != 0 || to_sb->optionalValue().has_value()) {
+        to_sb->setValue(value);
+    }
+}
+
 void EditAtomPropertiesDialog::onAtomOrQueryToggled(const int page_id)
 {
     auto page = ui->atom_query_stacked_wdg->widget(page_id);
@@ -557,20 +619,37 @@ void EditAtomPropertiesDialog::onAtomOrQueryToggled(const int page_id)
                    query_type == QueryType::NOT_ALLOWED_LIST) {
             transferElementListToSpecificElement(ui->atom_element_le);
         }
+        ui->atom_isotope_sb->setOptionalValue(
+            ui->query_isotope_sb->optionalValue());
+        ui->atom_charge_sb->setValue(
+            ui->query_charge_sb->optionalValue().value_or(0));
+        ui->atom_unpaired_sb->setValue(
+            ui->query_unpaired_sb->optionalValue().value_or(0));
+        transfer_enhanced_stereo_settings(
+            ui->query_stereo_combo, ui->query_stereo_sb, ui->atom_stereo_combo,
+            ui->atom_stereo_sb);
     } else {
+        // TODO: don't transfer settings into disabled widgets
         // we're switching to the query page
         if (query_type == QueryType::SPECIFIC_ELEMENT) {
             auto atom_element_text = ui->atom_element_le->text();
             try {
                 get_element_from_text(atom_element_text);
                 ui->query_element_le->setText(atom_element_text);
-            } catch (InvalidElementError&) {
+            } catch (InvalidAtomPropertyError&) {
                 // the element isn't valid, so don't bother to transfer it
             }
         } else if (query_type == QueryType::ALLOWED_LIST ||
                    query_type == QueryType::NOT_ALLOWED_LIST) {
             transferSpecificElementToElementList(ui->atom_element_le);
         }
+        ui->query_isotope_sb->setOptionalValue(
+            ui->atom_isotope_sb->optionalValue());
+        transfer_sb_to_optional_sb(ui->atom_charge_sb, ui->query_charge_sb);
+        transfer_sb_to_optional_sb(ui->atom_unpaired_sb, ui->query_unpaired_sb);
+        transfer_enhanced_stereo_settings(
+            ui->atom_stereo_combo, ui->atom_stereo_sb, ui->query_stereo_combo,
+            ui->query_stereo_sb);
     }
     updateButtonsEnabled();
 }
@@ -581,7 +660,7 @@ void EditAtomPropertiesDialog::transferSpecificElementToElementList(
     auto element_text = element_le->text();
     try {
         get_element_from_text(element_text);
-    } catch (InvalidElementError&) {
+    } catch (InvalidAtomPropertyError&) {
         // the line edit doesn't specify a valid element, so don't bother to
         // transfer it
         return;
@@ -606,7 +685,7 @@ void EditAtomPropertiesDialog::transferElementListToSpecificElement(
     auto first_atomic_symbol = element_list[0];
     try {
         get_element_from_text(first_atomic_symbol);
-    } catch (InvalidElementError&) {
+    } catch (InvalidAtomPropertyError&) {
         // the atomic symbol is invalid, so don't bother to transfer it
         return;
     }
@@ -628,7 +707,7 @@ void EditAtomPropertiesDialog::updateButtonsEnabled()
     // check if the settings are valid
     try {
         props = getDialogSettings();
-    } catch (InvalidElementError& e) {
+    } catch (InvalidAtomPropertyError& e) {
         enable_ok = false;
         ok_tooltip = e.what();
     }
@@ -651,25 +730,33 @@ void EditAtomPropertiesDialog::updateButtonsEnabled()
 
 void EditAtomPropertiesDialog::onQueryTypeComboBoxChanged(const int combo_index)
 {
-    // figure out which stacked widget page we're switching to
     auto variant = ui->query_type_combo->itemData(combo_index);
     QWidget* switch_to_page = nullptr;
-    bool show_periodic_table_btn = false;
+    bool show_periodic_table_btn = true;
+    bool enable_isotope = true;
+    bool enable_charge = true;
+    bool enable_unpaired_electrons = true;
     switch (variant.value<QueryType>()) {
         case QueryType::ALLOWED_LIST:
         case QueryType::NOT_ALLOWED_LIST:
             switch_to_page = ui->element_list_page;
-            show_periodic_table_btn = true;
+            enable_isotope = false;
+            enable_unpaired_electrons = false;
             break;
         case QueryType::WILDCARD:
             switch_to_page = ui->wildcard_page;
+            show_periodic_table_btn = false;
+            enable_unpaired_electrons = false;
             break;
         case QueryType::SPECIFIC_ELEMENT:
             switch_to_page = ui->query_element_page;
-            show_periodic_table_btn = true;
             break;
         case QueryType::RGROUP:
             switch_to_page = ui->rgroup_page;
+            show_periodic_table_btn = false;
+            enable_isotope = false;
+            enable_charge = false;
+            enable_unpaired_electrons = false;
             break;
     }
 
@@ -684,6 +771,12 @@ void EditAtomPropertiesDialog::onQueryTypeComboBoxChanged(const int combo_index)
 
     ui->query_type_stacked_widget->setCurrentWidget(switch_to_page);
     ui->query_periodic_table_btn->setVisible(show_periodic_table_btn);
+    ui->query_isotope_lbl->setEnabled(enable_isotope);
+    ui->query_isotope_sb->setEnabled(enable_isotope);
+    ui->query_charge_lbl->setEnabled(enable_charge);
+    ui->query_charge_sb->setEnabled(enable_charge);
+    ui->query_unpaired_lbl->setEnabled(enable_unpaired_electrons);
+    ui->query_unpaired_sb->setEnabled(enable_unpaired_electrons);
     updateButtonsEnabled();
 }
 
@@ -735,7 +828,7 @@ QValidator::State ElementValidator::validate(QString& input, int& pos) const
     // find out if the atomic symbols are valid (i.e. are they real elements)
     try {
         get_elements_from_list(input);
-    } catch (InvalidElementError&) {
+    } catch (InvalidAtomPropertyError&) {
         return QValidator::Intermediate;
     }
     return QValidator::Acceptable;
