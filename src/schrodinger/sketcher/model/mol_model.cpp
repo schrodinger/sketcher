@@ -5,11 +5,12 @@
 #include <fmt/format.h>
 
 #include <rdkit/GraphMol/Atom.h>
-#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
+
 #include <QObject>
 #include <QUndoStack>
 #include <QtGlobal>
@@ -2556,7 +2557,10 @@ void MolModel::removeExplicitHsCommandFunc(
 
 void MolModel::aromatize()
 {
-    auto set_aromaticity = [this]() { RDKit::MolOps::setAromaticity(m_mol); };
+    auto set_aromaticity = [this]() {
+        RDKit::MolOps::setAromaticity(m_mol);
+        RDKit::MolOps::adjustHs(m_mol);
+    };
     doCommandUsingSnapshots(set_aromaticity, "Aromatize",
                             WhatChanged::MOLECULE);
 }

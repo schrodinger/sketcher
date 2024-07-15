@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/test/data/test_case.hpp>
 
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
@@ -3426,21 +3427,25 @@ $$$$
     BOOST_TEST(num_stereo_bonds == expected.size());
 }
 
-BOOST_AUTO_TEST_CASE(test_aromatize)
+std::vector<std::tuple<std::string, std::string>> kekule_aromatic_smiles{
+    {"C1=CC=CC=C1", "c1ccccc1"},
+    {"C1=CNC=C1", "c1cc[nH]c1"},
+};
+
+BOOST_DATA_TEST_CASE(test_aromatize,
+                     boost::unit_test::data::make(kekule_aromatic_smiles),
+                     kekule_smiles, aromatized_smiles)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
 
-    const std::string smiles = "C1=CC=CC=C1";
-    const std::string aromatized_smiles = "c1ccccc1";
-
-    import_mol_text(&model, smiles);
+    import_mol_text(&model, kekule_smiles);
     model.aromatize();
 
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == aromatized_smiles);
 
     undo_stack.undo();
-    BOOST_TEST(get_mol_text(&model, Format::SMILES) == smiles);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == kekule_smiles);
 
     undo_stack.redo();
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == aromatized_smiles);
