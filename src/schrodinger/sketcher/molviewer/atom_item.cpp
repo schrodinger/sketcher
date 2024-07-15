@@ -492,8 +492,12 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->setPen(m_pen);
         painter->drawText(m_main_label_rect, Qt::AlignCenter,
                           m_main_label_text);
-        // drawText only paints when the rect is valid
-        painter->drawText(m_H_label_rect, Qt::AlignCenter, "H");
+        // usually drawText only paints when the rect is valid, but this appears
+        // to not be the case for SVG (SKETCH-2233), so we need to check
+        // explicitly
+        if (m_H_label_rect.isValid()) {
+            painter->drawText(m_H_label_rect, Qt::AlignCenter, "H");
+        }
         painter->setFont(m_fonts.m_subscript_font);
         painter->drawText(m_H_count_label_rect, Qt::AlignCenter,
                           m_H_count_label_text);
