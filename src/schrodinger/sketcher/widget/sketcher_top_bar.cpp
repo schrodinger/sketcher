@@ -268,8 +268,8 @@ bool SketcherTopBar::handleShortcutAction(const QKeySequence& key_seq)
 void SketcherTopBar::onHelpClicked()
 {
     auto documentation_url =
-        QString("https://www.schrodinger.com/sites/default/files/s3/public/"
-                "2D-Sketcher/%1/Content/2d-sketcher/2d_sketcher_home.htm")
+        QString("https://learn.schrodinger.com/public/2D-Sketcher/%1/Content/"
+                "2d-sketcher/2d_sketcher_home.htm")
             .arg(RELEASE_NAME);
     QDesktopServices::openUrl(QUrl(documentation_url));
 }
