@@ -12,6 +12,8 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 
+using schrodinger::rdkit_extensions::Format;
+
 namespace schrodinger
 {
 namespace sketcher
@@ -25,21 +27,21 @@ namespace bdata = boost::unit_test::data;
  */
 BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
 {
-    auto mol = RDKit::SmilesToMol("N");
+    auto mol = rdkit_extensions::to_rdkit("N", Format::SMILES);
     auto* atom = mol->getAtomWithIdx(0);
     auto props = read_properties_from_atom(atom);
     auto exp_props = AtomProperties();
     exp_props.element = Element::N;
     BOOST_TEST(*props == exp_props);
 
-    mol = RDKit::SmilesToMol("[N+]");
+    mol = rdkit_extensions::to_rdkit("[N+]", Format::SMILES);
     atom = mol->getAtomWithIdx(0);
     props = read_properties_from_atom(atom);
     exp_props.charge = 1;
     exp_props.unpaired_electrons = 4;
     BOOST_TEST(*props == exp_props);
 
-    mol = RDKit::SmilesToMol("[32P]");
+    mol = rdkit_extensions::to_rdkit("[32P]", Format::SMILES);
     atom = mol->getAtomWithIdx(0);
     props = read_properties_from_atom(atom);
     exp_props = AtomProperties();
@@ -48,7 +50,7 @@ BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
     exp_props.unpaired_electrons = 3;
     BOOST_TEST(*props == exp_props);
 
-    mol = RDKit::SmartsToMol("N");
+    mol = rdkit_extensions::to_rdkit("N", Format::SMARTS);
     atom = mol->getAtomWithIdx(0);
     props = read_properties_from_atom(atom);
     auto exp_query_props = AtomQueryProperties();
@@ -57,7 +59,7 @@ BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
     exp_query_props.aromaticity = QueryAromaticity::ALIPHATIC;
     BOOST_TEST(*props == exp_query_props);
 
-    mol = RDKit::SmartsToMol("[nR3++]");
+    mol = rdkit_extensions::to_rdkit("[nR3++]", Format::SMARTS);
     atom = mol->getAtomWithIdx(0);
     props = read_properties_from_atom(atom);
     exp_query_props.aromaticity = QueryAromaticity::AROMATIC;
@@ -66,7 +68,7 @@ BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
     exp_query_props.ring_count_exact_val = 3;
     BOOST_TEST(*props == exp_query_props);
 
-    mol = RDKit::SmartsToMol("[12C]");
+    mol = rdkit_extensions::to_rdkit("[12C]", Format::SMARTS);
     atom = mol->getAtomWithIdx(0);
     props = read_properties_from_atom(atom);
     exp_query_props = AtomQueryProperties();
@@ -137,7 +139,7 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smiles,
                      }),
                      input_smiles)
 {
-    auto mol = RDKit::SmilesToMol(input_smiles);
+    auto mol = rdkit_extensions::to_rdkit(input_smiles, Format::SMILES);
     auto atom = mol->getAtomWithIdx(0);
     auto props = read_properties_from_atom(atom);
     auto output_atom = create_atom_with_properties(props);
@@ -160,7 +162,7 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
                          "[#7&+&A]", "[#26&+2]", "[#6&12*]", "[#8&+2&R3]"}),
                      input_smarts)
 {
-    auto mol = RDKit::SmartsToMol(input_smarts);
+    auto mol = rdkit_extensions::to_rdkit(input_smarts, Format::SMARTS);
     auto atom = mol->getAtomWithIdx(0);
     auto props = read_properties_from_atom(atom);
     auto output_atom = create_atom_with_properties(props);
