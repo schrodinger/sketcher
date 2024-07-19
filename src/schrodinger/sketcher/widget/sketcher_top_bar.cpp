@@ -209,6 +209,15 @@ void SketcherTopBar::onImportFromFileClicked()
 {
     auto file_open_completed = [this](const auto& file_path,
                                       const auto& content) {
+        if (file_path.isEmpty()) {
+            /*
+             * If the user cancels the file dialog, the file path will be empty.
+             * In this case, we do not want to do anything. This is the
+             * behavior recommended in the QFileDialog::getOpenFileContent
+             * documentation. SKETCH-2239
+             */
+            return;
+        }
         try {
             auto format =
                 rdkit_extensions::get_file_format(file_path.toStdString());
