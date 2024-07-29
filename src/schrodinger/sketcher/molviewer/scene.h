@@ -35,17 +35,19 @@ namespace schrodinger
 namespace sketcher
 {
 
-class RotationItem;
 class AbstractGraphicsItem;
 class AtomItem;
 class BondItem;
 class MolModel;
 class NonMolecularItem;
+class RotationItem;
 class SGroupItem;
 class SketcherModel;
 enum class DrawTool;
+enum class ImageFormat;
 enum class ModelKey;
 enum class SelectionTool;
+struct RenderOptions;
 
 /**
  * A scene tool (i.e. a mouse cursor mode) that does nothing and draws nothing.
@@ -365,6 +367,20 @@ class SKETCHER_API Scene : public QGraphicsScene
     void dragLeaveEvent(QGraphicsSceneDragDropEvent* event) override;
     void dropEvent(QGraphicsSceneDragDropEvent* event) override;
 };
+
+// This function is defined here rather than in image_generation.h along with
+// the other overloads to avoid introducing a dependency on private classes
+// (Scene) in the public header file. The implementation is in
+// image_generation.cpp
+
+/**
+ * @param Scene to render
+ * @param format format of the image
+ * @param opts given image generation configuration
+ * @return byte array of data generated from the 2D sketcher
+ */
+SKETCHER_API QByteArray get_image_bytes(Scene& scene, ImageFormat format,
+                                        const RenderOptions& opts);
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -179,6 +179,7 @@ void add_to_scene(sketcherScene* scene, const std::string& text)
 void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
                  const QRectF& scene_rect, const RenderOptions& opts)
 {
+
     QPainter painter(device);
     auto target_rect = painter.viewport();
     painter.setRenderHints(QPainter::Antialiasing | QPainter::TextAntialiasing);
@@ -227,11 +228,10 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
     paint_scene(device, scene, scene_rect, opts);
 }
 
-template <> void paint_scene<QGraphicsScene>(QPaintDevice* device,
-                                             const QGraphicsScene& input,
-                                             const RenderOptions& opts)
+template <> void paint_scene<Scene>(QPaintDevice* device, const Scene& input,
+                                    const RenderOptions& opts)
 {
-    auto scene_rect = input.itemsBoundingRect();
+    auto scene_rect = input.getInteractiveItemsBoundingRect();
     paint_scene(device, input, scene_rect, opts);
 }
 
@@ -361,10 +361,10 @@ QByteArray get_image_bytes(const std::string& text, ImageFormat format,
     return get_image_bytes<std::string>(text, format, opts);
 }
 
-QByteArray get_image_bytes(QGraphicsScene& scene, ImageFormat format,
+QByteArray get_image_bytes(Scene& scene, ImageFormat format,
                            const RenderOptions& opts)
 {
-    return get_image_bytes<QGraphicsScene>(scene, format, opts);
+    return get_image_bytes<Scene>(scene, format, opts);
 }
 
 namespace
@@ -394,7 +394,7 @@ QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
     setAtomLabels(mol_model, opts);
     sketcher_model.loadRenderOptions(opts);
 
-    return get_image_bytes<QGraphicsScene>(scene, format, opts);
+    return get_image_bytes<Scene>(scene, format, opts);
 }
 } // namespace
 

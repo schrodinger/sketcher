@@ -6,7 +6,6 @@
 
 #include <QByteArray>
 #include <QColor>
-#include <QGraphicsScene>
 #include <QHash>
 #include <QImage>
 #include <QPicture>
@@ -105,9 +104,12 @@ get_image_bytes(const RDKit::ChemicalReaction& rxn, ImageFormat format,
 SKETCHER_API QByteArray
 get_image_bytes(const std::string& text, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
-SKETCHER_API QByteArray
-get_image_bytes(QGraphicsScene& scene, ImageFormat format,
-                const RenderOptions& opts = RenderOptions());
+
+// note that
+//  SKETCHER_API QByteArray get_image_bytes(Scene& scene, ImageFormat
+//       format, const RenderOptions& opts);
+// is not implemented in this file, but rather in scene.h to avoid introducing a
+// dependency on  scene.h in this file
 
 // FIXME: Remove this once image_generation is fully switched over to molviewer
 SKETCHER_API QByteArray
