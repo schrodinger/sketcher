@@ -1,4 +1,5 @@
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 
 #include <algorithm>
 
@@ -42,6 +43,9 @@ bool coordinates_are_all_zero(const RDKit::Conformer& conf)
 unsigned int compute2DCoords(RDKit::ROMol& mol,
                              const std::vector<unsigned int>& frozen_ids)
 {
+    if (is_coarse_grain_mol(mol)) {
+        return compute_cg_coords(mol);
+    }
 
     RDDepict::Compute2DCoordParameters params;
     params.forceRDKit = true;
