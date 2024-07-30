@@ -25,10 +25,13 @@ namespace rdkit_extensions
  * be written to HELM format using the HELM writer.
  *
  * @param atomistic_mol Atomistic molecule to convert to CG
+ * @param use_residue_info Whether to use PDBAtomResidueInfo to determine
+ * monomer boundaries
  * @return CG molecule
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
-atomistic_to_cg(const RDKit::ROMol& atomistic_mol);
+atomistic_to_cg(const RDKit::ROMol& atomistic_mol,
+                bool use_residue_info = false);
 
 /**
  * Identify monomers within an atomistic molecule

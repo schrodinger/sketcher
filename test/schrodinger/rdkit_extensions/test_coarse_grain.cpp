@@ -9,18 +9,21 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <GraphMol/FileParsers/FileParsers.h>
 #include <GraphMol/GraphMol.h>
 #include <GraphMol/SmilesParse/SmilesParse.h>
-#include <RDGeneral/RDLog.h>
 #include <GraphMol/SmilesParse/SmilesWrite.h>
+#include <RDGeneral/RDLog.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
 #include "schrodinger/rdkit_extensions/cg_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/test/boost_checks.h"
+#include "schrodinger/test/testfiles.h"
 
 using namespace schrodinger::rdkit_extensions;
+using schrodinger::test::mmshare_testfile;
 
 BOOST_AUTO_TEST_CASE(TestBasicCoarseGrainMol)
 {
@@ -134,6 +137,17 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
                           "PEPTIDE1{P.P.F.L.W.L.N.K.P.I}$PEPTIDE1,PEPTIDE1,10:"
                           "R2-1:R1$$$V2.0");
     }
+}
+
+BOOST_AUTO_TEST_CASE(Test_annotated_atomistic_to_cg)
+{
+    auto atomistic_mol =
+        RDKit::v2::FileParsers::MolFromPDBFile(mmshare_testfile("1dng.pdb"));
+    bool use_residue_info = true;
+    auto cg_mol = atomistic_to_cg(*atomistic_mol, use_residue_info);
+
+    BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
+                      "PEPTIDE1{Q.A.P.A.Y.E.E.A.A.E.E.L.A.K.S}$$$$V2.0");
 }
 
 BOOST_AUTO_TEST_CASE(Test_cg_to_atomistic)

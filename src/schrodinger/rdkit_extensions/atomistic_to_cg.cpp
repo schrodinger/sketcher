@@ -9,6 +9,7 @@
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
@@ -84,6 +85,52 @@ const std::unordered_map<std::string, std::string> amino_acids = {
     {"NC(=O)C(N)Cc1c[nH]c2ccccc12", "W"},
     {"NC(=O)C(N)Cc1ccc(O)cc1", "Y"},
     {"CC(C)C(N)C(N)=O", "V"}};
+
+// 3-letter to 1-letter amino acid code mapping
+// From mmpdb_get_three_to_one_letter_residue_map
+// Temporary, should eventually be included in the monomer DB
+const std::unordered_map<std::string, char> res_table({
+    {"ALA", 'A'}, // Alanine
+    {"ARG", 'R'}, // Arginine
+    {"ARN", 'R'}, // Neutral-Arginine
+    {"ASH", 'D'}, // Protonated Aspartic
+    {"ASN", 'N'}, // Asparagine
+    {"ASP", 'D'}, // Aspartic
+    {"CYS", 'C'}, // Cysteine
+    {"CYT", 'C'}, // Ionised Cysteine
+    {"CYX", 'C'}, // Cysteine in sulphide linkage
+    {"GLH", 'E'}, // Protonated Glutamic
+    {"GLN", 'Q'}, // Glutamine
+    {"GLU", 'E'}, // Glutamic
+    {"GLY", 'G'}, // Glycine
+    {"HID", 'H'}, // Histidine (protonated at delta N)
+    {"HIE", 'H'}, // Histidine (protonated at epsilon N)
+    {"HIP", 'H'}, // Histidine (protonated at both N)
+    {"HIS", 'H'}, // Histidine
+    {"HSD", 'H'}, // Histidine (protonated at delta N, CHARMM name)
+    {"HSE", 'H'}, // Histidine (protonated at epsilon N, CHARMM name)
+    {"HSP", 'H'}, // Histidine (protonated at both N, CHARMM name)
+    {"ILE", 'I'}, // Isoleucine
+    {"LEU", 'L'}, // Leucine
+    {"LYN", 'K'}, // Protonated Lysine
+    {"LYS", 'K'}, // Lysine
+    {"MET", 'M'}, // Methionine
+    {"MSE", 'M'}, // Selenomethionine
+    {"PHE", 'F'}, // Phenylalanine
+    {"PRO", 'P'}, // Proline
+    {"PTR", 'y'}, // Phosphorylated tyrosine
+    {"SEP", 's'}, // Phosphorylated serine
+    {"SER", 'S'}, // Serine
+    {"SRO", 'S'}, // Ionized Serine
+    {"THO", 'T'}, // Ionized Threonine
+    {"THR", 'T'}, // Threonine
+    {"TPO", 't'}, // Phosporylated threonine
+    {"TRP", 'W'}, // Tryptophan
+    {"TYO", 'Y'}, // Ionized Tyrosine
+    {"TYR", 'Y'}, // Tyrosine
+    {"VAL", 'V'}, // Valine
+    {"XXX", 'X'}, // Unknown
+});
 
 struct Linkage {
     unsigned int monomer_idx1;
@@ -316,10 +363,95 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
     }
 }
 
+struct residue {
+    const RDKit::AtomPDBResidueInfo* res_info;
+    std::vector<int> atom_indices;
+    bool has_insertion;
+};
+
+bool has_insertion_code(const RDKit::AtomPDBResidueInfo* res_info)
+{
+    auto insertion_code = res_info->getInsertionCode();
+    return !(insertion_code.empty() || insertion_code == " ");
+}
+
+boost::shared_ptr<RDKit::RWMol>
+annotated_atomistic_to_cg(const RDKit::ROMol& mol)
+{
+    // maps residue number -> residue info and atom indices
+    std::map<int, residue> residues;
+
+    for (const auto atom : mol.atoms()) {
+        const auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        if (res_info == nullptr) {
+            throw std::runtime_error(fmt::format(
+                "Atom {} does not have AtomPDBResidueInfo", atom->getIdx()));
+        }
+        const auto res_num = res_info->getResidueNumber();
+        const auto has_insertion = has_insertion_code(res_info);
+        if (residues.find(res_num) == residues.end()) {
+            residue res = {
+                res_info, {static_cast<int>(atom->getIdx())}, has_insertion};
+            residues[res_num] = res;
+        } else {
+            residues[res_num].atom_indices.push_back(
+                static_cast<int>(atom->getIdx()));
+            residues[res_num].has_insertion |= has_insertion;
+        }
+    }
+
+    // Add the residues to the CG molecule
+    const std::string default_chain_id = "PEPTIDE1";
+    boost::shared_ptr<RDKit::RWMol> cg_mol = boost::make_shared<RDKit::RWMol>();
+    for (const auto& [res_num, res] : residues) {
+        auto res_name = res.res_info->getResidueName();
+        // remove whitespace from residue name
+        res_name.erase(
+            std::remove_if(res_name.begin(), res_name.end(), ::isspace),
+            res_name.end());
+
+        // skip water
+        if (res_name == "HOH") {
+            continue;
+        }
+
+        // All residues are placed in the same chain
+        // TODO: handle multiple chains
+        if (!res.has_insertion && res_table.find(res_name) != res_table.end()) {
+            // Standard residue
+            add_monomer(*cg_mol, std::string{res_table.at(res_name)}, res_num,
+                        default_chain_id);
+        } else {
+            // Non-standard residue
+            auto smiles = RDKit::MolFragmentToSmiles(mol, res.atom_indices);
+            add_monomer(*cg_mol, smiles, res_num, default_chain_id,
+                        MonomerType::SMILES);
+        }
+    }
+
+    // Add linkages -- assume all are backbone linkages and monomers are in
+    // connectivity order
+    for (size_t start = 1; start < cg_mol->getNumAtoms(); ++start) {
+        add_connection(*cg_mol, start - 1, start, BACKBONE_LINKAGE);
+    }
+    return cg_mol;
+}
+
 } // unnamed namespace
 
-boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol)
+boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol,
+                                                bool use_residue_info)
 {
+    // Use residue information to build the CG molecule. Assumes that the
+    // residue information is correct, and throws if any residue information
+    // is missing.
+    if (use_residue_info) {
+        auto cg_mol = annotated_atomistic_to_cg(mol);
+        assign_chains(*cg_mol);
+        return cg_mol;
+    }
+
     // Work on copy, for now
     RDKit::ROMol atomistic_mol(mol);
     std::vector<std::vector<int>> monomers;
