@@ -176,6 +176,9 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // Generate R/S/E/Z labels
     assign_CIP_labels(mol);
 
+    // Add the newly found chiral atoms to StereoGroups
+    add_enhanced_stereo_to_chiral_atoms(mol);
+
     // Preserve IDs of any new enhanced stereo groups, which includes any
     // groups newly inserted from file/paste input. Run this after
     // cleanupStereoGroups(), because that one only preserves input ids
