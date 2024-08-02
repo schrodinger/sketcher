@@ -2664,7 +2664,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
                       BondTool::SINGLE_DOWN);
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)[C@@H](C)C(C)N");
 
-    atom_labels[3] = "(R)";
+    atom_labels[3] = "abs (R)";
     bond_dirs[3] = Bond::BondDir::BEGINDASH;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2672,7 +2672,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     BOOST_TEST(get_mol_text(&model, Format::SMILES) ==
                "CC(C)[C@@H](C)[C@H](C)N");
 
-    atom_labels[5] = "(S)";
+    atom_labels[5] = "abs (S)";
     bond_dirs[5] = Bond::BondDir::BEGINWEDGE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
