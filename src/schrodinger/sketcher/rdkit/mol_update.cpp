@@ -194,6 +194,17 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     std::string or_label = rdkit_extensions::OR_STEREO_PREFIX + "{id}";
     std::string and_label = rdkit_extensions::AND_STEREO_PREFIX + "{id}";
 
+    // addStereoAnnotations will not clear existing annotations,
+    // just override the ones on atoms/bonds that require labels.
+    // So we need to clear them ourselves first to get dir of
+    // outdated labels.
+    for (auto atom : mol.atoms()) {
+        atom->clearProp(RDKit::common_properties::atomNote);
+    }
+    for (auto bond : mol.bonds()) {
+        bond->clearProp(RDKit::common_properties::atomNote);
+    }
+
     RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label, and_label);
 }
 
