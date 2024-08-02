@@ -97,12 +97,14 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
     RDKit::MolOps::assignStereochemistry(mol, cleanIt, force,
                                          flagPossibleStereoCenters);
 
-    // Restore bond directions
+    // Restore bond directions. We want to preserve EITHERDOUBLE since
+    // it's what we use to draw crossed bonds.
     auto bond_it = bond_dirs.begin();
     for (auto bond : mol.bonds()) {
         if (auto bond_dir = *bond_it++;
             bond_dir == RDKit::Bond::BondDir::BEGINDASH ||
             bond_dir == RDKit::Bond::BondDir::BEGINWEDGE ||
+            bond_dir == RDKit::Bond::BondDir::EITHERDOUBLE ||
             bond_dir == RDKit::Bond::BondDir::UNKNOWN) {
             bond->setBondDir(bond_dir);
         }
