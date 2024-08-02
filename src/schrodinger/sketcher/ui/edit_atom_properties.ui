@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>278</width>
-    <height>329</height>
+    <height>320</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -467,6 +467,29 @@
                  </item>
                 </layout>
                </widget>
+               <widget class="QWidget" name="smarts_query_page">
+                <layout class="QHBoxLayout" name="horizontalLayout">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLineEdit" name="smarts_query_le">
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
               </widget>
              </item>
             </layout>
@@ -582,6 +605,22 @@
            <property name="bottomMargin">
             <number>12</number>
            </property>
+           <item row="0" column="0">
+            <widget class="QLabel" name="total_h_lbl">
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Total H (H):</string>
+             </property>
+            </widget>
+           </item>
            <item row="1" column="1">
             <widget class="schrodinger::sketcher::BlankableSpinBox" name="num_connections_sb">
              <property name="alignment">
@@ -602,47 +641,12 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="0">
-            <widget class="QLabel" name="total_h_lbl">
-             <property name="minimumSize">
-              <size>
-               <width>130</width>
-               <height>0</height>
-              </size>
-             </property>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="aromaticity_combo">
              <property name="toolTip">
-              <string/>
-             </property>
-             <property name="text">
-              <string>Total H (H):</string>
+              <string>Whether this atom must (a) or must not (A) be part of an aromatic ring</string>
              </property>
             </widget>
-           </item>
-           <item row="7" column="0">
-            <widget class="QLabel" name="smarts_query_lbl">
-             <property name="toolTip">
-              <string/>
-             </property>
-             <property name="text">
-              <string>SMARTS Query:</string>
-             </property>
-             <property name="alignment">
-              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
-             </property>
-            </widget>
-           </item>
-           <item row="8" column="0">
-            <spacer name="query_advanced_spacer">
-             <property name="orientation">
-              <enum>Qt::Vertical</enum>
-             </property>
-             <property name="sizeHint" stdset="0">
-              <size>
-               <width>20</width>
-               <height>0</height>
-              </size>
-             </property>
-            </spacer>
            </item>
            <item row="6" column="1">
             <widget class="schrodinger::sketcher::BlankableSpinBox" name="smallest_ring_size_sb">
@@ -651,6 +655,40 @@
              </property>
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <layout class="QHBoxLayout" name="ring_bond_count_layout">
+             <item>
+              <widget class="QComboBox" name="ring_bond_count_combo">
+               <property name="toolTip">
+                <string>Number of ring bonds to this atom</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="ring_bond_count_sb">
+               <property name="toolTip">
+                <string>Number of ring bonds to this atom</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="num_connections_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string># Connections (X):</string>
              </property>
             </widget>
            </item>
@@ -664,35 +702,18 @@
              </property>
             </widget>
            </item>
-           <item row="5" column="0">
-            <widget class="QLabel" name="ring_bond_count_lbl">
-             <property name="toolTip">
-              <string/>
+           <item row="7" column="0">
+            <spacer name="query_advanced_spacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
              </property>
-             <property name="text">
-              <string>Ring Bond Count (rb):</string>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>0</height>
+              </size>
              </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="aromaticity_lbl">
-             <property name="toolTip">
-              <string/>
-             </property>
-             <property name="text">
-              <string>Aromaticity (a/A):</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="num_connections_lbl">
-             <property name="toolTip">
-              <string/>
-             </property>
-             <property name="text">
-              <string># Connections (X):</string>
-             </property>
-            </widget>
+            </spacer>
            </item>
            <item row="6" column="0">
             <widget class="QLabel" name="smallest_ring_size_lbl">
@@ -704,20 +725,13 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="1">
-            <widget class="QComboBox" name="aromaticity_combo">
+           <item row="2" column="0">
+            <widget class="QLabel" name="aromaticity_lbl">
              <property name="toolTip">
-              <string>Whether this atom must (a) or must not (A) be part of an aromatic ring</string>
+              <string/>
              </property>
-            </widget>
-           </item>
-           <item row="7" column="1">
-            <widget class="QLineEdit" name="smarts_query_le">
-             <property name="toolTip">
-              <string>Custom SMARTS query applied to this atom</string>
-             </property>
-             <property name="clearButtonEnabled">
-              <bool>true</bool>
+             <property name="text">
+              <string>Aromaticity (a/A):</string>
              </property>
             </widget>
            </item>
@@ -745,29 +759,15 @@
              </item>
             </layout>
            </item>
-           <item row="5" column="1">
-            <layout class="QHBoxLayout" name="ring_bond_count_layout">
-             <item>
-              <widget class="QComboBox" name="ring_bond_count_combo">
-               <property name="toolTip">
-                <string>Number of ring bonds to this atom</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QSpinBox" name="ring_bond_count_sb">
-               <property name="toolTip">
-                <string>Number of ring bonds to this atom</string>
-               </property>
-               <property name="alignment">
-                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-               </property>
-               <property name="buttonSymbols">
-                <enum>QAbstractSpinBox::NoButtons</enum>
-               </property>
-              </widget>
-             </item>
-            </layout>
+           <item row="5" column="0">
+            <widget class="QLabel" name="ring_bond_count_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Ring Bond Count (rb):</string>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>

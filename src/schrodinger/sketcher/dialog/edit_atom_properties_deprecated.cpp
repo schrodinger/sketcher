@@ -642,6 +642,10 @@ void EditAtomPropertiesDialogDeprecated::writeQueryInfo()
             m_atom.setAsRGroup(rgroup_number);
             break;
         }
+        default:
+            // the enum contains SMARTS, but it's not present in the combo box
+            // in this version of the dialog
+            break;
     }
 
     // A literal SMARTS query overrides the other options
@@ -746,6 +750,10 @@ void EditAtomPropertiesDialogDeprecated::updateOKButtonEnabled()
                 enable = true;
                 break;
             }
+            default:
+                // the enum contains SMARTS, but it's not present in the combo
+                // box in this version of the dialog
+                break;
         }
     } else {
         // Atom object will be set as proper atom

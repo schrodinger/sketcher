@@ -27,6 +27,7 @@ enum class QueryType {
     WILDCARD,
     SPECIFIC_ELEMENT,
     RGROUP,
+    SMARTS,
 };
 
 enum class QueryAromaticity {
@@ -101,6 +102,7 @@ struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
     std::vector<Element> allowed_list;
     AtomQuery wildcard = AtomQuery::A;
     unsigned int r_group = 1;
+    std::string smarts_query;
     std::optional<unsigned int> total_h = std::nullopt;
     std::optional<unsigned int> num_connections = std::nullopt;
     QueryAromaticity aromaticity = QueryAromaticity::ANY;
@@ -109,7 +111,6 @@ struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
     QueryCount ring_bond_count_type = QueryCount::ANY;
     unsigned int ring_bond_count_exact_val = 0;
     std::optional<unsigned int> smallest_ring_size = std::nullopt;
-    std::string smarts_query;
 
     bool isQuery() const
     {

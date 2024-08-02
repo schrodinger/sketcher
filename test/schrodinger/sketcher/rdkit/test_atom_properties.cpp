@@ -1,5 +1,5 @@
 #define BOOST_TEST_DYN_LINK
-#define BOOST_TEST_MODULE test_properties_and_bonds
+#define BOOST_TEST_MODULE test_atom_properties
 
 #include <memory>
 
@@ -22,61 +22,153 @@ namespace sketcher
 namespace bdata = boost::unit_test::data;
 
 /**
+ * Make sure that an atom with the specified SMILES string produces the expected
+ * atom properties.
+ */
+void check_read_properties_smiles(const std::string& smiles,
+                                  const AtomProperties& exp_props)
+{
+    auto mol = rdkit_extensions::to_rdkit(smiles, Format::SMILES);
+    auto* atom = mol->getAtomWithIdx(0);
+    auto props = read_properties_from_atom(atom);
+    BOOST_TEST(*props == exp_props);
+}
+
+/**
+ * Make sure that an atom with the specified SMARTS string produces the expected
+ * atom query properties.
+ */
+void check_read_properties_smarts(const std::string& smarts,
+                                  const AtomQueryProperties& exp_props)
+{
+    auto mol = rdkit_extensions::to_rdkit(smarts, Format::SMARTS);
+    auto* atom = mol->getAtomWithIdx(0);
+    auto props = read_properties_from_atom(atom);
+    BOOST_TEST(*props == exp_props);
+}
+
+/**
  * Make sure that read_properties_from_atom produces the expected properties for
  * a given input SMILES or SMARTS string
  */
 BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
 {
-    auto mol = rdkit_extensions::to_rdkit("N", Format::SMILES);
-    auto* atom = mol->getAtomWithIdx(0);
-    auto props = read_properties_from_atom(atom);
     auto exp_props = AtomProperties();
     exp_props.element = Element::N;
-    BOOST_TEST(*props == exp_props);
+    check_read_properties_smiles("N", exp_props);
 
-    mol = rdkit_extensions::to_rdkit("[N+]", Format::SMILES);
-    atom = mol->getAtomWithIdx(0);
-    props = read_properties_from_atom(atom);
     exp_props.charge = 1;
     exp_props.unpaired_electrons = 4;
-    BOOST_TEST(*props == exp_props);
+    check_read_properties_smiles("[N+]", exp_props);
 
-    mol = rdkit_extensions::to_rdkit("[32P]", Format::SMILES);
-    atom = mol->getAtomWithIdx(0);
-    props = read_properties_from_atom(atom);
     exp_props = AtomProperties();
     exp_props.element = Element::P;
     exp_props.isotope = 32;
     exp_props.unpaired_electrons = 3;
-    BOOST_TEST(*props == exp_props);
+    check_read_properties_smiles("[32P]", exp_props);
 
-    mol = rdkit_extensions::to_rdkit("N", Format::SMARTS);
-    atom = mol->getAtomWithIdx(0);
-    props = read_properties_from_atom(atom);
     auto exp_query_props = AtomQueryProperties();
     exp_query_props.query_type = QueryType::SPECIFIC_ELEMENT;
     exp_query_props.element = Element::N;
     exp_query_props.aromaticity = QueryAromaticity::ALIPHATIC;
-    BOOST_TEST(*props == exp_query_props);
+    check_read_properties_smarts("N", exp_query_props);
 
-    mol = rdkit_extensions::to_rdkit("[nR3++]", Format::SMARTS);
-    atom = mol->getAtomWithIdx(0);
-    props = read_properties_from_atom(atom);
     exp_query_props.aromaticity = QueryAromaticity::AROMATIC;
     exp_query_props.charge = 2;
     exp_query_props.ring_count_type = QueryCount::EXACTLY;
     exp_query_props.ring_count_exact_val = 3;
-    BOOST_TEST(*props == exp_query_props);
+    check_read_properties_smarts("[nR3++]", exp_query_props);
 
-    mol = rdkit_extensions::to_rdkit("[12C]", Format::SMARTS);
-    atom = mol->getAtomWithIdx(0);
-    props = read_properties_from_atom(atom);
     exp_query_props = AtomQueryProperties();
     exp_query_props.query_type = QueryType::SPECIFIC_ELEMENT;
     exp_query_props.element = Element::C;
     exp_query_props.aromaticity = QueryAromaticity::ALIPHATIC;
     exp_query_props.isotope = 12;
-    BOOST_TEST(*props == exp_query_props);
+    check_read_properties_smarts("[12C]", exp_query_props);
+
+    // test allowed atom list queries
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::ALLOWED_LIST;
+    exp_query_props.allowed_list = {Element::O, Element::C, Element::N};
+    exp_query_props.aromaticity = QueryAromaticity::ALIPHATIC;
+    check_read_properties_smarts("[O,C,N]", exp_query_props);
+
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::ALLOWED_LIST;
+    exp_query_props.allowed_list = {Element::C, Element::O, Element::N};
+    exp_query_props.aromaticity = QueryAromaticity::AROMATIC;
+    check_read_properties_smarts("[c,o,n]", exp_query_props);
+
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::ALLOWED_LIST;
+    exp_query_props.allowed_list = {Element::N, Element::O, Element::F};
+    exp_query_props.aromaticity = QueryAromaticity::ANY;
+    check_read_properties_smarts("[#7,#8,#9]", exp_query_props);
+
+    // test a long list of elements to ensure that we're preserving the element
+    // order correctly
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::ALLOWED_LIST;
+    exp_query_props.allowed_list = {Element::FR, Element::CS, Element::RB,
+                                    Element::K,  Element::NA, Element::LI,
+                                    Element::F,  Element::CL, Element::BR,
+                                    Element::I,  Element::AT, Element::TS};
+    exp_query_props.aromaticity = QueryAromaticity::ANY;
+    check_read_properties_smarts(
+        "[#87,#55,#37,#19,#11,#3,#9,#17,#35,#53,#85,#117]", exp_query_props);
+
+    // test disallowed atom list queries
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::NOT_ALLOWED_LIST;
+    exp_query_props.allowed_list = {Element::NA, Element::MG, Element::K,
+                                    Element::MN};
+    exp_query_props.aromaticity = QueryAromaticity::ANY;
+    check_read_properties_smarts("[!#11&!#12&!#19&!#25]", exp_query_props);
+
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::NOT_ALLOWED_LIST;
+    exp_query_props.allowed_list = {Element::NA, Element::MG, Element::K,
+                                    Element::MN};
+    exp_query_props.aromaticity = QueryAromaticity::ANY;
+    check_read_properties_smarts("[!Na&!Mg&!K&!Mn]", exp_query_props);
+
+    // test a query that can't be parsed into the dialog properties, so it
+    // should register as a query of type SMARTS
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::SMARTS;
+    exp_query_props.smarts_query = "[#7,+2]";
+    check_read_properties_smarts("[#7,+2]", exp_query_props);
+
+    // test an R-group query
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::RGROUP;
+    exp_query_props.r_group = 3;
+    check_read_properties_smarts("* |$_R3;$|", exp_query_props);
+
+    // an empty query should be treated as an AH wildcard (i.e. any atom)
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::WILDCARD;
+    exp_query_props.wildcard = AtomQuery::AH;
+    check_read_properties_smarts("*", exp_query_props);
+
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::SMARTS;
+    exp_query_props.smarts_query = "[R3,r2]";
+    check_read_properties_smarts("[R3,r2]", exp_query_props);
+}
+
+/**
+ * Make sure that the specified atom properties produce an atom with the correct
+ * SMILES or SMARTS string
+ */
+void check_create_atom(const std::shared_ptr<AbstractAtomProperties> props,
+                       const std::string& exp_smiles_or_smarts, Format format)
+{
+    auto atom = create_atom_with_properties(props);
+    auto mol = RDKit::RWMol();
+    mol.addAtom(atom.get());
+    auto smiles_or_smarts = rdkit_extensions::to_string(mol, format);
+    BOOST_TEST(smiles_or_smarts == exp_smiles_or_smarts);
 }
 
 /**
@@ -89,20 +181,10 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
     props->element = Element::N;
     props->charge = 1;
     props->unpaired_electrons = 4;
-    auto atom = create_atom_with_properties(props);
-    auto mol = RDKit::RWMol();
-    mol.addAtom(atom.get());
-    auto smiles =
-        rdkit_extensions::to_string(mol, rdkit_extensions::Format::SMILES);
-    BOOST_TEST(smiles == "[N+]");
+    check_create_atom(props, "[N+]", Format::SMILES);
 
     props->isotope = 13;
-    auto atom2 = create_atom_with_properties(props);
-    auto mol2 = RDKit::RWMol();
-    mol2.addAtom(atom2.get());
-    auto smiles2 =
-        rdkit_extensions::to_string(mol2, rdkit_extensions::Format::SMILES);
-    BOOST_TEST(smiles2 == "[13N+]");
+    check_create_atom(props, "[13N+]", Format::SMILES);
 
     auto query_props = std::make_shared<AtomQueryProperties>();
     query_props->query_type = QueryType::SPECIFIC_ELEMENT;
@@ -111,20 +193,40 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
     query_props->charge = 2;
     query_props->ring_count_type = QueryCount::EXACTLY;
     query_props->ring_count_exact_val = 3;
-    auto query_atom = create_atom_with_properties(query_props);
-    auto query_mol = RDKit::RWMol();
-    query_mol.addAtom(query_atom.get());
-    auto smarts = rdkit_extensions::to_string(query_mol,
-                                              rdkit_extensions::Format::SMARTS);
-    BOOST_TEST(smarts == "[#8&+2&a&R3]");
+    check_create_atom(query_props, "[#8&+2&a&R3]", Format::SMARTS);
 
+    // add an isotope to the properties
     query_props->isotope = 19;
-    auto query_atom2 = create_atom_with_properties(query_props);
-    auto query_mol2 = RDKit::RWMol();
-    query_mol2.addAtom(query_atom2.get());
-    auto smarts2 = rdkit_extensions::to_string(
-        query_mol2, rdkit_extensions::Format::SMARTS);
-    BOOST_TEST(smarts2 == "[#8&19*&+2&a&R3]");
+    check_create_atom(query_props, "[#8&19*&+2&a&R3]", Format::SMARTS);
+
+    // an allowed list query
+    query_props = std::make_shared<AtomQueryProperties>();
+    query_props->query_type = QueryType::ALLOWED_LIST;
+    query_props->allowed_list = {Element::MG, Element::K};
+    check_create_atom(query_props, "[#12,#19]", Format::SMARTS);
+
+    // a disallowed list
+    query_props->query_type = QueryType::NOT_ALLOWED_LIST;
+    check_create_atom(query_props, "[!#12&!#19]", Format::SMARTS);
+
+    // check combining allowed and disallowed with other properties
+    query_props->num_connections = 2;
+    check_create_atom(query_props, "[!#12&!#19&X2]", Format::SMARTS);
+
+    query_props->query_type = QueryType::ALLOWED_LIST;
+    check_create_atom(query_props, "[#12,#19;X2]", Format::SMARTS);
+
+    // test R-group
+    query_props = std::make_shared<AtomQueryProperties>();
+    query_props->query_type = QueryType::RGROUP;
+    query_props->r_group = 4;
+    check_create_atom(query_props, "[4*]", Format::SMILES);
+
+    // test a wildcard, which will get converted to a list of elements in SMARTS
+    query_props = std::make_shared<AtomQueryProperties>();
+    query_props->query_type = QueryType::WILDCARD;
+    query_props->wildcard = AtomQuery::X;
+    check_create_atom(query_props, "[#9,#17,#35,#53,#85]", Format::SMARTS);
 }
 
 /**
@@ -159,7 +261,14 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smiles,
  */
 BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
                      bdata::make(std::vector<std::string>{
-                         "[#7&+&A]", "[#26&+2]", "[#6&12*]", "[#8&+2&R3]"}),
+                         "[#7&+&A]",
+                         "[#26&+2]",
+                         "[#6&12*]",
+                         "[#8&+2&R3]",
+                         "[#9,#17,#35,#53,#85]",
+                         "[#7,+2]",
+                         "[R3,r2]",
+                     }),
                      input_smarts)
 {
     auto mol = rdkit_extensions::to_rdkit(input_smarts, Format::SMARTS);
@@ -168,6 +277,9 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
     auto output_atom = create_atom_with_properties(props);
     auto output_mol = RDKit::RWMol();
     output_mol.addAtom(output_atom.get());
+    // make sure the valences are calculated, otherwise we'll get an error when
+    // trying to read the properties below
+    prepare_mol(output_mol);
     auto output_smarts = rdkit_extensions::to_string(
         output_mol, rdkit_extensions::Format::SMARTS);
     BOOST_TEST(input_smarts == output_smarts);

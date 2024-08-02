@@ -49,6 +49,7 @@ const std::vector<std::pair<QString, QueryType>> QUERY_TYPE_COMBO_DATA = {
     {"Wildcard", QueryType::WILDCARD},
     {"Specific Element", QueryType::SPECIFIC_ELEMENT},
     {"R-Group", QueryType::RGROUP},
+    {"SMARTS", QueryType::SMARTS},
 };
 
 const std::vector<std::pair<QString, AtomQuery>> WILDCARD_COMBO_DATA = {
@@ -440,6 +441,9 @@ EditAtomPropertiesDialog::getDialogSettings() const
             case QueryType::RGROUP:
                 query_props.r_group = ui->rgroup_sb->value();
                 break;
+            case QueryType::SMARTS:
+                query_props.smarts_query = getSmartsQuery();
+                break;
         }
         query_props.isotope = ui->query_isotope_sb->optionalValue();
         query_props.charge = ui->query_charge_sb->optionalValue();
@@ -458,7 +462,6 @@ EditAtomPropertiesDialog::getDialogSettings() const
         query_props.ring_bond_count_exact_val = ui->ring_bond_count_sb->value();
         query_props.smallest_ring_size =
             ui->smallest_ring_size_sb->optionalValue();
-        query_props.smarts_query = getSmartsQuery();
         return std::make_shared<AtomQueryProperties>(query_props);
     }
 }
@@ -466,13 +469,14 @@ EditAtomPropertiesDialog::getDialogSettings() const
 std::string EditAtomPropertiesDialog::getSmartsQuery() const
 {
     auto smarts = ui->smarts_query_le->text().trimmed().toStdString();
-    if (!smarts.empty()) {
-        auto* atom = RDKit::SmartsToAtom(smarts);
-        if (atom == nullptr) {
-            throw InvalidAtomPropertyError("Invalid SMARTS query.");
-        }
-        delete atom;
+    if (smarts.empty()) {
+        throw InvalidAtomPropertyError("Missing SMARTS query.");
     }
+    auto* atom = RDKit::SmartsToAtom(smarts);
+    if (atom == nullptr) {
+        throw InvalidAtomPropertyError("Invalid SMARTS query.");
+    }
+    delete atom;
     return smarts;
 }
 
@@ -550,6 +554,11 @@ void EditAtomPropertiesDialog::loadQueryProperties(
         case QueryType::RGROUP:
             ui->rgroup_sb->setValue(query_props.r_group);
             break;
+        case QueryType::SMARTS: {
+            auto qsmarts = QString::fromStdString(query_props.smarts_query);
+            ui->smarts_query_le->setText(qsmarts);
+            break;
+        }
     }
 
     ui->query_isotope_sb->setOptionalValue(query_props.isotope);
@@ -565,8 +574,6 @@ void EditAtomPropertiesDialog::loadQueryProperties(
                        query_props.ring_bond_count_type);
     ui->ring_bond_count_sb->setValue(query_props.ring_bond_count_exact_val);
     ui->smallest_ring_size_sb->setOptionalValue(query_props.smallest_ring_size);
-    ui->smarts_query_le->setText(
-        QString::fromStdString(query_props.smarts_query));
 }
 
 void EditAtomPropertiesDialog::clearQueryTypeFields()
@@ -629,7 +636,6 @@ void EditAtomPropertiesDialog::onAtomOrQueryToggled(const int page_id)
             ui->query_stereo_combo, ui->query_stereo_sb, ui->atom_stereo_combo,
             ui->atom_stereo_sb);
     } else {
-        // TODO: don't transfer settings into disabled widgets
         // we're switching to the query page
         if (query_type == QueryType::SPECIFIC_ELEMENT) {
             auto atom_element_text = ui->atom_element_le->text();
@@ -736,6 +742,7 @@ void EditAtomPropertiesDialog::onQueryTypeComboBoxChanged(const int combo_index)
     bool enable_isotope = true;
     bool enable_charge = true;
     bool enable_unpaired_electrons = true;
+    bool enable_advanced_tab = true;
     switch (variant.value<QueryType>()) {
         case QueryType::ALLOWED_LIST:
         case QueryType::NOT_ALLOWED_LIST:
@@ -758,6 +765,14 @@ void EditAtomPropertiesDialog::onQueryTypeComboBoxChanged(const int combo_index)
             enable_charge = false;
             enable_unpaired_electrons = false;
             break;
+        case QueryType::SMARTS:
+            switch_to_page = ui->smarts_query_page;
+            show_periodic_table_btn = false;
+            enable_isotope = false;
+            enable_charge = false;
+            enable_unpaired_electrons = false;
+            enable_advanced_tab = false;
+            break;
     }
 
     // transfer elements between specific element and element list
@@ -777,6 +792,10 @@ void EditAtomPropertiesDialog::onQueryTypeComboBoxChanged(const int combo_index)
     ui->query_charge_sb->setEnabled(enable_charge);
     ui->query_unpaired_lbl->setEnabled(enable_unpaired_electrons);
     ui->query_unpaired_sb->setEnabled(enable_unpaired_electrons);
+    ui->advanced_tab->setEnabled(enable_advanced_tab);
+    auto advanced_tab_idx = ui->edit_query_tab_wdg->indexOf(ui->advanced_tab);
+    ui->edit_query_tab_wdg->setTabEnabled(advanced_tab_idx,
+                                          enable_advanced_tab);
     updateButtonsEnabled();
 }
 

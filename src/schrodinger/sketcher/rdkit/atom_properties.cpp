@@ -1,5 +1,6 @@
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 
+#include <deque>
 #include <unordered_set>
 
 #include <boost/algorithm/string.hpp>
@@ -7,10 +8,12 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/SmilesParse/SmartsWrite.h>
 
+#include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
-#include "schrodinger/sketcher/rdkit/rgroup.h"
 
 namespace schrodinger
 {
@@ -39,6 +42,12 @@ static const std::string QUERY_TYPE = "QUERY_TYPE";
 namespace
 {
 
+/**
+ * An error that indicates that the query being parsed cannot be represented in
+ * the property fields of the Edit Atom Properties dialog.  In this scenario,
+ * the query will instead be loaded into the dialog as a SMARTS string (with the
+ * query type set to SMARTS).
+ */
 class UnrecognizedQueryError : public std::runtime_error
 {
   public:
@@ -113,7 +122,7 @@ std::ostream& operator<<(std::ostream& os, const AbstractAtomProperties& props)
         auto* atom_props = static_cast<const AtomProperties*>(&props);
         os << "AtomProperties:\n"
            << "\tElement: "
-           << atomic_number_to_name(static_cast<int>(atom_props->element))
+           << atomic_number_to_symbol(static_cast<int>(atom_props->element))
            << "\n"
            << "\tIsotope: " << output_optional(atom_props->isotope) << "\n"
            << "\tCharge: " << atom_props->charge << "\n"
@@ -121,19 +130,34 @@ std::ostream& operator<<(std::ostream& os, const AbstractAtomProperties& props)
            << "\n";
     } else {
         auto* query_props = static_cast<const AtomQueryProperties*>(&props);
+
+        // convert the allowed list (or disallowed list) into a string
+        std::string element_list_text;
+        for (auto cur_elem : query_props->allowed_list) {
+            if (cur_elem != query_props->allowed_list.front()) {
+                element_list_text.append(", ");
+            }
+            auto symbol = atomic_number_to_symbol(static_cast<int>(cur_elem));
+            element_list_text.append(symbol);
+        }
+        if (element_list_text.empty()) {
+            element_list_text = "Empty";
+        }
+
         os << "AtomQueryProperties:\n"
-           << "\tQuery Type: " << static_cast<int>(query_props->query_type)
+           << "\tQuery type: " << static_cast<int>(query_props->query_type)
            << "\n"
-           // TODO: allowed_list
            << "\tElement: "
-           << atomic_number_to_name(static_cast<int>(query_props->element))
+           << atomic_number_to_symbol(static_cast<int>(query_props->element))
            << "\n"
+           << "\tElement list: " << element_list_text << "\n"
            << "\tIsotope: " << output_optional(query_props->isotope) << "\n"
            << "\tCharge: " << output_optional(query_props->charge) << "\n"
            << "\tUnpaired electrons: "
            << output_optional(query_props->unpaired_electrons) << "\n"
            << "\tWildcard: " << static_cast<int>(query_props->wildcard) << "\n"
            << "\tR-group: " << static_cast<int>(query_props->r_group) << "\n"
+           << "\tSMARTS query: \"" << query_props->smarts_query << "\"\n"
            << "\tTotal H: " << output_optional(query_props->total_h) << "\n"
            << "\tNum connections: "
            << output_optional(query_props->num_connections) << "\n"
@@ -262,7 +286,7 @@ static unsigned int as_unsigned(int val)
     return static_cast<unsigned int>(val);
 }
 
-/*!
+/**
  * If the given query is a wildcard query, add it to query_props. If not, do
  * nothing.
  * @param query A query instance that might be a wildcard query
@@ -295,13 +319,156 @@ static bool process_possible_wildcard_query(
     return true;
 }
 
-static std::pair<std::vector<Element>, QueryAromaticity>
+/**
+ * @return the element for the specified atomic number
+ * @throw UnrecognizedQueryError if the atomic number is invalid
+ */
+static Element get_element_for_atomic_num(int atomic_num)
+{
+    if (!is_atomic_number(atomic_num)) {
+        throw UnrecognizedQueryError("Invalid atomic number");
+    }
+    return Element(atomic_num);
+}
+
+/**
+ * Read in the element and aromaticity information from an AtomType query.
+ * Aromatic queries are indicated by a query value of 1000 plus the atomic
+ * number.  Values of less than 1000 indicate an aliphatic query.
+ */
+static std::tuple<Element, QueryAromaticity>
+get_element_and_aromaticity_from_atom_type_query(
+    const RDKit::Atom::QUERYATOM_QUERY* const query)
+{
+    auto atom_type_num = get_value_for_equality_query(query);
+    auto aromaticity = atom_type_num > ATOM_TYPE_AROMATIC_OFFSET
+                           ? QueryAromaticity::AROMATIC
+                           : QueryAromaticity::ALIPHATIC;
+    auto atomic_number = atom_type_num % ATOM_TYPE_AROMATIC_OFFSET;
+    auto element = get_element_for_atomic_num(atomic_number);
+    return {element, aromaticity};
+}
+
+/**
+ * Parse all descendents of an AtomOr query to determine the allowed elements
+ * and the aromaticity specified, if any.
+ * @return A tuple of
+ *   - the aromaticity, if one is specified, or QueryAromaticity::ANY if not
+ *   - the vector of specified elements, returned in the order they appeared in
+ *     the query.  The elements of this vector are guaranteed to be unique (i.e.
+ *     no duplicates)
+ *   - the set of specified elements.  This set contains the same elements as
+ *     the above vector.
+ * @throw UnrecognizedQueryError if the query specifies anything other than
+ * allowed elements or aromaticity, or if the aromaticity differs for different
+ * elements
+ */
+static std::tuple<QueryAromaticity, std::vector<Element>,
+                  std::unordered_set<Element>>
 parse_children_of_or_query(const RDKit::Atom::QUERYATOM_QUERY* const query)
 {
-    // TODO: only allow children to specify AtomType or AtomAtomicNum, or
-    //       AtomAnd combinations of these (so long as the AtomType is
-    //       consistent)
-    return {};
+    auto aromaticity = QueryAromaticity::ANY;
+    bool seen_first_element = false;
+    std::vector<Element> elements;
+    std::unordered_set<Element> elements_set;
+    std::deque<std::shared_ptr<RDKit::Atom::QUERYATOM_QUERY>> queries;
+    auto append_children_to_queries =
+        [&queries](const RDKit::Atom::QUERYATOM_QUERY* const query) {
+            // in order for the element list to match the input order, we have
+            // to prepend the children, in order, to our deque
+            std::vector<std::shared_ptr<RDKit::Atom::QUERYATOM_QUERY>> children(
+                query->beginChildren(), query->endChildren());
+            for (auto child_it = children.rbegin(); child_it != children.rend();
+                 ++child_it) {
+                queries.push_front(*child_it);
+            }
+        };
+    // add the element to the elements vector if it's not already on the list
+    auto record_element = [&elements, &elements_set](Element cur_element) {
+        if (!elements_set.count(cur_element)) {
+            elements.push_back(cur_element);
+            elements_set.insert(cur_element);
+        }
+    };
+
+    append_children_to_queries(query);
+    while (!queries.empty()) {
+        auto cur_child = queries.front();
+        queries.pop_front();
+        throw_if_negated(cur_child.get());
+        auto desc = cur_child->getDescription();
+        if (desc == "AtomAtomicNum") {
+            seen_first_element = true;
+            if (aromaticity != QueryAromaticity::ANY) {
+                // throw an exception if the AtomOr query mixes AtomAtomicNum
+                // children (which can't specify an aromaticity) with AtomType
+                // children (which always specify an aromaticity)
+                throw UnrecognizedQueryError(
+                    "Cannot specify different aromaticity for different "
+                    "elements");
+            }
+            auto atomic_num = get_value_for_equality_query(cur_child.get());
+            auto cur_element = get_element_for_atomic_num(atomic_num);
+            record_element(cur_element);
+        } else if (desc == "AtomType") {
+            auto [cur_element, cur_aromaticity] =
+                get_element_and_aromaticity_from_atom_type_query(
+                    cur_child.get());
+            if (!seen_first_element) {
+                aromaticity = cur_aromaticity;
+                seen_first_element = true;
+            } else if (cur_aromaticity != aromaticity) {
+                throw UnrecognizedQueryError(
+                    "Cannot specify different aromaticity for different "
+                    "elements");
+            }
+            record_element(cur_element);
+        } else if (desc == "AtomOr") {
+            append_children_to_queries(cur_child.get());
+        } else {
+            throw UnrecognizedQueryError(
+                "Cannot parse AtomOr queries that specify properties other "
+                "than elements");
+        }
+    }
+    return {aromaticity, elements, elements_set};
+}
+
+/**
+ * Store a query for the specified element in the AtomQueryProperties object
+ * @param[in] element The queried element
+ * @param[in] is_negated Whether the query was negated
+ * @param[in,out] query_props The object to store the query in
+ * @param[in,out] seen_descriptions The set of all query description values that
+ * we've already seen for this atom. This set will be updated to note this
+ * element query
+ * @throw UnrecognizedQueryError if this query conflicts with a previous element
+ * query (i.e. if this atom's query describes both a required specified element
+ * *and* a disallowed element list)
+ */
+static void
+process_element_query(const Element element, const bool is_negated,
+                      std::shared_ptr<AtomQueryProperties> query_props,
+                      std::unordered_set<std::string>& seen_descriptions)
+{
+    if (!is_negated) {
+        auto query_type = QueryType::SPECIFIC_ELEMENT;
+        std::pair<QueryType, Element> new_vals = {query_type, element};
+        std::pair<QueryType, Element> existing_vals = {query_props->query_type,
+                                                       query_props->element};
+        check_value_for_conflicts(new_vals, existing_vals, QUERY_TYPE,
+                                  seen_descriptions);
+        query_props->query_type = query_type;
+        query_props->element = element;
+    } else {
+        auto query_type = QueryType::NOT_ALLOWED_LIST;
+        check_value_for_conflicts(query_type, query_props->query_type,
+                                  QUERY_TYPE, seen_descriptions);
+        query_props->query_type = query_type;
+        query_props->allowed_list.push_back(element);
+    }
+    // an ALLOWED_LIST query will always be a child of an AtomOr query, so
+    // that's handled in parse_children_of_or_query above
 }
 
 /**
@@ -312,12 +479,12 @@ parse_children_of_or_query(const RDKit::Atom::QUERYATOM_QUERY* const query)
  * This function should only be called from itself or from read_query. Other
  * callers should use read_query instead.
  *
- * @param query The query to read in
- * @param query_props The query properties instance to update with the read-in
- * properties
- * @param seen_descriptions The set of all query description values that we've
- * already seen for this atom. This set will be updated as we read in the given
- * query.
+ * @param[in] query The query to read in
+ * @param[in,out] query_props The query properties instance to update with the
+ * read-in properties
+ * @param[in,out] seen_descriptions The set of all query description values that
+ * we've already seen for this atom. This set will be updated as we read in the
+ * given query.
  */
 static void
 read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
@@ -334,13 +501,51 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
         bool is_wildcard = process_possible_wildcard_query(query, query_props,
                                                            seen_descriptions);
         if (!is_wildcard) {
-            auto [elements, aromaticity] = parse_children_of_or_query(query);
-            // auto query_type = query->getNegation() ?
-            // QueryType::NOT_ALLOWED_LIST
-            //                                        : QueryType::ALLOWED_LIST;
-            // TODO: convert element lists to sets so we don't compare order
-            // TODO: store query type and elements
+            auto query_type = query->getNegation() ? QueryType::NOT_ALLOWED_LIST
+                                                   : QueryType::ALLOWED_LIST;
+            auto [aromaticity, elements, elements_set] =
+                parse_children_of_or_query(query);
 
+            // as long as this query isn't empty, store the query type and the
+            // allowed or disallowed list
+            if (!elements.empty()) {
+                if (query_type == QueryType::ALLOWED_LIST) {
+                    std::pair<QueryType, std::unordered_set<Element>> new_vals =
+                        {query_type, elements_set};
+                    std::unordered_set existing_elements_set(
+                        query_props->allowed_list.begin(),
+                        query_props->allowed_list.end());
+                    std::pair<QueryType, std::unordered_set<Element>>
+                        existing_vals = {query_props->query_type,
+                                         existing_elements_set};
+                    // If we have two allowed lists in the query, then both
+                    // lists have to specify the exact same elements, since
+                    // there's no way to match a query like "#6,#7;+2;#8,#9".
+                    // An element can't match both "carbon or nitrogen" and
+                    // "oxygen or fluorine" at the same time.
+                    check_value_for_conflicts(new_vals, existing_vals,
+                                              QUERY_TYPE, seen_descriptions);
+                    query_props->query_type = query_type;
+                    query_props->allowed_list = elements;
+                } else {
+                    // If we have two disallowed lists in the query, then the
+                    // lists *don't* need to specify the same elements; we can
+                    // just append the two lists together.  In a query like
+                    // "!#6&!#7&+2&!#8&!#9", then it doesn't matter that the +2
+                    // charge term breaks up the "not carbon and not nitrogen"
+                    // list from the "not oxygen and not fluorine" list; any
+                    // element other than C, N, O, or F will match both
+                    // disallowed lists.
+                    check_value_for_conflicts(query_type,
+                                              query_props->query_type,
+                                              QUERY_TYPE, seen_descriptions);
+                    query_props->query_type = query_type;
+                    std::copy(elements.begin(), elements.end(),
+                              query_props->allowed_list.end());
+                }
+            }
+            // if the child queries were all AtomType queries (which specify
+            // both atomic number and aromaticity), store the aromaticity
             if (aromaticity != QueryAromaticity::ANY) {
                 check_value_for_conflicts(aromaticity, query_props->aromaticity,
                                           ATOM_AROMATICITY, seen_descriptions);
@@ -348,22 +553,19 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
             }
         }
     } else if (desc == "AtomAtomicNum") {
+        // some wildcards are stored as negated atomic number queries (e.g. A is
+        // not H, QH is not C)
         bool is_wildcard = process_possible_wildcard_query(query, query_props,
                                                            seen_descriptions);
         if (!is_wildcard) {
-            auto query_type = QueryType::SPECIFIC_ELEMENT;
             auto atomic_number = get_value_for_equality_query(query);
             if (!is_atomic_number(atomic_number)) {
                 throw UnrecognizedQueryError("Invalid atomic number");
             }
             auto element = Element(atomic_number);
-            std::pair<QueryType, Element> new_vals = {query_type, element};
-            std::pair<QueryType, Element> existing_vals = {
-                query_props->query_type, query_props->element};
-            check_value_for_conflicts(new_vals, existing_vals, QUERY_TYPE,
-                                      seen_descriptions);
-            query_props->query_type = query_type;
-            query_props->element = element;
+            auto is_negated = query->getNegation();
+            process_element_query(element, is_negated, query_props,
+                                  seen_descriptions);
         }
     } else if (desc == "AtomFormalCharge") {
         throw_if_negated(query);
@@ -426,11 +628,18 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
                                   seen_descriptions);
         query_props->smallest_ring_size = val;
     } else if (desc == "AtomNull") {
+        // AH wildcard queries are stored as a null query
         process_possible_wildcard_query(query, query_props, seen_descriptions);
-        // TODO: this could probably also be an R-group - should check for
-        //       R-group property before I call this function
+        // this could also be an R-group, but that's handled in
+        // read_properties_from_atom since the R-group number is stored in an
+        // atom property, not in the query
     } else if (desc == "AtomRingBondCount") {
         throw_if_negated(query);
+        auto val = as_unsigned(get_value_for_equality_query(query));
+        check_value_for_conflicts(val, query_props->ring_bond_count_exact_val,
+                                  desc, seen_descriptions);
+        query_props->ring_bond_count_type = QueryCount::EXACTLY;
+        query_props->ring_count_exact_val = val;
     } else if (desc == "AtomTotalDegree") {
         throw_if_negated(query);
         auto val = as_unsigned(get_value_for_equality_query(query));
@@ -438,32 +647,30 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
                                   seen_descriptions);
         query_props->num_connections = val;
     } else if (desc == "AtomType") {
-        // AtomType combines both aromaticity and atomic number (aromaticity is
-        // indicated by whether the value is over or under 1000)
-        auto query_type = QueryType::SPECIFIC_ELEMENT;
-        auto atom_type_num = get_value_for_equality_query(query);
-        auto aromaticity = atom_type_num > ATOM_TYPE_AROMATIC_OFFSET
-                               ? QueryAromaticity::AROMATIC
-                               : QueryAromaticity::ALIPHATIC;
-        auto atomic_number = atom_type_num % ATOM_TYPE_AROMATIC_OFFSET;
-        if (!is_atomic_number(atomic_number)) {
-            throw UnrecognizedQueryError("Invalid atomic number");
-        }
-        auto element = Element(atomic_number);
-        std::pair<QueryType, Element> new_query_type_vals = {query_type,
-                                                             element};
-        std::pair<QueryType, Element> existing_query_type_vals = {
-            query_props->query_type, query_props->element};
-        check_value_for_conflicts(new_query_type_vals, existing_query_type_vals,
-                                  QUERY_TYPE, seen_descriptions);
+        bool is_negated = query->getNegation();
+        auto [element, aromaticity] =
+            get_element_and_aromaticity_from_atom_type_query(query);
+        process_element_query(element, is_negated, query_props,
+                              seen_descriptions);
         check_value_for_conflicts(aromaticity, query_props->aromaticity,
                                   ATOM_AROMATICITY, seen_descriptions);
-        query_props->query_type = query_type;
-        query_props->element = element;
         query_props->aromaticity = aromaticity;
     } else {
         throw UnrecognizedQueryError("Description not recognized");
     }
+}
+
+/**
+ * Convert the given query into a SMARTS string
+ */
+std::string
+get_smarts_for_query(const RDKit::Atom::QUERYATOM_QUERY* const query)
+{
+    auto* query_atom = new RDKit::QueryAtom();
+    query_atom->setQuery(query->copy());
+    auto smarts = RDKit::SmartsWrite::GetAtomSmarts(query_atom);
+    delete query_atom;
+    return smarts;
 }
 
 /**
@@ -476,10 +683,25 @@ read_query(const RDKit::Atom::QUERYATOM_QUERY* const query)
     std::unordered_set<std::string> seen_descriptions;
     try {
         read_query_recursive(query, query_props, seen_descriptions);
+
+        // if we haven't read any query criteria, then the query represents the
+        // AH wildcard.  (We should only hit this with a query that was read in
+        // from SMARTS.  Otherwise, the query would have a type label that
+        // would've been recognized by read_query_recursive.)
+        if (seen_descriptions.empty()) {
+            query_props->query_type = QueryType::WILDCARD;
+            query_props->wildcard = AtomQuery::AH;
+        }
     } catch (const UnrecognizedQueryError&) {
-        // we couldn't parse the query, so throw out what we were able to
-        // read (if anything) so that the failure is obvious
+        // we couldn't parse the query into something that could be represented
+        // in the dialog's property field, so report it as a SMARTS query
+        // instead
+        auto smarts = get_smarts_for_query(query);
+        // reset any properties that we did manage to read
         query_props.reset(new AtomQueryProperties());
+
+        query_props->query_type = QueryType::SMARTS;
+        query_props->smarts_query = smarts;
     }
     return query_props;
 }
@@ -491,7 +713,15 @@ std::shared_ptr<AbstractAtomProperties>
 read_properties_from_atom(const RDKit::Atom* const atom)
 {
     std::shared_ptr<AbstractAtomProperties> props = nullptr;
-    if (!atom->hasQuery()) {
+    auto r_group_num = rdkit_extensions::get_r_group_number(atom);
+    if (r_group_num.has_value()) {
+        // this is an R-group, which is stored as a non-query Atom, but
+        // represented in the dialog as a query
+        auto* query_props = new AtomQueryProperties();
+        props.reset(query_props);
+        query_props->query_type = QueryType::RGROUP;
+        query_props->r_group = *r_group_num;
+    } else if (!atom->hasQuery()) {
         auto* atom_props = new AtomProperties();
         props.reset(atom_props);
         atom_props->element = Element(atom->getAtomicNum());
@@ -505,7 +735,6 @@ read_properties_from_atom(const RDKit::Atom* const atom)
         atom_props->unpaired_electrons = atom->getNumRadicalElectrons();
     } else {
         auto* query_atom = static_cast<const RDKit::QueryAtom*>(atom);
-        // TODO: check for attachment point number
         props = read_query(query_atom->getQuery());
     }
     props->enhanced_stereo = read_enhanced_stereo_from_atom(atom);
@@ -513,26 +742,42 @@ read_properties_from_atom(const RDKit::Atom* const atom)
 }
 
 /**
- * Create a QueryAtom instance using the given properties. Also create any
- * queries necessary to describe the query type property.
- * @param query_props The query properties to use
- * @param queries A list of queries to be added to the returned QueryAtom. Any
- * queries needed to describe the query type property will be added to this
- * list, but *not* yet added to the atom.
- * @return A QueryAtom instance. This instance will be "empty" (i.e.
- * `QueryAtom()`) unless query_props specifies an R-group query type. In that
- * case, the returned atom will be an appropriately numbered attachment point
- * atom (since R-groups are specified differently from other queries).
+ * Add the query to the atom by calling expandQuery (if the atom already has a
+ * query) or setQuery (if it doesn't)
+ * @param[in] query The query to add
+ * @param[in,out] query_atom The atom to add the query to
+ * @param[in] logical_op The logical operator (i.e. AND or OR) to use if calling
+ * expandQuery.  Note that this argument will be ignored if the atom doesn't yet
+ * have a query set on it.
  */
-static std::shared_ptr<RDKit::Atom>
-create_query_atom_and_query_for_query_type_property(
-    const AtomQueryProperties* const query_props,
-    std::vector<RDKit::Atom::QUERYATOM_QUERY*>& queries)
+static void add_query_to_atom(
+    RDKit::Atom::QUERYATOM_QUERY* const query,
+    const std::shared_ptr<RDKit::Atom> query_atom,
+    const Queries::CompositeQueryType logical_op = Queries::COMPOSITE_AND)
+{
+    if (!query_atom->hasQuery()) {
+        query_atom->setQuery(query);
+    } else {
+        query_atom->expandQuery(query, logical_op);
+    }
+}
+
+/**
+ * Create an atom instance using the given query properties. The newly created
+ * atom will have any queries and/or atom properties necessary to describe the
+ * query_props->query_type value.
+ * @param query_props The query properties to use
+ * @return The newly created atom.  Note that this will be a QueryAtom instance
+ * *unless* the query_props specified an R-group query. In that case, it will be
+ * a non-query Atom instance with the appropriate R-group atom label.
+ */
+static std::shared_ptr<RDKit::Atom> create_query_atom_for_query_type_property(
+    const AtomQueryProperties* const query_props)
 {
     std::shared_ptr<RDKit::Atom> query_atom;
     // first, create the atom
     if (query_props->query_type == QueryType::RGROUP) {
-        query_atom = make_new_attachment_point(query_props->r_group);
+        query_atom = rdkit_extensions::make_new_r_group(query_props->r_group);
     } else {
         query_atom = std::make_shared<RDKit::QueryAtom>();
     }
@@ -548,37 +793,26 @@ create_query_atom_and_query_for_query_type_property(
             allowed = true;
             [[fallthrough]];
         case QueryType::NOT_ALLOWED_LIST: {
-            std::vector<RDKit::Atom::QUERYATOM_QUERY*> element_queries;
+            auto logical_op =
+                allowed ? Queries::COMPOSITE_OR : Queries::COMPOSITE_AND;
             for (auto element : query_props->allowed_list) {
                 auto* cur_query =
                     RDKit::makeAtomNumQuery(static_cast<int>(element));
-                element_queries.push_back(cur_query);
+                cur_query->setNegation(!allowed);
+                add_query_to_atom(cur_query, query_atom, logical_op);
             }
-            RDKit::Atom::QUERYATOM_QUERY* combined_query = nullptr;
-            if (element_queries.size() == 1) {
-                combined_query = *element_queries.begin();
-            } else {
-                combined_query = new RDKit::ATOM_OR_QUERY();
-                for (auto* cur_query : element_queries) {
-                    combined_query->addChild(
-                        std::shared_ptr<RDKit::Atom::QUERYATOM_QUERY>(
-                            cur_query));
-                }
-            }
-            combined_query->setNegation(!allowed);
-            queries.push_back(combined_query);
             break;
         }
         case QueryType::WILDCARD: {
             auto wildcard_query =
                 ATOM_TOOL_QUERY_MAP.at(query_props->wildcard)();
-            queries.push_back(wildcard_query);
+            add_query_to_atom(wildcard_query, query_atom);
             break;
         }
         case QueryType::SPECIFIC_ELEMENT: {
             auto atomic_num = static_cast<int>(query_props->element);
             query_atom->setAtomicNum(atomic_num);
-            queries.push_back(RDKit::makeAtomNumQuery(atomic_num));
+            add_query_to_atom(RDKit::makeAtomNumQuery(atomic_num), query_atom);
             break;
         }
         case QueryType::RGROUP: {
@@ -586,101 +820,99 @@ create_query_atom_and_query_for_query_type_property(
             // creating the atom
             break;
         }
+        case QueryType::SMARTS: {
+            auto smarts = boost::trim_copy(query_props->smarts_query);
+            auto* smarts_atom = RDKit::SmartsToAtom(smarts);
+            if (smarts_atom == nullptr) {
+                // we should never hit this since the dialog disables the OK
+                // button when the SMARTS is invalid
+                throw std::runtime_error("Invalid SMARTS pattern: " + smarts);
+            }
+            auto* query = smarts_atom->getQuery()->copy();
+            // if the atomic number isn't right, RDKit may ignore the query?
+            query_atom->setAtomicNum(smarts_atom->getAtomicNum());
+            delete smarts_atom;
+            add_query_to_atom(query, query_atom);
+        }
     }
     return query_atom;
 }
 
 /**
- * Update the atom and list of queries with all properties that were specified
- * in the General tab.
- * @param query_props The query properties to transfer to query_atom and queries
- * @param query_atom The query atom being created
- * @param queries A list of queries to be (eventually) added to query_atom. Any
- * queries created by this method will be added to this list, but *not* yet
- * added to the atom.
+ * Update the atom with all properties that were specified in the General tab.
+ * @param[in] query_props The query properties to transfer to query_atom
+ * @param[in,out] query_atom The query atom to update
  */
-static void create_queries_and_update_atom_for_general_properties(
-    const AtomQueryProperties* const query_props,
-    std::shared_ptr<RDKit::Atom> query_atom,
-    std::vector<RDKit::Atom::QUERYATOM_QUERY*>& queries)
+static void
+update_atom_for_general_properties(const AtomQueryProperties* const query_props,
+                                   std::shared_ptr<RDKit::Atom> query_atom)
 {
     if (query_props->isotope.has_value()) {
-        queries.push_back(RDKit::makeAtomIsotopeQuery(*query_props->isotope));
+        add_query_to_atom(RDKit::makeAtomIsotopeQuery(*query_props->isotope),
+                          query_atom);
         query_atom->setIsotope(*query_props->isotope);
     }
     if (query_props->charge.has_value()) {
-        queries.push_back(
-            RDKit::makeAtomFormalChargeQuery(*query_props->charge));
+        auto query = RDKit::makeAtomFormalChargeQuery(*query_props->charge);
+        add_query_to_atom(query, query_atom);
         query_atom->setFormalCharge(*query_props->charge);
     }
     if (query_props->unpaired_electrons.has_value()) {
-        queries.push_back(RDKit::makeAtomNumRadicalElectronsQuery(
-            *query_props->unpaired_electrons));
+        auto* query = RDKit::makeAtomNumRadicalElectronsQuery(
+            *query_props->unpaired_electrons);
+        add_query_to_atom(query, query_atom);
         query_atom->setNumRadicalElectrons(*query_props->unpaired_electrons);
     }
 }
 
 /**
- * Update the atom and list of queries with all properties that were specified
- * in the Advanced tab.
- * @param query_props The query properties to transfer to query_atom and queries
- * @param query_atom The query atom being created
- * @param queries A list of queries to be (eventually) added to query_atom. Any
- * queries created by this method will be added to this list, but *not* yet
- * added to the atom.
+ * Update the atom with all properties that were specified in the Advanced tab.
+ * @param[in] query_props The query properties to transfer to query_atom
+ * @param[in,out] query_atom The query atom to update
  */
-static void create_queries_and_update_atom_for_advanced_properties(
+static void update_atom_for_advanced_properties(
     const AtomQueryProperties* const query_props,
-    std::shared_ptr<RDKit::Atom> query_atom,
-    std::vector<RDKit::Atom::QUERYATOM_QUERY*>& queries)
+    std::shared_ptr<RDKit::Atom> query_atom)
 {
     if (query_props->total_h.has_value()) {
-        queries.push_back(RDKit::makeAtomHCountQuery(*query_props->total_h));
+        auto* query = RDKit::makeAtomHCountQuery(*query_props->total_h);
+        add_query_to_atom(query, query_atom);
         query_atom->setNumExplicitHs(*query_props->total_h);
     }
     if (query_props->num_connections.has_value()) {
-        queries.push_back(
-            RDKit::makeAtomTotalDegreeQuery(*query_props->num_connections));
+        auto* query =
+            RDKit::makeAtomTotalDegreeQuery(*query_props->num_connections);
+        add_query_to_atom(query, query_atom);
     }
 
     if (query_props->aromaticity == QueryAromaticity::AROMATIC) {
-        queries.push_back(RDKit::makeAtomAromaticQuery());
+        auto* query = RDKit::makeAtomAromaticQuery();
+        add_query_to_atom(query, query_atom);
         query_atom->setIsAromatic(true);
     } else if (query_props->aromaticity == QueryAromaticity::ALIPHATIC) {
-        queries.push_back(RDKit::makeAtomAliphaticQuery());
+        auto* query = RDKit::makeAtomAliphaticQuery();
+        add_query_to_atom(query, query_atom);
         query_atom->setIsAromatic(false);
     }
 
     if (query_props->ring_count_type == QueryCount::POSITIVE) {
-        queries.push_back(RDKit::makeAtomInRingQuery());
+        auto* query = RDKit::makeAtomInRingQuery();
+        add_query_to_atom(query, query_atom);
     } else if (query_props->ring_count_type == QueryCount::EXACTLY) {
-        queries.push_back(
-            RDKit::makeAtomInNRingsQuery(query_props->ring_count_exact_val));
+        auto* query =
+            RDKit::makeAtomInNRingsQuery(query_props->ring_count_exact_val);
+        add_query_to_atom(query, query_atom);
     }
 
     if (query_props->ring_bond_count_type == QueryCount::EXACTLY) {
-        queries.push_back(RDKit::makeAtomRingBondCountQuery(
-            query_props->ring_bond_count_exact_val));
+        auto* query = RDKit::makeAtomRingBondCountQuery(
+            query_props->ring_bond_count_exact_val);
+        add_query_to_atom(query, query_atom);
     }
     if (query_props->smallest_ring_size.has_value()) {
-        queries.push_back(
-            RDKit::makeAtomMinRingSizeQuery(*query_props->smallest_ring_size));
-    }
-
-    auto smarts = boost::trim_copy(query_props->smarts_query);
-    if (!smarts.empty()) {
-        // TODO: need to store the SMARTS string somewhere on the atom, plus
-        //       some way to skip trying to parse this query on read?
-        auto smarts_atom = RDKit::SmartsToAtom(smarts);
-        if (smarts_atom == nullptr) {
-            for (auto cur_query : queries) {
-                delete cur_query;
-            }
-            // we should never hit this since the dialog disables the OK
-            // button when the SMARTS is invalid
-            throw std::runtime_error("Invalid SMARTS pattern: " + smarts);
-        }
-        queries.push_back(smarts_atom->getQuery()->copy());
+        auto* query =
+            RDKit::makeAtomMinRingSizeQuery(*query_props->smallest_ring_size);
+        add_query_to_atom(query, query_atom);
     }
 }
 
@@ -708,22 +940,10 @@ std::shared_ptr<RDKit::Atom> create_atom_with_properties(
     } else {
         auto* query_props =
             static_cast<const AtomQueryProperties*>(properties.get());
-        std::vector<RDKit::Atom::QUERYATOM_QUERY*> queries;
-        auto query_atom = create_query_atom_and_query_for_query_type_property(
-            query_props, queries);
-        create_queries_and_update_atom_for_general_properties(
-            query_props, query_atom, queries);
-        create_queries_and_update_atom_for_advanced_properties(
-            query_props, query_atom, queries);
-
-        // add all of the queries to the atom
-        for (auto* cur_query : queries) {
-            if (!query_atom->hasQuery()) {
-                query_atom->setQuery(cur_query);
-            } else {
-                query_atom->expandQuery(cur_query);
-            }
-        }
+        auto query_atom =
+            create_query_atom_for_query_type_property(query_props);
+        update_atom_for_general_properties(query_props, query_atom);
+        update_atom_for_advanced_properties(query_props, query_atom);
         return query_atom;
     }
 }
