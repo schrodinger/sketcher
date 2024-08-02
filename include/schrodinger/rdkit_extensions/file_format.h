@@ -22,6 +22,7 @@ namespace rdkit_extensions
 enum class Format {
     AUTO_DETECT, // only used to read
     RDMOL_BINARY_BASE64,
+    // Atomistic-specific formats
     SMILES,
     EXTENDED_SMILES,
     SMARTS,
@@ -32,11 +33,14 @@ enum class Format {
     INCHI_KEY, // only used to write
     PDB,
     XYZ,
+    // Monomer-specific formats
     HELM,
     FASTA_PEPTIDE, // only used to read
     FASTA_DNA,     // only used to read
     FASTA_RNA,     // only used to read
     FASTA,         // only used to write
+    // Schrodinger-specific formats unknown to RDKit
+    FMP,
 };
 
 /**
