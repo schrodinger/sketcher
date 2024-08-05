@@ -27,8 +27,7 @@ namespace sketcher
 enum class TagType { ATOM, BOND, S_GROUP, NON_MOLECULAR };
 
 template <TagType tag_type> class SKETCHER_API Tag
-    : public boost::totally_ordered<Tag<tag_type>>,
-      boost::totally_ordered2<Tag<tag_type>, int>
+    : public boost::totally_ordered<Tag<tag_type>>
 {
   public:
     Tag() noexcept = default;
