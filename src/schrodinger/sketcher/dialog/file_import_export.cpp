@@ -11,36 +11,51 @@ namespace schrodinger
 namespace sketcher
 {
 
-// SKETCH-1453: Forbid MDL_MOLV2000 on export; potential stereo ambiguities
-
-// File extensions are drawn from Open Babel:
-// https://openbabel.org/docs/current/FileFormats/Common_cheminformatics_Formats.html
-
-const FormatList<Format> STANDARD_FORMATS{
-    {Format::MDL_MOLV3000, "MDL SD V3000", {".sdf", ".sd", ".mol", ".mdl"}},
-    {Format::SMILES, "SMILES", {".smi", ".smiles"}},
-    {Format::EXTENDED_SMILES, "Extended SMILES", {".cxsmi", ".cxsmiles"}},
-    {Format::SMARTS, "SMARTS", {}},
-    {Format::INCHI, "InChI", {".inchi"}},
-    {Format::INCHI_KEY, "InChIKey", {}},
-    {Format::PDB, "PDB", {".pdb", ".ent"}},
-    {Format::XYZ, "XYZ", {".xyz"}},
-};
-
 namespace
 {
-// SHARED-9525: Only allow MAE_FORMAT as an allowable import format for now;
-// we exclude it from STANDARD_FORMATS so that it cannot be exported until
-// the RDKit MaeWriter can write stereochemistry.
-const FormatList<Format> MAE_FORMAT{
-    {Format::MAESTRO, "Maestro", {".mae", ".maegz", ".mae.gz"}}};
-const FormatList<Format> IMPORT_FORMATS = STANDARD_FORMATS + MAE_FORMAT;
+
+QStringList to_qstringlist(const std::vector<std::string>& vec)
+{
+    QStringList list;
+    for (const auto& str : vec) {
+        list.append(QString::fromStdString(str));
+    }
+    return list;
+}
+
+std::tuple<Format, QString, QStringList> mol_data(Format format,
+                                                  const QString& name)
+{
+    return {format, name,
+            to_qstringlist(rdkit_extensions::get_mol_extensions(format))};
+}
+
+std::tuple<Format, QString, QStringList> rxn_data(Format format,
+                                                  const QString& name)
+{
+    return {format, name,
+            to_qstringlist(rdkit_extensions::get_rxn_extensions(format))};
+}
+
 } // unnamed namespace
 
+const FormatList<Format> STANDARD_FORMATS{
+    // SKETCH-1453: Forbid MDL_MOLV2000 on export; potential stereo ambiguities
+    mol_data(Format::MDL_MOLV3000, "MDL SD V3000"),
+    mol_data(Format::MAESTRO, "Maestro"),
+    mol_data(Format::SMILES, "SMILES"),
+    mol_data(Format::EXTENDED_SMILES, "Extended SMILES"),
+    mol_data(Format::SMARTS, "SMARTS"),
+    mol_data(Format::INCHI, "InChI"),
+    mol_data(Format::INCHI_KEY, "InChIKey"),
+    mol_data(Format::PDB, "PDB"),
+    mol_data(Format::XYZ, "XYZ"),
+};
+
 const FormatList<Format> REACTION_FORMATS{
-    {Format::MDL_MOLV3000, "MDL RXN V3000", {".rxn"}},
-    {Format::SMILES, "Reaction SMILES", {".rsmi"}},
-    {Format::SMARTS, "Reaction SMARTS", {}},
+    rxn_data(Format::MDL_MOLV3000, "MDL RXN V3000"),
+    rxn_data(Format::SMILES, "Reaction SMILES"),
+    rxn_data(Format::SMARTS, "Reaction SMARTS"),
 };
 
 const FormatList<ImageFormat> IMAGE_FORMATS{
@@ -62,7 +77,7 @@ std::string get_file_text(const std::string& file_path)
 QString get_import_name_filters()
 {
     QStringList filters;
-    for (const auto& format_list : {IMPORT_FORMATS, REACTION_FORMATS}) {
+    for (const auto& format_list : {STANDARD_FORMATS, REACTION_FORMATS}) {
         for (const auto& [_, filter] : get_name_filters(format_list)) {
             filters.append(filter);
         }
