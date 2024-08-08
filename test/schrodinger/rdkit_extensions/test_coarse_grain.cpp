@@ -177,6 +177,11 @@ BOOST_AUTO_TEST_CASE(Test_cg_to_atomistic)
         auto cg_mol = to_rdkit("PEPTIDE1{F.Y.Z.G.R.L}$$$$V2.0");
         BOOST_CHECK_THROW(cg_to_atomistic(*cg_mol), std::out_of_range);
     }
+    {
+        // nucleic acids not yet supported
+        auto cg_mol = to_rdkit("RNA1{A.C.G.T}$$$$V2.0");
+        BOOST_CHECK_THROW(cg_to_atomistic(*cg_mol), std::runtime_error);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(Test_reordering_residues)

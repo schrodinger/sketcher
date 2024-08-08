@@ -11,6 +11,7 @@
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
@@ -45,6 +46,30 @@ std::string get_cg_monomer_db_path()
     return db_path.string();
 #endif
 }
+
+const std::unordered_map<std::string, std::string> three_character_codes({
+    {"A", "ALA"}, // Alanine
+    {"R", "ARG"}, // Arginine
+    {"D", "ASH"}, // Protonated Aspartic
+    {"N", "ASN"}, // Asparagine
+    {"D", "ASP"}, // Aspartic
+    {"C", "CYS"}, // Cysteine
+    {"Q", "GLN"}, // Glutamine
+    {"E", "GLU"}, // Glutamic
+    {"G", "GLY"}, // Glycine
+    {"H", "HIS"}, // Histidine
+    {"I", "ILE"}, // Isoleucine
+    {"L", "LEU"}, // Leucine
+    {"K", "LYS"}, // Lysine
+    {"M", "MET"}, // Methionine
+    {"F", "PHE"}, // Phenylalanine
+    {"P", "PRO"}, // Proline
+    {"S", "SER"}, // Serine
+    {"T", "THR"}, // Threonine
+    {"W", "TRP"}, // Tryptophan
+    {"Y", "TYR"}, // Tyrosine
+    {"V", "VAL"}, // Valine
+});
 
 std::pair<unsigned int, unsigned int> get_attchpts(const std::string& linkage)
 {
@@ -86,10 +111,35 @@ void fill_attachment_point_map(const RDKit::ROMol& new_monomer,
     }
 }
 
+void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
+                  unsigned int residue_number, char chain_id)
+{
+    std::string residue_name("UNK");
+    if (three_character_codes.find(monomer_label) !=
+        three_character_codes.end()) {
+        residue_name = three_character_codes.at(monomer_label);
+    }
+
+    // Set PDB residue info on the atoms
+    for (auto atom : new_monomer.atoms()) {
+        auto* res_info = new RDKit::AtomPDBResidueInfo();
+
+        std::string chain_id_str(1, chain_id);
+        res_info->setChainId(chain_id_str);
+        res_info->setResidueNumber(residue_number);
+        res_info->setResidueName(residue_name);
+        // to be consistent with the rdkit adapter and RDKit's own PDB writer
+        res_info->setInsertionCode(" ");
+
+        atom->setMonomerInfo(res_info);
+    }
+}
+
 AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
                           const RDKit::RWMol& cg_mol,
                           const std::string& polymer_id,
-                          std::vector<unsigned int>& remove_atoms)
+                          std::vector<unsigned int>& remove_atoms,
+                          char chain_id)
 {
     // Maps residue number and attachment point number to the atom index in
     // atomistic_mol that should be attached to and the atom index of the rgroup
@@ -116,9 +166,11 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
 
         std::unique_ptr<RDKit::RWMol> new_monomer(
             RDKit::SmilesToMol(*smiles, 0, sanitize));
+        auto residue_number = get_residue_number(monomer);
         fill_attachment_point_map(*new_monomer, attachment_point_map,
-                                  get_residue_number(monomer),
-                                  atomistic_mol.getNumAtoms());
+                                  residue_number, atomistic_mol.getNumAtoms());
+        set_pdb_info(*new_monomer, monomer_label, residue_number, chain_id);
+
         atomistic_mol.insertMol(*new_monomer);
     }
 
@@ -150,9 +202,16 @@ boost::shared_ptr<RDKit::RWMol> cg_to_atomistic(const RDKit::ROMol& cg_mol)
     // Map to track Polymer ID -> attachment point map
     std::unordered_map<std::string, AttachmentMap> polymer_attachment_points;
     std::vector<unsigned int> remove_atoms;
+    char chain_id = 'A';
     for (const auto& polymer_id : get_polymer_ids(cg_mol)) {
-        polymer_attachment_points[polymer_id] =
-            add_polymer(*atomistic_mol, cg_mol, polymer_id, remove_atoms);
+        // Currently only peptides are supported
+        if (polymer_id.find("PEPTIDE") != 0) {
+            throw std::runtime_error(
+                fmt::format("Unsupported polymer type: {}", polymer_id));
+        }
+        polymer_attachment_points[polymer_id] = add_polymer(
+            *atomistic_mol, cg_mol, polymer_id, remove_atoms, chain_id);
+        ++chain_id;
     }
 
     // Add bonds from interpolymer connections
