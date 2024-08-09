@@ -147,6 +147,7 @@ void DrawToolsWidget::updateCheckedButton()
 
     QAbstractButton* bond_button = nullptr;
     QAbstractButton* charge_button = nullptr;
+    QAbstractButton* explicit_h_button = nullptr;
     auto draw_tool = model->getDrawTool();
 
     if (draw_tool == DrawTool::BOND) {
@@ -155,11 +156,13 @@ void DrawToolsWidget::updateCheckedButton()
     } else if (draw_tool == DrawTool::CHARGE) {
         auto charge_tool_int = model->getValueInt(ModelKey::CHARGE_TOOL);
         charge_button = ui->charge_group->button(charge_tool_int);
+    } else if (draw_tool == DrawTool::EXPLICIT_H) {
+        explicit_h_button = ui->explicit_h_btn;
     }
 
-    ui->explicit_h_btn->setChecked(draw_tool == DrawTool::EXPLICIT_H);
     check_button_or_uncheck_group(bond_button, ui->bond_group);
     check_button_or_uncheck_group(charge_button, ui->charge_group);
+    check_button_or_uncheck_group(explicit_h_button, ui->explicit_h_group);
 }
 
 QAbstractButton* DrawToolsWidget::getBondButton(BondTool tool)

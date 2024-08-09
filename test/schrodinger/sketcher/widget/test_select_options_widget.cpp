@@ -147,6 +147,18 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
             BOOST_TEST(btn->isEnabled() == has_selection);
         }
     }
+
+    // SKETCH-2219: Ensure that clicking any of these mutually exclusive buttons
+    // twice doesn't deselect it
+    for (auto btn : requires_contents_btns) {
+        btn->click();
+        BOOST_TEST(btn->isChecked());
+        btn->click();
+        BOOST_TEST(btn->isChecked());
+        for (auto other_btn : requires_contents_btns) {
+            BOOST_TEST(other_btn->isChecked() == (btn == other_btn));
+        }
+    }
 }
 
 } // namespace sketcher

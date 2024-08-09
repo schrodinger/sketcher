@@ -206,8 +206,8 @@ BOOST_AUTO_TEST_CASE(other_buttons)
     auto& ui = wdg.getUI();
     auto group = ui->charge_group;
 
-    std::array<QAbstractButton*, 3> buttons = {
-        ui->increase_charge_btn, ui->decrease_charge_btn, ui->explicit_h_btn};
+    auto buttons = {ui->increase_charge_btn, ui->decrease_charge_btn,
+                    ui->explicit_h_btn};
     for (auto button : buttons) {
         auto button_id = group->id(button);
         button->click();
@@ -236,6 +236,18 @@ BOOST_AUTO_TEST_CASE(other_buttons)
         BOOST_TEST(group->checkedId() == exp_id);
         BOOST_TEST(ui->explicit_h_btn->isChecked() ==
                    (draw_tool == DrawTool::EXPLICIT_H));
+    }
+
+    // SKETCH-2219: Ensure that clicking any of these mutually exclusive buttons
+    // twice doesn't deselect it
+    for (auto btn : buttons) {
+        btn->click();
+        BOOST_TEST(btn->isChecked());
+        btn->click();
+        BOOST_TEST(btn->isChecked());
+        for (auto other_btn : buttons) {
+            BOOST_TEST(other_btn->isChecked() == (btn == other_btn));
+        }
     }
 }
 

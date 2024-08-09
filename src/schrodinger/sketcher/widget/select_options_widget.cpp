@@ -73,14 +73,21 @@ void SelectOptionsWidget::updateCheckState()
     auto model = getModel();
     auto draw_tool = model->getDrawTool();
 
-    QAbstractButton* button = nullptr;
+    QAbstractButton* select_button = nullptr;
+    QAbstractButton* move_button = nullptr;
+    QAbstractButton* erase_button = nullptr;
     if (draw_tool == DrawTool::SELECT) {
         auto button_id = model->getValueInt(ModelKey::SELECTION_TOOL);
-        button = ui->select_tool_group->button(button_id);
+        select_button = ui->select_tool_group->button(button_id);
+    } else if (draw_tool == DrawTool::MOVE_ROTATE) {
+        move_button = ui->move_rotate_btn;
+    } else if (draw_tool == DrawTool::ERASE) {
+        erase_button = ui->erase_btn;
     }
-    check_button_or_uncheck_group(button, ui->select_tool_group);
-    ui->move_rotate_btn->setChecked(draw_tool == DrawTool::MOVE_ROTATE);
-    ui->erase_btn->setChecked(draw_tool == DrawTool::ERASE);
+
+    check_button_or_uncheck_group(select_button, ui->select_tool_group);
+    check_button_or_uncheck_group(move_button, ui->move_tool_group);
+    check_button_or_uncheck_group(erase_button, ui->erase_tool_group);
 }
 
 void SelectOptionsWidget::onSelectButtonClicked(int button_id)

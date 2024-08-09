@@ -244,6 +244,9 @@
         <property name="checkable">
          <bool>true</bool>
         </property>
+        <attribute name="buttonGroup">
+         <string notr="true">move_tool_group</string>
+        </attribute>
        </widget>
       </item>
       <item>
@@ -271,6 +274,9 @@
         <property name="checkable">
          <bool>true</bool>
         </property>
+        <attribute name="buttonGroup">
+         <string notr="true">erase_tool_group</string>
+        </attribute>
        </widget>
       </item>
      </layout>
@@ -284,5 +290,7 @@
  <connections/>
  <buttongroups>
   <buttongroup name="select_tool_group"/>
+  <buttongroup name="move_tool_group"/>
+  <buttongroup name="erase_tool_group"/>
  </buttongroups>
 </ui>
