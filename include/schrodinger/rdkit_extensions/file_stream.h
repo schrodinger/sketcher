@@ -10,11 +10,13 @@
 
 #include <fstream>
 #include <optional>
+#include <sstream>
 
 #include <boost/filesystem.hpp>
 #include <boost/iostreams/filtering_stream.hpp>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
+#include "schrodinger/rdkit_extensions/file_format.h"
 
 namespace schrodinger
 {
@@ -31,8 +33,16 @@ class RDKIT_EXTENSIONS_API maybe_compressed_ostream : public std::ostream,
         const boost::filesystem::path& filename,
         std::ios::openmode mode = std::ios::trunc);
 
+    explicit maybe_compressed_ostream(std::ostream& output_stream,
+                                      CompressionType compression_type);
+
   private:
+    // this is needed if we're writing to disk
+    std::optional<std::ofstream> m_sdgr_ofstream;
     boost::iostreams::filtering_ostreambuf m_sdgr_buffer;
+
+    void initialize_ostream(std::ostream& os,
+                            const CompressionType& compression_type);
 };
 
 // an interface to opening files for reading. This allows file reading logic for
@@ -43,23 +53,39 @@ class RDKIT_EXTENSIONS_API maybe_compressed_istream : public std::istream,
 {
   public:
     explicit maybe_compressed_istream(const boost::filesystem::path& filename);
+    explicit maybe_compressed_istream(const std::string& data,
+                                      CompressionType compression_type);
 
     bool is_compressed() const;
 
     //
-    // returns the current file position in the input file stream.
+    // returns the current position in the input stream.
     //
     // NOTE: compressed inputs are decompressed in chunks, so this allows us to
-    // get the current file position in the compressed input. The returned
-    // position could be the same after reading from the file multiple times.
+    // get the current position in the compressed input. The returned
+    // position could be the same after reading from the input stream multiple
+    // times.
     std::istream::pos_type tellg();
 
   private:
-    // we always need a file stream
-    std::ifstream m_sdgr_ifstream;
+    // we always need a data stream
+    std::optional<std::ifstream> m_sdgr_ifstream;
+    std::optional<std::istringstream> m_sdgr_istringstream;
+
     // only compressed inputs need a filtering stream buffer
     std::optional<boost::iostreams::filtering_istreambuf> m_sdgr_buffer;
     bool m_sdgr_is_compressed = false;
+
+    void initialize_istream(std::istream& is,
+                            const CompressionType& compression_type);
 };
+
+[[nodiscard]] RDKIT_EXTENSIONS_API std::string
+get_compressed_string(const std::string& data,
+                      CompressionType compression_type);
+
+[[nodiscard]] RDKIT_EXTENSIONS_API std::string
+get_decompressed_string(const std::string& data,
+                        CompressionType compression_type);
 } // namespace rdkit_extensions
 } // namespace schrodinger

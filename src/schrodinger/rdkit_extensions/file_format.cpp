@@ -33,15 +33,16 @@ namespace
  */
 const std::unordered_map<Format, std::vector<std::string>> MOL_FORMAT_EXTS = {
     {Format::RDMOL_BINARY_BASE64, {}},
-    {Format::SMILES, {".smi", ".smiles"}},
+    {Format::SMILES, {".smi", ".smigz", ".smi.gz", ".smiles"}},
     {Format::EXTENDED_SMILES, {".cxsmi", ".cxsmiles"}},
     {Format::SMARTS, {}},
     {Format::MDL_MOLV2000, {}},
-    {Format::MDL_MOLV3000, {".sdf", ".sd", ".mol", ".mdl"}},
-    {Format::MAESTRO, {".mae"}},
+    {Format::MDL_MOLV3000,
+     {".sdf", ".sdf.gz", ".sdfgz", ".sd", ".sd.gz", ".mol", ".mol.gz", ".mdl"}},
+    {Format::MAESTRO, {".mae", ".maegz", ".mae.gz", ".mae.zst"}},
     {Format::INCHI, {".inchi"}},
     {Format::INCHI_KEY, {}},
-    {Format::PDB, {".pdb", ".ent"}},
+    {Format::PDB, {".pdb", ".pdb.gz", ".pdbgz", ".ent", ".ent.gz", ".entgz"}},
     {Format::XYZ, {".xyz"}},
 };
 
@@ -148,6 +149,17 @@ CompressionType get_compression_type(const boost::filesystem::path& filename)
             u_magic[1] == ZSTD_MAGIC[3]) {
             return CompressionType::ZSTD;
         }
+    }
+    return CompressionType::UNKNOWN;
+}
+
+CompressionType
+get_compression_type_from_ext(const boost::filesystem::path& filename)
+{
+    if (boost::algorithm::iends_with(filename.string(), "gz")) {
+        return CompressionType::GZIP;
+    } else if (boost::algorithm::iends_with(filename.string(), ".zst")) {
+        return CompressionType::ZSTD;
     }
     return CompressionType::UNKNOWN;
 }

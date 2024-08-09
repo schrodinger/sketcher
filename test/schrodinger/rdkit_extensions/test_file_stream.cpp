@@ -10,10 +10,12 @@
 #include <cstdio>
 #include <ios>
 
+#include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/test/testfiles.h"
 
 using namespace schrodinger::rdkit_extensions;
+namespace bdata = boost::unit_test::data;
 
 BOOST_AUTO_TEST_CASE(TestReadingUncompressedFiles)
 {
@@ -78,4 +80,33 @@ BOOST_DATA_TEST_CASE(
 
     fstream << "hello there\n";
     BOOST_TEST(fstream.good()); // should still be writable
+}
+
+BOOST_DATA_TEST_CASE(
+    TestReadingFromStringInput,
+    bdata::make(std::vector<std::string>{
+        "structure/test.sdf", "structure/test.smigz", "structure/test.csvgz",
+        "structure/metalInteractions_test.maegz", "methane.mae.zst"}),
+    testfile)
+{
+    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    std::ifstream is(fname, std::ios::binary);
+    std::string text(std::istreambuf_iterator<char>(is), {});
+
+    // open file stream with text
+    auto compression_type = get_compression_type(fname);
+    maybe_compressed_istream fstream(text, compression_type);
+    BOOST_TEST(fstream.good()); // should be readable
+    auto is_compressed = compression_type != CompressionType::UNKNOWN;
+    BOOST_TEST(fstream.is_compressed() == is_compressed);
+
+    constexpr size_t read_size = 100;
+    std::string buffer(read_size, '\0');
+    fstream.read(&buffer[0], read_size);
+
+    // can't test tellg() since output passes through multiple buffer layers
+    BOOST_TEST(fstream.gcount() == read_size);
+    BOOST_TEST(buffer != std::string(read_size, '\0'));
+
+    BOOST_TEST(fstream.good()); // should still be readable
 }

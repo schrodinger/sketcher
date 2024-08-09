@@ -1,7 +1,6 @@
 #include "schrodinger/rdkit_extensions/file_stream.h"
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/iostreams/device/file_descriptor.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/zstd.hpp>
 
@@ -14,35 +13,75 @@ namespace rdkit_extensions
 
 maybe_compressed_ostream::maybe_compressed_ostream(
     const boost::filesystem::path& filename, std::ios::openmode mode) :
-    std::ostream(nullptr),
-    m_sdgr_buffer()
+    std::ostream(nullptr)
 {
-    if (boost::algorithm::iends_with(filename.string(), "gz")) {
+
+    m_sdgr_ofstream.emplace(filename.string(),
+                            mode | std::ios_base::out | std::ios::binary);
+    initialize_ostream(*m_sdgr_ofstream,
+                       get_compression_type_from_ext(filename));
+}
+
+maybe_compressed_ostream::maybe_compressed_ostream(
+    std::ostream& output_stream, CompressionType compression_type) :
+    std::ostream(nullptr)
+{
+    initialize_ostream(output_stream, compression_type);
+}
+
+void maybe_compressed_ostream::initialize_ostream(
+    std::ostream& output_stream, const CompressionType& compression_type)
+{
+    if (compression_type == CompressionType::GZIP) {
         m_sdgr_buffer.push(boost::iostreams::gzip_compressor());
-    } else if (boost::algorithm::iends_with(filename.string(), ".zst")) {
+    } else if (compression_type == CompressionType::ZSTD) {
         m_sdgr_buffer.push(boost::iostreams::zstd_compressor());
     }
 
-    // turn on the required flags
-    mode |= (std::ios_base::out | std::ios::binary);
-    m_sdgr_buffer.push(boost::iostreams::file_descriptor_sink(filename, mode));
+    m_sdgr_buffer.push(boost::ref(output_stream));
     this->init(&m_sdgr_buffer);
 }
 
 maybe_compressed_istream::maybe_compressed_istream(
     const boost::filesystem::path& filename) :
-    std::istream(nullptr),
+    std::istream(nullptr)
+{
     // NOTE: We should always open in binary to make file seeking consistent
     // across different platforms. See SHARED-10715
-    m_sdgr_ifstream(filename.string(), std::ios::in | std::ios::binary)
+    m_sdgr_ifstream.emplace(filename.string(), std::ios::in | std::ios::binary);
+    auto compression_type = get_compression_type(filename);
+    initialize_istream(*m_sdgr_ifstream, compression_type);
+}
+
+maybe_compressed_istream::maybe_compressed_istream(
+    const std::string& data, CompressionType compression_type) :
+    std::istream(nullptr)
 {
-    const auto compression_type = get_compression_type(filename);
+    m_sdgr_istringstream.emplace(data);
+    initialize_istream(*m_sdgr_istringstream, compression_type);
+}
+
+bool maybe_compressed_istream::is_compressed() const
+{
+    return m_sdgr_is_compressed;
+}
+
+std::istream::pos_type maybe_compressed_istream::tellg()
+{
+    // assume one of these is not empty
+    return m_sdgr_ifstream ? m_sdgr_ifstream->tellg()
+                           : m_sdgr_istringstream->tellg();
+}
+
+void maybe_compressed_istream::initialize_istream(
+    std::istream& is, const CompressionType& compression_type)
+{
+    m_sdgr_is_compressed = compression_type != CompressionType::UNKNOWN;
     // if we don't do this, i.e. if we use the filtering buffer for reading
     // uncompressed inputs, we won't have a useful tellg function because
     // we'll have multiple buffers between the file stream and the output
-    if (compression_type == CompressionType::UNKNOWN) {
-        this->init(m_sdgr_ifstream.rdbuf());
-        m_sdgr_is_compressed = false;
+    if (!m_sdgr_is_compressed) {
+        this->init(is.rdbuf());
         return;
     }
 
@@ -62,20 +101,35 @@ maybe_compressed_istream::maybe_compressed_istream(
         throw std::invalid_argument("Unsupported compression type");
     }
 
-    m_sdgr_buffer->push(boost::ref(m_sdgr_ifstream),
-                        BUFFER_SIZE_FOR_COMPRESSED);
+    m_sdgr_buffer->push(boost::ref(is), BUFFER_SIZE_FOR_COMPRESSED);
     this->init(&*m_sdgr_buffer);
-    m_sdgr_is_compressed = true;
 }
 
-bool maybe_compressed_istream::is_compressed() const
+std::string get_compressed_string(const std::string& data,
+                                  CompressionType compression_type)
 {
-    return m_sdgr_is_compressed;
+    if (compression_type == CompressionType::UNKNOWN) {
+        return data;
+    } else {
+        std::stringstream ss;
+        // use maybe_compressed_ostream as RAII
+        {
+            maybe_compressed_ostream os(ss, compression_type);
+            os.write(data.data(), data.size());
+        }
+        return ss.str();
+    }
 }
 
-std::istream::pos_type maybe_compressed_istream::tellg()
+std::string get_decompressed_string(const std::string& data,
+                                    CompressionType compression_type)
 {
-    return m_sdgr_ifstream.tellg();
+    if (compression_type == CompressionType::UNKNOWN) {
+        return data;
+    } else {
+        maybe_compressed_istream is(data, compression_type);
+        return std::string(std::istreambuf_iterator<char>(is), {});
+    }
 }
 
 } // namespace rdkit_extensions

@@ -50,11 +50,29 @@ BOOST_AUTO_TEST_CASE(test_unsupported_extensions)
 {
     // Incomplete and unknown extensions throw
     for (const auto& filename :
-         {"", ".", ".foo", "pdb", "test.cx", "test.sdf.gz", "test.inchikey"}) {
+         {"", ".", ".foo", "pdb", "test.cx", "test.inchikey"}) {
         TEST_CHECK_EXCEPTION_MSG_SUBSTR(get_file_format(filename),
                                         std::invalid_argument,
                                         "Unsupported file extension");
     }
+}
+
+BOOST_DATA_TEST_CASE(
+    test_compressed_formats,
+    boost::unit_test::data::make({Format::SMILES, Format::MDL_MOLV3000,
+                                  Format::MAESTRO, Format::PDB}),
+    format)
+{
+    const auto extension = get_mol_extensions(format).front();
+
+    auto filename = fmt::format("test{}", extension);
+    BOOST_TEST(get_file_format(filename) == format);
+
+    filename = fmt::format("test{}gz", extension);
+    BOOST_TEST(get_file_format(filename) == format);
+
+    filename = fmt::format("test{}.gz", extension);
+    BOOST_TEST(get_file_format(filename) == format);
 }
 
 BOOST_AUTO_TEST_CASE(test_schrodinger_specific_extensions)
@@ -90,4 +108,6 @@ BOOST_DATA_TEST_CASE(
 
     auto fname = schrodinger::test::mmshare_testfile(testfile);
     BOOST_TEST(get_compression_type(fname) == expected_compression_type);
+    BOOST_TEST(get_compression_type_from_ext(fname) ==
+               expected_compression_type);
 }

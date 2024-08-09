@@ -4,6 +4,7 @@
 #include <QTimer>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -86,6 +87,16 @@ void FileExportDialog::exportFile()
         show_error_dialog("Export Error", exc.what(), parentWidget());
         reject();
         return;
+    }
+
+    using namespace rdkit_extensions;
+
+    if (auto compression_type =
+            get_compression_type_from_ext(filename.toStdString());
+        compression_type != CompressionType::UNKNOWN) {
+        auto text =
+            get_compressed_string(file_content.toStdString(), compression_type);
+        file_content = QByteArray::fromStdString(text);
     }
 
     QFileDialog::saveFileContent(file_content, filename);

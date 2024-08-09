@@ -87,5 +87,15 @@ get_file_format(const boost::filesystem::path& filename);
 [[nodiscard]] RDKIT_EXTENSIONS_API CompressionType
 get_compression_type(const boost::filesystem::path& filename);
 
+/**
+ * Determines the type of the compression applied to a given file
+ * by looking at the extension
+ *
+ * @param filename file path
+ * @return corresponding compression type enum
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API CompressionType
+get_compression_type_from_ext(const boost::filesystem::path& filename);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

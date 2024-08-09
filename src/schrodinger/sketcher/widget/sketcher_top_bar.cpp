@@ -10,6 +10,8 @@
 #include "mmshare-version.h"
 #include "schrodinger/qt6_compat.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/file_stream.h"
+#include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
@@ -219,9 +221,14 @@ void SketcherTopBar::onImportFromFileClicked()
             return;
         }
         try {
-            auto format =
-                rdkit_extensions::get_file_format(file_path.toStdString());
-            emit importTextRequested(content.toStdString(), format);
+            using namespace rdkit_extensions;
+
+            auto path_string = file_path.toStdString();
+            auto format = get_file_format(path_string);
+            auto compression_type = get_compression_type(path_string);
+            auto text = get_decompressed_string(content.toStdString(),
+                                                compression_type);
+            emit importTextRequested(text, format);
         } catch (const std::exception& exc) {
             show_error_dialog("File Error", exc.what(), this);
         }
