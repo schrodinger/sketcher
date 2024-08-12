@@ -58,7 +58,7 @@ struct RenderOptions {
     QHash<int, QColor> rdbond_index_to_line_color;
     // Molecular rendering options
     bool show_terminal_methyls = false;
-    bool show_stereo_annotations = false;
+    bool show_stereo_annotations = true;
     bool show_absolute_stereo_groups = false;
     bool show_simplified_stereo_annotation = false;
 };
