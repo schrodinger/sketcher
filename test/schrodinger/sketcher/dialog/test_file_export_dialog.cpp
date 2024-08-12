@@ -43,8 +43,8 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     TestFileExportDialog dlg(&model);
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
-    // There are 7 available structure export formats
-    BOOST_TEST(dlg.m_ui->format_combo->count() == 7);
+    // There are 6 available structure export formats
+    BOOST_TEST(dlg.m_ui->format_combo->count() == 6);
     auto exts = dlg.getValidExtensions();
     // And MDL has 8 available extensions
     BOOST_TEST(exts.count() == 8);
