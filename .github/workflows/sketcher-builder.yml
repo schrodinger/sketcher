@@ -101,7 +101,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
       - name: Fetch Qt
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-output != 'wasm'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
