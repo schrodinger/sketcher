@@ -19,13 +19,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
         build-output: [app]
-
+        include:
+          - os: ubuntu-latest
+            build-output: wasm
     steps:
       - uses: actions/checkout@v4
 
       - name: Create and activate virtualenv
+        if: matrix.os == 'macos-latest'
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -45,60 +48,68 @@ jobs:
               echo -e '\nEOF'
           } >> "$GITHUB_ENV"
 
+      - name: Activate emscripten
+        if: matrix.build-output == 'wasm'
+        uses: ./.github/actions/activate-emsdk
+        with:
+          version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
+
       - name: Configure Dependency CMake
+        if: matrix.build-output != 'wasm'
         run: |
             cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Fetch fmt
+        if: matrix.build-output != 'wasm'
         id: fetch-fmt
         uses: ./.github/actions/build-external
         with:
           library: fmt
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
-          build-output: ${{ matrix.build-output }}
 
       - name: Fetch zlib
+        if: matrix.build-output != 'wasm'
         id: fetch-zlib
         uses: ./.github/actions/build-external
         with:
           library: zlib
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
-          build-output: ${{ matrix.build-output }}
 
       - name: Fetch zstd
+        if: matrix.build-output != 'wasm'
         id: fetch-zstd
         uses: ./.github/actions/build-external
         with:
           library: zstd
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
-          build-output: ${{ matrix.build-output }}
 
       - name: Fetch Boost
+        if: matrix.build-output != 'wasm'
         id: fetch-boost
         uses: ./.github/actions/build-external
         with:
           library: boost
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
-          build-output: ${{ matrix.build-output }}
 
       - name: Fetch RDKit
+        if: matrix.build-output != 'wasm'
         id: fetch-rdkit
         uses: ./.github/actions/build-external
         with:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
-          build-output: ${{ matrix.build-output }}
 
       - name: Fetch Qt
+        if: matrix.os == 'macos-latest'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          build-output: ${{ matrix.build-output }}
 
       - name: Configure CMake
+        if: matrix.os == 'macos-latest'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -112,14 +123,17 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
+        if: matrix.os == 'macos-latest'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
+        if: matrix.os == 'macos-latest'
         working-directory: build
         run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
       - name: Download sketcher executable
+        if: matrix.os == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher_${{ matrix.build-output }}
+          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}
           path: build/sketcher_app
