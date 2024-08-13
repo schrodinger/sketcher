@@ -46,15 +46,15 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     // There are 6 available structure export formats
     BOOST_TEST(dlg.m_ui->format_combo->count() == 6);
     auto exts = dlg.getValidExtensions();
-    // And MDL has 8 available extensions
-    BOOST_TEST(exts.count() == 8);
+    // And MDL has 4 available extensions
+    BOOST_TEST(exts.count() == 4);
     BOOST_TEST(exts.contains(".mol"));
 
     // Change format to PDB and confirm available extensions
     dlg.setComboFormat(Format::PDB);
     BOOST_TEST(dlg.getComboFormat() == Format::PDB);
     exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.count() == 6);
+    BOOST_TEST(exts.count() == 2);
     BOOST_TEST(exts.contains(".pdb"));
 }
 
