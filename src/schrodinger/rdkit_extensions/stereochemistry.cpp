@@ -2,6 +2,7 @@
 
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/StereoGroup.h>
 #include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -158,6 +159,74 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     for (auto bond : attachment_dummy_bonds) {
         bond->setBondType(RDKit::Bond::SINGLE);
     }
+}
+
+/**
+ * Read the enhanced stereo data, if any, for an atom.
+ */
+std::optional<rdkit_extensions::EnhancedStereo>
+get_enhanced_stereo_for_atom(const RDKit::Atom* const atom)
+{
+    auto& mol = atom->getOwningMol();
+    for (const auto& stereo_group : mol.getStereoGroups()) {
+        const auto& group_atoms = stereo_group.getAtoms();
+        if (std::find(group_atoms.begin(), group_atoms.end(), atom) !=
+            group_atoms.end()) {
+            return EnhancedStereo(stereo_group.getGroupType(),
+                                  stereo_group.getReadId());
+        }
+    }
+    // this atom doesn't appear in any stereo groups
+    return std::nullopt;
+}
+
+void set_enhanced_stereo_for_atom(RDKit::Atom* atom,
+                                  const EnhancedStereo& enh_stereo)
+{
+    auto cur_stereo = get_enhanced_stereo_for_atom(atom);
+    if (cur_stereo.has_value() && *cur_stereo == enh_stereo) {
+        // the atom already has the desired stereo, so there's nothing to do
+        return;
+    }
+
+    auto& mol = atom->getOwningMol();
+    auto stereo_groups = mol.getStereoGroups();
+    // remove the atom from whatever group it's currently in
+    RDKit::removeAtomFromGroups(atom, stereo_groups);
+
+    // check to see if there's already a stereo group with the desired
+    // parameters
+    std::vector<RDKit::Atom*> atoms;
+    std::vector<RDKit::Bond*> bonds;
+    bool is_abs = enh_stereo.first == RDKit::StereoGroupType::STEREO_ABSOLUTE;
+    auto cur_group_it = stereo_groups.begin();
+    for (; cur_group_it != stereo_groups.end(); ++cur_group_it) {
+        auto& cur_group = *cur_group_it;
+        if (cur_group.getGroupType() == enh_stereo.first &&
+            (is_abs || enh_stereo.second == cur_group.getReadId())) {
+            // this group matches the specified parameters
+            atoms = cur_group.getAtoms();
+            bonds = cur_group.getBonds();
+            break;
+        }
+    }
+    atoms.push_back(atom);
+    auto group_id = is_abs ? 0 : enh_stereo.second;
+    auto new_group =
+        RDKit::StereoGroup(enh_stereo.first, atoms, bonds, group_id);
+    new_group.setWriteId(group_id);
+    if (cur_group_it == stereo_groups.end()) {
+        // we didn't find any existing group with the required parameters, so we
+        // add the new group at the end
+        stereo_groups.push_back(new_group);
+    } else {
+        // We found a group in the for loop above. Because there's no public way
+        // to add an atom to an existing stereo group instance, we instead
+        // replace the group with a new one containing all of the same atoms and
+        // bonds, plus the atom we want to add.
+        *cur_group_it = new_group;
+    }
+    mol.setStereoGroups(stereo_groups);
 }
 
 } // namespace rdkit_extensions

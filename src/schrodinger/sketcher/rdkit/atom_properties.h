@@ -7,6 +7,7 @@
 
 #include <rdkit/GraphMol/StereoGroup.h>
 
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
@@ -42,15 +43,18 @@ enum class QueryCount {
     EXACTLY,
 };
 
-/**
- * A data class for storing an atom's enhanced stereo data
- */
-struct EnhancedStereo {
-    RDKit::StereoGroupType type = RDKit::StereoGroupType::STEREO_ABSOLUTE;
-    unsigned int group_id = 1;
-
-    bool operator==(const EnhancedStereo& other) const;
-    bool operator!=(const EnhancedStereo& other) const;
+// rdkit_extensions::EnhancedStereo is just a std::pair that holds a group type
+// enum and id number.  We wrap that class here to add named getters and setters
+// in order to make the dialog code more readable
+class SKETCHER_API EnhancedStereo : public rdkit_extensions::EnhancedStereo
+{
+  public:
+    using rdkit_extensions::EnhancedStereo::EnhancedStereo;
+    EnhancedStereo(rdkit_extensions::EnhancedStereo enh_stereo);
+    RDKit::StereoGroupType type() const;
+    void setType(RDKit::StereoGroupType);
+    unsigned int groupId() const;
+    void setGroupId(unsigned int);
 };
 
 /**
@@ -125,9 +129,14 @@ SKETCHER_API std::shared_ptr<AbstractAtomProperties>
 read_properties_from_atom(const RDKit::Atom* const atom);
 
 /**
- * @return a new atom with the specified properties
+ * @return a new atom with the specified properties along with the settings for
+ * the enhanced stereo group that the atom should be added to.  If the atom
+ * should not be added to an enhanced stereo group, then that value will be
+ * std::nullopt.
  */
-SKETCHER_API std::shared_ptr<RDKit::Atom> create_atom_with_properties(
+SKETCHER_API
+std::pair<std::shared_ptr<RDKit::Atom>, std::optional<EnhancedStereo>>
+create_atom_with_properties(
     const std::shared_ptr<AbstractAtomProperties> properties);
 
 } // namespace sketcher

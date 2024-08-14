@@ -21,6 +21,7 @@
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/model/tags.h"
+#include "schrodinger/sketcher/rdkit/atom_properties.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 
 class QObject;
@@ -722,15 +723,23 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Mutate a set of atoms to the specified query.
+     * @overload
      */
     void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
                      const AtomQuery atom_query);
 
     /**
      * Mutate a set of atoms to the specified atom.
+     * @param enh_stereo The settings for the enhanced stereo group to add this
+     * atom to.  If no such enhanced stereo group exists in the molecule, one
+     * will be created. If std::nullopt is given (the default), them enhanced
+     * stereo for the atom will not be changed.
+     * @overload
      */
-    void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& from_atoms,
-                     const RDKit::Atom& to_atom);
+    void
+    mutateAtoms(const std::unordered_set<const RDKit::Atom*>& from_atoms,
+                const RDKit::Atom& to_atom,
+                const std::optional<EnhancedStereo>& enh_stereo = std::nullopt);
 
     /**
      * Change the R-group of existing atoms. This method can also mutate
@@ -1380,10 +1389,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Mutate a set of atoms to an Atom object returned by the provided
      * function.
-     * @param atoms The atoms to mutate
+     * @overload
      */
-    void mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
-                     const AtomFunc& create_atom);
+    void
+    mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                const AtomFunc& create_atom,
+                const std::optional<EnhancedStereo>& enh_stereo = std::nullopt);
 
     /**
      * Mutate a set of bonds to a Bond object returned by the provided

@@ -366,11 +366,9 @@ static void set_enhanced_stereo_properties(const QComboBox* const combo,
 {
     if (combo->isEnabled()) {
         EnhancedStereo enhanced_stereo;
-        enhanced_stereo.type =
-            combo->currentData().value<RDKit::StereoGroupType>();
-        if (sb->isEnabled()) {
-            enhanced_stereo.group_id = sb->value();
-        }
+        enhanced_stereo.setType(
+            combo->currentData().value<RDKit::StereoGroupType>());
+        enhanced_stereo.setGroupId(sb->isEnabled() ? sb->value() : 0);
         props.enhanced_stereo = enhanced_stereo;
     }
 }
@@ -384,22 +382,23 @@ static void set_enhanced_stereo_widgets(QLabel* const label,
                                         const AbstractAtomProperties& props)
 {
     bool enable = props.enhanced_stereo.has_value();
-    EnhancedStereo enhanced_stereo;
+    // we want the combo box to show absolute stereo if it's disabled
+    EnhancedStereo enhanced_stereo(RDKit::StereoGroupType::STEREO_ABSOLUTE, 1);
     if (enable) {
         enhanced_stereo = *props.enhanced_stereo;
     }
     label->setEnabled(enable);
     combo->setEnabled(enable);
-    set_combo_box_data(combo, enhanced_stereo.type);
+    set_combo_box_data(combo, enhanced_stereo.type());
     // setting the combo box data will automatically show or hide the spin box
-    sb->setValue(enhanced_stereo.group_id);
+    sb->setValue(enhanced_stereo.groupId());
 }
 
 void EditAtomPropertiesDialog::accept()
 {
     auto props = getDialogSettings();
-    auto new_atom = create_atom_with_properties(props);
-    m_mol_model->mutateAtoms({m_atom}, *new_atom);
+    auto [new_atom, maybe_enhanced_stereo] = create_atom_with_properties(props);
+    m_mol_model->mutateAtoms({m_atom}, *new_atom, maybe_enhanced_stereo);
     QDialog::accept();
 }
 

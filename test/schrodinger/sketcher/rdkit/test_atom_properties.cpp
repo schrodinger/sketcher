@@ -14,6 +14,11 @@
 
 using schrodinger::rdkit_extensions::Format;
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnhancedStereo)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(
+    std::optional<schrodinger::sketcher::EnhancedStereo>)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(std::nullopt_t)
+
 namespace schrodinger
 {
 namespace sketcher
@@ -164,7 +169,8 @@ BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
 void check_create_atom(const std::shared_ptr<AbstractAtomProperties> props,
                        const std::string& exp_smiles_or_smarts, Format format)
 {
-    auto atom = create_atom_with_properties(props);
+    auto [atom, enh_stereo] = create_atom_with_properties(props);
+    BOOST_TEST(enh_stereo == std::nullopt);
     auto mol = RDKit::RWMol();
     mol.addAtom(atom.get());
     auto smiles_or_smarts = rdkit_extensions::to_string(mol, format);
@@ -244,7 +250,8 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smiles,
     auto mol = rdkit_extensions::to_rdkit(input_smiles, Format::SMILES);
     auto atom = mol->getAtomWithIdx(0);
     auto props = read_properties_from_atom(atom);
-    auto output_atom = create_atom_with_properties(props);
+    auto [output_atom, enh_stereo] = create_atom_with_properties(props);
+    BOOST_TEST(enh_stereo == std::nullopt);
     auto output_mol = RDKit::RWMol();
     output_mol.addAtom(output_atom.get());
     auto output_smiles = rdkit_extensions::to_string(
@@ -274,7 +281,7 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
     auto mol = rdkit_extensions::to_rdkit(input_smarts, Format::SMARTS);
     auto atom = mol->getAtomWithIdx(0);
     auto props = read_properties_from_atom(atom);
-    auto output_atom = create_atom_with_properties(props);
+    auto [output_atom, enh_stereo] = create_atom_with_properties(props);
     auto output_mol = RDKit::RWMol();
     output_mol.addAtom(output_atom.get());
     // make sure the valences are calculated, otherwise we'll get an error when

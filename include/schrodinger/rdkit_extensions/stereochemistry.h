@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include <boost/noncopyable.hpp>
@@ -13,6 +14,7 @@ class Atom;
 class Conformer;
 class Bond;
 class ROMol;
+enum class StereoGroupType;
 } // namespace RDKit
 
 namespace schrodinger
@@ -24,6 +26,8 @@ const std::string HAIR_SPACE = " ";
 const std::string ABSOLUTE_STEREO_PREFIX = "abs" + HAIR_SPACE;
 const std::string OR_STEREO_PREFIX = "or" + HAIR_SPACE;
 const std::string AND_STEREO_PREFIX = "and" + HAIR_SPACE;
+
+using EnhancedStereo = std::pair<RDKit::StereoGroupType, unsigned int>;
 
 class RDKIT_EXTENSIONS_API UseModernStereoPerception : public boost::noncopyable
 {
@@ -68,6 +72,27 @@ RDKIT_EXTENSIONS_API std::string get_bond_stereo_label(const RDKit::Bond& bond);
  */
 RDKIT_EXTENSIONS_API void wedgeMolBonds(RDKit::ROMol& mol,
                                         const RDKit::Conformer* conf);
+
+/**
+ * Get the enhanced stereo value for the specified atom
+ * @return The enhanced stereo type and group write ID for the given atom. (Note
+ * that the group ID is only valid for AND or OR stereochemistry, as absolute
+ * stereochemistry does not have a group id.) If the atom is not part of any
+ * enhanced stereo group, then std::nullopt will be returned.
+ */
+RDKIT_EXTENSIONS_API std::optional<EnhancedStereo>
+get_enhanced_stereo_for_atom(const RDKit::Atom* atom);
+
+/**
+ * Modify the enhanced stereo group for the specified atom
+ * @param atom The atom to modify
+ * @param enh_stereo A pair of the enhanced stereo type and group ID. For AND
+ * and OR stereochemistry, this group ID will be set for both the read and write
+ * ID. For absolute stereochemistry, this group ID will be ignored.
+ */
+RDKIT_EXTENSIONS_API void
+set_enhanced_stereo_for_atom(RDKit::Atom* atom,
+                             const EnhancedStereo& enh_stereo);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

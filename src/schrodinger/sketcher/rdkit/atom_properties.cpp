@@ -56,14 +56,29 @@ class UnrecognizedQueryError : public std::runtime_error
 
 } // namespace
 
-bool EnhancedStereo::operator==(const EnhancedStereo& other) const
+EnhancedStereo::EnhancedStereo(rdkit_extensions::EnhancedStereo enh_stereo) :
+    EnhancedStereo(enh_stereo.first, enh_stereo.second)
 {
-    return (this->type == other.type && this->group_id == other.group_id);
 }
 
-bool EnhancedStereo::operator!=(const EnhancedStereo& other) const
+RDKit::StereoGroupType EnhancedStereo::type() const
 {
-    return !(*this == other);
+    return first;
+}
+
+void EnhancedStereo::setType(RDKit::StereoGroupType group_type)
+{
+    first = group_type;
+}
+
+unsigned int EnhancedStereo::groupId() const
+{
+    return type() == RDKit::StereoGroupType::STEREO_ABSOLUTE ? 0 : second;
+}
+
+void EnhancedStereo::setGroupId(unsigned int group_id)
+{
+    second = group_id;
 }
 
 bool AbstractAtomProperties::operator==(
@@ -175,27 +190,6 @@ std::ostream& operator<<(std::ostream& os, const AbstractAtomProperties& props)
            << output_optional(query_props->smallest_ring_size) << "\n";
     }
     return os;
-}
-
-/**
- * Read the enhanced stereo data, if any, for an atom.
- */
-static std::optional<EnhancedStereo>
-read_enhanced_stereo_from_atom(const RDKit::Atom* const atom)
-{
-    auto& mol = atom->getOwningMol();
-    for (const auto& stereo_group : mol.getStereoGroups()) {
-        const auto& group_atoms = stereo_group.getAtoms();
-        if (std::find(group_atoms.begin(), group_atoms.end(), atom) !=
-            group_atoms.end()) {
-            EnhancedStereo enhanced_stereo;
-            enhanced_stereo.type = stereo_group.getGroupType();
-            enhanced_stereo.group_id = stereo_group.getWriteId();
-            return enhanced_stereo;
-        }
-    }
-    // this atom doesn't appear in any stereo groups
-    return std::nullopt;
 }
 
 /**
@@ -737,7 +731,8 @@ read_properties_from_atom(const RDKit::Atom* const atom)
         auto* query_atom = static_cast<const RDKit::QueryAtom*>(atom);
         props = read_query(query_atom->getQuery());
     }
-    props->enhanced_stereo = read_enhanced_stereo_from_atom(atom);
+    props->enhanced_stereo =
+        rdkit_extensions::get_enhanced_stereo_for_atom(atom);
     return props;
 }
 
@@ -923,29 +918,26 @@ static void update_atom_for_advanced_properties(
 /**
  * Create an RDKit atom with the given properties.
  */
-std::shared_ptr<RDKit::Atom> create_atom_with_properties(
+std::pair<std::shared_ptr<RDKit::Atom>, std::optional<EnhancedStereo>>
+create_atom_with_properties(
     const std::shared_ptr<AbstractAtomProperties> properties)
 {
-    // TODO: handle stereo - will need to return info about stereo group
-    //       separately and pass it to MolModel, since it needs to be set on the
-    //       molecule, not the atom
+    std::shared_ptr<RDKit::Atom> atom = nullptr;
     if (!properties->isQuery()) {
         auto* atom_props = static_cast<const AtomProperties*>(properties.get());
-        auto atom = std::make_shared<RDKit::Atom>(
+        atom = std::make_shared<RDKit::Atom>(
             static_cast<int>(atom_props->element));
         atom->setIsotope(atom_props->isotope.value_or(0));
         atom->setFormalCharge(atom_props->charge);
         atom->setNumRadicalElectrons(atom_props->unpaired_electrons);
-        return atom; //, atom_props.enhanced_stereo};
     } else {
         auto* query_props =
             static_cast<const AtomQueryProperties*>(properties.get());
-        auto query_atom =
-            create_query_atom_for_query_type_property(query_props);
-        update_atom_for_general_properties(query_props, query_atom);
-        update_atom_for_advanced_properties(query_props, query_atom);
-        return query_atom;
+        atom = create_query_atom_for_query_type_property(query_props);
+        update_atom_for_general_properties(query_props, atom);
+        update_atom_for_advanced_properties(query_props, atom);
     }
+    return {atom, properties->enhanced_stereo};
 }
 
 } // namespace sketcher

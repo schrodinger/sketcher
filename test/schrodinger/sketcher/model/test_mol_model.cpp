@@ -47,6 +47,12 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(RDGeom::Point3D);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularObject);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::NonMolecularType);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::Bond::BondDir);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::rdkit_extensions::EnhancedStereo)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(
+    std::optional<schrodinger::rdkit_extensions::EnhancedStereo>)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnhancedStereo)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(
+    std::optional<schrodinger::sketcher::EnhancedStereo>)
 
 namespace utf = boost::unit_test;
 namespace tt = boost::test_tools;
@@ -1758,6 +1764,63 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsQuery)
     BOOST_TEST(!mol->getAtomWithIdx(0)->hasQuery());
     undo_stack.redo();
     BOOST_TEST(mol->getAtomWithIdx(0)->hasQuery());
+}
+
+/**
+ * Make sure that mutateAtoms handles enhanced stereochemistry correctly
+ */
+BOOST_AUTO_TEST_CASE(test_mutateAtomsEnhancedStereo)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "N[C@H](C)C(=O)O");
+    auto* mol = model.getMol();
+    auto* atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+               rdkit_extensions::EnhancedStereo(
+                   RDKit::StereoGroupType::STEREO_ABSOLUTE, 0));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+    auto to_atom = RDKit::Atom("C");
+
+    model.mutateAtoms({atom}, to_atom,
+                      EnhancedStereo(RDKit::StereoGroupType::STEREO_AND, 1));
+    atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+               rdkit_extensions::EnhancedStereo(
+                   RDKit::StereoGroupType::STEREO_AND, 1));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+    undo_stack.undo();
+    atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+               rdkit_extensions::EnhancedStereo(
+                   RDKit::StereoGroupType::STEREO_ABSOLUTE, 0));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+    undo_stack.redo();
+    atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+               rdkit_extensions::EnhancedStereo(
+                   RDKit::StereoGroupType::STEREO_AND, 1));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+
+    model.mutateAtoms({atom}, to_atom,
+                      EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
+    atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(
+        rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+        rdkit_extensions::EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+    undo_stack.undo();
+    atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+               rdkit_extensions::EnhancedStereo(
+                   RDKit::StereoGroupType::STEREO_AND, 1));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+    undo_stack.redo();
+    atom = mol->getAtomWithIdx(1);
+    BOOST_TEST(
+        rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+        rdkit_extensions::EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
 }
 
 BOOST_AUTO_TEST_CASE(test_mutateBond)

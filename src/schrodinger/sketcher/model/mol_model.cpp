@@ -1669,7 +1669,7 @@ void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
 
 void MolModel::mutateAtoms(
     const std::unordered_set<const RDKit::Atom*>& from_atoms,
-    const RDKit::Atom& to_atom)
+    const RDKit::Atom& to_atom, const std::optional<EnhancedStereo>& enh_stereo)
 {
     AtomFunc create_atom;
     if (to_atom.hasQuery()) {
@@ -1687,18 +1687,25 @@ void MolModel::mutateAtoms(
             return std::make_shared<RDKit::Atom>(to_atom);
         };
     }
-    mutateAtoms(from_atoms, create_atom);
+    mutateAtoms(from_atoms, create_atom, enh_stereo);
 }
 
 void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
-                           const AtomFunc& create_atom)
+                           const AtomFunc& create_atom,
+                           const std::optional<EnhancedStereo>& enh_stereo)
 {
     if (atoms.empty()) {
         return;
     }
-    auto cmd_func = [this, atoms, create_atom]() {
+    auto cmd_func = [this, atoms, create_atom, enh_stereo]() {
         for (auto atom : atoms) {
-            mutateAtomCommandFunc(getTagForAtom(atom), create_atom);
+            auto atom_tag = getTagForAtom(atom);
+            mutateAtomCommandFunc(atom_tag, create_atom);
+            if (enh_stereo.has_value()) {
+                auto* mutated_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
+                rdkit_extensions::set_enhanced_stereo_for_atom(mutated_atom,
+                                                               *enh_stereo);
+            }
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
