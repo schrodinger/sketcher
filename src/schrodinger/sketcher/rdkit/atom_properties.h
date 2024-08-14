@@ -107,7 +107,8 @@ struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
     AtomQuery wildcard = AtomQuery::A;
     unsigned int r_group = 1;
     std::string smarts_query;
-    std::optional<unsigned int> total_h = std::nullopt;
+    QueryCount total_h_type = QueryCount::ANY;
+    unsigned int total_h_exact_val = 0;
     std::optional<unsigned int> num_connections = std::nullopt;
     QueryAromaticity aromaticity = QueryAromaticity::ANY;
     QueryCount ring_count_type = QueryCount::ANY;

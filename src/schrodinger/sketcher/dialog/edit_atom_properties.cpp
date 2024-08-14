@@ -66,13 +66,14 @@ const std::vector<std::pair<QString, QueryAromaticity>> AROMATICITY_COMBO_DATA =
         {"Aliphatic (A)", QueryAromaticity::ALIPHATIC},
 };
 
-const std::vector<std::pair<QString, QueryCount>> RING_COUNT_COMBO_DATA = {
-    {"(any)", QueryCount::ANY},
-    {">0", QueryCount::POSITIVE},
-    {"exactly", QueryCount::EXACTLY},
+const std::vector<std::pair<QString, QueryCount>>
+    ANY_POSITIVE_EXACTLY_COMBO_DATA = {
+        {"(any)", QueryCount::ANY},
+        {">0", QueryCount::POSITIVE},
+        {"exactly", QueryCount::EXACTLY},
 };
 
-const std::vector<std::pair<QString, QueryCount>> RING_BOND_COUNT_COMBO_DATA = {
+const std::vector<std::pair<QString, QueryCount>> ANY_EXACTLY_COMBO_DATA = {
     {"(any)", QueryCount::ANY},
     {"exactly", QueryCount::EXACTLY},
 };
@@ -154,6 +155,8 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
             &EditAtomPropertiesDialog::updateButtonsEnabled);
 
     // connect combo boxes that update whether other widgets are visible
+    show_spin_box_when_exactly_is_selected_in_combo_box(ui->total_h_combo,
+                                                        ui->total_h_sb);
     show_spin_box_when_exactly_is_selected_in_combo_box(ui->ring_count_combo,
                                                         ui->ring_count_sb);
     show_spin_box_when_exactly_is_selected_in_combo_box(
@@ -171,9 +174,11 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
     load_data_into_combo_box(ui->query_type_combo, QUERY_TYPE_COMBO_DATA);
     load_data_into_combo_box(ui->wildcard_combo, WILDCARD_COMBO_DATA);
     load_data_into_combo_box(ui->aromaticity_combo, AROMATICITY_COMBO_DATA);
-    load_data_into_combo_box(ui->ring_count_combo, RING_COUNT_COMBO_DATA);
-    load_data_into_combo_box(ui->ring_bond_count_combo,
-                             RING_BOND_COUNT_COMBO_DATA);
+    load_data_into_combo_box(ui->total_h_combo,
+                             ANY_POSITIVE_EXACTLY_COMBO_DATA);
+    load_data_into_combo_box(ui->ring_count_combo,
+                             ANY_POSITIVE_EXACTLY_COMBO_DATA);
+    load_data_into_combo_box(ui->ring_bond_count_combo, ANY_EXACTLY_COMBO_DATA);
 
     // set the tooltips that would have to be duplicated if we set them in the
     // ui file
@@ -488,7 +493,9 @@ EditAtomPropertiesDialog::getDialogSettings() const
                                               ui->query_unpaired_sb);
         set_enhanced_stereo_properties(ui->query_stereo_combo,
                                        ui->query_stereo_sb, query_props);
-        set_to_dialog_value_if_widget_enabled(query_props.total_h,
+        set_to_dialog_value_if_widget_enabled(query_props.total_h_type,
+                                              ui->total_h_combo);
+        set_to_dialog_value_if_widget_enabled(query_props.total_h_exact_val,
                                               ui->total_h_sb);
         set_to_dialog_value_if_widget_enabled(query_props.num_connections,
                                               ui->num_connections_sb);
@@ -607,7 +614,8 @@ void EditAtomPropertiesDialog::loadQueryProperties(
     ui->query_charge_sb->setOptionalValue(query_props.charge);
     ui->query_unpaired_sb->setOptionalValue(query_props.unpaired_electrons);
 
-    ui->total_h_sb->setOptionalValue(query_props.total_h);
+    set_combo_box_data(ui->total_h_combo, query_props.total_h_type);
+    ui->total_h_sb->setValue(query_props.total_h_exact_val);
     ui->num_connections_sb->setOptionalValue(query_props.num_connections);
     set_combo_box_data(ui->aromaticity_combo, query_props.aromaticity);
     set_combo_box_data(ui->ring_count_combo, query_props.ring_count_type);

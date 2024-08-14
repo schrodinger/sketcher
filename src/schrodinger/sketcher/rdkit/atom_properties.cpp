@@ -98,7 +98,9 @@ bool AbstractAtomProperties::operator==(
                this_query->allowed_list == other_query->allowed_list &&
                this_query->wildcard == other_query->wildcard &&
                this_query->r_group == other_query->r_group &&
-               this_query->total_h == other_query->total_h &&
+               this_query->total_h_type == other_query->total_h_type &&
+               this_query->total_h_exact_val ==
+                   other_query->total_h_exact_val &&
                this_query->num_connections == other_query->num_connections &&
                this_query->aromaticity == other_query->aromaticity &&
                this_query->ring_count_type == other_query->ring_count_type &&
@@ -173,7 +175,10 @@ std::ostream& operator<<(std::ostream& os, const AbstractAtomProperties& props)
            << "\tWildcard: " << static_cast<int>(query_props->wildcard) << "\n"
            << "\tR-group: " << static_cast<int>(query_props->r_group) << "\n"
            << "\tSMARTS query: \"" << query_props->smarts_query << "\"\n"
-           << "\tTotal H: " << output_optional(query_props->total_h) << "\n"
+           << "\tTotal H type: " << static_cast<int>(query_props->total_h_type)
+           << "\n"
+           << "\tTotal H exact value: " << query_props->total_h_exact_val
+           << "\n"
            << "\tNum connections: "
            << output_optional(query_props->num_connections) << "\n"
            << "\tAromaticity: " << static_cast<int>(query_props->aromaticity)
@@ -568,11 +573,25 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
                                   seen_descriptions);
         query_props->charge = val;
     } else if (desc == "AtomHCount") {
-        throw_if_negated(query);
         auto val = as_unsigned(get_value_for_equality_query(query));
-        check_value_for_conflicts(val, query_props->total_h, desc,
+        auto new_type = QueryCount::EXACTLY;
+        if (query->getNegation()) {
+            if (val != 0) {
+                // this query is checking whether the number of hydrogens is not
+                // equal to something other than zero, which can't be
+                // represented in the atom properties dialog
+                throw UnrecognizedQueryError("AtomHCount queries may only be "
+                                             "an exact value or not zero.");
+            }
+            new_type = QueryCount::POSITIVE;
+        }
+        std::pair<QueryCount, unsigned int> new_total_h_vals = {new_type, val};
+        std::pair<QueryCount, unsigned int> existing_total_h_vals = {
+            query_props->total_h_type, query_props->total_h_exact_val};
+        check_value_for_conflicts(new_total_h_vals, existing_total_h_vals, desc,
                                   seen_descriptions);
-        query_props->total_h = val;
+        query_props->total_h_type = new_type;
+        query_props->total_h_exact_val = val;
     } else if (desc == "AtomInNRings") {
         throw_if_negated(query);
         auto new_type = QueryCount::EXACTLY;
@@ -869,11 +888,17 @@ static void update_atom_for_advanced_properties(
     const AtomQueryProperties* const query_props,
     std::shared_ptr<RDKit::Atom> query_atom)
 {
-    if (query_props->total_h.has_value()) {
-        auto* query = RDKit::makeAtomHCountQuery(*query_props->total_h);
+    if (query_props->total_h_type != QueryCount::ANY) {
+        int query_val = 0;
+        if (query_props->total_h_type == QueryCount::EXACTLY) {
+            query_val = query_props->total_h_exact_val;
+            query_atom->setNumExplicitHs(query_props->total_h_exact_val);
+        }
+        auto* query = RDKit::makeAtomHCountQuery(query_val);
+        query->setNegation(query_props->total_h_type == QueryCount::POSITIVE);
         add_query_to_atom(query, query_atom);
-        query_atom->setNumExplicitHs(*query_props->total_h);
     }
+
     if (query_props->num_connections.has_value()) {
         auto* query =
             RDKit::makeAtomTotalDegreeQuery(*query_props->num_connections);

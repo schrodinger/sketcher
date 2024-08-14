@@ -160,6 +160,11 @@ BOOST_AUTO_TEST_CASE(test_read_properties_from_atom)
     exp_query_props.query_type = QueryType::SMARTS;
     exp_query_props.smarts_query = "[R3,r2]";
     check_read_properties_smarts("[R3,r2]", exp_query_props);
+
+    exp_query_props = AtomQueryProperties();
+    exp_query_props.query_type = QueryType::SPECIFIC_ELEMENT;
+    exp_query_props.total_h_type = QueryCount::POSITIVE;
+    check_read_properties_smarts("[#6&!H0]", exp_query_props);
 }
 
 /**
@@ -222,6 +227,9 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
     query_props->query_type = QueryType::ALLOWED_LIST;
     check_create_atom(query_props, "[#12,#19;X2]", Format::SMARTS);
 
+    query_props->total_h_type = QueryCount::POSITIVE;
+    check_create_atom(query_props, "[#12,#19;!H0;X2]", Format::SMARTS);
+
     // test R-group
     query_props = std::make_shared<AtomQueryProperties>();
     query_props->query_type = QueryType::RGROUP;
@@ -272,6 +280,7 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
                          "[#26&+2]",
                          "[#6&12*]",
                          "[#8&+2&R3]",
+                         "[#9&!H0]",
                          "[#9,#17,#35,#53,#85]",
                          "[#7,+2]",
                          "[R3,r2]",
