@@ -368,7 +368,7 @@ static void set_enhanced_stereo_properties(const QComboBox* const combo,
         EnhancedStereo enhanced_stereo;
         enhanced_stereo.setType(
             combo->currentData().value<RDKit::StereoGroupType>());
-        enhanced_stereo.setGroupId(sb->isEnabled() ? sb->value() : 0);
+        enhanced_stereo.setGroupId(!sb->isHidden() ? sb->value() : 0);
         props.enhanced_stereo = enhanced_stereo;
     }
 }
@@ -402,6 +402,39 @@ void EditAtomPropertiesDialog::accept()
     QDialog::accept();
 }
 
+/**
+ * Set the atom property value to the value in the widget if and only if the
+ * widget is enabled and not hidden.
+ */
+template <typename T> static void
+set_to_dialog_value_if_widget_enabled(std::optional<T>& value,
+                                      const BlankableSpinBox* const sb)
+{
+    // note that !widget->isHidden() is *not* the same as widget->isVisible().
+    // The isVisible() method takes into account the visibility of
+    // parent/grandparent/etc widgets, but isHidden() only considers the
+    // visibility setting of the widget itself.
+    if (sb->isEnabled() && !sb->isHidden()) {
+        value = sb->optionalValue();
+    }
+}
+
+template <typename T> static void
+set_to_dialog_value_if_widget_enabled(T& value, const QSpinBox* const sb)
+{
+    if (sb->isEnabled() && !sb->isHidden()) {
+        value = sb->value();
+    }
+}
+
+template <typename T> static void
+set_to_dialog_value_if_widget_enabled(T& value, const QComboBox* const combo)
+{
+    if (combo->isEnabled() && !combo->isHidden()) {
+        value = combo->currentData().value<T>();
+    }
+}
+
 std::shared_ptr<AbstractAtomProperties>
 EditAtomPropertiesDialog::getDialogSettings() const
 {
@@ -410,9 +443,12 @@ EditAtomPropertiesDialog::getDialogSettings() const
         auto element_text = ui->atom_element_le->text();
         atom_props.element = get_element_from_text(element_text);
 
-        atom_props.isotope = ui->atom_isotope_sb->optionalValue();
-        atom_props.charge = ui->atom_charge_sb->value();
-        atom_props.unpaired_electrons = ui->atom_unpaired_sb->value();
+        set_to_dialog_value_if_widget_enabled(atom_props.isotope,
+                                              ui->atom_isotope_sb);
+        set_to_dialog_value_if_widget_enabled(atom_props.charge,
+                                              ui->atom_charge_sb);
+        set_to_dialog_value_if_widget_enabled(atom_props.unpaired_electrons,
+                                              ui->atom_unpaired_sb);
         set_enhanced_stereo_properties(ui->atom_stereo_combo,
                                        ui->atom_stereo_sb, atom_props);
         return std::make_shared<AtomProperties>(atom_props);
@@ -444,23 +480,30 @@ EditAtomPropertiesDialog::getDialogSettings() const
                 query_props.smarts_query = getSmartsQuery();
                 break;
         }
-        query_props.isotope = ui->query_isotope_sb->optionalValue();
-        query_props.charge = ui->query_charge_sb->optionalValue();
-        query_props.unpaired_electrons = ui->query_unpaired_sb->optionalValue();
+        set_to_dialog_value_if_widget_enabled(query_props.isotope,
+                                              ui->query_isotope_sb);
+        set_to_dialog_value_if_widget_enabled(query_props.charge,
+                                              ui->query_charge_sb);
+        set_to_dialog_value_if_widget_enabled(query_props.unpaired_electrons,
+                                              ui->query_unpaired_sb);
         set_enhanced_stereo_properties(ui->query_stereo_combo,
                                        ui->query_stereo_sb, query_props);
-        query_props.total_h = ui->total_h_sb->optionalValue();
-        query_props.num_connections = ui->num_connections_sb->optionalValue();
-        query_props.aromaticity =
-            ui->aromaticity_combo->currentData().value<QueryAromaticity>();
-        query_props.ring_count_type =
-            ui->ring_count_combo->currentData().value<QueryCount>();
-        query_props.ring_count_exact_val = ui->ring_count_sb->value();
-        query_props.ring_bond_count_type =
-            ui->ring_bond_count_combo->currentData().value<QueryCount>();
-        query_props.ring_bond_count_exact_val = ui->ring_bond_count_sb->value();
-        query_props.smallest_ring_size =
-            ui->smallest_ring_size_sb->optionalValue();
+        set_to_dialog_value_if_widget_enabled(query_props.total_h,
+                                              ui->total_h_sb);
+        set_to_dialog_value_if_widget_enabled(query_props.num_connections,
+                                              ui->num_connections_sb);
+        set_to_dialog_value_if_widget_enabled(query_props.aromaticity,
+                                              ui->aromaticity_combo);
+        set_to_dialog_value_if_widget_enabled(query_props.ring_count_type,
+                                              ui->ring_count_combo);
+        set_to_dialog_value_if_widget_enabled(query_props.ring_count_exact_val,
+                                              ui->ring_count_sb);
+        set_to_dialog_value_if_widget_enabled(query_props.ring_bond_count_type,
+                                              ui->ring_bond_count_combo);
+        set_to_dialog_value_if_widget_enabled(
+            query_props.ring_bond_count_exact_val, ui->ring_bond_count_sb);
+        set_to_dialog_value_if_widget_enabled(query_props.smallest_ring_size,
+                                              ui->smallest_ring_size_sb);
         return std::make_shared<AtomQueryProperties>(query_props);
     }
 }

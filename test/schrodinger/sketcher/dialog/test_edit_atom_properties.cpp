@@ -16,6 +16,9 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(std::nullopt_t)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryType)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryAromaticity)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryCount)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnhancedStereo)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(
+    std::optional<schrodinger::sketcher::EnhancedStereo>)
 
 namespace schrodinger
 {
@@ -116,15 +119,89 @@ BOOST_AUTO_TEST_CASE(test_getDialogSettings)
                        QueryType::SPECIFIC_ELEMENT);
     dialog.ui->query_element_le->setText("N");
     dialog.ui->query_charge_sb->setOptionalValue(1);
+    dialog.ui->query_unpaired_sb->setOptionalValue(2);
     set_combo_box_data(dialog.ui->ring_count_combo, QueryCount::EXACTLY);
     dialog.ui->ring_count_sb->setValue(3);
     props = dialog.getDialogSettings();
     BOOST_TEST(props->isQuery());
     auto* query_props = static_cast<AtomQueryProperties*>(props.get());
+    BOOST_TEST(query_props->query_type == QueryType::SPECIFIC_ELEMENT);
     BOOST_TEST(query_props->element == Element::N);
     BOOST_TEST(query_props->charge == 1);
+    BOOST_TEST(query_props->unpaired_electrons == 2);
     BOOST_TEST(query_props->ring_count_type == QueryCount::EXACTLY);
     BOOST_TEST(query_props->ring_count_exact_val == 3);
+
+    // make sure that getDialogSettings ignores disabled widgets even if they
+    // have a value in them - switching to "Allowed List" will disable the
+    // "Unpaired electrons" spin box
+    set_combo_box_data(dialog.ui->query_type_combo, QueryType::ALLOWED_LIST);
+    props = dialog.getDialogSettings();
+    BOOST_TEST(props->isQuery());
+    query_props = static_cast<AtomQueryProperties*>(props.get());
+    BOOST_TEST(query_props->query_type == QueryType::ALLOWED_LIST);
+    BOOST_TEST(query_props->allowed_list == std::vector<Element>{Element::N});
+    BOOST_TEST(query_props->charge == 1);
+    BOOST_TEST(query_props->unpaired_electrons == std::nullopt);
+    BOOST_TEST(query_props->ring_count_type == QueryCount::EXACTLY);
+    BOOST_TEST(query_props->ring_count_exact_val == 3);
+
+    // make sure that getDialog settings ignores hidden widgets, such as the
+    // ring (bond) count spin box when the ring (bond) count combo box is set to
+    // any or positive
+    set_combo_box_data(dialog.ui->ring_bond_count_combo, QueryCount::EXACTLY);
+    dialog.ui->ring_bond_count_sb->setValue(2);
+    set_combo_box_data(dialog.ui->ring_bond_count_combo, QueryCount::ANY);
+    set_combo_box_data(dialog.ui->ring_count_combo, QueryCount::POSITIVE);
+    props = dialog.getDialogSettings();
+    BOOST_TEST(props->isQuery());
+    query_props = static_cast<AtomQueryProperties*>(props.get());
+    BOOST_TEST(query_props->query_type == QueryType::ALLOWED_LIST);
+    BOOST_TEST(query_props->allowed_list == std::vector<Element>{Element::N});
+    BOOST_TEST(query_props->charge == 1);
+    BOOST_TEST(query_props->unpaired_electrons == std::nullopt);
+    BOOST_TEST(query_props->ring_count_type == QueryCount::POSITIVE);
+    BOOST_TEST(query_props->ring_count_exact_val == 0);
+    BOOST_TEST(query_props->ring_bond_count_type == QueryCount::ANY);
+    BOOST_TEST(query_props->ring_bond_count_exact_val == 0);
+}
+
+/**
+ * Make sure that getDialogSettings returns an atom properties object with the
+ * correct enhanced stereo values
+ */
+BOOST_AUTO_TEST_CASE(test_getDialogSettings_enhanced_stereo)
+{
+    auto undo_stack = QUndoStack();
+    auto mol_model = MolModel(&undo_stack);
+    import_mol_text(&mol_model, "N[C@H](C)C(=O)O |&1:1|");
+    auto* atom = mol_model.getMol()->getAtomWithIdx(1);
+    auto dialog = TestDialog(atom, &mol_model);
+    auto props = dialog.getDialogSettings();
+    BOOST_TEST(!props->isQuery());
+    auto* atom_props = static_cast<AtomProperties*>(props.get());
+    BOOST_TEST(atom_props->element == Element::C);
+    BOOST_TEST(atom_props->enhanced_stereo ==
+               EnhancedStereo(RDKit::StereoGroupType::STEREO_AND, 1));
+
+    set_combo_box_data(dialog.ui->atom_stereo_combo,
+                       RDKit::StereoGroupType::STEREO_OR);
+    dialog.ui->atom_stereo_sb->setValue(3);
+    props = dialog.getDialogSettings();
+    BOOST_TEST(!props->isQuery());
+    atom_props = static_cast<AtomProperties*>(props.get());
+    BOOST_TEST(atom_props->element == Element::C);
+    BOOST_TEST(atom_props->enhanced_stereo ==
+               EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
+
+    set_combo_box_data(dialog.ui->atom_stereo_combo,
+                       RDKit::StereoGroupType::STEREO_ABSOLUTE);
+    props = dialog.getDialogSettings();
+    BOOST_TEST(!props->isQuery());
+    atom_props = static_cast<AtomProperties*>(props.get());
+    BOOST_TEST(atom_props->element == Element::C);
+    BOOST_TEST(atom_props->enhanced_stereo ==
+               EnhancedStereo(RDKit::StereoGroupType::STEREO_ABSOLUTE, 0));
 }
 
 /**
