@@ -83,17 +83,17 @@ const std::vector<Format> MOL_FORMATS = get_keys(MOL_FORMAT_EXTS);
 const std::vector<Format> RXN_FORMATS = get_keys(RXN_FORMAT_EXTS);
 const std::vector<Format> SEQ_FORMATS = get_keys(SEQ_FORMAT_EXTS);
 
-std::vector<std::string> get_mol_extensions(Format format)
+std::vector<std::string> get_mol_extensions(const Format format)
 {
     return MOL_FORMAT_EXTS.at(format);
 }
 
-std::vector<std::string> get_rxn_extensions(Format format)
+std::vector<std::string> get_rxn_extensions(const Format format)
 {
     return RXN_FORMAT_EXTS.at(format);
 }
 
-std::vector<std::string> get_seq_extensions(Format format)
+std::vector<std::string> get_seq_extensions(const Format format)
 {
     return SEQ_FORMAT_EXTS.at(format);
 }

@@ -75,8 +75,8 @@ void CutCopyActionManager::initCopyAsMenu()
         }
     };
 
-    init_menu(STANDARD_FORMATS, false);
-    init_menu(REACTION_FORMATS, true);
+    init_menu(get_standard_formats(), false);
+    init_menu(get_reaction_formats(), true);
 }
 
 void CutCopyActionManager::updateActions()

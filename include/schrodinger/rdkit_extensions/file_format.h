@@ -64,9 +64,12 @@ extern RDKIT_EXTENSIONS_API const std::vector<Format> SEQ_FORMATS;
  * @return supported molecule/reaction/sequence extensions of the given format
  * @throw std::out_of_range if format is not supported
  */
-RDKIT_EXTENSIONS_API std::vector<std::string> get_mol_extensions(Format format);
-RDKIT_EXTENSIONS_API std::vector<std::string> get_rxn_extensions(Format format);
-RDKIT_EXTENSIONS_API std::vector<std::string> get_seq_extensions(Format format);
+RDKIT_EXTENSIONS_API std::vector<std::string>
+get_mol_extensions(const Format format);
+RDKIT_EXTENSIONS_API std::vector<std::string>
+get_rxn_extensions(const Format format);
+RDKIT_EXTENSIONS_API std::vector<std::string>
+get_seq_extensions(const Format format);
 
 /**
  * @param filename file path

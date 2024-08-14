@@ -29,9 +29,9 @@ template <class T> using FormatList =
 /**
  * All supported export labels for both standard molecules and reactions
  */
-extern SKETCHER_API const FormatList<rdkit_extensions::Format> STANDARD_FORMATS;
-extern SKETCHER_API const FormatList<rdkit_extensions::Format> REACTION_FORMATS;
-extern SKETCHER_API const FormatList<ImageFormat> IMAGE_FORMATS;
+SKETCHER_API FormatList<rdkit_extensions::Format> get_standard_formats();
+SKETCHER_API FormatList<rdkit_extensions::Format> get_reaction_formats();
+SKETCHER_API FormatList<ImageFormat> get_image_formats();
 
 /**
  * @param file_path file to read

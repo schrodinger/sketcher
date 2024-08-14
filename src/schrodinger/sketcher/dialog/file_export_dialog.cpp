@@ -23,7 +23,7 @@ namespace
 const QString DEFAULT_FILENAME{"structure"};
 
 const auto get_format_list = [](bool has_reaction) {
-    return has_reaction ? REACTION_FORMATS : STANDARD_FORMATS;
+    return has_reaction ? get_reaction_formats() : get_standard_formats();
 };
 
 } // namespace
