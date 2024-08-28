@@ -349,6 +349,7 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
         opts.show_absolute_stereo_groups;
     display_settings.m_show_simplified_stereo_annotation =
         opts.show_simplified_stereo_annotation;
+    display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
     setAtomDisplaySettings(display_settings);
 }
 
