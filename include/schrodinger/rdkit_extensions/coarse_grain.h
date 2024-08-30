@@ -36,6 +36,10 @@ enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
 enum class ConnectionType { FORWARD, SIDECHAIN };
 enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
 
+RDKIT_EXTENSIONS_API ChainType to_chain_type(std::string_view chain_type);
+
+RDKIT_EXTENSIONS_API std::string to_string(ChainType chain_type);
+
 /*
  * Add a monomer to the molecule
  *

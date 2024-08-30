@@ -14,6 +14,37 @@
 namespace schrodinger::rdkit_extensions
 {
 
+ChainType to_chain_type(std::string_view chain_type)
+{
+    if (chain_type == "PEPTIDE") {
+        return ChainType::PEPTIDE;
+    } else if (chain_type == "RNA") {
+        return ChainType::RNA;
+    } else if (chain_type == "DNA") {
+        return ChainType::DNA;
+    } else if (chain_type == "CHEM") {
+        return ChainType::CHEM;
+    } else {
+        throw std::invalid_argument("Invalid chain type");
+    }
+}
+
+std::string to_string(ChainType chain_type)
+{
+    switch (chain_type) {
+        case ChainType::PEPTIDE:
+            return "PEPTIDE";
+        case ChainType::RNA:
+            return "RNA";
+        case ChainType::DNA:
+            return "DNA";
+        case ChainType::CHEM:
+            return "CHEM";
+        default:
+            throw std::invalid_argument("Invalid chain type");
+    }
+}
+
 void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
                     const std::string& linkage)
 {

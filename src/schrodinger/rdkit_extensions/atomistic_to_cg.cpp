@@ -16,6 +16,7 @@
 
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/cg_monomer_database.h"
 
 namespace schrodinger
 {
@@ -88,47 +89,24 @@ const std::unordered_map<std::string, std::string> amino_acids = {
 
 // 3-letter to 1-letter amino acid code mapping
 // From mmpdb_get_three_to_one_letter_residue_map
-// Temporary, should eventually be included in the monomer DB
-const std::unordered_map<std::string, char> res_table({
-    {"ALA", 'A'}, // Alanine
-    {"ARG", 'R'}, // Arginine
+// These are not currently in the monomer database, but some have
+// symbols that are already in the monomer database. We may need to
+// figure out how to have multiple 3-letter codes for a single symbol
+// polymer_type pair (Histidine is the best example)
+const std::unordered_map<std::string, char> backup_res_table({
     {"ARN", 'R'}, // Neutral-Arginine
     {"ASH", 'D'}, // Protonated Aspartic
-    {"ASN", 'N'}, // Asparagine
-    {"ASP", 'D'}, // Aspartic
-    {"CYS", 'C'}, // Cysteine
-    {"CYT", 'C'}, // Ionised Cysteine
-    {"CYX", 'C'}, // Cysteine in sulphide linkage
     {"GLH", 'E'}, // Protonated Glutamic
-    {"GLN", 'Q'}, // Glutamine
-    {"GLU", 'E'}, // Glutamic
-    {"GLY", 'G'}, // Glycine
     {"HID", 'H'}, // Histidine (protonated at delta N)
     {"HIE", 'H'}, // Histidine (protonated at epsilon N)
     {"HIP", 'H'}, // Histidine (protonated at both N)
-    {"HIS", 'H'}, // Histidine
     {"HSD", 'H'}, // Histidine (protonated at delta N, CHARMM name)
     {"HSE", 'H'}, // Histidine (protonated at epsilon N, CHARMM name)
     {"HSP", 'H'}, // Histidine (protonated at both N, CHARMM name)
-    {"ILE", 'I'}, // Isoleucine
-    {"LEU", 'L'}, // Leucine
     {"LYN", 'K'}, // Protonated Lysine
-    {"LYS", 'K'}, // Lysine
-    {"MET", 'M'}, // Methionine
-    {"MSE", 'M'}, // Selenomethionine
-    {"PHE", 'F'}, // Phenylalanine
-    {"PRO", 'P'}, // Proline
-    {"PTR", 'y'}, // Phosphorylated tyrosine
-    {"SEP", 's'}, // Phosphorylated serine
-    {"SER", 'S'}, // Serine
     {"SRO", 'S'}, // Ionized Serine
     {"THO", 'T'}, // Ionized Threonine
-    {"THR", 'T'}, // Threonine
-    {"TPO", 't'}, // Phosporylated threonine
-    {"TRP", 'W'}, // Tryptophan
     {"TYO", 'Y'}, // Ionized Tyrosine
-    {"TYR", 'Y'}, // Tyrosine
-    {"VAL", 'V'}, // Valine
     {"XXX", 'X'}, // Unknown
 });
 
@@ -381,6 +359,8 @@ annotated_atomistic_to_cg(const RDKit::ROMol& mol)
     // maps residue number -> residue info and atom indices
     std::map<int, residue> residues;
 
+    cg_monomer_database db(get_cg_monomer_db_path());
+
     for (const auto atom : mol.atoms()) {
         const auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
             atom->getMonomerInfo());
@@ -418,10 +398,16 @@ annotated_atomistic_to_cg(const RDKit::ROMol& mol)
 
         // All residues are placed in the same chain
         // TODO: handle multiple chains
-        if (!res.has_insertion && res_table.find(res_name) != res_table.end()) {
+        auto helm_info = db.get_helm_info(res_name);
+        if (!res.has_insertion && helm_info) {
             // Standard residue
-            add_monomer(*cg_mol, std::string{res_table.at(res_name)}, res_num,
-                        default_chain_id);
+            add_monomer(*cg_mol, helm_info->first, res_num, default_chain_id);
+        } else if (!res.has_insertion &&
+                   backup_res_table.find(res_name) != backup_res_table.end()) {
+            // Standard residue not in monomer DB. 1-letter code is stored
+            // through map
+            add_monomer(*cg_mol, std::string{backup_res_table.at(res_name)},
+                        res_num, default_chain_id);
         } else {
             // Non-standard residue
             auto smiles = RDKit::MolFragmentToSmiles(mol, res.atom_indices);

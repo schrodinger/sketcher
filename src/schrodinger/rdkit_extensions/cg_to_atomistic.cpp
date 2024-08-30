@@ -15,9 +15,6 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
-#ifndef __EMSCRIPTEN__
-#include "schrodinger/path.h"
-#endif
 #include "schrodinger/rdkit_extensions/cg_monomer_database.h"
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -33,19 +30,6 @@ namespace fs = boost::filesystem;
 
 using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
                                std::pair<unsigned int, unsigned int>>;
-
-std::string get_cg_monomer_db_path()
-{
-#ifdef __EMSCRIPTEN__
-    throw std::logic_error(
-        "CG Monomers are not yet supported in WASM Sketcher");
-#else
-
-    auto db_path =
-        path::product_dir("mmshare") / "data/helm/core_monomerlib.db";
-    return db_path.string();
-#endif
-}
 
 const std::unordered_map<std::string, std::string> three_character_codes({
     {"A", "ALA"}, // Alanine
@@ -156,8 +140,7 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         auto monomer = cg_mol.getAtomWithIdx(monomer_idx);
         auto monomer_label = monomer->getProp<std::string>(ATOM_LABEL);
 
-        auto smiles =
-            db.get_monomer_smiles(monomer_label, CG_MONOMER_TYPE::PEPTIDE);
+        auto smiles = db.get_monomer_smiles(monomer_label, ChainType::PEPTIDE);
         if (!smiles) {
             throw std::out_of_range(fmt::format(
                 "Peptide Monomer {} not found in CG Monomer database",

@@ -12,23 +12,24 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
-enum class CG_MONOMER_TYPE {
-    RNA,
-    PEPTIDE,
+enum class ChainType;
 
-};
+std::string get_cg_monomer_db_path();
 
 class [[nodiscard]] cg_monomer_database : public boost::noncopyable
 {
   public:
     using monomer_smiles_t = std::optional<std::string>;
+    using helm_info_t = std::optional<std::pair<std::string, ChainType>>;
 
     cg_monomer_database(std::string_view database_path);
 
     ~cg_monomer_database();
 
-    [[nodiscard]] monomer_smiles_t
-    get_monomer_smiles(std::string monomer_id, CG_MONOMER_TYPE monomer_type);
+    [[nodiscard]] monomer_smiles_t get_monomer_smiles(std::string monomer_id,
+                                                      ChainType monomer_type);
+
+    [[nodiscard]] helm_info_t get_helm_info(std::string& three_letter_code);
 
   private:
     sqlite3* m_db;
