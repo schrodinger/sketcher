@@ -39,11 +39,14 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
 void MoveRotateSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
     StandardSceneToolBase::onMouseMove(event);
-    if (m_rotation_item.isInsideHandle(event->scenePos())) {
-        emit newCursorHintRequested(m_rotate_cursor_hint);
+    // update the cursor only if we're not in the middle of a drag
+    if (!m_drag_started) {
+        if (m_rotation_item.isInsideHandle(event->scenePos())) {
+            emit newCursorHintRequested(m_rotate_cursor_hint);
 
-    } else {
-        emit newCursorHintRequested(m_translate_cursor_hint);
+        } else {
+            emit newCursorHintRequested(m_translate_cursor_hint);
+        }
     }
     updatePredictiveHighlightingForMouseAt(event->scenePos());
 }
