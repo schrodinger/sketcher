@@ -51,7 +51,8 @@ const QString ATOM_ELEMENT_STYLE{
 
 const QString ATOM_QUERY_STYLE{
     "QLabel { font: italic 7px; color: #666666; }"
-    "QToolButton { font: bold italic 14px; color: #606060; }"};
+    "QToolButton { font: bold italic 14px; color: #606060; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
 
 const QString PERIODIC_TABLE_STYLE{
     "#PeriodicTableForm { background-color:white }"
