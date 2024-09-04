@@ -12,6 +12,7 @@
 #include "schrodinger/rdkit_extensions/coarse_grain.h" // ChainType
 
 #ifndef __EMSCRIPTEN__
+#include "mmfile.h"
 #include "schrodinger/path.h"
 #endif
 
@@ -32,6 +33,14 @@ std::string get_cg_monomer_db_path()
     throw std::logic_error(
         "CG Monomers are not yet supported in WASM Sketcher");
 #else
+    // First check for custom monomer database in .schrodinger, then fall back
+    // to default
+    auto custom_db_path = boost::filesystem::path(mmfile_get_directory_path(
+                              DirectoryName::MMFILE_LOCAL_APPDATA)) /
+                          "helm/custom_monomerlib.db";
+    if (boost::filesystem::exists(custom_db_path)) {
+        return custom_db_path.string();
+    }
 
     auto db_path =
         path::product_dir("mmshare") / "data/helm/core_monomerlib.db";
