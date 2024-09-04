@@ -3,6 +3,8 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/filter/zstd.hpp>
+#include <cstring>
+#include <fmt/format.h>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 
@@ -15,9 +17,13 @@ maybe_compressed_ostream::maybe_compressed_ostream(
     const boost::filesystem::path& filename, std::ios::openmode mode) :
     std::ostream(nullptr)
 {
-
-    m_sdgr_ofstream.emplace(filename.string(),
+    auto fpath = filename.string();
+    m_sdgr_ofstream.emplace(fpath,
                             mode | std::ios_base::out | std::ios::binary);
+    if (!*m_sdgr_ofstream) {
+        throw fmt::system_error(errno, "Error opening {}", fpath);
+    }
+
     initialize_ostream(*m_sdgr_ofstream,
                        get_compression_type_from_ext(filename));
 }
@@ -26,6 +32,11 @@ maybe_compressed_ostream::maybe_compressed_ostream(
     std::ostream& output_stream, CompressionType compression_type) :
     std::ostream(nullptr)
 {
+    if (!output_stream) {
+        throw std::runtime_error(
+            "Bad output stream in `maybe_compressed_ostream`");
+    }
+
     initialize_ostream(output_stream, compression_type);
 }
 
@@ -48,7 +59,12 @@ maybe_compressed_istream::maybe_compressed_istream(
 {
     // NOTE: We should always open in binary to make file seeking consistent
     // across different platforms. See SHARED-10715
-    m_sdgr_ifstream.emplace(filename.string(), std::ios::in | std::ios::binary);
+    auto fpath = filename.string();
+    m_sdgr_ifstream.emplace(fpath, std::ios::in | std::ios::binary);
+    if (!*m_sdgr_ifstream) {
+        throw fmt::system_error(errno, "Error opening {}", fpath);
+    }
+
     auto compression_type = get_compression_type(filename);
     initialize_istream(*m_sdgr_ifstream, compression_type);
 }
@@ -58,6 +74,10 @@ maybe_compressed_istream::maybe_compressed_istream(
     std::istream(nullptr)
 {
     m_sdgr_istringstream.emplace(data);
+    if (!*m_sdgr_istringstream) {
+        throw fmt::system_error(errno, "Error creating string stream");
+    }
+
     initialize_istream(*m_sdgr_istringstream, compression_type);
 }
 

@@ -25,6 +25,9 @@ namespace rdkit_extensions
 
 // Open a filename for writing. "gz" and ".zst" suffixed files will be
 // compressed
+//
+// @throws std::system_error if directory does not exist or if output stream
+// is in a "bad" or "fail" state
 class RDKIT_EXTENSIONS_API maybe_compressed_ostream : public std::ostream,
                                                       public boost::noncopyable
 {
@@ -48,6 +51,9 @@ class RDKIT_EXTENSIONS_API maybe_compressed_ostream : public std::ostream,
 // an interface to opening files for reading. This allows file reading logic for
 // compressed and uncompressed inputs and will be a good place to implement the
 // read progress logic for structure readers
+//
+// @throws std::system_error if file does not exist or if we can't create a
+// string stream from the input buffer.
 class RDKIT_EXTENSIONS_API maybe_compressed_istream : public std::istream,
                                                       public boost::noncopyable
 {

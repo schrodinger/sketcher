@@ -8,10 +8,12 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 #include <cstdio>
+#include <sstream>
 #include <ios>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
+#include "schrodinger/test/checkexceptionmsg.h"
 #include "schrodinger/test/testfiles.h"
 
 using namespace schrodinger::rdkit_extensions;
@@ -109,4 +111,28 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(buffer != std::string(read_size, '\0'));
 
     BOOST_TEST(fstream.good()); // should still be readable
+}
+
+BOOST_AUTO_TEST_CASE(TestInputStreamFailsForNonexistentFile)
+{
+    std::string fname = std::string(__FILE__) + ".bad_ext";
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR((maybe_compressed_istream(fname)),
+                                    std::system_error, "Error opening");
+}
+
+BOOST_AUTO_TEST_CASE(TestOutputStreamFailsForNonexistentFolder)
+{
+    std::string fname = std::string(__FILE__) + "/dummy.txt";
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR((maybe_compressed_ostream(fname)),
+                                    std::system_error, "Error opening");
+}
+
+BOOST_AUTO_TEST_CASE(TestOutputStreamFailsForBadOstream)
+{
+    std::ostringstream os;
+    os.setstate(std::ios_base::failbit);
+
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        maybe_compressed_ostream(os, CompressionType::UNKNOWN),
+        std::runtime_error, "Bad output stream");
 }
