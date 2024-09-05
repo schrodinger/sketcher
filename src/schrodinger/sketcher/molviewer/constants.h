@@ -23,6 +23,10 @@ const std::string USER_COLOR = "USER_COLOR";
 // The default bond length as defined by RDKit
 const float BOND_LENGTH = RDDepict::BOND_LEN;
 
+// the width of empty space around the scene items in a saved picture (in
+// pixels)
+const int SAVED_PICTURE_PADDING = 10;
+
 // The scaling of the graphics scene coordinate system relative to the RDKit
 // coordinate system.  Without this scaling, even a 1 pt font in the graphics
 // scene would be far too large for the molecule, and Qt won't render fonts

@@ -232,6 +232,8 @@ template <> void paint_scene<Scene>(QPaintDevice* device, const Scene& input,
                                     const RenderOptions& opts)
 {
     auto scene_rect = input.getInteractiveItemsBoundingRect();
+    scene_rect.adjust(-SAVED_PICTURE_PADDING, -SAVED_PICTURE_PADDING,
+                      SAVED_PICTURE_PADDING, SAVED_PICTURE_PADDING);
     paint_scene(device, input, scene_rect, opts);
 }
 
@@ -290,11 +292,27 @@ get_image_bytes(const T& input, ImageFormat format, const RenderOptions& opts)
         svg_gen.setViewBox(QRect(QPoint(0, 0), opts.width_height));
         svg_gen.setOutputDevice(&buffer);
         paint_scene(&svg_gen, input, opts);
+        // Qt defines svg size in mm, but our code needs it specified in pixels.
+        // This is a hack to make sure we get the right size definition.
+        auto buffer_data = buffer.data();
+        auto start_of_size = buffer_data.indexOf("svg width");
+        auto end_of_size = buffer_data.indexOf(" viewBox", start_of_size);
+        if (start_of_size == -1 || end_of_size == -1) {
+            throw std::runtime_error("Failed to find svg size definition");
+        }
+        buffer_data.remove(start_of_size, end_of_size - start_of_size);
+        auto height_in_pxls = QString("svg width=\"%1px\" height=\"%2px\"\n")
+                                  .arg(opts.width_height.width())
+                                  .arg(opts.width_height.height());
+
+        buffer_data.insert(start_of_size, height_in_pxls.toUtf8());
+        // close the buffer to write the data back into it
+        buffer.close();
+        buffer.setData(buffer_data);
 
     } else {
         throw std::runtime_error("Unknown ImageFormat");
     }
-
     return buffer.data();
 }
 

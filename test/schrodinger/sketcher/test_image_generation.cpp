@@ -158,3 +158,22 @@ BOOST_AUTO_TEST_CASE(test_image_scaling)
         get_image_bytes(*rdmol, ImageFormat::PNG, opts);
     BOOST_TEST(bytes_with_best_scale != bytes_with_scale_too_small);
 }
+
+BOOST_AUTO_TEST_CASE(test_SVG_size_output)
+{
+    // test that the in SVG output width and height are correctly set in px
+    auto rdmol = rdkit_extensions::to_rdkit("c1nccc2n1ccc2");
+    RenderOptions opts;
+    auto sizes = std::vector<QSize>{{400, 400}, {200, 400}, {300, 200}};
+    for (auto size : sizes) {
+        opts.width_height = size;
+        auto bytes = get_image_bytes(*rdmol, ImageFormat::SVG, opts);
+        BOOST_TEST(bytes.size() > 0);
+        auto svg = QString::fromUtf8(bytes);
+        QString width_height_string =
+            QString("svg width=\"%1px\" height=\"%2px\"")
+                .arg(size.width())
+                .arg(size.height());
+        BOOST_TEST(svg.contains(width_height_string));
+    }
+}
