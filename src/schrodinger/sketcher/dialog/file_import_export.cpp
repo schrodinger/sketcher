@@ -53,6 +53,7 @@ FormatList<Format> get_standard_formats()
         mol_data(Format::SMILES, "SMILES"),
         mol_data(Format::EXTENDED_SMILES, "Extended SMILES"),
         mol_data(Format::SMARTS, "SMARTS"),
+        mol_data(Format::EXTENDED_SMARTS, "Extended SMARTS"),
         mol_data(Format::INCHI, "InChI"),
         mol_data(Format::INCHI_KEY, "InChIKey"),
         mol_data(Format::PDB, "PDB"),

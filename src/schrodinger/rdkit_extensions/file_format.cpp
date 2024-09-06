@@ -36,6 +36,7 @@ const std::unordered_map<Format, std::vector<std::string>> MOL_FORMAT_EXTS = {
     {Format::SMILES, {".smi", ".smigz", ".smi.gz", ".smiles"}},
     {Format::EXTENDED_SMILES, {".cxsmi", ".cxsmiles"}},
     {Format::SMARTS, {}},
+    {Format::EXTENDED_SMARTS, {}},
     {Format::MDL_MOLV2000, {}},
     {Format::MDL_MOLV3000,
      {".sdf", ".sdf.gz", ".sdfgz", ".sd", ".sd.gz", ".mol", ".mol.gz", ".mdl"}},

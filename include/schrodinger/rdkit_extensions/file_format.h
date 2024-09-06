@@ -26,6 +26,7 @@ enum class Format {
     SMILES,
     EXTENDED_SMILES,
     SMARTS,
+    EXTENDED_SMARTS,
     MDL_MOLV2000,
     MDL_MOLV3000,
     MAESTRO,

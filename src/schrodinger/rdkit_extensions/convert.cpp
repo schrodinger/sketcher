@@ -553,6 +553,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             break;
         }
         case Format::SMARTS:
+        case Format::EXTENDED_SMARTS:
             mol.reset(RDKit::SmartsToMol(text));
             if (mol != nullptr) {
                 fix_cxsmiles_rgroups(*mol);
@@ -651,7 +652,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     // SKETCH-2190: we don't want to sanitize SMARTS because they are not
     // complete molecules, and sanitization may, e.g. create radicals on
     // (query) atoms that do not have their valence completely satisfied.
-    if (format != Format::SMARTS) {
+    if (format != Format::SMARTS && format != Format::EXTENDED_SMARTS) {
         apply_sanitization(*mol, Sanitization::PARTIAL);
     } else {
         mol->updatePropertyCache(false);
@@ -692,8 +693,12 @@ to_rdkit_reaction(const std::string& text, const Format format)
     bool removeHs = false;
     switch (format) {
         case Format::SMILES:
-        case Format::SMARTS: {
-            auto useSMILES = (format == Format::SMILES) && can_be_smiles(text);
+        case Format::EXTENDED_SMILES:
+        case Format::SMARTS:
+        case Format::EXTENDED_SMARTS: {
+            auto useSMILES = (format == Format::SMILES ||
+                              format == Format::EXTENDED_SMILES) &&
+                             can_be_smiles(text);
             rxn.reset(
                 RDKit::RxnSmartsToChemicalReaction(text, nullptr, useSMILES));
 
@@ -766,12 +771,15 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::SMILES:
             return RDKit::MolToSmiles(mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            mol.clearConformers(); // Don't pollute extension with
-                                   // coordinates
+            mol.clearConformers(); // Don't pollute extension with coordinates
             convert_rgroups_to_atom_labels(mol);
             return RDKit::MolToCXSmiles(mol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(mol);
+        case Format::EXTENDED_SMARTS:
+            mol.clearConformers(); // Don't pollute extension with coordinates
+            convert_rgroups_to_atom_labels(mol);
+            return RDKit::MolToCXSmarts(mol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             attachment_point_dummies_to_molattachpt_property(mol);
