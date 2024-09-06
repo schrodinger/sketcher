@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
     query_props = std::make_shared<AtomQueryProperties>();
     query_props->query_type = QueryType::RGROUP;
     query_props->r_group = 4;
-    check_create_atom(query_props, "[4*]", Format::SMILES);
+    check_create_atom(query_props, "* |$_R4$|", Format::EXTENDED_SMILES);
 
     // test a wildcard, which will get converted to a list of elements in SMARTS
     query_props = std::make_shared<AtomQueryProperties>();

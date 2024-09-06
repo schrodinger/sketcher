@@ -29,6 +29,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/test/boost_checks.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
@@ -809,4 +810,63 @@ BOOST_AUTO_TEST_CASE(test_smarts_no_radicals)
     for (auto atom : mol->atoms()) {
         BOOST_TEST(atom->getNumRadicalElectrons() == 0);
     }
+}
+
+/**
+ * Make sure that we can parse extended SMILES and reaction SMILES/SMARTS
+ * strings that use atom labels to indicate R-groups (see SHARED-10951).  Also
+ * make sure that R-groups are exported to EXTENDED_SMILES using atom labels
+ */
+BOOST_AUTO_TEST_CASE(test_atom_mapping_rgroups)
+{
+    auto mol = to_rdkit("C* |$;_R1$|", Format::EXTENDED_SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    auto r_group_num = get_r_group_number(mol->getAtomWithIdx(1));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 1);
+    BOOST_TEST(to_string(*mol, Format::EXTENDED_SMILES) == "*C |$_R1;$|");
+
+    mol = to_rdkit("C* |$;_R5$|", Format::EXTENDED_SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    r_group_num = get_r_group_number(mol->getAtomWithIdx(1));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 5);
+    BOOST_TEST(to_string(*mol, Format::EXTENDED_SMILES) == "*C |$_R5;$|");
+
+    // test a simple reaction
+    auto rxn = to_rdkit_reaction("C*.C*>>*C* |$;_R10;;_R20;_R10;;_R20$|");
+    BOOST_REQUIRE(rxn != nullptr);
+    auto reactant_1 = rxn->getReactants()[0];
+    r_group_num = get_r_group_number(reactant_1->getAtomWithIdx(1));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 10);
+    auto reactant_2 = rxn->getReactants()[1];
+    r_group_num = get_r_group_number(reactant_2->getAtomWithIdx(1));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 20);
+    auto product = rxn->getProducts()[0];
+    r_group_num = get_r_group_number(product->getAtomWithIdx(0));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 10);
+    r_group_num = get_r_group_number(product->getAtomWithIdx(2));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 20);
+
+    // test the reaction from SHARED-10951
+    rxn = to_rdkit_reaction(
+        "*-C#N.Br>>*-N1-C(-*)=N-N=N-1 |$_R1;;;;_R2;;;_R1;;;;$|");
+    BOOST_REQUIRE(rxn != nullptr);
+    reactant_1 = rxn->getReactants()[0];
+    r_group_num = get_r_group_number(reactant_1->getAtomWithIdx(0));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 1);
+    product = rxn->getProducts()[0];
+    r_group_num = get_r_group_number(product->getAtomWithIdx(0));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 2);
+    r_group_num = get_r_group_number(product->getAtomWithIdx(3));
+    BOOST_TEST(r_group_num.has_value());
+    BOOST_TEST(*r_group_num == 1);
 }

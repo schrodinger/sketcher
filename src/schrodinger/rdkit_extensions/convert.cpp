@@ -235,6 +235,28 @@ void fix_cxsmiles_rgroups(RDKit::ROMol& mol)
     }
 }
 
+/**
+ * Take any R-groups that are denoted using _MolFileRLabel and make sure that
+ * the atom labels are set correctly. This ensures that R-group numbers can be
+ * correctly exported to extended SMILES. This function also clears any isotope
+ * values that are actually R-group numbers, as well as any dummy label
+ * properties, so that those values don't appear in the SMILES output.
+ */
+void convert_rgroups_to_atom_labels(const RDKit::ROMol& mol)
+{
+    for (auto* atom : mol.atoms()) {
+        auto r_group_num = get_r_group_number(atom);
+        if (r_group_num.has_value()) {
+            auto rlabel = R_GROUP_LABEL_PREFIX + std::to_string(*r_group_num);
+            atom->setProp(RDKit::common_properties::atomLabel, rlabel);
+            atom->clearProp(RDKit::common_properties::dummyLabel);
+            if (atom->getIsotope() == *r_group_num) {
+                atom->setIsotope(0);
+            }
+        }
+    }
+}
+
 void fix_r0_rgroup(RDKit::ROMol& mol)
 {
     int highest_rlabel{0};
@@ -704,10 +726,12 @@ to_rdkit_reaction(const std::string& text, const Format format)
 
     for (auto reactant : rxn->getReactants()) {
         fix_r0_rgroup(*reactant);
+        fix_cxsmiles_rgroups(*reactant);
     }
 
     for (auto product : rxn->getProducts()) {
         fix_r0_rgroup(*product);
+        fix_cxsmiles_rgroups(*product);
     }
 
     return rxn;
@@ -744,6 +768,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::EXTENDED_SMILES:
             mol.clearConformers(); // Don't pollute extension with
                                    // coordinates
+            convert_rgroups_to_atom_labels(mol);
             return RDKit::MolToCXSmiles(mol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(mol);
