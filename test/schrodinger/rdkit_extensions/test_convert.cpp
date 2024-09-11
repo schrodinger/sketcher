@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(test_roundtrip_smarts)
     // roundtrip through SMARTS
     std::string smarts = "cOc";
     auto mol = to_rdkit(smarts, Format::SMARTS);
-    BOOST_TEST(to_string(*mol, Format::SMARTS) == "cOc");
+    BOOST_TEST(to_string(*mol, Format::SMARTS) == smarts);
 
     // Read in as SMILES
     mol = to_rdkit(smarts, Format::SMILES);
@@ -115,6 +115,14 @@ BOOST_AUTO_TEST_CASE(test_roundtrip_smarts)
     // Auto-detect reads as unsanitized SMILES
     mol = to_rdkit(smarts);
     BOOST_TEST(to_string(*mol, Format::SMARTS) == "[#6]-[#8]-[#6]");
+
+    // Test extended SMARTS
+    smarts = "[#6]-[#8]-[#6]-* |$;;;_R1$|";
+    mol = to_rdkit(smarts, Format::EXTENDED_SMARTS);
+    BOOST_TEST(to_string(*mol, Format::EXTENDED_SMARTS) == smarts);
+    // Auto-detect
+    mol = to_rdkit(smarts);
+    BOOST_TEST(to_string(*mol, Format::EXTENDED_SMARTS) == smarts);
 }
 
 BOOST_AUTO_TEST_CASE(test_INCHI_KEY)
