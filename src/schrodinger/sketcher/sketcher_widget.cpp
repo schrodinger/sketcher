@@ -11,7 +11,6 @@
 #include <QMimeData>
 #include <QScreen>
 #include <QWidget>
-#include <boost/algorithm/string.hpp>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
@@ -233,25 +232,7 @@ SketcherWidget::getRDKitReaction() const
 
 void SketcherWidget::addFromString(const std::string& text, Format format)
 {
-    auto probably_a_reaction = [](const auto& text) {
-        return boost::starts_with(text, "$RXN") || boost::contains(text, ">>");
-    };
-
-    try {
-        addRDKitMolecule(*to_rdkit(text, format));
-    } catch (const std::exception&) {
-        try { // if molecule parsing fails, see if it's a reaction
-            addRDKitReaction(*to_rdkit_reaction(text, format));
-            return;
-        } catch (const std::exception&) {
-            // parsing this text as a molecule and as a reaction have both
-            // failed, so try to throw the more-relevant exception
-            if (probably_a_reaction(text)) {
-                throw;
-            }
-        }
-        throw;
-    }
+    add_text_to_mol_model(*m_mol_model, text, format);
 }
 
 std::string SketcherWidget::getString(Format format) const

@@ -16,6 +16,7 @@
 #include <qsvggenerator.h>
 #include <unordered_map>
 
+#include "featureflags.h"
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/highlighting_item.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -176,6 +177,21 @@ void add_to_scene(sketcherScene* scene, const std::string& text)
     scene->importText(text);
 }
 
+void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
+{
+    mol_model.addMol(rdmol);
+}
+
+void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
+{
+    mol_model.addReaction(rxn);
+}
+
+void add_to_mol_model(MolModel& mol_model, const std::string& text)
+{
+    add_text_to_mol_model(mol_model, text);
+}
+
 void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
                  const QRectF& scene_rect, const RenderOptions& opts)
 {
@@ -211,21 +227,35 @@ void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
 template <typename T> void paint_scene(QPaintDevice* device, const T& input,
                                        const RenderOptions& opts)
 {
-    sketcherScene scene;
-    SketcherModel sketcher_model(&scene);
-    scene.setModel(&sketcher_model);
+    if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
+        QUndoStack undo_stack;
+        MolModel mol_model(&undo_stack);
+        SketcherModel sketcher_model;
+        Scene scene(&mol_model, &sketcher_model);
 
-    add_to_scene(&scene, input);
-    setHighlights(scene, opts);
-    setUserLabels(scene, opts);
+        add_to_mol_model(mol_model, input);
+        setHaloHighlightings(mol_model, opts);
+        setAtomLabels(mol_model, opts);
 
-    // The atom and bond items use a semi-transparent version of the background
-    // color to fade out bonds in order to make labels more readable.
-    // Using Qt's black-transparent causes these to turn into black smudges.
-    scene._backgroundColor = QColor(255, 255, 255, 0);
+        paint_scene(device, scene, opts);
+    } else {
+        sketcherScene scene;
+        SketcherModel sketcher_model(&scene);
+        scene.setModel(&sketcher_model);
 
-    auto scene_rect = scene.findBoundingRect();
-    paint_scene(device, scene, scene_rect, opts);
+        add_to_scene(&scene, input);
+        setHighlights(scene, opts);
+        setUserLabels(scene, opts);
+
+        // The atom and bond items use a semi-transparent version of the
+        // background color to fade out bonds in order to make labels more
+        // readable. Using Qt's black-transparent causes these to turn into
+        // black smudges.
+        scene._backgroundColor = QColor(255, 255, 255, 0);
+
+        auto scene_rect = scene.findBoundingRect();
+        paint_scene(device, scene, scene_rect, opts);
+    }
 }
 
 template <> void paint_scene<Scene>(QPaintDevice* device, const Scene& input,

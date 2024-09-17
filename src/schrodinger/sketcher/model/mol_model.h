@@ -16,6 +16,7 @@
 #include <rdkit/GraphMol/QueryBond.h>
 #include <QUndoStack>
 
+#include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -1443,6 +1444,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     boost::shared_ptr<RDKit::ChemicalReaction>
     createReaction(const bool strip_tags) const;
 };
+
+void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
+                           const rdkit_extensions::Format format =
+                               rdkit_extensions::Format::AUTO_DETECT);
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -14,6 +14,7 @@
 #include <QObject>
 #include <QUndoStack>
 #include <QtGlobal>
+#include <boost/algorithm/string.hpp>
 #include <boost/range/combine.hpp>
 
 #include "schrodinger/rdkit_extensions/constants.h"
@@ -34,8 +35,6 @@
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/subset.h"
 #include "schrodinger/sketcher/rdkit/variable_attachment_bond.h"
-
-using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -2576,6 +2575,30 @@ void MolModel::kekulize()
 {
     auto kekulize = [this]() { RDKit::MolOps::KekulizeIfPossible(m_mol); };
     doCommandUsingSnapshots(kekulize, "Kekulize", WhatChanged::MOLECULE);
+}
+
+void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
+                           const rdkit_extensions::Format format)
+{
+    auto probably_a_reaction = [](const auto& text) {
+        return boost::starts_with(text, "$RXN") || boost::contains(text, ">>");
+    };
+
+    try {
+        mol_model.addMol(*to_rdkit(text, format));
+    } catch (const std::exception&) {
+        try { // if molecule parsing fails, see if it's a reaction
+            mol_model.addReaction(*to_rdkit_reaction(text, format));
+            return;
+        } catch (const std::exception&) {
+            // parsing this text as a molecule and as a reaction have both
+            // failed, so try to throw the more-relevant exception
+            if (probably_a_reaction(text)) {
+                throw;
+            }
+        }
+        throw;
+    }
 }
 
 } // namespace sketcher
