@@ -16,7 +16,11 @@
 #include <qsvggenerator.h>
 #include <unordered_map>
 
+#ifndef EMSCRIPTEN
+// The WASM builder doesn't have access to any feature flags infrastructure
 #include "featureflags.h"
+#endif
+
 #include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/highlighting_item.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -227,7 +231,11 @@ void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
 template <typename T> void paint_scene(QPaintDevice* device, const T& input,
                                        const RenderOptions& opts)
 {
+#ifndef EMSCRIPTEN
     if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
+#else
+    if (false) {
+#endif
         QUndoStack undo_stack;
         MolModel mol_model(&undo_stack);
         SketcherModel sketcher_model;
