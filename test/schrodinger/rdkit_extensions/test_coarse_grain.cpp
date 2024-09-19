@@ -19,6 +19,7 @@
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
 #include "schrodinger/rdkit_extensions/cg_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/test/boost_checks.h"
 #include "schrodinger/test/testfiles.h"
 
@@ -94,8 +95,12 @@ BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
 
     add_connection(cg_mol, monomer_idx3, monomer_idx4,
                    ConnectionType::SIDECHAIN);
-
     assign_chains(cg_mol);
+
+    BOOST_CHECK(
+        cg_mol.getAtomWithIdx(monomer_idx4)->getProp<bool>(BRANCH_MONOMER));
+    BOOST_CHECK(
+        !cg_mol.getAtomWithIdx(monomer_idx3)->getProp<bool>(BRANCH_MONOMER));
     BOOST_CHECK_EQUAL(
         to_string(cg_mol, Format::HELM),
         "PEPTIDE1{A.G.C}|PEPTIDE2{T.C.A}$PEPTIDE1,PEPTIDE2,3:R3-1:R1$$$V2.0");
