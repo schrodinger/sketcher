@@ -1,7 +1,7 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 
-#include <rdkit/CIPLabeler/CIPLabeler.h>
-#include <rdkit/CIPLabeler/TooManyNodesException.h>
+#include <rdkit/GraphMol/CIPLabeler/CIPLabeler.h>
+#include <rdkit/GraphMol/CIPLabeler/TooManyNodesException.h>
 #include <rdkit/GraphMol/Chirality.h>
 #include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 #include <rdkit/GraphMol/MolOps.h>
