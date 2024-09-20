@@ -136,3 +136,40 @@ BOOST_AUTO_TEST_CASE(TestOutputStreamFailsForBadOstream)
         maybe_compressed_ostream(os, CompressionType::UNKNOWN),
         std::runtime_error, "Bad output stream");
 }
+
+BOOST_AUTO_TEST_CASE(TestGetCompressedString)
+{
+    auto fname = schrodinger::test::mmshare_testfile("methane.mae");
+    std::ifstream is(fname);
+    std::string buffer(std::istreambuf_iterator<char>(is), {});
+
+    // NOTE: Compression type should be correct
+    auto gz_string = get_compressed_string(buffer, CompressionType::GZIP);
+    std::istringstream ss1(gz_string);
+    BOOST_TEST(get_compression_type(ss1) == CompressionType::GZIP);
+
+    auto zstd_string = get_compressed_string(buffer, CompressionType::ZSTD);
+    std::istringstream ss2(zstd_string);
+    BOOST_TEST(get_compression_type(ss2) == CompressionType::ZSTD);
+}
+
+BOOST_DATA_TEST_CASE(TestGetDecompressedString,
+                     bdata::make(std::vector<std::string>{
+                         "methane.mae", "methane.mae.zst", "1lig.maegz"}) ^
+                         bdata::make(std::vector<CompressionType>{
+                             CompressionType::UNKNOWN, CompressionType::ZSTD,
+                             CompressionType::GZIP}),
+                     testfile, compression_type)
+{
+    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    std::ifstream is(fname);
+    std::string buffer(std::istreambuf_iterator<char>(is), {});
+
+    // MAESTRO formatted file should have a title
+    auto decompressed_string =
+        get_decompressed_string(buffer, compression_type);
+    BOOST_TEST(decompressed_string.find("s_m_title") != std::string::npos);
+
+    decompressed_string = get_decompressed_string(buffer);
+    BOOST_TEST(decompressed_string.find("s_m_title") != std::string::npos);
+}

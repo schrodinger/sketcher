@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,9 @@ enum class Format {
  */
 enum class RDKIT_EXTENSIONS_API CompressionType { UNKNOWN, GZIP, ZSTD };
 
+RDKIT_EXTENSIONS_API std::ostream&
+operator<<(std::ostream& os, const CompressionType& compression_type);
+
 /**
  * All supported formats for standard atomistic molecules, monomeristic
  * sequences, and chemical reactions
@@ -90,6 +94,17 @@ get_file_format(const boost::filesystem::path& filename);
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API CompressionType
 get_compression_type(const boost::filesystem::path& filename);
+
+/**
+ * Determines the type of the compression applied to a string buffer
+ * by reading the magic number from the beginning of the string
+ *
+ * @param a string stream
+ * @return corresponding compression type enum
+ * @throw std::invalid_argument if string stream is invalid
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API CompressionType
+get_compression_type(std::istringstream& sstream);
 
 /**
  * Determines the type of the compression applied to a given file

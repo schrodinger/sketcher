@@ -91,6 +91,9 @@ get_compressed_string(const std::string& data,
                       CompressionType compression_type);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
+get_decompressed_string(const std::string& data);
+
+[[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_decompressed_string(const std::string& data,
                         CompressionType compression_type);
 } // namespace rdkit_extensions
