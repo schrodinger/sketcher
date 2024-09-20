@@ -341,143 +341,87 @@ void build_cg_mol(const RDKit::ROMol& atomistic_mol,
     }
 }
 
-void remove_waters(RDKit::RWMol& mol)
-{
-    mol.beginBatchEdit();
-    auto is_water = [](const RDKit::Atom* atom) {
-        const auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-            atom->getMonomerInfo());
-        if (res_info && res_info->getResidueName() == "HOH ") {
-            return true;
-        }
-        return false;
-    };
-    for (auto atom : mol.atoms()) {
-        if (is_water(atom)) {
-            mol.removeAtom(atom);
-        }
-    }
-    mol.commitBatchEdit();
-}
+struct residue {
+    const RDKit::AtomPDBResidueInfo* res_info;
+    std::vector<int> atom_indices;
+    bool has_insertion;
+};
 
-void find_chains_and_residues(
-    const RDKit::ROMol& mol,
-    std::map<std::string, std::map<int, std::vector<int>>>& chains_and_residues)
+bool has_insertion_code(const RDKit::AtomPDBResidueInfo* res_info)
 {
-    // Find all chains and residues in the molecule
-    for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
-        const auto atom = mol.getAtomWithIdx(i);
-        const auto res_info = static_cast<const RDKit::AtomPDBResidueInfo*>(
-            atom->getMonomerInfo());
-        const auto chain_id = res_info->getChainId();
-        const auto res_num = res_info->getResidueNumber();
-        chains_and_residues[chain_id][res_num].push_back(i);
-    }
+    auto insertion_code = res_info->getInsertionCode();
+    return !(insertion_code.empty() || insertion_code == " ");
 }
 
 boost::shared_ptr<RDKit::RWMol>
-annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
+annotated_atomistic_to_cg(const RDKit::ROMol& mol)
 {
-    // Make RWMol and remove waters
-    RDKit::RWMol mol(input_mol);
-    remove_waters(mol);
+    // maps residue number -> residue info and atom indices
+    std::map<int, residue> residues;
 
-    // Map chain_id -> {residue mols}
-    std::map<std::string, std::map<int, std::vector<int>>> chains_and_residues;
-    find_chains_and_residues(mol, chains_and_residues);
-
-    // Monomer database connection to verify monomers and get HELM info
     cg_monomer_database db(get_cg_monomer_db_path());
-    std::map<ChainType, unsigned int> chain_counts = {{ChainType::PEPTIDE, 0},
-                                                      {ChainType::RNA, 0},
-                                                      {ChainType::DNA, 0},
-                                                      {ChainType::CHEM, 0}};
+
+    for (const auto atom : mol.atoms()) {
+        const auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        if (res_info == nullptr) {
+            throw std::runtime_error(fmt::format(
+                "Atom {} does not have AtomPDBResidueInfo", atom->getIdx()));
+        }
+        const auto res_num = res_info->getResidueNumber();
+        const auto has_insertion = has_insertion_code(res_info);
+        if (residues.find(res_num) == residues.end()) {
+            residue res = {
+                res_info, {static_cast<int>(atom->getIdx())}, has_insertion};
+            residues[res_num] = res;
+        } else {
+            residues[res_num].atom_indices.push_back(
+                static_cast<int>(atom->getIdx()));
+            residues[res_num].has_insertion |= has_insertion;
+        }
+    }
+
+    // Add the residues to the CG molecule
+    const std::string default_chain_id = "PEPTIDE1";
     boost::shared_ptr<RDKit::RWMol> cg_mol = boost::make_shared<RDKit::RWMol>();
-    for (const auto& [chain_id, residues] : chains_and_residues) {
-        // Use first residue to determine chain type. We assume that PDB data
-        // is correct and there aren't multiple chain types in a single chain.
-        // TODO: Actually check for this
-        // What if the first residue is unknown?
-        // note: residues are 1-indexed
-        const auto first_res_info =
-            dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-                mol.getAtomWithIdx(residues.begin()->second[0])
-                    ->getMonomerInfo());
-        auto res_name = first_res_info->getResidueName();
+    for (const auto& [res_num, res] : residues) {
+        auto res_name = res.res_info->getResidueName();
+        // remove whitespace from residue name
         res_name.erase(
             std::remove_if(res_name.begin(), res_name.end(), ::isspace),
             res_name.end());
 
-        // Default chain type is PEPTIDE if not specified.
+        // skip water
+        if (res_name == "HOH") {
+            continue;
+        }
+
+        // All residues are placed in the same chain
+        // TODO: handle multiple chains
         auto helm_info = db.get_helm_info(res_name);
-        auto chain_type = helm_info ? helm_info->second : ChainType::PEPTIDE;
-        std::string helm_chain_id = fmt::format("{}{}", to_string(chain_type),
-                                                ++chain_counts[chain_type]);
-        int last_monomer = -1;
-        for (const auto& [res_num, atom_idxs] : residues) {
-            const auto res_info =
-                dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-                    mol.getAtomWithIdx(atom_idxs[0])->getMonomerInfo());
-            res_name = res_info->getResidueName();
-            res_name.erase(
-                std::remove_if(res_name.begin(), res_name.end(), ::isspace),
-                res_name.end());
-
-            // Determine whether every residue with the number has the same PDB
-            // code
-            bool same_code = true;
-            for (const auto& atom_idx : atom_idxs) {
-                const auto atom_res_info =
-                    dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-                        mol.getAtomWithIdx(atom_idx)->getMonomerInfo());
-                if (atom_res_info->getResidueName() != res_name) {
-                    same_code = false;
-                    break;
-                }
-            }
-
-            helm_info = db.get_helm_info(res_name);
-            size_t this_monomer;
-            if (helm_info) {
-                // Standard residue in monomer DB
-                // TODO: verify SMILES is correct with database
-                this_monomer = add_monomer(*cg_mol, helm_info->first, res_num,
-                                           helm_chain_id);
-            } else if (!same_code && backup_res_table.find(res_name) !=
-                                         backup_res_table.end()) {
-                // Standard residue not in monomer DB. 1-letter code is stored
-                // through map
-                this_monomer = add_monomer(
-                    *cg_mol, std::string{backup_res_table.at(res_name)},
-                    res_num, helm_chain_id);
-            } else {
-                static constexpr bool isomeric_smiles = false;
-                auto smiles = RDKit::MolFragmentToSmiles(
-                    mol, atom_idxs, nullptr, nullptr, nullptr, isomeric_smiles);
-                this_monomer = add_monomer(*cg_mol, smiles, res_num,
-                                           helm_chain_id, MonomerType::SMILES);
-            }
-            if (last_monomer != -1) {
-                // Add linkage. For now we assume all linkages are backbone
-                // linkages and there are no cycles
-                add_connection(*cg_mol, last_monomer, this_monomer,
-                               BACKBONE_LINKAGE);
-            }
-            last_monomer = this_monomer;
+        if (!res.has_insertion && helm_info) {
+            // Standard residue
+            add_monomer(*cg_mol, helm_info->first, res_num, default_chain_id);
+        } else if (!res.has_insertion &&
+                   backup_res_table.find(res_name) != backup_res_table.end()) {
+            // Standard residue not in monomer DB. 1-letter code is stored
+            // through map
+            add_monomer(*cg_mol, std::string{backup_res_table.at(res_name)},
+                        res_num, default_chain_id);
+        } else {
+            // Non-standard residue
+            auto smiles = RDKit::MolFragmentToSmiles(mol, res.atom_indices);
+            add_monomer(*cg_mol, smiles, res_num, default_chain_id,
+                        MonomerType::SMILES);
         }
     }
 
+    // Add linkages -- assume all are backbone linkages and monomers are in
+    // connectivity order
+    for (size_t start = 1; start < cg_mol->getNumAtoms(); ++start) {
+        add_connection(*cg_mol, start - 1, start, BACKBONE_LINKAGE);
+    }
     return cg_mol;
-}
-
-bool has_residue_info(const RDKit::ROMol& mol)
-{
-    return std::any_of(mol.atoms().begin(), mol.atoms().end(),
-                       [](const auto& atom) {
-                           return atom->getMonomerInfo() &&
-                                  atom->getMonomerInfo()->getMonomerType() ==
-                                      RDKit::AtomMonomerInfo::PDBRESIDUE;
-                       });
 }
 
 } // unnamed namespace
@@ -489,10 +433,6 @@ boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol,
     // residue information is correct, and throws if any residue information
     // is missing.
     if (use_residue_info) {
-        if (!has_residue_info(mol)) {
-            throw std::runtime_error(
-                "No residue information found in molecule");
-        }
         auto cg_mol = annotated_atomistic_to_cg(mol);
         assign_chains(*cg_mol);
         return cg_mol;

@@ -112,7 +112,7 @@ cg_monomer_database::get_monomer_smiles(std::string monomer_id,
 }
 
 [[nodiscard]] cg_monomer_database::helm_info_t
-cg_monomer_database::get_helm_info(const std::string& pdb_code)
+cg_monomer_database::get_helm_info(std::string& pdb_code)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
