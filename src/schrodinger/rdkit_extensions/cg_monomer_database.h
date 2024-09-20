@@ -29,7 +29,8 @@ class [[nodiscard]] cg_monomer_database : public boost::noncopyable
     [[nodiscard]] monomer_smiles_t get_monomer_smiles(std::string monomer_id,
                                                       ChainType monomer_type);
 
-    [[nodiscard]] helm_info_t get_helm_info(std::string& three_letter_code);
+    [[nodiscard]] helm_info_t
+    get_helm_info(const std::string& three_letter_code);
 
   private:
     sqlite3* m_db;
