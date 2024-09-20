@@ -5,9 +5,10 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE test_file_format
 
-#include <fmt/format.h>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
+#include <fmt/format.h>
+#include <fstream>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/test/checkexceptionmsg.h"
@@ -110,4 +111,11 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(get_compression_type(fname) == expected_compression_type);
     BOOST_TEST(get_compression_type_from_ext(fname) ==
                expected_compression_type);
+
+    // we should be able to determine the compression type from a
+    // string stream
+    std::ifstream is(fname);
+    std::string buffer(std::istreambuf_iterator<char>(is), {});
+    std::istringstream ss(buffer);
+    BOOST_TEST(get_compression_type(ss) == expected_compression_type);
 }

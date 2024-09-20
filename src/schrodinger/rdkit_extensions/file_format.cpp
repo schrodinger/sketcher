@@ -122,21 +122,18 @@ Format get_file_format(const boost::filesystem::path& filename)
                                 filename.string());
 }
 
-CompressionType get_compression_type(const boost::filesystem::path& filename)
+namespace
+{
+[[nodiscard]] CompressionType get_compression_type_impl(std::istream& is)
 {
     constexpr unsigned char GZIP_MAGIC[2] = {0x1f, 0x8b};
     constexpr unsigned char ZSTD_MAGIC[4] = {0x28, 0xb5, 0x2f, 0xfd};
 
-    // Read the first two bytes from the file to determine the compression type
-    std::ifstream file(filename.string(), std::ios::in | std::ios::binary);
-    if (!file.good()) {
-        throw std::invalid_argument(
-            fmt::format("Unable to open file {}", filename.string()));
-    }
-
+    // Read the first two bytes from the stream to determine the compression
+    // type
     char magic[2];
-    file.read(magic, 2);
-    if (!file.good() || file.gcount() != 2) {
+    is.read(magic, 2);
+    if (!is.good() || is.gcount() != 2) {
         return CompressionType::UNKNOWN;
     }
 
@@ -145,13 +142,44 @@ CompressionType get_compression_type(const boost::filesystem::path& filename)
         return CompressionType::GZIP;
     } else if (u_magic[0] == ZSTD_MAGIC[0] && u_magic[1] == ZSTD_MAGIC[1]) {
         // zstd magic number is 4 bytes long, so read another 2 bytes
-        file.read(magic, 2);
-        if (file.gcount() == 2 && u_magic[0] == ZSTD_MAGIC[2] &&
+        is.read(magic, 2);
+        if (is.gcount() == 2 && u_magic[0] == ZSTD_MAGIC[2] &&
             u_magic[1] == ZSTD_MAGIC[3]) {
             return CompressionType::ZSTD;
         }
     }
     return CompressionType::UNKNOWN;
+}
+} // namespace
+
+CompressionType get_compression_type(const boost::filesystem::path& filename)
+{
+    std::ifstream file(filename.string(), std::ios::in | std::ios::binary);
+    if (!file.good()) {
+        throw fmt::system_error(errno, "Unable to open file {}",
+                                filename.string());
+    }
+
+    return get_compression_type_impl(file);
+}
+
+CompressionType get_compression_type(std::istringstream& sstream)
+{
+    // save this so we can restore position on exit
+    const auto prev_pos = sstream.tellg();
+
+    // seek to the beginning of the stream
+    sstream.seekg(0);
+    if (!sstream) {
+        throw fmt::system_error(errno, "Bad string stream in `{}`",
+                                __FUNCTION__);
+    }
+
+    auto compression_type = get_compression_type_impl(sstream);
+    // restore previous position
+    sstream.seekg(prev_pos);
+
+    return compression_type;
 }
 
 CompressionType
@@ -163,6 +191,20 @@ get_compression_type_from_ext(const boost::filesystem::path& filename)
         return CompressionType::ZSTD;
     }
     return CompressionType::UNKNOWN;
+}
+
+std::ostream& operator<<(std::ostream& os,
+                         const CompressionType& compression_type)
+{
+    switch (compression_type) {
+        case CompressionType::GZIP:
+            return os << "CompressionType::GZIP";
+        case CompressionType::ZSTD:
+            return os << "CompressionType::ZSTD";
+        case CompressionType::UNKNOWN:
+            return os << "CompressionType::UNKNOWN";
+    }
+    return os;
 }
 
 } // namespace rdkit_extensions

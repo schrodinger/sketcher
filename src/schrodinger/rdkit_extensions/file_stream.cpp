@@ -152,5 +152,12 @@ std::string get_decompressed_string(const std::string& data,
     }
 }
 
+std::string get_decompressed_string(const std::string& data)
+{
+    std::istringstream sstream(data);
+    auto compression_type = get_compression_type(sstream);
+    return get_decompressed_string(data, compression_type);
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

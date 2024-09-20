@@ -225,9 +225,7 @@ void SketcherTopBar::onImportFromFileClicked()
 
             auto path_string = file_path.toStdString();
             auto format = get_file_format(path_string);
-            auto compression_type = get_compression_type(path_string);
-            auto text = get_decompressed_string(content.toStdString(),
-                                                compression_type);
+            auto text = get_decompressed_string(content.toStdString());
             emit importTextRequested(text, format);
         } catch (const std::exception& exc) {
             show_error_dialog("File Error", exc.what(), this);
