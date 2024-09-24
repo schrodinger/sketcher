@@ -31,7 +31,7 @@ namespace rdkit_extensions
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
 atomistic_to_cg(const RDKit::ROMol& atomistic_mol,
-                bool use_residue_info = false);
+                bool use_residue_info = true);
 
 /**
  * Identify monomers within an atomistic molecule

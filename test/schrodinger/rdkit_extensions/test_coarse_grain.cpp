@@ -123,7 +123,8 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
             "CCCCN)C(=O)N[C@@H](Cc1c[nH]c2ccccc12)C(=O)N[C@@H](CC(N)=O)C(=O)N["
             "C@@H](Cc1c[nH]c2ccccc12)C(=O)N[C@@H](Cc1ccccc1)C(N)=O)[C@@H](C)"
             "O"));
-        auto cg_mol = atomistic_to_cg(*mol);
+        bool use_residue_info = false;
+        auto cg_mol = atomistic_to_cg(*mol, use_residue_info);
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
                           "PEPTIDE1{Y.T.S.L.I.E.E.L.I.K.K.T.E.E.Q.Q.K.K.N.E.E."
                           "E.L.K.K.L.E.E.W.A.K.K.W.N.W.F}$$$$V2.0");
@@ -137,7 +138,8 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
             "CCC(C)[C@@H]1NC(=O)C2CCCN2C(=O)[C@H](CCCCN)NC(=O)[C@H](CC(N)=O)NC("
             "=O)[C@H](CC(C)C)NC(=O)[C@H](Cc2c[nH]c3ccccc23)NC(=O)[C@H](CC(C)C)"
             "NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]2CCCN2C1=O"));
-        auto cg_mol = atomistic_to_cg(*mol);
+        bool use_residue_info = false;
+        auto cg_mol = atomistic_to_cg(*mol, use_residue_info);
         BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
                           "PEPTIDE1{P.P.F.L.W.L.N.K.P.I}$PEPTIDE1,PEPTIDE1,10:"
                           "R2-1:R1$$$V2.0");
@@ -148,8 +150,7 @@ BOOST_AUTO_TEST_CASE(Test_annotated_atomistic_to_cg)
 {
     auto atomistic_mol =
         RDKit::v2::FileParsers::MolFromPDBFile(mmshare_testfile("1dng.pdb"));
-    bool use_residue_info = true;
-    auto cg_mol = atomistic_to_cg(*atomistic_mol, use_residue_info);
+    auto cg_mol = atomistic_to_cg(*atomistic_mol);
 
     BOOST_CHECK_EQUAL(to_string(*cg_mol, Format::HELM),
                       "PEPTIDE1{Q.A.P.A.Y.E.E.A.A.E.E.L.A.K.S}$$$$V2.0");
