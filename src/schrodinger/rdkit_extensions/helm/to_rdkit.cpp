@@ -225,8 +225,10 @@ void condense_monomer_list(const std::string_view& polymer_id,
     int prev_backbone_idx = -1;
     unsigned int residue_number = 1;
     for (const auto& monomer : polymer.monomers) {
+        auto monomer_type =
+            monomer.is_smiles ? MonomerType::SMILES : MonomerType::REGULAR;
         auto idx = add_monomer(mol, get_monomer_id(polymer.id, monomer),
-                               residue_number, polymer.id);
+                               residue_number, polymer.id, monomer_type);
         ++residue_number;
         auto atom = mol.getAtomWithIdx(idx);
         if (!monomer.annotation.empty()) {
@@ -237,10 +239,6 @@ void condense_monomer_list(const std::string_view& polymer_id,
         if (monomer.is_list) {
             atom->setProp(MONOMER_LIST, std::string{monomer.id});
         }
-
-        // NOTE: These are to allow replacing the python layout api
-        atom->setProp(BRANCH_MONOMER, monomer.is_branch);
-        atom->setProp(SMILES_MONOMER, monomer.is_smiles);
 
         if (prev_backbone_idx != -1) {
             const auto connection_type = monomer.is_branch

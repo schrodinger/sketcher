@@ -51,6 +51,10 @@ void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
     const auto new_total =
         cg_mol.addBond(monomer1, monomer2, ::RDKit::Bond::BondType::SINGLE);
     cg_mol.getBondWithIdx(new_total - 1)->setProp(LINKAGE, linkage);
+    if (linkage == BRANCH_LINKAGE) {
+        // monomer2 is a branch monomer
+        cg_mol.getAtomWithIdx(monomer2)->setProp(BRANCH_MONOMER, true);
+    }
 }
 
 void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
@@ -68,13 +72,17 @@ void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
 
 std::unique_ptr<Monomer> make_monomer(std::string_view name,
                                       std::string_view chain_id,
-                                      int residue_number)
+                                      int residue_number, bool is_smiles)
 {
     auto a = std::make_unique<::RDKit::Atom>();
     std::string n{name};
     a->setProp(ATOM_LABEL, n);
     a->setProp("Name", n);
     a->setProp("smilesSymbol", n);
+    // Always start with BRANCH_MONOMER as false, will be set to
+    // true if branch linkage is made to this monomer
+    a->setProp(BRANCH_MONOMER, false);
+    a->setProp(SMILES_MONOMER, is_smiles);
 
     // hack to get some level of canonicalization for CG molecules
     static boost::hash<std::string> hasher;
@@ -93,7 +101,8 @@ size_t add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
                    int residue_number, std::string_view chain_id,
                    MonomerType monomer_type)
 {
-    auto monomer = make_monomer(name, chain_id, residue_number);
+    auto monomer = make_monomer(name, chain_id, residue_number,
+                                monomer_type == MonomerType::SMILES);
     bool update_label = true;
     bool take_ownership = true;
     auto new_index =
