@@ -1,5 +1,6 @@
 #include "schrodinger/rdkit_extensions/cg_monomer_database.h"
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -64,6 +65,47 @@ cg_monomer_database::cg_monomer_database(std::string_view database_path)
     }
 }
 
+namespace
+{
+template <class value_getter_t> [[nodiscard]] auto
+get_info_from_database(sqlite3* db, const std::string& sql_command_template,
+                       value_getter_t return_val_converter)
+{
+    auto sqlite3_stmt_deleter = [](auto* stmt) { sqlite3_finalize(stmt); };
+    std::unique_ptr<sqlite3_stmt, decltype(sqlite3_stmt_deleter)> statement{
+        nullptr, sqlite3_stmt_deleter};
+
+    // storing this variable here instead of on the db class to improve
+    // readability.
+    //
+    // NOTE: THE ORDER OF THE TABLE NAMES MATTERS. WE WANT TO PRIORITIZE ENTRIES
+    // IN THE USER_MONOMERS TABLE OVER ENTRIES IN THE CORE_MONOMERS TABLE.
+    constexpr std::array<std::string_view, 2> table_names{"user_monomers",
+                                                          "core_monomers"};
+
+    // NOTE: Return the first result you see
+    for (const auto& table : table_names) {
+        auto sql_command =
+            fmt::format(fmt::runtime(sql_command_template), table);
+        sqlite3_stmt* stmt = nullptr;
+        if (auto rc =
+                sqlite3_prepare_v2(db, sql_command.c_str(), -1, &stmt, NULL);
+            rc != SQLITE_OK) {
+            continue;
+        }
+
+        statement.reset(stmt);
+        if (auto rc = sqlite3_step(stmt);
+            rc != SQLITE_DONE && rc != SQLITE_OK) {
+            return return_val_converter(stmt);
+        };
+    }
+
+    // this is an easier way to return nullopt from this templated function
+    return std::invoke_result_t<value_getter_t, sqlite3_stmt*>{};
+}
+} // namespace
+
 cg_monomer_database::~cg_monomer_database()
 {
     sqlite3_close_v2(m_db);
@@ -75,8 +117,7 @@ cg_monomer_database::get_monomer_smiles(std::string monomer_id,
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
-            "SELECT {0} FROM {1} WHERE {2}='{3}' AND {4}='{5}';"};
-        static constexpr std::string_view core_monomers_table{"core_monomers"};
+            "SELECT {0} FROM {{}} WHERE {1}='{2}' AND {3}='{4}';"};
         static constexpr std::string_view smiles_column{"SMILES"};
         static constexpr std::string_view symbol_column{"SYMBOL"};
         static constexpr std::string_view type_column{"POLYMERTYPE"};
@@ -84,31 +125,16 @@ cg_monomer_database::get_monomer_smiles(std::string monomer_id,
         auto type_value = to_string(monomer_type);
         boost::algorithm::trim(monomer_id);
 
-        return fmt::format(template_, smiles_column, core_monomers_table,
-                           type_column, type_value, symbol_column, monomer_id);
+        return fmt::format(template_, smiles_column, type_column, type_value,
+                           symbol_column, monomer_id);
     };
 
-    auto sqlite3_stmt_deleter = [](auto* stmt) { sqlite3_finalize(stmt); };
-    std::unique_ptr<sqlite3_stmt, decltype(sqlite3_stmt_deleter)> statement{
-        nullptr, sqlite3_stmt_deleter};
+    auto smiles_getter = [](sqlite3_stmt* stmt) -> monomer_smiles_t {
+        auto result = sqlite3_column_text(stmt, 0);
+        return std::make_optional(reinterpret_cast<const char*>(result));
+    };
 
-    sqlite3_stmt* stmt = nullptr;
-    if (auto rc = sqlite3_prepare_v2(m_db, get_sql_command().c_str(), -1, &stmt,
-                                     NULL);
-        rc != SQLITE_OK) {
-        return std::nullopt;
-    }
-
-    statement.reset(stmt);
-    if (auto rc = sqlite3_step(stmt); rc != SQLITE_DONE && rc != SQLITE_OK) {
-        auto get_column_text = [&stmt](int idx) -> std::string {
-            auto result = sqlite3_column_text(stmt, idx);
-            return {reinterpret_cast<const char*>(result)};
-        };
-
-        return std::make_optional(get_column_text(0));
-    }
-    return std::nullopt;
+    return get_info_from_database(m_db, get_sql_command(), smiles_getter);
 }
 
 [[nodiscard]] cg_monomer_database::helm_info_t
@@ -116,39 +142,25 @@ cg_monomer_database::get_helm_info(const std::string& pdb_code)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
-            "SELECT {0}, {1} FROM {2} WHERE {3}='{4}';"};
-        static constexpr std::string_view core_monomers_table{"core_monomers"};
+            "SELECT {0}, {1} FROM {{}} WHERE {2}='{3}';"};
         static constexpr std::string_view symbol_column{"SYMBOL"};
         static constexpr std::string_view type_column{"POLYMERTYPE"};
         static constexpr std::string_view pdb_code_column{"PDBCODE"};
 
         return fmt::format(template_, symbol_column, type_column,
-                           core_monomers_table, pdb_code_column, pdb_code);
+                           pdb_code_column, pdb_code);
     };
 
-    auto sqlite3_stmt_deleter = [](auto* stmt) { sqlite3_finalize(stmt); };
-    std::unique_ptr<sqlite3_stmt, decltype(sqlite3_stmt_deleter)> statement{
-        nullptr, sqlite3_stmt_deleter};
-
-    sqlite3_stmt* stmt = nullptr;
-    if (auto rc = sqlite3_prepare_v2(m_db, get_sql_command().c_str(), -1, &stmt,
-                                     NULL);
-        rc != SQLITE_OK) {
-        return std::nullopt;
-    }
-
-    statement.reset(stmt);
-    if (auto rc = sqlite3_step(stmt); rc != SQLITE_DONE && rc != SQLITE_OK) {
-        auto get_column_text = [&stmt](int idx) -> std::string {
-            auto result = sqlite3_column_text(stmt, idx);
-            return {reinterpret_cast<const char*>(result)};
-        };
-        auto monomer_type = to_chain_type(get_column_text(1));
-        std::pair<std::string, ChainType> helm_info = {
-            std::string(get_column_text(0)), monomer_type};
+    auto helm_info_getter = [](sqlite3_stmt* stmt) -> helm_info_t {
+        // clang-format off
+        auto symbol = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+        auto polymer_type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+        helm_info_t::value_type helm_info{symbol, to_chain_type(polymer_type)};
         return std::make_optional(helm_info);
-    }
-    return std::nullopt;
+        // clang-format on
+    };
+
+    return get_info_from_database(m_db, get_sql_command(), helm_info_getter);
 }
 
 } // namespace rdkit_extensions
