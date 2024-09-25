@@ -105,12 +105,6 @@ SKETCHER_API QByteArray
 get_image_bytes(const std::string& text, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
 
-// note that
-//  SKETCHER_API QByteArray get_image_bytes(Scene& scene, ImageFormat
-//       format, const RenderOptions& opts);
-// is not implemented in this file, but rather in scene.h to avoid introducing a
-// dependency on  scene.h in this file
-
 // FIXME: Remove this once image_generation is fully switched over to molviewer
 SKETCHER_API QByteArray
 get_LiveDesign_image_bytes(const RDKit::ROMol& mol, ImageFormat format,
@@ -118,6 +112,15 @@ get_LiveDesign_image_bytes(const RDKit::ROMol& mol, ImageFormat format,
 SKETCHER_API QByteArray get_LiveDesign_image_bytes(
     const RDKit::ChemicalReaction& rxn, ImageFormat format,
     const RenderOptions& opts = RenderOptions());
+
+/**
+ * @param filepath path to stock image to generate should it be known that the
+ * 2D sketcher image either can't or shouldn't render the image. Used primarily
+ * for LiveDesign to create entity images for large format structure classes.
+ */
+SKETCHER_API QByteArray
+get_stock_image_bytes(const std::string& filepath, ImageFormat format,
+                      const RenderOptions& opts = RenderOptions());
 
 /**
  * @param mol/rxn/text molecule to render
