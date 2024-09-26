@@ -10,10 +10,12 @@
 #include <QByteArray>
 #include <QFile>
 #include <QFileInfo>
+#include <QGraphicsSvgItem>
 #include <QList>
 #include <QPainter>
+#include <QPixmap>
+#include <QSvgGenerator>
 #include <boost/algorithm/string/predicate.hpp>
-#include <qsvggenerator.h>
 #include <unordered_map>
 
 #ifndef EMSCRIPTEN
@@ -152,6 +154,19 @@ void setUserLabels(const sketcherScene& scene, const RenderOptions& opts)
     }
 }
 
+ImageFormat get_format(const QString& filename)
+{
+    const std::unordered_map<std::string, ImageFormat> ext_to_format_map = {
+        {"png", ImageFormat::PNG}, {"svg", ImageFormat::SVG}};
+    auto ext = QFileInfo(filename).completeSuffix().toStdString();
+    try {
+        return ext_to_format_map.at(ext);
+    } catch (const std::out_of_range&) {
+        throw std::invalid_argument("Unsupported file extension: " +
+                                    filename.toStdString());
+    }
+}
+
 qreal get_scale(const QRectF& scene_rect, const QSize& render_size)
 {
     qreal scene_width = scene_rect.width();
@@ -228,6 +243,17 @@ void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
                                                 scene_rect);
 }
 
+template <typename T>
+void init_molviewer_image(MolModel& mol_model, SketcherModel& sketcher_model,
+                          const T& input, const RenderOptions& opts)
+{
+    add_to_mol_model(mol_model, input);
+    setLineColors(mol_model, opts);
+    setHaloHighlightings(mol_model, opts);
+    setAtomLabels(mol_model, opts);
+    sketcher_model.loadRenderOptions(opts);
+}
+
 template <typename T> void paint_scene(QPaintDevice* device, const T& input,
                                        const RenderOptions& opts)
 {
@@ -240,10 +266,7 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
         MolModel mol_model(&undo_stack);
         SketcherModel sketcher_model;
         Scene scene(&mol_model, &sketcher_model);
-
-        add_to_mol_model(mol_model, input);
-        setHaloHighlightings(mol_model, opts);
-        setAtomLabels(mol_model, opts);
+        init_molviewer_image(mol_model, sketcher_model, input, opts);
 
         paint_scene(device, scene, opts);
     } else {
@@ -266,6 +289,7 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
     }
 }
 
+// Save the scene directly as it is; used to save an image from SketcherWidget
 template <> void paint_scene<Scene>(QPaintDevice* device, const Scene& input,
                                     const RenderOptions& opts)
 {
@@ -275,17 +299,22 @@ template <> void paint_scene<Scene>(QPaintDevice* device, const Scene& input,
     paint_scene(device, input, scene_rect, opts);
 }
 
-ImageFormat get_format(const QString& filename)
+// Inject a prepared image into the scene; used to generate stock images
+template <> void paint_scene<QFileInfo>(QPaintDevice* device,
+                                        const QFileInfo& file_info,
+                                        const RenderOptions& opts)
 {
-    const std::unordered_map<std::string, ImageFormat> ext_to_format_map = {
-        {"png", ImageFormat::PNG}, {"svg", ImageFormat::SVG}};
-    auto ext = QFileInfo(filename).completeSuffix().toStdString();
-    try {
-        return ext_to_format_map.at(ext);
-    } catch (const std::out_of_range&) {
-        throw std::invalid_argument("Unsupported file extension: " +
-                                    filename.toStdString());
+    QGraphicsScene scene;
+    auto file_path = file_info.filePath();
+    switch (get_format(file_path)) {
+        case ImageFormat::PNG:
+            scene.addPixmap(QPixmap(file_path));
+        case ImageFormat::SVG: {
+            auto svg_item = new QGraphicsSvgItem(file_path);
+            scene.addItem(svg_item);
+        }
     }
+    paint_scene(device, scene, scene.itemsBoundingRect(), opts);
 }
 
 template <typename T>
@@ -417,23 +446,26 @@ QByteArray get_image_bytes(const std::string& text, ImageFormat format,
     return get_image_bytes<std::string>(text, format, opts);
 }
 
+/**
+ * @internal
+ * Note that the function is not declared in image_generation.h, but rather in
+ * scene.h to avoid introducing a dependency on Scene in the public headers
+ */
 QByteArray get_image_bytes(Scene& scene, ImageFormat format,
                            const RenderOptions& opts)
 {
     return get_image_bytes<Scene>(scene, format, opts);
 }
 
-namespace
+QByteArray get_stock_image_bytes(const std::string& filepath,
+                                 ImageFormat format, const RenderOptions& opts)
 {
-void add_to_molmodel(MolModel* mol_model, const RDKit::ROMol& rdmol)
-{
-    mol_model->addMol(rdmol);
+    QFileInfo file_info(filepath.c_str());
+    return get_image_bytes<QFileInfo>(file_info, format, opts);
 }
 
-void add_to_molmodel(MolModel* mol_model, const RDKit::ChemicalReaction& rxn)
+namespace
 {
-    mol_model->addReaction(rxn);
-}
 
 template <typename T>
 QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
@@ -443,12 +475,7 @@ QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
     Scene scene(&mol_model, &sketcher_model);
-
-    add_to_molmodel(&mol_model, input);
-    setLineColors(mol_model, opts);
-    setHaloHighlightings(mol_model, opts);
-    setAtomLabels(mol_model, opts);
-    sketcher_model.loadRenderOptions(opts);
+    init_molviewer_image(mol_model, sketcher_model, input, opts);
 
     return get_image_bytes<Scene>(scene, format, opts);
 }
