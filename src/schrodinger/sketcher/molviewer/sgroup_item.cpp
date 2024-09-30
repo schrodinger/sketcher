@@ -23,6 +23,37 @@ SGroupItem::SGroupItem(const RDKit::SubstanceGroup& sgroup, const Fonts& fonts,
 {
     setZValue(static_cast<qreal>(ZOrder::SGROUP));
     updateCachedData();
+    show();
+}
+
+std::pair<QPointF, bool> SGroupItem::getFieldDataDisplayInfo() const
+{
+    std::string fieldDisp;
+    if (m_sgroup.getPropIfPresent("FIELDDISP", fieldDisp)) {
+        QString displacement = QString::fromStdString(fieldDisp);
+        auto disp_x = displacement.sliced(0, 10).toFloat();
+        auto disp_y = displacement.sliced(10, 10).toFloat();
+        // if the string was not a valid float, the toFloat() function will
+        // return 0, which is what we want, so no need to check for errors
+        return {QPointF(disp_x, disp_y), displacement[26] == 'R'};
+    }
+    return {QPointF(), false};
+}
+
+QString SGroupItem::getFieldDataText() const
+{
+    QString text;
+    std::string typ;
+    if (m_sgroup.getPropIfPresent("TYPE", typ) && typ == "DAT") {
+        if (m_sgroup.hasProp("DATAFIELDS")) {
+            auto dfs = m_sgroup.getProp<std::vector<std::string>>("DATAFIELDS");
+            for (const auto& df : dfs) {
+                text += df + "|";
+            }
+            text.chop(1);
+        }
+    }
+    return text;
 }
 
 const RDKit::SubstanceGroup* SGroupItem::getSubstanceGroup() const
@@ -37,6 +68,10 @@ void SGroupItem::paint(QPainter* painter,
     Q_UNUSED(widget);
     painter->save();
     painter->setPen(Qt::black);
+    if (!m_field_data_text.isEmpty()) {
+        painter->drawText(m_field_data_text_rect.bottomLeft(),
+                          m_field_data_text);
+    }
     painter->drawPath(m_brackets_path);
     painter->setFont(m_fonts.m_sgroup_font);
     painter->setTransform(m_labels_transform * painter->transform());
@@ -58,6 +93,20 @@ void SGroupItem::updateCachedData()
     m_label =
         QString::fromStdString(rdkit_extensions::get_polymer_label(m_sgroup));
     m_brackets_path = getBracketPath();
+    m_field_data_text = getFieldDataText();
+
+    // until https://github.com/rdkit/rdkit/issues/7829 is resolved, we need to
+    // place the field data text manually
+    auto [field_data_coords, field_data_coords_are_relative] =
+        getFieldDataDisplayInfo();
+    m_field_data_text_rect =
+        m_fonts.m_sgroup_fm.tightBoundingRect(m_field_data_text);
+    // for now we ignore the relative flag and always place the field data text
+    // relative to the first atom in the sgroup
+    Q_UNUSED(field_data_coords_are_relative);
+    auto center = m_sgroup.getOwningMol().getConformer().getAtomPos(
+        m_sgroup.getAtoms()[0]);
+    m_field_data_text_rect.moveCenter(to_scene_xy(center) + field_data_coords);
     auto [positions, displacement] = getPositionsForLabels();
     auto brackets_half_height = positions.length() * 0.5;
     auto translation_offset = (positions.p1() + positions.p2()) * 0.5;
@@ -121,6 +170,9 @@ QPainterPath SGroupItem::getShapeWithWidth(qreal width) const
         auto transformed_repeat = m_labels_transform.map(expanded_repeat);
         path.addPolygon(transformed_repeat);
     }
+    if (!m_field_data_text.isEmpty()) {
+        path.addRect(m_field_data_text_rect);
+    }
     return path;
 }
 
@@ -156,8 +208,7 @@ std::pair<QLineF, QPointF> SGroupItem::getPositionsForLabels() const
         [rightmost_x](const Bracket& bracket_1, const Bracket& bracket_2) {
             return rightmost_x(bracket_1) < rightmost_x(bracket_2);
         }));
-    // return a QLineF with both points of the brackets in scene
-    // coordinates.
+    // return a QLineF with both points of the brackets in scene coordinates.
     QLineF out(to_scene_xy(rightmost_bracket[0]),
                to_scene_xy(rightmost_bracket[1]));
 
