@@ -88,15 +88,30 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
      */
     QPainterPath getBracketPath() const;
 
+    /**
+     * @return The coordinates of the field data text and whether they are
+     * relative to the SGroup (as opposed to absolute). We assume the
+     * coordinates to be in scene units.
+     */
+    std::pair<QPointF, bool> getFieldDataDisplayInfo() const;
+
+    /**
+     * @return The FIELDDATA text for the SGroup, if any. This text is displayed
+     * next to the SGroup atoms.
+     */
+    QString getFieldDataText() const;
+
     const RDKit::SubstanceGroup& m_sgroup;
     QPainterPath m_brackets_path;
     const Fonts& m_fonts;
 
     QString m_label;
     QString m_repeat;
+    QString m_field_data_text;
 
     QRectF m_untransformed_label_rect;
     QRectF m_untransformed_repeat_rect;
+    QRectF m_field_data_text_rect;
     QTransform m_labels_transform;
 };
 
