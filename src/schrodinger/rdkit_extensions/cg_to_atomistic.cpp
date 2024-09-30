@@ -119,21 +119,6 @@ void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
     }
 }
 
-ChainType get_chain_type(std::string_view polymer_id)
-{
-    if (polymer_id.find("PEPTIDE") == 0) {
-        return ChainType::PEPTIDE;
-    } else if (polymer_id.find("RNA") == 0) {
-        return ChainType::RNA;
-    } else if (polymer_id.find("CHEM") == 0) {
-        return ChainType::CHEM;
-    } else {
-        throw std::out_of_range(fmt::format(
-            "Invalid polymer id: {}. Must be one of PEPTIDE, RNA, CHEM",
-            polymer_id));
-    }
-}
-
 AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
                           const RDKit::RWMol& cg_mol,
                           const std::string& polymer_id,
@@ -146,7 +131,6 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
     AttachmentMap attachment_point_map;
 
     auto chain = get_polymer(cg_mol, polymer_id);
-    auto chain_type = get_chain_type(polymer_id);
     bool sanitize = false;
 
     cg_monomer_database db(get_cg_monomer_db_path());
@@ -156,7 +140,7 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         auto monomer = cg_mol.getAtomWithIdx(monomer_idx);
         auto monomer_label = monomer->getProp<std::string>(ATOM_LABEL);
 
-        auto smiles = db.get_monomer_smiles(monomer_label, chain_type);
+        auto smiles = db.get_monomer_smiles(monomer_label, ChainType::PEPTIDE);
         if (!smiles) {
             throw std::out_of_range(fmt::format(
                 "Peptide Monomer {} not found in CG Monomer database",
@@ -203,6 +187,11 @@ boost::shared_ptr<RDKit::RWMol> cg_to_atomistic(const RDKit::ROMol& cg_mol)
     std::vector<unsigned int> remove_atoms;
     char chain_id = 'A';
     for (const auto& polymer_id : get_polymer_ids(cg_mol)) {
+        // Currently only peptides are supported
+        if (polymer_id.find("PEPTIDE") != 0) {
+            throw std::runtime_error(
+                fmt::format("Unsupported polymer type: {}", polymer_id));
+        }
         polymer_attachment_points[polymer_id] = add_polymer(
             *atomistic_mol, cg_mol, polymer_id, remove_atoms, chain_id);
         ++chain_id;
