@@ -157,15 +157,40 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         auto monomer = cg_mol.getAtomWithIdx(monomer_idx);
         auto monomer_label = monomer->getProp<std::string>(ATOM_LABEL);
 
-        auto smiles = db.get_monomer_smiles(monomer_label, chain_type);
-        if (!smiles) {
-            throw std::out_of_range(fmt::format(
-                "Peptide Monomer {} not found in CG Monomer database",
-                monomer_label));
+        std::string smiles;
+        if (monomer->getProp<bool>(SMILES_MONOMER)) {
+            smiles = monomer_label;
+        } else {
+            auto monomer_smiles =
+                db.get_monomer_smiles(monomer_label, chain_type);
+            if (!monomer_smiles) {
+                throw std::out_of_range(fmt::format(
+                    "Peptide Monomer {} not found in CG Monomer database",
+                    monomer_label));
+            }
+            smiles = *monomer_smiles;
         }
 
         std::unique_ptr<RDKit::RWMol> new_monomer(
-            RDKit::SmilesToMol(*smiles, 0, sanitize));
+            RDKit::SmilesToMol(smiles, 0, sanitize));
+
+        if (monomer->getProp<bool>(SMILES_MONOMER)) {
+            // SMILES monomers may be in rgroup form like
+            // *N[C@H](C(=O)O)S* |$_R1;;;;;;;_R3$| or use atom map numbers like
+            // [*:1]N[C@H](C(=O)O)S[*:3]. Translate the RGroup to atom map
+            // numbers
+            for (auto atom : new_monomer->atoms()) {
+                std::string rgroup_label;
+                if (atom->getPropIfPresent(RDKit::common_properties::atomLabel,
+                                           rgroup_label) &&
+                    rgroup_label.find("_R") == 0) {
+                    auto rgroup_num = std::stoi(rgroup_label.substr(2));
+                    atom->setAtomMapNum(rgroup_num);
+                    atom->clearProp(RDKit::common_properties::atomLabel);
+                }
+            }
+        }
+
         auto residue_number = get_residue_number(monomer);
         fill_attachment_point_map(*new_monomer, attachment_point_map,
                                   residue_number, atomistic_mol.getNumAtoms());
