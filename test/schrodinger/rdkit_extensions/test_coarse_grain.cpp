@@ -184,7 +184,14 @@ BOOST_AUTO_TEST_CASE(Test_cg_to_atomistic)
         BOOST_CHECK_THROW(cg_to_atomistic(*cg_mol), std::out_of_range);
     }
     {
-        // nucleic acids not yet supported
+        // error condition -- A does not have an R3 attachment point
+        auto cg_mol =
+            to_rdkit("PEPTIDE1{A.A.A.A.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0");
+        BOOST_CHECK_THROW(cg_to_atomistic(*cg_mol), std::runtime_error);
+    }
+    {
+        // error condition -- A/C/G/T are the nitrogenous base thus only have 1
+        // attachment point and cannot be in the backbone
         auto cg_mol = to_rdkit("RNA1{A.C.G.T}$$$$V2.0");
         BOOST_CHECK_THROW(cg_to_atomistic(*cg_mol), std::runtime_error);
     }
