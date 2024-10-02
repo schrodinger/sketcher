@@ -13,6 +13,28 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+namespace
+{
+template <typename T> bool has_non_CIP_neighbor(const T& obj)
+{
+    auto stereo_info = RDKit::Chirality::detail::getStereoInfo(&obj);
+    auto& mol = obj.getOwningMol();
+    for (auto atom_idx : stereo_info.controllingAtoms) {
+        // stereo bonds may have only 2 controlling atoms. The other 2
+        // are NOATOM placeholders.
+        if (atom_idx == RDKit::Chirality::StereoInfo::NOATOM) {
+            continue;
+        }
+        auto controlling_atom = mol.getAtomWithIdx(atom_idx);
+        if (RDKit::getAtomRLabel(controlling_atom) != 0 ||
+            is_attachment_point_dummy(*controlling_atom)) {
+            return true;
+        }
+    }
+    return false;
+};
+} // namespace
+
 UseModernStereoPerception::UseModernStereoPerception() :
     m_stereo_algo_state{RDKit::Chirality::getUseLegacyStereoPerception()}
 {
@@ -61,18 +83,6 @@ void assign_stereochemistry(RDKit::ROMol& mol)
 std::string get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs)
 {
     // SKETCH-1729: non-CIP ranked atoms have no priority; do not show any label
-    auto has_non_CIP_neighbor = [](const auto& atom) {
-        auto stereo_info = RDKit::Chirality::detail::getStereoInfo(&atom);
-        auto& mol = atom.getOwningMol();
-        for (auto atom_idx : stereo_info.controllingAtoms) {
-            auto controlling_atom = mol.getAtomWithIdx(atom_idx);
-            if (RDKit::getAtomRLabel(controlling_atom) != 0 ||
-                is_attachment_point_dummy(*controlling_atom)) {
-                return true;
-            }
-        }
-        return false;
-    };
     if (has_non_CIP_neighbor(atom)) {
         return "";
     }
@@ -127,7 +137,15 @@ std::string get_simplified_stereo_annotation(const RDKit::ROMol& mol)
 std::string get_bond_stereo_label(const RDKit::Bond& bond)
 {
     std::string label;
-    bond.getPropIfPresent(RDKit::common_properties::bondNote, label);
+
+    // SKETCH-2293: non-CIP ranked atoms have no priority; do not show any
+    // label. has_non_CIP_neighbor () can't be called on non-stereo bonds
+    // because getStereoInfo(bond) will throw if bond is not a stereo bond.
+    if (bond.getPropIfPresent(RDKit::common_properties::bondNote, label) &&
+        !label.empty() && has_non_CIP_neighbor(bond)) {
+        return "";
+    }
+
     return label;
 }
 
