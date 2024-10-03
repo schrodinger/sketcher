@@ -1,11 +1,12 @@
-#include "schrodinger/sketcher/molviewer/sgroup_item.h"
-#include "schrodinger/sketcher/molviewer/coord_utils.h"
-#include "schrodinger/sketcher/molviewer/constants.h"
-#include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/molviewer/sgroup_item.h"
+#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include <GraphMol/ROMol.h>
 #include <QMarginsF>
 #include <QPainter>
@@ -85,13 +86,33 @@ int SGroupItem::type() const
     return Type;
 }
 
+void SGroupItem::updateLabels()
+{
+    auto repeat_str = rdkit_extensions::get_repeat_pattern_label(m_sgroup);
+    auto repeat = REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.at(repeat_str);
+    if (repeat == RepeatPattern::HEAD_TO_TAIL) {
+        m_repeat = ""; // Users expect head-to-tail to not be rendered
+    } else {
+        m_repeat = QString::fromStdString(repeat_str).toLower();
+    }
+
+    auto type_str = rdkit_extensions::get_sgroup_type(m_sgroup);
+    auto type = SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.at(type_str);
+    auto label = rdkit_extensions::get_polymer_label(m_sgroup);
+    // Account for defaults for substance group labels
+    if (type == SubgroupType::SRU_POLYMER && label.empty()) {
+        m_label = "n";
+    } else if (type == SubgroupType::COPOLYMER && label.empty()) {
+        m_label = "co";
+    } else {
+        m_label = QString::fromStdString(label);
+    }
+}
+
 void SGroupItem::updateCachedData()
 {
     prepareGeometryChange();
-    m_repeat = QString::fromStdString(
-        rdkit_extensions::get_repeat_pattern_label(m_sgroup));
-    m_label =
-        QString::fromStdString(rdkit_extensions::get_polymer_label(m_sgroup));
+    updateLabels();
     m_brackets_path = getBracketPath();
     m_field_data_text = getFieldDataText();
 
