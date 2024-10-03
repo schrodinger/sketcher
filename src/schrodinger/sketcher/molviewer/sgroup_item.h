@@ -56,6 +56,11 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
 
   protected:
     /**
+     * Update the repeat and label strings rendered by SRU or COP sgroups
+     */
+    void updateLabels();
+
+    /**
      * Create a path representing the shape of brackets and labels
      * @param width How much padding we should include in the path
      */
