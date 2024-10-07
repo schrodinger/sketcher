@@ -212,10 +212,18 @@ AtomItem::determineLabelType() const
     bool needs_additional_labels = false;
     QString query_label_text;
 
+    // if there's a user-set display label, always use that.
     if (m_atom->hasProp(RDKit::common_properties::_displayLabel)) {
-        // if there's a user-set display label, always use that
         main_label_text = m_atom->getProp<std::string>(
             RDKit::common_properties::_displayLabel);
+    } else if (m_atom->getAtomicNum() !=
+                   rdkit_extensions::DUMMY_ATOMIC_NUMBER &&
+               m_atom->hasProp(RDKit::common_properties::atomLabel)) {
+        // if there's no user-set, but an atomLabel is present, always
+        // display that on non-dummy atoms. Query atoms are dealt with below
+        main_label_text =
+            m_atom->getProp<std::string>(RDKit::common_properties::atomLabel);
+
     } else if (m_atom->hasQuery() && !m_atom->getQueryType().empty()) {
         // the query type is set for wildcards but not most other queries
         main_label_text = m_atom->getQueryType();
@@ -241,6 +249,12 @@ AtomItem::determineLabelType() const
             if (props->isQuery()) {
                 query_label_text = getQueryLabel();
             }
+        } else if (m_atom->hasProp(RDKit::common_properties::atomLabel)) {
+            // display the atomLabel if present. Note that this option needs to
+            // go after R-groups and attachment points because they both use the
+            // atomLabel property but we don't want to display it for them
+            main_label_text = m_atom->getProp<std::string>(
+                RDKit::common_properties::atomLabel);
         } else {
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();
