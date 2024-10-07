@@ -776,6 +776,22 @@ static void add_query_to_atom(
     }
 }
 
+QString get_atomic_symbol_from_element(Element element)
+{
+    auto symbol = atomic_number_to_symbol(static_cast<unsigned int>(element));
+    return QString::fromStdString(symbol);
+}
+
+QString join_all_atomic_symbols(std::vector<Element> elements,
+                                QString separator)
+{
+    QStringList atomic_symbols;
+    std::transform(elements.begin(), elements.end(),
+                   std::back_inserter(atomic_symbols),
+                   get_atomic_symbol_from_element);
+    return atomic_symbols.join(separator);
+}
+
 /**
  * Create an atom instance using the given query properties. The newly created
  * atom will have any queries and/or atom properties necessary to describe the

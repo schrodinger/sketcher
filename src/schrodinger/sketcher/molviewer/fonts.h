@@ -37,6 +37,7 @@ class SKETCHER_API Fonts
     QFont m_mapping_font;
     QFont m_chirality_font;
     QFont m_sgroup_font;
+    QFont m_element_list_font;
     QFont m_cursor_hint_font;
 
     QFontMetricsF m_main_label_fm;
@@ -45,6 +46,7 @@ class SKETCHER_API Fonts
     QFontMetricsF m_mapping_fm;
     QFontMetricsF m_chirality_fm;
     QFontMetricsF m_sgroup_fm;
+    QFontMetricsF m_element_list_fm;
     // we don't need a QFontMetricsF for the cursor hint, so it's omitted here
 
     qreal m_radical_dot_size;

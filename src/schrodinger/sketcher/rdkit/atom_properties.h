@@ -140,5 +140,17 @@ std::pair<std::shared_ptr<RDKit::Atom>, std::optional<EnhancedStereo>>
 create_atom_with_properties(
     const std::shared_ptr<AbstractAtomProperties> properties);
 
+/**
+ * @return the atomic symbol for the given Element enum
+ */
+SKETCHER_API QString get_atomic_symbol_from_element(Element element);
+
+/**
+ * @return a qstring that contains a list of all atomic symbols in the input,
+ * separated by separator
+ */
+SKETCHER_API QString join_all_atomic_symbols(std::vector<Element> elements,
+                                             QString separator = ",");
+
 } // namespace sketcher
 } // namespace schrodinger

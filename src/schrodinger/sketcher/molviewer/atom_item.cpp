@@ -64,6 +64,8 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
     // use the default atom color for the squiggle pen (used for attachment
     // points)
     m_squiggle_pen = QPen(settings.getAtomColor(-1));
+
+    m_element_list_line_pen = QPen(ELEMENT_LIST_LINE_COLOR);
     // TODO: update this pen width when the bond width changes, should be done
     // as part of SKETCH-1270
     m_squiggle_pen.setWidthF(BOND_DEFAULT_PEN_WIDTH);
@@ -133,8 +135,8 @@ void AtomItem::updateCachedData()
 
     bool needs_additional_labels;
     std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,
-             m_valence_error_is_visible, needs_additional_labels) =
-        determineLabelType();
+             m_valence_error_is_visible, needs_additional_labels,
+             m_query_label_text) = determineLabelType();
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
         m_main_label_rect =
@@ -147,6 +149,14 @@ void AtomItem::updateCachedData()
             updateMappingLabel();
             positionLabels();
         }
+    }
+    if (!m_query_label_text.isEmpty()) {
+        m_query_label_rect =
+            make_text_rect(m_fonts.m_element_list_fm, m_query_label_text);
+        // find a position for the element list label
+        auto position =
+            findPositionInEmptySpace(false) * ELEMENT_LIST_LABEL_DISTANCE_RATIO;
+        m_query_label_rect.moveCenter(position);
     }
     if (m_settings.m_stereo_labels_shown && !m_hide_stereo_labels) {
         updateChiralityLabel();
@@ -167,7 +177,32 @@ void AtomItem::updateCachedData()
     m_bounding_rect = m_shape.boundingRect();
 }
 
-std::tuple<QString, QPainterPath, bool, bool, bool>
+QString AtomItem::getQueryLabel() const
+{
+    QString query_text;
+    auto props = read_properties_from_atom(m_atom);
+    auto query_props = *static_cast<const AtomQueryProperties*>(props.get());
+    if (query_props.query_type == QueryType::SMARTS) {
+        query_text = QString("\"%1\"").arg(
+            QString::fromStdString(query_props.smarts_query));
+
+        // if the string is too long, truncate it and add an ellipsis
+        query_text = m_fonts.m_element_list_fm.elidedText(
+            query_text, Qt::ElideRight, MAX_SMARTS_LABEL_LENGTH);
+    } else if (query_props.query_type == QueryType::ALLOWED_LIST ||
+               query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
+
+        auto list = join_all_atomic_symbols(query_props.allowed_list);
+        if (!list.isEmpty()) {
+            if (query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
+                list = "!" + list;
+            }
+            query_text = QString("[%1]").arg(list);
+        }
+    }
+    return query_text;
+}
+std::tuple<QString, QPainterPath, bool, bool, bool, QString>
 AtomItem::determineLabelType() const
 {
     std::string main_label_text = "";
@@ -175,12 +210,22 @@ AtomItem::determineLabelType() const
     bool valence_error_is_visible = false;
     bool label_is_visible = true;
     bool needs_additional_labels = false;
+    QString query_label_text;
 
+    // if there's a user-set display label, always use that.
     if (m_atom->hasProp(RDKit::common_properties::_displayLabel)) {
-        // if there's a user-set display label, always use that
         main_label_text = m_atom->getProp<std::string>(
             RDKit::common_properties::_displayLabel);
+    } else if (m_atom->getAtomicNum() !=
+                   rdkit_extensions::DUMMY_ATOMIC_NUMBER &&
+               m_atom->hasProp(RDKit::common_properties::atomLabel)) {
+        // if there's no user-set, but an atomLabel is present, always
+        // display that on non-dummy atoms. Query atoms are dealt with below
+        main_label_text =
+            m_atom->getProp<std::string>(RDKit::common_properties::atomLabel);
+
     } else if (m_atom->hasQuery() && !m_atom->getQueryType().empty()) {
+        // the query type is set for wildcards but not most other queries
         main_label_text = m_atom->getQueryType();
     } else if (m_atom->getAtomicNum() ==
                rdkit_extensions::DUMMY_ATOMIC_NUMBER) {
@@ -196,6 +241,20 @@ AtomItem::determineLabelType() const
             // still need to set label_is_visible to false here so that the
             // bound BondItem knows not to make space for the "*" label
             label_is_visible = false;
+        } else if (m_atom->hasQuery()) {
+            // this needs to be after R groups and attachment points, since it
+            // would trigger for both but we need to special-case them
+            label_is_visible = false;
+            auto props = read_properties_from_atom(m_atom);
+            if (props->isQuery()) {
+                query_label_text = getQueryLabel();
+            }
+        } else if (m_atom->hasProp(RDKit::common_properties::atomLabel)) {
+            // display the atomLabel if present. Note that this option needs to
+            // go after R-groups and attachment points because they both use the
+            // atomLabel property but we don't want to display it for them
+            main_label_text = m_atom->getProp<std::string>(
+                RDKit::common_properties::atomLabel);
         } else {
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();
@@ -210,10 +269,20 @@ AtomItem::determineLabelType() const
             needs_additional_labels = true;
         }
     }
+    // if the atom has no bonds and we are showing the element list label, show
+    // an asterisk as the main label
+    if (!query_label_text.isEmpty() && m_atom->getDegree() == 0 &&
+        !label_is_visible) {
+        main_label_text = "*";
+        label_is_visible = true;
+    }
 
-    return {QString::fromStdString(main_label_text), squiggle_path,
-            label_is_visible, valence_error_is_visible,
-            needs_additional_labels};
+    return {QString::fromStdString(main_label_text),
+            squiggle_path,
+            label_is_visible,
+            valence_error_is_visible,
+            needs_additional_labels,
+            query_label_text};
 }
 
 QPainterPath AtomItem::getWavyLine() const
@@ -513,6 +582,25 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                           m_mapping_label_text);
         painter->restore();
     }
+    if (!m_query_label_text.isEmpty()) {
+        painter->save();
+        painter->setFont(m_fonts.m_element_list_font);
+        painter->setPen(m_pen);
+        painter->drawText(m_query_label_rect, Qt::AlignCenter,
+                          m_query_label_text);
+        auto element_list_line =
+            QLineF(QPointF(0, 0), m_query_label_rect.center());
+        trim_line_to_rect(element_list_line, m_query_label_rect);
+        // trim the line on the atom's end. No label is drawn there, so we
+        // define a small rectangle. A 4 pixel margin will be added by
+        // trim_line_to_rect
+        auto SMALL = 0.1;
+        auto small_rect = QRectF(-SMALL, -SMALL, SMALL * 2, SMALL * 2);
+        trim_line_to_rect(element_list_line, small_rect);
+        painter->setPen(m_element_list_line_pen);
+        painter->drawLine(element_list_line);
+        painter->restore();
+    }
     if (m_settings.m_stereo_labels_shown) {
         painter->save();
         painter->setPen(m_chirality_pen);
@@ -553,10 +641,10 @@ QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
 
 std::vector<QRectF> AtomItem::getLabelRects() const
 {
-    return {m_main_label_rect,     m_mapping_label_rect,
-            m_isotope_label_rect,  m_charge_and_radical_label_rect,
-            m_H_count_label_rect,  m_H_label_rect,
-            m_chirality_label_rect};
+    return {m_main_label_rect,      m_mapping_label_rect,
+            m_isotope_label_rect,   m_charge_and_radical_label_rect,
+            m_H_count_label_rect,   m_H_label_rect,
+            m_chirality_label_rect, m_query_label_rect};
 }
 
 bool AtomItem::determineValenceErrorIsVisible() const

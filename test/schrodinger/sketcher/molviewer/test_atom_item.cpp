@@ -180,6 +180,21 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomMapping)
     BOOST_TEST(atom_item->m_mapping_label_text == "[1]");
 }
 
+BOOST_AUTO_TEST_CASE(test_updateCachedData_atomLabel)
+{
+    auto [atom_item, test_scene] = createAtomItem("* |$Aryl_p$|");
+    BOOST_TEST(atom_item->m_main_label_text == "Aryl_p");
+    BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(atom_item->m_label_is_visible);
+    BOOST_TEST(!(atom_item->m_shape.isEmpty()));
+    BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+}
+
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
                      *boost::unit_test::tolerance(0.01))
 {
