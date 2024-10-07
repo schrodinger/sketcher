@@ -555,15 +555,6 @@ void EditAtomPropertiesDialog::loadProperties(
     updateButtonsEnabled();
 }
 
-/**
- * @return the atomic symbol for the given Element enum
- */
-static QString get_atomic_symbol_from_element(Element element)
-{
-    auto symbol = atomic_number_to_symbol(static_cast<unsigned int>(element));
-    return QString::fromStdString(symbol);
-}
-
 void EditAtomPropertiesDialog::loadAtomProperties(
     const AtomProperties& atom_props)
 {
@@ -582,12 +573,8 @@ void EditAtomPropertiesDialog::loadQueryProperties(
     switch (query_props.query_type) {
         case QueryType::ALLOWED_LIST:
         case QueryType::NOT_ALLOWED_LIST: {
-            QStringList atomic_symbols;
-            std::transform(query_props.allowed_list.begin(),
-                           query_props.allowed_list.end(),
-                           std::back_inserter(atomic_symbols),
-                           get_atomic_symbol_from_element);
-            auto allowed_list = atomic_symbols.join(", ");
+            auto allowed_list =
+                join_all_atomic_symbols(query_props.allowed_list, ", ");
             ui->element_list_le->setText(allowed_list);
             break;
         }

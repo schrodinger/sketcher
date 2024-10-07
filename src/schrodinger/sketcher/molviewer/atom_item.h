@@ -162,6 +162,8 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QString m_mapping_label_text;
     QRectF m_mapping_label_rect;
     QRectF m_isotope_label_rect;
+    QRectF m_query_label_rect;
+    QString m_query_label_text;
     QPainterPath m_squiggle_path; // used for attachment point squiggle
 
     std::vector<QRectF> m_subrects;
@@ -173,6 +175,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QPen m_valence_error_pen;
     QPen m_chirality_pen;
     QPen m_squiggle_pen;
+    QPen m_element_list_line_pen;
     QBrush m_valence_error_brush;
     bool m_hide_stereo_labels = false;
 
@@ -199,9 +202,17 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      *   - whether the valence error should be visible
      *   - whether this atom needs additional labels (e.g. charge label, isotope
      *     label, Hs label, etc.)
+     *   - the text to display for queries. This is displayed on a separate
+     *     label next to the atom. When this text is shown, the main label is
+     *     hidden, unless the atom has no bonds, in which case we show an "*"
      */
-    std::tuple<QString, QPainterPath, bool, bool, bool>
+    std::tuple<QString, QPainterPath, bool, bool, bool, QString>
     determineLabelType() const;
+
+    /**
+     * @return the text to display in query label for this atom
+     */
+    QString getQueryLabel() const;
 
     /**
      * @return A path for painting the attachment point squiggle.  This method
