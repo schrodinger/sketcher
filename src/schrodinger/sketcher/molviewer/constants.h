@@ -188,9 +188,6 @@ const qreal BOND_DEFAULT_PEN_WIDTH = 2.2;
 /// The opacity of the portion of bonds that are behind bond labels
 const qreal OPACITY_OF_BOND_BEHIND_LABEL = 0.15;
 
-// The length of the bond to an attachment point in bond length units
-const qreal ATTACHMENT_POINT_BOND_DISTANCE_RATIO = 0.5;
-
 // The number of "waves" in the squiggle used to represent attachment points
 // (where each wave is goes from zero, to the maximum, to the minimum, and back
 // to zero)

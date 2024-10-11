@@ -106,16 +106,5 @@ number_of_bound_attachment_points(const RDKit::Atom* const atom);
  */
 SKETCHER_API void shorten_attachment_point_bonds(RDKit::Conformer& conf);
 
-/**
- * Make a copy of a molecule's conformer and modify it to shorten all bonds
- * bound to attachment point dummy atoms
- * @param mol The molecule to modify the coordinates of.  This molecule must
- * have a 2D conformer.
- * @return A conformer with the newly calculated coordinates.  Note that this
- * conformer is *not* added to the molecule.
- */
-SKETCHER_API RDKit::Conformer
-get_conformer_with_shortened_attachment_point_bonds(const RDKit::ROMol& mol);
-
 } // namespace sketcher
 } // namespace schrodinger

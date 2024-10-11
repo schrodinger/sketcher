@@ -92,16 +92,13 @@ class SKETCHER_API AbstractDrawSceneTool : public StandardSceneToolBase
      * Figure out where we would draw a bond if the user clicked on the
      * specified atom, ignoring any other existing atoms.
      * @param atom The atom to add a bond to
-     * @param bond_length The length of the bond to draw, given in MolModel
-     * coordinates.
      * @return A tuple of
      *   - The location for the new atom to add (i.e. the atom on the other side
      *     of the bond), given in MolModel coordinates.
      *   - The end point for drawing the hint bond, given in Scene coordinates.
      */
     std::pair<RDGeom::Point3D, QPointF>
-    getInitialDefaultBondPosition(const RDKit::Atom* const atom,
-                                  const float bond_length = BOND_LENGTH) const;
+    getInitialDefaultBondPosition(const RDKit::Atom* const atom) const;
 
     /**
      * Determine whether we should start a mouse drag action based on the

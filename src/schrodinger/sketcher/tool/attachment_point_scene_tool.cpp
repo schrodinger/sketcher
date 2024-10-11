@@ -57,7 +57,6 @@ void DrawAttachmentPointSceneTool::addAtom(const RDGeom::Point3D& pos,
     auto& conf = m_mol_model->getMol()->getConformer();
     RDGeom::Point3D bound_to_pos = conf.getAtomPos(bound_to->getIdx());
     RDGeom::Point3D bond_offset = (pos - bound_to_pos);
-    bond_offset /= ATTACHMENT_POINT_BOND_DISTANCE_RATIO;
     RDGeom::Point3D new_pos = bound_to_pos + bond_offset;
     m_mol_model->addAttachmentPoint(new_pos, bound_to);
 }
@@ -69,7 +68,6 @@ DrawAttachmentPointSceneTool::getBondEndInMousedDirection(
 {
     QPointF bond_offset =
         getDefaultBondOffsetInMousedDirection(start, mouse_pos);
-    bond_offset *= ATTACHMENT_POINT_BOND_DISTANCE_RATIO;
     QPointF bond_end = start + bond_offset;
     return {bond_end, nullptr};
 }
@@ -78,8 +76,7 @@ std::tuple<RDGeom::Point3D, QPointF, const RDKit::Atom*>
 DrawAttachmentPointSceneTool::getDefaultBondPosition(
     const RDKit::Atom* const atom) const
 {
-    auto [bond_end, scene_bond_end] = getInitialDefaultBondPosition(
-        atom, ATTACHMENT_POINT_BOND_DISTANCE_RATIO);
+    auto [bond_end, scene_bond_end] = getInitialDefaultBondPosition(atom);
     return {bond_end, scene_bond_end, nullptr};
 }
 
