@@ -175,31 +175,6 @@ bool is_attachment_point_bond(const RDKit::Bond* const bond)
     return get_attachment_point_atom(bond) != nullptr;
 }
 
-void shorten_attachment_point_bonds(RDKit::Conformer& conf)
-{
-    auto& mol = conf.getOwningMol();
-    for (const auto* bond : mol.bonds()) {
-        if (const auto* ap_atom = get_attachment_point_atom(bond)) {
-            unsigned int ap_index = ap_atom->getIdx();
-            const auto& ap_coords = conf.getAtomPos(ap_index);
-            unsigned int other_index = bond->getOtherAtomIdx(ap_index);
-            const auto& other_coords = conf.getAtomPos(other_index);
-            const auto new_ap_coords =
-                other_coords + other_coords.directionVector(ap_coords) *
-                                   ATTACHMENT_POINT_BOND_DISTANCE_RATIO;
-            conf.setAtomPos(ap_index, new_ap_coords);
-        }
-    }
-}
-
-RDKit::Conformer
-get_conformer_with_shortened_attachment_point_bonds(const RDKit::ROMol& mol)
-{
-    RDKit::Conformer new_conf = mol.getConformer();
-    shorten_attachment_point_bonds(new_conf);
-    return new_conf;
-}
-
 unsigned int number_of_bound_attachment_points(const RDKit::Atom* const atom)
 {
     auto& mol = atom->getOwningMol();

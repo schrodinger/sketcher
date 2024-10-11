@@ -52,8 +52,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         // a ConformerException.
         return {{}, {}, {}, {}};
     }
-    RDKit::Conformer conformer =
-        get_conformer_with_shortened_attachment_point_bonds(*mol);
+    RDKit::Conformer conformer = mol->getConformer();
 
     std::vector<QGraphicsItem*> all_items;
     std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item;
@@ -108,7 +107,7 @@ void update_conf_for_mol_graphics_items(
     const QList<QGraphicsItem*>& bond_items,
     const QList<QGraphicsItem*>& sgroup_items, const RDKit::ROMol& mol)
 {
-    auto conf = get_conformer_with_shortened_attachment_point_bonds(mol);
+    auto conf = mol.getConformer();
     for (auto* item : atom_items) {
         auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
         auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
@@ -211,7 +210,7 @@ QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
     QPainterPath path;
     path.setFillRule(Qt::WindingFill);
     const auto& mol = s_group.getOwningMol();
-    const auto conf = get_conformer_with_shortened_attachment_point_bonds(mol);
+    const auto conf = mol.getConformer();
     for (auto atom_idx : s_group.getAtoms()) {
         auto* atom = mol.getAtomWithIdx(atom_idx);
         auto cur_path = get_predictive_highlighting_path_for_atom(atom);
@@ -278,16 +277,14 @@ static QPainterPath get_highlighting_path_for_bond(const RDKit::Bond* bond,
 
 QPainterPath get_selection_highlighting_path_for_bond(const RDKit::Bond* bond)
 {
-    const auto conf = get_conformer_with_shortened_attachment_point_bonds(
-        bond->getOwningMol());
+    const auto conf = bond->getOwningMol().getConformer();
     return get_highlighting_path_for_bond(
         bond, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH, conf);
 }
 
 QPainterPath get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond)
 {
-    const auto conf = get_conformer_with_shortened_attachment_point_bonds(
-        bond->getOwningMol());
+    const auto conf = bond->getOwningMol().getConformer();
     return get_predictive_highlighting_path_for_bond(bond, conf);
 }
 
