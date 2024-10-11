@@ -56,11 +56,6 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
 
   protected:
     /**
-     * Update the repeat and label strings rendered by SRU or COP sgroups
-     */
-    void updateLabels();
-
-    /**
      * Create a path representing the shape of brackets and labels
      * @param width How much padding we should include in the path
      */
@@ -99,12 +94,6 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
      * coordinates to be in scene units.
      */
     std::pair<QPointF, bool> getFieldDataDisplayInfo() const;
-
-    /**
-     * @return The FIELDDATA text for the SGroup, if any. This text is displayed
-     * next to the SGroup atoms.
-     */
-    QString getFieldDataText() const;
 
     const RDKit::SubstanceGroup& m_sgroup;
     QPainterPath m_brackets_path;
