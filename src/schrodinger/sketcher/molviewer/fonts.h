@@ -29,7 +29,7 @@ class SKETCHER_API Fonts
      * of the label font size and will be automatically updated.
      */
     qreal size() const;
-    void setSize(qreal size);
+    void setSize(int size);
 
     QFont m_main_label_font;
     QFont m_subscript_font;

@@ -35,8 +35,8 @@ const int VIEW_SCALE = std::floor(50 / BOND_LENGTH);
 
 const QString FONT_NAME = "Arial";
 // The default font size for atom labels (e.g. the element abbreviation),
-// measured in points
-const qreal DEFAULT_FONT_SIZE = 13.0;
+// measured in pixels
+const int DEFAULT_FONT_SIZE = 17.0;
 // Ratios for the size of specified font to the size of the atom label font
 const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
