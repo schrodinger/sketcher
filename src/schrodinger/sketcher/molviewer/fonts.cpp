@@ -32,16 +32,16 @@ qreal Fonts::size() const
     return m_main_label_font.pointSizeF();
 }
 
-void Fonts::setSize(qreal size)
+void Fonts::setSize(int size)
 {
-    m_main_label_font.setPointSizeF(size);
-    m_subscript_font.setPointSizeF(size * SUBSCRIPT_FONT_RATIO);
-    m_charge_font.setPointSizeF(size * CHARGE_FONT_RATIO);
-    m_mapping_font.setPointSizeF(size * MAPPING_FONT_RATIO);
-    m_chirality_font.setPointSizeF(size * CHIRALITY_FONT_RATIO);
-    m_cursor_hint_font.setPointSizeF(size * CURSOR_HINT_FONT_RATIO);
-    m_sgroup_font.setPointSizeF(size * SGROUP_FONT_RATIO);
-    m_element_list_font.setPointSizeF(size * ELEMENT_LIST_FONT_RATIO);
+    m_main_label_font.setPixelSize(size);
+    m_subscript_font.setPixelSize(size * SUBSCRIPT_FONT_RATIO);
+    m_charge_font.setPixelSize(size * CHARGE_FONT_RATIO);
+    m_mapping_font.setPixelSize(size * MAPPING_FONT_RATIO);
+    m_chirality_font.setPixelSize(size * CHIRALITY_FONT_RATIO);
+    m_cursor_hint_font.setPixelSize(size * CURSOR_HINT_FONT_RATIO);
+    m_sgroup_font.setPixelSize(size * SGROUP_FONT_RATIO);
+    m_element_list_font.setPixelSize(size * ELEMENT_LIST_FONT_RATIO);
 
     // font metrics objects don't update themselves when their font changes, so
     // we need to create new ones
