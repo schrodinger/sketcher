@@ -41,13 +41,56 @@ std::pair<QPointF, bool> SGroupItem::getFieldDataDisplayInfo() const
     return {QPointF(), false};
 }
 
-QString SGroupItem::getFieldDataText() const
+/**
+ * @return The repeat pattern label text for the SGroup, if any.
+ * NOTE: Users expect head-to-tail (ht) to not be rendered.
+ */
+static QString get_label_text(const RDKit::SubstanceGroup& sgroup)
+{
+    QString text;
+    auto repeat_str = rdkit_extensions::get_repeat_pattern_label(sgroup);
+    if (REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.count(repeat_str)) {
+        auto repeat = REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.at(repeat_str);
+        if (repeat != RepeatPattern::HEAD_TO_TAIL) {
+            text = QString::fromStdString(repeat_str).toLower();
+        }
+    }
+    return text;
+}
+
+/**
+ * @return The sgroup type label text for the SGroup, if any.
+ * NOTE: Accounts for defaults for both SRU and COP sgroup types.
+ */
+static QString get_repeat_text(const RDKit::SubstanceGroup& sgroup)
+{
+    QString text;
+    auto type_str = rdkit_extensions::get_sgroup_type(sgroup);
+    if (SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.count(type_str)) {
+        auto type = SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.at(type_str);
+        auto label = rdkit_extensions::get_polymer_label(sgroup);
+        if (type == SubgroupType::SRU_POLYMER && label.empty()) {
+            text = "n";
+        } else if (type == SubgroupType::COPOLYMER && label.empty()) {
+            text = "co";
+        } else {
+            text = QString::fromStdString(label);
+        }
+    }
+    return text;
+}
+
+/**
+ * @return The FIELDDATA text for the SGroup, if any. This text is displayed
+ * next to the SGroup atoms.
+ */
+static QString get_field_data_text(const RDKit::SubstanceGroup& sgroup)
 {
     QString text;
     std::string typ;
-    if (m_sgroup.getPropIfPresent("TYPE", typ) && typ == "DAT") {
-        if (m_sgroup.hasProp("DATAFIELDS")) {
-            auto dfs = m_sgroup.getProp<std::vector<std::string>>("DATAFIELDS");
+    if (sgroup.getPropIfPresent("TYPE", typ) && typ == "DAT") {
+        if (sgroup.hasProp("DATAFIELDS")) {
+            auto dfs = sgroup.getProp<std::vector<std::string>>("DATAFIELDS");
             for (const auto& df : dfs) {
                 text += df + "|";
             }
@@ -86,35 +129,14 @@ int SGroupItem::type() const
     return Type;
 }
 
-void SGroupItem::updateLabels()
-{
-    auto repeat_str = rdkit_extensions::get_repeat_pattern_label(m_sgroup);
-    auto repeat = REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.at(repeat_str);
-    if (repeat == RepeatPattern::HEAD_TO_TAIL) {
-        m_repeat = ""; // Users expect head-to-tail to not be rendered
-    } else {
-        m_repeat = QString::fromStdString(repeat_str).toLower();
-    }
-
-    auto type_str = rdkit_extensions::get_sgroup_type(m_sgroup);
-    auto type = SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.at(type_str);
-    auto label = rdkit_extensions::get_polymer_label(m_sgroup);
-    // Account for defaults for substance group labels
-    if (type == SubgroupType::SRU_POLYMER && label.empty()) {
-        m_label = "n";
-    } else if (type == SubgroupType::COPOLYMER && label.empty()) {
-        m_label = "co";
-    } else {
-        m_label = QString::fromStdString(label);
-    }
-}
-
 void SGroupItem::updateCachedData()
 {
     prepareGeometryChange();
-    updateLabels();
     m_brackets_path = getBracketPath();
-    m_field_data_text = getFieldDataText();
+
+    m_label = get_label_text(m_sgroup);
+    m_repeat = get_repeat_text(m_sgroup);
+    m_field_data_text = get_field_data_text(m_sgroup);
 
     // until https://github.com/rdkit/rdkit/issues/7829 is resolved, we need to
     // place the field data text manually
