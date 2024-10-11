@@ -99,6 +99,13 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     bool isEmpty() const;
 
+    /**
+     * Pass the specified keypress to the top bar.  Explicit calls to this
+     * method are necessary on Mac to prevent the Maestro window from stealing
+     * keypresses.
+     */
+    bool handleShortcutAction(const QKeySequence& key);
+
   signals:
 
     /**

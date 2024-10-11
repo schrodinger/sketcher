@@ -796,6 +796,11 @@ void SketcherWidget::applyModelValuePingToTargets(
     }
 }
 
+bool SketcherWidget::handleShortcutAction(const QKeySequence& key)
+{
+    return m_ui->top_bar_wdg->handleShortcutAction(key);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
 
