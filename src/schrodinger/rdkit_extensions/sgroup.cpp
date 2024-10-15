@@ -9,7 +9,6 @@ namespace rdkit_extensions
 
 const std::string RDKIT_KEY_CONNECT = "CONNECT";
 const std::string RDKIT_KEY_LABEL = "LABEL";
-const std::string RDKIT_KEY_PARENT = "PARENT";
 const std::string RDKIT_KEY_SUBTYPE = "SUBTYPE";
 const std::string RDKIT_KEY_TYPE = "TYPE";
 

@@ -87,8 +87,8 @@ namespace fasta
     for (const auto& polymer_id : get_polymer_ids(mol)) {
         auto chain = get_polymer(mol, polymer_id);
 
-        format_to(std::back_inserter(output_fasta), "{}\n",
-                  get_fasta_from_biopolymer(mol, chain, polymer_id));
+        fmt::format_to(std::back_inserter(output_fasta), "{}\n",
+                       get_fasta_from_biopolymer(mol, chain, polymer_id));
     }
 
     return {output_fasta.data(), output_fasta.size()};
