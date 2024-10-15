@@ -67,7 +67,7 @@ std::pair<std::vector<std::shared_ptr<TestAtomItem>>,
 createAtomItems(std::string smiles)
 {
     auto test_scene = TestScene::getScene();
-    import_mol_text(test_scene->m_mol_model, smiles, Format::SMILES);
+    import_mol_text(test_scene->m_mol_model, smiles);
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
     for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
         BOOST_TEST_REQUIRE(atom != nullptr);
@@ -182,17 +182,19 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomMapping)
 
 BOOST_AUTO_TEST_CASE(test_updateCachedData_atomLabel)
 {
-    auto [atom_item, test_scene] = createAtomItem("* |$Aryl_p$|");
-    BOOST_TEST(atom_item->m_main_label_text == "Aryl_p");
-    BOOST_TEST(!atom_item->m_main_label_rect.isNull());
-    BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
-    BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
-    BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
-    BOOST_TEST(atom_item->m_H_label_rect.isNull());
-    BOOST_TEST(!atom_item->m_subrects.empty());
-    BOOST_TEST(atom_item->m_label_is_visible);
-    BOOST_TEST(!(atom_item->m_shape.isEmpty()));
-    BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+    for (const auto input_str : {"* |$Aryl_p$|", "[#0] |$Aryl_p$|"}) {
+        auto [atom_item, test_scene] = createAtomItem(input_str);
+        BOOST_TEST(atom_item->m_main_label_text == "Aryl_p");
+        BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+        BOOST_TEST(atom_item->m_isotope_label_rect.isNull());
+        BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
+        BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
+        BOOST_TEST(atom_item->m_H_label_rect.isNull());
+        BOOST_TEST(!atom_item->m_subrects.empty());
+        BOOST_TEST(atom_item->m_label_is_visible);
+        BOOST_TEST(!(atom_item->m_shape.isEmpty()));
+        BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
