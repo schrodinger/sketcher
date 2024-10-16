@@ -235,6 +235,12 @@ AtomItem::determineLabelType() const
         } else if (auto r_group_num =
                        rdkit_extensions::get_r_group_number(m_atom)) {
             main_label_text = "R" + std::to_string(r_group_num.value());
+        } else if (m_atom->hasProp(RDKit::common_properties::atomLabel)) {
+            // display the atomLabel if present. Note that this option needs to
+            // go after R-groups and attachment points because they both use the
+            // atomLabel property but we don't want to display it for them
+            main_label_text = m_atom->getProp<std::string>(
+                RDKit::common_properties::atomLabel);
         } else if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
                        m_atom)) {
             // dummy atoms for variable attachment bonds aren't shown, but we
@@ -249,12 +255,6 @@ AtomItem::determineLabelType() const
             if (props->isQuery()) {
                 query_label_text = getQueryLabel();
             }
-        } else if (m_atom->hasProp(RDKit::common_properties::atomLabel)) {
-            // display the atomLabel if present. Note that this option needs to
-            // go after R-groups and attachment points because they both use the
-            // atomLabel property but we don't want to display it for them
-            main_label_text = m_atom->getProp<std::string>(
-                RDKit::common_properties::atomLabel);
         } else {
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();
