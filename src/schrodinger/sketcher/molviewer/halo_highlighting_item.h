@@ -14,7 +14,7 @@ namespace sketcher
 class HaloHighlightingItem : public AbstractHighlightingItem
 {
   public:
-    HaloHighlightingItem();
+    HaloHighlightingItem(qreal z_value);
 
     QPainterPath
     getPathForItem(AbstractGraphicsItem* const item) const override;

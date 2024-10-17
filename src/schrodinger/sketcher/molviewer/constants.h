@@ -322,7 +322,9 @@ const QString LINE_EDIT_CLEAR_ICON_PATH = ":icons/clear_line_edit.png";
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
 enum class ZOrder {
-    SELECTION_HIGHLIGHTING = 1,
+    BOND_HIGHLIGHTING = 1,
+    ATOM_HIGHLIGHTING,
+    SELECTION_HIGHLIGHTING,
     PREDICTIVE_HIGHLIGHTING,
     BOND,
     ATOM,
