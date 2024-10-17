@@ -349,18 +349,27 @@ void Scene::updateHaloHighlighting()
         delete item;
     }
     for (auto [atoms, bonds, color] : m_mol_model->getHaloHighlighting()) {
-        auto* item = new HaloHighlightingItem();
-        item->setPen(color);
-        item->setBrush(color);
-        QList<QGraphicsItem*> items;
+        // we want two separate items, with different Z values for atoms and
+        // bonds, so we can always have atoms drawn on top of bonds of the
+        // corresponding color
+        auto atom_Z = static_cast<qreal>(ZOrder::ATOM_HIGHLIGHTING);
+        auto bond_Z = static_cast<qreal>(ZOrder::BOND_HIGHLIGHTING);
+        QList<QGraphicsItem*> atom_items;
         for (auto atom : atoms) {
-            items.append(m_atom_to_atom_item.at(atom));
+            atom_items.append(m_atom_to_atom_item.at(atom));
         }
+        QList<QGraphicsItem*> bond_items;
         for (auto bond : bonds) {
-            items.append(m_bond_to_bond_item.at(bond));
+            bond_items.append(m_bond_to_bond_item.at(bond));
         }
-        item->highlightItems(items);
-        m_halo_highlighting_item->addToGroup(item);
+        for (auto [items, Z] : {std::make_pair(atom_items, atom_Z),
+                                std::make_pair(bond_items, bond_Z)}) {
+            auto* item = new HaloHighlightingItem(Z);
+            item->setPen(color);
+            item->setBrush(color);
+            item->highlightItems(items);
+            m_halo_highlighting_item->addToGroup(item);
+        }
     };
 }
 
