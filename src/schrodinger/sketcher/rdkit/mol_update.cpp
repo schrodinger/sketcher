@@ -143,8 +143,11 @@ static void assign_CIP_labels(RDKit::RWMol& mol)
 /**
  * Called once when a mol is first brought into the sketcher
  */
-void prepare_mol(RDKit::RWMol& mol)
+void prepare_mol(RDKit::ROMol& mol)
 {
+    // Make sure valences are available.
+    mol.updatePropertyCache(false);
+
     // Add 2D coordinates only if the molecule does not already have them
     // present (ie specified via molblock, SMILES extension, etc.)
     rdkit_extensions::update_2d_coordinates(mol);
