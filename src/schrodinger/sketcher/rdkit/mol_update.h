@@ -4,6 +4,7 @@
 
 namespace RDKit
 {
+class ROMol;
 class RWMol;
 } // namespace RDKit
 
@@ -18,7 +19,7 @@ namespace sketcher
  *
  * @param mol The molecule to prepare for use in the sketcher
  */
-SKETCHER_API void prepare_mol(RDKit::RWMol& mol);
+SKETCHER_API void prepare_mol(RDKit::ROMol& mol);
 
 /**
  * Update an RDKit molecule after any change is made to its underlying

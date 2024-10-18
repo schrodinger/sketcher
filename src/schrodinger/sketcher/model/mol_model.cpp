@@ -824,7 +824,7 @@ num_atoms_in_reaction(const RDKit::ChemicalReaction& reaction)
                            sum_num_atoms);
 }
 
-void MolModel::addReaction(const RDKit::ChemicalReaction& reaction)
+void MolModel::addReaction(RDKit::ChemicalReaction reaction)
 {
     if (!reaction.getNumReactantTemplates() &&
         !reaction.getNumProductTemplates()) {
@@ -839,6 +839,13 @@ void MolModel::addReaction(const RDKit::ChemicalReaction& reaction)
         throw std::runtime_error(
             fmt::format("Cannot import reactions containing more than {} atoms",
                         MAX_NUM_ATOMS_FOR_IMPORT));
+    }
+
+    for (auto mol : reaction.getReactants()) {
+        prepare_mol(*mol);
+    }
+    for (auto mol : reaction.getProducts()) {
+        prepare_mol(*mol);
     }
 
     auto cmd_func = [this, reaction]() { addReactionCommandFunc(reaction); };

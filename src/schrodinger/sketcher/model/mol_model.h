@@ -589,7 +589,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @throw std::runtime_error if the model already contains a reaction arrow
      */
-    void addReaction(const RDKit::ChemicalReaction& reaction);
+    void addReaction(RDKit::ChemicalReaction reaction);
 
     /**
      * Undoably add a fragment and (optionally) bond it to the existing
