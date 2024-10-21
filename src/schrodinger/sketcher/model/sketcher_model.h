@@ -435,6 +435,7 @@ class SKETCHER_API SketcherModel : public QObject
     const AtomDisplaySettings* getAtomDisplaySettingsPtr() const;
     const BondDisplaySettings* getBondDisplaySettingsPtr() const;
     void setAtomDisplaySettings(const AtomDisplaySettings& settings);
+    void setBondDisplaySettings(const BondDisplaySettings& settings);
 
     /**
      * @param opts render options to load into the model

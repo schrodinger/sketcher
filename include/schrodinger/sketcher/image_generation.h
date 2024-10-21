@@ -61,6 +61,11 @@ struct RenderOptions {
     bool show_stereo_annotations = true;
     bool show_absolute_stereo_groups = false;
     bool show_simplified_stereo_annotation = false;
+
+    // when there's a bond or atom annotation, should qpainter use clipping
+    // regions to draw bonds partially transparent behind them? This is disabled
+    // when exporting to SVG, as QSVGGenerator doesn't support clipping regions.
+    bool allow_qpainter_bond_clipping = true;
 };
 
 // TODO: Overload functions to allow std::string as input

@@ -339,18 +339,30 @@ void SketcherModel::setAtomDisplaySettings(
     emit displaySettingsChanged();
 }
 
+void SketcherModel::setBondDisplaySettings(
+    const BondDisplaySettings& bond_display_settings)
+{
+    m_bond_display_settings = bond_display_settings;
+    emit displaySettingsChanged();
+}
+
 void SketcherModel::loadRenderOptions(const RenderOptions& opts)
 {
-    AtomDisplaySettings display_settings(m_atom_display_settings);
-    display_settings.m_carbon_labels =
+    AtomDisplaySettings atom_display_settings(m_atom_display_settings);
+    atom_display_settings.m_carbon_labels =
         (opts.show_terminal_methyls ? CarbonLabels::TERMINAL
                                     : CarbonLabels::NONE);
-    display_settings.m_explicit_abs_labels_shown =
+    atom_display_settings.m_explicit_abs_labels_shown =
         opts.show_absolute_stereo_groups;
-    display_settings.m_show_simplified_stereo_annotation =
+    atom_display_settings.m_show_simplified_stereo_annotation =
         opts.show_simplified_stereo_annotation;
-    display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
-    setAtomDisplaySettings(display_settings);
+    atom_display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
+    setAtomDisplaySettings(atom_display_settings);
+
+    BondDisplaySettings bond_display_settings(m_bond_display_settings);
+    bond_display_settings.m_allow_qpainter_clipping =
+        opts.allow_qpainter_bond_clipping;
+    setBondDisplaySettings(bond_display_settings);
 }
 
 const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const
