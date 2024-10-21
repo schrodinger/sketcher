@@ -603,8 +603,7 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     if (!m_annotation_text.isEmpty() ||
         !m_start_item.getChiralityLabelText().isEmpty() ||
         !m_end_item.getChiralityLabelText().isEmpty()) {
-        /*An annotation is present, so we need to paint the bond twice to make
-         * the portion of the bond behind the label partially transparent.*/
+
         painter->save();
         QPainterPath annotation_region;
         if (!m_annotation_text.isEmpty()) {
@@ -619,11 +618,29 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
             annotation_region.addPolygon(mapRectFromItem(
                 &m_end_item, m_end_item.getChiralityLabelRect()));
         }
-        painter->setClipPath(shape() - annotation_region);
-        paintBondLinesAndPolygons(painter);
-        painter->setOpacity(OPACITY_OF_BOND_BEHIND_LABEL);
-        painter->setClipPath(annotation_region);
-        paintBondLinesAndPolygons(painter);
+        if (m_settings.m_allow_qpainter_clipping) {
+            /* paint the bond twice to make the portion of the bond behind the
+             * annotation label partially transparent.*/
+            painter->setClipPath(shape() - annotation_region);
+            paintBondLinesAndPolygons(painter);
+            painter->setOpacity(OPACITY_OF_BOND_BEHIND_LABEL);
+            painter->setClipPath(annotation_region);
+            paintBondLinesAndPolygons(painter);
+
+        } else {
+            // paint the bond with partially transparent rectangle of background
+            // color behind the annotation. This is used when clipping is not an
+            // option (e.g. for SVG export until Qt implements clipping regions
+            // for SVG)
+            paintBondLinesAndPolygons(painter);
+            QColor annotation_background_color =
+                Qt::white; // default background color
+            annotation_background_color.setAlphaF(1 -
+                                                  OPACITY_OF_BOND_BEHIND_LABEL);
+            painter->setBrush(annotation_background_color);
+            painter->setPen(Qt::NoPen);
+            painter->drawPath(annotation_region);
+        }
         painter->restore();
         // paint the annotation
         painter->save();
@@ -736,8 +753,9 @@ void BondItem::paintAnnotation(QPainter* painter, qreal angle,
 
     // Draw the text centered at the rotated position
     QFont font = painter->font();
-    painter->drawText(-text_size.width() * 0.5, text_size.height() * 0.5, text);
-
+    auto rect = QRectF(QPointF(0, 0), text_size);
+    rect.moveCenter(QPointF(0, 0));
+    painter->drawText(rect, text);
     // Restore the painter's original state
     painter->restore();
 }

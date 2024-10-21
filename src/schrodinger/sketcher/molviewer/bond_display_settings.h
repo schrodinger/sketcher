@@ -30,6 +30,10 @@ class BondDisplaySettings
     qreal m_hash_spacing = 5.0;
     /// The bond color
     QColor m_color = Qt::black;
+    /// Whether to draw the bond using clipping regions when there are
+    /// annotations. Clipping regions are used to draw the bond partially
+    /// transparent behind atom and bond annotations.
+    bool m_allow_qpainter_clipping = true;
 };
 } // namespace sketcher
 } // namespace schrodinger
