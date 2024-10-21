@@ -28,19 +28,34 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+std::string get_custom_monomer_db_path()
+{
+#ifdef __EMSCRIPTEN__
+    throw std::logic_error(
+        "CG Monomers are not yet supported in WASM Sketcher");
+#else
+    auto custom_db_root = getenv("SCHRODINGER_CUSTOM_MONOMER_DB_DIR");
+    if (custom_db_root) {
+        auto custom_db_path =
+            boost::filesystem::path(custom_db_root) / "custom_monomerlib.db";
+        return custom_db_path.string();
+    }
+    auto custom_db_path = boost::filesystem::path(mmfile_get_directory_path(
+                              DirectoryName::MMFILE_LOCAL_APPDATA)) /
+                          "helm/custom_monomerlib.db";
+    return custom_db_path.string();
+#endif
+}
+
 std::string get_cg_monomer_db_path()
 {
 #ifdef __EMSCRIPTEN__
     throw std::logic_error(
         "CG Monomers are not yet supported in WASM Sketcher");
 #else
-    // First check for custom monomer database in .schrodinger, then fall back
-    // to default
-    auto custom_db_path = boost::filesystem::path(mmfile_get_directory_path(
-                              DirectoryName::MMFILE_LOCAL_APPDATA)) /
-                          "helm/custom_monomerlib.db";
+    auto custom_db_path = get_custom_monomer_db_path();
     if (boost::filesystem::exists(custom_db_path)) {
-        return custom_db_path.string();
+        return custom_db_path;
     }
 
     auto db_path =

@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 
+#include "schrodinger/rdkit_extensions/definitions.h"
+
 #include "boost/noncopyable.hpp"
 
 struct sqlite3;
@@ -13,6 +15,9 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 enum class ChainType;
+
+// Returns path of custom monomer database if it exists, otherwise returns
+RDKIT_EXTENSIONS_API std::string get_custom_monomer_db_path();
 
 std::string get_cg_monomer_db_path();
 
