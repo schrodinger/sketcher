@@ -45,7 +45,7 @@ std::pair<QPointF, bool> SGroupItem::getFieldDataDisplayInfo() const
  * @return The repeat pattern label text for the SGroup, if any.
  * NOTE: Users expect head-to-tail (ht) to not be rendered.
  */
-static QString get_label_text(const RDKit::SubstanceGroup& sgroup)
+static QString get_repeat_connect_text(const RDKit::SubstanceGroup& sgroup)
 {
     QString text;
     auto repeat_str = rdkit_extensions::get_repeat_pattern_label(sgroup);
@@ -62,7 +62,7 @@ static QString get_label_text(const RDKit::SubstanceGroup& sgroup)
  * @return The sgroup type label text for the SGroup, if any.
  * NOTE: Accounts for defaults for both SRU and COP sgroup types.
  */
-static QString get_repeat_text(const RDKit::SubstanceGroup& sgroup)
+static QString get_repeat_label_text(const RDKit::SubstanceGroup& sgroup)
 {
     QString text;
     auto type_str = rdkit_extensions::get_sgroup_type(sgroup);
@@ -134,8 +134,8 @@ void SGroupItem::updateCachedData()
     prepareGeometryChange();
     m_brackets_path = getBracketPath();
 
-    m_label = get_label_text(m_sgroup);
-    m_repeat = get_repeat_text(m_sgroup);
+    m_repeat = get_repeat_connect_text(m_sgroup);
+    m_label = get_repeat_label_text(m_sgroup);
     m_field_data_text = get_field_data_text(m_sgroup);
 
     // until https://github.com/rdkit/rdkit/issues/7829 is resolved, we need to
