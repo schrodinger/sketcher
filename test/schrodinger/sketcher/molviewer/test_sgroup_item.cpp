@@ -40,20 +40,20 @@ BOOST_AUTO_TEST_CASE(test_SRU_COP_labels)
     BOOST_REQUIRE(sgroups.size() == 3);
     {
         auto sgroup_item = TestSGroupItem(sgroups[0], test_scene->m_fonts);
-        BOOST_TEST(sgroup_item.m_label.toStdString() == ""); // ht
-        BOOST_TEST(sgroup_item.m_repeat.toStdString() == "n");
+        BOOST_TEST(sgroup_item.m_label.toStdString() == "n"); // ht
+        BOOST_TEST(sgroup_item.m_repeat.toStdString() == "");
         BOOST_TEST(sgroup_item.m_field_data_text.toStdString() == "");
     }
     {
         auto sgroup_item = TestSGroupItem(sgroups[1], test_scene->m_fonts);
-        BOOST_TEST(sgroup_item.m_label.toStdString() == "hh");
-        BOOST_TEST(sgroup_item.m_repeat.toStdString() == "5-8");
+        BOOST_TEST(sgroup_item.m_label.toStdString() == "5-8");
+        BOOST_TEST(sgroup_item.m_repeat.toStdString() == "hh");
         BOOST_TEST(sgroup_item.m_field_data_text.toStdString() == "");
     }
     {
         auto sgroup_item = TestSGroupItem(sgroups[2], test_scene->m_fonts);
-        BOOST_TEST(sgroup_item.m_label.toStdString() == "eu");
-        BOOST_TEST(sgroup_item.m_repeat.toStdString() == "co");
+        BOOST_TEST(sgroup_item.m_label.toStdString() == "co");
+        BOOST_TEST(sgroup_item.m_repeat.toStdString() == "eu");
         BOOST_TEST(sgroup_item.m_field_data_text.toStdString() == "");
     }
 }
