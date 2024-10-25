@@ -66,8 +66,6 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
     m_squiggle_pen = QPen(settings.getAtomColor(-1));
 
     m_element_list_line_pen = QPen(ELEMENT_LIST_LINE_COLOR);
-    // TODO: update this pen width when the bond width changes, should be done
-    // as part of SKETCH-1270
     m_squiggle_pen.setWidthF(BOND_DEFAULT_PEN_WIDTH);
     m_squiggle_pen.setCapStyle(Qt::RoundCap);
 
@@ -132,6 +130,7 @@ void AtomItem::updateCachedData()
         get_selection_highlighting_path_for_atom(m_atom);
     m_predictive_highlighting_path =
         get_predictive_highlighting_path_for_atom(m_atom);
+    m_squiggle_pen.setWidthF(m_settings.m_squiggle_pen_width);
 
     bool needs_additional_labels;
     std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,

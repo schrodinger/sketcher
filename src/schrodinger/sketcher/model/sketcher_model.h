@@ -9,6 +9,7 @@
 #include <QVariant>
 #include <boost/functional/hash.hpp>
 
+#include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
@@ -436,6 +437,9 @@ class SKETCHER_API SketcherModel : public QObject
     const BondDisplaySettings* getBondDisplaySettingsPtr() const;
     void setAtomDisplaySettings(const AtomDisplaySettings& settings);
     void setBondDisplaySettings(const BondDisplaySettings& settings);
+    void setBondWidthScale(qreal scale);
+    void setFontSize(int size);
+    int getFontSize() const;
 
     /**
      * @param opts render options to load into the model
@@ -561,6 +565,7 @@ class SKETCHER_API SketcherModel : public QObject
 
     AtomDisplaySettings m_atom_display_settings;
     BondDisplaySettings m_bond_display_settings;
+    int m_font_size = DEFAULT_FONT_SIZE;
 };
 
 } // namespace sketcher

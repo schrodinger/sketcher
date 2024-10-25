@@ -48,5 +48,10 @@ QColor AtomDisplaySettings::getAtomColor(int atomic_number) const
     return QColor::fromRgbF(color.r, color.g, color.b, color.a);
 }
 
+void AtomDisplaySettings::setSquigglePenScale(qreal scale)
+{
+    m_squiggle_pen_width = scale * BOND_DEFAULT_PEN_WIDTH;
+}
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -3,6 +3,8 @@
 #include <rdkit/GraphMol/MolDraw2D/MolDraw2DHelpers.h>
 #include <QColor>
 
+#include "schrodinger/sketcher/molviewer/constants.h"
+
 namespace schrodinger
 {
 namespace sketcher
@@ -58,6 +60,13 @@ class AtomDisplaySettings
     QColor getAtomColor(int atomic_number) const;
 
     /**
+     * Scale the width of the pen used to draw attachment point squiggles
+     * @param scale The scale to use.  A value of 1.0 will result in the default
+     * pen width.
+     */
+    void setSquigglePenScale(qreal scale);
+
+    /**
      * Which carbon atoms should be labeled
      */
     CarbonLabels m_carbon_labels = CarbonLabels::NONE;
@@ -86,6 +95,11 @@ class AtomDisplaySettings
      * displayed insted of the atom labels.
      */
     bool m_show_simplified_stereo_annotation = false;
+
+    /**
+     * The width of the pen used to draw attachment point squiggles.
+     */
+    qreal m_squiggle_pen_width = BOND_DEFAULT_PEN_WIDTH;
 
   private:
     RDKit::ColourPalette m_color_palette;
