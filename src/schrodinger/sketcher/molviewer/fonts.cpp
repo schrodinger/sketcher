@@ -1,5 +1,6 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 
+#include "schrodinger/sketcher/constants.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
@@ -27,13 +28,16 @@ Fonts::Fonts() :
     setSize(DEFAULT_FONT_SIZE);
 }
 
-qreal Fonts::size() const
+int Fonts::size() const
 {
-    return m_main_label_font.pointSizeF();
+    return m_main_label_font.pixelSize();
 }
 
 void Fonts::setSize(int size)
 {
+    if (size == this->size()) {
+        return;
+    }
     m_main_label_font.setPixelSize(size);
     m_subscript_font.setPixelSize(size * SUBSCRIPT_FONT_RATIO);
     m_charge_font.setPixelSize(size * CHARGE_FONT_RATIO);

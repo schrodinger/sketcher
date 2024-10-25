@@ -23,12 +23,12 @@ class SKETCHER_API Fonts
     // a single Fonts object with all AtomItems.
     explicit Fonts(const Fonts&) = default;
     /**
-     * Return the size in points of the font used to paint the main label.  The
+     * Return the size in pixels of the font used to paint the main label.  The
      * main label is typically the element symbol, but it can also be a query
      * string or an R group.  The other font sizes are defined as a percentage
      * of the label font size and will be automatically updated.
      */
-    qreal size() const;
+    int size() const;
     void setSize(int size);
 
     QFont m_main_label_font;

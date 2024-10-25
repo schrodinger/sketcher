@@ -345,9 +345,26 @@ void SketcherModel::setBondDisplaySettings(
     m_bond_display_settings = bond_display_settings;
     emit displaySettingsChanged();
 }
+void SketcherModel::setBondWidthScale(qreal scale)
+{
+    m_bond_display_settings.setScale(scale);
+    emit displaySettingsChanged();
+}
+
+void SketcherModel::setFontSize(int size)
+{
+    m_font_size = size;
+    emit displaySettingsChanged();
+}
+
+int SketcherModel::getFontSize() const
+{
+    return m_font_size;
+}
 
 void SketcherModel::loadRenderOptions(const RenderOptions& opts)
 {
+    m_font_size = opts.font_size;
     AtomDisplaySettings atom_display_settings(m_atom_display_settings);
     atom_display_settings.m_carbon_labels =
         (opts.show_terminal_methyls ? CarbonLabels::TERMINAL
@@ -357,11 +374,13 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
     atom_display_settings.m_show_simplified_stereo_annotation =
         opts.show_simplified_stereo_annotation;
     atom_display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
+    atom_display_settings.setSquigglePenScale(opts.bond_width_scale);
     setAtomDisplaySettings(atom_display_settings);
 
     BondDisplaySettings bond_display_settings(m_bond_display_settings);
     bond_display_settings.m_allow_qpainter_clipping =
         opts.allow_qpainter_bond_clipping;
+    bond_display_settings.setScale(opts.bond_width_scale);
     setBondDisplaySettings(bond_display_settings);
 }
 

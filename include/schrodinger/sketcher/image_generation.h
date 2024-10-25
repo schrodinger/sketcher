@@ -12,6 +12,7 @@
 #include <QSize>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/constants.h"
 
 template <typename T> class QList;
 
@@ -46,6 +47,16 @@ struct RenderOptions {
     // than width_height), then it will be ignored and auto scaling will be used
     // instead.
     qreal scale = AUTOSCALE;
+
+    // The font size to use for atom labels.  Other fonts will be scaled
+    // relative to this.
+    int font_size = DEFAULT_FONT_SIZE;
+
+    // Scaling to apply to bond width.  Values less than one will result in
+    // thinner bonds, while values greater than one will result in thicker
+    // bonds.
+    qreal bond_width_scale = 1.0;
+
     // User annotations and colorings based on atom and bond indices.
     // Bonds between haloed atoms will not be haloed unless separately
     // specified. Bonds lines between atoms will have split color based
@@ -155,6 +166,29 @@ SKETCHER_API void save_image_file(const std::string& text,
 SKETCHER_API qreal
 get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
                      const RenderOptions& opts = RenderOptions());
+
+/**
+ * Get the scale that will be used for rendering the provided mol when
+ * RenderOptions::scale is set to AUTOSCALE.
+ * @param rdmol The molecule to be rendered
+ * @param opts The image generation options to use.  Note that opts.scale will
+ * be ignored.
+ * @return The scaling value
+ */
+SKETCHER_API qreal get_autoscale_value(
+    const RDKit::ROMol& rdmol, const RenderOptions& opts = RenderOptions());
+
+/**
+ * Get the scale that will be used for rendering the provided reaction when
+ * RenderOptions::scale is set to AUTOSCALE.
+ * @param rxn The reaction to be rendered
+ * @param opts The image generation options to use.  Note that opts.scale will
+ * be ignored.
+ * @return The scaling value
+ */
+SKETCHER_API qreal
+get_autoscale_value(const RDKit::ChemicalReaction& rxn,
+                    const RenderOptions& opts = RenderOptions());
 
 } // namespace sketcher
 } // namespace schrodinger

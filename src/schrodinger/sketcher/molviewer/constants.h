@@ -34,10 +34,10 @@ const int SAVED_PICTURE_PADDING = 10;
 const int VIEW_SCALE = std::floor(50 / BOND_LENGTH);
 
 const QString FONT_NAME = "Arial";
-// The default font size for atom labels (e.g. the element abbreviation),
-// measured in pixels
-const int DEFAULT_FONT_SIZE = 17.0;
-// Ratios for the size of specified font to the size of the atom label font
+// Ratios for the size of specified font to the size of the atom label font.
+// Note that the atom label font size is declared in the public constants header
+// (mmshare/include/schrodinger/sketcher/constants.h) because it needs to be
+// accessed from image_generation.h (which is also public)
 const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.5;
@@ -183,7 +183,35 @@ const float FIT_TO_SCREEN_MARGIN_FACTOR = 0.15f;
 const float KEY_SCROLL_BOND_LENGTH_RATIO = 0.5;
 
 /// The width of the pen to use for drawing bond lines
-const qreal BOND_DEFAULT_PEN_WIDTH = 2.2;
+const qreal BOND_DEFAULT_PEN_WIDTH = 2.4;
+
+/// The default spacing between the two lines of a double bond, or between pairs
+/// of adjacent lines in triple bonds.
+const qreal DEFAULT_DOUBLE_BOND_SPACING = 5.5;
+
+/// The default width of the fat end of the wedge for wedge (up or down) bonds
+const qreal DEFAULT_BOND_WEDGE_WIDTH = 6.0;
+
+// The default spacing between hash marks in a down wedge bond
+const qreal DEFAULT_BOND_HASH_SPACING = 5.0;
+
+/// How double bond spacing is scaled relative to bond width. If this value is
+/// one, then double bond spacing will be scaled the same as bond width. E.g.,
+/// if bond width is doubled, then double bond spacing will be doubled. If this
+/// value is less than one, then changes in bond width will be de-emphasized for
+/// double bond spacing. E.g., doubling the bond width will still increase the
+/// double bond spacing, but by _less_ than a doubling. If this value is
+/// greater than one, then changes will be exaggerated (so _more_ than a
+/// doubling in our example). The greater the difference between this value and
+/// one, the more pronounced this effect will be.
+///
+/// Note that this value must be positive.
+const qreal DOUBLE_BOND_SPACING_SCALING_FACTOR = 0.9;
+
+/// How hash spacing (for down wedge bonds) is scaled relative to the bond
+/// width. See DOUBLE_BOND_SPACING_SCALING_FACTOR for an explanation of how this
+/// scaling works.
+const qreal BOND_HASH_SPACING_SCALING_FACTOR = 0.3;
 
 /// The opacity of the portion of bonds that are behind bond labels
 const qreal OPACITY_OF_BOND_BEHIND_LABEL = 0.15;

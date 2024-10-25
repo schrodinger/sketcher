@@ -395,6 +395,20 @@ template <typename T> void save_image_file(const T& input,
     file.write(data);
 }
 
+template <typename T>
+qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
+
+{
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    SketcherModel sketcher_model;
+    Scene scene(&mol_model, &sketcher_model);
+    opts.scale = AUTOSCALE;
+    init_molviewer_image(mol_model, sketcher_model, mol_or_rxn, opts);
+    return get_scale(scene.getInteractiveItemsBoundingRect(),
+                     opts.width_height);
+}
+
 } // unnamed namespace
 
 QPicture get_qpicture(const RDKit::ROMol& mol, const RenderOptions& opts)
@@ -538,6 +552,20 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
         }
     }
     return best_scale;
+}
+
+// SIP has issues wrapping these functions if they're defined using a template,
+// so these definitions just call the templated function that contains the
+// actual implementation
+qreal get_autoscale_value(const RDKit::ROMol& rdmol, const RenderOptions& opts)
+{
+    return get_image_scale_for_mol_or_rxn(rdmol, opts);
+}
+
+qreal get_autoscale_value(const RDKit::ChemicalReaction& rxn,
+                          const RenderOptions& opts)
+{
+    return get_image_scale_for_mol_or_rxn(rxn, opts);
 }
 
 } // namespace sketcher

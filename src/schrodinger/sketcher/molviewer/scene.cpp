@@ -125,6 +125,7 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     if (m_mol_model == nullptr || m_sketcher_model == nullptr) {
         throw std::runtime_error("Cannot construct without valid models");
     }
+    m_fonts.setSize(m_sketcher_model->getFontSize());
     connect(this, &Scene::changed, m_sketcher_model,
             &SketcherModel::interactiveItemsChanged);
     connect(this, &Scene::selectionChanged, m_sketcher_model,
@@ -307,6 +308,8 @@ void Scene::onDisplaySettingsChanged()
         !simplified_stereo_annotation.isEmpty());
     m_simplified_stereo_label->setPos(
         getInteractiveItemsBoundingRect().bottomLeft());
+
+    m_fonts.setSize(m_sketcher_model->getFontSize());
 
     // we need to update all of the atom items before we update any bond
     // items, since bond items pull information from their associated atom
