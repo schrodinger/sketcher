@@ -330,11 +330,6 @@ const int CURSOR_HINT_Y = 18;
 // is cropped after resizing.
 const int CURSOR_HINT_IMAGE_SIZE = 28;
 
-// The maximum number of atoms that can be imported at once. Attempting to
-// import a molecule or reaction with too many atoms will result in an error
-// dialog informing the user of the problem.
-const unsigned int MAX_NUM_ATOMS_FOR_IMPORT = 200;
-
 // maximum allowed values for spin boxes in the Edit Aom Properties dialog
 const unsigned int MAX_STEREO_GROUP_ID = 99;
 const unsigned int MAX_QUERY_TOTAL_H = 99;
