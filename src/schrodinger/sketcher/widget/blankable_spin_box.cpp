@@ -36,7 +36,14 @@ BlankableSpinBox::BlankableSpinBox(QWidget* parent) : QSpinBox(parent)
     setButtonSymbols(QSpinBox::NoButtons);
 
     m_clear_btn = new QToolButton(this);
+#ifdef EMSCRIPTEN
+    // Adding an icon to this button in a WASM build causes the QApplication to
+    // crash when the button is shown, so we use the letter X instead. See
+    // SKETCH-2310 for more info.
+    m_clear_btn->setText("X");
+#else
     m_clear_btn->setIcon(QIcon(LINE_EDIT_CLEAR_ICON_PATH));
+#endif
     m_clear_btn->setCursor(Qt::ArrowCursor);
     m_clear_btn->setStyleSheet("QToolButton { border: none; padding: 0px; }");
     updateClearButtonVisibility();
