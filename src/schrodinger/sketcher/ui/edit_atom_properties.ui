@@ -813,6 +813,39 @@
    <header>schrodinger/sketcher/widget/blankable_spin_box.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>set_as_atom_rb</tabstop>
+  <tabstop>set_as_query_rb</tabstop>
+  <tabstop>atom_element_le</tabstop>
+  <tabstop>atom_periodic_table_btn</tabstop>
+  <tabstop>atom_isotope_sb</tabstop>
+  <tabstop>atom_charge_sb</tabstop>
+  <tabstop>atom_unpaired_sb</tabstop>
+  <tabstop>atom_stereo_combo</tabstop>
+  <tabstop>atom_stereo_sb</tabstop>
+  <tabstop>edit_query_tab_wdg</tabstop>
+  <tabstop>query_type_combo</tabstop>
+  <tabstop>query_periodic_table_btn</tabstop>
+  <tabstop>query_element_le</tabstop>
+  <tabstop>query_isotope_sb</tabstop>
+  <tabstop>query_charge_sb</tabstop>
+  <tabstop>query_unpaired_sb</tabstop>
+  <tabstop>query_stereo_combo</tabstop>
+  <tabstop>query_stereo_sb</tabstop>
+  <tabstop>total_h_combo</tabstop>
+  <tabstop>total_h_sb</tabstop>
+  <tabstop>num_connections_sb</tabstop>
+  <tabstop>aromaticity_combo</tabstop>
+  <tabstop>ring_count_combo</tabstop>
+  <tabstop>ring_count_sb</tabstop>
+  <tabstop>ring_bond_count_combo</tabstop>
+  <tabstop>ring_bond_count_sb</tabstop>
+  <tabstop>smallest_ring_size_sb</tabstop>
+  <tabstop>wildcard_combo</tabstop>
+  <tabstop>smarts_query_le</tabstop>
+  <tabstop>element_list_le</tabstop>
+  <tabstop>rgroup_sb</tabstop>
+ </tabstops>
  <resources>
   <include location="../sketcher.qrc"/>
  </resources>
