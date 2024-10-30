@@ -97,12 +97,5 @@ std::vector<std::string>
 
 Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& cg_mol,
                                        std::string_view polymer_id);
-
-/**
- * @param cg_mol coarse grain molecule
- * @return The id of the conformer added to the molecule with the computed
- * coordinates
- */
-unsigned int RDKIT_EXTENSIONS_API compute_cg_coords(RDKit::ROMol& cg_mol);
 } // namespace rdkit_extensions
 } // namespace schrodinger
