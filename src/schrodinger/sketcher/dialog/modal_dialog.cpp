@@ -17,7 +17,7 @@ ModalDialog::ModalDialog(QWidget* parent, Qt::WindowFlags f) :
     // Create a wrapper layout that holds the title bar and the dialog contents
     QVBoxLayout* wrapper_layout = new QVBoxLayout(this);
     setLayout(wrapper_layout);
-    m_dlg_layout = new QVBoxLayout(this);
+    m_dlg_layout = new QVBoxLayout();
     wrapper_layout->addLayout(m_dlg_layout);
 
 // Add a custom title bar to the dialog if we're in WASM
