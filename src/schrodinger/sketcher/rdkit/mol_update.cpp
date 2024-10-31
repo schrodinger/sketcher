@@ -78,11 +78,6 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
             bond->getBondDir() == RDKit::Bond::BondDir::ENDUPRIGHT) {
             bond->setBondDir(RDKit::Bond::BondDir::NONE);
         }
-
-        // Clear CIP codes, as they are not valid after a stereo recalculation.
-        // assignStereochemistry(cleanIt=true) clears atom's CIP codes, but
-        // but not the bonds. This is https://github.com/rdkit/rdkit/issues/7929
-        bond->clearProp(RDKit::common_properties::_CIPCode);
     }
 
     // Convert up/down bonds into parities
