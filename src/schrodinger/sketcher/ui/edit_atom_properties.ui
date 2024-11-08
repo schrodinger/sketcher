@@ -827,6 +827,10 @@
   <tabstop>query_type_combo</tabstop>
   <tabstop>query_periodic_table_btn</tabstop>
   <tabstop>query_element_le</tabstop>
+  <tabstop>wildcard_combo</tabstop>
+  <tabstop>smarts_query_le</tabstop>
+  <tabstop>element_list_le</tabstop>
+  <tabstop>rgroup_sb</tabstop>
   <tabstop>query_isotope_sb</tabstop>
   <tabstop>query_charge_sb</tabstop>
   <tabstop>query_unpaired_sb</tabstop>
@@ -841,10 +845,6 @@
   <tabstop>ring_bond_count_combo</tabstop>
   <tabstop>ring_bond_count_sb</tabstop>
   <tabstop>smallest_ring_size_sb</tabstop>
-  <tabstop>wildcard_combo</tabstop>
-  <tabstop>smarts_query_le</tabstop>
-  <tabstop>element_list_le</tabstop>
-  <tabstop>rgroup_sb</tabstop>
  </tabstops>
  <resources>
   <include location="../sketcher.qrc"/>
