@@ -46,15 +46,17 @@ const std::unordered_map<Format, std::vector<std::string>> MOL_FORMAT_EXTS = {
     {Format::PDB, {".pdb", ".pdb.gz", ".pdbgz", ".ent", ".ent.gz", ".entgz"}},
     {Format::XYZ, {".xyz"}},
 };
-
+// clang-format off
 const std::unordered_map<Format, std::vector<std::string>> RXN_FORMAT_EXTS = {
     {Format::RDMOL_BINARY_BASE64, {}},
     {Format::SMILES, {".rsmi"}},
+    {Format::EXTENDED_SMILES, {}},
     {Format::SMARTS, {}},
+    {Format::EXTENDED_SMARTS, {}},
     {Format::MDL_MOLV2000, {}},
     {Format::MDL_MOLV3000, {".rxn"}},
 };
-
+// clang-format on
 const std::unordered_map<Format, std::vector<std::string>> SEQ_FORMAT_EXTS = {
     {Format::RDMOL_BINARY_BASE64, {}},
     {Format::HELM, {".helm"}},

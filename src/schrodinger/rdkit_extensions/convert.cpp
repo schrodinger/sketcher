@@ -236,14 +236,18 @@ void fix_cxsmiles_rgroups(RDKit::ROMol& mol)
 }
 
 /**
- * Take any R-groups that are denoted using _MolFileRLabel and make sure that
- * the atom labels are set correctly. This ensures that R-group numbers can be
- * correctly exported to extended SMILES. This function also clears any isotope
- * values that are actually R-group numbers, as well as any dummy label
- * properties, so that those values don't appear in the SMILES output.
+ * @internal Update the mol for extended SMILES/SMARTS output
  */
-void convert_rgroups_to_atom_labels(const RDKit::ROMol& mol)
+void adjust_for_extended_smiles_smarts_format(RDKit::ROMol& mol)
 {
+    // Don't pollute extension with coordinates
+    mol.clearConformers();
+
+    // Take any R-groups that are denoted using _MolFileRLabel and make sure
+    // that the atom labels are set correctly. This ensures that R-group numbers
+    // can be correctly exported to extended SMILES. This function also clears
+    // any isotope values that are actually R-group numbers, as well as any
+    // dummy label properties, so that those values don't appear in the SMILES.
     for (auto* atom : mol.atoms()) {
         auto r_group_num = get_r_group_number(atom);
         if (r_group_num.has_value()) {
@@ -254,6 +258,17 @@ void convert_rgroups_to_atom_labels(const RDKit::ROMol& mol)
                 atom->setIsotope(0);
             }
         }
+    }
+}
+
+void adjust_for_extended_smiles_smarts_format(
+    const RDKit::ChemicalReaction& rxn)
+{
+    for (auto reactant : rxn.getReactants()) {
+        adjust_for_extended_smiles_smarts_format(*reactant);
+    }
+    for (auto product : rxn.getProducts()) {
+        adjust_for_extended_smiles_smarts_format(*product);
     }
 }
 
@@ -771,14 +786,12 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::SMILES:
             return RDKit::MolToSmiles(mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            mol.clearConformers(); // Don't pollute extension with coordinates
-            convert_rgroups_to_atom_labels(mol);
+            adjust_for_extended_smiles_smarts_format(mol);
             return RDKit::MolToCXSmiles(mol, include_stereo, kekulize);
         case Format::SMARTS:
             return RDKit::MolToSmarts(mol);
         case Format::EXTENDED_SMARTS:
-            mol.clearConformers(); // Don't pollute extension with coordinates
-            convert_rgroups_to_atom_labels(mol);
+            adjust_for_extended_smiles_smarts_format(mol);
             return RDKit::MolToCXSmarts(mol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
@@ -838,8 +851,14 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
     switch (format) {
         case Format::SMILES:
             return RDKit::ChemicalReactionToRxnSmiles(rxn);
+        case Format::EXTENDED_SMILES:
+            adjust_for_extended_smiles_smarts_format(rxn);
+            return RDKit::ChemicalReactionToCXRxnSmiles(rxn);
         case Format::SMARTS:
             return RDKit::ChemicalReactionToRxnSmarts(rxn);
+        case Format::EXTENDED_SMARTS:
+            adjust_for_extended_smiles_smarts_format(rxn);
+            return RDKit::ChemicalReactionToCXRxnSmarts(rxn);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             bool separateAgents = false;

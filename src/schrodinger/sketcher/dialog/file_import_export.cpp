@@ -66,7 +66,9 @@ FormatList<Format> get_reaction_formats()
     return {
         rxn_data(Format::MDL_MOLV3000, "MDL RXN V3000"),
         rxn_data(Format::SMILES, "Reaction SMILES"),
+        rxn_data(Format::EXTENDED_SMILES, "Extended Reaction SMILES"),
         rxn_data(Format::SMARTS, "Reaction SMARTS"),
+        rxn_data(Format::EXTENDED_SMARTS, "Extended Reaction SMARTS"),
     };
 }
 
