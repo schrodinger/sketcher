@@ -260,7 +260,7 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
 #ifndef EMSCRIPTEN
     if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
 #else
-    if (false) {
+    if (true) {
 #endif
         QUndoStack undo_stack;
         MolModel mol_model(&undo_stack);
@@ -535,20 +535,34 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
         return AUTOSCALE;
     }
     qreal best_scale = std::numeric_limits<qreal>::max();
-    for (auto rdmol : all_rdmols) {
-        // We sometimes get graphical artifacts when clearing and reusing a
-        // sketcherScene instance for multiple molecules.  To avoid that, we
-        // create a new scene instance for each molecule.  We can presumably
-        // switch this code to use scene.clearInteractiveItems() instead once we
-        // switch to the the molviewer Scene class here.
-        sketcherScene scene;
-        SketcherModel sketcher_model(&scene);
-        scene.setModel(&sketcher_model);
-        scene.addRDKitMolecule(*rdmol);
-        qreal cur_scale =
-            get_scale(scene.findBoundingRect(), opts.width_height);
-        if (cur_scale < best_scale) {
-            best_scale = cur_scale;
+#ifndef EMSCRIPTEN
+    if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
+#else
+    if (true) {
+#endif
+        QUndoStack undo_stack;
+        MolModel mol_model(&undo_stack);
+        SketcherModel sketcher_model;
+        Scene scene(&mol_model, &sketcher_model);
+        for (auto rdmol : all_rdmols) {
+            init_molviewer_image(mol_model, sketcher_model, *rdmol, opts);
+            qreal cur_scale = get_scale(scene.getInteractiveItemsBoundingRect(),
+                                        opts.width_height);
+            best_scale = std::min(best_scale, cur_scale);
+            mol_model.clear();
+        }
+    } else {
+        for (auto rdmol : all_rdmols) {
+            // We sometimes get graphical artifacts when clearing and reusing a
+            // sketcherScene instance for multiple molecules. To avoid that, we
+            // create a new scene instance for each molecule.
+            sketcherScene scene;
+            SketcherModel sketcher_model(&scene);
+            scene.setModel(&sketcher_model);
+            scene.addRDKitMolecule(*rdmol);
+            qreal cur_scale =
+                get_scale(scene.findBoundingRect(), opts.width_height);
+            best_scale = std::min(best_scale, cur_scale);
         }
     }
     return best_scale;

@@ -282,11 +282,14 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
     }
     if (types & InteractiveItemFlag::ATOM) {
         m_atom_to_atom_item.clear();
-    } else if (types & InteractiveItemFlag::BOND) {
+    }
+    if (types & InteractiveItemFlag::BOND) {
         m_bond_to_bond_item.clear();
-    } else if (types & InteractiveItemFlag::S_GROUP) {
+    }
+    if (types & InteractiveItemFlag::S_GROUP) {
         m_s_group_to_s_group_item.clear();
-    } else if (types & InteractiveItemFlag::NON_MOLECULAR) {
+    }
+    if (types & InteractiveItemFlag::NON_MOLECULAR) {
         m_non_molecular_to_non_molecular_item.clear();
     }
 }
