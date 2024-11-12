@@ -96,9 +96,11 @@ void fill_attachment_point_map(const RDKit::ROMol& new_monomer,
 }
 
 void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
-                  unsigned int residue_number, char chain_id)
+                  unsigned int residue_number, char chain_id,
+                  ChainType chain_type)
 {
-    std::string residue_name("UNK");
+    std::string residue_name =
+        (chain_type == ChainType::PEPTIDE) ? "UNK" : "UNL";
     if (three_character_codes.find(monomer_label) !=
         three_character_codes.end()) {
         residue_name = three_character_codes.at(monomer_label);
@@ -194,7 +196,8 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         auto residue_number = get_residue_number(monomer);
         fill_attachment_point_map(*new_monomer, attachment_point_map,
                                   residue_number, atomistic_mol.getNumAtoms());
-        set_pdb_info(*new_monomer, monomer_label, residue_number, chain_id);
+        set_pdb_info(*new_monomer, monomer_label, residue_number, chain_id,
+                     chain_type);
 
         atomistic_mol.insertMol(*new_monomer);
     }
