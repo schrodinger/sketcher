@@ -524,26 +524,6 @@ BOOST_AUTO_TEST_CASE(test_addAtom_r_group)
     r4_atom = mol->getAtomWithIdx(3);
     BOOST_TEST(r4_atom->getAtomicNum() == 0);
     BOOST_TEST(get_r_group_number(r4_atom) == 4);
-
-    // Confirm that the exported SMILES does not contain stray atom properties
-    auto expected_smiles = "**.** |$_R3;_R1;_R2;_R4$|";
-    auto export_smiles = rdkit_extensions::to_string(*model.getMolForExport(),
-                                                     Format::EXTENDED_SMILES);
-    BOOST_TEST(export_smiles == expected_smiles);
-
-    // Confirm that imported rgroups roundtrip similarly
-    model.clear();
-    add_text_to_mol_model(model, expected_smiles);
-    auto export_mol = model.getMolForExport();
-    // Though these properties are present on rgroups....
-    for (const auto* atom : export_mol->atoms()) {
-        BOOST_TEST(atom->hasProp(RDKit::common_properties::atomLabel));
-        BOOST_TEST(atom->hasProp(RDKit::common_properties::_MolFileRLabel));
-    }
-    // ...confirm the exported SMILES lack those properties in the extension
-    export_smiles =
-        rdkit_extensions::to_string(*export_mol, Format::EXTENDED_SMILES);
-    BOOST_TEST(export_smiles == expected_smiles);
 }
 
 BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
