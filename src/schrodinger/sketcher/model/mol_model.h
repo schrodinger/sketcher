@@ -1445,9 +1445,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     createReaction(const bool strip_tags) const;
 };
 
-void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
-                           const rdkit_extensions::Format format =
-                               rdkit_extensions::Format::AUTO_DETECT);
+SKETCHER_API void
+add_text_to_mol_model(MolModel& mol_model, const std::string& text,
+                      const rdkit_extensions::Format format =
+                          rdkit_extensions::Format::AUTO_DETECT);
 
 } // namespace sketcher
 } // namespace schrodinger
