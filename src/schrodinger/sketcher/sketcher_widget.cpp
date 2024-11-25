@@ -353,7 +353,11 @@ void SketcherWidget::showFileSaveImageDialog()
     auto dialog = new FileSaveImageDialog(m_sketcher_model, window());
     connect(dialog, &FileSaveImageDialog::exportImageRequested, this,
             [this](auto format, const auto& opts) {
-                m_sketcher_model->loadRenderOptions(opts);
+                // opts here contains meaningful values only for width and
+                // height and background transparency, everything else is
+                // default values. We don't call
+                // m_sketcher_model->loadRenderOptions because m_sketcher_model
+                // already contains the meaningful values (SKETCH-1922)
                 return get_image_bytes(*m_scene, format, opts);
             });
     dialog->show();
