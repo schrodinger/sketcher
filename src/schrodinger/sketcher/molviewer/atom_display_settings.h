@@ -3,31 +3,13 @@
 #include <rdkit/GraphMol/MolDraw2D/MolDraw2DHelpers.h>
 #include <QColor>
 
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
-
-/**
- * Which carbon atoms should be labeled (i.e. which carbon atoms get a "C"
- * drawn)
- */
-enum class CarbonLabels {
-    /// No labels for any carbons (unless there's some other reason to label
-    /// that atom, e.g., it's an isolated atom or it has a non-zero charge)
-    NONE,
-    /// Only label carbons bound to exactly one non-hydrogen atom
-    TERMINAL,
-    /// Label all atoms
-    ALL
-};
-
-/**
- * Coloring scheme corresponding to what is available in RDKit rendering
- */
-enum class ColorScheme { DEFAULT, AVALON, CDK, DARK_MODE, BLACK_WHITE };
 
 /**
  * An object used to store all settings relevant to the display of atoms
@@ -44,27 +26,32 @@ class AtomDisplaySettings
     /**
      * Set a pre-defined RDKit color scheme
      * @param scheme color scheme to apply to atom items
+     * @param carbon_color the color for carbon atoms.  If the monochrome color
+     * scheme is being used, this color will apply to all atoms.  If the color
+     * is invalid (the default), then the color scheme's default color will be
+     * used (or black for monochrome color schemes).
      */
-    void setColorScheme(ColorScheme scheme);
+    void setColorScheme(const ColorScheme& scheme,
+                        QColor carbon_color = QColor());
 
     /**
      * Set a color scheme where all atoms use the same color
      * @param color the color for all atoms
      */
-    void setMonochromeColorScheme(QColor color);
+    void setMonochromeColorScheme(const QColor& color);
 
     /**
      * @param atomic_number the atomic number of the atom
      * @return atom color based on the active color scheme
      */
-    QColor getAtomColor(int atomic_number) const;
+    QColor getAtomColor(const int atomic_number) const;
 
     /**
      * Scale the width of the pen used to draw attachment point squiggles
      * @param scale The scale to use.  A value of 1.0 will result in the default
      * pen width.
      */
-    void setSquigglePenScale(qreal scale);
+    void setSquigglePenScale(const qreal scale);
 
     /**
      * Which carbon atoms should be labeled
@@ -77,8 +64,7 @@ class AtomDisplaySettings
     bool m_valence_errors_shown = true;
 
     /**
-     * Whether to display stereochemistry
-     * labels when present
+     * Whether to display stereochemistry labels when present
      */
     bool m_stereo_labels_shown = true;
 
@@ -104,5 +90,12 @@ class AtomDisplaySettings
   private:
     RDKit::ColourPalette m_color_palette;
 };
+
+/**
+ * @return the light gray color that RDKit uses to color carbons when using the
+ * dark mode palette
+ */
+RDKit::DrawColour get_rdkit_dark_mode_carbon_color();
+
 } // namespace sketcher
 } // namespace schrodinger

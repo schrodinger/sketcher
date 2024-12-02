@@ -14,7 +14,7 @@
 #include <QStringList>
 #include <QTimer>
 
-#include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"

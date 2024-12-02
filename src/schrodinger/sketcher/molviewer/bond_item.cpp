@@ -104,7 +104,7 @@ void BondItem::updateCachedData()
     std::string label_text;
     if (!query_label.empty()) {
         label_text = query_label;
-    } else {
+    } else if (m_settings.m_stereo_labels_shown) {
         label_text = rdkit_extensions::get_bond_stereo_label(*m_bond);
     }
     m_annotation_text = QString::fromStdString(label_text);

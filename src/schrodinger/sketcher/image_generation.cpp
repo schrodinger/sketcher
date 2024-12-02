@@ -277,12 +277,7 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
         add_to_scene(&scene, input);
         setHighlights(scene, opts);
         setUserLabels(scene, opts);
-
-        // The atom and bond items use a semi-transparent version of the
-        // background color to fade out bonds in order to make labels more
-        // readable. Using Qt's black-transparent causes these to turn into
-        // black smudges.
-        scene._backgroundColor = QColor(255, 255, 255, 0);
+        scene.loadRenderOptions(opts);
 
         auto scene_rect = scene.findBoundingRect();
         paint_scene(device, scene, scene_rect, opts);

@@ -12,7 +12,7 @@
 #include <QSize>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/image_constants.h"
 
 template <typename T> class QList;
 
@@ -68,10 +68,15 @@ struct RenderOptions {
     QHash<int, QColor> rdatom_index_to_line_color;
     QHash<int, QColor> rdbond_index_to_line_color;
     // Molecular rendering options
-    bool show_terminal_methyls = false;
     bool show_stereo_annotations = true;
     bool show_absolute_stereo_groups = false;
     bool show_simplified_stereo_annotation = false;
+
+    // Note that the following settings are only fully supported when using
+    // molviewer
+
+    CarbonLabels carbon_labels = CarbonLabels::NONE;
+    ColorScheme color_scheme = ColorScheme::DEFAULT;
 
     // when there's a bond or atom annotation, should qpainter use clipping
     // regions to draw bonds partially transparent behind them? This is disabled

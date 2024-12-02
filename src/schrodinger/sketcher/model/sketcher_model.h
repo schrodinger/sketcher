@@ -9,7 +9,7 @@
 #include <QVariant>
 #include <boost/functional/hash.hpp>
 
-#include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"

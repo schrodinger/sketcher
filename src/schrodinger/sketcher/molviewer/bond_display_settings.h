@@ -30,6 +30,8 @@ class BondDisplaySettings
     qreal m_hash_spacing = DEFAULT_BOND_HASH_SPACING;
     /// The bond color
     QColor m_color = Qt::black;
+    /// Whether to display stereochemistry labels when present
+    bool m_stereo_labels_shown = true;
 
     /// Whether to draw the bond using clipping regions when there are
     /// annotations. Clipping regions are used to draw the bond partially

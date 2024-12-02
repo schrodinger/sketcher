@@ -5,7 +5,7 @@
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/sgroup.h"
-#include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"

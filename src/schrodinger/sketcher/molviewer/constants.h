@@ -16,6 +16,30 @@ namespace schrodinger
 namespace sketcher
 {
 
+/**
+ *the color of stereo annotations on chiral atoms (e.g. (r) or (s) )
+ */
+const auto STEREO_ANNOTATION_COLOR = QColor("#333333");
+
+/**
+ * Maximum and minimum ammount of charge that
+ * can be assigned to an atom
+ */
+constexpr int ATOM_CHARGE_LIMIT = 8;
+
+/**
+ * Max value for Isotope
+ * that can be assigned to an atom
+ */
+constexpr int MAX_ISOTOPE_VALUE = 999;
+
+/**
+ * Maximum and minimum numbers of unpaired electrons that can be assigned to an
+ * atom
+ */
+constexpr int MIN_UNPAIRED_E = 0;
+constexpr int MAX_UNPAIRED_E = 4;
+
 // the name of the rdkit property that holds user-defined colors for atoms and
 // bonds
 const std::string USER_COLOR = "USER_COLOR";
@@ -35,9 +59,9 @@ const int VIEW_SCALE = std::floor(50 / BOND_LENGTH);
 
 const QString FONT_NAME = "Arial";
 // Ratios for the size of specified font to the size of the atom label font.
-// Note that the atom label font size is declared in the public constants header
-// (mmshare/include/schrodinger/sketcher/constants.h) because it needs to be
-// accessed from image_generation.h (which is also public)
+// Note that the atom label font size is declared in the public image_constants
+// header (mmshare/include/schrodinger/sketcher/image_constants.h) because it
+// needs to be accessed from image_generation.h (which is also public)
 const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.5;
@@ -232,10 +256,6 @@ const qreal ATTACHMENT_POINT_SQUIGGLE_HEIGHT = 3.0;
 // when using the attachment point tool.  Note, however, that it's possible to
 // *import* structures that violate this limit.
 const unsigned int MAX_ATTACHMENT_POINTS_PER_ATOM = 2;
-
-// The maximum and minimum charg that can be set on an atom
-const int MAX_ATOM_CHARGE = 8;
-const int MIN_ATOM_CHARGE = -8;
 
 const QColor ROTATION_ITEM_COLOR = QColor("#ff9b00");
 

@@ -31,7 +31,8 @@ void EditChargeSceneTool::onLeftButtonClick(
         auto new_charge = atom->getFormalCharge() +
                           (m_charge_tool == ChargeTool::INCREASE ? 1 : -1);
         // cap the charge between MIN_CHARGE and MAX_CHARGE
-        new_charge = std::clamp(new_charge, MIN_ATOM_CHARGE, MAX_ATOM_CHARGE);
+        new_charge =
+            std::clamp(new_charge, -ATOM_CHARGE_LIMIT, ATOM_CHARGE_LIMIT);
         m_mol_model->setAtomCharge(atom, new_charge);
     }
     StandardSceneToolBase::onLeftButtonClick(event);

@@ -1,6 +1,6 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 
-#include "schrodinger/sketcher/constants.h"
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger

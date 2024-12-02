@@ -170,16 +170,13 @@ void SketcherModel::updateAtomDisplaySettings(
     bool emit_display_settings_changed = false;
     for (auto key : keys) {
         switch (key) {
-            case ModelKey::COLOR_HETEROATOMS:
-                if (getValueBool(key)) {
-                    m_atom_display_settings.setColorScheme(
-                        ColorScheme::DEFAULT);
-                } else {
-                    m_atom_display_settings.setMonochromeColorScheme(
-                        m_atom_display_settings.getAtomColor(-1));
-                }
+            case ModelKey::COLOR_HETEROATOMS: {
+                auto scheme = getValueBool(key) ? ColorScheme::DEFAULT
+                                                : ColorScheme::BLACK_WHITE;
+                m_atom_display_settings.setColorScheme(scheme);
                 emit_display_settings_changed = true;
                 break;
+            }
             case ModelKey::SHOW_STEREOCENTER_LABELS:
                 m_atom_display_settings.m_stereo_labels_shown =
                     getValueBool(key);
@@ -366,21 +363,23 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
 {
     m_font_size = opts.font_size;
     AtomDisplaySettings atom_display_settings(m_atom_display_settings);
-    atom_display_settings.m_carbon_labels =
-        (opts.show_terminal_methyls ? CarbonLabels::TERMINAL
-                                    : CarbonLabels::NONE);
+    atom_display_settings.m_carbon_labels = opts.carbon_labels;
     atom_display_settings.m_explicit_abs_labels_shown =
         opts.show_absolute_stereo_groups;
     atom_display_settings.m_show_simplified_stereo_annotation =
         opts.show_simplified_stereo_annotation;
     atom_display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
     atom_display_settings.setSquigglePenScale(opts.bond_width_scale);
+    atom_display_settings.setColorScheme(opts.color_scheme);
     setAtomDisplaySettings(atom_display_settings);
 
     BondDisplaySettings bond_display_settings(m_bond_display_settings);
     bond_display_settings.m_allow_qpainter_clipping =
         opts.allow_qpainter_bond_clipping;
     bond_display_settings.setScale(opts.bond_width_scale);
+    bond_display_settings.m_color =
+        atom_display_settings.getAtomColor(static_cast<int>(Element::C));
+    bond_display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
     setBondDisplaySettings(bond_display_settings);
 }
 
