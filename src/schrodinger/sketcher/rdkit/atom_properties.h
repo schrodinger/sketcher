@@ -102,7 +102,7 @@ struct SKETCHER_API AtomProperties : AbstractAtomProperties {
 struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
     std::optional<int> charge = std::nullopt;
     std::optional<unsigned int> unpaired_electrons = std::nullopt;
-    QueryType query_type = QueryType::ALLOWED_LIST;
+    QueryType query_type = QueryType::SPECIFIC_ELEMENT;
     std::vector<Element> allowed_list;
     AtomQuery wildcard = AtomQuery::A;
     unsigned int r_group = 1;

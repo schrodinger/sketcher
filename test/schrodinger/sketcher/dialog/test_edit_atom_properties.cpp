@@ -221,8 +221,8 @@ BOOST_AUTO_TEST_CASE(test_transferring_settings)
 
     dialog.ui->set_as_query_rb->click();
     BOOST_TEST(dialog.ui->query_type_combo->currentData().value<QueryType>() ==
-               QueryType::ALLOWED_LIST);
-    BOOST_TEST(dialog.ui->element_list_le->text() == "C");
+               QueryType::SPECIFIC_ELEMENT);
+    BOOST_TEST(dialog.ui->query_element_le->text() == "C");
     BOOST_TEST(dialog.ui->query_charge_sb->optionalValue() == 2);
     dialog.ui->query_charge_sb->setValue(1);
 
@@ -232,6 +232,7 @@ BOOST_AUTO_TEST_CASE(test_transferring_settings)
     dialog.ui->atom_element_le->setText("N");
 
     dialog.ui->set_as_query_rb->click();
+    set_combo_box_data(dialog.ui->query_type_combo, QueryType::ALLOWED_LIST);
     BOOST_TEST(dialog.ui->query_type_combo->currentData().value<QueryType>() ==
                QueryType::ALLOWED_LIST);
     BOOST_TEST(dialog.ui->element_list_le->text() == "N");
