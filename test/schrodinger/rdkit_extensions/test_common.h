@@ -1,22 +1,8 @@
-#ifndef TEST_COMMON_H
-#define TEST_COMMON_H
+#pragma once
 
 #include <fstream>
 
-#include <QtGlobal>
-
-#include <rdkit/RDGeneral/RDLog.h>
-
 #include "schrodinger/test/testfiles.h"
-#include "test_markers.h"
-
-#define CREATE_QAPP                              \
-    Test_QAPP_DisplayRequiredFixture obj(false); \
-    if (!obj.hasDisplay()) {                     \
-        return;                                  \
-    }
-
-#endif // TEST_COMMON_H
 
 std::string read_testfile(const std::string& filename)
 {
