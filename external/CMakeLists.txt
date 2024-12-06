@@ -3,7 +3,7 @@ include(ExternalProject)
 
 project(schrodinger_sketcher_external)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Collect dependency versions
