@@ -1,6 +1,7 @@
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
 
 #include <algorithm>
+#include <array>
 #include <fmt/format.h>
 #include <iterator>
 #include <sstream>
