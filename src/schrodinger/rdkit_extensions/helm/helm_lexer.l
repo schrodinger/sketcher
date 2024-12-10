@@ -1,6 +1,11 @@
 /*
  * This is a flex file which is used to generate a C++ lexer for parsing a HELM
  * string.
+ *
+ * NOTE:
+ *      To generate the C++ lexer (lex.yy.cpp), run the following command:
+ *
+ *          flex helm_lexer.l
  */
 
 %{
@@ -27,9 +32,11 @@ using token = helm::TokenParser::token;
 %option debug
 %option nodefault
 %option yyclass="helm::TokenScanner"
+%option noline
 %option noyywrap
 %option c++
 %option outfile="lex.yy.cpp"
+%option full
 
 /* We're defining different token recognition states because token identities differ
  * based on what type of section we're parsing. This is mainly to allow the
@@ -41,7 +48,7 @@ using token = helm::TokenParser::token;
  *       including whitespace characters.
  *
  */
-%x PEPTIDE NUCLEOTIDE BLOB CHEM CONNECTIONS POLYMER_GROUPS EXTENDED_ANNOTATIONS VERSION
+%x PEPTIDE NUCLEOTIDE BLOB CHEM CONNECTIONS POLYMER_GROUPS
 
 float_token                 [0-9]*\.[0-9]+
 positive_int                [1-9][0-9]*
@@ -53,9 +60,6 @@ inline_annotation           \"[^\"]+\"
 num_repetitions             {positive_int}|{positive_int}\-{positive_int}
 ratio                       ({float_token}|{positive_int})
 
-
-/* The '$' char is reserved for section ends, so it shouldn't here */
-extended_annotations        [^$]+
 
 %%
 %{
@@ -101,12 +105,7 @@ extended_annotations        [^$]+
 <POLYMER_GROUPS>{polymer_id} { return token::POLYMER_ID;
 }
 <POLYMER_GROUPS>({ratio}|{ratio}\-{ratio}) { return token::POLYMER_GROUP_RATIO; }
-<POLYMER_GROUPS>\$ { BEGIN EXTENDED_ANNOTATIONS; return yytext[0]; }
-
-
-<EXTENDED_ANNOTATIONS>{extended_annotations} { return token::EXTENDED_ANNOTATIONS_TOKEN; }
-<EXTENDED_ANNOTATIONS>\$ { BEGIN VERSION; return yytext[0]; }
-<VERSION>[^\n ]+ { return token::VERSION_TOKEN; }
+<POLYMER_GROUPS>\$ { return yytext[0]; }
 
     /* General tokens */
 <*>.|\n { return yytext[0]; }

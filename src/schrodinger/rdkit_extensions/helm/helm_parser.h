@@ -58,12 +58,13 @@ struct helm_info {
     std::vector<connection> connections;
     std::vector<polymer_group> polymer_groups;
     std::string_view extended_annotations;
+    std::string_view helm_version;
 };
 
 class RDKIT_EXTENSIONS_API HelmParser
 {
   public:
-    HelmParser(const std::string_view input_helm) : m_input(input_helm){};
+    HelmParser(const std::string_view input_helm);
     // top-level function to initiate parsing
     helm_info parse();
 
@@ -99,6 +100,9 @@ class RDKIT_EXTENSIONS_API HelmParser
 
     // apis for extended annotations
     void add_extended_annotations(const std::string_view extended_annotations);
+
+    // apis for version
+    void add_helm_version(const std::string_view helm_version);
 
     bool hasErrors();
     void saveError(const std::string_view& failed_token,

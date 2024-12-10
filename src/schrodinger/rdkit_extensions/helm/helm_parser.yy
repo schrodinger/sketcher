@@ -5,11 +5,23 @@
  *
  * The grammar defines the specification for a valid HELMV2.0 string and uses
  * a helm::HelmParser instance to retrieve the parsed helm information.
+ *
+ *
+ * NOTE:
+ *      To generate the C++ parser, run the following command:
+ *
+ *          bison helm_parser.yy
+ *
+ *      In addition to the helm_parser.tab.hh and helm_parser.tab.cpp files, we
+ *      should also generate the following files:
+ *          * location.hh
+ *          * position.hh
+ *          * stack.hh
  */
 %}
 
 %skeleton "lalr1.cc"
-%require  "3.0"
+%require  "3.8.2"
 %debug
 %defines
 %define api.namespace {helm}
@@ -17,6 +29,7 @@
 %define api.value.automove
 %defines "helm_parser.tab.hh"
 %output "helm_parser.tab.cpp"
+%no-lines
 
 %code requires{
    #include <string>
@@ -65,7 +78,7 @@
 %token <std::string_view> UNKNOWN_MONOMER MISSING_MONOMER MONOMER_WILDCARD
 %token <std::string_view> MONOMER_RATIO INLINE_SMILES_MONOMER ANNOTATION REPETITIONS
 /* top-level tokens */
-%token <std::string_view> UNKNOWN_SEQUENCE VERSION_TOKEN
+%token <std::string_view> UNKNOWN_SEQUENCE
 
 /* Connection tokens */
 %token <std::string_view> HYDROGEN_PAIRING RGROUP UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
@@ -73,10 +86,6 @@
 
 /* Polymer group tokens */
 %token <std::string_view> POLYMER_GROUP_RATIO POLYMER_GROUP_ID
-
-/* Extended annotation tokens */
-%token <std::string_view> EXTENDED_ANNOTATIONS_TOKEN
-
 
 %type <std::string_view> annotation
 
@@ -88,8 +97,6 @@
 %type <std::string_view> connection_polymer attachment_point residue_and_list
 %type <std::string_view> residue_or_list connection_monomer
 %type <std::string_view> polymer_group_item polymer_or_list polymer_and_list
-
-%type <std::string_view> extended_annotations version
 
 // defining these types to check bad syntax
 %type <size_t> connections polymer_groups
@@ -103,18 +110,12 @@
   The overall structure of a HELMV2 string
 
   POLYMERS$CONNECTIONS$POLYMER_GROUPS$EXTEND_ANNOTATIONS$VERSION
+
+  NOTE: The EXTENDED_ANNOTATIONS and VERSION sections are parsed outside of Bison
+  because unusually large JSON inputs can significantly impact the parser
+  performance.
 */
-helm: polymers '$' connections '$' polymer_groups '$' extended_annotations '$' version {
-    if ($9.empty() && !$7.empty()) {
-       helm_parser.saveError(@7.begin.column,
-                             "HELM annotations are currently unsupported");
-       YYABORT;
-    } else if (!$9.empty() && $9 != "V2.0") {
-       helm_parser.saveError(@9.begin.column,
-                             "Only HELM and HELMV2.0 versions are currently supported");
-       YYABORT;
-    }
-}
+helm: polymers '$' connections '$' polymer_groups '$' extended_annotations_and_version;
 
 /**
  * Defining a recursive rule for sections. The base case should for most is the
@@ -139,14 +140,7 @@ polymer_groups:  /* polymer groups are optional */ { $$ = 0; }
                     if ($1 == 0) { TokenParser::error(@1, "syntax error"); YYABORT; }
                     ++$$;
               };
-extended_annotations:  /* optional */ { $$ = {}; }
-                    | EXTENDED_ANNOTATIONS_TOKEN {
-                        helm_parser.add_extended_annotations($1);
-                        $$ = $1;
-                    };
-version:  /* empty case */{ $$ = {}; } | VERSION_TOKEN { $$ = $1; };
-
-
+extended_annotations_and_version:  /* This is parsed outside of Bison */;
 
 
 /* A structure of a polymer is as follows:

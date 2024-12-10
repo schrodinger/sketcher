@@ -25,15 +25,43 @@ static void trim_string_view(std::string_view& value)
     }
 };
 
+[[nodiscard]] static std::array<std::string_view, 3>
+parse_extended_annotations_and_version(const std::string_view input_helm)
+{
+    if (std::ranges::count(input_helm, '$') < 2) {
+        return {input_helm, "", ""};
+    }
+
+    auto ext_annotations_end = input_helm.rfind('$');
+    auto ext_annotations_start = input_helm.rfind('$', ext_annotations_end - 1);
+
+    auto helm_prefix = input_helm.substr(0, ext_annotations_start + 1);
+    auto extended_annotations =
+        input_helm.substr(ext_annotations_start + 1,
+                          ext_annotations_end - ext_annotations_start - 1);
+    auto helm_version = ext_annotations_end == input_helm.size() - 1
+                            ? ""
+                            : input_helm.substr(ext_annotations_end + 1);
+
+    return {helm_prefix, extended_annotations, helm_version};
+}
+
 namespace helm
 {
 
-helm_info HelmParser::parse()
+HelmParser::HelmParser(const std::string_view input_helm) : m_input(input_helm)
 {
     // strip surrounding whitespace
     trim_string_view(m_input);
+}
 
-    std::istringstream stream(std::string{m_input});
+helm_info HelmParser::parse()
+{
+    auto [input_helm_prefix, extended_annotations, helm_version] =
+        parse_extended_annotations_and_version(m_input);
+
+    std::istringstream stream(
+        std::string{input_helm_prefix.data(), input_helm_prefix.size()});
     helm::TokenScanner scanner(&stream, m_input);
     helm::TokenParser parser(scanner, *this);
 
@@ -44,6 +72,9 @@ helm_info HelmParser::parse()
                   std::ostream_iterator<std::string>(ss, "\n"));
         throw std::invalid_argument(ss.str());
     }
+
+    add_extended_annotations(extended_annotations);
+    add_helm_version(helm_version);
 
     validate_parsed_info(m_parsed_info, *this);
     if (hasErrors()) {
@@ -61,6 +92,11 @@ void HelmParser::add_extended_annotations(
     const std::string_view extended_annotations)
 {
     m_parsed_info.extended_annotations = extended_annotations;
+}
+
+void HelmParser::add_helm_version(const std::string_view helm_version)
+{
+    m_parsed_info.helm_version = helm_version;
 }
 
 void HelmParser::add_polymer_group(const std::string_view polymer_group_id,

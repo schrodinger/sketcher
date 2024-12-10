@@ -296,10 +296,29 @@ void validate_extended_annotations(std::string_view extended_annotations,
         parser.saveError(extended_annotations, "Invalid extended annotations");
     }
 }
+
+void validate_helm_version(const std::string_view& helm_version,
+                           const std::string_view& extended_annotations,
+                           HelmParser& parser)
+{
+    if (!helm_version.empty() && helm_version != "V2.0") {
+        parser.saveError(
+            helm_version,
+            "Only HELM and HELMV2.0 versions are currently supported");
+    }
+
+    if (helm_version.empty() && !extended_annotations.empty()) {
+        parser.saveError(extended_annotations,
+                         "HELM annotations are currently unsupported");
+    }
+}
 } // namespace
 
 void validate_parsed_info(const helm_info& parsed_info, HelmParser& parser)
 {
+    validate_helm_version(parsed_info.helm_version,
+                          parsed_info.extended_annotations, parser);
+
     std::unordered_set<std::string_view> polymer_ids;
     std::for_each(parsed_info.polymers.begin(), parsed_info.polymers.end(),
                   [&](const auto& polymer) {

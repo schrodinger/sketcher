@@ -53,9 +53,7 @@
 #  endif
 # endif
 
-#line 15 "../helm_parser.yy"
 namespace helm {
-#line 59 "location.hh"
 
   /// A point in a source file.
   class position
@@ -299,8 +297,6 @@ namespace helm {
     return ostr;
   }
 
-#line 15 "../helm_parser.yy"
 } // helm
-#line 305 "location.hh"
 
 #endif // !YY_YY_LOCATION_HH_INCLUDED

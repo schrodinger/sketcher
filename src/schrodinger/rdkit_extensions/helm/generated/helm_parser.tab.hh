@@ -45,7 +45,6 @@
 #ifndef YY_YY_HELM_PARSER_TAB_HH_INCLUDED
 # define YY_YY_HELM_PARSER_TAB_HH_INCLUDED
 // "%code requires" blocks.
-#line 21 "../helm_parser.yy"
 
    #include <string>
    #include <string_view>
@@ -55,7 +54,6 @@
       class TokenScanner;
    };
 
-#line 59 "helm_parser.tab.hh"
 
 
 # include <cstdlib> // std::abort
@@ -189,9 +187,7 @@
 # define YYDEBUG 1
 #endif
 
-#line 15 "../helm_parser.yy"
 namespace helm {
-#line 195 "helm_parser.tab.hh"
 
 
 
@@ -408,16 +404,12 @@ namespace helm {
       // ANNOTATION
       // REPETITIONS
       // UNKNOWN_SEQUENCE
-      // VERSION_TOKEN
       // HYDROGEN_PAIRING
       // RGROUP
       // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
       // CONNECTION_RESIDUE
       // POLYMER_GROUP_RATIO
       // POLYMER_GROUP_ID
-      // EXTENDED_ANNOTATIONS_TOKEN
-      // extended_annotations
-      // version
       // polymer
       // repetitions
       // monomer_list
@@ -501,14 +493,12 @@ namespace helm {
     ANNOTATION = 270,              // ANNOTATION
     REPETITIONS = 271,             // REPETITIONS
     UNKNOWN_SEQUENCE = 272,        // UNKNOWN_SEQUENCE
-    VERSION_TOKEN = 273,           // VERSION_TOKEN
-    HYDROGEN_PAIRING = 274,        // HYDROGEN_PAIRING
-    RGROUP = 275,                  // RGROUP
-    UNDEFINED_RESIDUE_NUMBER_OR_RGROUP = 276, // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
-    CONNECTION_RESIDUE = 277,      // CONNECTION_RESIDUE
-    POLYMER_GROUP_RATIO = 278,     // POLYMER_GROUP_RATIO
-    POLYMER_GROUP_ID = 279,        // POLYMER_GROUP_ID
-    EXTENDED_ANNOTATIONS_TOKEN = 280 // EXTENDED_ANNOTATIONS_TOKEN
+    HYDROGEN_PAIRING = 273,        // HYDROGEN_PAIRING
+    RGROUP = 274,                  // RGROUP
+    UNDEFINED_RESIDUE_NUMBER_OR_RGROUP = 275, // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+    CONNECTION_RESIDUE = 276,      // CONNECTION_RESIDUE
+    POLYMER_GROUP_RATIO = 277,     // POLYMER_GROUP_RATIO
+    POLYMER_GROUP_ID = 278         // POLYMER_GROUP_ID
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -525,7 +515,7 @@ namespace helm {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 37, ///< Number of tokens.
+        YYNTOKENS = 35, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // END
         S_YYerror = 1,                           // error
@@ -545,59 +535,56 @@ namespace helm {
         S_ANNOTATION = 15,                       // ANNOTATION
         S_REPETITIONS = 16,                      // REPETITIONS
         S_UNKNOWN_SEQUENCE = 17,                 // UNKNOWN_SEQUENCE
-        S_VERSION_TOKEN = 18,                    // VERSION_TOKEN
-        S_HYDROGEN_PAIRING = 19,                 // HYDROGEN_PAIRING
-        S_RGROUP = 20,                           // RGROUP
-        S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP = 21, // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
-        S_CONNECTION_RESIDUE = 22,               // CONNECTION_RESIDUE
-        S_POLYMER_GROUP_RATIO = 23,              // POLYMER_GROUP_RATIO
-        S_POLYMER_GROUP_ID = 24,                 // POLYMER_GROUP_ID
-        S_EXTENDED_ANNOTATIONS_TOKEN = 25,       // EXTENDED_ANNOTATIONS_TOKEN
-        S_26_ = 26,                              // '$'
-        S_27_ = 27,                              // '|'
-        S_28_ = 28,                              // '{'
-        S_29_ = 29,                              // '}'
-        S_30_ = 30,                              // '.'
-        S_31_ = 31,                              // '('
-        S_32_ = 32,                              // ')'
-        S_33_ = 33,                              // '+'
-        S_34_ = 34,                              // ','
-        S_35_ = 35,                              // ':'
-        S_36_ = 36,                              // '-'
-        S_YYACCEPT = 37,                         // $accept
-        S_helm = 38,                             // helm
-        S_polymers = 39,                         // polymers
-        S_connections = 40,                      // connections
-        S_polymer_groups = 41,                   // polymer_groups
-        S_extended_annotations = 42,             // extended_annotations
-        S_version = 43,                          // version
-        S_polymer_unit = 44,                     // polymer_unit
-        S_polymer = 45,                          // polymer
-        S_monomers = 46,                         // monomers
-        S_monomer_group = 47,                    // monomer_group
-        S_repeated_monomers = 48,                // repeated_monomers
-        S_repetitions = 49,                      // repetitions
-        S_monomer_sequence = 50,                 // monomer_sequence
-        S_branch_monomer_group = 51,             // branch_monomer_group
-        S_monomer_unit = 52,                     // monomer_unit
-        S_monomer_list = 53,                     // monomer_list
-        S_monomer_and_list = 54,                 // monomer_and_list
-        S_monomer_or_list = 55,                  // monomer_or_list
-        S_monomer_list_item = 56,                // monomer_list_item
-        S_smiles_monomer = 57,                   // smiles_monomer
-        S_monomer_id = 58,                       // monomer_id
-        S_blob = 59,                             // blob
-        S_connection = 60,                       // connection
-        S_connection_polymer = 61,               // connection_polymer
-        S_attachment_point = 62,                 // attachment_point
-        S_connection_monomer = 63,               // connection_monomer
-        S_residue_and_list = 64,                 // residue_and_list
-        S_residue_or_list = 65,                  // residue_or_list
-        S_polymer_group = 66,                    // polymer_group
-        S_polymer_or_list = 67,                  // polymer_or_list
-        S_polymer_and_list = 68,                 // polymer_and_list
-        S_polymer_group_item = 69,               // polymer_group_item
-        S_annotation = 70                        // annotation
+        S_HYDROGEN_PAIRING = 18,                 // HYDROGEN_PAIRING
+        S_RGROUP = 19,                           // RGROUP
+        S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP = 20, // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
+        S_CONNECTION_RESIDUE = 21,               // CONNECTION_RESIDUE
+        S_POLYMER_GROUP_RATIO = 22,              // POLYMER_GROUP_RATIO
+        S_POLYMER_GROUP_ID = 23,                 // POLYMER_GROUP_ID
+        S_24_ = 24,                              // '$'
+        S_25_ = 25,                              // '|'
+        S_26_ = 26,                              // '{'
+        S_27_ = 27,                              // '}'
+        S_28_ = 28,                              // '.'
+        S_29_ = 29,                              // '('
+        S_30_ = 30,                              // ')'
+        S_31_ = 31,                              // '+'
+        S_32_ = 32,                              // ','
+        S_33_ = 33,                              // ':'
+        S_34_ = 34,                              // '-'
+        S_YYACCEPT = 35,                         // $accept
+        S_helm = 36,                             // helm
+        S_polymers = 37,                         // polymers
+        S_connections = 38,                      // connections
+        S_polymer_groups = 39,                   // polymer_groups
+        S_extended_annotations_and_version = 40, // extended_annotations_and_version
+        S_polymer_unit = 41,                     // polymer_unit
+        S_polymer = 42,                          // polymer
+        S_monomers = 43,                         // monomers
+        S_monomer_group = 44,                    // monomer_group
+        S_repeated_monomers = 45,                // repeated_monomers
+        S_repetitions = 46,                      // repetitions
+        S_monomer_sequence = 47,                 // monomer_sequence
+        S_branch_monomer_group = 48,             // branch_monomer_group
+        S_monomer_unit = 49,                     // monomer_unit
+        S_monomer_list = 50,                     // monomer_list
+        S_monomer_and_list = 51,                 // monomer_and_list
+        S_monomer_or_list = 52,                  // monomer_or_list
+        S_monomer_list_item = 53,                // monomer_list_item
+        S_smiles_monomer = 54,                   // smiles_monomer
+        S_monomer_id = 55,                       // monomer_id
+        S_blob = 56,                             // blob
+        S_connection = 57,                       // connection
+        S_connection_polymer = 58,               // connection_polymer
+        S_attachment_point = 59,                 // attachment_point
+        S_connection_monomer = 60,               // connection_monomer
+        S_residue_and_list = 61,                 // residue_and_list
+        S_residue_or_list = 62,                  // residue_or_list
+        S_polymer_group = 63,                    // polymer_group
+        S_polymer_or_list = 64,                  // polymer_or_list
+        S_polymer_and_list = 65,                 // polymer_and_list
+        S_polymer_group_item = 66,               // polymer_group_item
+        S_annotation = 67                        // annotation
       };
     };
 
@@ -656,16 +643,12 @@ namespace helm {
       case symbol_kind::S_ANNOTATION: // ANNOTATION
       case symbol_kind::S_REPETITIONS: // REPETITIONS
       case symbol_kind::S_UNKNOWN_SEQUENCE: // UNKNOWN_SEQUENCE
-      case symbol_kind::S_VERSION_TOKEN: // VERSION_TOKEN
       case symbol_kind::S_HYDROGEN_PAIRING: // HYDROGEN_PAIRING
       case symbol_kind::S_RGROUP: // RGROUP
       case symbol_kind::S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP: // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
       case symbol_kind::S_CONNECTION_RESIDUE: // CONNECTION_RESIDUE
       case symbol_kind::S_POLYMER_GROUP_RATIO: // POLYMER_GROUP_RATIO
       case symbol_kind::S_POLYMER_GROUP_ID: // POLYMER_GROUP_ID
-      case symbol_kind::S_EXTENDED_ANNOTATIONS_TOKEN: // EXTENDED_ANNOTATIONS_TOKEN
-      case symbol_kind::S_extended_annotations: // extended_annotations
-      case symbol_kind::S_version: // version
       case symbol_kind::S_polymer: // polymer
       case symbol_kind::S_repetitions: // repetitions
       case symbol_kind::S_monomer_list: // monomer_list
@@ -784,16 +767,12 @@ switch (yykind)
       case symbol_kind::S_ANNOTATION: // ANNOTATION
       case symbol_kind::S_REPETITIONS: // REPETITIONS
       case symbol_kind::S_UNKNOWN_SEQUENCE: // UNKNOWN_SEQUENCE
-      case symbol_kind::S_VERSION_TOKEN: // VERSION_TOKEN
       case symbol_kind::S_HYDROGEN_PAIRING: // HYDROGEN_PAIRING
       case symbol_kind::S_RGROUP: // RGROUP
       case symbol_kind::S_UNDEFINED_RESIDUE_NUMBER_OR_RGROUP: // UNDEFINED_RESIDUE_NUMBER_OR_RGROUP
       case symbol_kind::S_CONNECTION_RESIDUE: // CONNECTION_RESIDUE
       case symbol_kind::S_POLYMER_GROUP_RATIO: // POLYMER_GROUP_RATIO
       case symbol_kind::S_POLYMER_GROUP_ID: // POLYMER_GROUP_ID
-      case symbol_kind::S_EXTENDED_ANNOTATIONS_TOKEN: // EXTENDED_ANNOTATIONS_TOKEN
-      case symbol_kind::S_extended_annotations: // extended_annotations
-      case symbol_kind::S_version: // version
       case symbol_kind::S_polymer: // polymer
       case symbol_kind::S_repetitions: // repetitions
       case symbol_kind::S_monomer_list: // monomer_list
@@ -1246,21 +1225,6 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_VERSION_TOKEN (std::string_view v, location_type l)
-      {
-        return symbol_type (token::VERSION_TOKEN, std::move (v), std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_VERSION_TOKEN (const std::string_view& v, const location_type& l)
-      {
-        return symbol_type (token::VERSION_TOKEN, v, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
       make_HYDROGEN_PAIRING (std::string_view v, location_type l)
       {
         return symbol_type (token::HYDROGEN_PAIRING, std::move (v), std::move (l));
@@ -1346,21 +1310,6 @@ switch (yykind)
       make_POLYMER_GROUP_ID (const std::string_view& v, const location_type& l)
       {
         return symbol_type (token::POLYMER_GROUP_ID, v, l);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_EXTENDED_ANNOTATIONS_TOKEN (std::string_view v, location_type l)
-      {
-        return symbol_type (token::EXTENDED_ANNOTATIONS_TOKEN, std::move (v), std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_EXTENDED_ANNOTATIONS_TOKEN (const std::string_view& v, const location_type& l)
-      {
-        return symbol_type (token::EXTENDED_ANNOTATIONS_TOKEN, v, l);
       }
 #endif
 
@@ -1667,8 +1616,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 151,     ///< Last index in yytable_.
-      yynnts_ = 34,  ///< Number of nonterminal symbols.
+      yylast_ = 148,     ///< Last index in yytable_.
+      yynnts_ = 33,  ///< Number of nonterminal symbols.
       yyfinal_ = 13 ///< Termination state number.
     };
 
@@ -1680,9 +1629,7 @@ switch (yykind)
   };
 
 
-#line 15 "../helm_parser.yy"
 } // helm
-#line 1686 "helm_parser.tab.hh"
 
 
 
