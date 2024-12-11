@@ -151,9 +151,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
 
-    // use the custom cursor everywhere
-    setCursor(
-        QCursor(get_arrow_cursor_pixmap(), CURSOR_HOTSPOT_X, CURSOR_HOTSPOT_Y));
     // force the scene to update the view's cursor now that all of the signals
     // are connected
     m_scene->requestCursorHintUpdate();
