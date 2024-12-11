@@ -2434,6 +2434,7 @@ void MolModel::clearCommandFunc()
     m_selected_atom_tags.clear();
     m_selected_bond_tags.clear();
     m_selected_non_molecular_tags.clear();
+    m_highlighting_info.clear();
 }
 
 void MolModel::setSelectionCommandFunc(

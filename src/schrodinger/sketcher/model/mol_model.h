@@ -219,6 +219,11 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * add halo highlighting
+     *
+     * Note that halo highlighting is not undoable as it is currently only used
+     * from within the image_generation API, which never needs to undo
+     * anything.
+     *
      * @param atoms atoms to highlight
      * @param bonds bonds to highlight
      * @param color color to highlight with
