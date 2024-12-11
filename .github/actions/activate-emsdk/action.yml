@@ -1,0 +1,24 @@
+name: "setup-emscripten"
+description: "Builds emscripten library"
+
+inputs:
+  version:
+    description: "Version emscripten to download and activate"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+      if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
+      with:
+        repository: emscripten-core/emsdk
+        ref: ${{ inputs.version }}
+        path: build/external/emsdk-${{ inputs.version }}/emsdk/
+
+    - name: Install and activate emscripten
+      shell: bash
+      run: |
+        cd build/external/emsdk-${{ inputs.version }}/emsdk/ && \
+        ./emsdk install ${{ inputs.version }} && \
+        ./emsdk activate ${{ inputs.version }}

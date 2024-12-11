@@ -3,7 +3,7 @@ include(ExternalProject)
 
 project(schrodinger_sketcher_external)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Collect dependency versions
@@ -129,12 +129,14 @@ ExternalProject_Add(
   GIT_TAG v${QT_VERSION}
   GIT_SUBMODULES qtbase qtsvg
   GIT_SHALLOW TRUE
-  CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}
-             -DCMAKE_BUILD_TYPE=Release
-             -DBUILD_SHARED_LIBS=OFF
-             -DQT_BUILD_EXAMPLES=OFF
-             -DQT_BUILD_SUBMODULES=${QT_SUBMODULES}
-             -DQT_BUILD_TESTS=OFF
-             -DQT_FEATURE_brotli=OFF
-             -DQT_FEATURE_sql=OFF
-             -DINPUT_opengl=no)
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}
+    -DCMAKE_BUILD_TYPE=Release
+    -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+    -DBUILD_SHARED_LIBS=OFF
+    -DQT_BUILD_EXAMPLES=OFF
+    -DQT_BUILD_SUBMODULES=${QT_SUBMODULES}
+    -DQT_BUILD_TESTS=OFF
+    -DQT_FEATURE_brotli=OFF
+    -DQT_FEATURE_sql=OFF
+    -DINPUT_opengl=no)
