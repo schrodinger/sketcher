@@ -55,6 +55,8 @@ const std::unordered_map<std::string, std::string> three_character_codes({
     {"V", "VAL"}, // Valine
 });
 
+static const std::string ATOM_PDB_NAME_PROP{"pdbName"};
+
 std::pair<unsigned int, unsigned int> get_attchpts(const std::string& linkage)
 {
     // in form RX-RY, returns {X, Y}
@@ -116,6 +118,13 @@ void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
         res_info->setResidueName(residue_name);
         // to be consistent with the rdkit adapter and RDKit's own PDB writer
         res_info->setInsertionCode(" ");
+
+        std::string pdb_name;
+        if (atom->getPropIfPresent(ATOM_PDB_NAME_PROP, pdb_name)) {
+            res_info->setName(pdb_name);
+            // Don't keep property on output molecule
+            atom->clearProp(ATOM_PDB_NAME_PROP);
+        }
 
         atom->setMonomerInfo(res_info);
     }
