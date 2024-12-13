@@ -187,11 +187,11 @@ ESGVPDRFSGSGSGTDFTLTISSLQAEDVAVYYCQQYYTTPYTFGQGTKLEIK)",
 static const std::vector<std::string> VALID_NUCLEOTIDE_EXAMPLES{
     ">\nAAC",                         // single nucleotide sequence
     ">\n-A-AC",                       // sequence with missing monomers
-    ">\nARGNCKNDA",                   // sequence with empty annotation
+    ">\nATGNCUNCA",                   // sequence with empty annotation
     ">some description\nAAA",         // sequence with annotation
-    ">some description\nAAA\nDDD",    // single multi-line sequence
-    ">some description\nAAA\n\nDDD",  // single multi-line sequence
-    ">some description\nAAA\n>\nDDD", // multiple sequences
+    ">some description\nAAA\nCCC",    // single multi-line sequence
+    ">some description\nAAA\n\nCCC",  // single multi-line sequence
+    ">some description\nAAA\n>\nCCC", // multiple sequences
 };
 
 } // namespace fasta

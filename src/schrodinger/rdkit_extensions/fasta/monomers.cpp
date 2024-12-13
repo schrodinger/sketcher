@@ -36,10 +36,6 @@ static const boost::bimap<char, std::string> supported_peptides_bimap =
         // Non-standard
         ('O', "O") // pyrrolysine
         ('U', "U") // selenocysteine
-        // Ambiguous
-        ('B', "(D+N)") // aspartate or asparagine
-        ('J', "(I+L)") // isoleucine or leucine
-        ('Z', "(E+Q)") // glutamate or glutamine
         // Unknown monomer
         ('X', "X"); // any, meaning one single unknown amino acid
 
@@ -50,17 +46,6 @@ static const boost::bimap<char, std::string> supported_nucleotides_bimap =
         ('G', "G")    // guanine
         ('T', "T")    // thymine
         ('U', "U")    // uracil
-        // Ambiguous
-        ('R', "(A+G)")     // purines
-        ('Y', "(C+T+U)")   // pyrimidines
-        ('K', "(G+T+U)")   // ketones
-        ('M', "(A+C)")     // amino groups
-        ('S', "(C+G)")     // strong interaction
-        ('W', "(A+T+U)")   // weak interaction
-        ('B', "(C+G+T+U)") // not A
-        ('D', "(A+G+T+U)") // not C
-        ('H', "(A+C+T+U)") // not G
-        ('V', "(A+C+G)")   // neither T nor U
         // Unknown monomer
         ('N', "N"); // any, meaning one single unknown base
 // clang-format on

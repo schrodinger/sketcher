@@ -57,6 +57,7 @@ BOOST_DATA_TEST_CASE(TestUnsupportedNucleotides,
                          "RNA1{R(A)P.[dR](A)P}$$$$V2.0", // non-uniform sugars
                          "RNA1{R(A)R}$$$$V2.0",          // missing phosphate
                          "RNA1{R.R}$$$$V2.0",            // missing base
+
                      }),
                      input_helm)
 {
@@ -64,16 +65,30 @@ BOOST_DATA_TEST_CASE(TestUnsupportedNucleotides,
     BOOST_CHECK_THROW(fasta::rdkit_to_fasta(*mol), std::invalid_argument);
 }
 
+BOOST_DATA_TEST_CASE(TestUnsupportedMonomers,
+                     bdata::make(std::vector<std::string>{
+                         "PEPTIDE1{A.A.(E+Q).L}$$$$V2.0",
+                         "RNA1{R(A)P.R((C+G+T+U))P}$$$$V2.0",
+                         "RNA1{R(Z)P}$$$$V2.0",
+                     }),
+                     input_helm)
+{
+    auto mol = helm::helm_to_rdkit(input_helm);
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::rdkit_to_fasta(*mol),
+                                    std::invalid_argument,
+                                    "Unsupported monomer");
+}
+
 BOOST_DATA_TEST_CASE(
     TestValidPeptides,
     bdata::make(std::vector<std::string>{
-        ">\nAAZL\n",
+        ">\nAAOL\n",
         ">something\nARGXCKXEDA\n",
         ">some description\nAAA\n",
         ">some description\nAAA\n>something\nDDD\n",
     }) ^
         bdata::make(std::vector<std::string>{
-            "PEPTIDE1{A.A.(E+Q).L}$$$$V2.0",
+            "PEPTIDE1{A.A.O.L}$$$$V2.0",
             R"(PEPTIDE1{A.R.G.X.C.K.X.E.D.A}"something"$$$$V2.0)",
             R"(PEPTIDE1{A.A.A}"some description"$$$$V2.0)",
             R"(PEPTIDE1{A.A.A}"some description"|PEPTIDE2{D.D.D}"something"$$$$V2.0)",
@@ -88,22 +103,22 @@ BOOST_DATA_TEST_CASE(
 BOOST_DATA_TEST_CASE(
     TestValidNucleotides,
     (bdata::make(std::vector<std::string>{
-         ">\nAAK\n",
-         ">something\nAAB\n",
+         ">\nAAG\n",
+         ">something\nAAU\n",
          ">some description\nAAA\n",
-         ">some description\nAAA\n>something\nDDD\n",
+         ">some description\nAAA\n>something\nTTT\n",
      }) ^
      bdata::make(std::vector<std::string>{
-         "RNA1{R(A)P.R(A)P.R((G+T+U))P}$$$$V2.0",
-         R"(RNA1{R(A)P.R(A)P.R((C+G+T+U))P}"something"$$$$V2.0)",
+         "RNA1{R(A)P.R(A)P.R(G)P}$$$$V2.0",
+         R"(RNA1{R(A)P.R(A)P.R(U)P}"something"$$$$V2.0)",
          R"(RNA1{R(A)P.R(A)P.R(A)P}"some description"$$$$V2.0)",
-         R"(RNA1{R(A)P.R(A)P.R(A)P}"some description"|RNA2{R((A+G+T+U))P.R((A+G+T+U))P.R((A+G+T+U))P}"something"$$$$V2.0)",
+         R"(RNA1{R(A)P.R(A)P.R(A)P}"some description"|RNA2{R(T)P.R(T)P.R(T)P}"something"$$$$V2.0)",
      })) ^
         bdata::make(std::vector<std::string>{
-            "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T+U))P}$$$$V2.0",
-            R"(RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T+U))P}"something"$$$$V2.0)",
+            "RNA1{[dR](A)P.[dR](A)P.[dR](G)P}$$$$V2.0",
+            R"(RNA1{[dR](A)P.[dR](A)P.[dR](U)P}"something"$$$$V2.0)",
             R"(RNA1{[dR](A)P.[dR](A)P.[dR](A)P}"some description"$$$$V2.0)",
-            R"(RNA1{[dR](A)P.[dR](A)P.[dR](A)P}"some description"|RNA2{[dR]((A+G+T+U))P.[dR]((A+G+T+U))P.[dR]((A+G+T+U))P}"something"$$$$V2.0)",
+            R"(RNA1{[dR](A)P.[dR](A)P.[dR](A)P}"some description"|RNA2{[dR](T)P.[dR](T)P.[dR](T)P}"something"$$$$V2.0)",
         }),
     input_fasta, rna_helm, dna_helm)
 {

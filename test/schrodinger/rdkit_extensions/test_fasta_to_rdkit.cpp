@@ -12,6 +12,8 @@
 #include "schrodinger/rdkit_extensions/fasta/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 
+#include "schrodinger/test/checkexceptionmsg.h" // TEST_CHECK_EXCEPTION_MSG_SUBSTR
+
 namespace bdata = boost::unit_test::data;
 
 BOOST_DATA_TEST_CASE(TestInvalidPeptides,
@@ -48,11 +50,11 @@ BOOST_DATA_TEST_CASE(TestValidNucleotides,
 BOOST_DATA_TEST_CASE(
     TestHelmConversionOfPeptideFasta,
     bdata::make(std::vector<std::string>{
-        ">\nAAZL", ">\n-A-APL", ">\nAAPL", ">\nARGXCKXEDA",
+        ">\nAAEL", ">\n-A-APL", ">\nAAPL", ">\nARGXCKXEDA",
         ">some description\nAAA", ">some description\nAAA\nDDD",
         ">some description\nAAA\n>\nDDD", ">some description\nAAA\n\nDDD"}) ^
         bdata::make(std::vector<std::string>{
-            "PEPTIDE1{A.A.(E+Q).L}$$$$V2.0", "PEPTIDE1{A.A.P.L}$$$$V2.0",
+            "PEPTIDE1{A.A.E.L}$$$$V2.0", "PEPTIDE1{A.A.P.L}$$$$V2.0",
             "PEPTIDE1{A.A.P.L}$$$$V2.0",
             "PEPTIDE1{A.R.G.X.C.K.X.E.D.A}$$$$V2.0",
             R"(PEPTIDE1{A.A.A}"some description"$$$$V2.0)",
@@ -67,11 +69,11 @@ BOOST_DATA_TEST_CASE(
 
 BOOST_DATA_TEST_CASE(TestHelmConversionOfRNAFasta,
                      bdata::make(std::vector<std::string>{
-                         ">\nAAK",
-                         ">\nAAB",
+                         ">\nAAG",
+                         ">\nAAU",
                      }) ^ bdata::make(std::vector<std::string>{
-                              "RNA1{R(A)P.R(A)P.R((G+T+U))P}$$$$V2.0",
-                              "RNA1{R(A)P.R(A)P.R((C+G+T+U))P}$$$$V2.0",
+                              "RNA1{R(A)P.R(A)P.R(G)P}$$$$V2.0",
+                              "RNA1{R(A)P.R(A)P.R(U)P}$$$$V2.0",
                           }),
                      nucleotide_fasta, equivalent_helm)
 {
@@ -81,15 +83,32 @@ BOOST_DATA_TEST_CASE(TestHelmConversionOfRNAFasta,
 
 BOOST_DATA_TEST_CASE(TestHelmConversionOfDNAFasta,
                      bdata::make(std::vector<std::string>{
-                         ">\nAAK",
-                         ">\nAAB",
-                     }) ^
-                         bdata::make(std::vector<std::string>{
-                             "RNA1{[dR](A)P.[dR](A)P.[dR]((G+T+U))P}$$$$V2.0",
-                             "RNA1{[dR](A)P.[dR](A)P.[dR]((C+G+T+U))P}$$$$V2.0",
-                         }),
+                         ">\nAAG",
+                         ">\nAAU",
+                     }) ^ bdata::make(std::vector<std::string>{
+                              "RNA1{[dR](A)P.[dR](A)P.[dR](G)P}$$$$V2.0",
+                              "RNA1{[dR](A)P.[dR](A)P.[dR](U)P}$$$$V2.0",
+                          }),
                      nucleotide_fasta, equivalent_helm)
 {
     auto mol = fasta::dna_fasta_to_rdkit(nucleotide_fasta);
     BOOST_TEST(helm::rdkit_to_helm(*mol) == equivalent_helm);
+}
+
+BOOST_DATA_TEST_CASE(TestUnsupportedMonomers,
+                     bdata::make(std::vector<std::string>{
+                         ">\nAAB",
+                         ">\nAAZ",
+                     }),
+                     input_fasta)
+{
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::peptide_fasta_to_rdkit(input_fasta),
+                                    std::invalid_argument,
+                                    "Unsupported monomer");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::rna_fasta_to_rdkit(input_fasta),
+                                    std::invalid_argument,
+                                    "Unsupported monomer");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::dna_fasta_to_rdkit(input_fasta),
+                                    std::invalid_argument,
+                                    "Unsupported monomer");
 }
