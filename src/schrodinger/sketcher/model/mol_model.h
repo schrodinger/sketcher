@@ -587,7 +587,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * positioned to the right of it.  Otherwise, the new molecule will be
      * centered.
      */
-    void addMol(RDKit::RWMol mol,
+    void addMol(const RDKit::RWMol& mol,
                 const QString& description = "Import molecule",
                 const bool reposition_mol = true);
 
@@ -1458,6 +1458,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     boost::shared_ptr<RDKit::ChemicalReaction>
     createReaction(const bool strip_tags) const;
+
+    /**
+     * @overload
+     *
+     * @param what_changed What is changed by adding this mol.  Should be either
+     * WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED if we are really
+     * adding a new molecule, or WhatChanged::MOLECULE if we are actually adding
+     * a fragment but not bonding it to anything.
+     */
+    void addMol(RDKit::RWMol mol, const QString& description,
+                const bool reposition_mol, WhatChangedType what_changed);
 };
 
 SKETCHER_API void

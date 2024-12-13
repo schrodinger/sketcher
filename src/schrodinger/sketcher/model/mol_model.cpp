@@ -781,8 +781,16 @@ void MolModel::remove(
     doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
 }
 
-void MolModel::addMol(RDKit::RWMol mol, const QString& description,
+void MolModel::addMol(const RDKit::RWMol& mol, const QString& description,
                       const bool reposition_mol)
+{
+    addMol(mol, description, reposition_mol,
+           WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED);
+}
+
+void MolModel::addMol(RDKit::RWMol mol, const QString& description,
+                      const bool reposition_mol,
+                      const WhatChangedType what_changed)
 {
     if (mol.getNumAtoms() == 0) {
         return;
@@ -803,9 +811,7 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
         }
     }
     auto cmd_func = [this, mol]() { addMolCommandFunc(mol); };
-    doCommandUsingSnapshots(cmd_func, description,
-                            WhatChanged::MOLECULE |
-                                WhatChanged::NEW_MOLECULE_ADDED);
+    doCommandUsingSnapshots(cmd_func, description, what_changed);
 }
 
 void MolModel::addReaction(RDKit::ChemicalReaction reaction)
@@ -840,8 +846,11 @@ void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
     auto frag_start_atom = prepare_fragment_for_insertion(frag);
     if (core_start_atom == nullptr) {
         // the fragment isn't attached to any existing structure, so we can just
-        // add it as is
-        addMol(frag, desc, /* reposition_mol = */ false);
+        // add it as is (But make sure that we don't include NEW_MOLECULE_ADDED
+        // in what_changed. Otherwise, the view will jump when a fragment is
+        // added.)
+        addMol(frag, desc, /* reposition_mol = */ false,
+               /* what_changed = */ WhatChanged::MOLECULE);
         return;
     }
 
