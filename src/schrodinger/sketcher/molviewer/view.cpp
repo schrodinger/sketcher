@@ -187,6 +187,7 @@ void View::fitToScreen()
 void View::setMolModel(schrodinger::sketcher::MolModel* mol_model)
 {
     m_mol_model = mol_model;
+    connect(mol_model, &MolModel::newMoleculeAdded, this, &View::fitToScreen);
 }
 
 void View::translateViewportFromScreenCoords(

@@ -82,6 +82,10 @@ enum : WhatChangedType { // clang-format off
     MOLECULE     = 1 << 0,
     NON_MOL_OBJS = 1 << 1,
     ALL          = MOLECULE | NON_MOL_OBJS, // clang-format on
+
+    // Note that NEW_MOLECULE_ADDED should be set *in addition to* MOLECULE,
+    // not instead of MOLECULE.
+    NEW_MOLECULE_ADDED = 1 << 2,
 };
 }
 
@@ -842,6 +846,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * will be emitted *in addition to* modelChanged.
      */
     void reactionArrowAdded();
+
+    /**
+     * Signal emitted when a new molecule is added to the model. Note that this
+     * signal will be emitted *in addition to* modelChanged.
+     */
+    void newMoleculeAdded();
 
   protected:
     RDKit::RWMol m_mol = RDKit::RWMol();

@@ -449,10 +449,15 @@ void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
         restoreSnapshot(undo_snapshot, to_be_changed, selection_changed,
                         arrow_removed);
     };
+    bool emit_new_molecule_added =
+        to_be_changed & WhatChanged::NEW_MOLECULE_ADDED;
     auto redo = [this, redo_snapshot, to_be_changed, selection_changed,
-                 arrow_added]() {
+                 arrow_added, emit_new_molecule_added]() {
         restoreSnapshot(redo_snapshot, to_be_changed, selection_changed,
                         arrow_added);
+        if (emit_new_molecule_added) {
+            emit newMoleculeAdded();
+        }
     };
     doCommand(redo, undo, description);
 }
@@ -798,7 +803,9 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
         }
     }
     auto cmd_func = [this, mol]() { addMolCommandFunc(mol); };
-    doCommandUsingSnapshots(cmd_func, description, WhatChanged::MOLECULE);
+    doCommandUsingSnapshots(cmd_func, description,
+                            WhatChanged::MOLECULE |
+                                WhatChanged::NEW_MOLECULE_ADDED);
 }
 
 void MolModel::addReaction(RDKit::ChemicalReaction reaction)
@@ -821,7 +828,8 @@ void MolModel::addReaction(RDKit::ChemicalReaction reaction)
     }
 
     auto cmd_func = [this, reaction]() { addReactionCommandFunc(reaction); };
-    doCommandUsingSnapshots(cmd_func, "Add reaction", WhatChanged::ALL);
+    doCommandUsingSnapshots(cmd_func, "Add reaction",
+                            WhatChanged::ALL | WhatChanged::NEW_MOLECULE_ADDED);
 }
 
 void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,

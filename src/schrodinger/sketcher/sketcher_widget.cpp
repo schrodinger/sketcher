@@ -323,15 +323,10 @@ void SketcherWidget::importText(const std::string& text, Format format)
             ModelKey::NEW_STRUCTURES_REPLACE_CONTENT)) {
         m_mol_model->clear();
     }
-    bool import_successful = true;
     try {
         addFromString(text, format);
     } catch (const std::exception& exc) {
         show_error_dialog("Import Error", exc.what(), window());
-        import_successful = false;
-    }
-    if (import_successful) {
-        m_ui->view->fitToScreen();
     }
 }
 
