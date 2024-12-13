@@ -43,10 +43,6 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(RDKit::StereoGroupType);
 BOOST_DATA_TEST_CASE(test_auto_detect,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
-    if (sample == Format::INCHI_KEY) {
-        return; // skip, never readable
-    }
-
     auto mol = to_rdkit("c1ccccc1", Format::SMILES);
     auto text = to_string(*mol, sample);
 
@@ -61,10 +57,6 @@ BOOST_DATA_TEST_CASE(test_auto_detect,
 BOOST_DATA_TEST_CASE(test_bypass_sanitization,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
-    if (sample == Format::INCHI_KEY) {
-        return; // skip, never readable
-    }
-
     // Create an unsanitized mol with a pentavalent C...
     auto mol = to_rdkit("C[C](C)(C)(C)C", Format::SMILES);
 
@@ -86,10 +78,6 @@ BOOST_DATA_TEST_CASE(test_bypass_sanitization,
 BOOST_DATA_TEST_CASE(test_parsing_error,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
-    if (sample == Format::INCHI_KEY) {
-        return; // skip, never readable
-    }
-
     TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit("garbage", sample),
                                     std::invalid_argument,
                                     "Failed to parse text");
@@ -139,6 +127,86 @@ BOOST_AUTO_TEST_CASE(test_INCHI_KEY)
                                     "Cannot read from INCHI_KEY");
 }
 
+BOOST_AUTO_TEST_CASE(test_MOL2)
+{
+    auto example = R"MOL(@<TRIPOS>MOLECULE
+tmp.mol2: molecule 1
+5   4    1
+SMALL
+NO_CHARGES
+
+
+@<TRIPOS>ATOM
+      1 C1         -0.1287    0.6148    0.0000 C.3       1 ****        0.0000
+      2 H2         -0.7747    1.2608    0.6460 H         1 ****        0.0000
+      3 H3         -0.7747   -0.0312   -0.6460 H         1 ****        0.0000
+      4 H4          0.5173    1.2608   -0.6460 H         1 ****        0.0000
+      5 H5          0.5173   -0.0312    0.6460 H         1 ****        0.0000
+@<TRIPOS>BOND
+     1    1    2 1
+     2    1    3 1
+     3    1    4 1
+     4    1    5 1
+@<TRIPOS>SUBSTRUCTURE
+     1 ****        1 GROUP             0       ****    0 ROOT)MOL";
+
+    // Read both explicitly and via auto-detect
+    for (auto mol : {to_rdkit(example, Format::MOL2), to_rdkit(example)}) {
+        BOOST_TEST(mol->getNumAtoms() == 5);
+        BOOST_TEST(mol->getNumBonds() == 4);
+        BOOST_TEST(to_string(*mol, Format::SMILES) == "[H]C([H])([H])[H]");
+    }
+
+    // No write support
+    auto mol = to_rdkit("C", Format::SMILES);
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_string(*mol, Format::MOL2),
+                                    std::invalid_argument,
+                                    "Unsupported export format");
+}
+
+BOOST_AUTO_TEST_CASE(test_CDXML)
+{
+    auto example = R"CDXML(<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE CDXML SYSTEM "http://www.cambridgesoft.com/xml/cdxml.dtd">
+<CDXML BondLength="30.000000" LabelFont="3" CaptionFont="4">
+    <fonttable id="1">
+        <font id="2" charset="utf-8" name="Arial"/>
+        <font id="3" charset="utf-8" name="Times New Roman"/>
+    </fonttable>
+    <colortable>
+        <color r="1" g="1" b="1"/>
+        <color r="0" g="0" b="0"/>
+        <color r="1" g="0" b="0"/>
+        <color r="1" g="1" b="0"/>
+        <color r="0" g="1" b="0"/>
+        <color r="0" g="1" b="1"/>
+        <color r="0" g="0" b="1"/>
+        <color r="1" g="0" b="1"/>
+        <color r="0.5" g="0.5" b="0.5"/>
+    </colortable>
+    <page HeightPages="1" WidthPages="1">
+        <fragment id="4">
+            <n id="5" p="30.000000 30.000000">
+                <t p="30.000000 30.000000" Justification="Center">
+                    <s font="3" size="10" face="96">CH4</s>
+                </t>
+            </n>
+        </fragment>
+    </page>
+</CDXML>)CDXML";
+
+    // Read both explicitly and via auto-detect
+    for (auto mol : {to_rdkit(example, Format::CDXML), to_rdkit(example)}) {
+        BOOST_TEST(mol->getNumAtoms() == 1);
+        BOOST_TEST(mol->getNumBonds() == 0);
+        BOOST_TEST(to_string(*mol, Format::SMILES) == "C");
+    }
+
+    // No write support
+    auto mol = to_rdkit("C", Format::SMILES);
+    BOOST_REQUIRE_THROW(to_string(*mol, Format::CDXML), std::invalid_argument);
+}
+
 BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
                      boost::unit_test::data::make(RXN_FORMATS))
 {
@@ -174,8 +242,8 @@ BOOST_DATA_TEST_CASE(testDoNotForceKekulizationOnExport,
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 5);
 
     // Formats that force kekulization are expected to throw
-    if (sample == Format::INCHI || sample == Format::INCHI_KEY ||
-        sample == Format::PDB || sample == Format::XYZ) {
+    if (sample == Format::INCHI || sample == Format::PDB ||
+        sample == Format::XYZ) {
         TEST_CHECK_EXCEPTION_MSG_SUBSTR(
             to_string(*mol, sample), RDKit::KekulizeException,
             "Can't kekulize mol.  Unkekulized atoms: 0 1 2 3 4");

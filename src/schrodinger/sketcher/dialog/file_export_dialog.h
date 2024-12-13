@@ -48,7 +48,7 @@ class SKETCHER_API FileExportDialog : public ModalDialog
     /**
      * @return supported extensions for the selected format in the dialog
      */
-    virtual QStringList getValidExtensions() const;
+    virtual std::vector<std::string> getValidExtensions() const;
 
     /**
      * Exports the current scene from the filename/format specified in the UI

@@ -2,10 +2,7 @@
 
 #include <tuple>
 
-#include <QFileInfo>
-#include <QList>
 #include <QString>
-#include <QStringList>
 
 #include "schrodinger/sketcher/definitions.h"
 
@@ -18,20 +15,27 @@ enum class Format;
 
 namespace sketcher
 {
+
 enum class ImageFormat;
 
 // Collection specifying the relationship for permitted formats via tuples
 // containing (format enum, menu label, allowable extensions). These are
 // stored as an ordered list to preserve menu initialization order.
 template <class T> using FormatList =
-    QList<std::tuple<T, QString, QStringList>>;
+    std::vector<std::tuple<T, std::string, std::vector<std::string>>>;
 
 /**
- * All supported export labels for both standard molecules and reactions
+ * @return list of importable (format enum, menu label, allowable extensions)
  */
-SKETCHER_API FormatList<rdkit_extensions::Format> get_standard_formats();
-SKETCHER_API FormatList<rdkit_extensions::Format> get_reaction_formats();
-SKETCHER_API FormatList<ImageFormat> get_image_formats();
+SKETCHER_API FormatList<rdkit_extensions::Format> get_import_formats();
+
+/**
+ * @return list of exportable (format enum, menu label, allowable extensions)
+ *  for both standard molecules, reactions, and image formats
+ */
+SKETCHER_API FormatList<rdkit_extensions::Format> get_standard_export_formats();
+SKETCHER_API FormatList<rdkit_extensions::Format> get_reaction_export_formats();
+SKETCHER_API FormatList<ImageFormat> get_image_export_formats();
 
 /**
  * @param file_path file to read
@@ -40,43 +44,12 @@ SKETCHER_API FormatList<ImageFormat> get_image_formats();
 SKETCHER_API std::string get_file_text(const std::string& file_path);
 
 /**
- * @return concatenated name filters to use for the import file dialog
+ * @param label filter label prefix
+ * @param extensions filter extensions to append
+ * @return name filter to use for the import/export file dialogs
  */
-SKETCHER_API QString get_import_name_filters();
-
-/**
- * @param data [format, label, extensions] to iterate over
- * @return name filters to use for the import/export file dialogs
- */
-template <class T>
-QList<std::tuple<T, QString>> get_name_filters(const FormatList<T>& format_list)
-{
-    QList<std::tuple<T, QString>> filters;
-    for (const auto& [format, label, extensions] : format_list) {
-        if (!extensions.isEmpty()) {
-            auto filter = label + " (*" + extensions.join(" *") + ")";
-            filters.append({format, filter});
-        }
-    }
-    return filters;
-}
-
-/**
- * @param data [format, label, extensions] to iterate over
- * @param request_format the requested format
- * @return supported file extensions for the given format
- */
-template <class T> QStringList
-get_file_extensions(const FormatList<T>& format_list, const T& request_format)
-{
-    for (const auto& [format, _, extensions] : format_list) {
-        if (format == request_format) {
-            return extensions;
-        }
-    }
-    throw std::runtime_error("Unknown format requested: " +
-                             std::to_string(static_cast<int>(request_format)));
-}
+SKETCHER_API QString get_filter_name(
+    const std::string& label, const std::vector<std::string>& extensions);
 
 } // namespace sketcher
 } // namespace schrodinger

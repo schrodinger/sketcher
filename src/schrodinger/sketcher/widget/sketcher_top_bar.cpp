@@ -232,7 +232,12 @@ void SketcherTopBar::onImportFromFileClicked()
         }
     };
 
-    QString name_filter = get_import_name_filters();
+    QStringList filters;
+    for (const auto& [_, label, extensions] : get_import_formats()) {
+        filters.append(get_filter_name(label, extensions));
+    }
+    auto name_filter = filters.join(";;");
+
 #if QT_6_5_5
     QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
 #else

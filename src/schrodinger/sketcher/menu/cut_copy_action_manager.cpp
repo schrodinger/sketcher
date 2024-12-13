@@ -66,17 +66,16 @@ SceneSubset CutCopyActionManager::getSubset()
 void CutCopyActionManager::initCopyAsMenu()
 {
     auto init_menu = [&](const auto& format_list, bool is_reaction_format) {
-        for (const auto& pair : format_list) {
-            auto fmt = std::get<0>(pair);
-            auto label = std::get<1>(pair);
+        for (const auto& [fmt, label, exts] : format_list) {
             auto slot = [this, fmt]() { emit copyRequested(fmt, getSubset()); };
-            auto action = m_copy_as_menu->addAction(label, this, slot);
+            auto action = m_copy_as_menu->addAction(
+                QString::fromStdString(label), this, slot);
             action->setData(QVariant(is_reaction_format));
         }
     };
 
-    init_menu(get_standard_formats(), false);
-    init_menu(get_reaction_formats(), true);
+    init_menu(get_standard_export_formats(), false);
+    init_menu(get_reaction_export_formats(), true);
 }
 
 void CutCopyActionManager::updateActions()

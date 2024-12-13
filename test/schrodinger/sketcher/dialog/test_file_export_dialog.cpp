@@ -34,6 +34,11 @@ class TestFileExportDialog : public FileExportDialog
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
+bool contains(const std::vector<std::string>& vec, const std::string& str)
+{
+    return std::find(vec.begin(), vec.end(), str) != vec.end();
+}
+
 BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
 {
     SketcherModel model;
@@ -43,19 +48,17 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     TestFileExportDialog dlg(&model);
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
-    // There are 7 available structure export formats
-    BOOST_TEST(dlg.m_ui->format_combo->count() == 7);
+    BOOST_TEST(dlg.m_ui->format_combo->count() == 8); // export formats
     auto exts = dlg.getValidExtensions();
-    // And MDL has 8 available extensions
-    BOOST_TEST(exts.count() == 8);
-    BOOST_TEST(exts.contains(".mol"));
+    BOOST_TEST(exts.size() == 8); // MDL available extensions
+    BOOST_TEST(contains(exts, ".mol"));
 
     // Change format to PDB and confirm available extensions
     dlg.setComboFormat(Format::PDB);
     BOOST_TEST(dlg.getComboFormat() == Format::PDB);
     exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.count() == 6);
-    BOOST_TEST(exts.contains(".pdb"));
+    BOOST_TEST(exts.size() == 6);
+    BOOST_TEST(contains(exts, ".pdb"));
 }
 
 BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
@@ -74,15 +77,15 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
     BOOST_TEST(dlg.m_ui->format_combo->count() == 2);
     auto exts = dlg.getValidExtensions();
     // And MDL has only 1 available extension
-    BOOST_TEST(exts.count() == 1);
-    BOOST_TEST(exts.contains(".rxn"));
+    BOOST_TEST(exts.size() == 1);
+    BOOST_TEST(contains(exts, ".rxn"));
 
     // Change format to SMILES and confirm available extension
     dlg.setComboFormat(Format::SMILES);
     BOOST_TEST(dlg.getComboFormat() == Format::SMILES);
     exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.count() == 1);
-    BOOST_TEST(exts.contains(".rsmi"));
+    BOOST_TEST(exts.size() == 1);
+    BOOST_TEST(contains(exts, ".rsmi"));
 }
 
 BOOST_AUTO_TEST_CASE(export_button)

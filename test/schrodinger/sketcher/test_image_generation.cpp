@@ -45,7 +45,7 @@ template <typename T> void image_gen_APIs(const T& input)
         BOOST_TEST(boost::filesystem::exists(outfile));
     }
     BOOST_REQUIRE_THROW(save_image_file(input, tmp_file + ".invalid", opts),
-                        std::invalid_argument);
+                        std::out_of_range);
 }
 
 BOOST_AUTO_TEST_CASE(test_image_gen_APIs)

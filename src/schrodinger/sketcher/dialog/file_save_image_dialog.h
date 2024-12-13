@@ -77,7 +77,7 @@ class SKETCHER_API FileSaveImageDialog : public FileExportDialog
     /**
      * @return supported extensions for the selected format in the dialog
      */
-    QStringList getValidExtensions() const override;
+    std::vector<std::string> getValidExtensions() const override;
 
     /**
      * Respond to an option changing by updating the options label

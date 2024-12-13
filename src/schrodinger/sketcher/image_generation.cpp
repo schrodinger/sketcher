@@ -16,6 +16,8 @@
 #include <QPixmap>
 #include <QSvgGenerator>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/assign.hpp>
+#include <boost/bimap.hpp>
 #include <unordered_map>
 
 #ifndef EMSCRIPTEN
@@ -59,6 +61,15 @@ template <typename T> class asKeyValue
   private:
     const T& m_data;
 };
+
+using ImageFormatBimapType = boost::bimap<ImageFormat, std::string>;
+
+// clang-format off
+const ImageFormatBimapType IMAGE_FORMAT_EXT_BIMAP =
+        boost::assign::list_of<ImageFormatBimapType::relation>
+    (ImageFormat::PNG, ".png")
+    (ImageFormat::SVG, ".svg");
+// clang-format on
 
 /**
  * @internal
@@ -156,15 +167,8 @@ void setUserLabels(const sketcherScene& scene, const RenderOptions& opts)
 
 ImageFormat get_format(const QString& filename)
 {
-    const std::unordered_map<std::string, ImageFormat> ext_to_format_map = {
-        {"png", ImageFormat::PNG}, {"svg", ImageFormat::SVG}};
     auto ext = QFileInfo(filename).completeSuffix().toStdString();
-    try {
-        return ext_to_format_map.at(ext);
-    } catch (const std::out_of_range&) {
-        throw std::invalid_argument("Unsupported file extension: " +
-                                    filename.toStdString());
-    }
+    return IMAGE_FORMAT_EXT_BIMAP.right.at("." + ext);
 }
 
 qreal get_scale(const QRectF& scene_rect, const QSize& render_size)
@@ -405,6 +409,11 @@ qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
 }
 
 } // unnamed namespace
+
+std::string get_image_extension(ImageFormat format)
+{
+    return IMAGE_FORMAT_EXT_BIMAP.left.at(format);
+}
 
 QPicture get_qpicture(const RDKit::ROMol& mol, const RenderOptions& opts)
 {

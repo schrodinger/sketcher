@@ -12,11 +12,10 @@ using schrodinger::rdkit_extensions::Format;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 
-BOOST_AUTO_TEST_CASE(test_get_import_name_filters)
+BOOST_AUTO_TEST_CASE(test_get_import_export_formats)
 {
-    auto filters = get_import_name_filters();
-    BOOST_TEST(filters.contains(";;"));
-    BOOST_TEST(filters.split(";;").size() == 9);
-    BOOST_TEST(filters.contains("*.sdf"));
-    BOOST_TEST(filters.contains("*.mdl"));
+    BOOST_TEST(get_import_formats().size() == 13);
+    BOOST_TEST(get_standard_export_formats().size() == 11);
+    BOOST_TEST(get_reaction_export_formats().size() == 5);
+    BOOST_TEST(get_image_export_formats().size() == 2);
 }

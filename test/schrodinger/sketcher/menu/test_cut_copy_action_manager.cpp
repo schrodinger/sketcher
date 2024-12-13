@@ -1,10 +1,11 @@
 #define BOOST_TEST_MODULE Test_Sketcher
 #include <boost/test/unit_test.hpp>
 
+#include "../test_common.h"
 #include "schrodinger/sketcher/Scene.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "../test_common.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 
@@ -41,6 +42,12 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     BOOST_TEST(mgr.m_copy_as_menu->isEnabled());
     BOOST_TEST(mgr.m_copy_action->text().toStdString() == "Copy");
     BOOST_TEST(mgr.m_copy_as_menu->title().toStdString() == "Copy As");
+
+    // All formats are present as actions, we just show/hide based on whether
+    // there is a mol or a reaction present
+    BOOST_TEST(mgr.m_copy_as_menu->actions().size() ==
+               get_standard_export_formats().size() +
+                   get_reaction_export_formats().size());
 
     // confirm copy as menu toggles based on reactions
     auto reaction_actions_visible = [&mgr](bool expect_reaction) {

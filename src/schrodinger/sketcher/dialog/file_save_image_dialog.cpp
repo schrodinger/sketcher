@@ -74,7 +74,8 @@ FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model,
     m_ui->file_format_layout->addWidget(m_options_wdg, 2, 0, 1, -1);
 
     m_ui->format_combo->clear(); // clear out base class initialization
-    for (const auto& [format, filter] : get_name_filters(get_image_formats())) {
+    for (const auto& [format, label, exts] : get_image_export_formats()) {
+        auto filter = get_filter_name(label, exts);
         m_ui->format_combo->addItem(filter, QVariant::fromValue(format));
     }
 
@@ -91,10 +92,10 @@ QByteArray FileSaveImageDialog::getFileContent() const
     return emit exportImageRequested(combo_format, opts);
 }
 
-QStringList FileSaveImageDialog::getValidExtensions() const
+std::vector<std::string> FileSaveImageDialog::getValidExtensions() const
 {
     auto combo_format = m_ui->format_combo->currentData().value<ImageFormat>();
-    return get_file_extensions(get_image_formats(), combo_format);
+    return {get_image_extension(combo_format)};
 }
 
 void FileSaveImageDialog::onRenderOptionsChanged()

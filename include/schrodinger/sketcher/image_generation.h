@@ -33,6 +33,13 @@ namespace sketcher
 enum class ImageFormat { PNG, SVG };
 
 /**
+ * @param format file format to consider
+ * @return supported image extension of the given format
+ * @throw std::out_of_range if format is not supported
+ */
+SKETCHER_API std::string get_image_extension(ImageFormat format);
+
+/**
  * Image generation options
  */
 
@@ -83,8 +90,6 @@ struct RenderOptions {
     // when exporting to SVG, as QSVGGenerator doesn't support clipping regions.
     bool allow_qpainter_bond_clipping = true;
 };
-
-// TODO: Overload functions to allow std::string as input
 
 /**
  * @param mol/rxn/text molecule to render

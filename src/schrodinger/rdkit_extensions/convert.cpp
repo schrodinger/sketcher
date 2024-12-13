@@ -18,10 +18,12 @@
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
 #include <rdkit/GraphMol/DetermineBonds/DetermineBonds.h>
 #include <rdkit/GraphMol/DistGeomHelpers/Embedder.h>
+#include <rdkit/GraphMol/FileParsers/CDXMLParser.h>
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
 #include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 #include <rdkit/GraphMol/FileParsers/MolSupplier.h>
 #include <rdkit/GraphMol/FileParsers/MolWriters.h>
+#include <rdkit/GraphMol/MarvinParse/MarvinParser.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/MolPickler.h>
 #include <rdkit/GraphMol/QueryAtom.h>
@@ -537,7 +539,10 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 Format::MAESTRO,
                 Format::INCHI,
                 Format::PDB,
+                Format::MOL2,
                 Format::XYZ,
+                Format::MRV,
+                Format::CDXML,
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
                 Format::SMARTS,
@@ -554,6 +559,11 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     bool sanitize = false;
     bool removeHs = false;
     switch (format) {
+        case Format::RDMOL_BINARY_BASE64:
+            mol = base64_to_mol<RDKit::RWMol, RDKit::ROMol>(
+                text, (void (*)(const std::string&, RDKit::ROMol*)) &
+                          RDKit::MolPickler::molFromPickle);
+            break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
             if (!can_be_smiles(text)) {
@@ -592,12 +602,10 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 break;
             }
             mol.reset(read_mol(reader, rd_error_log));
-
             // workaround for SHARED-10515
             if (mol != nullptr && mol->hasProp("i_m_ct_stereo_status")) {
                 mol->clearProp("i_m_ct_stereo_status");
             }
-
             break;
         }
         case Format::INCHI: {
@@ -610,12 +618,9 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
         case Format::PDB:
             mol.reset(RDKit::PDBBlockToMol(text, sanitize, removeHs));
             break;
-        case Format::RDMOL_BINARY_BASE64: {
-            mol = base64_to_mol<RDKit::RWMol, RDKit::ROMol>(
-                text, (void (*)(const std::string&, RDKit::ROMol*)) &
-                          RDKit::MolPickler::molFromPickle);
+        case Format::MOL2:
+            mol.reset(RDKit::Mol2BlockToMol(text, sanitize, removeHs));
             break;
-        }
         case Format::XYZ:
             try {
                 mol.reset(RDKit::XYZBlockToMol(text));
@@ -635,22 +640,35 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             }
 #endif
             break;
-        case Format::HELM: {
+        case Format::MRV:
+            try {
+                mol.reset(RDKit::MrvBlockToMol(text, sanitize, removeHs));
+            } catch (const std::exception&) {
+                mol.reset();
+            }
+            break;
+        case Format::CDXML:
+            mol.reset(new RDKit::RWMol());
+            try { // combine multiple molecules into one like SmilesToMol
+                for (auto& m : RDKit::CDXMLToMols(text, sanitize, removeHs)) {
+                    mol->insertMol(*m);
+                }
+            } catch (const RDKit::FileParseException&) {
+                mol.reset();
+            }
+            break;
+        case Format::HELM:
             mol = helm::helm_to_rdkit(text);
             break;
-        }
-        case Format::FASTA_PEPTIDE: {
+        case Format::FASTA_PEPTIDE:
             mol = fasta::peptide_fasta_to_rdkit(text);
             break;
-        }
-        case Format::FASTA_DNA: {
+        case Format::FASTA_DNA:
             mol = fasta::dna_fasta_to_rdkit(text);
             break;
-        }
-        case Format::FASTA_RNA: {
+        case Format::FASTA_RNA:
             mol = fasta::rna_fasta_to_rdkit(text);
             break;
-        }
         case Format::FASTA:
             throw std::invalid_argument(
                 "Can't determine FASTA format. Please use any of the "
@@ -693,6 +711,7 @@ to_rdkit_reaction(const std::string& text, const Format format)
             {
                 Format::RDMOL_BINARY_BASE64,
                 Format::MDL_MOLV2000,
+                Format::CDXML,
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
                 Format::SMARTS,
@@ -707,6 +726,13 @@ to_rdkit_reaction(const std::string& text, const Format format)
     bool sanitize = false;
     bool removeHs = false;
     switch (format) {
+        case Format::RDMOL_BINARY_BASE64:
+            rxn =
+                base64_to_mol<RDKit::ChemicalReaction, RDKit::ChemicalReaction>(
+                    text,
+                    (void (*)(const std::string&, RDKit::ChemicalReaction*)) &
+                        RDKit::ReactionPickler::reactionFromPickle);
+            break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES:
         case Format::SMARTS:
@@ -729,14 +755,6 @@ to_rdkit_reaction(const std::string& text, const Format format)
             rxn.reset(
                 RDKit::RxnBlockToChemicalReaction(text, sanitize, removeHs));
             break;
-        case Format::RDMOL_BINARY_BASE64: {
-            rxn =
-                base64_to_mol<RDKit::ChemicalReaction, RDKit::ChemicalReaction>(
-                    text,
-                    (void (*)(const std::string&, RDKit::ChemicalReaction*)) &
-                        RDKit::ReactionPickler::reactionFromPickle);
-            break;
-        }
         default:
             throw std::invalid_argument("Unsupported reaction import format");
     }
@@ -783,6 +801,11 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
     bool kekulize = false;
 
     switch (format) {
+        case Format::RDMOL_BINARY_BASE64:
+            return mol_to_base64<RDKit::ROMol>(
+                &mol,
+                (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
+                    RDKit::MolPickler::pickleMol);
         case Format::SMILES:
             return RDKit::MolToSmiles(mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
@@ -812,12 +835,6 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             return RDKit::MolToInchiKey(mol);
         case Format::PDB:
             return RDKit::MolToPDBBlock(mol);
-        case Format::RDMOL_BINARY_BASE64: {
-            return mol_to_base64<RDKit::ROMol>(
-                &mol,
-                (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
-                    RDKit::MolPickler::pickleMol);
-        }
         case Format::XYZ:
             // Require explicit hydrogens and a complete 3D conformer on
             // write; see GraphMol/DetermineBonds/DetermineBonds.h in the
@@ -829,6 +846,8 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             }
             set_xyz_title(mol);
             return RDKit::MolToXYZBlock(mol);
+        case Format::MRV:
+            return RDKit::MolToMrvBlock(mol, include_stereo, confId, kekulize);
         case Format::HELM:
             return helm::rdkit_to_helm(mol);
         case Format::FASTA:
@@ -849,6 +868,11 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
 {
     switch (format) {
+        case Format::RDMOL_BINARY_BASE64:
+            return mol_to_base64<RDKit::ChemicalReaction>(
+                &rxn, (void (*)(const RDKit::ChemicalReaction*, std::string&,
+                                unsigned int)) &
+                          RDKit::ReactionPickler::pickleReaction);
         case Format::SMILES:
             return RDKit::ChemicalReactionToRxnSmiles(rxn);
         case Format::EXTENDED_SMILES:
@@ -865,12 +889,6 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
             bool forceV3000 = format == Format::MDL_MOLV3000;
             return RDKit::ChemicalReactionToRxnBlock(rxn, separateAgents,
                                                      forceV3000);
-        }
-        case Format::RDMOL_BINARY_BASE64: {
-            return mol_to_base64<RDKit::ChemicalReaction>(
-                &rxn, (void (*)(const RDKit::ChemicalReaction*, std::string&,
-                                unsigned int)) &
-                          RDKit::ReactionPickler::pickleReaction);
         }
         default:
             throw std::invalid_argument("Unsupported reaction export format");

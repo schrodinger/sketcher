@@ -23,7 +23,8 @@ namespace
 const QString DEFAULT_FILENAME{"structure"};
 
 const auto get_format_list = [](bool has_reaction) {
-    return has_reaction ? get_reaction_formats() : get_standard_formats();
+    return has_reaction ? get_reaction_export_formats()
+                        : get_standard_export_formats();
 };
 
 } // namespace
@@ -48,10 +49,14 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     connect(m_ui->cancel_btn, &QPushButton::clicked, this, &QDialog::reject);
 
     m_ui->filename_le->setText(DEFAULT_FILENAME);
+
     // initialize the format combo
-    auto format_list = get_format_list(m_model_has_reaction);
-    for (const auto& [format, filter] : get_name_filters(format_list)) {
-        m_ui->format_combo->addItem(filter, QVariant::fromValue(format));
+    for (const auto& [fmt, label, extensions] :
+         get_format_list(m_model_has_reaction)) {
+        if (!extensions.empty()) {
+            auto filter = get_filter_name(label, extensions);
+            m_ui->format_combo->addItem(filter, QVariant::fromValue(fmt));
+        }
     }
 }
 
@@ -63,11 +68,11 @@ QByteArray FileExportDialog::getFileContent() const
     return emit exportTextRequested(combo_format).toUtf8();
 }
 
-QStringList FileExportDialog::getValidExtensions() const
+std::vector<std::string> FileExportDialog::getValidExtensions() const
 {
-    auto format_list = get_format_list(m_model_has_reaction);
     auto combo_format = m_ui->format_combo->currentData().value<Format>();
-    return get_file_extensions(format_list, combo_format);
+    return m_model_has_reaction ? get_rxn_extensions(combo_format)
+                                : get_mol_extensions(combo_format);
 }
 
 void FileExportDialog::exportFile()
@@ -76,7 +81,10 @@ void FileExportDialog::exportFile()
     auto filename = m_ui->filename_le->text();
     auto suffix = QFileInfo(filename).completeSuffix();
     auto extensions = getValidExtensions();
-    if (suffix.isEmpty() || !extensions.contains("." + suffix)) {
+    auto suffix_not_found =
+        std::find(extensions.begin(), extensions.end(),
+                  "." + suffix.toStdString()) == extensions.end();
+    if (suffix.isEmpty() || suffix_not_found) {
         filename.append(extensions.at(0));
     }
 

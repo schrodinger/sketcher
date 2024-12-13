@@ -34,7 +34,10 @@ enum class Format {
     INCHI,
     INCHI_KEY, // only used to write
     PDB,
+    MOL2,
     XYZ,
+    MRV,
+    CDXML,
     // Monomer-specific formats
     HELM,
     FASTA_PEPTIDE, // only used to read

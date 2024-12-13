@@ -78,10 +78,6 @@ BOOST_AUTO_TEST_CASE(test_addRDKitReaction_getRDKitReaction)
 BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
                      boost::unit_test::data::make(MOL_FORMATS), format)
 {
-    if (format == Format::INCHI_KEY) {
-        return; // not readable
-    }
-
     auto mol = to_rdkit("C1=CC=CC=C1");
     auto text = to_string(*mol, format);
 

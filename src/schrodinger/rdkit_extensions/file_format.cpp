@@ -33,18 +33,21 @@ namespace
  */
 const std::unordered_map<Format, std::vector<std::string>> MOL_FORMAT_EXTS = {
     {Format::RDMOL_BINARY_BASE64, {}},
-    {Format::SMILES, {".smi", ".smigz", ".smi.gz", ".smiles"}},
+    {Format::SMILES, {".smi", ".smiles", ".smigz", ".smi.gz"}},
     {Format::EXTENDED_SMILES, {".cxsmi", ".cxsmiles"}},
     {Format::SMARTS, {}},
     {Format::EXTENDED_SMARTS, {}},
     {Format::MDL_MOLV2000, {}},
     {Format::MDL_MOLV3000,
-     {".sdf", ".sdf.gz", ".sdfgz", ".sd", ".sd.gz", ".mol", ".mol.gz", ".mdl"}},
-    {Format::MAESTRO, {".mae", ".maegz", ".mae.gz", ".mae.zst"}},
+     {".sdf", ".sd", ".mol", ".mdl", ".sdf.gz", ".sd.gz", ".mol.gz", ".sdfgz"}},
+    {Format::MAESTRO, {".mae", ".maegz", ".mae.gz", ".maezst", ".mae.zst"}},
     {Format::INCHI, {".inchi"}},
     {Format::INCHI_KEY, {}},
-    {Format::PDB, {".pdb", ".pdb.gz", ".pdbgz", ".ent", ".ent.gz", ".entgz"}},
+    {Format::PDB, {".pdb", ".ent", ".pdb.gz", ".ent.gz", ".pdbgz", ".entgz"}},
+    {Format::MOL2, {".mol2"}},
     {Format::XYZ, {".xyz"}},
+    {Format::MRV, {".mrv"}},
+    {Format::CDXML, {".cdxml"}},
 };
 // clang-format off
 const std::unordered_map<Format, std::vector<std::string>> RXN_FORMAT_EXTS = {
@@ -70,11 +73,16 @@ const std::unordered_map<Format, std::vector<std::string>> SCHRO_FORMAT_EXTS = {
     {Format::FMP, {".fmp"}},
 };
 
-std::vector<Format>
-get_keys(const std::unordered_map<Format, std::vector<std::string>>& map)
+std::vector<Format> get_roundtrip_keys(
+    const std::unordered_map<Format, std::vector<std::string>>& map)
 {
     std::vector<Format> keys;
     for (const auto& [key, _] : map) {
+        // Exclude any formats that are not round-trippable
+        if (key == Format::INCHI_KEY || key == Format::MOL2 ||
+            key == Format::CDXML) {
+            continue;
+        }
         keys.push_back(key);
     }
     return keys;
@@ -82,9 +90,10 @@ get_keys(const std::unordered_map<Format, std::vector<std::string>>& map)
 
 } // unnamed namespace
 
-const std::vector<Format> MOL_FORMATS = get_keys(MOL_FORMAT_EXTS);
-const std::vector<Format> RXN_FORMATS = get_keys(RXN_FORMAT_EXTS);
-const std::vector<Format> SEQ_FORMATS = get_keys(SEQ_FORMAT_EXTS);
+// Vectors of round-trippable formats, primarily used in testing
+const std::vector<Format> MOL_FORMATS = get_roundtrip_keys(MOL_FORMAT_EXTS);
+const std::vector<Format> RXN_FORMATS = get_roundtrip_keys(RXN_FORMAT_EXTS);
+const std::vector<Format> SEQ_FORMATS = get_roundtrip_keys(SEQ_FORMAT_EXTS);
 
 std::vector<std::string> get_mol_extensions(const Format format)
 {
