@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 
+#include <QStyle>
+
 #include "schrodinger/sketcher/ui/ui_error_dialog.h"
 
 namespace schrodinger
@@ -15,7 +17,14 @@ ErrorDialog::ErrorDialog(const QString& title, const QString& text,
     setupDialogUI(*m_ui);
 
     setWindowTitle(title);
-    m_ui->text_lbl->setText(text);
+    m_ui->text_edit->setText(text);
+    m_ui->text_edit->setStyleSheet("QTextEdit { background: transparent; }");
+
+    auto my_style = style();
+    auto warning_icon = my_style->standardIcon(QStyle::SP_MessageBoxWarning);
+    int icon_size = my_style->pixelMetric(QStyle::PM_MessageBoxIconSize);
+    auto warning_pixmap = warning_icon.pixmap(icon_size, icon_size);
+    m_ui->icon_lbl->setPixmap(warning_pixmap);
 }
 
 ErrorDialog::~ErrorDialog() = default;
