@@ -143,14 +143,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connectContextMenu(*m_sgroup_context_menu);
     connectContextMenu(*m_background_context_menu);
 
-    // Set up the watermark
-    m_watermark_item = new QGraphicsPixmapItem();
-    m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
-    m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
-    m_scene->addItem(m_watermark_item);
-    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
-    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
-
     // force the scene to update the view's cursor now that all of the signals
     // are connected
     m_scene->requestCursorHintUpdate();
@@ -161,6 +153,14 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold.ttf");
     QFontDatabase::addApplicationFont(":resources/fonts/Arial_Italic.ttf");
     QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold_Italic.ttf");
+
+    // Set up the watermark  after loading fonts because the SVG uses them
+    m_watermark_item = new QGraphicsPixmapItem();
+    m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
+    m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    m_scene->addItem(m_watermark_item);
+    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
+    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
 }
 
 SketcherWidget::~SketcherWidget() = default;
