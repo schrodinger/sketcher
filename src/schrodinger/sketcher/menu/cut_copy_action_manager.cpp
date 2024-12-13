@@ -66,7 +66,11 @@ SceneSubset CutCopyActionManager::getSubset()
 void CutCopyActionManager::initCopyAsMenu()
 {
     auto init_menu = [&](const auto& format_list, bool is_reaction_format) {
-        for (const auto& [fmt, label, exts] : format_list) {
+        for (const auto& format : format_list) {
+            // Clang < 16 does not allow capturing structured bindings, so
+            // we'll extract "manually".
+            auto& fmt = std::get<0>(format);
+            auto& label = std::get<1>(format);
             auto slot = [this, fmt]() { emit copyRequested(fmt, getSubset()); };
             auto action = m_copy_as_menu->addAction(
                 QString::fromStdString(label), this, slot);
