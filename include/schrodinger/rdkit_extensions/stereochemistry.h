@@ -54,14 +54,6 @@ RDKIT_EXTENSIONS_API std::string
 get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs = false);
 
 /**
- * @return the simplified stereo annotation for the given molecule if the
- * molecule has only one enhanced stereo group that is either an 'or' or 'and'
- * stereo group, otherwise return an empty string.
- */
-RDKIT_EXTENSIONS_API std::string
-get_simplified_stereo_annotation(const RDKit::ROMol& mol);
-
-/**
  * @return the chiral label for the given bond.
  */
 RDKIT_EXTENSIONS_API std::string get_bond_stereo_label(const RDKit::Bond& bond);

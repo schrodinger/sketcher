@@ -163,6 +163,10 @@ void prepare_mol(RDKit::ROMol& mol)
  */
 void update_molecule_on_change(RDKit::RWMol& mol)
 {
+    // save the simplified stereo annotation as a mol property
+    RDKit::Chirality::simplifyEnhancedStereo(
+        mol, /*removeAffectedStereoGroups = */ false);
+
     // Explicitly update the brackets for the sgroups
     rdkit_extensions::update_s_group_brackets(mol);
 

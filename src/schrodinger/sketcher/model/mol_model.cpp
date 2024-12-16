@@ -113,6 +113,7 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
         bond->clearProp(USER_COLOR);
         bond->clearProp(RDKit::common_properties::bondNote);
     }
+    mol.clearProp(RDKit::common_properties::molNote);
     mol.clearAllAtomBookmarks();
     mol.clearAllBondBookmarks();
 

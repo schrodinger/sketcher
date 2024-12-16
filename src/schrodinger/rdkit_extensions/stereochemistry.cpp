@@ -108,32 +108,6 @@ std::string get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs)
     return chirality;
 }
 
-std::string get_simplified_stereo_annotation(const RDKit::ROMol& mol)
-{
-    auto sgs = mol.getStereoGroups();
-    if (sgs.size() != 1)
-        return "";
-    boost::dynamic_bitset<> chiralAts(mol.getNumAtoms());
-    for (const auto atom : mol.atoms()) {
-        if (atom->getChiralTag() > RDKit::Atom::ChiralType::CHI_UNSPECIFIED &&
-            atom->getChiralTag() < RDKit::Atom::ChiralType::CHI_OTHER) {
-            chiralAts.set(atom->getIdx(), 1);
-        }
-    }
-    for (const auto atm : sgs[0].getAtoms()) {
-        chiralAts.set(atm->getIdx(), 0);
-    }
-    if (!chiralAts.any())
-        return "";
-    // all specified chiral centers are accounted for by this StereoGroup.
-    if (sgs[0].getGroupType() == RDKit::StereoGroupType::STEREO_OR) {
-        return "OR enantiomer";
-    } else if (sgs[0].getGroupType() == RDKit::StereoGroupType::STEREO_AND) {
-        return "AND enantiomer";
-    }
-    return "";
-}
-
 std::string get_bond_stereo_label(const RDKit::Bond& bond)
 {
     std::string label;

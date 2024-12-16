@@ -301,10 +301,10 @@ void Scene::onDisplaySettingsChanged()
             ->m_show_simplified_stereo_annotation;
     QString simplified_stereo_annotation;
     if (show_simplified_stereo_annotation) {
-        simplified_stereo_annotation =
-            QString(rdkit_extensions::get_simplified_stereo_annotation(
-                        *m_mol_model->getMol())
-                        .c_str());
+        std::string note;
+        m_mol_model->getMol()->getPropIfPresent(
+            RDKit::common_properties::molNote, note);
+        simplified_stereo_annotation = QString::fromStdString(note);
     }
     m_simplified_stereo_label->setPlainText(simplified_stereo_annotation);
     m_simplified_stereo_label->setVisible(
