@@ -1,5 +1,6 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 
+#include <rdkit/GraphMol/Atropisomers.h>
 #include <rdkit/GraphMol/CIPLabeler/CIPLabeler.h>
 #include <rdkit/GraphMol/CIPLabeler/TooManyNodesException.h>
 #include <rdkit/GraphMol/Chirality.h>
@@ -63,7 +64,6 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
 static void
 assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
 {
-
     // Reset the calculated intermediate stereo markers RDKit uses in its stereo
     // assignment so we can recalculate them from scratch. Also store
     // UP/DOWN/WIGGLY bond directions so we can restore them after cleanIt=true.
@@ -78,14 +78,23 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
             bond->getBondDir() == RDKit::Bond::BondDir::ENDUPRIGHT) {
             bond->setBondDir(RDKit::Bond::BondDir::NONE);
         }
+
+        // assignStereochemistry(cleanIt=true) will not clear
+        // atropisomer stereo markers, so we need to do it manually.
+        bond->setStereo(RDKit::Bond::BondStereo::STEREONONE);
     }
 
     // Convert up/down bonds into parities
     RDKit::MolOps::assignChiralTypesFromBondDirs(mol);
 
+    // Detect atropisomer chirality & clean up unwanted/redundant atrop markers:
+    // This is currently not done by assignStereochemistry()
+    auto conf = mol.getConformer();
+    RDKit::Atropisomers::detectAtropisomerChirality(mol, &conf);
+    RDKit::MolOps::cleanupAtropisomers(mol);
+
     // Calculate stereo bond cues from coordinates. RDKit can't calculate
     // stereo bonds without these.
-    auto conf = mol.getConformer();
     RDKit::MolOps::setDoubleBondNeighborDirections(mol, &conf);
 
     // Assign stereo from those parities (primarily for bond stereo)
