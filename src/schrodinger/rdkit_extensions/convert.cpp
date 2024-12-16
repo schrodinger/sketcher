@@ -36,6 +36,7 @@
 #include <zstd.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
+#include "schrodinger/rdkit_extensions/cg_conversions.h"
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/fasta/to_rdkit.h"
@@ -775,26 +776,25 @@ to_rdkit_reaction(const std::string& text, const Format format)
     return rxn;
 }
 
-static void check_non_coarse_grained_output(const RDKit::ROMol& input_mol,
-                                            const Format format)
-{
-    auto cg_formats_end = std::end(SEQ_FORMATS);
-    if (is_coarse_grain_mol(input_mol) &&
-        std::find(std::begin(SEQ_FORMATS), cg_formats_end, format) ==
-            cg_formats_end) {
-        throw std::invalid_argument("Conversions from coarse grained "
-                                    "formats to atomistic formats are "
-                                    "currently unsupported");
-    }
-}
-
 std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 {
     CaptureRDErrorLog rd_error_log;
 
-    check_non_coarse_grained_output(input_mol, format);
-
-    RDKit::RWMol mol(input_mol);
+    auto mol = [&]() -> boost::shared_ptr<RDKit::RWMol> {
+        // Since SHARED-11054, we want to start allowing conversion between
+        // atomistic and monomeristic mols
+        auto is_monomeristic = is_coarse_grain_mol(input_mol);
+        auto is_seq_format =
+            std::ranges::find(SEQ_FORMATS, format) != SEQ_FORMATS.end();
+        if (is_monomeristic && !is_seq_format) {
+            return cg_to_atomistic(input_mol);
+        } else if (!is_monomeristic &&
+                   (is_seq_format && format != Format::RDMOL_BINARY_BASE64)) {
+            return atomistic_to_cg(input_mol);
+        } else {
+            return boost::make_shared<RDKit::RWMol>(input_mol);
+        }
+    }();
 
     bool include_stereo = true;
     int confId = -1;
@@ -803,55 +803,55 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ROMol>(
-                &mol,
+                mol.get(),
                 (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
                     RDKit::MolPickler::pickleMol);
         case Format::SMILES:
-            return RDKit::MolToSmiles(mol, include_stereo, kekulize);
+            return RDKit::MolToSmiles(*mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
-            adjust_for_extended_smiles_smarts_format(mol);
-            return RDKit::MolToCXSmiles(mol, include_stereo, kekulize);
+            adjust_for_extended_smiles_smarts_format(*mol);
+            return RDKit::MolToCXSmiles(*mol, include_stereo, kekulize);
         case Format::SMARTS:
-            return RDKit::MolToSmarts(mol);
+            return RDKit::MolToSmarts(*mol);
         case Format::EXTENDED_SMARTS:
-            adjust_for_extended_smiles_smarts_format(mol);
-            return RDKit::MolToCXSmarts(mol);
+            adjust_for_extended_smiles_smarts_format(*mol);
+            return RDKit::MolToCXSmarts(*mol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
-            attachment_point_dummies_to_molattachpt_property(mol);
+            attachment_point_dummies_to_molattachpt_property(*mol);
             if (format == Format::MDL_MOLV2000) {
-                adjust_for_mdl_v2k_format(mol);
+                adjust_for_mdl_v2k_format(*mol);
             }
             bool forceV3000 = format == Format::MDL_MOLV3000;
-            return RDKit::SDWriter::getText(mol, confId, kekulize, forceV3000);
+            return RDKit::SDWriter::getText(*mol, confId, kekulize, forceV3000);
         }
         case Format::MAESTRO:
-            return RDKit::MaeWriter::getText(mol);
+            return RDKit::MaeWriter::getText(*mol);
         case Format::INCHI: {
             RDKit::ExtraInchiReturnValues aux;
-            return RDKit::MolToInchi(mol, aux);
+            return RDKit::MolToInchi(*mol, aux);
         }
         case Format::INCHI_KEY:
-            return RDKit::MolToInchiKey(mol);
+            return RDKit::MolToInchiKey(*mol);
         case Format::PDB:
-            return RDKit::MolToPDBBlock(mol);
+            return RDKit::MolToPDBBlock(*mol);
         case Format::XYZ:
             // Require explicit hydrogens and a complete 3D conformer on
             // write; see GraphMol/DetermineBonds/DetermineBonds.h in the
             // RDKit
-            RDKit::MolOps::addHs(mol);
-            if (RDKit::DGeomHelpers::EmbedMolecule(mol, /*maxIterations*/ 0,
+            RDKit::MolOps::addHs(*mol);
+            if (RDKit::DGeomHelpers::EmbedMolecule(*mol, /*maxIterations*/ 0,
                                                    /*seed*/ 1234) == -1) {
                 throw std::runtime_error("Unable to export 3D coordinates");
             }
-            set_xyz_title(mol);
-            return RDKit::MolToXYZBlock(mol);
+            set_xyz_title(*mol);
+            return RDKit::MolToXYZBlock(*mol);
         case Format::MRV:
-            return RDKit::MolToMrvBlock(mol, include_stereo, confId, kekulize);
+            return RDKit::MolToMrvBlock(*mol, include_stereo, confId, kekulize);
         case Format::HELM:
-            return helm::rdkit_to_helm(mol);
+            return helm::rdkit_to_helm(*mol);
         case Format::FASTA:
-            return fasta::rdkit_to_fasta(mol);
+            return fasta::rdkit_to_fasta(*mol);
         case Format::FASTA_PEPTIDE:
         case Format::FASTA_DNA:
         case Format::FASTA_RNA:

@@ -34,6 +34,7 @@
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
+namespace bdata = boost::unit_test::data;
 using namespace schrodinger;
 using namespace schrodinger::rdkit_extensions;
 
@@ -945,4 +946,42 @@ BOOST_AUTO_TEST_CASE(test_atom_mapping_rgroups)
     r_group_num = get_r_group_number(product->getAtomWithIdx(3));
     BOOST_TEST(r_group_num.has_value());
     BOOST_TEST(*r_group_num == 1);
+}
+
+// Since we can convert monomeristic mols to atomistic mols, we shouldn't
+// have any issues converting them to all supported mol formats.
+BOOST_DATA_TEST_CASE(test_converting_biologics_to_non_reaction_formats,
+                     bdata::make(MOL_FORMATS), mol_format)
+{
+    using test_info_t = std::pair<std::string, Format>;
+    for (auto [input, input_format] : std::array<test_info_t, 4>{{
+             {">\nACG\n", Format::FASTA_DNA},
+             {">\nACG\n", Format::FASTA_PEPTIDE},
+             {">\nACG\n", Format::FASTA_RNA},
+             {"PEPTIDE1{A.K.L}$$$$V2.0", Format::HELM},
+
+         }}) {
+        auto input_mol = to_rdkit(input, input_format);
+        BOOST_CHECK_NO_THROW(to_string(*input_mol, mol_format));
+    }
+}
+
+// Since we can convert atomistic mols to monomeristic mols, we shouldn't
+// have any issues converting them to sequence formats.
+//
+// NOTE: Choosing MAESTRO and PDB as the atomistic formats because they include
+// residue information, which is required for constructing monomeristic mols.
+BOOST_DATA_TEST_CASE(test_converting_atomistic_biologics_to_seq_formats,
+                     bdata::make(std::vector<Format>{
+                         Format::MAESTRO,
+                         Format::PDB,
+                     }),
+                     mol_format)
+{
+    auto monomeristic_mol = to_rdkit("PEPTIDE1{A.C.G}$$$$V2.0", Format::HELM);
+    auto atomistic_mol =
+        to_rdkit(to_string(*monomeristic_mol, mol_format), mol_format);
+    BOOST_TEST(to_string(*atomistic_mol, Format::HELM) ==
+               "PEPTIDE1{A.C.G}$$$$V2.0");
+    BOOST_TEST(to_string(*atomistic_mol, Format::FASTA) == ">\nACG\n");
 }
