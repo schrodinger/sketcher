@@ -32,8 +32,7 @@ FormatList<Format> get_import_formats()
         {Format::SMILES, "Reaction SMILES"},
     };
 
-    FormatList<Format> import_formats = {
-        {Format::AUTO_DETECT, "Importable File Types", {".*"}}};
+    FormatList<Format> import_formats;
     for (const auto& [format, label] : mol_import_formats) {
         auto extensions = rdkit_extensions::get_mol_extensions(format);
         import_formats.push_back({format, label, extensions});
