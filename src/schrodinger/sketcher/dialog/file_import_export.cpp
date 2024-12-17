@@ -16,8 +16,8 @@ namespace sketcher
 FormatList<Format> get_import_formats()
 {
     std::vector<std::tuple<Format, std::string>> mol_import_formats = {
-        {Format::MAESTRO, "Maestro"},
         {Format::MDL_MOLV3000, "MDL SD"},
+        {Format::MAESTRO, "Maestro"},
         {Format::SMILES, "SMILES"},
         {Format::EXTENDED_SMILES, "Extended SMILES"},
         {Format::INCHI, "InChI"},
