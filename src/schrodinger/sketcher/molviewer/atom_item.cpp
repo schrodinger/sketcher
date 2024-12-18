@@ -169,7 +169,9 @@ void AtomItem::updateCachedData()
     // the shape and bounding rect
     m_shape = QPainterPath(m_predictive_highlighting_path);
     for (QRectF rect : m_subrects) {
-        m_shape.addRect(rect);
+        QPainterPath rect_path;
+        rect_path.addRect(rect);
+        m_shape |= rect_path;
     }
     m_bounding_rect = m_shape.boundingRect();
 }
