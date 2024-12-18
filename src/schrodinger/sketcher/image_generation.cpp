@@ -5,6 +5,8 @@
 #include "schrodinger/sketcher/image_generation.h"
 
 #include <limits>
+#include <memory>
+#include <functional>
 
 #include <QBuffer>
 #include <QByteArray>
@@ -31,6 +33,10 @@
 #include "schrodinger/sketcher/sketcher.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+
+/// a function that returns a paint device at the specified size
+using PaintDeviceFunction =
+    std::function<std::shared_ptr<QPaintDevice>(const QSize&)>;
 
 namespace schrodinger
 {
@@ -171,13 +177,54 @@ ImageFormat get_format(const QString& filename)
     return IMAGE_FORMAT_EXT_BIMAP.right.at("." + ext);
 }
 
-qreal get_scale(const QRectF& scene_rect, const QSize& render_size)
+std::pair<qreal, qreal> get_x_and_y_scales(const QRectF& scene_rect,
+                                           const QSize& render_size)
 {
     qreal scene_width = scene_rect.width();
     qreal scene_height = scene_rect.height();
     qreal x_ratio = render_size.width() / scene_width;
     qreal y_ratio = render_size.height() / scene_height;
+    return {x_ratio, y_ratio};
+}
+
+/**
+ * @return the appropriate scaling factor to make scene_rect as large as
+ * possible, but no larger than render_size
+ */
+qreal get_scale(const QRectF& scene_rect, const QSize& render_size)
+{
+    auto [x_ratio, y_ratio] = get_x_and_y_scales(scene_rect, render_size);
     return qMin(x_ratio, y_ratio);
+}
+
+/**
+ * @return what render_size should be trimmed to if we're rendering scene_rect
+ * into render_size and RenderOptions::trim_image is true.
+ */
+QSize get_trimmed_size(const QRectF& scene_rect, const QSize& render_size)
+{
+    auto [x_ratio, y_ratio] = get_x_and_y_scales(scene_rect, render_size);
+    qreal trimmed_width, trimmed_height;
+    if (x_ratio < y_ratio) {
+        trimmed_width = render_size.width();
+        trimmed_height = x_ratio * scene_rect.height();
+    } else {
+        trimmed_width = y_ratio * scene_rect.width();
+        trimmed_height = render_size.height();
+    }
+    return {static_cast<int>(trimmed_width), static_cast<int>(trimmed_height)};
+}
+
+/**
+ * @return the appropriate image size for rendering the given scene
+ */
+QSize get_image_size(const RenderOptions& opts, const QRectF& scene_rect)
+{
+    if (opts.trim_image) {
+        return get_trimmed_size(scene_rect, opts.width_height);
+    } else {
+        return opts.width_height;
+    }
 }
 
 /**
@@ -215,8 +262,10 @@ void add_to_mol_model(MolModel& mol_model, const std::string& text)
     add_text_to_mol_model(mol_model, text);
 }
 
-void paint_scene(QPaintDevice* device, const QGraphicsScene& scene,
-                 const QRectF& scene_rect, const RenderOptions& opts)
+void paint_scene_to_given_paint_device(QPaintDevice* device,
+                                       const QGraphicsScene& scene,
+                                       const QRectF& scene_rect,
+                                       const RenderOptions& opts)
 {
 
     QPainter painter(device);
@@ -258,8 +307,20 @@ void init_molviewer_image(MolModel& mol_model, SketcherModel& sketcher_model,
     sketcher_model.loadRenderOptions(opts);
 }
 
-template <typename T> void paint_scene(QPaintDevice* device, const T& input,
-                                       const RenderOptions& opts)
+/**
+ * Construct a paint device and render the given input to it
+ *
+ * @param input What to render into the scene.  Can be an RDKit molecule, an
+ * RDKit reaction, a string containing a molecule (such as a SMILES string or a
+ * MOL block), a pre-populated Scene (see overload below), or a stock image (see
+ * other overload below)
+ * @param opts The settings for rendering the molecule
+ * @param instantiate_paint_device_to_size A function that takes a QSize and
+ * returns a QPaintDevice instance of the specified size
+ */
+template <typename T> std::shared_ptr<QPaintDevice>
+paint_scene(const T& input, const RenderOptions& opts,
+            const PaintDeviceFunction& instantiate_paint_device_to_size)
 {
 #ifndef EMSCRIPTEN
     if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
@@ -272,7 +333,7 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
         Scene scene(&mol_model, &sketcher_model);
         init_molviewer_image(mol_model, sketcher_model, input, opts);
 
-        paint_scene(device, scene, opts);
+        return paint_scene(scene, opts, instantiate_paint_device_to_size);
     } else {
         sketcherScene scene;
         SketcherModel sketcher_model(&scene);
@@ -284,24 +345,33 @@ template <typename T> void paint_scene(QPaintDevice* device, const T& input,
         scene.loadRenderOptions(opts);
 
         auto scene_rect = scene.findBoundingRect();
-        paint_scene(device, scene, scene_rect, opts);
+        auto image_size = get_image_size(opts, scene_rect);
+        auto paint_device = instantiate_paint_device_to_size(image_size);
+        paint_scene_to_given_paint_device(paint_device.get(), scene, scene_rect,
+                                          opts);
+        return paint_device;
     }
 }
 
 // Save the scene directly as it is; used to save an image from SketcherWidget
-template <> void paint_scene<Scene>(QPaintDevice* device, const Scene& input,
-                                    const RenderOptions& opts)
+template <> std::shared_ptr<QPaintDevice>
+paint_scene(const Scene& input, const RenderOptions& opts,
+            const PaintDeviceFunction& instantiate_paint_device_to_size)
 {
     auto scene_rect = input.getInteractiveItemsBoundingRect();
     scene_rect.adjust(-SAVED_PICTURE_PADDING, -SAVED_PICTURE_PADDING,
                       SAVED_PICTURE_PADDING, SAVED_PICTURE_PADDING);
-    paint_scene(device, input, scene_rect, opts);
+    auto image_size = get_image_size(opts, scene_rect);
+    auto paint_device = instantiate_paint_device_to_size(image_size);
+    paint_scene_to_given_paint_device(paint_device.get(), input, scene_rect,
+                                      opts);
+    return paint_device;
 }
 
 // Inject a prepared image into the scene; used to generate stock images
-template <> void paint_scene<QFileInfo>(QPaintDevice* device,
-                                        const QFileInfo& file_info,
-                                        const RenderOptions& opts)
+template <> std::shared_ptr<QPaintDevice>
+paint_scene(const QFileInfo& file_info, const RenderOptions& opts,
+            const PaintDeviceFunction& instantiate_paint_device_to_size)
 {
     QGraphicsScene scene;
     auto file_path = file_info.filePath();
@@ -313,68 +383,99 @@ template <> void paint_scene<QFileInfo>(QPaintDevice* device,
             scene.addItem(svg_item);
         }
     }
-    paint_scene(device, scene, scene.itemsBoundingRect(), opts);
+    // we never trim the image here since we're displaying a placeholder, not
+    // an actual molecule
+    auto paint_device = instantiate_paint_device_to_size(opts.width_height);
+    paint_scene_to_given_paint_device(paint_device.get(), scene,
+                                      scene.itemsBoundingRect(), opts);
+    return paint_device;
+}
+
+std::shared_ptr<QPicture> instantiate_qpicture_to_size(const QSize& size)
+{
+    auto picture = std::make_shared<QPicture>();
+    picture->setBoundingRect(QRect(QPoint(0, 0), size));
+    return picture;
+}
+
+std::shared_ptr<QImage> instantiate_qimage_to_size(const QSize& size)
+{
+    auto image = std::make_shared<QImage>(size, QImage::Format_ARGB32);
+    // paint_scene will paint the correct background color, so here we just need
+    // to replace uninitialized data with transparent pixels.
+    QPainter painter(image.get());
+    QRect target_rect(QPoint(0, 0), size);
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.fillRect(target_rect, Qt::transparent);
+    return image;
+}
+
+std::shared_ptr<QSvgGenerator>
+instantiate_qsvggenerator_to_size(const QSize& size)
+{
+    auto svg_gen = std::make_shared<QSvgGenerator>();
+    // this buffer is assigned to a smart pointer in get_image_bytes
+    auto buffer = new QBuffer();
+    buffer->open(QIODevice::WriteOnly);
+    svg_gen->setOutputDevice(buffer);
+    svg_gen->setSize(size);
+    svg_gen->setViewBox(QRect(QPoint(0, 0), size));
+    return svg_gen;
 }
 
 template <typename T>
 QPicture get_qpicture(const T& input, const RenderOptions& opts)
 {
-    QPicture picture;
-    picture.setBoundingRect(QRect(QPoint(0, 0), opts.width_height));
-    paint_scene(&picture, input, opts);
-    return picture;
+    auto paint_device =
+        paint_scene<T>(input, opts, instantiate_qpicture_to_size);
+    return *dynamic_cast<QPicture*>(paint_device.get());
 }
 
 template <typename T>
 QImage get_qimage(const T& input, const RenderOptions& opts)
 {
-    QImage image(opts.width_height, QImage::Format_ARGB32);
-    {
-        // initialize the contents of image. paint_scene will paint the correct
-        // background color, so here we just need to replace uninitialized data
-        // with transparent pixels.
-        QPainter painter(&image);
-        QRect target_rect(QPoint(0, 0), opts.width_height);
-        painter.setCompositionMode(QPainter::CompositionMode_Source);
-        painter.fillRect(target_rect, Qt::transparent);
-    }
-    paint_scene(&image, input, opts);
-    return image;
+    auto paint_device = paint_scene<T>(input, opts, instantiate_qimage_to_size);
+    return *dynamic_cast<QImage*>(paint_device.get());
 }
 
 template <typename T> QByteArray
 get_image_bytes(const T& input, ImageFormat format, const RenderOptions& opts)
 {
     QBuffer buffer;
-    buffer.open(QIODevice::WriteOnly);
 
     if (format == ImageFormat::PNG) {
         auto image = get_qimage(input, opts);
+        buffer.open(QIODevice::WriteOnly);
         image.save(&buffer, "PNG");
+        buffer.close();
 
     } else if (format == ImageFormat::SVG) {
-        QSvgGenerator svg_gen;
-        svg_gen.setSize(opts.width_height);
-        svg_gen.setViewBox(QRect(QPoint(0, 0), opts.width_height));
-        svg_gen.setOutputDevice(&buffer);
-        paint_scene(&svg_gen, input, opts);
+        auto paint_device =
+            paint_scene<T>(input, opts, instantiate_qsvggenerator_to_size);
+        auto svg_gen = dynamic_cast<QSvgGenerator*>(paint_device.get());
+        // instantiate_qsvggenerator_to_size constructed a new QBuffer on the
+        // heap during the paint_scene call.  We assign that QBuffer to a smart
+        // pointer here so that it will get destroyed at the end of this
+        // function.
+        std::shared_ptr<QBuffer> svg_buffer;
+        svg_buffer.reset(dynamic_cast<QBuffer*>(svg_gen->outputDevice()));
+        auto svg_data = svg_buffer->data();
+
         // Qt defines svg size in mm, but our code needs it specified in pixels.
         // This is a hack to make sure we get the right size definition.
-        auto buffer_data = buffer.data();
-        auto start_of_size = buffer_data.indexOf("svg width");
-        auto end_of_size = buffer_data.indexOf(" viewBox", start_of_size);
+        auto start_of_size = svg_data.indexOf("svg width");
+        auto end_of_size = svg_data.indexOf(" viewBox", start_of_size);
         if (start_of_size == -1 || end_of_size == -1) {
             throw std::runtime_error("Failed to find svg size definition");
         }
-        buffer_data.remove(start_of_size, end_of_size - start_of_size);
+        svg_data.remove(start_of_size, end_of_size - start_of_size);
         auto height_in_pxls = QString("svg width=\"%1px\" height=\"%2px\"\n")
                                   .arg(opts.width_height.width())
                                   .arg(opts.width_height.height());
 
-        buffer_data.insert(start_of_size, height_in_pxls.toUtf8());
-        // close the buffer to write the data back into it
-        buffer.close();
-        buffer.setData(buffer_data);
+        svg_data.insert(start_of_size, height_in_pxls.toUtf8());
+        buffer.setData(svg_data);
+        svg_buffer->close();
 
     } else {
         throw std::runtime_error("Unknown ImageFormat");

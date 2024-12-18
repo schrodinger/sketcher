@@ -22,6 +22,7 @@ using namespace schrodinger::sketcher;
 using namespace schrodinger;
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(QSize);
 
 template <typename T> void image_gen_APIs(const T& input)
 {
@@ -31,9 +32,11 @@ template <typename T> void image_gen_APIs(const T& input)
 
     auto qpict = get_qpicture(input, opts);
     BOOST_TEST(qpict.size() > 0);
+    BOOST_TEST(qpict.boundingRect().size() == QSize(400, 400));
 
     auto image = get_qimage(input, opts);
     BOOST_TEST(image.sizeInBytes() > 0);
+    BOOST_TEST(image.size() == QSize(400, 400));
 
     auto bytes = get_image_bytes(input, ImageFormat::PNG, opts);
     BOOST_TEST(bytes.size() > 0);
@@ -176,4 +179,53 @@ BOOST_AUTO_TEST_CASE(test_SVG_size_output)
                 .arg(size.height());
         BOOST_TEST(svg.contains(width_height_string));
     }
+}
+
+/**
+ * Make sure that the trim_image option correctly trims excess white space
+ */
+BOOST_AUTO_TEST_CASE(test_trim_image)
+{
+    auto mol = rdkit_extensions::to_rdkit("C1=CC=CC=C1");
+    RenderOptions opts;
+    opts.width_height = {200, 2000};
+
+    // first, generate the picture/image without trimming and make sure that the
+    // images are full size
+    auto qpict = get_qpicture(*mol, opts);
+    BOOST_TEST(qpict.boundingRect().size() == QSize(200, 2000));
+    auto image = get_qimage(*mol, opts);
+    BOOST_TEST(image.size() == QSize(200, 2000));
+
+    // enable trimming and make sure that the excess horizontal space is removed
+    opts.trim_image = true;
+    auto trimmed_wide_qpict = get_qpicture(*mol, opts);
+    auto picture_size = trimmed_wide_qpict.boundingRect().size();
+    BOOST_TEST(picture_size.width() == 200);
+    // the molecule is square-ish, but we don't know (or care) the exact
+    // width:height ratio so we just make sure that the height is something
+    // vaguely reasonable
+    BOOST_TEST(picture_size.height() <= 400);
+    BOOST_TEST(picture_size.height() >= 100);
+
+    auto trimmed_wide_image = get_qimage(*mol, opts);
+    auto image_size = trimmed_wide_image.size();
+    BOOST_TEST(image_size.width() == 200);
+    BOOST_TEST(image_size.height() <= 400);
+    BOOST_TEST(image_size.height() >= 100);
+
+    // make the requested image size really tall instead of really wide and make
+    // sure that the excess vertical space is removed
+    opts.width_height = {1000, 100};
+    auto trimmed_tall_qpict = get_qpicture(*mol, opts);
+    picture_size = trimmed_tall_qpict.boundingRect().size();
+    BOOST_TEST(picture_size.width() <= 200);
+    BOOST_TEST(picture_size.width() >= 50);
+    BOOST_TEST(picture_size.height() == 100);
+
+    auto trimmed_tall_image = get_qimage(*mol, opts);
+    image_size = trimmed_tall_image.size();
+    BOOST_TEST(image_size.width() <= 200);
+    BOOST_TEST(image_size.width() >= 50);
+    BOOST_TEST(image_size.height() == 100);
 }

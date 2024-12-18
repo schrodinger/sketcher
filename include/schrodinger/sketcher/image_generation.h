@@ -55,6 +55,15 @@ struct RenderOptions {
     // instead.
     qreal scale = AUTOSCALE;
 
+    // If false, the generated image will be exactly width_height, but may
+    // contain padding. (E.g., if width_height is 200x1000 for a square-ish
+    // molecule, then the generated image will contain large amounts of
+    // horizontal padding.) If trim_image true, the generated image will be no
+    // larger than width_height and will not contain any padding. (E.g., if
+    // width_height is 200x1000 for a square-ish molecule, then the generated
+    // image will be 200x~200.)
+    bool trim_image = false;
+
     // The font size to use for atom labels.  Other fonts will be scaled
     // relative to this.
     int font_size = DEFAULT_FONT_SIZE;
