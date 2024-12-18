@@ -34,7 +34,6 @@ using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
 const std::unordered_map<std::string, std::string> three_character_codes({
     {"A", "ALA"}, // Alanine
     {"R", "ARG"}, // Arginine
-    {"D", "ASH"}, // Protonated Aspartic
     {"N", "ASN"}, // Asparagine
     {"D", "ASP"}, // Aspartic
     {"C", "CYS"}, // Cysteine
