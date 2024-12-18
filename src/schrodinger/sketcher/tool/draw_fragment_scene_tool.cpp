@@ -55,23 +55,48 @@ get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
 
 std::string get_smiles_for_ring_tool(const RingTool& ring_tool)
 {
+    // CXSMILES coordinates ensure that the ring orientation matches the
+    // orientation of the image on each toolbar button
     switch (ring_tool) {
         case (RingTool::CYCLOPROPANE):
-            return "*C1CC1 |$_AP1;;;$|";
+            return "*C1CC1 "
+                   "|(0.00439306,1.77451,;0.000679609,0.274518,;-0.752534,-1."
+                   "02266,;0.747462,-1.02637,),$_AP1;;;$|";
         case (RingTool::CYCLOBUTANE):
-            return "*C1CCC1 |$_AP1;;;;$|";
+            return "*C1CCC1 "
+                   "|(-1.44716,1.4499,;-0.3875,0.388235,;1.1125,0.386814,;1."
+                   "11108,-1.11318,;-0.388921,-1.11176,),$_AP1;;;;$|";
         case (RingTool::CYCLOPENTANE):
-            return "*C1CCCC1 |$_AP1;;;;;$|";
+            return "*C1CCCC1 "
+                   "|(-0.00118323,2.31331,;-0.000416,0.813313,;-1.21349,-0."
+                   "0689851,;-0.749235,-1.49533,;0.750765,-1.49457,;1.21356,-0."
+                   "0677437,),$_AP1;;;;;$|";
         case (RingTool::CYCLOPENTADIENE):
-            return "*C1=CCC=C1 |$_AP1;;;;;$|";
+            return "*C1C=CC=C1 "
+                   "|(-0.221326,3.16294,;-0.2265,1.66295,;0.983978,0.777089,;0."
+                   "515536,-0.647889,;-0.984455,-0.642716,;-1.44306,0.785459,),"
+                   "$_AP1;;;;;$|";
         case (RingTool::CYCLOHEXANE):
-            return "*C1CCCCC1 |$_AP1;;;;;;$|";
+            return "*C1CCCCC1 "
+                   "|(-0.0278384,2.57128,;-0.0115993,1.07137,;1.29548,0.335473,"
+                   ";1.31172,-1.16444,;0.0208788,-1.92846,;-1.2862,-1.19257,;-"
+                   "1.30244,0.307346,),$_AP1;;;;;;$|";
         case (RingTool::BENZENE):
-            return "*C1=CC=CC=C1 |$_AP1;;;;;;$|";
+            return "*C1=CC=CC=C1 "
+                   "|(-0.0278384,2.57128,;-0.0115993,1.07137,;1.29548,0.335473,"
+                   ";1.31172,-1.16444,;0.0208788,-1.92846,;-1.2862,-1.19257,;-"
+                   "1.30244,0.307346,),$_AP1;;;;;;$|";
         case (RingTool::CYCLOHEPTANE):
-            return "*C1CCCCCC1 |$_AP1;;;;;;;$|";
+            return "*C1CCCCCC1 "
+                   "|(0.00929483,2.82499,;0.00435952,1.325,;-1.34923,0.67862,;-"
+                   "1.68782,-0.782667,;-0.756448,-1.95849,;0.743544,-1.96342,;"
+                   "1.68263,-0.793756,;1.35366,0.669727,),$_AP1;;;;;;;$|";
         case (RingTool::CYCLOOCTANE):
-            return "*C1CCCCCCC1 |$_AP1;;;;;;;;$|";
+            return "*C1CCCCCCC1 "
+                   "|(-1.17747,2.84108,;-0.603174,1.45538,;0.896826,1.45567,;1."
+                   "9577,0.395223,;1.95799,-1.10478,;0.897542,-2.16565,;-0."
+                   "602457,-2.16594,;-1.66333,-1.10549,;-1.66362,0.394506,),$_"
+                   "AP1;;;;;;;;$|";
     }
     throw std::runtime_error("Unrecognized ring type");
 }
