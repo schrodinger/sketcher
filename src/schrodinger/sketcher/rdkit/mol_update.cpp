@@ -128,11 +128,8 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
 static void assign_CIP_labels(RDKit::RWMol& mol)
 {
     try {
-        // This number of calculation cycles takes:
-        // ~1s on a Linux Intel(R) Xeon(R) W-2123 CPU @ 3.60GHz.
-        // ~0.5s on a 2019 Mac Book Pro with a Intel i7 @ 2.6 GHz.
-        // ~1.5s using the WASM sketcher on either of these.
-        unsigned max_cycles = 1000000;
+        // Set in SHARED-11140
+        unsigned max_cycles = 2000000;
 
         RDKit::CIPLabeler::assignCIPLabels(mol, max_cycles);
     } catch (const RDKit::CIPLabeler::MaxIterationsExceeded&) {
