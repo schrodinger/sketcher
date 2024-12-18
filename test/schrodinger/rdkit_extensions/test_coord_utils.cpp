@@ -159,5 +159,98 @@ BOOST_AUTO_TEST_CASE(test_rescaling_mol_with_no_bonds)
     rescale_bond_length_if_needed(*mol);
 }
 
+/**
+ * Make sure that regenerating 2D coordinates discards bond wedging
+ * properties, so that we don't reapply wedging corresponding to
+ * the old conformation, which gets discarded.
+ */
+BOOST_AUTO_TEST_CASE(test_discard_old_wedging_on_2d_regeneration)
+{
+    // SHARED-10975
+    constexpr const char* molblock = R"CTAB(
+     RDKit          3D
+
+ 26 27  0  0  0  0  0  0  0  0999 V2000
+    0.4886   -1.1898   -2.1998 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.6361   -1.1405   -1.6715 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.9036   -1.9341   -0.2983 C   0  0  2  0  0  0  0  0  0  0  0  0
+   -0.5743   -2.5422   -0.1483 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.7359   -0.6903    0.8263 C   0  0  1  0  0  0  0  0  0  0  0  0
+    1.8767    0.1625    0.2408 N   0  0  0  0  0  0  0  0  0  0  0  0
+    3.1390   -0.4909    0.2100 C   0  0  0  0  0  0  0  0  0  0  0  0
+    3.2244   -1.6788    0.6472 O   0  0  0  0  0  0  0  0  0  0  0  0
+    4.3606    0.1086   -0.2929 C   0  0  0  0  0  0  0  0  0  0  0  0
+    4.4720    1.4604   -0.5711 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.6740    1.9302   -1.0510 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.7673    1.1295   -1.2679 C   0  0  0  0  0  0  0  0  0  0  0  0
+    6.6623   -0.2078   -0.9951 C   0  0  0  0  0  0  0  0  0  0  0  0
+    5.4599   -0.6852   -0.5133 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.4800    0.1032    0.2843 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -0.3167    1.1283   -0.3884 O   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.7758   -0.2774    0.5145 N   0  0  0  0  0  0  0  0  0  0  0  0
+   -2.9900    0.2574    0.1421 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -3.1827    1.3906   -0.6147 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.4677    1.8408   -0.9348 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.6550    2.9393   -1.6694 F   0  0  0  0  0  0  0  0  0  0  0  0
+   -5.5584    1.1469   -0.4905 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -5.4024    0.0225    0.2595 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -6.8380   -0.8217    0.8013 Cl  0  0  0  0  0  0  0  0  0  0  0  0
+   -4.1267   -0.4044    0.5639 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -4.0326   -1.5572    1.3321 O   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0
+  2  3  1  0
+  3  4  1  1
+  3  5  1  0
+  5  6  1  6
+  6  7  1  0
+  7  8  2  0
+  7  9  1  0
+  9 10  2  0
+ 10 11  1  0
+ 11 12  2  0
+ 12 13  1  0
+ 13 14  2  0
+  5 15  1  0
+ 15 16  2  0
+ 15 17  1  0
+ 17 18  1  0
+ 18 19  2  0
+ 19 20  1  0
+ 20 21  1  0
+ 20 22  2  0
+ 22 23  1  0
+ 23 24  1  0
+ 23 25  2  0
+ 25 26  1  0
+ 14  9  1  0
+ 25 18  1  0
+M  END)CTAB";
+
+    auto mol = to_rdkit(molblock, Format::MDL_MOLV2000);
+    BOOST_REQUIRE(mol->getNumConformers() == 1);
+
+    auto conf = mol->getConformer();
+    BOOST_REQUIRE(conf.is3D() == true);
+
+    auto has_wedging_props = [](const auto& mol) {
+        for (auto bond : mol.bonds()) {
+            if (bond->hasProp(RDKit::common_properties::_MolFileBondStereo) ||
+                bond->hasProp(RDKit::common_properties::_MolFileBondCfg)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    BOOST_REQUIRE(has_wedging_props(*mol) == true);
+
+    compute2DCoords(*mol);
+
+    conf = mol->getConformer();
+    BOOST_CHECK(conf.is3D() == false);
+
+    BOOST_CHECK(has_wedging_props(*mol) == false);
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

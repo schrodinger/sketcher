@@ -60,6 +60,19 @@ unsigned int compute2DCoords(RDKit::ROMol& mol,
         params.coordMap = &coord_map;
     }
 
+    // If we are generating a new 2D conformer, we don't want
+    // to keep the old bond wedging, as it is relative to the old
+    // conformation, which is overwritten by the new one.
+    for (auto bond : mol.bonds()) {
+        if (bond->hasProp(RDKit::common_properties::_MolFileBondStereo)) {
+            bond->clearProp(RDKit::common_properties::_MolFileBondStereo);
+            continue;
+        }
+        if (bond->hasProp(RDKit::common_properties::_MolFileBondCfg)) {
+            bond->clearProp(RDKit::common_properties::_MolFileBondCfg);
+        }
+    }
+
     return RDDepict::compute2DCoords(mol, params);
 }
 

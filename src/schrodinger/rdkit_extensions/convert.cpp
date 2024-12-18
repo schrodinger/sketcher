@@ -158,6 +158,9 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
                 rdk_mol.addBond(atom, dummy_atom, RDKit::Bond::SINGLE);
 
                 new_attachment_dummies.insert(dummy_idx);
+
+                RDKit::MolOps::setTerminalAtomCoords(rdk_mol, dummy_idx,
+                                                     atom->getIdx());
             }
             if (explicit_h_count != 0) {
                 atom->setNumExplicitHs(explicit_h_count - num_dummies);
@@ -167,16 +170,6 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
     }
 
     if (!new_attachment_dummies.empty()) {
-        // generate coordinates for only the new attachment point atoms
-        std::vector<unsigned int> frozen_ids;
-        for (auto atom : rdk_mol.atoms()) {
-            auto idx = atom->getIdx();
-            if (new_attachment_dummies.count(idx) == 0) {
-                frozen_ids.push_back(idx);
-            }
-        }
-        rdkit_extensions::compute2DCoords(rdk_mol, frozen_ids);
-
         RDKit::Chirality::reapplyMolBlockWedging(rdk_mol);
         RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);
         rdk_mol.updatePropertyCache(false);
