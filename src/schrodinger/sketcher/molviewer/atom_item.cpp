@@ -213,10 +213,9 @@ void AtomItem::updateCachedData()
     // merge all of the subrects with the predictive highlighting path to create
     // the shape and bounding rect
     m_shape = QPainterPath(m_predictive_highlighting_path);
+    m_shape.setFillRule(Qt::WindingFill);
     for (QRectF rect : m_subrects) {
-        QPainterPath rect_path;
-        rect_path.addRect(rect);
-        m_shape |= rect_path;
+        m_shape.addRect(rect);
     }
     m_bounding_rect = m_shape.boundingRect();
 }
