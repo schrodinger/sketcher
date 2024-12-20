@@ -796,6 +796,11 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
     if (mol.getNumAtoms() == 0) {
         return;
     }
+    if (mol.getNumAtoms() > MAX_NUM_ATOMS_FOR_IMPORT) {
+        throw std::runtime_error(
+            fmt::format("Cannot import molecules containing more than {} atoms",
+                        MAX_NUM_ATOMS_FOR_IMPORT));
+    }
 
     // Ensure the newly added mol has coords and necessary stereo information
     prepare_mol(mol);
@@ -815,6 +820,24 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
     doCommandUsingSnapshots(cmd_func, description, what_changed);
 }
 
+/**
+ * @return the total number of atoms in all of a reaction's products and
+ * reactants
+ */
+static unsigned int
+num_atoms_in_reaction(const RDKit::ChemicalReaction& reaction)
+{
+    auto sum_num_atoms = [](unsigned int num_atoms, RDKit::ROMOL_SPTR mol) {
+        return num_atoms + mol->getNumAtoms();
+    };
+    auto num_atoms =
+        std::accumulate(reaction.beginReactantTemplates(),
+                        reaction.endReactantTemplates(), 0u, sum_num_atoms);
+    return std::accumulate(reaction.beginProductTemplates(),
+                           reaction.endProductTemplates(), num_atoms,
+                           sum_num_atoms);
+}
+
 void MolModel::addReaction(RDKit::ChemicalReaction reaction)
 {
     if (!reaction.getNumReactantTemplates() &&
@@ -825,6 +848,11 @@ void MolModel::addReaction(RDKit::ChemicalReaction reaction)
     if (m_arrow.has_value()) {
         throw std::runtime_error(
             "Sketcher does not support more than one reaction.");
+    }
+    if (num_atoms_in_reaction(reaction) > MAX_NUM_ATOMS_FOR_IMPORT) {
+        throw std::runtime_error(
+            fmt::format("Cannot import reactions containing more than {} atoms",
+                        MAX_NUM_ATOMS_FOR_IMPORT));
     }
 
     for (auto mol : reaction.getReactants()) {
