@@ -1127,6 +1127,20 @@ BOOST_AUTO_TEST_CASE(test_addMol_attachment_points)
     BOOST_TEST(get_attachment_point_number(ap2_atom) == 4);
 }
 
+/**
+ * Make sure that we can load molecules of up to MAX_NUM_ATOMS_FOR_IMPORT size,
+ * but not larger
+ */
+BOOST_AUTO_TEST_CASE(test_addMol_size_cutoff)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, std::string(MAX_NUM_ATOMS_FOR_IMPORT, 'C'));
+    BOOST_CHECK_THROW(
+        import_mol_text(&model, std::string(MAX_NUM_ATOMS_FOR_IMPORT + 1, 'C')),
+        std::runtime_error);
+}
+
 BOOST_AUTO_TEST_CASE(test_clear)
 {
     QUndoStack undo_stack;
@@ -2537,13 +2551,25 @@ BOOST_AUTO_TEST_CASE(test_getReactionForExport)
 }
 
 /**
- * Make sure that addReaction allows us to add a single reaction
+ * Make sure that addReaction allows us to add a single reaction that contains
+ * up to MAX_NUM_ATOMS_FOR_IMPORT atoms
  */
 BOOST_AUTO_TEST_CASE(test_addReaction)
 {
+    auto big_reactant = std::string(MAX_NUM_ATOMS_FOR_IMPORT / 4, 'C');
+    auto big_product = std::string(MAX_NUM_ATOMS_FOR_IMPORT / 2, 'C');
+    auto big_reaction = big_reactant + "." + big_reactant + ">>" + big_product;
+    // sanity check in case MAX_NUM_ATOMS_FOR_IMPORT isn't divisible by 4
+    BOOST_REQUIRE(big_reactant.size() * 2 + big_product.size() ==
+                  MAX_NUM_ATOMS_FOR_IMPORT);
+
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
-    import_reaction_text(&model, "CC.CC>>CCCC");
+    // reaction contains one too many atoms
+    BOOST_CHECK_THROW(import_reaction_text(&model, big_reaction + "C"),
+                      std::runtime_error);
+    // reaction contains the exact maximum number of atoms
+    import_reaction_text(&model, big_reaction);
     // we can't have two reactions at once
     BOOST_CHECK_THROW(import_reaction_text(&model, "C.C>>CC"),
                       std::runtime_error);
