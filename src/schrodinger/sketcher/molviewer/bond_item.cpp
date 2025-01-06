@@ -732,7 +732,7 @@ manually_apply_clipping(std::vector<ToPaint> to_clip,
             }
         }
 
-        clipped.emplace_back(cur_to_clip.pen, clipped_lines, clipped_polygons);
+        clipped.push_back({cur_to_clip.pen, clipped_lines, clipped_polygons});
     }
     return clipped;
 }
