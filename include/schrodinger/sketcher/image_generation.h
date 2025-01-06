@@ -90,14 +90,8 @@ struct RenderOptions {
 
     // Note that the following settings are only fully supported when using
     // molviewer
-
     CarbonLabels carbon_labels = CarbonLabels::NONE;
     ColorScheme color_scheme = ColorScheme::DEFAULT;
-
-    // when there's a bond or atom annotation, should qpainter use clipping
-    // regions to draw bonds partially transparent behind them? This is disabled
-    // when exporting to SVG, as QSVGGenerator doesn't support clipping regions.
-    bool allow_qpainter_bond_clipping = true;
 };
 
 /**

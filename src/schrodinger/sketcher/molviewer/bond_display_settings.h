@@ -33,11 +33,6 @@ class BondDisplaySettings
     /// Whether to display stereochemistry labels when present
     bool m_stereo_labels_shown = true;
 
-    /// Whether to draw the bond using clipping regions when there are
-    /// annotations. Clipping regions are used to draw the bond partially
-    /// transparent behind atom and bond annotations.
-    bool m_allow_qpainter_clipping = true;
-
     /**
      * Scale bond width by the specified value.  Note that double bond spacing
      * and hash spacing will also be affected by this scaling.

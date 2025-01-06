@@ -374,8 +374,6 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
     setAtomDisplaySettings(atom_display_settings);
 
     BondDisplaySettings bond_display_settings(m_bond_display_settings);
-    bond_display_settings.m_allow_qpainter_clipping =
-        opts.allow_qpainter_bond_clipping;
     bond_display_settings.setScale(opts.bond_width_scale);
     bond_display_settings.m_color =
         atom_display_settings.getAtomColor(static_cast<int>(Element::C));
