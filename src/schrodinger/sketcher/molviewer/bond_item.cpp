@@ -5,6 +5,21 @@
 #include <cstdlib>
 #include <unordered_set>
 
+#ifdef WIN32
+// In Boost 1.81, boost::geometry contains a Windows-only
+// "#pragma warning ( pop )" that doesn't have a corresponding push. This
+// triggers a compiler warning that gets treated as an error, so we need to
+// disable that warning temporarily without using push/pop (otherwise Boost's
+// extra pop will pop our push, and then our pop will generate the warning).
+// This issue has been fixed in Boost 1.87.
+#pragma warning(disable : 4193)
+#endif
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/geometries.hpp>
+#ifdef WIN32
+#pragma warning(default : 4193)
+#endif
+
 #include <rdkit/Geometry/point.h>
 #include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/QueryOps.h>
@@ -13,6 +28,7 @@
 #include <QMarginsF>
 #include <QPainter>
 #include <QPointF>
+#include <QSvgGenerator>
 #include <QTransform>
 #include <Qt>
 #include <QtGlobal>
@@ -24,6 +40,13 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
+
+namespace bg = boost::geometry;
+using point_t = bg::model::d2::point_xy<double>;
+using polygon_t = bg::model::polygon<point_t>;
+using mpolygon_t = bg::model::multi_polygon<polygon_t>;
+using linestring_t = bg::model::linestring<point_t>;
+using mlinestring_t = bg::model::multi_linestring<linestring_t>;
 
 namespace schrodinger
 {
@@ -618,29 +641,13 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
             annotation_region.addPolygon(mapRectFromItem(
                 &m_end_item, m_end_item.getChiralityLabelRect()));
         }
-        if (m_settings.m_allow_qpainter_clipping) {
-            /* paint the bond twice to make the portion of the bond behind the
-             * annotation label partially transparent.*/
-            painter->setClipPath(shape() - annotation_region);
-            paintBondLinesAndPolygons(painter);
-            painter->setOpacity(OPACITY_OF_BOND_BEHIND_LABEL);
-            painter->setClipPath(annotation_region);
-            paintBondLinesAndPolygons(painter);
-
-        } else {
-            // paint the bond with partially transparent rectangle of background
-            // color behind the annotation. This is used when clipping is not an
-            // option (e.g. for SVG export until Qt implements clipping regions
-            // for SVG)
-            paintBondLinesAndPolygons(painter);
-            QColor annotation_background_color =
-                Qt::white; // default background color
-            annotation_background_color.setAlphaF(1 -
-                                                  OPACITY_OF_BOND_BEHIND_LABEL);
-            painter->setBrush(annotation_background_color);
-            painter->setPen(Qt::NoPen);
-            painter->drawPath(annotation_region);
-        }
+        /* paint the bond twice to make the portion of the bond behind the
+         * annotation label partially transparent.*/
+        painter->setClipPath(shape() - annotation_region);
+        paintBondLinesAndPolygons(painter);
+        painter->setOpacity(OPACITY_OF_BOND_BEHIND_LABEL);
+        painter->setClipPath(annotation_region);
+        paintBondLinesAndPolygons(painter);
         painter->restore();
         // paint the annotation
         painter->save();
@@ -652,6 +659,82 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     } else {
         paintBondLinesAndPolygons(painter);
     }
+}
+
+static polygon_t qpolygon_to_boost_polygon(const QPolygonF& qpolygon)
+{
+    polygon_t polygon;
+    for (auto qpoint : qpolygon) {
+        polygon.outer().emplace_back(qpoint.x(), qpoint.y());
+    }
+    // Boost expects the polygon to be clockwise, so reverse it if it's not
+    if (bg::area(polygon) < 0) {
+        bg::reverse(polygon);
+    }
+    return polygon;
+}
+
+static QPolygonF boost_polygon_to_qpolygon(const polygon_t& polygon)
+{
+    QPolygonF qpolygon;
+    for (auto point : polygon.outer()) {
+        qpolygon.emplace_back(point.x(), point.y());
+    }
+    return qpolygon;
+}
+
+/**
+ * Manually apply clipping to the lines and polygons to be painted. We use this
+ * function when rendering SVGs since QSvgGenerator doesn't yet support QPainter
+ * clipping.  Note that this method doesn't attempt to correct the QPen caps, so
+ * the ends of the clipped line will be painted as rounded instead of flat.
+ *
+ * Also note that SVG clipping support is planned in Qt.  See the following Qt
+ * tickets for more information:
+ *   - https://bugreports.qt.io/browse/QTBUG-109067
+ *   - https://bugreports.qt.io/browse/QTBUG-115223
+ *   - https://bugreports.qt.io/browse/QTBUG-118854
+ */
+static std::vector<ToPaint>
+manually_apply_clipping(std::vector<ToPaint> to_clip,
+                        QList<QPolygonF> clipping_qpolygons)
+{
+    mpolygon_t clipping_polygons;
+    for (auto qpolygon : clipping_qpolygons) {
+        clipping_polygons.push_back(qpolygon_to_boost_polygon(qpolygon));
+    }
+
+    std::vector<ToPaint> clipped;
+    for (auto cur_to_clip : to_clip) {
+        // clip the lines
+        std::vector<QLineF> clipped_lines;
+        for (auto qline_to_clip : cur_to_clip.lines) {
+            linestring_t line_to_clip{{qline_to_clip.x1(), qline_to_clip.y1()},
+                                      {qline_to_clip.x2(), qline_to_clip.y2()}};
+            std::vector<linestring_t> cur_clipped;
+            bg::intersection(line_to_clip, clipping_polygons, cur_clipped);
+            for (auto cur_fragment : cur_clipped) {
+                clipped_lines.emplace_back(
+                    cur_fragment[0].x(), cur_fragment[0].y(),
+                    cur_fragment[1].x(), cur_fragment[1].y());
+            }
+        }
+
+        // clip the polygons
+        std::vector<QPolygonF> clipped_polygons;
+        for (auto qpolygon_to_clip : cur_to_clip.polygons) {
+            auto polygon_to_clip = qpolygon_to_boost_polygon(qpolygon_to_clip);
+            std::vector<polygon_t> cur_clipped;
+            bg::intersection(polygon_to_clip, clipping_polygons, cur_clipped);
+            for (auto cur_polygon : cur_clipped) {
+                clipped_polygons.push_back(
+                    boost_polygon_to_qpolygon(cur_polygon));
+            }
+        }
+
+        clipped.emplace_back(cur_to_clip.pen, clipped_lines, clipped_polygons);
+    }
+    return clipped;
 }
 
 void BondItem::paintBondLinesAndPolygons(QPainter* painter)
@@ -680,14 +763,25 @@ void BondItem::paintBondLinesAndPolygons(QPainter* painter)
         brush.setColor(colors.at(i));
         painter->setBrush(brush);
 
-        for (auto to_paint : m_to_paint) {
-            auto pen = to_paint.pen;
+        // QSvgGenerator doesn't support clipping, so if we need clipping when
+        // rendering an SVG, we manually clip the lines and polygons before we
+        // paint them.
+        std::vector<ToPaint> to_paint(m_to_paint);
+        if (painter->hasClipping() &&
+            dynamic_cast<QSvgGenerator*>(painter->device())) {
+            to_paint = manually_apply_clipping(
+                m_to_paint, painter->clipPath().toSubpathPolygons());
+            painter->setClipping(false);
+        }
+
+        for (auto cur_to_paint : to_paint) {
+            auto pen = cur_to_paint.pen;
             pen.setColor(colors.at(i));
             painter->setPen(pen);
-            for (auto line : to_paint.lines) {
+            for (auto line : cur_to_paint.lines) {
                 painter->drawLine(line);
             }
-            for (auto polygon : to_paint.polygons) {
+            for (auto polygon : cur_to_paint.polygons) {
                 painter->drawPolygon(polygon);
             }
         }
