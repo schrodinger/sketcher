@@ -21,7 +21,6 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
-#include "schrodinger/sketcher/rdkit/queries.h"
 
 namespace schrodinger
 {
@@ -182,17 +181,16 @@ QString AtomItem::getQueryLabel() const
     QString query_text;
     auto props = read_properties_from_atom(m_atom);
     auto query_props = *static_cast<const AtomQueryProperties*>(props.get());
+    if (query_props.query_type == QueryType::SMARTS) {
+        query_text = QString("\"%1\"").arg(
+            QString::fromStdString(query_props.smarts_query));
 
-    // if this is an allowed or disallowed list with no added features, we can
-    // use a simplified label, otherwise we need to show the SMARTS
-    auto no_advanced_props = AtomQueryProperties();
-    no_advanced_props.query_type = query_props.query_type;
-    no_advanced_props.allowed_list = query_props.allowed_list;
-    bool has_advanced_props = query_props != no_advanced_props;
+        // if the string is too long, truncate it and add an ellipsis
+        query_text = m_fonts.m_element_list_fm.elidedText(
+            query_text, Qt::ElideRight, MAX_SMARTS_LABEL_LENGTH);
+    } else if (query_props.query_type == QueryType::ALLOWED_LIST ||
+               query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
 
-    if ((query_props.query_type == QueryType::ALLOWED_LIST ||
-         query_props.query_type == QueryType::NOT_ALLOWED_LIST) &&
-        !has_advanced_props) {
         auto list = join_all_atomic_symbols(query_props.allowed_list);
         if (!list.isEmpty()) {
             if (query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
@@ -200,15 +198,6 @@ QString AtomItem::getQueryLabel() const
             }
             query_text = QString("[%1]").arg(list);
         }
-    } else {
-        auto smarts = (query_props.query_type == QueryType::SMARTS
-                           ? query_props.smarts_query
-                           : get_atom_smarts(m_atom));
-        query_text = QString("\"%1\"").arg(QString::fromStdString(smarts));
-
-        // if the string is too long, truncate it and add an ellipsis
-        query_text = m_fonts.m_element_list_fm.elidedText(
-            query_text, Qt::ElideRight, MAX_SMARTS_LABEL_LENGTH);
     }
     return query_text;
 }
@@ -229,7 +218,6 @@ AtomItem::determineLabelType() const
     } else if (m_atom->getAtomicNum() !=
                    rdkit_extensions::DUMMY_ATOMIC_NUMBER &&
                m_atom->hasProp(RDKit::common_properties::atomLabel)) {
-
         // if there's no user-set, but an atomLabel is present, always
         // display that on non-dummy atoms. Query atoms are dealt with below
         main_label_text =
@@ -245,10 +233,8 @@ AtomItem::determineLabelType() const
             squiggle_path = getWavyLine();
         } else if (auto r_group_num =
                        rdkit_extensions::get_r_group_number(m_atom)) {
-
             main_label_text = "R" + std::to_string(r_group_num.value());
         } else if (m_atom->hasProp(RDKit::common_properties::atomLabel)) {
-
             // display the atomLabel if present. Note that this option needs to
             // go after R-groups and attachment points because they both use the
             // atomLabel property but we don't want to display it for them
@@ -256,13 +242,11 @@ AtomItem::determineLabelType() const
                 RDKit::common_properties::atomLabel);
         } else if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
                        m_atom)) {
-
             // dummy atoms for variable attachment bonds aren't shown, but we
             // still need to set label_is_visible to false here so that the
             // bound BondItem knows not to make space for the "*" label
             label_is_visible = false;
         } else if (m_atom->hasQuery()) {
-
             // this needs to be after R groups and attachment points, since it
             // would trigger for both but we need to special-case them
             label_is_visible = false;
@@ -271,12 +255,10 @@ AtomItem::determineLabelType() const
                 query_label_text = getQueryLabel();
             }
         } else {
-
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();
         }
     } else {
-
         // a "normal" atom, i.e. an atom that represents an element
         valence_error_is_visible = determineValenceErrorIsVisible();
         label_is_visible =
