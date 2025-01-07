@@ -40,7 +40,7 @@ void get_ring_bond_count_of_query(const RDKit::Atom::QUERYATOM_QUERY& query,
 void get_min_ring_size_of_query(const RDKit::Atom::QUERYATOM_QUERY& query,
                                 std::set<unsigned>& min_ring_size);
 
-std::string get_atom_smarts(const RDKit::Atom* atom);
+std::string get_atom_smarts(RDKit::Atom* atom);
 
 void set_element_query(RDKit::Atom* atom, int atomic_number,
                        bool has_aromaticity, bool is_aromatic);

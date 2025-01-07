@@ -200,7 +200,7 @@ void get_min_ring_size_of_query(const RDKit::Atom::QUERYATOM_QUERY& query,
     get_query_values(query, min_ring_size, is_negated, is_min_ring_size_query);
 }
 
-std::string get_atom_smarts(const RDKit::Atom* atom)
+std::string get_atom_smarts(RDKit::Atom* atom)
 {
     return RDKit::SmartsWrite::GetAtomSmarts(atom);
 }
