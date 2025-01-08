@@ -34,6 +34,7 @@ class TestAtomItem : public AtomItem
   public:
     using AtomItem::determineValenceErrorIsVisible;
     using AtomItem::findHsDirection;
+    using AtomItem::getQueryLabel;
     using AtomItem::m_bounding_rect;
     using AtomItem::m_charge_and_radical_label_rect;
     using AtomItem::m_charge_and_radical_label_text;
@@ -267,6 +268,35 @@ BOOST_AUTO_TEST_CASE(test_enhanced_chirality_labels)
     for (unsigned int i = 0; i < atom_items.size(); ++i) {
         BOOST_TEST(atom_items.at(i)->m_chirality_label_text.toStdString() ==
                    labels.at(i));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_get_query_label)
+{
+    /*check that setting an advanced property on an allowed list switches the
+     * query label to a smarts*/
+    auto props = std::make_shared<AtomQueryProperties>();
+    props->query_type = QueryType::ALLOWED_LIST;
+    props->allowed_list = {Element::C, Element::N};
+
+    std::vector<std::string> labels = {"[C,N]", "\"[#6,#7;X2]\""};
+    for (unsigned int i = 0; i < labels.size(); ++i) {
+        if (i == 1) {
+            props->num_connections = 2;
+        }
+        auto test_scene = TestScene::getScene();
+        auto [atom, _enh_stereo] = create_atom_with_properties(props);
+        std::shared_ptr<RDKit::Atom::QUERYATOM_QUERY> query;
+        query.reset(atom->getQuery()->copy());
+        test_scene->m_mol_model->addAtom(query, {0, 0, 0});
+        auto model_atom = test_scene->m_mol_model->getMol()->getAtomWithIdx(0);
+        auto atom_item = std::make_shared<TestAtomItem>(
+            const_cast<RDKit::Atom*>(model_atom), test_scene->m_fonts,
+            *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
+        auto label = atom_item->getQueryLabel().toStdString();
+        // on some platforms the label could be elided, let's check up to the
+        // 6th character
+        BOOST_TEST(label.substr(0, 6) == labels.at(i).substr(0, 6));
     }
 }
 
