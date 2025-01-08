@@ -5,6 +5,7 @@
 #include <QLineEdit>
 #include <QString>
 #include <QStyle>
+#include <QStyleOptionSpinBox>
 #include <QToolButton>
 
 #include <schrodinger/sketcher/molviewer/constants.h>
@@ -33,7 +34,6 @@ get_style_sheet_to_make_space_for_clear_btn(const QStyle* const style)
 
 BlankableSpinBox::BlankableSpinBox(QWidget* parent) : QSpinBox(parent)
 {
-    setButtonSymbols(QSpinBox::NoButtons);
 
     m_clear_btn = new QToolButton(this);
 #ifdef EMSCRIPTEN
@@ -45,7 +45,7 @@ BlankableSpinBox::BlankableSpinBox(QWidget* parent) : QSpinBox(parent)
     m_clear_btn->setIcon(QIcon(LINE_EDIT_CLEAR_ICON_PATH));
 #endif
     m_clear_btn->setCursor(Qt::ArrowCursor);
-    m_clear_btn->setStyleSheet("QToolButton { border: none; padding: 0px; }");
+
     updateClearButtonVisibility();
     connect(m_clear_btn, &QToolButton::clicked, this, &QSpinBox::clear);
     connect(this, &QSpinBox::textChanged, this,
@@ -94,11 +94,21 @@ void BlankableSpinBox::updateClearButtonVisibility()
 
 void BlankableSpinBox::resizeEvent(QResizeEvent* event)
 {
+    // The clear button needs to be moved to the left if the arrows are present.
+    auto space_for_arrows = 0;
+    if (buttonSymbols() == QAbstractSpinBox::UpDownArrows) {
+        QStyleOptionSpinBox opt;
+        space_for_arrows =
+            style()
+                ->subControlRect(QStyle::CC_SpinBox, &opt, QStyle::SC_SpinBoxUp)
+                .width();
+    }
     QSpinBox::resizeEvent(event);
     auto size_hint = m_clear_btn->sizeHint();
     auto frame_width = style()->pixelMetric(QStyle::PM_DefaultFrameWidth);
     auto sb_rect = rect();
-    auto x = sb_rect.right() - frame_width - size_hint.width();
+    auto x =
+        sb_rect.right() - frame_width - size_hint.width() - space_for_arrows;
     auto y = (sb_rect.bottom() + 1 - size_hint.height()) / 2;
     m_clear_btn->move(x, y);
 }
@@ -159,7 +169,6 @@ QAbstractSpinBox::StepEnabled BlankableSpinBox::stepEnabled() const
 
 UnblankableSpinBox::UnblankableSpinBox(QWidget* parent) : QSpinBox(parent)
 {
-    setButtonSymbols(QSpinBox::NoButtons);
     auto line_edit_style_sheet =
         get_style_sheet_to_make_space_for_clear_btn(style());
     lineEdit()->setStyleSheet(line_edit_style_sheet);
