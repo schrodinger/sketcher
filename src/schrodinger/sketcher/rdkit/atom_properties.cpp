@@ -646,6 +646,12 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
         // this could also be an R-group, but that's handled in
         // read_properties_from_atom since the R-group number is stored in an
         // atom property, not in the query
+    } else if (desc == "AtomNumRadicalElectrons") {
+        throw_if_negated(query);
+        auto val = as_unsigned(get_value_for_equality_query(query));
+        check_value_for_conflicts(val, query_props->unpaired_electrons, desc,
+                                  seen_descriptions);
+        query_props->unpaired_electrons = val;
     } else if (desc == "AtomRingBondCount") {
         throw_if_negated(query);
         auto val = as_unsigned(get_value_for_equality_query(query));
