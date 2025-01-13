@@ -28,6 +28,25 @@ namespace schrodinger
 namespace sketcher
 {
 
+bool has_enhanced_query_properties(const RDKit::Atom* atom)
+{
+    if (!atom->hasQuery()) {
+        return false;
+    }
+    auto no_advanced_props = AtomQueryProperties();
+    auto props = read_properties_from_atom(atom);
+    auto query_props = *static_cast<const AtomQueryProperties*>(props.get());
+    no_advanced_props.query_type = query_props.query_type;
+    no_advanced_props.allowed_list = query_props.allowed_list;
+    no_advanced_props.charge = query_props.charge;
+    no_advanced_props.unpaired_electrons = query_props.unpaired_electrons;
+    no_advanced_props.isotope = query_props.isotope;
+    no_advanced_props.enhanced_stereo = query_props.enhanced_stereo;
+    no_advanced_props.element = query_props.element;
+
+    return query_props != no_advanced_props;
+}
+
 /**
  * @return a bounding rect of the given label for the given font metrics
  */
@@ -133,9 +152,9 @@ void AtomItem::updateCachedData()
         get_predictive_highlighting_path_for_atom(m_atom);
     m_squiggle_pen.setWidthF(m_settings.m_squiggle_pen_width);
 
-    bool needs_additional_labels;
+    bool needs_additional_labels, show_Hs;
     std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,
-             m_valence_error_is_visible, needs_additional_labels,
+             m_valence_error_is_visible, needs_additional_labels, show_Hs,
              m_query_label_text) = determineLabelType();
     if (m_label_is_visible) {
         m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
@@ -145,7 +164,9 @@ void AtomItem::updateCachedData()
         if (needs_additional_labels) {
             updateIsotopeLabel();
             updateChargeAndRadicalLabel();
-            updateHsLabel();
+            if (show_Hs) {
+                updateHsLabel();
+            }
             updateMappingLabel();
             positionLabels();
         }
@@ -212,7 +233,7 @@ QString AtomItem::getQueryLabel() const
     }
     return query_text;
 }
-std::tuple<QString, QPainterPath, bool, bool, bool, QString>
+std::tuple<QString, QPainterPath, bool, bool, bool, bool, QString>
 AtomItem::determineLabelType() const
 {
     std::string main_label_text = "";
@@ -220,6 +241,7 @@ AtomItem::determineLabelType() const
     bool valence_error_is_visible = false;
     bool label_is_visible = true;
     bool needs_additional_labels = false;
+    bool H_labels_are_visible = true;
     QString query_label_text;
 
     // if there's a user-set display label, always use that.
@@ -262,7 +284,6 @@ AtomItem::determineLabelType() const
             // bound BondItem knows not to make space for the "*" label
             label_is_visible = false;
         } else if (m_atom->hasQuery()) {
-
             // this needs to be after R groups and attachment points, since it
             // would trigger for both but we need to special-case them
             label_is_visible = false;
@@ -271,12 +292,26 @@ AtomItem::determineLabelType() const
                 query_label_text = getQueryLabel();
             }
         } else {
-
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();
         }
-    } else {
+    } else if (m_atom->hasQuery()) {
 
+        main_label_text = m_atom->getSymbol();
+        needs_additional_labels = true;
+        // hide implicit Hs on queries
+        H_labels_are_visible = false;
+
+        // if advanced properties are present on the query, show the SMARTS
+        if (has_enhanced_query_properties(m_atom)) {
+            label_is_visible = false;
+            needs_additional_labels = false;
+            auto props = read_properties_from_atom(m_atom);
+            if (props->isQuery()) {
+                query_label_text = getQueryLabel();
+            }
+        }
+    } else {
         // a "normal" atom, i.e. an atom that represents an element
         valence_error_is_visible = determineValenceErrorIsVisible();
         label_is_visible =
@@ -286,8 +321,8 @@ AtomItem::determineLabelType() const
             needs_additional_labels = true;
         }
     }
-    // if the atom has no bonds and we are showing the element list label, show
-    // an asterisk as the main label
+    // if the atom has no bonds and we are showing the element list or smarts
+    // label, show an asterisk as the main label
     if (!query_label_text.isEmpty() && m_atom->getDegree() == 0 &&
         !label_is_visible) {
         main_label_text = "*";
@@ -299,6 +334,7 @@ AtomItem::determineLabelType() const
             label_is_visible,
             valence_error_is_visible,
             needs_additional_labels,
+            H_labels_are_visible,
             query_label_text};
 }
 

@@ -300,5 +300,18 @@ BOOST_AUTO_TEST_CASE(test_get_query_label)
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_no_Hs_on_queries)
+{
+    /*check that setting a query results in an atomic label without that shows
+     * the element without any implicit Hs*/
+    auto [atom_item, test_scene] = createAtomItem("[#6+]");
+    BOOST_TEST(atom_item->m_main_label_text == "C");
+    BOOST_TEST(!atom_item->m_main_label_rect.isNull());
+    BOOST_TEST(!atom_item->m_charge_and_radical_label_rect.isNull());
+    BOOST_TEST(atom_item->m_charge_and_radical_label_text == "+");
+    BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
+    BOOST_TEST(atom_item->m_H_label_rect.isNull());
+}
+
 } // namespace sketcher
 } // namespace schrodinger

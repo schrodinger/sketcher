@@ -202,11 +202,13 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      *   - whether the valence error should be visible
      *   - whether this atom needs additional labels (e.g. charge label, isotope
      *     label, Hs label, etc.)
+     *   - whether Hs labels should be displayed when the previous parameter is
+     *     true (e.g. queries show additional labels but not Hs)
      *   - the text to display for queries. This is displayed on a separate
      *     label next to the atom. When this text is shown, the main label is
      *     hidden, unless the atom has no bonds, in which case we show an "*"
      */
-    std::tuple<QString, QPainterPath, bool, bool, bool, QString>
+    std::tuple<QString, QPainterPath, bool, bool, bool, bool, QString>
     determineLabelType() const;
 
     /**
