@@ -11,7 +11,6 @@
 
 #include <rdkit/GraphMol/RWMol.h>
 
-#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -22,6 +21,8 @@
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+
+using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
@@ -36,17 +37,18 @@ get_draw_fragment_scene_tool(const RingTool& ring_tool, const Fonts& fonts,
 {
     std::string smiles = get_smiles_for_ring_tool(ring_tool);
     return get_draw_fragment_scene_tool(smiles, fonts, atom_display_settings,
-                                        bond_display_settings, scene,
-                                        mol_model);
+                                        bond_display_settings, scene, mol_model,
+                                        Format::EXTENDED_SMILES);
 }
 
 std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
                              const AtomDisplaySettings& atom_display_settings,
                              const BondDisplaySettings& bond_display_settings,
-                             Scene* scene, MolModel* mol_model)
+                             Scene* scene, MolModel* mol_model,
+                             const Format format)
 {
-    auto mol = rdkit_extensions::to_rdkit(text_mol);
+    auto mol = rdkit_extensions::to_rdkit(text_mol, format);
     prepare_mol(*mol);
     return std::make_shared<DrawFragmentSceneTool>(
         *mol, fonts, atom_display_settings, bond_display_settings, scene,
