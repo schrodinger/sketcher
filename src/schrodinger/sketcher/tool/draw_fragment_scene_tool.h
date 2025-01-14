@@ -11,11 +11,14 @@
 #include <QGraphicsItem>
 #include <QGraphicsItemGroup>
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
 #include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
+
+using schrodinger::rdkit_extensions::Format;
 
 class QPointF;
 
@@ -209,7 +212,9 @@ class SKETCHER_API DrawFragmentSceneTool : public StandardSceneToolBase
 
 /**
  * @return a scene tool for drawing the specified ring.  See the
- * DrawFragmentSceneTool constructor for parameter documentation.
+ * DrawFragmentSceneTool constructor for additional parameter documentation.
+ *
+ * @param ring_tool The ring to use for the fragment
  */
 std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const RingTool& ring_tool, const Fonts& fonts,
@@ -219,7 +224,10 @@ get_draw_fragment_scene_tool(const RingTool& ring_tool, const Fonts& fonts,
 
 /**
  * @return a scene tool for drawing the specified molecule.  See the
- * DrawFragmentSceneTool constructor for parameter documentation.
+ * DrawFragmentSceneTool constructor for additional parameter documentation.
+ *
+ * @param text_mol The molecule to use for the fragment
+ * @param format The format that text_mol is in
  *
  * @overload
  */
@@ -227,7 +235,8 @@ std::shared_ptr<DrawFragmentSceneTool>
 get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
                              const AtomDisplaySettings& atom_display_settings,
                              const BondDisplaySettings& bond_display_settings,
-                             Scene* scene, MolModel* mol_model);
+                             Scene* scene, MolModel* mol_model,
+                             const Format format = Format::AUTO_DETECT);
 
 /**
  * @return the appropriate SMILES string for the specified ring tool
