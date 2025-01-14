@@ -36,6 +36,11 @@ constexpr int SIDECHAIN_IDX = 2;
 constexpr int MIN_ATTCHPTS = 2;
 constexpr auto NO_ATTACHMENT = std::numeric_limits<unsigned int>::max();
 
+// std::map to allow sequential/ordered iteration
+using ChainsAndResidues =
+    std::map<std::string,
+             std::map<std::pair<int, std::string>, std::vector<unsigned int>>>;
+
 // attachment points 1 and 2 are backbone attachment points
 // and 3 is the side chain attachment point
 const std::string GENERIC_AMINO_ACID_QUERY =
@@ -363,10 +368,8 @@ void remove_waters(RDKit::RWMol& mol)
     mol.commitBatchEdit();
 }
 
-void find_chains_and_residues(
-    const RDKit::ROMol& mol,
-    std::map<std::string, std::map<int, std::vector<unsigned int>>>&
-        chains_and_residues)
+void find_chains_and_residues(const RDKit::ROMol& mol,
+                              ChainsAndResidues& chains_and_residues)
 {
     // Find all chains and residues in the molecule
     for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
@@ -375,13 +378,16 @@ void find_chains_and_residues(
             atom->getMonomerInfo());
         const auto chain_id = res_info->getChainId();
         const auto res_num = res_info->getResidueNumber();
-        chains_and_residues[chain_id][res_num].push_back(i);
+        const auto ins_code = res_info->getInsertionCode();
+        chains_and_residues[chain_id][std::make_pair(res_num, ins_code)]
+            .push_back(i);
     }
 }
 
 std::string get_monomer_smiles(RDKit::ROMol& mol,
                                const std::vector<unsigned int>& atom_idxs,
-                               int current_res, bool end_of_chain)
+                               const std::pair<int, std::string>& current_key,
+                               int res_num, bool end_of_chain)
 {
     // Determine the atoms in current_res that connect to adjacent residues
     std::vector<std::pair<int, int>> attch_idxs; // adjacent res num, atom_idx
@@ -391,8 +397,9 @@ std::string get_monomer_smiles(RDKit::ROMol& mol,
             const auto res_info =
                 dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
                     neigh->getMonomerInfo());
-            const auto res_num = res_info->getResidueNumber();
-            if (res_num != current_res) {
+            const auto key = std::make_pair(res_info->getResidueNumber(),
+                                            res_info->getInsertionCode());
+            if (key != current_key) {
                 // neighbor is in different residue, this will be an attachment
                 // point
                 attch_idxs.push_back({res_num, at->getIdx()});
@@ -411,7 +418,7 @@ std::string get_monomer_smiles(RDKit::ROMol& mol,
     // For now, all monomers have at least attachment points 1 and 2 so
     // that backbone bonds can be formed (except the beginning monomer)
     // TODO: non-backbone linkages and attachment points, see SHARED-10995
-    int current_attchpt = (current_res == 1) ? 2 : 1;
+    int current_attchpt = (res_num == 1) ? 2 : 1;
     static constexpr bool take_ownership = true;
     static constexpr bool update_label = true;
     for (const auto& [_, ref_idx] : attch_idxs) {
@@ -463,8 +470,7 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
     }
 
     // Map chain_id -> {residue mols}
-    std::map<std::string, std::map<int, std::vector<unsigned int>>>
-        chains_and_residues;
+    ChainsAndResidues chains_and_residues;
     find_chains_and_residues(mol, chains_and_residues);
 
     // Monomer database connection to verify monomers and get HELM info
@@ -495,10 +501,9 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
         std::string helm_chain_id = fmt::format("{}{}", to_string(chain_type),
                                                 ++chain_counts[chain_type]);
         int last_monomer = -1;
-        size_t count = 0; // not always the same as res_num, sometimes res_num
-                          // doesn't start at 1
-        for (const auto& [res_num, atom_idxs] : residues) {
-            ++count;
+        // Assuming residues are ordered correctly
+        size_t res_num = 1;
+        for (const auto& [key, atom_idxs] : residues) {
             const auto res_info =
                 dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
                     mol.getAtomWithIdx(atom_idxs[0])->getMonomerInfo());
@@ -535,9 +540,9 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
                     *cg_mol, std::string{backup_res_table.at(res_name)},
                     res_num, helm_chain_id);
             } else {
-                bool end_of_chain = (count == residues.size());
-                auto smiles =
-                    get_monomer_smiles(mol, atom_idxs, res_num, end_of_chain);
+                bool end_of_chain = res_num == residues.size();
+                auto smiles = get_monomer_smiles(mol, atom_idxs, key, res_num,
+                                                 end_of_chain);
                 this_monomer = add_monomer(*cg_mol, smiles, res_num,
                                            helm_chain_id, MonomerType::SMILES);
             }
@@ -548,6 +553,7 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
                                BACKBONE_LINKAGE);
             }
             last_monomer = this_monomer;
+            ++res_num;
         }
     }
 
