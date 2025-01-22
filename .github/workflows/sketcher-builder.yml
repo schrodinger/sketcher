@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create and activate virtualenv
-        if: matrix.build-output != 'wasm'
+        if: matrix.os == 'macos-latest'
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -77,7 +77,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
 
       - name: Fetch zstd
-        if: matrix.build-output != 'wasm'
+        if: matrix.os == 'macos-latest'
         id: fetch-zstd
         uses: ./.github/actions/build-external
         with:
