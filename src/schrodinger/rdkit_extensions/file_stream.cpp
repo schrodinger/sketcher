@@ -51,6 +51,18 @@ void maybe_compressed_ostream::initialize_ostream(
 
     m_sdgr_buffer.push(boost::ref(output_stream));
     this->init(&m_sdgr_buffer);
+
+    // NOTE: When we encounter a bad write stream state, we want to throw an
+    // error instead of just setting the fail or bad bit. This is important for
+    // cases like the one reported in SHARED-11255 since the write stream could
+    // write a corrupted output file and fail silently without any message to
+    // the user.
+    constexpr auto error_states = std::ios::failbit | std::ios::badbit;
+    // make the underlying stream throw if the filtering stream fails to catch
+    // the relevant error.
+    output_stream.exceptions(error_states);
+    // the filtering stream should throw on error
+    this->exceptions(error_states);
 }
 
 maybe_compressed_istream::maybe_compressed_istream(
