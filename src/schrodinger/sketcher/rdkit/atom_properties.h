@@ -122,12 +122,24 @@ struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
         return true;
     };
 };
+/**
+ * return a new AtomQueryProperties object with only the advanced properties and
+ * default values for the rest
+ */
+SKETCHER_API std::shared_ptr<AtomQueryProperties>
+get_only_advanced_properties(std::shared_ptr<AtomQueryProperties> properties);
 
 /**
  * @return the properties for the specified atom
  */
 SKETCHER_API std::shared_ptr<AbstractAtomProperties>
 read_properties_from_atom(const RDKit::Atom* const atom);
+
+/**
+ * @return the properties for the given query
+ */
+SKETCHER_API std::shared_ptr<AtomQueryProperties>
+read_query(const RDKit::Atom::QUERYATOM_QUERY* const query);
 
 /**
  * @return a new atom with the specified properties along with the settings for
@@ -139,6 +151,11 @@ SKETCHER_API
 std::pair<std::shared_ptr<RDKit::Atom>, std::optional<EnhancedStereo>>
 create_atom_with_properties(
     const std::shared_ptr<AbstractAtomProperties> properties);
+
+/**
+ * @return the label for the given AtomQuery enum
+ */
+SKETCHER_API QString get_label_from_atom_query(AtomQuery query);
 
 /**
  * @return the atomic symbol for the given Element enum

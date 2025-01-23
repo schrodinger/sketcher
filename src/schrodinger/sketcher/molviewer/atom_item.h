@@ -217,6 +217,11 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QString getQueryLabel() const;
 
     /**
+     * @return the smarts representation of the advanced properties of this atom
+     */
+    QString advancedPropertiesSmarts() const;
+
+    /**
      * @return A path for painting the attachment point squiggle.  This method
      * should only be called for AtomItems that represent an attachment point.
      */

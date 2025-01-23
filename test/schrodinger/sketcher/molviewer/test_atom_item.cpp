@@ -51,6 +51,7 @@ class TestAtomItem : public AtomItem
     using AtomItem::m_mapping_label_rect;
     using AtomItem::m_mapping_label_text;
     using AtomItem::m_predictive_highlighting_path;
+    using AtomItem::m_query_label_text;
     using AtomItem::m_selection_highlighting_path;
     using AtomItem::m_shape;
     using AtomItem::m_subrects;
@@ -86,6 +87,21 @@ createAtomItem(std::string smiles)
 {
     auto [atom_items, test_scene] = createAtomItems(smiles);
     return {atom_items.front(), test_scene};
+}
+
+std::pair<std::shared_ptr<TestAtomItem>, std::shared_ptr<TestScene>>
+createAtomItem(std::shared_ptr<AtomQueryProperties> props)
+{
+    auto test_scene = TestScene::getScene();
+    auto [atom, _enh_stereo] = create_atom_with_properties(props);
+    std::shared_ptr<RDKit::Atom::QUERYATOM_QUERY> query;
+    query.reset(atom->getQuery()->copy());
+    test_scene->m_mol_model->addAtom(query, {0, 0, 0});
+    auto model_atom = test_scene->m_mol_model->getMol()->getAtomWithIdx(0);
+    auto atom_item = std::make_shared<TestAtomItem>(
+        const_cast<RDKit::Atom*>(model_atom), test_scene->m_fonts,
+        *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
+    return std::make_pair(atom_item, test_scene);
 }
 
 BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
@@ -284,15 +300,8 @@ BOOST_AUTO_TEST_CASE(test_get_query_label)
         if (i == 1) {
             props->num_connections = 2;
         }
-        auto test_scene = TestScene::getScene();
-        auto [atom, _enh_stereo] = create_atom_with_properties(props);
-        std::shared_ptr<RDKit::Atom::QUERYATOM_QUERY> query;
-        query.reset(atom->getQuery()->copy());
-        test_scene->m_mol_model->addAtom(query, {0, 0, 0});
-        auto model_atom = test_scene->m_mol_model->getMol()->getAtomWithIdx(0);
-        auto atom_item = std::make_shared<TestAtomItem>(
-            const_cast<RDKit::Atom*>(model_atom), test_scene->m_fonts,
-            *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
+        auto [atom_item, test_scene] = createAtomItem(props);
+
         auto label = atom_item->getQueryLabel().toStdString();
         // on some platforms the label could be elided, let's check up to the
         // 6th character
@@ -302,8 +311,8 @@ BOOST_AUTO_TEST_CASE(test_get_query_label)
 
 BOOST_AUTO_TEST_CASE(test_no_Hs_on_queries)
 {
-    /*check that setting a query results in an atomic label without that shows
-     * the element without any implicit Hs*/
+    /*check that setting a query results in an atomic label that shows the
+     * element without any implicit Hs*/
     auto [atom_item, test_scene] = createAtomItem("[#6+]");
     BOOST_TEST(atom_item->m_main_label_text == "C");
     BOOST_TEST(!atom_item->m_main_label_rect.isNull());
@@ -311,6 +320,58 @@ BOOST_AUTO_TEST_CASE(test_no_Hs_on_queries)
     BOOST_TEST(atom_item->m_charge_and_radical_label_text == "+");
     BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_label_rect.isNull());
+}
+
+BOOST_AUTO_TEST_CASE(test_queries_rendering)
+{
+    /*check the rendering of different types of queries*/
+
+    { // specific element query with advanced properties
+        auto props = std::make_shared<AtomQueryProperties>();
+        props->query_type = QueryType::SPECIFIC_ELEMENT;
+        props->element = Element::C;
+        props->ring_count_type = QueryCount::EXACTLY;
+        props->ring_count_exact_val = 2;
+        props->num_connections = 2;
+        props->charge = 1;
+        auto [atom_item, test_scene] = createAtomItem(props);
+        BOOST_TEST(atom_item->m_main_label_text == "C");
+        BOOST_TEST(atom_item->m_query_label_text == "X2&R2");
+        BOOST_TEST(atom_item->m_charge_and_radical_label_text == "+");
+    }
+
+    { // atom list
+        auto props = std::make_shared<AtomQueryProperties>();
+        props->query_type = QueryType::ALLOWED_LIST;
+        props->allowed_list = {Element::C, Element::N};
+        auto [atom_item, test_scene] = createAtomItem(props);
+        BOOST_TEST(atom_item->m_main_label_text == "*");
+        BOOST_TEST(atom_item->m_query_label_text == "[C,N]");
+    }
+
+    { // atom list with charge
+        auto props = std::make_shared<AtomQueryProperties>();
+        props->query_type = QueryType::ALLOWED_LIST;
+        props->allowed_list = {Element::C, Element::N};
+        props->charge = 1;
+        auto [atom_item, test_scene] = createAtomItem(props);
+        BOOST_TEST(atom_item->m_main_label_text == "*");
+        BOOST_TEST(atom_item->m_query_label_text == "\"[#6,#7;+]\"");
+    }
+
+    { // wildcard query with advanced properties
+        auto props = std::make_shared<AtomQueryProperties>();
+        props->query_type = QueryType::WILDCARD;
+        props->wildcard = AtomQuery::XH;
+        props->ring_count_type = QueryCount::EXACTLY;
+        props->ring_count_exact_val = 4;
+        props->num_connections = 2;
+        props->charge = 3;
+        auto [atom_item, test_scene] = createAtomItem(props);
+        BOOST_TEST(atom_item->m_main_label_text == "XH");
+        BOOST_TEST(atom_item->m_query_label_text == "X2&R4");
+        BOOST_TEST(atom_item->m_charge_and_radical_label_text == "3+");
+    }
 }
 
 } // namespace sketcher
