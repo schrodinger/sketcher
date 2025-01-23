@@ -197,6 +197,22 @@ void AtomItem::updateCachedData()
     m_bounding_rect = m_shape.boundingRect();
 }
 
+QString AtomItem::advancedPropertiesSmarts() const
+{
+    auto props = read_properties_from_atom(m_atom);
+
+    auto advanced_props = get_only_advanced_properties(
+        std::dynamic_pointer_cast<AtomQueryProperties>(props));
+    auto [advanced_properties_atom, maybe_enhanced_stereo] =
+        create_atom_with_properties(advanced_props);
+    auto smarts =
+        QString::fromStdString(get_atom_smarts(advanced_properties_atom.get()));
+    // remove square brackets and the #6& at the beginning
+    smarts.chop(1);
+    smarts.remove(0, 4);
+    return smarts;
+}
+
 QString AtomItem::getQueryLabel() const
 {
     QString query_text;
@@ -242,11 +258,13 @@ AtomItem::determineLabelType() const
     bool needs_additional_labels = false;
     bool H_labels_are_visible = true;
     QString query_label_text;
+    bool has_user_set_label = false;
 
     // if there's a user-set display label, always use that.
     if (m_atom->hasProp(RDKit::common_properties::_displayLabel)) {
         main_label_text = m_atom->getProp<std::string>(
             RDKit::common_properties::_displayLabel);
+        has_user_set_label = true;
     } else if (m_atom->getAtomicNum() !=
                    rdkit_extensions::DUMMY_ATOMIC_NUMBER &&
                m_atom->hasProp(RDKit::common_properties::atomLabel)) {
@@ -255,10 +273,12 @@ AtomItem::determineLabelType() const
         // display that on non-dummy atoms. Query atoms are dealt with below
         main_label_text =
             m_atom->getProp<std::string>(RDKit::common_properties::atomLabel);
+        has_user_set_label = true;
 
     } else if (m_atom->hasQuery() && !m_atom->getQueryType().empty()) {
         // the query type is set for wildcards but not most other queries
         main_label_text = m_atom->getQueryType();
+
     } else if (m_atom->getAtomicNum() ==
                rdkit_extensions::DUMMY_ATOMIC_NUMBER) {
         if (is_attachment_point(m_atom)) {
@@ -275,6 +295,7 @@ AtomItem::determineLabelType() const
             // atomLabel property but we don't want to display it for them
             main_label_text = m_atom->getProp<std::string>(
                 RDKit::common_properties::atomLabel);
+            has_user_set_label = true;
         } else if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
                        m_atom)) {
 
@@ -283,33 +304,34 @@ AtomItem::determineLabelType() const
             // bound BondItem knows not to make space for the "*" label
             label_is_visible = false;
         } else if (m_atom->hasQuery()) {
-            // this needs to be after R groups and attachment points, since it
-            // would trigger for both but we need to special-case them
-            label_is_visible = false;
+
+            // Wildcard or list query. This needs to be after R groups and
+            // attachment points, since it would trigger for both but we need to
+            // special-case them
             auto props = read_properties_from_atom(m_atom);
-            if (props->isQuery()) {
+            auto query_props =
+                *static_cast<const AtomQueryProperties*>(props.get());
+            if (query_props.query_type == QueryType::ALLOWED_LIST ||
+                query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
+                // for allowed and not allowed lists hide the main label
+                label_is_visible = false;
                 query_label_text = getQueryLabel();
+            } else {
+                main_label_text =
+                    get_label_from_atom_query(query_props.wildcard)
+                        .toStdString();
+                needs_additional_labels = true;
+                H_labels_are_visible = false;
             }
         } else {
             // Unrecognized dummy atom.  Display any user-set labels
             main_label_text = m_atom->getSymbol();
         }
     } else if (m_atom->hasQuery()) {
-
         main_label_text = m_atom->getSymbol();
         needs_additional_labels = true;
         // hide implicit Hs on queries
         H_labels_are_visible = false;
-
-        // if advanced properties are present on the query, show the SMARTS
-        if (has_enhanced_query_properties(m_atom)) {
-            label_is_visible = false;
-            needs_additional_labels = false;
-            auto props = read_properties_from_atom(m_atom);
-            if (props->isQuery()) {
-                query_label_text = getQueryLabel();
-            }
-        }
     } else {
         // a "normal" atom, i.e. an atom that represents an element
         valence_error_is_visible = determineValenceErrorIsVisible();
@@ -318,6 +340,22 @@ AtomItem::determineLabelType() const
         if (label_is_visible) {
             main_label_text = m_atom->getSymbol();
             needs_additional_labels = true;
+        }
+    }
+    if (m_atom->hasQuery() && !has_user_set_label) {
+        // for smarts queries, display the smarts, unless we already have a
+        // user set label (from the atomLabel or _displayLAbel property)
+        auto props = read_properties_from_atom(m_atom);
+        auto query_props =
+            *static_cast<const AtomQueryProperties*>(props.get());
+        if (query_props.query_type == QueryType::SMARTS) {
+            query_label_text = getQueryLabel();
+            label_is_visible = false;
+        }
+        if (query_label_text.isEmpty()) {
+            // if advanced properties are present on the query, show them as
+            // SMARTS
+            query_label_text = advancedPropertiesSmarts();
         }
     }
     // if the atom has no bonds and we are showing the element list or smarts
@@ -643,12 +681,18 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         auto element_list_line =
             QLineF(QPointF(0, 0), m_query_label_rect.center());
         trim_line_to_rect(element_list_line, m_query_label_rect);
-        // trim the line on the atom's end. No label is drawn there, so we
+        // trim the line on the atom's end. If no label is drawn there  we
         // define a small rectangle. A 4 pixel margin will be added by
         // trim_line_to_rect
         auto SMALL = 0.1;
         auto small_rect = QRectF(-SMALL, -SMALL, SMALL * 2, SMALL * 2);
-        trim_line_to_rect(element_list_line, small_rect);
+        auto rects = getSubrects();
+        if (!m_label_is_visible) {
+            rects = {small_rect};
+        }
+        for (auto rect : rects) {
+            trim_line_to_rect(element_list_line, rect);
+        }
         painter->setPen(m_element_list_line_pen);
         painter->drawLine(element_list_line);
         painter->restore();

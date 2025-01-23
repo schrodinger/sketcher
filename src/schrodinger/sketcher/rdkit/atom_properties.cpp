@@ -695,7 +695,7 @@ get_smarts_for_query(const RDKit::Atom::QUERYATOM_QUERY* const query)
 /**
  * Read in all of the properties of the given query.
  */
-static std::shared_ptr<AtomQueryProperties>
+std::shared_ptr<AtomQueryProperties>
 read_query(const RDKit::Atom::QUERYATOM_QUERY* const query)
 {
     auto query_props = std::make_shared<AtomQueryProperties>();
@@ -780,6 +780,16 @@ static void add_query_to_atom(
     } else {
         query_atom->expandQuery(query, logical_op);
     }
+}
+
+QString get_label_from_atom_query(AtomQuery query)
+{
+    for (auto [label, atom_query] : TYPE_LABEL_TO_ATOM_QUERY) {
+        if (atom_query == query) {
+            return QString::fromStdString(label);
+        }
+    }
+    return "*";
 }
 
 QString get_atomic_symbol_from_element(Element element)
@@ -985,6 +995,27 @@ create_atom_with_properties(
         update_atom_for_advanced_properties(query_props, atom);
     }
     return {atom, properties->enhanced_stereo};
+}
+
+std::shared_ptr<AtomQueryProperties>
+get_only_advanced_properties(std::shared_ptr<AtomQueryProperties> property)
+{
+    auto advanced_props = std::make_shared<AtomQueryProperties>();
+    advanced_props->wildcard = property->wildcard;
+    advanced_props->r_group = property->r_group;
+    advanced_props->total_h_type = property->total_h_type;
+    advanced_props->total_h_exact_val = property->total_h_exact_val;
+    advanced_props->num_connections = property->num_connections;
+    advanced_props->aromaticity = property->aromaticity;
+    advanced_props->ring_count_type = property->ring_count_type;
+    advanced_props->ring_count_exact_val = property->ring_count_exact_val;
+    advanced_props->ring_bond_count_type = property->ring_bond_count_type;
+    advanced_props->ring_bond_count_exact_val =
+        property->ring_bond_count_exact_val;
+    advanced_props->smallest_ring_size = property->smallest_ring_size;
+    advanced_props->smarts_query = property->smarts_query;
+
+    return advanced_props;
 }
 
 } // namespace sketcher

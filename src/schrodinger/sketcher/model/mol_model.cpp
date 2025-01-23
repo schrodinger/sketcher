@@ -29,6 +29,7 @@
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
+#include "schrodinger/sketcher/rdkit/atom_properties.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
@@ -63,8 +64,12 @@ std::shared_ptr<RDKit::Atom> make_new_atom(const unsigned int atomic_num)
 std::shared_ptr<RDKit::Atom> make_new_query_atom(
     const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query)
 {
-    auto atom = std::make_shared<RDKit::QueryAtom>();
-    atom->setQuery(atom_query->copy());
+    auto props = read_query(atom_query.get());
+    // We need to do more than just set the query on the new atom; we also need
+    // to set the element, isotope, formal charge, etc.  Because of that, we
+    // call create_atom_with_properties() instead of repeating all of those sets
+    // here.
+    auto [atom, maybe_stereo] = create_atom_with_properties(props);
     return atom;
 }
 
@@ -596,9 +601,14 @@ void MolModel::addAtomChain(
         getTagForAtom(bound_to_atom, /* allow_null = */ true);
     QString desc = QString("Add %1").arg(
         QString::fromStdString(atom_query->getTypeLabel()));
-    auto cmd_func = [this, atom_query, coords, bond_type, bond_dir,
+    // the atom query is a shared pointer, which means that we need to
+    // explicitly make a copy of the underlying query, since the implicit copy
+    // into the lambda will copy the shared pointer instead of the query itself.
+    std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query_copy;
+    atom_query_copy.reset(atom_query->copy());
+    auto cmd_func = [this, atom_query_copy, coords, bond_type, bond_dir,
                      bound_to_atom_tag]() {
-        auto create_atom = std::bind(make_new_query_atom, atom_query);
+        auto create_atom = std::bind(make_new_query_atom, atom_query_copy);
         auto create_bond = std::bind(make_new_bond, bond_type, bond_dir);
         addAtomChainCommandFunc(create_atom, coords, create_bond,
                                 bound_to_atom_tag);
