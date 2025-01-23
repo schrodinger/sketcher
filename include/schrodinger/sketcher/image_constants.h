@@ -28,6 +28,8 @@ enum class CarbonLabels {
     ALL
 };
 
+enum class StereoLabels { NONE, KNOWN, ALL };
+
 /**
  * Coloring scheme corresponding to what is available in RDKit rendering
  */

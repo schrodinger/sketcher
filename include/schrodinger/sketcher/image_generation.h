@@ -84,7 +84,7 @@ struct RenderOptions {
     QHash<int, QColor> rdatom_index_to_line_color;
     QHash<int, QColor> rdbond_index_to_line_color;
     // Molecular rendering options
-    bool show_stereo_annotations = true;
+    StereoLabels show_stereo_annotations = StereoLabels::ALL;
     bool show_absolute_stereo_groups = false;
     bool show_simplified_stereo_annotation = false;
 

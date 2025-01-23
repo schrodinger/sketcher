@@ -177,11 +177,14 @@ void SketcherModel::updateAtomDisplaySettings(
                 emit_display_settings_changed = true;
                 break;
             }
-            case ModelKey::SHOW_STEREOCENTER_LABELS:
-                m_atom_display_settings.m_stereo_labels_shown =
-                    getValueBool(key);
+            case ModelKey::SHOW_STEREOCENTER_LABELS: {
+                auto stereo_labels_shown = getValueBool(key);
+                m_atom_display_settings.m_stereo_labels_visibility =
+                    (stereo_labels_shown ? StereoLabels::ALL
+                                         : StereoLabels::NONE);
                 emit_display_settings_changed = true;
                 break;
+            }
             case ModelKey::SHOW_VALENCE_ERRORS:
                 m_atom_display_settings.m_valence_errors_shown =
                     getValueBool(key);
@@ -368,7 +371,8 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
         opts.show_absolute_stereo_groups;
     atom_display_settings.m_show_simplified_stereo_annotation =
         opts.show_simplified_stereo_annotation;
-    atom_display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
+    atom_display_settings.m_stereo_labels_visibility =
+        opts.show_stereo_annotations;
     atom_display_settings.setSquigglePenScale(opts.bond_width_scale);
     atom_display_settings.setColorScheme(opts.color_scheme);
     setAtomDisplaySettings(atom_display_settings);
@@ -377,7 +381,8 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
     bond_display_settings.setScale(opts.bond_width_scale);
     bond_display_settings.m_color =
         atom_display_settings.getAtomColor(static_cast<int>(Element::C));
-    bond_display_settings.m_stereo_labels_shown = opts.show_stereo_annotations;
+    bond_display_settings.m_stereo_labels_shown =
+        opts.show_stereo_annotations != StereoLabels::NONE;
     setBondDisplaySettings(bond_display_settings);
 }
 

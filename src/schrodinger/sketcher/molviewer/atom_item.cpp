@@ -179,7 +179,8 @@ void AtomItem::updateCachedData()
             findPositionInEmptySpace(false) * ELEMENT_LIST_LABEL_DISTANCE_RATIO;
         m_query_label_rect.moveCenter(position);
     }
-    if (m_settings.m_stereo_labels_shown && !m_hide_stereo_labels) {
+    if ((m_settings.m_stereo_labels_visibility != StereoLabels::NONE) &&
+        !m_hide_stereo_labels) {
         updateChiralityLabel();
     }
     for (auto rect : getLabelRects()) {
@@ -387,7 +388,10 @@ QPainterPath AtomItem::getWavyLine() const
 void AtomItem::updateChiralityLabel()
 {
     auto strip_abs = !m_settings.m_explicit_abs_labels_shown;
-    auto label = rdkit_extensions::get_atom_chirality_label(*m_atom, strip_abs);
+    auto show_unknown_chirality =
+        (m_settings.m_stereo_labels_visibility == StereoLabels::ALL);
+    auto label = rdkit_extensions::get_atom_chirality_label(
+        *m_atom, strip_abs, show_unknown_chirality);
     m_chirality_label_text = QString::fromStdString(label);
 
     auto chirality_label_position =
@@ -698,7 +702,7 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->drawLine(element_list_line);
         painter->restore();
     }
-    if (m_settings.m_stereo_labels_shown) {
+    if (m_settings.m_stereo_labels_visibility != StereoLabels::NONE) {
         painter->save();
         painter->setPen(m_chirality_pen);
         painter->setFont(m_fonts.m_chirality_font);

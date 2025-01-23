@@ -48,10 +48,13 @@ RDKIT_EXTENSIONS_API void assign_stereochemistry(RDKit::ROMol& mol);
 /**
  * @param strip_abs if true, the absolute stereo label is stripped from the
  * "abs" label
+ * @param show_unspecified if true, a (?) label is shown on unspecified
+ * stereo centers
  * @return the chiral label for the given atom.
  */
 RDKIT_EXTENSIONS_API std::string
-get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs = false);
+get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs = false,
+                         bool show_unspecified = true);
 
 /**
  * @return the chiral label for the given bond.
