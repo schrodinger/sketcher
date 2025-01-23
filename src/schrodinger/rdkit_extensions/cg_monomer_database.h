@@ -25,7 +25,8 @@ class [[nodiscard]] cg_monomer_database : public boost::noncopyable
 {
   public:
     using monomer_smiles_t = std::optional<std::string>;
-    using helm_info_t = std::optional<std::pair<std::string, ChainType>>;
+    using helm_info_t =
+        std::optional<std::tuple<std::string, std::string, ChainType>>;
 
     cg_monomer_database(std::string_view database_path);
 

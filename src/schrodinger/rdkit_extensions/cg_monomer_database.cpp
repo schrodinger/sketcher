@@ -157,12 +157,13 @@ cg_monomer_database::get_helm_info(const std::string& pdb_code)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
-            "SELECT {0}, {1} FROM {{}} WHERE {2}='{3}';"};
+            "SELECT {0}, {1}, {2} FROM {{}} WHERE {3}='{4}';"};
         static constexpr std::string_view symbol_column{"SYMBOL"};
         static constexpr std::string_view type_column{"POLYMERTYPE"};
+        static constexpr std::string_view smiles_column{"SMILES"};
         static constexpr std::string_view pdb_code_column{"PDBCODE"};
 
-        return fmt::format(template_, symbol_column, type_column,
+        return fmt::format(template_, symbol_column, type_column, smiles_column,
                            pdb_code_column, pdb_code);
     };
 
@@ -170,7 +171,8 @@ cg_monomer_database::get_helm_info(const std::string& pdb_code)
         // clang-format off
         auto symbol = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         auto polymer_type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
-        helm_info_t::value_type helm_info{symbol, to_chain_type(polymer_type)};
+        auto smiles = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        helm_info_t::value_type helm_info{symbol, smiles, to_chain_type(polymer_type)};
         return std::make_optional(helm_info);
         // clang-format on
     };

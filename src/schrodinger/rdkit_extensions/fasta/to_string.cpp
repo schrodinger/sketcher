@@ -51,6 +51,9 @@ get_property(const RDKitObject* obj, const std::string& propname)
                      boost::is_any_of("+,"));
         std::sort(monomer_list.begin(), monomer_list.end());
         return fmt::format("({})", fmt::join(monomer_list, "+"));
+    } else if (atom->getProp<bool>(SMILES_MONOMER)) {
+        return "X";
+
     } else {
         const auto id = get_property<std::string>(atom, ATOM_LABEL);
         return (id.size() == 1 ? id : fmt::format("[{}]", id));

@@ -457,6 +457,48 @@ std::string get_monomer_smiles(RDKit::ROMol& mol,
     return RDKit::MolToSmiles(*mol_fragment);
 }
 
+bool same_monomer(const std::string& smiles, const std::string& db_smiles)
+{
+    // Occasionally SMILES that cannot be kekulized are extracted from atomistic
+    // mol, so skip sanitization
+    constexpr int debug = 0;
+    constexpr bool sanitize = false;
+
+    // Monomer from original atomistic mol and monomer defined by database
+    std::unique_ptr<RDKit::RWMol> mol(
+        RDKit::SmilesToMol(smiles, debug, sanitize));
+    std::unique_ptr<RDKit::RWMol> db_mol(
+        RDKit::SmilesToMol(db_smiles, debug, sanitize));
+
+    // Remove stereochemistry, atom map numbers, and neutralize the atoms
+    // leaving groups are removed since they won't always be included in the
+    // residue extracted from the atomistic molecule
+    auto clean_mol = [](RDKit::RWMol& mol) {
+        RDKit::MolOps::removeStereochemistry(mol);
+        neutralize_atoms(mol);
+        removeHs(mol);
+        mol.beginBatchEdit();
+        for (auto at : mol.atoms()) {
+            if (at->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                mol.removeAtom(at);
+            }
+        }
+        mol.commitBatchEdit();
+    };
+    clean_mol(*mol);
+    clean_mol(*db_mol);
+
+    // The DB monomer has had the leaving groups removed, while the residue
+    // extracted from the atomistic mol may still have them present if it is at
+    // the beginning or end of a chain. As a result, we need to allow for the DB
+    // monomer to have one less atom than the residue extracted from the
+    // atomistic mol
+    auto match = RDKit::SubstructMatch(*mol, *db_mol);
+    int db_count = db_mol->getNumAtoms();
+    int count = mol->getNumAtoms();
+    return match.size() && (std::abs(db_count - count) <= 1);
+}
+
 boost::shared_ptr<RDKit::RWMol>
 annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
 {
@@ -497,7 +539,8 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
 
         // Default chain type is PEPTIDE if not specified.
         auto helm_info = db.get_helm_info(res_name);
-        auto chain_type = helm_info ? helm_info->second : ChainType::PEPTIDE;
+        auto chain_type =
+            helm_info ? std::get<2>(*helm_info) : ChainType::PEPTIDE;
         std::string helm_chain_id = fmt::format("{}{}", to_string(chain_type),
                                                 ++chain_counts[chain_type]);
         int last_monomer = -1;
@@ -526,12 +569,24 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
             }
 
             helm_info = db.get_helm_info(res_name);
+            bool end_of_chain = res_num == residues.size();
             size_t this_monomer;
             if (helm_info) {
-                // Standard residue in monomer DB
-                // TODO: verify SMILES is correct with database
-                this_monomer = add_monomer(*cg_mol, helm_info->first, res_num,
-                                           helm_chain_id);
+                // Standard residue in monomer DB, Verify that the fragment
+                // labeled as the residue matches what is in the monomer
+                // database
+                auto smiles = get_monomer_smiles(mol, atom_idxs, key, res_num,
+                                                 res_num == residues.size());
+                auto db_smiles = std::get<1>(*helm_info);
+
+                if (same_monomer(smiles, db_smiles)) {
+                    this_monomer = add_monomer(*cg_mol, std::get<0>(*helm_info),
+                                               res_num, helm_chain_id);
+                } else {
+                    this_monomer =
+                        add_monomer(*cg_mol, smiles, res_num, helm_chain_id,
+                                    MonomerType::SMILES);
+                }
             } else if (!same_code && backup_res_table.find(res_name) !=
                                          backup_res_table.end()) {
                 // Standard residue not in monomer DB. 1-letter code is stored
@@ -540,7 +595,6 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
                     *cg_mol, std::string{backup_res_table.at(res_name)},
                     res_num, helm_chain_id);
             } else {
-                bool end_of_chain = res_num == residues.size();
                 auto smiles = get_monomer_smiles(mol, atom_idxs, key, res_num,
                                                  end_of_chain);
                 this_monomer = add_monomer(*cg_mol, smiles, res_num,
