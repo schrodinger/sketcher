@@ -66,7 +66,7 @@ class AtomDisplaySettings
     /**
      * Whether to display stereochemistry labels when present
      */
-    bool m_stereo_labels_shown = true;
+    StereoLabels m_stereo_labels_visibility = StereoLabels::ALL;
 
     /**
      * Whether to display the word "abs" in enhanced stereo absolute

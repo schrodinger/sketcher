@@ -80,7 +80,8 @@ void assign_stereochemistry(RDKit::ROMol& mol)
                                          flagPossibleStereoCenters);
 }
 
-std::string get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs)
+std::string get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs,
+                                     bool show_unspecified)
 {
     // SKETCH-1729: non-CIP ranked atoms have no priority; do not show any label
     if (has_non_CIP_neighbor(atom)) {
@@ -93,7 +94,7 @@ std::string get_atom_chirality_label(const RDKit::Atom& atom, bool strip_abs)
                               possible);
         return !atom.hasProp(RDKit::common_properties::_CIPCode) && possible;
     };
-    if (possible_but_not_specified(atom)) {
+    if (possible_but_not_specified(atom) && show_unspecified) {
         return "(?)";
     }
 
