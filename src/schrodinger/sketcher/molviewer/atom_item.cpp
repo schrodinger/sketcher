@@ -28,25 +28,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-bool has_enhanced_query_properties(const RDKit::Atom* atom)
-{
-    if (!atom->hasQuery()) {
-        return false;
-    }
-    auto no_advanced_props = AtomQueryProperties();
-    auto props = read_properties_from_atom(atom);
-    auto query_props = *static_cast<const AtomQueryProperties*>(props.get());
-    no_advanced_props.query_type = query_props.query_type;
-    no_advanced_props.allowed_list = query_props.allowed_list;
-    no_advanced_props.charge = query_props.charge;
-    no_advanced_props.unpaired_electrons = query_props.unpaired_electrons;
-    no_advanced_props.isotope = query_props.isotope;
-    no_advanced_props.enhanced_stereo = query_props.enhanced_stereo;
-    no_advanced_props.element = query_props.element;
-
-    return query_props != no_advanced_props;
-}
-
 /**
  * @return a bounding rect of the given label for the given font metrics
  */
@@ -223,14 +204,9 @@ QString AtomItem::getQueryLabel() const
 
     // if this is an allowed or disallowed list with no added features, we can
     // use a simplified label, otherwise we need to show the SMARTS
-    auto no_advanced_props = AtomQueryProperties();
-    no_advanced_props.query_type = query_props.query_type;
-    no_advanced_props.allowed_list = query_props.allowed_list;
-    bool has_advanced_props = query_props != no_advanced_props;
-
     if ((query_props.query_type == QueryType::ALLOWED_LIST ||
          query_props.query_type == QueryType::NOT_ALLOWED_LIST) &&
-        !has_advanced_props) {
+        !query_props.hasPropertiesBeyondQueryType()) {
         auto list = join_all_atomic_symbols(query_props.allowed_list);
         if (!list.isEmpty()) {
             if (query_props.query_type == QueryType::NOT_ALLOWED_LIST) {

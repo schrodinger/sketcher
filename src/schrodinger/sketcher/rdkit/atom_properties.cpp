@@ -2,6 +2,7 @@
 
 #include <deque>
 #include <unordered_set>
+#include <initializer_list>
 
 #include <boost/algorithm/string.hpp>
 
@@ -15,9 +16,7 @@
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 
-namespace schrodinger
-{
-namespace sketcher
+namespace schrodinger::sketcher
 {
 
 // In AtomType queries, atomic numbers above this value indicate that the atom
@@ -39,8 +38,77 @@ static const std::string ATOM_AROMATICITY = "ATOM_AROMATICITY";
 static const std::string ATOM_RING_COUNT = "ATOM_RING_COUNT";
 static const std::string QUERY_TYPE = "QUERY_TYPE";
 
-namespace
+using AtomQueryPropertyPtr = std::variant<
+    unsigned int AtomQueryProperties::*,
+    std::optional<unsigned int> AtomQueryProperties::*,
+    std::optional<int> AtomQueryProperties::*,
+    std::string AtomQueryProperties::*, Element AtomQueryProperties::*,
+    std::vector<Element> AtomQueryProperties::*,
+    std::optional<EnhancedStereo> AtomQueryProperties::*,
+    AtomQuery AtomQueryProperties::*, QueryAromaticity AtomQueryProperties::*,
+    QueryCount AtomQueryProperties::*, QueryType AtomQueryProperties::*>;
+using AtomQueryPropertyList = std::vector<AtomQueryPropertyPtr>;
+
+/**
+ * Atom query properties that directly relate to the query type, i.e., the
+ * properties from query type combo box itself, as well as the line edits and
+ * spin boxs that appear/disappear depending on the query type selected in the
+ * combo box.
+ */
+const AtomQueryPropertyList QUERY_TYPE_PROPERTIES = {
+    &AtomQueryProperties::query_type,   &AtomQueryProperties::element,
+    &AtomQueryProperties::allowed_list, &AtomQueryProperties::wildcard,
+    &AtomQueryProperties::r_group,      &AtomQueryProperties::smarts_query,
+};
+
+/**
+ * Atom query properties that are set on the General tab of the Edit Atom
+ * Properties dialog, but that don't directly relate to the query type
+ */
+const AtomQueryPropertyList GENERAL_QUERY_PROPERTIES = {
+    &AtomQueryProperties::isotope,
+    &AtomQueryProperties::charge,
+    &AtomQueryProperties::unpaired_electrons,
+    &AtomQueryProperties::enhanced_stereo,
+};
+
+/**
+ * Atom query properties that are set on the Advanced tab of the Edit Atom
+ * Properties dialog
+ */
+const AtomQueryPropertyList ADVANCED_QUERY_PROPERTIES = {
+    &AtomQueryProperties::total_h_type,
+    &AtomQueryProperties::total_h_exact_val,
+    &AtomQueryProperties::num_connections,
+    &AtomQueryProperties::aromaticity,
+    &AtomQueryProperties::ring_count_type,
+    &AtomQueryProperties::ring_count_exact_val,
+    &AtomQueryProperties::ring_bond_count_type,
+    &AtomQueryProperties::ring_bond_count_exact_val,
+    &AtomQueryProperties::smallest_ring_size,
+};
+
+/**
+ * Concatenate multiple AtomQueryPropertyLists into a single vector
+ */
+static AtomQueryPropertyList
+concat_query_props(std::initializer_list<const AtomQueryPropertyList> vectors)
 {
+    AtomQueryPropertyList concatenated;
+    size_t vec_size = std::accumulate(
+        vectors.begin(), vectors.end(), 0,
+        [](auto current_sum, auto vec) { return current_sum + vec.size(); });
+    concatenated.reserve(vec_size);
+    for (auto& cur_vector : vectors) {
+        concatenated.insert(concatenated.end(), cur_vector.begin(),
+                            cur_vector.end());
+    }
+    return concatenated;
+}
+
+const AtomQueryPropertyList ALL_QUERY_PROPERTIES =
+    concat_query_props({QUERY_TYPE_PROPERTIES, GENERAL_QUERY_PROPERTIES,
+                        ADVANCED_QUERY_PROPERTIES});
 
 /**
  * An error that indicates that the query being parsed cannot be represented in
@@ -53,8 +121,6 @@ class UnrecognizedQueryError : public std::runtime_error
   public:
     using std::runtime_error::runtime_error;
 };
-
-} // namespace
 
 EnhancedStereo::EnhancedStereo(rdkit_extensions::EnhancedStereo enh_stereo) :
     EnhancedStereo(enh_stereo.first, enh_stereo.second)
@@ -81,42 +147,88 @@ void EnhancedStereo::setGroupId(unsigned int group_id)
     second = group_id;
 }
 
+/**
+ * Determine whether the two query properties contain the same value for the
+ * specified member variable
+ */
+template <typename T>
+bool compare_property(const T AtomQueryProperties::*member_variable,
+                      const AtomQueryProperties* this_query,
+                      const AtomQueryProperties* other_query)
+{
+    return this_query->*member_variable == other_query->*member_variable;
+}
+
+/**
+ * Assign the value for the specified member variable from one set of query
+ * properties to the other
+ */
+template <typename T>
+void assign_property(T AtomQueryProperties::*member_variable,
+                     AtomQueryProperties* to_query,
+                     const AtomQueryProperties* from_query)
+{
+    to_query->*member_variable = from_query->*member_variable;
+}
+
+/**
+ * Determime whether teh two query properties contain the same values for all
+ * specified member variables
+ */
+static bool compare_query_properties(const AtomQueryProperties* this_query,
+                                     const AtomQueryProperties* other_query,
+                                     const AtomQueryPropertyList properties)
+{
+    for (auto member_variable : properties) {
+        if (!std::visit(
+                [&this_query, &other_query](auto&& arg) {
+                    return compare_property(arg, this_query, other_query);
+                },
+                member_variable)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Return a new AtomQueryProperties object that contains some of the properties
+ * from the input query.  All other property values will be set to their default
+ * value.
+ *
+ * @param query The input query to take property values from
+ * @param properties The properties to take from the input query
+ */
+AtomQueryProperties
+get_subset_of_properties(const AtomQueryProperties* query,
+                         const AtomQueryPropertyList properties)
+{
+    AtomQueryProperties new_query;
+    for (auto member_variable : properties) {
+        std::visit([&query, &new_query](
+                       auto&& arg) { assign_property(arg, &new_query, query); },
+                   member_variable);
+    }
+    return new_query;
+}
+
 bool AbstractAtomProperties::operator==(
     const AbstractAtomProperties& other) const
 {
-    if (isQuery() != other.isQuery() || this->element != other.element ||
-        this->isotope != other.isotope ||
-        this->enhanced_stereo != other.enhanced_stereo) {
+    if (isQuery() != other.isQuery()) {
         return false;
     } else if (isQuery()) {
         auto* this_query = static_cast<const AtomQueryProperties*>(this);
         auto* other_query = static_cast<const AtomQueryProperties*>(&other);
-        return this_query->charge == other_query->charge &&
-               this_query->unpaired_electrons ==
-                   other_query->unpaired_electrons &&
-               this_query->query_type == other_query->query_type &&
-               this_query->allowed_list == other_query->allowed_list &&
-               this_query->wildcard == other_query->wildcard &&
-               this_query->r_group == other_query->r_group &&
-               this_query->total_h_type == other_query->total_h_type &&
-               this_query->total_h_exact_val ==
-                   other_query->total_h_exact_val &&
-               this_query->num_connections == other_query->num_connections &&
-               this_query->aromaticity == other_query->aromaticity &&
-               this_query->ring_count_type == other_query->ring_count_type &&
-               this_query->ring_count_exact_val ==
-                   other_query->ring_count_exact_val &&
-               this_query->ring_bond_count_type ==
-                   other_query->ring_bond_count_type &&
-               this_query->ring_bond_count_exact_val ==
-                   other_query->ring_bond_count_exact_val &&
-               this_query->smallest_ring_size ==
-                   other_query->smallest_ring_size &&
-               this_query->smarts_query == other_query->smarts_query;
-    } else { // not a query
+        return compare_query_properties(this_query, other_query,
+                                        ALL_QUERY_PROPERTIES);
+    } else {
         auto* this_atom = static_cast<const AtomProperties*>(this);
         auto* other_atom = static_cast<const AtomProperties*>(&other);
-        return this_atom->charge == other_atom->charge &&
+        return this_atom->element == other_atom->element &&
+               this_atom->isotope == other_atom->isotope &&
+               this_atom->enhanced_stereo == other_atom->enhanced_stereo &&
+               this_atom->charge == other_atom->charge &&
                this_atom->unpaired_electrons == other_atom->unpaired_electrons;
     }
 }
@@ -195,6 +307,22 @@ std::ostream& operator<<(std::ostream& os, const AbstractAtomProperties& props)
            << output_optional(query_props->smallest_ring_size) << "\n";
     }
     return os;
+}
+
+bool AtomQueryProperties::hasPropertiesBeyondQueryType() const
+{
+    auto default_props = AtomQueryProperties();
+    return !compare_query_properties(
+        this, &default_props,
+        concat_query_props(
+            {GENERAL_QUERY_PROPERTIES, ADVANCED_QUERY_PROPERTIES}));
+}
+
+bool AtomQueryProperties::hasAdvancedProperties() const
+{
+    auto default_props = AtomQueryProperties();
+    return !compare_query_properties(this, &default_props,
+                                     ADVANCED_QUERY_PROPERTIES);
 }
 
 /**
@@ -1000,23 +1128,9 @@ create_atom_with_properties(
 std::shared_ptr<AtomQueryProperties>
 get_only_advanced_properties(std::shared_ptr<AtomQueryProperties> property)
 {
-    auto advanced_props = std::make_shared<AtomQueryProperties>();
-    advanced_props->wildcard = property->wildcard;
-    advanced_props->r_group = property->r_group;
-    advanced_props->total_h_type = property->total_h_type;
-    advanced_props->total_h_exact_val = property->total_h_exact_val;
-    advanced_props->num_connections = property->num_connections;
-    advanced_props->aromaticity = property->aromaticity;
-    advanced_props->ring_count_type = property->ring_count_type;
-    advanced_props->ring_count_exact_val = property->ring_count_exact_val;
-    advanced_props->ring_bond_count_type = property->ring_bond_count_type;
-    advanced_props->ring_bond_count_exact_val =
-        property->ring_bond_count_exact_val;
-    advanced_props->smallest_ring_size = property->smallest_ring_size;
-    advanced_props->smarts_query = property->smarts_query;
-
-    return advanced_props;
+    auto advanced_props =
+        get_subset_of_properties(property.get(), ADVANCED_QUERY_PROPERTIES);
+    return std::make_shared<AtomQueryProperties>(advanced_props);
 }
 
-} // namespace sketcher
-} // namespace schrodinger
+} // namespace schrodinger::sketcher

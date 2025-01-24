@@ -121,6 +121,18 @@ struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
     {
         return true;
     };
+
+    /**
+     * Does this query have any properties other than those that directly relate
+     * to the query type (e.g. allowed_list)?
+     */
+    bool hasPropertiesBeyondQueryType() const;
+
+    /**
+     * Does this query have any properties set on the Advanced tab of the Edit
+     * Atom Properties dialog?
+     */
+    bool hasAdvancedProperties() const;
 };
 /**
  * return a new AtomQueryProperties object with only the advanced properties and

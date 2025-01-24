@@ -304,5 +304,35 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
     BOOST_TEST(*props == *second_props);
 }
 
+/**
+ * Ensure that hasAdvancedProperties() and hasPropertiesBeyondQueryType() return
+ * true when the appropriate properties are set to non-default values.
+ */
+BOOST_AUTO_TEST_CASE(test_hasAdvancedProperties)
+{
+    AtomQueryProperties query_props;
+    BOOST_TEST(!query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+    query_props.query_type = QueryType::SPECIFIC_ELEMENT;
+    query_props.element = Element::O;
+    BOOST_TEST(!query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+    query_props.charge = 2;
+    BOOST_TEST(query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+    query_props.charge = 0;
+    BOOST_TEST(query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+    query_props.charge = std::nullopt;
+    BOOST_TEST(!query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+    query_props.aromaticity = QueryAromaticity::AROMATIC;
+    BOOST_TEST(query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(query_props.hasAdvancedProperties());
+    query_props.aromaticity = QueryAromaticity::ANY;
+    BOOST_TEST(!query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+}
+
 } // namespace sketcher
 } // namespace schrodinger
