@@ -31,9 +31,9 @@ find_package(zstd ${ZSTD_VERSION} REQUIRED)
 # Common library/executable configuration
 function(setup_target TARGET)
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE -WX)
+    target_compile_options(${TARGET} PRIVATE -WX -Wno-dev)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -Wno-dev -O2)
   endif()
   # Allow RDKit includes to be prefixed
   target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/..
