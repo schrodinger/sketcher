@@ -120,8 +120,7 @@ jobs:
         run: |
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
-                -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
+                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
         if: matrix.build-output != 'wasm'
