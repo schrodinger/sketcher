@@ -158,6 +158,13 @@ void AtomItem::updateCachedData()
         // find a position for the element list label
         auto position =
             findPositionInEmptySpace(false) * ELEMENT_LIST_LABEL_DISTANCE_RATIO;
+        // if the atom has no bonds the element list label should be placed on
+        // top (rather than to the right) of the atom so that it doesn't overlap
+        // with the atom label
+        if (m_atom->getDegree() == 0) {
+            position = QPointF(0, -ELEMENT_LIST_LABEL_DISTANCE_RATIO *
+                                      BOND_LENGTH * VIEW_SCALE);
+        }
         m_query_label_rect.moveCenter(position);
     }
     if ((m_settings.m_stereo_labels_visibility != StereoLabels::NONE) &&
