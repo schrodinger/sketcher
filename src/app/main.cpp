@@ -5,7 +5,7 @@
 
 #include "schrodinger/sketcher/example_widget.h"
 
-Q_IMPORT_PLUGIN (QXcbIntegrationPlugin)
+Q_IMPORT_PLUGIN(QXcbIntegrationPlugin)
 
 int main(int argc, char** argv)
 {
