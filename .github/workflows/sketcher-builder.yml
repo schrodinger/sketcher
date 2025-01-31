@@ -129,7 +129,7 @@ jobs:
       - name: Test
         if: matrix.build-output != 'wasm'
         working-directory: build
-        run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+        run: sudo apt-get install xvfb && xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure && kilall xvfb-run
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
