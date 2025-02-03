@@ -87,6 +87,7 @@ struct RenderOptions {
     StereoLabels show_stereo_annotations = StereoLabels::ALL;
     bool show_absolute_stereo_groups = false;
     bool show_simplified_stereo_annotation = false;
+    bool show_symbol_for_H_isotopes = false;
 
     // Note that the following settings are only fully supported when using
     // molviewer

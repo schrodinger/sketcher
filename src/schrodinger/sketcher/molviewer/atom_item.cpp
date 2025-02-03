@@ -324,6 +324,15 @@ AtomItem::determineLabelType() const
             valence_error_is_visible || determineLabelIsVisible();
         if (label_is_visible) {
             main_label_text = m_atom->getSymbol();
+            // if the label is set, mark deuterium and tritium with D and T
+            if (m_settings.m_show_symbol_for_H_isotopes &&
+                m_atom->getAtomicNum() == 1) {
+                if (m_atom->getIsotope() == 2) {
+                    main_label_text = "D";
+                } else if (m_atom->getIsotope() == 3) {
+                    main_label_text = "T";
+                }
+            }
             needs_additional_labels = true;
         }
     }
@@ -399,8 +408,18 @@ void AtomItem::clearLabels()
 
 void AtomItem::updateIsotopeLabel()
 {
-    auto isotope = m_atom->getIsotope();
+    // clear the isotope label text and rect
+    m_isotope_label_text = "";
+    m_isotope_label_rect = QRectF();
+
     // when no isotope is set RDKit returns 0
+    auto isotope = m_atom->getIsotope();
+    // if showing D or T for deuterium and tritium, we're not showing the
+    // isotope label
+    if (m_settings.m_show_symbol_for_H_isotopes &&
+        (m_atom->getAtomicNum() == 1 && (isotope == 2 || isotope == 3))) {
+        return;
+    }
     if (isotope != 0) {
         m_isotope_label_text = QString::number(isotope);
         m_isotope_label_rect =

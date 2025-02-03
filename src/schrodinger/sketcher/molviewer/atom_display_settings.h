@@ -83,6 +83,12 @@ class AtomDisplaySettings
     bool m_show_simplified_stereo_annotation = false;
 
     /**
+     * whether to display H isotopes with a symbol (D for deuterium and T for
+     * tritium)
+     */
+    bool m_show_symbol_for_H_isotopes = false;
+
+    /**
      * The width of the pen used to draw attachment point squiggles.
      */
     qreal m_squiggle_pen_width = BOND_DEFAULT_PEN_WIDTH;

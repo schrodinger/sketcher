@@ -214,6 +214,37 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomLabel)
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_deuterium_and_tritium_display)
+{
+
+    /*check the deuterium and tritium are rendered with D and T when the
+     * relevant flag is on*/
+
+    auto [atom_items, test_scene] = createAtomItems("[2H]-[3H]");
+
+    BOOST_TEST(atom_items.at(0)->m_main_label_text == "H");
+    BOOST_TEST(atom_items.at(0)->m_isotope_label_text == "2");
+
+    BOOST_TEST(atom_items.at(1)->m_main_label_text == "H");
+    BOOST_TEST(atom_items.at(1)->m_isotope_label_text == "3");
+
+    auto display_settings(
+        *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
+    display_settings.m_show_symbol_for_H_isotopes = true;
+    test_scene->m_sketcher_model->setAtomDisplaySettings(display_settings);
+
+    atom_items[0]->updateCachedData();
+    atom_items[1]->updateCachedData();
+
+    BOOST_TEST(atom_items[0]->m_main_label_text == "D");
+    BOOST_TEST(atom_items.at(0)->m_isotope_label_text.toStdString() == "");
+    BOOST_TEST(atom_items.at(0)->m_isotope_label_rect.isNull());
+
+    BOOST_TEST(atom_items[1]->m_main_label_text == "T");
+    BOOST_TEST(atom_items.at(1)->m_isotope_label_text.toStdString() == "");
+    BOOST_TEST(atom_items.at(1)->m_isotope_label_rect.isNull());
+}
+
 BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
                      *boost::unit_test::tolerance(0.01))
 {

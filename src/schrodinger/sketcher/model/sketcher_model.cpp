@@ -367,6 +367,8 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
     m_font_size = opts.font_size;
     AtomDisplaySettings atom_display_settings(m_atom_display_settings);
     atom_display_settings.m_carbon_labels = opts.carbon_labels;
+    atom_display_settings.m_show_symbol_for_H_isotopes =
+        opts.show_symbol_for_H_isotopes;
     atom_display_settings.m_explicit_abs_labels_shown =
         opts.show_absolute_stereo_groups;
     atom_display_settings.m_show_simplified_stereo_annotation =
