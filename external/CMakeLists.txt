@@ -33,7 +33,6 @@ if(LINUX)
     ")
 else()
     set(EXTRA_QT_CMAKE_ARGS "")
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
 endif()
 
 ExternalProject_Add(
