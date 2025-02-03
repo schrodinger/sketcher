@@ -65,7 +65,7 @@ const QString FONT_NAME = "Arial";
 const qreal SUBSCRIPT_FONT_RATIO = 0.6;
 const qreal CHARGE_FONT_RATIO = 0.6;
 const qreal MAPPING_FONT_RATIO = 0.5;
-const qreal ELEMENT_LIST_FONT_RATIO = 0.5;
+const qreal QUERY_LABEL_FONT_RATIO = 0.5;
 const qreal CHIRALITY_FONT_RATIO = 0.6;
 const qreal SGROUP_FONT_RATIO = 1.0;
 const qreal CURSOR_HINT_FONT_RATIO = 1.0;
@@ -110,8 +110,8 @@ const qreal BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH = 8;
 const qreal DATIVE_ARROW_HALF_WIDTH = 4.0;
 const qreal DATIVE_ARROW_LENGTH = 7.0;
 
-// the distance between an atom and its element list in bond length units
-const qreal ELEMENT_LIST_LABEL_DISTANCE_RATIO = 0.5;
+// the distance between an atom and its query label in bond length units
+const qreal QUERY_LABEL_DISTANCE_RATIO = 0.35;
 
 // the maximum length of characters displayed for a SMARTS label in scene
 // coordinates. If the label is longer than this, it will be truncated and an
@@ -162,9 +162,9 @@ const QColor STRUCTURE_HINT_COLOR = QColor("#9cbcd1");
 // cursor when using the bond tool)
 const QColor CURSOR_HINT_COLOR = QColor("#5191bb");
 
-// the color of the line that connects an allowed/disallowed query list to the
-// atom it refers to
-const QColor ELEMENT_LIST_LINE_COLOR = QColor(102, 102, 102);
+// the color of the line that connects an allowed/disallowed query list or
+// SMARTS query to the atom it refers to
+const QColor QUERY_LABEL_LINE_COLOR = QColor(102, 102, 102);
 
 // This should be set to the shade of gray used in the tool button icons.
 // cursor_hint_from_svg in scene_utils will replace this color with

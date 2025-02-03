@@ -15,7 +15,7 @@ Fonts::Fonts() :
     m_mapping_font(QFont(FONT_NAME)),
     m_chirality_font(QFont(FONT_NAME)),
     m_sgroup_font(QFont(FONT_NAME)),
-    m_element_list_font(QFont(FONT_NAME)),
+    m_query_label_font(QFont(FONT_NAME)),
     m_cursor_hint_font(QFont(FONT_NAME)),
     m_main_label_fm(QFontMetrics(m_main_label_font)),
     m_subscript_fm(QFontMetrics(m_subscript_font)),
@@ -23,7 +23,7 @@ Fonts::Fonts() :
     m_mapping_fm(QFontMetrics(m_mapping_font)),
     m_chirality_fm(QFontMetrics(m_chirality_font)),
     m_sgroup_fm(QFontMetrics(m_sgroup_font)),
-    m_element_list_fm(QFontMetrics(m_element_list_font))
+    m_query_label_fm(QFontMetrics(m_query_label_font))
 {
     setSize(DEFAULT_FONT_SIZE);
 }
@@ -45,7 +45,7 @@ void Fonts::setSize(int size)
     m_chirality_font.setPixelSize(size * CHIRALITY_FONT_RATIO);
     m_cursor_hint_font.setPixelSize(size * CURSOR_HINT_FONT_RATIO);
     m_sgroup_font.setPixelSize(size * SGROUP_FONT_RATIO);
-    m_element_list_font.setPixelSize(size * ELEMENT_LIST_FONT_RATIO);
+    m_query_label_font.setPixelSize(size * QUERY_LABEL_FONT_RATIO);
 
     // font metrics objects don't update themselves when their font changes, so
     // we need to create new ones
@@ -55,7 +55,7 @@ void Fonts::setSize(int size)
     m_mapping_fm = QFontMetrics(m_mapping_font);
     m_chirality_fm = QFontMetrics(m_chirality_font);
     m_sgroup_fm = QFontMetrics(m_sgroup_font);
-    m_element_list_fm = QFontMetrics(m_element_list_font);
+    m_query_label_fm = QFontMetrics(m_query_label_font);
 
     m_radical_dot_size = size * RADICAL_DOT_RATIO;
 }

@@ -66,7 +66,7 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
     // points)
     m_squiggle_pen = QPen(settings.getAtomColor(-1));
 
-    m_element_list_line_pen = QPen(ELEMENT_LIST_LINE_COLOR);
+    m_query_label_line_pen = QPen(QUERY_LABEL_LINE_COLOR);
     m_squiggle_pen.setWidthF(BOND_DEFAULT_PEN_WIDTH);
     m_squiggle_pen.setCapStyle(Qt::RoundCap);
 
@@ -154,18 +154,52 @@ void AtomItem::updateCachedData()
     }
     if (!m_query_label_text.isEmpty()) {
         m_query_label_rect =
-            make_text_rect(m_fonts.m_element_list_fm, m_query_label_text);
-        // find a position for the element list label
+            make_text_rect(m_fonts.m_query_label_fm, m_query_label_text);
+        // find a position for the query label
         auto position =
-            findPositionInEmptySpace(false) * ELEMENT_LIST_LABEL_DISTANCE_RATIO;
-        // if the atom has no bonds the element list label should be placed on
+            findPositionInEmptySpace(false) * QUERY_LABEL_DISTANCE_RATIO;
+        // if the atom has no bonds the query label should be placed on
         // top (rather than to the right) of the atom so that it doesn't overlap
         // with the atom label
         if (m_atom->getDegree() == 0) {
-            position = QPointF(0, -ELEMENT_LIST_LABEL_DISTANCE_RATIO *
-                                      BOND_LENGTH * VIEW_SCALE);
+            position = QPointF(0, -QUERY_LABEL_DISTANCE_RATIO * BOND_LENGTH *
+                                      VIEW_SCALE);
         }
+        // if the query label is a single character, or if it's above or below
+        // the main label (as opposed to to the left or right), then we center
+        // the label at this position
         m_query_label_rect.moveCenter(position);
+        if (qAbs(position.y()) < qAbs(position.x()) &&
+            m_query_label_text.size() > 1) {
+            // If a multi-letter query label is off to the right or left of the
+            // main label, then we want to left-align or right-align the query
+            // label instead. That way, a long query label will always extend
+            // away from the main label (or away from the bond if the main label
+            // is hidden) instead of covering it.
+            //
+            // For the alignment, we want to (roughly) center the first or last
+            // character of the string at the calculated position. That way, a
+            // multi-character string will start at the same spot as a
+            // single-character string (which will always be center-aligned).
+            // For consistency in label positioning, we use a "standard" letter
+            // width instead of grabbing the actual character from
+            // m_query_label_extext. In other words, we just pick an arbitrary
+            // letter and use that width since we don't want the label position
+            // to vary with the width of the first/last character. This would be
+            // particularly noticeable for SMARTS queries, as the first and last
+            // characters of those are always double quotes, which are much
+            // narrower than most letters. Using the double quote character
+            // width would make it look like SMARTS queries were placed further
+            // away from the main label than other types of queries.
+            qreal char_width =
+                m_fonts.m_query_label_fm.tightBoundingRect("A").width();
+            qreal translate_x_by =
+                (m_query_label_rect.width() - char_width) / 2;
+            if (position.x() < 0) {
+                translate_x_by *= -1;
+            }
+            m_query_label_rect.translate(translate_x_by, 0);
+        }
     }
     if ((m_settings.m_stereo_labels_visibility != StereoLabels::NONE) &&
         !m_hide_stereo_labels) {
@@ -228,7 +262,7 @@ QString AtomItem::getQueryLabel() const
         query_text = QString("\"%1\"").arg(QString::fromStdString(smarts));
 
         // if the string is too long, truncate it and add an ellipsis
-        query_text = m_fonts.m_element_list_fm.elidedText(
+        query_text = m_fonts.m_query_label_fm.elidedText(
             query_text, Qt::ElideRight, MAX_SMARTS_LABEL_LENGTH);
     }
     return query_text;
@@ -681,27 +715,25 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
     }
     if (!m_query_label_text.isEmpty()) {
         painter->save();
-        painter->setFont(m_fonts.m_element_list_font);
+        painter->setFont(m_fonts.m_query_label_font);
         painter->setPen(m_pen);
         painter->drawText(m_query_label_rect, Qt::AlignCenter,
                           m_query_label_text);
-        auto element_list_line =
-            QLineF(QPointF(0, 0), m_query_label_rect.center());
-        trim_line_to_rect(element_list_line, m_query_label_rect);
-        // trim the line on the atom's end. If no label is drawn there  we
-        // define a small rectangle. A 4 pixel margin will be added by
-        // trim_line_to_rect
-        auto SMALL = 0.1;
-        auto small_rect = QRectF(-SMALL, -SMALL, SMALL * 2, SMALL * 2);
-        auto rects = getSubrects();
         if (!m_label_is_visible) {
-            rects = {small_rect};
+            // if the main label is hidden (which happens for allowed/disallowed
+            // lists and SMARTS queries), draw a small line between the query
+            // label and the atom's center
+            auto query_label_line =
+                QLineF(QPointF(0, 0), m_query_label_rect.center());
+            trim_line_to_rect(query_label_line, m_query_label_rect);
+            // trim the line on the atom's end by defining a small rectangle.
+            // A 4 pixel margin will be added by trim_line_to_rect
+            auto SMALL = 0.1;
+            auto small_rect = QRectF(-SMALL, -SMALL, SMALL * 2, SMALL * 2);
+            trim_line_to_rect(query_label_line, small_rect);
+            painter->setPen(m_query_label_line_pen);
+            painter->drawLine(query_label_line);
         }
-        for (auto rect : rects) {
-            trim_line_to_rect(element_list_line, rect);
-        }
-        painter->setPen(m_element_list_line_pen);
-        painter->drawLine(element_list_line);
         painter->restore();
     }
     if (m_settings.m_stereo_labels_visibility != StereoLabels::NONE) {

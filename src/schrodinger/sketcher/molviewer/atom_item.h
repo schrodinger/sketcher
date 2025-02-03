@@ -175,7 +175,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QPen m_valence_error_pen;
     QPen m_chirality_pen;
     QPen m_squiggle_pen;
-    QPen m_element_list_line_pen;
+    QPen m_query_label_line_pen;
     QBrush m_valence_error_brush;
     bool m_hide_stereo_labels = false;
 
