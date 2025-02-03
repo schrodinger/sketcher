@@ -24,6 +24,18 @@ function(set_cmake_arg VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
+if(LINUX)
+    set(EXTRA_QT_CMAKE_ARGS "\
+        -DFEATURE_xcb=ON \
+        -DFEATURE_xcb_xlib=ON \
+        -DQT_QPA_DEFAULT_PLATFORM=xcb \
+        -DFEATURE_xkbcommon=ON
+    ")
+else()
+    set(EXTRA_QT_CMAKE_ARGS "")
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
+endif()
+
 ExternalProject_Add(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
@@ -143,6 +155,5 @@ ExternalProject_Add(
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
-    -DFEATURE_xcb=ON
-    -DQT_QPA_DEFAULT_PLATFORM=xcb
+    ${EXTRA_QT_CMAKE_ARGS}
     -DINPUT_opengl=no)

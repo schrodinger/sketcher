@@ -28,5 +28,6 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
+        PATH=`echo $PATH | tr ":" "\n" | grep -iv "Strawberry" | tr "\n" ":"` \
         printenv | sort && cmake --build build/external/ --target ${{ inputs.library }} \
               --config ${{ env.BUILD_TYPE }}
