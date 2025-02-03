@@ -143,5 +143,6 @@ ExternalProject_Add(
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
+    -DFEATURE_xcb=ON
     -DQT_QPA_DEFAULT_PLATFORM=xcb
     -DINPUT_opengl=no)
