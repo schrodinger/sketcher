@@ -25,12 +25,12 @@ function(set_cmake_arg VAR_NAME)
 endfunction()
 
 if(LINUX)
-    set(EXTRA_QT_CMAKE_ARGS "\
-        -DFEATURE_xcb=ON \
-        -DFEATURE_xcb_xlib=ON \
-        -DQT_QPA_DEFAULT_PLATFORM=xcb \
+    set(EXTRA_QT_CMAKE_ARGS
+        -DFEATURE_xcb=ON
+        -DFEATURE_xcb_xlib=ON
+        -DQT_QPA_DEFAULT_PLATFORM=xcb
         -DFEATURE_xkbcommon=ON
-    ")
+    )
 else()
     set(EXTRA_QT_CMAKE_ARGS "")
 endif()
