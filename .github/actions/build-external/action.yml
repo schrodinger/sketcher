@@ -28,6 +28,6 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
-        PATH=`echo $PATH | tr ":" "\n" | grep -iv "Strawberry" | tr "\n" ":"` \
-        printenv | sort && cmake --build build/external/ --target ${{ inputs.library }} \
+        sudo apt-get install libx11-* && sudo apt-get install libx11* && sudo apt-get install libxcb-* && sudo apt-get install libxcb* sudo apt-get install libxkbcommon-devsudo && sudo apt-get install libxkbcommon-x11-dev && \
+        cmake --build build/external/ --target ${{ inputs.library }} \
               --config ${{ env.BUILD_TYPE }}

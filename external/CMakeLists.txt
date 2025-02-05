@@ -26,6 +26,7 @@ endfunction()
 
 if(LINUX)
     set(EXTRA_QT_CMAKE_ARGS
+        -DFEATURE_xlib=ON
         -DFEATURE_xcb=ON
         -DFEATURE_xcb_xlib=ON
         -DQT_QPA_DEFAULT_PLATFORM=xcb
