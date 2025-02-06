@@ -32,6 +32,8 @@ if(LINUX)
         -DQT_QPA_DEFAULT_PLATFORM=xcb
         -DFEATURE_xkbcommon=ON
     )
+elseif(WIN32)
+    set(EXTRA_QT_CMAKE_ARGS -DSYNCQT=OFF)
 else()
     set(EXTRA_QT_CMAKE_ARGS "")
 endif()

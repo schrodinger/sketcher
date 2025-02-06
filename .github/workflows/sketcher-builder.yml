@@ -132,11 +132,12 @@ jobs:
         run: sudo apt-get install libxcb-cursor0
 
       - name: Test
-        if: matrix.build-output != 'wasm'
+        # if: matrix.build-output != 'wasm'
+        if: matrix.os != 'ubuntu-latest'
         working-directory: build
         run: |
-          ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}}
-          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+          ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
+          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure \
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && ' && killall xvfb-run' || ''}}
 
       - name: Download sketcher executable
