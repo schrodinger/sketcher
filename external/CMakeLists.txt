@@ -24,6 +24,17 @@ function(set_cmake_arg VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
+if(LINUX)
+    set(EXTRA_QT_CMAKE_ARGS
+        -DFEATURE_xlib=ON
+        -DFEATURE_xcb=ON
+        -DFEATURE_xcb_xlib=ON
+        -DFEATURE_xkbcommon=ON
+    )
+else()
+    set(EXTRA_QT_CMAKE_ARGS "")
+endif()
+
 ExternalProject_Add(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
@@ -89,7 +100,8 @@ ExternalProject_Add(
     -DBUILD_SHARED_LIBS=OFF
     -DBOOST_INCLUDE_LIBRARIES=${BOOST_INCLUDE_LIBS}
     -DBOOST_RUNTIME_LINK=static
-    -DBOOST_IOSTREAMS_ENABLE_BZIP2=OFF)
+    -DBOOST_IOSTREAMS_ENABLE_BZIP2=OFF
+    -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF)
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
@@ -133,10 +145,13 @@ ExternalProject_Add(
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+    -DCMAKE_POLICY_DEFAULT_CMP0177:STRING=NEW
+    -DCMAKE_POLICY_DEFAULT_CMP0174:STRING=NEW
     -DBUILD_SHARED_LIBS=OFF
     -DQT_BUILD_EXAMPLES=OFF
     -DQT_BUILD_SUBMODULES=${QT_SUBMODULES}
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
-    -DINPUT_opengl=no)
+    -DINPUT_opengl=no
+    ${EXTRA_QT_CMAKE_ARGS})
