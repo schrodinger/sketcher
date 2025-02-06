@@ -30,6 +30,7 @@ runs:
 
     - name: Install required packages
       if: ${{ inputs.required_packages != '' }}
+      shell: bash
       run: sudo apt-get install ${{ inputs.required_packages }}
 
     - name: Build library
