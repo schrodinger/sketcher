@@ -87,11 +87,6 @@ set(EXE_TARGET sketcher_app)
 add_executable(${EXE_TARGET} src/app/main.cpp)
 setup_target(${EXE_TARGET})
 target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
-if (LINUX)
-    qt_import_plugins(${EXE_TARGET}
-        INCLUDE Qt6::QXcbIntegrationPlugin
-    )
-endif()
 
 # Tests
 enable_testing()

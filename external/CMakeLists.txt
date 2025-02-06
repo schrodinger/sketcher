@@ -29,7 +29,6 @@ if(LINUX)
         -DFEATURE_xlib=ON
         -DFEATURE_xcb=ON
         -DFEATURE_xcb_xlib=ON
-        -DQT_QPA_DEFAULT_PLATFORM=xcb
         -DFEATURE_xkbcommon=ON
     )
 else()
