@@ -8,6 +8,10 @@ inputs:
   version:
     description: "Version of the dependency to build"
     required: true
+  required_packages:
+    description: "Packages to apt-get install before building"
+    required: false
+    default: ""
 
 outputs:
   path:
@@ -24,10 +28,13 @@ runs:
         path: build/external/${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}
 
+    - name: Install required packages
+      if: ${{ inputs.required_packages != '' }}
+      run: sudo apt-get install ${{ inputs.required_packages }}
+
     - name: Build library
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
-        sudo apt-get install libx11-* libx11* libxcb-* libxcb* libxkbcommon-dev libxkbcommon-x11-dev && \
         cmake --build build/external/ --target ${{ inputs.library }} \
               --config ${{ env.BUILD_TYPE }}

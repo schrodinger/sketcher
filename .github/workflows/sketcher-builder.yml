@@ -107,6 +107,7 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
+          required_packages: ${{matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'libx11-* libx11* libxcb-* libxcb* libxkbcommon-dev libxkbcommon-x11-dev' || '' }}
 
       - name: Configure CMake
         if: matrix.build-output != 'wasm'
@@ -125,6 +126,10 @@ jobs:
       - name: Build
         if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
+
+      - name: Install libxcb-cursor0 (required to run tests)
+        if: matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm'
+        run: sudo apt-get install libxcb-cursor0
 
       - name: Test
         if: matrix.build-output != 'wasm'
