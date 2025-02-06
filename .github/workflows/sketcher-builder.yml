@@ -100,8 +100,38 @@ jobs:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
+      - name: Install Qt's required packages
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm'}}
+        run: |
+          sudo apt-get install \
+            libfontconfig1-dev \
+            libfreetype-dev \
+            libx11-dev \
+            libx11-xcb-dev \
+            libxcb-cursor-dev \
+            libxcb-glx0-dev \
+            libxcb-icccm4-dev \
+            libxcb-image0-dev \
+            libxcb-keysyms1-dev \
+            libxcb-randr0-dev \
+            libxcb-render-util0-dev \
+            libxcb-shape0-dev \
+            libxcb-shm0-dev \
+            libxcb-sync-dev \
+            libxcb-util-dev \
+            libxcb-xfixes0-dev \
+            libxcb-xinerama0-dev \
+            libxcb-xkb-dev \
+            libxcb1-dev \
+            libxext-dev \
+            libxfixes-dev \
+            libxi-dev \
+            libxkbcommon-dev \
+            libxkbcommon-x11-dev \
+            libxrender-dev
+
       - name: Fetch Qt
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
@@ -109,7 +139,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -123,16 +153,20 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         working-directory: build
-        run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+        # the first line of the command launches xvfb-run -a, but only for
+        # Ubuntu non-wasm builds
+        run: |
+          ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
+          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
       - name: Download sketcher executable
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}
