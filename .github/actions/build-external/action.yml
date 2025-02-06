@@ -38,4 +38,4 @@ runs:
       shell: bash
       run: |
         cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }} || ldd qtbase\bin\syncqt.exe
+              --config ${{ env.BUILD_TYPE }} || ldd qtbase/bin/syncqt.exe

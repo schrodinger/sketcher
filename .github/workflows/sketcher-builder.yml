@@ -134,7 +134,10 @@ jobs:
       - name: Test
         if: matrix.build-output != 'wasm'
         working-directory: build
-        run: ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+        run: |
+          ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}}
+          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+          ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && ' && killall xvfb-run' || ''}}
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
