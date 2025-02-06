@@ -8,10 +8,6 @@ inputs:
   version:
     description: "Version of the dependency to build"
     required: true
-  required_packages:
-    description: "Packages to apt-get install before building"
-    required: false
-    default: ""
 
 outputs:
   path:
@@ -27,11 +23,6 @@ runs:
       with:
         path: build/external/${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}
-
-    - name: Install required packages
-      if: ${{ steps.cache-check.outputs.cache-hit != 'true' && inputs.required_packages != '' }}
-      shell: bash
-      run: sudo apt-get install ${{ inputs.required_packages }}
 
     - name: Build library
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
