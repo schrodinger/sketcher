@@ -130,7 +130,7 @@ jobs:
                 libxrender-dev
 
       - name: Fetch Qt
-        if: matrix.build-output != 'wasm' && matrix.os != "windows-latest"
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
@@ -138,7 +138,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
-        if: matrix.build-output != 'wasm' && matrix.os != "windows-latest"
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -152,11 +152,11 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        if: matrix.build-output != 'wasm' && matrix.os != "windows-latest"
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
-        if: matrix.build-output != 'wasm' && matrix.os != "windows-latest"
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         working-directory: build
         # the first line of the command launches xvfb-run -a, but only for
         # Ubuntu non-wasm builds
