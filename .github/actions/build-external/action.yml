@@ -29,7 +29,7 @@ runs:
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}
 
     - name: Install required packages
-      if: ${{ inputs.required_packages != '' }}
+      if: ${{ steps.cache-check.outputs.cache-hit != 'true' && inputs.required_packages != '' }}
       shell: bash
       run: sudo apt-get install ${{ inputs.required_packages }}
 
@@ -38,4 +38,11 @@ runs:
       shell: bash
       run: |
         cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }} || cd /D D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng && D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/bin/syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng/PngPrivate_syncqt_args
+              --config ${{ env.BUILD_TYPE }}
+
+    -name: syncqt
+     if: ${{ steps.cache-check.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'}}
+     shell: cmd
+     run: |
+        cd /D D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng && \
+        D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/bin/syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng/PngPrivate_syncqt_args

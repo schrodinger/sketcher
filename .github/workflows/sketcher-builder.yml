@@ -127,18 +127,12 @@ jobs:
         if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
-      - name: Install libxcb-cursor0 (required to run tests)
-        if: matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm'
-        run: sudo apt-get install libxcb-cursor0
-
       - name: Test
         if: matrix.build-output != 'wasm'
-        # if: matrix.os != 'ubuntu-latest'
         working-directory: build
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
-          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure \
-          ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && ' && killall xvfb-run' || ''}}
+          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
