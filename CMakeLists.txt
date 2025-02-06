@@ -112,8 +112,3 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
 endforeach()
-if (LINUX)
-    qt_import_plugins(${TEST_TARGET}
-        INCLUDE Qt6::QXcbIntegrationPlugin
-    )
-endif()
