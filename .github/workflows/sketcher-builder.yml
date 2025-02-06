@@ -165,7 +165,7 @@ jobs:
           ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
       - name: Download sketcher executable
-        if: matrix.build-output != 'wasm' && matrix.os != "windows-latest"
+        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}
