@@ -40,9 +40,9 @@ runs:
         cmake --build build/external/ --target ${{ inputs.library }} \
               --config ${{ env.BUILD_TYPE }}
 
-    -name: syncqt
-     if: ${{ steps.cache-check.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'}}
-     shell: cmd
-     run: |
+    - name: syncqt
+      if: ${{ steps.cache-check.outputs.cache-hit != 'true' && matrix.os == 'windows-latest'}}
+      shell: cmd
+      run: |
         cd /D D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng && \
         D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/bin/syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng/PngPrivate_syncqt_args
