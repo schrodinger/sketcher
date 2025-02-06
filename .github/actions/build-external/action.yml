@@ -38,4 +38,4 @@ runs:
       shell: bash
       run: |
         cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }} || ldd D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/bin/syncqt.exe
+              --config ${{ env.BUILD_TYPE }} || C:/Windows/system32/cmd.exe /C "cd /D D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng && D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/bin/syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng/PngPrivate_syncqt_args && "C:\Program Files\CMake\bin\cmake.exe" -E touch D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/3rdparty/libpng/PngPrivate_syncqt_timestamp"

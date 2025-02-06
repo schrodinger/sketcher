@@ -132,8 +132,8 @@ jobs:
         run: sudo apt-get install libxcb-cursor0
 
       - name: Test
-        # if: matrix.build-output != 'wasm'
-        if: matrix.os != 'ubuntu-latest'
+        if: matrix.build-output != 'wasm'
+        # if: matrix.os != 'ubuntu-latest'
         working-directory: build
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
