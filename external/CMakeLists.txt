@@ -154,5 +154,5 @@ ExternalProject_Add(
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
-    -DINPUT_opengl=no)
-    ${EXTRA_QT_CMAKE_ARGS}
+    -DINPUT_opengl=no
+    ${EXTRA_QT_CMAKE_ARGS})
