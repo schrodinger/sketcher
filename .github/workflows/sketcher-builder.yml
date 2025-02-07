@@ -67,7 +67,6 @@ jobs:
         with:
           library: fmt
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
-          my_debug: false
 
       - name: Fetch zlib
         if: matrix.build-output != 'wasm'
@@ -138,7 +137,6 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          my_debug: true
 
       - name: Configure CMake
         if: matrix.build-output != 'wasm'

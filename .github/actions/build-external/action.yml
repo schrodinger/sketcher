@@ -8,10 +8,6 @@ inputs:
   version:
     description: "Version of the dependency to build"
     required: true
-  my_debug:
-    description: "For debugging"
-    required: false
-    default: false
 
 outputs:
   path:
