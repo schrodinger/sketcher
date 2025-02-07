@@ -137,6 +137,7 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
+          debug: true
 
       - name: Configure CMake
         if: matrix.build-output != 'wasm'
