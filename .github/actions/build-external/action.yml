@@ -28,6 +28,19 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
-        ${{ runner.os == 'windows' && 'PATH=`echo $PATH | tr ":" "\n" | grep -iv "Strawberry" | tr "\n" ":"` printenv && ' || '' }}
-        cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }}
+        ${{ runner.os == 'windows' && 'PATH=`echo $PATH | tr ":" "\\n" | grep -iv "Strawberry" | tr "\\n" ":"` mingw-get update && mingw-get upgrade && ' || '' }}
+        cmake --build build/external/ --target ${{ inputs.library }} \\
+              --config ${{ env.BUILD_TYPE }} \\
+        ${{ runner.os == 'windows' && ' || true ' || '' }}
+
+    - name: Syncqt help
+      if: ${{ runner.os == 'windows' }}
+      shell: cmd
+      run: D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe -help
+
+    - name: Test syncqt
+      if: ${{ runner.os == 'windows' }}
+      shell: cmd
+      run: |
+        cd /D D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\src\\corelib && \
+        D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/corelib/Core_syncqt_args
