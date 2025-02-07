@@ -38,12 +38,12 @@ runs:
         ${{ runner.os == 'windows' && ' || true ' || '' }}
 
     - name: Syncqt help
-      if: ${{ inputs.my_debug && runner.os == 'windows' }}
+      if: ${{ inputs.my_debug == 'true' && runner.os == 'windows' }}
       shell: cmd
       run: D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe -help
 
     - name: Test syncqt
-      if: ${{ inputs.my_debug && runner.os == 'windows' }}
+      if: ${{ inputs.my_debug == 'true' && runner.os == 'windows' }}
       shell: cmd
       run: |
         cd /D D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\src\\corelib && \
