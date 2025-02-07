@@ -30,20 +30,5 @@ runs:
 
     - name: Build library
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
-      shell: bash
-      run: |
-        ${{ runner.os == 'windows' && 'PATH=`echo $PATH | tr ":" "\n" | grep -iv "Strawberry" | tr "\n" ":"` ' || '' }}
-        cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }} \
-        ${{ runner.os == 'windows' && ' || true ' || '' }}
-
-    - name: Syncqt help
-      if: ${{ inputs.my_debug == 'true' && runner.os == 'windows' }}
-      shell: cmd
-      run: D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe -help
-
-    - name: Test syncqt
-      if: ${{ inputs.my_debug == 'true' && runner.os == 'windows' }}
-      shell: cmd
-      run: |
-        cd /D D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\src\\corelib && D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/corelib/Core_syncqt_args && "C:\\Program Files\\CMake\\bin\\cmake.exe" -E touch D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/corelib/Core_syncqt_timestamp
+      shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
+      run: cmake --build build/external/ --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
