@@ -46,5 +46,4 @@ runs:
       if: ${{ inputs.my_debug == 'true' && runner.os == 'windows' }}
       shell: cmd
       run: |
-        cd /D D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\src\\corelib && \
-        D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/corelib/Core_syncqt_args
+        cd /D D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\src\\corelib && D:\\a\\sketcher\\sketcher\\build\\external\\qt-prefix\\src\\qt-build\\qtbase\\bin\\syncqt.exe @D:/a/sketcher/sketcher/build/external/qt-prefix/src/qt-build/qtbase/src/corelib/Core_syncqt_args
