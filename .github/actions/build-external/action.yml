@@ -32,7 +32,7 @@ runs:
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
       shell: bash
       run: |
-        ${{ runner.os == 'windows' && 'PATH=`echo $PATH | tr ":" "\\n" | grep -iv "Strawberry" | tr "\\n" ":"` mingw-get update && mingw-get upgrade && ' || '' }}
+        ${{ runner.os == 'windows' && 'PATH=`echo $PATH | tr ":" "\\n" | grep -iv "Strawberry" | tr "\\n" ":"` ' || '' }}
         cmake --build build/external/ --target ${{ inputs.library }} \\
               --config ${{ env.BUILD_TYPE }} \\
         ${{ runner.os == 'windows' && ' || true ' || '' }}
