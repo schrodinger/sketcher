@@ -154,7 +154,7 @@ jobs:
 
       - name: Build
         if: matrix.build-output != 'wasm'
-        shell: ${{ matrix.os == 'windows-latest' && 'cmd' || 'bash' }}
+        shell: 'cmd'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
