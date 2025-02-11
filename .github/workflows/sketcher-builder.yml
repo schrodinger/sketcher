@@ -170,4 +170,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}
-          path: build/sketcher_app
+          path: ${{matrix.os == 'windows-latest' && 'sketcher/' || ''}}build/sketcher_app
