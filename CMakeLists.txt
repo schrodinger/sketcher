@@ -44,6 +44,9 @@ function(setup_target TARGET)
                       RDK_BUILD_MAEPARSER_SUPPORT)
 endfunction()
 
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_EXE_LINKER_FLAGS "-static")
+
 # Build static libraries
 function(build_static_library TARGET)
   set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/schrodinger/${TARGET})
@@ -52,7 +55,7 @@ function(build_static_library TARGET)
   file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
        ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp)
   add_library(${TARGET} STATIC ${SOURCE_LIST})
-  add_library(schrodinger::${TARGET} ALIAS ${TARGET})
+  add_library(schrodinger::${TARGET} ALIAS ${TARGET}) 
   setup_target(${TARGET})
 endfunction()
 
