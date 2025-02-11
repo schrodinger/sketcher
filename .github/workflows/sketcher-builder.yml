@@ -169,5 +169,5 @@ jobs:
         if: matrix.build-output != 'wasm'
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}
+          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}${{matrix.os == 'windows-latest' && '.exe' || ''}}
           path: build/sketcher_app${{matrix.os == 'windows-latest' && '.exe' || ''}}
