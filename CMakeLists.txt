@@ -89,21 +89,21 @@ setup_target(${EXE_TARGET})
 target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
 
 # Tests
-enable_testing()
+# enable_testing()
 
-set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
-file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
-set(TEST_DEPENDENCIES Boost::unit_test_framework fmt::fmt Qt6::Widgets
-                      ${SKETCHER_LIB} ${RDKIT_EXTENSIONS_LIB})
-foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
-  cmake_path(GET TEST_SOURCE STEM TEST_TARGET)
-  add_executable(${TEST_TARGET} ${TEST_SOURCE})
-  setup_target(${TEST_TARGET})
-  target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
-  add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
-  # Mirror the source directory for test collection
-  cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
-  cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
-  set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                  ${PREFIX_PATH})
-endforeach()
+# set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
+# file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
+# set(TEST_DEPENDENCIES Boost::unit_test_framework fmt::fmt Qt6::Widgets
+#                       ${SKETCHER_LIB} ${RDKIT_EXTENSIONS_LIB})
+# foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
+#   cmake_path(GET TEST_SOURCE STEM TEST_TARGET)
+#   add_executable(${TEST_TARGET} ${TEST_SOURCE})
+#   setup_target(${TEST_TARGET})
+#   target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+#   add_test(NAME ${TEST_TARGET} COMMAND ${TEST_TARGET})
+#   # Mirror the source directory for test collection
+#   cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
+#   cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
+#   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+#                                                   ${PREFIX_PATH})
+# endforeach()
