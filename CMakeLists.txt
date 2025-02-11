@@ -7,6 +7,7 @@ project(
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_policy(SET CMP0167 NEW)
 
 # Dependencies
 file(READ external/versions.json VERSIONS)
@@ -18,6 +19,8 @@ string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
+set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_EXE_LINKER_FLAGS "-static")
 
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
@@ -43,9 +46,6 @@ function(setup_target TARGET)
     ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                       RDK_BUILD_MAEPARSER_SUPPORT)
 endfunction()
-
-set(BUILD_SHARED_LIBS OFF)
-set(CMAKE_EXE_LINKER_FLAGS "-static")
 
 # Build static libraries
 function(build_static_library TARGET)
@@ -74,6 +74,7 @@ target_link_libraries(
           fmt::fmt
           ZLIB::ZLIB
           zstd::libzstd_static)
+target_link_libraries(${RDKIT_EXTENSIONS_LIB} PUBLIC "-static")
 
 set(SKETCHER_LIB sketcher)
 build_static_library(${SKETCHER_LIB})
@@ -84,12 +85,14 @@ set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOMOC ON)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC ON)
 set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${SKETCHER_LIB}/ui)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC_SEARCH_PATHS ${UI_DIR})
+target_link_libraries(${SKETCHER_LIB} PUBLIC "-static")
 
 # Standalone executable
 set(EXE_TARGET sketcher_app)
 add_executable(${EXE_TARGET} src/app/main.cpp)
 setup_target(${EXE_TARGET})
 target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
+target_link_libraries(${EXE_TARGET} PUBLIC "-static")
 
 # Tests
 # enable_testing()
