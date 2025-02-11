@@ -20,6 +20,7 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
+set(CMAKE_EXE_LINKER_FLAGS "-static")
 
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
@@ -83,12 +84,14 @@ set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOMOC ON)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC ON)
 set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${SKETCHER_LIB}/ui)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC_SEARCH_PATHS ${UI_DIR})
+target_link_libraries(${SKETCHER_LIB} PUBLIC "-static")
 
 # Standalone executable
 set(EXE_TARGET sketcher_app)
 add_executable(${EXE_TARGET} src/app/main.cpp)
 setup_target(${EXE_TARGET})
 target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
+target_link_libraries(${EXE_TARGET} PUBLIC "-static")
 
 # Tests
 enable_testing()
@@ -96,7 +99,7 @@ enable_testing()
 set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
 file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
 set(TEST_DEPENDENCIES Boost::unit_test_framework fmt::fmt Qt6::Widgets
-                      ${SKETCHER_LIB})
+                      ${SKETCHER_LIB} ${RDKIT_EXTENSIONS_LIB})
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   cmake_path(GET TEST_SOURCE STEM TEST_TARGET)
   add_executable(${TEST_TARGET} ${TEST_SOURCE})
@@ -109,3 +112,4 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
 endforeach()
+target_link_libraries(${TEST_TARGET} PUBLIC "-static")
