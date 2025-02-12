@@ -168,6 +168,9 @@ jobs:
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
         uses: actions/upload-artifact@v4
+        env:
+            # ".exe" on Windows, empty everywhere else
+            dot_exe: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
-          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}${{matrix.os == 'windows-latest' && '.exe' || ''}}
-          path: build/sketcher_app${{matrix.os == 'windows-latest' && '.exe' || ''}}
+          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}${{env.dot_exe}}
+          path: build/sketcher_app${{env.dot_exe}}
