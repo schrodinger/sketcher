@@ -131,7 +131,7 @@ jobs:
             libxrender-dev
 
       - name: Fetch Qt
-        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
+        if: matrix.build-output != 'wasm'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
@@ -139,7 +139,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
-        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
+        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -153,11 +153,11 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
+        if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
-        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
+        if: matrix.build-output != 'wasm'
         working-directory: build
         # the first line of the command launches xvfb-run -a, but only for
         # Ubuntu non-wasm builds
@@ -166,8 +166,11 @@ jobs:
           ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
 
       - name: Download sketcher executable
-        if: matrix.build-output != 'wasm' && matrix.os != 'windows-latest'
+        if: matrix.build-output != 'wasm'
         uses: actions/upload-artifact@v4
+        env:
+            # ".exe" on Windows, empty everywhere else
+            dot_exe: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
-          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}
-          path: build/sketcher_app
+          name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}${{env.dot_exe}}
+          path: build/sketcher_app${{env.dot_exe}}

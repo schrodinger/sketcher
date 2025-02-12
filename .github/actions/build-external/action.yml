@@ -26,7 +26,9 @@ runs:
 
     - name: Build library
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
-      shell: bash
-      run: |
-        cmake --build build/external/ --target ${{ inputs.library }} \
-              --config ${{ env.BUILD_TYPE }}
+      # The Windows Qt build fails if we try to use bash, since it shells out to
+      # cmd and doesn't protect the path backslashes from bash
+      shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
+      # don't put escaped newlines in this command, since it needs to be
+      # runnable in both bash and cmd (which uses ^ to escape newlines)
+      run: cmake --build build/external/ --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
