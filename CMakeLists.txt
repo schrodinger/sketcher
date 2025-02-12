@@ -7,6 +7,7 @@ project(
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_policy(SET CMP0167 NEW)
 
 # Dependencies
 file(READ external/versions.json VERSIONS)
@@ -18,6 +19,7 @@ string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
+set(BUILD_SHARED_LIBS OFF)
 
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
@@ -81,12 +83,18 @@ set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOMOC ON)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC ON)
 set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${SKETCHER_LIB}/ui)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC_SEARCH_PATHS ${UI_DIR})
+if (WIN32)
+    target_link_libraries(${SKETCHER_LIB} PUBLIC "-static")
+endif()
 
 # Standalone executable
 set(EXE_TARGET sketcher_app)
 add_executable(${EXE_TARGET} src/app/main.cpp)
 setup_target(${EXE_TARGET})
 target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
+if (WIN32)
+    target_link_libraries(${EXE_TARGET} PUBLIC "-static")
+endif()
 
 # Tests
 enable_testing()
@@ -107,3 +115,6 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
 endforeach()
+if (WIN32)
+    target_link_libraries(${TEST_TARGET} PUBLIC "-static")
+endif()
