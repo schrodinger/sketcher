@@ -55,13 +55,11 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
 
       - name: Configure Dependency CMake
-        if: matrix.build-output != 'wasm'
         run: |
             cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Fetch fmt
-        if: matrix.build-output != 'wasm'
         id: fetch-fmt
         uses: ./.github/actions/build-external
         with:
@@ -69,7 +67,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
 
       - name: Fetch zlib
-        if: matrix.build-output != 'wasm'
         id: fetch-zlib
         uses: ./.github/actions/build-external
         with:
@@ -77,7 +74,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
 
       - name: Fetch zstd
-        if: matrix.build-output != 'wasm'
         id: fetch-zstd
         uses: ./.github/actions/build-external
         with:
@@ -85,7 +81,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
 
       - name: Fetch Boost
-        if: matrix.build-output != 'wasm'
         id: fetch-boost
         uses: ./.github/actions/build-external
         with:
@@ -93,7 +88,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
 
       - name: Fetch RDKit
-        if: matrix.build-output != 'wasm'
         id: fetch-rdkit
         uses: ./.github/actions/build-external
         with:
@@ -131,7 +125,6 @@ jobs:
             libxrender-dev
 
       - name: Fetch Qt
-        if: matrix.build-output != 'wasm'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
@@ -139,7 +132,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
-        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -153,11 +145,9 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
-        if: matrix.build-output != 'wasm'
         working-directory: build
         # the first line of the command launches xvfb-run -a, but only for
         # Ubuntu non-wasm builds
