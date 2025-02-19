@@ -132,6 +132,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
+        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -166,3 +167,14 @@ jobs:
         with:
           name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}${{env.dot_exe}}
           path: build/sketcher_app${{env.dot_exe}}
+
+      - name: Create wasm tarball
+        if: matrix.build-output == 'not wasm'
+        run: sketcher/wasm/create_wasm_tarball.sh sketcher-wasm
+
+      - name: Download wasm tarball
+        if: matrix.build-output == 'not wasm'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketcher-wasm.tar.gz
+          path: sketcher-wasm.tar.gz
