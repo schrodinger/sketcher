@@ -147,6 +147,7 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
+        if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
