@@ -21,13 +21,13 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
-# if (EMSCRIPTEN)
-#     find_package(Boost ${BOOST_VERSION} REQUIRED)
-# else()
-#     find_package(
-#       Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
-#                                                  serialization unit_test_framework)
-# endif()
+if (EMSCRIPTEN)
+    list(APPEND CMAKE_FIND_ROOT_PATH  ${GITHUB_WORKSPACE})
+endif()
+
+find_package(
+    # Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
+    #                                             serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
