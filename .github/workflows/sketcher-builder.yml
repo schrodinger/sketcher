@@ -138,7 +138,7 @@ jobs:
                                 ${{ steps.fetch-zstd.outputs.path }};\
                                 ${{ steps.fetch-boost.outputs.path }}/lib/cmake/Boost-1.83.0;\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
-                                ${{ steps.fetch-qt.outputs.path }}/lib/cmake/Qt6"
+                                ${{ steps.fetch-qt.outputs.path }}"
             Boost_VERBOSE: 1
             Boost_DEBUG: 1
         run: |
@@ -151,7 +151,7 @@ jobs:
                 -Dzstd_DIR=${{ steps.fetch-zstd.outputs.path }} \
                 -DBoost_DIR=${{ steps.fetch-boost.outputs.path }}}/lib/cmake/Boost-1.83.0 \
                 -DRDKit_DIR=${{ steps.fetch-rdkit.outputs.path }} \
-                -DQt6_DIR=${{ steps.fetch-qt.outputs.path }}/lib/cmake/Qt6
+                -DQt6_DIR=${{ steps.fetch-qt.outputs.path }}
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
