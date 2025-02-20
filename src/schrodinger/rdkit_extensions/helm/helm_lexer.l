@@ -54,7 +54,7 @@ float_token                 [0-9]*\.[0-9]+
 positive_int                [1-9][0-9]*
 polymer_id                  (PEPTIDE|RNA|CHEM|BLOB){positive_int}
 
-multicharacter_monomer      [a-zA-Z0-9]{2,}
+multicharacter_monomer      ([a-zA-Z0-9]+([_-]+[a-zA-Z0-9]+)*)
 inline_smiles_monomer       (\[[^\[\]\n]+\]|[^\[\]\n]+)+
 inline_annotation           \"[^\"]+\"
 num_repetitions             {positive_int}|{positive_int}\-{positive_int}

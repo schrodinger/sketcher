@@ -236,6 +236,19 @@ static const std::vector<std::string>
         R"(PEPTIDE1{Q.V.Q.L.V.Q.S.G.V.E.V.K.K.P.G.A.S.V.K.V.S.C.K.A.S.G.Y.T.F.T.N.Y.Y.M.Y.W.V.R.Q.A.P.G.Q.G.L.E.W.M.G.G.I.N.P.S.N.G.G.T.N.F.N.E.K.F.K.N.R.V.T.L.T.T.D.S.S.T.T.T.A.Y.M.E.L.K.S.L.Q.F.D.D.T.A.V.Y.Y.C.A.R.R.D.Y.R.F.D.M.G.F.D.Y.W.G.Q.G.T.T.V.T.V.S.S}|PEPTIDE2{E.I.V.L.T.Q.S.P.A.T.L.S.L.S.P.G.E.R.A.T.L.S.C.R.A.S.K.G.V.S.T.S.G.Y.S.Y.L.H.W.Y.Q.Q.K.P.G.Q.A.P.R.L.L.I.Y.L.A.S.Y.L.E.S.G.V.P.A.R.F.S.G.S.G.S.G.T.D.F.T.L.T.I.S.S.L.E.P.E.D.F.A.V.Y.Y.C.Q.H.S.R.D.L.P.L.T.F.G.G.G.T.K.V.E.I.K}$PEPTIDE2,PEPTIDE2,23:R3-92:R3|PEPTIDE1,PEPTIDE1,22:R3-96:R3$$$)",
         R"(RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$RNA1,RNA2,2:pair-9:pair|RNA1,RNA2,5:pair-6:pair|RNA1,RNA2,8:pair-3:pair$$$)",
         R"(RNA1{R(U)P.R(T)P}|RNA2{P.R(A)P.R(A)}$RNA1,RNA2,2:pair-6:pair|RNA1,RNA2,5:pair-3:pair$$$)",
+        /* Nonstandard monomer names */
+        "PEPTIDE1{[Phe_3Cl]}$$$$V2.0",
+        "PEPTIDE1{[Phe-3Cl]}$$$$V2.0",
+        "PEPTIDE1{[D-1Nal]}$$$$V2.0",
+        "PEPTIDE1{[D-Phe_4F]}$$$$V2.0",
+        "RNA1{R.[Phe_3Cl].P}$$$$V2.0",
+        "RNA1{R.[Phe-3Cl].P}$$$$V2.0",
+        "RNA1{R.[D-1Nal].P}$$$$V2.0",
+        "RNA1{R.[D-Phe_4F].P}$$$$V2.0",
+        "CHEM1{[Phe_3Cl]}$$$$V2.0",
+        "CHEM1{[Phe-3Cl]}$$$$V2.0",
+        "CHEM1{[D-1Nal]}$$$$V2.0",
+        "CHEM1{[D-Phe_4F]}$$$$V2.0",
     };
 
 static const std::vector<std::string> UNSUPPORTED_EXAMPLES{

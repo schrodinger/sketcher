@@ -418,3 +418,33 @@ BOOST_DATA_TEST_CASE(
 {
     BOOST_CHECK_THROW(helm_to_rdkit(input_helm), Invar::Invariant);
 }
+
+BOOST_DATA_TEST_CASE(TestConversionOfMonomersWithNonstandardNames,
+                     bdata::make(std::vector<HELMInfo>{
+                         {{{"PEPTIDE1", {"Phe_3Cl"}}}},
+                         {{{"PEPTIDE1", {"Phe-3Cl"}}}},
+                         {{{"PEPTIDE1", {"D-1Nal"}}}},
+                         {{{"PEPTIDE1", {"D-Phe_4F"}}}},
+                         {{{"PEPTIDE1", {"A", "Phe_3Cl", "D"}}}},
+                         {{{"PEPTIDE1", {"A", "Phe-3Cl", "D"}}}},
+                         {{{"PEPTIDE1", {"A", "D-1Nal", "D"}}}},
+                         {{{"PEPTIDE1", {"A", "D-Phe_4F", "D"}}}},
+                         {{{"RNA1", {"R", "A"}}}},
+                         {{{"RNA1", {"R", "A", "P"}}}},
+                         {{{"RNA1", {"R", "Phe_3Cl"}}}},
+                         {{{"RNA1", {"R", "Phe-3Cl"}}}},
+                         {{{"RNA1", {"R", "D-1Nal"}}}},
+                         {{{"RNA1", {"R", "D-Phe_4F"}}}},
+                         {{{"RNA1", {"R", "Phe_3Cl", "P"}}}},
+                         {{{"RNA1", {"R", "Phe-3Cl", "P"}}}},
+                         {{{"RNA1", {"R", "D-1Nal", "P"}}}},
+                         {{{"RNA1", {"R", "D-Phe_4F", "P"}}}},
+                         {{{"CHEM1", {"Phe_3Cl"}}}},
+                         {{{"CHEM1", {"Phe-3Cl"}}}},
+                         {{{"CHEM1", {"D-1Nal"}}}},
+                         {{{"CHEM1", {"D-Phe_4F"}}}},
+                     }),
+                     helm_info)
+{
+    check_helm_conversion(helm_info);
+}
