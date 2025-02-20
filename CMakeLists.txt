@@ -24,8 +24,8 @@ set(BUILD_SHARED_LIBS OFF)
 # find_package(
 #     Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
 #                                                 serialization unit_test_framework NO_CMAKE_FIND_ROOT_PATH)
-find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg NO_CMAKE_FIND_ROOT_PATH)
-find_package(RDKit ${RDKIT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+# find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg NO_CMAKE_FIND_ROOT_PATH)
+# find_package(RDKit ${RDKIT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 find_package(fmt ${FMT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 find_package(zstd ${ZSTD_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
