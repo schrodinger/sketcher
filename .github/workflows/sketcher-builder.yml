@@ -142,8 +142,8 @@ jobs:
             Boost_VERBOSE: 1
             Boost_DEBUG: 1
         run: |
-          ${{matrix.build-output == 'wasm' && 'cat /home/runner/work/sketcher/sketcher/build/external/fmt-10.1.0/lib/cmake/fmt/fmt-config.cmake && emcmake' || ''}} \
-          cmake -B build -S . -G Ninja --debug-find \
+          ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
+          cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
                 -Dfmt_DIR=${{ steps.fetch-fmt.outputs.path }} \

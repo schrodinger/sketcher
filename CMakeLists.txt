@@ -21,6 +21,7 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
+set(CMAKE_FIND_DEBUG_MODE ON)
 # find_package(
 #     Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
 #                                                 serialization unit_test_framework NO_CMAKE_FIND_ROOT_PATH)
