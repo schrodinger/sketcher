@@ -141,7 +141,7 @@ jobs:
                                 ${{ steps.fetch-qt.outputs.path }}"
             Boost_DIR: "${{ steps.fetch-boost.outputs.path }}/lib/cmake/Boost-1.83.0"
         run: |
-          ${{matrix.build-output == 'wasm' && 'cat $Boost_DIR/lib/cmake/Boost-1.83.0/BoostConfig.cmake && emcmake' || ''}} \
+          ${{matrix.build-output == 'wasm' && 'cat $Boost_DIR/BoostConfig.cmake && emcmake' || ''}} \
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
