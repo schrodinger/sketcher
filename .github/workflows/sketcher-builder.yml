@@ -138,7 +138,7 @@ jobs:
                                 ${{ steps.fetch-zstd.outputs.path }};\
                                 ${{ steps.fetch-boost.outputs.path }}/lib/cmake/Boost-1.83.0;\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
-                                ${{ steps.fetch-qt.outputs.path }}"
+                                ${{ steps.fetch-qt.outputs.path }}/lib/cmake/Qt6"
             Boost_VERBOSE: 1
             Boost_DEBUG: 1
         run: |
