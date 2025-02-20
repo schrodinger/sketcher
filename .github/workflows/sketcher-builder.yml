@@ -145,13 +145,13 @@ jobs:
           ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
           cmake -B build -S . -G Ninja --debug-find \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }} \
+                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"" \
                 -Dfmt_DIR=${{ steps.fetch-fmt.outputs.path }} \
                 -Dzlib_DIR=${{ steps.fetch-zlib.outputs.path }} \
                 -Dzstd_DIR=${{ steps.fetch-zstd.outputs.path }} \
                 -DBoost_DIR=${{ steps.fetch-boost.outputs.path }}}/lib/cmake/Boost-1.83.0 \
                 -DRDKit_DIR=${{ steps.fetch-rdkit.outputs.path }} \
-                -DQt6_DIR=${{ steps.fetch-qt.outputs.path }}/lib/cmake/Qt6"
+                -DQt6_DIR=${{ steps.fetch-qt.outputs.path }}/lib/cmake/Qt6
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
