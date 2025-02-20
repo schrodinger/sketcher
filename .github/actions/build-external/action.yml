@@ -13,7 +13,7 @@ outputs:
   path:
     description: "Path to the installed dependency"
     # FIXME: collapse this with cache-check.path
-    value: build/external/${{ inputs.library }}-${{ inputs.version }}
+    value: ${{ github.workspace }}/build/external/${{ inputs.library }}-${{ inputs.version }}
 
 runs:
   using: "composite"

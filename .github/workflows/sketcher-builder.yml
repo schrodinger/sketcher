@@ -141,7 +141,7 @@ jobs:
                                 ${{ steps.fetch-rdkit.outputs.path }};\
                                 ${{ steps.fetch-qt.outputs.path }}"
         run: |
-          ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
+          ${{matrix.build-output == 'wasm' && 'echo $CMAKE_PREFIX_PATH && emcmake' || ''}} \
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
