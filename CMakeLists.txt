@@ -22,10 +22,10 @@ set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
 if (EMSCRIPTEN)
-    find_package(Boost ${BOOST_VERSION} REQUIRED)
+    find_package(boost ${BOOST_VERSION} REQUIRED)
 else()
     find_package(
-      Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
+      boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                                  serialization unit_test_framework)
 endif()
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
