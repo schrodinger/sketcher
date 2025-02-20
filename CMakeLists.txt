@@ -24,11 +24,11 @@ set(BUILD_SHARED_LIBS OFF)
 # find_package(
     # Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
     #                                             serialization unit_test_framework)
-find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
-find_package(RDKit ${RDKIT_VERSION} REQUIRED)
-find_package(fmt ${FMT_VERSION} REQUIRED)
-find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
-find_package(zstd ${ZSTD_VERSION} REQUIRED)
+find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg CMAKE_FIND_ROOT_PATH_BOTH)
+find_package(RDKit ${RDKIT_VERSION} REQUIRED CMAKE_FIND_ROOT_PATH_BOTH)
+find_package(fmt ${FMT_VERSION} REQUIRED CMAKE_FIND_ROOT_PATH_BOTH)
+find_package(ZLIB ${ZLIB_VERSION} REQUIRED CMAKE_FIND_ROOT_PATH_BOTH)
+find_package(zstd ${ZSTD_VERSION} REQUIRED CMAKE_FIND_ROOT_PATH_BOTH)
 
 # Common library/executable configuration
 function(setup_target TARGET)
