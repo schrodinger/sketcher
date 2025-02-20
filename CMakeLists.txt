@@ -21,10 +21,6 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
-if (EMSCRIPTEN)
-    list(APPEND CMAKE_FIND_ROOT_PATH ${GITHUB_WORKSPACE})
-endif()
-
 # find_package(
     # Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
     #                                             serialization unit_test_framework)
