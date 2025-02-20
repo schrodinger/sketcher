@@ -145,7 +145,7 @@ jobs:
           ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
           cmake -B build -S . -G Ninja --debug-find \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
-                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"" \
+                -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
                 -Dfmt_DIR=${{ steps.fetch-fmt.outputs.path }} \
                 -Dzlib_DIR=${{ steps.fetch-zlib.outputs.path }} \
                 -Dzstd_DIR=${{ steps.fetch-zstd.outputs.path }} \
