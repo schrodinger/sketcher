@@ -136,7 +136,7 @@ jobs:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
                                 ${{ steps.fetch-zstd.outputs.path }};\
-                                ${{ steps.fetch-boost.outputs.path }};\
+                                ${{ steps.fetch-boost.outputs.path }}/lib/cmake/Boost-1.83.0;\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
                                 ${{ steps.fetch-qt.outputs.path }}"
             Boost_DIR: "${{ steps.fetch-boost.outputs.path }}/lib/cmake/Boost-1.83.0"
