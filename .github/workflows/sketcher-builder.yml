@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        build-output: [app]
+        # os: [macos-latest, ubuntu-latest, windows-latest]
+        # build-output: [app]
         include:
           - os: ubuntu-latest
             build-output: wasm
@@ -141,7 +141,7 @@ jobs:
                                 ${{ steps.fetch-qt.outputs.path }}"
             Boost_DIR: "${{ steps.fetch-boost.outputs.path }}/lib/cmake/Boost-1.83.0"
         run: |
-          ${{matrix.build-output == 'wasm' && 'echo $CMAKE_PREFIX_PATH && emcmake' || ''}} \
+          ${{matrix.build-output == 'wasm' && 'ls $Boost_DIR && emcmake' || ''}} \
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
