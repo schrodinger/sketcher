@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-cmake_print_variables(CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_MAJOR_VERSION CMAKE_MINOR_VERSION)
+include(CMakePrintHelpers)
 
 project(
   schrodinger_sketcher
@@ -10,6 +10,7 @@ project(
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
+cmake_print_variables(CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_MAJOR_VERSION CMAKE_MINOR_VERSION CMAKE_TOOLCHAIN_FILE CMAKE_CROSSCOMPILING_EMULATOR)
 
 # Dependencies
 file(READ external/versions.json VERSIONS)
