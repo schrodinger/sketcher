@@ -22,5 +22,6 @@ runs:
         cd build/external/emsdk-${{ inputs.version }}/emsdk/ && \
         ./emsdk install ${{ inputs.version }} && \
         ./emsdk activate ${{ inputs.version }} && \
-        echo "build/external/emsdk-${{ inputs.version }}/emsdk/" >> $GITHUB_PATH && \
-        echo "build/external/emsdk-${{ inputs.version }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+        echo "${{github.workspace}}/build/external/emsdk-${{ inputs.version }}/emsdk/" >> $GITHUB_PATH && \
+        echo "${{github.workspace}}/build/external/emsdk-${{ inputs.version }}/emsdk/upstream/emscripten" >> $GITHUB_PATH && \
+        echo "Added the following directories to the path:\n\t${{github.workspace}}/build/external/emsdk-${{ inputs.version }}/emsdk/\n\t${{github.workspace}}/build/external/emsdk-${{ inputs.version }}/emsdk/upstream/emscripten\n"
