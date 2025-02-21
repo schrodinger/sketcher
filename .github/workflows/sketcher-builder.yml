@@ -143,7 +143,7 @@ jobs:
             Boost_DEBUG: 1
         run: |
           ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
-          cmake -B build -S . -G Ninja \
+          cmake --fresh -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
