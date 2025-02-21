@@ -56,7 +56,7 @@ jobs:
 
       - name: Configure Dependency CMake
         run: |
-            ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} cmake --fresh -B build/external/ -S external/ -G Ninja \
+            ${{matrix.build-output == 'wasm' && 'cat /home/runner/work/sketcher/sketcher/build/external/emsdk-3.1.51/emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake && emcmake printenv && emcmake ' || ''}}cmake --fresh -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Fetch fmt
