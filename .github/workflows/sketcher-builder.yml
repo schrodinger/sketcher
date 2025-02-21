@@ -56,7 +56,7 @@ jobs:
 
       - name: Configure Dependency CMake
         run: |
-            ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} cmake -B build/external/ -S external/ -G Ninja \
+            ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} cmake --fresh -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Fetch fmt
