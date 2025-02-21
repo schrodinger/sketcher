@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
 
+cmake_print_variables(CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_MAJOR_VERSION CMAKE_MINOR_VERSION)
+
 project(
   schrodinger_sketcher
   VERSION 2024.2.0

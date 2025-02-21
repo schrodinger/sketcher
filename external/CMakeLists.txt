@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
+
+include(CMakePrintHelpers)
+cmake_print_variables(CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_MAJOR_VERSION CMAKE_MINOR_VERSION)
+
+
 include(ExternalProject)
 
 project(schrodinger_sketcher_external)
