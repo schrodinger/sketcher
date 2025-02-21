@@ -57,7 +57,7 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   GIT_TAG ${FMT_VERSION}
   GIT_SHALLOW TRUE
-  CONFIGURE_COMMAND source /home/runner/work/sketcher/sketcher/build/external/emsdk-3.1.51/emsdk/emsdk_env.sh && emcmake ${CMAKE_COMMAND} --fresh --build <BINARY_DIR> --config $<CONFIG>
+  CONFIGURE_COMMAND emcmake ${CMAKE_COMMAND} --fresh --build <BINARY_DIR> --config $<CONFIG>
   LOG_CONFIGURE ON
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release

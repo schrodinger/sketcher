@@ -31,4 +31,4 @@ runs:
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       # don't put escaped newlines in this command, since it needs to be
       # runnable in both bash and cmd (which uses ^ to escape newlines)
-      run: cmake --build build/external/ --clean-first  --verbose --verbose --verbose -v --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
+      run: source /home/runner/work/sketcher/sketcher/build/external/emsdk-3.1.51/emsdk/emsdk_env.sh && cmake --build build/external/ --clean-first  --verbose --verbose --verbose -v --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}; cat /home/runner/work/sketcher/sketcher/build/external/fmt-prefix/src/fmt-stamp/fmt-configure-*.log || true
