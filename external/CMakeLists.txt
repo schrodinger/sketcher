@@ -50,14 +50,14 @@ set(STD_CMAKE_ARSG
     -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}
 )
 
-find_file(EMCMAKE_FULL_PATH emcmake)
+# find_file(EMCMAKE_FULL_PATH emcmake)
 
 ExternalProject_Add(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   GIT_TAG ${FMT_VERSION}
   GIT_SHALLOW TRUE
-  CONFIGURE_COMMAND ${EMCMAKE_FULL_PATH} ${CMAKE_COMMAND} --fresh --build <BINARY_DIR> --config $<CONFIG>
+  CONFIGURE_COMMAND source /home/runner/work/sketcher/sketcher/build/external/emsdk-3.1.51/emsdk/emsdk_env.sh && emcmake ${CMAKE_COMMAND} --fresh --build <BINARY_DIR> --config $<CONFIG>
   LOG_CONFIGURE ON
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=Release
