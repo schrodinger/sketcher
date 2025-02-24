@@ -44,7 +44,7 @@ endif()
 
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
-        -DCMAKE_CXX_FLAGS=USE_BOOST_HEADERS=1
+        -DBOOST_DISABLE_THREADS
     )
 endif()
 
