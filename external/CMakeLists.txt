@@ -44,7 +44,7 @@ endif()
 
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
-        -DBOOST_DISABLE_THREADS
+        -DBOOST_DISABLE_THREADS=ON
     )
 endif()
 
