@@ -44,7 +44,6 @@ endif()
 
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
-        -DBOOST_ENABLE_MPI=OFF
         -DCMAKE_CXX_FLAGS=USE_BOOST_HEADERS=1
     )
 endif()
