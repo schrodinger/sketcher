@@ -82,7 +82,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
 
       - name: Fetch Boost
-        if: matrix.build-output != 'wasm'
         id: fetch-boost
         uses: ./.github/actions/build-external
         with:
