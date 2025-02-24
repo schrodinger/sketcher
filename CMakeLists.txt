@@ -31,8 +31,10 @@ find_package(
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg NO_CMAKE_FIND_ROOT_PATH)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 find_package(fmt ${FMT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
-find_package(ZLIB ${ZLIB_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 find_package(zstd ${ZSTD_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+if (!EMSCRIPTEN)
+    find_package(ZLIB ${ZLIB_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+endif()
 
 # Common library/executable configuration
 function(setup_target TARGET)
@@ -48,6 +50,10 @@ function(setup_target TARGET)
   target_compile_definitions(
     ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                       RDK_BUILD_MAEPARSER_SUPPORT)
+
+#   if(EMSCRIPTEN)
+#     target_link_options(${TARGET} PRIVATE -DUSE_BOOST_HEADERS)
+#   endif()
 endfunction()
 
 # Build static libraries
