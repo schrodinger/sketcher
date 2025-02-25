@@ -103,14 +103,14 @@ set_cmake_arg(
   format
   flyweight
   graph
-  iostreams
+#   iostreams
   json
   multi_array
   multiprecision
   program_options
   serialization
   # rdkit_extensions required libraries
-  beast
+#   beast
   bimap
 #   filesystem
   test)
