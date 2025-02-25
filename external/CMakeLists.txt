@@ -45,7 +45,7 @@ endif()
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
         -DBOOST_DISABLE_THREADING=ON
-        -DCMAKE_CXX_FLAGS="-fdeclspec -pthread"
+        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
     )
 endif()
 
@@ -103,16 +103,16 @@ set_cmake_arg(
   format
   flyweight
   graph
-#   iostreams
+  iostreams
   json
   multi_array
   multiprecision
   program_options
   serialization
   # rdkit_extensions required libraries
-#   beast
+  beast
   bimap
-#   filesystem
+  filesystem
   test)
 set_cmake_arg(
   BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
