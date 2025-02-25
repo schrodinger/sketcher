@@ -47,9 +47,6 @@ if(EMSCRIPTEN)
         -DBOOST_DISABLE_THREADS=ON
         -DCMAKE_CXX_FLAGS=-fdeclspec
     )
-    set(BOOST_REPO https://github.com/emscripten-ports/boost)
-else()
-    set(BOOST_REPO https://github.com/boostorg/boost.git)
 endif()
 
 set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
@@ -115,14 +112,14 @@ set_cmake_arg(
   # rdkit_extensions required libraries
   beast
   bimap
-  filesystem
+#   filesystem
   test)
 set_cmake_arg(
   BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 ExternalProject_Add(
   boost
-  GIT_REPOSITORY ${BOOST_REPO}
+  GIT_REPOSITORY https://github.com/boostorg/boost.git
   GIT_TAG boost-${BOOST_VERSION}
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
