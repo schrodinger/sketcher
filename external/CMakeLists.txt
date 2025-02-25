@@ -47,6 +47,9 @@ if(EMSCRIPTEN)
         -DBOOST_DISABLE_THREADS=ON
         -DCMAKE_CXX_FLAGS=-fdeclspec
     )
+    set(BOOST_REPO https://github.com/emscripten-ports/boost)
+else()
+    set(BOOST_REPO https://github.com/boostorg/boost.git)
 endif()
 
 set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
@@ -119,7 +122,7 @@ set_cmake_arg(
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 ExternalProject_Add(
   boost
-  GIT_REPOSITORY https://github.com/boostorg/boost.git
+  GIT_REPOSITORY ${BOOST_REPO}
   GIT_TAG boost-${BOOST_VERSION}
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
@@ -166,8 +169,7 @@ ExternalProject_Add(
     -DRDK_INSTALL_INTREE=OFF
     -DRDK_INSTALL_STATIC_LIBS=${RDKIT_INSTALL_STATIC_LIBS_VAL}
     -DRDK_OPTIMIZE_POPCNT=OFF
-    -DRDK_USE_BOOST_STACKTRACE=OFF
-    -DCMAKE_CXX_FLAGS=-DUSE_BOOST_HEADERS=1)
+    -DRDK_USE_BOOST_STACKTRACE=OFF)
 
 set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
 ExternalProject_Add(
