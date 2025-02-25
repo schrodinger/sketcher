@@ -44,8 +44,8 @@ endif()
 
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
-        -DBOOST_EXCLUDE_LIBRARIES=thread
-        -DCMAKE_CXX_FLAGS=-fdeclspec
+        -DCMAKE_CXX_FLAGS="-fdeclspec -pthread"
+        -DCMAKE_REQUIRE_FIND_PACKAGE_THREADS=OFF
     )
 endif()
 
