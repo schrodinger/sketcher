@@ -45,7 +45,7 @@ endif()
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
         -DBOOST_DISABLE_THREADING=ON
-        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
+        -DCMAKE_CXX_FLAGS="-fdeclspec -pthread"
     )
 endif()
 
