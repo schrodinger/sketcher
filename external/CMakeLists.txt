@@ -148,8 +148,8 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
-  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_find_boost.patch
+#   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
