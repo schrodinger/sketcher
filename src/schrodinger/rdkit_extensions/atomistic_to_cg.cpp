@@ -355,7 +355,18 @@ void remove_waters(RDKit::RWMol& mol)
     auto is_water = [](const RDKit::Atom* atom) {
         const auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
             atom->getMonomerInfo());
-        if (res_info && res_info->getResidueName() == "HOH ") {
+
+        // TODO: This seems like it shouldn't be the job of this function; there
+        // should be some sort of separate preprocessing step that removes
+        // waters and other unwanted residues
+        if (!res_info) {
+            return false;
+        }
+        // strip whitespace from residue name
+        auto res_name = res_info->getResidueName();
+        res_name.erase(std::remove(res_name.begin(), res_name.end(), ' '),
+                       res_name.end());
+        if (res_info && res_name == "HOH") {
             return true;
         }
         return false;
@@ -484,6 +495,8 @@ bool same_monomer(const std::string& smiles, const std::string& db_smiles)
             }
         }
         mol.commitBatchEdit();
+        // set aromaticity
+        RDKit::MolOps::setAromaticity(mol);
     };
     clean_mol(*mol);
     clean_mol(*db_mol);
