@@ -246,6 +246,7 @@ DrawFragmentSceneTool::DrawFragmentSceneTool(
     m_frag(fragment),
     m_hint_item(m_frag, fonts, atom_display_settings, bond_display_settings)
 {
+    m_highlight_types = InteractiveItemFlag::MOLECULAR_NOT_AP;
 }
 
 std::vector<QGraphicsItem*> DrawFragmentSceneTool::getGraphicsItems()
