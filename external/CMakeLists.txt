@@ -115,8 +115,10 @@ set_cmake_arg(
 #   filesystem
   test)
 set_cmake_arg(
-  BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-  ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
+  BOOST_CMAKE_PREFIX
+    ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+    ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION}
+    ${CMAKE_CURRENT_BINARY_DIR}/boost-${find_package(Boost REQUIRED)_VERSION})
 ExternalProject_Add(
   boost
   GIT_REPOSITORY https://github.com/boostorg/boost.git
