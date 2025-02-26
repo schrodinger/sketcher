@@ -31,4 +31,4 @@ runs:
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       # don't put escaped newlines in this command, since it needs to be
       # runnable in both bash and cmd (which uses ^ to escape newlines)
-      run: source emsdk_env.sh && cmake --build build/external/ --clean-first  --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
+      run: source emsdk_env.sh && cmake --build build/external/ --debug-find  --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
