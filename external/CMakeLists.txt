@@ -148,7 +148,7 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
-  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_wasm_find_boost.patch
+  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch
 #   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
@@ -169,6 +169,7 @@ ExternalProject_Add(
     -DRDK_INSTALL_STATIC_LIBS=${RDKIT_INSTALL_STATIC_LIBS_VAL}
     -DRDK_OPTIMIZE_POPCNT=OFF
     -DRDK_USE_BOOST_STACKTRACE=OFF
+    -DRDK_BOOST_VERSION=${BOOST_VERSION}
     --debug-find)
 
 set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
