@@ -65,7 +65,6 @@ jobs:
         with:
           library: fmt
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
-          use_emsdk: ${{ matrix.build-output == 'wasm' }}
 
       - name: Fetch zlib
         if: matrix.build-output != 'wasm'
@@ -74,7 +73,6 @@ jobs:
         with:
           library: zlib
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
-          use_emsdk: ${{ matrix.build-output == 'wasm' }}
 
       - name: Fetch zstd
         id: fetch-zstd
@@ -82,7 +80,6 @@ jobs:
         with:
           library: zstd
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
-          use_emsdk: ${{ matrix.build-output == 'wasm' }}
 
       - name: Fetch Boost
         id: fetch-boost
@@ -90,7 +87,6 @@ jobs:
         with:
           library: boost
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
-          use_emsdk: ${{ matrix.build-output == 'wasm' }}
 
       - name: Fetch RDKit
         id: fetch-rdkit
@@ -98,7 +94,6 @@ jobs:
         with:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
-          use_emsdk: ${{ matrix.build-output == 'wasm' }}
 
       - name: Install Qt's required packages
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -130,31 +125,28 @@ jobs:
             libxkbcommon-x11-dev \
             libxrender-dev
 
-      - name: Configure Host Qt
+      - name: Configure host Qt
         if: matrix.build-output == 'wasm'
         run: |
             cmake -B build/external/host/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-        
 
-      - name: Fetch Host Qt
+      - name: Fetch host Qt
         id: fetch-host-qt
         if: matrix.build-output == 'wasm'
         uses: ./.github/actions/build-external
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          use_emsdk: false
+          force_host: true
           
 
       - name: Fetch Qt
         id: fetch-qt
-        if: matrix.build-output != 'wasm'
         uses: ./.github/actions/build-external
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          use_emsdk: ${{ matrix.build-output == 'wasm' }}
 
       - name: Configure CMake
         if: matrix.build-output != 'wasm'
