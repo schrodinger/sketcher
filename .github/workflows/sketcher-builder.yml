@@ -142,6 +142,7 @@ jobs:
 
       - name: Fetch Qt
         id: fetch-qt
+        if: matrix.build-output != 'wasm'
         uses: ./.github/actions/build-external
         with:
           library: qt
