@@ -31,6 +31,8 @@ runs:
         env_force_host_compare_str_false: ${{ inputs.force_host == 'false' }}
         env_force_host_compare_true: ${{ inputs.force_host == true }}
         env_force_host_compare_false: ${{ inputs.force_host == false }}
+        env_build_ouput: ${{ matrix.build_output }}
+        env_build_ouput_eq_wasm: ${{ matrix.build_output == 'wasm' }}
         use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == 'false' && 'true' }}
         lib_build_dir: build/external/${{ inputs.force_host == 'true' && 'host/' || '' }}
       with:
