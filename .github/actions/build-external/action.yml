@@ -24,19 +24,10 @@ runs:
     - uses: actions/cache@v4
       id: cache-check
       env:
-        env_force-host: ${{ inputs.force-host }}
-        env_not_force-host: ${{ !inputs.force-host }}
-        env_from_json_force-host: ${{ fromJson(inputs.force-host) }}
-        env_force-host_compare_str_true: ${{ inputs.force-host == 'true' }}
-        env_force-host_compare_str_false: ${{ inputs.force-host == 'false' }}
-        env_force-host_compare_true: ${{ inputs.force-host == true }}
-        env_force-host_compare_false: ${{ inputs.force-host == false }}
-        env_build_ouput: ${{ matrix.build-output }}
-        env_build_ouput_eq_wasm: ${{ matrix.build-output == 'wasm' }}
-        use_emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
-        lib_build_dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
+        use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
+        lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
       with:
-        path: ${{ env.lib_build_dir }}${{ inputs.library }}-${{ inputs.version }}
+        path: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ inputs.force-host == 'true' && 'host' || matrix.build-output }}
         
 
@@ -46,8 +37,8 @@ runs:
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
-        use_emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
-        lib_build_dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
+        use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
+        lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
       # don't put escaped newlines in this command, since it needs to be
       # runnable in both bash and cmd (which uses ^ to escape newlines)
-      run: ${{ env.use_emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib_build_dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
+      run: ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib-build-dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
