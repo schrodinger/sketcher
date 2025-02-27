@@ -17,12 +17,11 @@ outputs:
     description: "Path to the installed dependency"
     # FIXME: collapse this with cache-check.path
     value: ${{ github.workspace }}/build/external/${{ inputs.library }}-${{ inputs.version }}
-
-env:
-    use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
     
 runs:
   using: "composite"
+  env:
+    use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
   steps:
     - uses: actions/cache@v4
       id: cache-check
