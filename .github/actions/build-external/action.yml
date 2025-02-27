@@ -24,8 +24,15 @@ runs:
     - uses: actions/cache@v4
       id: cache-check
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == false}}
-        lib_build_dir: build/external/${{ inputs.force_host == true && 'host/' || '' }}
+        env_force_host: ${{ inputs.force_host }}
+        env_not_force_host: ${{ !inputs.force_host }}
+        env_from_json_force_host: ${{ fromJson(inputs.force_host) }}
+        env_force_host_compare_str_true: ${{ inputs.force_host == "true" }}
+        env_force_host_compare_str_false: ${{ inputs.force_host == "false" }}
+        env_force_host_compare_true: ${{ inputs.force_host == true }}
+        env_force_host_compare_false: ${{ inputs.force_host == false }}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
+        lib_build_dir: build/external/${{ inputs.force_host && 'host/' || '' }}
       with:
         path: ${{ env.lib_build_dir }}${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ inputs.force_host && 'host' || matrix.build_output }}
@@ -37,8 +44,8 @@ runs:
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
-        lib_build_dir: build/external/${{ inputs.force_host && 'host/' || '' }}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == false}}
+        lib_build_dir: build/external/${{ inputs.force_host == true && 'host/' || '' }}
       # don't put escaped newlines in this command, since it needs to be
       # runnable in both bash and cmd (which uses ^ to escape newlines)
       run: ${{ env.use_emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib_build_dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
