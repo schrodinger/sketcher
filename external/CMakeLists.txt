@@ -179,10 +179,13 @@ ExternalProject_Add(
 
 if(QT_HOST_BUILD)
     set_cmake_arg(QT_SUBMODULES qtbase)
+    set(QT_GIT_SUBMODULES qtbase)
 elseif(EMSCRIPTEN)
     set_cmake_arg(QT_SUBMODULES qtbase qtsvg qtopengl)
+    set(QT_GIT_SUBMODULES qtbase qtsvg qtopengl)
 else()
     set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
+    set(QT_GIT_SUBMODULES qtbase qtsvg)
 endif()
 ExternalProject_Add(
   qt
