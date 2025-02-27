@@ -28,7 +28,7 @@ runs:
       id: cache-check
       with:
         path: build/external/${{ inputs.library }}-${{ inputs.version }}
-        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ use_emsdk && 'wasm' || 'app' }}
+        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ env.use_emsdk && 'wasm' || 'app' }}
         
 
     - name: Build library

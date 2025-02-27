@@ -36,16 +36,15 @@ if(LINUX)
     )
 endif()
 
-if(WIN32)
-    set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
-else()
-    set(RDKIT_INSTALL_STATIC_LIBS_VAL OFF)
-endif()
+set(RDKIT_INSTALL_STATIC_LIBS_VAL WIN32)
 
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
         -DBOOST_DISABLE_THREADING=ON
         -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1
+    )
+    set(MORE_EXTRA_QT_CMAKE_ARGS
+        -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
 endif()
 
@@ -194,4 +193,5 @@ ExternalProject_Add(
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
     -DINPUT_opengl=no
-    ${EXTRA_QT_CMAKE_ARGS})
+    ${EXTRA_QT_CMAKE_ARGS}
+    ${MORE_EXTRA_QT_CMAKE_ARGS})
