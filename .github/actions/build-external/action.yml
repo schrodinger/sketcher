@@ -24,8 +24,8 @@ runs:
     - uses: actions/cache@v4
       id: cache-check
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
-        lib_build_dir: build/external/${{ inputs.force_host && 'host/' || '' }}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == false}}
+        lib_build_dir: build/external/${{ inputs.force_host == true && 'host/' || '' }}
       with:
         path: ${{ env.lib_build_dir }}${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ inputs.force_host && 'host' || matrix.build_output }}
