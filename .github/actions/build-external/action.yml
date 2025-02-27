@@ -11,9 +11,6 @@ inputs:
   force_host:
     required: false
     default: false
-    # if we set default: false here, the default value will be the string
-    # "false", which is truthy.  There's no way to put a Boolean in the default
-    # field, so we omit it and let the default be undef, which is falsey
 
 outputs:
   path:
@@ -27,11 +24,11 @@ runs:
     - uses: actions/cache@v4
       id: cache-check
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host}}
-        lib_build_dir: build/external/${{ inputs.force_host && 'host/' || '' }}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host != 'true'}}
+        lib_build_dir: build/external/${{ inputs.force_host == 'true' && 'host/' || '' }}
       with:
         path: ${{ env.lib_build_dir }}${{ inputs.library }}-${{ inputs.version }}
-        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ env.use_emsdk == "true" && 'wasm' || 'app' }}
+        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ env.use_emsdk == 'true' && 'wasm' || 'app' }}
         
 
     - name: Build library
@@ -40,8 +37,8 @@ runs:
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host}}
-        lib_build_dir: build/external/${{ inputs.force_host && 'host/' || '' }}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host != 'true'}}
+        lib_build_dir: build/external/${{ inputs.force_host == 'true' && 'host/' || '' }}
       # don't put escaped newlines in this command, since it needs to be
       # runnable in both bash and cmd (which uses ^ to escape newlines)
-      run: ${{ env.use_emsdk == "true" && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib_build_dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
+      run: ${{ env.use_emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib_build_dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
