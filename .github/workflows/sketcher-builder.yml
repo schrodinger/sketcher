@@ -129,7 +129,7 @@ jobs:
         if: matrix.build-output == 'wasm'
         run: |
             cmake -B build/external/host/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
 
       - name: Fetch host Qt
         id: fetch-host-qt
