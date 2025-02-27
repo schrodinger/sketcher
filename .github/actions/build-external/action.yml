@@ -24,9 +24,9 @@ runs:
     - uses: actions/cache@v4
       id: cache-check
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == 'false'}}
       with:
-        path: build/external/${{ inputs.library }}-${{ inputs.version }}
+        path: build/external/${{ inputs.force_host && 'host/' || '' }}${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ env.use_emsdk && 'wasm' || 'app' }}
         
 
@@ -36,7 +36,7 @@ runs:
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
-        use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == 'false'}}
       # don't put escaped newlines in this command, since it needs to be
       # runnable in both bash and cmd (which uses ^ to escape newlines)
       run: ${{ env.use_emsdk && 'source emsdk_env.sh && ' || '' }}cmake --build build/external/${{ inputs.force_host && 'host/' || '' }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
