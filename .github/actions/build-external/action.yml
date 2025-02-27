@@ -10,6 +10,7 @@ inputs:
     required: true
   force_host:
     required: false
+    default: ${{ false }}
 
 outputs:
   path:
