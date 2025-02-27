@@ -177,7 +177,13 @@ ExternalProject_Add(
     -DRDK_USE_BOOST_STACKTRACE=OFF
     -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 
-set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
+if(QT_HOST_BUILD)
+    set_cmake_arg(QT_SUBMODULES qtbase)
+elseif(EMSCRIPTEN)
+    set_cmake_arg(QT_SUBMODULES qtbase qtsvg qtopengl)
+else()
+    set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
+endif()
 ExternalProject_Add(
   qt
   GIT_REPOSITORY https://github.com/qt/qt5.git
