@@ -10,7 +10,7 @@ inputs:
     required: true
   force_host:
     required: false
-    default: ${{ false }}
+    default: ${{ true }}
 
 outputs:
   path:
@@ -31,7 +31,7 @@ runs:
         env_force_host_compare_str_false: ${{ inputs.force_host == 'false' }}
         env_force_host_compare_true: ${{ inputs.force_host == true }}
         env_force_host_compare_false: ${{ inputs.force_host == false }}
-        use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
+        use_emsdk: ${{ matrix.build_output == 'wasm' && inputs.force_host == 'false'}}
         lib_build_dir: build/external/${{ inputs.force_host && 'host/' || '' }}
       with:
         path: ${{ env.lib_build_dir }}${{ inputs.library }}-${{ inputs.version }}
