@@ -27,8 +27,8 @@ runs:
         env_force_host: ${{ inputs.force_host }}
         env_not_force_host: ${{ !inputs.force_host }}
         env_from_json_force_host: ${{ fromJson(inputs.force_host) }}
-        env_force_host_compare_str_true: ${{ inputs.force_host == "true" }}
-        env_force_host_compare_str_false: ${{ inputs.force_host == "false" }}
+        env_force_host_compare_str_true: ${{ inputs.force_host == 'true' }}
+        env_force_host_compare_str_false: ${{ inputs.force_host == 'false' }}
         env_force_host_compare_true: ${{ inputs.force_host == true }}
         env_force_host_compare_false: ${{ inputs.force_host == false }}
         use_emsdk: ${{ matrix.build_output == 'wasm' && !inputs.force_host}}
