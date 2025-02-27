@@ -138,8 +138,7 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          force_host: 'true'
-          
+          force_host: true
 
       - name: Fetch Qt
         id: fetch-qt
