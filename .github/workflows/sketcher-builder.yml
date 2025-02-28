@@ -59,6 +59,12 @@ jobs:
             ${{matrix.build-output == 'wasm' && 'emcmake ' || ''}}cmake --fresh -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
+      - name: Configure host Qt CMake
+        if: matrix.build-output == 'wasm'
+        run: |
+            cmake -B build/external/host/ -S external/ -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
+                
       - name: Fetch fmt
         id: fetch-fmt
         uses: ./.github/actions/build-external
@@ -95,19 +101,8 @@ jobs:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
-        # TODO: On WASM, don't bother to install packages or configure the host
-        #       for Qt if we already have a WASM Qt build
-      - name: Check for WASM Qt
-        id: wasm-qt-check
-        uses: ./.github/actions/build-external
-        with:
-          library: qt
-          version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          cache-check-only: true
-        
-
       - name: Install Qt's required packages
-        if: matrix.os == 'ubuntu-latest' && (matrix.build-output == 'app' || steps.wasm-qt-check.outputs.found-in-cache == 'false')
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get install \
             libfontconfig1-dev \
@@ -136,14 +131,8 @@ jobs:
             libxkbcommon-x11-dev \
             libxrender-dev
 
-      - name: Configure host Qt
-        if: matrix.build-output == 'wasm' && steps.wasm-qt-check.outputs.found-in-cache == 'false'
-        run: |
-            cmake -B build/external/host/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
-
       - name: Fetch host Qt
-        if: matrix.build-output == 'wasm' && steps.wasm-qt-check.outputs.found-in-cache == 'false'
+        if: matrix.build-output == 'wasm'
         uses: ./.github/actions/build-external
         with:
           library: qt
@@ -152,7 +141,6 @@ jobs:
 
       - name: Fetch Qt
         id: fetch-qt
-        if: matrix.build-output != 'wasm' || steps.wasm-qt-check.outputs.found-in-cache == 'false'
         uses: ./.github/actions/build-external
         with:
           library: qt
@@ -165,7 +153,7 @@ jobs:
                                 ${{ steps.fetch-zstd.outputs.path }};\
                                 ${{ steps.fetch-boost.outputs.path }};\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
-                                ${{ steps.fetch-qt.outputs.path || steps.wasm-qt-check.outputs.path }}"
+                                ${{ steps.fetch-qt.outputs.path }}"
             Boost_VERBOSE: 1
             Boost_DEBUG: 1
         run: |

@@ -30,6 +30,11 @@ if(CMAKE_FIND_ROOT_PATH)
     list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 cmake_print_variables(CMAKE_FIND_ROOT_PATH)
+
+if(EMSCRIPTEN)
+    set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
+endif()
+
 # filesystem
 find_package(
     Boost ${BOOST_VERSION} REQUIRED COMPONENTS iostreams json
@@ -38,7 +43,7 @@ find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
-if (!EMSCRIPTEN)
+if(!EMSCRIPTEN)
     find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 endif()
 
