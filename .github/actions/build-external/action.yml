@@ -31,6 +31,7 @@ runs:
         
 
     - name: Build library
+      if: steps.cache-check.outputs.cache-hit == 'false'
       # The Windows Qt build fails if we try to use bash, since it shells out to
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
