@@ -178,6 +178,10 @@ ExternalProject_Add(
     -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 
 if(QT_HOST_BUILD)
+    # When building Qt for WASM, we need a non-WASM Linux build of Qt that gets
+    # used to build the WASM build of Qt since uic, rcc, etc. need to get run s
+    # part of the build process.  This non-WASM Qt isn't used in Sketcher
+    # itself, so it doesn't need anything other than qtbase
     set(QT_BUILD_SUBMODULES qtbase)
     set(QT_GIT_SUBMODULES qtbase)
 elseif(EMSCRIPTEN)
@@ -207,6 +211,6 @@ ExternalProject_Add(
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
-    -DINPUT_opengl=no
+    # -DINPUT_opengl=no
     ${EXTRA_QT_CMAKE_ARGS}
     ${MORE_EXTRA_QT_CMAKE_ARGS})

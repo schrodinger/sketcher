@@ -148,7 +148,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
-        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
