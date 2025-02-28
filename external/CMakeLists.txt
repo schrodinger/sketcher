@@ -7,7 +7,6 @@ project(schrodinger_sketcher_external)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-cmake_print_variables(CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_MAJOR_VERSION CMAKE_MINOR_VERSION CMAKE_TOOLCHAIN_FILE CMAKE_CROSSCOMPILING_EMULATOR)
 
 # Collect dependency versions
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
@@ -151,7 +150,7 @@ ExternalProject_Add(
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
   PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch
-#   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
@@ -208,5 +207,4 @@ ExternalProject_Add(
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
-    # -DINPUT_opengl=no
     ${EXTRA_QT_CMAKE_ARGS})

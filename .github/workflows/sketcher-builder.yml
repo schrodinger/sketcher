@@ -95,6 +95,9 @@ jobs:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
+        # TODO: On WASM, don't bother to install packages or configure the host
+        #       for Qt if we already have a WASM Qt build
+
       - name: Install Qt's required packages
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
@@ -132,7 +135,6 @@ jobs:
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
 
       - name: Fetch host Qt
-        id: fetch-host-qt
         if: matrix.build-output == 'wasm'
         uses: ./.github/actions/build-external
         with:

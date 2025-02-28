@@ -11,12 +11,17 @@ inputs:
   force-host:
     required: false
     default: false
+  cache-check-only:
+    required: false
+    default: false
 
 outputs:
   path:
     description: "Path to the installed dependency"
     # FIXME: collapse this with cache-check.path
     value: ${{ github.workspace }}/build/external/${{ inputs.library }}-${{ inputs.version }}
+  found-in-cache:
+    value: ${{ steps.cache-check.outputs.cache-hit != 'true' }} 
     
 runs:
   using: "composite"
@@ -24,7 +29,6 @@ runs:
     - uses: actions/cache@v4
       id: cache-check
       env:
-        use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
         lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
       with:
         path: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
@@ -32,13 +36,13 @@ runs:
         
 
     - name: Build library
-      if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
+      if: ${{ inputs.cache-check-only == 'false' && steps.cache-check.outputs.cache-hit != 'true' }}
       # The Windows Qt build fails if we try to use bash, since it shells out to
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
         use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
         lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
-      # don't put escaped newlines in this command, since it needs to be
-      # runnable in both bash and cmd (which uses ^ to escape newlines)
+      # don't put escaped newlines in this command, since it needaas to be
+      # runnable in both bash and cmd (which uses ^ instead of / aato escape newlines)
       run: ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib-build-dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}

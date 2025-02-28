@@ -10,7 +10,6 @@ project(
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
-cmake_print_variables(CMAKE_C_COMPILER CMAKE_CXX_COMPILER CMAKE_MAJOR_VERSION CMAKE_MINOR_VERSION CMAKE_TOOLCHAIN_FILE CMAKE_CROSSCOMPILING_EMULATOR)
 
 # Dependencies
 file(READ external/versions.json VERSIONS)
@@ -24,9 +23,10 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
-# set(CMAKE_FIND_DEBUG_MODE ON)
+set(CMAKE_FIND_DEBUG_MODE ON)
+# filesystem
 find_package(
-    Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
+    Boost ${BOOST_VERSION} REQUIRED COMPONENTS iostreams json
                                                 serialization unit_test_framework NO_CMAKE_FIND_ROOT_PATH)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg NO_CMAKE_FIND_ROOT_PATH)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
