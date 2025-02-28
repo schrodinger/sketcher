@@ -34,6 +34,8 @@ if(EMSCRIPTEN)
     set(EXTRA_QT_CMAKE_ARGS
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
+    set(EXTRA_RDKIT_CMAKE_ARGS 
+       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1)
 else()
     set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
     if(LINUX)
@@ -150,7 +152,7 @@ ExternalProject_Add(
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
   PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+#   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
@@ -171,7 +173,8 @@ ExternalProject_Add(
     -DRDK_INSTALL_STATIC_LIBS=${RDKIT_INSTALL_STATIC_LIBS_VAL}
     -DRDK_OPTIMIZE_POPCNT=OFF
     -DRDK_USE_BOOST_STACKTRACE=OFF
-    -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+    -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR}
+    ${EXTRA_RDKIT_CMAKE_ARGS})
 
 if(QT_HOST_BUILD)
     # For WASM builds, we also need a non-WASM build of Qt, since some of the Qt
