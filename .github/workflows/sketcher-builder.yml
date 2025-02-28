@@ -108,8 +108,6 @@ jobs:
 
       - name: Install Qt's required packages
         if: matrix.os == 'ubuntu-latest' && (matrix.build-output == 'app' || steps.wasm-qt-check.outputs.found-in-cache == 'false')
-        env:
-            found-in-cache: ${{ steps.wasm-qt-check.outputs.found-in-cache }}
         run: |
           sudo apt-get install \
             libfontconfig1-dev \
@@ -167,7 +165,7 @@ jobs:
                                 ${{ steps.fetch-zstd.outputs.path }};\
                                 ${{ steps.fetch-boost.outputs.path }};\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
-                                ${{ steps.fetch-qt.outputs.path || steps.wasm-qt-check.outputs }}"
+                                ${{ steps.fetch-qt.outputs.path || steps.wasm-qt-check.outputs.path }}"
             Boost_VERBOSE: 1
             Boost_DEBUG: 1
         run: |
