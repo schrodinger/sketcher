@@ -177,11 +177,10 @@ if(QT_HOST_BUILD)
     # For WASM builds, we also need a non-WASM build of Qt, since some of the Qt
     # command line tools get run during the build process (e.g. uic, rcc, etc).
     set(QT_GIT_SUBMODULES qtbase)
-    set_cmake_arg(QT_BUILD_SUBMODULES qtbase)
 else()
     set(QT_GIT_SUBMODULES qtbase qtsvg)
-    set_cmake_arg(QT_BUILD_SUBMODULES qtbase qtsvg)
 endif()
+set_cmake_arg(QT_BUILD_SUBMODULES ${QT_GIT_SUBMODULES})
 ExternalProject_Add(
   qt
   GIT_REPOSITORY https://github.com/qt/qt5.git
