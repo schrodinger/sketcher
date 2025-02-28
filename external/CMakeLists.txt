@@ -27,7 +27,15 @@ function(set_cmake_arg VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
-if(LINUX)
+if(EMSCRIPTEN)
+    set(EXTRA_BOOST_CMAKE_ARGS
+        -DBOOST_DISABLE_THREADING=ON
+        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1
+    )
+    set(EXTRA_QT_CMAKE_ARGS
+        -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
+    )
+elseif(LINUX)
     set(EXTRA_QT_CMAKE_ARGS
         -DFEATURE_xlib=ON
         -DFEATURE_xcb=ON
@@ -38,18 +46,8 @@ endif()
 
 set(RDKIT_INSTALL_STATIC_LIBS_VAL WIN32)
 
-if(EMSCRIPTEN)
-    set(EXTRA_BOOST_CMAKE_ARGS
-        -DBOOST_DISABLE_THREADING=ON
-        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1
-    )
-    set(MORE_EXTRA_QT_CMAKE_ARGS
-        -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
-    )
-endif()
 
 set(EXTERNAL_BUILD_TYPE -DCMAKE_BUILD_TYPE=Release)
-
 if(CMAKE_TOOLCHAIN_FILE)
     set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
         ${EXTERNAL_BUILD_TYPE}
@@ -213,4 +211,3 @@ ExternalProject_Add(
     -DQT_FEATURE_sql=OFF
     # -DINPUT_opengl=no
     ${EXTRA_QT_CMAKE_ARGS}
-    ${MORE_EXTRA_QT_CMAKE_ARGS})
