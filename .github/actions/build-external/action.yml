@@ -21,7 +21,7 @@ outputs:
     # FIXME: collapse this with cache-check.path
     value: ${{ github.workspace }}/build/external/${{ inputs.library }}-${{ inputs.version }}
   found-in-cache:
-    value: ${{ steps.cache-check.outputs.cache-hit == 'true' || 'false'}} 
+    value: ${{ steps.cache-check.outputs.cache-hit }} 
     
 runs:
   using: "composite"
@@ -36,7 +36,7 @@ runs:
         
 
     - name: Build library
-      if: inputs.cache-check-only == 'false' && steps.cache-check.outputs.cache-hit != 'true'
+      if: inputs.cache-check-only == 'false' && steps.cache-check.outputs.cache-hit == 'false'
       # The Windows Qt build fails if we try to use bash, since it shells out to
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
