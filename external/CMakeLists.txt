@@ -35,27 +35,25 @@ if(EMSCRIPTEN)
     set(EXTRA_QT_CMAKE_ARGS
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
-elseif(LINUX)
-    set(EXTRA_QT_CMAKE_ARGS
-        -DFEATURE_xlib=ON
-        -DFEATURE_xcb=ON
-        -DFEATURE_xcb_xlib=ON
-        -DFEATURE_xkbcommon=ON
+else()
+    set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
+    if(LINUX)
+        list(APPEND EXTRA_QT_CMAKE_ARGS
+            -DFEATURE_xlib=ON
+            -DFEATURE_xcb=ON
+            -DFEATURE_xcb_xlib=ON
+            -DFEATURE_xkbcommon=ON
     )
 endif()
 
 set(RDKIT_INSTALL_STATIC_LIBS_VAL WIN32)
 
-
-set(EXTERNAL_BUILD_TYPE -DCMAKE_BUILD_TYPE=Release)
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
 if(CMAKE_TOOLCHAIN_FILE)
-    set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
-        ${EXTERNAL_BUILD_TYPE}
+    list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}
     )
-else()
-    set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS ${EXTERNAL_BUILD_TYPE})
 endif()
 
 ExternalProject_Add(
@@ -210,4 +208,4 @@ ExternalProject_Add(
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
     # -DINPUT_opengl=no
-    ${EXTRA_QT_CMAKE_ARGS}
+    ${EXTRA_QT_CMAKE_ARGS})
