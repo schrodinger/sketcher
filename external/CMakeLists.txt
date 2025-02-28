@@ -178,17 +178,20 @@ ExternalProject_Add(
     -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 
 if(QT_HOST_BUILD)
-    set(QT_SUBMODULES qtbase)
+    set(QT_BUILD_SUBMODULES qtbase)
+    set(QT_GIT_SUBMODULES qtbase)
 elseif(EMSCRIPTEN)
-    set(QT_SUBMODULES qtbase qtsvg qtopengl)
+    set(QT_BUILD_SUBMODULES qtbase qtsvg qtopengl)
+    set(QT_GIT_SUBMODULES qtbase qtsvg)
 else()
-    set(QT_SUBMODULES qtbase qtsvg)
+    set(QT_BUILD_SUBMODULES qtbase qtsvg)
+    set(QT_GIT_SUBMODULES qtbase qtsvg)
 endif()
 ExternalProject_Add(
   qt
   GIT_REPOSITORY https://github.com/qt/qt5.git
   GIT_TAG v${QT_VERSION}
-  GIT_SUBMODULES ${QT_SUBMODULES}
+  GIT_SUBMODULES ${QT_GIT_SUBMODULES}
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
@@ -200,7 +203,7 @@ ExternalProject_Add(
     -DCMAKE_POLICY_DEFAULT_CMP0174:STRING=NEW
     -DBUILD_SHARED_LIBS=OFF
     -DQT_BUILD_EXAMPLES=OFF
-    -DQT_BUILD_SUBMODULES=${QT_SUBMODULES}
+    -DQT_BUILD_SUBMODULES=${QT_BUILD_SUBMODULES}
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
