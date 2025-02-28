@@ -47,7 +47,7 @@ runs:
       # don't put escaped newlines in this command, since it needaas to be
       # runnable in both bash and cmd (which uses ^ instead of / aato escape newlines)
       run: |
-        ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{endl}}
-        cmake --build ${{ env.lib-build-dir }} --verbose${{endl}}
-              --target ${{ inputs.library }}${{endl}}
+        ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{env.endl}}
+        cmake --build ${{ env.lib-build-dir }} --verbose${{env.endl}}
+              --target ${{ inputs.library }}${{env.endl}}
               --config ${{ env.BUILD_TYPE }}
