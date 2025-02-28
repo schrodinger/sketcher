@@ -108,6 +108,8 @@ jobs:
 
       - name: Install Qt's required packages
         if: matrix.os == 'ubuntu-latest' && (matrix.build-output == 'app' || steps.wasm-qt-check.outputs.found-in-cache == 'false')
+        env:
+            found-in-cache: ${{ steps.wasm-qt-check.outputs.found-in-cache }}
         run: |
           sudo apt-get install \
             libfontconfig1-dev \

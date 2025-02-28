@@ -21,7 +21,7 @@ outputs:
     # FIXME: collapse this with cache-check.path
     value: ${{ github.workspace }}/build/external/${{ inputs.library }}-${{ inputs.version }}
   found-in-cache:
-    value: ${{ steps.cache-check.outputs.cache-hit != 'true' }} 
+    value: ${{ steps.cache-check.outputs.cache-hit == 'true' || 'false'}} 
     
 runs:
   using: "composite"
@@ -43,9 +43,8 @@ runs:
       env:
         use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
         lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
+        # cmd uses ^ for escaping newlines instead of \
         endl: ${{ runner.os == 'windows' && '^' || '\' }}
-      # don't put escaped newlines in this command, since it needaas to be
-      # runnable in both bash and cmd (which uses ^ instead of / aato escape newlines)
       run: |
         ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{env.endl}}
         cmake --build ${{ env.lib-build-dir }} --verbose${{env.endl}}
