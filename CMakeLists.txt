@@ -53,10 +53,6 @@ function(setup_target TARGET)
   target_compile_definitions(
     ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                       RDK_BUILD_MAEPARSER_SUPPORT)
-
-#   if(EMSCRIPTEN)
-#     target_link_options(${TARGET} PRIVATE -DUSE_BOOST_HEADERS)
-#   endif()
 endfunction()
 
 # Build static libraries
@@ -75,7 +71,7 @@ set(RDKIT_EXTENSIONS_LIB rdkit_extensions)
 build_static_library(${RDKIT_EXTENSIONS_LIB})
 target_link_libraries(
   ${RDKIT_EXTENSIONS_LIB}
-  PRIVATE Boost::filesystem
+  PRIVATE #Boost::filesystem
           Boost::json
           Boost::serialization
           RDKit::CIPLabeler
