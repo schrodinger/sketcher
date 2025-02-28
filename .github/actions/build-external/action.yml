@@ -31,7 +31,7 @@ runs:
         
 
     - name: Build library
-      if: steps.cache-check.outputs.cache-hit == 'false'
+      if: steps.cache-check.outputs.cache-hit != 'true'
       # The Windows Qt build fails if we try to use bash, since it shells out to
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
@@ -40,6 +40,7 @@ runs:
         lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
         # cmd uses ^ for escaping newlines instead of \
         endl: ${{ runner.os == 'windows' && '^' || '\' }}
+        cache-hit: steps.cache-check.outputs.cache-hit
       run: |
         ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{env.endl}}
         cmake --build ${{ env.lib-build-dir }} --verbose${{env.endl}}
