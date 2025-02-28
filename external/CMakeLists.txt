@@ -43,7 +43,8 @@ else()
             -DFEATURE_xcb=ON
             -DFEATURE_xcb_xlib=ON
             -DFEATURE_xkbcommon=ON
-    )
+        )
+    endif()
 endif()
 
 set(RDKIT_INSTALL_STATIC_LIBS_VAL WIN32)
