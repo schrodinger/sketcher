@@ -27,7 +27,7 @@ set(CMAKE_FIND_DEBUG_MODE ON)
 # filesystem
 find_package(
     Boost ${BOOST_VERSION} REQUIRED COMPONENTS iostreams json
-                                                serialization unit_test_framework NO_CMAKE_FIND_ROOT_PATH)
+                                                serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg NO_CMAKE_FIND_ROOT_PATH)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)
 find_package(fmt ${FMT_VERSION} REQUIRED NO_CMAKE_FIND_ROOT_PATH)

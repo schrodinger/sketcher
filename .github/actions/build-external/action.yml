@@ -36,13 +36,18 @@ runs:
         
 
     - name: Build library
-      if: ${{ inputs.cache-check-only == 'false' && steps.cache-check.outputs.cache-hit != 'true' }}
+      if: inputs.cache-check-only == 'false' && steps.cache-check.outputs.cache-hit != 'true'
       # The Windows Qt build fails if we try to use bash, since it shells out to
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
         use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.force-host == 'false' && 'true' }}
         lib-build-dir: build/external/${{ inputs.force-host == 'true' && 'host/' || '' }}
+        endl: ${{ runner.os == 'windows' && '^' || '\' }}
       # don't put escaped newlines in this command, since it needaas to be
       # runnable in both bash and cmd (which uses ^ instead of / aato escape newlines)
-      run: ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}cmake --build ${{ env.lib-build-dir }} --verbose --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
+      run: |
+        ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{endl}}
+        cmake --build ${{ env.lib-build-dir }} --verbose${{endl}}
+              --target ${{ inputs.library }}${{endl}}
+              --config ${{ env.BUILD_TYPE }}
