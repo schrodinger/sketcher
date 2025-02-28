@@ -178,8 +178,8 @@ if(QT_HOST_BUILD)
     # used to build the WASM build of Qt since uic, rcc, etc. need to get run s
     # part of the build process.  This non-WASM Qt isn't used in Sketcher
     # itself, so it doesn't need anything other than qtbase
-    set(QT_BUILD_SUBMODULES qtbase)
-    set(QT_GIT_SUBMODULES qtbase)
+    set(QT_BUILD_SUBMODULES qtbase qtsvg)
+    set(QT_GIT_SUBMODULES qtbase qtsvg)
 elseif(EMSCRIPTEN)
     set(QT_BUILD_SUBMODULES qtbase qtsvg qtopengl)
     set(QT_GIT_SUBMODULES qtbase qtsvg)
