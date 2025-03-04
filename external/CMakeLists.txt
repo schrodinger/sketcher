@@ -35,7 +35,7 @@ if(EMSCRIPTEN)
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
     set(EXTRA_RDKIT_CMAKE_ARGS 
-       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1\ -Dis_ascii=isascii)
+       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1\ -D__isascii=isascii)
 else()
     set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
     if(LINUX)
