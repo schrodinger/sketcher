@@ -83,7 +83,6 @@ ExternalProject_Add(
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
     -DBUILD_SHARED_LIBS=OFF
-    --clean-first
     --fresh)
 
 ExternalProject_Add(
