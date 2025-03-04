@@ -35,7 +35,7 @@ if(EMSCRIPTEN)
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
     set(EXTRA_RDKIT_CMAKE_ARGS 
-       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1\ -D__isascii=isascii)
+       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ --use-port=zlib)
 else()
     set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
     if(LINUX)
@@ -151,9 +151,8 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
-#   PATCH_COMMAND git reset --hard HEAD
   PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch
-#   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
@@ -163,7 +162,6 @@ ExternalProject_Add(
     -DRDK_BUILD_CPP_TESTS=OFF
     -DRDK_BUILD_DESCRIPTORS3D=OFF
     -DRDK_BUILD_FREETYPE_SUPPORT=OFF
-    # -DRDK_BUILD_INCHI_SUPPORT=OFF
     -DRDK_BUILD_INCHI_SUPPORT=ON
     -DRDK_BUILD_MAEPARSER_SUPPORT=ON
     -DRDK_BUILD_PYTHON_WRAPPERS=OFF
