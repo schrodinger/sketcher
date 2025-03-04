@@ -74,7 +74,6 @@ jobs:
 
       - name: Fetch zlib
         id: fetch-zlib
-        if: matrix.build-output != 'wasm'
         uses: ./.github/actions/build-external
         with:
           library: zlib
