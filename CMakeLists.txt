@@ -43,9 +43,7 @@ find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
-if(!EMSCRIPTEN)
-    find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
-endif()
+find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 
 # Common library/executable configuration
 function(setup_target TARGET)

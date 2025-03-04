@@ -35,7 +35,7 @@ if(EMSCRIPTEN)
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
     set(EXTRA_RDKIT_CMAKE_ARGS 
-       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -use-port=zlib)
+       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread)
 else()
     set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
     if(LINUX)
@@ -77,12 +77,14 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
-  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
+#   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-    -DBUILD_SHARED_LIBS=OFF)
+    -DBUILD_SHARED_LIBS=OFF
+    --clean-first
+    --fresh)
 
 ExternalProject_Add(
   zstd
