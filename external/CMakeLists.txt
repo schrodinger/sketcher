@@ -116,7 +116,7 @@ set_cmake_arg(
   # rdkit_extensions required libraries
 #   beast
   bimap
-#   filesystem
+  filesystem
   test)
 set_cmake_arg(
   BOOST_CMAKE_PREFIX
