@@ -139,11 +139,12 @@ ExternalProject_Add(
     -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
     ${EXTRA_BOOST_CMAKE_ARGS})
 
-# install boost::beast as header-only, since building it fails on wasm builds
+# building boost::beast will fail on wasm builds because it pulls in boost::context,
+# but we can install it as a header-only library and use it that way
 ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT Installing boost::beast as header-only
     DEPENDEES install
-    COMMAND cp <SOURCE_DIR>/boost/libs/beast/include/boost <INSTALL_DIR>/include/boost)
+    COMMAND cp -r <SOURCE_DIR>/libs/beast/include/boost/* <INSTALL_DIR>/include/boost)
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
