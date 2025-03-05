@@ -28,8 +28,7 @@ endfunction()
 
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
-        -DBOOST_DISABLE_THREADING=ON
-        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DBOOST_BEAST_HEADER_ONLY=1
+        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
     )
     set(EXTRA_QT_CMAKE_ARGS
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
@@ -114,7 +113,6 @@ set_cmake_arg(
   program_options
   serialization
   # rdkit_extensions required libraries
-  beast
   bimap
   filesystem
   test)
@@ -136,11 +134,16 @@ ExternalProject_Add(
     -DCMAKE_PREFIX_PATH=${BOOST_CMAKE_PREFIX}
     -DBUILD_SHARED_LIBS=OFF
     -DBOOST_INCLUDE_LIBRARIES=${BOOST_INCLUDE_LIBS}
-    -DBOOST_EXCLUDE_LIBRARIES=context
     -DBOOST_RUNTIME_LINK=static
     -DBOOST_IOSTREAMS_ENABLE_BZIP2=OFF
     -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
     ${EXTRA_BOOST_CMAKE_ARGS})
+
+# install boost::beast as header-only, since building it fails on wasm builds
+ExternalProject_Add_Step(boost install_beast_header_only
+    COMMENT Installing boost::beast as header-only
+    DEPENDEES install
+    COMMAND cp <SOURCE_DIR>/boost/libs/beast/include/boost <INSTALL_DIR>/include/boost)
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
