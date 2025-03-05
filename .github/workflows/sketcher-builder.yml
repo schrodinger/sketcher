@@ -146,6 +146,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
+        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -153,8 +154,6 @@ jobs:
                                 ${{ steps.fetch-boost.outputs.path }};\
                                 ${{ steps.fetch-rdkit.outputs.path }};\
                                 ${{ steps.fetch-qt.outputs.path }}"
-            Boost_VERBOSE: 1
-            Boost_DEBUG: 1
         run: |
           ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
           cmake --fresh -B build -S . -G Ninja \
@@ -162,6 +161,7 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
+        if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
@@ -184,11 +184,11 @@ jobs:
           path: build/sketcher_app${{env.dot_exe}}
 
       - name: Create wasm tarball
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-output == 'not wasm'
         run: sketcher/wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-output == 'not wasm'
         uses: actions/upload-artifact@v4
         with:
           name: sketcher-wasm.tar.gz
