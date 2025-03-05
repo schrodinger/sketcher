@@ -77,7 +77,7 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   USES_TERMINAL_CONFIGURE ON
   USES_TERMINAL_BUILD ON
-  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
+  PATCH_COMMAND git reset --hard HEAD# && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
 #   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
