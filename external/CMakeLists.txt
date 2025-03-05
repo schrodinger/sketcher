@@ -114,7 +114,7 @@ set_cmake_arg(
   program_options
   serialization
   # rdkit_extensions required libraries
-#   beast
+  beast
   bimap
   filesystem
   test)
