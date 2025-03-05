@@ -29,7 +29,7 @@ endfunction()
 if(EMSCRIPTEN)
     set(EXTRA_BOOST_CMAKE_ARGS
         -DBOOST_DISABLE_THREADING=ON
-        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DUSE_ZLIB=1
+        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -DBOOST_BEAST_HEADER_ONLY=1
     )
     set(EXTRA_QT_CMAKE_ARGS
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
