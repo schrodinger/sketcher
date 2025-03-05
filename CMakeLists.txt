@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
 
-include(CMakePrintHelpers)
-
 project(
   schrodinger_sketcher
   VERSION 2024.2.0
@@ -23,27 +21,22 @@ string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
-set(CMAKE_FIND_DEBUG_MODE ON)
-cmake_print_variables(CMAKE_FIND_ROOT_PATH)
 if(CMAKE_FIND_ROOT_PATH)
-    cmake_print_variables(CMAKE_CURRENT_BINARY_DIR)
     list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
-cmake_print_variables(CMAKE_FIND_ROOT_PATH)
 
 if(EMSCRIPTEN)
     set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
 endif()
 
-# filesystem
 find_package(
-    Boost ${BOOST_VERSION} REQUIRED COMPONENTS iostreams json
-                                                serialization unit_test_framework)
+  Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
+                                             serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
-find_package(zstd ${ZSTD_VERSION} REQUIRED)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
+find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
 function(setup_target TARGET)
