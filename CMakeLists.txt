@@ -30,7 +30,7 @@ if(EMSCRIPTEN)
 endif()
 
 find_package(
-  Boost ${BOOST_VERSION} REQUIRED COMPONENTS beast filesystem iostreams json
+  Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
@@ -46,7 +46,7 @@ function(setup_target TARGET)
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -DBOOST_BEAST_HEADER_ONLY=1)
   endif()
   # Allow RDKit includes to be prefixed
-  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/..
+  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/.. ${Boost_INCLUDE_DIRS}/..
                                                ${PROJECT_SOURCE_DIR}/include)
   # Assume use of static libraries
   target_compile_definitions(
