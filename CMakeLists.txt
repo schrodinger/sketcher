@@ -22,6 +22,8 @@ set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
 set(BUILD_SHARED_LIBS OFF)
 
 if(CMAKE_FIND_ROOT_PATH)
+    # make sure we can always find the dependencies that we've built, even if
+    # emscripten is trying to prevent us from finding system libraries
     list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
@@ -29,7 +31,7 @@ if(EMSCRIPTEN)
     set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
 endif()
 
-# we don't include boost::beast as a required component since we only include it
+# we don't include boost::beast as a required component since we're using it
 # as a non-built, headers-only library, which means that there's no associated
 # config.cmake file for find_package to recognize
 find_package(

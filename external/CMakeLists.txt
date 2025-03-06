@@ -1,6 +1,4 @@
 cmake_minimum_required(VERSION 3.24)
-
-include(CMakePrintHelpers)
 include(ExternalProject)
 
 project(schrodinger_sketcher_external)
@@ -77,8 +75,7 @@ ExternalProject_Add(
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-    -DBUILD_SHARED_LIBS=OFF
-    --fresh)
+    -DBUILD_SHARED_LIBS=OFF)
 
 ExternalProject_Add(
   zstd
@@ -111,10 +108,8 @@ set_cmake_arg(
   filesystem
   test)
 set_cmake_arg(
-  BOOST_CMAKE_PREFIX
-    ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-    ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION}
-    ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION})
+  BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+  ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 ExternalProject_Add(
   boost
   GIT_REPOSITORY https://github.com/boostorg/boost.git

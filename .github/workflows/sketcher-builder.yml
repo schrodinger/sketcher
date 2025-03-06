@@ -56,7 +56,8 @@ jobs:
 
       - name: Configure Dependency CMake
         run: |
-            ${{matrix.build-output == 'wasm' && 'emcmake ' || ''}}cmake --fresh -B build/external/ -S external/ -G Ninja \
+            ${{matrix.build-output == 'wasm' && 'emcmake ' || ''}}\
+                cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Configure host Qt CMake
@@ -136,7 +137,7 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          force-host: true
+          host-build: true
 
       - name: Fetch Qt
         id: fetch-qt
@@ -154,8 +155,8 @@ jobs:
                                 ${{ steps.fetch-rdkit.outputs.path }};\
                                 ${{ steps.fetch-qt.outputs.path }}"
         run: |
-          ${{matrix.build-output == 'wasm' && 'emcmake' || ''}} \
-          cmake --fresh -B build -S . -G Ninja \
+          ${{matrix.build-output == 'wasm' && 'emcmake ' || ''}}\
+          cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
