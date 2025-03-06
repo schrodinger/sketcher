@@ -146,7 +146,7 @@ ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT "Copying boost::beast headers"
     DEPENDEES install
     ALWAYS ON
-    COMMAND cp -rv <SOURCE_DIR>/libs/beast/include ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include
+    COMMAND cp -rv <SOURCE_DIR>/libs/beast/include ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
 )
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})

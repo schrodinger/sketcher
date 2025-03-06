@@ -146,6 +146,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
+        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -160,6 +161,7 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
+        if: matrix.build-output != 'wasm'
         run: ls -R /home/runner/work/sketcher/sketcher/build/external/boost-1.83.0/include && cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
@@ -182,11 +184,11 @@ jobs:
           path: build/sketcher_app${{env.dot_exe}}
 
       - name: Create wasm tarball
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-output == 'not wasm'
         run: sketcher/wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-output == 'not wasm'
         uses: actions/upload-artifact@v4
         with:
           name: sketcher-wasm.tar.gz
