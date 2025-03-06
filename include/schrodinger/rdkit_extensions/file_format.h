@@ -46,6 +46,7 @@ enum class Format {
     FASTA,         // only used to write
     // Schrodinger-specific formats unknown to RDKit
     FMP,
+    CUSTOM_ENTITY, // user-defined entity
 };
 
 /**

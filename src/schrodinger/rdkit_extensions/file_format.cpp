@@ -115,6 +115,10 @@ Format get_file_format(const boost::filesystem::path& filename)
     auto extension = filename.extension().string();
     boost::to_lower(extension);
 
+    if (extension == ".json") {
+        return Format::CUSTOM_ENTITY;
+    }
+
     if (extension == ".gz" || extension == ".zst") {
         extension = filename.stem().extension().string() + extension;
         boost::to_lower(extension);
