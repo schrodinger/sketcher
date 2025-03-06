@@ -184,7 +184,7 @@ jobs:
 
       - name: Create wasm tarball
         if: matrix.build-output == 'wasm'
-        run: sketcher/wasm/create_wasm_tarball.sh sketcher-wasm
+        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
         if: matrix.build-output == 'wasm'
