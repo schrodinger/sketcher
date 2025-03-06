@@ -30,7 +30,7 @@ if(EMSCRIPTEN)
 endif()
 
 find_package(
-  Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
+  Boost ${BOOST_VERSION} REQUIRED COMPONENTS beast filesystem iostreams json
                                              serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
