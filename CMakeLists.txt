@@ -44,8 +44,7 @@ find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
-function(setup_target TARGET)
-  target_compile_definitions(${TARGET} PRIVATE BOOST_BEAST_HEADER_ONLY)
+function(setup_target TARGET)  
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX)
   else()
@@ -57,7 +56,10 @@ function(setup_target TARGET)
   # Assume use of static libraries
   target_compile_definitions(
     ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
-                      RDK_BUILD_MAEPARSER_SUPPORT)
+                      RDK_BUILD_MAEPARSER_SUPPORT BOOST_BEAST_HEADER_ONLY)
+  if (EMSCRIPTEN)
+    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
+  endif()
 endfunction()
 
 # Build static libraries
