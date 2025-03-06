@@ -184,6 +184,8 @@ jobs:
 
       - name: Create wasm tarball
         if: matrix.build-output == 'wasm'
+        env:
+            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
         run: ./wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
