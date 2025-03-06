@@ -40,10 +40,11 @@ find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
 function(setup_target TARGET)
+  target_compile_definitions(${TARGET} PRIVATE BOOST_BEAST_HEADER_ONLY)
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE -WX -DBOOST_BEAST_HEADER_ONLY=1)
+    target_compile_options(${TARGET} PRIVATE -WX)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -DBOOST_BEAST_HEADER_ONLY=1)
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
   endif()
   # Allow RDKit includes to be prefixed
   target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/.. ${Boost_INCLUDE_DIRS}/..
@@ -70,8 +71,7 @@ set(RDKIT_EXTENSIONS_LIB rdkit_extensions)
 build_static_library(${RDKIT_EXTENSIONS_LIB})
 target_link_libraries(
   ${RDKIT_EXTENSIONS_LIB}
-  PRIVATE Boost::beast
-          Boost::filesystem
+  PRIVATE Boost::filesystem
           Boost::json
           Boost::serialization
           RDKit::CIPLabeler
