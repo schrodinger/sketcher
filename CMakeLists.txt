@@ -47,7 +47,7 @@ function(setup_target TARGET)
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
   endif()
   # Allow RDKit includes to be prefixed
-  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/.. ${Boost_INCLUDE_DIRS}/..
+  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/.. ${Boost_INCLUDE_DIRS}
                                                ${PROJECT_SOURCE_DIR}/include)
   # Assume use of static libraries
   target_compile_definitions(
