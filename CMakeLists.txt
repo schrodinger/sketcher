@@ -70,7 +70,8 @@ set(RDKIT_EXTENSIONS_LIB rdkit_extensions)
 build_static_library(${RDKIT_EXTENSIONS_LIB})
 target_link_libraries(
   ${RDKIT_EXTENSIONS_LIB}
-  PRIVATE Boost::filesystem
+  PRIVATE Boost::beast
+          Boost::filesystem
           Boost::json
           Boost::serialization
           RDKit::CIPLabeler
