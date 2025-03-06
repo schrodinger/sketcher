@@ -145,7 +145,8 @@ ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT Installing boost::beast as header-only
     DEPENDEES install
     ALWAYS ON
-    COMMAND cp -r <SOURCE_DIR>/libs/beast/include <INSTALL_DIR>/include) && ls -R <INSTALL_DIR>/include
+    COMMAND cp -r <SOURCE_DIR>/libs/beast/include <INSTALL_DIR>/include && ls -R <INSTALL_DIR>/include
+)
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
