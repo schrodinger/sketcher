@@ -4,6 +4,7 @@
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/ROMol.h>
 
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 namespace schrodinger
@@ -31,6 +32,7 @@ ModifyBondsMenu::ModifyBondsMenu(QWidget* parent) : AbstractContextMenu(parent)
     addBondAction("Down", BondTool::SINGLE_DOWN);
     addMenu(createOtherTypeMenu());
     addMenu(createQueryMenu());
+    addMenu(createTopologyMenu());
 }
 
 void ModifyBondsMenu::updateActions()
@@ -85,6 +87,23 @@ QMenu* ModifyBondsMenu::createQueryMenu()
     addBondAction("Single/Aromatic", BondTool::SINGLE_OR_AROMATIC);
 
     return query_menu;
+}
+
+QMenu* ModifyBondsMenu::createTopologyMenu()
+{
+    auto topology_menu = new QMenu("Topology", this);
+
+    auto addBondQueryAction = [this, topology_menu](auto text, auto type) {
+        topology_menu->addAction(text, this, [this, type]() {
+            emit changeQueryRequested(type, m_bonds);
+        });
+    };
+    addBondQueryAction("Unspecified",
+                       schrodinger::sketcher::BondTopology::UNSPECIFIED);
+    addBondQueryAction("In Ring", schrodinger::sketcher::BondTopology::IN_RING);
+    addBondQueryAction("In Chain",
+                       schrodinger::sketcher::BondTopology::IN_CHAIN);
+    return topology_menu;
 }
 
 BondContextMenu::BondContextMenu(QWidget* parent) : ModifyBondsMenu(parent)

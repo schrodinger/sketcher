@@ -17,6 +17,8 @@ namespace schrodinger
 namespace sketcher
 {
 
+enum class BondTopology { IN_RING, IN_CHAIN, UNSPECIFIED };
+
 // map of bond tool to {bond type, bond stereochemistry, whether the bond is
 // flippable (i.e. does the bond change meaningfully if we swap the start and
 // end atoms), icon for the cursor hint}
@@ -75,7 +77,8 @@ const std::unordered_map<BondTool,
         {BondTool::SINGLE_OR_DOUBLE, RDKit::makeSingleOrDoubleBondQuery},
         {BondTool::SINGLE_OR_AROMATIC, RDKit::makeSingleOrAromaticBondQuery},
         {BondTool::DOUBLE_OR_AROMATIC, RDKit::makeDoubleOrAromaticBondQuery},
-        {BondTool::ANY, RDKit::makeBondNullQuery}};
+        {BondTool::ANY, RDKit::makeBondNullQuery},
+};
 
 /**
  * For a given bond, returns a pair of
@@ -104,6 +107,38 @@ get_label_for_bond_query(const RDKit::Bond::QUERYBOND_QUERY* const query);
  */
 SKETCHER_API bool
 has_any_implicit_Hs(const std::unordered_set<const RDKit::Atom*>& atoms);
+
+/**
+ * @return the topology of the bond.
+ * @note This assumes that if the topology is set the
+ * bond is a composite and between topology and something else (usually bond
+ * order). This is enough to recognize topology queries created with the
+ * sketcher, but may not be enough for all cases.
+ */
+SKETCHER_API BondTopology get_bond_topology(const RDKit::Bond* const bond);
+
+/**
+ * Set the topology of the bond.
+ * @param bond The bond to modify.  Must be a query bond already.
+ * @param topology The new topology for the bond. If the bond already has a
+ * topology it will be updated to the new value
+ */
+SKETCHER_API void set_bond_topology(RDKit::QueryBond* const bond,
+                                    BondTopology topology);
+
+/**
+ * Creates a new bond based on an existing query bond, removing the topology
+ * info, assuming that the query is a BondAnd query between topology and
+ * something else. If the existing bond does not have a query or the query is
+ * not a "BondAnd" query or has more than two children, the new bond will be a
+ * copy of the existing bond. If the remaining  query is a "BondOrder" query, a
+ * new bond of the corresponding order will be returned.
+ *
+ * @param existing_bond A pointer to the existing RDKit::QueryBond object.
+ * @return A shared pointer to the new RDKit::Bond object.
+ */
+SKETCHER_API std::shared_ptr<RDKit::Bond>
+make_new_bond_without_topology(const RDKit::QueryBond* existing_bond);
 
 } // namespace sketcher
 } // namespace schrodinger

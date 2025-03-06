@@ -44,19 +44,138 @@ get_bond_type_and_query_label(const RDKit::Bond* const bond)
                 {"T", RDKit::Bond::BondType::TRIPLE},
                 {"A", RDKit::Bond::BondType::AROMATIC},
             };
-        auto bond_type_itr = query_label_to_bond_type.find(query_label);
-        if (bond_type_itr != query_label_to_bond_type.end()) {
-            // if the query specifies exactly one bond type and nothing more,
-            // then render the bond as that type instead of displaying a query
-            // label
-            bond_type = bond_type_itr->second;
-            query_label = "";
+        // if the label contains only one of the above characters, either alone
+        // or as an AND query with something else, we can use it as a bond type
+        QString query_label_qstring = QString::fromStdString(query_label);
+        auto list = query_label_qstring.split("+");
+        auto result_itr = query_label_to_bond_type.end();
+        for (auto item : list) {
+            auto bond_type_itr =
+                query_label_to_bond_type.find(item.toStdString());
+            if (bond_type_itr != query_label_to_bond_type.end()) {
+                if (result_itr != query_label_to_bond_type.end()) {
+                    // more than one bond type found
+                    result_itr = query_label_to_bond_type.end();
+                    break;
+                } else {
+                    result_itr = bond_type_itr;
+                }
+            }
+        }
+        if (result_itr != query_label_to_bond_type.end()) {
+            bond_type = result_itr->second;
+            list.removeAll(result_itr->first.c_str());
+            query_label = list.join("+").toStdString();
         } else {
-            // If a bond has a query label, always draw it as a single bond
             bond_type = RDKit::Bond::BondType::SINGLE;
         }
     }
     return {bond_type, query_label};
+}
+
+BondTopology get_bond_topology(const RDKit::Bond* const bond)
+{
+    if (!bond->hasQuery()) {
+        return BondTopology::UNSPECIFIED;
+    }
+    auto query = bond->getQuery();
+    for (auto child = query->beginChildren(); child != query->endChildren();
+         ++child) {
+        if ((*child)->getDescription() == "BondInRing") {
+            return ((*child)->getNegation() ? BondTopology::IN_CHAIN
+                                            : BondTopology::IN_RING);
+        }
+    }
+    return BondTopology::UNSPECIFIED;
+}
+
+void set_bond_topology(RDKit::QueryBond* const bond, BondTopology topology)
+{
+    const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> query(
+        RDKit::makeBondIsInRingQuery());
+    query->setNegation(topology == BondTopology::IN_CHAIN);
+    if (bond->hasQuery()) {
+        // if topology is already set, replace it
+        for (auto child = bond->getQuery()->beginChildren();
+             child != bond->getQuery()->endChildren(); ++child) {
+            if ((*child)->getDescription() == query->getDescription()) {
+                (*child)->setNegation(query->getNegation());
+                return;
+            }
+        }
+        // otherwise add it
+        bond->expandQuery(query->copy(), Queries::COMPOSITE_AND);
+    } else {
+        bond->setQuery(query->copy());
+    }
+}
+
+std::shared_ptr<RDKit::Bond>
+make_new_bond_without_topology(const RDKit::QueryBond* existing_bond)
+{
+    auto bond = std::make_shared<RDKit::QueryBond>(*existing_bond);
+    // we are assuming that the existing bond is an AND query between two
+    // children.
+    if (!existing_bond->hasQuery()) {
+        return bond;
+    }
+    auto existing_query = existing_bond->getQuery();
+    if (existing_query->getDescription() != "BondAnd") {
+
+        return bond;
+    }
+
+    int child_count = 0;
+    auto child_to_keep_itr = existing_query->endChildren();
+    for (auto ci = existing_query->beginChildren();
+         ci != existing_query->endChildren(); ++ci) {
+        ++child_count;
+        if ((*ci)->getDescription() != "BondInRing") {
+            // we want to keep this child, but only if there's exactly one
+            //  non-BondInRing child and a total of two children (i.e. the other
+            //  child is a BondInRing query)
+            if (child_to_keep_itr == existing_query->endChildren()) {
+                child_to_keep_itr = ci;
+            } else {
+                child_to_keep_itr = existing_query->endChildren();
+            }
+        }
+    }
+    if (child_count != 2 ||
+        child_to_keep_itr == existing_query->endChildren()) {
+        return bond;
+    }
+    // if the only remaining child is a BondOrder query, we return a normal bond
+    // of the corresponding order
+    if ((*child_to_keep_itr)->getDescription() == "BondOrder") {
+        auto equals_query = dynamic_cast<const RDKit::BOND_EQUALS_QUERY*>(
+            child_to_keep_itr->get());
+        if (equals_query == nullptr) {
+            return bond;
+        }
+        switch (equals_query->getVal()) {
+            case 1:
+                return std::make_shared<RDKit::Bond>(
+                    RDKit::Bond::BondType::SINGLE);
+            case 2:
+                return std::make_shared<RDKit::Bond>(
+                    RDKit::Bond::BondType::DOUBLE);
+            case 3:
+                return std::make_shared<RDKit::Bond>(
+                    RDKit::Bond::BondType::TRIPLE);
+            case 12:
+                return std::make_shared<RDKit::Bond>(
+                    RDKit::Bond::BondType::AROMATIC);
+            default:
+                return bond;
+        }
+    }
+    // otherwise we return a query bond with the remaining child
+    if (child_count == 2 &&
+        child_to_keep_itr != existing_query->endChildren()) {
+        bond->setQuery(child_to_keep_itr->get()->copy());
+    }
+    return bond;
 }
 
 std::string
@@ -108,7 +227,7 @@ static std::string parse_description_for_bond_query_node(
     } else if (desc == "SingleOrDoubleOrAromaticBond") {
         return "S/D/A";
     } else if (desc == "BondInRing") {
-        return "Ring";
+        return "⭔";
     } else if (desc == "BondOrder") {
         auto equals_query =
             dynamic_cast<const RDKit::BOND_EQUALS_QUERY*>(query);

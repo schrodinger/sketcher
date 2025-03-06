@@ -604,6 +604,11 @@ std::vector<QColor> BondItem::getColors() const
         m_bond->getProp(USER_COLOR, highlight_color);
         return {highlight_color};
     }
+    if (m_bond->hasQuery()) {
+        // if the bond has a query, we want to paint it it with a different
+        // color
+        return {QUERY_BOND_COLOR};
+    }
     QColor start_color = m_settings.m_color;
     QColor end_color = m_settings.m_color;
     m_bond->getBeginAtom()->getPropIfPresent(USER_COLOR, start_color);

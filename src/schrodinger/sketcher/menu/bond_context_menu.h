@@ -18,6 +18,7 @@ namespace sketcher
 {
 
 enum class BondTool;
+enum class BondTopology;
 
 class SKETCHER_API ModifyBondsMenu : public AbstractContextMenu
 {
@@ -33,6 +34,9 @@ class SKETCHER_API ModifyBondsMenu : public AbstractContextMenu
     void
     changeTypeRequested(BondTool bond_tool,
                         const std::unordered_set<const RDKit::Bond*>& bonds);
+    void
+    changeQueryRequested(BondTopology bond_tool,
+                         const std::unordered_set<const RDKit::Bond*>& bonds);
     void flipRequested(const std::unordered_set<const RDKit::Bond*>& bonds);
 
   protected:
@@ -46,6 +50,7 @@ class SKETCHER_API ModifyBondsMenu : public AbstractContextMenu
 
     QMenu* createOtherTypeMenu();
     QMenu* createQueryMenu();
+    QMenu* createTopologyMenu();
 };
 
 class BondContextMenu : public ModifyBondsMenu

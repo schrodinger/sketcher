@@ -209,8 +209,10 @@ enum class BondTool {
     SINGLE_OR_AROMATIC,
     DOUBLE_OR_AROMATIC,
     ANY,
-    ATOM_CHAIN,
+    ATOM_CHAIN
 };
+
+enum class BondQueryTool { IN_RING, IN_CHAIN, UNSPECIFIED };
 
 /**
  * Charge tools

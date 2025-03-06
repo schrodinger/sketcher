@@ -12,6 +12,7 @@
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(
     std::function<RDKit::QueryBond::QUERYBOND_QUERY*()>)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::BondTopology)
 
 namespace schrodinger
 {
@@ -52,7 +53,7 @@ BOOST_DATA_TEST_CASE(
     test_get_bond_type_and_query_label_from_SMARTS,
     bdata::make(std::vector<std::string>{"C=C", "C-,:C", "C@-C", "C:C",
                                          "C!=C"}) ^
-        bdata::make(std::vector<std::string>{"", "S/A", "Ring+S", "", "!D"}) ^
+        bdata::make(std::vector<std::string>{"", "S/A", "⭔", "", "!D"}) ^
         bdata::make(std::vector<RDKit::Bond::BondType>{
             RDKit::Bond::BondType::DOUBLE, RDKit::Bond::BondType::SINGLE,
             RDKit::Bond::BondType::SINGLE, RDKit::Bond::BondType::AROMATIC,
@@ -76,6 +77,31 @@ BOOST_AUTO_TEST_CASE(test_get_label_for_bond_query_unrecognized_query)
     auto label = get_label_for_bond_query(query);
     delete query;
     BOOST_TEST(label == "Query");
+}
+
+/**
+ * Make sure that get_bond_topology, make_new_bond_without_topology and
+ * set_bond_topology returns the correct value for a bond
+ */
+BOOST_AUTO_TEST_CASE(test_bond_topology_functions)
+{
+    auto topologies = {BondTopology::IN_RING, BondTopology::IN_CHAIN,
+                       BondTopology::UNSPECIFIED};
+    for (auto topology : topologies) {
+        auto mol = rdkit_extensions::to_rdkit("C-,=C",
+                                              rdkit_extensions::Format::SMARTS);
+        auto* bond = mol->getBondWithIdx(0);
+        auto query_bond = dynamic_cast<RDKit::QueryBond*>(bond);
+        auto result = BondTopology::UNSPECIFIED;
+        if (topology == BondTopology::UNSPECIFIED) {
+            auto new_bond = make_new_bond_without_topology(query_bond);
+            result = get_bond_topology(new_bond.get());
+        } else {
+            set_bond_topology(query_bond, topology);
+            result = get_bond_topology(bond);
+        }
+        BOOST_TEST(result == topology);
+    }
 }
 
 } // namespace sketcher

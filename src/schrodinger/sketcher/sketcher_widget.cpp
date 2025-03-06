@@ -501,6 +501,10 @@ void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
             [this](auto bond_tool, auto bonds) {
                 m_mol_model->mutateBonds(bonds, bond_tool);
             });
+    connect(&menu, &ModifyBondsMenu::changeQueryRequested, this,
+            [this](auto bond_tool, auto bonds) {
+                m_mol_model->setBondTopology(bonds, bond_tool);
+            });
     connect(&menu, &ModifyBondsMenu::flipRequested, this, [this](auto bonds) {
         // flip substituent only makes sense if there is only one bond
         if (bonds.size() != 1) {

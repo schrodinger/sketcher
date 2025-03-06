@@ -50,6 +50,7 @@ namespace sketcher
 
 enum class SubgroupType;
 enum class RepeatPattern;
+enum class BondTopology;
 
 enum class SelectMode {
     SELECT,      // Shift + click
@@ -766,6 +767,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
                      BondTool bond_tool);
+
+    void setBondTopology(const std::unordered_set<const RDKit::Bond*>& bonds,
+                         BondTopology bond_query);
 
     /**
      * Adjust the charge on all target atoms by the specified value. To

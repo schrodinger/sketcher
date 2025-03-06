@@ -85,6 +85,21 @@ make_new_bond(const RDKit::Bond::BondType& bond_type,
     return bond;
 };
 
+/**
+ * @return a new bond adding topology information from an existing bond.
+ */
+std::shared_ptr<RDKit::Bond>
+make_new_bond_with_topology(const RDKit::Bond* existing_bond,
+                            BondTopology topology)
+{
+    auto bond = std::make_shared<RDKit::QueryBond>(*existing_bond);
+    if (existing_bond->hasQuery()) {
+        bond->setQuery(existing_bond->getQuery()->copy());
+    }
+    set_bond_topology(bond.get(), topology);
+    return bond;
+};
+
 std::shared_ptr<RDKit::Bond> make_new_single_bond()
 {
     return make_new_bond(RDKit::Bond::BondType::SINGLE,
@@ -1826,6 +1841,50 @@ void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
+}
+
+void MolModel::setBondTopology(
+    const std::unordered_set<const RDKit::Bond*>& bonds, BondTopology topology)
+{
+
+    if (bonds.empty()) {
+        return;
+    }
+    // if all bonds already have the desired topology, do nothing
+    if (std::all_of(bonds.begin(), bonds.end(), [topology](auto bond) {
+            return get_bond_topology(bond) == topology;
+        })) {
+        return;
+    }
+    if (topology == BondTopology::UNSPECIFIED) {
+        auto cmd_func = [this, bonds]() {
+            for (auto* bond : bonds) {
+                if (get_bond_topology(bond) == BondTopology::UNSPECIFIED) {
+                    continue;
+                }
+                auto query_bond = static_cast<const RDKit::QueryBond*>(bond);
+                auto create_bond =
+                    std::bind(make_new_bond_without_topology, query_bond);
+                mutateBondCommandFunc(getTagForBond(bond), create_bond);
+                break;
+            }
+        };
+        doCommandUsingSnapshots(cmd_func, "Remove topology",
+                                WhatChanged::MOLECULE);
+        return;
+    }
+    auto set_topology_func = [this, bonds, topology]() {
+        for (auto bond : bonds) {
+            if (get_bond_topology(bond) == topology) {
+                continue;
+            }
+            auto create_bond =
+                std::bind(make_new_bond_with_topology, bond, topology);
+            mutateBondCommandFunc(getTagForBond(bond), create_bond);
+        }
+    };
+    doCommandUsingSnapshots(set_topology_func, "Remove topology",
+                            WhatChanged::MOLECULE);
 }
 
 void MolModel::adjustChargeOnAtoms(

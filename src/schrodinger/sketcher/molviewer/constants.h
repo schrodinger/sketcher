@@ -166,6 +166,9 @@ const QColor CURSOR_HINT_COLOR = QColor("#5191bb");
 // SMARTS query to the atom it refers to
 const QColor QUERY_LABEL_LINE_COLOR = QColor(102, 102, 102);
 
+// the color of query bonds
+const QColor QUERY_BOND_COLOR = QUERY_LABEL_LINE_COLOR;
+
 // This should be set to the shade of gray used in the tool button icons.
 // cursor_hint_from_svg in scene_utils will replace this color with
 // CURSOR_HINT_COLOR.

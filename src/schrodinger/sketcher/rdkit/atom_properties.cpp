@@ -1132,5 +1132,4 @@ get_only_advanced_properties(std::shared_ptr<AtomQueryProperties> property)
         get_subset_of_properties(property.get(), ADVANCED_QUERY_PROPERTIES);
     return std::make_shared<AtomQueryProperties>(advanced_props);
 }
-
 } // namespace schrodinger::sketcher
