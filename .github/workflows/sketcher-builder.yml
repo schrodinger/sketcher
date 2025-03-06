@@ -160,7 +160,7 @@ jobs:
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        run: ls -R /home/runner/work/sketcher/sketcher/build/external/boost-1.83.0/include && cmake --build build --config ${{ env.BUILD_TYPE }}
+        run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
         if: matrix.build-output != 'wasm'

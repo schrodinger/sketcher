@@ -51,6 +51,7 @@ set(RDKIT_INSTALL_STATIC_LIBS_VAL WIN32)
 
 set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
 if(CMAKE_TOOLCHAIN_FILE)
+    # Emscripten builds specify a toolchain file and a cross-compiling emulator
     list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}
@@ -62,8 +63,6 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   GIT_TAG ${FMT_VERSION}
   GIT_SHALLOW TRUE
-  USES_TERMINAL_CONFIGURE ON
-  USES_TERMINAL_BUILD ON
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fmt-${FMT_VERSION}
@@ -74,10 +73,7 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/madler/zlib.git
   GIT_TAG v${ZLIB_VERSION}
   GIT_SHALLOW TRUE
-  USES_TERMINAL_CONFIGURE ON
-  USES_TERMINAL_BUILD ON
   PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
-#   UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
@@ -89,8 +85,6 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/facebook/zstd.git
   GIT_TAG v${ZSTD_VERSION}
   GIT_SHALLOW TRUE
-  USES_TERMINAL_CONFIGURE ON
-  USES_TERMINAL_BUILD ON
   SOURCE_SUBDIR build/cmake
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
@@ -126,8 +120,6 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/boostorg/boost.git
   GIT_TAG boost-${BOOST_VERSION}
   GIT_SHALLOW TRUE
-  USES_TERMINAL_CONFIGURE ON
-  USES_TERMINAL_BUILD ON
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
@@ -158,10 +150,7 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
   GIT_TAG Release_${RDKIT_GIT_TAG}
   GIT_SHALLOW TRUE
-  USES_TERMINAL_CONFIGURE ON
-  USES_TERMINAL_BUILD ON
-  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
@@ -185,8 +174,9 @@ ExternalProject_Add(
     ${EXTRA_RDKIT_CMAKE_ARGS})
 
 if(QT_HOST_BUILD)
-    # For WASM builds, we also need a non-WASM build of Qt, since some of the Qt
+    # For WASM builds, we also need a non-WASM build of Qt since some of the Qt
     # command line tools get run during the build process (e.g. uic, rcc, etc).
+    # For those Qt builds, we don't need anything beyond qtbase.
     set(QT_GIT_SUBMODULES qtbase)
 else()
     set(QT_GIT_SUBMODULES qtbase qtsvg)
@@ -198,8 +188,6 @@ ExternalProject_Add(
   GIT_TAG v${QT_VERSION}
   GIT_SUBMODULES ${QT_GIT_SUBMODULES}
   GIT_SHALLOW TRUE
-  USES_TERMINAL_CONFIGURE ON
-  USES_TERMINAL_BUILD ON
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}

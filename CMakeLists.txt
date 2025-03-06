@@ -29,6 +29,9 @@ if(EMSCRIPTEN)
     set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
 endif()
 
+# we don't include boost::beast as a required component since we only include it
+# as a non-built, headers-only library, which means that there's no associated
+# config.cmake file for find_package to recognize
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
@@ -47,7 +50,7 @@ function(setup_target TARGET)
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
   endif()
   # Allow RDKit includes to be prefixed
-  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/.. ${Boost_INCLUDE_DIRS}
+  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/..
                                                ${PROJECT_SOURCE_DIR}/include)
   # Assume use of static libraries
   target_compile_definitions(
