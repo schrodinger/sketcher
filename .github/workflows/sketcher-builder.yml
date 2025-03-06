@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [macos-latest, ubuntu-latest, windows-latest]
-        # build-output: [app]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        build-output: [app]
         include:
           - os: ubuntu-latest
             build-output: wasm

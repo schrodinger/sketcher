@@ -19,8 +19,8 @@ cp -v ./build/sketcher_app.wasm ${INSTALL_DIR}
 cp -v ${QT_DIR}/plugins/platforms/qtloader.js ${INSTALL_DIR}
 cp -vr ./wasm/public/. ${INSTALL_DIR}
 
-export md5Wasm=$(md5sum build/sketcher_app.wasm | awk '{ print $1 }')
-export md5Js=$(md5sum sketcher_app.js | awk '{ print $1 }')
+export md5Wasm=$(md5sum ./build/sketcher_app.wasm | awk '{ print $1 }')
+export md5Js=$(md5sum ./build/sketcher_app.js | awk '{ print $1 }')
 
 perl -i -pe 's/\.wasm/.wasm?cache_bust=$ENV{md5Wasm}/g' ${INSTALL_DIR}/qtloader.js
 perl -i -pe 's/"\.js"/".js?cache_bust=$ENV{md5Js}"/g' ${INSTALL_DIR}/qtloader.js
