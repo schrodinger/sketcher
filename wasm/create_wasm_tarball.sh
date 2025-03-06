@@ -1,13 +1,17 @@
 #!/bin/bash
 
+set -euo pipefail
+
 export INSTALL_DIR=$1
 
+if [[ -z "$INSTALL_DIR" ]]; then
+    echo "Must give filename for the tarball" >&2
+    exit 1
+fi
 rm -fr ${INSTALL_DIR} || true
 mkdir -p ${INSTALL_DIR}
 
-ls -R .
-
-echo -e "\n\nBuilding WASM distibution in ${INSTALL_DIR}\n\n"
+echo -e "Building WASM distibution in ${INSTALL_DIR}"
 echo -e "\tRunning in:" `pwd` 
 
 cp -v ./build/sketcher_app.js ${INSTALL_DIR}
@@ -24,9 +28,9 @@ perl -i -pe 's/"\.js"/".js?cache_bust=$ENV{md5Js}"/g' ${INSTALL_DIR}/qtloader.js
 export md5Qt=$(md5sum ${INSTALL_DIR}/qtloader.js | awk '{ print $1 }')
 perl -i -pe 's/qtloader\.js/qtloader.js?cache_bust=$ENV{md5Qt}/g' ${INSTALL_DIR}/wasm_shell.html
 
-echo -e "\n\nBuilt WASM distibution in ${INSTALL_DIR}\n\n"
+echo -e "Built WASM distibution in ${INSTALL_DIR}\n"
 
-echo -e "\n\nCreating ${INSTALL_DIR}.tar.gz\n\n"
+echo -e "Creating ${INSTALL_DIR}.tar.gz"
 rm -f ${INSTALL_DIR}.tar.gz || true
 tar czvf ${INSTALL_DIR}.tar.gz  ${INSTALL_DIR}
-echo -e "\n\nSuccessfully created ${INSTALL_DIR}.tar.gz\n"
+echo -e "Successfully created ${INSTALL_DIR}.tar.gz"
