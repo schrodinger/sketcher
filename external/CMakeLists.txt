@@ -133,7 +133,7 @@ if (WIN32)
     # convert 1.81.00 to 1_81
     string(REPLACE "." ";" BOOST_VERSION_PARTS ${BOOST_VERSION})
     list(POP_BACK BOOST_VERSION_PARTS)
-    list(JOIN "_" BOOST_VERSION_USING_UNDERSCORE)
+    list(JOIN BOOST_VERSION_PARTS "_" BOOST_VERSION_USING_UNDERSCORE)
     set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/${BOOST_VERSION_USING_UNDERSCORE})
 else()
     set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include)
@@ -143,20 +143,6 @@ ExternalProject_Add_Step(boost install_beast_header_only
     DEPENDEES install
     ALWAYS ON
     COMMAND cp -rv <SOURCE_DIR>/libs/beast/include/* ${BOOST_INCLUDE_DIR}
-)
-
-include(CMakePrintHelpers)
-cmake_print_properties(
-    TARGETS boost
-    PROPERTIES
-        PREFIX
-        TMP_DIR
-        STAMP_DIR
-        LOG_DIR
-        DOWNLOAD_DIR
-        SOURCE_DIR
-        BINARY_DIR
-        INSTALL_DIR
 )
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
