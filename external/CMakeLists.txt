@@ -129,14 +129,15 @@ ExternalProject_Add(
 # building boost::beast will fail on wasm builds because it pulls in
 # boost::context (which contains assembly), but we can install beast as a
 # header-only library and use it that way
+set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include)
 if (WIN32)
-    # convert 1.81.00 to 1_81
+    # we need to append a boost-1_81 directory to the path, but BOOST_VERSION contains 1.81.00
     string(REPLACE "." ";" BOOST_VERSION_PARTS ${BOOST_VERSION})
     list(POP_BACK BOOST_VERSION_PARTS)
     list(JOIN BOOST_VERSION_PARTS "_" BOOST_VERSION_USING_UNDERSCORE)
-    set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/${BOOST_VERSION_USING_UNDERSCORE})
+    string(APPEND BOOST_INCLUDE_DIR "/boost-${BOOST_VERSION_USING_UNDERSCORE}")
 else()
-    set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include)
+    
 endif()
 ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT "Copying boost::beast headers"
@@ -158,7 +159,7 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
   GIT_TAG Release_${RDKIT_GIT_TAG}
   GIT_SHALLOW TRUE
-  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch
+  PATCH_COMMAND ${RDKIT_PATCH_COMMAND}
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
