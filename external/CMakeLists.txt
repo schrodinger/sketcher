@@ -129,11 +129,17 @@ ExternalProject_Add(
 # building boost::beast will fail on wasm builds because it pulls in
 # boost::context (which contains assembly), but we can install beast as a
 # header-only library and use it that way
+if (WIN32)
+    string(REGEX REPLACE ^boost-([0-9]+)\.([0-9]+)\.[0-9]*$ boost-\1_\2 BOOST_VERSION_USING_UNDERSCORE ${BOOST_VERSION})
+    set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/${BOOST_VERSION_USING_UNDERSCORE})
+else()
+    set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include)
+endif()
 ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT "Copying boost::beast headers"
     DEPENDEES install
     ALWAYS ON
-    COMMAND cp -rv <SOURCE_DIR>/libs/beast/include ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
+    COMMAND cp -rv <SOURCE_DIR>/libs/beast/include/* ${BOOST_INCLUDE_DIR}
 )
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
