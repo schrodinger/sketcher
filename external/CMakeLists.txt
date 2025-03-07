@@ -145,10 +145,28 @@ ExternalProject_Add_Step(boost install_beast_header_only
     COMMAND cp -rv <SOURCE_DIR>/libs/beast/include/* ${BOOST_INCLUDE_DIR}
 )
 
+include(CMakePrintHelpers)
+cmake_print_properties(
+    TARGETS boost
+    PROPERTIES
+        PREFIX
+        TMP_DIR
+        STAMP_DIR
+        LOG_DIR
+        DOWNLOAD_DIR
+        SOURCE_DIR
+        BINARY_DIR
+        INSTALL_DIR
+)
+
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
+set(RDKIT_PATCH_COMMAND "git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch")
+if (!EMSCRIPTEN)
+    string(APPEND RDKIT_PATCH_COMMAND " && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch")
+endif()
 ExternalProject_Add(
   rdkit
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
