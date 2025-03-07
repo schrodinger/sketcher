@@ -129,13 +129,16 @@ ExternalProject_Add(
 # building boost::beast will fail on wasm builds because it pulls in
 # boost::context (which contains assembly), but we can install beast as a
 # header-only library and use it that way
-set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include)
+set(BOOST_BEAST_HEADERS_SRC <SOURCE_DIR>/libs/beast/include)
+set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION})
 if (WIN32)
-    # we need to append a boost-1_81 directory to the path, but BOOST_VERSION contains 1.81.00
+    string(APPEND BOOST_BEAST_HEADERS_SRC /*)
+    # we need to append /include/boost-1_81 directory to the include directory
+    # path, but BOOST_VERSION uses periods, not underscores
     string(REPLACE "." ";" BOOST_VERSION_PARTS ${BOOST_VERSION})
     list(POP_BACK BOOST_VERSION_PARTS)
     list(JOIN BOOST_VERSION_PARTS "_" BOOST_VERSION_USING_UNDERSCORE)
-    string(APPEND BOOST_INCLUDE_DIR "/boost-${BOOST_VERSION_USING_UNDERSCORE}")
+    string(APPEND BOOST_INCLUDE_DIR "/include/boost-${BOOST_VERSION_USING_UNDERSCORE}")
 else()
     
 endif()
