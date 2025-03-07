@@ -130,7 +130,10 @@ ExternalProject_Add(
 # boost::context (which contains assembly), but we can install beast as a
 # header-only library and use it that way
 if (WIN32)
-    string(REGEX REPLACE ^boost-([0-9]+)\.([0-9]+)\.[0-9]*$ boost-\1_\2 BOOST_VERSION_USING_UNDERSCORE ${BOOST_VERSION})
+    # convert 1.81.00 to 1_81
+    string(REPLACE "." ";" BOOST_VERSION_PARTS ${BOOST_VERSION})
+    list(POP_BACK BOOST_VERSION_PARTS)
+    list(JOIN "_" BOOST_VERSION_USING_UNDERSCORE)
     set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/${BOOST_VERSION_USING_UNDERSCORE})
 else()
     set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}/include)
