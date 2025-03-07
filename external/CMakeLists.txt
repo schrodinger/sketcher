@@ -71,7 +71,7 @@ ExternalProject_Add(
   GIT_REPOSITORY https://github.com/madler/zlib.git
   GIT_TAG v${ZLIB_VERSION}
   GIT_SHALLOW TRUE
-  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
+  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib_no_shared.patch
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
