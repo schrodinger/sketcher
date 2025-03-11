@@ -163,9 +163,9 @@ set_cmake_arg(
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
 set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
 if(EMSCRIPTEN)
-    string(APPEND RDKIT_PATCH_COMMAND " && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch")
+    list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
 else()
-    string(APPEND RDKIT_PATCH_COMMAND " && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch")
+    list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 endif()
 cmake_print_variables(EMSCRIPTEN RDKIT_PATCH_COMMAND)
 ExternalProject_Add(
