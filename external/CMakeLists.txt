@@ -3,6 +3,9 @@ include(ExternalProject)
 
 project(schrodinger_sketcher_external)
 
+include(CMakePrintHelpers)
+cmake_print_variables(EMSCRIPTEN)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -154,12 +157,17 @@ ExternalProject_Add_Step(boost install_beast_header_only
     COMMAND cp -rv  ${BOOST_BEAST_HEADERS_PATH} ${BOOST_INCLUDE_DIR}
 )
 
+# include(CMakePrintHelpers)
+cmake_print_variables(EMSCRIPTEN)
+
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
-set(RDKIT_PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
-if (!EMSCRIPTEN)
+set(RDKIT_PATCH_COMMAND git reset --hard HEAD )
+if(EMSCRIPTEN)
+    string(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
+else()
     string(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 endif()
 ExternalProject_Add(
