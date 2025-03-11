@@ -161,11 +161,11 @@ string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
-set(RDKIT_PATCH_COMMAND git reset --hard HEAD )
+set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
 if(EMSCRIPTEN)
-    string(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
+    string(APPEND RDKIT_PATCH_COMMAND " && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch")
 else()
-    string(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+    string(APPEND RDKIT_PATCH_COMMAND " && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch")
 endif()
 cmake_print_variables(EMSCRIPTEN RDKIT_PATCH_COMMAND)
 ExternalProject_Add(
