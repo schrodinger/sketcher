@@ -3,9 +3,6 @@ include(ExternalProject)
 
 project(schrodinger_sketcher_external)
 
-include(CMakePrintHelpers)
-cmake_print_variables(EMSCRIPTEN)
-
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -163,11 +160,14 @@ set_cmake_arg(
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
 set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
 if(EMSCRIPTEN)
+    # The InChi build tries to guess whether the compiler provides isascii() or
+    # __isascii(). It guesses wrong when using Emscripten, so we #define the
+    # wrong function name as the right one
     list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
 else()
+    # Prevent RDKit from trying to build shared libs
     list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 endif()
-cmake_print_variables(EMSCRIPTEN RDKIT_PATCH_COMMAND)
 ExternalProject_Add(
   rdkit
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git

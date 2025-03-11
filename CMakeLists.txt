@@ -44,7 +44,7 @@ find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
-function(setup_target TARGET)  
+function(setup_target TARGET)
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX)
   else()
