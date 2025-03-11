@@ -157,9 +157,6 @@ ExternalProject_Add_Step(boost install_beast_header_only
     COMMAND cp -rv  ${BOOST_BEAST_HEADERS_PATH} ${BOOST_INCLUDE_DIR}
 )
 
-# include(CMakePrintHelpers)
-cmake_print_variables(EMSCRIPTEN)
-
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
@@ -170,6 +167,7 @@ if(EMSCRIPTEN)
 else()
     string(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 endif()
+cmake_print_variables(EMSCRIPTEN RDKIT_PATCH_COMMAND)
 ExternalProject_Add(
   rdkit
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
