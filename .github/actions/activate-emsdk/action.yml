@@ -21,4 +21,6 @@ runs:
       run: |
         cd build/external/emsdk-${{ inputs.version }}/emsdk/ && \
         ./emsdk install ${{ inputs.version }} && \
-        ./emsdk activate ${{ inputs.version }}
+        ./emsdk activate ${{ inputs.version }} && \
+        echo "${{github.workspace}}/build/external/emsdk-${{ inputs.version }}/emsdk/" >> $GITHUB_PATH && \
+        echo "${{github.workspace}}/build/external/emsdk-${{ inputs.version }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
