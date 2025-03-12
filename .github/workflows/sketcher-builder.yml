@@ -168,6 +168,8 @@ jobs:
         # install the default version of Node.js for the runner, which we'll use
         # to run the unit tests
         uses: actions/setup-node@v4
+        with:
+          node-version:  22.14.0
 
       - name: Test
         working-directory: build
