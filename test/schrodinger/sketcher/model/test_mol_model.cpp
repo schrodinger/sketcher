@@ -3553,5 +3553,33 @@ BOOST_AUTO_TEST_CASE(test_kekulize)
     undo_stack.redo();
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == kekulized_smiles);
 }
+
+// test that when importing a molecule, a single set of valid coordinates is
+// kept, or a new one is generated if none are present
+BOOST_AUTO_TEST_CASE(test_mol_coords)
+{
+    for (unsigned int conformer_count = 0; conformer_count < 2;
+         ++conformer_count) {
+        QUndoStack undo_stack;
+        TestMolModel model(&undo_stack);
+        const RDKit::ROMol* mol = model.getMol();
+        std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CC"));
+        for (unsigned int i = 0; i < conformer_count; ++i) {
+            RDKit::Conformer* conf = new RDKit::Conformer(2);
+            conf->setAtomPos(0, RDGeom::Point3D(0, 0, 0));
+            conf->setAtomPos(1, RDGeom::Point3D(1, 0, 0));
+            mol_to_add->addConformer(conf, true);
+        }
+        model.addMol(*mol_to_add);
+        BOOST_TEST(mol->getNumConformers() == 1);
+        auto coordinates_are_zero = [](const RDKit::Conformer& conf) {
+            auto positions = conf.getPositions();
+            return std::all_of(
+                positions.begin(), positions.end(),
+                [](auto pos) { return pos.lengthSq() < 0.00001; });
+        };
+        BOOST_TEST(!coordinates_are_zero(mol->getConformer()));
+    }
+}
 } // namespace sketcher
 } // namespace schrodinger

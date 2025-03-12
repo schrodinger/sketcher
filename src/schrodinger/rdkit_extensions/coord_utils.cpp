@@ -81,8 +81,14 @@ void update_2d_coordinates(RDKit::ROMol& mol)
     auto conf = std::find_if_not(mol.beginConformers(), mol.endConformers(),
                                  std::mem_fn(&RDKit::Conformer::is3D));
     if (conf == mol.endConformers() || coordinates_are_all_zero(**conf)) {
+        // remove all (3d) conformers and generate new 2d coordinates
+        mol.clearConformers();
         compute2DCoords(mol);
     } else {
+        // keep only the first 2D conformer and rescale the bond length
+        auto conf_to_keep = new ::RDKit::Conformer(**conf);
+        mol.clearConformers();
+        mol.addConformer(conf_to_keep, true);
         rescale_bond_length_if_needed(mol);
     }
 }
