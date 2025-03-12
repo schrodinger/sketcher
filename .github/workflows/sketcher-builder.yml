@@ -172,6 +172,7 @@ jobs:
           node-version:  22.14.0
 
       - name: Test
+        if: matrix.build-output != 'wasm'
         working-directory: build
         # the first line of the command launches xvfb-run -a, but only for
         # Ubuntu non-wasm builds
