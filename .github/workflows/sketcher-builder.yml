@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # os: [macos-latest, ubuntu-latest, windows-latest]
-        # build-output: [app]
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        build-output: [app]
         include:
           - os: ubuntu-latest
             build-output: wasm
@@ -164,9 +164,11 @@ jobs:
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Configure Node.js
+        if: matrix.build-output == 'wasm'
+        # CMake uses Node.js to run the tests on emscripten builds
         uses: actions/setup-node@v4
         with:
-          node-version:  22.14.0
+          node-version: 22.14.0
 
       - name: Test
         working-directory: build
