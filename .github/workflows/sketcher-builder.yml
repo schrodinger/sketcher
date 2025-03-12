@@ -163,8 +163,14 @@ jobs:
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
+      - name: Configure Node.js
+        # install the default version of Node.js for the runner, which we'll use
+        # to run the unit tests
+        uses: actions/setup-node@v4
+        with:
+            cache: 'node'
+
       - name: Test
-        if: matrix.build-output != 'wasm'
         working-directory: build
         # the first line of the command launches xvfb-run -a, but only for
         # Ubuntu non-wasm builds
