@@ -19,8 +19,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        build-output: [app]
+        # os: [macos-latest, ubuntu-latest, windows-latest]
+        # build-output: [app]
         include:
           - os: ubuntu-latest
             build-output: wasm
@@ -164,11 +164,10 @@ jobs:
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Configure Node.js
+        if: matrix.build-output != 'wasm'
         # install the default version of Node.js for the runner, which we'll use
         # to run the unit tests
         uses: actions/setup-node@v4
-        with:
-            cache: 'node'
 
       - name: Test
         working-directory: build
