@@ -98,7 +98,6 @@ helm_to_rdkit(const std::string& helm_string)
                   [&](const auto& polymer) { mol->insertMol(polymer); });
 
     // TODO: Keep track of unused rgroups
-
     add_helm_connections(*mol, parsed_info.connections);
 
     add_polymer_groups_and_extended_annotations(
@@ -192,7 +191,7 @@ void condense_monomer_list(const std::string_view& polymer_id,
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
             mol.getAtomWithIdx(idx)->setProp(REPETITION_DUMMY_ID,
                                              std::string{polymer_id});
-            mol.addBond(start + size - 1, idx, ::RDKit::Bond::BondType::SINGLE);
+            add_connection(mol, start + size - 1, idx, BACKBONE_LINKAGE);
             bond2 = mol.getNumBonds() - 1;
         } else {
             bond2 = start + size - 1;
@@ -201,7 +200,7 @@ void condense_monomer_list(const std::string_view& polymer_id,
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
             mol.getAtomWithIdx(idx)->setProp(REPETITION_DUMMY_ID,
                                              std::string{polymer_id});
-            mol.addBond(0, idx, ::RDKit::Bond::BondType::SINGLE);
+            add_connection(mol, 0, idx, BACKBONE_LINKAGE);
             bond1 = mol.getNumBonds() - 1;
         } else {
             bond1 = start - 1;
@@ -354,20 +353,15 @@ void add_helm_connections(::RDKit::RWMol& mol,
                                       bonds_info.begin(), bonds_info.end());
         });
 
-    std::for_each(
-        connected_monomers.begin(), connected_monomers.end(),
-        [&](const auto& info) {
-            const auto& [from_atom, to_atom, linkage, annotation] = info;
-            auto bond_type = (linkage.front() == 'p' ? ::RDKit::Bond::ZERO
-                                                     : ::RDKit::Bond::SINGLE);
-            auto idx = mol.addBond(from_atom, to_atom, bond_type) - 1;
-            mol.getBondWithIdx(idx)->setProp(LINKAGE, linkage);
-            // NOTE: For python apis
-            mol.getBondWithIdx(idx)->setProp(CUSTOM_BOND, linkage);
-            if (!annotation.empty()) {
-                mol.getBondWithIdx(idx)->setProp(ANNOTATION, annotation);
-            }
-        });
+    std::ranges::for_each(connected_monomers, [&](const auto& info) {
+        const auto& [from_atom, to_atom, linkage, annotation] = info;
+        constexpr bool is_custom_bond = true;
+        add_connection(mol, from_atom, to_atom, linkage, is_custom_bond);
+        if (!annotation.empty()) {
+            mol.getBondBetweenAtoms(from_atom, to_atom)
+                ->setProp(ANNOTATION, annotation);
+        }
+    });
 }
 
 void add_polymer_groups_and_extended_annotations(

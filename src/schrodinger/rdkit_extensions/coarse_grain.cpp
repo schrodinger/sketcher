@@ -6,6 +6,7 @@
 #include <GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 
+#include <algorithm>
 #include <boost/functional/hash.hpp>
 #include <fmt/format.h>
 
@@ -46,12 +47,61 @@ std::string to_string(ChainType chain_type)
 }
 
 void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
-                    const std::string& linkage)
+                    const std::string& linkage, const bool is_custom_bond)
 {
-    const auto new_total =
-        cg_mol.addBond(monomer1, monomer2, ::RDKit::Bond::BondType::SINGLE);
-    cg_mol.getBondWithIdx(new_total - 1)->setProp(LINKAGE, linkage);
-    if (linkage == BRANCH_LINKAGE) {
+    // if bond already exists, extend linkage information
+    if (auto bond = cg_mol.getBondBetweenAtoms(monomer1, monomer2);
+        bond && is_custom_bond) {
+        std::string old_linkage;
+
+        // If the linkage property isn't set, something went wrong
+        if (!bond->getPropIfPresent(LINKAGE, old_linkage)) {
+            throw std::runtime_error(fmt::format(
+                "No linkage property on bond between atom={} and atom={}",
+                monomer1, monomer2));
+        }
+
+        // Make sure we're not recreating this same bond.
+        if (old_linkage.find(linkage) != std::string::npos) {
+            throw std::runtime_error(fmt::format(
+                "Can't duplicate {} bond between atom={} and atom={}", linkage,
+                monomer1, monomer2));
+        }
+
+        // Since hydrogen bonding and covalent bonds are different types of bond
+        // serializing them with the same bond type doesn't make too much sense.
+        if (linkage.find("pair") == 0 ||
+            old_linkage.find("pair") != std::string::npos) {
+            throw std::runtime_error(
+                fmt::format("Multiple bonds can't include hydrogen bond for "
+                            "bond between atom={} and atom={}",
+                            monomer1, monomer2));
+        }
+
+        // FIXME: For now, don't allow multiple custom bonds between the same
+        // two atoms
+        if (bond->hasProp(CUSTOM_BOND)) {
+            throw std::runtime_error(
+                fmt::format("Multiple custom bonds not supported for "
+                            "bond between atom={} and atom={}",
+                            monomer1, monomer2));
+        }
+
+        // Update the linkage property
+        bond->setProp(CUSTOM_BOND, linkage);
+    } else {
+        auto bond_type = (linkage.front() == 'p' ? ::RDKit::Bond::ZERO
+                                                 : ::RDKit::Bond::SINGLE);
+        const auto new_total = cg_mol.addBond(monomer1, monomer2, bond_type);
+        bond = cg_mol.getBondWithIdx(new_total - 1);
+        bond->setProp(LINKAGE, linkage);
+
+        if (is_custom_bond) {
+            bond->setProp(CUSTOM_BOND, linkage);
+        }
+    }
+
+    if (!is_custom_bond && linkage == BRANCH_LINKAGE) {
         // monomer2 is a branch monomer
         cg_mol.getAtomWithIdx(monomer2)->setProp(BRANCH_MONOMER, true);
     }
@@ -259,7 +309,7 @@ void assign_chains(RDKit::RWMol& cg_mol)
     const auto& bnd_rings = cg_mol.getRingInfo()->bondRings();
 
     for (const auto& ring : bnd_rings) {
-        if (std::all_of(ring.begin(), ring.end(), [&](const auto& idx) {
+        if (std::ranges::all_of(ring, [&](const auto& idx) {
                 auto begin_at = cg_mol.getBondWithIdx(idx)->getBeginAtom();
                 auto end_at = cg_mol.getBondWithIdx(idx)->getEndAtom();
                 return get_polymer_id(begin_at) == get_polymer_id(end_at);

@@ -16,6 +16,7 @@
 #include <rdkit/RDGeneral/Invariant.h>
 
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
+#include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/test/checkexceptionmsg.h" // TEST_CHECK_EXCEPTION_MSG_SUBSTR
 
@@ -447,4 +448,36 @@ BOOST_DATA_TEST_CASE(TestConversionOfMonomersWithNonstandardNames,
                      helm_info)
 {
     check_helm_conversion(helm_info);
+}
+
+BOOST_DATA_TEST_CASE(TestNeighboringMonomerCustomBonds,
+                     bdata::make(std::vector<std::string>{
+                         "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0",
+                     }),
+                     test_helm)
+{
+    auto mol = helm_to_rdkit(test_helm);
+
+    // Testing this way since affected bond is not the same
+    for (auto& bond : mol->bonds()) {
+        if (bond->hasProp(CUSTOM_BOND)) {
+            BOOST_TEST(bond->template getProp<std::string>(LINKAGE) !=
+                       bond->template getProp<std::string>(CUSTOM_BOND));
+        }
+
+        // we should be able to roundtrip input
+        BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
+    }
+}
+
+BOOST_DATA_TEST_CASE(TestNeighboringMonomerUnsupportedCustomBonds,
+                     bdata::make(std::vector<std::string>{
+                         "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:pair-2:pair$$$V2.0",
+                         "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R2-2:R1$$$V2.0",
+                         "PEPTIDE1{A.C}|PEPTIDE2{C.P}$PEPTIDE1,PEPTIDE2,1:R2-1:"
+                         "R1|PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
+                     }),
+                     test_helm)
+{
+    BOOST_CHECK_THROW(helm_to_rdkit(test_helm), std::runtime_error);
 }

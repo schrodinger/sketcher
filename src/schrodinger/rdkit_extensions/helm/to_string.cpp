@@ -207,7 +207,7 @@ get_polymer_helm(const ::RDKit::ROMol& mol,
     };
 
     const auto [from_rgroup, to_rgroup] = [&]() {
-        auto linkage = get_property<std::string>(bond, LINKAGE);
+        auto linkage = get_property<std::string>(bond, CUSTOM_BOND);
         // NOTE: linkages can be of the forms RX-RX, RX-?, ?-RX, ?-?,pair-pair
         // etc
         auto middle = linkage.find("-");

@@ -85,7 +85,8 @@ add_connection(RDKit::RWMol& mol, size_t monomer1, size_t monomer2,
 // overload for helm writer
 RDKIT_EXTENSIONS_API void add_connection(RDKit::RWMol& mol, size_t monomer1,
                                          size_t monomer2,
-                                         const std::string& linkage);
+                                         const std::string& linkage,
+                                         const bool is_custom_bond = false);
 
 // Discards existing chains and reassigns monomers to sequential chains.
 // (in HELM world, "chains" are called "polymers")
