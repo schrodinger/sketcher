@@ -54,7 +54,7 @@ jobs:
         with:
           version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
 
-      - name: Install emscripten
+      - name: Add emscripten to PATH
         if: matrix.build-output == 'wasm'
         env:
           version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
@@ -63,10 +63,8 @@ jobs:
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.version }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Configure Dependency CMake
-        env:
-            emcmake_if_wasm: ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
         run: |
-            ${{ env.emcmake_if_wasm }}\
+            ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
                 cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
