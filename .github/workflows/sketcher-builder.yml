@@ -48,15 +48,25 @@ jobs:
               echo -e '\nEOF'
           } >> "$GITHUB_ENV"
 
-      - name: Activate emscripten
+      - name: Fetch emscripten
         if: matrix.build-output == 'wasm'
         uses: ./.github/actions/activate-emsdk
         with:
           version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
 
-      - name: Configure Dependency CMake
+      - name: Install emscripten
+        if: matrix.build-output == 'wasm'
+        env:
+          version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
         run: |
-            ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
+            echo "${{ github.workspace }}/build/external/emsdk-${{ env.version }}/emsdk/" >> $GITHUB_PATH && \
+            echo "${{ github.workspace }}/build/external/emsdk-${{ env.version }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+
+      - name: Configure Dependency CMake
+        env:
+            emcmake_if_wasm: ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
+        run: |
+            ${{ emcmake_if_wasm }}\
                 cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
