@@ -8,27 +8,41 @@ inputs:
   version:
     description: "Version of the dependency to build"
     required: true
+  host-build:
+    description: "Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)"
+    required: false
+    default: false
 
 outputs:
   path:
-    description: "Path to the installed dependency"
+    description: "Absolute path to the installed dependency"
     # FIXME: collapse this with cache-check.path
-    value: build/external/${{ inputs.library }}-${{ inputs.version }}
+    value: ${{ github.workspace }}/build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}${{ inputs.library }}-${{ inputs.version }}
 
 runs:
   using: "composite"
   steps:
     - uses: actions/cache@v4
       id: cache-check
+      env:
+        lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
       with:
-        path: build/external/${{ inputs.library }}-${{ inputs.version }}
-        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}
+        path: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
+        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ inputs.host-build == 'true' && 'host' || matrix.build-output }}
+        
 
     - name: Build library
-      if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}
+      if: steps.cache-check.outputs.cache-hit != 'true'
       # The Windows Qt build fails if we try to use bash, since it shells out to
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
-      # don't put escaped newlines in this command, since it needs to be
-      # runnable in both bash and cmd (which uses ^ to escape newlines)
-      run: cmake --build build/external/ --target ${{ inputs.library }} --config ${{ env.BUILD_TYPE }}
+      env:
+        use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.host-build == 'false' && 'true' }}
+        lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
+        # cmd uses ^ for escaping newlines instead of \
+        endl: ${{ runner.os == 'windows' && '^' || '\' }}
+      run: |
+        ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{env.endl}}
+        cmake --build ${{ env.lib-build-dir }} --verbose${{env.endl}}
+              --target ${{ inputs.library }}${{env.endl}}
+              --config ${{ env.BUILD_TYPE }}

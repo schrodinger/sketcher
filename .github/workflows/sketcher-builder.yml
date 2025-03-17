@@ -48,20 +48,33 @@ jobs:
               echo -e '\nEOF'
           } >> "$GITHUB_ENV"
 
-      - name: Activate emscripten
+      - name: Fetch emscripten
         if: matrix.build-output == 'wasm'
         uses: ./.github/actions/activate-emsdk
         with:
           version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
 
-      - name: Configure Dependency CMake
-        if: matrix.build-output != 'wasm'
+      - name: Add emscripten to PATH
+        if: matrix.build-output == 'wasm'
+        env:
+          version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
         run: |
-            cmake -B build/external/ -S external/ -G Ninja \
+            echo "${{ github.workspace }}/build/external/emsdk-${{ env.version }}/emsdk/" >> $GITHUB_PATH && \
+            echo "${{ github.workspace }}/build/external/emsdk-${{ env.version }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+
+      - name: Configure Dependency CMake
+        run: |
+            ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
+                cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
+      - name: Configure host Qt CMake
+        if: matrix.build-output == 'wasm'
+        run: |
+            cmake -B build/external/host/ -S external/ -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
+                
       - name: Fetch fmt
-        if: matrix.build-output != 'wasm'
         id: fetch-fmt
         uses: ./.github/actions/build-external
         with:
@@ -69,7 +82,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
 
       - name: Fetch zlib
-        if: matrix.build-output != 'wasm'
         id: fetch-zlib
         uses: ./.github/actions/build-external
         with:
@@ -77,7 +89,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
 
       - name: Fetch zstd
-        if: matrix.build-output != 'wasm'
         id: fetch-zstd
         uses: ./.github/actions/build-external
         with:
@@ -85,7 +96,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
 
       - name: Fetch Boost
-        if: matrix.build-output != 'wasm'
         id: fetch-boost
         uses: ./.github/actions/build-external
         with:
@@ -93,7 +103,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
 
       - name: Fetch RDKit
-        if: matrix.build-output != 'wasm'
         id: fetch-rdkit
         uses: ./.github/actions/build-external
         with:
@@ -101,7 +110,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
       - name: Install Qt's required packages
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm'}}
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get install \
             libfontconfig1-dev \
@@ -130,8 +139,15 @@ jobs:
             libxkbcommon-x11-dev \
             libxrender-dev
 
+      - name: Fetch host Qt
+        if: matrix.build-output == 'wasm'
+        uses: ./.github/actions/build-external
+        with:
+          library: qt
+          version: ${{ fromJson(env.VERSIONS_JSON).qt }}
+          host-build: true
+
       - name: Fetch Qt
-        if: matrix.build-output != 'wasm'
         id: fetch-qt
         uses: ./.github/actions/build-external
         with:
@@ -139,7 +155,6 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
 
       - name: Configure CMake
-        if: matrix.build-output != 'wasm'
         env:
             CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                                 ${{ steps.fetch-zlib.outputs.path }};\
@@ -148,12 +163,12 @@ jobs:
                                 ${{ steps.fetch-rdkit.outputs.path }};\
                                 ${{ steps.fetch-qt.outputs.path }}"
         run: |
+          ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
-        if: matrix.build-output != 'wasm'
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
       - name: Test
@@ -174,3 +189,16 @@ jobs:
         with:
           name: sketcher_${{ matrix.os}}_${{ matrix.build-output }}${{env.dot_exe}}
           path: build/sketcher_app${{env.dot_exe}}
+
+      - name: Create wasm tarball
+        if: matrix.build-output == 'wasm'
+        env:
+            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
+        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
+
+      - name: Download wasm tarball
+        if: matrix.build-output == 'wasm'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sketcher-wasm.tar.gz
+          path: sketcher-wasm.tar.gz

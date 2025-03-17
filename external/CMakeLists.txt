@@ -24,15 +24,26 @@ function(set_cmake_arg VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
-if(LINUX)
-    set(EXTRA_QT_CMAKE_ARGS
-        -DFEATURE_xlib=ON
-        -DFEATURE_xcb=ON
-        -DFEATURE_xcb_xlib=ON
-        -DFEATURE_xkbcommon=ON
+if(EMSCRIPTEN)
+    set(EXTRA_BOOST_CMAKE_ARGS
+        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
     )
+    set(EXTRA_QT_CMAKE_ARGS
+        -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
+    )
+    set(EXTRA_RDKIT_CMAKE_ARGS 
+       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
+       -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
-    set(EXTRA_QT_CMAKE_ARGS "")
+    set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
+    if(LINUX)
+        list(APPEND EXTRA_QT_CMAKE_ARGS
+            -DFEATURE_xlib=ON
+            -DFEATURE_xcb=ON
+            -DFEATURE_xcb_xlib=ON
+            -DFEATURE_xkbcommon=ON
+        )
+    endif()
 endif()
 
 if(WIN32)
@@ -41,25 +52,35 @@ else()
     set(RDKIT_INSTALL_STATIC_LIBS_VAL OFF)
 endif()
 
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
+if(CMAKE_TOOLCHAIN_FILE)
+    # Emscripten builds specify a toolchain file and a cross-compiling emulator
+    list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}
+    )
+endif()
+
 ExternalProject_Add(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
   GIT_TAG ${FMT_VERSION}
   GIT_SHALLOW TRUE
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fmt-${FMT_VERSION}
-    -DCMAKE_BUILD_TYPE=Release -DFMT_DOC=OFF -DFMT_TEST=OFF -DFMT_INSTALL=ON)
+    -DFMT_DOC=OFF -DFMT_TEST=OFF -DFMT_INSTALL=ON)
 
 ExternalProject_Add(
   zlib
   GIT_REPOSITORY https://github.com/madler/zlib.git
   GIT_TAG v${ZLIB_VERSION}
   GIT_SHALLOW TRUE
-  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  PATCH_COMMAND git reset --hard HEAD && git apply ${CMAKE_CURRENT_SOURCE_DIR}/zlib_no_shared.patch
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-    -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF)
+    -DBUILD_SHARED_LIBS=OFF)
 
 ExternalProject_Add(
   zstd
@@ -68,8 +89,9 @@ ExternalProject_Add(
   GIT_SHALLOW TRUE
   SOURCE_SUBDIR build/cmake
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION}
-    -DCMAKE_BUILD_TYPE=Release -DZSTD_BUILD_SHARED=OFF
+    -DZSTD_BUILD_SHARED=OFF
     -DZSTD_BUILD_PROGRAMS=OFF)
 
 set_cmake_arg(
@@ -87,7 +109,6 @@ set_cmake_arg(
   program_options
   serialization
   # rdkit_extensions required libraries
-  beast
   bimap
   filesystem
   test)
@@ -100,29 +121,62 @@ ExternalProject_Add(
   GIT_TAG boost-${BOOST_VERSION}
   GIT_SHALLOW TRUE
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
-    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_PREFIX_PATH=${BOOST_CMAKE_PREFIX}
     -DBUILD_SHARED_LIBS=OFF
     -DBOOST_INCLUDE_LIBRARIES=${BOOST_INCLUDE_LIBS}
     -DBOOST_RUNTIME_LINK=static
     -DBOOST_IOSTREAMS_ENABLE_BZIP2=OFF
-    -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF)
+    -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
+    ${EXTRA_BOOST_CMAKE_ARGS})
+
+# building boost::beast will fail on wasm builds because it pulls in
+# boost::context (which contains assembly), but we can install beast as a
+# header-only library and use it that way
+set(BOOST_BEAST_HEADERS_PATH <SOURCE_DIR>/libs/beast/include)
+set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION})
+if (WIN32)
+    string(APPEND BOOST_BEAST_HEADERS_PATH "/*")
+    # we need to append /include/boost-1_81 directory to the include directory
+    # path, but BOOST_VERSION uses periods, not underscores
+    string(REPLACE "." ";" BOOST_VERSION_PARTS ${BOOST_VERSION})
+    list(POP_BACK BOOST_VERSION_PARTS)
+    list(JOIN BOOST_VERSION_PARTS "_" BOOST_VERSION_USING_UNDERSCORE)
+    string(APPEND BOOST_INCLUDE_DIR "/include/boost-${BOOST_VERSION_USING_UNDERSCORE}")
+else()
+    
+endif()
+ExternalProject_Add_Step(boost install_beast_header_only
+    COMMENT "Copying boost::beast headers"
+    DEPENDEES install
+    ALWAYS ON
+    COMMAND cp -rv  ${BOOST_BEAST_HEADERS_PATH} ${BOOST_INCLUDE_DIR}
+)
 
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
+set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
+if(EMSCRIPTEN)
+    # The InChi build tries to guess whether the compiler provides isascii() or
+    # __isascii(). It guesses wrong when using Emscripten, so we #define the
+    # wrong function name as the right one
+    list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
+else()
+    # Prevent RDKit from trying to build shared libs
+    list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+endif()
 ExternalProject_Add(
   rdkit
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
   GIT_TAG Release_${RDKIT_GIT_TAG}
   GIT_SHALLOW TRUE
-  PATCH_COMMAND git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit.patch
-  UPDATE_DISCONNECTED 1 # required to not apply patch again once populated
+  PATCH_COMMAND ${RDKIT_PATCH_COMMAND}
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/rdkit-${RDKIT_VERSION}
-    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_PREFIX_PATH=${RDKIT_CMAKE_PREFIX}
     -DBUILD_SHARED_LIBS=OFF
     -DBoost_USE_STATIC_LIBS=ON
@@ -138,26 +192,34 @@ ExternalProject_Add(
     -DRDK_INSTALL_INTREE=OFF
     -DRDK_INSTALL_STATIC_LIBS=${RDKIT_INSTALL_STATIC_LIBS_VAL}
     -DRDK_OPTIMIZE_POPCNT=OFF
-    -DRDK_USE_BOOST_STACKTRACE=OFF)
+    -DRDK_USE_BOOST_STACKTRACE=OFF
+    ${EXTRA_RDKIT_CMAKE_ARGS})
 
-set_cmake_arg(QT_SUBMODULES qtbase qtsvg)
+if(QT_HOST_BUILD)
+    # For WASM builds, we also need a non-WASM build of Qt since some of the Qt
+    # command line tools get run during the build process (e.g. uic, rcc, etc).
+    # For those Qt builds, we don't need anything beyond qtbase.
+    set(QT_GIT_SUBMODULES qtbase)
+else()
+    set(QT_GIT_SUBMODULES qtbase qtsvg)
+endif()
+set_cmake_arg(QT_BUILD_SUBMODULES ${QT_GIT_SUBMODULES})
 ExternalProject_Add(
   qt
   GIT_REPOSITORY https://github.com/qt/qt5.git
   GIT_TAG v${QT_VERSION}
-  GIT_SUBMODULES qtbase qtsvg
+  GIT_SUBMODULES ${QT_GIT_SUBMODULES}
   GIT_SHALLOW TRUE
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/qt-${QT_VERSION}
-    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
     -DCMAKE_POLICY_DEFAULT_CMP0177:STRING=NEW
     -DCMAKE_POLICY_DEFAULT_CMP0174:STRING=NEW
     -DBUILD_SHARED_LIBS=OFF
     -DQT_BUILD_EXAMPLES=OFF
-    -DQT_BUILD_SUBMODULES=${QT_SUBMODULES}
+    -DQT_BUILD_SUBMODULES=${QT_BUILD_SUBMODULES}
     -DQT_BUILD_TESTS=OFF
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
-    -DINPUT_opengl=no
     ${EXTRA_QT_CMAKE_ARGS})
