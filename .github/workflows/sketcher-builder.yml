@@ -66,7 +66,7 @@ jobs:
         env:
             emcmake_if_wasm: ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
         run: |
-            ${{ emcmake_if_wasm }}\
+            ${{ env.emcmake_if_wasm }}\
                 cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
