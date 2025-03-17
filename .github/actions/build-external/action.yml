@@ -1,9 +1,6 @@
 name: "build-external"
 description: "Either builds an external dependency or fetches it from cache"
 
-env:
-  lib-build-scripts: ${{ github.workspace }}/build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
-
 inputs:
   library:
     description: "Name of the dependency to build"
@@ -20,13 +17,15 @@ outputs:
   path:
     description: "Absolute path to the installed dependency"
     # FIXME: collapse this with cache-check.path
-    value: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
+    value: ${{ github.workspace }}/build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}${{ inputs.library }}-${{ inputs.version }}
 
 runs:
   using: "composite"
   steps:
     - uses: actions/cache@v4
       id: cache-check
+      env:
+        lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
       with:
         path: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ inputs.host-build == 'true' && 'host' || matrix.build-output }}
@@ -39,6 +38,7 @@ runs:
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
         use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.host-build == 'false' && 'true' }}
+        lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
         # cmd uses ^ for escaping newlines instead of \
         endl: ${{ runner.os == 'windows' && '^' || '\' }}
       run: |
