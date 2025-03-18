@@ -178,13 +178,25 @@ jobs:
         with:
           node-version: 22.14.0
 
-      - name: Test
+      - name: Run tests
         working-directory: build
         # the first line of the command launches xvfb-run -a, but only for
         # Ubuntu non-wasm builds
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
           ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+
+      - name: Install valgrind
+        if: matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm'
+        run: sudo apt-get install valgrind
+
+      - name: Run memtests
+        working-directory: build
+        if: matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm'
+        run: |
+          xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+      
+
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
