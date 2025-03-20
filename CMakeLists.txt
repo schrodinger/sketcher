@@ -48,7 +48,7 @@ function(setup_target TARGET)
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2)
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=hidden)
   endif()
   # Allow RDKit includes to be prefixed
   target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/..
