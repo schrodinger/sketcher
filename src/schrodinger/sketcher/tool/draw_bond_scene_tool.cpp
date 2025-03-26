@@ -61,23 +61,27 @@ DrawBondSceneTool::DrawBondSceneTool(BondTool bond_tool, Scene* scene,
 void DrawBondSceneTool::onAtomClicked(const RDKit::Atom* const atom)
 {
     AbstractDrawBondSceneTool::onAtomClicked(atom);
-    m_last_bond_clicked = nullptr;
+    m_last_clicked_bond_idx = -1;
 }
 
 void DrawBondSceneTool::onBondClicked(const RDKit::Bond* const bond)
 {
-    if (m_cycle_on_click && m_last_bond_clicked == bond) {
+    // save the index of the bond before we call the command and it gets
+    // invalidated
+    auto bond_idx = bond->getIdx();
+    if (m_cycle_on_click &&
+        m_last_clicked_bond_idx == static_cast<int>(bond->getIdx())) {
         cycleBond(bond);
     } else {
         AbstractDrawBondSceneTool::onBondClicked(bond);
     }
-    m_last_bond_clicked = bond;
+    m_last_clicked_bond_idx = bond_idx;
 }
 
 void DrawBondSceneTool::onEmptySpaceClicked(const RDGeom::Point3D& pos)
 {
     AbstractDrawBondSceneTool::onEmptySpaceClicked(pos);
-    m_last_bond_clicked = nullptr;
+    m_last_clicked_bond_idx = -1;
 }
 
 bool DrawBondSceneTool::bondMatches(const RDKit::Bond* const bond)

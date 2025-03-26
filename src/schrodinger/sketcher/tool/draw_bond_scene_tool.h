@@ -74,7 +74,7 @@ class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
     BondTool m_bond_tool;
     RDKit::Bond::BondType m_bond_type;
     RDKit::Bond::BondDir m_bond_dir;
-    const RDKit::Bond* m_last_bond_clicked = nullptr;
+    int m_last_clicked_bond_idx = -1;
     QString m_cursor_hint_path;
 
     // overriden AbstractDrawBondSceneTool methods
