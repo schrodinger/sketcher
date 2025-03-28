@@ -96,6 +96,12 @@ class SKETCHER_API View : public QGraphicsView
     void leaveEvent(QEvent* event) override;
 
     /**
+     * Override QGraphicsView::showEvent so that we can call fitToScreen when
+     * the view is first shown if necessary
+     */
+    void showEvent(QShowEvent* event) override;
+
+    /**
      * Make sure that the scene rectangle contains everything that is currently
      * displayed in the viewport (including empty space). This prevents visual
      * artefacts when the selection rectangle or lasso is drawn outside of the
@@ -119,6 +125,8 @@ class SKETCHER_API View : public QGraphicsView
 
     MolModel* m_mol_model = nullptr;
     bool m_currently_pinching_trackpad = false;
+    bool m_delayed_fit_to_screen = false;
+    bool m_initial_geometry_set = false;
 };
 
 } // namespace sketcher
