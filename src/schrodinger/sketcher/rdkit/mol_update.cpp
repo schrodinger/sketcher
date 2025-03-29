@@ -176,12 +176,18 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // Explicitly update the brackets for the sgroups
     rdkit_extensions::update_s_group_brackets(mol);
 
-    // DO NOT REPLACE THIS WITH rdkit_extensions::apply_sanitization(PARTIAL):
-    // it will turn atoms with unsatisfied valences (coming from SMARTS)
-    // into RADICALs, and we don't want that.
-    // This is the bare minimum we need to do to be able to detect stereo.
+    // DO NOT REPLACE THIS WITH rdkit_extensions::apply_sanitization(PARTIAL) or
+    // any sanitization that includes FINDRADICALS: it will turn atoms with
+    // unsatisfied valences (coming from SMARTS) into RADICALs, and we don't
+    // want that. See SKETCH-2190 or test_smarts_no_radicals in test_mol_model
+    // for more info.
     bool no_strict = false;
     mol.updatePropertyCache(no_strict);
+    // update hybridization states so that coordinate calculations produce the
+    // correct geometery
+    RDKit::MolOps::setConjugation(mol);
+    RDKit::MolOps::setHybridization(mol);
+    // This is the bare minimum we need to do to be able to detect stereo.
     RDKit::MolOps::symmetrizeSSSR(mol);
 
     assign_stereochemistry_with_bond_directions_and_coordinates(mol);

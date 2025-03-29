@@ -248,7 +248,6 @@ class SKETCHER_API SketcherWidget : public QWidget
     virtual std::string getClipboardContents() const;
     virtual void setClipboardContents(std::string text) const;
 
-  private:
     /**
      *  Connects slots to the model and various widget tool bars
      */

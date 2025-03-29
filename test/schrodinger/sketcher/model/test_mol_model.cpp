@@ -13,6 +13,7 @@
 #include <optional>
 #include <unordered_set>
 #include <memory>
+#include <numbers>
 #include <string>
 #include <vector>
 
@@ -3581,5 +3582,28 @@ BOOST_AUTO_TEST_CASE(test_mol_coords)
         BOOST_TEST(!coordinates_are_zero(mol->getConformer()));
     }
 }
+
+/**
+ * Make sure that we can generate the correct geometry after converting a single
+ * bond to a triple
+ */
+BOOST_AUTO_TEST_CASE(test_hydridization_update, *utf::tolerance(0.05))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CCCC");
+    auto bond = model.getMol()->getBondWithIdx(1);
+    model.mutateBonds({bond}, BondTool::TRIPLE);
+    model.regenerateCoordinates();
+    // confirm that the chain is linear
+    const auto& conf = model.getMol()->getConformer();
+    auto angle1 = get_angle_radians(conf.getAtomPos(0), conf.getAtomPos(1),
+                                    conf.getAtomPos(2));
+    BOOST_TEST(angle1 == std::numbers::pi);
+    auto angle2 = get_angle_radians(conf.getAtomPos(1), conf.getAtomPos(2),
+                                    conf.getAtomPos(3));
+    BOOST_TEST(angle2 == std::numbers::pi);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
