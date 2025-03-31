@@ -31,6 +31,8 @@ namespace fs = boost::filesystem;
 using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
                                std::pair<unsigned int, unsigned int>>;
 
+static const std::string ATOM_PDB_NAME_PROP{"pdbName"};
+
 const std::unordered_map<std::string, std::string> three_character_codes({
     {"A", "ALA"}, // Alanine
     {"R", "ARG"}, // Arginine
@@ -53,8 +55,6 @@ const std::unordered_map<std::string, std::string> three_character_codes({
     {"Y", "TYR"}, // Tyrosine
     {"V", "VAL"}, // Valine
 });
-
-static const std::string ATOM_PDB_NAME_PROP{"pdbName"};
 
 std::pair<unsigned int, unsigned int> get_attchpts(const std::string& linkage)
 {
@@ -102,8 +102,14 @@ void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
 {
     std::string residue_name =
         (chain_type == ChainType::PEPTIDE) ? "UNK" : "UNL";
-    if (three_character_codes.find(monomer_label) !=
-        three_character_codes.end()) {
+
+    // Get PDB code from monomer DB
+    cg_monomer_database db(get_cg_monomer_db_path());
+    auto pdb_code = db.get_pdb_code(monomer_label, chain_type);
+    if (pdb_code) {
+        residue_name = *pdb_code;
+    } else if (three_character_codes.find(monomer_label) !=
+               three_character_codes.end()) {
         residue_name = three_character_codes.at(monomer_label);
     }
 
