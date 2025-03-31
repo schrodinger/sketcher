@@ -293,10 +293,15 @@ boost::shared_ptr<RDKit::RWMol> cg_to_atomistic(const RDKit::ROMol& cg_mol)
         remove_atoms.push_back(attachment_point2);
     }
 
-    // Remove atoms that represented attachment points
+    // Remove atoms that represented attachment points and dummy atoms
     atomistic_mol->beginBatchEdit();
     for (auto at_idx : remove_atoms) {
         atomistic_mol->removeAtom(at_idx);
+    }
+    for (auto at : atomistic_mol->atoms()) {
+        if (at->getAtomicNum() == 0) {
+            atomistic_mol->removeAtom(at->getIdx());
+        }
     }
     atomistic_mol->commitBatchEdit();
 
