@@ -12,6 +12,8 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
+#include "schrodinger/rdkit_extensions/constants.h"
+#include "schrodinger/sketcher/rdkit/atom_properties.h"
 
 #include <boost/format.hpp>
 
@@ -141,11 +143,30 @@ static void assign_CIP_labels(RDKit::RWMol& mol)
     }
 }
 
+static void enforce_dummy_atoms_for_list_queries(RDKit::ROMol& mol)
+{
+    for (auto& atom : mol.atoms()) {
+        if (atom->hasQuery()) {
+            auto props = read_properties_from_atom(atom);
+            auto query_props =
+                *static_cast<const AtomQueryProperties*>(props.get());
+            if (query_props.query_type == QueryType::ALLOWED_LIST ||
+                query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
+                atom->setAtomicNum(rdkit_extensions::DUMMY_ATOMIC_NUMBER);
+            }
+        }
+    }
+}
+
 /**
  * Called once when a mol is first brought into the sketcher
  */
 void prepare_mol(RDKit::ROMol& mol)
 {
+
+    // make sure that list queries use dummy atoms SKETCH-2390
+    enforce_dummy_atoms_for_list_queries(mol);
+
     // Make sure valences are available.
     mol.updatePropertyCache(false);
 
