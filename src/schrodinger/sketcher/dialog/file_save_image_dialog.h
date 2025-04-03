@@ -54,7 +54,8 @@ class SKETCHER_API FileSaveImageDialog : public FileExportDialog
     Q_OBJECT
 
   public:
-    FileSaveImageDialog(SketcherModel* model, QWidget* parent = nullptr);
+    FileSaveImageDialog(SketcherModel* model, QWidget* parent = nullptr,
+                        bool is_svg_enabled = true);
     ~FileSaveImageDialog();
 
   signals:

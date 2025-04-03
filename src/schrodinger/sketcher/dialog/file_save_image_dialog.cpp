@@ -51,8 +51,8 @@ void FileSaveImagePopup::paintEvent(QPaintEvent*)
     style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
-FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model,
-                                         QWidget* parent) :
+FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model, QWidget* parent,
+                                         bool is_svg_enabled) :
     FileExportDialog(model, parent)
 {
     setWindowTitle("Save Image");
@@ -76,6 +76,9 @@ FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model,
     m_ui->format_combo->clear(); // clear out base class initialization
     for (const auto& [format, label, exts] : get_image_export_formats()) {
         auto filter = get_filter_name(label, exts);
+        if (!is_svg_enabled && format == ImageFormat::SVG) {
+            continue;
+        }
         m_ui->format_combo->addItem(filter, QVariant::fromValue(format));
     }
 
