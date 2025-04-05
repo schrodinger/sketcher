@@ -1856,10 +1856,10 @@ void MolModel::setBondTopology(
         })) {
         return;
     }
-    if (topology == BondTopology::UNSPECIFIED) {
+    if (topology == BondTopology::EITHER) {
         auto cmd_func = [this, bonds]() {
             for (auto* bond : bonds) {
-                if (get_bond_topology(bond) == BondTopology::UNSPECIFIED) {
+                if (get_bond_topology(bond) == BondTopology::EITHER) {
                     continue;
                 }
                 auto query_bond = static_cast<const RDKit::QueryBond*>(bond);

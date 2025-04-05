@@ -17,7 +17,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-enum class BondTopology { IN_RING, IN_CHAIN, UNSPECIFIED };
+enum class BondTopology { IN_RING, NOT_IN_RING, EITHER };
 
 // map of bond tool to {bond type, bond stereochemistry, whether the bond is
 // flippable (i.e. does the bond change meaningfully if we swap the start and
