@@ -76,24 +76,24 @@ get_bond_type_and_query_label(const RDKit::Bond* const bond)
 BondTopology get_bond_topology(const RDKit::Bond* const bond)
 {
     if (!bond->hasQuery()) {
-        return BondTopology::UNSPECIFIED;
+        return BondTopology::EITHER;
     }
     auto query = bond->getQuery();
     for (auto child = query->beginChildren(); child != query->endChildren();
          ++child) {
         if ((*child)->getDescription() == "BondInRing") {
-            return ((*child)->getNegation() ? BondTopology::IN_CHAIN
+            return ((*child)->getNegation() ? BondTopology::NOT_IN_RING
                                             : BondTopology::IN_RING);
         }
     }
-    return BondTopology::UNSPECIFIED;
+    return BondTopology::EITHER;
 }
 
 void set_bond_topology(RDKit::QueryBond* const bond, BondTopology topology)
 {
     const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> query(
         RDKit::makeBondIsInRingQuery());
-    query->setNegation(topology == BondTopology::IN_CHAIN);
+    query->setNegation(topology == BondTopology::NOT_IN_RING);
     if (bond->hasQuery()) {
         // if topology is already set, replace it
         for (auto child = bond->getQuery()->beginChildren();
@@ -198,11 +198,18 @@ get_label_for_bond_query(const RDKit::Bond::QUERYBOND_QUERY* const query)
 static std::string
 parse_bond_query_node(const RDKit::Bond::QUERYBOND_QUERY* const query)
 {
-    std::string negation;
+    auto desc_label = parse_description_for_bond_query_node(query);
+
     if (query->getNegation()) {
-        negation = "!";
+        // Use a specific symbol for BondTopology::NOT_IN_RING
+        if (query->getDescription() == "BondInRing") {
+            return "Not ⭔";
+        }
+        // Otherwise use bang for negation
+        return "!" + desc_label;
     }
-    return negation + parse_description_for_bond_query_node(query);
+
+    return desc_label;
 }
 
 /**

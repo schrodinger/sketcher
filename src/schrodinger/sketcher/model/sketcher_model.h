@@ -212,8 +212,6 @@ enum class BondTool {
     ATOM_CHAIN
 };
 
-enum class BondQueryTool { IN_RING, IN_CHAIN, UNSPECIFIED };
-
 /**
  * Charge tools
  */

@@ -98,11 +98,10 @@ QMenu* ModifyBondsMenu::createTopologyMenu()
             emit changeQueryRequested(type, m_bonds);
         });
     };
-    addBondQueryAction("Unspecified",
-                       schrodinger::sketcher::BondTopology::UNSPECIFIED);
     addBondQueryAction("In Ring", schrodinger::sketcher::BondTopology::IN_RING);
-    addBondQueryAction("In Chain",
-                       schrodinger::sketcher::BondTopology::IN_CHAIN);
+    addBondQueryAction("Not In a Ring",
+                       schrodinger::sketcher::BondTopology::NOT_IN_RING);
+    addBondQueryAction("Either", schrodinger::sketcher::BondTopology::EITHER);
     return topology_menu;
 }
 

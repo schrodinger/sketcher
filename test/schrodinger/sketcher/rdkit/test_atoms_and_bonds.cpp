@@ -85,15 +85,15 @@ BOOST_AUTO_TEST_CASE(test_get_label_for_bond_query_unrecognized_query)
  */
 BOOST_AUTO_TEST_CASE(test_bond_topology_functions)
 {
-    auto topologies = {BondTopology::IN_RING, BondTopology::IN_CHAIN,
-                       BondTopology::UNSPECIFIED};
+    auto topologies = {BondTopology::IN_RING, BondTopology::NOT_IN_RING,
+                       BondTopology::EITHER};
     for (auto topology : topologies) {
         auto mol = rdkit_extensions::to_rdkit("C-,=C",
                                               rdkit_extensions::Format::SMARTS);
         auto* bond = mol->getBondWithIdx(0);
         auto query_bond = dynamic_cast<RDKit::QueryBond*>(bond);
-        auto result = BondTopology::UNSPECIFIED;
-        if (topology == BondTopology::UNSPECIFIED) {
+        auto result = BondTopology::EITHER;
+        if (topology == BondTopology::EITHER) {
             auto new_bond = make_new_bond_without_topology(query_bond);
             result = get_bond_topology(new_bond.get());
         } else {
