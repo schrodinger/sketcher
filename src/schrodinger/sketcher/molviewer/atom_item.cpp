@@ -418,11 +418,23 @@ void AtomItem::updateChiralityLabel()
     auto label = rdkit_extensions::get_atom_chirality_label(
         *m_atom, strip_abs, show_unknown_chirality);
     m_chirality_label_text = QString::fromStdString(label);
-
-    auto chirality_label_position =
-        findPositionInEmptySpace(true) * CHIRALITY_LABEL_DISTANCE_RATIO;
     m_chirality_label_rect =
         make_text_rect(m_fonts.m_chirality_fm, m_chirality_label_text);
+    // the center of the label is positioned r + k points away from the atom,
+    // where r is radius of the circle around the label and k depends on the
+    // bond length. This way the label remains at a fixed distance from the
+    // atom, regardless of chirality font size
+    float label_half_diagonal =
+        std::sqrt(
+            m_chirality_label_rect.width() * m_chirality_label_rect.width() +
+            m_chirality_label_rect.height() * m_chirality_label_rect.height()) /
+        2;
+    float distance = BOND_LENGTH * VIEW_SCALE * CHIRALITY_LABEL_DISTANCE_RATIO +
+                     label_half_diagonal;
+
+    auto chirality_label_position =
+        findPositionInEmptySpace(true) / (BOND_LENGTH * VIEW_SCALE) * distance;
+
     m_chirality_label_rect.moveCenter(chirality_label_position);
 }
 
