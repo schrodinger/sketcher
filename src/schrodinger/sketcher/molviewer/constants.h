@@ -186,8 +186,9 @@ const qreal FRAGMENT_HINT_BOND_WIDTH = 1.0;
 const qreal FRAGMENT_CURSOR_HINT_BOND_WIDTH = 7.0;
 const qreal FRAGMENT_CURSOR_HINT_BOND_SPACING = 12.0;
 
-// the distance between the stereo annotation and the atom in bond length units
-const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.25;
+// the distance between the (circle circumscribed to the) stereo annotation and
+// the atom in bond length units.
+const qreal CHIRALITY_LABEL_DISTANCE_RATIO = 0.10;
 
 // the distance between the stereo annotation and the bond in bond length units
 const qreal BOND_STEREO_LABEL_DISTANCE_RATIO = 0.20;
