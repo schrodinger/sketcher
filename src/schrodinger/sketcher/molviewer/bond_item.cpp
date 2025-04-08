@@ -47,6 +47,15 @@ using polygon_t = bg::model::polygon<point_t>;
 using mpolygon_t = bg::model::multi_polygon<polygon_t>;
 using linestring_t = bg::model::linestring<point_t>;
 using mlinestring_t = bg::model::multi_linestring<linestring_t>;
+// boost::geometry::intersection sometimes produces wrong results when input
+// polygons have coordinates with values that are close to 0. (See
+// https://github.com/boostorg/geometry/issues/1295) All of our coordinates are
+// relative to the center of the atom, so they're frequently close to 0. To
+// prevent the bug from happening, we add a big number to all of our coordinates
+// when we convert them from Qt to Boost, and subtract the number when we
+// convert the coordinates back to Qt. This workaround can be removed once we
+// upgrade to Boost 1.87 or newer.
+double BOOST_BUG_WORKAROUND = 50000;
 
 namespace schrodinger
 {
@@ -670,7 +679,8 @@ static polygon_t qpolygon_to_boost_polygon(const QPolygonF& qpolygon)
 {
     polygon_t polygon;
     for (auto qpoint : qpolygon) {
-        polygon.outer().emplace_back(qpoint.x(), qpoint.y());
+        polygon.outer().emplace_back(qpoint.x() + BOOST_BUG_WORKAROUND,
+                                     qpoint.y() + BOOST_BUG_WORKAROUND);
     }
     // Boost expects the polygon to be clockwise, so reverse it if it's not
     if (bg::area(polygon) < 0) {
@@ -683,7 +693,8 @@ static QPolygonF boost_polygon_to_qpolygon(const polygon_t& polygon)
 {
     QPolygonF qpolygon;
     for (auto point : polygon.outer()) {
-        qpolygon.emplace_back(point.x(), point.y());
+        qpolygon.emplace_back(point.x() - BOOST_BUG_WORKAROUND,
+                              point.y() - BOOST_BUG_WORKAROUND);
     }
     return qpolygon;
 }
@@ -714,14 +725,19 @@ manually_apply_clipping(std::vector<ToPaint> to_clip,
         // clip the lines
         std::vector<QLineF> clipped_lines;
         for (auto qline_to_clip : cur_to_clip.lines) {
-            linestring_t line_to_clip{{qline_to_clip.x1(), qline_to_clip.y1()},
-                                      {qline_to_clip.x2(), qline_to_clip.y2()}};
+            linestring_t line_to_clip{
+                {qline_to_clip.x1() + BOOST_BUG_WORKAROUND,
+                 qline_to_clip.y1() + BOOST_BUG_WORKAROUND},
+                {qline_to_clip.x2() + BOOST_BUG_WORKAROUND,
+                 qline_to_clip.y2() + BOOST_BUG_WORKAROUND}};
             std::vector<linestring_t> cur_clipped;
             bg::intersection(line_to_clip, clipping_polygons, cur_clipped);
             for (auto cur_fragment : cur_clipped) {
                 clipped_lines.emplace_back(
-                    cur_fragment[0].x(), cur_fragment[0].y(),
-                    cur_fragment[1].x(), cur_fragment[1].y());
+                    cur_fragment[0].x() - BOOST_BUG_WORKAROUND,
+                    cur_fragment[0].y() - BOOST_BUG_WORKAROUND,
+                    cur_fragment[1].x() - BOOST_BUG_WORKAROUND,
+                    cur_fragment[1].y() - BOOST_BUG_WORKAROUND);
             }
         }
 
