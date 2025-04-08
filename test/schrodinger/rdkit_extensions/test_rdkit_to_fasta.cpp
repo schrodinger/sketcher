@@ -32,15 +32,13 @@ BOOST_DATA_TEST_CASE(
     bdata::make(std::vector<std::string>{
         R"(PEPTIDE1{A.G.J.K.L}$$$"something"$V2.0)", // extended
                                                      // annotations
-        "PEPTIDE1{A.G.J.K.L}|PEPTIDE2{A.G.J.K.L}$$G1(PEPTIDE1+"
+        "PEPTIDE1{A.G.C.K.L}|PEPTIDE2{A.G.C.K.L}$$G1(PEPTIDE1+"
         "PEPTIDE2)$$V2.0",                         // polymer groups
         "PEPTIDE1{A.G'3'}$$$$V2.0",                // monomer repeats
-        "PEPTIDE1{A.G.J.K.L}|BLOB1{Bead}$$$$V2.0", // blob
+        "PEPTIDE1{A.G.C.K.L}|BLOB1{Bead}$$$$V2.0", // blob
                                                    // polymers
-        "PEPTIDE1{A.G.J.K.L}|CHEM1{[dR]}$$$$V2.0", // unknown
+        "PEPTIDE1{A.G.C.K.L}|CHEM1{[dR]}$$$$V2.0", // unknown
                                                    // polymers
-        "PEPTIDE1{A.G.J.K.L}$PEPTIDE1,PEPTIDE1,5:R2-1:R1$$$V2."
-        "0", // custom connections
     }),
     input_helm)
 {
@@ -129,4 +127,23 @@ BOOST_DATA_TEST_CASE(
     mol = fasta::dna_fasta_to_rdkit(input_fasta);
     BOOST_TEST(fasta::rdkit_to_fasta(*mol) == input_fasta);
     BOOST_TEST(helm::rdkit_to_helm(*mol) == dna_helm);
+}
+
+BOOST_DATA_TEST_CASE(
+    TestWritingStructuresWithInterPolymerAndNonlinearConnections,
+    bdata::make(std::vector<std::string>{
+        "PEPTIDE1{A.D(C)P.G}$$$$V2.0",
+        "PEPTIDE1{A.G.C.K.L}$PEPTIDE1,PEPTIDE1,5:R2-1:R1$$$V2."
+        "0",
+        R"(PEPTIDE1{A.A.A.C.C}|PEPTIDE2{D.L.L.L.V.V.V}|PEPTIDE3{C.D.D}"Test annotation"$PEPTIDE1,PEPTIDE3,5:R2-1:R1|PEPTIDE3,PEPTIDE2,3:R2-1:R1$$$V2.0)",
+    }) ^ bdata::make(std::vector<std::string>{
+             ">\nADCPG\n", // branch monomers stripped
+             ">\nAGCKL\n", // polymer cycle removed
+             ">\nAAACC\n>\nDLLLVVV\n>Test annotation\nCDD\n", // multiple
+                                                              // connections
+         }),
+    input_helm, expected_fasta)
+{
+    auto mol = helm::helm_to_rdkit(input_helm);
+    BOOST_TEST(fasta::rdkit_to_fasta(*mol) == expected_fasta);
 }
