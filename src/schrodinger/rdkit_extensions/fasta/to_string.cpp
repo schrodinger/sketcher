@@ -171,12 +171,6 @@ static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
                          "CHEM polymers are currently unsupported.");
     }
 
-    auto connections = get_connections(mol);
-    if (!connections.empty()) {
-        errors.push_back("FASTA conversions with HELMV2.0 custom "
-                         "connections are currently unsupported.");
-    }
-
     if (!errors.empty()) {
         throw std::invalid_argument(fmt::format("{}", fmt::join(errors, "\n")));
     }

@@ -26,8 +26,6 @@ namespace fasta
  *      * non-peptide and non-nucleotide polymers
  *      * data substance groups encoding HELMV2.0 polymer groups and extended
  *        annotations
- *      * cyclic polymers
- *      * inter-polymer bonds
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 rdkit_to_fasta(const ::RDKit::ROMol& mol);
