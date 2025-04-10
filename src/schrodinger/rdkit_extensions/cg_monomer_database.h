@@ -24,7 +24,7 @@ std::string get_cg_monomer_db_path();
 class [[nodiscard]] cg_monomer_database : public boost::noncopyable
 {
   public:
-    using string_t = std::optional<std::string>;
+    using monomer_smiles_t = std::optional<std::string>;
     using helm_info_t =
         std::optional<std::tuple<std::string, std::string, ChainType>>;
 
@@ -32,14 +32,11 @@ class [[nodiscard]] cg_monomer_database : public boost::noncopyable
 
     ~cg_monomer_database();
 
-    [[nodiscard]] string_t get_monomer_smiles(std::string monomer_id,
-                                              ChainType monomer_type);
+    [[nodiscard]] monomer_smiles_t get_monomer_smiles(std::string monomer_id,
+                                                      ChainType monomer_type);
 
     [[nodiscard]] helm_info_t
     get_helm_info(const std::string& three_letter_code);
-
-    [[nodiscard]] string_t get_pdb_code(const std::string& helm_symbol,
-                                        ChainType type);
 
   private:
     sqlite3* m_db;

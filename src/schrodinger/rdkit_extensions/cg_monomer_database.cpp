@@ -126,7 +126,7 @@ cg_monomer_database::~cg_monomer_database()
     sqlite3_close_v2(m_db);
 }
 
-cg_monomer_database::string_t
+cg_monomer_database::monomer_smiles_t
 cg_monomer_database::get_monomer_smiles(std::string monomer_id,
                                         ChainType monomer_type)
 {
@@ -144,7 +144,7 @@ cg_monomer_database::get_monomer_smiles(std::string monomer_id,
                            symbol_column, monomer_id);
     };
 
-    auto smiles_getter = [](sqlite3_stmt* stmt) -> string_t {
+    auto smiles_getter = [](sqlite3_stmt* stmt) -> monomer_smiles_t {
         auto result = sqlite3_column_text(stmt, 0);
         return std::make_optional(reinterpret_cast<const char*>(result));
     };
@@ -178,29 +178,6 @@ cg_monomer_database::get_helm_info(const std::string& pdb_code)
     };
 
     return get_info_from_database(m_db, get_sql_command(), helm_info_getter);
-}
-
-[[nodiscard]] cg_monomer_database::string_t
-cg_monomer_database::get_pdb_code(const std::string& helm_symbol,
-                                  ChainType monomer_type)
-{
-    auto get_sql_command = [&]() -> std::string {
-        static constexpr std::string_view template_{
-            "SELECT {0} FROM {{}} WHERE {1}='{2}' AND {3}='{4}';"};
-        static constexpr std::string_view pdb_code_column{"PDBCODE"};
-        static constexpr std::string_view symbol_column{"SYMBOL"};
-        static constexpr std::string_view type_column{"POLYMERTYPE"};
-
-        return fmt::format(template_, pdb_code_column, symbol_column,
-                           helm_symbol, type_column, to_string(monomer_type));
-    };
-
-    auto pdb_code_getter = [](sqlite3_stmt* stmt) -> string_t {
-        auto result = sqlite3_column_text(stmt, 0);
-        return std::make_optional(reinterpret_cast<const char*>(result));
-    };
-
-    return get_info_from_database(m_db, get_sql_command(), pdb_code_getter);
 }
 
 } // namespace rdkit_extensions
