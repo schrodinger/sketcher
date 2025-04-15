@@ -126,14 +126,17 @@ DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool,
     m_fonts(&fonts)
 {
     m_bond_tool = bond_tool;
-    m_query_type = get_label_for_bond_query(getQuery().get());
+    m_query_type = get_label_for_bond_query(getQueryAndBondType().first.get());
 }
 
-std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>
-DrawBondQuerySceneTool::getQuery()
+std::pair<std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>,
+          RDKit::Bond::BondType>
+DrawBondQuerySceneTool::getQueryAndBondType()
 {
-    auto query_func = BOND_TOOL_QUERY_MAP.at(m_bond_tool);
-    return std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(query_func());
+    auto [query_func, bond_type] = BOND_TOOL_QUERY_MAP.at(m_bond_tool);
+    auto query =
+        std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>(query_func());
+    return {query, bond_type};
 }
 
 bool DrawBondQuerySceneTool::bondMatches(const RDKit::Bond* const bond)
@@ -150,19 +153,23 @@ void DrawBondQuerySceneTool::mutateBond(const RDKit::Bond* const bond)
 void DrawBondQuerySceneTool::addAtom(const RDGeom::Point3D& pos,
                                      const RDKit::Atom* const bound_to)
 {
-    m_mol_model->addAtom(Element::C, pos, bound_to, getQuery());
+    auto [query, bond_type] = getQueryAndBondType();
+    m_mol_model->addAtom(Element::C, pos, bound_to, query, bond_type);
 }
 
 void DrawBondQuerySceneTool::addTwoBoundAtoms(const RDGeom::Point3D& pos1,
                                               const RDGeom::Point3D& pos2)
 {
-    m_mol_model->addAtomChain(Element::C, {pos1, pos2}, nullptr, getQuery());
+    auto [query, bond_type] = getQueryAndBondType();
+    m_mol_model->addAtomChain(Element::C, {pos1, pos2}, nullptr, query,
+                              bond_type);
 }
 
 void DrawBondQuerySceneTool::addBond(const RDKit::Atom* const start_atom,
                                      const RDKit::Atom* const end_atom)
 {
-    m_mol_model->addBond(start_atom, end_atom, getQuery());
+    auto [query, bond_type] = getQueryAndBondType();
+    m_mol_model->addBond(start_atom, end_atom, query, bond_type);
 }
 
 QPixmap DrawBondQuerySceneTool::createDefaultCursorPixmap() const

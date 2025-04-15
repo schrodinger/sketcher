@@ -71,13 +71,18 @@ const std::unordered_map<AtomQuery,
         {AtomQuery::XH, RDKit::makeXHAtomQuery},
 };
 
-const std::unordered_map<BondTool,
-                         std::function<RDKit::QueryBond::QUERYBOND_QUERY*()>>
+const std::unordered_map<
+    BondTool, std::pair<std::function<RDKit::QueryBond::QUERYBOND_QUERY*()>,
+                        RDKit::Bond::BondType>>
     BOND_TOOL_QUERY_MAP = {
-        {BondTool::SINGLE_OR_DOUBLE, RDKit::makeSingleOrDoubleBondQuery},
-        {BondTool::SINGLE_OR_AROMATIC, RDKit::makeSingleOrAromaticBondQuery},
-        {BondTool::DOUBLE_OR_AROMATIC, RDKit::makeDoubleOrAromaticBondQuery},
-        {BondTool::ANY, RDKit::makeBondNullQuery},
+        {BondTool::SINGLE_OR_DOUBLE,
+         {RDKit::makeSingleOrDoubleBondQuery, RDKit::Bond::BondType::SINGLE}},
+        {BondTool::SINGLE_OR_AROMATIC,
+         {RDKit::makeSingleOrAromaticBondQuery, RDKit::Bond::BondType::SINGLE}},
+        {BondTool::DOUBLE_OR_AROMATIC,
+         {RDKit::makeDoubleOrAromaticBondQuery, RDKit::Bond::BondType::DOUBLE}},
+        {BondTool::ANY,
+         {RDKit::makeBondNullQuery, RDKit::Bond::BondType::SINGLE}},
 };
 
 /**

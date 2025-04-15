@@ -119,9 +119,11 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
     const Fonts* m_fonts;
 
     /**
-     * @return the query to use for bonds
+     * @return the query and bond type to use for bonds
      */
-    std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> getQuery();
+    std::pair<std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY>,
+              RDKit::Bond::BondType>
+    getQueryAndBondType();
 
     // overriden AbstractDrawBondSceneTool methods
     bool bondMatches(const RDKit::Bond* const bond) override;
