@@ -575,14 +575,33 @@ void detect_linkages(RDKit::RWMol& cg_mol, const RDKit::RWMol& atomistic_mol)
         auto end_attchpt = get_attchpt(*end_monomer, *bond, atomistic_mol);
 
         if (begin_attchpt == -1 || end_attchpt == -1) {
-            std::cerr << "Bond between atoms " << begin_atom->getIdx()
-                      << " and " << end_atom->getIdx()
-                      << " do not correspond to attachment points in their "
-                         "residues,\n";
-            std::cerr << "bond is between monomers "
-                      << begin_monomer->getProp<std::string>(ATOM_LABEL)
-                      << " and "
-                      << end_monomer->getProp<std::string>(ATOM_LABEL) << ".\n";
+            // This happens when the input atomistic mol has bonds between
+            // residues on atoms that are not marked as attachment points in the
+            // monomer DB.
+            auto begin_res_info =
+                dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                    begin_atom->getMonomerInfo());
+            auto end_res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+                end_atom->getMonomerInfo());
+            if (begin_res_info && end_res_info) {
+                std::cerr << fmt::format(
+                    "Bond between residue {}{} in chain {} and residue {}{} "
+                    "in chain {} do not correspond to attachment points in "
+                    "their residues.\n",
+                    begin_res_info->getResidueName(),
+                    begin_res_info->getResidueNumber(),
+                    begin_res_info->getChainId(),
+                    end_res_info->getResidueName(),
+                    end_res_info->getResidueNumber(),
+                    end_res_info->getChainId());
+            } else {
+                std::cerr << fmt::format(
+                    "Bond between atoms {} and {} in monomers {} and {} do not "
+                    "correspond to attachment points in their residues.\n",
+                    begin_atom->getIdx(), end_atom->getIdx(),
+                    begin_monomer->getProp<std::string>(ATOM_LABEL),
+                    end_monomer->getProp<std::string>(ATOM_LABEL));
+            }
             continue;
         }
 
