@@ -3605,5 +3605,24 @@ BOOST_AUTO_TEST_CASE(test_hydridization_update, *utf::tolerance(0.05))
     BOOST_TEST(angle2 == std::numbers::pi);
 }
 
+/**
+ * Make sure that the CIP labeler doesn't throw when it needs to examine a query
+ * bond, which happens if we don't set a non-UNKNOWN bond type for the query
+ * bond
+ */
+BOOST_AUTO_TEST_CASE(test_CIP_labeler_with_query_bonds)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CC1CCCC[C@@H]1C");
+    model.mutateBonds({model.getMol()->getBondWithIdx(0)},
+                      BondTool::SINGLE_OR_DOUBLE);
+    model.mutateBonds({model.getMol()->getBondWithIdx(0)}, BondTool::ANY);
+    model.mutateBonds({model.getMol()->getBondWithIdx(1)},
+                      BondTool::SINGLE_OR_AROMATIC);
+    model.mutateBonds({model.getMol()->getBondWithIdx(1)},
+                      BondTool::DOUBLE_OR_AROMATIC);
+}
+
 } // namespace sketcher
 } // namespace schrodinger

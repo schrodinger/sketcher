@@ -330,7 +330,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addAtom(
         const Element& element, const RDGeom::Point3D& coords,
         const RDKit::Atom* const bound_to_atom,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE);
 
     /**
      * Undoably add a single query atom and bond it to an existing atom using a
@@ -345,7 +346,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addAtom(
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
         const RDGeom::Point3D& coords, const RDKit::Atom* const bound_to_atom,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE);
 
     /**
      * Undoably add an R-group atom.  This atom may optionally be bound to an
@@ -418,7 +420,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addAtomChain(
         const Element& element, const std::vector<RDGeom::Point3D>& coords,
         const RDKit::Atom* const bound_to_atom,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE);
 
     /**
      * Undoably add a chain of query atoms, where each query atom is bound to
@@ -434,7 +437,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::shared_ptr<RDKit::QueryAtom::QUERYATOM_QUERY> atom_query,
         const std::vector<RDGeom::Point3D>& coords,
         const RDKit::Atom* const bound_to_atom,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE);
 
     /**
      * Undoably add a chain of R-group atoms, where each R-group atom is bound
@@ -472,7 +476,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void addBond(
         const RDKit::Atom* const start_atom, const RDKit::Atom* const end_atom,
-        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query);
+        const std::shared_ptr<RDKit::QueryBond::QUERYBOND_QUERY> bond_query,
+        const RDKit::Bond::BondType& bond_type = RDKit::Bond::BondType::SINGLE);
 
     /**
      * Add a variable attachment bond between a new carbon atom and all of the
