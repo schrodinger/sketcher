@@ -1060,6 +1060,14 @@ static void update_atom_for_advanced_properties(
     }
 
     if (query_props->num_connections.has_value()) {
+        // the BIOVIA specification for NCNN for exactly 0 connections is -1
+        // (0 means unspecified), so we need to account for it when setting the
+        // molNumBonds property
+        int subst_count = *query_props->num_connections == 0
+                              ? -1
+                              : *query_props->num_connections;
+        query_atom->setProp(RDKit::common_properties::molSubstCount,
+                            subst_count);
         auto* query =
             RDKit::makeAtomTotalDegreeQuery(*query_props->num_connections);
         add_query_to_atom(query, query_atom);
@@ -1085,6 +1093,13 @@ static void update_atom_for_advanced_properties(
     }
 
     if (query_props->ring_bond_count_type == QueryCount::EXACTLY) {
+        //  the BIOVIA specification for RBCNT for exactly 0 ring bonds is -1 (0
+        //  means unspecified), so we need to account for it when setting the
+        //  molRingBondCount property
+        int rbcnt = query_props->ring_bond_count_exact_val == 0
+                        ? -1
+                        : query_props->ring_bond_count_exact_val;
+        query_atom->setProp(RDKit::common_properties::molRingBondCount, rbcnt);
         auto* query = RDKit::makeAtomRingBondCountQuery(
             query_props->ring_bond_count_exact_val);
         add_query_to_atom(query, query_atom);

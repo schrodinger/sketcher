@@ -241,6 +241,29 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
     query_props->query_type = QueryType::WILDCARD;
     query_props->wildcard = AtomQuery::X;
     check_create_atom(query_props, "[#9,#17,#35,#53,#85]", Format::SMARTS);
+
+    // test converting to molv3000 correctly sets properties
+    auto output = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 1 0 1 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C 0.000000 0.000000 0.000000 0 SUBST=-1 RBCNT=-1
+M  V30 END ATOM
+M  V30 BEGIN SGROUP
+M  V30 1 DAT 0 ATOMS=(1 1) QUERYTYPE=SMARTSQ QUERYOP== FIELDDATA="[#6&X0&x0]"
+M  V30 END SGROUP
+M  V30 END CTAB
+M  END
+$$$$
+)MDL";
+    query_props = std::make_shared<AtomQueryProperties>();
+    query_props->num_connections = 0;
+    query_props->ring_bond_count_type = QueryCount::EXACTLY;
+    query_props->ring_bond_count_exact_val = 0;
+    check_create_atom(query_props, output, Format::MDL_MOLV3000);
 }
 
 /**
