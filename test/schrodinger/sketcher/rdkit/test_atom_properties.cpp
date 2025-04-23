@@ -284,6 +284,7 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
                          "[#9,#17,#35,#53,#85]",
                          "[#7,+2]",
                          "[R3,r2]",
+                         "[#6&x3]",
                      }),
                      input_smarts)
 {
