@@ -786,7 +786,7 @@ read_query_recursive(const RDKit::Atom::QUERYATOM_QUERY* const query,
         check_value_for_conflicts(val, query_props->ring_bond_count_exact_val,
                                   desc, seen_descriptions);
         query_props->ring_bond_count_type = QueryCount::EXACTLY;
-        query_props->ring_count_exact_val = val;
+        query_props->ring_bond_count_exact_val = val;
     } else if (desc == "AtomTotalDegree") {
         throw_if_negated(query);
         auto val = as_unsigned(get_value_for_equality_query(query));
