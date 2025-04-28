@@ -243,8 +243,8 @@ BOOST_DATA_TEST_CASE(testDoNotForceKekulizationOnExport,
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 5);
 
     // Formats that force kekulization are expected to throw
-    if (sample == Format::INCHI || sample == Format::PDB ||
-        sample == Format::XYZ) {
+    if (sample == Format::INCHI || sample == Format::MAESTRO ||
+        sample == Format::PDB || sample == Format::XYZ) {
         TEST_CHECK_EXCEPTION_MSG_SUBSTR(
             to_string(*mol, sample), RDKit::KekulizeException,
             "Can't kekulize mol.  Unkekulized atoms: 0 1 2 3 4");

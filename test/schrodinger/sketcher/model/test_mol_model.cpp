@@ -3493,7 +3493,7 @@ $$$$
     import_mol_text(&model, molblock);
     BOOST_TEST(
         get_mol_text(&model, Format::SMILES) ==
-        R"SMI(Cl[Sn]1(Cl)N2C3=CC=C2/C=C2/C=CC(=N2)/C=C2/C=C/C(=C/C4=N/C(=C\3)C=C4)N21)SMI");
+        R"SMI([Cl][Sn]1([Cl])[N]2C3=CC=C2/C=C2/C=CC(=N2)/C=C2/C=C/C(=C/C4=N/C(=C\3)C=C4)[N]21)SMI");
 
     auto mol = model.getMol();
 
