@@ -66,10 +66,9 @@ operator<<(std::ostream& out, const Tag<tag_type>& tag);
 } // namespace sketcher
 } // namespace schrodinger
 
-using schrodinger::sketcher::Tag;
-using schrodinger::sketcher::TagType;
-
 // define hashing so we can make sets and maps of tags
-template <TagType tag_type> struct std::hash<Tag<tag_type>> {
-    std::size_t operator()(const Tag<tag_type>& tag) const noexcept;
+template <schrodinger::sketcher::TagType tag_type>
+struct std::hash<schrodinger::sketcher::Tag<tag_type>> {
+    std::size_t
+    operator()(const schrodinger::sketcher::Tag<tag_type>& tag) const noexcept;
 };

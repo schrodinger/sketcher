@@ -100,6 +100,9 @@ template SKETCHER_API std::ostream& operator<<(std::ostream& out,
 } // namespace sketcher
 } // namespace schrodinger
 
+using schrodinger::sketcher::Tag;
+using schrodinger::sketcher::TagType;
+
 template <TagType tag_type> std::size_t
 std::hash<Tag<tag_type>>::operator()(const Tag<tag_type>& tag) const noexcept
 {
