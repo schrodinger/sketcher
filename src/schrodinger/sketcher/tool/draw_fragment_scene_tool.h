@@ -18,8 +18,6 @@
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
 #include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
-using schrodinger::rdkit_extensions::Format;
-
 class QPointF;
 
 namespace schrodinger
@@ -236,7 +234,8 @@ get_draw_fragment_scene_tool(const std::string& text_mol, const Fonts& fonts,
                              const AtomDisplaySettings& atom_display_settings,
                              const BondDisplaySettings& bond_display_settings,
                              Scene* scene, MolModel* mol_model,
-                             const Format format = Format::AUTO_DETECT);
+                             const rdkit_extensions::Format format =
+                                 rdkit_extensions::Format::AUTO_DETECT);
 
 /**
  * @return the appropriate SMILES string for the specified ring tool
