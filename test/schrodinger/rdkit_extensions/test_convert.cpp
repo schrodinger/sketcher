@@ -985,3 +985,28 @@ BOOST_DATA_TEST_CASE(test_converting_atomistic_biologics_to_seq_formats,
                "PEPTIDE1{A.C.G}$$$$V2.0");
     BOOST_TEST(to_string(*atomistic_mol, Format::FASTA) == ">\nACG\n");
 }
+
+BOOST_DATA_TEST_CASE(test_converting_structures_with_wiggly_bonds,
+                     bdata::make(std::vector<Format>{
+                         Format::MDL_MOLV3000,
+                         Format::EXTENDED_SMILES,
+                     }),
+                     test_format)
+{
+    using RDKit::common_properties::_MolFileBondCfg;
+
+    // read structure with wiggly bonds
+    auto mol = to_rdkit("CCC(C)N |w:2.3|", Format::EXTENDED_SMILES);
+
+    // roundtrip mol through test format
+    auto roundtripped_mol = to_rdkit(to_string(*mol, test_format), test_format);
+
+    auto bond_config = 0u;
+    // this should be the bond between the N and non-branch C
+    auto test_bond = roundtripped_mol->getBondWithIdx(3);
+    BOOST_REQUIRE(test_bond->getPropIfPresent(_MolFileBondCfg, bond_config));
+    // Wiggly bonds should have config == 2
+    BOOST_TEST(bond_config == 2);
+    // Wiggly bonds should have UNKNOWN Direction
+    BOOST_TEST(test_bond->getBondDir() == RDKit::Bond::UNKNOWN);
+}
