@@ -1887,6 +1887,28 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(mol->getNumBonds() == 1);
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 0);
+    BOOST_TEST(bond->getEndAtomIdx() == 1);
+
+    // use mutateBonds to flip a bond
+    model.mutateBonds({bond}, BondTool::SINGLE_UP);
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 1);
+    BOOST_TEST(bond->getEndAtomIdx() == 0);
+
+    // undo the flip
+    undo_stack.undo();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::SINGLE);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+    BOOST_TEST(bond->getBeginAtomIdx() == 0);
+    BOOST_TEST(bond->getEndAtomIdx() == 1);
 
     undo_stack.undo();
     bond = mol->getBondWithIdx(0);

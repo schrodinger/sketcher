@@ -1084,7 +1084,8 @@ void MolModel::flipBondStereo(std::unordered_set<const RDKit::Bond*> bonds)
 
 void MolModel::flipBond(const RDKit::Bond* const bond)
 {
-    auto cmd_func = [this, bond]() { flipBondCommandFunc(bond); };
+    auto bond_tag = getTagForBond(bond);
+    auto cmd_func = [this, bond_tag]() { flipBondCommandFunc(bond_tag); };
     doCommandUsingSnapshots(cmd_func, "Flip bond", WhatChanged::MOLECULE);
 }
 
@@ -1834,23 +1835,28 @@ void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
     }
 
     auto new_bond = create_bond();
-    std::unordered_set<const RDKit::Bond*> matching_bonds;
+    // we need to use bond tags here since mutating a bond will invalidate the
+    // bond object, and we may still need to flip the same bond
+    std::unordered_set<BondTag> bond_tags_to_mutate;
+    std::unordered_set<BondTag> bond_tags_to_flip;
     for (auto bond : bonds) {
-        if (bond->getBondType() == new_bond->getBondType() &&
+        auto bond_tag = getTagForBond(bond);
+        // we mutate all bonds, even those we're also going to flip
+        bond_tags_to_mutate.insert(bond_tag);
+        if (flip_matching_bonds &&
+            bond->getBondType() == new_bond->getBondType() &&
             bond->getBondDir() == new_bond->getBondDir()) {
-            matching_bonds.insert(bond);
+            bond_tags_to_flip.insert(bond_tag);
         }
     }
 
-    auto cmd_func = [this, bonds, create_bond, flip_matching_bonds,
-                     matching_bonds]() {
-        for (auto bond : bonds) {
-            mutateBondCommandFunc(getTagForBond(bond), create_bond);
+    auto cmd_func = [this, bond_tags_to_mutate, bond_tags_to_flip,
+                     create_bond]() {
+        for (auto bond_tag : bond_tags_to_mutate) {
+            mutateBondCommandFunc(bond_tag, create_bond);
         }
-        if (flip_matching_bonds) {
-            for (auto bond : matching_bonds) {
-                flipBondCommandFunc(bond);
-            }
+        for (auto bond_tag : bond_tags_to_flip) {
+            flipBondCommandFunc(bond_tag);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate bonds", WhatChanged::MOLECULE);
@@ -2507,10 +2513,10 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     mutated_bond->setProp<int>(TAG_PROPERTY, bond_tag);
 }
 
-void MolModel::flipBondCommandFunc(const RDKit::Bond* bond)
+void MolModel::flipBondCommandFunc(const BondTag& bond_tag)
 {
     Q_ASSERT(m_allow_edits);
-    auto mol_bond = getMutableBond(bond);
+    auto mol_bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     unsigned int orig_begin = mol_bond->getBeginAtomIdx();
     unsigned int orig_end = mol_bond->getEndAtomIdx();
     mol_bond->setEndAtomIdx(orig_begin);

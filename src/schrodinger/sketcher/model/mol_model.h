@@ -1347,7 +1347,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * Reverse an existing bond (i.e. swap the start and end atoms).  This
      * method must only be called as part of an undo command.
      */
-    void flipBondCommandFunc(const RDKit::Bond* bond);
+    void flipBondCommandFunc(const BondTag& bond_tag);
 
     /**
      * Clear the molecule.  This method must only be called as part of an undo
