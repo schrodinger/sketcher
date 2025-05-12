@@ -1865,7 +1865,6 @@ void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
 void MolModel::setBondTopology(
     const std::unordered_set<const RDKit::Bond*>& bonds, BondTopology topology)
 {
-
     if (bonds.empty()) {
         return;
     }
@@ -1885,7 +1884,6 @@ void MolModel::setBondTopology(
                 auto create_bond =
                     std::bind(make_new_bond_without_topology, query_bond);
                 mutateBondCommandFunc(getTagForBond(bond), create_bond);
-                break;
             }
         };
         doCommandUsingSnapshots(cmd_func, "Remove topology",

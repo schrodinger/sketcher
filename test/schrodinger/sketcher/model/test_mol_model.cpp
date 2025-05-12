@@ -40,6 +40,7 @@
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
 // Boost doesn't know how to print QStrings
@@ -1948,6 +1949,30 @@ BOOST_AUTO_TEST_CASE(test_mutateBond)
     BOOST_TEST(!bond->hasQuery());
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::NONE);
+}
+
+BOOST_AUTO_TEST_CASE(test_setBondTopology)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CCCC");
+    const RDKit::ROMol* mol = model.getMol();
+    model.setBondTopology({mol->getBondWithIdx(0), mol->getBondWithIdx(1)},
+                          schrodinger::sketcher::BondTopology::IN_RING);
+    BOOST_TEST(get_mol_text(&model, Format::SMARTS) ==
+               "[#6]-&@[#6]-&@[#6]-[#6]");
+    model.setBondTopology({mol->getBondWithIdx(0), mol->getBondWithIdx(2)},
+                          schrodinger::sketcher::BondTopology::NOT_IN_RING);
+    BOOST_TEST(get_mol_text(&model, Format::SMARTS) ==
+               "[#6]-&!@[#6]-&@[#6]-&!@[#6]");
+    undo_stack.undo();
+    BOOST_TEST(get_mol_text(&model, Format::SMARTS) ==
+               "[#6]-&@[#6]-&@[#6]-[#6]");
+    undo_stack.redo();
+    model.setBondTopology({mol->getBondWithIdx(0), mol->getBondWithIdx(1),
+                           mol->getBondWithIdx(2)},
+                          schrodinger::sketcher::BondTopology::EITHER);
+    BOOST_TEST(get_mol_text(&model, Format::SMARTS) == "[#6]-[#6]-[#6]-[#6]");
 }
 
 BOOST_AUTO_TEST_CASE(test_flipBond)
