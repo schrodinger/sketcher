@@ -28,6 +28,12 @@ namespace
 {
 namespace fs = boost::filesystem;
 
+const std::string SGROUP_PROP_CLASS{"CLASS"};
+const std::string SGROUP_PROP_LABEL{"LABEL"};
+const std::string SGROUP_PROP_RESNUM{"ID"};
+
+const std::string ATOM_PROP_SGROUP_IDX("SGROUP_IDX");
+
 using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
                                std::pair<unsigned int, unsigned int>>;
 
@@ -55,6 +61,12 @@ const std::unordered_map<std::string, std::string> three_character_codes({
     {"Y", "TYR"}, // Tyrosine
     {"V", "VAL"}, // Valine
 });
+
+static const std::map<unsigned int, std::string> BIOVIA_ATTCHPT_MAP = {
+    {1, "Al"}, // Backbone attachment point
+    {2, "Br"}, // Backbone attachment point
+    {3, "Cx"}, // Sidechain attachment point
+};
 
 std::pair<unsigned int, unsigned int> get_attchpts(const std::string& linkage)
 {
@@ -96,9 +108,10 @@ void fill_attachment_point_map(const RDKit::ROMol& new_monomer,
     }
 }
 
-void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
-                  unsigned int residue_number, char chain_id,
-                  ChainType chain_type)
+void set_residue_info(RDKit::RWMol& new_monomer,
+                      const std::string& monomer_label,
+                      unsigned int residue_number, char chain_id,
+                      ChainType chain_type, unsigned int current_residue)
 {
     std::string residue_name =
         (chain_type == ChainType::PEPTIDE) ? "UNK" : "UNL";
@@ -111,6 +124,18 @@ void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
     } else if (three_character_codes.find(monomer_label) !=
                three_character_codes.end()) {
         residue_name = three_character_codes.at(monomer_label);
+    }
+
+    // For now, SUP group annotations are only supported for peptides
+    if (chain_type == ChainType::PEPTIDE) {
+        // Create a SUP substance group for writing to SD
+        RDKit::SubstanceGroup sgroup(&new_monomer, "SUP");
+        sgroup.setProp(SGROUP_PROP_CLASS, "AA");
+        sgroup.setProp(SGROUP_PROP_LABEL, monomer_label);
+        sgroup.setProp(SGROUP_PROP_RESNUM, current_residue);
+
+        // Add to mol
+        RDKit::addSubstanceGroup(new_monomer, sgroup);
     }
 
     // Set PDB residue info on the atoms
@@ -132,6 +157,9 @@ void set_pdb_info(RDKit::RWMol& new_monomer, const std::string& monomer_label,
         }
 
         atom->setMonomerInfo(res_info);
+        // add atoms later so the sgroups aren't stripped when extra atoms are
+        // removed
+        atom->setProp<unsigned int>(ATOM_PROP_SGROUP_IDX, current_residue - 1);
     }
 }
 
@@ -155,7 +183,7 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
                           const RDKit::RWMol& cg_mol,
                           const std::string& polymer_id,
                           std::vector<unsigned int>& remove_atoms,
-                          char chain_id)
+                          char chain_id, unsigned int& total_residue_count)
 {
     // Maps residue number and attachment point number to the atom index in
     // atomistic_mol that should be attached to and the atom index of the rgroup
@@ -190,6 +218,13 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         std::unique_ptr<RDKit::RWMol> new_monomer(
             RDKit::SmilesToMol(smiles, 0, sanitize));
 
+        if (!new_monomer) {
+            // FIXME: I think this is an issue with the HELM parser, see
+            // SHARED-11457
+            new_monomer.reset(
+                RDKit::SmilesToMol("[" + smiles + "]", 0, sanitize));
+        }
+
         if (monomer->getProp<bool>(SMILES_MONOMER)) {
             // SMILES monomers may be in rgroup form like
             // *N[C@H](C(=O)O)S* |$_R1;;;;;;;_R3$| or use atom map numbers like
@@ -210,11 +245,13 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         auto residue_number = get_residue_number(monomer);
         fill_attachment_point_map(*new_monomer, attachment_point_map,
                                   residue_number, atomistic_mol.getNumAtoms());
-        set_pdb_info(*new_monomer, monomer_label, residue_number, chain_id,
-                     chain_type);
-
+        set_residue_info(*new_monomer, monomer_label, residue_number, chain_id,
+                         chain_type, total_residue_count);
+        ++total_residue_count;
         atomistic_mol.insertMol(*new_monomer);
     }
+
+    auto& sgroups = RDKit::getSubstanceGroups(atomistic_mol);
 
     // Add the bonds between monomers and mark the replaced rgroups to be
     // removed
@@ -235,13 +272,32 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
                 bond->getProp<std::string>(LINKAGE), from_res, to_res));
         }
 
-        auto [core_atom1, attachment_point1] =
+        auto [core_aid1, attachment_point1] =
             attachment_point_map.at({from_res, from_rgroup});
-        auto [core_atom2, attachment_point2] =
+        auto [core_aid2, attachment_point2] =
             attachment_point_map.at({to_res, to_rgroup});
-        atomistic_mol.addBond(core_atom1, core_atom2, bond->getBondType());
+
+        auto atomistic_bond_idx =
+            atomistic_mol.addBond(core_aid1, core_aid2, bond->getBondType()) -
+            1;
         remove_atoms.push_back(attachment_point1);
         remove_atoms.push_back(attachment_point2);
+
+        if (sgroups.size()) {
+            // Add the attachment points and XBONDs to the substance groups
+            auto core_atom1 = atomistic_mol.getAtomWithIdx(core_aid1);
+            auto core_atom2 = atomistic_mol.getAtomWithIdx(core_aid2);
+            auto& sgroup1 = sgroups[core_atom1->getProp<unsigned int>(
+                ATOM_PROP_SGROUP_IDX)];
+            auto& sgroup2 = sgroups[core_atom2->getProp<unsigned int>(
+                ATOM_PROP_SGROUP_IDX)];
+            sgroup1.addBondWithIdx(atomistic_bond_idx);
+            sgroup2.addBondWithIdx(atomistic_bond_idx);
+            sgroup1.addAttachPoint(core_aid1, core_aid2,
+                                   BIOVIA_ATTCHPT_MAP.at(from_rgroup));
+            sgroup2.addAttachPoint(core_aid2, core_aid1,
+                                   BIOVIA_ATTCHPT_MAP.at(to_rgroup));
+        }
     }
 
     return attachment_point_map;
@@ -255,10 +311,12 @@ boost::shared_ptr<RDKit::RWMol> cg_to_atomistic(const RDKit::ROMol& cg_mol)
     // Map to track Polymer ID -> attachment point map
     std::unordered_map<std::string, AttachmentMap> polymer_attachment_points;
     std::vector<unsigned int> remove_atoms;
+    unsigned int total_residue_count = 1; // 1-based index to label SUP groups
     char chain_id = 'A';
     for (const auto& polymer_id : get_polymer_ids(cg_mol)) {
-        polymer_attachment_points[polymer_id] = add_polymer(
-            *atomistic_mol, cg_mol, polymer_id, remove_atoms, chain_id);
+        polymer_attachment_points[polymer_id] =
+            add_polymer(*atomistic_mol, cg_mol, polymer_id, remove_atoms,
+                        chain_id, total_residue_count);
         ++chain_id;
     }
 
@@ -310,6 +368,16 @@ boost::shared_ptr<RDKit::RWMol> cg_to_atomistic(const RDKit::ROMol& cg_mol)
         }
     }
     atomistic_mol->commitBatchEdit();
+
+    // Now populate the substance groups with their atoms
+    auto& sgroups = RDKit::getSubstanceGroups(*atomistic_mol);
+    if (sgroups.size()) {
+        for (const auto& at : atomistic_mol->atoms()) {
+            auto sgroup_idx = at->getProp<unsigned int>(ATOM_PROP_SGROUP_IDX);
+            sgroups[sgroup_idx].addAtomWithIdx(at->getIdx());
+            at->clearProp(ATOM_PROP_SGROUP_IDX);
+        }
+    }
 
     // Let sanitization errors bubble up for now -- it means we did something
     // wrong

@@ -25,6 +25,7 @@ class [[nodiscard]] cg_monomer_database : public boost::noncopyable
 {
   public:
     using string_t = std::optional<std::string>;
+    // (HELM symbol, smiles, chain type)
     using helm_info_t =
         std::optional<std::tuple<std::string, std::string, ChainType>>;
 

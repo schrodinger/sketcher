@@ -13,7 +13,7 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
-
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include "schrodinger/rdkit_extensions/cg_monomer_database.h"
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -32,6 +32,11 @@ const std::string MONOMER_IDX1{"monomerIndex1"};
 const std::string MONOMER_IDX2{"monomerIndex2"};
 const std::string MONOMER_MAP_NUM{"monomerMapNumber"};
 const std::string REFERENCE_IDX{"referenceIndex"};
+
+const std::string SGROUP_PROP_CLASS{"CLASS"};
+const std::string SGROUP_PROP_LABEL{"LABEL"};
+const std::string SGROUP_PROP_RESNUM{"ID"};
+const std::string SGROUP_PROP_TYPE{"TYPE"};
 
 constexpr int SIDECHAIN_IDX = 2;
 constexpr int MIN_ATTCHPTS = 2;
@@ -95,6 +100,9 @@ const std::unordered_map<std::string, std::string> amino_acids = {
     {"NC(=O)C(N)Cc1c[nH]c2ccccc12", "W"},
     {"NC(=O)C(N)Cc1ccc(O)cc1", "Y"},
     {"CC(C)C(N)C(N)=O", "V"}};
+
+static const std::unordered_map<std::string, ChainType> BIOVIA_CHAIN_TYPE_MAP =
+    {{"AA", ChainType::PEPTIDE}};
 
 struct Linkage {
     unsigned int monomer_idx1;
@@ -404,7 +412,7 @@ std::string get_monomer_smiles(RDKit::ROMol& mol,
     std::ranges::sort(
         attch_idxs.begin(), attch_idxs.end(),
         [&res_num](const std::pair<int, int>& a, const std::pair<int, int>& b) {
-            // we want the most 'adjacent' residue firs in terms of residue
+            // we want the most 'adjacent' residue first in terms of residue
             // ordering; this gets more complicated if we have different chains
             if (std::abs(a.first - res_num) == std::abs(b.first - res_num)) {
                 return a.first < b.first;
@@ -419,6 +427,13 @@ std::string get_monomer_smiles(RDKit::ROMol& mol,
     // For now, all monomers have at least attachment points 1 and 2 so
     // that backbone bonds can be formed (except the beginning monomer)
     int current_attchpt = 1;
+
+    // If this is the beginning of the chain or a branch, start with attachment
+    // point 2
+    if (!end_of_chain && res_num == 1) {
+        current_attchpt = 2;
+    }
+
     static constexpr bool update_label = true;
     static constexpr bool take_ownership = true;
     for (const auto& [_, ref_idx] : attch_idxs) {
@@ -506,12 +521,50 @@ bool same_monomer(RDKit::RWMol& atomistic_mol,
     // the beginning or end of a chain. As a result, we need to allow for the DB
     // monomer to have one less atom than the residue extracted from the
     // atomistic mol
-    auto match = RDKit::SubstructMatch(*monomer_frag, *db_mol);
-    int db_count = db_mol->getNumAtoms();
-    int count = monomer_frag->getNumAtoms();
+    auto match = RDKit::SubstructMatch(*monomer_frag,
+                                       *db_mol); // (queryAtomIdx, molAtomIdx)
 
-    int n = 0;
-    if (match.size() && (std::abs(db_count - count) <= 1)) {
+    if (match.size()) {
+
+        // Any unmapped atom in monomer_frag must map to a leaving group in the
+        // db_mol create vector of atom indices in the monomer_frag that are not
+        // in the match
+        for (auto at : monomer_frag->atoms()) {
+            int target_idx = at->getIdx();
+            auto it = std::find_if(match[0].begin(), match[0].end(),
+                                   [target_idx](const std::pair<int, int>& p) {
+                                       return p.second == target_idx;
+                                   });
+            if (it == match[0].end()) {
+                // This atom should be terminal, otherwise the match is
+                // definitely wrong
+                if (at->getDegree() > 1) {
+                    return false;
+                }
+
+                // Unmatched atoms should be leaving groups, we can check this
+                // by matching
+                RDKit::ROMol::ADJ_ITER nbrIdx, endNbrs;
+                boost::tie(nbrIdx, endNbrs) =
+                    monomer_frag->getAtomNeighbors(at);
+
+                it = std::find_if(match[0].begin(), match[0].end(),
+                                  [nbrIdx](const std::pair<int, int>& p) {
+                                      return p.second ==
+                                             static_cast<int>(*nbrIdx);
+                                  });
+                if (it == match[0].end()) {
+                    return false;
+                }
+
+                auto db_atom = db_mol->getAtomWithIdx(it->first);
+                if (!db_atom->hasProp(
+                        RDKit::common_properties::molAtomMapNumber)) {
+                    return false;
+                }
+            }
+        }
+
         // we are mapping atomistic atom indices to attachment point numbers
         // (molAtomMapNumber)
         for (auto [db_idx, at_idx] : match[0]) {
@@ -523,7 +576,6 @@ bool same_monomer(RDKit::RWMol& atomistic_mol,
                 auto ref_idx = at->getProp<unsigned int>(REFERENCE_IDX);
                 atomistic_mol.getAtomWithIdx(ref_idx)->setProp<unsigned int>(
                     MONOMER_MAP_NUM, map_no);
-                n += 1;
             }
         }
         return true;
@@ -605,7 +657,13 @@ void detect_linkages(RDKit::RWMol& cg_mol, const RDKit::RWMol& atomistic_mol)
             continue;
         }
 
-        if (begin_monomer_idx < end_monomer_idx) {
+        // Backbone connections (R2-R1) should be added in that order when
+        // possible.
+        if (begin_attchpt == 2 && end_attchpt == 1) {
+            add_connection(cg_mol, begin_monomer_idx, end_monomer_idx, "R2-R1");
+        } else if (begin_attchpt == 1 && end_attchpt == 2) {
+            add_connection(cg_mol, end_monomer_idx, begin_monomer_idx, "R2-R1");
+        } else if (begin_monomer_idx < end_monomer_idx) {
             add_connection(cg_mol, begin_monomer_idx, end_monomer_idx,
                            fmt::format("R{}-R{}", begin_attchpt, end_attchpt));
         } else {
@@ -615,8 +673,47 @@ void detect_linkages(RDKit::RWMol& cg_mol, const RDKit::RWMol& atomistic_mol)
     }
 }
 
+std::optional<std::tuple<std::string, std::string, ChainType>>
+get_helm_info(cg_monomer_database& db, const RDKit::Atom* atom,
+              bool has_pdb_codes)
+{
+    if (has_pdb_codes) {
+        // This comes from something like a PDB or MAE file
+        auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        auto res_name = res_info->getResidueName();
+        res_name.erase(
+            std::remove_if(res_name.begin(), res_name.end(), ::isspace),
+            res_name.end());
+        return db.get_helm_info(res_name);
+    } else {
+        // This comes from a SD file with SUP groups
+        auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        std::string sup_class;
+        if (!res_info ||
+            !atom->getPropIfPresent(SGROUP_PROP_CLASS, sup_class)) {
+            return std::nullopt;
+        }
+
+        auto pos = BIOVIA_CHAIN_TYPE_MAP.find(sup_class);
+        if (pos == BIOVIA_CHAIN_TYPE_MAP.end()) {
+            return std::nullopt;
+        }
+        auto chain_type = pos->second;
+        auto res_name =
+            res_info->getResidueName(); // this is the label, not the PDB code
+        auto smiles = db.get_monomer_smiles(res_name, chain_type);
+
+        if (smiles) {
+            return std::make_tuple(res_name, *smiles, chain_type);
+        }
+        return std::nullopt;
+    }
+}
+
 boost::shared_ptr<RDKit::RWMol>
-annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
+pdb_info_atomistic_to_cg(const RDKit::ROMol& input_mol, bool has_pdb_codes)
 {
     // Make RWMol and remove waters
     RDKit::RWMol mol(input_mol);
@@ -641,17 +738,9 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
     for (const auto& [chain_id, residues] : chains_and_residues) {
         // Use first residue to determine chain type. We assume that PDB data
         // is correct and there aren't multiple chain types in a single chain.
-        const auto first_res_info =
-            dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-                mol.getAtomWithIdx(residues.begin()->second[0])
-                    ->getMonomerInfo());
-        auto res_name = first_res_info->getResidueName();
-        res_name.erase(
-            std::remove_if(res_name.begin(), res_name.end(), ::isspace),
-            res_name.end());
-
         // Default chain type is PEPTIDE if not specified.
-        auto helm_info = db.get_helm_info(res_name);
+        auto helm_info = get_helm_info(
+            db, mol.getAtomWithIdx(residues.begin()->second[0]), has_pdb_codes);
         auto chain_type =
             helm_info ? std::get<2>(*helm_info) : ChainType::PEPTIDE;
         std::string helm_chain_id = fmt::format("{}{}", to_string(chain_type),
@@ -660,15 +749,8 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
         // Assuming residues are ordered correctly
         size_t res_num = 1;
         for (const auto& [key, atom_idxs] : residues) {
-            const auto res_info =
-                dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-                    mol.getAtomWithIdx(atom_idxs[0])->getMonomerInfo());
-            res_name = res_info->getResidueName();
-            res_name.erase(
-                std::remove_if(res_name.begin(), res_name.end(), ::isspace),
-                res_name.end());
-
-            helm_info = db.get_helm_info(res_name);
+            helm_info = get_helm_info(db, mol.getAtomWithIdx(atom_idxs[0]),
+                                      has_pdb_codes);
             bool end_of_chain = res_num == residues.size();
             size_t this_monomer;
             if (helm_info &&
@@ -699,7 +781,7 @@ annotated_atomistic_to_cg(const RDKit::ROMol& input_mol)
     return cg_mol;
 }
 
-bool has_residue_info(const RDKit::ROMol& mol)
+bool has_pdb_residue_info(const RDKit::ROMol& mol)
 {
     return std::any_of(mol.atoms().begin(), mol.atoms().end(),
                        [](const auto& atom) {
@@ -709,7 +791,134 @@ bool has_residue_info(const RDKit::ROMol& mol)
                        });
 }
 
-} // unnamed namespace
+void sup_groups_to_pdb_info(RDKit::ROMol& mol)
+{
+    // SUP sgroups, or abbreviations, are sometimes set to indicate monomers
+    // on an atomistic molecule. They do not indicate any chain information,
+    // so for now we will place them all in a single chain.
+    std::string chain_id = "A";
+
+    // Convert SUP sgroups to PDB residue info
+    for (const auto& sgroup : RDKit::getSubstanceGroups(mol)) {
+        std::string type;
+        if (sgroup.getPropIfPresent(SGROUP_PROP_TYPE, type) && type == "SUP") {
+            for (const auto& atom_idx : sgroup.getAtoms()) {
+                auto atom = mol.getAtomWithIdx(atom_idx);
+                std::string symbol;
+                std::string sup_class;
+                unsigned int res_num;
+                if (!sgroup.getPropIfPresent(SGROUP_PROP_LABEL, symbol) ||
+                    !sgroup.getPropIfPresent(SGROUP_PROP_RESNUM, res_num) ||
+                    !sgroup.getPropIfPresent(SGROUP_PROP_CLASS, sup_class)) {
+                    throw std::runtime_error(
+                        "SUP sgroup missing label or class");
+                }
+                auto res_info = new RDKit::AtomPDBResidueInfo();
+                res_info->setResidueName(symbol);
+                res_info->setResidueNumber(res_num);
+                res_info->setChainId(chain_id);
+                atom->setMonomerInfo(res_info);
+                atom->setProp<std::string>(SGROUP_PROP_CLASS, sup_class);
+            }
+        }
+    }
+}
+
+bool has_sup_sgroups(const RDKit::ROMol& mol)
+{
+    // Check that every atom belongs to exactly one SUP sgroup
+    std::vector<int> atom_counts(mol.getNumAtoms(), 0);
+    for (const auto& sgroup : getSubstanceGroups(mol)) {
+        std::string type;
+        if (sgroup.getPropIfPresent(SGROUP_PROP_TYPE, type) && type == "SUP") {
+            return true;
+        }
+    }
+    return false;
+}
+
+unsigned int get_residue_number(const RDKit::Atom* atom)
+{
+    // Get the residue number from the atom's monomer info
+    const auto res_info =
+        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
+    if (res_info) {
+        return res_info->getResidueNumber();
+    }
+    return 0;
+}
+
+void order_residues(RDKit::ROMol& mol)
+{
+    // Reorder residues by connectivity, works for atomistic mols with LGRP
+    // sgroups. This is needed to ensures that residue attachment points are
+    // placed in the correct order. Find the beginning of the chain, LGRP with
+    // the lowest res num
+    std::queue<RDKit::Atom*> atom_queue;
+    RDKit::Atom* first_atom = nullptr;
+    unsigned int lowest_res_num = std::numeric_limits<unsigned int>::max();
+    for (const auto& sg : RDKit::getSubstanceGroups(mol)) {
+        std::string sgroup_class;
+        if (sg.getPropIfPresent(SGROUP_PROP_CLASS, sgroup_class) &&
+            sgroup_class == "LGRP") {
+            auto res_num = sg.getProp<unsigned int>(SGROUP_PROP_RESNUM);
+            if (res_num < lowest_res_num) {
+                lowest_res_num = res_num;
+                first_atom = mol.getAtomWithIdx(sg.getAtoms()[0]);
+            }
+        }
+    }
+    if (!first_atom) {
+        // Just use input order
+        return;
+    }
+    atom_queue.push(first_atom);
+
+    std::set<unsigned int> residues;
+    for (const auto& atom : mol.atoms()) {
+        residues.insert(get_residue_number(atom));
+    }
+    auto res_count = residues.size();
+
+    std::vector<bool> visited_atoms(mol.getNumAtoms(), false);
+    std::vector<bool> visited_residues(res_count, false);
+    // new residue number -> old residue number
+    std::vector<unsigned int> residue_order(res_count, 0);
+    unsigned int new_res_num = 1;
+
+    visited_atoms[first_atom->getIdx()] = true;
+    visited_residues[get_residue_number(first_atom)] = true;
+    residue_order[get_residue_number(first_atom)] = new_res_num;
+    ++new_res_num;
+
+    while (!atom_queue.empty()) {
+        auto atom = atom_queue.front();
+        atom_queue.pop();
+        for (const auto& nbr : mol.atomNeighbors(atom)) {
+            if (!visited_atoms[nbr->getIdx()]) {
+                visited_atoms[nbr->getIdx()] = true;
+                auto res_num = get_residue_number(nbr);
+                if (!visited_residues[res_num]) {
+                    visited_residues[res_num] = true;
+                    residue_order[res_num] = new_res_num;
+                    ++new_res_num;
+                }
+                atom_queue.push(nbr);
+            }
+        }
+    }
+
+    // Now go through and set the new residue numbers
+    for (const auto& atom : mol.atoms()) {
+        const auto res_info =
+            dynamic_cast<RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
+        if (res_info) {
+            auto old_res_num = res_info->getResidueNumber();
+            res_info->setResidueNumber(residue_order[old_res_num]);
+        }
+    }
+}
+} // namespace
 
 boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol,
                                                 bool use_residue_info)
@@ -717,18 +926,25 @@ boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol,
     // Use residue information to build the CG molecule. Assumes that the
     // residue information is correct, and throws if any residue information
     // is missing.
+    RDKit::ROMol atomistic_mol(mol);
     if (use_residue_info) {
-        if (!has_residue_info(mol)) {
+        if (has_pdb_residue_info(atomistic_mol)) {
+            auto cg_mol = pdb_info_atomistic_to_cg(atomistic_mol, true);
+            assign_chains(*cg_mol);
+            return cg_mol;
+        } else if (has_sup_sgroups(atomistic_mol)) {
+            sup_groups_to_pdb_info(atomistic_mol);
+            order_residues(atomistic_mol);
+            auto cg_mol = pdb_info_atomistic_to_cg(atomistic_mol, false);
+            assign_chains(*cg_mol);
+            return cg_mol;
+        } else {
             throw std::runtime_error(
                 "No residue information found in molecule");
         }
-        auto cg_mol = annotated_atomistic_to_cg(mol);
-        assign_chains(*cg_mol);
-        return cg_mol;
     }
 
     // Work on copy, for now
-    RDKit::ROMol atomistic_mol(mol);
     std::vector<std::vector<int>> monomers;
     std::vector<Linkage> linkages;
     identify_monomers(atomistic_mol, monomers, linkages);
