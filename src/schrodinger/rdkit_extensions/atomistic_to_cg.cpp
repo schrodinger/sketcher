@@ -869,8 +869,7 @@ void order_residues(RDKit::ROMol& mol)
         }
     }
     if (!first_atom) {
-        // Just use input order
-        return;
+        throw std::runtime_error("No LGRP found in molecule");
     }
     atom_queue.push(first_atom);
 
@@ -928,14 +927,16 @@ boost::shared_ptr<RDKit::RWMol> atomistic_to_cg(const RDKit::ROMol& mol,
     // is missing.
     RDKit::ROMol atomistic_mol(mol);
     if (use_residue_info) {
-        if (has_pdb_residue_info(atomistic_mol)) {
-            auto cg_mol = pdb_info_atomistic_to_cg(atomistic_mol, true);
-            assign_chains(*cg_mol);
-            return cg_mol;
-        } else if (has_sup_sgroups(atomistic_mol)) {
+        if (has_sup_sgroups(atomistic_mol)) {
             sup_groups_to_pdb_info(atomistic_mol);
             order_residues(atomistic_mol);
             auto cg_mol = pdb_info_atomistic_to_cg(atomistic_mol, false);
+            assign_chains(*cg_mol);
+            return cg_mol;
+        }
+
+        if (has_pdb_residue_info(atomistic_mol)) {
+            auto cg_mol = pdb_info_atomistic_to_cg(atomistic_mol, true);
             assign_chains(*cg_mol);
             return cg_mol;
         } else {
