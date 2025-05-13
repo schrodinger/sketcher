@@ -190,13 +190,6 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         std::unique_ptr<RDKit::RWMol> new_monomer(
             RDKit::SmilesToMol(smiles, 0, sanitize));
 
-        if (!new_monomer) {
-            // FIXME: I think this is an issue with the HELM parser, see
-            // SHARED-11457
-            new_monomer.reset(
-                RDKit::SmilesToMol("[" + smiles + "]", 0, sanitize));
-        }
-
         if (monomer->getProp<bool>(SMILES_MONOMER)) {
             // SMILES monomers may be in rgroup form like
             // *N[C@H](C(=O)O)S* |$_R1;;;;;;;_R3$| or use atom map numbers like
