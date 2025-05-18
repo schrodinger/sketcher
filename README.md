@@ -14,7 +14,7 @@
 * maeparser
 * fmt
 * boost
-* emsdk (to build WASM)
+* emsdk (WASM only)
 
 ## Build and Install
 
