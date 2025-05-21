@@ -52,11 +52,15 @@ function(setup_target TARGET)
   endif()
   # Allow RDKit includes to be prefixed
   target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}/..
-                                               ${PROJECT_SOURCE_DIR}/include)
+                                               ${PROJECT_SOURCE_DIR}/include
+                                               ${PROJECT_SOURCE_DIR}/src)
   # Assume use of static libraries
   target_compile_definitions(
     ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                       RDK_BUILD_MAEPARSER_SUPPORT BOOST_BEAST_HEADER_ONLY)
+  if (WIN32)
+    target_link_libraries(${TARGET} PUBLIC -static)
+  endif()
   if (EMSCRIPTEN)
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
   endif()
@@ -99,18 +103,12 @@ set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOMOC ON)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC ON)
 set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${SKETCHER_LIB}/ui)
 set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC_SEARCH_PATHS ${UI_DIR})
-if (WIN32)
-    target_link_libraries(${SKETCHER_LIB} PUBLIC "-static")
-endif()
 
 # Standalone executable
 set(EXE_TARGET sketcher_app)
 add_executable(${EXE_TARGET} src/app/main.cpp)
 setup_target(${EXE_TARGET})
 target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
-if (WIN32)
-    target_link_libraries(${EXE_TARGET} PUBLIC "-static")
-endif()
 
 # Tests
 enable_testing()
@@ -136,6 +134,3 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
 endforeach()
-if (WIN32)
-    target_link_libraries(${TEST_TARGET} PUBLIC "-static")
-endif()
