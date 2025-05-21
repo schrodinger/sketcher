@@ -180,7 +180,7 @@ jobs:
 
       - name: Test
         working-directory: build
-        # Launching`xvfb-run -a` required for Ubuntu non-wasm builds
+        # Launching `xvfb-run -a` required for Ubuntu non-wasm builds
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
           ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
