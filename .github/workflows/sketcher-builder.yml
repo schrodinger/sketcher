@@ -191,9 +191,8 @@ jobs:
         env:
             # ".exe" on Windows, no extension everywhere else
             EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
-            OS_NAME: replace(${{ matrix.os }}, '-latest', '')
         with:
-          name: sketcher-${{env.OS_NAME}}-${{ matrix.build-output }}${{env.EXT}}
+          name: sketcher-${{ matrix.os }}-${{ matrix.build-output }}${{env.EXT}}
           path: build/sketcher_app${{env.EXT}}
 
       - name: Create wasm tarball
