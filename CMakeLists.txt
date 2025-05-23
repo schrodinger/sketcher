@@ -75,7 +75,7 @@ function(setup_target TARGET)
                                                ${PROJECT_SOURCE_DIR}/include
                                                ${PROJECT_SOURCE_DIR}/src)
   target_compile_definitions(${TARGET} PRIVATE RDK_BUILD_MAEPARSER_SUPPORT)
-  if (NOT ${USE_SCHRODINGER_BUILD_ENV})
+  if (${STATIC_OR_SHARED} STREQUAL "STATIC")
     # force use of static libraries
     target_compile_definitions(
         ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
