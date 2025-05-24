@@ -1,9 +1,9 @@
 diff --git a/Code/cmake/Modules/RDKitUtils.cmake b/Code/cmake/Modules/RDKitUtils.cmake
-index 7c4f5add5..1e79aa1c0 100644
+index 40bd8b31b..50544ef2b 100644
 --- a/Code/cmake/Modules/RDKitUtils.cmake
 +++ b/Code/cmake/Modules/RDKitUtils.cmake
-@@ -42,17 +42,7 @@ macro(rdkit_library)
-               COMPONENT dev )
+@@ -55,17 +55,7 @@ macro(rdkit_library)
+               COMPONENT ${staticLibComponent})
      endif(RDK_INSTALL_DEV_COMPONENT)
    else()
 -    # we're going to always build in shared mode since we
@@ -12,16 +12,16 @@ index 7c4f5add5..1e79aa1c0 100644
 -    # with g++ unless libraries are shared.
 -    add_library(${RDKLIB_NAME} SHARED ${RDKLIB_SOURCES})
 -    target_link_libraries(${RDKLIB_NAME} PUBLIC rdkit_base)
--    INSTALL(TARGETS ${RDKLIB_NAME} EXPORT ${RDKit_EXPORTED_TARGETS}
+-    INSTALL(TARGETS ${RDKLIB_NAME} EXPORT ${exportName}
 -            DESTINATION ${RDKit_LibDir}/${RDKLIB_DEST}
--            COMPONENT runtime )
+-            COMPONENT ${sharedLibComponent})
 -    if(RDK_INSTALL_STATIC_LIBS)
 -      add_library(${RDKLIB_NAME}_static ${RDKLIB_SOURCES})
 +      add_library(${RDKLIB_NAME} STATIC ${RDKLIB_SOURCES})
  
        set(skipNext FALSE)
        foreach(linkLib ${RDKLIB_LINK_LIBRARIES})
-@@ -64,12 +54,12 @@ macro(rdkit_library)
+@@ -81,12 +71,12 @@ macro(rdkit_library)
            get_target_property(linkLib_IMPORTED "${linkLib}" IMPORTED)
            if (linkLib_IMPORTED)
              # linkLib is an imported target: use it as-is
@@ -36,7 +36,7 @@ index 7c4f5add5..1e79aa1c0 100644
            continue()
          # cmake prepends the special keywords debug, optimized, general
          # before the library name depending on whether they should be
-@@ -93,18 +83,17 @@ macro(rdkit_library)
+@@ -110,18 +100,17 @@ macro(rdkit_library)
          # We haven't seen linkLib yet. This probably means it is a target
          # we will be creating at some point (if not, then we are missing a find_package).
          # Add the "_static" suffix to link against its static variant
@@ -46,10 +46,10 @@ index 7c4f5add5..1e79aa1c0 100644
 -      target_link_libraries(${RDKLIB_NAME}_static PUBLIC rdkit_base)
 +      target_link_libraries(${RDKLIB_NAME} PUBLIC rdkit_base)
        if(RDK_INSTALL_DEV_COMPONENT)
--        INSTALL(TARGETS ${RDKLIB_NAME}_static EXPORT ${RDKit_EXPORTED_TARGETS}
-+        INSTALL(TARGETS ${RDKLIB_NAME} EXPORT ${RDKit_EXPORTED_TARGETS}
+-        INSTALL(TARGETS ${RDKLIB_NAME}_static EXPORT ${exportName}
++        INSTALL(TARGETS ${RDKLIB_NAME} EXPORT ${exportName}
                  DESTINATION ${RDKit_LibDir}/${RDKLIB_DEST}
-                 COMPONENT dev )
+                 COMPONENT ${staticLibComponent})
        endif(RDK_INSTALL_DEV_COMPONENT)
 -      set_target_properties(${RDKLIB_NAME}_static PROPERTIES
 -                            OUTPUT_NAME "RDKit${RDKLIB_NAME}_static")
