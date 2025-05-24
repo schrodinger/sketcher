@@ -31,7 +31,7 @@ if(EMSCRIPTEN)
     set(EXTRA_QT_CMAKE_ARGS
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
-    set(EXTRA_RDKIT_CMAKE_ARGS 
+    set(EXTRA_RDKIT_CMAKE_ARGS
        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
        -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
@@ -145,7 +145,7 @@ if (WIN32)
     list(JOIN BOOST_VERSION_PARTS "_" BOOST_VERSION_USING_UNDERSCORE)
     string(APPEND BOOST_INCLUDE_DIR "/include/boost-${BOOST_VERSION_USING_UNDERSCORE}")
 else()
-    
+
 endif()
 ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT "Copying boost::beast headers"
@@ -167,6 +167,7 @@ if(EMSCRIPTEN)
 else()
     # Prevent RDKit from trying to build shared libs
     list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+    list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
 endif()
 ExternalProject_Add(
   rdkit
