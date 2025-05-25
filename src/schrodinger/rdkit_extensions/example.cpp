@@ -20,6 +20,7 @@
 #include <boost/serialization/strong_typedef.hpp>
 #include <boost/shared_ptr.hpp>
 #include <fmt/format.h>
+#include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/CIPLabeler/CIPLabeler.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
