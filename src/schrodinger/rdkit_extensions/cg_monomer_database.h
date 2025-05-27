@@ -10,6 +10,11 @@
 
 struct sqlite3;
 
+const std::string CUSTOM_MONOMER_DB_PATH_ENV_VAR =
+    "SCHRODINGER_CUSTOM_MONOMER_DB_PATH";
+const std::string DEFAULT_MONOMER_DB_PATH_ENV_VAR =
+    "SCHRODINGER_DEFAULT_MONOMER_DB_PATH";
+
 namespace schrodinger
 {
 namespace rdkit_extensions
@@ -17,9 +22,9 @@ namespace rdkit_extensions
 enum class ChainType;
 
 // Returns path of custom monomer database if it exists, otherwise returns
-RDKIT_EXTENSIONS_API std::string get_custom_monomer_db_path();
+RDKIT_EXTENSIONS_API std::optional<std::string> get_custom_monomer_db_path();
 
-std::string get_cg_monomer_db_path();
+std::optional<std::string> get_cg_monomer_db_path();
 
 class [[nodiscard]] cg_monomer_database : public boost::noncopyable
 {

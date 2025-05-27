@@ -111,13 +111,12 @@ void fill_attachment_point_map(const RDKit::ROMol& new_monomer,
 void set_residue_info(RDKit::RWMol& new_monomer,
                       const std::string& monomer_label,
                       unsigned int residue_number, char chain_id,
-                      ChainType chain_type, unsigned int current_residue)
+                      ChainType chain_type, unsigned int current_residue,
+                      cg_monomer_database& db)
 {
     std::string residue_name =
         (chain_type == ChainType::PEPTIDE) ? "UNK" : "UNL";
 
-    // Get PDB code from monomer DB
-    cg_monomer_database db(get_cg_monomer_db_path());
     auto pdb_code = db.get_pdb_code(monomer_label, chain_type);
     if (pdb_code) {
         residue_name = *pdb_code;
@@ -194,7 +193,15 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
     auto chain_type = get_chain_type(polymer_id);
     bool sanitize = false;
 
-    cg_monomer_database db(get_cg_monomer_db_path());
+    auto path = get_cg_monomer_db_path();
+    if (!path.has_value()) {
+        // This shouldn't happen since DEFAULT_MONOMER_DB_PATH_ENV_VAR points to
+        // mmshare/data/helm/core_monomerlib.db and that should always exist
+        throw std::runtime_error(fmt::format(
+            "Could not find monomer database, try setting env variable {}",
+            CUSTOM_MONOMER_DB_PATH_ENV_VAR));
+    }
+    cg_monomer_database db(*path);
 
     // Add the monomers to the atomistic mol
     for (const auto monomer_idx : chain.atoms) {
@@ -246,7 +253,7 @@ AttachmentMap add_polymer(RDKit::RWMol& atomistic_mol,
         fill_attachment_point_map(*new_monomer, attachment_point_map,
                                   residue_number, atomistic_mol.getNumAtoms());
         set_residue_info(*new_monomer, monomer_label, residue_number, chain_id,
-                         chain_type, total_residue_count);
+                         chain_type, total_residue_count, db);
         ++total_residue_count;
         atomistic_mol.insertMol(*new_monomer);
     }
