@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Collect dependency versions
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
 string(JSON BOOST_VERSION GET ${VERSIONS} boost)
+string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)
 string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
@@ -31,7 +32,7 @@ if(EMSCRIPTEN)
     set(EXTRA_QT_CMAKE_ARGS
         -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
     )
-    set(EXTRA_RDKIT_CMAKE_ARGS 
+    set(EXTRA_RDKIT_CMAKE_ARGS
        -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
        -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
@@ -46,12 +47,6 @@ else()
     endif()
 endif()
 
-if(WIN32)
-    set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
-else()
-    set(RDKIT_INSTALL_STATIC_LIBS_VAL OFF)
-endif()
-
 set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
 if(CMAKE_TOOLCHAIN_FILE)
     # Emscripten builds specify a toolchain file and a cross-compiling emulator
@@ -61,6 +56,7 @@ if(CMAKE_TOOLCHAIN_FILE)
     )
 endif()
 
+# Build fmt library
 ExternalProject_Add(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
@@ -71,6 +67,7 @@ ExternalProject_Add(
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/fmt-${FMT_VERSION}
     -DFMT_DOC=OFF -DFMT_TEST=OFF -DFMT_INSTALL=ON)
 
+# Build zlib library
 ExternalProject_Add(
   zlib
   GIT_REPOSITORY https://github.com/madler/zlib.git
@@ -82,6 +79,7 @@ ExternalProject_Add(
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
     -DBUILD_SHARED_LIBS=OFF)
 
+# Build zstd library
 ExternalProject_Add(
   zstd
   GIT_REPOSITORY https://github.com/facebook/zstd.git
@@ -94,6 +92,17 @@ ExternalProject_Add(
     -DZSTD_BUILD_SHARED=OFF
     -DZSTD_BUILD_PROGRAMS=OFF)
 
+# Build Eigen library
+ExternalProject_Add(
+  eigen
+  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+  GIT_TAG ${EIGEN_VERSION}
+  GIT_SHALLOW TRUE
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/eigen-${EIGEN_VERSION}
+)
+
+# Build Boost library
 set_cmake_arg(
   BOOST_INCLUDE_LIBS
   # RDKit required libraries
@@ -145,7 +154,7 @@ if (WIN32)
     list(JOIN BOOST_VERSION_PARTS "_" BOOST_VERSION_USING_UNDERSCORE)
     string(APPEND BOOST_INCLUDE_DIR "/include/boost-${BOOST_VERSION_USING_UNDERSCORE}")
 else()
-    
+
 endif()
 ExternalProject_Add_Step(boost install_beast_header_only
     COMMENT "Copying boost::beast headers"
@@ -154,6 +163,7 @@ ExternalProject_Add_Step(boost install_beast_header_only
     COMMAND cp -rv  ${BOOST_BEAST_HEADERS_PATH} ${BOOST_INCLUDE_DIR}
 )
 
+# Build RDKit library
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
@@ -167,6 +177,12 @@ if(EMSCRIPTEN)
 else()
     # Prevent RDKit from trying to build shared libs
     list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+    list(APPEND RDKIT_PATCH_COMMAND && git apply ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
+endif()
+if(WIN32)
+    set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
+else()
+    set(RDKIT_INSTALL_STATIC_LIBS_VAL OFF)
 endif()
 ExternalProject_Add(
   rdkit
@@ -195,6 +211,7 @@ ExternalProject_Add(
     -DRDK_USE_BOOST_STACKTRACE=OFF
     ${EXTRA_RDKIT_CMAKE_ARGS})
 
+# Build Qt library
 if(QT_HOST_BUILD)
     # For WASM builds, we also need a non-WASM build of Qt since some of the Qt
     # command line tools get run during the build process (e.g. uic, rcc, etc).
