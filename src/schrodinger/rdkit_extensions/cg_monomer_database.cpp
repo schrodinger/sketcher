@@ -7,12 +7,17 @@
 #include <string>
 #include <string_view>
 
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/filesystem.hpp>
-#include <fmt/format.h>
+#include "boost/algorithm/string/trim.hpp"
+#include "boost/noncopyable.hpp"
 
 #include "schrodinger/rdkit_extensions/coarse_grain.h" // ChainType
+
+#ifndef __EMSCRIPTEN__
+#include "mmfile.h"
+#include "schrodinger/path.h"
+#endif
+
+#include <fmt/format.h>
 
 #include "sqlite3.h"
 
@@ -23,36 +28,39 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
-std::optional<std::string> get_custom_monomer_db_path()
+std::string get_custom_monomer_db_path()
 {
 #ifdef __EMSCRIPTEN__
     throw std::logic_error(
         "CG Monomers are not yet supported in WASM Sketcher");
 #else
-    auto custom_db_path = getenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.c_str());
-    if (custom_db_path) {
-        return std::make_optional<std::string>(custom_db_path);
+    auto custom_db_root = getenv("SCHRODINGER_CUSTOM_MONOMER_DB_DIR");
+    if (custom_db_root) {
+        auto custom_db_path =
+            boost::filesystem::path(custom_db_root) / "custom_monomerlib.db";
+        return custom_db_path.string();
     }
-    return std::nullopt;
+    auto custom_db_path = boost::filesystem::path(mmfile_get_directory_path(
+                              DirectoryName::MMFILE_LOCAL_APPDATA)) /
+                          "helm/custom_monomerlib.db";
+    return custom_db_path.string();
 #endif
 }
 
-std::optional<std::string> get_cg_monomer_db_path()
+std::string get_cg_monomer_db_path()
 {
 #ifdef __EMSCRIPTEN__
     throw std::logic_error(
         "CG Monomers are not yet supported in WASM Sketcher");
 #else
     auto custom_db_path = get_custom_monomer_db_path();
-    if (custom_db_path.has_value() &&
-        boost::filesystem::exists(*custom_db_path)) {
+    if (boost::filesystem::exists(custom_db_path)) {
         return custom_db_path;
     }
-    auto db_path = getenv(DEFAULT_MONOMER_DB_PATH_ENV_VAR.c_str());
-    if (db_path) {
-        return std::make_optional<std::string>(db_path);
-    }
-    return std::nullopt;
+
+    auto db_path =
+        path::product_dir("mmshare") / "data/helm/core_monomerlib.db";
+    return db_path.string();
 #endif
 }
 

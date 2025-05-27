@@ -743,15 +743,7 @@ pdb_info_atomistic_to_cg(const RDKit::ROMol& input_mol, bool has_pdb_codes)
     find_chains_and_residues(mol, chains_and_residues);
 
     // Monomer database connection to verify monomers and get HELM info
-    auto path = get_cg_monomer_db_path();
-    if (!path.has_value()) {
-        // This shouldn't happen since DEFAULT_MONOMER_DB_PATH_ENV_VAR points to
-        // mmshare/data/helm/core_monomerlib.db and that should always exist
-        throw std::runtime_error(fmt::format(
-            "Could not find monomer database, try setting env variable {}",
-            CUSTOM_MONOMER_DB_PATH_ENV_VAR));
-    }
-    cg_monomer_database db(*path);
+    cg_monomer_database db(get_cg_monomer_db_path());
     std::map<ChainType, unsigned int> chain_counts = {{ChainType::PEPTIDE, 0},
                                                       {ChainType::RNA, 0},
                                                       {ChainType::DNA, 0},
