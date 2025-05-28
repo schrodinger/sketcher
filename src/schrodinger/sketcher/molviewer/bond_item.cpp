@@ -108,7 +108,7 @@ BondItem::BondItem(const RDKit::Bond* bond, const AtomItem& start_item,
     m_dashed_pen.setJoinStyle(Qt::RoundJoin);
     m_dashed_pen.setCapStyle(Qt::RoundCap);
     m_dashed_pen.setDashPattern({3.0, 3.0});
-    m_chirality_pen = QPen(CHIRALITY_LABEL_COLOR);
+    m_chirality_pen = QPen(settings.m_annotation_color);
 
     setZValue(static_cast<qreal>(ZOrder::BOND));
     updateCachedData();

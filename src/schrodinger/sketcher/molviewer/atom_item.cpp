@@ -60,7 +60,7 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
     m_valence_error_brush = QBrush(VALENCE_ERROR_AREA_COLOR);
 
     // setup chirality pen
-    m_chirality_pen = QPen(CHIRALITY_LABEL_COLOR);
+    m_chirality_pen = QPen(settings.m_annotation_color);
 
     // use the default atom color for the squiggle pen (used for attachment
     // points)

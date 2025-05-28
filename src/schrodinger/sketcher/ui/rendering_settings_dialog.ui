@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>RenderingSettingsDialog</class>
+ <widget class="QDialog" name="RenderingSettingsDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>579</width>
+    <height>284</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>2D Settings</string>
+  </property>
+  <widget class="QWidget" name="verticalLayoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>10</y>
+     <width>559</width>
+     <height>267</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <item>
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>Atom font size:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="m_atom_font_size_sb"/>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_3">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Bond line width:</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QDoubleSpinBox" name="m_bond_line_width_sb"/>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <widget class="Line" name="line_2">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <widget class="QCheckBox" name="m_label_carbons_cb">
+          <property name="text">
+           <string>Label carbons:</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="m_label_carbons_layout">
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Fixed</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_5">
+            <item>
+             <widget class="QRadioButton" name="m_label_terminal_C_rb">
+              <property name="text">
+               <string>Terminal only</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+              <attribute name="buttonGroup">
+               <string notr="true">m_label_carbons_bg</string>
+              </attribute>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="m_label_all_C_rb">
+              <property name="text">
+               <string>All</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+              <attribute name="buttonGroup">
+               <string notr="true">m_label_carbons_bg</string>
+              </attribute>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="m_color_heteroatoms_cb">
+          <property name="text">
+           <string>Color heteroatoms</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>Color mode:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_3">
+            <item>
+             <widget class="QComboBox" name="m_color_mode_combo">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QComboBox" name="m_bw_mode_combo">
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QCheckBox" name="m_show_stereo_cb">
+          <property name="text">
+           <string>Show stereo annotations:</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="m_show_stereo_layout">
+          <item>
+           <spacer name="horizontalSpacer_4">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Fixed</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <item>
+             <widget class="QRadioButton" name="m_without_ABS_rb">
+              <property name="text">
+               <string>Without ABS</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QRadioButton" name="m_with_ABS_rb">
+              <property name="text">
+               <string>With ABS</string>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="m_undefined_centers_labels_cb">
+              <property name="text">
+               <string>Include undefined centers</string>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_5">
+      <item>
+       <widget class="QPushButton" name="m_reset_to_default_pb">
+        <property name="styleSheet">
+         <string notr="true">
+font:  10pt bold;</string>
+        </property>
+        <property name="text">
+         <string>Reset to Defaults</string>
+        </property>
+        <property name="flat">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>m_atom_font_size_sb</sender>
+   <signal>valueChanged(double)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>120</x>
+     <y>19</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>47</x>
+     <y>71</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_bond_line_width_sb</sender>
+   <signal>textChanged(QString)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>566</x>
+     <y>32</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>59</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_label_carbons_cb</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>24</x>
+     <y>71</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>95</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_label_all_C_rb</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>71</x>
+     <y>119</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>182</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_label_terminal_C_rb</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>76</x>
+     <y>99</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>242</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_reset_to_default_pb</sender>
+   <signal>clicked()</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>loadDefaults()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>102</x>
+     <y>274</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>194</x>
+     <y>255</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_show_stereo_cb</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>309</x>
+     <y>73</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>255</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_without_ABS_rb</sender>
+   <signal>clicked()</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>547</x>
+     <y>126</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>255</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_with_ABS_rb</sender>
+   <signal>clicked()</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>547</x>
+     <y>165</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>255</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_color_mode_combo</sender>
+   <signal>currentTextChanged(QString)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>251</x>
+     <y>192</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>373</x>
+     <y>255</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_color_heteroatoms_cb</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>70</x>
+     <y>141</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>90</x>
+     <y>164</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_undefined_centers_labels_cb</sender>
+   <signal>stateChanged(int)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>556</x>
+     <y>206</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>473</x>
+     <y>138</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>m_bw_mode_combo</sender>
+   <signal>activated(int)</signal>
+   <receiver>RenderingSettingsDialog</receiver>
+   <slot>onValuesChanged()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>221</x>
+     <y>208</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>326</x>
+     <y>201</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+ <slots>
+  <slot>onValuesChanged()</slot>
+  <slot>loadDefaults()</slot>
+  <slot>onLabelCarbonsToggled(bool)</slot>
+  <slot>onShowStereoToggled(bool)</slot>
+  <slot>onColorHeteroatomsToggled(bool)</slot>
+ </slots>
+ <buttongroups>
+  <buttongroup name="m_label_carbons_bg">
+   <property name="exclusive">
+    <bool>true</bool>
+   </property>
+  </buttongroup>
+ </buttongroups>
+</ui>

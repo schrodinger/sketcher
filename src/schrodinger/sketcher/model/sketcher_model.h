@@ -440,6 +440,11 @@ class SKETCHER_API SketcherModel : public QObject
     void setBondWidthScale(qreal scale);
     void setFontSize(int size);
     int getFontSize() const;
+    void setColorScheme(ColorScheme color_scheme);
+    ColorScheme getColorScheme() const;
+
+    void setBackgroundColor(QColor color);
+    QColor getBackgroundColor() const;
 
     /**
      * @param opts render options to load into the model
@@ -456,6 +461,11 @@ class SKETCHER_API SketcherModel : public QObject
      * displayed with the new settings.
      */
     void displaySettingsChanged() const;
+
+    /**
+     * Signal to notify the scene that the background color has changed.
+     */
+    void backgroundColorChanged(const QColor& color);
 
     /**
      * Signal to notify views when the interactive items of the scene have
@@ -566,6 +576,8 @@ class SKETCHER_API SketcherModel : public QObject
     AtomDisplaySettings m_atom_display_settings;
     BondDisplaySettings m_bond_display_settings;
     int m_font_size = DEFAULT_FONT_SIZE;
+    QColor m_background_color;
+    ColorScheme m_color_scheme = ColorScheme::DEFAULT;
 };
 
 } // namespace sketcher

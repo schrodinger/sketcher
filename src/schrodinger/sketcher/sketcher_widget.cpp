@@ -105,6 +105,9 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_sketcher_model, &SketcherModel::valuePinged, this,
             &SketcherWidget::onModelValuePinged);
 
+    connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
+            &SketcherWidget::onBackgroundColorChanged);
+
     connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
         if (what_changed & WhatChanged::MOLECULE) {
             emit moleculeChanged();
@@ -161,6 +164,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
+    m_sketcher_model->setBackgroundColor(LIGHT_BACKGROUND_COLOR);
 }
 
 SketcherWidget::~SketcherWidget() = default;
@@ -742,6 +746,15 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
         applyModelValuePingToTargets(kv_pair.first, kv_pair.second, atoms,
                                      bonds, sgroups, non_molecular_objects);
     }
+}
+
+void SketcherWidget::onBackgroundColorChanged(const QColor& color)
+{
+    auto view = m_ui->view;
+    if (!view) {
+        return;
+    }
+    view->setBackgroundBrush(QBrush(color));
 }
 
 void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)

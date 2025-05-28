@@ -351,6 +351,30 @@ void SketcherModel::setBondWidthScale(qreal scale)
     emit displaySettingsChanged();
 }
 
+void SketcherModel::setColorScheme(ColorScheme color_scheme)
+{
+    m_color_scheme = color_scheme;
+    m_atom_display_settings.setColorScheme(color_scheme);
+    m_bond_display_settings.setColorScheme(color_scheme);
+    emit displaySettingsChanged();
+}
+
+ColorScheme SketcherModel::getColorScheme() const
+{
+    return m_color_scheme;
+}
+
+void SketcherModel::setBackgroundColor(QColor color)
+{
+    m_background_color = color;
+    emit backgroundColorChanged(color);
+}
+
+QColor SketcherModel::getBackgroundColor() const
+{
+    return m_background_color;
+}
+
 void SketcherModel::setFontSize(int size)
 {
     m_font_size = size;

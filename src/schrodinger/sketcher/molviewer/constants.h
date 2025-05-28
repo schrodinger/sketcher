@@ -133,6 +133,9 @@ const qreal DOUBLE_BOND_INNER_LINE_SHORTENING = 6.0;
 // DOUBLE_BOND_BEST_RING_SIZE_CUTOFF atoms.
 const unsigned int DOUBLE_BOND_BEST_RING_SIZE_CUTOFF = 8;
 
+const QColor DARK_BACKGROUND_COLOR = QColor("#1e1e1e");
+const QColor LIGHT_BACKGROUND_COLOR = QColor("#ffffff");
+
 // The background color for drawing selection highlighting
 const QColor SELECTION_BACKGROUND_COLOR = QColor("#c7d5b8");
 
@@ -150,7 +153,8 @@ const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#eaeaea");
 const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 
 // the color of the stereo annotations (e.g. "R" and "S")
-const QColor CHIRALITY_LABEL_COLOR = QColor("#333333");
+const QColor ANNOTATION_COLOR = QColor("#333333");
+const QColor ANNOTATION_COLOR_DARK = QColor("#bababa");
 
 // the color of structure hints (e.g. the blue lines that show where a bond will
 // be drawn when using the bond tool or the fragment structure when mousing over
@@ -269,7 +273,7 @@ const float ROTATION_ITEM_PEN_WIDTH = 3.f;
 
 // The font size and color used to display the angle value for the rotation item
 const qreal ROTATION_ITEM_FONT_SIZE = 11.0;
-const QColor ROTATION_ITEM_TEXT_COLOR = CHIRALITY_LABEL_COLOR;
+const QColor ROTATION_ITEM_TEXT_COLOR = ANNOTATION_COLOR;
 
 // The width of the pen used for painting non-molecular objects (reaction arrows
 // and pluses) measured in Scene units

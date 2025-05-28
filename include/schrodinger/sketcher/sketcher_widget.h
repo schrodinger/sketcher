@@ -288,6 +288,12 @@ class SKETCHER_API SketcherWidget : public QWidget
     void onModelValuePinged(ModelKey key, QVariant value);
 
     /**
+     * Respond to a value changing in the model
+     * @param color The new SketcherModel background color
+     */
+    void onBackgroundColorChanged(const QColor& color);
+
+    /**
      * Apply the specified SketcherModel operation to the given targets (i.e.
      * atoms, bonds, etc)
      *

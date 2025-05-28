@@ -19,6 +19,7 @@
 #include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
+#include "schrodinger/sketcher/dialog/rendering_settings_dialog.h"
 
 namespace schrodinger
 {
@@ -122,17 +123,23 @@ void SketcherTopBar::initMenus()
             this, &SketcherTopBar::invertSelectionRequested);
 
     // FIXME: For now, hide menu items that have not been implemented
-    for (auto action :
-         {// TODO: SKETCH-1013
-          m_more_actions_menu->m_expand_selection_menu->menuAction(),
-          // TODO: SKETCH-1015
-          m_more_actions_menu->m_add_custom_fragment_act,
-          // TODO: SKETCH-1017
-          m_configure_view_menu->m_implicit_hydrogens_act,
-          // TODO: SKETCH-1270
-          m_configure_view_menu->m_preferences_act}) {
+    for (auto action : {
+             // TODO: SKETCH-1013
+             m_more_actions_menu->m_expand_selection_menu->menuAction(),
+             // TODO: SKETCH-1015
+             m_more_actions_menu->m_add_custom_fragment_act,
+             // TODO: SKETCH-1017
+             m_configure_view_menu->m_implicit_hydrogens_act,
+         }) {
         action->setVisible(false);
     }
+
+    // Set up the preferences menu
+    connect(this, &SketcherTopBar::showPreferencesDialog, this, [this]() {
+        auto rendering_settings_dialog =
+            new RenderingSettingsDialog(this, getModel());
+        rendering_settings_dialog->show();
+    });
 }
 
 void SketcherTopBar::setModel(SketcherModel* model)

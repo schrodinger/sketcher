@@ -4,6 +4,7 @@
 #include <QColor>
 
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/image_constants.h"
 
 namespace schrodinger
 {
@@ -32,6 +33,8 @@ class BondDisplaySettings
     QColor m_color = Qt::black;
     /// Whether to display stereochemistry labels when present
     bool m_stereo_labels_shown = true;
+    /// The color of the annotation text
+    QColor m_annotation_color = ANNOTATION_COLOR;
 
     /**
      * Scale bond width by the specified value.  Note that double bond spacing
@@ -42,6 +45,13 @@ class BondDisplaySettings
      * values greater than one will result in wider bonds.
      */
     void setScale(qreal scale);
+
+    /**
+     * Set the color scheme for the bond display settings. This affects only the
+     * color of annotations (which is lighter on dark modes)
+     * @param scheme The color scheme to use
+     */
+    void setColorScheme(const ColorScheme& scheme);
 };
 } // namespace sketcher
 } // namespace schrodinger

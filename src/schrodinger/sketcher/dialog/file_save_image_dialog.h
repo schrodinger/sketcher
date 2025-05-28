@@ -4,6 +4,7 @@
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/widget/sketcher_view.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace Ui
 {
@@ -26,7 +27,8 @@ class SKETCHER_API FileSaveImagePopup : public SketcherView
     Q_OBJECT
 
   public:
-    FileSaveImagePopup(QWidget* parent = nullptr);
+    FileSaveImagePopup(QWidget* parent = nullptr,
+                       SketcherModel* model = nullptr);
     ~FileSaveImagePopup();
 
     /**
@@ -44,6 +46,7 @@ class SKETCHER_API FileSaveImagePopup : public SketcherView
     void paintEvent(QPaintEvent* event) override;
 
     std::unique_ptr<Ui::FileSaveImagePopup> m_ui;
+    QColor m_background_color = LIGHT_BACKGROUND_COLOR;
 };
 
 /**

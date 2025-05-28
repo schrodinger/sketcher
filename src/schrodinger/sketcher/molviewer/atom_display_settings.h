@@ -93,6 +93,8 @@ class AtomDisplaySettings
      */
     qreal m_squiggle_pen_width = BOND_DEFAULT_PEN_WIDTH;
 
+    QColor m_annotation_color = ANNOTATION_COLOR;
+
   private:
     RDKit::ColourPalette m_color_palette;
 };

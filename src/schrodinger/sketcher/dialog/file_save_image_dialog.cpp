@@ -14,7 +14,8 @@ namespace schrodinger
 namespace sketcher
 {
 
-FileSaveImagePopup::FileSaveImagePopup(QWidget* parent) : SketcherView(parent)
+FileSaveImagePopup::FileSaveImagePopup(QWidget* parent, SketcherModel* model) :
+    SketcherView(parent)
 {
     m_ui.reset(new Ui::FileSaveImagePopup());
     m_ui->setupUi(this);
@@ -28,6 +29,7 @@ FileSaveImagePopup::FileSaveImagePopup(QWidget* parent) : SketcherView(parent)
             &FileSaveImagePopup::renderOptionsChanged);
     connect(m_ui->transparent_cb, &QCheckBox::stateChanged, this,
             &FileSaveImagePopup::renderOptionsChanged);
+    m_background_color = model->getBackgroundColor();
 }
 
 FileSaveImagePopup::~FileSaveImagePopup() = default;
@@ -37,8 +39,9 @@ RenderOptions FileSaveImagePopup::getRenderOptions() const
     RenderOptions opts;
     opts.width_height =
         QSize(m_ui->width_sb->value(), m_ui->height_sb->value());
-    opts.background_color =
-        m_ui->transparent_cb->isChecked() ? Qt::transparent : Qt::white;
+    opts.background_color = m_ui->transparent_cb->isChecked()
+                                ? Qt::transparent
+                                : m_background_color;
     return opts;
 }
 
@@ -64,7 +67,7 @@ FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model, QWidget* parent,
     m_options_wdg->setStyleSheet(RENDER_OPTIONS_STYLE);
 
     // Setup the popup widget that handles rendering options
-    m_options_popup = new FileSaveImagePopup(this);
+    m_options_popup = new FileSaveImagePopup(this, model);
     m_options_wdg_ui->change_btn->setPopupDelay(0);
     m_options_wdg_ui->change_btn->setPopupWidget(m_options_popup);
     m_options_wdg_ui->change_btn->showPopupIndicator(false);
@@ -84,6 +87,7 @@ FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model, QWidget* parent,
 
     connect(m_options_popup, &FileSaveImagePopup::renderOptionsChanged, this,
             &FileSaveImageDialog::onRenderOptionsChanged);
+    onRenderOptionsChanged();
 }
 
 FileSaveImageDialog::~FileSaveImageDialog() = default;
@@ -104,8 +108,14 @@ std::vector<std::string> FileSaveImageDialog::getValidExtensions() const
 void FileSaveImageDialog::onRenderOptionsChanged()
 {
     auto opts = m_options_popup->getRenderOptions();
-    QString background_color =
-        opts.background_color == Qt::transparent ? "Transparent" : "White";
+    QString background_color = "Solid";
+    if (opts.background_color == Qt::transparent) {
+        background_color = "Transparent";
+    } else if (opts.background_color == LIGHT_BACKGROUND_COLOR) {
+        background_color = "White";
+    } else if (opts.background_color == DARK_BACKGROUND_COLOR) {
+        background_color = "Dark";
+    }
     QString width = QString::number(opts.width_height.width());
     QString height = QString::number(opts.width_height.height());
     m_options_wdg_ui->status_lbl->setText(background_color + " background, " +

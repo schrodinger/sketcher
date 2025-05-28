@@ -27,5 +27,13 @@ void BondDisplaySettings::setScale(qreal scale)
                                  BOND_HASH_SPACING_SCALING_FACTOR);
 }
 
+void BondDisplaySettings::setColorScheme(const ColorScheme& scheme)
+{
+    m_annotation_color =
+        (scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK)
+            ? ANNOTATION_COLOR_DARK
+            : ANNOTATION_COLOR;
+}
+
 } // namespace sketcher
 } // namespace schrodinger

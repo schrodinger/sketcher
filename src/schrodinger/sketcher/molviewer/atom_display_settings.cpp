@@ -45,6 +45,10 @@ void AtomDisplaySettings::setColorScheme(const ColorScheme& scheme,
             m_color_palette[static_cast<int>(Element::C)] = m_color_palette[-1];
         }
     }
+    m_annotation_color =
+        (scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK)
+            ? ANNOTATION_COLOR_DARK
+            : ANNOTATION_COLOR;
 }
 
 void AtomDisplaySettings::setMonochromeColorScheme(const QColor& color)
