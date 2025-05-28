@@ -1,5 +1,7 @@
 ## Schrödinger 2D Sketcher
 
+![build-status](https://github.com/schrodinger/sketcher/actions/workflows/sketcher-builder.yml/badge.svg?branch=main)
+
 [![sketcher](https://github.com/schrodinger/sketcher/blob/main/.github/schrodinger-sketcher-screenshot.png)](https://www.schrodinger.com/2dsketcher)
 
 The Schrödinger 2D Sketcher is an open-source application for drawing and editing chemical structures. The entire sketcher is built on top of the RDKit open source toolkit, which serves as its underlying chemical model. It provides a user-friendly interface for creating molecules, reactions, and other chemical diagrams, which can be used independently or integrated into other cheminformatics workflows.
