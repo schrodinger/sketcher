@@ -9,15 +9,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
 
-option(USE_SCHRODINGER_BUILD_ENV
-"Build RDKit using a Schrodinger build environment so that other Schrodinger \
-products can link against it. Note that this option requires a connection to \
-the Schrodinger internal network and is intended for use by Schrodinger \
-employees and contractors."
-OFF)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+option(ENFORCE_DEPENDENCY_VERSIONS
+    "Require that the dependencies match the versions listed in \
+    external/versions.json"
+    ON)
 
-if (NOT ${USE_SCHRODINGER_BUILD_ENV})
-    # Dependencies
+if (${ENFORCE_DEPENDENCY_VERSIONS})
     file(READ external/versions.json VERSIONS)
     string(JSON BOOST_VERSION GET ${VERSIONS} boost)
     string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
@@ -26,26 +24,24 @@ if (NOT ${USE_SCHRODINGER_BUILD_ENV})
     string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
     string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
     string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+endif()
 
-    set(STATIC_OR_SHARED STATIC)
-    set(ZSTD_LIB_NAME zstd::libzstd_static)
-
-    set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
-    set(BUILD_SHARED_LIBS OFF)
-
-    if(CMAKE_FIND_ROOT_PATH)
-        # make sure we can always find the dependencies that we've built, even if
-        # emscripten is trying to prevent us from finding system libraries
-        list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
-    endif()
-else()
-    set(STATIC_OR_SHARED SHARED)
+if (${BUILD_SHARED_LIBS})
     set(ZSTD_LIB_NAME zstd::libzstd_shared)
+    set(Boost_USE_STATIC_LIBS OFF)
+    # RDKit needs the shared versions of maeparser and coordgen
     find_package(maeparser REQUIRED)
     find_package(coordgen REQUIRED)
-    # The Package Factory build of RDKit requires Eigen3, so we need to find it
-    # even though the Sketcher doesn't use it
-    find_package(Eigen3 REQUIRED)
+else()
+    # we're building a static build
+    set(ZSTD_LIB_NAME zstd::libzstd_static)
+    set(Boost_USE_STATIC_LIBS ON)
+endif()
+
+if(CMAKE_FIND_ROOT_PATH)
+    # make sure we can always find the dependencies that we've built, even if
+    # emscripten is trying to prevent us from finding system libraries
+    list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 if(EMSCRIPTEN)
@@ -78,7 +74,7 @@ function(setup_target TARGET)
                                                ${PROJECT_SOURCE_DIR}/include
                                                ${PROJECT_SOURCE_DIR}/src)
   target_compile_definitions(${TARGET} PRIVATE RDK_BUILD_MAEPARSER_SUPPORT)
-  if (${STATIC_OR_SHARED} STREQUAL "STATIC")
+  if (NOT ${BUILD_SHARED_LIBS})
     # force use of static libraries
     target_compile_definitions(
         ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
@@ -99,7 +95,7 @@ function(build_schrodinger_library TARGET)
   # Collect public headers so that Qt can build .moc files
   file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
        ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp)
-  add_library(${TARGET} ${STATIC_OR_SHARED} ${SOURCE_LIST})
+  add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   setup_target(${TARGET})
 endfunction()
