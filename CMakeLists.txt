@@ -9,6 +9,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
 
+set(SUPPRESSION_FILE "test_valgrind.suppressions")
+set(MEMTEST_COMMAND
+    "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
+    --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
+    --error-exitcode=29")
+separate_arguments(MEMTEST_COMMAND)
+
 # Dependencies
 file(READ external/versions.json VERSIONS)
 string(JSON BOOST_VERSION GET ${VERSIONS} boost)
@@ -120,6 +127,8 @@ set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
 file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
 set(TEST_DEPENDENCIES Boost::unit_test_framework Eigen3::Eigen fmt::fmt Qt6::Widgets
                       ${SKETCHER_LIB})
+file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
+
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   cmake_path(GET TEST_SOURCE STEM TEST_TARGET)
   add_executable(${TEST_TARGET} ${TEST_SOURCE})
@@ -137,4 +146,20 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    # create the valgrind test
+    set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
+    if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
+        list(APPEND CURRENT_MEMTEST_COMMAND
+            "--suppressions=${PREFIX_PATH}/${SUPPRESSION_FILE}")
+    endif()
+    foreach(CURRENT_GLOBAL_SUPPRESSION ${GLOBAL_SUPPRESSIONS})
+        list(APPEND CURRENT_MEMTEST_COMMAND
+            "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
+    endforeach()
+    list(APPEND CURRENT_MEMTEST_COMMAND
+        "${PREFIX_PATH}/${TEST_COMMAND}")
+    add_test(NAME memtest_${TEST_TARGET} COMMAND ${CURRENT_MEMTEST_COMMAND})
+    set_property(TEST memtest_${TEST_TARGET} PROPERTY LABELS memtest)
+  endif()
 endforeach()

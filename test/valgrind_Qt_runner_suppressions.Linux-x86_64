@@ -1,0 +1,521 @@
+{
+   Qt suppression
+   Memcheck:Param
+   writev(vector[0])
+   fun:__writev
+   fun:writev
+   obj:/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+   obj:/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+   obj:/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+   obj:/usr/lib/x86_64-linux-gnu/libxcb.so.1.1.0
+   fun:xcb_wait_for_reply
+   fun:_ZN14QXcbConnection28initializeScreensFromMonitorEP21xcb_screen_iterator_tiPP10QXcbScreenb
+   fun:_ZN14QXcbConnection17initializeScreensEb
+   fun:_ZN14QXcbConnectionC1EP19QXcbNativeInterfacebjPKc
+   fun:_ZN15QXcbIntegrationC1ERK5QListI7QStringERiPPc
+   fun:_ZN21QXcbIntegrationPlugin6createERK7QStringRK5QListIS0_ERiPPc
+   fun:_ZL13init_platformRK7QStringS1_S1_RiPPc
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN19QApplicationPrivate4initEv
+   fun:QApplicationRequiredFixture
+   fun:_ZN5boost9unit_test9ut_detail25global_configuration_implI27QApplicationRequiredFixtureE10test_startEmm
+   fun:_ZN5boost6detail8function21function_obj_invoker0INS0_7forwardEiE6invokeERNS1_15function_bufferE
+   fun:_ZN5boost17execution_monitor13catch_signalsERKNS_8functionIFivEEE
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:*
+   fun:_ZN22QDBusConnectionPrivate13setConnectionEP14DBusConnectionRK18QDBusErrorInternal
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN14QObjectPrivate11connectImplEPK7QObjectiS2_PPvPN9QtPrivate15QSlotObjectBaseEiPKiPK11QMetaObject
+   fun:_ZN7QObject11connectImplEPKS_PPvS1_S3_PN9QtPrivate15QSlotObjectBaseEN2Qt14ConnectionTypeEPKiPK11QMetaObject
+   fun:_ZN24QDBusConnectionInterfaceC1ERK15QDBusConnectionP7QObject
+   fun:_ZN22QDBusConnectionPrivate16createBusServiceEv
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionPrivate12sendInternalEP23QDBusPendingCallPrivatePvi
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN22QDBusConnectionManager8instanceEv
+   fun:_ZN15QDBusConnection10sessionBusEv
+   fun:_ZN20QGenericUnixServicesC1Ev
+   fun:_ZN15QXcbIntegrationC1ERK5QListI7QStringERiPPc
+   fun:_ZN21QXcbIntegrationPlugin6createERK7QStringRK5QListIS0_ERiPPc
+   fun:_ZL13init_platformRK7QStringS1_S1_RiPPc
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN19QApplicationPrivate4initEv
+   fun:QApplicationRequiredFixture
+   fun:_ZN5boost9unit_test9ut_detail25global_configuration_implI27QApplicationRequiredFixtureE10test_startEmm
+   fun:_ZN5boost6detail8function21function_obj_invoker0INS0_7forwardEiE6invokeERNS1_15function_bufferE
+   fun:_ZN5boost17execution_monitor13catch_signalsERKNS_8functionIFivEEE
+   fun:_ZN5boost17execution_monitor7executeERKNS_8functionIFivEEE
+   fun:_ZN5boost17execution_monitor8vexecuteERKNS_8functionIFvvEEE
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN19QDBusMessagePrivate13toDBusMessageERK12QDBusMessage6QFlagsIN15QDBusConnection20ConnectionCapabilityEEP10QDBusError
+   fun:_ZN22QDBusConnectionPrivate18sendWithReplyAsyncERK12QDBusMessageP7QObjectPKcS6_i
+   fun:_ZNK15QDBusConnection9asyncCallERK12QDBusMessagei
+   fun:_ZN20QGenericUnixServicesC1Ev
+   fun:_ZN15QXcbIntegrationC1ERK5QListI7QStringERiPPc
+   fun:_ZN21QXcbIntegrationPlugin6createERK7QStringRK5QListIS0_ERiPPc
+   fun:_ZL13init_platformRK7QStringS1_S1_RiPPc
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN19QApplicationPrivate4initEv
+   fun:QApplicationRequiredFixture
+   fun:_ZN5boost9unit_test9ut_detail25global_configuration_implI27QApplicationRequiredFixtureE10test_startEmm
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionPrivateC1Ev
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+   fun:_ZN22QDBusConnectionManager3runEv
+   fun:_ZN14QThreadPrivate5startEPv
+   fun:start_thread
+   fun:clone
+}
+{
+   Qt suppression
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   obj:*
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+   fun:_ZN23QCoreApplicationPrivate16sendPostedEventsEP7QObjectiP11QThreadData
+   fun:_ZN20QEventDispatcherUNIX13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+   fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
+   fun:_ZN7QThread4execEv
+}

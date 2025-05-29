@@ -7,9 +7,6 @@ on:
   schedule:
     - cron: "0 4 * * *"
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -24,6 +21,8 @@ jobs:
         include:
           - os: ubuntu-latest
             build-output: wasm
+          - os: ubuntu-latest
+            build-output: debug
     steps:
       - uses: actions/checkout@v4
 
@@ -39,6 +38,9 @@ jobs:
 
       - name: Code formatting check
         run: find . -name *.h -o -name *.cpp | xargs clang-format -n --Werror
+
+      - name: Determine build type
+        run: echo BUILD_TYPE=${{ matrix.build-output == 'debug' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
       - name: Read external/versions.json
         run: |
@@ -163,13 +165,13 @@ jobs:
 
       - name: Configure CMake
         env:
-            CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
-                                ${{ steps.fetch-zlib.outputs.path }};\
-                                ${{ steps.fetch-zstd.outputs.path }};\
-                                ${{ steps.fetch-eigen.outputs.path }};\
-                                ${{ steps.fetch-boost.outputs.path }};\
-                                ${{ steps.fetch-rdkit.outputs.path }};\
-                                ${{ steps.fetch-qt.outputs.path }}"
+          CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
+                              ${{ steps.fetch-zlib.outputs.path }};\
+                              ${{ steps.fetch-zstd.outputs.path }};\
+                              ${{ steps.fetch-eigen.outputs.path }};\
+                              ${{ steps.fetch-boost.outputs.path }};\
+                              ${{ steps.fetch-rdkit.outputs.path }};\
+                              ${{ steps.fetch-qt.outputs.path }}"
         run: |
           ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
@@ -186,12 +188,22 @@ jobs:
         with:
           node-version: 22.14.0
 
-      - name: Test
+      - name: Run tests
         working-directory: build
         # Launching `xvfb-run -a` required for Ubuntu non-wasm builds
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
-          ctest --build-config ${{ env.BUILD_TYPE }} --output-on-failure
+          ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure
+
+      - name: Install valgrind
+        if: matrix.build-output == 'debug'
+        run: sudo apt-get install valgrind
+
+      - name: Run memtests
+        working-directory: build
+        if: matrix.build-output == 'debug'
+        run: |
+          xvfb-run -a ctest --build-config Debug -L memtest --output-on-failure
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
