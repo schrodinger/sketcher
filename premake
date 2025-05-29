@@ -4,10 +4,24 @@
 # Schrodinger internal build system
 #
 
+# parse arguments
+BUILD_TYPE="Release"
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -g)
+        BUILD_TYPE="Debug"
+        shift
+        ;;
+    *)
+        echo "Unrecognized option $1"
+        exit 1
+        ;;
+    esac
+done
+
 . $SCHRODINGER_SRC/mmshare/build_env
 set -euo pipefail
 
-BUILD_TYPE="Release"
 SRC_DIR=$SCHRODINGER_SRC/sketcher
 BUILD_DIR=$SCHRODINGER/sketcher
 PF_DIR=$SCHRODINGER/schrodinger_buildenv_packages/.pixi/envs/schrodinger
@@ -40,7 +54,10 @@ all:
 	cmake --build $BUILD_DIR --config $BUILD_TYPE
 
 test:
-	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher --output-on-failure
+	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -LE memtest --output-on-failure
+
+memtest:
+	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure
 " > $BUILD_DIR/Makefile
 
 # buildinger expects stdout to define variables
