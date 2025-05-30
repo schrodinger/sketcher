@@ -50,14 +50,15 @@ cmake -B $BUILD_DIR \
 
 # allow CMake to be invoked using make
 echo "
+.PHONY: all test memtest
 all:
 	cmake --build $BUILD_DIR --config $BUILD_TYPE
 
 test:
-	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -LE memtest --output-on-failure
+	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -LE memtest --output-on-failure
 
 memtest:
-	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure
+	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure
 " > $BUILD_DIR/Makefile
 
 # buildinger expects stdout to define variables
