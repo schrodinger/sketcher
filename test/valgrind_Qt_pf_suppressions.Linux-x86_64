@@ -1,0 +1,1213 @@
+{
+   ICU Library No Auto Cleanup Leak
+   Memcheck:Leak
+   ...
+   obj:*/libicuuc.so.*
+   ...
+   obj:*/libQt*Core.*
+}
+{
+   Setting language details
+   Memcheck:Leak
+   fun:memalign
+   fun:posix_memalign
+   obj:/lib64/libglib-2.0.so*
+   fun:g_slice_alloc
+   fun:g_slist_prepend
+   fun:g_strsplit
+   fun:g_get_language_names
+   fun:_ZN27QEventDispatcherGlibPrivateC1EP13_GMainContext
+   fun:_ZN30QGuiEventDispatcherGlibPrivateC1Ev
+   fun:_ZN23QGuiEventDispatcherGlibC1EP7QObject
+   fun:_ZN19QApplicationPrivate21createEventDispatcherEv
+   fun:_ZN16QCoreApplication4initEv
+}
+{
+   Fontconfig issues
+   Memcheck:Leak
+   fun:malloc
+   ...
+   obj:*/libfontconfig.so*
+   ...
+   fun:FcFont*
+}
+{
+    Fontconfig issues
+    Memcheck:Leak
+    fun:*alloc
+    ...
+    obj:*/libfontconfig.so*
+    ...
+    fun:FcDefaultSubstitute
+}
+{
+   Fontconfig issues
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   obj:*/libfontconfig.so*
+   ...
+   obj:*/libexpat.so*
+   ...
+   fun:XML_ParseBuffer
+}
+{
+   Fontconfig issues
+   Memcheck:Leak
+   fun:malloc
+   ...
+   obj:*/libfontconfig.so*
+   ...
+   fun:FcDirCache*
+}
+{
+    Fontconfig issue
+    Memcheck:Leak
+    fun:realloc
+    obj:/usr/lib64/libfontconfig.so*
+    obj:/usr/lib64/libfontconfig.so*
+    fun:FcDefaultSubstitute
+}
+{
+    Fontconfig issue
+    Memcheck:Leak
+    fun:realloc
+    obj:/usr/lib64/libfontconfig.so*
+    obj:/usr/lib64/libfontconfig.so*
+    fun:FcPatternDuplicate
+}
+{
+   qt-fontengine-1
+   Memcheck:Leak
+   fun:malloc
+   fun:ft_mem_qalloc
+   fun:ft_mem_alloc
+   obj:*
+   fun:FT_Load_Glyph
+   fun:_ZNK13QFontEngineFT9loadGlyphEPNS_9QGlyphSetEj6QFixedN11QFontEngine11GlyphFormatEb
+}
+{
+   QApplication initialization
+   Memcheck:Leak
+   fun:realloc
+   obj:/usr/lib64/libX11.so*
+   obj:/usr/lib64/libX11.so*
+   fun:_XlcCreateLC
+   fun:_XlcDefaultLoader
+   fun:_XOpenLC
+   fun:_XrmInitParseInfo
+   obj:/usr/lib64/libX11.so*
+   fun:XrmGetStringDatabase
+   fun:XGetDefault
+}
+{
+   Inside Sip QtCore
+   Memcheck:Leak
+   fun:_Znam
+   obj:*QtCore.so
+   obj:*QtGui.so
+   obj:*sip.so
+   fun:type_call
+   fun:PyObject_Call
+}
+{
+   g_get_language_names
+   Memcheck:Leak
+   fun:malloc
+   fun:g_malloc
+   fun:g_strdup
+   fun:g_get_language_names
+}
+{
+   g_get_language_names
+   Memcheck:Leak
+   fun:memalign
+   fun:posix_memalign
+   ...
+   fun:g_slice_alloc
+   fun:g_slist_prepend
+   fun:g_strsplit
+   fun:g_get_language_names
+}
+{
+   In libX11.so ; this is machine dependent and occurs on CentOS 5 but not CentOS 6
+   Memcheck:Leak
+   fun:malloc
+   fun:_XimOpenIM
+   fun:_XimRegisterIMInstantiateCallback
+   fun:XRegisterIMInstantiateCallback
+}
+{
+   QEventDispatcherGlibPrivate::QEventDispatcherGlibPrivate - glib leak
+   Memcheck:Leak
+   ...
+   fun:_ZN27QEventDispatcherGlibPrivateC1EP13_GMainContext
+}
+{
+   QEventDispatcherGlib::processEvents - leak
+   Memcheck:Leak
+   ...
+   fun:_ZN20QEventDispatcherGlib13processEventsE6QFlagsIN10QEventLoop17ProcessEventsFlagEE
+}
+{
+   QFontDatabase::load
+   Memcheck:Leak
+   ...
+   fun:_ZN13QFontDatabase4loadEPK12QFontPrivatei
+}
+{
+   Xcursor leak
+   Memcheck:Leak
+   fun:malloc
+   obj:/usr/lib64/libXcursor.so*
+   obj:/usr/lib64/libXcursor.so*
+   fun:XcursorXcFileLoadImages
+   fun:XcursorFileLoadImages
+   fun:XcursorLibraryLoadImages
+   fun:XcursorLibraryLoadCursor
+   fun:_ZN11QCursorData6updateEv
+   fun:_ZNK7QCursor6handleEv
+   fun:_Z21qt_x11_enforce_cursorP7QWidgetb
+   fun:_ZN14QWidgetPrivate10create_sysEmbb
+   fun:_ZN7QWidget6createEmbb
+}
+{
+   QGLWidget::setContext
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:_ZN16QGLWidgetPrivate11initContextEP10QGLContextPK9QGLWidget
+}
+{
+   qt-imagewriter-write-1
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_ZN12QImageWriter5writeERK6QImage
+}
+{
+   qt-qimagewriter-write-2
+   Memcheck:Cond
+   ...
+   fun:_ZN12QImageWriter5writeERK6QImage
+}
+{
+   qt-qimagewriter-write-3
+   Memcheck:Value8
+   ...
+   fun:_ZN12QImageWriter5writeERK6QImage
+}
+{
+   qt-qimagewriter-write-5
+   Memcheck:Param
+   write(buf)
+   ...
+   fun:_ZN12QImageWriter5writeERK6QImage
+}
+{
+   qt-qtcoreapplication-ctor-any-leak
+   Memcheck:Leak
+   ...
+   fun:_ZN16QCoreApplicationC1ERiPPci
+}
+{
+   qt5 library loading
+   Memcheck:Cond
+   ...
+   fun:_ZN16QCoreApplication19applicationFilePathEv
+   fun:_ZN16QCoreApplication18applicationDirPathEv
+}
+{
+   qt5-xcb-glx-01
+   Memcheck:Leak
+   fun:*alloc
+   fun:XGetVisualInfo
+   fun:get_visual
+   fun:choose_x_visual
+   fun:choose_visual
+   fun:Fake_glXChooseFBConfig
+}
+{
+   qt5-xcb-glx-02
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   obj:/usr/lib64/libGL.so.1.2.0
+   obj:/usr/lib64/libGL.so.1.2.0
+   fun:glXGetFBConfigs
+   fun:glXChooseFBConfig
+   obj:*qt_plugins/xcbglintegrations/libqxcb-glx-integration.so
+}
+
+{
+   qt5-xcb-01
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   obj:/usr/lib64/libxcb.so.1.1.0
+   obj:/usr/lib64/libxcb.so.1.1.0
+   ...
+   fun:xcb_wait_for_*
+}
+{
+   qt5-xcb-02
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:_ZNK15QXcbIntegration27createPlatformOpenGLContextEP14QOpenGLContext
+}
+{
+   qt5-mesa-01
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   fun:_mesa_new_renderbuffer
+   ...
+   fun:update_framebuffer
+   fun:_mesa_update_framebuffer
+   fun:_mesa_update_state_locked
+   fun:_mesa_update_state
+   fun:_mesa_GetIntegerv
+   ...
+   fun:_ZN24QOpenGLFramebufferObjectC1ERK5QSizej
+}
+{
+   mesa-01
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:realloc
+   obj:/usr/lib64/libGL.so.1.2.0
+   obj:/usr/lib64/libGL.so.1.2.0
+}
+{
+   mesa-02
+   Memcheck:Cond
+   obj:*
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   obj:/usr/lib64/dri/swrast_dri.so
+   fun:start_thread
+   fun:clone
+}
+{
+   mesa-03
+   Memcheck:Leak
+   fun:malloc
+   fun:_ZN4llvm3sys11RWMutexImplC1Ev
+   fun:_ZN4llvm14object_creatorINS_12PassRegistryEEEPvv
+   fun:_ZNK4llvm17ManagedStaticBase21RegisterManagedStaticEPFPvvEPFvS1_E
+   fun:_ZN4llvm12PassRegistry15getPassRegistryEv
+   fun:_ZN4llvm14PassNameParserC1Ev
+   obj:/usr/lib64/libLLVM-3.6-mesa.so
+   obj:/usr/lib64/libLLVM-3.6-mesa.so
+}
+{
+   mesa-04
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:LLVMGetPointerToGlobal
+}
+{
+   mesa-05
+   Memcheck:Leak
+   fun:malloc
+   fun:_ZN4llvm12PassRegistry12registerPassERKNS_8PassInfoEb
+}
+{
+   mesa-06
+   Memcheck:Leak
+   match-leak-kinds: indirect
+   ...
+   obj:/usr/lib64/dri/swrast_dri.so
+}
+{
+   mesa-07
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN4llvm3sys9MutexImplC1Eb
+   fun:_ZN4llvm14object_creatorINS_3sys10SmartMutexILb1EEEEEPvv
+   fun:_ZNK4llvm17ManagedStaticBase21RegisterManagedStaticEPFPvvEPFvS1_E
+   fun:_ZN4llvm3sys14DynamicLibrary19getPermanentLibraryEPKcPSs
+   fun:_ZN4llvm13EngineBuilder6createEPNS_13TargetMachineE
+}
+{
+   mesa-08
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:_Znwm
+   fun:_ZNSt6vectorIN4llvm19RTDyldMemoryManager7EHFrameESaIS2_EE19_M_emplace_back_auxIIS2_EEEvDpOT_
+   fun:_ZN4llvm19RTDyldMemoryManager16registerEHFramesEPhmm
+   fun:_ZN4llvm14RuntimeDyldELF16registerEHFramesEv
+   fun:_ZN4llvm5MCJIT21finalizeLoadedModulesEv
+   fun:_ZN4llvm5MCJIT14finalizeObjectEv
+   fun:LLVMGetPointerToGlobal
+}
+# Since Mesa 22.1.5
+{
+   mesa-09
+   Memcheck:Addr1
+   fun:____strtol_l_internal
+   fun:__indirect_glGetString
+   fun:indirect_bind_context
+   fun:glXMakeCurrent
+}
+# Since Mesa 22.1.5
+{
+   mesa-10
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   ...
+   fun:_mesa_pointer_set_create
+   fun:__glXInitialize
+   fun:glXQueryExtensionsString
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-11
+   Memcheck:Cond
+   ...
+   fun:st_api_make_current
+   fun:dri_make_current
+   fun:driBindContext
+   fun:drisw_bind_context
+   fun:glXMakeContextCurrent
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-12
+   Memcheck:Param
+   shmget(size)
+   fun:shmget
+   fun:dri_sw_displaytarget_create
+   fun:*pipe_resource_create
+   fun:drisw_allocate_textures
+   fun:dri_st_framebuffer_validate
+   fun:st_framebuffer_validate
+   fun:st_api_make_current
+   fun:dri_make_current
+   fun:driBindContext
+   fun:drisw_bind_context
+   fun:glXMakeContextCurrent
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-13
+   Memcheck:Cond
+   fun:_mesa_update_framebuffer
+   fun:_mesa_update_state_locked
+   fun:_mesa_update_state
+   fun:check_extra.isra.0
+   fun:_mesa_GetBooleanv
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-14
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_mesa_get_fixed_func_*_program
+   fun:update_program
+   fun:_mesa_update_state_locked
+   fun:_mesa_update_state
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-15
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_mesa_new_shader_program
+   fun:_mesa_CreateProgram
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-16
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:strdup
+   fun:_mesa_BindAttribLocation
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-17
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_mesa_compile_shader.part.0
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-18
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   fun:attach_shader_err
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-19
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   ...
+   fun:_mesa_framebuffer_texture
+   fun:_mesa_FramebufferTexture2D
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-20
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_mesa_glsl_link_shader
+   fun:link_program_error.part.0
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-21
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:rzalloc*_size
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-22
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_mesa_ShaderSource
+}
+# Since Mesa 22.1.5, swrast_dri.so
+{
+   mesa-23
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:_mesa_new_framebuffer
+   fun:_mesa_BindFramebuffer
+}
+# Since Mesa 22.1.5, llvm
+{
+   mesa-24
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_mesa_?rogram*inary
+}
+# Since Mesa 22.1.5, llvm
+{
+   mesa-25
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:*alloc
+   ...
+   fun:st_api_create_context
+   fun:dri_create_context
+   fun:driCreateContextAttribs
+   fun:drisw_create_context_attribs
+   fun:glXCreateContextAttribsARB
+}
+# Since Mesa 22.1.5, llvm, buildbot only
+{
+   mesa-26
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:llvmpipe_draw_vbo
+   fun:_mesa_DrawElements
+}
+{
+   mesa-27
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:posix_memalign
+   obj:/usr/lib64/dri/swrast_dri.so
+}
+{
+   mesa-28
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_ZN4llvm4UsernwEmj
+   obj:/usr/lib64/libLLVM-7-rhel.so
+   fun:_ZN4llvm14ConstantVector3getENS_8ArrayRefIPNS_8ConstantEEE
+   fun:_ZN4llvm36ConstantFoldInsertElementInstructionEPNS_8ConstantES1_S1_
+   fun:_ZN4llvm12ConstantExpr16getInsertElementEPNS_8ConstantES2_S2_PNS_4TypeE
+   fun:LLVMBuildInsertElement
+   obj:/usr/lib64/dri/swrast_dri.so
+}
+{
+   nvidia-01
+   Memcheck:ReallocZero
+   fun:realloc
+   obj:/usr/lib64/libnvidia-glcore.so.*
+}
+# GLDispatch library on buildbot only
+{
+   gldispatch-01
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   obj:*
+   fun:__glDispatch*
+   obj:*
+   fun:_dl_init
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_XConnectXCB
+   fun:XOpenDisplay
+   fun:_ZN14QXcbConnectionC1EP19QXcbNativeInterfacebjPKc
+   fun:_ZN15QXcbIntegrationC1ERK11QStringListRiPPc
+   obj:*
+   fun:_ZN27QPlatformIntegrationFactory6createERK7QStringRK11QStringListRiPPcS2_
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QTextEngine23shapeTextWithHarfbuzzNGERK11QScriptItemPKtiP11QFontEngineRK7QVectorIjEbb
+   fun:_ZNK11QTextEngine9shapeTextEi
+   fun:_ZNK11QTextEngine5shapeEi
+   fun:_ZN9QTextLine13layout_helperEi
+   fun:_ZN11QTextLayout9endLayoutEv
+   fun:_ZNK18QWidgetLineControl14redoTextLayoutEv
+   fun:_ZN18QWidgetLineControl17updateDisplayTextEb
+   fun:_ZN18QWidgetLineControl12finishChangeEibb
+   fun:_ZN18QWidgetLineControl15processKeyEventEP9QKeyEvent
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QMetaObject13indexOfMethodEPKc
+   obj:*
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcConfigParseAndLoad
+   ...
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInitReinitialize
+   obj:*
+   obj:*
+   fun:_ZN13QFontDatabase8findFontERK8QFontDefi
+   fun:_ZN13QFontDatabase4loadEPK12QFontPrivatei
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_ZN7QObject10disconnectEPKS_PKcS1_S3_
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   fun:_ZN11QMetaObject12invokeMethodEP7QObjectPKcN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS7_S7_S7_S7_S7_S7_S7_S7_S7_
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Value8
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Value8
+   ...
+   fun:_ZNK11QMetaObject13indexOfMethodEPKc
+   obj:*
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Value8
+   ...
+   fun:_ZNK11QMetaObject13indexOfSignalEPKc
+   fun:_ZN17QAccessibleWidget20addControllingSignalERK7QString
+   obj:*
+   obj:*
+   fun:_ZN11QAccessible24queryAccessibleInterfaceEP7QObject
+   ...
+   fun:_ZN5QTestL8keyEventENS_9KeyActionEP7QWidgetc6QFlagsIN2Qt16KeyboardModifierEEi
+   fun:_ZN5QTestL9keyClicksEP7QWidgetRK7QString6QFlagsIN2Qt16KeyboardModifierEEi
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Value8
+   ...
+   fun:_ZN7QObject10disconnectEPKS_PKcS1_S3_
+   fun:_ZNK18QWidgetLineControl4copyEN10QClipboard4ModeE
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   fun:_ZN11QMetaObject12invokeMethodEP7QObjectPKcN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS7_S7_S7_S7_S7_S7_S7_S7_S7_
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   fun:_ZN10QByteArray11fromRawDataEPKci
+   obj:*
+   fun:_ZNK11QMetaObject13indexOfMethodEPKc
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QMetaObject13indexOfSignalEPKc
+   ...
+   fun:_ZN5QTestL12sendKeyEventENS_9KeyActionEP7QWidgetN2Qt3KeyEc6QFlagsINS3_16KeyboardModifierEEi
+   fun:_ZN5QTestL8keyEventENS_9KeyActionEP7QWidgetc6QFlagsIN2Qt16KeyboardModifierEEi
+   fun:_ZN5QTestL9keyClicksEP7QWidgetRK7QString6QFlagsIN2Qt16KeyboardModifierEEi
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Cond
+   ...
+   fun:_ZN10QByteArrayC1EPKci
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   fun:_ZN11QMetaObject12invokeMethodEP7QObjectPKcN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS7_S7_S7_S7_S7_S7_S7_S7_S7_
+   obj:*
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Value8
+   ...
+   fun:_ZN10QByteArrayC1EPKci
+   ...
+   fun:_ZN5QTestL12sendKeyEventENS_9KeyActionEP7QWidgetN2Qt3KeyEc6QFlagsINS3_16KeyboardModifierEEi
+   fun:_ZN5QTestL8keyEventENS_9KeyActionEP7QWidgetc6QFlagsIN2Qt16KeyboardModifierEEi
+   fun:_ZN5QTestL9keyClicksEP7QWidgetRK7QString6QFlagsIN2Qt16KeyboardModifierEEi
+}
+{
+   See MAE-38724: memory definitely lost 2
+   Memcheck:Value8
+   ...
+   fun:_XConnectXCB
+   fun:XOpenDisplay
+   fun:_ZN14QXcbConnectionC1EP19QXcbNativeInterfacebjPKc
+   fun:_ZN15QXcbIntegrationC1ERK11QStringListRiPPc
+   obj:*
+   fun:_ZN27QPlatformIntegrationFactory6createERK7QStringRK11QStringListRiPPcS2_
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+}
+{
+   See MAE-38724: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QTextEngine23shapeTextWithHarfbuzzNGERK11QScriptItemPKtiP11QFontEngineRK7QVectorIjEbb
+   fun:_ZNK11QTextEngine9shapeTextEi
+   fun:_ZNK11QTextEngine5shapeEi
+   fun:_ZN9QTextLine13layout_helperEi
+   fun:_ZN11QTextLayout9endLayoutEv
+   fun:_ZNK18QWidgetLineControl14redoTextLayoutEv
+   fun:_ZN18QWidgetLineControl17updateDisplayTextEb
+   fun:_ZN18QWidgetLineControl12finishChangeEibb
+   fun:_ZN18QWidgetLineControl15internalSetTextERK7QStringib
+}
+{
+   See MAE-38724: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QMetaObject13indexOfSignalEPKc
+   fun:_ZN17QAccessibleWidget20addControllingSignalERK7QString
+   ...
+   fun:_ZN11QAccessible24queryAccessibleInterfaceEP7QObject
+   fun:_ZNK16QAccessibleEvent19accessibleInterfaceEv
+   fun:_ZN11QAccessible19updateAccessibilityEP16QAccessibleEvent
+}
+{
+   See MAE-38724: memory definitely lost
+   Memcheck:Value8
+   ...
+   fun:_ZNK11QMetaObject13indexOfSignalEPKc
+   fun:_ZN17QAccessibleWidget20addControllingSignalERK7QString
+   ...
+   fun:_ZN11QAccessible24queryAccessibleInterfaceEP7QObject
+   fun:_ZNK16QAccessibleEvent19accessibleInterfaceEv
+   fun:_ZN11QAccessible19updateAccessibilityEP16QAccessibleEvent
+}
+{
+   See MAE-38724: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:XML_ParseBuffer
+   ...
+   fun:glXGetFBConfigs
+   fun:glXChooseFBConfig
+}
+{
+   See MAE-38724: memory definitely lost
+   Memcheck:Value8
+   ...
+   fun:XML_ParseBuffer
+   ...
+   fun:glXGetFBConfigs
+   fun:glXChooseFBConfig
+}
+{
+   See MAE-38724: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:XcursorLibraryLoadImages
+   fun:XcursorLibraryLoadCursor
+   ...
+   fun:_ZN14QWindowPrivate9setCursorEPK7QCursor
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Value8
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+   ...
+   fun:start_thread
+   fun:clone
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+   ...
+   fun:start_thread
+   fun:clone
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   fun:_ZN11QMetaObject12invokeMethodEP7QObjectPKcN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS7_S7_S7_S7_S7_S7_S7_S7_S7_
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZNK11QTextEngine23shapeTextWithHarfbuzzNGERK11QScriptItemPKtiP11QFontEngineRK7QVectorIjEbb
+   fun:_ZNK11QTextEngine9shapeTextEi
+   fun:_ZNK11QTextEngine5shapeEi
+   fun:_ZN9QTextLine13layout_helperEi
+   fun:_ZN9QTextLine12setLineWidthEd
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Value8
+   ...
+   fun:_ZNK11QMetaMethod6invokeEP7QObjectN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS5_S5_S5_S5_S5_S5_S5_S5_S5_
+   fun:_ZN11QMetaObject12invokeMethodEP7QObjectPKcN2Qt14ConnectionTypeE22QGenericReturnArgument16QGenericArgumentS7_S7_S7_S7_S7_S7_S7_S7_S7_
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZN7QObject10disconnectEPKS_PKcS1_S3_
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Value8
+   ...
+   fun:_ZN7QObject10disconnectEPKS_PKcS1_S3_
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Cond
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+}
+{
+   See MAE-38451: memory definitely lost
+   Memcheck:Value8
+   ...
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+}
+{
+   See MAE-38726: Font config issues
+   Memcheck:Cond
+   ...
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcConfigParseAndLoad
+   ...
+   fun:XML_ParseBuffer
+   fun:FcConfigParseAndLoad
+   fun:FcInitLoadConfig
+   fun:FcInitLoadConfigAndFonts
+   fun:FcInitReinitialize
+}
+
+{
+   qt-5.9.3-qeventdispatcherglib-01
+   Memcheck:Leak
+   match-leak-kinds: possible
+   ...
+   fun:_ZN20QEventDispatcherGlib22registerSocketNotifierEP15QSocketNotifier
+   fun:_ZN15QSocketNotifierC1ExNS_4TypeEP7QObject
+}
+
+{
+   See MAE-41987, MAE-42013: QWidget::insertAction
+   Memcheck:Leak
+   match-leak-kinds: definite,possible
+   fun:malloc
+   ...
+   fun:_ZN7QWidget12insertActionEP7QActionS1_
+}
+
+{
+   See MAE-41989, MAE-42013, MAE-43052: QString
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN10QArrayData8allocateEmmm6QFlagsINS_16AllocationOptionEE
+   ...
+   fun:_ZN7QString*
+}
+{
+   See MAE-42052: QList
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN9QListData11detach_growEPii
+   fun:_ZN5QListI8QVariantE18detach_helper_growEii
+   fun:_ZN5QListI8QVariantE6appendERKS0_
+}
+{
+   qt-qsocketnotifier
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:memalign
+   fun:posix_memalign
+   obj:*
+   fun:g_slice_alloc
+   fun:g_slist_prepend
+   fun:g_source_add_poll
+   fun:_ZN15QSocketNotifierC1ExNS_4TypeEP7QObject
+}
+{
+   qt-qprocess-start, see https://stackoverflow.com/questions/25540603/qprocess-causes-memory-leak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znam
+   obj:*
+   obj:*
+   fun:_ZN8QProcess5startERK7QStringRK11QStringList6QFlagsIN9QIODevice12OpenModeFlagEE
+}
+{
+   qt-qprocess-start-variant, see https://stackoverflow.com/questions/25540603/qprocess-causes-memory-leak
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znam
+   obj:*
+   obj:*
+   fun:_ZN8QProcess5startE6QFlagsIN9QIODevice12OpenModeFlagEE
+}
+{
+   See MAE-43497: parent pid: 26894
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN10QEventLoopC1EP7QObject
+   fun:_ZN7QThread4execEv
+}
+{
+   See MAE-43497: memory definitely lost
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN7QObjectC1EPS_
+   fun:_ZN6QTimerC1EP7QObject
+}
+{
+   glew-01
+   Memcheck:Leak
+   fun:malloc
+   ...
+   fun:glewInit
+}
+{
+   qt6-01
+   Memcheck:Addr1
+   obj:/dev/zero
+}
+{
+   qt6-02
+   Memcheck:Cond
+   obj:/dev/zero
+}
+{
+   qt6-03
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN14QObjectPrivate13addConnectionEiPNS_10ConnectionE
+}
+{
+   qt6-04
+   Memcheck:Param
+   waitid(infop)
+   fun:syscall
+   fun:forkfd
+   fun:_ZN15QProcessPrivate12startProcessEv
+}
+{
+   qt6-05
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:malloc
+   fun:XextAddDisplay
+   obj:/usr/lib64/libGLX_mesa.so.0.0.0
+   obj:/usr/lib64/libGLX_mesa.so.0.0.0
+   obj:/usr/lib64/libGLX_mesa.so.0.0.0
+   obj:/usr/lib64/libGLX_mesa.so.0.0.0
+   obj:/usr/lib64/libGLX_mesa.so.0.0.0
+   fun:_ZN13QXcbGlxWindow12createVisualEv
+   fun:_ZN10QXcbWindow6createEv
+   fun:_ZNK15QXcbIntegration20createPlatformWindowEP7QWindow
+   fun:_ZN14QWindowPrivate6createEby
+   fun:_ZN14QWidgetPrivate6createEv
+   fun:_ZN7QWidget6createEybb
+   fun:_ZN14QWidgetPrivate10setVisibleEb
+}
+{
+   qt6-06
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   obj:/usr/lib64/libGLdispatch.so.0.0.0
+}
+{
+   qt6-07
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   obj:*libGLX.so.0.0.0
+   obj:*libGLX.so.0.0.0
+}
+{
+   qt6-08
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN21QOpenGLContextPrivate17setCurrentContextEP14QOpenGLContext
+   fun:_ZN14QOpenGLContext11doneCurrentEv
+   fun:_ZN14QThreadStorageIP19QGuiGLThreadContextE10deleteDataEPv
+   fun:_ZN18QThreadStorageData6finishEPPv
+   fun:_ZN23QCoreApplicationPrivate17cleanupThreadDataEv
+   fun:_ZN22QGuiApplicationPrivateD1Ev
+   fun:_ZN19QApplicationPrivateD0Ev
+   fun:_ZN12QApplicationD0Ev
+}
+{
+   qt6-dbus-01
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:_ZN22QDBusConnectionManager24executeConnectionRequestEPNS_21ConnectionRequestDataE
+   fun:_ZN7QObject5eventEP6QEvent
+   fun:_ZN16QCoreApplication15notifyInternal2EP7QObjectP6QEvent
+}
+{
+   qt6-dbus-02
+   Memcheck:Leak
+   fun:realloc
+   ...
+   fun:dbus_message_iter_append_basic
+   fun:_ZN15QDBusMarshaller6appendERK7QString
+}
+{
+   qt6-dbus-03
+   Memcheck:Leak
+   fun:*alloc
+   obj:*
+   fun:dbus_threads_init
+   obj:*
+   obj:*
+   fun:dbus_get_local_machine_id
+   fun:_ZN15QDBusConnection14localMachineIdEv
+}
+{
+   qt6-dbus-04
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:_dbus_message_loader_queue_messages
+   ...
+   fun:_ZN22QDBusConnectionPrivate10socketReadEx
+}
+{
+   qt6-dbus-05
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:_dbus_type_writer_recurse
+   obj:*
+   fun:_dbus_header_set_field_basic
+   obj:*
+   fun:dbus_message_iter_append_basic
+   fun:dbus_message_append_args_valist
+   fun:dbus_message_append_args
+   fun:dbus_bus_add_match
+   fun:_ZN22QDBusConnectionPrivate13addSignalHookERK7QStringRKNS_10SignalHookE
+}
+{
+   qt6-dbus-06
+   Memcheck:Leak
+   fun:*alloc
+   ...
+   fun:_dbus_type_writer_write_basic
+   fun:dbus_message_iter_append_basic
+   fun:dbus_message_new_error
+   obj:*
+   fun:dbus_connection_send_with_reply
+   fun:_ZN22QDBusConnectionPrivate12sendInternalEP23QDBusPendingCallPrivatePvi
+}
+{
+   qt6-factory-01
+   Memcheck:Leak
+   fun:malloc
+   fun:_dl_map_object_deps
+   fun:dl_open_worker
+   fun:_dl_catch_error
+   fun:_dl_open
+   fun:dlopen_doit
+   fun:_dl_catch_error
+   fun:_dlerror_run
+   fun:dlopen@@GLIBC_*
+   fun:_ZN15QLibraryPrivate8load_sysEv
+   fun:_ZN15QLibraryPrivate4loadEv
+   fun:_ZN15QLibraryPrivate10loadPluginEv
+   fun:_ZN15QLibraryPrivate14pluginInstanceEv
+   fun:_ZNK14QFactoryLoader8instanceEi
+}
+{
+   qt6-pointing-device-01
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:_Znwm
+   ...
+   fun:_ZN15QPointingDevice21primaryPointingDeviceERK7QString
+}
+{
+   qt6-pointing-device-02
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:_Znwm
+   ...
+   fun:_ZN17QSinglePointEventC1EN6QEvent4TypeEPK15QPointingDeviceRK7QPointFS7_S7_N2Qt11MouseButtonE6QFlagsIS9_ESA_INS8_16KeyboardModifierEENS8_16MouseEventSourceE
+}
+{
+   qt655-xcb00
+   Memcheck:Leak
+   ...
+   fun:_ZN20QGenericUnixServicesC1Ev
+   fun:_ZN15QXcbIntegrationC1ERK5QListI7QStringERiPPc
+   fun:_ZN21QXcbIntegrationPlugin6createERK7QStringRK5QListIS0_ERiPPc
+   fun:_ZL13init_platformRK7QStringS1_S1_RiPPc
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN19QApplicationPrivate4initEv
+}
+{
+   qt655-xcb01
+   Memcheck:Param
+   writev(vector[0])
+   fun:writev
+   ...
+   fun:xcb_wait_for_reply
+   fun:_ZN14QXcbConnection28initializeScreensFromMonitorEP21xcb_screen_iterator_tiPP10QXcbScreenb
+   fun:_ZN14QXcbConnection17initializeScreensEb
+   fun:_ZN14QXcbConnectionC1EP19QXcbNativeInterfacebjPKc
+   fun:_ZN15QXcbIntegrationC1ERK5QListI7QStringERiPPc
+   fun:_ZN21QXcbIntegrationPlugin6createERK7QStringRK5QListIS0_ERiPPc
+   fun:_ZL13init_platformRK7QStringS1_S1_RiPPc
+   fun:_ZN22QGuiApplicationPrivate25createPlatformIntegrationEv
+   fun:_ZN22QGuiApplicationPrivate21createEventDispatcherEv
+   fun:_ZN23QCoreApplicationPrivate4initEv
+   fun:_ZN22QGuiApplicationPrivate4initEv
+   fun:_ZN19QApplicationPrivate4initEv
+}
+{
+   qt655-startprocess
+   Memcheck:Param
+   waitid(infop)
+   fun:syscall
+   fun:_ZL14system_vforkfdiPiPFiPvES0_S_
+   fun:vforkfd
+   fun:_ZN15QProcessPrivate12startProcessEv
+}
+{
+   qt655-connect00
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN14QObjectPrivate11connectImplEPK7QObjectiS2_PPvPN9QtPrivate15QSlotObjectBaseEiPKiPK11QMetaObject
+   fun:_ZN7QObject11connectImplEPKS_PPvS1_S3_PN9QtPrivate15QSlotObjectBaseEN2Qt14ConnectionTypeEPKiPK11QMetaObject
+}
+{
+   qt655-connect01
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:malloc
+   fun:_ZN18QMetaObjectPrivate7connectEPK7QObjectiPK11QMetaObjectS2_iS5_iPi
+   fun:_ZN7QObject7connectEPKS_PKcS1_S3_N2Qt14ConnectionTypeE
+}
+{
+   Qt6 loader
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:*alloc
+   ...
+   fun:dlopen@@GLIBC_*
+   fun:_ZN15QLibraryPrivate8load_sysEv
+   fun:_ZN15QLibraryPrivate4loadEv
+   fun:_ZN15QLibraryPrivate10loadPluginEv
+}
+{
+   qt655-mesa
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:_Znwm
+   obj:*
+   ...
+   obj:*
+   fun:_ZL24qt_gl_resolve_extensionsv
+   fun:_ZNK17QOpenGLExtensions18hasOpenGLExtensionENS_15OpenGLExtensionE
+}
