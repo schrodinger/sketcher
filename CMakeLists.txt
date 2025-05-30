@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
 
+<<<<<<< HEAD
 set(SUPPRESSION_FILE "test_valgrind.suppressions")
 set(MEMTEST_COMMAND
     "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
@@ -25,9 +26,36 @@ string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
 string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+=======
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+option(ENFORCE_DEPENDENCY_VERSIONS
+    "Require that the dependencies match the versions listed in \
+    external/versions.json"
+    ON)
+>>>>>>> github_non_putty/main
 
-set(Boost_USE_STATIC_LIBS ON) # Ensure static libs are found
-set(BUILD_SHARED_LIBS OFF)
+if (${ENFORCE_DEPENDENCY_VERSIONS})
+    file(READ external/versions.json VERSIONS)
+    string(JSON BOOST_VERSION GET ${VERSIONS} boost)
+    string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
+    string(JSON FMT_VERSION GET ${VERSIONS} fmt)
+    string(JSON QT_VERSION GET ${VERSIONS} qt)
+    string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+    string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
+    string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+endif()
+
+if (${BUILD_SHARED_LIBS})
+    set(ZSTD_LIB_NAME zstd::libzstd_shared)
+    set(Boost_USE_STATIC_LIBS OFF)
+    # RDKit needs the shared versions of maeparser and coordgen
+    find_package(maeparser REQUIRED)
+    find_package(coordgen REQUIRED)
+else()
+    # we're building a static build
+    set(ZSTD_LIB_NAME zstd::libzstd_static)
+    set(Boost_USE_STATIC_LIBS ON)
+endif()
 
 if(CMAKE_FIND_ROOT_PATH)
     # make sure we can always find the dependencies that we've built, even if
@@ -39,9 +67,9 @@ if(EMSCRIPTEN)
     set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
 endif()
 
-# we don't include boost::beast as a required component since we're using it
-# as a non-built, headers-only library, which means that there's no associated
-# config.cmake file for find_package to recognize
+# we don't include boost::beast as a required component since GitHub builds use
+# it as a non-built, headers-only library, which means that there's no
+# associated config.cmake file for find_package to recognize
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
@@ -64,32 +92,36 @@ function(setup_target TARGET)
                                                ${RDKit_INCLUDE_DIRS}/..
                                                ${PROJECT_SOURCE_DIR}/include
                                                ${PROJECT_SOURCE_DIR}/src)
-  # Assume use of static libraries
-  target_compile_definitions(
-    ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
-                      RDK_BUILD_MAEPARSER_SUPPORT BOOST_BEAST_HEADER_ONLY)
-  if (WIN32)
-    target_link_libraries(${TARGET} PUBLIC -static)
+  target_compile_definitions(${TARGET} PRIVATE RDK_BUILD_MAEPARSER_SUPPORT)
+  if (NOT ${BUILD_SHARED_LIBS})
+    # force use of static libraries
+    target_compile_definitions(
+        ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
+                          BOOST_BEAST_HEADER_ONLY)
+    if (WIN32)
+        target_link_libraries(${TARGET} PUBLIC -static)
+    endif()
   endif()
   if (EMSCRIPTEN)
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
   endif()
 endfunction()
 
-# Build static libraries
-function(build_static_library TARGET)
+# Configure the SKETCHER_LIB and RDKIT_EXTENSIONS_LIB libraries
+function(build_schrodinger_library TARGET)
   set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/schrodinger/${TARGET})
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${TARGET})
   # Collect public headers so that Qt can build .moc files
   file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
        ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp)
-  add_library(${TARGET} STATIC ${SOURCE_LIST})
+  add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   setup_target(${TARGET})
 endfunction()
 
 set(RDKIT_EXTENSIONS_LIB rdkit_extensions)
-build_static_library(${RDKIT_EXTENSIONS_LIB})
+build_schrodinger_library(${RDKIT_EXTENSIONS_LIB})
+target_compile_definitions(${RDKIT_EXTENSIONS_LIB} PRIVATE IN_RDKIT_EXTENSIONS_DLL)
 target_link_libraries(
   ${RDKIT_EXTENSIONS_LIB}
   PRIVATE Boost::filesystem
@@ -102,10 +134,11 @@ target_link_libraries(
           RDKit::RDInchiLib
           fmt::fmt
           ZLIB::ZLIB
-          zstd::libzstd_static)
+          ${ZSTD_LIB_NAME})
 
 set(SKETCHER_LIB sketcher)
-build_static_library(${SKETCHER_LIB})
+build_schrodinger_library(${SKETCHER_LIB})
+target_compile_definitions(${SKETCHER_LIB} PRIVATE IN_SKETCHER_DLL)
 target_link_libraries(${SKETCHER_LIB} PRIVATE Qt6::Widgets Qt6::Svg
                                               ${RDKIT_EXTENSIONS_LIB})
 # Enable Qt MOC and UIC for the sketcher library
@@ -126,7 +159,7 @@ enable_testing()
 set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
 file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
 set(TEST_DEPENDENCIES Boost::unit_test_framework Eigen3::Eigen fmt::fmt Qt6::Widgets
-                      ${SKETCHER_LIB})
+                      ${RDKIT_EXTENSIONS_LIB} ${SKETCHER_LIB})
 file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
 
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})

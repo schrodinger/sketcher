@@ -1,0 +1,64 @@
+#!/bin/sh
+# 
+# This script allows the sketcher repo to be built using buildinger, the
+# Schrodinger internal build system
+#
+
+# parse arguments
+BUILD_TYPE="Release"
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -g)
+        BUILD_TYPE="Debug"
+        shift
+        ;;
+    *)
+        echo "Unrecognized option $1"
+        exit 1
+        ;;
+    esac
+done
+
+. $SCHRODINGER_SRC/mmshare/build_env
+set -euo pipefail
+
+SRC_DIR=$SCHRODINGER_SRC/sketcher
+BUILD_DIR=$SCHRODINGER/sketcher
+PF_DIR=$SCHRODINGER/schrodinger_buildenv_packages/.pixi/envs/schrodinger
+ZLIB_DIR=`ls -d $PF_DIR/zlib-*`
+EIGEN_DIR=`ls -d $PF_DIR/eigen-*/share/eigen3/cmake`
+COORDGEN_DIR=`ls -d $PF_DIR/coordgenlibs-*/lib/cmake`
+
+CXX_COMPILER=""
+if [[ "$OSTYPE" == "msys" ]]; then
+    CXX_COMPILER=`ls -d $PF_DIR/vs-2019/compiler-*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe`
+fi
+CXX_COMPILER_FLAG=""
+if [[ "$CXX_COMPILER" != "" ]]; then
+    CXX_COMPILER_FLAG="-DCMAKE_CXX_COMPILER=$CXX_COMPILER"
+fi
+
+cmake -B $BUILD_DIR \
+      -S $SRC_DIR \
+      -G Ninja \
+      -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+      -DENFORCE_DEPENDENCY_VERSIONS=OFF \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_PREFIX_PATH=$PF_DIR\;$ZLIB_DIR\;$EIGEN_DIR\;$COORDGEN_DIR \
+      $CXX_COMPILER_FLAG \
+    || exit 1
+
+# allow CMake to be invoked using make
+echo "
+all:
+	cmake --build $BUILD_DIR --config $BUILD_TYPE
+
+test:
+	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -LE memtest --output-on-failure
+
+memtest:
+	ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure
+" > $BUILD_DIR/Makefile
+
+# buildinger expects stdout to define variables
+echo BUILD_DIR: $BUILD_DIR
