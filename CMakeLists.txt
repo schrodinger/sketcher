@@ -9,30 +9,18 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
 
-<<<<<<< HEAD
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+option(ENFORCE_DEPENDENCY_VERSIONS
+    "Require that the dependencies match the versions listed in \
+    external/versions.json"
+    ON)
+    
 set(SUPPRESSION_FILE "test_valgrind.suppressions")
 set(MEMTEST_COMMAND
     "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
     --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
     --error-exitcode=29")
 separate_arguments(MEMTEST_COMMAND)
-
-# Dependencies
-file(READ external/versions.json VERSIONS)
-string(JSON BOOST_VERSION GET ${VERSIONS} boost)
-string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
-string(JSON FMT_VERSION GET ${VERSIONS} fmt)
-string(JSON QT_VERSION GET ${VERSIONS} qt)
-string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
-string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
-string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
-=======
-option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
-option(ENFORCE_DEPENDENCY_VERSIONS
-    "Require that the dependencies match the versions listed in \
-    external/versions.json"
-    ON)
->>>>>>> github_non_putty/main
 
 if (${ENFORCE_DEPENDENCY_VERSIONS})
     file(READ external/versions.json VERSIONS)
