@@ -61,7 +61,7 @@ static void check_sqlite()
     };
 
     sqlite3* db;
-    char* msg = 0;
+    char* msg = nullptr;
     int rc;
     rc = sqlite3_open(":memory:", &db);
     check(rc, db);
@@ -72,7 +72,10 @@ static void check_sqlite()
                       &msg);
     check(rc, db);
     rc = sqlite3_close(db);
-    check(rc, db);
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error("Failed to close SQLite database.");
+    }
+    sqlite3_free(msg);
 }
 
 bool dependency_test(const std::string& smiles)
