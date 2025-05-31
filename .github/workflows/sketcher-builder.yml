@@ -34,10 +34,10 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install ninja clang-format==14.0.6
+        run: python3 -m pip install cmake==3.30.0 ninja clang-format==14.0.6
 
       - name: Code formatting check
-        run: find . -name *.h -o -name *.cpp | xargs clang-format -n --Werror
+        run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
       - name: Determine build type
         run: echo BUILD_TYPE=${{ matrix.build-output == 'debug' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
@@ -76,13 +76,6 @@ jobs:
             cmake -B build/external/host/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
 
-      - name: Fetch Eigen
-        id: fetch-eigen
-        uses: ./.github/actions/build-external
-        with:
-          library: eigen
-          version: ${{ fromJson(env.VERSIONS_JSON).eigen }}
-
       - name: Fetch fmt
         id: fetch-fmt
         uses: ./.github/actions/build-external
@@ -110,6 +103,20 @@ jobs:
         with:
           library: boost
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
+
+      - name: Fetch Eigen
+        id: fetch-eigen
+        uses: ./.github/actions/build-external
+        with:
+          library: eigen
+          version: ${{ fromJson(env.VERSIONS_JSON).eigen }}
+
+      - name: Fetch SQLite3
+        id: fetch-sqlite
+        uses: ./.github/actions/build-external
+        with:
+          library: sqlite
+          version: ${{ fromJson(env.VERSIONS_JSON).sqlite }}
 
       - name: Fetch RDKit
         id: fetch-rdkit
@@ -168,9 +175,10 @@ jobs:
           CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
                               ${{ steps.fetch-zlib.outputs.path }};\
                               ${{ steps.fetch-zstd.outputs.path }};\
-                              ${{ steps.fetch-eigen.outputs.path }};\
                               ${{ steps.fetch-boost.outputs.path }};\
+                              ${{ steps.fetch-eigen.outputs.path }};\
                               ${{ steps.fetch-rdkit.outputs.path }};\
+                              ${{ steps.fetch-sqlite.outputs.path }};\
                               ${{ steps.fetch-qt.outputs.path }}"
         run: |
           ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
