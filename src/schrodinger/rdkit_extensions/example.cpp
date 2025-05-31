@@ -12,6 +12,9 @@
 #include <boost/bimap.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/functional/hash.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/zstd.hpp>
 #include <boost/json.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/operators.hpp>
@@ -28,7 +31,9 @@
 #include <rdkit/GraphMol/DetermineBonds/DetermineBonds.h>
 #include <rdkit/GraphMol/DistGeomHelpers/Embedder.h>
 #include <rdkit/GraphMol/FileParsers/MolWriters.h>
+#include <rdkit/GraphMol/MarvinParse/MarvinParser.h>
 #include <rdkit/GraphMol/inchi.h>
+#include <sqlite3.h>
 #include <zstd.h>
 
 namespace schrodinger
@@ -45,6 +50,29 @@ static std::string check_zstd(std::string&& input)
                       input.size(), 1);
     ZSTD_freeCCtx(cctx);
     return output;
+}
+
+static void check_sqlite()
+{
+    auto check = [](int rc, sqlite3* db) {
+        if (rc != SQLITE_OK) {
+            throw std::runtime_error(sqlite3_errmsg(db));
+        }
+    };
+
+    sqlite3* db;
+    char* msg = 0;
+    int rc;
+    rc = sqlite3_open(":memory:", &db);
+    check(rc, db);
+    rc = sqlite3_exec(db, "CREATE TABLE MYDATA(VALUE TEXT NOT NULL);", 0, 0,
+                      &msg);
+    check(rc, db);
+    rc = sqlite3_exec(db, "INSERT INTO MYDATA (VALUE) VALUES ('Hello!');", 0, 0,
+                      &msg);
+    check(rc, db);
+    rc = sqlite3_close(db);
+    check(rc, db);
 }
 
 bool dependency_test(const std::string& smiles)
@@ -97,6 +125,17 @@ bool dependency_test(const std::string& smiles)
     // broken on windows -- maeparser.lib(Writer.obj) : error LNK2019:
     // unresolved external symbol "int const boost::iostreams::zlib::no_flush"
     RDKit::MaeWriter::getText(*mol);
+
+    // MRV
+    RDKit::MolToMrvBlock(*mol, true, -1, false);
+
+    // SQLite3
+    check_sqlite();
+
+    // boost use of gzip and zstd
+    boost::iostreams::filtering_istreambuf m_sdgr_buffer;
+    m_sdgr_buffer.push(boost::iostreams::gzip_compressor());
+    m_sdgr_buffer.push(boost::iostreams::zstd_compressor());
 
     return true;
 }
