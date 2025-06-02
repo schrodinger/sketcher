@@ -158,6 +158,7 @@ struct MolModelSnapshot {
  * redoes the addAtom call.  Instead, the calling class should listen for
  * the modelChanged signal.
  */
+
 class SKETCHER_API MolModel : public AbstractUndoableModel
 {
     Q_OBJECT
@@ -584,18 +585,36 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     /**
      * Undoably add all atoms and bonds from the given molecule into this
-     * molecule. The molecule will be centered at the origin.
+     * molecule, centering the new molecule at the specified position.
      *
      * @param mol The molecule to add
+     * @param position The position to center the new molecule at
      * @param description The description to use for the undo command.
-     * @param reposition_mol Whether to reposition the molecule.  The there is
-     * an existing molecular structure in this model, the new molecule will be
-     * positioned to the right of it.  Otherwise, the new molecule will be
-     * centered.
+     *
      */
-    void addMol(const RDKit::RWMol& mol,
+    void addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
+                  const QString& description = "Import molecule");
+
+    /**
+     * This method imports the specified RDKit::RWMol into the current model.
+     * Optionally, the imported molecule can be repositioned so that it does not
+     * overlap with the existing structure, and a flag can be set to indicate
+     * whether a new molecule was added to the model, so the scene is recentered
+     *
+     * @param mol The molecule to add (as an RDKit::RWMol).
+     * @param description The description to use for the undo command (default:
+     * "Import molecule").
+     * @param reposition_mol If true (default), the imported molecule will be
+     * repositioned to avoid overlap, or centered at the origin if the scene is
+     * empty.
+     * @param new_mol_added If true (default), indicates that a new molecule was
+     * added to the model.
+     */
+
+    void addMol(RDKit::RWMol mol,
                 const QString& description = "Import molecule",
-                const bool reposition_mol = true);
+                const bool reposition_mol = true,
+                const bool new_mol_added = true);
 
     /**
      * Undoably add the given reaction to the model.  All reactants and products
@@ -1467,23 +1486,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     boost::shared_ptr<RDKit::ChemicalReaction>
     createReaction(const bool strip_tags) const;
-
-    /**
-     * @overload
-     *
-     * @param what_changed What is changed by adding this mol.  Should be either
-     * WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED if we are really
-     * adding a new molecule, or WhatChanged::MOLECULE if we are actually adding
-     * a fragment but not bonding it to anything.
-     */
-    void addMol(RDKit::RWMol mol, const QString& description,
-                const bool reposition_mol, WhatChangedType what_changed);
 };
 
 SKETCHER_API void
 add_text_to_mol_model(MolModel& mol_model, const std::string& text,
                       const rdkit_extensions::Format format =
-                          rdkit_extensions::Format::AUTO_DETECT);
+                          rdkit_extensions::Format::AUTO_DETECT,
+                      std::optional<RDGeom::Point3D> position = std::nullopt,
+                      bool recenter_view = true);
 
 } // namespace sketcher
 } // namespace schrodinger

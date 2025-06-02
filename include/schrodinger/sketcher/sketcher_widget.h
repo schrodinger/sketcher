@@ -163,8 +163,11 @@ class SKETCHER_API SketcherWidget : public QWidget
     void copy(rdkit_extensions::Format format, SceneSubset subset);
 
     /**
-     * Paste clipboard content into the scene
+     * Paste clipboard content into the scene.
+     * @param position The position to paste the content at
      */
+    void pasteAt(std::optional<QPointF> position);
+
     void paste();
 
     /**

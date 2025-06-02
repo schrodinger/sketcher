@@ -1143,6 +1143,35 @@ BOOST_AUTO_TEST_CASE(test_addMol_size_cutoff)
         std::runtime_error);
 }
 
+/**
+ * Make sure that the selection is updated when a molecule is added
+ */
+BOOST_AUTO_TEST_CASE(test_addMol_move_selection)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCCC"));
+    model.addMol(*mol_to_add);
+    BOOST_TEST(model.getSelectedAtoms().size() == 0);
+    model.addMol(*mol_to_add, "test", true, WhatChanged::MOLECULE);
+    // there was no selection, so the new atoms should not be selected
+    BOOST_TEST(model.getSelectedAtoms().size() == 0);
+
+    // now select an atom and add the molecule again
+    model.select({model.getAtomFromTag(AtomTag(0))}, {}, {}, {},
+                 SelectMode::SELECT);
+    BOOST_TEST(model.getSelectedAtoms().size() == 1);
+    model.addMol(*mol_to_add, "test", true, WhatChanged::MOLECULE);
+    // the new atoms should be selected
+    BOOST_TEST(model.getSelectedAtoms().size() == 4);
+
+    // test undo/redo
+    undo_stack.undo();
+    BOOST_TEST(model.getSelectedAtoms().size() == 1);
+    undo_stack.redo();
+    BOOST_TEST(model.getSelectedAtoms().size() == 4);
+}
+
 BOOST_AUTO_TEST_CASE(test_clear)
 {
     QUndoStack undo_stack;

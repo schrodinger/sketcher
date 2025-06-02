@@ -47,6 +47,7 @@
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -309,16 +310,36 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
  * @internal
  * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
  */
-void SketcherWidget::paste()
+void SketcherWidget::pasteAt(std::optional<QPointF> position)
 {
     auto text = getClipboardContents();
-    if (!text.empty()) {
-        try {
-            addFromString(text, Format::AUTO_DETECT);
-        } catch (const std::exception& exc) {
-            show_error_dialog("Paste Error", exc.what(), window());
-        }
+    if (text.empty()) {
+        return;
     }
+    std::optional<RDGeom::Point3D> mol_position = std::nullopt;
+    if (position.has_value()) {
+        // Convert the position from global to scene coordinates
+        auto scene_position = m_ui->view->mapToScene(
+            m_ui->view->mapFromGlobal(position.value()).toPoint());
+        // and then to mol coordinates
+        mol_position = to_mol_xy(scene_position);
+    }
+    try {
+        add_text_to_mol_model(*m_mol_model, text, Format::AUTO_DETECT,
+                              mol_position,
+                              /*recenter_view*/ false);
+    } catch (const std::exception& exc) {
+        show_error_dialog("Paste Error", exc.what(), window());
+    }
+}
+
+/**
+ * @internal
+ * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
+ */
+void SketcherWidget::paste()
+{
+    pasteAt(std::nullopt);
 }
 
 void SketcherWidget::importText(const std::string& text, Format format)
@@ -583,7 +604,7 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
     connect(&menu, &BackgroundContextMenu::copyRequested, this,
             &SketcherWidget::copy);
     connect(&menu, &BackgroundContextMenu::pasteRequested, this,
-            &SketcherWidget::paste);
+            &SketcherWidget::pasteAt);
     connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,
             &MolModel::clear);
 }

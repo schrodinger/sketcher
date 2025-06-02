@@ -41,7 +41,7 @@ BackgroundContextMenu::BackgroundContextMenu(SketcherModel* model,
     m_cut_copy_manager->setAlwaysCopyAll(true);
     addAction(m_cut_copy_manager->m_copy_action);
     addMenu(m_cut_copy_manager->m_copy_as_menu);
-    addAction("Paste", this, &BackgroundContextMenu::pasteRequested);
+    addAction("Paste", this, [this]() { pasteRequested(pos()); });
 
     addSeparator();
     addAction("Clear Sketcher", this, &BackgroundContextMenu::clearRequested);

@@ -179,7 +179,7 @@ RDGeom::Point3D find_centroid(
     return find_centroid(mol, all_atoms_set, non_molecular_objects);
 }
 
-void center_on_origin(RDKit::ROMol& mol)
+void center_mol_on(RDKit::ROMol& mol, const RDGeom::Point3D& center)
 {
     if (!mol.getNumConformers()) {
         return;
@@ -188,8 +188,12 @@ void center_on_origin(RDKit::ROMol& mol)
     auto& conf = mol.getConformer();
     for (auto atom : mol.atoms()) {
         auto current_pos = conf.getAtomPos(atom->getIdx());
-        conf.setAtomPos(atom->getIdx(), current_pos - centroid);
+        conf.setAtomPos(atom->getIdx(), current_pos - centroid + center);
     }
+}
+void center_on_origin(RDKit::ROMol& mol)
+{
+    center_mol_on(mol, RDGeom::Point3D(0.0, 0.0, 0.0));
 }
 
 QPainterPath get_wavy_line_path(const int number_of_waves,

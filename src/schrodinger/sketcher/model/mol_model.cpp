@@ -819,20 +819,28 @@ void MolModel::remove(
     doCommandUsingSnapshots(cmd_func, desc, to_be_changed);
 }
 
-void MolModel::addMol(const RDKit::RWMol& mol, const QString& description,
-                      const bool reposition_mol)
-{
-    addMol(mol, description, reposition_mol,
-           WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED);
-}
-
-void MolModel::addMol(RDKit::RWMol mol, const QString& description,
-                      const bool reposition_mol,
-                      const WhatChangedType what_changed)
+void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
+                        const QString& description)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
+    center_mol_on(mol, position);
+    addMol(mol, description, /* reposition_mol = */ false,
+           /* new_molecule_added = */ false);
+}
+
+void MolModel::addMol(RDKit::RWMol mol, const QString& description,
+                      const bool reposition_mol, const bool new_molecule_added)
+{
+    if (mol.getNumAtoms() == 0) {
+        return;
+    }
+    const WhatChangedType what_changed =
+        (new_molecule_added)
+            ? WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED
+            : WhatChanged::MOLECULE;
+
     if (mol.getNumAtoms() > MAX_NUM_ATOMS_FOR_IMPORT) {
         throw std::runtime_error(
             fmt::format("Cannot import molecules containing more than {} atoms",
@@ -854,7 +862,19 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
         }
     }
     auto cmd_func = [this, mol]() { addMolCommandFunc(mol); };
+
+    auto undo_macro_raii = createUndoMacro(description);
+    // if there's a selection, we need to select the new molecule and nothing
+    // else. We do this by selecting everything, adding the molecule and then
+    // inverting the selection
+    bool change_selection = hasSelection();
+    if (change_selection) {
+        selectAll();
+    }
     doCommandUsingSnapshots(cmd_func, description, what_changed);
+    if (change_selection) {
+        invertSelection();
+    }
 }
 
 /**
@@ -916,7 +936,7 @@ void MolModel::addFragment(const RDKit::ROMol& fragment_to_add,
         // in what_changed. Otherwise, the view will jump when a fragment is
         // added.)
         addMol(frag, desc, /* reposition_mol = */ false,
-               /* what_changed = */ WhatChanged::MOLECULE);
+               /* new_molecule_added = */ false);
         return;
     }
 
@@ -2690,14 +2710,23 @@ void MolModel::kekulize()
 }
 
 void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
-                           const rdkit_extensions::Format format)
+                           const rdkit_extensions::Format format,
+                           std::optional<RDGeom::Point3D> position,
+                           const bool recenter_view)
 {
     auto probably_a_reaction = [](const auto& text) {
         return boost::starts_with(text, "$RXN") || boost::contains(text, ">>");
     };
 
     try {
-        mol_model.addMol(*to_rdkit(text, format));
+        auto mol = to_rdkit(text, format);
+        if (position.has_value()) {
+            mol_model.addMolAt(*mol, *position, "Import molecule");
+
+        } else {
+            mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
+                             recenter_view);
+        }
     } catch (const std::exception&) {
         try { // if molecule parsing fails, see if it's a reaction
             mol_model.addReaction(*to_rdkit_reaction(text, format));

@@ -31,6 +31,8 @@ namespace sketcher
  * If the given molecule has coordinates, center it on the origin. Otherwise do
  * nothing.
  */
+void center_mol_on(RDKit::ROMol& mol, const RDGeom::Point3D& center);
+
 void center_on_origin(RDKit::ROMol& mol);
 
 /**
