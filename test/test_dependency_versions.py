@@ -22,18 +22,23 @@ import sys
 import types
 from collections.abc import Iterable
 
+import pytest
+
 SKETCHER_TEST_DIR = pathlib.Path(__file__).parent
 SKETCHER_VERSION_FILE = SKETCHER_TEST_DIR / ".." / "external" / "versions.json"
 # The name of the package factory virtual environment to use when fetching
 # version info from mmshare
 MMSHARE_PF_ENVIRONMENT = "schrodinger"
-# Packages that we should exclude from the version checks
-PACKAGES_TO_IGNORE = [
+# packages that we should completely exclude from the version checks
+PACKAGES_TO_SKIP = [
+    # The core suite doesn't include emscripten
+    "emscripten",
+]
+# packages that we know are out of sync
+PACKAGES_TO_XFAIL = [
     # Core suite builds frequently use a commercial-only LTS release of Qt,
     # which are not available for open-source builds of Sketcher
     "qt",
-    # The core suite doesn't include emscripten
-    "emscripten",
     # this repo is currently on a newer RDKit and Boost versions than the core
     # suite
     "rdkit",
@@ -121,14 +126,33 @@ def normalize_version(version_text: str) -> tuple[int]:
     return tuple(map(int, numeric_fields))
 
 
-def test_dependency_versions():
+def test_dependency_versions(package: str, sketcher_version: tuple[int],
+                             mmshare_version: tuple[int]):
     """
-    Ensure that all dependency versions are in sync (other than packages listed
-    in PACKAGES_TO_IGNORE).
+    Ensure that the versions match for the given package. This test is
+    parametrized below in `pytest_generate_tests` (which is called automatically
+    during test collection).
     """
+    err = (f"{package} versions out of sync:\n"
+           f"\tsketcher: {'.'.join(map(str, sketcher_version))}\n"
+           f"\tmmshare:  {'.'.join(map(str, mmshare_version))}\n")
+    assert sketcher_version == mmshare_version, err
+
+
+def pytest_generate_tests(metafunc: "_pytest.python.Metafunc"):
+    """
+    Generate the parametrization for `test_dependency_version` so that it's
+    called once for each package listed in `SKETCHER_VERSION_FILE` other than
+    packages listed in `PACKAGES_TO_SKIP`. Also mark all packages in
+    `PACKAGES_TO_XFAIL` with `xfail`.
+    """
+    if metafunc.function is not test_dependency_versions:
+        # we only want to parametrize test_dependency_versions
+        return
+
     with open(SKETCHER_VERSION_FILE) as sketcher_versions_in:
         sketcher_versions = json.load(sketcher_versions_in)
-    for package in PACKAGES_TO_IGNORE:
+    for package in PACKAGES_TO_SKIP:
         sketcher_versions.pop(package)
     # convert the versions to tuples of ints.  Otherwise, RDKit version
     # comparisons may fail because of leading zeroes in the month.  (I.e.
@@ -139,4 +163,22 @@ def test_dependency_versions():
     }
     mmshare_versions = get_dependency_versions_from_mmshare(
         sketcher_versions.keys())
-    assert sketcher_versions_as_ints == mmshare_versions
+
+    # generate the arguments and marks that we'll pass into the test
+    params = []
+    # and the names for each test (otherwise pytest will name them things like
+    # "zlib-sketcher_version6-mmshare_version6")
+    ids = []
+    for package, sketcher_ver in sketcher_versions_as_ints.items():
+        mmshare_ver = mmshare_versions[package]
+        marks = []
+        if package in PACKAGES_TO_XFAIL:
+            marks.append(pytest.mark.xfail)
+        params.append(
+            pytest.param(package, sketcher_ver, mmshare_ver, marks=marks))
+        ids.append(package)
+
+    # actually generate the parametrized tests
+    metafunc.parametrize(["package", "sketcher_version", "mmshare_version"],
+                         params,
+                         ids=ids)
