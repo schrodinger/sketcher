@@ -85,7 +85,7 @@ def get_dependency_versions_from_mmshare(
     mmshare_pf = package_factory.Pixi(logger, MMSHARE_PF_ENVIRONMENT)
     mmshare_manifest_file = package_factory.Pixi.get_requirements_file()
     # Build a pattern that matches only the packages we're looking for. The
-    # carat and dollar sign specify that the package name must be an exact match
+    # caret and dollar sign specify that the package name must be an exact match
     # without any extra preceding or trailing characters, since we don't want to
     # match, e.g., xgboost when looking for boost.
     packages_description = "|".join(f"^{dep}$" for dep in packages)
