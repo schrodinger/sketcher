@@ -42,6 +42,11 @@ class SKETCHER_API View : public QGraphicsView
     void fitToScreen();
 
     /**
+     * If needed scale the view matrix to include objects that are off-screen.
+     */
+    void zoomOutToIncludeAll();
+
+    /**
      * Translate the viewport by delta. This is used to pan the view around the
      * scene when the user hits the arrow keys.
      */
@@ -110,10 +115,9 @@ class SKETCHER_API View : public QGraphicsView
     void enlargeSceneIfNeeded();
 
     /**
-     * Center the view on the center of the bounding box of all items in the
-     * scene.
+     * Center the view on the given point
      */
-    void centerViewportOnItems();
+    void centerViewportOn(QPointF point);
 
     /**
      * Scale the matrix, multiply the current zoom level by scale_factor, but
@@ -122,6 +126,11 @@ class SKETCHER_API View : public QGraphicsView
      * to avoid zooming in too close.
      */
     void scaleSafely(qreal scale_factor);
+
+    /**
+     * Utility function to fit given rectangle to the screen.
+     */
+    void fitRecToScreen(const QRectF& rec);
 
     MolModel* m_mol_model = nullptr;
     bool m_currently_pinching_trackpad = false;

@@ -136,19 +136,10 @@ void View::enlargeSceneIfNeeded()
     cur_scene->setSceneRect(scene_rect.united(view_rect));
 }
 
-void View::centerViewportOnItems()
+void View::centerViewportOn(QPointF point)
 {
-    Scene* cur_scene = dynamic_cast<Scene*>(scene());
-    if (!cur_scene) {
-        return;
-    }
-    // get the bounding rectangle of all molecular items in the scene
-    QRectF items_bounding_rect = cur_scene->getInteractiveItemsBoundingRect();
-    if (!items_bounding_rect.isValid()) {
-        return;
-    }
     auto scene_rect = sceneRect();
-    scene_rect.moveCenter(items_bounding_rect.center());
+    scene_rect.moveCenter(point);
     setSceneRect(scene_rect);
 }
 
@@ -161,18 +152,25 @@ void View::wheelEvent(QWheelEvent* event)
     scaleSafely(scal);
 }
 
-void View::fitToScreen()
+void View::zoomOutToIncludeAll()
 {
-    if (!m_initial_geometry_set) {
-        // If the view hasn't been shown yet then it doesn't know how large it
-        // will be, so this method would fit the molecule into the initial
-        // default widget size, which is tiny. The zoom doesn't get updated when
-        // the window is shown, so we'd wind up with a normal size window and a
-        // very tiny molecule. To avoid this, we don't do anything now and
-        // instead re-call this method as soon as the view is shown.
-        m_delayed_fit_to_screen = true;
+    Scene* cur_scene = dynamic_cast<Scene*>(scene());
+    if (!cur_scene) {
         return;
     }
+    auto visible_rect = mapToScene(rect()).boundingRect();
+    QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
+    rec = rec.united(visible_rect);
+    if (rec == visible_rect) {
+        // If the bounding rect is the same as the visible rect, then we
+        // don't need to zoom out, so just return
+        return;
+    }
+    fitRecToScreen(rec);
+}
+
+void View::fitToScreen()
+{
     Scene* cur_scene = dynamic_cast<Scene*>(scene());
     if (!cur_scene) {
         return;
@@ -184,13 +182,17 @@ void View::fitToScreen()
                -rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR,
                rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
                rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR);
+    fitRecToScreen(rec);
+}
 
-    if (rec.isValid()) {
-        fitInView(rec, Qt::KeepAspectRatio);
-        // avoid zooming in too much
-        scaleSafely(1.0);
+void View::fitRecToScreen(const QRectF& rec)
+{
+
+    if (!rec.isValid()) {
+        return;
     }
-    centerViewportOnItems();
+    fitInView(rec, Qt::KeepAspectRatio);
+    centerViewportOn(rec.center());
     enlargeSceneIfNeeded();
 }
 
@@ -198,6 +200,8 @@ void View::setMolModel(schrodinger::sketcher::MolModel* mol_model)
 {
     m_mol_model = mol_model;
     connect(mol_model, &MolModel::newMoleculeAdded, this, &View::fitToScreen);
+    connect(mol_model, &MolModel::modelChanged, this,
+            &View::zoomOutToIncludeAll);
 }
 
 void View::translateViewportFromScreenCoords(
