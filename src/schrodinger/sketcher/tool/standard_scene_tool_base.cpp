@@ -130,6 +130,7 @@ void StandardSceneToolBase::onRightButtonDragMove(
     QGraphicsSceneMouseEvent* const event)
 {
     translate(event, m_atoms_to_move, m_non_mol_objs_to_move);
+    updateMergeHintItem();
     AbstractSceneTool::onRightButtonDragMove(event);
 }
 
@@ -137,6 +138,7 @@ void StandardSceneToolBase::onRightButtonDragRelease(
     QGraphicsSceneMouseEvent* const event)
 {
     finishDrag();
+    updateMergeHintItem();
     AbstractSceneTool::onRightButtonDragRelease(event);
 }
 
