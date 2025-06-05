@@ -26,6 +26,7 @@
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
+#include "schrodinger/sketcher/dialog/rendering_settings_dialog.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
@@ -146,6 +147,30 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connectContextMenu(*m_selection_context_menu);
     connectContextMenu(*m_sgroup_context_menu);
     connectContextMenu(*m_background_context_menu);
+
+    // create the file and image export dialogs
+    m_file_export_dialog = new FileExportDialog(m_sketcher_model, window());
+    connect(m_file_export_dialog, &FileExportDialog::exportTextRequested, this,
+            [this](Format format) {
+                return QString::fromStdString(getString(format));
+            });
+
+    m_file_save_image_dialog =
+        new FileSaveImageDialog(m_sketcher_model, window());
+    connect(m_file_save_image_dialog,
+            &FileSaveImageDialog::exportImageRequested, this,
+            [this](auto format, const auto& opts) {
+                // opts here contains meaningful values only for width and
+                // height and background transparency, everything else is
+                // default values. We don't call
+                // m_sketcher_model->loadRenderOptions because m_sketcher_model
+                // already contains the meaningful values (SKETCH-1922)
+                return get_image_bytes(*m_scene, format, opts);
+            });
+
+    // create the rendering preferences dialog
+    m_rendering_settings_dialog =
+        new RenderingSettingsDialog(m_sketcher_model, window());
 
     // force the scene to update the view's cursor now that all of the signals
     // are connected
@@ -357,27 +382,17 @@ void SketcherWidget::importText(const std::string& text, Format format)
 
 void SketcherWidget::showFileExportDialog()
 {
-    auto dialog = new FileExportDialog(m_sketcher_model, window());
-    connect(dialog, &FileExportDialog::exportTextRequested, this,
-            [this](Format format) {
-                return QString::fromStdString(getString(format));
-            });
-    dialog->show();
+    m_file_export_dialog->show();
 }
 
 void SketcherWidget::showFileSaveImageDialog()
 {
-    auto dialog = new FileSaveImageDialog(m_sketcher_model, window());
-    connect(dialog, &FileSaveImageDialog::exportImageRequested, this,
-            [this](auto format, const auto& opts) {
-                // opts here contains meaningful values only for width and
-                // height and background transparency, everything else is
-                // default values. We don't call
-                // m_sketcher_model->loadRenderOptions because m_sketcher_model
-                // already contains the meaningful values (SKETCH-1922)
-                return get_image_bytes(*m_scene, format, opts);
-            });
-    dialog->show();
+    m_file_save_image_dialog->show();
+}
+
+void SketcherWidget::showRenderingSettingsDialog()
+{
+    m_rendering_settings_dialog->show();
 }
 
 void SketcherWidget::showEditAtomPropertiesDialog(
@@ -474,6 +489,9 @@ void SketcherWidget::connectTopBarSlots()
             &SketcherWidget::showFileSaveImageDialog);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, this,
             &SketcherWidget::showFileExportDialog);
+    connect(m_ui->top_bar_wdg,
+            &SketcherTopBar::adjustRenderingSettingsRequested, this,
+            &SketcherWidget::showRenderingSettingsDialog);
 }
 
 void SketcherWidget::connectSideBarSlots()

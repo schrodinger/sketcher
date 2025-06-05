@@ -47,6 +47,9 @@ class SketcherModel;
 enum class ImageFormat;
 enum class ModelKey;
 enum class SceneSubset;
+class FileExportDialog;
+class FileSaveImageDialog;
+class RenderingSettingsDialog;
 
 /**
  * Sketcher widget meant for use in LiveDesign and Maestro.
@@ -187,6 +190,12 @@ class SKETCHER_API SketcherWidget : public QWidget
     void showFileSaveImageDialog();
 
     /**
+     * Show the rendering settings dialog, which allows the user to change
+     * rendering options such as atom colors, bond widths, and background color.
+     */
+    void showRenderingSettingsDialog();
+
+    /**
      * Show the Edit Atom Properties dialog for the specified atom
      * @param atom The atom to load into the dialog
      * @param set_to_allowed_list Whether to switch the dialog to display an
@@ -237,6 +246,13 @@ class SKETCHER_API SketcherWidget : public QWidget
     SelectionContextMenu* m_selection_context_menu = nullptr;
     BracketSubgroupContextMenu* m_sgroup_context_menu = nullptr;
     BackgroundContextMenu* m_background_context_menu = nullptr;
+
+    /**
+     * Dialogs
+     */
+    FileExportDialog* m_file_export_dialog = nullptr;
+    FileSaveImageDialog* m_file_save_image_dialog = nullptr;
+    RenderingSettingsDialog* m_rendering_settings_dialog = nullptr;
 
     /**
      * Watermark centered in the Scene; only shown when no atoms are present

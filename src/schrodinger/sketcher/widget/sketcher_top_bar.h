@@ -72,7 +72,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     void addExplicitHydrogensRequested();
     void removeExplicitHydrogensRequested();
     void addCustomFragmentRequested(const std::string& text);
-    void showPreferencesDialog();
+    void adjustRenderingSettingsRequested();
     void fitToScreenRequested();
 
   protected:

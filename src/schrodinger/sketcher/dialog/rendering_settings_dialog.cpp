@@ -21,10 +21,13 @@ struct RenderingSettings {
     bool m_explicit_abs_labels_shown = false;
 };
 
-RenderingSettingsDialog::RenderingSettingsDialog(QWidget* parent,
-                                                 SketcherModel* model) :
+RenderingSettingsDialog::RenderingSettingsDialog(SketcherModel* model,
+                                                 QWidget* parent) :
     ModalDialog(parent)
 {
+    // ModalDialog sets WA_DeleteOnClose to true, but we want to keep this class
+    // when the dialog is closed, so we override it here
+    setAttribute(Qt::WA_DeleteOnClose, false);
     m_ui.reset(new Ui::RenderingSettingsDialog());
     m_ui->setupUi(this);
     initColorModes();

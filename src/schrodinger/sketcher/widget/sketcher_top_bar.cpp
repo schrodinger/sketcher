@@ -19,7 +19,6 @@
 #include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
-#include "schrodinger/sketcher/dialog/rendering_settings_dialog.h"
 
 namespace schrodinger
 {
@@ -112,7 +111,7 @@ void SketcherTopBar::initMenus()
     m_configure_view_menu = new ConfigureViewMenu(this);
     ui->configure_view_btn->setMenu(m_configure_view_menu);
     connect(m_configure_view_menu->m_preferences_act, &QAction::triggered, this,
-            &SketcherTopBar::showPreferencesDialog);
+            &SketcherTopBar::adjustRenderingSettingsRequested);
 
     // Set up "Help" menu
     m_help_menu = new HelpMenu(this);
@@ -133,13 +132,6 @@ void SketcherTopBar::initMenus()
          }) {
         action->setVisible(false);
     }
-
-    // Set up the preferences menu
-    connect(this, &SketcherTopBar::showPreferencesDialog, this, [this]() {
-        auto rendering_settings_dialog =
-            new RenderingSettingsDialog(this, getModel());
-        rendering_settings_dialog->show();
-    });
 }
 
 void SketcherTopBar::setModel(SketcherModel* model)

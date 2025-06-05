@@ -33,6 +33,9 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     ModalDialog(parent),
     m_model_has_reaction(model->hasReaction())
 {
+    // ModalDialog sets WA_DeleteOnClose to true, but we want to keep this class
+    // when the dialog is closed, so we override it here
+    setAttribute(Qt::WA_DeleteOnClose, false);
     m_ui.reset(new Ui::FileExportDialog());
     setupDialogUI(*m_ui);
 

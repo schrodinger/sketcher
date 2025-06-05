@@ -22,7 +22,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
 {
     Q_OBJECT
   public:
-    RenderingSettingsDialog(QWidget* parent, SketcherModel* model);
+    RenderingSettingsDialog(SketcherModel* model, QWidget* parent);
     ~RenderingSettingsDialog();
 
   protected slots:
