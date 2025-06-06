@@ -111,8 +111,7 @@ struct Linkage {
     }
 };
 
-bool already_matched(const RDKit::ROMol& mol,
-                     const std::vector<unsigned int>& ids)
+bool already_matched(const RDKit::ROMol& mol, std::span<const unsigned int> ids)
 {
     // Make sure this match hasn't already been accounted for by a previous
     // match
