@@ -125,8 +125,6 @@ bool dependency_test(const std::string& smiles)
     RDKit::MolToInchi(*mol, aux);
     boost::shared_ptr<RDKit::ChemicalReaction> rxn;
     rxn.reset(RDKit::RxnSmartsToChemicalReaction("C.C>>CC", nullptr));
-    // broken on windows -- maeparser.lib(Writer.obj) : error LNK2019:
-    // unresolved external symbol "int const boost::iostreams::zlib::no_flush"
     RDKit::MaeWriter::getText(*mol);
 
     // MRV

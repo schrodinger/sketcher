@@ -56,6 +56,12 @@ if(CMAKE_TOOLCHAIN_FILE)
         -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}
     )
 endif()
+if(CMAKE_FIND_ROOT_PATH)
+    # make sure we can always find the dependencies that we've built, even if
+    # emscripten is trying to prevent us from finding system libraries
+    list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+        -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+endif()
 
 # Build fmt library
 ExternalProject_Add(
@@ -130,6 +136,7 @@ set_cmake_arg(
   multi_array
   multiprecision
   program_options
+  rational
   serialization
   # rdkit_extensions required libraries
   bimap
@@ -183,7 +190,8 @@ ExternalProject_Add_Step(boost install_beast_header_only
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
-  ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
+  ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+  ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
 if(EMSCRIPTEN)
     # The InChi build tries to guess whether the compiler provides isascii() or
