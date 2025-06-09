@@ -124,6 +124,9 @@ jobs:
         with:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
+          # RDKit depends on Boost, so make sure that we rebuild RDKit if Boost
+          # has been upgraded
+          cache-suffix: -boost-${{ fromJson(env.VERSIONS_JSON).boost }}
 
       - name: Install Qt's required packages
         if: matrix.os == 'ubuntu-latest'
