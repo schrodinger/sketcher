@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.24)
 include(ExternalProject)
 
 project(schrodinger_sketcher_external)

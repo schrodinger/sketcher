@@ -34,7 +34,7 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install cmake==3.30.0 ninja clang-format==14.0.6
+        run: python3 -m pip install cmake==3.24.0 ninja clang-format==14.0.6
 
       - name: Code formatting check
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
