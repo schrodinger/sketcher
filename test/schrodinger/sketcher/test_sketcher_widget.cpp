@@ -10,6 +10,7 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
+#include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
@@ -440,4 +441,18 @@ BOOST_AUTO_TEST_CASE(test_switch_to_C_on_empty_scene)
         BOOST_TEST(sk.m_sketcher_model->getAtomTool() == AtomTool::ELEMENT);
         BOOST_TEST(sk.m_sketcher_model->getElement() == Element::C);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_zoom_on_small_molecule)
+{
+    // test that zooming in on a small molecule doesn't zoom too much in
+    TestSketcherWidget sk;
+    sk.addFromString("C", Format::SMILES);
+    auto view = sk.m_ui->view;
+    view->fitToScreen();
+    auto matrix = view->transform();
+    float m11 = matrix.m11();
+    float m22 = matrix.m22();
+    BOOST_TEST(m11 <= 1.0);
+    BOOST_TEST(m22 <= 1.0);
 }

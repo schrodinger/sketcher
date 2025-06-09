@@ -183,6 +183,9 @@ void View::fitToScreen()
                rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
                rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR);
     fitRecToScreen(rec);
+    // After fitting to screen, we want to ensure that the scene is not too
+    // zoomed in
+    scaleSafely(1.0);
 }
 
 void View::fitRecToScreen(const QRectF& rec)

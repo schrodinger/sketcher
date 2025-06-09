@@ -57,6 +57,7 @@ class TestSketcherWidget : public SketcherWidget
     using SketcherWidget::m_mol_model;
     using SketcherWidget::m_scene;
     using SketcherWidget::m_sketcher_model;
+    using SketcherWidget::m_ui;
     using SketcherWidget::m_undo_stack;
     using SketcherWidget::m_watermark_item;
     using SketcherWidget::paste;
