@@ -1,6 +1,7 @@
 #include "schrodinger/rdkit_extensions/cg_conversions.h"
 
 #include <queue>
+#include <span>
 #include <unordered_map>
 #include <memory>
 #include <fmt/format.h>
