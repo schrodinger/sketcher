@@ -12,6 +12,9 @@ inputs:
     description: "Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)"
     required: false
     default: false
+  cache-suffix:
+    description: "An additional string to append to the cache key. Can be used to specify versions of the dependencies of the package being built/fetched."
+    required: false
 
 outputs:
   path:
@@ -28,8 +31,7 @@ runs:
         lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
       with:
         path: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
-        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ inputs.host-build == 'true' && 'host' || matrix.build-output }}
-        
+        key: ${{ inputs.library }}-${{ inputs.version }}${{inputs.cache-suffix}}-${{ runner.os }}-${{ inputs.host-build == 'true' && 'host' || matrix.build-output }}
 
     - name: Build library
       if: steps.cache-check.outputs.cache-hit != 'true'

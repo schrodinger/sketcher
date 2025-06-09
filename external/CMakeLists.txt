@@ -13,6 +13,7 @@ string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)
 string(JSON QT_VERSION GET ${VERSIONS} qt)
 string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
 string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
 string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 
@@ -54,6 +55,12 @@ if(CMAKE_TOOLCHAIN_FILE)
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR}
     )
+endif()
+if(CMAKE_FIND_ROOT_PATH)
+    # make sure we can always find the dependencies that we've built, even if
+    # emscripten is trying to prevent us from finding system libraries
+    list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+        -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 # Build fmt library
@@ -99,7 +106,20 @@ ExternalProject_Add(
   GIT_TAG ${EIGEN_VERSION}
   GIT_SHALLOW TRUE
   CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/eigen-${EIGEN_VERSION}
+)
+
+# Build SQLite library
+ExternalProject_Add(
+  sqlite
+  GIT_REPOSITORY https://github.com/algoritnl/sqlite-amalgamation.git
+  GIT_TAG version-${SQLITE_VERSION}
+  GIT_SHALLOW TRUE
+  CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/sqlite-${SQLITE_VERSION}
+    -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
 )
 
 # Build Boost library
@@ -116,6 +136,7 @@ set_cmake_arg(
   multi_array
   multiprecision
   program_options
+  rational
   serialization
   # rdkit_extensions required libraries
   bimap
@@ -138,6 +159,8 @@ ExternalProject_Add(
     -DBOOST_RUNTIME_LINK=static
     -DBOOST_IOSTREAMS_ENABLE_BZIP2=OFF
     -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
+    -DBOOST_IOSTREAMS_ENABLE_ZSTD=ON
+    -DBOOST_IOSTREAMS_ZSTD_TARGET=zstd::libzstd_static
     ${EXTRA_BOOST_CMAKE_ARGS})
 
 # building boost::beast will fail on wasm builds because it pulls in
@@ -167,7 +190,8 @@ ExternalProject_Add_Step(boost install_beast_header_only
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
   RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
-  ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
+  ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
+  ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
 if(EMSCRIPTEN)
     # The InChi build tries to guess whether the compiler provides isascii() or

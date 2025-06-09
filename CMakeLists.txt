@@ -7,14 +7,13 @@ project(
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-cmake_policy(SET CMP0167 NEW)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(ENFORCE_DEPENDENCY_VERSIONS
     "Require that the dependencies match the versions listed in \
     external/versions.json"
     ON)
-    
+
 set(SUPPRESSION_FILE "test_valgrind.suppressions")
 set(MEMTEST_COMMAND
     "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
@@ -29,6 +28,7 @@ if (${ENFORCE_DEPENDENCY_VERSIONS})
     string(JSON FMT_VERSION GET ${VERSIONS} fmt)
     string(JSON QT_VERSION GET ${VERSIONS} qt)
     string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+    string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
     string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
     string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 endif()
@@ -65,6 +65,7 @@ find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
+find_package(SQLite3 ${SQLITE_VERSION} REQUIRED CONFIG)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
@@ -72,6 +73,8 @@ find_package(zstd ${ZSTD_VERSION} REQUIRED)
 function(setup_target TARGET)
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX)
+  elseif(WIN32)
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=hidden -Wno-restrict)
   else()
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=hidden)
   endif()
@@ -113,14 +116,17 @@ target_compile_definitions(${RDKIT_EXTENSIONS_LIB} PRIVATE IN_RDKIT_EXTENSIONS_D
 target_link_libraries(
   ${RDKIT_EXTENSIONS_LIB}
   PRIVATE Boost::filesystem
+          Boost::iostreams
           Boost::json
           Boost::serialization
           RDKit::CIPLabeler
           RDKit::ChemReactions
           RDKit::DetermineBonds
           RDKit::DistGeomHelpers
+          RDKit::MarvinParser
           RDKit::RDInchiLib
           fmt::fmt
+          SQLite::SQLite3
           ZLIB::ZLIB
           ${ZSTD_LIB_NAME})
 
