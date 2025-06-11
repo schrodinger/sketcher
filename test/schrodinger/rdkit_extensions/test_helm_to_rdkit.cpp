@@ -481,3 +481,11 @@ BOOST_DATA_TEST_CASE(TestNeighboringMonomerUnsupportedCustomBonds,
 {
     BOOST_CHECK_THROW(helm_to_rdkit(test_helm), std::runtime_error);
 }
+
+BOOST_AUTO_TEST_CASE(TestReadingInlineSmilesSurroundedBySquareBrackets)
+{
+    const auto mol = helm_to_rdkit("PEPTIDE1{[[H][*:1]]}$$$$V2.0");
+    const auto test_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(test_atom->template getProp<std::string>(ATOM_LABEL) ==
+               "[H][*:1]");
+}
