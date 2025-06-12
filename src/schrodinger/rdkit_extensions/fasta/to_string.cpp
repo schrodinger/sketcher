@@ -99,45 +99,6 @@ namespace fasta
 
 } // namespace fasta
 
-static void check_for_supplementary_info(
-    const std::vector<::RDKit::SubstanceGroup>& sgroups,
-    std::vector<std::string>& errors)
-{
-    static constexpr std::string_view data_sgroup{"DAT"};
-    static const std::string sgroup_fieldname{"FIELDNAME"};
-
-    const auto supplementary_info_sgroup =
-        std::find_if(sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
-            return get_property<std::string>(&sgroup, SGROUP_TYPE) ==
-                       data_sgroup &&
-                   get_property<std::string>(&sgroup, sgroup_fieldname) ==
-                       SUPPLEMENTARY_INFORMATION;
-        });
-
-    if (supplementary_info_sgroup == sgroups.end()) {
-        return;
-    }
-
-    static const std::string sgroup_datafields{"DATAFIELDS"};
-
-    std::vector<std::string> supplementary_info;
-    if (!supplementary_info_sgroup->getPropIfPresent(sgroup_datafields,
-                                                     supplementary_info)) {
-        return;
-    }
-
-    if (!supplementary_info[0].empty()) {
-        errors.push_back("FASTA conversions with HELMV2.0 polymer "
-                         "groups are currently unsupported.");
-    }
-
-    const auto& mol = supplementary_info_sgroup->getOwningMol();
-    if (!supplementary_info[1].empty() || mol.hasProp("extended_annotations")) {
-        errors.push_back("FASTA conversions with HELMV2.0 extended "
-                         "annotations are currently unsupported.");
-    }
-}
-
 static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
 {
     if (!schrodinger::rdkit_extensions::is_coarse_grain_mol(mol)) {
@@ -158,8 +119,6 @@ static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
             "FASTA conversions with HELMV2.0 monomer repetitions like A'4' and "
             "A'2-4' are currently unsupported.");
     }
-
-    check_for_supplementary_info(sgroups, errors);
 
     // BLOB and CHEM polymers are unsupported
     auto polymer_ids = get_polymer_ids(mol);

@@ -27,20 +27,15 @@ BOOST_AUTO_TEST_CASE(TestAtomisticConversion)
         "FASTA conversions with atomistic mols are currently unsupported");
 }
 
-BOOST_DATA_TEST_CASE(
-    TestUnsupportedFeatures,
-    bdata::make(std::vector<std::string>{
-        R"(PEPTIDE1{A.G.J.K.L}$$$"something"$V2.0)", // extended
-                                                     // annotations
-        "PEPTIDE1{A.G.C.K.L}|PEPTIDE2{A.G.C.K.L}$$G1(PEPTIDE1+"
-        "PEPTIDE2)$$V2.0",                         // polymer groups
-        "PEPTIDE1{A.G'3'}$$$$V2.0",                // monomer repeats
-        "PEPTIDE1{A.G.C.K.L}|BLOB1{Bead}$$$$V2.0", // blob
-                                                   // polymers
-        "PEPTIDE1{A.G.C.K.L}|CHEM1{[dR]}$$$$V2.0", // unknown
-                                                   // polymers
-    }),
-    input_helm)
+BOOST_DATA_TEST_CASE(TestUnsupportedFeatures,
+                     bdata::make(std::vector<std::string>{
+                         "PEPTIDE1{A.G'3'}$$$$V2.0", // monomer repeats
+                         "PEPTIDE1{A.G.C.K.L}|BLOB1{Bead}$$$$V2.0", // blob
+                                                                    // polymers
+                         "PEPTIDE1{A.G.C.K.L}|CHEM1{[dR]}$$$$V2.0", // unknown
+                                                                    // polymers
+                     }),
+                     input_helm)
 {
     auto mol = helm::helm_to_rdkit(input_helm);
     TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::rdkit_to_fasta(*mol),
@@ -146,4 +141,16 @@ BOOST_DATA_TEST_CASE(
 {
     auto mol = helm::helm_to_rdkit(input_helm);
     BOOST_TEST(fasta::rdkit_to_fasta(*mol) == expected_fasta);
+}
+
+BOOST_DATA_TEST_CASE(
+    TestWritingStructuresWithSupplementaryHELMInformation,
+    bdata::make(std::vector<std::string>{
+        R"(PEPTIDE1{A.C.D}|PEPTIDE2{D.A.C}$$G3(PEPTIDE1,PEPTIDE2)$$V2.0)",
+        R"(PEPTIDE1{A.C.D}|PEPTIDE2{D.A.C}$$${"Name":"Test peptides"}$V2.0)",
+        R"(PEPTIDE1{A.C.D}|PEPTIDE2{D.A.C}$$G3(PEPTIDE1,PEPTIDE2)${"Name":"Test peptides"}$V2.0)"}),
+    input_helm)
+{
+    auto mol = helm::helm_to_rdkit(input_helm);
+    BOOST_TEST(fasta::rdkit_to_fasta(*mol) == ">\nACD\n>\nDAC\n");
 }
