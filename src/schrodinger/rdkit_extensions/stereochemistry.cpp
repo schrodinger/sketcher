@@ -139,6 +139,8 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     }
 
     RDKit::ClearSingleBondDirFlags(mol);
+    RDKit::Chirality::clearMolBlockWedgingInfo(mol);
+
     try {
         // Temporarily silence RDKit's loggers
         RDLog::LogStateSetter silence_rdkit_logging;
