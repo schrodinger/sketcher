@@ -12,6 +12,7 @@
 
 #include <string>
 #include <string_view>
+#include "schrodinger/rdkit_extensions/helm/helm_parser.h"
 #include "schrodinger/rdkit_extensions/helm/token_scanner.h"
 
 #undef  YY_DECL
@@ -54,8 +55,7 @@ float_token                 [0-9]*\.[0-9]+
 positive_int                [1-9][0-9]*
 polymer_id                  (PEPTIDE|RNA|CHEM|BLOB){positive_int}
 
-multicharacter_monomer      ([a-zA-Z0-9]+([_-]+[a-zA-Z0-9]+)*)
-inline_smiles_monomer       (\[[^\[\]\n]+\]|[^\[\]\n]+)+
+multicharacter_monomer      (\[[^\[\]\n]+\]|[^\[\]\n]+)+
 inline_annotation           \"[^\"]+\"
 num_repetitions             {positive_int}|{positive_int}\-{positive_int}
 ratio                       ({float_token}|{positive_int})
@@ -82,9 +82,10 @@ ratio                       ({float_token}|{positive_int})
 <PEPTIDE,NUCLEOTIDE,CHEM>_ { return token::MISSING_MONOMER; }
 <PEPTIDE,NUCLEOTIDE,CHEM>\?|{ratio} { return token::MONOMER_RATIO; }
 <PEPTIDE,NUCLEOTIDE,CHEM>\* { return token::MONOMER_WILDCARD; }
-<PEPTIDE,NUCLEOTIDE,CHEM>\[{multicharacter_monomer}\] { return token::MULTI_CHARACTER_MONOMER; }
-<PEPTIDE,NUCLEOTIDE,CHEM>\[{inline_smiles_monomer}\] { return token::INLINE_SMILES_MONOMER; }
-
+<PEPTIDE,NUCLEOTIDE,CHEM>\[{multicharacter_monomer}\] {
+    return helm::is_smiles_monomer(yytext) ? token::INLINE_SMILES_MONOMER
+                                           : token::MULTI_CHARACTER_MONOMER;
+}
 <PEPTIDE,NUCLEOTIDE,BLOB,CHEM>\| { BEGIN INITIAL; return yytext[0]; }
 <PEPTIDE,NUCLEOTIDE,BLOB,CHEM>{inline_annotation} { return token::ANNOTATION; }
 <PEPTIDE,NUCLEOTIDE>\'{num_repetitions}\' { return token::REPETITIONS; }

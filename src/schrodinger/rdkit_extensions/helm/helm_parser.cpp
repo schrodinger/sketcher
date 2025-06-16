@@ -4,12 +4,14 @@
 #include <array>
 #include <fmt/format.h>
 #include <iterator>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
+#include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
 #include "schrodinger/rdkit_extensions/helm/validation.h"
 
@@ -233,4 +235,27 @@ void HelmParser::saveError(const unsigned int num_chars_processed,
         std::string(num_dashes, '-'), err_msg));
 }
 
+[[nodiscard]] bool is_smiles_monomer(const std::string_view& token)
+{
+    // Assume it's SMILES if it has whitespace
+    if (token.find_first_of(" \t\n\f\r\v") != std::string_view::npos) {
+        return true;
+    }
+
+    // Small optimization to exit early
+    if (std::ranges::all_of(token.substr(1, token.size() - 2),
+                            [](unsigned char c) {
+                                return c == '-' || c == '_' || std::isalnum(c);
+                            })) {
+        return false;
+    }
+
+    // Parse the SMILES literally
+    static const RDKit::v2::SmilesParse::SmilesParserParams smi_opts{
+        .sanitize = false, .removeHs = false, .replacements = {}};
+
+    [[maybe_unused]] schrodinger::rdkit_extensions::CaptureRDErrorLog rdkit_log;
+    const std::string smiles{token.substr(1, token.size() - 2)};
+    return RDKit::v2::SmilesParse::MolFromSmiles(smiles, smi_opts) != nullptr;
+}
 } // namespace helm

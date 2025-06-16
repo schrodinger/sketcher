@@ -116,4 +116,8 @@ class RDKIT_EXTENSIONS_API HelmParser
     helm_info m_parsed_info;
 };
 
+/// Helper api to determine whether a multi-character monomer token is a valid
+/// inline SMILES monomer.
+[[nodiscard]] bool is_smiles_monomer(const std::string_view&);
+
 } /* end namespace helm */

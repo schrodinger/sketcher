@@ -421,33 +421,49 @@ BOOST_DATA_TEST_CASE(
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMonomersWithNonstandardNames,
-                     bdata::make(std::vector<HELMInfo>{
-                         {{{"PEPTIDE1", {"Phe_3Cl"}}}},
-                         {{{"PEPTIDE1", {"Phe-3Cl"}}}},
-                         {{{"PEPTIDE1", {"D-1Nal"}}}},
-                         {{{"PEPTIDE1", {"D-Phe_4F"}}}},
-                         {{{"PEPTIDE1", {"A", "Phe_3Cl", "D"}}}},
-                         {{{"PEPTIDE1", {"A", "Phe-3Cl", "D"}}}},
-                         {{{"PEPTIDE1", {"A", "D-1Nal", "D"}}}},
-                         {{{"PEPTIDE1", {"A", "D-Phe_4F", "D"}}}},
-                         {{{"RNA1", {"R", "A"}}}},
-                         {{{"RNA1", {"R", "A", "P"}}}},
-                         {{{"RNA1", {"R", "Phe_3Cl"}}}},
-                         {{{"RNA1", {"R", "Phe-3Cl"}}}},
-                         {{{"RNA1", {"R", "D-1Nal"}}}},
-                         {{{"RNA1", {"R", "D-Phe_4F"}}}},
-                         {{{"RNA1", {"R", "Phe_3Cl", "P"}}}},
-                         {{{"RNA1", {"R", "Phe-3Cl", "P"}}}},
-                         {{{"RNA1", {"R", "D-1Nal", "P"}}}},
-                         {{{"RNA1", {"R", "D-Phe_4F", "P"}}}},
-                         {{{"CHEM1", {"Phe_3Cl"}}}},
-                         {{{"CHEM1", {"Phe-3Cl"}}}},
-                         {{{"CHEM1", {"D-1Nal"}}}},
-                         {{{"CHEM1", {"D-Phe_4F"}}}},
-                     }),
-                     helm_info)
+                     bdata::make(std::vector<std::string>{
+                         "(N->O)Leu",
+                         "(N->O)Val(3-OH)",
+                         "-aze",
+                         "1-Nal",
+                         "2-pyridylmethyl_Gly",
+                         "5-Ava",
+                         "Abu(5-Tet)",
+                         "Ala(O->S)",
+                         "Ala(cPent)",
+                         "Aoc(2)",
+                         "Arg(Me,Me)",
+                         "Asp(OMe)",
+                         "Asp(Ph(2-NH2))",
+                         "Asp_piperidide",
+                         "Bal(3-Me)",
+                         "Bal(d3-CF3)",
+                         "Bn(4-Cl)_Gly",
+                         "Cys(EtO2H)_NH2",
+                         "Hph(3,4-diCl)",
+                         "Hph(4-CF3,3,5-diF)",
+                         "Mono21-",
+                         "NH2Bu_Gly",
+                         "Ser(Ph(2-Cl))",
+                         "Sta(3R,4R)",
+                         "d(N->O)Gly(allyl)",
+                         "dAsp(pyrrol-1-yl)",
+                     }) * bdata::make(std::vector<std::string>{
+                              "PEPTIDE1{{[{}]}}$$$$V2.0",
+                              "PEPTIDE1{{A.[{}].D}}$$$$V2.0",
+                              "PEPTIDE1{{A([{}])D}}$$$$V2.0",
+                              "RNA1{{R.[{}]}}$$$$V2.0",
+                              "RNA1{{R([{}])}}$$$$V2.0",
+                              "RNA1{{R.[{}].P}}$$$$V2.0",
+                              "RNA1{{R([{}])P}}$$$$V2.0",
+                              "CHEM1{{[{}]}}$$$$V2.0",
+                          }),
+                     test_monomer_id, helm_template)
 {
-    check_helm_conversion(helm_info);
+    const auto test_helm =
+        fmt::format(fmt::runtime(helm_template), test_monomer_id);
+    const auto mol = helm_to_rdkit(test_helm);
+    BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
 }
 
 BOOST_DATA_TEST_CASE(TestNeighboringMonomerCustomBonds,
