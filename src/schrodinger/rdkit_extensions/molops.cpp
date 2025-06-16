@@ -6,16 +6,21 @@
  --------------------------------------------------------------------------- */
 #include "schrodinger/rdkit_extensions/molops.h"
 
+#include <fmt/format.h>
+#include <rdkit/GraphMol/ChemTransforms/ChemTransforms.h>
 #include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 
 namespace schrodinger
 {
@@ -30,7 +35,18 @@ struct [[nodiscard]] selected_atom_info {
     std::unordered_map<unsigned int, unsigned int> atom_mapping;
     std::unordered_map<unsigned int, unsigned int> bond_mapping;
 };
+
 } // namespace
+
+static void validate_monomeristic_mol_input(const RDKit::ROMol&,
+                                            const std::string_view&);
+
+[[nodiscard]] static std::unordered_map<char, int>
+get_max_polymer_suffixes(const std::vector<std::string>&);
+
+[[nodiscard]] static std::unordered_map<std::string, std::string>
+get_renamed_polymer_ids(const std::vector<std::string>&,
+                        std::unordered_map<char, int>&);
 
 void apply_sanitization(RDKit::RWMol& mol, Sanitization sanitization)
 {
@@ -325,5 +341,136 @@ ExtractMolFragment(const RDKit::ROMol& mol,
     // NOTE: Bookmarks are currently not copied
     return extracted_mol;
 }
+
+boost::shared_ptr<RDKit::ROMol>
+CombineMonomeristicMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2)
+{
+    // make sure there are no unsupported features
+    validate_monomeristic_mol_input(mol1, "mol1");
+    validate_monomeristic_mol_input(mol2, "mol2");
+
+    std::unique_ptr<RDKit::ROMol> result;
+
+    auto mol1_polymer_ids = get_polymer_ids(mol1);
+    auto mol2_polymer_ids = get_polymer_ids(mol2);
+    // We need to de-duplicate the polymer ids
+    if (std::ranges::find_first_of(mol1_polymer_ids, mol2_polymer_ids) !=
+        mol1_polymer_ids.end()) {
+        // Sort second set of ids so we see POLYMER1 before POLYMER2
+        std::ranges::sort(mol2_polymer_ids);
+
+        // rename polymer ids to de-duplicate them
+        auto max_polymer_suffixes = get_max_polymer_suffixes(mol1_polymer_ids);
+        auto renamed_polymer_ids =
+            get_renamed_polymer_ids(mol2_polymer_ids, max_polymer_suffixes);
+
+        // create mutable copy
+        RDKit::RWMol mol2_copy(mol2);
+
+        // Atom-level updates:
+        //      * REPETITION_DUMMY_ID
+        //      * atom chain id
+        std::string val;
+        for (auto& atom : mol2_copy.atoms()) {
+            if (atom->getPropIfPresent(REPETITION_DUMMY_ID, val)) {
+                atom->setProp(REPETITION_DUMMY_ID, renamed_polymer_ids[val]);
+            }
+
+            if (auto res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+                    atom->getMonomerInfo());
+                res_info) {
+                res_info->setChainId(
+                    renamed_polymer_ids[res_info->getChainId()]);
+            }
+        }
+
+        // Sgroup-level updates:
+        //      * polymer annotation SubstanceGroup ID
+        for (auto& sgroup : RDKit::getSubstanceGroups(mol2_copy)) {
+            if (sgroup.getPropIfPresent("TYPE", val) && val == "COP" &&
+                sgroup.getPropIfPresent("ID", val)) {
+                sgroup.setProp("ID", renamed_polymer_ids[val]);
+            }
+        }
+
+        result.reset(RDKit::combineMols(mol1, mol2_copy));
+    } else {
+        result.reset(RDKit::combineMols(mol1, mol2));
+    }
+
+    return result;
+}
+
+static void validate_monomeristic_mol_input(const RDKit::ROMol& mol,
+                                            const std::string_view& name)
+{
+    if (!is_coarse_grain_mol(mol)) {
+        auto msg = fmt::format("'{}' must be a monomeristic mol", name);
+        throw std::invalid_argument(msg);
+    }
+
+    if (mol.hasProp(EXTENDED_ANNOTATIONS)) {
+        auto msg = fmt::format(
+            "'{}' has unsupported feature: EXTENDED_ANNOTATIONS", name);
+        throw std::invalid_argument(msg);
+    }
+
+    if (const auto sgroup = get_supplementary_info(mol); sgroup) {
+        std::vector<std::string> datafields;
+        if (!sgroup->getPropIfPresent("DATAFIELDS", datafields)) {
+            return;
+        }
+
+        if (!datafields[0].empty()) {
+            auto msg = fmt::format(
+                "'{}' has unsupported feature: POLYMER_GROUPS", name);
+            throw std::invalid_argument(msg);
+        }
+
+        if (!datafields[1].empty()) {
+            auto msg = fmt::format(
+                "'{}' has unsupported feature: EXTENDED_ANNOTATIONS", name);
+            throw std::invalid_argument(msg);
+        }
+    }
+}
+
+[[nodiscard]] static std::unordered_map<char, int>
+get_max_polymer_suffixes(const std::vector<std::string>& polymer_ids)
+{
+    std::unordered_map<char, int> max_polymer_suffixes;
+    for (auto& polymer_id : polymer_ids) {
+        auto pos = polymer_id.find_first_of("0123456789");
+        auto suffix = std::stoi(polymer_id.substr(pos));
+        if (suffix > max_polymer_suffixes[polymer_id[0]]) {
+            max_polymer_suffixes[polymer_id[0]] = suffix;
+        }
+    }
+
+    return max_polymer_suffixes;
+}
+
+[[nodiscard]] static std::unordered_map<std::string, std::string>
+get_renamed_polymer_ids(const std::vector<std::string>& polymer_ids,
+                        std::unordered_map<char, int>& max_polymer_suffixes)
+{
+    std::unordered_map<std::string, std::string> renamed_polymer_ids;
+    for (const auto& polymer_id : polymer_ids) {
+        // assume we don't need to de-deplicate
+        if (max_polymer_suffixes[polymer_id[0]] == 0) {
+            renamed_polymer_ids[polymer_id] = polymer_id;
+        }
+        // rename polymer id by updating suffix
+        else {
+            auto pos = polymer_id.find_first_of("0123456789");
+            auto prefix = polymer_id.substr(0, pos);
+            auto renamed_polymer_id = fmt::format(
+                "{}{}", prefix, ++max_polymer_suffixes[polymer_id[0]]);
+            renamed_polymer_ids[polymer_id] = renamed_polymer_id;
+        }
+    }
+    return renamed_polymer_ids;
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

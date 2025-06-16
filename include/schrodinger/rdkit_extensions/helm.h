@@ -33,6 +33,7 @@ class ROMol;
 class RWMol;
 class Atom;
 class Bond;
+class SubstanceGroup;
 } // namespace RDKit
 
 namespace schrodinger
@@ -104,5 +105,14 @@ Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& cg_mol,
  * coordinates
  */
 unsigned int RDKIT_EXTENSIONS_API compute_cg_coords(RDKit::ROMol& cg_mol);
+
+/**
+ * Get the HELM supplementary info substance group
+ *
+ * @param cg_mol coarse grain molecule
+ * @return a pointer to the supplementary info substance group if one exists
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API const RDKit::SubstanceGroup*
+get_supplementary_info(const RDKit::ROMol& cg_mol);
 } // namespace rdkit_extensions
 } // namespace schrodinger

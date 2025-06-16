@@ -371,6 +371,11 @@ void add_polymer_groups_and_extended_annotations(
     ::RDKit::RWMol& mol, const std::vector<polymer_group> polymer_groups,
     const std::string_view& extended_annotations)
 {
+    // nothing to do here
+    if (polymer_groups.empty() && extended_annotations.empty()) {
+        return;
+    }
+
     ::RDKit::SubstanceGroup sgroup(&mol, "DAT");
     sgroup.setProp("FIELDNAME", SUPPLEMENTARY_INFORMATION);
 

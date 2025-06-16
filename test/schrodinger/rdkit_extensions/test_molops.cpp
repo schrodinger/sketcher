@@ -10,6 +10,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -18,10 +19,33 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
+#include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 
 using schrodinger::rdkit_extensions::ExtractMolFragment;
 using schrodinger::rdkit_extensions::removeHs;
+
+namespace
+{
+struct CombineMonomeristicMolsTestData {
+    std::string mol1;
+    std::string mol2;
+    std::string expected;
+};
+} // namespace
+
+namespace std
+{
+
+std::ostream& operator<<(std::ostream& os,
+                         const ::CombineMonomeristicMolsTestData& data)
+{
+    os << "mol1=" << data.mol1 << " mol2=" << data.mol2
+       << " expected=" << data.expected;
+    return os;
+}
+} // namespace std
 
 BOOST_AUTO_TEST_CASE(test_partial_removeHs)
 {
@@ -281,4 +305,64 @@ BOOST_DATA_TEST_CASE(test_extract_stereo_groups,
                 true);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(TestCombineMonomeristicMolsUnsupportedInputs)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    // atomistic mol is not supported
+    {
+        auto mol1 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
+        auto mol2 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
+        BOOST_CHECK_THROW(CombineMonomeristicMols(*mol1, *mol2),
+                          std::invalid_argument);
+    }
+    // polymer group is not supported
+    {
+        auto mol1 = helm::helm_to_rdkit(
+            R"(PEPTIDE1{A}|PEPTIDE2{D}$$G3(PEPTIDE1,PEPTIDE2)$$V2.0)");
+        auto mol2 = helm::helm_to_rdkit(R"(PEPTIDE1{A}|PEPTIDE2{D}$$$$V2.0)");
+        BOOST_CHECK_THROW(CombineMonomeristicMols(*mol1, *mol2),
+                          std::invalid_argument);
+    }
+    // extended annotation is not supported
+    {
+        auto mol1 = helm::helm_to_rdkit(R"(PEPTIDE1{A}|PEPTIDE2{D}$$$$V2.0)");
+        auto mol2 = helm::helm_to_rdkit(
+            R"(PEPTIDE1{A}|PEPTIDE2{D}$$${"hello":"value"}$V2.0)");
+        BOOST_CHECK_THROW(CombineMonomeristicMols(*mol1, *mol2),
+                          std::invalid_argument);
+    }
+}
+
+BOOST_DATA_TEST_CASE(
+    TestCombineMonomeristicMols,
+    bdata::make(std::vector<CombineMonomeristicMolsTestData>{
+        // different polymer ids
+        {"CHEM1{A}$$$$V2.0", "CHEM2{B}$$$$V2.0", "CHEM1{A}|CHEM2{B}$$$$V2.0"},
+        {"CHEM2{A}$$$$V2.0", "CHEM1{B}$$$$V2.0", "CHEM2{A}|CHEM1{B}$$$$V2.0"},
+        // conflicting polymer ids
+        {"CHEM1{A}$$$$V2.0", "CHEM1{B}$$$$V2.0", "CHEM1{A}|CHEM2{B}$$$$V2.0"},
+        {"CHEM2{A}$$$$V2.0", "CHEM2{B}$$$$V2.0", "CHEM2{A}|CHEM3{B}$$$$V2.0"},
+        // different polymers
+        {"PEPTIDE1{A}$$$$V2.0", "CHEM1{B}$$$$V2.0",
+         "PEPTIDE1{A}|CHEM1{B}$$$$V2.0"},
+        {"PEPTIDE1{A}|CHEM1{A}$$$$V2.0", "CHEM1{B}$$$$V2.0",
+         "PEPTIDE1{A}|CHEM1{A}|CHEM2{B}$$$$V2.0"},
+        // monomer repetitions
+        {"PEPTIDE1{A'4'}$$$$V2.0", "PEPTIDE2{B'7'}$$$$V2.0",
+         "PEPTIDE1{A'4'}|PEPTIDE2{B'7'}$$$$V2.0"},
+        // polymer annotations
+        {R"(PEPTIDE1{A}"Hello"$$$$V2.0)", R"(PEPTIDE2{B}"Hi"$$$$V2.0)",
+         R"(PEPTIDE1{A}"Hello"|PEPTIDE2{B}"Hi"$$$$V2.0)"},
+    }),
+    test_data)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    auto mol1 = helm::helm_to_rdkit(test_data.mol1);
+    auto mol2 = helm::helm_to_rdkit(test_data.mol2);
+    auto combined = CombineMonomeristicMols(*mol1, *mol2);
+    BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
 }

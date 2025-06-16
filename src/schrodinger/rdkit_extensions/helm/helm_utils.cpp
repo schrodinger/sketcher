@@ -99,22 +99,12 @@ get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
 static void
 check_for_polymer_groups_and_extended_annotations(const ::RDKit::ROMol& mol)
 {
-    std::string type;
-    std::string fieldname;
-    for (auto& sgroup : ::RDKit::getSubstanceGroups(mol)) {
-        static const std::string TYPE{"TYPE"};
-        static const std::string FIELDNAME{"FIELDNAME"};
-        if (!(sgroup.getPropIfPresent(TYPE, type) &&
-              sgroup.getPropIfPresent(FIELDNAME, fieldname) &&
-              fieldname == SUPPLEMENTARY_INFORMATION)) {
-            continue;
-        }
-
+    if (const auto sgroup = get_supplementary_info(mol); sgroup) {
         std::vector<std::string> datafields;
         static const std::string DATAFIELDS{"DATAFIELDS"};
-        if (!sgroup.getPropIfPresent(DATAFIELDS, datafields) ||
+        if (!sgroup->getPropIfPresent(DATAFIELDS, datafields) ||
             datafields.size() < 2u) {
-            continue;
+            return;
         }
 
         if (!datafields[0].empty()) {
@@ -126,7 +116,6 @@ check_for_polymer_groups_and_extended_annotations(const ::RDKit::ROMol& mol)
             throw std::invalid_argument(
                 "Extended annotations are currently unsupported");
         }
-        return;
     }
 }
 
@@ -243,6 +232,33 @@ Chain get_polymer(const RDKit::ROMol& cg_mol, std::string_view polymer_id)
         }
     }
     return {atoms, bonds, annotation};
+}
+
+[[nodiscard]] const RDKit::SubstanceGroup*
+get_supplementary_info(const RDKit::ROMol& mol)
+{
+    std::string type;
+    std::string fieldname;
+    for (auto& sgroup : ::RDKit::getSubstanceGroups(mol)) {
+        static const std::string TYPE{"TYPE"};
+        static const std::string FIELDNAME{"FIELDNAME"};
+        if (!(sgroup.getPropIfPresent(TYPE, type) && type == "DAT" &&
+              sgroup.getPropIfPresent(FIELDNAME, fieldname) &&
+              fieldname == SUPPLEMENTARY_INFORMATION)) {
+            continue;
+        }
+
+        std::vector<std::string> datafields;
+        static const std::string DATAFIELDS{"DATAFIELDS"};
+        if (!sgroup.getPropIfPresent(DATAFIELDS, datafields) ||
+            datafields.size() < 2u) {
+            continue;
+        }
+
+        return &sgroup;
+    }
+
+    return nullptr;
 }
 
 } // namespace rdkit_extensions
