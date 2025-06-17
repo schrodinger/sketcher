@@ -39,9 +39,7 @@ PACKAGES_TO_XFAIL = [
     # Core suite builds frequently use a commercial-only LTS release of Qt,
     # which are not available for open-source builds of Sketcher
     "qt",
-    # this repo is currently on a newer RDKit and Boost versions than the core
-    # suite
-    "rdkit",
+    # this repo is currently on a newer Boost version than the core suite
     "boost",
     # fmt 10.1.1 reports itself as version 10.1.0, which confuses CMake, so we
     # use 10.1.0 for this repo
