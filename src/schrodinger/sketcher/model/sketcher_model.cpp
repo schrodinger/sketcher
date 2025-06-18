@@ -171,8 +171,8 @@ void SketcherModel::updateAtomDisplaySettings(
     for (auto key : keys) {
         switch (key) {
             case ModelKey::COLOR_HETEROATOMS: {
-                auto scheme = getValueBool(key) ? ColorScheme::DEFAULT
-                                                : ColorScheme::BLACK_WHITE;
+                auto scheme =
+                    getValueBool(key) ? m_color_scheme : m_black_white_scheme;
                 m_atom_display_settings.setColorScheme(scheme);
                 emit_display_settings_changed = true;
                 break;
@@ -351,17 +351,27 @@ void SketcherModel::setBondWidthScale(qreal scale)
     emit displaySettingsChanged();
 }
 
-void SketcherModel::setColorScheme(ColorScheme color_scheme)
+void SketcherModel::setColorSchemes(
+    std::pair<ColorScheme, ColorScheme> color_schemes, bool use_colors)
 {
-    m_color_scheme = color_scheme;
-    m_atom_display_settings.setColorScheme(color_scheme);
-    m_bond_display_settings.setColorScheme(color_scheme);
+    m_color_scheme = color_schemes.first;
+    m_black_white_scheme = color_schemes.second;
+    auto scheme_to_use = use_colors ? m_color_scheme : m_black_white_scheme;
+    bool dark_background = scheme_to_use == ColorScheme::DARK_MODE ||
+                           scheme_to_use == ColorScheme::WHITE_BLACK;
+    setBackgroundColor(dark_background ? DARK_BACKGROUND_COLOR
+                                       : LIGHT_BACKGROUND_COLOR);
+    m_atom_display_settings.setColorScheme(scheme_to_use);
+    m_bond_display_settings.setColorScheme(scheme_to_use);
     emit displaySettingsChanged();
 }
 
-ColorScheme SketcherModel::getColorScheme() const
+std::pair<ColorScheme, ColorScheme> SketcherModel::getColorSchemes() const
 {
-    return m_color_scheme;
+    return {
+        m_color_scheme,
+        m_black_white_scheme,
+    };
 }
 
 void SketcherModel::setBackgroundColor(QColor color)

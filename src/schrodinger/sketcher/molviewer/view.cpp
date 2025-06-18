@@ -45,6 +45,8 @@ View::View(QGraphicsScene* scene, QWidget* parent) :
     // We don't need to call enlargeSceneIfNeeded here since the View doesn't
     // have a size yet, so we're guaranteed to get a resizeEvent call before
     // View is painted.
+
+    setBackgroundBrush(QBrush(LIGHT_BACKGROUND_COLOR));
 }
 
 View::View(QWidget* parent) : View(nullptr, parent)

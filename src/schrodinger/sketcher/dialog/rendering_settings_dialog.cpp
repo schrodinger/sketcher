@@ -14,11 +14,14 @@ namespace sketcher
 {
 
 struct RenderingSettings {
+    bool operator==(const RenderingSettings& other) const = default;
+
     int m_atom_font_size = DEFAULT_FONT_SIZE;
     int m_bond_line_width = BOND_DEFAULT_PEN_WIDTH;
     CarbonLabels m_carbon_labels = CarbonLabels::NONE;
     bool m_color_heteroatoms = true;
-    ColorScheme m_color_scheme = ColorScheme::DEFAULT;
+    std::pair<ColorScheme, ColorScheme> m_color_schemes = {
+        ColorScheme::DEFAULT, ColorScheme::BLACK_WHITE};
     bool m_show_stereo_annotations = true;
     bool m_show_unknown_stereo_annotations = true;
     bool m_explicit_abs_labels_shown = false;
@@ -77,10 +80,10 @@ void RenderingSettingsDialog::initColorModes()
 
 void RenderingSettingsDialog::loadSettingsFromModel()
 {
-    if (m_sketcher_model == nullptr) {
+    auto settings = getSettingsFromModel(m_sketcher_model);
+    if (settings == getSettingsFromPanel()) {
         return;
     }
-    auto settings = getSettingsFromModel(m_sketcher_model);
     loadSettings(settings);
 }
 
@@ -106,6 +109,15 @@ void RenderingSettingsDialog::updateWidgets()
     } else {
         sync_comboboxes(m_ui->m_bw_mode_combo, m_ui->m_color_mode_combo);
     }
+
+    bool color_heteroatoms = m_ui->m_color_heteroatoms_cb->isChecked();
+    if (color_heteroatoms) {
+        m_ui->m_bw_mode_combo->hide();
+        m_ui->m_color_mode_combo->show();
+    } else {
+        m_ui->m_color_mode_combo->hide();
+        m_ui->m_bw_mode_combo->show();
+    }
 }
 
 void RenderingSettingsDialog::loadSettings(RenderingSettings& settings)
@@ -120,23 +132,11 @@ void RenderingSettingsDialog::loadSettings(RenderingSettings& settings)
                                             CarbonLabels::TERMINAL);
 
     m_ui->m_color_heteroatoms_cb->setChecked(settings.m_color_heteroatoms);
-
-    auto update_combo_boxes = [settings](QComboBox* combobox_to_show,
-                                         QComboBox* combobox_to_hide) {
-        combobox_to_hide->hide();
-        combobox_to_show->show();
-        auto index = combobox_to_show->findData(
-            QVariant::fromValue(settings.m_color_scheme));
-        if (index != -1) {
-            combobox_to_show->setCurrentIndex(index);
-        }
-    };
-    if (settings.m_color_heteroatoms) {
-        update_combo_boxes(m_ui->m_color_mode_combo, m_ui->m_bw_mode_combo);
-
-    } else {
-        update_combo_boxes(m_ui->m_bw_mode_combo, m_ui->m_color_mode_combo);
-    }
+    m_ui->m_color_mode_combo->setCurrentIndex(
+        m_ui->m_color_mode_combo->findData(
+            QVariant::fromValue(settings.m_color_schemes.first)));
+    m_ui->m_bw_mode_combo->setCurrentIndex(m_ui->m_bw_mode_combo->findData(
+        QVariant::fromValue(settings.m_color_schemes.second)));
     m_ui->m_show_stereo_cb->setChecked(settings.m_show_stereo_annotations);
 
     m_ui->m_with_ABS_rb->setChecked(settings.m_explicit_abs_labels_shown);
@@ -147,7 +147,7 @@ void RenderingSettingsDialog::loadSettings(RenderingSettings& settings)
 }
 
 RenderingSettings RenderingSettingsDialog::getSettingsFromModel(
-    const sketcher::SketcherModel* model)
+    const sketcher::SketcherModel* model) const
 {
     if (model == nullptr) {
         throw std::runtime_error(
@@ -161,7 +161,7 @@ RenderingSettings RenderingSettingsDialog::getSettingsFromModel(
         model->getAtomDisplaySettingsPtr()->m_carbon_labels;
     settings.m_color_heteroatoms =
         model->getValueBool(ModelKey::COLOR_HETEROATOMS);
-    settings.m_color_scheme = model->getColorScheme();
+    settings.m_color_schemes = model->getColorSchemes();
     settings.m_show_stereo_annotations =
         model->getValueBool(ModelKey::SHOW_STEREOCENTER_LABELS);
     settings.m_explicit_abs_labels_shown =
@@ -183,7 +183,7 @@ void RenderingSettingsDialog::loadDefaults()
     exportSettingsToModel();
 }
 
-RenderingSettings RenderingSettingsDialog::getSettingsFromPanel()
+RenderingSettings RenderingSettingsDialog::getSettingsFromPanel() const
 {
     RenderingSettings settings;
     settings.m_atom_font_size = m_ui->m_atom_font_size_sb->value();
@@ -198,10 +198,11 @@ RenderingSettings RenderingSettingsDialog::getSettingsFromPanel()
         }
     }
     settings.m_color_heteroatoms = m_ui->m_color_heteroatoms_cb->isChecked();
-    settings.m_color_scheme = qvariant_cast<schrodinger::sketcher::ColorScheme>(
-        (settings.m_color_heteroatoms) ? m_ui->m_color_mode_combo->currentData()
-                                       : m_ui->m_bw_mode_combo->currentData());
-
+    settings.m_color_schemes = {
+        qvariant_cast<schrodinger::sketcher::ColorScheme>(
+            m_ui->m_color_mode_combo->currentData()),
+        qvariant_cast<schrodinger::sketcher::ColorScheme>(
+            m_ui->m_bw_mode_combo->currentData())};
     settings.m_show_stereo_annotations = m_ui->m_show_stereo_cb->isChecked();
 
     settings.m_explicit_abs_labels_shown = m_ui->m_with_ABS_rb->isChecked();
@@ -212,19 +213,13 @@ RenderingSettings RenderingSettingsDialog::getSettingsFromPanel()
     return settings;
 }
 
-void RenderingSettingsDialog::exportSettingsToModel()
+void RenderingSettingsDialog::exportSettingsToModel() const
 {
     if (m_sketcher_model == nullptr) {
         return;
     }
     auto settings = getSettingsFromPanel();
     m_sketcher_model->setFontSize(settings.m_atom_font_size);
-    bool dark_background = settings.m_color_scheme == ColorScheme::DARK_MODE ||
-                           settings.m_color_scheme == ColorScheme::WHITE_BLACK;
-    m_sketcher_model->setBackgroundColor(
-        dark_background ? DARK_BACKGROUND_COLOR : LIGHT_BACKGROUND_COLOR);
-
-    m_sketcher_model->setColorScheme(settings.m_color_scheme);
 
     std::unordered_map<ModelKey, QVariant> kv_pairs = {
         {ModelKey::COLOR_HETEROATOMS,
@@ -232,6 +227,8 @@ void RenderingSettingsDialog::exportSettingsToModel()
         {ModelKey::SHOW_STEREOCENTER_LABELS,
          QVariant::fromValue(settings.m_show_stereo_annotations)}};
     m_sketcher_model->setValues(kv_pairs);
+    m_sketcher_model->setColorSchemes(settings.m_color_schemes,
+                                      settings.m_color_heteroatoms);
 
     AtomDisplaySettings atom_settings(
         *(m_sketcher_model->getAtomDisplaySettingsPtr()));

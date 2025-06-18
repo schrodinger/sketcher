@@ -440,10 +440,24 @@ class SKETCHER_API SketcherModel : public QObject
     void setBondWidthScale(qreal scale);
     void setFontSize(int size);
     int getFontSize() const;
-    void setColorScheme(ColorScheme color_scheme);
-    ColorScheme getColorScheme() const;
 
-    void setBackgroundColor(QColor color);
+    /**
+     * save the color scheme information and apply it to the model. This will
+     * set the colors for background, atoms and bonds
+     * @param color_schemes a std::pair containing the color schemes for color
+     * and black and white modes.
+     * @param use_colors whether to use the color scheme or the black & white
+     * scheme
+     */
+    void setColorSchemes(std::pair<ColorScheme, ColorScheme>, bool use_colors);
+
+    /**
+     * @return a std::pair containg the color schemes for color and black &
+     * white modes. Which one is actually in use depends on the state of
+     * COLOR_HETEROATOMS
+     */
+    std::pair<ColorScheme, ColorScheme> getColorSchemes() const;
+
     QColor getBackgroundColor() const;
 
     /**
@@ -550,8 +564,8 @@ class SKETCHER_API SketcherModel : public QObject
     /**
      * Signal used to notify views that the extant R groups have changed.
      *
-     * R groups are not stored on this model, so the responsibility for emitting
-     * this signal must go to the associated scene.
+     * R groups are not stored on this model, so the responsibility for
+     * emitting this signal must go to the associated scene.
      */
     void rGroupNumbersChanged() const;
 
@@ -571,13 +585,19 @@ class SKETCHER_API SketcherModel : public QObject
      */
     void updateAtomDisplaySettings(const std::unordered_set<ModelKey>& keys);
 
+    void setBackgroundColor(QColor color);
+
     std::unordered_map<ModelKey, QVariant> m_model_map;
 
     AtomDisplaySettings m_atom_display_settings;
     BondDisplaySettings m_bond_display_settings;
     int m_font_size = DEFAULT_FONT_SIZE;
-    QColor m_background_color;
+    QColor m_background_color = LIGHT_BACKGROUND_COLOR;
+
+    // color and B&W schemes. Which one will be used depends on the state of
+    // COLOR_HETEROATOMS
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
+    ColorScheme m_black_white_scheme = ColorScheme::BLACK_WHITE;
 };
 
 } // namespace sketcher

@@ -190,7 +190,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
-    m_sketcher_model->setBackgroundColor(LIGHT_BACKGROUND_COLOR);
 }
 
 SketcherWidget::~SketcherWidget() = default;

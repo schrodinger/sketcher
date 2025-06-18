@@ -42,7 +42,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
     /**
      * @brief export the current state to the sketcher model
      */
-    void exportSettingsToModel();
+    void exportSettingsToModel() const;
 
     /**
      * @brief Update the GUI elements based on the current settings
@@ -59,7 +59,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
      * model
      */
     RenderingSettings
-    getSettingsFromModel(const sketcher::SketcherModel* model);
+    getSettingsFromModel(const sketcher::SketcherModel* model) const;
 
     /**
      * @brief Update the model with the given settings
@@ -69,7 +69,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
     /**
      * @brief Get the current rendering settings
      */
-    RenderingSettings getSettingsFromPanel();
+    RenderingSettings getSettingsFromPanel() const;
 
     std::unique_ptr<Ui::RenderingSettingsDialog> m_ui;
     SketcherModel* m_sketcher_model = nullptr;
