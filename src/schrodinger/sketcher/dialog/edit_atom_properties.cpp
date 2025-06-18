@@ -862,6 +862,12 @@ void EditAtomPropertiesDialog::onQueryPeriodicTableElementSelected(
         text.append(symbol);
         ui->element_list_le->setText(text);
     }
+#ifdef __EMSCRIPTEN__
+    // On WASM builds, the dialog will incorrectly be moved in front of the
+    // periodic table whenever the dialog's OK button gets re-enabled, so make
+    // sure that we put the periodic table back in front
+    ui->query_periodic_table_btn->getPopupWidget()->raise();
+#endif
 }
 
 ElementValidator::ElementValidator(const bool allow_list, QObject* parent) :
