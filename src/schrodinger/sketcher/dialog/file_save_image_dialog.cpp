@@ -29,7 +29,11 @@ FileSaveImagePopup::FileSaveImagePopup(QWidget* parent, SketcherModel* model) :
             &FileSaveImagePopup::renderOptionsChanged);
     connect(m_ui->transparent_cb, &QCheckBox::stateChanged, this,
             &FileSaveImagePopup::renderOptionsChanged);
-    m_background_color = model->getBackgroundColor();
+    connect(model, &SketcherModel::backgroundColorChanged, this,
+            [this](const QColor& color) {
+                m_background_color = color;
+                renderOptionsChanged();
+            });
 }
 
 FileSaveImagePopup::~FileSaveImagePopup() = default;

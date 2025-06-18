@@ -380,11 +380,6 @@ void SketcherModel::setBackgroundColor(QColor color)
     emit backgroundColorChanged(color);
 }
 
-QColor SketcherModel::getBackgroundColor() const
-{
-    return m_background_color;
-}
-
 void SketcherModel::setFontSize(int size)
 {
     m_font_size = size;
