@@ -73,6 +73,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
 
     std::unique_ptr<Ui::RenderingSettingsDialog> m_ui;
     SketcherModel* m_sketcher_model = nullptr;
+    QTimer* m_update_timer = nullptr;
 };
 
 } // namespace sketcher

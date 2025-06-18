@@ -1,5 +1,11 @@
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
 
+#include <QCheckBox>
+#include <QComboBox>
+#include <QLineEdit>
+#include <QRadioButton>
+#include <QSpinBox>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -48,6 +54,36 @@ void ModalDialog::onWindowTitleChanged(const QString& newTitle)
 {
     if (m_title_bar != nullptr) {
         m_title_bar->m_title_label->setText(newTitle);
+    }
+}
+
+void connect_input_widgets_to_timer(const QWidget* const dialog,
+                                    const QTimer* const timer)
+{
+    QList<QObject*> descendents = dialog->children();
+    while (!descendents.isEmpty()) {
+        auto* child = descendents.takeFirst();
+        if (auto* combo = qobject_cast<QComboBox*>(child)) {
+            dialog->connect(combo, &QComboBox::currentIndexChanged, timer,
+                            qOverload<>(&QTimer::start));
+        } else if (auto* sb = qobject_cast<QSpinBox*>(child)) {
+            dialog->connect(sb, &QSpinBox::valueChanged, timer,
+                            qOverload<>(&QTimer::start));
+        } else if (auto* sb = qobject_cast<QDoubleSpinBox*>(child)) {
+            dialog->connect(sb, &QDoubleSpinBox::valueChanged, timer,
+                            qOverload<>(&QTimer::start));
+        } else if (auto* rb = qobject_cast<QRadioButton*>(child)) {
+            dialog->connect(rb, &QRadioButton::toggled, timer,
+                            qOverload<>(&QTimer::start));
+        } else if (auto* cb = qobject_cast<QCheckBox*>(child)) {
+            dialog->connect(cb, &QCheckBox::stateChanged, timer,
+                            qOverload<>(&QTimer::start));
+        } else if (auto* le = qobject_cast<QLineEdit*>(child)) {
+            dialog->connect(le, &QLineEdit::textChanged, timer,
+                            qOverload<>(&QTimer::start));
+        } else {
+            descendents.append(child->children());
+        }
     }
 }
 

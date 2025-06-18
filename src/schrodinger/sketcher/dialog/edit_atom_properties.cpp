@@ -230,23 +230,7 @@ EditAtomPropertiesDialog::EditAtomPropertiesDialog(const RDKit::Atom* atom,
     // update whether the OK and reset buttons are enabled any time anything
     // changes in the dialog. We use a timer to prevent updateButtonsEnabled
     // from running every time loadProperties updates each individual widget
-    QList<QObject*> descendents = children();
-    while (!descendents.isEmpty()) {
-        auto* child = descendents.takeFirst();
-        if (auto* cb = qobject_cast<QComboBox*>(child)) {
-            connect(cb, &QComboBox::currentIndexChanged,
-                    m_update_buttons_enabled_timer,
-                    qOverload<>(&QTimer::start));
-        } else if (auto* sb = qobject_cast<QSpinBox*>(child)) {
-            connect(sb, &QSpinBox::valueChanged, m_update_buttons_enabled_timer,
-                    qOverload<>(&QTimer::start));
-        } else if (auto* le = qobject_cast<QLineEdit*>(child)) {
-            connect(le, &QLineEdit::textChanged, m_update_buttons_enabled_timer,
-                    qOverload<>(&QTimer::start));
-        } else {
-            descendents.append(child->children());
-        }
-    }
+    connect_input_widgets_to_timer(this, m_update_buttons_enabled_timer);
 
     // Set up the periodic table buttons and widgets
     std::vector<std::pair<ToolButtonWithPopup*,

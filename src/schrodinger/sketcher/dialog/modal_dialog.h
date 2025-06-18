@@ -7,6 +7,9 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/custom_title_bar.h"
 
+class QWidget;
+class QTimer;
+
 namespace schrodinger
 {
 namespace sketcher
@@ -67,6 +70,14 @@ class SKETCHER_API ModalDialog : public QDialog
 
     CustomTitleBar* m_title_bar = nullptr;
 };
+
+/**
+ * Connect signals from all input widgets (combo boxes, check boxes, radio
+ * buttons, line edits, etc) in the dialog so that the specified timer is
+ * started whenever any widget value changes.
+ */
+SKETCHER_API void connect_input_widgets_to_timer(const QWidget* const dialog,
+                                                 const QTimer* const timer);
 
 } // namespace sketcher
 } // namespace schrodinger

@@ -1,5 +1,8 @@
 #include "schrodinger/sketcher/dialog/rendering_settings_dialog.h"
 
+#include <QPushButton>
+#include <QTimer>
+
 #include "mmshare-version.h"
 #include "schrodinger/sketcher/ui/ui_rendering_settings_dialog.h"
 
@@ -29,14 +32,21 @@ RenderingSettingsDialog::RenderingSettingsDialog(SketcherModel* model,
     // when the dialog is closed, so we override it here
     setAttribute(Qt::WA_DeleteOnClose, false);
     m_ui.reset(new Ui::RenderingSettingsDialog());
-    m_ui->setupUi(this);
+    setupDialogUI(*m_ui);
     initColorModes();
     m_sketcher_model = model;
+    m_update_timer = new QTimer(this);
+    m_update_timer->setSingleShot(true);
+    m_update_timer->setInterval(0);
+    connect(m_update_timer, &QTimer::timeout, this,
+            &RenderingSettingsDialog::onValuesChanged);
+    connect_input_widgets_to_timer(this, m_update_timer);
+    connect(m_ui->m_reset_to_default_pb, &QPushButton::clicked, this,
+            &RenderingSettingsDialog::loadDefaults);
     connect(model, &SketcherModel::valuesChanged, this,
             &RenderingSettingsDialog::loadSettingsFromModel);
 
     // initialize the GUI
-
     loadSettingsFromModel();
 }
 
