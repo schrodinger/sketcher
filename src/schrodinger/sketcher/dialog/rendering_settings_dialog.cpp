@@ -4,6 +4,7 @@
 #include <QTimer>
 
 #include "mmshare-version.h"
+#include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_rendering_settings_dialog.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::ColorScheme);
@@ -37,6 +38,7 @@ RenderingSettingsDialog::RenderingSettingsDialog(SketcherModel* model,
     m_ui.reset(new Ui::RenderingSettingsDialog());
     setupDialogUI(*m_ui);
     initColorModes();
+    m_ui->m_reset_to_default_btn->setStyleSheet(BRIGHTER_TEXT_LINK_STYLE);
     m_sketcher_model = model;
     m_update_timer = new QTimer(this);
     m_update_timer->setSingleShot(true);
@@ -44,8 +46,10 @@ RenderingSettingsDialog::RenderingSettingsDialog(SketcherModel* model,
     connect(m_update_timer, &QTimer::timeout, this,
             &RenderingSettingsDialog::onValuesChanged);
     connect_input_widgets_to_timer(this, m_update_timer);
-    connect(m_ui->m_reset_to_default_pb, &QPushButton::clicked, this,
+    connect(m_ui->m_reset_to_default_btn, &QPushButton::clicked, this,
             &RenderingSettingsDialog::loadDefaults);
+    connect(m_ui->m_close_btn, &QPushButton::clicked, this,
+            &RenderingSettingsDialog::accept);
     connect(model, &SketcherModel::valuesChanged, this,
             &RenderingSettingsDialog::loadSettingsFromModel);
 
