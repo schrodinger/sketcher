@@ -187,6 +187,7 @@ jobs:
           ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+                -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}"
 
       - name: Build
