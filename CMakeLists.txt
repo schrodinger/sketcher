@@ -2,11 +2,12 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
   schrodinger_sketcher
-  VERSION 2024.2.0
+  VERSION 2025.4.0
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+cmake_policy(SET CMP0167 NEW)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(ENFORCE_DEPENDENCY_VERSIONS
@@ -65,7 +66,7 @@ find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
-find_package(SQLite3 ${SQLITE_VERSION} REQUIRED CONFIG)
+find_package(SQLite3 ${SQLITE_VERSION} REQUIRED)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-# 
+#
 # This script allows the sketcher repo to be built using buildinger, the
 # Schrodinger internal build system
 #
@@ -28,6 +28,8 @@ PF_DIR=$SCHRODINGER/schrodinger_buildenv_packages/.pixi/envs/schrodinger
 ZLIB_DIR=`ls -d $PF_DIR/zlib-*`
 EIGEN_DIR=`ls -d $PF_DIR/eigen-*/share/eigen3/cmake`
 COORDGEN_DIR=`ls -d $PF_DIR/coordgenlibs-*/lib/cmake`
+MAEPARSER_DIR=`ls -d $PF_DIR/maeparser-*/lib/cmake`
+SQLITE_DIR=`ls -d $PF_DIR/sqlite-*`
 
 CXX_COMPILER=""
 if [[ "$OSTYPE" == "msys" ]]; then
@@ -44,7 +46,7 @@ cmake -B $BUILD_DIR \
       -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DENFORCE_DEPENDENCY_VERSIONS=OFF \
       -DBUILD_SHARED_LIBS=ON \
-      -DCMAKE_PREFIX_PATH=$PF_DIR\;$ZLIB_DIR\;$EIGEN_DIR\;$COORDGEN_DIR \
+      -DCMAKE_PREFIX_PATH=$PF_DIR\;$ZLIB_DIR\;$EIGEN_DIR\;$COORDGEN_DIR\;$MAEPARSER_DIR\;$SQLITE_DIR \
       $CXX_COMPILER_FLAG \
     || exit 1
 
