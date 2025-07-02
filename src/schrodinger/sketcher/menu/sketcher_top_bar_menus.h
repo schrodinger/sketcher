@@ -64,7 +64,7 @@ class SKETCHER_API ConfigureViewMenu : public QMenu
     ConfigureViewMenu(QWidget* parent = nullptr);
     QAction* m_valence_errors_act = nullptr;
     QAction* m_heteroatom_colors_act = nullptr;
-    QAction* m_stereocenter_labels_act = nullptr;
+    QAction* m_stereo_labels_act = nullptr;
     QAction* m_implicit_hydrogens_act = nullptr;
     QAction* m_preferences_act = nullptr;
 };

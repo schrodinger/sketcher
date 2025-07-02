@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>423</width>
-    <height>305</height>
+    <width>477</width>
+    <height>347</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -250,29 +250,13 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_6">
          <item>
-          <widget class="QRadioButton" name="m_without_ABS_rb">
+          <widget class="QCheckBox" name="m_abs_cb">
            <property name="text">
-            <string>Without ABS</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-           <attribute name="buttonGroup">
-            <string notr="true">m_stereo_bg</string>
-           </attribute>
-          </widget>
-         </item>
-         <item>
-          <widget class="QRadioButton" name="m_with_ABS_rb">
-           <property name="text">
-            <string>With ABS</string>
+            <string>Use &quot;ABS&quot; prefix</string>
            </property>
            <property name="checked">
             <bool>false</bool>
            </property>
-           <attribute name="buttonGroup">
-            <string notr="true">m_stereo_bg</string>
-           </attribute>
           </widget>
          </item>
          <item>

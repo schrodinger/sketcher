@@ -110,7 +110,7 @@ ConfigureViewMenu::ConfigureViewMenu(QWidget* parent) : QMenu(parent)
 {
     m_valence_errors_act = addAction("Valence Errors");
     m_heteroatom_colors_act = addAction("Heteroatom Colors");
-    m_stereocenter_labels_act = addAction("Stereocenter Labels");
+    m_stereo_labels_act = addAction("Stereo Labels");
     m_implicit_hydrogens_act = addAction("Implicit Hydrogens");
     addSeparator();
     m_preferences_act = addAction("Preferences...");
@@ -119,7 +119,7 @@ ConfigureViewMenu::ConfigureViewMenu(QWidget* parent) : QMenu(parent)
     std::vector<QAction*> checkable_actions = {
         m_valence_errors_act,
         m_heteroatom_colors_act,
-        m_stereocenter_labels_act,
+        m_stereo_labels_act,
         m_implicit_hydrogens_act,
     };
     for (auto& action : checkable_actions) {

@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::ALLOW_MULTIPLE_RXNS, true},
         {ModelKey::SHOW_VALENCE_ERRORS, false},
         {ModelKey::COLOR_HETEROATOMS, false},
-        {ModelKey::SHOW_STEREOCENTER_LABELS, false},
+        {ModelKey::SHOW_STEREO_LABELS, false},
         {ModelKey::USE_IMPLICIT_HYDROGENS, true},
         {ModelKey::SELECTION_TOOL, QVariant::fromValue(SelectionTool::LASSO)},
         {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::MOVE_ROTATE)},

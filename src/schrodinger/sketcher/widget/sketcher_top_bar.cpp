@@ -192,9 +192,8 @@ void SketcherTopBar::generatePackets()
     m_signal_packets.emplace_back(
         ModelKey::COLOR_HETEROATOMS,
         m_configure_view_menu->m_heteroatom_colors_act);
-    m_signal_packets.emplace_back(
-        ModelKey::SHOW_STEREOCENTER_LABELS,
-        m_configure_view_menu->m_stereocenter_labels_act);
+    m_signal_packets.emplace_back(ModelKey::SHOW_STEREO_LABELS,
+                                  m_configure_view_menu->m_stereo_labels_act);
     m_signal_packets.emplace_back(
         ModelKey::USE_IMPLICIT_HYDROGENS,
         m_configure_view_menu->m_implicit_hydrogens_act);

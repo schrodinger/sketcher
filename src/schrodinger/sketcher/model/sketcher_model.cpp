@@ -24,7 +24,7 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::ALLOW_MULTIPLE_RXNS,
         ModelKey::SHOW_VALENCE_ERRORS,
         ModelKey::COLOR_HETEROATOMS,
-        ModelKey::SHOW_STEREOCENTER_LABELS,
+        ModelKey::SHOW_STEREO_LABELS,
         ModelKey::USE_IMPLICIT_HYDROGENS,
         ModelKey::SELECTION_TOOL,
         ModelKey::DRAW_TOOL,
@@ -48,7 +48,7 @@ SketcherModel::SketcherModel(QObject* parent) : QObject(parent)
         {ModelKey::ALLOW_MULTIPLE_RXNS, false},
         {ModelKey::SHOW_VALENCE_ERRORS, true},
         {ModelKey::COLOR_HETEROATOMS, true},
-        {ModelKey::SHOW_STEREOCENTER_LABELS, true},
+        {ModelKey::SHOW_STEREO_LABELS, true},
         {ModelKey::USE_IMPLICIT_HYDROGENS, false},
         {ModelKey::SELECTION_TOOL,
          QVariant::fromValue(SelectionTool::RECTANGLE)},
@@ -177,11 +177,13 @@ void SketcherModel::updateAtomDisplaySettings(
                 emit_display_settings_changed = true;
                 break;
             }
-            case ModelKey::SHOW_STEREOCENTER_LABELS: {
+            case ModelKey::SHOW_STEREO_LABELS: {
                 auto stereo_labels_shown = getValueBool(key);
                 m_atom_display_settings.m_stereo_labels_visibility =
                     (stereo_labels_shown ? StereoLabels::ALL
                                          : StereoLabels::NONE);
+                m_bond_display_settings.m_stereo_labels_shown =
+                    stereo_labels_shown;
                 emit_display_settings_changed = true;
                 break;
             }

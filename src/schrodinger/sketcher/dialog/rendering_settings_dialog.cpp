@@ -98,8 +98,7 @@ void RenderingSettingsDialog::updateWidgets()
     m_ui->m_label_terminal_C_rb->setEnabled(check_label_carbons);
 
     bool show_stereo = m_ui->m_show_stereo_cb->isChecked();
-    m_ui->m_with_ABS_rb->setEnabled(show_stereo);
-    m_ui->m_without_ABS_rb->setEnabled(show_stereo);
+    m_ui->m_abs_cb->setEnabled(show_stereo);
     m_ui->m_undefined_centers_labels_cb->setEnabled(show_stereo);
 
     auto sync_comboboxes = [](QComboBox* visible_combobox,
@@ -143,8 +142,7 @@ void RenderingSettingsDialog::loadSettings(RenderingSettings& settings)
         QVariant::fromValue(settings.m_color_schemes.second)));
     m_ui->m_show_stereo_cb->setChecked(settings.m_show_stereo_annotations);
 
-    m_ui->m_with_ABS_rb->setChecked(settings.m_explicit_abs_labels_shown);
-    m_ui->m_without_ABS_rb->setChecked(!settings.m_explicit_abs_labels_shown);
+    m_ui->m_abs_cb->setChecked(settings.m_explicit_abs_labels_shown);
     m_ui->m_undefined_centers_labels_cb->setChecked(
         settings.m_show_unknown_stereo_annotations);
     updateWidgets();
@@ -167,7 +165,7 @@ RenderingSettings RenderingSettingsDialog::getSettingsFromModel(
         model->getValueBool(ModelKey::COLOR_HETEROATOMS);
     settings.m_color_schemes = model->getColorSchemes();
     settings.m_show_stereo_annotations =
-        model->getValueBool(ModelKey::SHOW_STEREOCENTER_LABELS);
+        model->getValueBool(ModelKey::SHOW_STEREO_LABELS);
     settings.m_explicit_abs_labels_shown =
         model->getAtomDisplaySettingsPtr()->m_explicit_abs_labels_shown;
 
@@ -209,7 +207,7 @@ RenderingSettings RenderingSettingsDialog::getSettingsFromPanel() const
             m_ui->m_bw_mode_combo->currentData())};
     settings.m_show_stereo_annotations = m_ui->m_show_stereo_cb->isChecked();
 
-    settings.m_explicit_abs_labels_shown = m_ui->m_with_ABS_rb->isChecked();
+    settings.m_explicit_abs_labels_shown = m_ui->m_abs_cb->isChecked();
 
     settings.m_show_unknown_stereo_annotations =
         m_ui->m_undefined_centers_labels_cb->isChecked();
@@ -228,7 +226,7 @@ void RenderingSettingsDialog::exportSettingsToModel() const
     std::unordered_map<ModelKey, QVariant> kv_pairs = {
         {ModelKey::COLOR_HETEROATOMS,
          QVariant::fromValue(settings.m_color_heteroatoms)},
-        {ModelKey::SHOW_STEREOCENTER_LABELS,
+        {ModelKey::SHOW_STEREO_LABELS,
          QVariant::fromValue(settings.m_show_stereo_annotations)}};
     m_sketcher_model->setValues(kv_pairs);
     m_sketcher_model->setColorSchemes(settings.m_color_schemes,
