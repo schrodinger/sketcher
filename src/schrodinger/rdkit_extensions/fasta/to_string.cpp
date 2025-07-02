@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <fmt/format.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <string_view>
 
 #include "schrodinger/rdkit_extensions/fasta/monomers.h"

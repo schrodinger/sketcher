@@ -778,7 +778,6 @@ int TokenParser::parse()
     int yylen = 0;
 
     // Error handling.
-    int yynerrs_ = 0;
     int yyerrstatus_ = 0;
 
     /// The lookahead symbol.
@@ -1654,7 +1653,6 @@ int TokenParser::parse()
     yyerrlab:
         // If not already recovering from an error, report this error.
         if (!yyerrstatus_) {
-            ++yynerrs_;
             std::string msg = YY_("syntax error");
             error(yyla.location, YY_MOVE(msg));
         }

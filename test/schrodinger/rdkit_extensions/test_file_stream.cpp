@@ -2,7 +2,6 @@
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE test_file_stream
 
 #include <boost/test/data/test_case.hpp>
@@ -13,15 +12,14 @@
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
-#include "schrodinger/test/checkexceptionmsg.h"
-#include "schrodinger/test/testfiles.h"
+#include "test_common.h"
 
 using namespace schrodinger::rdkit_extensions;
 namespace bdata = boost::unit_test::data;
 
 BOOST_AUTO_TEST_CASE(TestReadingUncompressedFiles)
 {
-    auto fname = schrodinger::test::mmshare_testfile("structure/test.sdf");
+    auto fname = testfile_path("methane.sdf");
     maybe_compressed_istream fstream(fname);
 
     BOOST_TEST(fstream.good()); // should be readable
@@ -40,18 +38,17 @@ BOOST_AUTO_TEST_CASE(TestReadingUncompressedFiles)
 
 BOOST_DATA_TEST_CASE(TestReadingCompressedFiles,
                      boost::unit_test::data::make(std::vector<std::string>{
-                         "structure/test.smigz", "structure/test.csvgz",
-                         "structure/metalInteractions_test.maegz",
+                         "methane.smigz", "methane.sdfgz", "methane.maegz",
                          "methane.mae.zst"}),
                      testfile)
 {
-    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    auto fname = testfile_path(testfile);
     maybe_compressed_istream fstream(fname);
 
     BOOST_TEST(fstream.good()); // should be readable
     BOOST_TEST(fstream.is_compressed());
 
-    constexpr size_t read_size = 100;
+    constexpr size_t read_size = 2;
     std::string buffer(read_size, '\0');
     fstream.read(&buffer[0], read_size);
 
@@ -74,8 +71,9 @@ BOOST_DATA_TEST_CASE(
              std::ios::app, std::ios::trunc}),
     test_ext, write_mode)
 {
-    std::string testfile = std::tmpnam(nullptr);
-    testfile += test_ext;
+    auto tmpfile = boost::filesystem::temp_directory_path() /
+                   boost::filesystem::unique_path();
+    auto testfile = tmpfile.string() + test_ext;
 
     maybe_compressed_ostream fstream(testfile, write_mode);
     BOOST_TEST(fstream.good()); // should be writable
@@ -84,14 +82,13 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(fstream.good()); // should still be writable
 }
 
-BOOST_DATA_TEST_CASE(
-    TestReadingFromStringInput,
-    bdata::make(std::vector<std::string>{
-        "structure/test.sdf", "structure/test.smigz", "structure/test.csvgz",
-        "structure/metalInteractions_test.maegz", "methane.mae.zst"}),
-    testfile)
+BOOST_DATA_TEST_CASE(TestReadingFromStringInput,
+                     bdata::make(std::vector<std::string>{
+                         "methane.sdf", "methane.smigz", "methane.sdfgz",
+                         "methane.maegz", "methane.mae.zst"}),
+                     testfile)
 {
-    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    auto fname = testfile_path(testfile);
     std::ifstream is(fname, std::ios::binary);
     std::string text(std::istreambuf_iterator<char>(is), {});
 
@@ -102,7 +99,7 @@ BOOST_DATA_TEST_CASE(
     auto is_compressed = compression_type != CompressionType::UNKNOWN;
     BOOST_TEST(fstream.is_compressed() == is_compressed);
 
-    constexpr size_t read_size = 100;
+    constexpr size_t read_size = 2;
     std::string buffer(read_size, '\0');
     fstream.read(&buffer[0], read_size);
 
@@ -139,7 +136,7 @@ BOOST_AUTO_TEST_CASE(TestOutputStreamFailsForBadOstream)
 
 BOOST_AUTO_TEST_CASE(TestGetCompressedString)
 {
-    auto fname = schrodinger::test::mmshare_testfile("methane.mae");
+    auto fname = testfile_path("methane.mae");
     std::ifstream is(fname);
     std::string buffer(std::istreambuf_iterator<char>(is), {});
 
@@ -155,13 +152,13 @@ BOOST_AUTO_TEST_CASE(TestGetCompressedString)
 
 BOOST_DATA_TEST_CASE(TestGetDecompressedString,
                      bdata::make(std::vector<std::string>{
-                         "methane.mae", "methane.mae.zst", "1lig.maegz"}) ^
+                         "methane.mae", "methane.mae.zst", "methane.maegz"}) ^
                          bdata::make(std::vector<CompressionType>{
                              CompressionType::UNKNOWN, CompressionType::ZSTD,
                              CompressionType::GZIP}),
                      testfile, compression_type)
 {
-    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    auto fname = testfile_path(testfile);
     std::ifstream is(fname);
     std::string buffer(std::istreambuf_iterator<char>(is), {});
 

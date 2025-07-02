@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <GraphMol/RWMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/fasta/monomers.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"

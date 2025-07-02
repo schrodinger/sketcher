@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE rdkit_extensions_helm_utils
 
 #include <boost/test/data/test_case.hpp>
@@ -72,9 +72,9 @@ BOOST_DATA_TEST_CASE(TestGetAtomsInPolymerChainWithMultipleIds,
 BOOST_AUTO_TEST_CASE(TestAtomisticMolsAreUnsupported)
 {
     ::RDKit::ROMol mol;
-    BOOST_CHECK_THROW(get_atoms_in_polymer_chain(mol, "TEST"),
+    BOOST_CHECK_THROW(std::ignore = get_atoms_in_polymer_chain(mol, "TEST"),
                       std::invalid_argument);
-    BOOST_CHECK_THROW(get_atoms_in_polymer_chains(mol, {}),
+    BOOST_CHECK_THROW(std::ignore = get_atoms_in_polymer_chains(mol, {}),
                       std::invalid_argument);
 }
 
@@ -83,7 +83,8 @@ BOOST_AUTO_TEST_SUITE(TestPolymerExtraction)
 BOOST_AUTO_TEST_CASE(TestAtomisticMol)
 {
     ::RDKit::ROMol mol;
-    BOOST_CHECK_THROW(extract_helm_polymers(mol, {}), std::invalid_argument);
+    BOOST_CHECK_THROW(std::ignore = extract_helm_polymers(mol, {}),
+                      std::invalid_argument);
 }
 
 BOOST_DATA_TEST_CASE(TestBadPolymerIds,
@@ -160,7 +161,8 @@ BOOST_DATA_TEST_CASE(TestExtractionOfPolymerGroups,
                      input_helm)
 {
     auto mol = helm_to_rdkit(input_helm);
-    BOOST_CHECK_THROW(extract_helm_polymers(*mol, {}), std::invalid_argument);
+    BOOST_CHECK_THROW(std::ignore = extract_helm_polymers(*mol, {}),
+                      std::invalid_argument);
 }
 
 // NOTE: Currently unsupported
@@ -187,9 +189,9 @@ BOOST_DATA_TEST_CASE(
     input_helm, expected_helm)
 {
     auto mol = helm_to_rdkit(input_helm);
-    BOOST_CHECK_THROW(
-        extract_helm_polymers(*mol, {"PEPTIDE1", "RNA1", "CHEM1", "BLOB1"}),
-        std::invalid_argument);
+    BOOST_CHECK_THROW(std::ignore = extract_helm_polymers(
+                          *mol, {"PEPTIDE1", "RNA1", "CHEM1", "BLOB1"}),
+                      std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -2,7 +2,6 @@
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE test_file_format
 
 #include <boost/test/data/test_case.hpp>
@@ -11,8 +10,7 @@
 #include <fstream>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
-#include "schrodinger/test/checkexceptionmsg.h"
-#include "schrodinger/test/testfiles.h"
+#include "test_common.h"
 
 using namespace schrodinger::rdkit_extensions;
 
@@ -87,13 +85,9 @@ BOOST_AUTO_TEST_CASE(test_schrodinger_specific_extensions)
 BOOST_DATA_TEST_CASE(
     TestGetCompressionType,
     boost::unit_test::data::make(std::vector<std::string>{
-        "structure/test.csv", "structure/test.mae", "structure/test.mol2",
-        "structure/test.pdb", "structure/test.sdf", "structure/test.smi",
-        "structure/test2.csv", "structure/test.smigz", "structure/test.csvgz",
-        "structure/metalInteractions_test.maegz", "methane.mae.zst"}) ^
+        ".mae", ".mol2", ".pdb", ".sdf", ".smi", ".smigz", ".sdfgz", ".maegz",
+        ".mae.zst"}) ^
         boost::unit_test::data::make(std::vector<CompressionType>{
-            CompressionType::UNKNOWN,
-            CompressionType::UNKNOWN,
             CompressionType::UNKNOWN,
             CompressionType::UNKNOWN,
             CompressionType::UNKNOWN,
@@ -104,10 +98,10 @@ BOOST_DATA_TEST_CASE(
             CompressionType::GZIP,
             CompressionType::ZSTD,
         }),
-    testfile, expected_compression_type)
+    extension, expected_compression_type)
 {
 
-    auto fname = schrodinger::test::mmshare_testfile(testfile);
+    auto fname = testfile_path("methane" + extension);
     BOOST_TEST(get_compression_type(fname) == expected_compression_type);
     BOOST_TEST(get_compression_type_from_ext(fname) ==
                expected_compression_type);

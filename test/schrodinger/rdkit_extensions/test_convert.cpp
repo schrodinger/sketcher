@@ -5,7 +5,6 @@
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE rdkit_extensions_convert
 
 #include <map>
@@ -30,8 +29,6 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
-#include "schrodinger/test/boost_checks.h"
-#include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
 namespace bdata = boost::unit_test::data;
@@ -626,7 +623,7 @@ M  END)CTAB";
     BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 1);
 
     auto cxsmiles = to_string(*mol, Format::EXTENDED_SMILES);
-    BOOST_TEST(!test::contains(cxsmiles, std::string("molTotValence")));
+    BOOST_TEST(cxsmiles.find("molTotValence") == std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(test_force_v2k)
@@ -953,6 +950,8 @@ BOOST_AUTO_TEST_CASE(test_atom_mapping_rgroups)
 BOOST_DATA_TEST_CASE(test_converting_biologics_to_non_reaction_formats,
                      bdata::make(MOL_FORMATS), mol_format)
 {
+    set_default_monomer_db_path();
+
     using test_info_t = std::pair<std::string, Format>;
     for (auto [input, input_format] : std::array<test_info_t, 4>{{
              {">\nACG\n", Format::FASTA_DNA},

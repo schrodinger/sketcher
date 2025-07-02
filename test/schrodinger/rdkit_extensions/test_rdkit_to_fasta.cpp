@@ -1,10 +1,11 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE test_rdkit_to_fasta
 
 #include <boost/test/data/test_case.hpp>
-#include "GraphMol/FileParsers/SequenceParsers.h"
-#include <GraphMol/ROMol.h>
-#include <GraphMol/RWMol.h>
+#include <boost/test/unit_test.hpp>
+#include <rdkit/GraphMol/FileParsers/SequenceParsers.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -14,8 +15,7 @@
 #include "schrodinger/rdkit_extensions/fasta/to_string.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
-
-#include "schrodinger/test/checkexceptionmsg.h" // TEST_CHECK_EXCEPTION_MSG_SUBSTR
+#include "test_common.h"
 
 namespace bdata = boost::unit_test::data;
 
@@ -23,7 +23,7 @@ BOOST_AUTO_TEST_CASE(TestAtomisticConversion)
 {
     auto mol = std::unique_ptr<::RDKit::RWMol>(::RDKit::FASTAToMol("AAPL"));
     TEST_CHECK_EXCEPTION_MSG_SUBSTR(
-        fasta::rdkit_to_fasta(*mol), std::invalid_argument,
+        std::ignore = fasta::rdkit_to_fasta(*mol), std::invalid_argument,
         "FASTA conversions with atomistic mols are currently unsupported");
 }
 
@@ -38,7 +38,7 @@ BOOST_DATA_TEST_CASE(TestUnsupportedFeatures,
                      input_helm)
 {
     auto mol = helm::helm_to_rdkit(input_helm);
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::rdkit_to_fasta(*mol),
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(std::ignore = fasta::rdkit_to_fasta(*mol),
                                     std::invalid_argument,
                                     "currently unsupported");
 }
@@ -55,7 +55,8 @@ BOOST_DATA_TEST_CASE(TestUnsupportedNucleotides,
                      input_helm)
 {
     auto mol = helm::helm_to_rdkit(input_helm);
-    BOOST_CHECK_THROW(fasta::rdkit_to_fasta(*mol), std::invalid_argument);
+    BOOST_CHECK_THROW(std::ignore = fasta::rdkit_to_fasta(*mol),
+                      std::invalid_argument);
 }
 
 BOOST_DATA_TEST_CASE(TestUnsupportedMonomers,
@@ -67,7 +68,7 @@ BOOST_DATA_TEST_CASE(TestUnsupportedMonomers,
                      input_helm)
 {
     auto mol = helm::helm_to_rdkit(input_helm);
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::rdkit_to_fasta(*mol),
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(std::ignore = fasta::rdkit_to_fasta(*mol),
                                     std::invalid_argument,
                                     "Unsupported monomer");
 }

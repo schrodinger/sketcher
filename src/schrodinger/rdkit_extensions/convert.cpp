@@ -362,7 +362,7 @@ void set_xyz_title(RDKit::RWMol& mol)
  * in Schrodinger usage of .xyz files. If no "charge=" string is present,
  * assumes total charge is 0
  */
-int get_xyz_charge(const std::string& xyz_block)
+[[maybe_unused]] int get_xyz_charge(const std::string& xyz_block)
 {
     std::vector<std::string> lines;
     boost::split(lines, xyz_block, boost::is_any_of("\n"));

@@ -1,9 +1,9 @@
 #include "schrodinger/rdkit_extensions/coarse_grain.h"
 
-#include <GraphMol/QueryAtom.h>
-#include <GraphMol/ROMol.h>
-#include <GraphMol/RWMol.h>
-#include <GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include <algorithm>

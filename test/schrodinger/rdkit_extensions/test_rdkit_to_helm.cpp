@@ -1,9 +1,10 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE test_rdkit_to_helm
 
 #include <boost/algorithm/string.hpp>
-#include <algorithm>
 #include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
+#include <algorithm>
 #include <regex>
 #include <sstream>
 #include <string>
@@ -17,8 +18,6 @@
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/helm_examples.h"
-
-#include "schrodinger/test/checkexceptionmsg.h" // TEST_CHECK_EXCEPTION_MSG_SUBSTR
 
 using helm::helm_to_rdkit;
 using helm::rdkit_to_helm;

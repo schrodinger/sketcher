@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE test_fasta_to_rdkit
 
 #include <boost/test/data/test_case.hpp>
@@ -6,20 +6,19 @@
 #include <stdexcept>
 #include <string>
 
-#include <GraphMol/RWMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/fasta_examples.h"
 #include "schrodinger/rdkit_extensions/fasta/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
-
-#include "schrodinger/test/checkexceptionmsg.h" // TEST_CHECK_EXCEPTION_MSG_SUBSTR
+#include "test_common.h"
 
 namespace bdata = boost::unit_test::data;
 
 BOOST_DATA_TEST_CASE(TestInvalidPeptides,
                      bdata::make(fasta::INVALID_PEPTIDE_EXAMPLES), input_fasta)
 {
-    BOOST_CHECK_THROW(fasta::peptide_fasta_to_rdkit(input_fasta),
+    BOOST_CHECK_THROW(std::ignore = fasta::peptide_fasta_to_rdkit(input_fasta),
                       std::invalid_argument);
 }
 
@@ -27,24 +26,25 @@ BOOST_DATA_TEST_CASE(TestInvalidNucleotides,
                      bdata::make(fasta::INVALID_NUCLEOTIDE_EXAMPLES),
                      input_fasta)
 {
-    BOOST_CHECK_THROW(fasta::rna_fasta_to_rdkit(input_fasta),
+    BOOST_CHECK_THROW(std::ignore = fasta::rna_fasta_to_rdkit(input_fasta),
                       std::invalid_argument);
 
-    BOOST_CHECK_THROW(fasta::dna_fasta_to_rdkit(input_fasta),
+    BOOST_CHECK_THROW(std::ignore = fasta::dna_fasta_to_rdkit(input_fasta),
                       std::invalid_argument);
 }
 
 BOOST_DATA_TEST_CASE(TestValidPeptides,
                      bdata::make(fasta::VALID_PEPTIDE_EXAMPLES), input_fasta)
 {
-    BOOST_CHECK_NO_THROW(fasta::peptide_fasta_to_rdkit(input_fasta));
+    BOOST_CHECK_NO_THROW(std::ignore =
+                             fasta::peptide_fasta_to_rdkit(input_fasta));
 }
 
 BOOST_DATA_TEST_CASE(TestValidNucleotides,
                      bdata::make(fasta::VALID_NUCLEOTIDE_EXAMPLES), input_fasta)
 {
-    BOOST_CHECK_NO_THROW(fasta::rna_fasta_to_rdkit(input_fasta));
-    BOOST_CHECK_NO_THROW(fasta::dna_fasta_to_rdkit(input_fasta));
+    BOOST_CHECK_NO_THROW(std::ignore = fasta::rna_fasta_to_rdkit(input_fasta));
+    BOOST_CHECK_NO_THROW(std::ignore = fasta::dna_fasta_to_rdkit(input_fasta));
 }
 
 BOOST_DATA_TEST_CASE(
@@ -102,13 +102,13 @@ BOOST_DATA_TEST_CASE(TestUnsupportedMonomers,
                      }),
                      input_fasta)
 {
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::peptide_fasta_to_rdkit(input_fasta),
-                                    std::invalid_argument,
-                                    "Unsupported monomer");
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::rna_fasta_to_rdkit(input_fasta),
-                                    std::invalid_argument,
-                                    "Unsupported monomer");
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(fasta::dna_fasta_to_rdkit(input_fasta),
-                                    std::invalid_argument,
-                                    "Unsupported monomer");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        std::ignore = fasta::peptide_fasta_to_rdkit(input_fasta),
+        std::invalid_argument, "Unsupported monomer");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        std::ignore = fasta::rna_fasta_to_rdkit(input_fasta),
+        std::invalid_argument, "Unsupported monomer");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        std::ignore = fasta::dna_fasta_to_rdkit(input_fasta),
+        std::invalid_argument, "Unsupported monomer");
 }

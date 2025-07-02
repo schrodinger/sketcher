@@ -1,6 +1,6 @@
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include <Geometry/point.h>
-#include <GraphMol/ROMol.h>
+#include <rdkit/GraphMol/ROMol.h>
 
 namespace schrodinger
 {

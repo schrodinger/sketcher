@@ -357,7 +357,7 @@ typedef flex_uint8_t YY_CHAR;
 
 #define yytext_ptr yytext
 
-#include <FlexLexer.h>
+#include <schrodinger/rdkit_extensions/helm/thirdparty/FlexLexer.h>
 
 int yyFlexLexer::yywrap()
 {

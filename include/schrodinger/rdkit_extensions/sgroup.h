@@ -1,8 +1,8 @@
 #pragma once
 
 #include "schrodinger/rdkit_extensions/definitions.h" // RDKIT_EXTENSIONS_API
-#include <GraphMol/SubstanceGroup.h>
-#include <GraphMol/Depictor/DepictUtils.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
+#include <rdkit/GraphMol/Depictor/DepictUtils.h>
 #include <unordered_set>
 
 namespace schrodinger
