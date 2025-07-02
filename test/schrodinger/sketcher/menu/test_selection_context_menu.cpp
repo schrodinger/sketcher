@@ -18,6 +18,7 @@ class TestSelectionContextMenu : public SelectionContextMenu
         SelectionContextMenu(model, mol_model)
     {
     }
+    using SelectionContextMenu::m_clean_up_region_action;
     using SelectionContextMenu::m_variable_bond_action;
     using SelectionContextMenu::updateActions;
 };
@@ -74,6 +75,22 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     menu.setContextItems({*c_atoms.begin(), *n_atoms.begin()}, {}, {}, {});
     menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
+
+    // clean up region action should be enabled if there is a contiguous
+    // region of atoms and bonds
+    menu.setContextItems(c_atoms,
+                         {mol_model.getMol()->getBondWithIdx(1),
+                          mol_model.getMol()->getBondWithIdx(2)},
+                         {}, {});
+    menu.updateActions();
+    BOOST_TEST(menu.m_clean_up_region_action->isEnabled());
+
+    // clean up region action should be disabled if there is no contiguous
+    // region of atoms and bonds
+    menu.setContextItems(c_atoms, {mol_model.getMol()->getBondWithIdx(0)}, {},
+                         {});
+    menu.updateActions();
+    BOOST_TEST(!menu.m_clean_up_region_action->isEnabled());
 }
 
 } // namespace sketcher

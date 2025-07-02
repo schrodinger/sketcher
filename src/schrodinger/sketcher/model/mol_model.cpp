@@ -312,6 +312,16 @@ bool MolModel::isEmpty() const
     return !m_mol.getNumAtoms() && m_pluses.empty() && !m_arrow.has_value();
 }
 
+bool MolModel::hasSelectedBonds() const
+{
+    return !m_selected_bond_tags.empty();
+}
+
+bool MolModel::hasSelectedAtoms() const
+{
+    return !m_selected_atom_tags.empty();
+}
+
 bool MolModel::hasSelection() const
 {
     return !(m_selected_atom_tags.empty() && m_selected_bond_tags.empty() &&
@@ -1109,6 +1119,41 @@ void MolModel::flipBond(const RDKit::Bond* const bond)
     doCommandUsingSnapshots(cmd_func, "Flip bond", WhatChanged::MOLECULE);
 }
 
+static void update_post_compute2DCoords(RDKit::RWMol& mol)
+{
+    // when coordinates are updated, the wedged/dashed bonds must
+    // be updated to match the new coordinates, or else stereochemistry
+    // might be inverted if the new coordinates change the parity around
+    // any of the chiral centers.
+    rdkit_extensions::wedgeMolBonds(mol, &mol.getConformer());
+    // compute2DCoords doesn't know about variable attachment bonds, so we
+    // have to fix up the coordinates for those if any are present
+    fix_variable_attachment_bond_coordinates(mol);
+}
+
+void MolModel::cleanUpSelection()
+{
+    if (!hasSelectedAtoms()) {
+        // nothing to do
+        return;
+    }
+
+    auto cmd = [this]() {
+        // freeze the coordinates of the unselected atoms.
+        std::vector<unsigned int> frozen_ids;
+
+        auto atoms_to_move = m_selected_atom_tags;
+        for (auto& atom : m_mol.atoms()) {
+            if (!atoms_to_move.contains(getTagForAtom(atom))) {
+                frozen_ids.push_back(atom->getIdx());
+            }
+        }
+        rdkit_extensions::compute2DCoords(m_mol, frozen_ids);
+        update_post_compute2DCoords(m_mol);
+    };
+    doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
+}
+
 void MolModel::regenerateCoordinates()
 {
     auto cmd = [this]() {
@@ -1120,14 +1165,7 @@ void MolModel::regenerateCoordinates()
         } else {
             regenerateReactionCoordinatesCommandFunc();
         }
-        // when coordinates are updated, the wedged/dashed bonds must
-        // be updated to match the new coordinates, or else stereochemistry
-        // might be inverted if the new coordinates change the parity around
-        // any of the chiral centers.
-        rdkit_extensions::wedgeMolBonds(m_mol, &m_mol.getConformer());
-        // compute2DCoords doesn't know about variable attachment bonds, so we
-        // have to fix up the coordinates for those if any are present
-        fix_variable_attachment_bond_coordinates(m_mol);
+        update_post_compute2DCoords(m_mol);
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
 }

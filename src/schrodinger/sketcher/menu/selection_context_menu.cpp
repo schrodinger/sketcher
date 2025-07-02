@@ -35,6 +35,8 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
 
     addAction("Invert Selection", this,
               &SelectionContextMenu::invertSelectionRequested);
+    m_clean_up_region_action = addAction(
+        "Clean Up Region", this, &SelectionContextMenu::cleanUpRegionRequested);
     addSeparator();
     addAction(m_cut_copy_actions->m_cut_action);
     addAction(m_cut_copy_actions->m_copy_action);
@@ -73,6 +75,10 @@ void SelectionContextMenu::setContextItems(
 
 void SelectionContextMenu::updateActions()
 {
+    // enable clean up region only if there's one continuous region
+    m_clean_up_region_action->setEnabled(
+        is_contiguous_region(m_atoms, m_bonds));
+
     bool enable = m_atoms.size() >= 2 && in_same_fragment(m_atoms);
     m_variable_bond_action->setEnabled(enable);
 

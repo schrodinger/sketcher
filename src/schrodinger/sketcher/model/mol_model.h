@@ -211,6 +211,9 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     bool hasSelection() const;
 
+    bool hasSelectedBonds() const;
+    bool hasSelectedAtoms() const;
+
     /**
      * @return halo highlighting information
      */
@@ -692,6 +695,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * wedges/dashes according to the new coordinates.
      */
     void regenerateCoordinates();
+
+    /**
+     * regenerate coordinates for the current selection and regenerate
+     * wedges/dashes according to the new coordinates.
+     */
+    void cleanUpSelection();
 
     /**
      * Undoably clear the molecule and non-molecular objects.

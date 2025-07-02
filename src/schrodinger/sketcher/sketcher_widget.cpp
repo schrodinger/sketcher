@@ -562,6 +562,8 @@ void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
 }
 void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
 {
+    connect(&menu, &SelectionContextMenu::cleanUpRegionRequested, m_mol_model,
+            &MolModel::cleanUpSelection);
     connect(&menu, &SelectionContextMenu::invertSelectionRequested, m_mol_model,
             &MolModel::invertSelection);
     connect(&menu, &SelectionContextMenu::cutRequested, this,

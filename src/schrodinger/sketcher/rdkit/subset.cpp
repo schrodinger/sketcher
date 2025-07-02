@@ -7,6 +7,35 @@ namespace schrodinger
 namespace sketcher
 {
 
+bool is_contiguous_region(std::unordered_set<const RDKit::Atom*> atoms,
+                          std::unordered_set<const RDKit::Bond*> bonds)
+{
+    // create a molecule from the atoms and bonds
+    RDKit::RWMol new_mol;
+    std::map<unsigned int, unsigned int> atom_map;
+    for (auto atom : atoms) {
+        RDKit::Atom* new_atom = new RDKit::Atom(atom->getAtomicNum());
+        unsigned int new_idx = new_mol.addAtom(new_atom);
+        atom_map[atom->getIdx()] = new_idx;
+    }
+    // Add bonds
+    for (auto bond : bonds) {
+        unsigned int begin = bond->getBeginAtomIdx();
+        unsigned int end = bond->getEndAtomIdx();
+        if (atom_map.count(begin) && atom_map.count(end)) {
+            new_mol.addBond(atom_map[begin], atom_map[end],
+                            bond->getBondType());
+        }
+    }
+    // get the fragments of the molecule
+    std::vector<int> frags;
+    std::vector<std::vector<int>> frags_mol_atom_mapping;
+    RDKit::MolOps::getMolFrags(new_mol, /* sanitizeFrags = */ false, &frags,
+                               &frags_mol_atom_mapping,
+                               /* copyConformers = */ false);
+    return frags_mol_atom_mapping.size() == 1;
+}
+
 std::pair<std::unordered_set<const RDKit::Atom*>,
           std::unordered_set<const RDKit::Bond*>>
 get_connected_atoms_and_bonds(const RDKit::Atom* const atom)

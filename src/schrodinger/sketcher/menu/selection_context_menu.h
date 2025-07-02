@@ -66,12 +66,14 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     void bracketSubgroupDialogRequested(
         const std::unordered_set<const RDKit::Atom*>&);
     void invertSelectionRequested();
+    void cleanUpRegionRequested();
 
   protected:
     SketcherModel* m_sketcher_model = nullptr;
     MolModel* m_mol_model = nullptr;
     CutCopyActionManager* m_cut_copy_actions = nullptr;
     QAction* m_variable_bond_action = nullptr;
+    QAction* m_clean_up_region_action = nullptr;
 
   protected slots:
     virtual void updateActions();

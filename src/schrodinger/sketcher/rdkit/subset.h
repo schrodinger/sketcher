@@ -16,6 +16,15 @@ namespace sketcher
 {
 
 /**
+ * @return whether the given atoms and bonds form a contiguous region in the
+ * molecule. i.e. whether the atoms are connected to each other through the
+ * bonds
+ */
+SKETCHER_API
+bool is_contiguous_region(std::unordered_set<const RDKit::Atom*> atoms,
+                          std::unordered_set<const RDKit::Bond*> bonds);
+
+/**
  * @return all atoms and bonds that are connected to the specified atom
  */
 SKETCHER_API std::pair<std::unordered_set<const RDKit::Atom*>,
