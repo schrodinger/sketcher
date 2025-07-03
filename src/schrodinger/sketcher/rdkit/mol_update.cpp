@@ -158,6 +158,29 @@ static void enforce_dummy_atoms_for_list_queries(RDKit::ROMol& mol)
     }
 }
 
+// If we can't resolve an atoms CIP code (e.g. due to timing out),
+// the {cip} placeholder in the label won't be updated to the actual
+// code, and the placeholder will be displayed. To prevent this from
+// happening, we need to postprocess the labels and remove the ones that
+// haven't been replaced.
+// We only care about ABS groups because these are the only ones for
+// which we show the CIP code in the label (AND/OR groups just show the
+// type of the group, which we always know, and for ungrouped atoms we
+// only add a label if the CIP code is known).
+static void clear_abs_labels_with_unresolved_cip(RDKit::RWMol& mol)
+{
+    for (const auto& sg : mol.getStereoGroups()) {
+        // We only care about the ABS group
+        if (sg.getGroupType() == RDKit::StereoGroupType::STEREO_ABSOLUTE) {
+            for (auto atom : sg.getAtoms()) {
+                if (!atom->hasProp(RDKit::common_properties::_CIPCode)) {
+                    atom->clearProp(RDKit::common_properties::atomNote);
+                }
+            }
+        }
+    }
+}
+
 /**
  * Called once when a mol is first brought into the sketcher
  */
@@ -205,7 +228,7 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     bool no_strict = false;
     mol.updatePropertyCache(no_strict);
     // update hybridization states so that coordinate calculations produce the
-    // correct geometery
+    // correct geometry
     RDKit::MolOps::setConjugation(mol);
     RDKit::MolOps::setHybridization(mol);
     // This is the bare minimum we need to do to be able to detect stereo.
@@ -249,6 +272,8 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     }
 
     RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label, and_label);
+
+    clear_abs_labels_with_unresolved_cip(mol);
 }
 
 } // namespace sketcher
