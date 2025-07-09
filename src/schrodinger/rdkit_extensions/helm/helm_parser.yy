@@ -161,8 +161,8 @@ extended_annotations_and_version:  /* This is parsed outside of Bison */;
  *     * A repeated monomer sequence, e.g., X'N', (X.X.X)'N'
  *
  */
-polymer_unit: polymer { helm_parser.add_polymer($1, {}); }
-            | polymer annotation { helm_parser.add_polymer($1, $2); }
+polymer_unit: polymer { helm_parser.addPolymer($1, {}); }
+            | polymer annotation { helm_parser.addPolymer($1, $2); }
             ;
 polymer: PEPTIDE_ID '{' monomers '}' { $$ = $1; }
        | RNA_ID '{' monomers '}'{ $$ = $1; }
@@ -174,7 +174,7 @@ monomers: monomer_group
         ;
 monomer_group: monomer_unit
              | repeated_monomers
-             | branch_monomer_group { helm_parser.mark_branch_monomer($1); }
+             | branch_monomer_group { helm_parser.markBranchMonomer($1); }
              /* Verbosely handling this since it's a likely case */
              | monomer_unit '(' monomer_sequence ')' {
                    helm_parser.saveError(@2.begin.column,
@@ -188,35 +188,35 @@ monomer_group: monomer_unit
              }
              ;
 repeated_monomers: monomer_unit repetitions {
-                    helm_parser.mark_last_n_monomers_as_repeated(1, $2, {});
+                    helm_parser.markLastNMonomersAsRepeated(1, $2, {});
                  }
                  | monomer_unit repetitions annotation {
-                    helm_parser.mark_last_n_monomers_as_repeated(1, $2, $3);
+                    helm_parser.markLastNMonomersAsRepeated(1, $2, $3);
                  }
                  | '(' monomer_sequence ')' repetitions {
-                    helm_parser.mark_last_n_monomers_as_repeated($2, $4, {});
+                    helm_parser.markLastNMonomersAsRepeated($2, $4, {});
                  }
                  | '(' monomer_sequence ')' repetitions annotation {
-                    helm_parser.mark_last_n_monomers_as_repeated($2, $4, $5);
+                    helm_parser.markLastNMonomersAsRepeated($2, $4, $5);
                  }
                  ;
 repetitions: REPETITIONS { $$ = $1; $$.remove_prefix(1); $$.remove_suffix(1); }
 monomer_sequence: monomer_unit '.' monomer_unit { $$ = 2; }
-                | branch_monomer_group { $$ = $1; helm_parser.mark_branch_monomer($$); }
+                | branch_monomer_group { $$ = $1; helm_parser.markBranchMonomer($$); }
                 | monomer_sequence '.' monomer_unit { $$ = $1 + 1; }
                 | monomer_sequence '.' branch_monomer_group {
-                    helm_parser.mark_branch_monomer($3);
+                    helm_parser.markBranchMonomer($3);
                     $$ = $1 + $3;
                 }
                 ;
 branch_monomer_group: monomer_unit '(' monomer_unit ')' { $$ = 2; }
                     | monomer_unit '(' monomer_unit ')' monomer_unit { $$ = 3; };
-monomer_unit: monomer_id { helm_parser.add_monomer_with_id($1, {}); };
-       | monomer_id annotation { helm_parser.add_monomer_with_id($1,  $2); }
-       | smiles_monomer { helm_parser.add_smiles_monomer($1,  {}); }
-       | smiles_monomer annotation { helm_parser.add_smiles_monomer($1, $2); }
-       | '(' monomer_list ')'  { helm_parser.add_monomer_list($2, {}); }
-       | '(' monomer_list ')' annotation { helm_parser.add_monomer_list($2, $4); }
+monomer_unit: monomer_id { helm_parser.addMonomerWithId($1, {}); };
+       | monomer_id annotation { helm_parser.addMonomerWithId($1,  $2); }
+       | smiles_monomer { helm_parser.addSmilesMonomer($1,  {}); }
+       | smiles_monomer annotation { helm_parser.addSmilesMonomer($1, $2); }
+       | '(' monomer_list ')'  { helm_parser.addMonomerList($2, {}); }
+       | '(' monomer_list ')' annotation { helm_parser.addMonomerList($2, $4); }
        ;
 monomer_list: monomer_and_list | monomer_or_list;
 monomer_and_list: monomer_list_item '+' monomer_list_item {
@@ -240,25 +240,25 @@ monomer_list_item: monomer_id { $$ = $1; }
 
 smiles_monomer: INLINE_SMILES_MONOMER { $$ = $1; $$.remove_prefix(1); $$.remove_suffix(1); }
 
-monomer_id: SINGLE_CHARACTER_MONOMER { helm_parser.add_residue_name($1); $$ = $1; }
+monomer_id: SINGLE_CHARACTER_MONOMER { helm_parser.addResidueName($1); $$ = $1; }
        | MULTI_CHARACTER_MONOMER {
             auto tmp = std::string_view{$1};
             tmp.remove_prefix(1);
             tmp.remove_suffix(1);
-            helm_parser.add_residue_name(tmp);
+            helm_parser.addResidueName(tmp);
             $$ = $1;
        }
        | UNKNOWN_MONOMER {
-            helm_parser.add_wildcard_or_unknown_residue();
+            helm_parser.addWildcardOrUnknownResidue();
             $$ = $1;
        }
        | MISSING_MONOMER { $$ = $1; }
        | MONOMER_WILDCARD {
-            helm_parser.add_wildcard_or_unknown_residue();
+            helm_parser.addWildcardOrUnknownResidue();
             $$ = $1;
        }
        ;
-blob: UNKNOWN_SEQUENCE { helm_parser.add_monomer($1, false, false, false, {}); }
+blob: UNKNOWN_SEQUENCE { helm_parser.addMonomer($1, false, false, false, {}); }
 
 
 /*
@@ -276,7 +276,7 @@ blob: UNKNOWN_SEQUENCE { helm_parser.add_monomer($1, false, false, false, {}); }
 connection: connection_polymer ',' connection_polymer ','
             connection_monomer ':' attachment_point '-'
             connection_monomer ':' attachment_point {
-                helm_parser.add_connection({
+                helm_parser.addConnection({
                                             $1,  // from_id
                                             $5,  // from_res
                                             $7,  // from_rgroup
@@ -289,7 +289,7 @@ connection: connection_polymer ',' connection_polymer ','
         | connection_polymer ',' connection_polymer ','
             connection_monomer ':' attachment_point '-'
             connection_monomer ':' attachment_point annotation {
-                helm_parser.add_connection({
+                helm_parser.addConnection({
                                             $1,  // from_id
                                             $5,  // from_res
                                             $7,  // from_rgroup
@@ -323,8 +323,8 @@ residue_or_list: CONNECTION_RESIDUE ',' CONNECTION_RESIDUE {
                 ;
 
 /* Polymer group */
-polymer_group: POLYMER_GROUP_ID '(' polymer_and_list ')' { helm_parser.add_polymer_group($1, $3, true); }
-             | POLYMER_GROUP_ID '(' polymer_or_list ')' { helm_parser.add_polymer_group($1, $3, false); }
+polymer_group: POLYMER_GROUP_ID '(' polymer_and_list ')' { helm_parser.addPolymerGroup($1, $3, true); }
+             | POLYMER_GROUP_ID '(' polymer_or_list ')' { helm_parser.addPolymerGroup($1, $3, false); }
              ;
 polymer_or_list: polymer_group_item ',' polymer_group_item {
                 $$ = {$1.data(), $1.size() + 1 + $3.size()};

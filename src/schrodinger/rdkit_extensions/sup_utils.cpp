@@ -21,7 +21,7 @@ namespace
 
 const std::string MONOMER_IDX1{"monomerIndex1"};
 
-bool has_sup_sgroups(const RDKit::ROMol& mol)
+bool hasSupSgroups(const RDKit::ROMol& mol)
 {
     // Check for the presence of SUP substance groups
     for (const auto& sgroup : RDKit::getSubstanceGroups(mol)) {
@@ -33,7 +33,7 @@ bool has_sup_sgroups(const RDKit::ROMol& mol)
     return false;
 }
 
-void sup_groups_to_pdb_info(RDKit::ROMol& mol)
+void supGroupsToPdbInfo(RDKit::ROMol& mol)
 {
     // If SUP groups aren't labeled in any order, set residue number
     const auto& sgroups = RDKit::getSubstanceGroups(mol);
@@ -87,7 +87,7 @@ void sup_groups_to_pdb_info(RDKit::ROMol& mol)
     }
 }
 
-void remove_hydrogen_sup_groups(RDKit::ROMol& mol)
+void removeHydrogenSupGroups(RDKit::ROMol& mol)
 {
     auto& sgroups = RDKit::getSubstanceGroups(mol);
     // Track hydrogens that are "apart of the chain" (backbone)
@@ -115,7 +115,7 @@ void remove_hydrogen_sup_groups(RDKit::ROMol& mol)
     sgroups = std::move(newsgs);
 }
 
-void add_unmapped_atoms_to_residues(RDKit::ROMol& mol)
+void addUnmappedAtomsToResidues(RDKit::ROMol& mol)
 {
     // Add unmapped atoms to the residue they belong to
     // make RWMol
@@ -170,7 +170,7 @@ void add_unmapped_atoms_to_residues(RDKit::ROMol& mol)
     }
 }
 
-std::pair<unsigned int, unsigned int> find_furthest_residues(
+std::pair<unsigned int, unsigned int> findFurthestResidues(
     const std::map<unsigned int, std::set<unsigned int>>& residue_graph)
 {
     // Helper function to do BFS and find the furthest residue from start
@@ -211,7 +211,7 @@ std::pair<unsigned int, unsigned int> find_furthest_residues(
     return {endpoint1, endpoint2};
 }
 
-void order_residues(RDKit::ROMol& mol)
+void orderResidues(RDKit::ROMol& mol)
 {
     // Reorder residues by connectivity. This is needed to ensure that residue
     // attachment points are placed in the correct order.
@@ -257,7 +257,7 @@ void order_residues(RDKit::ROMol& mol)
     }
 
     // Find the two furthest residues in the residue graph
-    auto [endpoint1, endpoint2] = find_furthest_residues(residue_connections);
+    auto [endpoint1, endpoint2] = findFurthestResidues(residue_connections);
 
     // Find the lowest atom index in each endpoint residue
     unsigned int min_idx1 = std::numeric_limits<unsigned int>::max();
@@ -324,18 +324,18 @@ void order_residues(RDKit::ROMol& mol)
 
 } // unnamed namespace
 
-bool process_sup_groups(RDKit::ROMol& mol)
+bool processSupGroups(RDKit::ROMol& mol)
 {
     // Skip processing if there are no SUP groups
-    if (!has_sup_sgroups(mol)) {
+    if (!hasSupSgroups(mol)) {
         return false;
     }
 
     // Process the molecule with all SUP-related utilities in the right order
-    remove_hydrogen_sup_groups(mol);
-    sup_groups_to_pdb_info(mol);
-    add_unmapped_atoms_to_residues(mol);
-    order_residues(mol);
+    removeHydrogenSupGroups(mol);
+    supGroupsToPdbInfo(mol);
+    addUnmappedAtomsToResidues(mol);
+    orderResidues(mol);
 
     return true;
 }

@@ -36,9 +36,9 @@ enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
 enum class ConnectionType { FORWARD, SIDECHAIN };
 enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
 
-RDKIT_EXTENSIONS_API ChainType to_chain_type(std::string_view chain_type);
+RDKIT_EXTENSIONS_API ChainType toChainType(std::string_view chain_type);
 
-RDKIT_EXTENSIONS_API std::string to_string(ChainType chain_type);
+RDKIT_EXTENSIONS_API std::string toString(ChainType chain_type);
 
 /*
  * Add a monomer to the molecule
@@ -51,7 +51,7 @@ RDKIT_EXTENSIONS_API std::string to_string(ChainType chain_type);
  *
  * @return The index of the added monomer
  */
-RDKIT_EXTENSIONS_API size_t add_monomer(
+RDKIT_EXTENSIONS_API size_t addMonomer(
     RDKit::RWMol& cg_mol, std::string_view name, int residue_number,
     std::string_view chain_id, MonomerType monomer_type = MonomerType::REGULAR);
 
@@ -66,8 +66,8 @@ RDKIT_EXTENSIONS_API size_t add_monomer(
  * @return The index of the added monomer
  */
 RDKIT_EXTENSIONS_API size_t
-add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
-            MonomerType monomer_type = MonomerType::REGULAR);
+addMonomer(RDKit::RWMol& cg_mol, std::string_view name,
+           MonomerType monomer_type = MonomerType::REGULAR);
 
 /*
  * Add a connection between two monomers in the molecule. The connection has
@@ -79,17 +79,17 @@ add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
  * @param connection_type The type of connection to add
  */
 RDKIT_EXTENSIONS_API void
-add_connection(RDKit::RWMol& mol, size_t monomer1, size_t monomer2,
-               ConnectionType connection_type = ConnectionType::FORWARD);
+addConnection(RDKit::RWMol& mol, size_t monomer1, size_t monomer2,
+              ConnectionType connection_type = ConnectionType::FORWARD);
 
 // overload for helm writer
-RDKIT_EXTENSIONS_API void add_connection(RDKit::RWMol& mol, size_t monomer1,
-                                         size_t monomer2,
-                                         const std::string& linkage,
-                                         const bool is_custom_bond = false);
+RDKIT_EXTENSIONS_API void addConnection(RDKit::RWMol& mol, size_t monomer1,
+                                        size_t monomer2,
+                                        const std::string& linkage,
+                                        const bool is_custom_bond = false);
 
 // Discards existing chains and reassigns monomers to sequential chains.
 // (in HELM world, "chains" are called "polymers")
-RDKIT_EXTENSIONS_API void assign_chains(RDKit::RWMol& mol);
+RDKIT_EXTENSIONS_API void assignChains(RDKit::RWMol& mol);
 
 } // namespace schrodinger::rdkit_extensions

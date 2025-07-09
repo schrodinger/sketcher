@@ -194,7 +194,7 @@ void condense_monomer_list(const std::string_view& polymer_id,
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
             mol.getAtomWithIdx(idx)->setProp(REPETITION_DUMMY_ID,
                                              std::string{polymer_id});
-            add_connection(mol, start + size - 1, idx, BACKBONE_LINKAGE);
+            addConnection(mol, start + size - 1, idx, BACKBONE_LINKAGE);
             bond2 = mol.getNumBonds() - 1;
         } else {
             bond2 = start + size - 1;
@@ -203,7 +203,7 @@ void condense_monomer_list(const std::string_view& polymer_id,
             auto idx = mol.addAtom(new ::RDKit::QueryAtom(), true, true);
             mol.getAtomWithIdx(idx)->setProp(REPETITION_DUMMY_ID,
                                              std::string{polymer_id});
-            add_connection(mol, 0, idx, BACKBONE_LINKAGE);
+            addConnection(mol, 0, idx, BACKBONE_LINKAGE);
             bond1 = mol.getNumBonds() - 1;
         } else {
             bond1 = start - 1;
@@ -229,8 +229,8 @@ void condense_monomer_list(const std::string_view& polymer_id,
     for (const auto& monomer : polymer.monomers) {
         auto monomer_type =
             monomer.is_smiles ? MonomerType::SMILES : MonomerType::REGULAR;
-        auto idx = add_monomer(mol, get_monomer_id(polymer.id, monomer),
-                               residue_number, polymer.id, monomer_type);
+        auto idx = addMonomer(mol, get_monomer_id(polymer.id, monomer),
+                              residue_number, polymer.id, monomer_type);
         ++residue_number;
         auto atom = mol.getAtomWithIdx(idx);
         if (!monomer.annotation.empty()) {
@@ -246,7 +246,7 @@ void condense_monomer_list(const std::string_view& polymer_id,
             const auto connection_type = monomer.is_branch
                                              ? ConnectionType::SIDECHAIN
                                              : ConnectionType::FORWARD;
-            add_connection(mol, prev_backbone_idx, idx, connection_type);
+            addConnection(mol, prev_backbone_idx, idx, connection_type);
         }
         prev_backbone_idx = (monomer.is_branch ? prev_backbone_idx : idx);
     }
@@ -359,7 +359,7 @@ void add_helm_connections(::RDKit::RWMol& mol,
     std::ranges::for_each(connected_monomers, [&](const auto& info) {
         const auto& [from_atom, to_atom, linkage, annotation] = info;
         constexpr bool is_custom_bond = true;
-        add_connection(mol, from_atom, to_atom, linkage, is_custom_bond);
+        addConnection(mol, from_atom, to_atom, linkage, is_custom_bond);
         if (!annotation.empty()) {
             mol.getBondBetweenAtoms(from_atom, to_atom)
                 ->setProp(ANNOTATION, annotation);

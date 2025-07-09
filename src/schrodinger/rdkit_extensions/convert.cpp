@@ -798,7 +798,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         auto is_seq_format =
             std::ranges::find(SEQ_FORMATS, format) != SEQ_FORMATS.end();
         if (is_monomeristic && !is_seq_format) {
-            auto atomistic_mol = cg_to_atomistic(input_mol);
+            auto atomistic_mol = cgToAtomistic(input_mol);
             // NOTE: MaeWriter will attempt to generate 2D coordinates for this
             // molecule without the dummy conformer. The coordinate generation
             // procedure can end up taking a very long time for large
@@ -808,7 +808,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             return atomistic_mol;
         } else if (!is_monomeristic &&
                    (is_seq_format && format != Format::RDMOL_BINARY_BASE64)) {
-            return atomistic_to_cg(input_mol);
+            return atomisticToCg(input_mol);
         } else {
             return boost::make_shared<RDKit::RWMol>(input_mol);
         }

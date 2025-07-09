@@ -76,8 +76,8 @@ helm_info HelmParser::parse()
         throw std::invalid_argument(ss.str());
     }
 
-    add_extended_annotations(extended_annotations);
-    add_helm_version(helm_version);
+    addExtendedAnnotations(extended_annotations);
+    addHelmVersion(helm_version);
 
     validate_parsed_info(m_parsed_info, *this);
     if (hasErrors()) {
@@ -91,42 +91,42 @@ helm_info HelmParser::parse()
     return std::move(m_parsed_info);
 }
 
-void HelmParser::add_extended_annotations(
+void HelmParser::addExtendedAnnotations(
     const std::string_view extended_annotations)
 {
     m_parsed_info.extended_annotations = extended_annotations;
 }
 
-void HelmParser::add_helm_version(const std::string_view helm_version)
+void HelmParser::addHelmVersion(const std::string_view helm_version)
 {
     m_parsed_info.helm_version = helm_version;
 }
 
-void HelmParser::add_polymer_group(const std::string_view polymer_group_id,
-                                   const std::string_view items,
-                                   const bool is_polymer_union)
+void HelmParser::addPolymerGroup(const std::string_view polymer_group_id,
+                                 const std::string_view items,
+                                 const bool is_polymer_union)
 {
     m_parsed_info.polymer_groups.push_back(
         {polymer_group_id, items, is_polymer_union});
 }
 
-void HelmParser::add_connection(connection&& connection)
+void HelmParser::addConnection(connection&& connection)
 {
     m_parsed_info.connections.push_back(connection);
 }
 
-void HelmParser::add_polymer(const std::string_view polymer_id,
-                             const std::string_view annotation)
+void HelmParser::addPolymer(const std::string_view polymer_id,
+                            const std::string_view annotation)
 {
     auto& polymer = m_parsed_info.polymers.back();
     polymer.id = polymer_id;
     polymer.annotation = annotation;
 }
 
-void HelmParser::add_monomer(const std::string_view monomer_id,
-                             const bool is_smiles, const bool is_branch,
-                             const bool is_list,
-                             const std::string_view annotation)
+void HelmParser::addMonomer(const std::string_view monomer_id,
+                            const bool is_smiles, const bool is_branch,
+                            const bool is_list,
+                            const std::string_view annotation)
 {
     auto& polymers = m_parsed_info.polymers;
     if (polymers.empty() || !polymers.back().id.empty()) {
@@ -137,32 +137,32 @@ void HelmParser::add_monomer(const std::string_view monomer_id,
         {monomer_id, is_smiles, is_branch, is_list, annotation});
 }
 
-void HelmParser::add_monomer_with_id(const std::string_view monomer_id,
-                                     const std::string_view annotation)
-{
-    add_monomer(monomer_id, false, false, false, annotation);
-}
-
-void HelmParser::add_smiles_monomer(const std::string_view smiles,
-                                    const std::string_view annotation)
-{
-    add_monomer(smiles, true, false, false, annotation);
-}
-
-void HelmParser::add_monomer_list(const std::string_view monomer_list,
+void HelmParser::addMonomerWithId(const std::string_view monomer_id,
                                   const std::string_view annotation)
 {
-    add_monomer(monomer_list, false, false, true, annotation);
+    addMonomer(monomer_id, false, false, false, annotation);
 }
 
-void HelmParser::mark_branch_monomer(const size_t branch_group_size)
+void HelmParser::addSmilesMonomer(const std::string_view smiles,
+                                  const std::string_view annotation)
+{
+    addMonomer(smiles, true, false, false, annotation);
+}
+
+void HelmParser::addMonomerList(const std::string_view monomer_list,
+                                const std::string_view annotation)
+{
+    addMonomer(monomer_list, false, false, true, annotation);
+}
+
+void HelmParser::markBranchMonomer(const size_t branch_group_size)
 {
     auto& polymer = m_parsed_info.polymers.back();
     polymer.monomers[polymer.monomers.size() - branch_group_size + 1]
         .is_branch = true;
 }
 
-void HelmParser::mark_last_n_monomers_as_repeated(
+void HelmParser::markLastNMonomersAsRepeated(
     const size_t repetition_size, const std::string_view num_repetitions,
     const std::string_view annotation)
 {
@@ -172,7 +172,7 @@ void HelmParser::mark_last_n_monomers_as_repeated(
                                    annotation});
 }
 
-void HelmParser::add_residue_name(const std::string_view monomer_id)
+void HelmParser::addResidueName(const std::string_view monomer_id)
 {
     auto& polymers = m_parsed_info.polymers;
     if (polymers.empty() || !polymers.back().id.empty()) {
@@ -181,7 +181,7 @@ void HelmParser::add_residue_name(const std::string_view monomer_id)
     auto& polymer = m_parsed_info.polymers.back();
     polymer.residue_names.insert(monomer_id);
 }
-void HelmParser::add_wildcard_or_unknown_residue()
+void HelmParser::addWildcardOrUnknownResidue()
 {
     auto& polymers = m_parsed_info.polymers;
     if (polymers.empty() || !polymers.back().id.empty()) {

@@ -2085,7 +2085,7 @@ static const flex_int16_t yy_rule_linenum[27] = {
 #define yymore() yymore_used_but_not_detected
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
-#line 1 "../helm_lexer.l"
+#line 1 "helm_lexer.l"
 /*
  * This is a flex file which is used to generate a C++ lexer for parsing a HELM
  * string.
@@ -2095,7 +2095,7 @@ static const flex_int16_t yy_rule_linenum[27] = {
  *
  *          flex helm_lexer.l
  */
-#line 12 "../helm_lexer.l"
+#line 12 "helm_lexer.l"
 
 #include <string>
 #include <string_view>

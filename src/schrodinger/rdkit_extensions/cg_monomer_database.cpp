@@ -23,7 +23,7 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
-std::optional<std::string> get_custom_monomer_db_path()
+std::optional<std::string> getCustomMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
     throw std::logic_error(
@@ -37,13 +37,13 @@ std::optional<std::string> get_custom_monomer_db_path()
 #endif
 }
 
-std::optional<std::string> get_cg_monomer_db_path()
+std::optional<std::string> getCgMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
     throw std::logic_error(
         "CG Monomers are not yet supported in WASM Sketcher");
 #else
-    auto custom_db_path = get_custom_monomer_db_path();
+    auto custom_db_path = getCustomMonomerDbPath();
     if (custom_db_path.has_value() &&
         boost::filesystem::exists(*custom_db_path)) {
         return custom_db_path;
@@ -56,7 +56,7 @@ std::optional<std::string> get_cg_monomer_db_path()
 #endif
 }
 
-cg_monomer_database::cg_monomer_database(std::string_view database_path)
+CgMonomerDatabase::CgMonomerDatabase(std::string_view database_path)
 {
     static constexpr std::string_view err_msg_template{
         "Problem opening database: '{}'"};
@@ -113,14 +113,14 @@ get_info_from_database(sqlite3* db, const std::string& sql_command_template,
 }
 } // namespace
 
-cg_monomer_database::~cg_monomer_database()
+CgMonomerDatabase::~CgMonomerDatabase()
 {
     sqlite3_close_v2(m_db);
 }
 
-cg_monomer_database::string_t
-cg_monomer_database::get_monomer_smiles(std::string monomer_id,
-                                        ChainType monomer_type)
+CgMonomerDatabase::string_t
+CgMonomerDatabase::getMonomerSmiles(std::string monomer_id,
+                                    ChainType monomer_type)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -129,7 +129,7 @@ cg_monomer_database::get_monomer_smiles(std::string monomer_id,
         static constexpr std::string_view symbol_column{"SYMBOL"};
         static constexpr std::string_view type_column{"POLYMERTYPE"};
 
-        auto type_value = to_string(monomer_type);
+        auto type_value = toString(monomer_type);
         boost::algorithm::trim(monomer_id);
 
         return fmt::format(template_, smiles_column, type_column, type_value,
@@ -144,8 +144,8 @@ cg_monomer_database::get_monomer_smiles(std::string monomer_id,
     return get_info_from_database(m_db, get_sql_command(), smiles_getter);
 }
 
-[[nodiscard]] cg_monomer_database::helm_info_t
-cg_monomer_database::get_helm_info(const std::string& pdb_code)
+[[nodiscard]] CgMonomerDatabase::helm_info_t
+CgMonomerDatabase::getHelmInfo(const std::string& pdb_code)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -164,7 +164,7 @@ cg_monomer_database::get_helm_info(const std::string& pdb_code)
         auto symbol = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
         auto polymer_type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
         auto smiles = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
-        helm_info_t::value_type helm_info{symbol, smiles, to_chain_type(polymer_type)};
+        helm_info_t::value_type helm_info{symbol, smiles, toChainType(polymer_type)};
         return std::make_optional(helm_info);
         // clang-format on
     };
@@ -172,9 +172,9 @@ cg_monomer_database::get_helm_info(const std::string& pdb_code)
     return get_info_from_database(m_db, get_sql_command(), helm_info_getter);
 }
 
-[[nodiscard]] cg_monomer_database::string_t
-cg_monomer_database::get_pdb_code(const std::string& helm_symbol,
-                                  ChainType monomer_type)
+[[nodiscard]] CgMonomerDatabase::string_t
+CgMonomerDatabase::getPdbCode(const std::string& helm_symbol,
+                              ChainType monomer_type)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -184,7 +184,7 @@ cg_monomer_database::get_pdb_code(const std::string& helm_symbol,
         static constexpr std::string_view type_column{"POLYMERTYPE"};
 
         return fmt::format(template_, pdb_code_column, symbol_column,
-                           helm_symbol, type_column, to_string(monomer_type));
+                           helm_symbol, type_column, toString(monomer_type));
     };
 
     auto pdb_code_getter = [](sqlite3_stmt* stmt) -> string_t {

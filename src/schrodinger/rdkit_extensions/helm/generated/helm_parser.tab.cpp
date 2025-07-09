@@ -1011,14 +1011,14 @@ int TokenParser::parse()
 
                     case 12: // polymer_unit: polymer
                     {
-                        helm_parser.add_polymer(
+                        helm_parser.addPolymer(
                             YY_MOVE(yystack_[0].value.as<std::string_view>()),
                             {});
                     } break;
 
                     case 13: // polymer_unit: polymer annotation
                     {
-                        helm_parser.add_polymer(
+                        helm_parser.addPolymer(
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
                     } break;
@@ -1049,7 +1049,7 @@ int TokenParser::parse()
 
                     case 22: // monomer_group: branch_monomer_group
                     {
-                        helm_parser.mark_branch_monomer(
+                        helm_parser.markBranchMonomer(
                             YY_MOVE(yystack_[0].value.as<size_t>()));
                     } break;
 
@@ -1071,7 +1071,7 @@ int TokenParser::parse()
 
                     case 25: // repeated_monomers: monomer_unit repetitions
                     {
-                        helm_parser.mark_last_n_monomers_as_repeated(
+                        helm_parser.markLastNMonomersAsRepeated(
                             1,
                             YY_MOVE(yystack_[0].value.as<std::string_view>()),
                             {});
@@ -1080,7 +1080,7 @@ int TokenParser::parse()
                     case 26: // repeated_monomers: monomer_unit repetitions
                              // annotation
                     {
-                        helm_parser.mark_last_n_monomers_as_repeated(
+                        helm_parser.markLastNMonomersAsRepeated(
                             1,
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
@@ -1089,7 +1089,7 @@ int TokenParser::parse()
                     case 27: // repeated_monomers: '(' monomer_sequence ')'
                              // repetitions
                     {
-                        helm_parser.mark_last_n_monomers_as_repeated(
+                        helm_parser.markLastNMonomersAsRepeated(
                             YY_MOVE(yystack_[2].value.as<size_t>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()),
                             {});
@@ -1098,7 +1098,7 @@ int TokenParser::parse()
                     case 28: // repeated_monomers: '(' monomer_sequence ')'
                              // repetitions annotation
                     {
-                        helm_parser.mark_last_n_monomers_as_repeated(
+                        helm_parser.markLastNMonomersAsRepeated(
                             YY_MOVE(yystack_[3].value.as<size_t>()),
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
@@ -1121,8 +1121,7 @@ int TokenParser::parse()
                     {
                         yylhs.value.as<size_t>() =
                             YY_MOVE(yystack_[0].value.as<size_t>());
-                        helm_parser.mark_branch_monomer(
-                            yylhs.value.as<size_t>());
+                        helm_parser.markBranchMonomer(yylhs.value.as<size_t>());
                     } break;
 
                     case 32: // monomer_sequence: monomer_sequence '.'
@@ -1135,7 +1134,7 @@ int TokenParser::parse()
                     case 33: // monomer_sequence: monomer_sequence '.'
                              // branch_monomer_group
                     {
-                        helm_parser.mark_branch_monomer(
+                        helm_parser.markBranchMonomer(
                             YY_MOVE(yystack_[0].value.as<size_t>()));
                         yylhs.value.as<size_t>() =
                             YY_MOVE(yystack_[2].value.as<size_t>()) +
@@ -1156,42 +1155,42 @@ int TokenParser::parse()
 
                     case 36: // monomer_unit: monomer_id
                     {
-                        helm_parser.add_monomer_with_id(
+                        helm_parser.addMonomerWithId(
                             YY_MOVE(yystack_[0].value.as<std::string_view>()),
                             {});
                     } break;
 
                     case 37: // monomer_unit: monomer_id annotation
                     {
-                        helm_parser.add_monomer_with_id(
+                        helm_parser.addMonomerWithId(
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
                     } break;
 
                     case 38: // monomer_unit: smiles_monomer
                     {
-                        helm_parser.add_smiles_monomer(
+                        helm_parser.addSmilesMonomer(
                             YY_MOVE(yystack_[0].value.as<std::string_view>()),
                             {});
                     } break;
 
                     case 39: // monomer_unit: smiles_monomer annotation
                     {
-                        helm_parser.add_smiles_monomer(
+                        helm_parser.addSmilesMonomer(
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
                     } break;
 
                     case 40: // monomer_unit: '(' monomer_list ')'
                     {
-                        helm_parser.add_monomer_list(
+                        helm_parser.addMonomerList(
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             {});
                     } break;
 
                     case 41: // monomer_unit: '(' monomer_list ')' annotation
                     {
-                        helm_parser.add_monomer_list(
+                        helm_parser.addMonomerList(
                             YY_MOVE(yystack_[2].value.as<std::string_view>()),
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
                     } break;
@@ -1293,7 +1292,7 @@ int TokenParser::parse()
 
                     case 51: // monomer_id: SINGLE_CHARACTER_MONOMER
                     {
-                        helm_parser.add_residue_name(
+                        helm_parser.addResidueName(
                             YY_MOVE(yystack_[0].value.as<std::string_view>()));
                         yylhs.value.as<std::string_view>() =
                             YY_MOVE(yystack_[0].value.as<std::string_view>());
@@ -1305,14 +1304,14 @@ int TokenParser::parse()
                             YY_MOVE(yystack_[0].value.as<std::string_view>())};
                         tmp.remove_prefix(1);
                         tmp.remove_suffix(1);
-                        helm_parser.add_residue_name(tmp);
+                        helm_parser.addResidueName(tmp);
                         yylhs.value.as<std::string_view>() =
                             YY_MOVE(yystack_[0].value.as<std::string_view>());
                     } break;
 
                     case 53: // monomer_id: UNKNOWN_MONOMER
                     {
-                        helm_parser.add_wildcard_or_unknown_residue();
+                        helm_parser.addWildcardOrUnknownResidue();
                         yylhs.value.as<std::string_view>() =
                             YY_MOVE(yystack_[0].value.as<std::string_view>());
                     } break;
@@ -1325,14 +1324,14 @@ int TokenParser::parse()
 
                     case 55: // monomer_id: MONOMER_WILDCARD
                     {
-                        helm_parser.add_wildcard_or_unknown_residue();
+                        helm_parser.addWildcardOrUnknownResidue();
                         yylhs.value.as<std::string_view>() =
                             YY_MOVE(yystack_[0].value.as<std::string_view>());
                     } break;
 
                     case 56: // blob: UNKNOWN_SEQUENCE
                     {
-                        helm_parser.add_monomer(
+                        helm_parser.addMonomer(
                             YY_MOVE(yystack_[0].value.as<std::string_view>()),
                             false, false, false, {});
                     } break;
@@ -1342,7 +1341,7 @@ int TokenParser::parse()
                              // attachment_point '-' connection_monomer ':'
                              // attachment_point
                     {
-                        helm_parser.add_connection({
+                        helm_parser.addConnection({
                             YY_MOVE(
                                 yystack_[10]
                                     .value.as<std::string_view>()), // from_id
@@ -1369,7 +1368,7 @@ int TokenParser::parse()
                              // attachment_point '-' connection_monomer ':'
                              // attachment_point annotation
                     {
-                        helm_parser.add_connection({
+                        helm_parser.addConnection({
                             YY_MOVE(
                                 yystack_[11]
                                     .value.as<std::string_view>()), // from_id
@@ -1508,7 +1507,7 @@ int TokenParser::parse()
                     case 72: // polymer_group: POLYMER_GROUP_ID '('
                              // polymer_and_list ')'
                     {
-                        helm_parser.add_polymer_group(
+                        helm_parser.addPolymerGroup(
                             YY_MOVE(yystack_[3].value.as<std::string_view>()),
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             true);
@@ -1517,7 +1516,7 @@ int TokenParser::parse()
                     case 73: // polymer_group: POLYMER_GROUP_ID '('
                              // polymer_or_list ')'
                     {
-                        helm_parser.add_polymer_group(
+                        helm_parser.addPolymerGroup(
                             YY_MOVE(yystack_[3].value.as<std::string_view>()),
                             YY_MOVE(yystack_[1].value.as<std::string_view>()),
                             false);

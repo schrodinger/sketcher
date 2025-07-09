@@ -22,11 +22,11 @@ namespace rdkit_extensions
 enum class ChainType;
 
 // Returns path of custom monomer database if it exists, otherwise returns
-RDKIT_EXTENSIONS_API std::optional<std::string> get_custom_monomer_db_path();
+RDKIT_EXTENSIONS_API std::optional<std::string> getCustomMonomerDbPath();
 
-std::optional<std::string> get_cg_monomer_db_path();
+std::optional<std::string> getCgMonomerDbPath();
 
-class [[nodiscard]] cg_monomer_database : public boost::noncopyable
+class [[nodiscard]] CgMonomerDatabase : public boost::noncopyable
 {
   public:
     using string_t = std::optional<std::string>;
@@ -34,18 +34,17 @@ class [[nodiscard]] cg_monomer_database : public boost::noncopyable
     using helm_info_t =
         std::optional<std::tuple<std::string, std::string, ChainType>>;
 
-    cg_monomer_database(std::string_view database_path);
+    CgMonomerDatabase(std::string_view database_path);
 
-    ~cg_monomer_database();
+    ~CgMonomerDatabase();
 
-    [[nodiscard]] string_t get_monomer_smiles(std::string monomer_id,
-                                              ChainType monomer_type);
+    [[nodiscard]] string_t getMonomerSmiles(std::string monomer_id,
+                                            ChainType monomer_type);
 
-    [[nodiscard]] helm_info_t
-    get_helm_info(const std::string& three_letter_code);
+    [[nodiscard]] helm_info_t getHelmInfo(const std::string& three_letter_code);
 
-    [[nodiscard]] string_t get_pdb_code(const std::string& helm_symbol,
-                                        ChainType type);
+    [[nodiscard]] string_t getPdbCode(const std::string& helm_symbol,
+                                      ChainType type);
 
   private:
     sqlite3* m_db;

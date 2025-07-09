@@ -69,40 +69,39 @@ class RDKIT_EXTENSIONS_API HelmParser
     helm_info parse();
 
     // apis for polymers
-    void add_monomer(const std::string_view monomer_id, const bool is_smiles,
-                     const bool is_branch, const bool is_list,
-                     const std::string_view annotation);
+    void addMonomer(const std::string_view monomer_id, const bool is_smiles,
+                    const bool is_branch, const bool is_list,
+                    const std::string_view annotation);
 
-    void add_monomer_with_id(const std::string_view monomer_id,
-                             const std::string_view annotation);
-    void add_smiles_monomer(const std::string_view monomer_id,
-                            const std::string_view annotation);
-    void add_monomer_list(const std::string_view monomer_id,
+    void addMonomerWithId(const std::string_view monomer_id,
                           const std::string_view annotation);
-    void add_residue_name(const std::string_view monomer_id);
-    void add_wildcard_or_unknown_residue();
+    void addSmilesMonomer(const std::string_view monomer_id,
+                          const std::string_view annotation);
+    void addMonomerList(const std::string_view monomer_id,
+                        const std::string_view annotation);
+    void addResidueName(const std::string_view monomer_id);
+    void addWildcardOrUnknownResidue();
 
-    void mark_branch_monomer(const size_t branch_group_size);
-    void
-    mark_last_n_monomers_as_repeated(const size_t repetition_size,
+    void markBranchMonomer(const size_t branch_group_size);
+    void markLastNMonomersAsRepeated(const size_t repetition_size,
                                      const std::string_view num_repetitions,
                                      const std::string_view annotation);
-    void add_polymer(const std::string_view polymer_id,
-                     const std::string_view annotation);
+    void addPolymer(const std::string_view polymer_id,
+                    const std::string_view annotation);
 
     // apis for connections
-    void add_connection(connection&& connection);
+    void addConnection(connection&& connection);
 
     // apis for polymer groups
-    void add_polymer_group(const std::string_view polymer_group_id,
-                           const std::string_view items,
-                           const bool is_polymer_union);
+    void addPolymerGroup(const std::string_view polymer_group_id,
+                         const std::string_view items,
+                         const bool is_polymer_union);
 
     // apis for extended annotations
-    void add_extended_annotations(const std::string_view extended_annotations);
+    void addExtendedAnnotations(const std::string_view extended_annotations);
 
     // apis for version
-    void add_helm_version(const std::string_view helm_version);
+    void addHelmVersion(const std::string_view helm_version);
 
     bool hasErrors();
     void saveError(const std::string_view& failed_token,

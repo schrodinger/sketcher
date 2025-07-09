@@ -30,8 +30,7 @@ namespace rdkit_extensions
  * @return CG molecule
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
-atomistic_to_cg(const RDKit::ROMol& atomistic_mol,
-                bool use_residue_info = true);
+atomisticToCg(const RDKit::ROMol& atomistic_mol, bool use_residue_info = true);
 
 /**
  * Identify monomers within an atomistic molecule
@@ -39,7 +38,7 @@ atomistic_to_cg(const RDKit::ROMol& atomistic_mol,
  * For testing purposes.
  */
 RDKIT_EXTENSIONS_API std::vector<std::vector<int>>
-get_monomers(const RDKit::ROMol& mol);
+getMonomers(const RDKit::ROMol& mol);
 
 /**
  * Build an atomistic molecule from a CG molecule
@@ -50,7 +49,7 @@ get_monomers(const RDKit::ROMol& mol);
  * @return Atomistic molecule
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
-cg_to_atomistic(const RDKit::ROMol& cg_mol);
+cgToAtomistic(const RDKit::ROMol& cg_mol);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

@@ -15,7 +15,7 @@
 namespace schrodinger::rdkit_extensions
 {
 
-ChainType to_chain_type(std::string_view chain_type)
+ChainType toChainType(std::string_view chain_type)
 {
     if (chain_type == "PEPTIDE") {
         return ChainType::PEPTIDE;
@@ -30,7 +30,7 @@ ChainType to_chain_type(std::string_view chain_type)
     }
 }
 
-std::string to_string(ChainType chain_type)
+std::string toString(ChainType chain_type)
 {
     switch (chain_type) {
         case ChainType::PEPTIDE:
@@ -46,8 +46,8 @@ std::string to_string(ChainType chain_type)
     }
 }
 
-void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
-                    const std::string& linkage, const bool is_custom_bond)
+void addConnection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
+                   const std::string& linkage, const bool is_custom_bond)
 {
     // if bond already exists, extend linkage information
     if (auto bond = cg_mol.getBondBetweenAtoms(monomer1, monomer2);
@@ -107,22 +107,22 @@ void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
     }
 }
 
-void add_connection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
-                    ConnectionType connection_type)
+void addConnection(RDKit::RWMol& cg_mol, size_t monomer1, size_t monomer2,
+                   ConnectionType connection_type)
 {
     switch (connection_type) {
         case ConnectionType::FORWARD:
-            add_connection(cg_mol, monomer1, monomer2, BACKBONE_LINKAGE);
+            addConnection(cg_mol, monomer1, monomer2, BACKBONE_LINKAGE);
             break;
         case ConnectionType::SIDECHAIN:
-            add_connection(cg_mol, monomer1, monomer2, BRANCH_LINKAGE);
+            addConnection(cg_mol, monomer1, monomer2, BRANCH_LINKAGE);
             break;
     }
 }
 
-std::unique_ptr<Monomer> make_monomer(std::string_view name,
-                                      std::string_view chain_id,
-                                      int residue_number, bool is_smiles)
+std::unique_ptr<Monomer> makeMonomer(std::string_view name,
+                                     std::string_view chain_id,
+                                     int residue_number, bool is_smiles)
 {
     auto a = std::make_unique<::RDKit::Atom>();
     std::string n{name};
@@ -147,12 +147,12 @@ std::unique_ptr<Monomer> make_monomer(std::string_view name,
     return a;
 }
 
-size_t add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
-                   int residue_number, std::string_view chain_id,
-                   MonomerType monomer_type)
+size_t addMonomer(RDKit::RWMol& cg_mol, std::string_view name,
+                  int residue_number, std::string_view chain_id,
+                  MonomerType monomer_type)
 {
-    auto monomer = make_monomer(name, chain_id, residue_number,
-                                monomer_type == MonomerType::SMILES);
+    auto monomer = makeMonomer(name, chain_id, residue_number,
+                               monomer_type == MonomerType::SMILES);
     bool update_label = true;
     bool take_ownership = true;
     auto new_index =
@@ -160,8 +160,8 @@ size_t add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
     return new_index;
 }
 
-size_t add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
-                   MonomerType monomer_type)
+size_t addMonomer(RDKit::RWMol& cg_mol, std::string_view name,
+                  MonomerType monomer_type)
 {
     if (cg_mol.getNumAtoms() == 0) {
         throw std::invalid_argument(
@@ -170,10 +170,10 @@ size_t add_monomer(RDKit::RWMol& cg_mol, std::string_view name,
     const auto* last_monomer = cg_mol.getAtomWithIdx(cg_mol.getNumAtoms() - 1);
     const auto chain_id = get_polymer_id(last_monomer);
     const auto residue_number = get_residue_number(last_monomer) + 1;
-    return add_monomer(cg_mol, name, residue_number, chain_id, monomer_type);
+    return addMonomer(cg_mol, name, residue_number, chain_id, monomer_type);
 }
 
-void set_residue_number(RDKit::Atom* atom, int residue_number)
+void setResidueNumber(RDKit::Atom* atom, int residue_number)
 {
     auto* residue_info =
         static_cast<RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
@@ -184,7 +184,7 @@ void set_residue_number(RDKit::Atom* atom, int residue_number)
     residue_info->setResidueNumber(residue_number);
 }
 
-bool is_valid_chain(const RDKit::RWMol& cg_mol, std::string_view polymer_id)
+bool isValidChain(const RDKit::RWMol& cg_mol, std::string_view polymer_id)
 {
     // Check that the residue ordering is valid for this polymer. The residues
     // should be in connectivity order
@@ -214,7 +214,7 @@ bool is_valid_chain(const RDKit::RWMol& cg_mol, std::string_view polymer_id)
     return true;
 }
 
-RDKit::Atom* find_chain_begin(RDKit::RWMol& cg_mol)
+RDKit::Atom* findChainBegin(RDKit::RWMol& cg_mol)
 {
     // Find the beginning of the chain by starting at an arbirtary atom
     // and following the backbone backwards until the 'source' (beginning of the
@@ -249,13 +249,13 @@ RDKit::Atom* find_chain_begin(RDKit::RWMol& cg_mol)
     return chain_begin;
 }
 
-void order_residues(RDKit::RWMol& cg_mol)
+void orderResidues(RDKit::RWMol& cg_mol)
 {
     // Currently assumes that all monomers are in the same chain. We will
     // eventually want to order residues on a per-chain basis.
 
     // Find the beginning of the chain (must be a backbone monomer)
-    auto chain_begin = find_chain_begin(cg_mol);
+    auto chain_begin = findChainBegin(cg_mol);
 
     // Now re-order the residues beginning at chain_begin
     std::vector<RDKit::Atom*> queue;
@@ -267,7 +267,7 @@ void order_residues(RDKit::RWMol& cg_mol)
     while (!queue.empty()) {
         auto current = queue.back();
         queue.pop_back();
-        set_residue_number(current, current_res_idx);
+        setResidueNumber(current, current_res_idx);
         ++current_res_idx;
 
         // When ordering residues, sidechain monomers should come before
@@ -282,7 +282,7 @@ void order_residues(RDKit::RWMol& cg_mol)
             auto linkage = bond->getProp<std::string>(LINKAGE);
             if (linkage == BRANCH_LINKAGE) {
                 auto other = bond->getOtherAtom(current);
-                set_residue_number(other, current_res_idx);
+                setResidueNumber(other, current_res_idx);
                 ++current_res_idx;
             } else if (linkage == BACKBONE_LINKAGE) {
                 queue.push_back(bond->getOtherAtom(current));
@@ -291,14 +291,14 @@ void order_residues(RDKit::RWMol& cg_mol)
     }
 }
 
-void assign_chains(RDKit::RWMol& cg_mol)
+void assignChains(RDKit::RWMol& cg_mol)
 {
     cg_mol.setProp("HELM_MODEL", true);
 
     // Currently, order_residues only works when there is a single chain
     auto chain_ids = get_polymer_ids(cg_mol);
-    if (chain_ids.size() == 1 && !is_valid_chain(cg_mol, chain_ids[0])) {
-        order_residues(cg_mol);
+    if (chain_ids.size() == 1 && !isValidChain(cg_mol, chain_ids[0])) {
+        orderResidues(cg_mol);
     }
 
     // Determine and mark the 'connection bonds'

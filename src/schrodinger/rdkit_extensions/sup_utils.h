@@ -29,7 +29,7 @@ const std::string SGROUP_PROP_TYPE{"TYPE"};
  * @param mol The molecule to process
  * @return true if the molecule had SUP groups and was processed
  */
-bool process_sup_groups(RDKit::ROMol& mol);
+bool processSupGroups(RDKit::ROMol& mol);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger
