@@ -84,8 +84,10 @@ function(setup_target TARGET)
   endif()
   # Allow RDKit includes to be prefixed
   target_include_directories(
-    ${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS}/..
-                      ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+    ${TARGET}
+    PRIVATE ${RDKit_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS}/..
+            ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src)
   target_compile_definitions(${TARGET} PRIVATE RDK_BUILD_MAEPARSER_SUPPORT)
   if(NOT ${BUILD_SHARED_LIBS})
     # force use of static libraries
