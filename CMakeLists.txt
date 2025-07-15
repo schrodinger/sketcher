@@ -63,7 +63,7 @@ endif()
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
-find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets SvgWidgets)
+find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets)
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
@@ -145,6 +145,7 @@ target_link_libraries(
   ${SKETCHER_TARGET}
   PRIVATE Boost::boost
           fmt::fmt
+          Qt6::Svg
           Qt6::SvgWidgets
           Qt6::Widgets
           RDKit::CIPLabeler
