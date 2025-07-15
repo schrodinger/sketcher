@@ -120,6 +120,7 @@ set_cmake_arg(
   format
   flyweight
   graph
+  geometry
   iostreams
   json
   multi_array

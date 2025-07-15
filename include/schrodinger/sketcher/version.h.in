@@ -1,0 +1,15 @@
+#pragma once
+
+#include <string_view>
+
+namespace schrodinger
+{
+namespace sketcher
+{
+
+constexpr std::string_view SKETCHER_RELEASE =
+    "@PROJECT_VERSION_MAJOR@-@PROJECT_VERSION_MINOR@";
+constexpr int SKETCHER_BUILD = @PROJECT_VERSION_PATCH@;
+
+} // namespace sketcher
+} // namespace schrodinger
