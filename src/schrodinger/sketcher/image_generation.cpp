@@ -22,15 +22,7 @@
 #include <boost/bimap.hpp>
 #include <unordered_map>
 
-#ifndef EMSCRIPTEN
-// The WASM builder doesn't have access to any feature flags infrastructure
-#include "featureflags.h"
-#endif
-
-#include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/highlighting_item.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/sketcher.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
@@ -38,6 +30,12 @@
 using PaintDeviceFunction =
     std::function<std::shared_ptr<QPaintDevice>(const QSize&)>;
 
+template <> struct std::hash<QColor> {
+    std::size_t operator()(const QColor& c) const noexcept
+    {
+        return std::hash<unsigned int>{}(c.rgba());
+    }
+};
 namespace schrodinger
 {
 namespace sketcher
@@ -142,35 +140,6 @@ void setAtomLabels(MolModel& model, const RenderOptions& opts)
     }
 }
 
-void setHighlights(const sketcherScene& scene, const RenderOptions& opts)
-{
-    auto atoms = scene.quickGetAtoms();
-    for (auto atom : atoms) {
-        atom->removeHighlight();
-    }
-    for (auto [index, color] : asKeyValue(opts.rdatom_index_to_halo_color)) {
-        atoms.at(index)->setHighlightColor(color);
-    }
-    auto bonds = scene.quickGetBonds();
-    for (auto bond : bonds) {
-        bond->removeHighlight();
-    }
-    for (auto [index, color] : asKeyValue(opts.rdbond_index_to_halo_color)) {
-        bonds.at(index)->setHighlightColor(color);
-    }
-}
-
-void setUserLabels(const sketcherScene& scene, const RenderOptions& opts)
-{
-    auto atoms = scene.quickGetAtoms();
-    for (auto atom : atoms) {
-        atom->removeUserLabel();
-    }
-    for (auto [index, text] : asKeyValue(opts.rdatom_index_to_label)) {
-        atoms.at(index)->setUserLabel(text);
-    }
-}
-
 ImageFormat get_format(const QString& filename)
 {
     auto ext = QFileInfo(filename).completeSuffix().toStdString();
@@ -232,21 +201,6 @@ QSize get_image_size(const RenderOptions& opts, const QRectF& scene_rect)
  * Helper functions for the templated image generation APIs to inject various
  * inputs into the given sketcher scene.
  */
-void add_to_scene(sketcherScene* scene, const RDKit::ROMol& rdmol)
-{
-    scene->addRDKitMolecule(rdmol);
-}
-
-void add_to_scene(sketcherScene* scene, const RDKit::ChemicalReaction& rxn)
-{
-    scene->addRDKitReaction(rxn);
-}
-
-void add_to_scene(sketcherScene* scene, const std::string& text)
-{
-    scene->importText(text);
-}
-
 void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
 {
     mol_model.addMol(rdmol);
@@ -322,35 +276,13 @@ template <typename T> std::shared_ptr<QPaintDevice>
 paint_scene(const T& input, const RenderOptions& opts,
             const PaintDeviceFunction& instantiate_paint_device_to_size)
 {
-#ifndef EMSCRIPTEN
-    if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
-#else
-    if (true) {
-#endif
-        QUndoStack undo_stack;
-        MolModel mol_model(&undo_stack);
-        SketcherModel sketcher_model;
-        Scene scene(&mol_model, &sketcher_model);
-        init_molviewer_image(mol_model, sketcher_model, input, opts);
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    SketcherModel sketcher_model;
+    Scene scene(&mol_model, &sketcher_model);
+    init_molviewer_image(mol_model, sketcher_model, input, opts);
 
-        return paint_scene(scene, opts, instantiate_paint_device_to_size);
-    } else {
-        sketcherScene scene;
-        SketcherModel sketcher_model(&scene);
-        scene.setModel(&sketcher_model);
-
-        add_to_scene(&scene, input);
-        setHighlights(scene, opts);
-        setUserLabels(scene, opts);
-        scene.loadRenderOptions(opts);
-
-        auto scene_rect = scene.findBoundingRect();
-        auto image_size = get_image_size(opts, scene_rect);
-        auto paint_device = instantiate_paint_device_to_size(image_size);
-        paint_scene_to_given_paint_device(paint_device.get(), scene, scene_rect,
-                                          opts);
-        return paint_device;
-    }
+    return paint_scene(scene, opts, instantiate_paint_device_to_size);
 }
 
 // Save the scene directly as it is; used to save an image from SketcherWidget
@@ -640,35 +572,16 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
         return AUTOSCALE;
     }
     qreal best_scale = std::numeric_limits<qreal>::max();
-#ifndef EMSCRIPTEN
-    if (feature_flag_is_enabled(USE_SKETCHER_MOLVIEWER)) {
-#else
-    if (true) {
-#endif
-        QUndoStack undo_stack;
-        MolModel mol_model(&undo_stack);
-        SketcherModel sketcher_model;
-        Scene scene(&mol_model, &sketcher_model);
-        for (auto rdmol : all_rdmols) {
-            init_molviewer_image(mol_model, sketcher_model, *rdmol, opts);
-            qreal cur_scale = get_scale(scene.getInteractiveItemsBoundingRect(),
-                                        opts.width_height);
-            best_scale = std::min(best_scale, cur_scale);
-            mol_model.clear();
-        }
-    } else {
-        for (auto rdmol : all_rdmols) {
-            // We sometimes get graphical artifacts when clearing and reusing a
-            // sketcherScene instance for multiple molecules. To avoid that, we
-            // create a new scene instance for each molecule.
-            sketcherScene scene;
-            SketcherModel sketcher_model(&scene);
-            scene.setModel(&sketcher_model);
-            scene.addRDKitMolecule(*rdmol);
-            qreal cur_scale =
-                get_scale(scene.findBoundingRect(), opts.width_height);
-            best_scale = std::min(best_scale, cur_scale);
-        }
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+    SketcherModel sketcher_model;
+    Scene scene(&mol_model, &sketcher_model);
+    for (auto rdmol : all_rdmols) {
+        init_molviewer_image(mol_model, sketcher_model, *rdmol, opts);
+        qreal cur_scale = get_scale(scene.getInteractiveItemsBoundingRect(),
+                                    opts.width_height);
+        best_scale = std::min(best_scale, cur_scale);
+        mol_model.clear();
     }
     return best_scale;
 }
