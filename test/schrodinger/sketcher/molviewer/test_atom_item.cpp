@@ -35,6 +35,7 @@ class TestAtomItem : public AtomItem
     using AtomItem::determineValenceErrorIsVisible;
     using AtomItem::findHsDirection;
     using AtomItem::getQueryLabel;
+    using AtomItem::getSubrects;
     using AtomItem::m_bounding_rect;
     using AtomItem::m_charge_and_radical_label_rect;
     using AtomItem::m_charge_and_radical_label_text;
@@ -54,7 +55,6 @@ class TestAtomItem : public AtomItem
     using AtomItem::m_query_label_text;
     using AtomItem::m_selection_highlighting_path;
     using AtomItem::m_shape;
-    using AtomItem::m_subrects;
 
     TestAtomItem(RDKit::Atom* atom, Fonts& fonts,
                  const AtomDisplaySettings& settings,
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
     BOOST_TEST(!atom_item->m_H_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_count_label_text == "3");
 
-    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(!atom_item->getSubrects().empty());
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_LabeledN)
     QMarginsF margins(1, 1, 1, 1);
     auto& shape = atom_item->m_shape;
     BOOST_TEST(shape.contains(atom_item->m_main_label_rect - margins));
-    for (QRectF subrect : atom_item->m_subrects) {
+    for (QRectF subrect : atom_item->getSubrects()) {
         BOOST_TEST(shape.contains(subrect - margins));
     }
 }
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_UnlabeledC)
     BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_count_label_text.isEmpty());
-    BOOST_TEST(atom_item->m_subrects.empty());
+    BOOST_TEST(atom_item->getSubrects().empty());
     BOOST_TEST(!atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_ChargeAndIsotope)
     BOOST_TEST(!atom_item->m_isotope_label_rect.isNull());
     BOOST_TEST(atom_item->m_charge_and_radical_label_text == "(2•) 2+");
     BOOST_TEST(atom_item->m_isotope_label_text == "13");
-    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(!atom_item->getSubrects().empty());
 }
 
 BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_RGroup)
     BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(atom_item->m_H_label_rect.isNull());
 
-    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(!atom_item->getSubrects().empty());
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomMapping)
     BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
     BOOST_TEST(!atom_item->m_H_count_label_rect.isNull());
     BOOST_TEST(!atom_item->m_H_label_rect.isNull());
-    BOOST_TEST(!atom_item->m_subrects.empty());
+    BOOST_TEST(!atom_item->getSubrects().empty());
     BOOST_TEST(atom_item->m_label_is_visible);
     BOOST_TEST(!(atom_item->m_shape.isEmpty()));
     BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(test_updateCachedData_atomLabel)
         BOOST_TEST(atom_item->m_charge_and_radical_label_rect.isNull());
         BOOST_TEST(atom_item->m_H_count_label_rect.isNull());
         BOOST_TEST(atom_item->m_H_label_rect.isNull());
-        BOOST_TEST(!atom_item->m_subrects.empty());
+        BOOST_TEST(!atom_item->getSubrects().empty());
         BOOST_TEST(atom_item->m_label_is_visible);
         BOOST_TEST(!(atom_item->m_shape.isEmpty()));
         BOOST_TEST(!(atom_item->m_bounding_rect.isNull()));

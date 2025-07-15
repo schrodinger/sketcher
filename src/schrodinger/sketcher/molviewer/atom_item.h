@@ -99,7 +99,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      * outwards.  This behavior is required for proper functioning of bond line
      * trimming due to assumptions made in trim_line_to_rect.
      */
-    const std::vector<QRectF>& getSubrects() const;
+    const std::vector<QRectF> getSubrects() const;
 
     /**
      * @param avoid_subrects whether or not to consider the atom's subrects
@@ -166,7 +166,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     QString m_query_label_text;
     QPainterPath m_squiggle_path; // used for attachment point squiggle
 
-    std::vector<QRectF> m_subrects;
     const Fonts& m_fonts;
     const AtomDisplaySettings& m_settings;
     bool m_label_is_visible;
@@ -188,7 +187,7 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
 
     /**
      * @return a list of the rectangles that make up the atom label. This is
-     * used to populate m_subrects with the visible rectangles
+     * used to calculate subrects with the visible rectangles
      */
     std::vector<QRectF> getLabelRects() const;
 

@@ -205,16 +205,11 @@ void AtomItem::updateCachedData()
         !m_hide_stereo_labels) {
         updateChiralityLabel();
     }
-    for (auto rect : getLabelRects()) {
-        if (rect.isValid()) {
-            m_subrects.push_back(rect);
-        }
-    }
     // merge all of the subrects with the predictive highlighting path to create
     // the shape and bounding rect
     m_shape = QPainterPath(m_predictive_highlighting_path);
     m_shape.setFillRule(Qt::WindingFill);
-    for (QRectF rect : m_subrects) {
+    for (QRectF rect : getSubrects()) {
         m_shape.addRect(rect);
     }
     m_bounding_rect = m_shape.boundingRect();
@@ -448,7 +443,6 @@ void AtomItem::clearLabels()
     for (auto rect : getLabelRects()) {
         rect = QRectF();
     }
-    m_subrects.clear();
 }
 
 void AtomItem::updateIsotopeLabel()
@@ -663,9 +657,15 @@ bool AtomItem::determineLabelIsVisible() const
     return false;
 }
 
-const std::vector<QRectF>& AtomItem::getSubrects() const
+const std::vector<QRectF> AtomItem::getSubrects() const
 {
-    return m_subrects;
+    std::vector<QRectF> subrects;
+    for (auto rect : getLabelRects()) {
+        if (rect.isValid()) {
+            subrects.push_back(rect);
+        }
+    }
+    return subrects;
 }
 
 QRectF AtomItem::getChiralityLabelRect() const
