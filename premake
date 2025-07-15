@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # This script allows the sketcher repo to be built using buildinger
 # (the Schrodinger internal build system)

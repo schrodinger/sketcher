@@ -82,7 +82,8 @@ function(setup_target TARGET)
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
                                              -fvisibility=hidden)
   endif()
-  # Allow RDKit includes to be prefixed
+  # Allow RDKit includes to be prefixed, and add all relevant and necessary
+  # sketcher-specific include directories
   target_include_directories(
     ${TARGET}
     PRIVATE ${RDKit_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS}/..
