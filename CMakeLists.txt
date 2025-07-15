@@ -11,9 +11,8 @@ cmake_policy(SET CMP0167 NEW)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(ENFORCE_DEPENDENCY_VERSIONS
-    "Require that the dependencies match the versions listed in \
-    external/versions.json"
-    ON)
+       "Require that the dependencies match the versions listed in \
+    external/versions.json" ON)
 
 set(SUPPRESSION_FILE "test_valgrind.suppressions")
 set(MEMTEST_COMMAND
@@ -22,38 +21,38 @@ set(MEMTEST_COMMAND
     --error-exitcode=29")
 separate_arguments(MEMTEST_COMMAND)
 
-if (${ENFORCE_DEPENDENCY_VERSIONS})
-    file(READ external/versions.json VERSIONS)
-    string(JSON BOOST_VERSION GET ${VERSIONS} boost)
-    string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
-    string(JSON FMT_VERSION GET ${VERSIONS} fmt)
-    string(JSON QT_VERSION GET ${VERSIONS} qt)
-    string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
-    string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
-    string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
-    string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+if(${ENFORCE_DEPENDENCY_VERSIONS})
+  file(READ external/versions.json VERSIONS)
+  string(JSON BOOST_VERSION GET ${VERSIONS} boost)
+  string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
+  string(JSON FMT_VERSION GET ${VERSIONS} fmt)
+  string(JSON QT_VERSION GET ${VERSIONS} qt)
+  string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+  string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
+  string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
+  string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 endif()
 
-if (${BUILD_SHARED_LIBS})
-    set(ZSTD_LIB_NAME zstd::libzstd_shared)
-    set(Boost_USE_STATIC_LIBS OFF)
-    # RDKit needs the shared versions of maeparser and coordgen
-    find_package(maeparser REQUIRED)
-    find_package(coordgen REQUIRED)
+if(${BUILD_SHARED_LIBS})
+  set(ZSTD_LIB_NAME zstd::libzstd_shared)
+  set(Boost_USE_STATIC_LIBS OFF)
+  # RDKit needs the shared versions of maeparser and coordgen
+  find_package(maeparser REQUIRED)
+  find_package(coordgen REQUIRED)
 else()
-    # we're building a static build
-    set(ZSTD_LIB_NAME zstd::libzstd_static)
-    set(Boost_USE_STATIC_LIBS ON)
+  # we're building a static build
+  set(ZSTD_LIB_NAME zstd::libzstd_static)
+  set(Boost_USE_STATIC_LIBS ON)
 endif()
 
 if(CMAKE_FIND_ROOT_PATH)
-    # make sure we can always find the dependencies that we've built, even if
-    # emscripten is trying to prevent us from finding system libraries
-    list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
+  # make sure we can always find the dependencies that we've built, even if
+  # emscripten is trying to prevent us from finding system libraries
+  list(APPEND CMAKE_FIND_ROOT_PATH ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 if(EMSCRIPTEN)
-    set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
+  set(QT_HOST_PATH ${CMAKE_CURRENT_BINARY_DIR}/external/host/qt-${QT_VERSION})
 endif()
 
 # we don't include boost::beast as a required component since GitHub builds use
@@ -75,26 +74,27 @@ function(setup_target TARGET)
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX)
   elseif(WIN32)
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=hidden -Wno-restrict)
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
+                                             -fvisibility=hidden -Wno-restrict)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=hidden)
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
+                                             -fvisibility=hidden)
   endif()
   # Allow RDKit includes to be prefixed
-  target_include_directories(${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS}
-                                               ${RDKit_INCLUDE_DIRS}/..
-                                               ${PROJECT_SOURCE_DIR}/include
-                                               ${PROJECT_SOURCE_DIR}/src)
+  target_include_directories(
+    ${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS}/..
+                      ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
   target_compile_definitions(${TARGET} PRIVATE RDK_BUILD_MAEPARSER_SUPPORT)
-  if (NOT ${BUILD_SHARED_LIBS})
+  if(NOT ${BUILD_SHARED_LIBS})
     # force use of static libraries
     target_compile_definitions(
-        ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
-                          BOOST_BEAST_HEADER_ONLY)
-    if (WIN32)
-        target_link_libraries(${TARGET} PUBLIC -static)
+      ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
+                        BOOST_BEAST_HEADER_ONLY)
+    if(WIN32)
+      target_link_libraries(${TARGET} PUBLIC -static)
     endif()
   endif()
-  if (EMSCRIPTEN)
+  if(EMSCRIPTEN)
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
   endif()
 endfunction()
@@ -113,7 +113,8 @@ endfunction()
 
 set(RDKIT_EXTENSIONS_LIB rdkit_extensions)
 build_schrodinger_library(${RDKIT_EXTENSIONS_LIB})
-target_compile_definitions(${RDKIT_EXTENSIONS_LIB} PRIVATE IN_RDKIT_EXTENSIONS_DLL)
+target_compile_definitions(${RDKIT_EXTENSIONS_LIB}
+                           PRIVATE IN_RDKIT_EXTENSIONS_DLL)
 target_link_libraries(
   ${RDKIT_EXTENSIONS_LIB}
   PRIVATE Boost::filesystem
@@ -153,8 +154,8 @@ enable_testing()
 
 set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
 file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
-set(TEST_DEPENDENCIES Boost::unit_test_framework Eigen3::Eigen fmt::fmt Qt6::Widgets
-                      ${RDKIT_EXTENSIONS_LIB} ${SKETCHER_LIB})
+set(TEST_DEPENDENCIES Boost::unit_test_framework Eigen3::Eigen fmt::fmt
+                      Qt6::Widgets ${RDKIT_EXTENSIONS_LIB} ${SKETCHER_LIB})
 file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
 
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
@@ -178,15 +179,14 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
     if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
-        list(APPEND CURRENT_MEMTEST_COMMAND
-            "--suppressions=${PREFIX_PATH}/${SUPPRESSION_FILE}")
+      list(APPEND CURRENT_MEMTEST_COMMAND
+           "--suppressions=${PREFIX_PATH}/${SUPPRESSION_FILE}")
     endif()
     foreach(CURRENT_GLOBAL_SUPPRESSION ${GLOBAL_SUPPRESSIONS})
-        list(APPEND CURRENT_MEMTEST_COMMAND
-            "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
+      list(APPEND CURRENT_MEMTEST_COMMAND
+           "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
     endforeach()
-    list(APPEND CURRENT_MEMTEST_COMMAND
-        "${PREFIX_PATH}/${TEST_COMMAND}")
+    list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
     add_test(NAME memtest_${TEST_TARGET} COMMAND ${CURRENT_MEMTEST_COMMAND})
     set_property(TEST memtest_${TEST_TARGET} PROPERTY LABELS memtest)
   endif()
