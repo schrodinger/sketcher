@@ -1,67 +1,72 @@
 #!/bin/sh
 #
-# This script allows the sketcher repo to be built using buildinger, the
-# Schrodinger internal build system
+# This script allows the sketcher repo to be built using buildinger
+# (the Schrodinger internal build system)
 #
 
-# parse arguments
+# Parse command line arguments
 BUILD_TYPE="Release"
 while [ $# -gt 0 ]; do
     case "$1" in
-    -g)
-        BUILD_TYPE="Debug"
-        shift
-        ;;
-    *)
-        echo "Unrecognized option $1"
-        exit 1
-        ;;
+    -g) BUILD_TYPE="Debug"; shift ;;
+    *) echo "Unrecognized option $1"; exit 1 ;;
     esac
 done
 
+# Source build environment and set error handling
 . $SCHRODINGER_SRC/mmshare/build_env
 set -euo pipefail
 
+# Define directory paths
 SRC_DIR=$SCHRODINGER_SRC/sketcher
 BUILD_DIR=$SCHRODINGER/sketcher
 PF_DIR=$SCHRODINGER/schrodinger_buildenv_packages/.pixi/envs/schrodinger
-ZLIB_DIR=`ls -d $PF_DIR/zlib-*`
-EIGEN_DIR=`ls -d $PF_DIR/eigen-*/share/eigen3/cmake`
-COORDGEN_DIR=`ls -d $PF_DIR/coordgenlibs-*/lib/cmake`
-MAEPARSER_DIR=`ls -d $PF_DIR/maeparser-*/lib/cmake`
-SQLITE_DIR=`ls -d $PF_DIR/sqlite-*`
+ZLIB_DIR=$(ls -d $PF_DIR/zlib-*)
+EIGEN_DIR=$(ls -d $PF_DIR/eigen-*/share/eigen3/cmake)
+COORDGEN_DIR=$(ls -d $PF_DIR/coordgenlibs-*/lib/cmake)
+MAEPARSER_DIR=$(ls -d $PF_DIR/maeparser-*/lib/cmake)
+SQLITE_DIR=$(ls -d $PF_DIR/sqlite-*)
 
+# Build CMake prefix path
+CMAKE_PREFIX_PATH="$PF_DIR;$ZLIB_DIR;$EIGEN_DIR;$COORDGEN_DIR;$MAEPARSER_DIR;$SQLITE_DIR"
+
+# Configure compiler for Windows
 CXX_COMPILER=""
 if [[ "$OSTYPE" == "msys" ]]; then
-    CXX_COMPILER=`ls -d $PF_DIR/vs-2019/compiler-*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe`
-fi
-CXX_COMPILER_FLAG=""
-if [[ "$CXX_COMPILER" != "" ]]; then
-    CXX_COMPILER_FLAG="-DCMAKE_CXX_COMPILER=$CXX_COMPILER"
+    CXX_COMPILER=$(ls -d $PF_DIR/vs-2019/compiler-*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe)
 fi
 
-cmake -B $BUILD_DIR \
-      -S $SRC_DIR \
-      -G Ninja \
-      -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-      -DENFORCE_DEPENDENCY_VERSIONS=OFF \
-      -DBUILD_SHARED_LIBS=ON \
-      -DCMAKE_PREFIX_PATH=$PF_DIR\;$ZLIB_DIR\;$EIGEN_DIR\;$COORDGEN_DIR\;$MAEPARSER_DIR\;$SQLITE_DIR \
-      $CXX_COMPILER_FLAG \
-    || exit 1
+# Ensure build directory exists
+mkdir -p "$BUILD_DIR"
 
-# allow CMake to be invoked using make
-echo "
+# Update rpaths for shared libraries on MacOS
+POST_BUILD_COMMANDS=""
+if [[ "$OSTYPE" == darwin* ]]; then
+    POST_BUILD_COMMANDS="@find $BUILD_DIR \\( -name '*.dylib' -o -type f -perm +111 \\) ! -type l | while read target; do install_name_tool -change /Users/localbuildbot/builds/software/lib/Darwin-x86_64/sqlite-3.42.0/lib/libsqlite3.0.dylib /usr/lib/libsqlite3.0.dylib \"\$\$target\"; install_name_tool -change /software/lib/Darwin-x86_64/zlib-1.2.11/lib/libz.1.dylib /usr/lib/libz.1.dylib \"\$\$target\"; done"
+fi
+
+# Generate Makefile wrapper
+cat > "$BUILD_DIR/Makefile" << EOF
 .PHONY: all test memtest
+
 all:
+	cmake -B "$BUILD_DIR" \\
+	      -S "$SRC_DIR" \\
+	      -G Ninja \\
+	      -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \\
+	      -DENFORCE_DEPENDENCY_VERSIONS=OFF \\
+	      -DBUILD_SHARED_LIBS=ON \\
+	      -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \\
+	      ${CXX_COMPILER:+-DCMAKE_CXX_COMPILER="$CXX_COMPILER"}
 	cmake --build $BUILD_DIR --config $BUILD_TYPE
+	$POST_BUILD_COMMANDS
 
 test:
 	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -LE memtest --output-on-failure
 
 memtest:
 	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure
-" > $BUILD_DIR/Makefile
+EOF
 
 # buildinger expects stdout to define variables
-echo BUILD_DIR: $BUILD_DIR
+echo "BUILD_DIR: $BUILD_DIR"

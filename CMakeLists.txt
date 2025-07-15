@@ -14,23 +14,25 @@ option(ENFORCE_DEPENDENCY_VERSIONS
        "Require that the dependencies match the versions listed in \
     external/versions.json" ON)
 
-set(SUPPRESSION_FILE "test_valgrind.suppressions")
-set(MEMTEST_COMMAND
-    "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
-    --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
-    --error-exitcode=29")
-separate_arguments(MEMTEST_COMMAND)
-
+# Load dependency versions
 if(${ENFORCE_DEPENDENCY_VERSIONS})
   file(READ external/versions.json VERSIONS)
-  string(JSON BOOST_VERSION GET ${VERSIONS} boost)
-  string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
-  string(JSON FMT_VERSION GET ${VERSIONS} fmt)
-  string(JSON QT_VERSION GET ${VERSIONS} qt)
-  string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
-  string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
-  string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
-  string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+  set(DEPENDENCIES
+      boost
+      eigen
+      fmt
+      qt
+      rdkit
+      sqlite
+      zlib
+      zstd)
+  foreach(dep ${DEPENDENCIES})
+    string(TOUPPER ${dep} dep_upper)
+    string(JSON ${dep_upper}_VERSION GET ${VERSIONS} ${dep})
+    set(${dep_upper}_VERSION
+        ${${dep_upper}_VERSION}
+        PARENT_SCOPE)
+  endforeach()
 endif()
 
 if(${BUILD_SHARED_LIBS})
@@ -61,7 +63,7 @@ endif()
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
-find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg)
+find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets)
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
@@ -80,10 +82,13 @@ function(setup_target TARGET)
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
                                              -fvisibility=hidden)
   endif()
-  # Allow RDKit includes to be prefixed
+  # Allow RDKit includes to be prefixed, and add all relevant and necessary
+  # sketcher-specific include directories
   target_include_directories(
-    ${TARGET} PRIVATE ${RDKit_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS}/..
-                      ${PROJECT_SOURCE_DIR}/include ${PROJECT_SOURCE_DIR}/src)
+    ${TARGET}
+    PRIVATE ${RDKit_INCLUDE_DIRS} ${RDKit_INCLUDE_DIRS}/..
+            ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/include
+            ${PROJECT_SOURCE_DIR}/src)
   target_compile_definitions(${TARGET} PRIVATE RDK_BUILD_MAEPARSER_SUPPORT)
   if(NOT ${BUILD_SHARED_LIBS})
     # force use of static libraries
@@ -109,54 +114,82 @@ function(build_schrodinger_library TARGET)
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   setup_target(${TARGET})
+  # Auto-generate compile definitions
+  string(TOUPPER ${TARGET} TARGET_UPPER)
+  target_compile_definitions(${TARGET} PRIVATE IN_${TARGET_UPPER}_DLL)
 endfunction()
 
-set(RDKIT_EXTENSIONS_LIB rdkit_extensions)
-build_schrodinger_library(${RDKIT_EXTENSIONS_LIB})
-target_compile_definitions(${RDKIT_EXTENSIONS_LIB}
-                           PRIVATE IN_RDKIT_EXTENSIONS_DLL)
+# schrodinger::rdkit_extensions library
+set(RDKIT_EXTENSIONS_TARGET rdkit_extensions)
+build_schrodinger_library(${RDKIT_EXTENSIONS_TARGET})
 target_link_libraries(
-  ${RDKIT_EXTENSIONS_LIB}
+  ${RDKIT_EXTENSIONS_TARGET}
   PRIVATE Boost::filesystem
           Boost::iostreams
           Boost::json
           Boost::serialization
-          RDKit::CIPLabeler
+          fmt::fmt
           RDKit::ChemReactions
           RDKit::DetermineBonds
           RDKit::DistGeomHelpers
           RDKit::MarvinParser
           RDKit::RDInchiLib
-          fmt::fmt
           SQLite::SQLite3
           ZLIB::ZLIB
           ${ZSTD_LIB_NAME})
 
-set(SKETCHER_LIB sketcher)
-build_schrodinger_library(${SKETCHER_LIB})
-target_compile_definitions(${SKETCHER_LIB} PRIVATE IN_SKETCHER_DLL)
-target_link_libraries(${SKETCHER_LIB} PRIVATE Qt6::Widgets Qt6::Svg
-                                              ${RDKIT_EXTENSIONS_LIB})
-# Enable Qt MOC and UIC for the sketcher library
-set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOMOC ON)
-set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC ON)
-set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${SKETCHER_LIB}/ui)
-set_target_properties(${SKETCHER_LIB} PROPERTIES AUTOUIC_SEARCH_PATHS ${UI_DIR})
+# schrodinger::sketcher library
+set(SKETCHER_TARGET sketcher)
+build_schrodinger_library(${SKETCHER_TARGET})
+target_link_libraries(
+  ${SKETCHER_TARGET}
+  PRIVATE Boost::boost
+          fmt::fmt
+          Qt6::Svg
+          Qt6::SvgWidgets
+          Qt6::Widgets
+          RDKit::CIPLabeler
+          RDKit::ChemReactions
+          ${RDKIT_EXTENSIONS_TARGET})
+# Configure and include version information for the sketcher
+configure_file(${PROJECT_SOURCE_DIR}/include/schrodinger/sketcher/version.h.in
+               ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h)
+# Enable Qt MOC and UIC
+set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/ui)
+set_target_properties(
+  ${SKETCHER_TARGET}
+  PROPERTIES AUTOMOC ON
+             AUTOUIC ON
+             AUTOUIC_SEARCH_PATHS ${UI_DIR})
 
 # Standalone executable
-set(EXE_TARGET sketcher_app)
-add_executable(${EXE_TARGET} src/app/main.cpp)
-setup_target(${EXE_TARGET})
-target_link_libraries(${EXE_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_LIB})
+set(APP_TARGET sketcher_app)
+add_executable(${APP_TARGET} src/app/main.cpp)
+setup_target(${APP_TARGET})
+target_link_libraries(${APP_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_TARGET})
 
 # Tests
 enable_testing()
 
 set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
 file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
-set(TEST_DEPENDENCIES Boost::unit_test_framework Eigen3::Eigen fmt::fmt
-                      Qt6::Widgets ${RDKIT_EXTENSIONS_LIB} ${SKETCHER_LIB})
+set(TEST_DEPENDENCIES
+    Boost::filesystem
+    Boost::unit_test_framework
+    Eigen3::Eigen
+    fmt::fmt
+    Qt6::Widgets
+    RDKit::FileParsers
+    ${RDKIT_EXTENSIONS_TARGET}
+    ${SKETCHER_TARGET})
+
 file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
+set(SUPPRESSION_FILE "test_valgrind.suppressions")
+set(MEMTEST_COMMAND
+    "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
+        --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
+        --error-exitcode=29")
+separate_arguments(MEMTEST_COMMAND)
 
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   cmake_path(GET TEST_SOURCE STEM TEST_TARGET)
@@ -170,11 +203,15 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
     set(TEST_COMMAND ${TEST_TARGET})
   endif()
   add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
+  set_tests_properties(
+    ${TEST_TARGET} PROPERTIES ENVIRONMENT
+                              "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
   # Mirror the source directory for test collection
   cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
   cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
+
   if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
@@ -189,5 +226,8 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
     list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
     add_test(NAME memtest_${TEST_TARGET} COMMAND ${CURRENT_MEMTEST_COMMAND})
     set_property(TEST memtest_${TEST_TARGET} PROPERTY LABELS memtest)
+    set_tests_properties(
+      memtest_${TEST_TARGET}
+      PROPERTIES ENVIRONMENT "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
   endif()
 endforeach()
