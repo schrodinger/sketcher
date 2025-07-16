@@ -33,7 +33,7 @@ int AminoAcidItem::type() const
 
 static AminoAcidType get_amino_acid_type(const std::string& res_name)
 {
-    if (res_name.length() == 1) {
+    if (AMINO_ACID_COLOR_BY_RES_NAME.contains(res_name)) {
         return AminoAcidType::STANDARD;
     } else if (std::tolower(res_name[0]) == 'd') {
         return AminoAcidType::D;

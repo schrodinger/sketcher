@@ -66,7 +66,7 @@ std::string get_monomer_res_name(const RDKit::Atom* const monomer)
 
 bool is_standard_nucleotide(const std::string& res_name)
 {
-    return res_name.length() == 1;
+    return NUCLEIC_ACID_COLOR_BY_RES_NAME.contains(res_name);
 }
 
 std::pair<qreal, qreal>

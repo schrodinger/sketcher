@@ -68,7 +68,10 @@ get_connector_style(const RDKit::Bond* bond)
                 Qt::PenStyle::SolidLine};
     } else if (start_monomer_type == MonomerType::PEPTIDE ||
                end_monomer_type == MonomerType::PEPTIDE) {
-        if (start_res_name.ends_with('C') && end_res_name.ends_with('C')) {
+        std::string attachment_points;
+        bond->getPropIfPresent(LINKAGE, attachment_points);
+        if (start_res_name.ends_with('C') && end_res_name.ends_with('C') &&
+            attachment_points == "R3-R3") {
             // disulfide bond connector
             return {true, true, DISULFIDE_CONNECTOR_COLOR,
                     DISULFIDE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine};
