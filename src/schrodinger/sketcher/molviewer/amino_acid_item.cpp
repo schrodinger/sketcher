@@ -20,8 +20,7 @@ enum class AminoAcidType { STANDARD, D, OTHER };
 
 AminoAcidItem::AminoAcidItem(const RDKit::Atom* monomer, const Fonts& fonts,
                              QGraphicsItem* parent) :
-    AbstractAtomOrMonomerItem(monomer, parent),
-    m_fonts(fonts)
+    AbstractMonomerItem(monomer, fonts, parent)
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER));
     updateCachedData();
@@ -32,32 +31,8 @@ int AminoAcidItem::type() const
     return Type;
 }
 
-static QString elide_text(const QString& text)
+static AminoAcidType get_amino_acid_type(const std::string& res_name)
 {
-    if (text.length() > MAX_MONOMER_LABEL_LENGTH) {
-        // shorten the string and add ellipses
-        return text.left(MAX_MONOMER_LABEL_LENGTH - 1) +
-               QString::fromUtf8("\u2026");
-    } else {
-        return text;
-    }
-}
-
-static QString get_label_text(const RDKit::Atom* const monomer,
-                              const RDKit::AtomPDBResidueInfo* const res_info)
-{
-    auto is_smiles = monomer->getProp<bool>(SMILES_MONOMER);
-    if (is_smiles) {
-        return SMILES_PLACEHOLDER_TEXT;
-    }
-    auto res_name = res_info->getResidueName();
-    return elide_text(QString::fromStdString(res_name));
-}
-
-static AminoAcidType
-get_amino_acid_type(const RDKit::AtomPDBResidueInfo* const res_info)
-{
-    auto res_name = res_info->getResidueName();
     if (res_name.length() == 1) {
         return AminoAcidType::STANDARD;
     } else if (std::tolower(res_name[0]) == 'd') {
@@ -67,73 +42,82 @@ get_amino_acid_type(const RDKit::AtomPDBResidueInfo* const res_info)
     }
 }
 
+/**
+ * Update the given path so it contains only a rounded rectangle of the
+ * specified size, using the amino acid rounding radius
+ * @param[in,out] path the path to modify
+ * @param[in] rect the rectangle to add to the path
+ * @param[in] highlighting_thickness additional size to add to the rectangle.
+ * This option is intended for generating selection and predictive highlighting
+ * paths.
+ */
+static void set_path_to_rounded_rect(QPainterPath& highlighting_path,
+                                     const QRectF& border_rect,
+                                     const qreal highlighting_thickness = 0)
+{
+    auto selection_highlighting_rect =
+        border_rect.adjusted(-highlighting_thickness, -highlighting_thickness,
+                             highlighting_thickness, highlighting_thickness);
+    highlighting_path.clear();
+    highlighting_path.addRoundedRect(
+        selection_highlighting_rect,
+        AA_ROUNDING_RADIUS + highlighting_thickness,
+        AA_ROUNDING_RADIUS + highlighting_thickness);
+}
+
 void AminoAcidItem::updateCachedData()
 {
     prepareGeometryChange();
 
-    const auto* monomer_info = m_atom->getMonomerInfo();
-    const auto* res_info =
-        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info);
-    if (res_info == nullptr) {
-        // this monomer is something other than an amino acid
-        throw std::runtime_error("Atom has no residue info");
-    }
-    auto res_name = res_info->getResidueName();
-    m_main_label_text = get_label_text(m_atom, res_info);
-    qreal border_width, border_height, border_line_width;
+    auto res_name = get_monomer_res_name(m_atom);
+    m_main_label_text = elide_text(res_name);
+    qreal standard_border_width, standard_border_height, border_line_width;
     QColor border_color;
-    QFont label_font;
-    switch (get_amino_acid_type(res_info)) {
+    const QFontMetricsF* main_label_fm = nullptr;
+    switch (get_amino_acid_type(res_name)) {
         case AminoAcidType::STANDARD:
-            border_width = STANDARD_AA_BORDER_WIDTH;
-            border_height = STANDARD_AA_BORDER_HEIGHT;
+            standard_border_width = STANDARD_AA_BORDER_WIDTH;
+            standard_border_height = STANDARD_AA_BORDER_HEIGHT;
             border_line_width = STANDARD_AA_BORDER_LINE_WIDTH;
             border_color = STANDARD_AA_BORDER_COLOR;
             m_main_label_font = m_fonts.m_main_label_font;
+            main_label_fm = &m_fonts.m_main_label_fm;
             break;
         case AminoAcidType::D:
-            border_width = D_AA_BORDER_WIDTH;
-            border_height = D_AA_BORDER_HEIGHT;
+            standard_border_width = D_AA_BORDER_WIDTH;
+            standard_border_height = D_AA_BORDER_HEIGHT;
             border_line_width = D_AA_BORDER_LINE_WIDTH;
             border_color = D_AA_BORDER_COLOR;
             m_main_label_font = m_fonts.m_d_amino_acid_font;
+            main_label_fm = &m_fonts.m_d_amino_acid_fm;
             break;
         case AminoAcidType::OTHER:
-            border_width = OTHER_AA_BORDER_WIDTH;
-            border_height = OTHER_AA_BORDER_HEIGHT;
+            standard_border_width = OTHER_AA_BORDER_WIDTH;
+            standard_border_height = OTHER_AA_BORDER_HEIGHT;
             border_line_width = OTHER_AA_BORDER_LINE_WIDTH;
             border_color = OTHER_AA_BORDER_COLOR;
             m_main_label_font = m_fonts.m_other_amino_acid_font;
+            main_label_fm = &m_fonts.m_other_amino_acid_fm;
             break;
     }
+    auto [border_width, border_height] = get_rect_size_to_fit_label(
+        m_main_label_text, *main_label_fm, standard_border_width,
+        standard_border_height);
     m_border_pen.setWidthF(border_line_width);
     m_border_pen.setColor(border_color);
-    m_border_rect.setWidth(border_width);
-    m_border_rect.setHeight(border_height);
-    // TODO: add selection, predictive highlighting path - set bounding rect to
-    // be largest of those
-    m_bounding_rect = m_border_rect;
-    m_shape.clear();
-    m_shape.addRect(m_bounding_rect);
-
-    auto color_find = AMINO_ACID_COLOR_BY_RES_NAME.find(res_name);
-    if (color_find == AMINO_ACID_COLOR_BY_RES_NAME.end()) {
-        m_border_brush.setColor(DEFAULT_AA_BACKGROUND_COLOR);
-    } else {
-        m_border_brush.setColor(color_find->second);
-    }
-}
-
-void AminoAcidItem::paint(QPainter* painter,
-                          const QStyleOptionGraphicsItem* option,
-                          QWidget* widget)
-{
-    painter->save();
-    painter->setPen(m_border_pen);
-    painter->setBrush(m_border_brush);
-    painter->drawRoundedRect(m_border_rect, AA_ROUNDING_RADIUS,
-                             AA_ROUNDING_RADIUS);
-    painter->restore();
+    auto border_rect = QRectF(-border_width / 2, -border_height / 2,
+                              border_width, border_height);
+    set_path_to_rounded_rect(m_border_path, border_rect);
+    set_path_to_rounded_rect(m_selection_highlighting_path, border_rect,
+                             MONOMER_SELECTION_HIGHLIGHTING_THICKNESS);
+    set_path_to_rounded_rect(m_predictive_highlighting_path, border_rect,
+                             MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
+    m_main_label_rect = border_rect;
+    m_bounding_rect = border_rect;
+    m_shape = m_border_path;
+    auto rect_color = get_color_for_monomer(
+        res_name, AMINO_ACID_COLOR_BY_RES_NAME, DEFAULT_AA_BACKGROUND_COLOR);
+    m_border_brush.setColor(rect_color);
 }
 
 } // namespace sketcher

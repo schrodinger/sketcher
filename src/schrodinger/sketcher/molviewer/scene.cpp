@@ -121,7 +121,7 @@ Scene::~Scene()
 void Scene::moveInteractiveItems()
 {
     update_conf_for_mol_graphics_items(
-        getInteractiveItems(InteractiveItemFlag::ATOM),
+        getInteractiveItems(InteractiveItemFlag::ATOM_OR_MONOMER),
         getInteractiveItems(InteractiveItemFlag::BOND),
         getInteractiveItems(InteractiveItemFlag::S_GROUP),
         *m_mol_model->getMol());

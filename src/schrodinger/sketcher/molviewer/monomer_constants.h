@@ -119,11 +119,14 @@ const std::unordered_map<std::string, QColor> NUCLEIC_ACID_COLOR_BY_RES_NAME{
     {"U", MONOMER_COLOR_MAP.at(MonomerColorType::URACIL)},
 };
 
-const QString SMILES_PLACEHOLDER_TEXT = "***";
+const std::string SMILES_PLACEHOLDER_TEXT = "***";
 const qsizetype MAX_MONOMER_LABEL_LENGTH = 6;
 
 const QColor DEFAULT_AA_BACKGROUND_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::OTHER);
+const QColor MONOMER_LABEL_TEXT_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY3);
+const qreal MONOMER_LABEL_TEXT_WIDTH = 0.5;
 
 const qreal STANDARD_AA_BORDER_WIDTH = 25;
 const qreal STANDARD_AA_BORDER_HEIGHT = 25;
@@ -148,6 +151,48 @@ const QColor OTHER_AA_BORDER_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::DARK_RED);
 
 const qreal AA_ROUNDING_RADIUS = 5;
+const qreal MONOMER_RECT_MINIMUM_HORIZONTAL_TEXT_PADDING = 12.0;
+
+const qreal NA_BASE_BORDER_WIDTH = 28.75;
+const qreal NA_BASE_BORDER_HEIGHT = 28.75;
+const QColor DEFAULT_NA_BACKGROUND_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::OTHER);
+const qreal DIAMOND_AND_ELLIPSE_MIN_ASPECT_RATIO = 0.2;
+
+const qreal STANDARD_NA_BORDER_LINE_WIDTH = 2;
+const QColor STANDARD_NA_BORDER_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
+
+const qreal OTHER_NA_BORDER_LINE_WIDTH = 3;
+const qreal OTHER_NA_SUGAR_AND_PHOSPHATE_FONT_RATIO = 1.0;
+const qreal OTHER_NA_BASE_FONT_RATIO = 0.925;
+const QColor OTHER_NA_BORDER_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::DARK_RED);
+
+const qreal NA_SUGAR_BORDER_WIDTH = 25;
+const qreal NA_SUGAR_BORDER_HEIGHT = 25;
+const qreal NA_PHOSPHATE_BORDER_WIDTH = 26.25;
+const qreal NA_PHOSPHATE_BORDER_HEIGHT = 26.25;
+const QColor NA_BACKBONE_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::NA_BACKBONE);
+
+const qreal CHEM_MONOMER_BORDER_WIDTH = 25;
+const qreal CHEM_MONOMER_BORDER_HEIGHT = 25;
+const qreal CHEM_MONOMER_BORDER_LINE_WIDTH = 2;
+const QColor CHEM_MONOMER_BORDER_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
+const QColor CHEM_MONOMER_RECT_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::CHEM);
+
+// the thickness of the "halo" around monomers for predictive and selection
+// highlighting
+const qreal MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS = 7.5;
+const qreal MONOMER_SELECTION_HIGHLIGHTING_THICKNESS = 8.5;
+
+// The absolute minimum size for the colored area drawn behind a monomer. This
+// floor is only relevant when running without a display, in which case this
+// value can prevent, e.g., divide-by-zero errors.
+const qreal MONOMER_BORDER_MIN_SIZE = 0.01;
 
 } // namespace sketcher
 } // namespace schrodinger

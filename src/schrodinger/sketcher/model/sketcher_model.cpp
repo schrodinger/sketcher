@@ -7,7 +7,7 @@
 #include <rdkit/GraphMol/Atom.h>
 
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 
@@ -239,7 +239,7 @@ template <typename T> bool contains_item(const SketcherModel& model)
 
 bool SketcherModel::hasAtomSelection() const
 {
-    return contains_item<AtomItem>(*this);
+    return contains_item<AbstractAtomOrMonomerItem>(*this);
 }
 
 bool SketcherModel::hasBondSelection() const

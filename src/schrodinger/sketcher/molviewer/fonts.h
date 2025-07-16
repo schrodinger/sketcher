@@ -42,6 +42,8 @@ class SKETCHER_API Fonts
 
     QFont m_d_amino_acid_font;
     QFont m_other_amino_acid_font;
+    QFont m_other_nucleic_acid_sugar_and_phosphate_font;
+    QFont m_other_nucleic_acid_base_font;
 
     QFontMetricsF m_main_label_fm;
     QFontMetricsF m_subscript_fm;
@@ -54,6 +56,8 @@ class SKETCHER_API Fonts
 
     QFontMetricsF m_d_amino_acid_fm;
     QFontMetricsF m_other_amino_acid_fm;
+    QFontMetricsF m_other_nucleic_acid_sugar_and_phosphate_fm;
+    QFontMetricsF m_other_nucleic_acid_base_fm;
 
     qreal m_radical_dot_size;
 };

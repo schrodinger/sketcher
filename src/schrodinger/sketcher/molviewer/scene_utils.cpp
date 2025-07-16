@@ -22,6 +22,7 @@
 #include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/amino_acid_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
@@ -40,6 +41,7 @@
 namespace
 {
 const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
+// According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
 } // namespace
 
@@ -53,10 +55,9 @@ get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
                                           const RDKit::Conformer& conf);
 
 /**
- * Construct and return a monomer graphics item for representing a given atom.
+ * Determine what type of monomer the given atom represents.
  */
-static AbstractAtomOrMonomerItem*
-get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts)
+MonomerType get_monomer_type(const RDKit::Atom* atom)
 {
     const auto* monomer_info = atom->getMonomerInfo();
     if (monomer_info == nullptr) {
@@ -65,32 +66,52 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts)
     const auto* res_info =
         dynamic_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info);
     if (res_info == nullptr) {
-        return new ChemMonomerItem(atom, fonts);
+        return MonomerType::CHEM;
     }
     const auto& chain_id = res_info->getChainId();
     if (chain_id.starts_with(PEPTIDE_POLYMER_PREFIX)) {
-        return new AminoAcidItem(atom, fonts);
+        return MonomerType::PEPTIDE;
     } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
         const auto& res_name = res_info->getResidueName();
         if (res_name.empty()) {
-            return new NucleicAcidBaseItem(atom, fonts);
+            return MonomerType::NA_BASE;
         }
         auto last_char = std::tolower(res_name.back());
         if (last_char == 'p') {
-            return new NucleicAcidPhosphateItem(atom, fonts);
+            return MonomerType::NA_PHOSPHATE;
         } else if (last_char == 'r') {
-            return new NucleicAcidSugarItem(atom, fonts);
+            return MonomerType::NA_SUGAR;
         }
-        return new NucleicAcidBaseItem(atom, fonts);
+        return MonomerType::NA_BASE;
     }
-    return new ChemMonomerItem(atom, fonts);
+    return MonomerType::CHEM;
 }
 
-static AbstractGraphicsItem*
-get_monomer_connector_graphics_item(const RDKit::Bond* bond, const Fonts& fonts)
+/**
+ * Construct and return a monomer graphics item for representing the given atom.
+ */
+static AbstractAtomOrMonomerItem*
+get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts)
 {
-    // TODO
-    return nullptr;
+    switch (get_monomer_type(atom)) {
+        case MonomerType::PEPTIDE:
+            return new AminoAcidItem(atom, fonts);
+            break;
+        case MonomerType::CHEM:
+            return new ChemMonomerItem(atom, fonts);
+            break;
+        case MonomerType::NA_BASE:
+            return new NucleicAcidBaseItem(atom, fonts);
+            break;
+        case MonomerType::NA_PHOSPHATE:
+            return new NucleicAcidPhosphateItem(atom, fonts);
+            break;
+        case MonomerType::NA_SUGAR:
+            return new NucleicAcidSugarItem(atom, fonts);
+            break;
+        default:
+            throw std::runtime_error("Unrecognized monomer type");
+    }
 }
 
 std::tuple<std::vector<QGraphicsItem*>,
@@ -156,7 +177,6 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
                                      fonts, bond_display_settings);
         } else {
-            bond_item = get_monomer_connector_graphics_item(bond, fonts);
             // TODO
             continue;
         }
