@@ -36,6 +36,10 @@ jobs:
       - name: Install Python packages
         run: python3 -m pip install ninja clang-format==14.0.6
 
+      - name: Install valgrind
+        if: matrix.build-output == 'debug'
+        run: sudo apt-get update && sudo apt-get install valgrind
+
       - name: Code formatting check
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
@@ -206,10 +210,6 @@ jobs:
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
           ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure
-
-      - name: Install valgrind
-        if: matrix.build-output == 'debug'
-        run: sudo apt-get install valgrind
 
       - name: Run memtests
         working-directory: build
