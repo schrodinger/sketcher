@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-15, ubuntu-latest, windows-latest]
         build-output: [app]
         include:
           - os: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create and activate virtualenv
-        if: matrix.os == 'macos-latest'
+        if: matrix.os == 'macos-15'
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
