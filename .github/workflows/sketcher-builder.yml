@@ -8,7 +8,7 @@ on:
     - cron: "0 4 * * *"
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -218,12 +218,11 @@ jobs:
         run: |
           xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
-      - name: Upload Test Report
-        uses: actions/upload-artifact@v4
-        if: always()
+      - name: Publish Test Summary
+        uses: test-summary/action@v2
         with:
-          name: ${{ matrix.os }}-${{ matrix.build-output }}-junit-reports
-          path: build/junit-report.xml
+          paths: "build/junit-report.xml"
+        if: always()
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
@@ -247,29 +246,3 @@ jobs:
         with:
           name: sketcher-${{ matrix.build-output }}.tar.gz
           path: sketcher-wasm.tar.gz
-
-  publish-test-report:
-    needs: build-and-test
-    if: always()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all test reports
-        uses: actions/download-artifact@v4
-        with:
-          name: |
-            macos-latest-app-junit-reports
-            ubuntu-latest-app-junit-reports
-            windows-latest-app-junit-reports
-            ubuntu-latest-debug-junit-reports
-            ubuntu-latest-wasm-junit-reports
-
-      - name: Publish Combined Test Summary
-        uses: test-summary/action@v2
-        with:
-          paths: "test-reports/**/*.xml"
-
-      - name: Delete artifact
-        uses: actions/delete-artifact@v4
-        with:
-            name: junit-reports
-            path: path/to/your/artifact
