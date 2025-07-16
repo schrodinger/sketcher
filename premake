@@ -62,7 +62,7 @@ all:
 	$POST_BUILD_COMMANDS
 
 test:
-	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -LE memtest --output-on-failure
+	$SCHRODINGER/run pytest --rootdir=$BUILD_DIR $BUILD_DIR
 
 memtest:
 	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure

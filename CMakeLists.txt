@@ -202,16 +202,17 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   else()
     set(TEST_COMMAND ${TEST_TARGET})
   endif()
-  add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
-  set_tests_properties(
-    ${TEST_TARGET} PROPERTIES ENVIRONMENT
-                              "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
   # Mirror the source directory for test collection
   cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
   cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
-
+  if(NOT ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
+    set_tests_properties(
+        ${TEST_TARGET} PROPERTIES ENVIRONMENT
+                                "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+  endif()
   if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})

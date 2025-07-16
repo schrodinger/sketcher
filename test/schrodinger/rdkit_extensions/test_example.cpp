@@ -20,4 +20,8 @@ BOOST_DATA_TEST_CASE(test_dependency_test,
     Eigen::Vector3d b(0, 1, 0);
     Eigen::Vector3d c(1, 0, 0);
     BOOST_TEST((a - b).cross(a - c).norm() != 0.0);
+
+    int d = 1;
+    int e = 2;
+    BOOST_TEST(d != e);
 }
