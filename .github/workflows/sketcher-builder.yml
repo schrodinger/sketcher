@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
         build-output: [app]
         include:
           - os: ubuntu-latest
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Create and activate virtualenv
-        if: matrix.os == 'macos-15'
+        if: matrix.os == 'macos-latest'
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -222,7 +222,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: junit-reports
+          name: ${{ matrix.os }}-${{ matrix.build-output }}-junit-reports
           path: build/junit-report.xml
 
       - name: Download sketcher executable
@@ -256,16 +256,20 @@ jobs:
       - name: Download all test reports
         uses: actions/download-artifact@v4
         with:
-          name: junit-reports
-          path: test-reports
+          name: |
+            macos-latest-app-junit-reports
+            ubuntu-latest-app-junit-reports
+            windows-latest-app-junit-reports
+            ubuntu-latest-debug-junit-reports
+            ubuntu-latest-wasm-junit-reports
 
       - name: Publish Combined Test Summary
         uses: test-summary/action@v2
         with:
           paths: "test-reports/**/*.xml"
 
-    #   - name: Delete workflow artifact
-    #     uses: geekyeggo/delete-artifact-by-name@v2.0.0
-    #     with:
-    #       name: junit-reports
-    #       token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Delete artifact
+        uses: actions/delete-artifact@v4
+        with:
+            name: junit-reports
+            path: path/to/your/artifact
