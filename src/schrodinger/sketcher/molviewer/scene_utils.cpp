@@ -28,6 +28,7 @@
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 #include "schrodinger/sketcher/molviewer/chem_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/nucleic_acid_base_item.h"
@@ -172,12 +173,19 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             qgraphicsitem_cast<const AtomItem*>(from_graphics_item);
         const auto* to_atom_item =
             qgraphicsitem_cast<const AtomItem*>(to_graphics_item);
+        const auto* from_monomer_item =
+            dynamic_cast<const AbstractMonomerItem*>(from_graphics_item);
+        const auto* to_monomer_item =
+            dynamic_cast<const AbstractMonomerItem*>(to_graphics_item);
         QGraphicsItem* bond_item = nullptr;
         if (from_atom_item != nullptr && to_atom_item != nullptr) {
             bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
                                      fonts, bond_display_settings);
+        } else if (from_monomer_item != nullptr && to_monomer_item != nullptr) {
+            bond_item = new MonomerConnectorItem(bond, *from_monomer_item,
+                                                 *to_monomer_item);
         } else {
-            // TODO
+            // skip bonds that go between a monomer and an atomistic atom
             continue;
         }
         bond_to_bond_item[bond] = bond_item;
@@ -217,7 +225,7 @@ void update_conf_for_mol_graphics_items(
         atom_item->updateCachedData();
     }
     for (auto* item : bond_items) {
-        auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
+        auto* bond_item = static_cast<AbstractBondOrConnectorItem*>(item);
         bond_item->updateCachedData();
     }
     for (auto* item : sgroup_items) {
@@ -470,7 +478,10 @@ bool item_matches_type_flag(QGraphicsItem* item,
             {NucleicAcidPhosphateItem::Type, InteractiveItemFlag::NA_PHOSPHATE},
             {NucleicAcidSugarItem::Type, InteractiveItemFlag::NA_SUGAR},
             {NucleicAcidBaseItem::Type, InteractiveItemFlag::NA_BASE},
-            {ChemMonomerItem::Type, InteractiveItemFlag::CHEM_MONOMER}};
+            {ChemMonomerItem::Type, InteractiveItemFlag::CHEM_MONOMER},
+            {MonomerConnectorItem::Type,
+             InteractiveItemFlag::MONOMER_CONNECTOR},
+        };
 
     auto type = item->type();
 
@@ -531,8 +542,11 @@ get_model_objects_for_graphics_items(const T& items)
             const auto* atom_or_monomer_item =
                 static_cast<const AbstractAtomOrMonomerItem*>(item);
             atoms.insert(atom_or_monomer_item->getAtom());
-        } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
-            bonds.insert(bond_item->getBond());
+        } else if (item_matches_type_flag(
+                       item, InteractiveItemFlag::BOND_OR_CONNECTOR)) {
+            const auto* bond_or_connector_item =
+                static_cast<const AbstractBondOrConnectorItem*>(item);
+            bonds.insert(bond_or_connector_item->getBond());
         } else if (auto s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
             s_groups.insert(s_group_item->getSubstanceGroup());
         } else if (auto nonmolecular_item =

@@ -96,8 +96,7 @@ BondItem::BondItem(const RDKit::Bond* bond, const AtomItem& start_item,
                    const AtomItem& end_item, const Fonts& fonts,
                    const BondDisplaySettings& settings, QGraphicsItem* parent) :
 
-    AbstractGraphicsItem(parent),
-    m_bond(bond),
+    AbstractBondOrConnectorItem(bond, parent),
     m_start_item(start_item),
     m_end_item(end_item),
     m_fonts(fonts),
@@ -147,6 +146,7 @@ void BondItem::updateCachedData()
     // since we just set that as the pos of this item
     QPointF bond_end = m_end_item.pos() - m_start_item.pos();
     QLineF bond_line = QLineF(QPointF(0, 0), bond_end);
+    m_midpoint = bond_line.center();
     m_to_paint = calculateLinesToPaint(bond_line, bond_type);
     m_selection_highlighting_path =
         get_selection_highlighting_path_for_bond(m_bond);
@@ -629,11 +629,6 @@ std::vector<QColor> BondItem::getColors() const
     return {start_color};
 }
 
-QPointF BondItem::getMidPoint() const
-{
-    return (m_end_item.pos() - m_start_item.pos()) * 0.5;
-}
-
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                      QWidget* widget)
 {
@@ -772,9 +767,8 @@ void BondItem::paintBondLinesAndPolygons(QPainter* painter)
          * we might already have a clip path set for the label's transparency
          */
         if (colors.size() == 2) {
-            auto mid_point = getMidPoint();
-            QLineF first_half(QPointF(0, 0), mid_point);
-            QLineF second_half(mid_point, 2 * mid_point);
+            QLineF first_half(QPointF(0, 0), m_midpoint);
+            QLineF second_half(m_midpoint, 2 * m_midpoint);
             painter->setClipPath(
                 path_around_line((i == 0 ? first_half : second_half),
                                  BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH),

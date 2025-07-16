@@ -122,7 +122,7 @@ void Scene::moveInteractiveItems()
 {
     update_conf_for_mol_graphics_items(
         getInteractiveItems(InteractiveItemFlag::ATOM_OR_MONOMER),
-        getInteractiveItems(InteractiveItemFlag::BOND),
+        getInteractiveItems(InteractiveItemFlag::BOND_OR_CONNECTOR),
         getInteractiveItems(InteractiveItemFlag::S_GROUP),
         *m_mol_model->getMol());
     for (auto* non_mol_obj : m_mol_model->getNonMolecularObjects()) {
@@ -234,7 +234,7 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
     if (types & InteractiveItemFlag::ATOM_OR_MONOMER) {
         m_atom_to_atom_item.clear();
     }
-    if (types & InteractiveItemFlag::BOND) {
+    if (types & InteractiveItemFlag::BOND_OR_CONNECTOR) {
         m_bond_to_bond_item.clear();
     }
     if (types & InteractiveItemFlag::S_GROUP) {
@@ -279,8 +279,9 @@ void Scene::onDisplaySettingsChanged()
         static_cast<AbstractAtomOrMonomerItem*>(item)->updateCachedData();
     }
 
-    for (auto item : getInteractiveItems(InteractiveItemFlag::BOND)) {
-        static_cast<BondItem*>(item)->updateCachedData();
+    for (auto item :
+         getInteractiveItems(InteractiveItemFlag::BOND_OR_CONNECTOR)) {
+        static_cast<AbstractBondOrConnectorItem*>(item)->updateCachedData();
     }
 
     // DrawFragmentSceneTool inherits most of the settings from the Scene's
@@ -452,11 +453,11 @@ Scene::getCollidingItemsUsingBondMidpoints(QGraphicsItem* item) const
 
     // Exclude all bonds whose center point is outside the polygon
     auto is_not_bond_with_center_outside_polygon = [&polygon](auto item) {
-        auto bond = dynamic_cast<BondItem*>(item);
+        auto bond = dynamic_cast<AbstractBondOrConnectorItem*>(item);
         if (bond == nullptr) {
             return true;
         }
-        return polygon.containsPoint(bond->mapToScene(bond->getMidPoint()),
+        return polygon.containsPoint(bond->mapToScene(bond->getMidpoint()),
                                      Qt::WindingFill);
     };
     QList<QGraphicsItem*> filtered_items;

@@ -12,7 +12,7 @@
 #include <QtGlobal>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
@@ -52,9 +52,9 @@ struct ToPaint {
 };
 
 /**
- * A Qt graphics item for representing bonds in a molviewer Scene.
+ * A Qt graphics item for representing atomistic bonds in a molviewer Scene.
  */
-class SKETCHER_API BondItem : public AbstractGraphicsItem
+class SKETCHER_API BondItem : public AbstractBondOrConnectorItem
 {
   public:
     /**
@@ -101,23 +101,7 @@ class SKETCHER_API BondItem : public AbstractGraphicsItem
      */
     const RDKit::Bond* getBond() const;
 
-    /**
-     * @return the mid point of the bond (in local coordinates)
-     */
-    QPointF getMidPoint() const;
-
   protected:
-    // Creating a shared_ptr to an RDKit Bond (or Atom) implicitly creates a
-    // copy of the Bond, which means that the new Bond is no longer part of the
-    // original molecule, which leads to problems.  Because of this, we store a
-    // raw pointer instead.  The RDKit molecule takes care of the lifetime of
-    // the Bond, so a BondItem instance must be deleted as soon as its
-    // associated Bond is deleted.
-    //
-    // Also note that m_bond, m_start_item, and m_end_item should only be
-    // accessed from within updateCachedData to ensure that we can properly
-    // notify the scene of any BondItem changes *before* they happen.
-    const RDKit::Bond* const m_bond;
     const AtomItem& m_start_item;
     const AtomItem& m_end_item;
     std::vector<ToPaint> m_to_paint;

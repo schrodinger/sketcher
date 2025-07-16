@@ -194,5 +194,35 @@ const qreal MONOMER_SELECTION_HIGHLIGHTING_THICKNESS = 8.5;
 // value can prevent, e.g., divide-by-zero errors.
 const qreal MONOMER_BORDER_MIN_SIZE = 0.01;
 
+const QColor AA_LINEAR_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
+const qreal AA_LINEAR_CONNECTOR_WIDTH = 5;
+
+const QColor AA_BRANCHING_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY6);
+const qreal AA_BRANCHING_CONNECTOR_WIDTH = 3;
+
+const QColor DISULFIDE_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY6);
+const qreal DISULFIDE_CONNECTOR_WIDTH = 3;
+
+const QColor NA_BACKBONE_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
+const qreal NA_BACKBONE_CONNECTOR_WIDTH = 4;
+
+const QColor NA_BASE_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY6);
+const qreal NA_BASE_CONNECTOR_WIDTH = 4;
+
+const QColor NA_BACKBONE_TO_BASE_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY6);
+const qreal NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH = 2;
+
+const QColor CHEM_CONNECTOR_COLOR =
+    MONOMER_COLOR_MAP.at(MonomerColorType::GRAY6);
+const qreal CHEM_CONNECTOR_WIDTH = 2;
+
+const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -411,7 +411,8 @@ enum : InteractiveItemFlagType { // clang-format off
     CHEM_MONOMER          = 1 << 8,
     BOND_NOT_AP           = 1 << 9,
     ATTACHMENT_POINT_BOND = 1 << 10,
-    NON_MOLECULAR         = 1 << 11, // clang-format on
+    MONOMER_CONNECTOR     = 1 << 11,
+    NON_MOLECULAR         = 1 << 12, // clang-format on
     ATOM_NOT_AP = ATOM_NOT_R_NOT_AP | R_GROUP,
     ATOM = ATOM_NOT_AP | ATTACHMENT_POINT,
     BOND = BOND_NOT_AP | ATTACHMENT_POINT_BOND,
@@ -420,9 +421,10 @@ enum : InteractiveItemFlagType { // clang-format off
     MOLECULAR_NOT_AP = ATOM_NOT_AP | BOND_NOT_AP,
     NA_MONOMER = NA_PHOSPHATE | NA_SUGAR | NA_BASE,
     MONOMER = AA_MONOMER | NA_MONOMER | CHEM_MONOMER,
-    MONOMERIC = MONOMER, // TODO: also include monomer connectors
+    MONOMERIC = MONOMER | MONOMER_CONNECTOR,
     MOLECULAR_OR_MONOMERIC = MOLECULAR | MONOMERIC,
     ATOM_OR_MONOMER = ATOM | MONOMER,
+    BOND_OR_CONNECTOR = BOND | MONOMER_CONNECTOR,
     ALL = MOLECULAR_OR_MONOMERIC | NON_MOLECULAR,
 };
 }

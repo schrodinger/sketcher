@@ -91,7 +91,7 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
 {
     StandardSceneToolBase::onLeftButtonDoubleClick(event);
     QGraphicsItem* item = m_scene->getTopInteractiveItemAt(
-        event->scenePos(), InteractiveItemFlag::MOLECULAR);
+        event->scenePos(), InteractiveItemFlag::MOLECULAR_OR_MONOMERIC);
     if (item == nullptr) {
         // double click wasn't on the molecule, so we do nothing
         return;
@@ -102,9 +102,10 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
 
     // double click was on the molecule, so select all connected atoms and bonds
     const RDKit::Atom* atom = nullptr;
-    if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+    if (auto* atom_item = dynamic_cast<AbstractAtomOrMonomerItem*>(item)) {
         atom = atom_item->getAtom();
-    } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+    } else if (auto* bond_item =
+                   dynamic_cast<AbstractBondOrConnectorItem*>(item)) {
         atom = bond_item->getBond()->getBeginAtom();
     }
     auto [atoms_to_select, bonds_to_select] =
@@ -125,8 +126,8 @@ SelectSceneTool<T>::onRightButtonClick(QGraphicsSceneMouseEvent* const event)
     // when right-clicking on an atom or bond that's not part of the selection,
     // select it
     auto pos = event->scenePos();
-    auto item =
-        m_scene->getTopInteractiveItemAt(pos, InteractiveItemFlag::MOLECULAR);
+    auto item = m_scene->getTopInteractiveItemAt(
+        pos, InteractiveItemFlag::MOLECULAR_OR_MONOMERIC);
     if (item && !item->isSelected()) {
         auto [atoms, bonds, sgroups, non_molecular_objects] =
             m_scene->getModelObjects(SceneSubset::HOVERED, &pos);

@@ -59,6 +59,7 @@ class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
         NUCLEIC_ACID_SUGAR,
         NUCLEIC_ACID_BASE,
         CHEM_MONOMER,
+        MONOMER_CONNECTOR,
     };
 
     /// The rect to be returned from boundingRect().  Subclasses are responsible
