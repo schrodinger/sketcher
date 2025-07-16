@@ -15,17 +15,33 @@
 #include <QTransform>
 
 #include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
+#include "schrodinger/sketcher/molviewer/amino_acid_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/chem_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_base_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_phosphate_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_sugar_item.h"
 #include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+
+namespace
+{
+const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
+const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
+} // namespace
 
 namespace schrodinger
 {
@@ -36,9 +52,50 @@ static QPainterPath
 get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
                                           const RDKit::Conformer& conf);
 
+/**
+ * Construct and return a monomer graphics item for representing a given atom.
+ */
+static AbstractAtomOrMonomerItem*
+get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts)
+{
+    const auto* monomer_info = atom->getMonomerInfo();
+    if (monomer_info == nullptr) {
+        throw std::runtime_error("Atom has no monomer info");
+    }
+    const auto* res_info =
+        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info);
+    if (res_info == nullptr) {
+        return new ChemMonomerItem(atom, fonts);
+    }
+    const auto& chain_id = res_info->getChainId();
+    if (chain_id.starts_with(PEPTIDE_POLYMER_PREFIX)) {
+        return new AminoAcidItem(atom, fonts);
+    } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
+        const auto& res_name = res_info->getResidueName();
+        if (res_name.empty()) {
+            return new NucleicAcidBaseItem(atom, fonts);
+        }
+        auto last_char = std::tolower(res_name.back());
+        if (last_char == 'p') {
+            return new NucleicAcidPhosphateItem(atom, fonts);
+        } else if (last_char == 'r') {
+            return new NucleicAcidSugarItem(atom, fonts);
+        }
+        return new NucleicAcidBaseItem(atom, fonts);
+    }
+    return new ChemMonomerItem(atom, fonts);
+}
+
+static AbstractGraphicsItem*
+get_monomer_connector_graphics_item(const RDKit::Bond* bond, const Fonts& fonts)
+{
+    // TODO
+    return nullptr;
+}
+
 std::tuple<std::vector<QGraphicsItem*>,
-           std::unordered_map<const RDKit::Atom*, AtomItem*>,
-           std::unordered_map<const RDKit::Bond*, BondItem*>,
+           std::unordered_map<const RDKit::Atom*, QGraphicsItem*>,
+           std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
@@ -55,8 +112,8 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
     RDKit::Conformer conformer = mol->getConformer();
 
     std::vector<QGraphicsItem*> all_items;
-    std::unordered_map<const RDKit::Atom*, AtomItem*> atom_to_atom_item;
-    std::unordered_map<const RDKit::Bond*, BondItem*> bond_to_bond_item;
+    std::unordered_map<const RDKit::Atom*, QGraphicsItem*> atom_to_atom_item;
+    std::unordered_map<const RDKit::Bond*, QGraphicsItem*> bond_to_bond_item;
     std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
         s_group_to_s_group_items;
 
@@ -67,7 +124,10 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             continue;
         }
         const auto pos = conformer.getAtomPos(i);
-        auto* atom_item = new AtomItem(atom, fonts, atom_display_settings);
+        QGraphicsItem* atom_item =
+            (atom->getMonomerInfo() == nullptr)
+                ? new AtomItem(atom, fonts, atom_display_settings)
+                : get_monomer_graphics_item(atom, fonts);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
         if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
@@ -83,16 +143,38 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         if (!draw_attachment_points && is_attachment_point_bond(bond)) {
             continue;
         }
-        const auto* from_atom_item = atom_to_atom_item[bond->getBeginAtom()];
-        const auto* to_atom_item = atom_to_atom_item[bond->getEndAtom()];
-        auto* bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
-                                       fonts, bond_display_settings);
+        const auto* from_atom = bond->getBeginAtom();
+        const auto* to_atom = bond->getEndAtom();
+        const auto* from_graphics_item = atom_to_atom_item[from_atom];
+        const auto* to_graphics_item = atom_to_atom_item[to_atom];
+        const auto* from_atom_item =
+            qgraphicsitem_cast<const AtomItem*>(from_graphics_item);
+        const auto* to_atom_item =
+            qgraphicsitem_cast<const AtomItem*>(to_graphics_item);
+        QGraphicsItem* bond_item = nullptr;
+        if (from_atom_item != nullptr && to_atom_item != nullptr) {
+            bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
+                                     fonts, bond_display_settings);
+        } else {
+            bond_item = get_monomer_connector_graphics_item(bond, fonts);
+            // TODO
+            continue;
+        }
         bond_to_bond_item[bond] = bond_item;
         all_items.push_back(bond_item);
     }
 
     // create substance group items
     for (auto& sgroup : getSubstanceGroups(*mol)) {
+        std::string type;
+        std::string fieldname;
+        sgroup.getPropIfPresent("TYPE", type);
+        sgroup.getPropIfPresent("FIELDNAME", fieldname);
+        if (type == "DAT" && fieldname == SUPPLEMENTARY_INFORMATION) {
+            // this isn't an actual S-group; it's just additional data about the
+            // HELM molecule
+            continue;
+        }
         SGroupItem* sgroup_item = new SGroupItem(sgroup, fonts);
         s_group_to_s_group_items[&sgroup] = sgroup_item;
         all_items.push_back(sgroup_item);
@@ -109,7 +191,7 @@ void update_conf_for_mol_graphics_items(
 {
     auto conf = mol.getConformer();
     for (auto* item : atom_items) {
-        auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
+        auto* atom_item = static_cast<AbstractAtomOrMonomerItem*>(item);
         auto pos = conf.getAtomPos(atom_item->getAtom()->getIdx());
         atom_item->setPos(to_scene_xy(pos));
         atom_item->updateCachedData();
@@ -354,6 +436,109 @@ QPainterPath path_around_line(const QLineF& line, const qreal half_width)
     path.closeSubpath();
     return path;
 }
+
+bool item_matches_type_flag(QGraphicsItem* item,
+                            InteractiveItemFlagType type_flag)
+{
+    // a mapping of graphics items types to InteractiveItemFlag for graphics
+    // items that represent a single InteractiveItemFlag value
+    static const std::unordered_map<int, InteractiveItemFlagType>
+        type_to_interactive_item_flag{
+            {SGroupItem::Type, InteractiveItemFlag::S_GROUP},
+            {NonMolecularItem::Type, InteractiveItemFlag::NON_MOLECULAR},
+            {AminoAcidItem::Type, InteractiveItemFlag::AA_MONOMER},
+            {NucleicAcidPhosphateItem::Type, InteractiveItemFlag::NA_PHOSPHATE},
+            {NucleicAcidSugarItem::Type, InteractiveItemFlag::NA_SUGAR},
+            {NucleicAcidBaseItem::Type, InteractiveItemFlag::NA_BASE},
+            {ChemMonomerItem::Type, InteractiveItemFlag::CHEM_MONOMER}};
+
+    auto type = item->type();
+
+    // AtomItems and BondItems can represent multiple InteractiveItemFlag values
+    // (e.g. R-groups, attachment points, attachment point bonds), so we
+    // consider those separately
+    if (type == AtomItem::Type) {
+        if ((type_flag & InteractiveItemFlag::ATOM) ==
+            InteractiveItemFlag::ATOM) {
+            // we want all atoms, regardless of whether or not they're
+            // attachment points
+            return true;
+        } else if (type_flag & InteractiveItemFlag::ATOM) {
+            auto* atom = static_cast<AtomItem*>(item)->getAtom();
+            if (is_r_group(atom)) {
+                return type_flag & InteractiveItemFlag::R_GROUP;
+            } else if (is_attachment_point(atom)) {
+                return type_flag & InteractiveItemFlag::ATTACHMENT_POINT;
+            } else {
+                return type_flag & InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
+            }
+        }
+    } else if (type == BondItem::Type) {
+        if ((type_flag & InteractiveItemFlag::BOND) ==
+            InteractiveItemFlag::BOND) {
+            // we want all bonds, regardless of whether or not they're
+            // attachment point bonds
+            return true;
+        } else if (type_flag & InteractiveItemFlag::BOND) {
+            auto* bond = static_cast<BondItem*>(item)->getBond();
+            return is_attachment_point_bond(bond) ==
+                   static_cast<bool>(
+                       type_flag & InteractiveItemFlag::ATTACHMENT_POINT_BOND);
+        }
+    }
+
+    auto search = type_to_interactive_item_flag.find(type);
+    if (search != type_to_interactive_item_flag.end()) {
+        return type_flag & search->second;
+    }
+    return false;
+}
+
+template <typename T>
+std::tuple<std::unordered_set<const RDKit::Atom*>,
+           std::unordered_set<const RDKit::Bond*>,
+           std::unordered_set<const RDKit::SubstanceGroup*>,
+           std::unordered_set<const NonMolecularObject*>>
+get_model_objects_for_graphics_items(const T& items)
+{
+    std::unordered_set<const RDKit::Atom*> atoms;
+    std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<const RDKit::SubstanceGroup*> s_groups;
+    std::unordered_set<const NonMolecularObject*> non_molecular_objects;
+    for (auto item : items) {
+        if (item_matches_type_flag(item,
+                                   InteractiveItemFlag::ATOM_OR_MONOMER)) {
+            const auto* atom_or_monomer_item =
+                static_cast<const AbstractAtomOrMonomerItem*>(item);
+            atoms.insert(atom_or_monomer_item->getAtom());
+        } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+            bonds.insert(bond_item->getBond());
+        } else if (auto s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
+            s_groups.insert(s_group_item->getSubstanceGroup());
+        } else if (auto nonmolecular_item =
+                       qgraphicsitem_cast<NonMolecularItem*>(item)) {
+            non_molecular_objects.insert(
+                nonmolecular_item->getNonMolecularObject());
+        }
+    }
+    return {atoms, bonds, s_groups, non_molecular_objects};
+}
+
+template SKETCHER_API
+    std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
+               std::unordered_set<const RDKit::SubstanceGroup*>,
+               std::unordered_set<const NonMolecularObject*>>
+    get_model_objects_for_graphics_items<QList<QGraphicsItem*>>(
+        const QList<QGraphicsItem*>& items);
+
+template SKETCHER_API
+    std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
+               std::unordered_set<const RDKit::SubstanceGroup*>,
+               std::unordered_set<const NonMolecularObject*>>
+    get_model_objects_for_graphics_items<std::unordered_set<QGraphicsItem*>>(
+        const std::unordered_set<QGraphicsItem*>& items);
 
 } // namespace sketcher
 } // namespace schrodinger

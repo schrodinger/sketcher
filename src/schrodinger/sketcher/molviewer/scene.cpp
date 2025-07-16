@@ -54,55 +54,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-namespace
-{
-
-/**
- * @return whether a graphics item is one of the types specified by the type
- * flag.
- */
-bool item_matches_type_flag(QGraphicsItem* item,
-                            InteractiveItemFlagType type_flag)
-{
-    auto type = item->type();
-    if (type == AtomItem::Type) {
-        if ((type_flag & InteractiveItemFlag::ATOM) ==
-            InteractiveItemFlag::ATOM) {
-            // we want all atoms, regardless of whether or not they're
-            // attachment points
-            return true;
-        } else if (type_flag & InteractiveItemFlag::ATOM) {
-            auto* atom = static_cast<AtomItem*>(item)->getAtom();
-            if (is_r_group(atom)) {
-                return type_flag & InteractiveItemFlag::R_GROUP;
-            } else if (is_attachment_point(atom)) {
-                return type_flag & InteractiveItemFlag::ATTACHMENT_POINT;
-            } else {
-                return type_flag & InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
-            }
-        }
-    } else if (type == BondItem::Type) {
-        if ((type_flag & InteractiveItemFlag::BOND) ==
-            InteractiveItemFlag::BOND) {
-            // we want all bonds, regardless of whether or not they're
-            // attachment point bonds
-            return true;
-        } else if (type_flag & InteractiveItemFlag::BOND) {
-            auto* bond = static_cast<BondItem*>(item)->getBond();
-            return is_attachment_point_bond(bond) ==
-                   static_cast<bool>(
-                       type_flag & InteractiveItemFlag::ATTACHMENT_POINT_BOND);
-        }
-    } else if (type == SGroupItem::Type) {
-        return type_flag & InteractiveItemFlag::S_GROUP;
-    } else if (type == NonMolecularItem::Type) {
-        return type_flag & InteractiveItemFlag::NON_MOLECULAR;
-    }
-    return false;
-}
-
-} // namespace
-
 NullSceneTool::NullSceneTool() : AbstractSceneTool(nullptr, nullptr)
 {
 }
@@ -188,7 +139,7 @@ void Scene::moveInteractiveItems()
 void Scene::updateItems(const WhatChangedType what_changed)
 {
     if (what_changed & WhatChanged::MOLECULE) {
-        clearInteractiveItems(InteractiveItemFlag::MOLECULAR);
+        clearInteractiveItems(InteractiveItemFlag::MOLECULAR_OR_MONOMERIC);
         const auto* mol = m_mol_model->getMol();
         std::vector<QGraphicsItem*> all_items;
         auto atom_display_settings_ptr =
@@ -280,7 +231,7 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
         m_interactive_items.erase(item);
         delete item;
     }
-    if (types & InteractiveItemFlag::ATOM) {
+    if (types & InteractiveItemFlag::ATOM_OR_MONOMER) {
         m_atom_to_atom_item.clear();
     }
     if (types & InteractiveItemFlag::BOND) {
@@ -323,6 +274,9 @@ void Scene::onDisplaySettingsChanged()
         auto atom_item = static_cast<AtomItem*>(item);
         atom_item->setHideStereoLabels(!simplified_stereo_annotation.isEmpty());
         atom_item->updateCachedData();
+    }
+    for (auto item : getInteractiveItems(InteractiveItemFlag::MONOMER)) {
+        static_cast<AbstractAtomOrMonomerItem*>(item)->updateCachedData();
     }
 
     for (auto item : getInteractiveItems(InteractiveItemFlag::BOND)) {
@@ -472,24 +426,7 @@ Scene::getModelObjects(SceneSubset subset, QPointF* pos) const
             break;
     }
 
-    std::unordered_set<const RDKit::Atom*> atoms;
-    std::unordered_set<const RDKit::Bond*> bonds;
-    std::unordered_set<const RDKit::SubstanceGroup*> s_groups;
-    std::unordered_set<const NonMolecularObject*> non_molecular_objects;
-    for (auto item : items) {
-        if (const auto atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
-            atoms.insert(atom_item->getAtom());
-        } else if (auto bond_item = qgraphicsitem_cast<BondItem*>(item)) {
-            bonds.insert(bond_item->getBond());
-        } else if (auto s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
-            s_groups.insert(s_group_item->getSubstanceGroup());
-        } else if (auto nonmolecular_item =
-                       qgraphicsitem_cast<NonMolecularItem*>(item)) {
-            non_molecular_objects.insert(
-                nonmolecular_item->getNonMolecularObject());
-        }
-    }
-    return std::make_tuple(atoms, bonds, s_groups, non_molecular_objects);
+    return get_model_objects_for_graphics_items(items);
 }
 
 AbstractGraphicsItem*
@@ -538,7 +475,7 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
         if (const auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
             const auto* atom = atom_item->getAtom();
             if (const RDKit::Bond* ap_bond = get_attachment_point_bond(atom)) {
-                BondItem* bond_item = m_bond_to_bond_item.at(ap_bond);
+                auto* bond_item = m_bond_to_bond_item.at(ap_bond);
                 if (items_set.find(bond_item) == items_set.end()) {
                     new_items.push_back(bond_item);
                 }
@@ -546,7 +483,7 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
         } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
             const auto* bond = bond_item->getBond();
             if (const RDKit::Atom* ap_atom = get_attachment_point_atom(bond)) {
-                AtomItem* atom_item = m_atom_to_atom_item.at(ap_atom);
+                auto* atom_item = m_atom_to_atom_item.at(ap_atom);
                 if (items_set.find(atom_item) == items_set.end()) {
                     new_items.push_back(atom_item);
                 }

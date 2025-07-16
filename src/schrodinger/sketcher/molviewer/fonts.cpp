@@ -2,6 +2,7 @@
 
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 
 namespace schrodinger
 {
@@ -17,14 +18,20 @@ Fonts::Fonts() :
     m_sgroup_font(QFont(FONT_NAME)),
     m_query_label_font(QFont(FONT_NAME)),
     m_cursor_hint_font(QFont(FONT_NAME)),
+    m_d_amino_acid_font(QFont(FONT_NAME)),
+    m_other_amino_acid_font(QFont(FONT_NAME)),
     m_main_label_fm(QFontMetrics(m_main_label_font)),
     m_subscript_fm(QFontMetrics(m_subscript_font)),
     m_charge_fm(QFontMetrics(m_charge_font)),
     m_mapping_fm(QFontMetrics(m_mapping_font)),
     m_chirality_fm(QFontMetrics(m_chirality_font)),
     m_sgroup_fm(QFontMetrics(m_sgroup_font)),
-    m_query_label_fm(QFontMetrics(m_query_label_font))
+    m_query_label_fm(QFontMetrics(m_query_label_font)),
+    m_d_amino_acid_fm(QFontMetrics(m_d_amino_acid_font)),
+    m_other_amino_acid_fm(QFontMetrics(m_other_amino_acid_font))
 {
+    m_d_amino_acid_font.setWeight(QFont::Weight::Bold);
+    m_other_amino_acid_font.setWeight(QFont::Weight::Bold);
     setSize(DEFAULT_FONT_SIZE);
 }
 
@@ -46,6 +53,8 @@ void Fonts::setSize(int size)
     m_cursor_hint_font.setPixelSize(size * CURSOR_HINT_FONT_RATIO);
     m_sgroup_font.setPixelSize(size * SGROUP_FONT_RATIO);
     m_query_label_font.setPixelSize(size * QUERY_LABEL_FONT_RATIO);
+    m_d_amino_acid_font.setPixelSize(size * D_AA_FONT_RATIO);
+    m_other_amino_acid_font.setPixelSize(size * OTHER_AA_FONT_RATIO);
 
     // font metrics objects don't update themselves when their font changes, so
     // we need to create new ones
@@ -56,6 +65,9 @@ void Fonts::setSize(int size)
     m_chirality_fm = QFontMetrics(m_chirality_font);
     m_sgroup_fm = QFontMetrics(m_sgroup_font);
     m_query_label_fm = QFontMetrics(m_query_label_font);
+
+    m_d_amino_acid_fm = QFontMetrics(m_d_amino_acid_font);
+    m_other_amino_acid_fm = QFontMetrics(m_other_amino_acid_font);
 
     m_radical_dot_size = size * RADICAL_DOT_RATIO;
 }

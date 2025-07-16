@@ -47,8 +47,7 @@ QRectF make_text_rect(QFontMetricsF fm, QString label)
 
 AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
                    const AtomDisplaySettings& settings, QGraphicsItem* parent) :
-    AbstractGraphicsItem(parent),
-    m_atom(atom),
+    AbstractAtomOrMonomerItem(atom, parent),
     m_fonts(fonts),
     m_settings(settings)
 {
@@ -755,11 +754,6 @@ void AtomItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                           m_chirality_label_text);
         painter->restore();
     }
-}
-
-const RDKit::Atom* AtomItem::getAtom() const
-{
-    return m_atom;
 }
 
 QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const

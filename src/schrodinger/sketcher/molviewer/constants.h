@@ -382,7 +382,9 @@ enum class ZOrder {
     ATOM_HIGHLIGHTING,
     SELECTION_HIGHLIGHTING,
     PREDICTIVE_HIGHLIGHTING,
+    MONOMER_CONNECTOR,
     BOND,
+    MONOMER,
     ATOM,
     SGROUP,
     RXN_ARROW_AND_PLUS,
@@ -393,7 +395,7 @@ enum class ZOrder {
 
 // Bit flags for specifying subsets of Scene items based on the type of model
 // object they represent
-typedef uint8_t InteractiveItemFlagType;
+typedef uint16_t InteractiveItemFlagType;
 namespace InteractiveItemFlag
 {
 enum : InteractiveItemFlagType { // clang-format off
@@ -402,16 +404,26 @@ enum : InteractiveItemFlagType { // clang-format off
     R_GROUP               = 1 << 1,
     S_GROUP               = 1 << 2,
     ATTACHMENT_POINT      = 1 << 3,
-    BOND_NOT_AP           = 1 << 4,
-    ATTACHMENT_POINT_BOND = 1 << 5,
-    NON_MOLECULAR         = 1 << 6, // clang-format on
+    AA_MONOMER            = 1 << 4,
+    NA_PHOSPHATE          = 1 << 5,
+    NA_SUGAR              = 1 << 6,
+    NA_BASE               = 1 << 7,
+    CHEM_MONOMER          = 1 << 8,
+    BOND_NOT_AP           = 1 << 9,
+    ATTACHMENT_POINT_BOND = 1 << 10,
+    NON_MOLECULAR         = 1 << 11, // clang-format on
     ATOM_NOT_AP = ATOM_NOT_R_NOT_AP | R_GROUP,
     ATOM = ATOM_NOT_AP | ATTACHMENT_POINT,
     BOND = BOND_NOT_AP | ATTACHMENT_POINT_BOND,
     MOLECULAR = ATOM | BOND | S_GROUP,
-    ALL = MOLECULAR | NON_MOLECULAR,
     ATTACHMENT_POINT_OR_AP_BOND = ATTACHMENT_POINT | ATTACHMENT_POINT_BOND,
     MOLECULAR_NOT_AP = ATOM_NOT_AP | BOND_NOT_AP,
+    NA_MONOMER = NA_PHOSPHATE | NA_SUGAR | NA_BASE,
+    MONOMER = AA_MONOMER | NA_MONOMER | CHEM_MONOMER,
+    MONOMERIC = MONOMER, // TODO: also include monomer connectors
+    MOLECULAR_OR_MONOMERIC = MOLECULAR | MONOMERIC,
+    ATOM_OR_MONOMER = ATOM | MONOMER,
+    ALL = MOLECULAR_OR_MONOMERIC | NON_MOLECULAR,
 };
 }
 

@@ -40,6 +40,9 @@ class SKETCHER_API Fonts
     QFont m_query_label_font;
     QFont m_cursor_hint_font;
 
+    QFont m_d_amino_acid_font;
+    QFont m_other_amino_acid_font;
+
     QFontMetricsF m_main_label_fm;
     QFontMetricsF m_subscript_fm;
     QFontMetricsF m_charge_fm;
@@ -48,6 +51,9 @@ class SKETCHER_API Fonts
     QFontMetricsF m_sgroup_fm;
     QFontMetricsF m_query_label_fm;
     // we don't need a QFontMetricsF for the cursor hint, so it's omitted here
+
+    QFontMetricsF m_d_amino_acid_fm;
+    QFontMetricsF m_other_amino_acid_fm;
 
     qreal m_radical_dot_size;
 };

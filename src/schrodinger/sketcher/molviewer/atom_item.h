@@ -7,7 +7,7 @@
 #include <QString>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
@@ -32,8 +32,9 @@ namespace sketcher
 enum class HsDirection { RIGHT, LEFT, UP, DOWN };
 
 /**
- * A Qt graphics item for representing atoms in a molviewer Scene.  This class
- * is responsible for painting all aspects of the atom label, which can include
+ * A Qt graphics item for representing atoms (but not monomers) in a molviewer
+ * Scene.  This class is responsible for painting all aspects of the atom label,
+ * which can include
  *
  * - the main text label for the atom.  This normally contains the atom's
  *   element, but can also contain the R group or a query string.
@@ -46,7 +47,7 @@ enum class HsDirection { RIGHT, LEFT, UP, DOWN };
  * paint anything in those scenarios.  Also note that this class is *not*
  * responsible for drawing bonds.  See BondItem for that.
  */
-class SKETCHER_API AtomItem : public AbstractGraphicsItem
+class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
 {
   public:
     /**
@@ -85,11 +86,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
     // Overridden QGraphicsItem methods
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override;
-
-    /**
-     * @return the atom associated with this item
-     */
-    const RDKit::Atom* getAtom() const;
 
     /**
      * Return a list of bounding rectangles for all individual components of
@@ -137,18 +133,6 @@ class SKETCHER_API AtomItem : public AbstractGraphicsItem
      */
     HsDirection findHsDirection() const;
 
-    // Creating a shared_ptr to an RDKit Atom (or Bond) implicitly creates a
-    // copy of the Atom, which means that the new Atom is no longer part of the
-    // original molecule, which leads to problems.  Because of this, we store a
-    // raw pointer instead.  The RDKit molecule takes care of the lifetime of
-    // the Atom, so an AtomItem instance must be deleted as soon as its
-    // associated Atom is deleted.
-    //
-    // Also note that m_atom should only be accessed from within
-    // updateCachedData to ensure that we can properly notify the scene of any
-    // AtomItem changes *before* they happen.
-
-    const RDKit::Atom* const m_atom;
     QString m_main_label_text;
     QRectF m_main_label_rect;
     QRectF m_H_label_rect;

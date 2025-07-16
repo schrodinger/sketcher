@@ -25,6 +25,7 @@ class Atom;
 class Bond;
 class Conformer;
 class ROMol;
+class SubstanceGroup;
 } // namespace RDKit
 
 namespace schrodinger
@@ -32,12 +33,15 @@ namespace schrodinger
 namespace sketcher
 {
 
+class AbstractAtomOrMonomerItem;
+class AbstractGraphicsItem;
 class AtomItem;
 class AtomDisplaySettings;
 class BondItem;
 class BondDisplaySettings;
 class Fonts;
 class SGroupItem;
+class NonMolecularObject;
 
 /**
  * Create all graphics items needed to represent the given molecule
@@ -55,8 +59,8 @@ class SGroupItem;
  */
 SKETCHER_API
 std::tuple<std::vector<QGraphicsItem*>,
-           std::unordered_map<const RDKit::Atom*, AtomItem*>,
-           std::unordered_map<const RDKit::Bond*, BondItem*>,
+           std::unordered_map<const RDKit::Atom*, QGraphicsItem*>,
+           std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
@@ -136,6 +140,23 @@ get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond);
  */
 SKETCHER_API QPainterPath path_around_line(const QLineF& line,
                                            const qreal half_width);
+/**
+ * @return whether a graphics item is one of the types specified by the type
+ * flag.
+ */
+SKETCHER_API bool item_matches_type_flag(QGraphicsItem* item,
+                                         InteractiveItemFlagType type_flag);
+
+/**
+ * Return all model objects that are represented by the given collection of
+ * graphics items.
+ */
+template <typename T>
+SKETCHER_API std::tuple<std::unordered_set<const RDKit::Atom*>,
+                        std::unordered_set<const RDKit::Bond*>,
+                        std::unordered_set<const RDKit::SubstanceGroup*>,
+                        std::unordered_set<const NonMolecularObject*>>
+get_model_objects_for_graphics_items(const T& items);
 
 } // namespace sketcher
 } // namespace schrodinger

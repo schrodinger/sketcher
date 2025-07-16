@@ -316,8 +316,8 @@ class SKETCHER_API Scene : public QGraphicsScene
     /// "interactive" versus "non-interactive" items.
     std::unordered_set<QGraphicsItem*> m_interactive_items;
 
-    std::unordered_map<const RDKit::Atom*, AtomItem*> m_atom_to_atom_item;
-    std::unordered_map<const RDKit::Bond*, BondItem*> m_bond_to_bond_item;
+    std::unordered_map<const RDKit::Atom*, QGraphicsItem*> m_atom_to_atom_item;
+    std::unordered_map<const RDKit::Bond*, QGraphicsItem*> m_bond_to_bond_item;
     std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
         m_s_group_to_s_group_item;
     std::unordered_map<const NonMolecularObject*, NonMolecularItem*>

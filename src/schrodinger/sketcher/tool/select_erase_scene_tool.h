@@ -77,12 +77,6 @@ template <typename T> class SKETCHER_API SelectSceneTool
      */
     SelectMode getSelectMode(QGraphicsSceneMouseEvent* const event) const;
 
-    std::tuple<std::unordered_set<const RDKit::Atom*>,
-               std::unordered_set<const RDKit::Bond*>,
-               std::unordered_set<const RDKit::SubstanceGroup*>,
-               std::unordered_set<const NonMolecularObject*>>
-    getModelObjectsForGraphicsItems(const QList<QGraphicsItem*>& items) const;
-
     /**
      * Carry out the MolModel selection after the user has selected item(s) in
      * the Scene.  Note that this method is overridden in the EraseSceneTool
