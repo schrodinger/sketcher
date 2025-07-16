@@ -8,7 +8,7 @@ on:
     - cron: "0 4 * * *"
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -218,11 +218,12 @@ jobs:
         run: |
           xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
-      - name: Publish Test Summary
-        uses: test-summary/action@v2
-        with:
-          paths: "build/junit-report.xml"
+      - name: Upload Test Report
+        uses: actions/upload-artifact@v4
         if: always()
+        with:
+          name: junit-reports
+          path: build/junit-report.xml
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
@@ -246,3 +247,25 @@ jobs:
         with:
           name: sketcher-${{ matrix.build-output }}.tar.gz
           path: sketcher-wasm.tar.gz
+
+  publish-test-report:
+    needs: build-and-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all test reports
+        uses: actions/download-artifact@v4
+        with:
+          name: junit-reports
+          path: test-reports
+
+      - name: Publish Combined Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "test-reports/**/*.xml"
+
+    #   - name: Delete workflow artifact
+    #     uses: geekyeggo/delete-artifact-by-name@v2.0.0
+    #     with:
+    #       name: junit-reports
+    #       token: ${{ secrets.GITHUB_TOKEN }}
