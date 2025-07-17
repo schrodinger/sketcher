@@ -1,0 +1,9 @@
+
+{
+   See SHARED-11664 #1
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:_Znwm
+   fun:_ZN11schrodinger8sketcher20is_contiguous_regionESt13unordered_setIPKN5RDKit4AtomESt4hashIS5_ESt8equal_toIS5_ESaIS5_EES1_IPKNS2_4BondES6_ISE_ES8_ISE_ESaISE_EE
+   fun:_ZN11schrodinger8sketcher20SelectionContextMenu13updateActionsEv
+}
