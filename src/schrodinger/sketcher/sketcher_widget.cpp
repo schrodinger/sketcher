@@ -657,6 +657,11 @@ void SketcherWidget::showContextMenu(
 
     menu->move(event->screenPos());
     auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
+
+    // Ensure the size is updated before checking geometry. This is necessary
+    // the first time we execute this because the context menu hasn't been shown
+    // yet
+    menu->adjustSize();
     auto menu_rectangle = menu->geometry();
 
     // Make sure the menu is not off the screen (or on a different screen)
