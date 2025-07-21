@@ -44,6 +44,8 @@ namespace
 const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
 // According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
+// TODO: hook this up to a feature flag
+const bool ALLOW_MONOMERIC = false;
 } // namespace
 
 namespace schrodinger
@@ -147,9 +149,9 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         }
         const auto pos = conformer.getAtomPos(i);
         QGraphicsItem* atom_item =
-            (atom->getMonomerInfo() == nullptr)
-                ? new AtomItem(atom, fonts, atom_display_settings)
-                : get_monomer_graphics_item(atom, fonts);
+            (ALLOW_MONOMERIC && atom->getMonomerInfo() != nullptr)
+                ? get_monomer_graphics_item(atom, fonts)
+                : new AtomItem(atom, fonts, atom_display_settings);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
         if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
