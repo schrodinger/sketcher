@@ -42,7 +42,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
     /**
      * @brief export the current state to the sketcher model
      */
-    void exportSettingsToModel() const;
+    void exportSettingsToModel();
 
     /**
      * @brief Update the GUI elements based on the current settings
@@ -74,6 +74,7 @@ class SKETCHER_API RenderingSettingsDialog : public ModalDialog
     std::unique_ptr<Ui::RenderingSettingsDialog> m_ui;
     SketcherModel* m_sketcher_model = nullptr;
     QTimer* m_update_timer = nullptr;
+    bool m_freeze_update_from_model = false; // prevent updates from the model
 };
 
 } // namespace sketcher

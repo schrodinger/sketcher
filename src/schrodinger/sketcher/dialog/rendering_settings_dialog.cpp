@@ -84,10 +84,15 @@ void RenderingSettingsDialog::initColorModes()
 
 void RenderingSettingsDialog::loadSettingsFromModel()
 {
+    if (m_freeze_update_from_model) {
+        return; // prevent updates from the model while loading settings
+    }
     auto settings = getSettingsFromModel(m_sketcher_model);
     if (settings == getSettingsFromPanel()) {
         return;
     }
+    // When loading from the model, we don't want to the updates to be reflected
+    // back to the model
     loadSettings(settings);
 }
 
@@ -125,6 +130,7 @@ void RenderingSettingsDialog::updateWidgets()
 
 void RenderingSettingsDialog::loadSettings(RenderingSettings& settings)
 {
+    QSignalBlocker blocker(m_update_timer); // prevent update to the model
     m_ui->m_atom_font_size_sb->setValue(settings.m_atom_font_size);
     m_ui->m_bond_line_width_sb->setValue(settings.m_bond_line_width);
     m_ui->m_label_carbons_cb->setChecked(settings.m_carbon_labels !=
@@ -182,6 +188,12 @@ void RenderingSettingsDialog::loadDefaults()
 {
     RenderingSettings settings;
     loadSettings(settings);
+    // settings.m_carbon_labels == CarbonLabels::NONE, we need to reset the
+    // radio buttons to the default
+    if (settings.m_carbon_labels == CarbonLabels::NONE) {
+        m_ui->m_label_all_C_rb->setChecked(false);
+        m_ui->m_label_terminal_C_rb->setChecked(true);
+    }
     exportSettingsToModel();
 }
 
@@ -215,11 +227,12 @@ RenderingSettings RenderingSettingsDialog::getSettingsFromPanel() const
     return settings;
 }
 
-void RenderingSettingsDialog::exportSettingsToModel() const
+void RenderingSettingsDialog::exportSettingsToModel()
 {
     if (m_sketcher_model == nullptr) {
         return;
     }
+    m_freeze_update_from_model = true; // prevent updates from the model
     auto settings = getSettingsFromPanel();
     m_sketcher_model->setFontSize(settings.m_atom_font_size);
 
@@ -253,6 +266,7 @@ void RenderingSettingsDialog::exportSettingsToModel() const
     bond_settings.m_color =
         atom_settings.getAtomColor(static_cast<int>(Element::C));
     m_sketcher_model->setBondDisplaySettings(bond_settings);
+    m_freeze_update_from_model = false; // prevent updates from the model
 }
 
 } // namespace sketcher
