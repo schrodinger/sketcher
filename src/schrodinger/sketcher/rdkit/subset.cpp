@@ -12,10 +12,13 @@ bool is_contiguous_region(std::unordered_set<const RDKit::Atom*> atoms,
 {
     // create a molecule from the atoms and bonds
     RDKit::RWMol new_mol;
+    constexpr bool update_label = true;
+    constexpr bool take_ownership = true;
     std::map<unsigned int, unsigned int> atom_map;
     for (auto atom : atoms) {
         RDKit::Atom* new_atom = new RDKit::Atom(atom->getAtomicNum());
-        unsigned int new_idx = new_mol.addAtom(new_atom);
+        unsigned int new_idx =
+            new_mol.addAtom(new_atom, update_label, take_ownership);
         atom_map[atom->getIdx()] = new_idx;
     }
     // Add bonds
