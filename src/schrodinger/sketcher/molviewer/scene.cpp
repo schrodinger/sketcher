@@ -138,6 +138,8 @@ void Scene::moveInteractiveItems()
 
 void Scene::updateItems(const WhatChangedType what_changed)
 {
+    Scene::SelectionChangeSignalBlocker signal_blocker(this);
+
     if (what_changed & WhatChanged::MOLECULE) {
         clearInteractiveItems(InteractiveItemFlag::MOLECULAR_OR_MONOMERIC);
         const auto* mol = m_mol_model->getMol();
