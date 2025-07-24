@@ -10,7 +10,7 @@
 
 namespace Ui
 {
-class ExampleWidgetForm;
+class SketcherWidgetForm;
 }
 
 namespace schrodinger
@@ -18,15 +18,15 @@ namespace schrodinger
 namespace sketcher
 {
 
-class SKETCHER_API ExampleWidget : public QWidget
+class SKETCHER_API SketcherWidget : public QWidget
 {
     Q_OBJECT
   public:
-    ExampleWidget(QWidget* parent = nullptr);
-    ~ExampleWidget();
+    SketcherWidget(QWidget* parent = nullptr);
+    ~SketcherWidget();
 
   protected:
-    std::unique_ptr<Ui::ExampleWidgetForm> m_ui;
+    std::unique_ptr<Ui::SketcherWidgetForm> m_ui;
 };
 
 } // namespace sketcher

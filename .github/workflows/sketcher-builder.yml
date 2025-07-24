@@ -68,6 +68,13 @@ jobs:
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
+      - name: Configure Node.js for WASM tests
+        if: matrix.build-output == 'wasm'
+        # CMake uses Node.js to run the tests on emscripten builds
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
+
       - name: Configure Dependency CMake
         run: |
             ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
@@ -197,25 +204,25 @@ jobs:
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
-      - name: Configure Node.js
-        if: matrix.build-output == 'wasm'
-        # CMake uses Node.js to run the tests on emscripten builds
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.14.0
-
       - name: Run tests
         working-directory: build
+        if: matrix.build-output != 'debug'
         # Launching `xvfb-run -a` required for Ubuntu non-wasm builds
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
-          ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure
+          ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure --output-junit junit-report.xml
 
       - name: Run memtests
         working-directory: build
         if: matrix.build-output == 'debug'
         run: |
-          xvfb-run -a ctest --build-config Debug -L memtest --output-on-failure
+          xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
+
+      - name: Publish Test Summary
+        uses: test-summary/action@v2
+        with:
+          paths: "build/junit-report.xml"
+        if: always()
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'

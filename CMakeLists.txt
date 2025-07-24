@@ -63,7 +63,7 @@ endif()
 find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
-find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets)
+find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets Test)
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
@@ -73,14 +73,22 @@ find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # Common library/executable configuration
 function(setup_target TARGET)
+  # Visibility settings for dynamic vs static builds
+  if(${BUILD_SHARED_LIBS})
+    set(VISIBILITY "default")
+  else()
+    set(VISIBILITY "hidden")
+  endif()
+  # Compilation optimization, warnings, and error handling
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX)
   elseif(WIN32)
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
-                                             -fvisibility=hidden -Wno-restrict)
+    target_compile_options(
+      ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
+                        -Wno-restrict)
   else()
     target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
-                                             -fvisibility=hidden)
+                                             -fvisibility=${VISIBILITY})
   endif()
   # Allow RDKit includes to be prefixed, and add all relevant and necessary
   # sketcher-specific include directories
@@ -108,15 +116,27 @@ endfunction()
 function(build_schrodinger_library TARGET)
   set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/schrodinger/${TARGET})
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${TARGET})
-  # Collect public headers so that Qt can build .moc files
+  # Collect all headers, source, and resources; note we collect public headers
+  # so that Qt can build .moc files
   file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
-       ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp)
+       ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp ${SRC_DIR}/*.qrc)
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   setup_target(${TARGET})
   # Auto-generate compile definitions
   string(TOUPPER ${TARGET} TARGET_UPPER)
   target_compile_definitions(${TARGET} PRIVATE IN_${TARGET_UPPER}_DLL)
+endfunction()
+
+# Enable Qt's MOC and UIC features
+function(enable_qt_moc TARGET)
+  set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/ui)
+  set_target_properties(
+    ${TARGET}
+    PROPERTIES AUTOMOC ON
+               AUTOUIC ON
+               AUTOUIC_SEARCH_PATHS ${UI_DIR}
+               AUTORCC ON)
 endfunction()
 
 # schrodinger::rdkit_extensions library
@@ -154,19 +174,13 @@ target_link_libraries(
 # Configure and include version information for the sketcher
 configure_file(${PROJECT_SOURCE_DIR}/include/schrodinger/sketcher/version.h.in
                ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h)
-# Enable Qt MOC and UIC
-set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/ui)
-set_target_properties(
-  ${SKETCHER_TARGET}
-  PROPERTIES AUTOMOC ON
-             AUTOUIC ON
-             AUTOUIC_SEARCH_PATHS ${UI_DIR})
+enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET sketcher_app)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
-target_link_libraries(${APP_TARGET} PRIVATE Qt6::Widgets ${SKETCHER_TARGET})
+target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${SKETCHER_TARGET})
 
 # Tests
 enable_testing()
@@ -178,7 +192,9 @@ set(TEST_DEPENDENCIES
     Boost::unit_test_framework
     Eigen3::Eigen
     fmt::fmt
+    Qt6::Test
     Qt6::Widgets
+    RDKit::ChemReactions
     RDKit::FileParsers
     ${RDKIT_EXTENSIONS_TARGET}
     ${SKETCHER_TARGET})
@@ -192,11 +208,18 @@ set(MEMTEST_COMMAND
 separate_arguments(MEMTEST_COMMAND)
 
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
-  cmake_path(GET TEST_SOURCE STEM TEST_TARGET)
+  cmake_path(GET TEST_SOURCE STEM TEST_STEM)
+  # Mirror the source directory for test collection and make unique target names
+  cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
+  cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
+  # Create unique target name by replacing path separators with underscores
+  string(REPLACE "/" "_" TEST_TARGET_SUFFIX "${PREFIX_PATH}")
+  set(TEST_TARGET "${TEST_STEM}_${TEST_TARGET_SUFFIX}")
   add_executable(${TEST_TARGET} ${TEST_SOURCE})
   setup_target(${TEST_TARGET})
   target_include_directories(${TEST_TARGET} PRIVATE ${PROJECT_SOURCE_DIR}/test)
   target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+  enable_qt_moc(${TEST_TARGET})
   if(EMSCRIPTEN)
     set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)
   else()
@@ -206,12 +229,8 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   set_tests_properties(
     ${TEST_TARGET} PROPERTIES ENVIRONMENT
                               "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
-  # Mirror the source directory for test collection
-  cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
-  cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
-
   if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
