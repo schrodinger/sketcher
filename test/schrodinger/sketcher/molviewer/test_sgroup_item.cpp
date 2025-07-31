@@ -9,7 +9,7 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/sgroup_item.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

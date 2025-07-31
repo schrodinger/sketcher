@@ -15,7 +15,7 @@
 #include "schrodinger/rdkit_extensions/fasta/to_string.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
-#include "test_common.h"
+#include "schrodinger/test/checkexceptionmsg.h"
 
 namespace bdata = boost::unit_test::data;
 

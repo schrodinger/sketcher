@@ -7,7 +7,7 @@
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

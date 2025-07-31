@@ -2,7 +2,6 @@
  * Tests schrodinger::sketcher:: rendering APIs
  --------------------------------------------------------------------------- */
 
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE sketcher_image_generation
 
 #include <rdkit/GraphMol/GraphMol.h>
@@ -21,7 +20,7 @@ using boost::unit_test::framework::current_test_case;
 using namespace schrodinger::sketcher;
 using namespace schrodinger;
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QSize);
 
 template <typename T> void image_gen_APIs(const T& input)

@@ -2,6 +2,11 @@
 
 #include <string>
 
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
+#include <rdkit/GraphMol/FileParsers/FileParsers.h>
+#include <rdkit/GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -22,7 +27,7 @@ using schrodinger::rdkit_extensions::to_rdkit;
 using schrodinger::rdkit_extensions::to_rdkit_reaction;
 using schrodinger::rdkit_extensions::to_string;
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 {
@@ -455,4 +460,222 @@ BOOST_AUTO_TEST_CASE(test_zoom_on_small_molecule)
     float m22 = matrix.m22();
     BOOST_TEST(m11 <= 1.0);
     BOOST_TEST(m22 <= 1.0);
+}
+
+BOOST_DATA_TEST_CASE(test_auto_detect_through_sketcher_interface,
+                     boost::unit_test::data::make(MOL_FORMATS))
+{
+    std::string reference = "c1ccccc1";
+    auto mol = to_rdkit(reference, Format::SMILES);
+    auto text = to_string(*mol, sample);
+
+    if (sample == Format::MAESTRO || sample == Format::INCHI ||
+        sample == Format::PDB || sample == Format::XYZ) {
+        // these exports force kekulization
+        reference = "C1=CC=CC=C1";
+    } else if (sample == Format::SMARTS || sample == Format::EXTENDED_SMARTS ||
+               sample == Format::MDL_MOLV2000 ||
+               sample == Format::MDL_MOLV3000 || sample == Format::MRV) {
+        reference = "C1:C:C:C:C:C:1";
+    }
+    // all other formats should roundtrip the aromatic input
+
+    // Check roundtripping and auto-detect
+    TestSketcherWidget sk;
+    sk.addFromString(text, sample);
+    BOOST_TEST(sk.getString(Format::SMILES) == reference);
+    sk.clear();
+    sk.addFromString(text);
+    BOOST_TEST(sk.getString(Format::SMILES) == reference);
+}
+
+BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
+                     boost::unit_test::data::make(RXN_FORMATS))
+{
+    std::string smiles = "CC(=O)O.OCC>>CC(=O)OCC";
+    auto reaction = to_rdkit_reaction(smiles, Format::SMILES);
+    auto text = to_string(*reaction, sample);
+
+    // Check auto-detect import through the sketcher interface as well
+    TestSketcherWidget sk;
+    sk.addFromString(text);
+    BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
+}
+
+BOOST_AUTO_TEST_CASE(testRGRoup0)
+{
+
+    TestSketcherWidget sk;
+
+    auto molblock = read_testfile("shared_8381.sdf");
+
+    BOOST_REQUIRE(molblock.find("RGROUPS=(1 0)") != std::string::npos);
+    BOOST_REQUIRE(molblock.find("RGROUPS=(1 1)") == std::string::npos);
+    BOOST_REQUIRE(molblock.find("RGROUPS=(1 6)") == std::string::npos);
+
+    sk.addFromString(molblock, Format::MDL_MOLV3000);
+    auto roundtrip_molblock = sk.getString(Format::MDL_MOLV3000);
+
+    size_t pos{std::string::npos};
+    for (int i = 2; i <= 6; ++i) {
+        pos = roundtrip_molblock.find(fmt::format("RGROUPS=(1 {})", i));
+        BOOST_TEST(pos != std::string::npos);
+    }
+
+    // There should be 2 R6 groups
+    ++pos;
+    BOOST_TEST(roundtrip_molblock.find("RGROUPS=(1 6)", pos) !=
+               std::string::npos);
+
+    BOOST_TEST(roundtrip_molblock.find("RGROUPS=(1 0)") == std::string::npos);
+    BOOST_TEST(roundtrip_molblock.find("RGROUPS=(1 1)") == std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(testSMARTSRGRoup)
+{
+
+    TestSketcherWidget sk;
+
+    std::string cxsmarts{
+        "[H][#7](-[$([#1,*])])-[#6]-1=[#7]-[#6]-2=[#6](-[#7]-1)-"
+        "[#6](Cl)=[#6]-[#6]=[#7]-2 |$;;_R1;;;;;;;;;;;$|"};
+
+    sk.addFromString(cxsmarts, Format::SMARTS);
+    BOOST_TEST(sk.getString(Format::EXTENDED_SMARTS) ==
+               "[#1][#7](-[$(*)])-[#6]1=[#7]-[#6]2=[#6](-[#7]-1)-[#6](Cl)=[#6]-"
+               "[#6]=[#7]-2 |$;;_R1;;;;;;;;;;$|");
+}
+
+BOOST_AUTO_TEST_CASE(testCXSMILESRGRoup)
+{
+    // SKETCH-1399
+
+    TestSketcherWidget sk;
+
+    std::string cxsmiles{"[*]C1=CC=CC=C1 |$_R1;;;;;;$,c:3,5,t:1|"};
+
+    sk.addFromString(cxsmiles, Format::EXTENDED_SMILES);
+    BOOST_TEST(sk.getString(Format::EXTENDED_SMARTS) ==
+               "[#0]-[#6]1=[#6]-[#6]=[#6]-[#6]=[#6]-1 |$_R1;;;;;;$|");
+}
+
+BOOST_AUTO_TEST_CASE(testLeakStereoChemDoneProp)
+{
+    // SKETCH-1701
+
+    TestSketcherWidget sk;
+    sk.addFromString("C[C@H](N)O", Format::SMILES);
+    auto molblock = sk.getString(Format::MDL_MOLV3000);
+    BOOST_TEST(molblock.find(">  <_StereochemDone>") == std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(testPreserveStereoGroupIds)
+{
+    // SKETCH-2000
+
+    TestSketcherWidget sk;
+    sk.addFromString("C[C@H](O)Cl |o5:1|", Format::EXTENDED_SMILES);
+
+    auto cxsmiles = sk.getString(Format::EXTENDED_SMILES);
+    BOOST_CHECK(cxsmiles.find(" |o5:") != std::string::npos);
+
+    auto molblock = sk.getString(Format::MDL_MOLV3000);
+    BOOST_CHECK(molblock.find("M  V30 MDLV30/STEREL5 ATOMS=(1 ") !=
+                std::string::npos);
+}
+
+BOOST_DATA_TEST_CASE(TestReadingMaeInputsWithInvalidChiralityLabels,
+                     boost::unit_test::data::make(std::vector<std::string>{
+                         "12_R_1_3_4_5",    // missing chiral atom
+                         "12_ANR_1_3_4_15", // missing substituent atom
+                         "2_S_1_3_4",       // incomplete substituent list
+                         "2_ANS_1_3_4_5_2", // self bond and too many atoms
+                     }),
+                     invalid_chirality_label)
+{
+    constexpr const char* maeblock_template = R"({{
+ s_m_m2io_version
+ :::
+ 2.0.0
+}}
+
+f_m_ct {{
+  i_m_ct_stereo_status
+  s_m_title
+  s_st_Chirality_1
+  :::
+  1
+  ""
+  {}
+  m_atom[5] {{
+    # First column is Index #
+    r_m_x_coord
+    r_m_y_coord
+    r_m_z_coord
+    i_m_atomic_number
+    i_m_formal_charge
+    :::
+    1 -1.000000 -0.060606 0.000000 6 0
+    2 -1.000000 -1.560606 0.000000 6 0
+    3 -0.250000 -2.859644 0.000000 17 0
+    4 -2.500000 -1.560606 0.000000 9 0
+    5 0.299038 -0.810606 0.000000 35 0
+    :::
+  }}
+  m_bond[4] {{
+    # First column is Index #
+    i_m_from
+    i_m_order
+    i_m_to
+    :::
+    1 1 1 2
+    2 2 1 3
+    3 2 1 4
+    4 2 1 5
+    :::
+  }}
+}}
+)";
+    auto maeblock = fmt::format(maeblock_template, invalid_chirality_label);
+
+    TestSketcherWidget sk;
+    // we should be able to import the text without any issues
+    sk.addFromString(maeblock, Format::MAESTRO);
+    BOOST_TEST(sk.getString(Format::SMILES) == "CC(F)(Cl)Br");
+}
+
+BOOST_AUTO_TEST_CASE(test_wasm_API)
+{
+    TestSketcherWidget sk;
+
+    auto assert_roundtrip = [&sk](auto rdkit_read, const auto& filename) {
+        auto text = read_testfile(filename);
+        // Body of sketcherImportText
+        sk.clear();
+        sk.addFromString(text, Format::AUTO_DETECT);
+        // Body of sketcherExportMolBlock
+        auto molblock = sk.getString(Format::MDL_MOLV3000);
+        // Confirm RDKit can deserialize into a valid object
+        auto rdkit_ptr = rdkit_read(molblock);
+        BOOST_TEST(rdkit_ptr != nullptr);
+    };
+
+    auto read_mol = [](const auto& molblock) {
+        return std::shared_ptr<RDKit::RWMol>(RDKit::MolBlockToMol(molblock));
+    };
+
+    // roundtrip a structure through the sketcher
+    assert_roundtrip(read_mol, "structure_1.sdf");
+
+    auto read_rxn = [](const auto& molblock) {
+        return std::shared_ptr<RDKit::ChemicalReaction>(
+            RDKit::RxnBlockToChemicalReaction(molblock));
+    };
+
+    // roundtrip a rection through the sketcher
+    assert_roundtrip(read_rxn, "SKETCH_1003.rxn");
+    assert_roundtrip(read_rxn, "rxn_no_r_group.rxn");
+    assert_roundtrip(read_rxn, "rxn_r_group.rxn");
+    assert_roundtrip(read_rxn, "rxn_aryl.rxn");
+    assert_roundtrip(read_rxn, "reaction_smarts.rsmi");
 }

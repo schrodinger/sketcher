@@ -12,6 +12,7 @@
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
+#include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
 using namespace schrodinger::rdkit_extensions;

@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE periodic_table
 
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>

@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE Test_Sketcher
 #include <boost/test/unit_test.hpp>
 
@@ -11,7 +11,7 @@
 
 #include <QUndoStack>
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::SubgroupType)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::RepeatPattern)
 

@@ -3,7 +3,6 @@
 #include <QPushButton>
 #include <QTimer>
 
-#include "mmshare-version.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_rendering_settings_dialog.h"
 

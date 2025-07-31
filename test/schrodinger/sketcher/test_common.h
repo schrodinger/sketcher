@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <fstream>
 
 #include <QtGlobal>
@@ -9,8 +10,7 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
-#include "schrodinger/test/testfiles.h"
-#include "test_markers.h"
+#include "qapplication_required_fixture.h"
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::rdkit_extensions::Format)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomQuery)
@@ -20,23 +20,28 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::Element)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnumerationTool)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::SelectionTool)
 
-/* Use this fixture to construct global fixture which would provide
- * QApplication for a whole suite of a given test file.
- * It should always be used in the BOOST_GLOBAL_FIXTURE
- * This fixture is not suitable as a global fixture if test depends on
- * QApplication.
+/**
+ * Gets full path to a file in the testfiles directory in the source
+ * @param filename file found in the testfiles folder
+ * @return file contents
  */
-class Test_Sketcher_global_fixture : public Test_QAPP_DisplayRequiredFixture
-{
-  public:
-    Test_Sketcher_global_fixture() : Test_QAPP_DisplayRequiredFixture(true)
-    {
-    }
-};
-
 std::string read_testfile(const std::string& filename)
 {
-    std::ifstream fh(schrodinger::test::mmshare_testfile(filename));
+    std::filesystem::path path;
+    if (auto src_path = std::getenv("SKETCHER_SOURCE_DIR")) {
+        path =
+            std::filesystem::path(src_path) / "test" / "testfiles" / filename;
+    }
+    if (auto src_path = std::getenv("SCHRODINGER_SRC")) {
+        path = std::filesystem::path(src_path) / "mmshare" / "test" /
+               "testfiles" / "sketcher" / filename;
+    }
+    if (!std::filesystem::exists(path)) {
+        throw std::runtime_error("File not found: " +
+                                 std::filesystem::absolute(path).string());
+    }
+
+    std::ifstream fh(path.string());
     return std::string(std::istreambuf_iterator<char>(fh),
                        std::istreambuf_iterator<char>());
 }

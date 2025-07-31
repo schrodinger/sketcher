@@ -15,7 +15,7 @@
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
 #include "schrodinger/sketcher/widget/sketcher_top_bar.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

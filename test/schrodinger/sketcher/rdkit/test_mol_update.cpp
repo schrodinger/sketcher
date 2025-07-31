@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE mol_update
 
 #include <boost/test/data/test_case.hpp>

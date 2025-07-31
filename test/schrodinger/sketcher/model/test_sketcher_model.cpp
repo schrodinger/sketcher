@@ -6,15 +6,13 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/reaction_arrow.h"
 
 Q_DECLARE_METATYPE(schrodinger::sketcher::ModelKey);
 Q_DECLARE_METATYPE(std::unordered_set<schrodinger::sketcher::ModelKey>);
 Q_DECLARE_METATYPE(std::unordered_set<QGraphicsItem*>);
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QVariant)
 
@@ -193,55 +191,6 @@ BOOST_AUTO_TEST_CASE(setValues)
     for (auto& [key, value] : kv_pairs) {
         BOOST_TEST(model.getValue(key) == value);
     }
-}
-
-/**
- * Verify correct behavior when interacting with reaction arrow coordinates.
- */
-BOOST_AUTO_TEST_CASE(reactions)
-{
-    testSketcherScene scene;
-    auto model = scene.getModel();
-
-    BOOST_TEST(!model->hasReaction());
-
-    QPointF pos(0.0, 0.0);
-    scene.addReactionArrowAt(pos);
-    BOOST_TEST(model->hasReaction());
-
-    scene.undo();
-    BOOST_TEST(!model->hasReaction());
-}
-
-/**
- * Verify that the model can retrieve information from the scene undo stack.
- */
-BOOST_AUTO_TEST_CASE(getUndoStackData)
-{
-    testSketcherScene scene;
-    auto model = scene.getModel();
-
-    auto [can_undo, can_redo] = model->getUndoStackData();
-    BOOST_TEST(!can_undo);
-    BOOST_TEST(!can_redo);
-
-    // Do something in the scene so that it gets put onto the undo stack
-    scene.importText("CCC");
-    std::tie(can_undo, can_redo) = model->getUndoStackData();
-    BOOST_TEST(can_undo);
-    BOOST_TEST(!can_redo);
-
-    // Undo will move an item from the undo stack to the redo stack
-    scene.undo();
-    std::tie(can_undo, can_redo) = model->getUndoStackData();
-    BOOST_TEST(!can_undo);
-    BOOST_TEST(can_redo);
-
-    // Redo will do the opposite
-    scene.redo();
-    std::tie(can_undo, can_redo) = model->getUndoStackData();
-    BOOST_TEST(can_undo);
-    BOOST_TEST(!can_redo);
 }
 
 } // namespace sketcher

@@ -6,7 +6,6 @@
 #include <QString>
 
 #include "schrodinger/rdkit_extensions/sgroup.h"
-#include "schrodinger/sketcher/Atom.h"
 #include "schrodinger/sketcher/numeric_label_validator.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"

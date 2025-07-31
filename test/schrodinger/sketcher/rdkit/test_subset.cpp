@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE subset
 
 #include <rdkit/GraphMol/ROMol.h>

@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <unordered_set>
 
-#ifdef WIN32
+#ifdef _MSC_VER
 // In Boost 1.81, boost::geometry contains a Windows-only
 // "#pragma warning ( pop )" that doesn't have a corresponding push. This
 // triggers a compiler warning that gets treated as an error, so we need to
@@ -16,7 +16,7 @@
 #endif
 #include <boost/geometry.hpp>
 #include <boost/geometry/geometries/geometries.hpp>
-#ifdef WIN32
+#ifdef _MSC_VER
 #pragma warning(default : 4193)
 #endif
 

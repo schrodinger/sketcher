@@ -7,11 +7,9 @@
 #include <QToolButton>
 #include <QWidget>
 
-#include "mmshare-version.h"
-#include "schrodinger/qt6_compat.h"
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
@@ -19,6 +17,7 @@
 #include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
+#include "schrodinger/sketcher/version.h"
 
 namespace schrodinger
 {
@@ -287,7 +286,7 @@ void SketcherTopBar::onHelpClicked()
     auto documentation_url =
         QString("https://learn.schrodinger.com/public/2D-Sketcher/%1/Content/"
                 "2d-sketcher/2d_sketcher_home.htm")
-            .arg(RELEASE_NAME);
+            .arg(std::string(SKETCHER_RELEASE).c_str());
     QDesktopServices::openUrl(QUrl(documentation_url));
 }
 

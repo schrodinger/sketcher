@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE Test_Sketcher
 
 #include <QPushButton>
@@ -15,7 +15,7 @@
 Q_DECLARE_METATYPE(schrodinger::sketcher::ModelKey);
 Q_DECLARE_METATYPE(std::unordered_set<schrodinger::sketcher::ModelKey>);
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

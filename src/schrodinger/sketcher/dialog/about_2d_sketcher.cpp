@@ -8,9 +8,9 @@
 #include <QUrl> // required with Qt5
 #include <rdkit/RDGeneral/versions.h>
 
-#include "mmshare-version.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_about_2d_sketcher.h"
+#include "schrodinger/sketcher/version.h"
 
 namespace schrodinger
 {
@@ -22,9 +22,9 @@ About2DSketcher::About2DSketcher(QWidget* parent) : ModalDialog(parent)
     m_ui.reset(new Ui::About2DSketcher());
     setupDialogUI(*m_ui);
 
-    auto schrodinger_version = std::string("Release ") + RELEASE_NAME +
-                               " (version " + std::to_string(MMSHARE_VERSION) +
-                               ")";
+    auto schrodinger_version = std::string("Release ") +
+                               std::string(SKETCHER_RELEASE) + " (build " +
+                               std::to_string(SKETCHER_BUILD) + ")";
     m_ui->schrodinger_version_lbl->setText(schrodinger_version.c_str());
 
     auto rdkit_version = std::string("Version ") + RDKit::rdkitVersion;

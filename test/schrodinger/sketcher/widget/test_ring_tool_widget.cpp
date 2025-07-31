@@ -7,7 +7,7 @@
 #include "schrodinger/sketcher/ui/ui_ring_tool_widget.h"
 #include "schrodinger/sketcher/widget/ring_tool_widget.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

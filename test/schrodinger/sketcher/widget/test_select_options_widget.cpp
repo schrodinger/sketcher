@@ -8,7 +8,7 @@
 #include "schrodinger/sketcher/ui/ui_select_options_widget.h"
 #include "schrodinger/sketcher/widget/select_options_widget.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

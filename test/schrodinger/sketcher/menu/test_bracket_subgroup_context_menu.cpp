@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE Test_Sketcher
 
 #include <boost/test/unit_test.hpp>
@@ -8,7 +8,7 @@
 #include "../test_common.h"
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

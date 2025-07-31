@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE variable_attachment_bond
 
 #include "../test_common.h"

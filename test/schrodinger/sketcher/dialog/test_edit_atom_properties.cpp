@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE test_edit_atom_properties
 
 #include <boost/test/unit_test.hpp>
@@ -8,7 +8,7 @@
 #include "schrodinger/sketcher/ui/ui_edit_atom_properties.h"
 #include "schrodinger/sketcher/widget/widget_utils.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QString)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::optional<int>)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::optional<unsigned int>)

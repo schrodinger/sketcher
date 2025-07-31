@@ -7,28 +7,6 @@
 #include <filesystem>
 
 /**
- * Predicate to check if an exception message contains a specific substring
- */
-struct MsgSubstr {
-    MsgSubstr(const std::string& expected) : m_expected(expected)
-    {
-    }
-    bool operator()(const std::exception& ex) const
-    {
-        return std::string(ex.what()).find(m_expected) != std::string::npos;
-    }
-
-  private:
-    std::string m_expected;
-};
-
-/**
- * Macro to check a specific exception type with a specific message substring
- */
-#define TEST_CHECK_EXCEPTION_MSG_SUBSTR(statement, exception_type, substr) \
-    BOOST_CHECK_EXCEPTION(statement, exception_type, MsgSubstr(substr))
-
-/**
  * Gets full path to a file in the testfiles directory in the source
  * @param filename file found in the testfiles folder
  * @return full filesystem path to that file

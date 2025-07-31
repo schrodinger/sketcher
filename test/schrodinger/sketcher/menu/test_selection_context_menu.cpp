@@ -4,7 +4,7 @@
 #include "../test_common.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

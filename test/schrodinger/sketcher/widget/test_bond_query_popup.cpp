@@ -7,7 +7,7 @@
 #include "schrodinger/sketcher/ui/ui_bond_query_popup.h"
 #include "schrodinger/sketcher/widget/bond_query_popup.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {

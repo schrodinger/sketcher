@@ -10,7 +10,7 @@
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 // Boost doesn't know how to print QPoints
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QPointF);
 

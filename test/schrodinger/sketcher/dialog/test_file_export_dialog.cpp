@@ -1,4 +1,4 @@
-#define BOOST_TEST_DYN_LINK
+
 #define BOOST_TEST_MODULE test_file_export_dialog
 
 #include <boost/test/unit_test.hpp>
@@ -32,7 +32,7 @@ class TestFileExportDialog : public FileExportDialog
     };
 };
 
-BOOST_GLOBAL_FIXTURE(Test_Sketcher_global_fixture);
+BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 bool contains(const std::vector<std::string>& vec, const std::string& str)
 {
