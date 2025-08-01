@@ -57,6 +57,36 @@ namespace schrodinger
 namespace sketcher
 {
 
+/**
+ * A simple data class for storing all types of model objects
+ */
+class ModelObjsByType
+{
+  public:
+    ModelObjsByType(
+        const std::unordered_set<const RDKit::Atom*> atoms,
+        const std::unordered_set<const RDKit::Bond*> bonds,
+        const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
+        const std::unordered_set<const NonMolecularObject*>
+            non_molecular_objects);
+    const std::unordered_set<const RDKit::Atom*> atoms;
+    const std::unordered_set<const RDKit::Bond*> bonds;
+    const std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
+    const std::unordered_set<const NonMolecularObject*> non_molecular_objects;
+};
+
+ModelObjsByType::ModelObjsByType(
+    const std::unordered_set<const RDKit::Atom*> atoms,
+    const std::unordered_set<const RDKit::Bond*> bonds,
+    const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
+    const std::unordered_set<const NonMolecularObject*> non_molecular_objects) :
+    atoms(atoms),
+    bonds(bonds),
+    sgroups(sgroups),
+    non_molecular_objects(non_molecular_objects)
+{
+}
+
 SketcherWidget::SketcherWidget(QWidget* parent) :
     QWidget(parent),
     m_undo_stack(new QUndoStack(this)),
@@ -280,6 +310,20 @@ void SketcherWidget::clear()
 bool SketcherWidget::isEmpty() const
 {
     return m_mol_model->isEmpty();
+}
+
+void SketcherWidget::setSelectOnlyMode(bool select_only_mode_enabled)
+{
+    m_select_only_mode_active = select_only_mode_enabled;
+    setToolbarsVisible(!select_only_mode_enabled);
+    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(
+        select_only_mode_enabled);
+    if (select_only_mode_enabled) {
+        m_sketcher_model->setValues(
+            {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
+             {ModelKey::SELECTION_TOOL,
+              QVariant::fromValue(SelectionTool::RECTANGLE)}});
+    }
 }
 
 std::string SketcherWidget::getClipboardContents() const
@@ -635,6 +679,12 @@ void SketcherWidget::showContextMenu(
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
+    if (m_select_only_mode_active) {
+        // context menus are disabled when select-only mode is active to prevent
+        // the user from mutating the structure via the context menu
+        return;
+    }
+
     AbstractContextMenu* menu = nullptr;
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
@@ -681,33 +731,91 @@ void SketcherWidget::showContextMenu(
     menu->show();
 }
 
+void SketcherWidget::setToolbarsVisible(const bool visible)
+{
+    m_ui->side_bar_wdg->setVisible(visible);
+    m_ui->top_bar_wdg->setVisible(visible);
+}
+
 void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
     QWidget::keyPressEvent(event);
+
+    if (m_select_only_mode_active) {
+        // keyboard shortcuts are disabled when select-only mode is active to
+        // prevent the user from switching tools
+        return;
+    }
+
     auto cursor_pos =
         m_ui->view->mapToScene(m_ui->view->mapFromGlobal(QCursor::pos()));
     auto [atoms, bonds, sgroups, non_molecular_objects] =
         m_scene->getModelObjects(SceneSubset::SELECTED_OR_HOVERED, &cursor_pos);
-    bool has_target_atoms = !atoms.empty();
-    bool has_target_bonds = !bonds.empty();
-    bool has_target_non_molecular_objects = !non_molecular_objects.empty();
+    ModelObjsByType targets(atoms, bonds, sgroups, non_molecular_objects);
 
-    // Determine these values before interacting with model
-    bool has_targets = false;
-    std::pair<ModelKey, QVariant> kv_pair;
-    std::unordered_map<ModelKey, QVariant> kv_pairs;
+    bool handled = handleCommonKeyboardShortcuts(event, cursor_pos, targets);
+    if (!handled) {
+        handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
+    }
+}
 
-    // Assign has_targets, kv_pair, and kv_pairs based on key pressed
+void SketcherWidget::updateModelForKeyboardShortcut(
+    const bool has_targets, const std::pair<ModelKey, QVariant>& kv_pair,
+    std::unordered_map<ModelKey, QVariant> kv_pairs,
+    const ModelObjsByType& targets)
+{
+    // unless we are working on a selection, switch model tool
+    if (!m_mol_model->hasSelection()) {
+        kv_pairs.emplace(kv_pair.first, kv_pair.second);
+        m_sketcher_model->setValues(kv_pairs);
+    }
+    // Finally, interact with models
+    if (has_targets) {
+        applyModelValuePingToTargets(
+            kv_pair.first, kv_pair.second, targets.atoms, targets.bonds,
+            targets.sgroups, targets.non_molecular_objects);
+    }
+}
+
+bool SketcherWidget::handleCommonKeyboardShortcuts(
+    QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
+{
     switch (Qt::Key(event->key())) {
         case Qt::Key_Backspace:
         case Qt::Key_Delete: {
-            kv_pair = {ModelKey::DRAW_TOOL,
-                       QVariant::fromValue(DrawTool::ERASE)};
-            has_targets = has_target_atoms || has_target_bonds ||
-                          has_target_non_molecular_objects;
-            break;
+            std::pair<ModelKey, QVariant> kv_pair = {
+                ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ERASE)};
+            bool has_target_atoms = !targets.atoms.empty();
+            bool has_target_bonds = !targets.bonds.empty();
+            bool has_target_non_molecular_objects =
+                !targets.non_molecular_objects.empty();
+            bool has_targets = has_target_atoms || has_target_bonds ||
+                               has_target_non_molecular_objects;
+            updateModelForKeyboardShortcut(has_targets, kv_pair, {}, targets);
+            return true;
         }
+        case Qt::Key_Space:
+            // Switch back to the last used select tool
+            if (!m_sketcher_model->sceneIsEmpty()) {
+                m_sketcher_model->setValue(ModelKey::DRAW_TOOL,
+                                           DrawTool::SELECT);
+            }
+            return true;
+        default:
+            return false;
+    }
+}
 
+void SketcherWidget::handleAtomisticKeyboardShortcuts(
+    QKeyEvent* event, const QPointF& cursor_pos, const ModelObjsByType& targets)
+{
+    std::pair<ModelKey, QVariant> kv_pair;
+    std::unordered_map<ModelKey, QVariant> kv_pairs;
+    bool has_targets;
+    bool has_target_atoms = !targets.atoms.empty();
+    bool has_target_bonds = !targets.bonds.empty();
+
+    switch (Qt::Key(event->key())) {
         case Qt::Key_Minus:
         case Qt::Key_Plus:
         case Qt::Key_Equal: {
@@ -717,7 +825,9 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
             kv_pairs = {
                 {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::CHARGE)}};
             has_targets = has_target_atoms;
-            break;
+            updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
+                                           targets);
+            return;
         }
         case Qt::Key_0:
         case Qt::Key_1:
@@ -734,25 +844,21 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
             kv_pairs = {
                 {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::BOND)}};
             has_targets = has_target_bonds;
-            break;
-        }
-        case Qt::Key_Space:
-            // Switch back to the last used select tool
-            if (!m_sketcher_model->sceneIsEmpty()) {
-                m_sketcher_model->setValue(ModelKey::DRAW_TOOL,
-                                           DrawTool::SELECT);
-            }
+            updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
+                                           targets);
             return;
+        }
+
         case Qt::Key_D: {
             auto to_atom = RDKit::Atom("H");
             to_atom.setIsotope(2);
-            m_mol_model->mutateAtoms(atoms, to_atom);
+            m_mol_model->mutateAtoms(targets.atoms, to_atom);
             return;
         }
         case Qt::Key_T: {
             auto to_atom = RDKit::Atom("H");
             to_atom.setIsotope(3);
-            m_mol_model->mutateAtoms(atoms, to_atom);
+            m_mol_model->mutateAtoms(targets.atoms, to_atom);
             return;
         }
         /* case Qt::Key_Escape:
@@ -775,21 +881,11 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
                     {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
                     {ModelKey::ATOM_TOOL,
                      QVariant::fromValue(AtomTool::ELEMENT)}};
-            } else {
-                return;
+                updateModelForKeyboardShortcut(has_targets, kv_pair, kv_pairs,
+                                               targets);
             }
-            break;
+            return;
         }
-    }
-    // unless we are working on a selection, switch model tool
-    if (!m_mol_model->hasSelection()) {
-        kv_pairs.emplace(kv_pair.first, kv_pair.second);
-        m_sketcher_model->setValues(kv_pairs);
-    }
-    // Finally, interact with models
-    if (has_targets) {
-        applyModelValuePingToTargets(kv_pair.first, kv_pair.second, atoms,
-                                     bonds, sgroups, non_molecular_objects);
     }
 }
 

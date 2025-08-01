@@ -465,6 +465,14 @@ class SKETCHER_API SketcherModel : public QObject
      */
     void loadRenderOptions(const RenderOptions& opts);
 
+    /**
+     * By default, the select, move-rotate and delete tool will be switched to
+     * the draw carbon tool when the scene is empty. This method allows that
+     * behavior to be disabled, which is required when the Sketcher is in
+     * select-only mode.
+     */
+    void setSelectToolAllowedWhenSceneEmpty(const bool allowed);
+
   signals:
     void valuePinged(ModelKey key, QVariant value);
     void valuesChanged(const std::unordered_set<ModelKey>& key);
@@ -593,6 +601,7 @@ class SKETCHER_API SketcherModel : public QObject
     BondDisplaySettings m_bond_display_settings;
     int m_font_size = DEFAULT_FONT_SIZE;
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
+    bool m_allow_select_tool_when_scene_empty = false;
 
     // color and B&W schemes. Which one will be used depends on the state of
     // COLOR_HETEROATOMS

@@ -316,7 +316,7 @@ bool SketcherModel::allItemsSelected() const
 
 void SketcherModel::onInteractiveItemsChanged()
 {
-    if (!sceneIsEmpty()) {
+    if (!sceneIsEmpty() || m_allow_select_tool_when_scene_empty) {
         return;
     }
     // If the scene is empty, select, move-rotate and delete tools should be
@@ -417,6 +417,11 @@ void SketcherModel::loadRenderOptions(const RenderOptions& opts)
     bond_display_settings.m_stereo_labels_shown =
         opts.show_stereo_annotations != StereoLabels::NONE;
     setBondDisplaySettings(bond_display_settings);
+}
+
+void SketcherModel::setSelectToolAllowedWhenSceneEmpty(const bool allowed)
+{
+    m_allow_select_tool_when_scene_empty = allowed;
 }
 
 const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const

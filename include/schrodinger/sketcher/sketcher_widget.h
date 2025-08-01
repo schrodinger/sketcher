@@ -50,6 +50,7 @@ enum class SceneSubset;
 class FileExportDialog;
 class FileSaveImageDialog;
 class RenderingSettingsDialog;
+class ModelObjsByType;
 
 /**
  * Sketcher widget meant for use in LiveDesign and Maestro.
@@ -101,6 +102,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @return true if the scene is empty
      */
     bool isEmpty() const;
+
+    /**
+     * Enable or disable select-only mode, which removes the toolbars and limits
+     * user interaction to selecting items.
+     */
+    void setSelectOnlyMode(bool select_only_mode_enabled);
 
     /**
      * Pass the specified keypress to the top bar.  Explicit calls to this
@@ -259,6 +266,8 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     QGraphicsPixmapItem* m_watermark_item = nullptr;
 
+    bool m_select_only_mode_active = true;
+
     /**
      * Methods for getting and setting the system clipboard. These methods are
      * overriden in the unit test since using the real clipboard can lead to
@@ -291,9 +300,53 @@ class SKETCHER_API SketcherWidget : public QWidget
             non_molecular_objects);
 
     /**
+     * Show or hide the toolbars
+     */
+    void setToolbarsVisible(const bool visible);
+
+    /**
      * Override QWidget methods to handle keystrokes
      */
     void keyPressEvent(QKeyEvent* event) override;
+
+    /**
+     * Update the SketcherModel when handling a keyboard shortcut
+     *
+     * @param has_targets whether this shortcut will operate on a specific
+     * subset of model objects
+     * @param kv_pair SketcherModel key and value to set if there is currently
+     * no workspace selection
+     * @param kv_pairs SketcherModel kays and values to ping if has_targets is
+     * true
+     * @param targets the model objects to apply kV_pairs (and kv_pair if
+     * there's a selection) to
+     */
+    void updateModelForKeyboardShortcut(
+        const bool has_targets, const std::pair<ModelKey, QVariant>& kv_pair,
+        std::unordered_map<ModelKey, QVariant> kv_pairs,
+        const ModelObjsByType& targets);
+
+    /**
+     * Process keyboard shortcuts that are common to all input modes (atomistic,
+     * amino acid, and nucleic acid)
+     *
+     * @param event the key press event to be handled
+     * @param cursor_pos the current cursor position
+     * @param targets the model objects that the key press should operate on
+     * @return whether the key press was handled
+     */
+    bool handleCommonKeyboardShortcuts(QKeyEvent* event,
+                                       const QPointF& cursor_pos,
+                                       const ModelObjsByType& targets);
+
+    /**
+     * Process keyboard shortcuts when the atomistic tools are active
+     *
+     * @note see handleCommonKeyboardShortcuts for param documentation
+     */
+    void handleAtomisticKeyboardShortcuts(QKeyEvent* event,
+                                          const QPointF& cursor_pos,
+                                          const ModelObjsByType& targets);
 
     /**
      * Respond to the user clicking on a toolbar button when there is a
