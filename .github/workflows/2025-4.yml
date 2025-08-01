@@ -1,0 +1,71 @@
+name: 2025-4 Nightly Build
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch: ~
+
+jobs:
+  increment-version:
+    runs-on: ubuntu-latest
+    outputs:
+      has_recent_commits: ${{ steps.check-commits.outputs.has_recent_commits }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Check for recent commits
+        id: check-commits
+        run: |
+          # Check if there are commits in the last 24 hours
+          recent_commits=$(git log --since="24 hours ago" --oneline | wc -l)
+          echo "Recent commits in last 24 hours: $recent_commits"
+
+          if [ $recent_commits -gt 0 ]; then
+            echo "has_recent_commits=true" >> $GITHUB_OUTPUT
+            echo "Found $recent_commits commits in the last 24 hours, proceeding with version increment"
+          else
+            echo "has_recent_commits=false" >> $GITHUB_OUTPUT
+            echo "No commits in the last 24 hours, skipping version increment"
+          fi
+
+      - name: Increment patch version
+        if: steps.check-commits.outputs.has_recent_commits == 'true'
+        run: |
+          # Extract current version from CMakeLists.txt
+          current_version=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          echo "Current version: $current_version"
+
+          # Split version into parts
+          major=$(echo $current_version | cut -d. -f1)
+          minor=$(echo $current_version | cut -d. -f2)
+          patch=$(echo $current_version | cut -d. -f3)
+
+          # Increment patch version
+          new_patch=$((patch + 1))
+          new_version="${major}.${minor}.${new_patch}"
+          echo "New version: $new_version"
+
+          # Update CMakeLists.txt
+          sed -i "s/VERSION $current_version/VERSION $new_version/" CMakeLists.txt
+
+          # Verify the change
+          grep "VERSION " CMakeLists.txt
+
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+
+      - name: Commit version change
+        if: steps.check-commits.outputs.has_recent_commits == 'true'
+        run: |
+          git add CMakeLists.txt
+          git commit -m "Increment patch version to ${{ env.NEW_VERSION }}"
+          git push
+
+  build-and-test:
+    needs: increment-version
+    if: needs.increment-version.outputs.has_recent_commits == 'true'
+    uses: ./.github/workflows/sketcher-builder.yml
