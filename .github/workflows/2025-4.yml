@@ -22,7 +22,7 @@ jobs:
         id: check-commits
         run: |
           # Check if there are commits in the last 24 hours
-          recent_commits=$(git log --since="24 hours ago" --oneline | wc -l)
+          recent_commits=$(git log --since="24 hours ago" --no-merges --oneline | wc -l)
           echo "Recent commits in last 24 hours: $recent_commits"
 
           if [ $recent_commits -gt 0 ]; then
