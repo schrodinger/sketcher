@@ -266,7 +266,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     QGraphicsPixmapItem* m_watermark_item = nullptr;
 
-    bool m_select_only_mode_active = true;
+    bool m_select_only_mode_active = false;
 
     /**
      * Methods for getting and setting the system clipboard. These methods are
