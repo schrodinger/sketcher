@@ -28,8 +28,9 @@
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
-#include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 #include "schrodinger/sketcher/molviewer/chem_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/nucleic_acid_base_item.h"
 #include "schrodinger/sketcher/molviewer/nucleic_acid_phosphate_item.h"
@@ -44,8 +45,6 @@ namespace
 const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
 // According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
-// TODO: hook this up to a feature flag
-const bool ALLOW_MONOMERIC = false;
 } // namespace
 
 namespace schrodinger
@@ -149,7 +148,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         }
         const auto pos = conformer.getAtomPos(i);
         QGraphicsItem* atom_item =
-            (ALLOW_MONOMERIC && atom->getMonomerInfo() != nullptr)
+            is_atom_monomeric(atom)
                 ? get_monomer_graphics_item(atom, fonts)
                 : new AtomItem(atom, fonts, atom_display_settings);
         atom_item->setPos(to_scene_xy(pos));

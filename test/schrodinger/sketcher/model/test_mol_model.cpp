@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <memory>
 #include <numbers>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -21,16 +22,20 @@
 #include <boost/test/data/test_case.hpp>
 
 #include <rdkit/GraphMol/Depictor/RDDepictor.h>
+#include <rdkit/GraphMol/FileParsers/FileParsers.h>
+#include <rdkit/GraphMol/FileParsers/MolSupplier.h>
 #include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/QueryBond.h>
+#include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <QUndoStack>
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -40,6 +45,7 @@
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
@@ -3778,6 +3784,54 @@ BOOST_AUTO_TEST_CASE(test_CIP_labeler_with_query_bonds)
                       BondTool::SINGLE_OR_AROMATIC);
     model.mutateBonds({model.getMol()->getBondWithIdx(1)},
                       BondTool::DOUBLE_OR_AROMATIC);
+}
+
+/**
+ * Make sure that we only consider atoms to be monomeric if they came from a
+ * monomeric (e.g. HELM) structure.  In particular, ensure that atomistic
+ * structures read from *.mae or *.maegz are not considered monomeric, even
+ * though residue information gets loaded into the mol.
+ *
+ * Also make sure that getMolForExport strips off the Sketcher-internal-only
+ * per-atom properties and instead sets the correct mol-level HELM property.
+ */
+BOOST_AUTO_TEST_CASE(test_monomer_detection)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const auto* mol = model.getMol();
+    import_mol_text(&model, "CCC");
+    BOOST_TEST(!contains_monomeric_atom(*mol));
+    BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(0)));
+    auto mol_for_export_1 = model.getMolForExport();
+    BOOST_TEST(!rdkit_extensions::is_coarse_grain_mol(*mol_for_export_1));
+    BOOST_TEST(!contains_monomeric_atom(*mol_for_export_1));
+
+    std::shared_ptr<RDKit::ROMol> mol_from_mae;
+    auto mae_contents = read_testfile("1fjs_lig.mae");
+    auto mae_stream = std::make_shared<std::istringstream>(mae_contents);
+    auto reader = RDKit::MaeMolSupplier(mae_stream);
+    mol_from_mae.reset(reader.next());
+    model.addMol(*mol_from_mae);
+    BOOST_TEST(!contains_monomeric_atom(*mol));
+    BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(0)));
+    BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(5)));
+    auto mol_for_export_2 = model.getMolForExport();
+    BOOST_TEST(!rdkit_extensions::is_coarse_grain_mol(*mol_for_export_2));
+    BOOST_TEST(!contains_monomeric_atom(*mol_for_export_2));
+
+    import_mol_text(&model, "PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0");
+    BOOST_TEST(contains_monomeric_atom(*mol));
+    BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(0)));
+    BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(5)));
+    auto num_atoms = mol->getNumAtoms();
+    BOOST_TEST(is_atom_monomeric(mol->getAtomWithIdx(num_atoms - 1)));
+    auto mol_for_export_3 = model.getMolForExport();
+    BOOST_TEST(rdkit_extensions::is_coarse_grain_mol(*mol_for_export_3));
+    // contains_monomeric_atom should return false because getMolForExport will
+    // strip off the per-atom properties, since those are a Sketcher-internals
+    // thing
+    BOOST_TEST(!contains_monomeric_atom(*mol_for_export_3));
 }
 
 } // namespace sketcher

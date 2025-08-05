@@ -20,20 +20,22 @@
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
-#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/rdkit/subset.h"
 #include "schrodinger/sketcher/rdkit/variable_attachment_bond.h"
 
@@ -130,6 +132,7 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
         atom->clearProp(TAG_PROPERTY);
         atom->clearProp(USER_COLOR);
         atom->clearProp(RDKit::common_properties::atomNote);
+        clear_monomeric_property(atom);
     }
     for (auto* bond : mol.bonds()) {
         bond->clearProp(TAG_PROPERTY);
@@ -201,6 +204,10 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getMolForExport() const
 {
     // TODO: add API to export selection as atom/bond properties
     auto mol_copy = boost::make_shared<RDKit::ROMol>(m_mol);
+    if (contains_monomeric_atom(m_mol)) {
+        // RDKit uses a mol-level property to indicate HELM mols
+        mol_copy->setProp(HELM_MODEL, true);
+    }
     strip_notes_and_mol_model_tags(*mol_copy);
     return mol_copy;
 }
@@ -2452,6 +2459,7 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
     // get the starting index for the atoms and bonds to be inserted
     unsigned int old_num_atoms = m_mol.getNumAtoms();
     unsigned int old_num_bonds = m_mol.getNumBonds();
+    bool is_monomeric = rdkit_extensions::is_coarse_grain_mol(mol);
     m_mol.insertMol(mol);
 
     for (auto& sgroup : getSubstanceGroups(m_mol)) {
@@ -2462,6 +2470,9 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
          ++atom_index) {
         RDKit::Atom* atom = m_mol.getAtomWithIdx(atom_index);
         setTagForAtom(atom, m_next_atom_tag++);
+        if (is_monomeric) {
+            set_atom_monomeric(atom);
+        }
         attachment_point_added =
             attachment_point_added || is_attachment_point(atom);
     }
