@@ -219,9 +219,9 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   # Mirror the source directory for test collection and make unique target names
   cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
   cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
-  # Create unique target name by replacing path separators with underscores
-  string(REPLACE "/" "_" TEST_PREFIX "${PREFIX_PATH}")
-  set(TEST_TARGET "${TEST_PREFIX}_${TEST_STEM}")
+  # Create unique target name by replacing path separators
+  string(REPLACE "/" "-" TEST_PREFIX "${PREFIX_PATH}")
+  set(TEST_TARGET "${TEST_PREFIX}-${TEST_STEM}")
   add_executable(${TEST_TARGET} ${TEST_SOURCE})
   setup_target(${TEST_TARGET})
   target_include_directories(${TEST_TARGET} PRIVATE ${PROJECT_SOURCE_DIR}/test)
@@ -232,14 +232,11 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   else()
     set(TEST_COMMAND ${TEST_TARGET})
   endif()
-  if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
-    add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
-    set_tests_properties(
-      ${TEST_TARGET} PROPERTIES ENVIRONMENT
-                                "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
-    set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                    ${PREFIX_PATH})
-  elseif(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                                  ${PREFIX_PATH})
+  # Create memtest target and command #
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    set(TEST_TARGET "memtest_${TEST_TARGET}")
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
     if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
@@ -251,10 +248,12 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
            "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
     endforeach()
     list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
-    add_test(NAME memtest_${TEST_TARGET} COMMAND ${CURRENT_MEMTEST_COMMAND})
-    set_property(TEST memtest_${TEST_TARGET} PROPERTY LABELS memtest)
-    set_tests_properties(
-      memtest_${TEST_TARGET}
-      PROPERTIES ENVIRONMENT "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+    set(TEST_COMMAND "${CURRENT_MEMTEST_COMMAND}")
+    set_property(TEST ${TEST_TARGET} PROPERTY LABELS memtest)
   endif()
+  # Add the test to CTest
+  add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
+  set_tests_properties(
+    ${TEST_TARGET} PROPERTIES ENVIRONMENT
+                              "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
 endforeach()
