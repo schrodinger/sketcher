@@ -118,8 +118,14 @@ function(build_schrodinger_library TARGET)
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${TARGET})
   # Collect all headers, source, and resources; note we collect public headers
   # so that Qt can build .moc files
-  file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
-       ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp ${SRC_DIR}/*.qrc)
+  file(
+    GLOB_RECURSE
+    SOURCE_LIST
+    CONFIGURE_DEPENDS
+    ${INCLUDE_DIR}/*.h
+    ${SRC_DIR}/*.h
+    ${SRC_DIR}/*.cpp
+    ${SRC_DIR}/*.qrc)
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   setup_target(${TARGET})
@@ -180,7 +186,8 @@ enable_qt_moc(${SKETCHER_TARGET})
 set(APP_TARGET sketcher_app)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
-target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${SKETCHER_TARGET})
+target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
+                                            ${SKETCHER_TARGET})
 
 # Tests
 enable_testing()
@@ -225,13 +232,14 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   else()
     set(TEST_COMMAND ${TEST_TARGET})
   endif()
-  add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
-  set_tests_properties(
-    ${TEST_TARGET} PROPERTIES ENVIRONMENT
-                              "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
-  set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                  ${PREFIX_PATH})
-  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+  if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+    add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
+    set_tests_properties(
+      ${TEST_TARGET} PROPERTIES ENVIRONMENT
+                                "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+    set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                                    ${PREFIX_PATH})
+  elseif(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
     if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
