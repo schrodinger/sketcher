@@ -22,7 +22,7 @@ jobs:
           - os: ubuntu-latest
             build-output: wasm
           - os: ubuntu-latest
-            build-output: debug
+            build-output: memtest
     steps:
       - uses: actions/checkout@v4
 
@@ -37,14 +37,14 @@ jobs:
         run: python3 -m pip install ninja clang-format==14.0.6
 
       - name: Install valgrind
-        if: matrix.build-output == 'debug'
+        if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
 
       - name: Code formatting check
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
       - name: Determine build type
-        run: echo BUILD_TYPE=${{ matrix.build-output == 'debug' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
+        run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
       - name: Read external/versions.json
         run: |
@@ -206,7 +206,7 @@ jobs:
 
       - name: Run tests
         working-directory: build
-        if: matrix.build-output != 'debug'
+        if: matrix.build-output != 'memtest'
         # Launching `xvfb-run -a` required for Ubuntu non-wasm builds
         run: |
           ${{ matrix.os == 'ubuntu-latest' && matrix.build-output != 'wasm' && 'xvfb-run -a' || ''}} \
@@ -214,7 +214,7 @@ jobs:
 
       - name: Run memtests
         working-directory: build
-        if: matrix.build-output == 'debug'
+        if: matrix.build-output == 'memtest'
         run: |
           xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
