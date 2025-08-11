@@ -27,7 +27,7 @@ using schrodinger::rdkit_extensions::removeHs;
 
 namespace
 {
-struct CombineMonomeristicMolsTestData {
+struct CombineMonomericMolsTestData {
     std::string mol1;
     std::string mol2;
     std::string expected;
@@ -38,7 +38,7 @@ namespace std
 {
 
 std::ostream& operator<<(std::ostream& os,
-                         const ::CombineMonomeristicMolsTestData& data)
+                         const ::CombineMonomericMolsTestData& data)
 {
     os << "mol1=" << data.mol1 << " mol2=" << data.mol2
        << " expected=" << data.expected;
@@ -306,7 +306,7 @@ BOOST_DATA_TEST_CASE(test_extract_stereo_groups,
     }
 }
 
-BOOST_AUTO_TEST_CASE(TestCombineMonomeristicMolsUnsupportedInputs)
+BOOST_AUTO_TEST_CASE(TestCombineMonomericMolsUnsupportedInputs)
 {
     using namespace schrodinger::rdkit_extensions;
 
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE(TestCombineMonomeristicMolsUnsupportedInputs)
     {
         auto mol1 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
         auto mol2 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
-        BOOST_CHECK_THROW(CombineMonomeristicMols(*mol1, *mol2),
+        BOOST_CHECK_THROW(CombineMonomericMols(*mol1, *mol2),
                           std::invalid_argument);
     }
     // polymer group is not supported
@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE(TestCombineMonomeristicMolsUnsupportedInputs)
         auto mol1 = helm::helm_to_rdkit(
             R"(PEPTIDE1{A}|PEPTIDE2{D}$$G3(PEPTIDE1,PEPTIDE2)$$V2.0)");
         auto mol2 = helm::helm_to_rdkit(R"(PEPTIDE1{A}|PEPTIDE2{D}$$$$V2.0)");
-        BOOST_CHECK_THROW(CombineMonomeristicMols(*mol1, *mol2),
+        BOOST_CHECK_THROW(CombineMonomericMols(*mol1, *mol2),
                           std::invalid_argument);
     }
     // extended annotation is not supported
@@ -330,14 +330,14 @@ BOOST_AUTO_TEST_CASE(TestCombineMonomeristicMolsUnsupportedInputs)
         auto mol1 = helm::helm_to_rdkit(R"(PEPTIDE1{A}|PEPTIDE2{D}$$$$V2.0)");
         auto mol2 = helm::helm_to_rdkit(
             R"(PEPTIDE1{A}|PEPTIDE2{D}$$${"hello":"value"}$V2.0)");
-        BOOST_CHECK_THROW(CombineMonomeristicMols(*mol1, *mol2),
+        BOOST_CHECK_THROW(CombineMonomericMols(*mol1, *mol2),
                           std::invalid_argument);
     }
 }
 
 BOOST_DATA_TEST_CASE(
-    TestCombineMonomeristicMols,
-    bdata::make(std::vector<CombineMonomeristicMolsTestData>{
+    TestCombineMonomericMols,
+    bdata::make(std::vector<CombineMonomericMolsTestData>{
         // different polymer ids
         {"CHEM1{A}$$$$V2.0", "CHEM2{B}$$$$V2.0", "CHEM1{A}|CHEM2{B}$$$$V2.0"},
         {"CHEM2{A}$$$$V2.0", "CHEM1{B}$$$$V2.0", "CHEM2{A}|CHEM1{B}$$$$V2.0"},
@@ -362,6 +362,6 @@ BOOST_DATA_TEST_CASE(
 
     auto mol1 = helm::helm_to_rdkit(test_data.mol1);
     auto mol2 = helm::helm_to_rdkit(test_data.mol2);
-    auto combined = CombineMonomeristicMols(*mol1, *mol2);
+    auto combined = CombineMonomericMols(*mol1, *mol2);
     BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
 }

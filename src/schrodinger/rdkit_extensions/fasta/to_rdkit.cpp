@@ -28,7 +28,7 @@ struct [[nodiscard]] fasta_sequence {
 [[nodiscard]] static std::vector<fasta_sequence>
 get_fasta_sequences(const std::string& generic_fasta);
 
-template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
+template <class T> static std::unique_ptr<::RDKit::RWMol> get_monomer_mol
     [[nodiscard]] (const std::vector<fasta_sequence>& fasta_sequences,
                    T get_helm_monomer_function,
                    std::string_view polymer_prefix);
@@ -49,9 +49,9 @@ peptide_fasta_to_rdkit(const std::string& peptide_fasta)
 {
     static constexpr std::string_view peptide_polymer_prefix{"PEPTIDE"};
 
-    return get_coarse_grain_rwmol(get_fasta_sequences(peptide_fasta),
-                                  get_fasta_to_helm_amino_acid,
-                                  peptide_polymer_prefix);
+    return get_monomer_mol(get_fasta_sequences(peptide_fasta),
+                           get_fasta_to_helm_amino_acid,
+                           peptide_polymer_prefix);
 };
 
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
@@ -60,7 +60,7 @@ rna_fasta_to_rdkit(const std::string& rna_fasta)
     static constexpr std::string_view rna_polymer_prefix{"RNA"};
     static constexpr std::string_view sugar_helm_monomer{"R"};
 
-    return get_coarse_grain_rwmol(
+    return get_monomer_mol(
         get_fasta_sequences(rna_fasta),
         [](char one_letter_monomer) {
             return get_fasta_to_helm_nucleotide(one_letter_monomer,
@@ -75,7 +75,7 @@ dna_fasta_to_rdkit(const std::string& dna_fasta)
     static constexpr std::string_view dna_polymer_prefix{"RNA"};
     static constexpr std::string_view sugar_helm_monomer{"[dR]"};
 
-    return get_coarse_grain_rwmol(
+    return get_monomer_mol(
         get_fasta_sequences(dna_fasta),
         [](char one_letter_monomer) {
             return get_fasta_to_helm_nucleotide(one_letter_monomer,
@@ -191,7 +191,7 @@ template <class T> static std::string get_polymer_helm
     }
 }
 
-template <class T> static std::unique_ptr<::RDKit::RWMol> get_coarse_grain_rwmol
+template <class T> static std::unique_ptr<::RDKit::RWMol> get_monomer_mol
     [[nodiscard]] (const std::vector<fasta_sequence>& fasta_sequences,
                    T get_helm_monomer_function, std::string_view polymer_prefix)
 {

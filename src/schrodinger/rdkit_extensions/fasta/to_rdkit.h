@@ -13,7 +13,7 @@ class RWMol;
 namespace fasta
 {
 /*
- * Converts a fasta input to a coarse grain mol. The fasta input can contain
+ * Converts a fasta input to a monomeric mol. The fasta input can contain
  * multiple sequences, and each sequence can be annotated.
  *
  * @param peptide_fasta: one or more fasta sequences
@@ -23,7 +23,7 @@ namespace fasta
 peptide_fasta_to_rdkit(const std::string& peptide_fasta);
 
 /*
- * Converts a fasta input to a coarse grain mol. The fasta input can contain
+ * Converts a fasta input to a monomeric mol. The fasta input can contain
  * multiple sequences, and each sequence can be annotated.
  *
  * @param rna_fasta: one or more fasta sequences
@@ -33,7 +33,7 @@ peptide_fasta_to_rdkit(const std::string& peptide_fasta);
 rna_fasta_to_rdkit(const std::string& rna_fasta);
 
 /*
- * Converts a fasta input to a coarse grain mol. The fasta input can contain
+ * Converts a fasta input to a monomeric mol. The fasta input can contain
  * multiple sequences, and each sequence can be annotated.
  *
  * @param dna_fasta: one or more fasta sequences

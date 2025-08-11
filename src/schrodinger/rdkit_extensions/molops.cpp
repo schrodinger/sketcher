@@ -38,8 +38,8 @@ struct [[nodiscard]] selected_atom_info {
 
 } // namespace
 
-static void validate_monomeristic_mol_input(const RDKit::ROMol&,
-                                            const std::string_view&);
+static void validate_monomeric_mol_input(const RDKit::ROMol&,
+                                         const std::string_view&);
 
 [[nodiscard]] static std::unordered_map<char, int>
 get_max_polymer_suffixes(const std::vector<std::string>&);
@@ -342,12 +342,12 @@ ExtractMolFragment(const RDKit::ROMol& mol,
     return extracted_mol;
 }
 
-boost::shared_ptr<RDKit::ROMol>
-CombineMonomeristicMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2)
+boost::shared_ptr<RDKit::ROMol> CombineMonomericMols(const RDKit::ROMol& mol1,
+                                                     const RDKit::ROMol& mol2)
 {
     // make sure there are no unsupported features
-    validate_monomeristic_mol_input(mol1, "mol1");
-    validate_monomeristic_mol_input(mol2, "mol2");
+    validate_monomeric_mol_input(mol1, "mol1");
+    validate_monomeric_mol_input(mol2, "mol2");
 
     std::unique_ptr<RDKit::ROMol> result;
 
@@ -401,11 +401,11 @@ CombineMonomeristicMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2)
     return result;
 }
 
-static void validate_monomeristic_mol_input(const RDKit::ROMol& mol,
-                                            const std::string_view& name)
+static void validate_monomeric_mol_input(const RDKit::ROMol& mol,
+                                         const std::string_view& name)
 {
-    if (!is_coarse_grain_mol(mol)) {
-        auto msg = fmt::format("'{}' must be a monomeristic mol", name);
+    if (!isMonomeric(mol)) {
+        auto msg = fmt::format("'{}' must be a monomeric mol", name);
         throw std::invalid_argument(msg);
     }
 

@@ -30,7 +30,7 @@ constexpr unsigned int MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
 
 // Props used in the fragmented polymer mols to store monomer graph info from
-// the CG mol
+// the monomersitc mol
 const std::string BOND_TO{"bondTo"};
 const std::string ORIGINAL_INDEX{"originalIndex"};
 // Used to indicate whether a monomer has had its position calculated and set in
@@ -492,14 +492,14 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
 }
 
 static std::vector<RDKit::ROMOL_SPTR>
-break_into_polymers(const RDKit::ROMol& cg_mol)
+break_into_polymers(const RDKit::ROMol& monomer_mol)
 {
-    for (auto atom : cg_mol.atoms()) {
+    for (auto atom : monomer_mol.atoms()) {
         atom->setProp(ORIGINAL_INDEX, atom->getIdx());
         atom->setProp(MONOMER_PLACED, false);
     }
 
-    for (auto bond : cg_mol.bonds()) {
+    for (auto bond : monomer_mol.bonds()) {
         auto beginMonomer = bond->getBeginAtom();
         auto endMonomer = bond->getEndAtom();
         if (get_polymer_id(beginMonomer) == get_polymer_id(endMonomer)) {
@@ -510,8 +510,8 @@ break_into_polymers(const RDKit::ROMol& cg_mol)
     }
 
     std::vector<RDKit::ROMOL_SPTR> polymers;
-    for (auto polymer_id : get_polymer_ids(cg_mol)) {
-        auto polymer = extract_helm_polymers(cg_mol, {polymer_id});
+    for (auto polymer_id : get_polymer_ids(monomer_mol)) {
+        auto polymer = extract_helm_polymers(monomer_mol, {polymer_id});
         polymer->setProp(POLYMER_ID, polymer_id);
         polymer->addConformer(new RDKit::Conformer(polymer->getNumAtoms()));
         polymers.push_back(polymer);
@@ -566,16 +566,15 @@ static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
 }
 
 /**
- * Adds a conformer to the cg_mol copying all the coordinates from the polymers.
- * Expects each monomer in the polymers to have an ORIGINAL_INDEX prop pointing
- * to the corresponding index for that monomer in the cg_mol. Returns the id of
- * the added conformer.
+ * Adds a conformer to the monomer_mol copying all the coordinates from the
+ * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX prop
+ * pointing to the corresponding index for that monomer in the monomer_mol.
+ * Returns the id of the added conformer.
  */
-static unsigned int
-copy_polymer_coords_to_cg_mol(RDKit::ROMol& cg_mol,
-                              const std::vector<RDKit::ROMOL_SPTR>& polymers)
+static unsigned int copy_polymer_coords_to_monomer_mol(
+    RDKit::ROMol& monomer_mol, const std::vector<RDKit::ROMOL_SPTR>& polymers)
 {
-    auto conformer = new RDKit::Conformer(cg_mol.getNumAtoms());
+    auto conformer = new RDKit::Conformer(monomer_mol.getNumAtoms());
     for (auto polymer : polymers) {
         for (auto monomer : polymer->atoms()) {
             conformer->setAtomPos(
@@ -583,13 +582,13 @@ copy_polymer_coords_to_cg_mol(RDKit::ROMol& cg_mol,
                 polymer->getConformer().getAtomPos(monomer->getIdx()));
         }
     }
-    cg_mol.addConformer(conformer);
+    monomer_mol.addConformer(conformer);
     return conformer->getId();
 }
 
-static void remove_cxsmiles_labels(RDKit::ROMol& cg_mol)
+static void remove_cxsmiles_labels(RDKit::ROMol& monomer_mol)
 {
-    for (auto monomer : cg_mol.atoms()) {
+    for (auto monomer : monomer_mol.atoms()) {
         auto label = monomer->getProp<std::string>(ATOM_LABEL);
         if (label.size() > 4) {
             monomer->setProp<std::string>(ATOM_LABEL, SMILES_MONOMER_LABEL);
@@ -602,14 +601,14 @@ static void remove_cxsmiles_labels(RDKit::ROMol& cg_mol)
  * connect a polymer back to itself or two polymers together) to position them
  * between the two polymers they are connecting.
  */
-static void adjust_chem_polymer_coords(RDKit::ROMol& cg_mol)
+static void adjust_chem_polymer_coords(RDKit::ROMol& monomer_mol)
 {
-    auto& conformer = cg_mol.getConformer();
-    for (auto monomer : cg_mol.atoms()) {
+    auto& conformer = monomer_mol.getConformer();
+    for (auto monomer : monomer_mol.atoms()) {
         if (!boost::starts_with(get_polymer_id(monomer), "CHEM")) {
             continue;
         }
-        auto neighbors = cg_mol.atomNeighbors(monomer);
+        auto neighbors = monomer_mol.atomNeighbors(monomer);
         if (std::distance(neighbors.begin(), neighbors.end()) != 2) {
             continue;
         }
@@ -642,11 +641,11 @@ static void adjust_chem_polymer_coords(RDKit::ROMol& cg_mol)
 /**
  * Clears props that were set on monomers just to help with layout logic
  */
-static void clear_layout_props(RDKit::ROMol& cg_mol)
+static void clear_layout_props(RDKit::ROMol& monomer_mol)
 {
     std::vector<std::string> layout_props{BOND_TO, MONOMER_PLACED,
                                           ORIGINAL_INDEX};
-    for (auto monomer : cg_mol.atoms()) {
+    for (auto monomer : monomer_mol.atoms()) {
         for (auto prop : layout_props) {
             monomer->clearProp(prop);
         }
@@ -654,25 +653,25 @@ static void clear_layout_props(RDKit::ROMol& cg_mol)
 }
 
 /**
- * Determines if a coarse-grain mol contains a single linear polymer with no
+ * Determines if a monomer mol contains a single linear polymer with no
  * branches or rings
  */
-static bool is_single_linear_polymer(const RDKit::ROMol& cg_mol)
+static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
 {
-    auto polymer_ids = get_polymer_ids(cg_mol);
+    auto polymer_ids = get_polymer_ids(monomer_mol);
     if (polymer_ids.size() != 1) {
         return false;
     }
 
-    compute_full_ring_info(cg_mol);
-    if (cg_mol.getRingInfo()->numRings() > 0) {
+    compute_full_ring_info(monomer_mol);
+    if (monomer_mol.getRingInfo()->numRings() > 0) {
         // reset ring info so it can get recomputed by the appropriate layout
         // method
-        cg_mol.getRingInfo()->reset();
+        monomer_mol.getRingInfo()->reset();
         return false;
     }
 
-    for (auto monomer : cg_mol.atoms()) {
+    for (auto monomer : monomer_mol.atoms()) {
         if (monomer->getProp<bool>(BRANCH_MONOMER)) {
             return false;
         }
@@ -687,13 +686,13 @@ static bool is_nucleic_acid(const RDKit::ROMol& polymer)
            boost::starts_with(polymerId, "RNA");
 }
 
-unsigned int compute_cg_coords(RDKit::ROMol& cg_mol)
+unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 {
     // clear layout related props so we can start a fresh layout
-    clear_layout_props(cg_mol);
-    auto polymers = break_into_polymers(cg_mol);
+    clear_layout_props(monomer_mol);
+    auto polymers = break_into_polymers(monomer_mol);
     // SHARED-9795: Special case for single polymers that are strictly chains
-    if (is_single_linear_polymer(cg_mol)) {
+    if (is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } else {
         for (size_t i = 0; i < polymers.size(); i++) {
@@ -738,11 +737,12 @@ unsigned int compute_cg_coords(RDKit::ROMol& cg_mol)
         }
     }
 
-    remove_cxsmiles_labels(cg_mol);
-    auto conformer_id = copy_polymer_coords_to_cg_mol(cg_mol, polymers);
-    adjust_chem_polymer_coords(cg_mol);
+    remove_cxsmiles_labels(monomer_mol);
+    auto conformer_id =
+        copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);
+    adjust_chem_polymer_coords(monomer_mol);
     // clear layout related props to prevent leaking "internal" props
-    clear_layout_props(cg_mol);
+    clear_layout_props(monomer_mol);
     return conformer_id;
 }
 

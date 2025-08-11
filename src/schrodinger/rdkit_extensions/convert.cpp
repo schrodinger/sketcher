@@ -793,12 +793,12 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 
     auto mol = [&]() -> boost::shared_ptr<RDKit::RWMol> {
         // Since SHARED-11054, we want to start allowing conversion between
-        // atomistic and monomeristic mols
-        auto is_monomeristic = is_coarse_grain_mol(input_mol);
+        // atomistic and monomeric mols
+        auto is_monomeric = isMonomeric(input_mol);
         auto is_seq_format =
             std::ranges::find(SEQ_FORMATS, format) != SEQ_FORMATS.end();
-        if (is_monomeristic && !is_seq_format) {
-            auto atomistic_mol = cgToAtomistic(input_mol);
+        if (is_monomeric && !is_seq_format) {
+            auto atomistic_mol = toAtomistic(input_mol);
             // NOTE: MaeWriter will attempt to generate 2D coordinates for this
             // molecule without the dummy conformer. The coordinate generation
             // procedure can end up taking a very long time for large
@@ -806,9 +806,9 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             atomistic_mol->addConformer(
                 new RDKit::Conformer(atomistic_mol->getNumAtoms()));
             return atomistic_mol;
-        } else if (!is_monomeristic &&
+        } else if (!is_monomeric &&
                    (is_seq_format && format != Format::RDMOL_BINARY_BASE64)) {
-            return atomisticToCg(input_mol);
+            return toMonomeric(input_mol);
         } else {
             return boost::make_shared<RDKit::RWMol>(input_mol);
         }

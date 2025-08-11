@@ -11,7 +11,7 @@
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 
 using helm::helm_to_rdkit;
-using schrodinger::rdkit_extensions::compute_cg_coords;
+using schrodinger::rdkit_extensions::compute_monomer_mol_coords;
 
 namespace bdata = boost::unit_test::data;
 
@@ -258,7 +258,7 @@ BOOST_DATA_TEST_CASE(
     std::string helm = test_data.first;
     coords_t monomer_coords = test_data.second;
     auto mol = helm::helm_to_rdkit(helm);
-    schrodinger::rdkit_extensions::compute_cg_coords(*mol);
+    schrodinger::rdkit_extensions::compute_monomer_mol_coords(*mol);
 
     auto& conformer = mol->getConformer();
     for (auto monomer : mol->atoms()) {

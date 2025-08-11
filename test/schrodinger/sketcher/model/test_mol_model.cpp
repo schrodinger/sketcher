@@ -3804,7 +3804,7 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     BOOST_TEST(!contains_monomeric_atom(*mol));
     BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(0)));
     auto mol_for_export_1 = model.getMolForExport();
-    BOOST_TEST(!rdkit_extensions::is_coarse_grain_mol(*mol_for_export_1));
+    BOOST_TEST(!rdkit_extensions::isMonomeric(*mol_for_export_1));
     BOOST_TEST(!contains_monomeric_atom(*mol_for_export_1));
 
     std::shared_ptr<RDKit::ROMol> mol_from_mae;
@@ -3817,7 +3817,7 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(0)));
     BOOST_TEST(!is_atom_monomeric(mol->getAtomWithIdx(5)));
     auto mol_for_export_2 = model.getMolForExport();
-    BOOST_TEST(!rdkit_extensions::is_coarse_grain_mol(*mol_for_export_2));
+    BOOST_TEST(!rdkit_extensions::isMonomeric(*mol_for_export_2));
     BOOST_TEST(!contains_monomeric_atom(*mol_for_export_2));
 
     import_mol_text(&model, "PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0");
@@ -3827,7 +3827,7 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     auto num_atoms = mol->getNumAtoms();
     BOOST_TEST(is_atom_monomeric(mol->getAtomWithIdx(num_atoms - 1)));
     auto mol_for_export_3 = model.getMolForExport();
-    BOOST_TEST(rdkit_extensions::is_coarse_grain_mol(*mol_for_export_3));
+    BOOST_TEST(rdkit_extensions::isMonomeric(*mol_for_export_3));
     // contains_monomeric_atom should return false because getMolForExport will
     // strip off the per-atom properties, since those are a Sketcher-internals
     // thing

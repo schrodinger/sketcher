@@ -101,7 +101,7 @@ namespace fasta
 
 static void check_for_unsupported_features(const ::RDKit::ROMol& mol)
 {
-    if (!schrodinger::rdkit_extensions::is_coarse_grain_mol(mol)) {
+    if (!schrodinger::rdkit_extensions::isMonomeric(mol)) {
         throw std::invalid_argument("FASTA conversions with atomistic "
                                     "mols are currently unsupported");
     }

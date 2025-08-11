@@ -13,10 +13,10 @@ namespace fasta
 {
 
 /*
- * Converts a coarse grain mol to a fasta input. The coarse grain mol can
+ * Converts a monomeric mol to a fasta input. The monomeric mol can
  * contain multiple chains and the chains can be heterogenous.
  *
- * @param mol: the coarse grain mol
+ * @param mol: the monomeric mol
  * @throws std::invalid_argument: If the input is malformed
  *
  *

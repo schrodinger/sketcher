@@ -24,9 +24,9 @@ enum class ChainType;
 // Returns path of custom monomer database if it exists, otherwise returns
 RDKIT_EXTENSIONS_API std::optional<std::string> getCustomMonomerDbPath();
 
-std::optional<std::string> getCgMonomerDbPath();
+std::optional<std::string> getMonomerDbPath();
 
-class [[nodiscard]] CgMonomerDatabase : public boost::noncopyable
+class [[nodiscard]] MonomerDatabase : public boost::noncopyable
 {
   public:
     using string_t = std::optional<std::string>;
@@ -34,9 +34,9 @@ class [[nodiscard]] CgMonomerDatabase : public boost::noncopyable
     using helm_info_t =
         std::optional<std::tuple<std::string, std::string, ChainType>>;
 
-    CgMonomerDatabase(std::string_view database_path);
+    MonomerDatabase(std::string_view database_path);
 
-    ~CgMonomerDatabase();
+    ~MonomerDatabase();
 
     [[nodiscard]] string_t getMonomerSmiles(std::string monomer_id,
                                             ChainType monomer_type);

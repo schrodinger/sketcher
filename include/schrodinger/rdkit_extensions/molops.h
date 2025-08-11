@@ -86,14 +86,14 @@ ExtractMolFragment(const RDKit::ROMol& mol,
                    bool sanitize = true);
 
 //
-// Helper api to merge two monomeristic mols. This api renames polymer ids in
+// Helper api to merge two monomeric mols. This api renames polymer ids in
 // mol2 to prevent them from clashing with polymer ids in mol1.
 //
 // @param mol1 rdkit mol
 // @param mol2 rdkit mol
 //
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::ROMol>
-CombineMonomeristicMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2);
+CombineMonomericMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

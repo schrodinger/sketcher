@@ -26,8 +26,7 @@ namespace rdkit_extensions
 std::optional<std::string> getCustomMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
-    throw std::logic_error(
-        "CG Monomers are not yet supported in WASM Sketcher");
+    throw std::logic_error("Monomers are not yet supported in WASM Sketcher");
 #else
     auto custom_db_path = getenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.c_str());
     if (custom_db_path) {
@@ -37,11 +36,10 @@ std::optional<std::string> getCustomMonomerDbPath()
 #endif
 }
 
-std::optional<std::string> getCgMonomerDbPath()
+std::optional<std::string> getMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
-    throw std::logic_error(
-        "CG Monomers are not yet supported in WASM Sketcher");
+    throw std::logic_error("Monomers are not yet supported in WASM Sketcher");
 #else
     auto custom_db_path = getCustomMonomerDbPath();
     if (custom_db_path.has_value() &&
@@ -56,7 +54,7 @@ std::optional<std::string> getCgMonomerDbPath()
 #endif
 }
 
-CgMonomerDatabase::CgMonomerDatabase(std::string_view database_path)
+MonomerDatabase::MonomerDatabase(std::string_view database_path)
 {
     static constexpr std::string_view err_msg_template{
         "Problem opening database: '{}'"};
@@ -113,14 +111,14 @@ get_info_from_database(sqlite3* db, const std::string& sql_command_template,
 }
 } // namespace
 
-CgMonomerDatabase::~CgMonomerDatabase()
+MonomerDatabase::~MonomerDatabase()
 {
     sqlite3_close_v2(m_db);
 }
 
-CgMonomerDatabase::string_t
-CgMonomerDatabase::getMonomerSmiles(std::string monomer_id,
-                                    ChainType monomer_type)
+MonomerDatabase::string_t
+MonomerDatabase::getMonomerSmiles(std::string monomer_id,
+                                  ChainType monomer_type)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -144,8 +142,8 @@ CgMonomerDatabase::getMonomerSmiles(std::string monomer_id,
     return get_info_from_database(m_db, get_sql_command(), smiles_getter);
 }
 
-[[nodiscard]] CgMonomerDatabase::helm_info_t
-CgMonomerDatabase::getHelmInfo(const std::string& pdb_code)
+[[nodiscard]] MonomerDatabase::helm_info_t
+MonomerDatabase::getHelmInfo(const std::string& pdb_code)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -172,9 +170,9 @@ CgMonomerDatabase::getHelmInfo(const std::string& pdb_code)
     return get_info_from_database(m_db, get_sql_command(), helm_info_getter);
 }
 
-[[nodiscard]] CgMonomerDatabase::string_t
-CgMonomerDatabase::getPdbCode(const std::string& helm_symbol,
-                              ChainType monomer_type)
+[[nodiscard]] MonomerDatabase::string_t
+MonomerDatabase::getPdbCode(const std::string& helm_symbol,
+                            ChainType monomer_type)
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{

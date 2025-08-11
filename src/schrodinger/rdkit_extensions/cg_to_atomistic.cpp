@@ -110,7 +110,7 @@ void fillAttachmentPointMap(const RDKit::ROMol& new_monomer,
 void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
                     unsigned int residue_number, char chain_id,
                     ChainType chain_type, unsigned int current_residue,
-                    CgMonomerDatabase& db)
+                    MonomerDatabase& db)
 {
     std::string residue_name =
         (chain_type == ChainType::PEPTIDE) ? "UNK" : "UNL";
@@ -177,7 +177,7 @@ ChainType getChainType(std::string_view polymer_id)
 }
 
 AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
-                         const RDKit::RWMol& cg_mol,
+                         const RDKit::RWMol& monomer_mol,
                          const std::string& polymer_id,
                          std::vector<unsigned int>& remove_atoms, char chain_id,
                          unsigned int& total_residue_count)
@@ -187,11 +187,11 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
     // that should later be removed
     AttachmentMap attachment_point_map;
 
-    auto chain = get_polymer(cg_mol, polymer_id);
+    auto chain = get_polymer(monomer_mol, polymer_id);
     auto chain_type = getChainType(polymer_id);
     bool sanitize = false;
 
-    auto path = getCgMonomerDbPath();
+    auto path = getMonomerDbPath();
     if (!path.has_value()) {
         // This shouldn't happen since DEFAULT_MONOMER_DB_PATH_ENV_VAR points to
         // mmshare/data/helm/core_monomerlib.db and that should always exist
@@ -199,11 +199,11 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
             "Could not find monomer database, try setting env variable {}",
             CUSTOM_MONOMER_DB_PATH_ENV_VAR));
     }
-    CgMonomerDatabase db(*path);
+    MonomerDatabase db(*path);
 
     // Add the monomers to the atomistic mol
     for (const auto monomer_idx : chain.atoms) {
-        auto monomer = cg_mol.getAtomWithIdx(monomer_idx);
+        auto monomer = monomer_mol.getAtomWithIdx(monomer_idx);
         auto monomer_label = monomer->getProp<std::string>(ATOM_LABEL);
 
         std::string smiles;
@@ -214,7 +214,7 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
                 db.getMonomerSmiles(monomer_label, chain_type);
             if (!monomer_smiles) {
                 throw std::out_of_range(fmt::format(
-                    "Peptide Monomer {} not found in CG Monomer database",
+                    "Peptide Monomer {} not found in Monomer database",
                     monomer_label));
             }
             smiles = *monomer_smiles;
@@ -261,7 +261,7 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
     // Add the bonds between monomers and mark the replaced rgroups to be
     // removed
     for (const auto bond_idx : chain.bonds) {
-        auto bond = cg_mol.getBondWithIdx(bond_idx);
+        auto bond = monomer_mol.getBondWithIdx(bond_idx);
         auto [from_rgroup, to_rgroup] =
             getAttchpts(bond->getProp<std::string>(LINKAGE));
         auto from_res = get_residue_number(bond->getBeginAtom());
@@ -309,7 +309,7 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
 }
 } // namespace
 
-boost::shared_ptr<RDKit::RWMol> cgToAtomistic(const RDKit::ROMol& cg_mol)
+boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
 {
     auto atomistic_mol = boost::make_shared<RDKit::RWMol>();
 
@@ -318,15 +318,15 @@ boost::shared_ptr<RDKit::RWMol> cgToAtomistic(const RDKit::ROMol& cg_mol)
     std::vector<unsigned int> remove_atoms;
     unsigned int total_residue_count = 1; // 1-based index to label SUP groups
     char chain_id = 'A';
-    for (const auto& polymer_id : get_polymer_ids(cg_mol)) {
+    for (const auto& polymer_id : get_polymer_ids(monomer_mol)) {
         polymer_attachment_points[polymer_id] =
-            addPolymer(*atomistic_mol, cg_mol, polymer_id, remove_atoms,
+            addPolymer(*atomistic_mol, monomer_mol, polymer_id, remove_atoms,
                        chain_id, total_residue_count);
         ++chain_id;
     }
 
     // Add bonds from interpolymer connections
-    for (const auto bnd : cg_mol.bonds()) {
+    for (const auto bnd : monomer_mol.bonds()) {
         auto begin_atom = bnd->getBeginAtom();
         auto end_atom = bnd->getEndAtom();
         if (get_polymer_id(begin_atom) == get_polymer_id(end_atom)) {

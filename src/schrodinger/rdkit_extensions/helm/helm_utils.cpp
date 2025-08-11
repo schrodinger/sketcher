@@ -28,14 +28,14 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
-[[nodiscard]] bool is_coarse_grain_mol(const RDKit::ROMol& mol)
+[[nodiscard]] bool isMonomeric(const RDKit::ROMol& mol)
 {
     return mol.hasProp(HELM_MODEL);
 }
 
 static void check_if_input_is_atomistic(const RDKit::ROMol& mol)
 {
-    if (!is_coarse_grain_mol(mol)) {
+    if (!isMonomeric(mol)) {
         throw std::invalid_argument("Atomistic mols are currently unsupported");
     }
 }
@@ -158,14 +158,14 @@ extract_helm_polymers(const RDKit::ROMol& mol,
 }
 
 [[nodiscard]] std::vector<unsigned int>
-get_connections(const ::RDKit::ROMol& cg_mol)
+get_connections(const ::RDKit::ROMol& monomer_mol)
 {
-    // TODO: check that cg_mol is a valid CG molecule with chains and custom
-    // bonds assigned
+    // TODO: check that monomer_mol is a valid monomer mol with chains and
+    // custom bonds assigned
     std::vector<unsigned int> connections;
 
     // any bond with 'customBond'
-    for (const auto& bond : cg_mol.bonds()) {
+    for (const auto& bond : monomer_mol.bonds()) {
         if (bond->hasProp(CUSTOM_BOND)) {
             connections.push_back(bond->getIdx());
         }
@@ -175,10 +175,10 @@ get_connections(const ::RDKit::ROMol& cg_mol)
     return connections;
 }
 
-std::vector<std::string> get_polymer_ids(const RDKit::ROMol& cg_mol)
+std::vector<std::string> get_polymer_ids(const RDKit::ROMol& monomer_mol)
 {
     std::vector<std::string> polymer_ids;
-    for (auto atom : cg_mol.atoms()) {
+    for (auto atom : monomer_mol.atoms()) {
         if (is_dummy_atom(atom)) { // query/repeated monomer
             continue;
         }
@@ -192,10 +192,10 @@ std::vector<std::string> get_polymer_ids(const RDKit::ROMol& cg_mol)
     return polymer_ids;
 }
 
-Chain get_polymer(const RDKit::ROMol& cg_mol, std::string_view polymer_id)
+Chain get_polymer(const RDKit::ROMol& monomer_mol, std::string_view polymer_id)
 {
     std::vector<unsigned int> atoms;
-    for (auto atom : cg_mol.atoms()) {
+    for (auto atom : monomer_mol.atoms()) {
         if (is_dummy_atom(atom)) {
             continue;
         }
@@ -205,12 +205,12 @@ Chain get_polymer(const RDKit::ROMol& cg_mol, std::string_view polymer_id)
     }
     // Sort by get_residue_num
     std::sort(atoms.begin(), atoms.end(),
-              [&cg_mol](unsigned int a, unsigned int b) {
-                  return get_residue_number(cg_mol.getAtomWithIdx(a)) <
-                         get_residue_number(cg_mol.getAtomWithIdx(b));
+              [&monomer_mol](unsigned int a, unsigned int b) {
+                  return get_residue_number(monomer_mol.getAtomWithIdx(a)) <
+                         get_residue_number(monomer_mol.getAtomWithIdx(b));
               });
     std::vector<unsigned int> bonds;
-    for (auto bond : cg_mol.bonds()) {
+    for (auto bond : monomer_mol.bonds()) {
         if (is_dummy_bond(bond)) {
             continue;
         }
@@ -221,7 +221,7 @@ Chain get_polymer(const RDKit::ROMol& cg_mol, std::string_view polymer_id)
     }
 
     std::string annotation{};
-    for (const auto& sg : ::RDKit::getSubstanceGroups(cg_mol)) {
+    for (const auto& sg : ::RDKit::getSubstanceGroups(monomer_mol)) {
         if ((sg.getProp<std::string>("TYPE") != "COP") ||
             !sg.hasProp(ANNOTATION) || !sg.hasProp("ID")) {
             continue;

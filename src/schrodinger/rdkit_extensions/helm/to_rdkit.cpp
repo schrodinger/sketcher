@@ -36,8 +36,8 @@ using namespace schrodinger::rdkit_extensions;
  *          * repeated monomers with ambiguous repetitions are stored as SRU
  *          sgroups
  *          * NOTE: A hash of the monomer id is stored as the isotope number
- *            for the coarse grain atom. This allow us to use RDKit substructure
- *            search apis for coarse grain romols.
+ *            for the monomer. This allow us to use RDKit substructure
+ *            search apis for monomeric romols.
  *      * linkages:
  *          * are represented as bonds between atoms
  *          * annotations are stored as the ANNOTATION property on an annotated
@@ -103,7 +103,7 @@ helm_to_rdkit(const std::string& helm_string)
     add_polymer_groups_and_extended_annotations(
         *mol, parsed_info.polymer_groups, parsed_info.extended_annotations);
 
-    // store this as an easy way to identify coarse-grain mols
+    // store this as an easy way to identify monomeric mols
     mol->setProp<bool>(HELM_MODEL, true);
     return mol;
 }

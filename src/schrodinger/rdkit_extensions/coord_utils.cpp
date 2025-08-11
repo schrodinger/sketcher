@@ -43,8 +43,8 @@ bool coordinates_are_all_zero(const RDKit::Conformer& conf)
 unsigned int compute2DCoords(RDKit::ROMol& mol,
                              const std::vector<unsigned int>& frozen_ids)
 {
-    if (is_coarse_grain_mol(mol)) {
-        return compute_cg_coords(mol);
+    if (isMonomeric(mol)) {
+        return compute_monomer_mol_coords(mol);
     }
 
     RDDepict::Compute2DCoordParameters params;

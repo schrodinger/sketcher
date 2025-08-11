@@ -946,7 +946,7 @@ BOOST_AUTO_TEST_CASE(test_atom_mapping_rgroups)
     BOOST_TEST(*r_group_num == 1);
 }
 
-// Since we can convert monomeristic mols to atomistic mols, we shouldn't
+// Since we can convert monomeric mols to atomistic mols, we shouldn't
 // have any issues converting them to all supported mol formats.
 BOOST_DATA_TEST_CASE(test_converting_biologics_to_non_reaction_formats,
                      bdata::make(MOL_FORMATS), mol_format)
@@ -966,11 +966,11 @@ BOOST_DATA_TEST_CASE(test_converting_biologics_to_non_reaction_formats,
     }
 }
 
-// Since we can convert atomistic mols to monomeristic mols, we shouldn't
+// Since we can convert atomistic mols to monomeric mols, we shouldn't
 // have any issues converting them to sequence formats.
 //
 // NOTE: Choosing MAESTRO and PDB as the atomistic formats because they include
-// residue information, which is required for constructing monomeristic mols.
+// residue information, which is required for constructing monomeric mols.
 BOOST_DATA_TEST_CASE(test_converting_atomistic_biologics_to_seq_formats,
                      bdata::make(std::vector<Format>{
                          Format::MAESTRO,
@@ -978,9 +978,9 @@ BOOST_DATA_TEST_CASE(test_converting_atomistic_biologics_to_seq_formats,
                      }),
                      mol_format)
 {
-    auto monomeristic_mol = to_rdkit("PEPTIDE1{A.C.G}$$$$V2.0", Format::HELM);
+    auto monomeric_mol = to_rdkit("PEPTIDE1{A.C.G}$$$$V2.0", Format::HELM);
     auto atomistic_mol =
-        to_rdkit(to_string(*monomeristic_mol, mol_format), mol_format);
+        to_rdkit(to_string(*monomeric_mol, mol_format), mol_format);
     BOOST_TEST(to_string(*atomistic_mol, Format::HELM) ==
                "PEPTIDE1{A.C.G}$$$$V2.0");
     BOOST_TEST(to_string(*atomistic_mol, Format::FASTA) == ">\nACG\n");

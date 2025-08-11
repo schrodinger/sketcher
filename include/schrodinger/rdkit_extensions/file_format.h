@@ -61,7 +61,7 @@ RDKIT_EXTENSIONS_API std::ostream&
 operator<<(std::ostream& os, const CompressionType& compression_type);
 
 /**
- * All supported formats for standard atomistic molecules, monomeristic
+ * All supported formats for standard atomistic molecules, monomeric
  * sequences, and chemical reactions
  */
 extern RDKIT_EXTENSIONS_API const std::vector<Format> MOL_FORMATS;

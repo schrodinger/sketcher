@@ -16,7 +16,7 @@ const std::string SGROUP_PROP_TYPE{"TYPE"};
 
 /**
  * Translate SUP (Super Atom) substance groups into PDB residue
- * info on atoms so that atomistic -> monomeristic conversion
+ * info on atoms so that atomistic -> monomeric conversion
  * can be done.
  *
  * Since there is no guarentee that SUP groups cover the entire structure,

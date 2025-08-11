@@ -2459,7 +2459,7 @@ void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
     // get the starting index for the atoms and bonds to be inserted
     unsigned int old_num_atoms = m_mol.getNumAtoms();
     unsigned int old_num_bonds = m_mol.getNumBonds();
-    bool is_monomeric = rdkit_extensions::is_coarse_grain_mol(mol);
+    bool is_monomeric = rdkit_extensions::isMonomeric(mol);
     m_mol.insertMol(mol);
 
     for (auto& sgroup : getSubstanceGroups(m_mol)) {

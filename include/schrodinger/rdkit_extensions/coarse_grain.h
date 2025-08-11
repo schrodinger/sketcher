@@ -1,8 +1,13 @@
 /* -------------------------------------------------------------------------
- * Declares schrodinger::rdkit_extensions:: tools for Coarse-grain ROMols
+ * Declares schrodinger::rdkit_extensions:: tools for Monomeric ROMols
  *
- * A "coarse grain" (CG) ROMol uses RDKit atoms to represent monomers. Chains
- * are represented by COP Substance Groups on the ROMol.
+ * A "MonomerMol" is an ROMol that uses RDKit atoms to represent monomers.
+ Chains
+ * are represented via the PDBAtomResidueInfo structs on atoms, and linkages are
+ * stored as a LINKAGE property on bonds in the form of RX-RY, where X is the
+ attachment
+ * point used on the begin monomer and Y is the attachment point used on the
+ monomer.
  *
  * For use with functionality in schrodinger::rdkit_extensions
  *
@@ -43,7 +48,7 @@ RDKIT_EXTENSIONS_API std::string toString(ChainType chain_type);
 /*
  * Add a monomer to the molecule
  *
- * @param cg_mol The CG to add the monomer to
+ * @param monomer_mol The monomeric molecule to add the monomer to
  * @param name The name of the monomer
  * @param residue_number The residue number of the monomer
  * @param chain_id The chain ID of the monomer
@@ -52,21 +57,21 @@ RDKIT_EXTENSIONS_API std::string toString(ChainType chain_type);
  * @return The index of the added monomer
  */
 RDKIT_EXTENSIONS_API size_t addMonomer(
-    RDKit::RWMol& cg_mol, std::string_view name, int residue_number,
+    RDKit::RWMol& monomer_mol, std::string_view name, int residue_number,
     std::string_view chain_id, MonomerType monomer_type = MonomerType::REGULAR);
 
 /*
  * Add a monomer to the molecule. Overload that uses the last monomer
  * added to the molecule to determine the chain ID and residue number.
  *
- * @param cg_mol The CG to add the monomer to
+ * @param monomer_mol The monomeric molecule to add the monomer to
  * @param name The name of the monomer
  * @param monomer_type The type of monomer to add
  *
  * @return The index of the added monomer
  */
 RDKIT_EXTENSIONS_API size_t
-addMonomer(RDKit::RWMol& cg_mol, std::string_view name,
+addMonomer(RDKit::RWMol& monomer_mol, std::string_view name,
            MonomerType monomer_type = MonomerType::REGULAR);
 
 /*

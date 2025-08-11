@@ -50,8 +50,7 @@ struct Chain {
     // std::string polymer_id;
 };
 
-[[nodiscard]] RDKIT_EXTENSIONS_API bool
-is_coarse_grain_mol(const RDKit::ROMol& mol);
+[[nodiscard]] RDKIT_EXTENSIONS_API bool isMonomeric(const RDKit::ROMol& mol);
 
 // Helper apis to get atom indices belonging to the inputs polymers
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
@@ -63,7 +62,7 @@ get_atoms_in_polymer_chain(const RDKit::ROMol& mol,
 get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
                             const std::vector<std::string_view>& polymer_ids);
 
-// Extracts polymers with the provided ids from a coarse grain mol. Polymer
+// Extracts polymers with the provided ids from a monomer mol. Polymer
 // information that span across non-selected polymers will be deleted.
 //
 // NOTE: Polymer groups are unsupported
@@ -86,25 +85,26 @@ get_residue_number(const ::RDKit::Atom* atom);
  * assigned to the atoms. If this CG molecule was not created using the HELM
  * parser, assign_chains needs to be called first.
  *
- * @param cg_mol Coarse grain molecule
+ * @param monomer_mol monomeric molecule to extract connections from
  * @return All 'connection' bonds that will be in the connection section of
  * a HELM string
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
-get_connections(const ::RDKit::ROMol& cg_mol);
+get_connections(const ::RDKit::ROMol& monomer_mol);
 
 std::vector<std::string>
-    RDKIT_EXTENSIONS_API get_polymer_ids(const RDKit::ROMol& cg_mol);
+    RDKIT_EXTENSIONS_API get_polymer_ids(const RDKit::ROMol& monomer_mol);
 
-Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& cg_mol,
+Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& monomer_mol,
                                        std::string_view polymer_id);
 
 /**
- * @param cg_mol coarse grain molecule
+ * @param monomer_mol monomeric molecule
  * @return The id of the conformer added to the molecule with the computed
  * coordinates
  */
-unsigned int RDKIT_EXTENSIONS_API compute_cg_coords(RDKit::ROMol& cg_mol);
+unsigned int RDKIT_EXTENSIONS_API
+compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
 
 /**
  * Get the HELM supplementary info substance group
