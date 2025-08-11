@@ -68,13 +68,6 @@ jobs:
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
-      - name: Configure Node.js for WASM tests
-        if: matrix.build-output == 'wasm'
-        # CMake uses Node.js to run the tests on emscripten builds
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.14.0
-
       - name: Configure Dependency CMake
         run: |
             ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
@@ -203,6 +196,13 @@ jobs:
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }}
+
+      - name: Configure Node.js for WASM tests
+        if: matrix.build-output == 'wasm'
+        # CMake uses Node.js to run the tests on emscripten builds
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.14.0
 
       - name: Run tests
         working-directory: build
