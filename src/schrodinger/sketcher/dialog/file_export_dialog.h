@@ -40,6 +40,9 @@ class SKETCHER_API FileExportDialog : public ModalDialog
     QString exportTextRequested(rdkit_extensions::Format format) const;
 
   protected:
+    void reject() override;
+    void showEvent(QShowEvent* event) override;
+
     /**
      * @return serialized structure from the current scene to write to disk
      */
@@ -55,8 +58,18 @@ class SKETCHER_API FileExportDialog : public ModalDialog
      */
     void exportFile();
 
+    /**
+     * Sets the export formats in the dialog based on whether the model
+     * contains a reaction or not.
+     * @param has_reaction whether the model contains a reaction
+     */
+    virtual void setIsReactionExport(bool has_reaction);
+
     std::unique_ptr<Ui::FileExportDialog> m_ui;
     bool m_model_has_reaction = false;
+    int m_format_index_at_start = 0;
+    QString m_filename_at_start;
+    SketcherModel* m_model = nullptr;
 };
 
 } // namespace sketcher

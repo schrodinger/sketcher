@@ -126,6 +126,27 @@ void FileSaveImageDialog::onRenderOptionsChanged()
                                           width + " x " + height + " px");
 }
 
+void FileSaveImageDialog::reject()
+{
+    m_options_popup->m_ui->width_sb->setValue(m_image_width_at_start);
+    m_options_popup->m_ui->height_sb->setValue(m_image_height_at_start);
+    m_options_popup->m_ui->transparent_cb->setChecked(
+        m_image_transparency_at_start);
+    FileExportDialog::reject();
+}
+
+void FileSaveImageDialog::showEvent(QShowEvent* event)
+{
+    ModalDialog::showEvent(event);
+
+    // Store the current image options to restore them later
+    m_image_width_at_start = m_options_popup->m_ui->width_sb->value();
+    m_image_height_at_start = m_options_popup->m_ui->height_sb->value();
+    m_image_transparency_at_start =
+        m_options_popup->m_ui->transparent_cb->isChecked();
+    FileExportDialog::showEvent(event);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
 

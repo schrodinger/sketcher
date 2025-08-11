@@ -26,6 +26,8 @@ class SKETCHER_API FileSaveImagePopup : public SketcherView
 {
     Q_OBJECT
 
+    friend class FileSaveImageDialog; // to access m_ui
+
   public:
     FileSaveImagePopup(QWidget* parent = nullptr,
                        SketcherModel* model = nullptr);
@@ -73,6 +75,15 @@ class SKETCHER_API FileSaveImageDialog : public FileExportDialog
                                     const RenderOptions& opts) const;
 
   private:
+    void reject() override;
+    void showEvent(QShowEvent* event) override;
+
+    /**
+     * Override this function to a no-op since this widget doesn't have
+     * different states for reaction and non-reaction export.
+     */
+    void setIsReactionExport(bool has_reaction) override{};
+
     /**
      * @return serialized image from the current scene to write to disk
      */
@@ -91,6 +102,9 @@ class SKETCHER_API FileSaveImageDialog : public FileExportDialog
     FileSaveImagePopup* m_options_popup = nullptr;
     QWidget* m_options_wdg = nullptr;
     std::unique_ptr<Ui::FileSaveImageWidget> m_options_wdg_ui;
+    int m_image_width_at_start = 0;
+    int m_image_height_at_start = 0;
+    bool m_image_transparency_at_start = false;
 };
 
 } // namespace sketcher

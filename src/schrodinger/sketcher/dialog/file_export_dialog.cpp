@@ -31,7 +31,7 @@ const auto get_format_list = [](bool has_reaction) {
 
 FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     ModalDialog(parent),
-    m_model_has_reaction(model->hasReaction())
+    m_model(model)
 {
     // ModalDialog sets WA_DeleteOnClose to true, but we want to keep this class
     // when the dialog is closed, so we override it here
@@ -49,26 +49,56 @@ FileExportDialog::FileExportDialog(SketcherModel* model, QWidget* parent) :
     // Connect signals and slots
     connect(m_ui->export_btn, &QPushButton::clicked, this,
             &FileExportDialog::exportFile);
-    connect(m_ui->cancel_btn, &QPushButton::clicked, this, &QDialog::reject);
+    connect(m_ui->cancel_btn, &QPushButton::clicked, this,
+            &FileExportDialog::reject);
 
     m_ui->filename_le->setText(DEFAULT_FILENAME);
 
-    // initialize the format combo
-    for (const auto& [fmt, label, extensions] :
-         get_format_list(m_model_has_reaction)) {
+    setIsReactionExport(model->hasReaction());
+}
+
+FileExportDialog::~FileExportDialog() = default;
+
+void FileExportDialog::setIsReactionExport(bool has_reaction)
+{
+    if (m_model_has_reaction == has_reaction &&
+        m_ui->format_combo->count() > 0) {
+        return; // format_combo has been set up and we're not changing the
+                // reaction state, so nothing to do
+    }
+    m_ui->format_combo->clear();
+    for (const auto& [fmt, label, extensions] : get_format_list(has_reaction)) {
         if (!extensions.empty()) {
             auto filter = get_filter_name(label, extensions);
             m_ui->format_combo->addItem(filter, QVariant::fromValue(fmt));
         }
     }
+    // reset the format index
+    m_format_index_at_start = 0;
+    m_model_has_reaction = has_reaction;
 }
-
-FileExportDialog::~FileExportDialog() = default;
 
 QByteArray FileExportDialog::getFileContent() const
 {
     auto combo_format = m_ui->format_combo->currentData().value<Format>();
     return emit exportTextRequested(combo_format).toUtf8();
+}
+
+void FileExportDialog::reject()
+{
+    m_ui->format_combo->setCurrentIndex(m_format_index_at_start);
+    m_ui->filename_le->setText(m_filename_at_start);
+    ModalDialog::reject();
+}
+
+void FileExportDialog::showEvent(QShowEvent* event)
+{
+    setIsReactionExport(m_model->hasReaction());
+    ModalDialog::showEvent(event);
+
+    // Store the current format index and filename to restore them later
+    m_format_index_at_start = m_ui->format_combo->currentIndex();
+    m_filename_at_start = m_ui->filename_le->text();
 }
 
 std::vector<std::string> FileExportDialog::getValidExtensions() const
