@@ -136,8 +136,15 @@ void AtomItem::updateCachedData()
     std::tie(m_main_label_text, m_squiggle_path, m_label_is_visible,
              m_valence_error_is_visible, needs_additional_labels, show_Hs,
              m_query_label_text) = determineLabelType();
+
     if (m_label_is_visible) {
-        m_pen.setColor(m_settings.getAtomColor(m_atom->getAtomicNum()));
+        // if USER_COLOR is present override the color with USER_COLOR
+        QColor user_color;
+        m_atom->getPropIfPresent(USER_COLOR, user_color);
+        m_pen.setColor(user_color.isValid()
+                           ? user_color
+                           : m_settings.getAtomColor(m_atom->getAtomicNum()));
+
         m_main_label_rect =
             make_text_rect(m_fonts.m_main_label_fm, m_main_label_text);
         m_main_label_rect.moveCenter(QPointF(0, 0));
