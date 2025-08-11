@@ -1,4 +1,4 @@
-#include "schrodinger/rdkit_extensions/cg_conversions.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 
 #include <queue>
 #include <span>
@@ -15,8 +15,8 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
-#include "schrodinger/rdkit_extensions/cg_monomer_database.h"
-#include "schrodinger/rdkit_extensions/coarse_grain.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/sup_utils.h"

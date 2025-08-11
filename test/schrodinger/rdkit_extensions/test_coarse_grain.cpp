@@ -15,8 +15,8 @@
 #include <rdkit/RDGeneral/RDLog.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
-#include "schrodinger/rdkit_extensions/coarse_grain.h"
-#include "schrodinger/rdkit_extensions/cg_conversions.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "test_common.h"

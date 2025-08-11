@@ -1,4 +1,4 @@
-#include "schrodinger/rdkit_extensions/cg_monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 
 #include <array>
 #include <memory>
@@ -12,7 +12,7 @@
 #include <boost/filesystem.hpp>
 #include <fmt/format.h>
 
-#include "schrodinger/rdkit_extensions/coarse_grain.h" // ChainType
+#include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
 
 #include "sqlite3.h"
 

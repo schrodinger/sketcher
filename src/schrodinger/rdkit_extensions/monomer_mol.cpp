@@ -1,4 +1,4 @@
-#include "schrodinger/rdkit_extensions/coarse_grain.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/ROMol.h>

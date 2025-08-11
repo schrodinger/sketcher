@@ -1,4 +1,4 @@
-#include "schrodinger/rdkit_extensions/cg_conversions.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 
 #include <queue>
 #include <unordered_map>
@@ -15,8 +15,8 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
-#include "schrodinger/rdkit_extensions/cg_monomer_database.h"
-#include "schrodinger/rdkit_extensions/coarse_grain.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 
 namespace schrodinger

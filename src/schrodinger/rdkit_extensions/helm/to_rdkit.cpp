@@ -19,7 +19,7 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
-#include "schrodinger/rdkit_extensions/coarse_grain.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 using namespace schrodinger::rdkit_extensions;
 

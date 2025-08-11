@@ -37,7 +37,7 @@
 #include <zstd.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
-#include "schrodinger/rdkit_extensions/cg_conversions.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/fasta/to_rdkit.h"
