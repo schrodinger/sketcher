@@ -3,10 +3,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/Bond.h"
-#include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/sketcher_model2.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/ui/ui_set_atom_widget.h"
 #include "schrodinger/sketcher/widget/atom_query_popup.h"
@@ -29,20 +26,14 @@ namespace sketcher
 class TestSetAtomWidget : public SetAtomWidget
 {
   public:
-    TestSetAtomWidget()
+    TestSetAtomWidget(SketcherModel* model)
     {
-        setModel(new SketcherModel2(this));
+        setModel(model);
         m_atom_query_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
     }
     using SetAtomWidget::getElementForButton;
-    std::unique_ptr<Ui::SetAtomWidget>& getUI()
-    {
-        return ui;
-    }
-    boost::bimap<QAbstractButton*, Element>& getButtonElementBimap()
-    {
-        return m_button_element_bimap;
-    }
+    using SetAtomWidget::m_button_element_bimap;
+    using SetAtomWidget::ui;
 
   public slots:
     using SetAtomWidget::onAtomButtonClicked;
@@ -56,14 +47,14 @@ class TestSetAtomWidget : public SetAtomWidget
 bool view_is_synchronized_to_model(TestSetAtomWidget& wdg)
 {
     auto model = wdg.getModel();
-    auto& ui = wdg.getUI();
+    auto& ui = wdg.ui;
     QAbstractButton* exp_button = nullptr;
     auto draw_tool = model->getDrawTool();
     if (draw_tool == DrawTool::ATOM) {
         // The "atom" draw tool is selected, and we must dig deeper
         auto atom_tool = model->getAtomTool();
         if (atom_tool == AtomTool::ELEMENT) {
-            auto bimap = wdg.getButtonElementBimap();
+            auto bimap = wdg.m_button_element_bimap;
             auto element = model->getElement();
             if (bimap.right.count(element) == 1) {
                 exp_button = bimap.right.at(element);
@@ -89,16 +80,16 @@ bool view_is_synchronized_to_model(TestSetAtomWidget& wdg)
  */
 BOOST_AUTO_TEST_CASE(button_check_state)
 {
-
-    TestSetAtomWidget wdg;
-    auto model = wdg.getModel();
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestSetAtomWidget wdg(model);
 
     // setModel() should synchronize the view and model immediately
     BOOST_TEST(view_is_synchronized_to_model(wdg));
 
     // Try interacting with subwidgets of the view. Synchronization should occur
     // automatically.
-    auto group = wdg.getUI()->atom_group;
+    auto group = wdg.ui->atom_group;
     for (auto button : group->buttons()) {
         button->click();
         BOOST_TEST(view_is_synchronized_to_model(wdg));
@@ -149,16 +140,16 @@ BOOST_AUTO_TEST_CASE(button_check_state)
  */
 BOOST_AUTO_TEST_CASE(modular_button)
 {
-
-    TestSetAtomWidget wdg;
-    auto model = wdg.getModel();
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestSetAtomWidget wdg(model);
 
     std::vector<AtomQuery> atom_queries = {
         AtomQuery::AH, AtomQuery::A,  AtomQuery::Q, AtomQuery::QH,
         AtomQuery::M,  AtomQuery::MH, AtomQuery::X, AtomQuery::XH,
     };
 
-    auto button = wdg.getUI()->atom_query_btn;
+    auto button = wdg.ui->atom_query_btn;
 
     for (auto& atom_query : atom_queries) {
         auto int_value = static_cast<int>(atom_query);
@@ -175,37 +166,26 @@ BOOST_AUTO_TEST_CASE(modular_button)
  */
 BOOST_AUTO_TEST_CASE(enabled)
 {
+    auto test_scene = TestScene::getScene();
+    auto mol_model = test_scene->m_mol_model;
+    TestSetAtomWidget wdg(test_scene->m_sketcher_model);
+    import_mol_text(mol_model, "CC");
 
-    TestSetAtomWidget wdg;
-    auto model = wdg.getModel();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    auto atom = mol_model->getMol()->getAtomWithIdx(0);
+    auto bond = mol_model->getMol()->getBondWithIdx(0);
 
-    std::unordered_set<QGraphicsItem*> empty_sel;
-    std::vector<sketcherAtom*> atoms;
-    scene.getAtoms(atoms);
-    std::unordered_set<QGraphicsItem*> atom_sel(atoms.begin(), atoms.end());
-    std::vector<sketcherBond*> bonds;
-    scene.getBonds(bonds);
-    std::unordered_set<QGraphicsItem*> bond_sel = {bonds.begin(), bonds.end()};
-    std::unordered_set<QGraphicsItem*> both_sel = {atoms.begin(), atoms.end()};
-    for (auto bond : bonds) {
-        both_sel.insert(bond);
-    }
-    BOOST_TEST(!atom_sel.empty());
-    BOOST_TEST(!bond_sel.empty());
-
-    std::vector<std::unordered_set<QGraphicsItem*>> selections = {
-        empty_sel, atom_sel, bond_sel, both_sel};
-
-    for (auto selection : selections) {
-        scene.setSelection(selection);
-        bool no_selection = selection == empty_sel;
-        bool atom_selection = (selection == atom_sel || selection == both_sel);
-        bool exp_enabled = (no_selection || atom_selection);
-        BOOST_TEST(wdg.isEnabled() == exp_enabled);
-    }
+    // Empty selection
+    mol_model->select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(wdg.isEnabled());
+    // Atom-only selection
+    mol_model->select({atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(wdg.isEnabled());
+    // Bond-only selection
+    mol_model->select({}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(!wdg.isEnabled());
+    // Both atoms and bonds selected
+    mol_model->select({atom}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(wdg.isEnabled());
 }
 
 /**
@@ -214,23 +194,21 @@ BOOST_AUTO_TEST_CASE(enabled)
  */
 BOOST_AUTO_TEST_CASE(model_signals)
 {
-
-    TestSetAtomWidget wdg;
-    auto model = wdg.getModel();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestSetAtomWidget wdg(model);
+    import_mol_text(test_scene->m_mol_model, "CC");
 
     qRegisterMetaType<ModelKey>("ModelKey");
     qRegisterMetaType<std::unordered_set<ModelKey>>(
         "std::unordered_set<ModelKey>");
 
-    QSignalSpy pinged_spy(model, &SketcherModel2::valuePinged);
-    QSignalSpy changed_spy(model, &SketcherModel2::valuesChanged);
+    QSignalSpy pinged_spy(model, &SketcherModel::valuePinged);
+    QSignalSpy changed_spy(model, &SketcherModel::valuesChanged);
 
     // If the user clicks a button, we expect the "changed" signals to be
     // grouped together and the "set" signals to be separate.
-    wdg.getUI()->f_btn->click();
+    wdg.ui->f_btn->click();
     BOOST_TEST(changed_spy.count() == 1);
     BOOST_TEST(pinged_spy.count() == 3);
 
@@ -260,7 +238,7 @@ BOOST_AUTO_TEST_CASE(model_signals)
 
     // Now try with an atom query button
     pinged_spy.clear();
-    wdg.getUI()->atom_query_btn->click();
+    wdg.ui->atom_query_btn->click();
     BOOST_TEST(changed_spy.count() == 1);
     BOOST_TEST(pinged_spy.count() == 3);
 
@@ -283,8 +261,8 @@ BOOST_AUTO_TEST_CASE(model_signals)
         std::all_of(changed_keys.begin(), changed_keys.end(), is_pinged_key));
 
     // Test behavior with active selection so that buttons are enabled
-    auto& ui = wdg.getUI();
-    scene.setSelection(scene.getObjects());
+    auto& ui = wdg.ui;
+    test_scene->m_mol_model->selectAll();
     pinged_spy.clear();
     changed_spy.clear();
     auto model_element = model->getElement();
@@ -317,12 +295,11 @@ BOOST_AUTO_TEST_CASE(model_signals)
  */
 BOOST_AUTO_TEST_CASE(last_picked_element_button)
 {
-
-    TestSetAtomWidget wdg;
-    auto model = wdg.getModel();
-    auto& ui = wdg.getUI();
+    SketcherModel model;
+    TestSetAtomWidget wdg(&model);
+    auto& ui = wdg.ui;
     auto button = ui->last_picked_element_btn;
-    auto button_element_bimap = wdg.getButtonElementBimap();
+    auto button_element_bimap = wdg.m_button_element_bimap;
 
     std::unordered_set<int> other_button_atomic_numbers;
     for (auto& pair : button_element_bimap) {
@@ -331,7 +308,7 @@ BOOST_AUTO_TEST_CASE(last_picked_element_button)
 
     int exp_atomic_number = static_cast<int>(button->getElement());
     for (int atomic_number = 1; atomic_number < 119; ++atomic_number) {
-        model->pingValue(ModelKey::ELEMENT, QVariant(atomic_number));
+        model.pingValue(ModelKey::ELEMENT, QVariant(atomic_number));
         // The element "last picked" should only correspond to atoms
         // not in the set atom widget panel.
         // No H(1), C(6), N(7), O(8),  F(9), P(15), S(16), Cl(17)

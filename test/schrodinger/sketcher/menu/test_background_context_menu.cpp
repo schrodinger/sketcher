@@ -2,9 +2,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "../test_sketcherScene.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
@@ -44,46 +44,10 @@ void check_nonempty_actions(TestBackgroundContextMenu& menu, bool exp_enabled)
 /**
  * Verify that the menu is properly updated to match the state of the model.
  */
-BOOST_AUTO_TEST_CASE(test_updateActions_deprecated)
-{
-    testSketcherScene scene;
-    auto model = scene.getModel();
-    TestBackgroundContextMenu menu(model);
-    scene.connectContextMenu(menu);
-
-    menu.updateActions();
-    BOOST_TEST(!menu.m_undo_act->isEnabled());
-    BOOST_TEST(!menu.m_redo_act->isEnabled());
-    check_nonempty_actions(menu, false);
-
-    scene.importText("CCCC");
-    // Use updateActions() as a placeholder for showEvent()
-    menu.updateActions();
-    BOOST_TEST(menu.m_undo_act->isEnabled());
-    BOOST_TEST(!menu.m_redo_act->isEnabled());
-    check_nonempty_actions(menu, true);
-
-    scene.undo();
-    menu.updateActions();
-    BOOST_TEST(!menu.m_undo_act->isEnabled());
-    BOOST_TEST(menu.m_redo_act->isEnabled());
-    check_nonempty_actions(menu, false);
-
-    scene.redo();
-    menu.updateActions();
-    BOOST_TEST(menu.m_undo_act->isEnabled());
-    BOOST_TEST(!menu.m_redo_act->isEnabled());
-    check_nonempty_actions(menu, true);
-
-    BOOST_TEST(menu.m_select_all_act->isEnabled() == true);
-}
-
-/**
- * Verify that the menu is properly updated to match the state of the model.
- */
 BOOST_AUTO_TEST_CASE(test_updateActions)
 {
     TestSketcherWidget sk;
+    auto mol_model = sk.m_mol_model;
     TestBackgroundContextMenu menu(sk.m_sketcher_model);
 
     menu.updateActions();
@@ -91,7 +55,8 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     BOOST_TEST(!menu.m_redo_act->isEnabled());
     check_nonempty_actions(menu, false);
 
-    sk.addFromString("CCCC");
+    import_mol_text(mol_model, "CCCC");
+    // Use updateActions() as a placeholder for showEvent()
     menu.updateActions();
     BOOST_TEST(menu.m_undo_act->isEnabled());
     BOOST_TEST(!menu.m_redo_act->isEnabled());

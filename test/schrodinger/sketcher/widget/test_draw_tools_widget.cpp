@@ -5,10 +5,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/Atom.h"
-#include "schrodinger/sketcher/Bond.h"
-#include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/sketcher_model2.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_draw_tools_widget.h"
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
 #include "schrodinger/sketcher/widget/bond_query_popup.h"
@@ -32,21 +29,18 @@ namespace sketcher
 class TestDrawToolsWidget : public DrawToolsWidget
 {
   public:
-    TestDrawToolsWidget()
+    TestDrawToolsWidget(SketcherModel* model)
     {
-        setModel(new SketcherModel2(this));
+        setModel(model);
         m_bond_order_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
         m_bond_query_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
         m_stereo_bond1_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
         m_stereo_bond2_wdg->setAttribute(Qt::WA_DontShowOnScreen, true);
     }
 
-    std::unique_ptr<Ui::DrawToolsWidget>& getUI()
-    {
-        return ui;
-    }
     using DrawToolsWidget::getBondButton;
     using DrawToolsWidget::getCheckableButtons;
+    using DrawToolsWidget::ui;
 
   public slots:
     using DrawToolsWidget::onBondButtonClicked;
@@ -57,18 +51,16 @@ class TestDrawToolsWidget : public DrawToolsWidget
  */
 BOOST_AUTO_TEST_CASE(bond_buttons)
 {
-
-    TestDrawToolsWidget wdg;
-    auto model = wdg.getModel();
-    auto& ui = wdg.getUI();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestDrawToolsWidget wdg(model);
+    auto& ui = wdg.ui;
+    import_mol_text(test_scene->m_mol_model, "CC");
     qRegisterMetaType<ModelKey>("ModelKey");
     qRegisterMetaType<std::unordered_set<ModelKey>>(
         "std::unordered_set<ModelKey>");
-    QSignalSpy pinged_spy(model, &SketcherModel2::valuePinged);
-    QSignalSpy changed_spy(model, &SketcherModel2::valuesChanged);
+    QSignalSpy pinged_spy(model, &SketcherModel::valuePinged);
+    QSignalSpy changed_spy(model, &SketcherModel::valuesChanged);
 
     // First, test the non-modal buttons (because they are easy)
     pinged_spy.clear();
@@ -170,7 +162,7 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
     }
 
     // If an active selection, clicking buttons should not change the model
-    scene.setSelection(scene.getObjects());
+    test_scene->m_mol_model->selectAll();
     pinged_spy.clear();
     changed_spy.clear();
 
@@ -200,10 +192,10 @@ BOOST_AUTO_TEST_CASE(bond_buttons)
  */
 BOOST_AUTO_TEST_CASE(other_buttons)
 {
-
-    TestDrawToolsWidget wdg;
-    auto model = wdg.getModel();
-    auto& ui = wdg.getUI();
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestDrawToolsWidget wdg(model);
+    auto& ui = wdg.ui;
     auto group = ui->charge_group;
 
     auto buttons = {ui->increase_charge_btn, ui->decrease_charge_btn,
@@ -256,79 +248,59 @@ BOOST_AUTO_TEST_CASE(other_buttons)
  */
 BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
 {
+    auto test_scene = TestScene::getScene();
+    auto mol_model = test_scene->m_mol_model;
+    TestDrawToolsWidget wdg(test_scene->m_sketcher_model);
+    import_mol_text(mol_model, "C** |$;;_R1$|");
 
-    TestDrawToolsWidget wdg;
-    auto model = wdg.getModel();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    auto atom = mol_model->getMol()->getAtomWithIdx(0);
+    auto query = mol_model->getMol()->getAtomWithIdx(1);
+    auto rgroup = mol_model->getMol()->getAtomWithIdx(2);
+    auto bond = mol_model->getMol()->getBondWithIdx(0);
 
-    std::unordered_set<QGraphicsItem*> empty_sel;
-    std::vector<sketcherAtom*> atoms;
-    scene.getAtoms(atoms);
-
-    std::unordered_set<QGraphicsItem*> atom_sel(atoms.begin(), atoms.end());
-
-    // Add a few non-atom atom objects for testing purposes
-    sketcherAtom query_atom;
-    sketcherAtom rgroup_atom;
-    query_atom.setAtomType(Q_QUERY_KEY);
-    rgroup_atom.setAtomType(R_GROUP_KEY);
-    scene.addAtom(&query_atom);
-    scene.addAtom(&rgroup_atom);
-
-    std::unordered_set<QGraphicsItem*> nonatom_sel = {&query_atom,
-                                                      &rgroup_atom};
-    std::unordered_set<QGraphicsItem*> atom_obj_sel = {atoms.begin(),
-                                                       atoms.end()};
-    for (auto atom : nonatom_sel) {
-        atom_obj_sel.insert(atom);
-    }
-    std::vector<sketcherBond*> bonds;
-    scene.getBonds(bonds);
-    std::unordered_set<QGraphicsItem*> bond_sel = {bonds.begin(), bonds.end()};
-    std::unordered_set<QGraphicsItem*> all_sel = {atoms.begin(), atoms.end()};
-    for (auto bond : bonds) {
-        all_sel.insert(bond);
-    }
-    BOOST_TEST(!atom_sel.empty());
-    BOOST_TEST(!bond_sel.empty());
-    std::array<std::unordered_set<QGraphicsItem*>, 6> selections = {
-        empty_sel, atom_sel, nonatom_sel, atom_obj_sel, bond_sel, all_sel};
-
-    auto& ui = wdg.getUI();
+    auto& ui = wdg.ui;
     std::array<QWidget*, 3> other_widgets = {
         ui->increase_charge_btn, ui->decrease_charge_btn, ui->explicit_h_btn};
     std::array<QWidget*, 5> bond_widgets = {
         ui->single_bond_btn, ui->bond_order_btn, ui->bond_query_btn,
         ui->stereo_bond1_btn, ui->stereo_bond2_btn};
 
-    std::function<bool(QWidget*)> is_enabled = [](QWidget* widget) {
-        return widget->isEnabled();
+    auto test_enabled = [](auto widgets, auto enabled) {
+        BOOST_TEST(std::all_of(
+            widgets.cbegin(), widgets.cend(),
+            [enabled](auto widget) { return widget->isEnabled() == enabled; }));
     };
-    std::function<bool(QWidget*)> is_not_enabled = [](QWidget* widget) {
-        return !widget->isEnabled();
-    };
 
-    for (auto selection : selections) {
-        scene.setSelection(selection);
+    // No selection
+    mol_model->clearSelection();
+    test_enabled(other_widgets, true);
+    test_enabled(bond_widgets, true);
 
-        // Test atom-dependent widgets
-        bool atom_selected =
-            (selection == atom_sel || selection == nonatom_sel ||
-             selection == atom_obj_sel || selection == all_sel);
-        bool exp_enabled = (!model->hasActiveSelection() || atom_selected);
-        std::function<bool(QWidget*)> fn =
-            exp_enabled ? is_enabled : is_not_enabled;
-        BOOST_TEST(
-            std::all_of(other_widgets.cbegin(), other_widgets.cend(), fn));
+    // Real atoms
+    mol_model->select({atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, true);
+    test_enabled(bond_widgets, false);
 
-        // Test bond-dependent widgets
-        bool bond_selected = (selection == bond_sel || selection == all_sel);
-        exp_enabled = (!model->hasActiveSelection() || bond_selected);
-        fn = exp_enabled ? is_enabled : is_not_enabled;
-        BOOST_TEST(std::all_of(bond_widgets.cbegin(), bond_widgets.cend(), fn));
-    }
+    // Non-atoms
+    mol_model->select({query, rgroup}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, true);
+    test_enabled(bond_widgets, false);
+
+    // All atom objects
+    mol_model->select({atom, query, rgroup}, {}, {}, {},
+                      SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, true);
+    test_enabled(bond_widgets, false);
+
+    // Bond
+    mol_model->select({}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, false);
+    test_enabled(bond_widgets, true);
+
+    // Everything
+    mol_model->selectAll();
+    test_enabled(other_widgets, true);
+    test_enabled(bond_widgets, true);
 }
 
 /**
@@ -338,9 +310,9 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
  */
 BOOST_AUTO_TEST_CASE(getBondButton)
 {
-
-    TestDrawToolsWidget wdg;
-    auto& ui = wdg.getUI();
+    auto test_scene = TestScene::getScene();
+    TestDrawToolsWidget wdg(test_scene->m_sketcher_model);
+    auto& ui = wdg.ui;
 
     std::unordered_map<BondTool, QAbstractButton*> bondtool_btn_map = {
         {BondTool::SINGLE, ui->single_bond_btn},

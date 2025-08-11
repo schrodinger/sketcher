@@ -2,7 +2,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_ring_tool_widget.h"
 #include "schrodinger/sketcher/widget/ring_tool_widget.h"
@@ -20,14 +19,11 @@ namespace sketcher
 class TestRingToolWidget : public RingToolWidget
 {
   public:
-    TestRingToolWidget()
+    TestRingToolWidget(SketcherModel* model)
     {
-        setModel(new SketcherModel(this));
+        setModel(model);
     }
-    std::unique_ptr<Ui::RingToolWidget>& getUI()
-    {
-        return ui;
-    }
+    using RingToolWidget::ui;
 };
 
 /**
@@ -35,14 +31,14 @@ class TestRingToolWidget : public RingToolWidget
  */
 BOOST_AUTO_TEST_CASE(ring_buttons)
 {
-
-    TestRingToolWidget wdg;
-    auto model = wdg.getModel();
-    auto& ui = wdg.getUI();
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    auto mol_model = test_scene->m_mol_model;
+    TestRingToolWidget wdg(model);
+    auto& ui = wdg.ui;
     auto group = ui->group;
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+
+    import_mol_text(mol_model, "CC");
     model->setValue(ModelKey::DRAW_TOOL, DrawTool::RING);
 
     for (auto button : group->buttons()) {
@@ -56,9 +52,9 @@ BOOST_AUTO_TEST_CASE(ring_buttons)
     // Switching to a different interaction mode should uncheck all ring buttons
     int button_id = model->getValueInt(ModelKey::RING_TOOL);
     BOOST_TEST(group->button(button_id)->isEnabled());
-    scene.selectAll();
+    mol_model->selectAll();
     BOOST_TEST(!group->button(button_id)->isEnabled());
-    scene.clearSelection();
+    mol_model->clearSelection();
 
     // Finally, try changing the draw tool. If not set to ring, no buttons
     // should be selected
@@ -77,13 +73,12 @@ BOOST_AUTO_TEST_CASE(ring_buttons)
  */
 BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
 {
-    TestRingToolWidget wdg;
-    auto model = wdg.getModel();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    auto test_scene = TestScene::getScene();
+    auto mol_model = test_scene->m_mol_model;
+    TestRingToolWidget wdg(test_scene->m_sketcher_model);
+    import_mol_text(mol_model, "CC");
     BOOST_TEST(wdg.isEnabled());
-    scene.selectAll();
+    mol_model->selectAll();
     BOOST_TEST(!wdg.isEnabled());
 }
 

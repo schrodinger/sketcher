@@ -6,12 +6,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "../test_sketcherScene.h"
-#include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
-#include "schrodinger/sketcher/reaction_arrow.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
 #include "schrodinger/sketcher/widget/sketcher_top_bar.h"
 
@@ -37,9 +34,9 @@ std::vector<SignalPacket> m_signal_packets;
 class TestSketcherTopBar : public SketcherTopBar
 {
   public:
-    TestSketcherTopBar()
+    TestSketcherTopBar(SketcherModel* model)
     {
-        setModel(new SketcherModel(this));
+        setModel(model);
     }
 
     std::vector<SignalPacket> getSignalPackets() const
@@ -81,12 +78,10 @@ bool view_synchronized_to_model(TestSketcherTopBar& top_bar)
  */
 BOOST_AUTO_TEST_CASE(synchronize)
 {
-
-    TestSketcherTopBar top_bar;
-    auto model = top_bar.getModel();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestSketcherTopBar top_bar(model);
+    import_mol_text(test_scene->m_mol_model, "CC");
 
     // We must call this method manually here because there is no signal from
     // the sketcher scene during unit tests
@@ -120,32 +115,30 @@ BOOST_AUTO_TEST_CASE(synchronize)
  */
 BOOST_AUTO_TEST_CASE(widgets_enabled)
 {
-
-    TestSketcherTopBar top_bar;
-    auto model = top_bar.getModel();
+    TestSketcherWidget sk;
+    auto model = sk.m_sketcher_model;
+    auto mol_model = sk.m_mol_model;
+    TestSketcherTopBar top_bar(model);
     auto menu = top_bar.getMoreActionsMenu();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
+    import_mol_text(mol_model, "CC");
 
-    auto atoms = scene.quickGetAtoms();
-    std::unordered_set<QGraphicsItem*> atom_sel(atoms.begin(), atoms.end());
-
-    QGraphicsTextItem text_item;
-    std::unordered_set<QGraphicsItem*> selection = {&text_item};
+    mol_model->selectAll();
+    auto atoms = mol_model->getSelectedAtoms();
 
     for (auto sel_empty : {true, false}) {
         if (sel_empty) {
-            scene.clearSelection();
+            mol_model->clearSelection();
         } else {
-            scene.setSelection(atom_sel);
+            mol_model->select({atoms}, {}, {}, {}, SelectMode::SELECT_ONLY);
         }
         BOOST_TEST(menu->m_clear_selection_act->isEnabled() == !sel_empty);
         for (auto has_rxn : {true, false}) {
             if (has_rxn) {
-                scene.addReactionArrowAt(QPointF(0, 0));
+                mol_model->addNonMolecularObject(
+                    NonMolecularType::RXN_ARROW,
+                    RDGeom::Point3D(0.0, 0.0, 0.0));
             }
-            BOOST_TEST(scene.numberOfReactionSteps() == int(has_rxn));
+            BOOST_TEST(model->hasReaction() == has_rxn);
             auto cc = menu->m_cut_copy_manager;
             BOOST_TEST(cc->m_cut_action->isEnabled() == !sel_empty);
             BOOST_TEST(cc->m_copy_action->isEnabled() == true);
@@ -163,20 +156,20 @@ BOOST_AUTO_TEST_CASE(widgets_enabled)
 
             if (has_rxn) {
                 // Remove the reaction arrow for further testing
-                scene.undo();
+                sk.m_undo_stack->undo();
             }
-            BOOST_TEST(scene.numberOfReactionSteps() == 0);
+            BOOST_TEST(!model->hasReaction());
         }
     }
 }
 
 BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
 {
-    TestSketcherTopBar top_bar;
-    sketcherScene scene;
-    scene.setModel(top_bar.getModel());
+    TestSketcherWidget sk;
+    TestSketcherTopBar top_bar(sk.m_sketcher_model);
+    auto mol_model = sk.m_mol_model;
     // Populate the undo and redo stacks so that those buttons will be enabled
-    scene.importText("CC");
+    import_mol_text(mol_model, "CC");
     top_bar.updateWidgetsEnabled();
 
     QKeySequence select_all_seq{Qt::CTRL | Qt::Key_A};
@@ -192,7 +185,7 @@ BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
     BOOST_CHECK_EQUAL(top_bar.handleShortcutAction(select_all_seq), true);
     BOOST_CHECK_EQUAL(select_all_spy.count(), 1);
 
-    scene.selectAll();
+    mol_model->selectAll();
     BOOST_CHECK_EQUAL(menu->m_select_all_act->isEnabled(), false);
     BOOST_CHECK_EQUAL(menu->m_clear_selection_act->isEnabled(), true);
     BOOST_CHECK_EQUAL(top_bar.handleShortcutAction(clear_all_seq), true);
@@ -208,7 +201,7 @@ BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
     QKeySequence redo_seq{Qt::CTRL | Qt::SHIFT | Qt::Key_Z};
     QSignalSpy redo_spy{&top_bar, &SketcherTopBar::redoRequested};
     BOOST_CHECK_EQUAL(menu->m_redo_act->isEnabled(), false);
-    scene.undo();
+    sk.m_undo_stack->undo();
     BOOST_CHECK_EQUAL(menu->m_redo_act->isEnabled(), true);
     BOOST_CHECK_EQUAL(top_bar.handleShortcutAction(redo_seq), true);
     BOOST_CHECK_EQUAL(redo_spy.count(), 1);

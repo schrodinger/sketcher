@@ -2,9 +2,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
@@ -19,24 +19,23 @@ namespace sketcher
  */
 BOOST_AUTO_TEST_CASE(test_updateActions)
 {
-    SketcherModel model;
+    TestSketcherWidget sk;
+    auto mol_model = sk.m_mol_model;
     CutCopyActionManager mgr(nullptr);
-    sketcherScene scene;
-    mgr.setModel(&model);
-    scene.setModel(&model);
+    mgr.setModel(sk.m_sketcher_model);
     // empty
     BOOST_TEST(!mgr.m_cut_action->isEnabled());
     BOOST_TEST(!mgr.m_copy_action->isEnabled());
     BOOST_TEST(!mgr.m_copy_as_menu->isEnabled());
 
-    scene.importText("CC");
+    sk.addFromString("CC");
     BOOST_TEST(!mgr.m_cut_action->isEnabled());
     BOOST_TEST(mgr.m_copy_action->isEnabled());
     BOOST_TEST(mgr.m_copy_as_menu->isEnabled());
     BOOST_TEST(mgr.m_copy_action->text().toStdString() == "Copy All");
     BOOST_TEST(mgr.m_copy_as_menu->title().toStdString() == "Copy All As");
 
-    scene.selectAll();
+    mol_model->selectAll();
     BOOST_TEST(mgr.m_cut_action->isEnabled());
     BOOST_TEST(mgr.m_copy_action->isEnabled());
     BOOST_TEST(mgr.m_copy_as_menu->isEnabled());
@@ -60,41 +59,40 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
         return true;
     };
 
-    auto select_one_atom = [&scene]() {
-        auto atoms = scene.quickGetAtoms();
-        std::unordered_set<sketcherGraphicalObject*> sel_objs = {atoms.front()};
-        scene.setSelection(sel_objs);
+    auto select_one_atom = [mol_model]() {
+        auto atom = mol_model->getMol()->getAtomWithIdx(0);
+        mol_model->select({atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
     };
 
     BOOST_TEST(reaction_actions_visible(false));
-    scene.clearStructure();
+    mol_model->clear();
     BOOST_TEST(reaction_actions_visible(false));
-    scene.importText("CC>>CC");
+    sk.addFromString("CC>>CC");
     BOOST_TEST(reaction_actions_visible(true));
     select_one_atom();
     BOOST_TEST(reaction_actions_visible(false));
-    scene.selectAll();
+    mol_model->selectAll();
     BOOST_TEST(reaction_actions_visible(true));
-    scene.clearStructure();
+    mol_model->clear();
     BOOST_TEST(reaction_actions_visible(false));
-    scene.importText("CC");
+    sk.addFromString("CC");
     BOOST_TEST(reaction_actions_visible(false));
 
     // background context menu always "Copy All"
     mgr.setAlwaysCopyAll(true);
 
     BOOST_TEST(reaction_actions_visible(false));
-    scene.clearStructure();
+    mol_model->clear();
     BOOST_TEST(reaction_actions_visible(false));
-    scene.importText("CC>>CC");
+    sk.addFromString("CC>>CC");
     BOOST_TEST(reaction_actions_visible(true));
     select_one_atom();
     BOOST_TEST(reaction_actions_visible(true)); // ignores selection
-    scene.selectAll();
+    mol_model->selectAll();
     BOOST_TEST(reaction_actions_visible(true)); // ignores selection
-    scene.clearStructure();
+    mol_model->clear();
     BOOST_TEST(reaction_actions_visible(false));
-    scene.importText("CC");
+    sk.addFromString("CC");
     BOOST_TEST(reaction_actions_visible(false));
 }
 

@@ -6,7 +6,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/Scene.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/ui/ui_periodic_table_widget.h"
@@ -51,13 +50,11 @@ BOOST_AUTO_TEST_CASE(testGetElementButtons)
 
 BOOST_AUTO_TEST_CASE(model_controller)
 {
-
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
     TestPeriodicTableWidget pt_widget;
-    auto model = new SketcherModel(&pt_widget);
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("CC");
     pt_widget.setModel(model);
+    import_mol_text(test_scene->m_mol_model, "CC");
 
     qRegisterMetaType<ModelKey>("ModelKey");
     qRegisterMetaType<std::unordered_set<ModelKey>>(
@@ -76,7 +73,7 @@ BOOST_AUTO_TEST_CASE(model_controller)
     }
 
     // If an active selection, this widget should not change the model
-    scene.setSelection(scene.getObjects());
+    test_scene->m_mol_model->selectAll();
     pinged_spy.clear();
     changed_spy.clear();
 

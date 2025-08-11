@@ -3,8 +3,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/Scene.h"
-#include "schrodinger/sketcher/sketcher_model2.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_select_options_widget.h"
 #include "schrodinger/sketcher/widget/select_options_widget.h"
 
@@ -31,11 +30,10 @@ std::vector<SignalPacket> m_signal_packets;
 class TestSelectOptionsWidget : public SelectOptionsWidget
 {
   public:
-    TestSelectOptionsWidget()
+    TestSelectOptionsWidget(SketcherModel* model)
     {
-        setModel(new SketcherModel2(this));
+        setModel(model);
     }
-
     Ui::SelectOptionsWidget* getUI() const
     {
         return ui.get();
@@ -70,12 +68,12 @@ bool view_synchronized_to_model(TestSelectOptionsWidget& wdg)
  */
 BOOST_AUTO_TEST_CASE(synchronize)
 {
-    TestSelectOptionsWidget wdg;
-    auto model = wdg.getModel();
+    auto test_scene = TestScene::getScene();
+    auto model = test_scene->m_sketcher_model;
+    TestSelectOptionsWidget wdg(model);
     auto ui = wdg.getUI();
-    sketcherScene scene;
-    scene.setModel(model);
-    scene.importText("C"); // require contents for the clicks to activate
+    // require contents for the clicks to activate
+    import_mol_text(test_scene->m_mol_model, "C");
 
     // setModel() should synchronize the view and model immediately
     model->setValue(ModelKey::DRAW_TOOL, DrawTool::SELECT);
@@ -111,12 +109,11 @@ BOOST_AUTO_TEST_CASE(synchronize)
  */
 BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
 {
-    TestSelectOptionsWidget wdg;
-    auto model = wdg.getModel();
+    auto test_scene = TestScene::getScene();
+    auto mol_model = test_scene->m_mol_model;
+    TestSelectOptionsWidget wdg(test_scene->m_sketcher_model);
     auto ui = wdg.getUI();
     QGraphicsTextItem text_item;
-    sketcherScene scene;
-    scene.setModel(model);
 
     auto requires_contents_btns = {ui->select_square_btn, ui->select_lasso_btn,
                                    ui->move_rotate_btn, ui->erase_btn};
@@ -131,12 +128,12 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
         BOOST_TEST(!btn->isEnabled());
     }
 
-    scene.importText("CC");
+    import_mol_text(mol_model, "CC");
     for (bool has_selection : {true, false}) {
         if (has_selection) {
-            scene.selectAll();
+            mol_model->selectAll();
         } else {
-            scene.clearSelection();
+            mol_model->clearSelection();
         }
         // select all is disabled when everything is selected
         BOOST_TEST(ui->select_all_btn->isEnabled() == !has_selection);
