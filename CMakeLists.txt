@@ -216,7 +216,6 @@ separate_arguments(MEMTEST_COMMAND)
 
 foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   cmake_path(GET TEST_SOURCE STEM TEST_STEM)
-  # Mirror the source directory for test collection and make unique target names
   cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
   cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
   # Create unique target name by replacing path separators
@@ -234,7 +233,7 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
   endif()
   set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                   ${PREFIX_PATH})
-  # Create memtest target and command #
+  # Create memtest target and command
   if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     # create the valgrind test
     set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
