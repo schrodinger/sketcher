@@ -159,8 +159,8 @@ BOOST_DATA_TEST_CASE(TestGetDecompressedString,
                              CompressionType::GZIP}),
                      testfile, compression_type)
 {
-#ifdef __linux__
-    return; // Skip on Linux due to gzip error
+#ifdef _WIN32
+    return; // Skip on Windows due to gzip error
 #endif
     auto fname = testfile_path(testfile);
     std::ifstream is(fname);
