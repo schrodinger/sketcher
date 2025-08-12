@@ -27,15 +27,8 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::SelectionTool)
  */
 std::string read_testfile(const std::string& filename)
 {
-    std::filesystem::path path;
-    if (auto src_path = std::getenv("SKETCHER_SOURCE_DIR")) {
-        path =
-            std::filesystem::path(src_path) / "test" / "testfiles" / filename;
-    }
-    if (auto src_path = std::getenv("SCHRODINGER_SRC")) {
-        path = std::filesystem::path(src_path) / "mmshare" / "test" /
-               "testfiles" / "sketcher" / filename;
-    }
+    auto path = std::filesystem::path(std::getenv("SKETCHER_SOURCE_DIR")) /
+                "test" / "testfiles" / filename;
     if (!std::filesystem::exists(path)) {
         throw std::runtime_error("File not found: " +
                                  std::filesystem::absolute(path).string());

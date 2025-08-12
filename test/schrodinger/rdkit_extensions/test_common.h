@@ -13,15 +13,8 @@
  */
 std::string testfile_path(const std::string& filename)
 {
-    std::filesystem::path path;
-    if (auto src_path = std::getenv("SKETCHER_SOURCE_DIR")) {
-        path =
-            std::filesystem::path(src_path) / "test" / "testfiles" / filename;
-    }
-    if (auto src_path = std::getenv("SCHRODINGER_SRC")) {
-        path = std::filesystem::path(src_path) / "mmshare" / "test" /
-               "testfiles" / "rdkit_extensions" / filename;
-    }
+    auto path = std::filesystem::path(std::getenv("SKETCHER_SOURCE_DIR")) /
+                "test" / "testfiles" / filename;
     if (!std::filesystem::exists(path)) {
         throw std::runtime_error("File not found: " +
                                  std::filesystem::absolute(path).string());
@@ -34,14 +27,8 @@ std::string testfile_path(const std::string& filename)
  */
 void set_default_monomer_db_path()
 {
-    std::filesystem::path path;
-    if (auto src_path = std::getenv("SKETCHER_SOURCE_DIR")) {
-        path = std::filesystem::path(src_path) / "data" / "core_monomerlib.db";
-    }
-    if (auto src_path = std::getenv("SCHRODINGER_SRC")) {
-        path = std::filesystem::path(src_path) / "mmshare" / "data" / "helm" /
-               "core_monomerlib.db";
-    }
+    auto path = std::filesystem::path(std::getenv("SKETCHER_SOURCE_DIR")) /
+                "data" / "core_monomerlib.db";
     if (!std::filesystem::exists(path)) {
         throw std::runtime_error("Monomer database not found: " +
                                  std::filesystem::absolute(path).string());
