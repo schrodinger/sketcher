@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+option(ENABLE_TESTING "Build and enable tests" ON)
 option(ENFORCE_DEPENDENCY_VERSIONS
        "Require that the dependencies match the versions listed in \
     external/versions.json" ON)
@@ -190,6 +191,7 @@ target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
                                             ${SKETCHER_TARGET})
 
 # Tests
+if(ENABLE_TESTING)
 enable_testing()
 
 set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
@@ -259,3 +261,4 @@ foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
     set_property(TEST ${TEST_TARGET} PROPERTY LABELS memtest)
   endif()
 endforeach()
+endif()
