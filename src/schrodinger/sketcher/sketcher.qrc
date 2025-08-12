@@ -1,5 +1,6 @@
 <RCC>
     <qresource>
+    <file>icons/2D-Sketcher-watermark.svg</file>
     <file>icons/atom_charge_minus.svg</file>
     <file>icons/atom_charge_minus_dis.svg</file>
     <file>icons/atom_charge_plus.svg</file>
@@ -29,6 +30,7 @@
     <file>icons/bond_zero.svg</file>
     <file>icons/bond_zero_dis.svg</file>
     <file>icons/clear_line_edit.png</file>
+    <file>icons/cursor-arrow.svg</file>
     <file>icons/enumeration_attachment_point.svg</file>
     <file>icons/enumeration_attachment_point_dis.svg</file>
     <file>icons/menu_corner_arrow.svg</file>
@@ -45,6 +47,7 @@
     <file>icons/reaction_plus_dis.svg</file>
     <file>icons/reaction_unmap_atoms.svg</file>
     <file>icons/reaction_unmap_atoms_dis.svg</file>
+    <file>icons/reset.png</file>
     <file>icons/ring_benzene.svg</file>
     <file>icons/ring_benzene_dis.svg</file>
     <file>icons/ring_cyclobutane.svg</file>
@@ -89,10 +92,5 @@
     <file>icons/topbar_undo.svg</file>
     <file>icons/topbar_undo_dis.svg</file>
     <file>icons/translate.svg</file>
-
-    <file>icons/add_particle.png</file>
-    <file>icons/reset.png</file>
-    <file>icons/2D-Sketcher-watermark.svg</file>
-    <file>icons/cursor-arrow.svg</file>
     </qresource>
 </RCC>
