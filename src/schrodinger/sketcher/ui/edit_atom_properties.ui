@@ -1,0 +1,856 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditAtomPropertiesDialog</class>
+ <widget class="QWidget" name="EditAtomPropertiesDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>278</width>
+    <height>320</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Edit Atom Properties</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_2">
+   <item>
+    <layout class="QHBoxLayout" name="set_as_layout">
+     <item>
+      <spacer name="set_as_spacer1">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QLabel" name="set_as_lbl">
+       <property name="text">
+        <string>Set as:</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="set_as_spacer2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="set_as_atom_rb">
+       <property name="toolTip">
+        <string>Set General properties only</string>
+       </property>
+       <property name="text">
+        <string>Atom</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">set_as_group</string>
+       </attribute>
+      </widget>
+     </item>
+     <item>
+      <spacer name="set_as_spacer3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeType">
+        <enum>QSizePolicy::Fixed</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="set_as_query_rb">
+       <property name="toolTip">
+        <string>Set General and/or Advanced properties (used for searching)</string>
+       </property>
+       <property name="text">
+        <string>Query</string>
+       </property>
+       <attribute name="buttonGroup">
+        <string notr="true">set_as_group</string>
+       </attribute>
+      </widget>
+     </item>
+     <item>
+      <spacer name="set_as_spacer4">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QStackedWidget" name="atom_query_stacked_wdg">
+     <property name="currentIndex">
+      <number>0</number>
+     </property>
+     <widget class="QWidget" name="edit_atom_page">
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="2" column="0">
+        <widget class="QLabel" name="atom_isotope_lbl">
+         <property name="text">
+          <string>Isotope: </string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="schrodinger::sketcher::BlankableSpinBox" name="atom_isotope_sb">
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::UpDownArrows</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QLabel" name="atom_charge_lbl">
+         <property name="text">
+          <string>Charge:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0">
+        <spacer name="edit_atom_spacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>0</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="4" column="1">
+        <widget class="schrodinger::sketcher::UnblankableSpinBox" name="atom_unpaired_sb">
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::UpDownArrows</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="atom_unpaired_lbl">
+         <property name="text">
+          <string>Unpaired Electrons:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0">
+        <widget class="QLabel" name="atom_stereo_lbl">
+         <property name="text">
+          <string>Enhanced Stereo:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="element_lbl">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="toolTip">
+          <string>Chemical symbol</string>
+         </property>
+         <property name="text">
+          <string>Element:</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <layout class="QHBoxLayout" name="atom_element_layout">
+         <item>
+          <widget class="QLineEdit" name="atom_element_le">
+           <property name="text">
+            <string>C</string>
+           </property>
+           <property name="clearButtonEnabled">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="schrodinger::sketcher::ToolButtonWithPopup" name="atom_periodic_table_btn">
+           <property name="toolTip">
+            <string>Periodic table</string>
+           </property>
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset resource="../sketcher.qrc">
+             <normaloff>:/icons/periodic_table.svg</normaloff>:/icons/periodic_table.svg</iconset>
+           </property>
+           <property name="iconSize">
+            <size>
+             <width>52</width>
+             <height>26</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="3" column="1">
+        <widget class="schrodinger::sketcher::UnblankableSpinBox" name="atom_charge_sb">
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::UpDownArrows</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="1">
+        <layout class="QHBoxLayout" name="atom_stereo_layout">
+         <item>
+          <widget class="QComboBox" name="atom_stereo_combo"/>
+         </item>
+         <item>
+          <widget class="QSpinBox" name="atom_stereo_sb">
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+           <property name="buttonSymbols">
+            <enum>QAbstractSpinBox::NoButtons</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="edit_query_page">
+      <layout class="QGridLayout" name="gridLayout_4">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QTabWidget" name="edit_query_tab_wdg">
+         <property name="currentIndex">
+          <number>0</number>
+         </property>
+         <widget class="QWidget" name="general_tab">
+          <attribute name="title">
+           <string>General</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <property name="leftMargin">
+            <number>12</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>12</number>
+           </property>
+           <property name="bottomMargin">
+            <number>12</number>
+           </property>
+           <item>
+            <layout class="QGridLayout" name="query_element_layout">
+             <property name="verticalSpacing">
+              <number>0</number>
+             </property>
+             <item row="0" column="1">
+              <layout class="QHBoxLayout" name="query_type_layout">
+               <property name="spacing">
+                <number>0</number>
+               </property>
+               <item>
+                <widget class="QComboBox" name="query_type_combo"/>
+               </item>
+               <item>
+                <widget class="schrodinger::sketcher::ToolButtonWithPopup" name="query_periodic_table_btn">
+                 <property name="toolTip">
+                  <string>Periodic table</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../sketcher.qrc">
+                   <normaloff>:/icons/periodic_table.svg</normaloff>:/icons/periodic_table.svg</iconset>
+                 </property>
+                 <property name="iconSize">
+                  <size>
+                   <width>52</width>
+                   <height>26</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="query_type_lbl">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>40</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="toolTip">
+                <string>Category of query - determines behavior and available options</string>
+               </property>
+               <property name="text">
+                <string>Type:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QStackedWidget" name="query_type_stacked_widget">
+               <property name="currentIndex">
+                <number>2</number>
+               </property>
+               <widget class="QWidget" name="element_list_page">
+                <layout class="QHBoxLayout" name="horizontalLayout_3">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLineEdit" name="element_list_le">
+                   <property name="placeholderText">
+                    <string>(comma-separated list)</string>
+                   </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="wildcard_page">
+                <layout class="QHBoxLayout" name="horizontalLayout_4">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QComboBox" name="wildcard_combo"/>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="query_element_page">
+                <layout class="QHBoxLayout" name="horizontalLayout_5">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLineEdit" name="query_element_le">
+                   <property name="placeholderText">
+                    <string>(element)</string>
+                   </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="rgroup_page">
+                <layout class="QHBoxLayout" name="horizontalLayout_6">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QSpinBox" name="rgroup_sb">
+                   <property name="toolTip">
+                    <string>R-Group index</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                   <property name="buttonSymbols">
+                    <enum>QAbstractSpinBox::NoButtons</enum>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="smarts_query_page">
+                <layout class="QHBoxLayout" name="horizontalLayout">
+                 <property name="leftMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>0</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>0</number>
+                 </property>
+                 <item>
+                  <widget class="QLineEdit" name="smarts_query_le">
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QGridLayout" name="query_general_properties_layout">
+             <item row="1" column="0">
+              <widget class="QLabel" name="query_charge_lbl">
+               <property name="text">
+                <string>Charge:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="query_unpaired_lbl">
+               <property name="text">
+                <string>Unpaired electrons:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="schrodinger::sketcher::BlankableSpinBox" name="query_isotope_sb">
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::UpDownArrows</enum>
+               </property>
+               <property name="maximum">
+                <number>9999</number>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QLabel" name="query_isotope_lbl">
+               <property name="text">
+                <string>Isotope:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="query_stereo_lbl">
+               <property name="text">
+                <string>Enhanced stereo:</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="schrodinger::sketcher::BlankableSpinBox" name="query_charge_sb">
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::UpDownArrows</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="schrodinger::sketcher::BlankableSpinBox" name="query_unpaired_sb">
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::UpDownArrows</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <layout class="QHBoxLayout" name="query_stereo_layout">
+               <item>
+                <widget class="QComboBox" name="query_stereo_combo"/>
+               </item>
+               <item>
+                <widget class="QSpinBox" name="query_stereo_sb">
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                 <property name="buttonSymbols">
+                  <enum>QAbstractSpinBox::NoButtons</enum>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="general_spacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="advanced_tab">
+          <attribute name="title">
+           <string>Advanced</string>
+          </attribute>
+          <layout class="QGridLayout" name="gridLayout" columnstretch="0,0">
+           <property name="leftMargin">
+            <number>12</number>
+           </property>
+           <property name="rightMargin">
+            <number>12</number>
+           </property>
+           <property name="bottomMargin">
+            <number>12</number>
+           </property>
+           <item row="3" column="1">
+            <layout class="QHBoxLayout" name="ring_count_layout">
+             <item>
+              <widget class="QComboBox" name="ring_count_combo">
+               <property name="toolTip">
+                <string>Number of SSSR rings that have this atom as a member</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="ring_count_sb">
+               <property name="toolTip">
+                <string>Number of SSSR rings that have this atom as a member</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="6" column="0">
+            <widget class="QLabel" name="smallest_ring_size_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Smallest Ring Size (r):</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QLabel" name="ring_bond_count_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Ring Bond Count (rb):</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="QLabel" name="ring_count_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Ring Count (R):</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="aromaticity_combo">
+             <property name="toolTip">
+              <string>Whether this atom must (a) or must not (A) be part of an aromatic ring</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="num_connections_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string># Connections (X):</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="schrodinger::sketcher::BlankableSpinBox" name="smallest_ring_size_sb">
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="total_h_lbl">
+             <property name="minimumSize">
+              <size>
+               <width>130</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Total H (H):</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <layout class="QHBoxLayout" name="ring_bond_count_layout">
+             <item>
+              <widget class="QComboBox" name="ring_bond_count_combo">
+               <property name="toolTip">
+                <string>Number of ring bonds to this atom</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="ring_bond_count_sb">
+               <property name="toolTip">
+                <string>Number of ring bonds to this atom</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="7" column="0">
+            <spacer name="query_advanced_spacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>20</width>
+               <height>0</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item row="1" column="1">
+            <widget class="schrodinger::sketcher::BlankableSpinBox" name="num_connections_sb">
+             <property name="alignment">
+              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+             </property>
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="aromaticity_lbl">
+             <property name="toolTip">
+              <string/>
+             </property>
+             <property name="text">
+              <string>Aromaticity (a/A):</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <layout class="QHBoxLayout" name="horizontalLayout_7">
+             <item>
+              <widget class="QComboBox" name="total_h_combo"/>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="total_h_sb">
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::NoButtons</enum>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="buttonBox">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok|QDialogButtonBox::Reset</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>schrodinger::sketcher::ToolButtonWithPopup</class>
+   <extends>QToolButton</extends>
+   <header>schrodinger/sketcher/widget/tool_button_with_popup.h</header>
+  </customwidget>
+  <customwidget>
+   <class>schrodinger::sketcher::BlankableSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>schrodinger/sketcher/widget/blankable_spin_box.h</header>
+  </customwidget>
+  <customwidget>
+   <class>schrodinger::sketcher::UnblankableSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>schrodinger/sketcher/widget/blankable_spin_box.h</header>
+  </customwidget>
+ </customwidgets>
+ <tabstops>
+  <tabstop>set_as_atom_rb</tabstop>
+  <tabstop>set_as_query_rb</tabstop>
+  <tabstop>atom_element_le</tabstop>
+  <tabstop>atom_periodic_table_btn</tabstop>
+  <tabstop>atom_isotope_sb</tabstop>
+  <tabstop>atom_charge_sb</tabstop>
+  <tabstop>atom_unpaired_sb</tabstop>
+  <tabstop>atom_stereo_combo</tabstop>
+  <tabstop>atom_stereo_sb</tabstop>
+  <tabstop>edit_query_tab_wdg</tabstop>
+  <tabstop>query_type_combo</tabstop>
+  <tabstop>query_periodic_table_btn</tabstop>
+  <tabstop>query_element_le</tabstop>
+  <tabstop>wildcard_combo</tabstop>
+  <tabstop>smarts_query_le</tabstop>
+  <tabstop>element_list_le</tabstop>
+  <tabstop>rgroup_sb</tabstop>
+  <tabstop>query_isotope_sb</tabstop>
+  <tabstop>query_charge_sb</tabstop>
+  <tabstop>query_unpaired_sb</tabstop>
+  <tabstop>query_stereo_combo</tabstop>
+  <tabstop>query_stereo_sb</tabstop>
+  <tabstop>total_h_combo</tabstop>
+  <tabstop>total_h_sb</tabstop>
+  <tabstop>num_connections_sb</tabstop>
+  <tabstop>aromaticity_combo</tabstop>
+  <tabstop>ring_count_combo</tabstop>
+  <tabstop>ring_count_sb</tabstop>
+  <tabstop>ring_bond_count_combo</tabstop>
+  <tabstop>ring_bond_count_sb</tabstop>
+  <tabstop>smallest_ring_size_sb</tabstop>
+ </tabstops>
+ <resources>
+  <include location="../sketcher.qrc"/>
+ </resources>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="set_as_group"/>
+ </buttongroups>
+</ui>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>BracketSubgroupDialog</class>
+ <widget class="QWidget" name="BracketSubgroupDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>381</width>
+    <height>187</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Bracket Subgroup</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QLabel" name="description_lbl">
+     <property name="font">
+      <font>
+       <italic>true</italic>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">QLabel { color: gray; }</string>
+     </property>
+     <property name="text">
+      <string>Add bracket notation around the selected substructure.</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="subgroup_type_lbl">
+       <property name="text">
+        <string>Subgroup type:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="repeat_pattern_lbl">
+       <property name="text">
+        <string>Repeat pattern:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="polymer_label_lbl">
+       <property name="text">
+        <string>Numeric label:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QComboBox" name="subgroup_type_combo"/>
+     </item>
+     <item row="2" column="1">
+      <widget class="QComboBox" name="repeat_pattern_combo"/>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="polymer_label_le"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QDialogButtonBox" name="bottom_button_box">
+     <property name="standardButtons">
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

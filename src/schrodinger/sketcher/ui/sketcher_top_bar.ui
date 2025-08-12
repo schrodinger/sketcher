@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SketcherTopBar</class>
+ <widget class="QWidget" name="SketcherTopBar">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>389</width>
+    <height>35</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QToolButton { border : none; }
+QToolButton::menu-indicator{width:0px;}</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QToolButton" name="undo_btn">
+     <property name="toolTip">
+      <string>Undo</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_undo.svg</normaloff>
+       <disabledoff>:/icons/topbar_undo_dis.svg</disabledoff>:/icons/topbar_undo.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="redo_btn">
+     <property name="toolTip">
+      <string>Redo</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_redo.svg</normaloff>
+       <disabledoff>:/icons/topbar_redo_dis.svg</disabledoff>:/icons/topbar_redo.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="fit_btn">
+     <property name="toolTip">
+      <string>Fit to Screen</string>
+     </property>
+     <property name="text">
+      <string>...</string>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_fit.svg</normaloff>
+       <disabledoff>:/icons/topbar_fit_dis.svg</disabledoff>:/icons/topbar_fit.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="cleanup_btn">
+     <property name="toolTip">
+      <string>Clean Up</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_cleanup.svg</normaloff>
+       <disabledoff>:/icons/topbar_cleanup_dis.svg</disabledoff>:/icons/topbar_cleanup.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="more_actions_btn">
+     <property name="toolTip">
+      <string>More Actions</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_more_actions.svg</normaloff>
+       <disabledoff>:/icons/topbar_more_actions_dis.svg</disabledoff>:/icons/topbar_more_actions.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <spacer name="right_spacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item>
+    <widget class="Line" name="vline2">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="clear_btn">
+     <property name="toolTip">
+      <string>Clear Sketcher</string>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_clear_sketcher.svg</normaloff>
+       <disabledoff>:/icons/topbar_clear_sketcher_dis.svg</disabledoff>:/icons/topbar_clear_sketcher.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="import_btn">
+     <property name="toolTip">
+      <string>Import</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_import.svg</normaloff>
+       <disabledoff>:/icons/topbar_import_dis.svg</disabledoff>:/icons/topbar_import.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="export_btn">
+     <property name="toolTip">
+      <string>Export</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_export.svg</normaloff>
+       <disabledoff>:/icons/topbar_export_dis.svg</disabledoff>:/icons/topbar_export.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="Line" name="vline3">
+     <property name="minimumSize">
+      <size>
+       <width>15</width>
+       <height>0</height>
+      </size>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="configure_view_btn">
+     <property name="toolTip">
+      <string>Configure View</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_settings.svg</normaloff>
+       <disabledoff>:/icons/topbar_settings_dis.svg</disabledoff>:/icons/topbar_settings.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QToolButton" name="help_btn">
+     <property name="toolTip">
+      <string>Help</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="icon">
+      <iconset resource="../sketcher.qrc">
+       <normaloff>:/icons/topbar_help.svg</normaloff>
+       <disabledoff>:/icons/topbar_help_dis.svg</disabledoff>:/icons/topbar_help.svg</iconset>
+     </property>
+     <property name="iconSize">
+      <size>
+       <width>32</width>
+       <height>32</height>
+      </size>
+     </property>
+     <property name="popupMode">
+      <enum>QToolButton::InstantPopup</enum>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="../sketcher.qrc"/>
+ </resources>
+ <connections/>
+</ui>

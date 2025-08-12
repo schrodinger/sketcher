@@ -1,0 +1,2239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PeriodicTableForm</class>
+ <widget class="QWidget" name="PeriodicTableForm">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>828</width>
+    <height>239</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="element_layout">
+   <property name="leftMargin">
+    <number>2</number>
+   </property>
+   <property name="topMargin">
+    <number>2</number>
+   </property>
+   <property name="rightMargin">
+    <number>2</number>
+   </property>
+   <property name="bottomMargin">
+    <number>2</number>
+   </property>
+   <property name="spacing">
+    <number>1</number>
+   </property>
+   <item row="3" column="4">
+    <widget class="QToolButton" name="v_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>V</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QToolButton" name="na_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Na</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="12">
+    <widget class="QToolButton" name="es_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Es</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="17">
+    <widget class="QToolButton" name="xe_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Xe</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="8">
+    <widget class="QToolButton" name="rh_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rh</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="13">
+    <widget class="QToolButton" name="er_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Er</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="15">
+    <widget class="QToolButton" name="se_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Se</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="6">
+    <widget class="QToolButton" name="tc_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tc</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="6">
+    <widget class="QToolButton" name="mn_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mn</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="12">
+    <widget class="QToolButton" name="ga_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ga</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="6">
+    <widget class="QToolButton" name="re_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Re</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="10">
+    <widget class="QToolButton" name="tb_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="13">
+    <widget class="QToolButton" name="sn_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sn</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QToolButton" name="rb_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="16">
+    <widget class="QToolButton" name="lr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Lr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="14">
+    <widget class="QToolButton" name="as_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>As</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="5">
+    <widget class="QToolButton" name="sg_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="5">
+    <widget class="QToolButton" name="u_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>U</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QToolButton" name="mg_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QToolButton" name="fr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="6">
+    <widget class="QToolButton" name="np_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Np</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="4">
+    <widget class="QToolButton" name="pr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="7">
+    <widget class="QToolButton" name="ru_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ru</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="3">
+    <widget class="QToolButton" name="ti_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ti</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="0">
+    <widget class="QToolButton" name="k_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>K</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QToolButton" name="li_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Li</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="17">
+    <widget class="QToolButton" name="rn_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rn</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="5">
+    <widget class="QToolButton" name="mo_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mo</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="12">
+    <widget class="QToolButton" name="in_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>In</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="11">
+    <widget class="QToolButton" name="cn_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cn</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="12">
+    <widget class="QToolButton" name="nh_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Nh</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="3">
+    <widget class="QToolButton" name="zr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Zr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="7" column="2">
+    <spacer name="lanthanide_spacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeType">
+      <enum>QSizePolicy::Fixed</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>10</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="6" column="15">
+    <widget class="QToolButton" name="lv_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Lv</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="4">
+    <widget class="QToolButton" name="ta_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ta</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="13">
+    <widget class="QToolButton" name="fl_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fl</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="7">
+    <widget class="QToolButton" name="pu_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="2">
+    <widget class="QToolButton" name="la_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>La</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QToolButton" name="sc_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sc</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="15">
+    <widget class="QToolButton" name="yb_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Yb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="16">
+    <widget class="QToolButton" name="ts_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ts</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="14">
+    <widget class="QToolButton" name="n_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>N</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="9">
+    <widget class="QToolButton" name="ni_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ni</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="12">
+    <widget class="QToolButton" name="ho_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ho</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="7">
+    <widget class="QToolButton" name="hs_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Hs</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="3">
+    <widget class="QToolButton" name="hf_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Hf</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="5">
+    <widget class="QToolButton" name="cr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="14">
+    <widget class="QToolButton" name="p_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>P</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="16">
+    <widget class="QToolButton" name="lu_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Lu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="3">
+    <widget class="QToolButton" name="rf_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rf</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="12">
+    <widget class="QToolButton" name="tl_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tl</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="0" column="17">
+    <widget class="QToolButton" name="he_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>He</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="15">
+    <widget class="QToolButton" name="o_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>O</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="17">
+    <widget class="QToolButton" name="kr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Kr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="7">
+    <widget class="QToolButton" name="os_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Os</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="4">
+    <widget class="QToolButton" name="nb_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Nb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="3">
+    <widget class="QToolButton" name="ce_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ce</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="15">
+    <widget class="QToolButton" name="te_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Te</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="8">
+    <widget class="QToolButton" name="ir_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ir</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="1">
+    <widget class="QToolButton" name="ca_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ca</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="16">
+    <widget class="QToolButton" name="i_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>I</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="13">
+    <widget class="QToolButton" name="fm_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="14">
+    <widget class="QToolButton" name="bi_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Bi</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="1">
+    <widget class="QToolButton" name="ba_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ba</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="13">
+    <widget class="QToolButton" name="ge_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ge</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="10">
+    <widget class="QToolButton" name="au_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Au</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="10">
+    <widget class="QToolButton" name="cu_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="16">
+    <widget class="QToolButton" name="f_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>F</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="13">
+    <widget class="QToolButton" name="si_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Si</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="16">
+    <widget class="QToolButton" name="cl_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cl</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QToolButton" name="be_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Be</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="9">
+    <widget class="QToolButton" name="cm_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="2">
+    <widget class="QToolButton" name="ac_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ac</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="14">
+    <widget class="QToolButton" name="mc_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mc</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="9">
+    <widget class="QToolButton" name="gd_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Gd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="15">
+    <widget class="QToolButton" name="po_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Po</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="15">
+    <widget class="QToolButton" name="no_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>No</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="16">
+    <widget class="QToolButton" name="br_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Br</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="1">
+    <widget class="QToolButton" name="ra_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ra</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="1">
+    <widget class="QToolButton" name="sr_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sr</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkaline_earth_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="11">
+    <widget class="QToolButton" name="dy_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Dy</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="14">
+    <widget class="QToolButton" name="sb_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="7">
+    <widget class="QToolButton" name="sm_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Sm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="3">
+    <widget class="QToolButton" name="th_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Th</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="14">
+    <widget class="QToolButton" name="tm_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Tm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="15">
+    <widget class="QToolButton" name="s_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>S</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="4">
+    <widget class="QToolButton" name="db_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Db</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="4">
+    <widget class="QToolButton" name="pa_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pa</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="6">
+    <widget class="QToolButton" name="bh_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Bh</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="2">
+    <widget class="QToolButton" name="y_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Y</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="8">
+    <widget class="QToolButton" name="mt_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Mt</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="17">
+    <widget class="QToolButton" name="ne_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ne</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="13">
+    <widget class="QToolButton" name="c_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>C</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>non_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="10">
+    <widget class="QToolButton" name="bk_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Bk</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="8">
+    <widget class="QToolButton" name="am_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Am</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="7">
+    <widget class="QToolButton" name="fe_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Fe</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="10">
+    <widget class="QToolButton" name="rg_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Rg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="8">
+    <widget class="QToolButton" name="eu_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Eu</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="9">
+    <widget class="QToolButton" name="pd_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="11">
+    <widget class="QToolButton" name="hg_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Hg</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="0">
+    <widget class="QToolButton" name="cs_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cs</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>alkali_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="17">
+    <widget class="QToolButton" name="og_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Og</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="17">
+    <widget class="QToolButton" name="ar_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ar</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>noble_gases</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="11">
+    <widget class="QToolButton" name="cd_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="9">
+    <widget class="QToolButton" name="pt_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pt</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="4" column="10">
+    <widget class="QToolButton" name="ag_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ag</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="11">
+    <widget class="QToolButton" name="cf_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Cf</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="6">
+    <widget class="QToolButton" name="pm_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pm</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="1" column="12">
+    <widget class="QToolButton" name="b_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>B</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>metalloids</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="0" column="0">
+    <widget class="QToolButton" name="h_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>H</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>hydrogen</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="11">
+    <widget class="QToolButton" name="zn_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Zn</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="16">
+    <widget class="QToolButton" name="at_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>At</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>halogens</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="9" column="14">
+    <widget class="QToolButton" name="md_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Md</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>actinides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="5">
+    <widget class="QToolButton" name="w_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>W</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="2" column="12">
+    <widget class="QToolButton" name="al_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Al</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="8" column="5">
+    <widget class="QToolButton" name="nd_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Nd</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>lanthanides</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="3" column="8">
+    <widget class="QToolButton" name="co_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Co</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="6" column="9">
+    <widget class="QToolButton" name="ds_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Ds</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>transition_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="13">
+    <widget class="QToolButton" name="pb_btn">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>Pb</string>
+     </property>
+     <property name="class" stdset="0">
+      <string>other_metals</string>
+     </property>
+     <attribute name="buttonGroup">
+      <string notr="true">group</string>
+     </attribute>
+    </widget>
+   </item>
+   <item row="5" column="2">
+    <widget class="QLabel" name="label">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>*</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="2">
+    <widget class="QLabel" name="label_2">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>**</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="8" column="1">
+    <widget class="QLabel" name="label_3">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>*</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="9" column="1">
+    <widget class="QLabel" name="label_4">
+     <property name="font">
+      <font>
+       <pointsize>10</pointsize>
+      </font>
+     </property>
+     <property name="text">
+      <string>**</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+ <buttongroups>
+  <buttongroup name="group"/>
+ </buttongroups>
+</ui>
