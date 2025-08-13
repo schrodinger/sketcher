@@ -1,0 +1,69 @@
+/**
+ * Stylesheet the 2D Sketcher
+ */
+
+* {
+    font-family: "Arimo";
+    font-size: 10pt;
+}
+
+QMenu::item:selected {
+    color: black;
+    background: #efefef;
+}
+
+QToolTip {
+    color: #333333;
+    border-color:#666666;
+    border-width: 1px;
+    background: #fffff1;
+}
+
+/**
+ * Border styling for popups is lost in the WASM build, so we specify border
+ * styling here. SKETCH-1553
+ */
+schrodinger--sketcher--ModularPopup {
+    border: 1px solid #b5b5b5
+}
+
+/**
+ * Popup widgets are unique and don't inherit ModularPopup stylings
+ */
+schrodinger--sketcher--PeriodicTableWidget {
+    border: 1px solid #b5b5b5
+}
+schrodinger--sketcher--FileSaveImagePopup {
+    border: 1px solid #b5b5b5
+}
+
+QDialog {
+    background-color: white;
+    border: 1px solid #b5b5b5;
+}
+
+QDialog > QWidget > QPushButton {
+    background-color: #72a553;
+    color: white;
+    border-radius: 1px;
+    padding: 4px 20px 4px 20px;
+}
+
+QDialog > QWidget > QPushButton:hover {
+    background-color: #5f8c44;
+}
+
+QDialogButtonBox > QPushButton {
+    background-color: #72a553;
+    color: white;
+    border-radius: 1px;
+    padding: 4px 20px 4px 20px;
+}
+
+QDialogButtonBox > QPushButton:disabled {
+    background-color: #808080;
+}
+
+QDialogButtonBox > QPushButton:hover {
+    background-color: #5f8c44;
+}
