@@ -267,6 +267,7 @@ BOOST_DATA_TEST_CASE(TestRoundtripSupGroups,
     auto molblock = to_string(*atomistic_mol, Format::MDL_MOLV3000);
     boost::shared_ptr<RDKit::ROMol> mol_from_block(to_rdkit(molblock));
 
+    bool use_residue_info = true;
     auto mm_from_sup_groups = toMonomeric(*mol_from_block, use_residue_info);
     auto helm_result = to_string(*mm_from_sup_groups, Format::HELM);
     BOOST_TEST(helm_result == test_data);
