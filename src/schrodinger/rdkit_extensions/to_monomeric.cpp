@@ -342,7 +342,7 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
     for (const auto& bond : atomistic_mol.bonds()) {
         auto at1 = bond->getBeginAtom();
         auto at2 = bond->getEndAtom();
-        unsigned int monomer_idx1, monomer_idx2;
+        unsigned int monomer_idx1, monomer_idx2 = 0;
         if (at1->getPropIfPresent(MONOMER_IDX, monomer_idx1) &&
             at2->getPropIfPresent(MONOMER_IDX, monomer_idx2) &&
             monomer_idx1 != monomer_idx2) {
