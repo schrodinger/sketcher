@@ -1,5 +1,7 @@
 #define BOOST_TEST_MODULE test_rdkit_extensions_conversions
 
+#include <fstream>
+#include <iterator>
 #include <string>
 #include <tuple>
 #include <vector>
