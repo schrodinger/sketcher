@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE rdkit_extensions_cg_coordgen
+#define BOOST_TEST_MODULE rdkit_extensions_monomer_coordgen
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
