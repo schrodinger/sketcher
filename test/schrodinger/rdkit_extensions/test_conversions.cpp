@@ -232,7 +232,6 @@ BOOST_DATA_TEST_CASE(
 {
     auto monomer_mol = to_rdkit(test_data.first);
     auto atomistic_mol = toAtomistic(*monomer_mol);
-
     auto smiles_result = RDKit::MolToSmiles(*atomistic_mol);
     BOOST_TEST(smiles_result == test_data.second);
 }
