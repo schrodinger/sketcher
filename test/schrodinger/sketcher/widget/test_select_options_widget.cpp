@@ -115,8 +115,7 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     auto ui = wdg.getUI();
     QGraphicsTextItem text_item;
 
-    auto requires_contents_btns = {ui->select_square_btn, ui->select_lasso_btn,
-                                   ui->move_rotate_btn, ui->erase_btn};
+    auto requires_contents_btns = {ui->move_rotate_btn, ui->erase_btn};
     auto requires_selection_btns = {ui->clear_selection_btn,
                                     ui->invert_selection_btn};
 
