@@ -346,8 +346,8 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
         if (at1->getPropIfPresent(MONOMER_IDX, monomer_idx1) &&
             at2->getPropIfPresent(MONOMER_IDX, monomer_idx2) &&
             monomer_idx1 != monomer_idx2) {
-            unsigned int attach_num1;
-            unsigned int attach_num2;
+            unsigned int attach_num1 = 0;
+            unsigned int attach_num2 = 0;
             auto has_attach_num1 =
                 at1->getPropIfPresent(ATTACH_NUM, attach_num1);
             auto has_attach_num2 =

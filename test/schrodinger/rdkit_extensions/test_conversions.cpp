@@ -45,11 +45,15 @@ static const std::vector<std::string> ROUNDTRIP_HELM_TEST_SET = {
     // Examples with glycine, which requires a special query
     "PEPTIDE1{F.Y.K.G.R.L}$$$$V2.0", "PEPTIDE1{A.C.D.G.L}$$$$V2.0",
     // Cyclic peptide with R2-R1 closure
-    "PEPTIDE1{A.F.P.V.F.F.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0",
+    "PEPTIDE1{A.A.A.A.A.A.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0",
     // Cyclic peptide using disulfide R3 - R3 bond
     "PEPTIDE1{C.A.A.A.C}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
     // Branches using R3 connections
-    "PEPTIDE1{A.D(C)P}$$$$V2.0"};
+    "PEPTIDE1{A.D(C)P}$$$$V2.0", "PEPTIDE1{A.C(A)G.C.D(K)A.D}$$$$V2.0",
+    // Example with endcaps
+    "PEPTIDE1{[ac].P.A.D(A)K.[am]}$$$$V2.0",
+    // Example with a branch and a disulfide bond
+    "PEPTIDE1{C.A.A.A.C.G.D(K)L.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0"};
 
 static boost::shared_ptr<RDKit::RWMol>
 file_to_rdkit(const std::string& filename)
@@ -238,12 +242,10 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(smiles_result == test_data.second);
 }
 
-BOOST_AUTO_TEST_CASE(TestRoundtripHelm)
+BOOST_DATA_TEST_CASE(TestRoundtripHelm, bdata::make(ROUNDTRIP_HELM_TEST_SET),
+                     helm_str)
 {
     // Test atomistic -> monomeric -> HELM using SMARTS matching method
-    // TODO (SHARED-11363): These tests should include all
-    // ROUNDTRIP_HELM_TEST_SET
-    auto helm_str = "PEPTIDE1{F.Y.K.A.R.L}$$$$V2.0";
     auto monomer_mol = to_rdkit(helm_str);
     auto atomistic_mol = toAtomistic(*monomer_mol);
 
@@ -431,4 +433,26 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(match[0].size() == original_atomistic_his->getNumAtoms());
     BOOST_TEST((roundtrip_atomistic_his->getNumAtoms() -
                 original_atomistic_his->getNumAtoms()) <= 8);
+}
+
+BOOST_AUTO_TEST_CASE(TestInconsistentCycleStartPoint)
+{
+    auto roundtrip_helm = [](const std::string& helm_str) {
+        auto monomer_mol = to_rdkit(helm_str);
+        auto atomistic_mol = toAtomistic(*monomer_mol);
+        bool use_residue_info = false;
+        auto mm_roundtrip = toMonomeric(*atomistic_mol, use_residue_info);
+        return to_string(*mm_roundtrip, Format::HELM);
+    };
+
+    // Atomistic -> Monomeric conversion can lead to inconsistent cycle start
+    // points since there is no obvious place to start the cycle or a
+    // canonicalization method. See SHARED-11738
+    auto helm1 = "PEPTIDE1{A.F.P.V.F.F.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0";
+    auto helm2 = "PEPTIDE1{F.P.V.F.F.A.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0";
+    auto helm3 = "PEPTIDE1{P.V.F.F.A.A.A.F}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0";
+    BOOST_TEST(roundtrip_helm(helm1) == helm2);
+    BOOST_TEST(roundtrip_helm(helm2) == helm3);
+    BOOST_TEST(roundtrip_helm(helm3) ==
+               "PEPTIDE1{V.F.F.A.A.A.F.P}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0");
 }
