@@ -1,10 +1,10 @@
 /* -------------------------------------------------------------------------
- * Tests class schrodinger::rdkit_extensions:: coarse_grain
+ * Tests schrodinger::rdkit_extensions:: monomer related functionality
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
-#define BOOST_TEST_MODULE rdkit_extensions_coarse_grain
+#define BOOST_TEST_MODULE rdkit_extensions_monomer_mol
 
 #include <boost/test/unit_test.hpp>
 
@@ -23,7 +23,7 @@
 
 using namespace schrodinger::rdkit_extensions;
 
-BOOST_AUTO_TEST_CASE(TestBasicCoarseGrainMol)
+BOOST_AUTO_TEST_CASE(TestBasicMonomerMol)
 {
     ::RDKit::RWMol monomer_mol;
     auto monomer_idx1 = addMonomer(monomer_mol, "A", 1, "PEPTIDE1");
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(TestBasicCoarseGrainMol)
     // std::invalid_argument);
 }
 
-BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
+BOOST_AUTO_TEST_CASE(TestBranchesMonomerMol)
 {
     ::RDKit::RWMol monomer_mol;
     auto monomer_idx1 = addMonomer(monomer_mol, "A", 1, "PEPTIDE1");
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
     // consecutive branches
 }
 
-BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
+BOOST_AUTO_TEST_CASE(TestMultipleChainsMonomerMol)
 {
     ::RDKit::RWMol monomer_mol;
     auto monomer_idx1 = addMonomer(monomer_mol, "A", 1, "PEPTIDE1");
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
         "PEPTIDE1{A.G.C}|PEPTIDE2{T.C.A}$PEPTIDE1,PEPTIDE2,3:R3-1:R1$$$V2.0");
 }
 
-BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
+BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToMonomerMolString)
 {
     {
         std::unique_ptr<::RDKit::RWMol> mol(::RDKit::SmilesToMol(
