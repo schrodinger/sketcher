@@ -144,6 +144,10 @@ struct Linkage {
     unsigned int monomer_idx2;
     unsigned int attach_from;
     unsigned int attach_to;
+    
+    Linkage(unsigned int idx1, unsigned int idx2, unsigned int from, unsigned int to)
+        : monomer_idx1(idx1), monomer_idx2(idx2), attach_from(from), attach_to(to) {}
+    
     std::string to_string() const
     {
         return fmt::format("R{}-R{}", attach_from, attach_to);
