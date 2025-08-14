@@ -120,6 +120,16 @@ static void remove_solvents(RDKit::RWMol& rwmol)
     rwmol.commitBatchEdit();
 }
 
+// This is needed for all atomistic <-> monomeric conversions
+struct SetDefaultMonomerDbPath {
+    SetDefaultMonomerDbPath()
+    {
+        set_default_monomer_db_path();
+    }
+};
+
+BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
+
 BOOST_DATA_TEST_CASE(
     TestAtomisticSmilesToMonomeric,
     bdata::make(std::vector<TestData>{
