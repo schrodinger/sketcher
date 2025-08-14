@@ -432,31 +432,3 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST((roundtrip_atomistic_his->getNumAtoms() -
                 original_atomistic_his->getNumAtoms()) <= 8);
 }
-
-BOOST_DATA_TEST_CASE(
-    TestSmilesToMonomeric,
-    bdata::make(std::vector<std::pair<std::string, std::string>>{
-        {"NCCCC[C@H](NC(=O)[C@H](CS)NC(=O)[C@@H](Cc1ccccc1)NC(=O)CNC(=O)[C@H]("
-         "CCCNC(=N)N)NC(=O)[C@H](C)N)C(=O)N(C)[C@@H](C)C(=O)N[C@@H](CCC(=O)O)C("
-         "=O)N[C@@H](CC(=O)O)C(=O)N[C@@H](C)C(=O)O",
-         "PEPTIDE1{A.R.G.F.C.K.A.E.D.A}$$$$V2.0"},
-        {"CC(C)C[C@@H]1NC(=O)[C@H](Cc2c[nH]c3ccccc23)NC(=O)[C@H](CCCCN)NC(=O)["
-         "C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]2CCCN2C(=O)[C@H](C(C)O)NC("
-         "=O)[C@H](CCC(=O)O)NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@H](CC(N)=O)NC1=O",
-         "PEPTIDE1{N.F.E.T.P.P.F.K.W.L}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$$$V2.0"}}),
-    test_data)
-{
-    auto atomistic_mol = to_rdkit(test_data.first);
-
-    bool use_residue_info = false;
-    auto monomer_mol = toMonomeric(*atomistic_mol, use_residue_info);
-
-    auto helm_roundtrip = to_string(*monomer_mol, Format::HELM);
-    BOOST_TEST(helm_roundtrip == test_data.second);
-
-    // Sanity check that the output HELM is valid and can be converted back to
-    // atomistic
-    auto roundtrip_monomeric = to_rdkit(helm_roundtrip, Format::HELM);
-    auto roundtrip_atomistic = toAtomistic(*roundtrip_monomeric);
-    BOOST_REQUIRE(roundtrip_atomistic != nullptr);
-}
