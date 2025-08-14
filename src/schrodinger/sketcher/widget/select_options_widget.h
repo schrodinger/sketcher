@@ -7,6 +7,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/widget/sketcher_view.h"
+#include <QAbstractButton>
 
 namespace Ui
 {
@@ -28,6 +29,8 @@ class SKETCHER_API SelectOptionsWidget : public SketcherView
     SelectOptionsWidget(QWidget* parent = nullptr);
     ~SelectOptionsWidget();
 
+    void setModel(SketcherModel* model) override;
+
   signals:
     void selectAllRequested();
     void clearSelectionRequested();
@@ -35,11 +38,13 @@ class SKETCHER_API SelectOptionsWidget : public SketcherView
 
   protected:
     std::unique_ptr<Ui::SelectOptionsWidget> ui;
+    SelectionToolPopup* m_selection_tool1_widget = nullptr;
+    SelectionToolPopup* m_selection_tool2_widget = nullptr;
 
   protected slots:
     void updateWidgetsEnabled() override;
 
-    void onSelectButtonClicked(int button_id);
+    void onSelectButtonClicked(QAbstractButton* button);
     void onMoveButtonClicked();
     void onEraseButtonClicked();
 
