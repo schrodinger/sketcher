@@ -61,8 +61,8 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query)
 
     for (const auto atom : query.mol->atoms()) {
         if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
-            query.attch_map[atom->getIdx()] = atom->getProp<unsigned int>(
-                RDKit::common_properties::molAtomMapNumber);
+            query.attch_map[atom->getIdx()] = static_cast<unsigned int>(
+                atom->getProp<int>(RDKit::common_properties::molAtomMapNumber));
         }
     }
     return query;
@@ -513,10 +513,10 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
             static constexpr const char* ATTCH_PROP = "attach";
             if (monomer.r1 != NO_ATTACHMENT) {
                 atomistic_mol.getAtomWithIdx(monomer.r1)
-                    ->setProp<unsigned int>(ATTCH_PROP, 1);
+                    ->setProp<unsigned int>(ATTCH_PROP, 1u);
             } else if (monomer.r2 != NO_ATTACHMENT) {
                 atomistic_mol.getAtomWithIdx(monomer.r2)
-                    ->setProp<unsigned int>(ATTCH_PROP, 2);
+                    ->setProp<unsigned int>(ATTCH_PROP, 2u);
             }
 
             auto mol_fragment =
@@ -529,8 +529,8 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                 if (at->getPropIfPresent(ATTCH_PROP, map_no)) {
                     // add dummy atom with this attachment point
                     auto new_at = new RDKit::Atom(0);
-                    new_at->setProp(RDKit::common_properties::molAtomMapNumber,
-                                    map_no);
+                    new_at->setProp<int>(RDKit::common_properties::molAtomMapNumber,
+                                         static_cast<int>(map_no));
                     auto new_at_idx = mol_fragment->addAtom(
                         new_at, update_label, take_ownership);
                     mol_fragment->addBond(new_at_idx, at->getIdx(),
@@ -789,12 +789,12 @@ std::string getMonomerSmiles(RDKit::ROMol& mol,
     static constexpr bool take_ownership = true;
     for (const auto& [_, ref_idx] : attch_idxs) {
         for (auto at : mol_fragment->atoms()) {
-            int orig_idx;
+            unsigned int orig_idx;
             if (at->getPropIfPresent(REFERENCE_IDX, orig_idx) &&
                 orig_idx == ref_idx) {
                 auto new_at = new RDKit::Atom(0);
-                new_at->setProp(RDKit::common_properties::molAtomMapNumber,
-                                current_attchpt);
+                new_at->setProp<int>(RDKit::common_properties::molAtomMapNumber,
+                                     current_attchpt);
                 auto new_at_idx =
                     mol_fragment->addAtom(new_at, update_label, take_ownership);
                 mol_fragment->addBond(new_at_idx, at->getIdx(),
@@ -813,8 +813,8 @@ std::string getMonomerSmiles(RDKit::ROMol& mol,
             break;
         }
         auto new_at = new RDKit::Atom(0);
-        new_at->setProp(RDKit::common_properties::molAtomMapNumber,
-                        current_attchpt);
+        new_at->setProp<int>(RDKit::common_properties::molAtomMapNumber,
+                             current_attchpt);
         mol_fragment->addAtom(new_at, update_label, take_ownership);
         ++current_attchpt;
     }
@@ -845,14 +845,14 @@ bool sameMonomer(RDKit::RWMol& atomistic_mol,
         RDKit::MolOps::removeStereochemistry(mol);
         mol.beginBatchEdit();
         for (auto at : mol.atoms()) {
-            unsigned int map_no;
+            int map_no;
             if (at->getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
                                      map_no)) {
                 // Label parent with this map number so we know which map number
                 // the linkage uses
                 for (const auto& nbr : mol.atomNeighbors(at)) {
-                    nbr->setProp(RDKit::common_properties::molAtomMapNumber,
-                                 map_no);
+                    nbr->setProp<int>(RDKit::common_properties::molAtomMapNumber,
+                                      map_no);
                 }
 
                 mol.removeAtom(at);
@@ -920,12 +920,12 @@ bool sameMonomer(RDKit::RWMol& atomistic_mol,
         for (auto [db_idx, at_idx] : match[0]) {
             auto db_at = db_mol->getAtomWithIdx(db_idx);
             auto at = monomer_frag->getAtomWithIdx(at_idx);
-            unsigned int map_no;
+            int map_no;
             if (db_at->getPropIfPresent(
                     RDKit::common_properties::molAtomMapNumber, map_no)) {
                 auto ref_idx = at->getProp<unsigned int>(REFERENCE_IDX);
                 atomistic_mol.getAtomWithIdx(ref_idx)->setProp<unsigned int>(
-                    MONOMER_MAP_NUM, map_no);
+                    MONOMER_MAP_NUM, static_cast<unsigned int>(map_no));
             }
         }
         return true;
@@ -1081,7 +1081,7 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
 
     // Set reference index for SMILES fragments
     for (auto at : mol.atoms()) {
-        at->setProp(REFERENCE_IDX, at->getIdx());
+        at->setProp<unsigned int>(REFERENCE_IDX, at->getIdx());
     }
 
     // Map chain_id -> {residue mols}
