@@ -851,13 +851,8 @@ bool sameMonomer(RDKit::RWMol& atomistic_mol,
                 // Label parent with this map number so we know which map number
                 // the linkage uses
                 for (const auto& nbr : mol.atomNeighbors(at)) {
-<<<<<<< HEAD
-                    nbr->setProp<int>(
-                        RDKit::common_properties::molAtomMapNumber, map_no);
-=======
                     nbr->setProp(RDKit::common_properties::molAtomMapNumber,
                                  map_no);
->>>>>>> parent of 216af50 (trying to fix std::bad_any_cast error)
                 }
 
                 mol.removeAtom(at);
