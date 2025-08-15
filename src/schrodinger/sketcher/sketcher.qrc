@@ -65,6 +65,8 @@
     <file>icons/ring_cyclopropane.svg</file>
     <file>icons/ring_cyclopropane_dis.svg</file>
     <file>icons/rotate.svg</file>
+    <file>icons/select_ellipse.svg</file>
+    <file>icons/select_ellipse_dis.svg</file>
     <file>icons/select_lasso.svg</file>
     <file>icons/select_lasso_dis.svg</file>
     <file>icons/select_move_rotate.svg</file>

@@ -109,7 +109,7 @@
      </property>
      <property name="icon">
       <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/select_square.svg</normaloff>:/icons/select_square.svg</iconset>
+       <normaloff>:/icons/select_ellipse.svg</normaloff>:/icons/select_ellipse.svg</iconset>
      </property>
      <property name="iconSize">
       <size>
