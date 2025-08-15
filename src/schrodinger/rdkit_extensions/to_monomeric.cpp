@@ -529,8 +529,9 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                 if (at->getPropIfPresent(ATTCH_PROP, map_no)) {
                     // add dummy atom with this attachment point
                     auto new_at = new RDKit::Atom(0);
-                    new_at->setProp<int>(RDKit::common_properties::molAtomMapNumber,
-                                         static_cast<int>(map_no));
+                    new_at->setProp<int>(
+                        RDKit::common_properties::molAtomMapNumber,
+                        static_cast<int>(map_no));
                     auto new_at_idx = mol_fragment->addAtom(
                         new_at, update_label, take_ownership);
                     mol_fragment->addBond(new_at_idx, at->getIdx(),
@@ -851,8 +852,8 @@ bool sameMonomer(RDKit::RWMol& atomistic_mol,
                 // Label parent with this map number so we know which map number
                 // the linkage uses
                 for (const auto& nbr : mol.atomNeighbors(at)) {
-                    nbr->setProp<int>(RDKit::common_properties::molAtomMapNumber,
-                                      map_no);
+                    nbr->setProp<int>(
+                        RDKit::common_properties::molAtomMapNumber, map_no);
                 }
 
                 mol.removeAtom(at);
