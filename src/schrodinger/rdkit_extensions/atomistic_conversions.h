@@ -38,7 +38,7 @@ toMonomeric(const RDKit::ROMol& atomistic_mol, bool use_residue_info = true);
  *
  * For testing purposes.
  */
-RDKIT_EXTENSIONS_API std::vector<std::vector<int>>
+RDKIT_EXTENSIONS_API std::vector<std::vector<unsigned int>>
 getMonomers(const RDKit::ROMol& mol);
 
 /**
