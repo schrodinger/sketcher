@@ -71,6 +71,11 @@ file_to_rdkit(const std::string& filename)
 
 static std::unique_ptr<RDKit::ROMol> resolve_his(const RDKit::ROMol& mol)
 {
+    // Some structures may contain different protonation states for histidine,
+    // but we currently map all of them to the same single letter code 'H' in
+    // the monomeric representation. Since we want to test the roundtrip
+    // conversion against the original, we need to resolve the histidine
+    // protonation state to what is in the monomer database.
     std::string smiles = RDKit::MolToSmiles(mol);
 
     std::vector<std::string> targets = {"Cc1c[nH]cn1"};
@@ -126,7 +131,8 @@ static void remove_solvents(RDKit::RWMol& rwmol)
     rwmol.commitBatchEdit();
 }
 
-// This is needed for all atomistic <-> monomeric conversions
+// The C++ monomer database access depends on an environment variable being set,
+// and the DB is used for all atomistic <-> monomeric conversions.
 struct SetDefaultMonomerDbPath {
     SetDefaultMonomerDbPath()
     {
