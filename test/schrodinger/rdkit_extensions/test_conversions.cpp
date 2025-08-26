@@ -516,7 +516,7 @@ BOOST_AUTO_TEST_CASE(TestNoAtomsToMonomeric)
 BOOST_DATA_TEST_CASE(
     TestAtomisticToMonomericSmilesMonomers,
     bdata::make(std::vector<std::string>{
-        // User of disulfide bond in SMILES monomer, matches standard backbone
+        // Use of disulfide bond in SMILES monomer, matches standard backbone
         "PEPTIDE1{[ac].[CC(C)(S[*:3])[C@@H](N[*:1])C(=O)[*:2]].I.P.R.G.D.["
         "COc1ccc(C[C@H](N[*:1])C(=O)[*:2])cc1].R.C.[am]}$PEPTIDE1,PEPTIDE1,2:"
         "R3-10:R3$$$V2.0",
@@ -527,7 +527,18 @@ BOOST_DATA_TEST_CASE(
         // Example of R3 attachment point use on non-standard backbone (doesn't
         // match general AA query)
         "PEPTIDE1{F.W.[CC(C)(C[*:3])C(CO[*:1])C(=N)[*:2]].P.A.G.C.K}$PEPTIDE1,"
-        "PEPTIDE1,3:R3-7:R3$$$V2.0"}),
+        "PEPTIDE1,3:R3-7:R3$$$V2.0",
+        // Disulfide bond on a SMILES monomer not identifed by the cysteine
+        // query
+        "PEPTIDE1{[ac].[CC(C)(CS[*:3])[C@@H](N[*:1])C(=O)[*:2]].I.P.R.G.D.["
+        "COc1ccc(C[C@H](N[*:1])C(=O)[*:2])cc1].R.C.[am]}$PEPTIDE1,PEPTIDE1,2:"
+        "R3-10:R3$$$V2.0",
+        // Various map number uses, but ensure that the sulfur is not given an
+        // R3 attachment point since it isn't used
+        "PEPTIDE1{Q.R.F.[CC(C)(S)[C@@H](N[*:1])C(=O)[*:2]].T.G.H.F.G.G.L.Y.[O="
+        "C([C@H]1CCCCCN1[*:1])[*:2]].[O=C([C@@H](CCS)N[*:1])[*:2]].N.G.P}$$$$"
+        "V2."
+        "0"}),
     helm_str)
 {
     // Test SMILES -> MonomerMol where some of the monomers are SMILES monomers
