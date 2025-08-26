@@ -18,6 +18,7 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 
+#include "test_common.h"
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
@@ -46,6 +47,8 @@ std::ostream& operator<<(std::ostream& os,
     return os;
 }
 } // namespace std
+
+BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
 
 BOOST_AUTO_TEST_CASE(test_partial_removeHs)
 {
