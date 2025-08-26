@@ -552,8 +552,22 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                     ->setProp<unsigned int>(ATTCH_PROP, 2);
             }
             if (monomer.r3 != NO_ATTACHMENT) {
-                atomistic_mol.getAtomWithIdx(monomer.r3)
-                    ->setProp<unsigned int>(ATTCH_PROP, 3);
+                // Check if this monomer actually has an R3 attachment point
+                bool has_r3 = false;
+                auto this_at = atomistic_mol.getAtomWithIdx(monomer.r3);
+                auto monomer_idx = this_at->getProp<unsigned int>(MONOMER_IDX);
+                for (auto& neigh : atomistic_mol.atomNeighbors(this_at)) {
+                    unsigned int neigh_monomer_idx;
+                    if (neigh->getPropIfPresent(MONOMER_IDX,
+                                                neigh_monomer_idx) &&
+                        neigh_monomer_idx != monomer_idx) {
+                        has_r3 = true;
+                    }
+                }
+                if (has_r3) {
+                    atomistic_mol.getAtomWithIdx(monomer.r3)
+                        ->setProp<unsigned int>(ATTCH_PROP, 3);
+                }
             }
 
             auto mol_fragment =
