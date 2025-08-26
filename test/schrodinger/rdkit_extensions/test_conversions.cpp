@@ -148,7 +148,7 @@ BOOST_DATA_TEST_CASE(
         {"NCCCC[C@H](NC(=O)[C@H](CS)NC(=O)[C@@H](Cc1ccccc1)NC(=O)CNC(=O)[C@H]("
          "CCCNC(=N)N)NC(=O)[C@H](C)N)C(=O)N(C)[C@@H](C)C(=O)N[C@@H](CCC(=O)O)C("
          "=O)N[C@@H](CC(=O)O)C(=O)N[C@@H](C)C(=O)O",
-         "PEPTIDE1{A.R.G.F.C.K.[CC(C=O)N(C)[*:1]].E.D.A}$$$$V2.0"},
+         "PEPTIDE1{A.R.G.F.C.K.[C[C@@H](C(=O)[*:2])N(C)[*:1]].E.D.A}$$$$V2.0"},
         {"CC(C)C[C@@H]1NC(=O)[C@H](Cc2c[nH]c3ccccc23)NC(=O)[C@H](CCCCN)NC(=O)["
          "C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]2CCCN2C(=O)[C@H](C(C)O)NC("
          "=O)[C@H](CCC(=O)O)NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@H](CC(N)=O)NC1=O",
@@ -163,6 +163,18 @@ BOOST_DATA_TEST_CASE(
 
     auto helm_result = to_string(*monomer_mol, Format::HELM);
     BOOST_TEST(helm_result == test_data.second);
+
+    auto roundtrip_monomer_mol = to_rdkit(helm_result);
+    auto roundtrip_atomistic = toAtomistic(*roundtrip_monomer_mol);
+
+    RDKit::SubstructMatchParameters params;
+    params.maxMatches = 1;
+    auto match =
+        RDKit::SubstructMatch(*roundtrip_atomistic, *atomistic_mol, params);
+    BOOST_REQUIRE(!match.empty());
+    BOOST_TEST(match[0].size() == atomistic_mol->getNumAtoms());
+    BOOST_TEST((roundtrip_atomistic->getNumAtoms() -
+                atomistic_mol->getNumAtoms()) <= 2);
 }
 
 BOOST_DATA_TEST_CASE(
@@ -461,4 +473,34 @@ BOOST_AUTO_TEST_CASE(TestInconsistentCycleStartPoint)
     BOOST_TEST(roundtrip_helm(helm2) == helm3);
     BOOST_TEST(roundtrip_helm(helm3) ==
                "PEPTIDE1{V.F.F.A.A.A.F.P}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0");
+}
+
+BOOST_DATA_TEST_CASE(
+    TestAtomisticToMonomericSmilesMonomers,
+    bdata::make(std::vector<std::string>{
+        // User of disulfide bond in SMILES monomer, matches standard backbone
+        "PEPTIDE1{[ac].[CC(C)(S[*:3])[C@@H](N[*:1])C(=O)[*:2]].I.P.R.G.D.["
+        "COc1ccc(C[C@H](N[*:1])C(=O)[*:2])cc1].R.C.[am]}$PEPTIDE1,PEPTIDE1,2:"
+        "R3-10:R3$$$V2.0",
+        "PEPTIDE1{D.[CC(C)(S[*:3])[C@@H](N[*:1])C(=O)[*:2]].F.W.[NCCC[C@@H](N[*"
+        ":1])C(=O)[*:2]].Y.C.V}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$V2.0",
+        "PEPTIDE1{F.W.[CC(C)(C[*:3])[C@@H](N[*:1])C(=O)[*:2]].P.A.G.C.K}$"
+        "PEPTIDE1,PEPTIDE1,3:R3-7:R3$$$V2.0",
+        // Example of R3 attachment point use on non-standard backbone (doesn't
+        // match general AA query)
+        "PEPTIDE1{F.W.[CC(C)(C[*:3])C(CO[*:1])C(=N)[*:2]].P.A.G.C.K}$PEPTIDE1,"
+        "PEPTIDE1,3:R3-7:R3$$$V2.0"}),
+    helm_str)
+{
+    // Test SMILES -> MonomerMol where some of the monomers are SMILES monomers
+    // and the correct attachment points should be identified and used in their
+    // connections. Test by roundtripping through HELM -> monomeric -> atomistic
+    // -> monomeric -> ROUNDTRIP_HELM; HELM and ROUNDTRIP_HELM should be
+    // identical
+    auto monomer_mol = to_rdkit(helm_str);
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    bool use_residue_info = false;
+    auto roundtrip_monomer_mol = toMonomeric(*atomistic_mol, use_residue_info);
+    auto helm_sountrip = to_string(*roundtrip_monomer_mol, Format::HELM);
+    BOOST_TEST(helm_sountrip == helm_str);
 }
