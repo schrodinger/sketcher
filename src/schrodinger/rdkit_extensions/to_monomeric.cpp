@@ -137,6 +137,7 @@ struct MonomerMatch {
     std::vector<unsigned int> atom_indices = {}; // atom indices of the match
     unsigned int r1 = NO_ATTACHMENT;             // attachment point 1
     unsigned int r2 = NO_ATTACHMENT;             // attachment point 2
+    unsigned int r3 = NO_ATTACHMENT;             // attachment point 3
 };
 
 struct Linkage {
@@ -208,7 +209,8 @@ void addMatchesToMonomers(
             // monomer, so do not add it if it is present *unless* it is an
             // oxygen which implies the end of the PEPTIDE chain without a
             // special capping group.
-            if (map_no != TERMINAL_ATTCHPT || atom->getAtomicNum() == 8) {
+            if (map_no != TERMINAL_ATTCHPT ||
+                (atom->getAtomicNum() == 8 && atom->getDegree() == 1)) {
                 atom->setProp<unsigned int>(MONOMER_IDX, monomer_idx);
                 monomer.atom_indices.push_back(atom->getIdx());
 
@@ -237,6 +239,8 @@ void addMatchesToMonomers(
                     // the SIDECHAIN_IDX and will be indicated by the presence
                     // of the atom map number.
                     sidechain_attch_pts[monomer_idx] = atom_idx;
+                } else if (map_no == 3) {
+                    monomer.r3 = atom->getIdx();
                 }
             }
         }
@@ -287,7 +291,6 @@ void groupRemainingAtoms(const RDKit::ROMol& atomistic_mol,
         MonomerMatch monomer;
         std::queue<unsigned int> q;
         q.push(i);
-        unsigned int attachment_num = 1;
         while (!q.empty()) {
             auto at_idx = q.front();
             q.pop();
@@ -302,22 +305,52 @@ void groupRemainingAtoms(const RDKit::ROMol& atomistic_mol,
                     if (!nbr->hasProp(MONOMER_IDX)) {
                         q.push(nbr->getIdx());
                     } else {
-                        // Note: this is an arbitrary setting of attachment
-                        // points so that monomers can still be sorted, to be
-                        // fixed in SHARED-11713
-                        if (attachment_num == 1) {
-                            monomer.r1 = at_idx;
-                            at->setProp<unsigned int>(ATTACH_NUM, 1);
-                        } else if (attachment_num == 2) {
-                            monomer.r2 = at_idx;
-                            at->setProp<unsigned int>(ATTACH_NUM, 2);
-                        } else {
-                            throw std::runtime_error(
-                                "More than 2 overlaps found with neighboring "
-                                "monomers");
+                        // Deduce attachment point from attachment point on
+                        // neighboring monomer If neighboring monomer has
+                        // attachment point, use it
+                        unsigned int neighbor_attach_num;
+                        if (nbr->getPropIfPresent(ATTACH_NUM,
+                                                  neighbor_attach_num)) {
+                            if (neighbor_attach_num == 1) {
+                                // Assume this is a backbone linkage; this could
+                                // also be an instance where the neighbor is a
+                                // sidechain, but that must be deduced after
+                                // ordering monomers
+                                monomer.r2 = at_idx;
+                                at->setProp<unsigned int>(ATTACH_NUM, 2);
+                            } else if (neighbor_attach_num == 2) {
+                                // This is a backbone linkage
+                                monomer.r1 = at_idx;
+                                at->setProp<unsigned int>(ATTACH_NUM, 1);
+                            } else if (neighbor_attach_num == 3) {
+                                // Assume this is an R3-R3 linkage; this could
+                                // also be an instance where this monomer is a
+                                // sidechain, but that must be deduced after
+                                // ordering monomers
+                                monomer.r3 = at_idx;
+                                at->setProp<unsigned int>(ATTACH_NUM, 3);
+                            }
                         }
-                        ++attachment_num;
                     }
+                }
+            }
+        }
+
+        if (monomer.atom_indices.size() == 1) {
+            // Unless this is attached to an actual attachment point, we should
+            // just add this atom to the monomer it is attached to.
+            auto at = atomistic_mol.getAtomWithIdx(monomer.atom_indices[0]);
+            if (at->getDegree() == 1) {
+                auto neigh = *atomistic_mol.atomNeighbors(at).begin();
+                unsigned int neigh_attach_num;
+                if (neigh->getPropIfPresent(ATTACH_NUM, neigh_attach_num) &&
+                    neigh_attach_num == NO_ATTACHMENT) {
+                    auto neigh_monomer_idx =
+                        neigh->getProp<unsigned int>(MONOMER_IDX);
+                    monomers[neigh_monomer_idx].atom_indices.push_back(
+                        monomer.atom_indices[0]);
+                    at->setProp<unsigned int>(MONOMER_IDX, neigh_monomer_idx);
+                    continue;
                 }
             }
         }
@@ -333,7 +366,7 @@ void groupRemainingAtoms(const RDKit::ROMol& atomistic_mol,
     }
 }
 
-void detectLinkages(const RDKit::ROMol& atomistic_mol,
+void detectLinkages(RDKit::ROMol& atomistic_mol,
                     std::vector<MonomerMatch>& monomers,
                     std::vector<Linkage>& linkages)
 {
@@ -346,30 +379,30 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
         if (at1->getPropIfPresent(MONOMER_IDX, monomer_idx1) &&
             at2->getPropIfPresent(MONOMER_IDX, monomer_idx2) &&
             monomer_idx1 != monomer_idx2) {
-            unsigned int attach_num1 = 0;
-            unsigned int attach_num2 = 0;
-            auto has_attach_num1 =
-                at1->getPropIfPresent(ATTACH_NUM, attach_num1);
-            auto has_attach_num2 =
-                at2->getPropIfPresent(ATTACH_NUM, attach_num2);
+            unsigned int attach_num1 = NO_ATTACHMENT;
+            unsigned int attach_num2 = NO_ATTACHMENT;
+            at1->getPropIfPresent(ATTACH_NUM, attach_num1);
+            at2->getPropIfPresent(ATTACH_NUM, attach_num2);
 
-            if ((!has_attach_num1 && !has_attach_num2) ||
-                attach_num1 == NO_ATTACHMENT || attach_num2 == NO_ATTACHMENT) {
+            if (attach_num1 == NO_ATTACHMENT && attach_num2 == NO_ATTACHMENT) {
                 // This means we have two monomers that are connected and
                 // the attachment point location cannot be determined from
-                // either monomer. Since we cannot determine where one
+                // both monomers. Since we cannot determine where one
                 // monomer starts and the other ends, throw an error.
-                throw std::runtime_error(
-                    fmt::format("Monomers {} and {} are connected but "
-                                "attachment points cannot be determined",
-                                monomer_idx1, monomer_idx2));
+                throw std::runtime_error(fmt::format(
+                    "Atoms {} and {} are bonded and in different monomers but "
+                    "attachment points cannot be determined",
+                    at1->getIdx(), at2->getIdx()));
             }
 
-            // If no attachment point is present, we assume it is R3
-            if (!has_attach_num1) {
+            // If no attachment point is present for one of the , we assume it
+            // is R3
+            if (attach_num1 == NO_ATTACHMENT) {
+                monomers[monomer_idx1].r3 = at1->getIdx();
                 attach_num1 = 3;
             }
-            if (!has_attach_num2) {
+            if (attach_num2 == NO_ATTACHMENT) {
+                monomers[monomer_idx2].r3 = at2->getIdx();
                 attach_num2 = 3;
             }
 
@@ -512,7 +545,6 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
 
     static constexpr const char* CHAIN_ID = "PEPTIDE1";
 
-    constexpr bool isomeric_smiles = false;
     int residue_num = 1;
     for (const auto& monomer : monomers) {
         auto helm_symbol = findHelmSymbol(atomistic_mol, monomer.atom_indices);
@@ -528,9 +560,14 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
             if (monomer.r1 != NO_ATTACHMENT) {
                 atomistic_mol.getAtomWithIdx(monomer.r1)
                     ->setProp<unsigned int>(ATTCH_PROP, 1);
-            } else if (monomer.r2 != NO_ATTACHMENT) {
+            }
+            if (monomer.r2 != NO_ATTACHMENT) {
                 atomistic_mol.getAtomWithIdx(monomer.r2)
                     ->setProp<unsigned int>(ATTCH_PROP, 2);
+            }
+            if (monomer.r3 != NO_ATTACHMENT) {
+                atomistic_mol.getAtomWithIdx(monomer.r3)
+                    ->setProp<unsigned int>(ATTCH_PROP, 3);
             }
 
             auto mol_fragment =
@@ -551,8 +588,7 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                                           RDKit::Bond::SINGLE);
                 }
             }
-            auto monomer_smiles =
-                RDKit::MolToSmiles(*mol_fragment, isomeric_smiles);
+            auto monomer_smiles = RDKit::MolToSmiles(*mol_fragment);
 
             addMonomer(*monomer_mol, monomer_smiles, residue_num, CHAIN_ID,
                        MonomerType::SMILES);
@@ -658,11 +694,10 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
     for (size_t i = 0; i < monomers.size(); ++i) {
         if (!visited[i]) {
             auto this_at_idx = monomers[i].atom_indices.front();
-            throw std::runtime_error(
-                fmt::format("Could not traverse bonds from atom {} to atom {} "
-                            "on backbone bonds -- monomer topologies "
-                            "requiring multiple chains are not supported",
-                            start_monomer_atom_idx, this_at_idx));
+            throw std::runtime_error(fmt::format(
+                "Could not traverse bonds from atom {} to atom {} - chains "
+                "with disconnections or missing residues are not supported",
+                start_monomer_atom_idx, this_at_idx));
         }
     }
 
@@ -1194,15 +1229,6 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
             assignChains(*monomer_mol);
             return monomer_mol;
         }
-    }
-
-    // SMARTS method of identifying monomers not supported when the input is a
-    // disconnected graph
-    if (RDKit::MolOps::getMolFrags(atomistic_mol, /*sanitizeFrags = */ false)
-            .size() > 1) {
-        throw std::runtime_error(
-            "Atomistic to Monomeric conversion requires a connected graph when "
-            "autodetecting monomers.");
     }
 
     std::vector<MonomerMatch> monomers;
