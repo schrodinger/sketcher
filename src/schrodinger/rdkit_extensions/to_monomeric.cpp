@@ -504,9 +504,8 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
         auto& monomer = monomers.front();
         auto helm_symbol = findHelmSymbol(atomistic_mol, monomer.atom_indices);
         if (!helm_symbol) {
-            addMonomer(*monomer_mol,
-                       RDKit::MolToSmiles(atomistic_mol),
-                       1, "CHEM1", MonomerType::SMILES);
+            addMonomer(*monomer_mol, RDKit::MolToSmiles(atomistic_mol), 1,
+                       "CHEM1", MonomerType::SMILES);
             return;
         }
     }
