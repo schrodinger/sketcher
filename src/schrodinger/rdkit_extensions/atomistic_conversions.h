@@ -26,12 +26,13 @@ namespace rdkit_extensions
  * be written to HELM format using the HELM writer.
  *
  * @param atomistic_mol Atomistic molecule to convert to monomeric
- * @param use_residue_info Whether to use PDBAtomResidueInfo to determine
- * monomer boundaries
+ * @param try_residue_info Whether to first try using PDBAtomResidueInfo to 
+ * determine monomer boundaries. If set to false, will always use SMARTS matching
+ * method to identify monomers.
  * @return monomeric molecule
  */
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
-toMonomeric(const RDKit::ROMol& atomistic_mol, bool use_residue_info = true);
+toMonomeric(const RDKit::ROMol& atomistic_mol, bool try_residue_info = true);
 
 /**
  * Identify monomers within an atomistic molecule
