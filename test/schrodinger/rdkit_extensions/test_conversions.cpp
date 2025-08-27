@@ -472,7 +472,8 @@ BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
                       "CCCCN)NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]"
                       "2CCCN2C(=O)[C@H](C(C)O)NC(=O)[C@H](CCC(=O)O)NC(=O)[C@H]("
                       "Cc2ccccc2)NC(=O)[C@H](CC(N)=O)NC1=O";
-        auto atomistic_mol = RDKit::SmilesToMol(smiles);
+        boost::shared_ptr<RDKit::ROMol> atomistic_mol(
+            RDKit::SmilesToMol(smiles));
         auto monomer_mol = toMonomeric(*atomistic_mol);
         auto helm_result = to_string(*monomer_mol, Format::HELM);
         BOOST_TEST(helm_result == "PEPTIDE1{N.F.E.T.P.P.F.K.W.L}$PEPTIDE1,"
@@ -483,7 +484,8 @@ BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
         // If we have a structure that doesn't resemble a sequence of amino
         // acids at all, it will be placed into a single SMILES monomer
         auto smiles = "CC(C)c1ccccc1";
-        auto atomistic_mol = RDKit::SmilesToMol(smiles);
+        boost::shared_ptr<RDKit::ROMol> atomistic_mol(
+            RDKit::SmilesToMol(smiles));
         auto monomer_mol = toMonomeric(*atomistic_mol);
         auto helm_result = to_string(*monomer_mol, Format::HELM);
         BOOST_TEST(helm_result == "CHEM1{[CC(C)c1ccccc1]}$$$$V2.0");
@@ -493,7 +495,8 @@ BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
         // But if we have a single known amino acid, it will be identified as
         // such
         auto smiles = "N[C@@H](CC(=O)O)C(=O)O";
-        auto atomistic_mol = RDKit::SmilesToMol(smiles);
+        boost::shared_ptr<RDKit::ROMol> atomistic_mol(
+            RDKit::SmilesToMol(smiles));
         auto monomer_mol = toMonomeric(*atomistic_mol);
         auto helm_result = to_string(*monomer_mol, Format::HELM);
         BOOST_TEST(helm_result == "PEPTIDE1{D}$$$$V2.0");
