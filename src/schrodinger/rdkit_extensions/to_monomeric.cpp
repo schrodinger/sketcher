@@ -496,6 +496,20 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
 {
     // Start with all atoms in a single peptide chain
     monomer_mol->setProp<bool>(HELM_MODEL, true);
+
+    // In the unique case only one monomer is identified and it has no known
+    // monomer definition (meaning it is a SMILES monomer), place the entire
+    // structure into a single CHEM smiles monomer.
+    if (monomers.size() == 1) {
+        auto& monomer = monomers.front();
+        auto helm_symbol = findHelmSymbol(atomistic_mol, monomer.atom_indices);
+        if (!helm_symbol) {
+            addMonomer(*monomer_mol, RDKit::MolToSmiles(atomistic_mol), 1,
+                       "CHEM1", MonomerType::SMILES);
+            return;
+        }
+    }
+
     static constexpr const char* CHAIN_ID = "PEPTIDE1";
 
     constexpr bool isomeric_smiles = false;
@@ -1159,14 +1173,13 @@ bool hasPdbResidueInfo(const RDKit::ROMol& mol)
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
-                                            bool use_residue_info)
+                                            bool try_residue_info)
 {
-    // Use residue information to build the monomeric molecule. Assumes that
-    // the residue information is correct, and throws if any residue information
-    // is missing.
+    // First attempt to use residue information to build the monomeric molecule,
+    // if the information isn't present fall back to SMARTS-based method
     RDKit::RWMol atomistic_mol(mol);
     neutralizeAtoms(atomistic_mol);
-    if (use_residue_info) {
+    if (try_residue_info) {
         if (hasPdbResidueInfo(atomistic_mol)) {
             auto monomer_mol = pdbInfoAtomisticToMM(atomistic_mol, true);
             assignChains(*monomer_mol);
@@ -1175,9 +1188,6 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
             auto monomer_mol = pdbInfoAtomisticToMM(atomistic_mol, false);
             assignChains(*monomer_mol);
             return monomer_mol;
-        } else {
-            throw std::runtime_error(
-                "No residue information found in molecule");
         }
     }
 
