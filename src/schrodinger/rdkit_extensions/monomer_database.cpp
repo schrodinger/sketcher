@@ -118,7 +118,7 @@ MonomerDatabase::~MonomerDatabase()
 
 MonomerDatabase::string_t
 MonomerDatabase::getMonomerSmiles(std::string monomer_id,
-                                  ChainType monomer_type)
+                                  ChainType monomer_type) const
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -142,8 +142,37 @@ MonomerDatabase::getMonomerSmiles(std::string monomer_id,
     return get_info_from_database(m_db, get_sql_command(), smiles_getter);
 }
 
+std::string MonomerDatabase::getNaturalAnalog(std::string monomer_id,
+                                              ChainType monomer_type) const
+{
+    auto get_sql_command = [&]() -> std::string {
+        static constexpr std::string_view template_{
+            "SELECT {0} FROM {{}} WHERE {1}='{2}' AND {3}='{4}';"};
+        static constexpr std::string_view analog_column{"NATURALANALOG"};
+        static constexpr std::string_view symbol_column{"SYMBOL"};
+        static constexpr std::string_view type_column{"POLYMERTYPE"};
+
+        auto type_value = toString(monomer_type);
+        boost::algorithm::trim(monomer_id);
+
+        return fmt::format(template_, analog_column, type_column, type_value,
+                           symbol_column, monomer_id);
+    };
+
+    auto analog_getter = [](sqlite3_stmt* stmt) -> std::string {
+        auto result = sqlite3_column_text(stmt, 0);
+        return reinterpret_cast<const char*>(result);
+    };
+
+    auto ret = get_info_from_database(m_db, get_sql_command(), analog_getter);
+    if (ret.empty()) {
+        return "X";
+    }
+    return ret;
+}
+
 [[nodiscard]] MonomerDatabase::helm_info_t
-MonomerDatabase::getHelmInfo(const std::string& pdb_code)
+MonomerDatabase::getHelmInfo(const std::string& pdb_code) const
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{
@@ -172,7 +201,7 @@ MonomerDatabase::getHelmInfo(const std::string& pdb_code)
 
 [[nodiscard]] MonomerDatabase::string_t
 MonomerDatabase::getPdbCode(const std::string& helm_symbol,
-                            ChainType monomer_type)
+                            ChainType monomer_type) const
 {
     auto get_sql_command = [&]() -> std::string {
         static constexpr std::string_view template_{

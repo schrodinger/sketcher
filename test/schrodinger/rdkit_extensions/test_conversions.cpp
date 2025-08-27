@@ -149,8 +149,8 @@ BOOST_DATA_TEST_CASE(
     boost::shared_ptr<RDKit::ROMol> atomistic_mol(
         RDKit::SmilesToMol(test_data.first));
 
-    bool use_residue_info = false;
-    auto monomer_mol = toMonomeric(*atomistic_mol, use_residue_info);
+    bool try_residue_info = false;
+    auto monomer_mol = toMonomeric(*atomistic_mol, try_residue_info);
 
     auto helm_result = to_string(*monomer_mol, Format::HELM);
     BOOST_TEST(helm_result == test_data.second);
@@ -246,8 +246,8 @@ BOOST_DATA_TEST_CASE(TestRoundtripHelm, bdata::make(ROUNDTRIP_HELM_TEST_SET),
     auto monomer_mol = to_rdkit(helm_str);
     auto atomistic_mol = toAtomistic(*monomer_mol);
 
-    bool use_residue_info = false;
-    auto mm_roundtrip = toMonomeric(*atomistic_mol, use_residue_info);
+    bool try_residue_info = false;
+    auto mm_roundtrip = toMonomeric(*atomistic_mol, try_residue_info);
 
     auto helm_result = to_string(*mm_roundtrip, Format::HELM);
     BOOST_TEST(helm_result == helm_str);
@@ -260,8 +260,8 @@ BOOST_DATA_TEST_CASE(TestRoundtripHelmPDBResidueInfo,
     auto monomer_mol = to_rdkit(test_data);
     auto atomistic_mol = toAtomistic(*monomer_mol);
 
-    bool use_residue_info = true;
-    auto mm_roundtrip = toMonomeric(*atomistic_mol, use_residue_info);
+    bool try_residue_info = true;
+    auto mm_roundtrip = toMonomeric(*atomistic_mol, try_residue_info);
 
     auto helm_result = to_string(*mm_roundtrip, Format::HELM);
     BOOST_TEST(helm_result == test_data);
@@ -277,8 +277,8 @@ BOOST_DATA_TEST_CASE(TestRoundtripSupGroups,
     auto molblock = to_string(*atomistic_mol, Format::MDL_MOLV3000);
     boost::shared_ptr<RDKit::ROMol> mol_from_block(to_rdkit(molblock));
 
-    bool use_residue_info = true;
-    auto mm_from_sup_groups = toMonomeric(*mol_from_block, use_residue_info);
+    bool try_residue_info = true;
+    auto mm_from_sup_groups = toMonomeric(*mol_from_block, try_residue_info);
     auto helm_result = to_string(*mm_from_sup_groups, Format::HELM);
     BOOST_TEST(helm_result == test_data);
 }
@@ -437,8 +437,8 @@ BOOST_AUTO_TEST_CASE(TestInconsistentCycleStartPoint)
     auto roundtrip_helm = [](const std::string& helm_str) {
         auto monomer_mol = to_rdkit(helm_str);
         auto atomistic_mol = toAtomistic(*monomer_mol);
-        bool use_residue_info = false;
-        auto mm_roundtrip = toMonomeric(*atomistic_mol, use_residue_info);
+        bool try_residue_info = false;
+        auto mm_roundtrip = toMonomeric(*atomistic_mol, try_residue_info);
         return to_string(*mm_roundtrip, Format::HELM);
     };
 
@@ -452,4 +452,44 @@ BOOST_AUTO_TEST_CASE(TestInconsistentCycleStartPoint)
     BOOST_TEST(roundtrip_helm(helm2) == helm3);
     BOOST_TEST(roundtrip_helm(helm3) ==
                "PEPTIDE1{V.F.F.A.A.A.F.P}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0");
+}
+
+BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
+{
+    {
+        // If there is no residue information, the atomistic -> monomeric
+        // conversion will fall back to the SMARTS matching method
+        auto smiles = "CC(C)C[C@@H]1NC(=O)[C@H](Cc2c[nH]c3ccccc23)NC(=O)[C@H]("
+                      "CCCCN)NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]"
+                      "2CCCN2C(=O)[C@H](C(C)O)NC(=O)[C@H](CCC(=O)O)NC(=O)[C@H]("
+                      "Cc2ccccc2)NC(=O)[C@H](CC(N)=O)NC1=O";
+        boost::shared_ptr<RDKit::ROMol> atomistic_mol(
+            RDKit::SmilesToMol(smiles));
+        auto monomer_mol = toMonomeric(*atomistic_mol);
+        auto helm_result = to_string(*monomer_mol, Format::HELM);
+        BOOST_TEST(helm_result == "PEPTIDE1{N.F.E.T.P.P.F.K.W.L}$PEPTIDE1,"
+                                  "PEPTIDE1,10:R2-1:R1$$$V2.0");
+    }
+
+    {
+        // If we have a structure that doesn't resemble a sequence of amino
+        // acids at all, it will be placed into a single SMILES monomer
+        auto smiles = "CC(C)c1ccccc1";
+        boost::shared_ptr<RDKit::ROMol> atomistic_mol(
+            RDKit::SmilesToMol(smiles));
+        auto monomer_mol = toMonomeric(*atomistic_mol);
+        auto helm_result = to_string(*monomer_mol, Format::HELM);
+        BOOST_TEST(helm_result == "CHEM1{[CC(C)c1ccccc1]}$$$$V2.0");
+    }
+
+    {
+        // But if we have a single known amino acid, it will be identified as
+        // such
+        auto smiles = "N[C@@H](CC(=O)O)C(=O)O";
+        boost::shared_ptr<RDKit::ROMol> atomistic_mol(
+            RDKit::SmilesToMol(smiles));
+        auto monomer_mol = toMonomeric(*atomistic_mol);
+        auto helm_result = to_string(*monomer_mol, Format::HELM);
+        BOOST_TEST(helm_result == "PEPTIDE1{D}$$$$V2.0");
+    }
 }
