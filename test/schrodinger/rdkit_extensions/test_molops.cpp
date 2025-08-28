@@ -406,6 +406,8 @@ BOOST_DATA_TEST_CASE(TestCombineMols,
 
 BOOST_AUTO_TEST_CASE(TestCombineMolsWithUnknownMonomer)
 {
+    using namespace schrodinger::rdkit_extensions;
+
     auto mol1 = helm::helm_to_rdkit("PEPTIDE1{A}$$$$V2.0");
     auto mol2 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
     // monomeristic + atomistic
