@@ -374,6 +374,15 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 #endif
 }
 
+void SketcherWidget::copyAsImage(SceneSubset subset)
+{
+    auto mol = extract_mol(m_mol_model, subset);
+    auto image_bytes = get_image_bytes(*mol, ImageFormat::PNG);
+    QImage image;
+    image.loadFromData(image_bytes, "PNG");
+    QApplication::clipboard()->setImage(image);
+}
+
 /**
  * @internal
  * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
@@ -614,6 +623,8 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::cut);
     connect(&menu, &SelectionContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &SelectionContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
             &MolModel::flipSelection);
     connectContextMenu(*menu.m_modify_atoms_menu);

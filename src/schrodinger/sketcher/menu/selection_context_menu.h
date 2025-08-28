@@ -55,6 +55,7 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     void flipRequested();
     void cutRequested(rdkit_extensions::Format format);
     void copyRequested(rdkit_extensions::Format format, SceneSubset subset);
+    void copyAsImageRequested(SceneSubset subset);
     void deleteRequested(
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
