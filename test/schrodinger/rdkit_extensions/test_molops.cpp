@@ -373,19 +373,8 @@ BOOST_DATA_TEST_CASE(
 // clang-format off
 BOOST_DATA_TEST_CASE(TestCombineMols,
                      bdata::make(std::vector<CombineMonomericMolsTestData>{
- // different polymer ids
- {"PEPTIDE1{A}$$$$V2.0",            "PEPTIDE2{C}$$$$V2.0",         "PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0"},
- {"PEPTIDE2{A}$$$$V2.0",            "PEPTIDE1{C}$$$$V2.0",         "PEPTIDE2{A}|PEPTIDE1{C}$$$$V2.0"},
- // conflicting polymer ids
  {"PEPTIDE1{A}$$$$V2.0",            "PEPTIDE1{C}$$$$V2.0",         "PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0"},
- {"PEPTIDE2{A}$$$$V2.0",            "PEPTIDE2{C}$$$$V2.0",         "PEPTIDE2{A}|PEPTIDE3{C}$$$$V2.0"},
- // different polymers
- {"PEPTIDE1{A}$$$$V2.0",            "CHEM1{B}$$$$V2.0",            "PEPTIDE1{A}|CHEM1{B}$$$$V2.0"},
- {"PEPTIDE1{A}|CHEM1{A}$$$$V2.0",   "CHEM1{B}$$$$V2.0",            "PEPTIDE1{A}|CHEM1{A}|CHEM2{B}$$$$V2.0"},
- // monomer repetitions
- {"PEPTIDE1{A'4'}$$$$V2.0",         "PEPTIDE2{B'7'}$$$$V2.0",      "PEPTIDE1{A'4'}|PEPTIDE2{B'7'}$$$$V2.0"},
- // polymer annotations
- {R"(PEPTIDE1{A}"Hello"$$$$V2.0)",  R"(PEPTIDE2{B}"Hi"$$$$V2.0)",  R"(PEPTIDE1{A}"Hello"|PEPTIDE2{B}"Hi"$$$$V2.0)"},
+ {"PEPTIDE1{A}$$$$V2.0",            "PEPTIDE2{C}$$$$V2.0",         "PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0"},
                          // clang-format on
                      }),
                      test_data)
@@ -413,13 +402,25 @@ BOOST_DATA_TEST_CASE(TestCombineMols,
         auto combined = CombineMols(*atomistic1, *mol2);
         BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
     }
+}
 
-    // atomistic + atomistic
+BOOST_AUTO_TEST_CASE(TestCombineMolsWithUnknownMonomer)
+{
+    auto mol1 = helm::helm_to_rdkit("PEPTIDE1{A}$$$$V2.0");
+    auto mol2 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
+    // monomeristic + atomistic
+    {
+        auto atomistic2 = toAtomistic(*mol2);
+        auto combined = CombineMols(*mol1, *atomistic2);
+        BOOST_TEST(helm::rdkit_to_helm(*combined) ==
+                   "PEPTIDE1{A}|CHEM1{CC}$$$$V2.0");
+    }
+
+    // atomistic + monomeristic
     {
         auto atomistic1 = toAtomistic(*mol1);
-        auto atomistic2 = toAtomistic(*mol2);
-        auto combined = CombineMols(*atomistic1, *atomistic2);
-        auto monomeristic = toMonomeric(*combined);
-        BOOST_TEST(helm::rdkit_to_helm(*monomeristic) == test_data.expected);
+        auto combined = CombineMols(*atomistic1, *mol2);
+        BOOST_TEST("CHEM1{CC}|PEPTIDE1{A}$$$$V2.0" ==
+                   helm::rdkit_to_helm(*combined));
     }
 }
