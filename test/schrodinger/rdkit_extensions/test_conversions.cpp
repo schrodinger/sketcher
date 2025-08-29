@@ -498,7 +498,5 @@ BOOST_AUTO_TEST_CASE(TestNoAtomsToMonomeric)
 {
     // Test that we handle empty molecules correctly
     boost::shared_ptr<RDKit::ROMol> atomistic_mol(new RDKit::ROMol());
-    auto monomer_mol = toMonomeric(*atomistic_mol);
-    auto helm_result = to_string(*monomer_mol, Format::HELM);
-    BOOST_TEST(helm_result == "$$$$V2.0");
+    BOOST_CHECK_THROW(toMonomeric(*atomistic_mol), std::runtime_error);
 }
