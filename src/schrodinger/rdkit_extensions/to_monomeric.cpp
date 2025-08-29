@@ -1175,6 +1175,12 @@ bool hasPdbResidueInfo(const RDKit::ROMol& mol)
 boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
                                             bool try_residue_info)
 {
+    if (mol.getNumAtoms() == 0) {
+        boost::shared_ptr<RDKit::RWMol> empty_mol =
+            boost::make_shared<RDKit::RWMol>();
+        empty_mol->setProp<bool>(HELM_MODEL, true);
+        return empty_mol;
+    }
     // First attempt to use residue information to build the monomeric molecule,
     // if the information isn't present fall back to SMARTS-based method
     RDKit::RWMol atomistic_mol(mol);
