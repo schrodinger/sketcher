@@ -131,15 +131,6 @@ static void remove_solvents(RDKit::RWMol& rwmol)
     rwmol.commitBatchEdit();
 }
 
-// The C++ monomer database access depends on an environment variable being set,
-// and the DB is used for all atomistic <-> monomeric conversions.
-struct SetDefaultMonomerDbPath {
-    SetDefaultMonomerDbPath()
-    {
-        set_default_monomer_db_path();
-    }
-};
-
 BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
 
 BOOST_DATA_TEST_CASE(

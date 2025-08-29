@@ -18,6 +18,8 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 
+#include "test_common.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -45,6 +47,8 @@ std::ostream& operator<<(std::ostream& os,
     return os;
 }
 } // namespace std
+
+BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
 
 BOOST_AUTO_TEST_CASE(test_partial_removeHs)
 {
@@ -364,4 +368,59 @@ BOOST_DATA_TEST_CASE(
     auto mol2 = helm::helm_to_rdkit(test_data.mol2);
     auto combined = CombineMonomericMols(*mol1, *mol2);
     BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
+}
+
+// clang-format off
+BOOST_DATA_TEST_CASE(TestCombineMols,
+                     bdata::make(std::vector<CombineMonomericMolsTestData>{
+ {"PEPTIDE1{A}$$$$V2.0",            "PEPTIDE1{C}$$$$V2.0",         "PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0"},
+ {"PEPTIDE1{A}$$$$V2.0",            "PEPTIDE2{C}$$$$V2.0",         "PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0"},
+                         // clang-format on
+                     }),
+                     test_data)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    auto mol1 = helm::helm_to_rdkit(test_data.mol1);
+    auto mol2 = helm::helm_to_rdkit(test_data.mol2);
+    // monomeristic + monomeristic
+    {
+        auto combined = CombineMols(*mol1, *mol2);
+        BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
+    }
+
+    // monomeristic + atomistic
+    {
+        auto atomistic2 = toAtomistic(*mol2);
+        auto combined = CombineMols(*mol1, *atomistic2);
+        BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
+    }
+
+    // atomistic + monomeristic
+    {
+        auto atomistic1 = toAtomistic(*mol1);
+        auto combined = CombineMols(*atomistic1, *mol2);
+        BOOST_TEST(helm::rdkit_to_helm(*combined) == test_data.expected);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(TestCombineMolsWithUnknownMonomer)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    auto mol1 = helm::helm_to_rdkit("PEPTIDE1{A}$$$$V2.0");
+    auto mol2 = RDKit::v2::SmilesParse::MolFromSmiles("CC");
+    // monomeristic + atomistic
+    {
+        auto combined = CombineMols(*mol1, *mol2);
+        BOOST_TEST(helm::rdkit_to_helm(*combined) ==
+                   "PEPTIDE1{A}|CHEM1{[CC]}$$$$V2.0");
+    }
+
+    // atomistic + monomeristic
+    {
+        auto combined = CombineMols(*mol2, *mol1);
+        BOOST_TEST("CHEM1{[CC]}|PEPTIDE1{A}$$$$V2.0" ==
+                   helm::rdkit_to_helm(*combined));
+    }
 }
