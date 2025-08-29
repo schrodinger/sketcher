@@ -493,3 +493,10 @@ BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
         BOOST_TEST(helm_result == "PEPTIDE1{D}$$$$V2.0");
     }
 }
+
+BOOST_AUTO_TEST_CASE(TestNoAtomsToMonomeric)
+{
+    // Test that we handle empty molecules correctly
+    boost::shared_ptr<RDKit::ROMol> atomistic_mol(new RDKit::ROMol());
+    BOOST_CHECK_THROW(toMonomeric(*atomistic_mol), std::runtime_error);
+}
