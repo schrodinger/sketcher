@@ -414,13 +414,13 @@ BOOST_AUTO_TEST_CASE(TestCombineMolsWithUnknownMonomer)
     {
         auto combined = CombineMols(*mol1, *mol2);
         BOOST_TEST(helm::rdkit_to_helm(*combined) ==
-                   "PEPTIDE1{A}|CHEM1{CC}$$$$V2.0");
+                   "PEPTIDE1{A}|CHEM1{[CC]}$$$$V2.0");
     }
 
     // atomistic + monomeristic
     {
         auto combined = CombineMols(*mol2, *mol1);
-        BOOST_TEST("CHEM1{CC}|PEPTIDE1{A}$$$$V2.0" ==
+        BOOST_TEST("CHEM1{[CC]}|PEPTIDE1{A}$$$$V2.0" ==
                    helm::rdkit_to_helm(*combined));
     }
 }
