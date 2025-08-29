@@ -44,3 +44,12 @@ void set_default_monomer_db_path()
     setenv(name, value.c_str(), overwrite);
 #endif
 }
+
+// The C++ monomer database access depends on an environment variable being set,
+// and the DB is used for all atomistic <-> monomeric conversions.
+struct SetDefaultMonomerDbPath {
+    SetDefaultMonomerDbPath()
+    {
+        set_default_monomer_db_path();
+    }
+};
