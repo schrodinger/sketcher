@@ -60,7 +60,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="QToolButton" name="select_square_btn">
+      <widget class="schrodinger::sketcher::ModularToolButton" name="select_tool_btn_1">
        <property name="maximumSize">
         <size>
          <width>32</width>
@@ -68,12 +68,7 @@
         </size>
        </property>
        <property name="toolTip">
-        <string>Select structure (with square marqee)</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/select_square.svg</normaloff>
-         <disabledoff>:/icons/select_square_dis.svg</disabledoff>:/icons/select_square.svg</iconset>
+        <string/>
        </property>
        <property name="iconSize">
         <size>
@@ -90,7 +85,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="select_lasso_btn">
+      <widget class="schrodinger::sketcher::ModularToolButton" name="select_tool_btn_2">
        <property name="maximumSize">
         <size>
          <width>32</width>
@@ -98,12 +93,7 @@
         </size>
        </property>
        <property name="toolTip">
-        <string>Select structure (with lasso)</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../sketcher.qrc">
-         <normaloff>:/icons/select_lasso.svg</normaloff>
-         <disabledoff>:/icons/select_lasso_dis.svg</disabledoff>:/icons/select_lasso.svg</iconset>
+        <string/>
        </property>
        <property name="iconSize">
         <size>
@@ -284,13 +274,20 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>schrodinger::sketcher::ModularToolButton</class>
+   <extends>QToolButton</extends>
+   <header>schrodinger/sketcher/widget/modular_tool_button.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
  <buttongroups>
+  <buttongroup name="erase_tool_group"/>
   <buttongroup name="select_tool_group"/>
   <buttongroup name="move_tool_group"/>
-  <buttongroup name="erase_tool_group"/>
  </buttongroups>
 </ui>
