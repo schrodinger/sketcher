@@ -96,7 +96,7 @@ void MoveRotateSceneTool::onLeftButtonDragStart(
         emit newCursorHintRequested(m_translate_cursor_hint);
         m_action = Action::TRANSLATE;
         description = "Translate";
-        if (m_move_selection_item.rect().contains(event->scenePos())) {
+        if (m_move_selection_item.rect().contains(m_mouse_press_scene_pos)) {
             setObjectsToMove(selected_atoms, selected_non_mol_objs);
         }
     }
