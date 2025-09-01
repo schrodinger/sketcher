@@ -131,15 +131,6 @@ static void remove_solvents(RDKit::RWMol& rwmol)
     rwmol.commitBatchEdit();
 }
 
-// The C++ monomer database access depends on an environment variable being set,
-// and the DB is used for all atomistic <-> monomeric conversions.
-struct SetDefaultMonomerDbPath {
-    SetDefaultMonomerDbPath()
-    {
-        set_default_monomer_db_path();
-    }
-};
-
 BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
 
 BOOST_DATA_TEST_CASE(
@@ -501,4 +492,11 @@ BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
         auto helm_result = to_string(*monomer_mol, Format::HELM);
         BOOST_TEST(helm_result == "PEPTIDE1{D}$$$$V2.0");
     }
+}
+
+BOOST_AUTO_TEST_CASE(TestNoAtomsToMonomeric)
+{
+    // Test that we handle empty molecules correctly
+    boost::shared_ptr<RDKit::ROMol> atomistic_mol(new RDKit::ROMol());
+    BOOST_CHECK_THROW(toMonomeric(*atomistic_mol), std::runtime_error);
 }
