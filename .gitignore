@@ -33,3 +33,4 @@ TAGS
 .pytest_cache
 # compilation database
 compile_commands.json
+.vscode/
