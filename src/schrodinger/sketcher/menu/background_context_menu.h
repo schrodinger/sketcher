@@ -32,6 +32,7 @@ class SKETCHER_API BackgroundContextMenu : public AbstractContextMenu
     void flipVerticalRequested();
     void selectAllRequested();
     void copyRequested(rdkit_extensions::Format format, SceneSubset subset);
+    void copyAsImageRequested(SceneSubset subset);
     void pasteRequested(QPoint pos);
     void clearRequested();
 

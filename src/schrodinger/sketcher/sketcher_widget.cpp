@@ -376,8 +376,18 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 
 void SketcherWidget::copyAsImage(SceneSubset subset)
 {
-    auto mol = extract_mol(m_mol_model, subset);
-    auto image_bytes = get_image_bytes(*mol, ImageFormat::PNG);
+    QByteArray image_bytes;
+    // If this is a reaction or a reaction selection, export the entire reaction
+    bool get_full_reaction = (m_mol_model->hasReactionArrow() &&
+                              (subset == SceneSubset::ALL ||
+                               m_mol_model->hasSelectedNonMolecularObjects()));
+    if (get_full_reaction) {
+        auto reaction = getRDKitReaction();
+        image_bytes = get_image_bytes(*reaction, ImageFormat::PNG);
+    } else {
+        auto mol = extract_mol(m_mol_model, subset);
+        image_bytes = get_image_bytes(*mol, ImageFormat::PNG);
+    }
     QImage image;
     image.loadFromData(image_bytes, "PNG");
     QApplication::clipboard()->setImage(image);
@@ -677,6 +687,8 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::selectAll);
     connect(&menu, &BackgroundContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &BackgroundContextMenu::pasteRequested, this,
             &SketcherWidget::pasteAt);
     connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,

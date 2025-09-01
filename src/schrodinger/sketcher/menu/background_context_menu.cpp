@@ -47,6 +47,8 @@ BackgroundContextMenu::BackgroundContextMenu(SketcherModel* model,
     addAction("Clear Sketcher", this, &BackgroundContextMenu::clearRequested);
     connect(m_cut_copy_manager, &CutCopyActionManager::copyRequested, this,
             &BackgroundContextMenu::copyRequested);
+    connect(m_cut_copy_manager, &CutCopyActionManager::copyAsImageRequested,
+            this, &BackgroundContextMenu::copyAsImageRequested);
 }
 
 void BackgroundContextMenu::updateActions()
