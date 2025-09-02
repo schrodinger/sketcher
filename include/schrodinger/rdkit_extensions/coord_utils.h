@@ -39,8 +39,12 @@ compute2DCoords(RDKit::ROMol& mol,
  * If no 2d conformer is present on the given molecule, add one using
  * compute2DCoords above.  If a 2d conformer is present, ensure that bonds are
  * RDDepict::BOND_LEN units long, rescaling if necessary.
+ * @param preserve_3d_conformer if true and the input structure contains a 3d
+ * conformer, keep it *in addition to* the 2d conformer.
  */
-RDKIT_EXTENSIONS_API void update_2d_coordinates(RDKit::ROMol& mol);
+RDKIT_EXTENSIONS_API void
+update_2d_coordinates(RDKit::ROMol& mol,
+                      const bool preserve_3d_conformer = false);
 
 /**
  * Determine the length of a typical bond in the given molecule.  If the
