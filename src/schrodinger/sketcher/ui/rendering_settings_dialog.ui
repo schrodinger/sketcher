@@ -36,7 +36,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QDoubleSpinBox" name="m_atom_font_size_sb"/>
+      <widget class="QSpinBox" name="m_atom_font_size_sb"/>
      </item>
      <item>
       <spacer name="horizontalSpacer_3">
