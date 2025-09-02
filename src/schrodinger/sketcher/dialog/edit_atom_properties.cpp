@@ -330,8 +330,8 @@ static QStringList split_element_list(const QString& text)
 /**
  * Convert the given text into a vector of Element enum values
  * @throw InvalidAtomPropertyError if the text does not specify any elements
- * (e.g. the string is empty) or if the text specifies any invalid element (e.g.
- * "C, N, Qz")
+ * (e.g. the string is empty) or if the text specifies any invalid or duplicate
+ * element (e.g. "C, N, Qz")
  */
 static std::vector<Element> get_elements_from_list(const QString& text)
 {
@@ -339,8 +339,16 @@ static std::vector<Element> get_elements_from_list(const QString& text)
     std::vector<Element> elements;
     std::transform(split_element_text.begin(), split_element_text.end(),
                    std::back_inserter(elements), get_element_from_text);
+
     if (elements.empty()) {
         throw InvalidAtomPropertyError("No elements specified.");
+    }
+    //  throw when elements contains duplicates
+    auto elements_copy = elements;
+    std::sort(elements_copy.begin(), elements_copy.end());
+    auto last = std::unique(elements_copy.begin(), elements_copy.end());
+    if (last != elements_copy.end()) {
+        throw InvalidAtomPropertyError("Duplicate elements specified.");
     }
     return elements;
 }
