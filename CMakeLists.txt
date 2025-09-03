@@ -108,9 +108,9 @@ function(setup_target TARGET)
       target_link_libraries(${TARGET} PUBLIC -static)
     endif()
   endif()
-  # if(EMSCRIPTEN)
-  #   target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
-  # endif()
+  if(EMSCRIPTEN)
+    target_link_options(${TARGET} PRIVATE "-s EXPORTED_FUNCTIONS=\"['callMain']\"")
+  endif()
 endfunction()
 
 # Configure the SKETCHER_LIB and RDKIT_EXTENSIONS_LIB libraries
