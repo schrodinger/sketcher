@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -470,6 +471,22 @@ get_renamed_polymer_ids(const std::vector<std::string>& polymer_ids,
         }
     }
     return renamed_polymer_ids;
+}
+
+boost::shared_ptr<RDKit::ROMol> CombineMols(const RDKit::ROMol& mol1,
+                                            const RDKit::ROMol& mol2)
+{
+    if (!isMonomeric(mol1) && !isMonomeric(mol2)) {
+        return std::unique_ptr<RDKit::ROMol>{RDKit::combineMols(mol1, mol2)};
+    } else if (!isMonomeric(mol1)) {
+        auto monomermol1 = toMonomeric(mol1);
+        return CombineMonomericMols(*monomermol1, mol2);
+    } else if (!isMonomeric(mol2)) {
+        auto monomermol2 = toMonomeric(mol2);
+        return CombineMonomericMols(mol1, *monomermol2);
+    } else {
+        return CombineMonomericMols(mol1, mol2);
+    }
 }
 
 } // namespace rdkit_extensions

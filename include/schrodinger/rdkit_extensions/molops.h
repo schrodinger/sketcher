@@ -95,5 +95,17 @@ ExtractMolFragment(const RDKit::ROMol& mol,
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::ROMol>
 CombineMonomericMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2);
 
+//
+// Helper api to merge two mols with support for monomeristic mols.
+//
+// NOTE: If any of the inputs is a monomeristic mol, the output will be a
+// monomeristic mol.
+//
+// @param mol1 rdkit mol
+// @param mol2 rdkit mol
+//
+RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::ROMol>
+CombineMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

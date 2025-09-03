@@ -159,11 +159,8 @@ BOOST_DATA_TEST_CASE(TestGetDecompressedString,
                              CompressionType::GZIP}),
                      testfile, compression_type)
 {
-#ifdef _WIN32
-    return; // Skip on Windows due to gzip error
-#endif
     auto fname = testfile_path(testfile);
-    std::ifstream is(fname);
+    std::ifstream is(fname, std::ios::binary);
     std::string buffer(std::istreambuf_iterator<char>(is), {});
 
     // MAESTRO formatted file should have a title

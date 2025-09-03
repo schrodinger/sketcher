@@ -10,6 +10,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 cmake_policy(SET CMP0167 NEW)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
+option(ENABLE_TESTING "Build and enable tests" ON)
 option(ENFORCE_DEPENDENCY_VERSIONS
        "Require that the dependencies match the versions listed in \
     external/versions.json" ON)
@@ -190,72 +191,75 @@ target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
                                             ${SKETCHER_TARGET})
 
 # Tests
-enable_testing()
+if(ENABLE_TESTING)
+  enable_testing()
 
-set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
-file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
-set(TEST_DEPENDENCIES
-    Boost::filesystem
-    Boost::unit_test_framework
-    Eigen3::Eigen
-    fmt::fmt
-    Qt6::Test
-    Qt6::Widgets
-    RDKit::ChemReactions
-    RDKit::FileParsers
-    ${RDKIT_EXTENSIONS_TARGET}
-    ${SKETCHER_TARGET})
+  set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
+  file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
+  set(TEST_DEPENDENCIES
+      Boost::filesystem
+      Boost::unit_test_framework
+      Eigen3::Eigen
+      fmt::fmt
+      Qt6::Test
+      Qt6::Widgets
+      RDKit::ChemReactions
+      RDKit::FileParsers
+      ${RDKIT_EXTENSIONS_TARGET}
+      ${SKETCHER_TARGET})
 
-file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
-set(SUPPRESSION_FILE "test_valgrind.suppressions")
-set(MEMTEST_COMMAND
-    "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
+  file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
+  set(SUPPRESSION_FILE "test_valgrind.suppressions")
+  set(MEMTEST_COMMAND
+      "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
         --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
         --error-exitcode=29")
-separate_arguments(MEMTEST_COMMAND)
+  separate_arguments(MEMTEST_COMMAND)
 
-foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
-  cmake_path(GET TEST_SOURCE STEM TEST_STEM)
-  cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
-  cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
-  # Create unique target name by replacing path separators
-  string(REPLACE "/" "-" TEST_PREFIX "${PREFIX_PATH}")
-  set(TEST_TARGET "${TEST_PREFIX}-${TEST_STEM}")
-  add_executable(${TEST_TARGET} ${TEST_SOURCE})
-  setup_target(${TEST_TARGET})
-  target_include_directories(${TEST_TARGET} PRIVATE ${PROJECT_SOURCE_DIR}/test)
-  target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
-  enable_qt_moc(${TEST_TARGET})
-  if(EMSCRIPTEN)
-    set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)
-  else()
-    set(TEST_COMMAND ${TEST_TARGET})
-  endif()
-  set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                  ${PREFIX_PATH})
-  # Create memtest target and command
-  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    # create the valgrind test
-    set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
-    if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
-      list(APPEND CURRENT_MEMTEST_COMMAND
-           "--suppressions=${PREFIX_PATH}/${SUPPRESSION_FILE}")
+  foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
+    cmake_path(GET TEST_SOURCE STEM TEST_STEM)
+    cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
+    cmake_path(GET TEST_PATH PARENT_PATH PREFIX_PATH)
+    # Create unique target name by replacing path separators
+    string(REPLACE "/" "-" TEST_PREFIX "${PREFIX_PATH}")
+    set(TEST_TARGET "${TEST_PREFIX}-${TEST_STEM}")
+    add_executable(${TEST_TARGET} ${TEST_SOURCE})
+    setup_target(${TEST_TARGET})
+    target_include_directories(${TEST_TARGET}
+                               PRIVATE ${PROJECT_SOURCE_DIR}/test)
+    target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+    enable_qt_moc(${TEST_TARGET})
+    if(EMSCRIPTEN)
+      set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)
+    else()
+      set(TEST_COMMAND ${TEST_TARGET})
     endif()
-    foreach(CURRENT_GLOBAL_SUPPRESSION ${GLOBAL_SUPPRESSIONS})
-      list(APPEND CURRENT_MEMTEST_COMMAND
-           "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
-    endforeach()
-    list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
-    set(TEST_TARGET "memtest_${TEST_TARGET}")
-    set(TEST_COMMAND "${CURRENT_MEMTEST_COMMAND}")
-  endif()
-  # Add the test to CTest
-  add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
-  set_tests_properties(
-    ${TEST_TARGET} PROPERTIES ENVIRONMENT
-                              "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
-  # Add label for memtest targets
-  if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    set_property(TEST ${TEST_TARGET} PROPERTY LABELS memtest)
-  endif()
-endforeach()
+    set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                                    ${PREFIX_PATH})
+    # Create memtest target and command
+    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+      # create the valgrind test
+      set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
+      if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
+        list(APPEND CURRENT_MEMTEST_COMMAND
+             "--suppressions=${PREFIX_PATH}/${SUPPRESSION_FILE}")
+      endif()
+      foreach(CURRENT_GLOBAL_SUPPRESSION ${GLOBAL_SUPPRESSIONS})
+        list(APPEND CURRENT_MEMTEST_COMMAND
+             "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
+      endforeach()
+      list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
+      set(TEST_TARGET "memtest_${TEST_TARGET}")
+      set(TEST_COMMAND "${CURRENT_MEMTEST_COMMAND}")
+    endif()
+    # Add the test to CTest
+    add_test(NAME ${TEST_TARGET} COMMAND ${TEST_COMMAND})
+    set_tests_properties(
+      ${TEST_TARGET} PROPERTIES ENVIRONMENT
+                                "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
+    # Add label for memtest targets
+    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+      set_property(TEST ${TEST_TARGET} PROPERTY LABELS memtest)
+    endif()
+  endforeach()
+endif()
