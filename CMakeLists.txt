@@ -109,7 +109,7 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    target_link_options(${TARGET} PRIVATE "-s EXPORTED_FUNCTIONS=\"['callMain']\"")
+    target_link_options(${TARGET} PRIVATE -sEXPORT_ALL)
   endif()
 endfunction()
 

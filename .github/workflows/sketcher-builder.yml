@@ -5,7 +5,7 @@ on:
   push: ~
   pull_request: ~
   schedule:
-    - cron: "0 4 * * *"
+    - cron: '0 4 * * *'
 
 jobs:
   build:
@@ -44,7 +44,7 @@ jobs:
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
       - name: Determine build type
-        run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
+        run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' || matrix.build-output == 'wasm' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
       - name: Read external/versions.json
         run: |
@@ -65,20 +65,20 @@ jobs:
         env:
           VERSION: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
         run: |
-            echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
-            echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+          echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
+          echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Configure Dependency CMake
         run: |
-            ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
-                cmake -B build/external/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
+              cmake -B build/external/ -S external/ -G Ninja \
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Configure host Qt CMake
         if: matrix.build-output == 'wasm'
         run: |
-            cmake -B build/external/host/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
+          cmake -B build/external/host/ -S external/ -G Ninja \
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
 
       - name: Fetch fmt
         id: fetch-fmt
@@ -180,13 +180,13 @@ jobs:
       - name: Configure CMake
         env:
           CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
-                              ${{ steps.fetch-zlib.outputs.path }};\
-                              ${{ steps.fetch-zstd.outputs.path }};\
-                              ${{ steps.fetch-boost.outputs.path }};\
-                              ${{ steps.fetch-eigen.outputs.path }};\
-                              ${{ steps.fetch-rdkit.outputs.path }};\
-                              ${{ steps.fetch-sqlite.outputs.path }};\
-                              ${{ steps.fetch-qt.outputs.path }}"
+            ${{ steps.fetch-zlib.outputs.path }};\
+            ${{ steps.fetch-zstd.outputs.path }};\
+            ${{ steps.fetch-boost.outputs.path }};\
+            ${{ steps.fetch-eigen.outputs.path }};\
+            ${{ steps.fetch-rdkit.outputs.path }};\
+            ${{ steps.fetch-sqlite.outputs.path }};\
+            ${{ steps.fetch-qt.outputs.path }}"
         run: |
           ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
@@ -215,15 +215,15 @@ jobs:
       - name: Publish Test Summary
         uses: test-summary/action@v2
         with:
-          paths: "build/junit-report.xml"
+          paths: 'build/junit-report.xml'
         if: always() && matrix.build-output != 'wasm'
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
         uses: actions/upload-artifact@v4
         env:
-            # ".exe" on Windows, no extension everywhere else
-            EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
+          # ".exe" on Windows, no extension everywhere else
+          EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
           name: sketcher-${{ matrix.os }}-${{ matrix.build-output }}${{env.EXT}}
           path: build/sketcher_app${{env.EXT}}
@@ -231,7 +231,7 @@ jobs:
       - name: Create wasm tarball
         if: matrix.build-output == 'wasm'
         env:
-            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
+          QT_DIR: ${{ steps.fetch-qt.outputs.path }}
         run: ./wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
