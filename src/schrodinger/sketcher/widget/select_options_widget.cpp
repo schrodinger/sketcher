@@ -97,12 +97,19 @@ void SelectOptionsWidget::updateCheckState()
     if (draw_tool == DrawTool::SELECT) {
         auto button_id = model->getValueInt(ModelKey::SELECTION_TOOL);
         select_button = ui->select_tool_group->button(button_id);
+        for (auto* btn : ui->select_tool_group->buttons()) {
+            auto mod_button = dynamic_cast<ModularToolButton*>(btn);
+            if (mod_button != nullptr &&
+                mod_button->getEnumItem() == button_id) {
+                select_button = btn;
+                break;
+            }
+        }
     } else if (draw_tool == DrawTool::MOVE_ROTATE) {
         move_button = ui->move_rotate_btn;
     } else if (draw_tool == DrawTool::ERASE) {
         erase_button = ui->erase_btn;
     }
-
     check_button_or_uncheck_group(select_button, ui->select_tool_group);
     check_button_or_uncheck_group(move_button, ui->move_tool_group);
     check_button_or_uncheck_group(erase_button, ui->erase_tool_group);
