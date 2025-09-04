@@ -96,7 +96,8 @@ void SelectOptionsWidget::updateCheckState()
     QAbstractButton* erase_button = nullptr;
     if (draw_tool == DrawTool::SELECT) {
         auto button_id = model->getValueInt(ModelKey::SELECTION_TOOL);
-        select_button = ui->select_tool_group->button(button_id);
+        // check each modular button in the group to find if one is currently
+        // set to this ID
         for (auto* btn : ui->select_tool_group->buttons()) {
             auto mod_button = dynamic_cast<ModularToolButton*>(btn);
             if (mod_button != nullptr &&
