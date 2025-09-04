@@ -208,10 +208,10 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     // Update stylesheet and fonts
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
-    QFontDatabase::addApplicationFont(":resources/fonts/Arial.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arial_Italic.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arial_Bold_Italic.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Regular.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Bold.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Italic.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-BoldItalic.ttf");
 
     // Set up the watermark  after loading fonts because the SVG uses them
     m_watermark_item = new QGraphicsPixmapItem();
