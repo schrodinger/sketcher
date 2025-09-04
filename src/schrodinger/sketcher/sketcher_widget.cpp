@@ -374,6 +374,25 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 #endif
 }
 
+void SketcherWidget::copyAsImage(SceneSubset subset)
+{
+    QByteArray image_bytes;
+    // If this is a reaction or a reaction selection, export the entire reaction
+    bool get_full_reaction = (m_mol_model->hasReactionArrow() &&
+                              (subset == SceneSubset::ALL ||
+                               m_mol_model->hasSelectedNonMolecularObjects()));
+    if (get_full_reaction) {
+        auto reaction = getRDKitReaction();
+        image_bytes = get_image_bytes(*reaction, ImageFormat::PNG);
+    } else {
+        auto mol = extract_mol(m_mol_model, subset);
+        image_bytes = get_image_bytes(*mol, ImageFormat::PNG);
+    }
+    QImage image;
+    image.loadFromData(image_bytes, "PNG");
+    QApplication::clipboard()->setImage(image);
+}
+
 /**
  * @internal
  * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
@@ -614,6 +633,8 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::cut);
     connect(&menu, &SelectionContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &SelectionContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
             &MolModel::flipSelection);
     connectContextMenu(*menu.m_modify_atoms_menu);
@@ -666,6 +687,8 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::selectAll);
     connect(&menu, &BackgroundContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &BackgroundContextMenu::pasteRequested, this,
             &SketcherWidget::pasteAt);
     connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,
