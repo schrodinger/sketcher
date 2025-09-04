@@ -110,7 +110,7 @@ function(setup_target TARGET)
   endif()
   if(EMSCRIPTEN)
     target_compile_options(${TARGET} PRIVATE -sNO_DISABLE_EXCEPTION_CATCHING
-                                             "-sEXPORTED_RUNTIME_METHODS=[\"callMain\"]")
+                                             -sEXPORTED_RUNTIME_METHODS=callMain)
   endif()
 endfunction()
 
