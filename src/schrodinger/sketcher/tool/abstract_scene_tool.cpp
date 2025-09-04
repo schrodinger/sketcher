@@ -162,6 +162,10 @@ void AbstractSceneTool::onStructureUpdated()
 {
 }
 
+void AbstractSceneTool::onSelectionChanged()
+{
+}
+
 void AbstractSceneTool::onMouseLeave()
 {
 }
