@@ -1,4 +1,3 @@
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE test_monomer_database
 
 #include <memory>
@@ -8,6 +7,7 @@
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "test_common.h"
 
 using namespace schrodinger::rdkit_extensions;
 
@@ -16,6 +16,7 @@ class MonomerDbFixture
   public:
     MonomerDbFixture()
     {
+        set_default_monomer_db_path();
         auto db_path = getMonomerDbPath();
         BOOST_REQUIRE(db_path.has_value());
 
