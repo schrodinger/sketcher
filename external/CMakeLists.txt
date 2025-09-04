@@ -40,7 +40,7 @@ else()
   endif()
 endif()
 
-set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -fexceptions)
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
