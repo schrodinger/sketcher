@@ -32,6 +32,9 @@ if(EMSCRIPTEN)
       -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
   set(EXTRA_RDKIT_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
                              -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+  add_compile_options(-fexceptions)
+  add_link_options(-fexceptions)
+
 else()
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
   if(LINUX)
@@ -40,7 +43,7 @@ else()
   endif()
 endif()
 
-set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release -fexceptions)
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
