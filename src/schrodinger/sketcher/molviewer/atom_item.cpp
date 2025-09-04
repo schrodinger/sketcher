@@ -323,8 +323,6 @@ AtomItem::determineLabelType() const
             // bound BondItem knows not to make space for the "*" label
             label_is_visible = false;
         } else if (m_atom->hasQuery()) {
-            qDebug() << "Atom has query:" << m_atom->getQueryType();
-
             // Wildcard or list query. This needs to be after R groups and
             // attachment points, since it would trigger for both but we need to
             // special-case them
