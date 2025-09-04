@@ -88,7 +88,7 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
                         -Wno-restrict)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O0
                                              -fvisibility=${VISIBILITY})
   endif()
   # Allow RDKit includes to be prefixed, and add all relevant and necessary
@@ -110,11 +110,11 @@ function(setup_target TARGET)
   endif()
   if(EMSCRIPTEN)
     target_link_options(${TARGET} PRIVATE -sEXPORT_NAME=createSketcherModule
-                                          -sEXPORTED_RUNTIME_METHODS=callMain)
-                                          # -sDISABLE_EXCEPTION_CATCHING=0
-                                          # -fexceptions)
-    # target_compile_options(${TARGET} PRIVATE -sDISABLE_EXCEPTION_CATCHING=0 
-    #                                          -fexceptions)
+                                          -sEXPORTED_RUNTIME_METHODS=callMain
+                                          -sDISABLE_EXCEPTION_CATCHING=0
+                                          -fexceptions)
+    target_compile_options(${TARGET} PRIVATE -sDISABLE_EXCEPTION_CATCHING=0 
+                                             -fexceptions)
   endif()
 endfunction()
 
