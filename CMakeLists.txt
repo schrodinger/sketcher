@@ -112,6 +112,7 @@ function(setup_target TARGET)
     target_link_options(${TARGET} PRIVATE -sEXPORT_NAME=createSketcherModule
                                           -sEXPORTED_RUNTIME_METHODS=callMain
                                           -sDISABLE_EXCEPTION_CATCHING=0)
+    target_compile_options(${TARGET} PRIVATE -sDISABLE_EXCEPTION_CATCHING=0)
   endif()
 endfunction()
 
