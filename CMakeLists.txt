@@ -109,8 +109,8 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    target_compile_options(${TARGET} PRIVATE -sNO_DISABLE_EXCEPTION_CATCHING
-                                             -sEXPORTED_RUNTIME_METHODS=callMain)
+    target_link_options(${TARGET} PRIVATE -sEXPORTED_RUNTIME_METHODS=callMain)
+    target_compile_options(${TARGET} PRIVATE -sNO_DISABLE_EXCEPTION_CATCHING)
   endif()
 endfunction()
 
