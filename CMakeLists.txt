@@ -109,9 +109,9 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    target_link_options(${TARGET} PRIVATE -sEXPORTED_RUNTIME_METHODS=callMain
-                                          -sNO_DISABLE_EXCEPTION_CATCHING)
-    target_compile_options(${TARGET} PRIVATE -sNO_DISABLE_EXCEPTION_CATCHING)
+    target_link_options(${TARGET} PRIVATE -sEXPORT_NAME=createSketcherModule
+                                          -sEXPORTED_RUNTIME_METHODS=callMain
+                                          -sDISABLE_EXCEPTION_CATCHING=0)
   endif()
 endfunction()
 
