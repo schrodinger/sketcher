@@ -126,19 +126,34 @@ void apply_stylesheet(QApplication& app)
 int main(int argc, char** argv)
 {
     QApplication application(argc, argv);
+<<<<<<< HEAD
     apply_stylesheet(application);
     Q_INIT_RESOURCE(sketcher);
 
 #ifdef __EMSCRIPTEN__
     auto& sk = get_sketcher_instance();
+=======
+    Q_INIT_RESOURCE(sketcher);
+
+#ifdef __EMSCRIPTEN__
+    // Only apply this stylesheet for the WASM build
+    apply_stylesheet(application);
+    auto& sk = get_sketcher_instance();
+    QObject::connect(&sk, &SketcherWidget::moleculeChanged, &sketcher_changed);
+    QObject::connect(&sk, &SketcherWidget::representationChanged,
+                     &sketcher_changed);
+>>>>>>> upstream/main
 #else
     SketcherWidget sk;
 #endif
 
+<<<<<<< HEAD
     QObject::connect(&sk, &SketcherWidget::moleculeChanged, &sketcher_changed);
     QObject::connect(&sk, &SketcherWidget::representationChanged,
                      &sketcher_changed);
 
+=======
+>>>>>>> upstream/main
     sk.show();
     return application.exec();
 }

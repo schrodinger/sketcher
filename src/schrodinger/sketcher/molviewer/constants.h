@@ -57,7 +57,7 @@ const int SAVED_PICTURE_PADDING = 10;
 // smaller than 1 pt.
 const int VIEW_SCALE = std::floor(50 / BOND_LENGTH);
 
-const QString FONT_NAME = "Arial";
+const QString FONT_NAME = "Arimo";
 // Ratios for the size of specified font to the size of the atom label font.
 // Note that the atom label font size is declared in the public image_constants
 // header (mmshare/include/schrodinger/sketcher/image_constants.h) because it

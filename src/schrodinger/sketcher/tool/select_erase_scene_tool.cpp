@@ -95,7 +95,7 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
     if (item == nullptr) {
         // double click wasn't on the molecule, so we do nothing
         return;
-    } else if (auto* s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
+    } else if (qgraphicsitem_cast<SGroupItem*>(item)) {
         // TODO: double-click on an s-group should open up the dialog
         return;
     }

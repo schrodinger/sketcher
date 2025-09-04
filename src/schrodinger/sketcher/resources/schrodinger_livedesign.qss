@@ -3,7 +3,11 @@
  */
 
 * {
+<<<<<<< HEAD
     font-family: "Arial";
+=======
+    font-family: "Arimo";
+>>>>>>> upstream/main
     font-size: 10pt;
 }
 
