@@ -58,7 +58,16 @@ bool view_synchronized_to_model(TestSelectOptionsWidget& wdg)
     bool move_rotate_checked = draw_tool == DrawTool::MOVE_ROTATE;
     bool erase_checked = draw_tool == DrawTool::ERASE;
 
-    return ui->select_tool_group->checkedId() == sel_button_id &&
+    int checked_selection_btn_id = -1;
+    auto group = ui->select_tool_group;
+    for (auto* btn : group->buttons()) {
+        auto mod_button = dynamic_cast<ModularToolButton*>(btn);
+        if (mod_button != nullptr && mod_button->isChecked()) {
+            checked_selection_btn_id = mod_button->getEnumItem();
+        }
+    }
+
+    return checked_selection_btn_id == sel_button_id &&
            ui->move_rotate_btn->isChecked() == move_rotate_checked &&
            ui->erase_btn->isChecked() == erase_checked;
 }
@@ -68,8 +77,6 @@ bool view_synchronized_to_model(TestSelectOptionsWidget& wdg)
  */
 BOOST_AUTO_TEST_CASE(synchronize)
 {
-    return; // Skip broken test for now SKETCH-2452
-
     auto test_scene = TestScene::getScene();
     auto model = test_scene->m_sketcher_model;
     TestSelectOptionsWidget wdg(model);
@@ -83,17 +90,30 @@ BOOST_AUTO_TEST_CASE(synchronize)
 
     // Try interacting with subwidgets of the view. Synchronization should occur
     // automatically.
+
     auto group = ui->select_tool_group;
-    BOOST_TEST(group->checkedId() ==
-               static_cast<int>(SelectionTool::RECTANGLE));
-    group->button(static_cast<int>(SelectionTool::LASSO))->click();
-    BOOST_TEST(group->checkedId() == static_cast<int>(SelectionTool::LASSO));
+    BOOST_TEST_REQUIRE(group != nullptr);
+    BOOST_TEST_REQUIRE(!group->buttons().isEmpty());
+
+    int checked_rectangles = 0;
+    for (auto* btn : group->buttons()) {
+        auto mod_button = dynamic_cast<ModularToolButton*>(btn);
+        if (mod_button != nullptr &&
+            mod_button->getEnumItem() ==
+                static_cast<int>(SelectionTool::RECTANGLE) &&
+            mod_button->isChecked()) {
+            checked_rectangles++;
+            break;
+        }
+    }
+    BOOST_TEST(checked_rectangles == 1);
+    ui->select_tool_btn_2->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
     ui->move_rotate_btn->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
     ui->erase_btn->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
-    group->button(static_cast<int>(SelectionTool::RECTANGLE))->click();
+    ui->select_tool_btn_1->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
 
     // Try changing the state of the model. The view should update the state of

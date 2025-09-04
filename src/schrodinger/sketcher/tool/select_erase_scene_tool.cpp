@@ -220,10 +220,14 @@ ShapeSelectSceneTool<T>::onLeftButtonDragMove(QGraphicsSceneMouseEvent* event)
     SelectSceneTool<T>::onLeftButtonDragMove(event);
 }
 
-template <typename T>
-QPixmap ShapeSelectSceneTool<T>::createDefaultCursorPixmap() const
+template <> QPixmap RectSelectSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/select_square.svg");
+}
+
+template <> QPixmap EllipseSelectSceneTool::createDefaultCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/select_ellipse.svg");
 }
 
 EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :
