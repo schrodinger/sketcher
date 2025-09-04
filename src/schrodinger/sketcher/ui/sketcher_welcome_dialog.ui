@@ -67,7 +67,6 @@
        </property>
        <property name="font">
         <font>
-         <family>Arial</family>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -200,7 +199,6 @@
        </property>
        <property name="font">
         <font>
-         <family>Arial</family>
          <weight>50</weight>
          <bold>false</bold>
         </font>
@@ -333,7 +331,6 @@
        </property>
        <property name="font">
         <font>
-         <family>Arial</family>
          <weight>50</weight>
          <bold>false</bold>
         </font>
