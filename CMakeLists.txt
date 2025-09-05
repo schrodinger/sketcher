@@ -110,7 +110,7 @@ function(setup_target TARGET)
   endif()
   if(EMSCRIPTEN)
     target_link_options(${TARGET} PRIVATE -sEXPORT_NAME=createSketcherModule
-                                          -sEXPORTED_RUNTIME_METHODS=callMain
+                                          -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets]
                                           -sGL_ENABLE_GET_PROC_ADDRESS
                                           -fexceptions
                                           -sDISABLE_EXCEPTION_CATCHING=0)
