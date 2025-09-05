@@ -265,3 +265,5 @@ ExternalProject_Add(
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
     ${EXTRA_QT_CMAKE_ARGS})
+target_link_options(qt PRIVATE -fexceptions -sDISABLE_EXCEPTION_CATCHING=0)
+target_compile_options(qt PRIVATE -fexceptions -sDISABLE_EXCEPTION_CATCHING=0)
