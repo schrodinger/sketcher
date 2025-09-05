@@ -88,7 +88,7 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
                         -Wno-restrict)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O0
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
                                              -fvisibility=${VISIBILITY})
   endif()
   # Allow RDKit includes to be prefixed, and add all relevant and necessary
@@ -113,6 +113,7 @@ function(setup_target TARGET)
                                           -sEXPORTED_RUNTIME_METHODS=callMain
                                           -sGL_ENABLE_GET_PROC_ADDRESS
                                           -sERROR_ON_UNDEFINED_SYMBOLS=0
+                                          -sEXPORT_ALL=1
                                           -fwasm-exceptions)
     target_compile_options(${TARGET} PRIVATE -fwasm-exceptions)
   endif()
@@ -190,9 +191,6 @@ enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET sketcher_app)
-if(EMSCRIPTEN)
-  target_link_options(${APP_TARGET} PRIVATE -sERROR_ON_UNDEFINED_SYMBOLS=0)
-endif()
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
