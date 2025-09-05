@@ -71,11 +71,11 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query)
 // attachment points 1 and 2 are backbone attachment points
 // and 3 is the side chain attachment point or cysteine's sulfur
 static const ResidueQuery CYSTEINE_QUERY{prepare_static_mol_query(
-    "[O]=[C:2]([C]([C][S:3])[N:1])[O,N:9]")}; // matches C, dC, meC
+    "[O]=[C:2]([C]([C][S:3])[N:1])[O:9,N:9]")}; // matches C, dC, meC
 static const ResidueQuery GENERIC_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+:1][CX4H]([*:8])[CX3:2](=[OX1])[O,N:9]")};
+    "[NX3,NX4+:1][CX4H]([*:8])[CX3:2](=[OX1])[O:9,N:9]")};
 static const ResidueQuery GLYCINE_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[N:1][CX4H2][CX3:2](=[OX1])[O,N:9]")}; // no side chain
+    "[N:1][CX4H2][CX3:2](=[OX1])[O:9,N:9]")}; // no side chain
 
 // Temporary lookup map for amino acids, each entry has two versions;
 // one with the terminal oxygen and one without. This is to allow the
