@@ -113,8 +113,7 @@ function(setup_target TARGET)
                                           -sEXPORTED_RUNTIME_METHODS=callMain
                                           -sGL_ENABLE_GET_PROC_ADDRESS
                                           -fwasm-exceptions)
-    target_compile_options(${TARGET} PRIVATE -sDISABLE_EXCEPTION_CATCHING=0 
-                                             -fwasm-exceptions)
+    target_compile_options(${TARGET} PRIVATE -fwasm-exceptions)
   endif()
 endfunction()
 
