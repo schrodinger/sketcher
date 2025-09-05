@@ -112,8 +112,10 @@ function(setup_target TARGET)
     target_link_options(${TARGET} PRIVATE -sEXPORT_NAME=createSketcherModule
                                           -sEXPORTED_RUNTIME_METHODS=callMain
                                           -sGL_ENABLE_GET_PROC_ADDRESS
-                                          -fwasm-exceptions)
-    target_compile_options(${TARGET} PRIVATE -fwasm-exceptions)
+                                          -fexceptions
+                                          -sDISABLE_EXCEPTION_CATCHING=0)
+    target_compile_options(${TARGET} PRIVATE -fexceptions
+                                             -sDISABLE_EXCEPTION_CATCHING=0)
   endif()
 endfunction()
 
@@ -193,7 +195,8 @@ add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
                                             ${SKETCHER_TARGET}
-                                            -sERROR_ON_UNDEFINED_SYMBOLS=0)
+                                            -fexceptions
+                                            -sDISABLE_EXCEPTION_CATCHING=0)
 
 # Tests
 if(ENABLE_TESTING)
