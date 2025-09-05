@@ -112,6 +112,7 @@ function(setup_target TARGET)
     target_link_options(${TARGET} PRIVATE -sEXPORT_NAME=createSketcherModule
                                           -sEXPORTED_RUNTIME_METHODS=callMain
                                           -sGL_ENABLE_GET_PROC_ADDRESS
+                                          -sERROR_ON_UNDEFINED_SYMBOLS=0
                                           -fwasm-exceptions)
     target_compile_options(${TARGET} PRIVATE -fwasm-exceptions)
   endif()
