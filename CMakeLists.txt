@@ -190,6 +190,9 @@ enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET sketcher_app)
+if(EMSCRIPTEN)
+  target_link_options(${APP_TARGET} PRIVATE -sERROR_ON_UNDEFINED_SYMBOLS=0)
+endif()
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
