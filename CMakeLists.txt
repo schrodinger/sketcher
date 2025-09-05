@@ -194,7 +194,8 @@ set(APP_TARGET sketcher_app)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
-                                            ${SKETCHER_TARGET})
+                                            ${SKETCHER_TARGET}
+                                            -sERROR_ON_UNDEFINED_SYMBOLS=0)
 
 # Tests
 if(ENABLE_TESTING)
