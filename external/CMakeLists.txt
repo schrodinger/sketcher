@@ -31,9 +31,9 @@ if(EMSCRIPTEN)
       -DCMAKE_CXX_FLAGS=-fdeclspec\ -fexceptions\ -pthread\ -sDISABLE_EXCEPTION_CATCHING=0
       -DCMAKE_EXE_LINKER_FLAGS=-fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0)
   set(EXTRA_QT_CMAKE_ARGS
-      -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION}
-      -DCMAKE_CXX_FLAGS=-fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
-      -DCMAKE_EXE_LINKER_FLAGS=-fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0)
+      -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
+      # -DCMAKE_CXX_FLAGS=-fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
+      # -DCMAKE_EXE_LINKER_FLAGS=-fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0)
   set(EXTRA_RDKIT_CMAKE_ARGS
       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
       -DCMAKE_EXE_LINKER_FLAGS=-fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
@@ -265,5 +265,5 @@ ExternalProject_Add(
     -DQT_FEATURE_brotli=OFF
     -DQT_FEATURE_sql=OFF
     ${EXTRA_QT_CMAKE_ARGS})
-target_link_options(qt PRIVATE -fexceptions -sDISABLE_EXCEPTION_CATCHING=0)
-target_compile_options(qt PRIVATE -fexceptions -sDISABLE_EXCEPTION_CATCHING=0)
+# target_link_options(qt PRIVATE -fexceptions -sDISABLE_EXCEPTION_CATCHING=0)
+# target_compile_options(qt PRIVATE -fexceptions -sDISABLE_EXCEPTION_CATCHING=0)
