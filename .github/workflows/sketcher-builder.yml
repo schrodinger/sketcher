@@ -44,7 +44,7 @@ jobs:
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
       - name: Determine build type
-        run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
+        run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' || matrix.build-output == 'wasm' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
       - name: Read external/versions.json
         run: |
@@ -196,7 +196,7 @@ jobs:
                 ${{ matrix.build-output == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }}
+        run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
       - name: Run tests
         working-directory: build

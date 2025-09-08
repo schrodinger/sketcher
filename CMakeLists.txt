@@ -109,7 +109,11 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
+    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
+                                          -fexceptions
+                                          -sDISABLE_EXCEPTION_CATCHING=0)
+    target_compile_options(${TARGET} PRIVATE -fexceptions
+                                             -sDISABLE_EXCEPTION_CATCHING=0)
   endif()
 endfunction()
 
@@ -187,8 +191,16 @@ enable_qt_moc(${SKETCHER_TARGET})
 set(APP_TARGET sketcher_app)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
+if(EMSCRIPTEN)
+  set(EXTRA_SKETCHER_APP_LINK_FLAGS
+      -sEXPORT_NAME=createSketcherModule
+      -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -fexceptions
+      -sDISABLE_EXCEPTION_CATCHING=0)
+endif()
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
-                                            ${SKETCHER_TARGET})
+                                            ${SKETCHER_TARGET}
+                                            ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
 if(ENABLE_TESTING)
