@@ -69,7 +69,7 @@ file_to_rdkit(const std::string& filename)
     return to_rdkit(content);
 }
 
-static std::unique_ptr<RDKit::ROMol> resolve_his(const RDKit::ROMol& mol)
+[[maybe_unused]] static std::unique_ptr<RDKit::ROMol> resolve_his(const RDKit::ROMol& mol)
 {
     // Some structures may contain different protonation states for histidine,
     // but we currently map all of them to the same single letter code 'H' in
