@@ -69,7 +69,8 @@ file_to_rdkit(const std::string& filename)
     return to_rdkit(content);
 }
 
-static std::unique_ptr<RDKit::ROMol> resolve_his(const RDKit::ROMol& mol)
+[[maybe_unused]] static std::unique_ptr<RDKit::ROMol>
+resolve_his(const RDKit::ROMol& mol)
 {
     // Some structures may contain different protonation states for histidine,
     // but we currently map all of them to the same single letter code 'H' in
@@ -90,7 +91,7 @@ static std::unique_ptr<RDKit::ROMol> resolve_his(const RDKit::ROMol& mol)
     return std::unique_ptr<RDKit::ROMol>(RDKit::SmilesToMol(smiles));
 }
 
-static void neutralize_molecule(RDKit::ROMol& mol)
+[[maybe_unused]] static void neutralize_molecule(RDKit::ROMol& mol)
 {
     // Algorithm for neutralizing molecules from
     // https://www.rdkit.org/docs/Cookbook.html#neutralizing-molecules by Noel
@@ -110,7 +111,7 @@ static void neutralize_molecule(RDKit::ROMol& mol)
     }
 }
 
-static void remove_solvents(RDKit::RWMol& rwmol)
+[[maybe_unused]] static void remove_solvents(RDKit::RWMol& rwmol)
 {
     std::vector<unsigned int> atoms_to_remove;
     for (const auto& atom : rwmol.atoms()) {
@@ -410,6 +411,8 @@ BOOST_DATA_TEST_CASE(
     auto helm_result = to_string(*monomer_mol, Format::HELM);
     BOOST_TEST(helm_result == test_data.second);
 
+#ifndef WIN32
+    // Substructure matching in this test causes segv on windows
     auto roundtrip_atomistic = toAtomistic(*monomer_mol);
 
     // Process these to ensure substructure matching works to verify equivalence
@@ -430,6 +433,7 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(match[0].size() == original_atomistic_his->getNumAtoms());
     BOOST_TEST((roundtrip_atomistic_his->getNumAtoms() -
                 original_atomistic_his->getNumAtoms()) <= 8);
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(TestInconsistentCycleStartPoint)
