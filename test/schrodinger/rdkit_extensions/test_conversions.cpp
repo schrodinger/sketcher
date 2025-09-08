@@ -90,7 +90,7 @@ static std::unique_ptr<RDKit::ROMol> resolve_his(const RDKit::ROMol& mol)
     return std::unique_ptr<RDKit::ROMol>(RDKit::SmilesToMol(smiles));
 }
 
-static void neutralize_molecule(RDKit::ROMol& mol)
+[[maybe_unused]] static void neutralize_molecule(RDKit::ROMol& mol)
 {
     // Algorithm for neutralizing molecules from
     // https://www.rdkit.org/docs/Cookbook.html#neutralizing-molecules by Noel
@@ -110,7 +110,7 @@ static void neutralize_molecule(RDKit::ROMol& mol)
     }
 }
 
-static void remove_solvents(RDKit::RWMol& rwmol)
+[[maybe_unused]] static void remove_solvents(RDKit::RWMol& rwmol)
 {
     std::vector<unsigned int> atoms_to_remove;
     for (const auto& atom : rwmol.atoms()) {
