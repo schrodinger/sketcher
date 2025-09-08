@@ -27,11 +27,13 @@ function(set_cmake_arg VAR_NAME)
 endfunction()
 
 if(EMSCRIPTEN)
-  set(EXTRA_BOOST_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread)
+  set(EXTRA_BOOST_CMAKE_ARGS
+      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0)
   set(EXTRA_QT_CMAKE_ARGS
       -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
-  set(EXTRA_RDKIT_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
-                             -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+  set(EXTRA_RDKIT_CMAKE_ARGS
+      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
+      -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
   if(LINUX)
