@@ -3,7 +3,7 @@
  */
 
 * {
-    font-family: "Arial";
+    font-family: "Arimo";
     font-size: 10pt;
 }
 
