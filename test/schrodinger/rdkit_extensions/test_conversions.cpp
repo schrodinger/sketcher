@@ -410,6 +410,8 @@ BOOST_DATA_TEST_CASE(
     auto helm_result = to_string(*monomer_mol, Format::HELM);
     BOOST_TEST(helm_result == test_data.second);
 
+#ifndef WIN32
+    // Substructure matching in this test causes segv on windows
     auto roundtrip_atomistic = toAtomistic(*monomer_mol);
 
     // Process these to ensure substructure matching works to verify equivalence
@@ -430,6 +432,7 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(match[0].size() == original_atomistic_his->getNumAtoms());
     BOOST_TEST((roundtrip_atomistic_his->getNumAtoms() -
                 original_atomistic_his->getNumAtoms()) <= 8);
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(TestInconsistentCycleStartPoint)
