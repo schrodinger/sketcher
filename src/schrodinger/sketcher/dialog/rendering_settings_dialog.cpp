@@ -17,7 +17,7 @@ struct RenderingSettings {
     bool operator==(const RenderingSettings& other) const = default;
 
     int m_atom_font_size = DEFAULT_FONT_SIZE;
-    int m_bond_line_width = BOND_DEFAULT_PEN_WIDTH;
+    qreal m_bond_line_width = BOND_DEFAULT_PEN_WIDTH;
     CarbonLabels m_carbon_labels = CarbonLabels::NONE;
     bool m_color_heteroatoms = true;
     std::pair<ColorScheme, ColorScheme> m_color_schemes = {

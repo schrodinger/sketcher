@@ -7,6 +7,20 @@
 #include <QApplication>
 #include <fmt/format.h>
 #include <boost/test/unit_test.hpp>
+#include <cstdlib>
+
+/// @return true if there is a display
+static bool has_display()
+{
+#ifdef __linux__
+    return getenv("DISPLAY") != nullptr;
+#elif __APPLE__
+    return getenv("SSH_CONNECTION") == nullptr;
+#else
+    // Always DISPLAY available on Windows.
+    return true;
+#endif
+}
 
 // Use this class to construct a global fixture which would provide a
 // QApplication for a whole suite of a given test file
@@ -15,6 +29,11 @@ class QApplicationRequiredFixture
   public:
     QApplicationRequiredFixture()
     {
+        if (!has_display()) {
+            BOOST_TEST_MESSAGE("Skipping tests that require a display.");
+            return;
+        }
+
         if (QCoreApplication::instance() != nullptr) {
             throw std::runtime_error(
                 "QApplication instance already exists, multiple QApplication "
