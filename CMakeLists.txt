@@ -197,6 +197,7 @@ if(EMSCRIPTEN)
       -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets,stringToUTF16,UTF16ToString]
       -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$$PointerDefinition'
       -sEXPORTED_FUNCTIONS=PointerDefinition
+      -sERROR_ON_UNDEFINED_SYMBOLS=0
       -lembind
       --embind-emit-tsd\ types.d.ts
       -fexceptions
