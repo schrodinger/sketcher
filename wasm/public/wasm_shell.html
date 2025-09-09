@@ -118,9 +118,9 @@
               onExit: (exit) => {
                 errorTextContainer.innerHTML = 'Application exit';
                 if (exit.crashed) {
-                  errorTextContainer.innerHTML += ' with code ' + exit.code;
-                } else {
                   errorTextContainer.innerHTML += ' (' + exit.text + ')';
+                } else {
+                  errorTextContainer.innerHTML += ' with code ' + exit.code;
                 }
                 error.style.display = 'flex';
                 spinner.style.display = 'none';
