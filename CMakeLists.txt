@@ -196,7 +196,7 @@ if(EMSCRIPTEN)
       -sEXPORT_NAME=createSketcherModule
       -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets,stringToUTF16,UTF16ToString]
       -lembind
-      --emit-tsd\ types.d.ts
+      --emit-tsd=types.d.ts
       -fexceptions
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
