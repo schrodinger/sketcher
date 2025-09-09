@@ -196,6 +196,7 @@ if(EMSCRIPTEN)
       -sEXPORT_NAME=createSketcherModule
       -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets,stringToUTF16,UTF16ToString]
       -sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$$PointerDefinition'
+      -sEXPORTED_FUNCTIONS=PointerDefinition
       -lembind
       --embind-emit-tsd\ types.d.ts
       -fexceptions
