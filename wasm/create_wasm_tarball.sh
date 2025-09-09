@@ -14,6 +14,7 @@ mkdir -p ${INSTALL_DIR}
 echo -e "Building WASM distibution in ${INSTALL_DIR}"
 echo -e "\tRunning in:" `pwd` 
 
+ls -al ./build
 cp -v ./build/sketcher_app.js ${INSTALL_DIR}
 cp -v ./build/sketcher_app.wasm ${INSTALL_DIR}
 cp -v ${QT_DIR}/plugins/platforms/qtloader.js ${INSTALL_DIR}
