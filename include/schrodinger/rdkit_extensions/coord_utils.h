@@ -36,11 +36,14 @@ compute2DCoords(RDKit::ROMol& mol,
                 const std::vector<unsigned int>& frozen_ids = {});
 
 /**
- * If no 2d conformer is present on the given molecule, add one using
- * compute2DCoords above.  If a 2d conformer is present, ensure that bonds are
- * RDDepict::BOND_LEN units long, rescaling if necessary.
+ * Ensure that the specified molecule contains exactly one 2d conformer. If no
+ * 2d conformer is present, one will be added using compute2DCoords above.  If a
+ * 2d conformer is present, bonds will be rescaled as needed to ensure that they
+ * are RDDepict::BOND_LEN units long.  All other conformers will be cleared
+ * (unless preserve_3d conformer is true, in which case exactly one 3d conformer
+ * will also be preserved if present).
  * @param preserve_3d_conformer if true and the input structure contains a 3d
- * conformer, keep it *in addition to* the 2d conformer.
+ * conformer, keep it in addition to the 2d conformer.
  */
 RDKIT_EXTENSIONS_API void
 update_2d_coordinates(RDKit::ROMol& mol,

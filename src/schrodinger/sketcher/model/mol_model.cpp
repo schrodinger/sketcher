@@ -2465,14 +2465,15 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
     // conformers as m_mol.  If one of these molecules has two conformers (one
     // 2d and one 3d) and the other doesn't, then add an extra conformer where
     // it's needed
-    if (m_mol.getNumConformers() == 1 && mol.getNumConformers() == 2) {
-        auto* new_conformer = new RDKit::Conformer(old_num_atoms);
-        new_conformer->set3D(true);
-        m_mol.addConformer(new_conformer, true);
-    } else if (m_mol.getNumConformers() == 2 && mol.getNumConformers() == 1) {
+    auto add_empty_3d_conformer = [](RDKit::ROMol& mol) {
         auto* new_conformer = new RDKit::Conformer(mol.getNumAtoms());
         new_conformer->set3D(true);
         mol.addConformer(new_conformer, true);
+    };
+    if (m_mol.getNumConformers() == 1 && mol.getNumConformers() == 2) {
+        add_empty_3d_conformer(m_mol);
+    } else if (m_mol.getNumConformers() == 2 && mol.getNumConformers() == 1) {
+        add_empty_3d_conformer(mol);
     }
     m_mol.insertMol(mol);
 
