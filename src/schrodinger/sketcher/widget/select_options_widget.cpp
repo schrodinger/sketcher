@@ -99,8 +99,7 @@ void SelectOptionsWidget::updateCheckState()
         select_button = ui->select_tool_group->button(button_id);
         for (auto* btn : ui->select_tool_group->buttons()) {
             auto mod_button = dynamic_cast<ModularToolButton*>(btn);
-            if (mod_button != nullptr &&
-                mod_button->getEnumItem() == button_id) {
+            if (mod_button->getEnumItem() == button_id) {
                 select_button = btn;
                 break;
             }
