@@ -1,17 +1,10 @@
 <RCC>
     <qresource>
     <file>resources/schrodinger_livedesign.qss</file>
-<<<<<<< HEAD
-    <file>resources/fonts/Arial.ttf</file>
-    <file>resources/fonts/Arial_Bold.ttf</file>
-    <file>resources/fonts/Arial_Italic.ttf</file>
-    <file>resources/fonts/Arial_Bold_Italic.ttf</file>
-=======
     <file>resources/fonts/Arimo-Regular.ttf</file>
     <file>resources/fonts/Arimo-Bold.ttf</file>
     <file>resources/fonts/Arimo-Italic.ttf</file>
     <file>resources/fonts/Arimo-BoldItalic.ttf</file>
->>>>>>> upstream/main
     <file>icons/2D-Sketcher-watermark.svg</file>
     <file>icons/atom_charge_minus.svg</file>
     <file>icons/atom_charge_minus_dis.svg</file>
