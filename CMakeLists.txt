@@ -195,8 +195,8 @@ if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=createSketcherModule
       -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sASYNCIFY
       -lembind
-      --emit-tsd=types.d.ts
       -fexceptions
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
