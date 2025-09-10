@@ -88,8 +88,12 @@
           // SS-36925: Focuses sketcher on actions like dragging compound into sketcher
           // SS-37677: Clicking on buttons didn't focus sketcher. This avoids such situation
           canvas.addEventListener('mouseover', function () {
-            canvas.focus();
-          })
+            const qtShadowRoot = [...canvas.children].find(el => !!el.shadowRoot);
+            if (qtShadowRoot) {
+              qtShadowRoot.tabIndex = -1;
+              qtShadowRoot.focus();
+            }
+          });
       }
 
       function copyErrorToClipboard() {
