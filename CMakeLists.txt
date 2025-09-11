@@ -88,7 +88,7 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
                         -Wno-restrict)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -Os
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
                                              -fvisibility=${VISIBILITY})
   endif()
   # Allow RDKit includes to be prefixed, and add all relevant and necessary
@@ -109,11 +109,15 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
+    # We optimize for space in WASM builds because otherwise binaryen (run
+    # because of ASYNCIFY) runs out of memory
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
                                           -fexceptions
-                                          -sDISABLE_EXCEPTION_CATCHING=0)
+                                          -sDISABLE_EXCEPTION_CATCHING=0
+                                          -Os)
     target_compile_options(${TARGET} PRIVATE -fexceptions
-                                             -sDISABLE_EXCEPTION_CATCHING=0)
+                                             -sDISABLE_EXCEPTION_CATCHING=0
+                                             -Os)
   endif()
 endfunction()
 
@@ -194,7 +198,7 @@ setup_target(${APP_TARGET})
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=createSketcherModule
-      -sEXPORTED_RUNTIME_METHODS=[callMain,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
       -sASYNCIFY
       -lembind
       -fexceptions
