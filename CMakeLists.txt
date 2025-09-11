@@ -88,7 +88,7 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
                         -Wno-restrict)
   else()
-    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -O2
+    target_compile_options(${TARGET} PRIVATE -Wall -Werror -Wswitch -Os
                                              -fvisibility=${VISIBILITY})
   endif()
   # Allow RDKit includes to be prefixed, and add all relevant and necessary
