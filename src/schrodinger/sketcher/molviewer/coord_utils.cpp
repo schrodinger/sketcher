@@ -298,13 +298,13 @@ void trim_line_to_rect(QLineF& line, const QRectF& rect)
 
     QPointF inter_point; // the intersection point
 
-    // if the line is completely inside the rect, make it an invalid line
+    // if the line is completely inside the rect, skip the trimming
     if (enlarged_rect.contains(line.p1()) &&
         enlarged_rect.contains(line.p2())) {
-        line.setP1(line.p2());
-    } else if (enlarged_rect.contains(line.p1()) &&
-               intersection_of_line_and_rect(line, enlarged_rect,
-                                             inter_point)) {
+        return;
+    }
+    if (enlarged_rect.contains(line.p1()) &&
+        intersection_of_line_and_rect(line, enlarged_rect, inter_point)) {
         line.setP1(inter_point);
     } else if (enlarged_rect.contains(line.p2()) &&
                intersection_of_line_and_rect(line, enlarged_rect,
