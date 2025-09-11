@@ -43,8 +43,7 @@ compute2DCoords(RDKit::ROMol& mol,
  * conformer, it will be kept in addition to the 2d conformer. Any additional 2d
  * or 3d conformers will be discarded.
  */
-RDKIT_EXTENSIONS_API void
-update_2d_coordinates(RDKit::ROMol& mol);
+RDKIT_EXTENSIONS_API void update_2d_coordinates(RDKit::ROMol& mol);
 
 /**
  * Determine the length of a typical bond in the given molecule.  If the
