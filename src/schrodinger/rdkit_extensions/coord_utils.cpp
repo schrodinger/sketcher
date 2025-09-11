@@ -76,17 +76,15 @@ unsigned int compute2DCoords(RDKit::ROMol& mol,
     return RDDepict::compute2DCoords(mol, params);
 }
 
-void update_2d_coordinates(RDKit::ROMol& mol, const bool preserve_3d_conformer)
+void update_2d_coordinates(RDKit::ROMol& mol)
 {
 
     ::RDKit::Conformer* conf_to_keep_3d = nullptr;
-    if (preserve_3d_conformer) {
-        auto conf_3d = std::find_if(mol.beginConformers(), mol.endConformers(),
-                                    std::mem_fn(&RDKit::Conformer::is3D));
-        if (conf_3d != mol.endConformers() &&
-            !coordinates_are_all_zero(**conf_3d)) {
-            conf_to_keep_3d = new ::RDKit::Conformer(**conf_3d);
-        }
+    auto conf_3d = std::find_if(mol.beginConformers(), mol.endConformers(),
+                                std::mem_fn(&RDKit::Conformer::is3D));
+    if (conf_3d != mol.endConformers() &&
+        !coordinates_are_all_zero(**conf_3d)) {
+        conf_to_keep_3d = new ::RDKit::Conformer(**conf_3d);
     }
 
     auto conf_2d = std::find_if_not(mol.beginConformers(), mol.endConformers(),

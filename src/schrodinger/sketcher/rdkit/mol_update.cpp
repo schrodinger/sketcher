@@ -194,12 +194,11 @@ void prepare_mol(RDKit::ROMol& mol)
     mol.updatePropertyCache(false);
 
     // Add 2D coordinates only if the molecule does not already have them
-    // present (ie specified via molblock, SMILES extension, etc.) Make sure
-    // to keep the 3d conformer if one is found, since Maestro may use that
-    // later to align the Sketcher structure with the Maestro workspace
-    // structure
-    rdkit_extensions::update_2d_coordinates(mol,
-                                            /* preserve_3d_conformer = */ true);
+    // present (ie specified via molblock, SMILES extension, etc.) Note that
+    // this call will intentionally keep a 3d conformer if one is found, since
+    // Maestro may use that later to align the Sketcher structure with the
+    // Maestro workspace structure
+    rdkit_extensions::update_2d_coordinates(mol);
 
     // Update all input chiral centers to have enhanced stereo; honors MDL input
     add_enhanced_stereo_to_chiral_atoms(mol);
