@@ -305,6 +305,11 @@ void Scene::updateSelectionHighlighting()
     m_selection_highlighting_item->highlightItems(selectedItems());
 }
 
+void Scene::updateSceneToolAfterSelection()
+{
+    m_scene_tool->onSelectionChanged();
+}
+
 void Scene::updateHaloHighlighting()
 {
     for (auto* item : m_halo_highlighting_item->childItems()) {
@@ -506,6 +511,7 @@ void Scene::onMolModelSelectionChanged()
     Scene::SelectionChangeSignalBlocker signal_blocker(this);
     updateItemSelection();
     updateSelectionHighlighting();
+    updateSceneToolAfterSelection();
     // signal_blocker emits selectionChanged on destruction
 }
 

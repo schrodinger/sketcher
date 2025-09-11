@@ -17,7 +17,7 @@ struct RenderingSettings {
     bool operator==(const RenderingSettings& other) const = default;
 
     int m_atom_font_size = DEFAULT_FONT_SIZE;
-    int m_bond_line_width = BOND_DEFAULT_PEN_WIDTH;
+    qreal m_bond_line_width = BOND_DEFAULT_PEN_WIDTH;
     CarbonLabels m_carbon_labels = CarbonLabels::NONE;
     bool m_color_heteroatoms = true;
     std::pair<ColorScheme, ColorScheme> m_color_schemes = {
@@ -235,14 +235,13 @@ void RenderingSettingsDialog::exportSettingsToModel()
     auto settings = getSettingsFromPanel();
     m_sketcher_model->setFontSize(settings.m_atom_font_size);
 
-    std::unordered_map<ModelKey, QVariant> kv_pairs = {
-        {ModelKey::COLOR_HETEROATOMS,
-         QVariant::fromValue(settings.m_color_heteroatoms)},
-        {ModelKey::SHOW_STEREO_LABELS,
-         QVariant::fromValue(settings.m_show_stereo_annotations)}};
-    m_sketcher_model->setValues(kv_pairs);
-    m_sketcher_model->setColorSchemes(settings.m_color_schemes,
-                                      settings.m_color_heteroatoms);
+    m_sketcher_model->setValue(
+        ModelKey::SHOW_STEREO_LABELS,
+        QVariant::fromValue(settings.m_show_stereo_annotations));
+    auto color_scheme = settings.m_color_heteroatoms
+                            ? settings.m_color_schemes.first
+                            : settings.m_color_schemes.second;
+    m_sketcher_model->setColorScheme(color_scheme);
 
     AtomDisplaySettings atom_settings(
         *(m_sketcher_model->getAtomDisplaySettingsPtr()));

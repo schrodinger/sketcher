@@ -95,7 +95,7 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
     if (item == nullptr) {
         // double click wasn't on the molecule, so we do nothing
         return;
-    } else if (auto* s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
+    } else if (qgraphicsitem_cast<SGroupItem*>(item)) {
         // TODO: double-click on an s-group should open up the dialog
         return;
     }
@@ -220,10 +220,14 @@ ShapeSelectSceneTool<T>::onLeftButtonDragMove(QGraphicsSceneMouseEvent* event)
     SelectSceneTool<T>::onLeftButtonDragMove(event);
 }
 
-template <typename T>
-QPixmap ShapeSelectSceneTool<T>::createDefaultCursorPixmap() const
+template <> QPixmap RectSelectSceneTool::createDefaultCursorPixmap() const
 {
     return cursor_hint_from_svg(":/icons/select_square.svg");
+}
+
+template <> QPixmap EllipseSelectSceneTool::createDefaultCursorPixmap() const
+{
+    return cursor_hint_from_svg(":/icons/select_ellipse.svg");
 }
 
 EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :

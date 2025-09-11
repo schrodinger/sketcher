@@ -173,6 +173,16 @@ void View::zoomOutToIncludeAll()
 
 void View::fitToScreen()
 {
+    if (!m_initial_geometry_set) {
+        // If the view hasn't been shown yet then it doesn't know how large it
+        // will be, so this method would fit the molecule into the initial
+        // default widget size, which is tiny. The zoom doesn't get updated when
+        // the window is shown, so we'd wind up with a normal size window and a
+        // very tiny molecule. To avoid this, we don't do anything now and
+        // instead re-call this method as soon as the view is shown.
+        m_delayed_fit_to_screen = true;
+        return;
+    }
     Scene* cur_scene = dynamic_cast<Scene*>(scene());
     if (!cur_scene) {
         return;

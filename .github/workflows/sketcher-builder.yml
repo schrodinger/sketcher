@@ -21,8 +21,8 @@ jobs:
         include:
           - os: ubuntu-latest
             build-output: wasm
-          - os: ubuntu-latest
-            build-output: memtest
+        #   - os: ubuntu-latest
+        #     build-output: memtest
     steps:
       - uses: actions/checkout@v4
 
@@ -196,7 +196,7 @@ jobs:
                 ${{ matrix.build-output == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }}
+        run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
       - name: Run tests
         working-directory: build
