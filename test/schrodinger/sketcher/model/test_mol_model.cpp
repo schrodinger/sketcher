@@ -3731,6 +3731,7 @@ BOOST_AUTO_TEST_CASE(test_mol_coords)
             RDKit::Conformer* conf = new RDKit::Conformer(2);
             conf->setAtomPos(0, RDGeom::Point3D(0, 0, 0));
             conf->setAtomPos(1, RDGeom::Point3D(1, 0, 0));
+            conf->set3D(false);
             mol_to_add->addConformer(conf, true);
         }
         model.addMol(*mol_to_add);
@@ -3743,6 +3744,34 @@ BOOST_AUTO_TEST_CASE(test_mol_coords)
         };
         BOOST_TEST(!coordinates_are_zero(mol->getConformer()));
     }
+}
+
+/**
+ * Make sure that 3d conformers survive a round trip through MolModel.  (Maestro
+ * sometimes uses those conformers to align the Sketcher structure to the
+ * Maestro structure that it originated from.)
+ */
+BOOST_AUTO_TEST_CASE(test_mol_coords_3d)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCC"));
+    auto conf = new RDKit::Conformer(3);
+    conf->set3D(true);
+    conf->setAtomPos(0, {1, 1, 1});
+    conf->setAtomPos(1, {2, 2, 2});
+    conf->setAtomPos(2, {3, 3, 3});
+    mol_to_add->addConformer(conf, true);
+    BOOST_TEST(mol_to_add->getNumConformers() == 1);
+    model.addMol(*mol_to_add);
+    auto new_mol = model.getMolForExport();
+    BOOST_TEST(new_mol->getNumConformers() == 2);
+    // make sure that the 2d conformer is first
+    BOOST_TEST(!new_mol->getConformer(0).is3D());
+    // make sure that the 3d conformer is still present
+    BOOST_TEST(new_mol->getConformer(1).is3D());
+    // make sure that the default conformer is the 2d one
+    BOOST_TEST(!new_mol->getConformer().is3D());
 }
 
 /**
