@@ -164,6 +164,48 @@ void SketcherModel::setValues(
     }
 }
 
+/**
+ * @return true if the given color scheme has separate colors for heteroatoms,
+ * or false if the color scheme uses the same colors for all atom types
+ */
+static bool does_scheme_have_heteroatoms_colored(const ColorScheme scheme)
+{
+    return scheme != ColorScheme::BLACK_WHITE &&
+           scheme != ColorScheme::WHITE_BLACK;
+}
+
+/**
+ * For a given "color heteratoms" setting, determine the "equivalent" color
+ * scheme to the one that's passed in. If the passed-in color scheme matches the
+ * color_heteroatoms settings, it will be returned unchanged. Otherwise, this
+ * function will return a color scheme with the same background color (white or
+ * black) as the passed-in scheme.
+ */
+static ColorScheme
+get_scheme_for_color_heteroatoms_value(const ColorScheme scheme,
+                                       const bool color_heteroatoms)
+{
+    if (color_heteroatoms == does_scheme_have_heteroatoms_colored(scheme)) {
+        // the specified scheme already matches the passed color_heteroatoms
+        // setting
+        return scheme;
+    }
+    switch (scheme) {
+        case ColorScheme::DEFAULT:
+        case ColorScheme::AVALON:
+        case ColorScheme::CDK:
+            return ColorScheme::BLACK_WHITE;
+        case ColorScheme::DARK_MODE:
+            return ColorScheme::WHITE_BLACK;
+        case ColorScheme::BLACK_WHITE:
+            return ColorScheme::DEFAULT;
+        case ColorScheme::WHITE_BLACK:
+            return ColorScheme::DARK_MODE;
+        default:
+            return ColorScheme::DEFAULT;
+    };
+}
+
 void SketcherModel::updateAtomDisplaySettings(
     const std::unordered_set<ModelKey>& keys)
 {
@@ -171,10 +213,10 @@ void SketcherModel::updateAtomDisplaySettings(
     for (auto key : keys) {
         switch (key) {
             case ModelKey::COLOR_HETEROATOMS: {
-                auto scheme =
-                    getValueBool(key) ? m_color_scheme : m_black_white_scheme;
-                m_atom_display_settings.setColorScheme(scheme);
-                emit_display_settings_changed = true;
+                bool color_heteroatoms = getValueBool(key);
+                auto new_scheme = get_scheme_for_color_heteroatoms_value(
+                    m_color_scheme, color_heteroatoms);
+                setColorScheme(new_scheme);
                 break;
             }
             case ModelKey::SHOW_STEREO_LABELS: {
@@ -353,26 +395,36 @@ void SketcherModel::setBondWidthScale(qreal scale)
     emit displaySettingsChanged();
 }
 
-void SketcherModel::setColorSchemes(
-    std::pair<ColorScheme, ColorScheme> color_schemes, bool use_colors)
+void SketcherModel::setColorScheme(const ColorScheme scheme)
 {
-    m_color_scheme = color_schemes.first;
-    m_black_white_scheme = color_schemes.second;
-    auto scheme_to_use = use_colors ? m_color_scheme : m_black_white_scheme;
-    bool dark_background = scheme_to_use == ColorScheme::DARK_MODE ||
-                           scheme_to_use == ColorScheme::WHITE_BLACK;
+    m_color_scheme = scheme;
+    bool dark_background =
+        scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK;
     setBackgroundColor(dark_background ? DARK_BACKGROUND_COLOR
                                        : LIGHT_BACKGROUND_COLOR);
-    m_atom_display_settings.setColorScheme(scheme_to_use);
-    m_bond_display_settings.setColorScheme(scheme_to_use);
+    m_atom_display_settings.setColorScheme(scheme);
+    m_bond_display_settings.setColorScheme(scheme);
+    // if this color scheme changes the COLOR_HETEROATOMS setting, update the
+    // setting and notify any listeners
+    auto new_color_heteroatoms = does_scheme_have_heteroatoms_colored(scheme);
+    if (new_color_heteroatoms != m_model_map[ModelKey::COLOR_HETEROATOMS]) {
+        m_model_map[ModelKey::COLOR_HETEROATOMS] = new_color_heteroatoms;
+        emit valuePinged(ModelKey::COLOR_HETEROATOMS, new_color_heteroatoms);
+        emit valuesChanged({ModelKey::COLOR_HETEROATOMS});
+    }
     emit displaySettingsChanged();
+}
+
+ColorScheme SketcherModel::getColorScheme() const
+{
+    return m_color_scheme;
 }
 
 std::pair<ColorScheme, ColorScheme> SketcherModel::getColorSchemes() const
 {
     return {
-        m_color_scheme,
-        m_black_white_scheme,
+        get_scheme_for_color_heteroatoms_value(m_color_scheme, true),
+        get_scheme_for_color_heteroatoms_value(m_color_scheme, false),
     };
 }
 

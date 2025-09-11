@@ -27,6 +27,7 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
 #include "schrodinger/sketcher/dialog/rendering_settings_dialog.h"
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
@@ -324,6 +325,11 @@ void SketcherWidget::setSelectOnlyMode(bool select_only_mode_enabled)
              {ModelKey::SELECTION_TOOL,
               QVariant::fromValue(SelectionTool::RECTANGLE)}});
     }
+}
+
+void SketcherWidget::setColorScheme(ColorScheme color_scheme)
+{
+    m_sketcher_model->setColorScheme(color_scheme);
 }
 
 std::string SketcherWidget::getClipboardContents() const
