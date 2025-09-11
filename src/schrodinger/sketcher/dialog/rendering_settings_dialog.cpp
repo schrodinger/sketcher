@@ -54,6 +54,9 @@ RenderingSettingsDialog::RenderingSettingsDialog(SketcherModel* model,
 
     // initialize the GUI
     loadSettingsFromModel();
+    // the loadSettingsFromModel() call started the update timer, but we don't
+    // need it since the settings came from the model in the first place
+    m_update_timer->stop();
 }
 
 RenderingSettingsDialog::~RenderingSettingsDialog() = default;
