@@ -27,6 +27,8 @@ using schrodinger::rdkit_extensions::to_rdkit;
 using schrodinger::rdkit_extensions::to_rdkit_reaction;
 using schrodinger::rdkit_extensions::to_string;
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::ColorScheme)
+
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
@@ -678,4 +680,15 @@ BOOST_AUTO_TEST_CASE(test_wasm_API)
     assert_roundtrip(read_rxn, "rxn_r_group.rxn");
     assert_roundtrip(read_rxn, "rxn_aryl.rxn");
     assert_roundtrip(read_rxn, "reaction_smarts.rsmi");
+}
+
+/**
+ * Make sure that the color scheme doesn't get reset when events are processed
+ */
+BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)
+{
+    TestSketcherWidget sk;
+    sk.setColorScheme(ColorScheme::DARK_MODE);
+    QCoreApplication::processEvents();
+    BOOST_TEST(sk.m_sketcher_model->getColorScheme() == ColorScheme::DARK_MODE);
 }
