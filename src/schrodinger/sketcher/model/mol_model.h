@@ -213,6 +213,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     bool hasSelectedBonds() const;
     bool hasSelectedAtoms() const;
+    bool hasSelectedNonMolecularObjects() const;
 
     /**
      * @return halo highlighting information

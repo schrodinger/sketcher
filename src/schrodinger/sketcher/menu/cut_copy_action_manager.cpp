@@ -74,8 +74,17 @@ void CutCopyActionManager::initCopyAsMenu()
             auto slot = [this, fmt]() { emit copyRequested(fmt, getSubset()); };
             auto action = m_copy_as_menu->addAction(
                 QString::fromStdString(label), this, slot);
+            // set a flag on the action to determine its visibility later
             action->setData(QVariant(is_reaction_format));
         }
+        // Add a separator and the option to export as an image
+        auto separator = m_copy_as_menu->addSeparator();
+        separator->setData(QVariant(is_reaction_format));
+        auto action = m_copy_as_menu->addAction("Image", this, [this]() {
+            emit copyAsImageRequested(getSubset());
+        });
+        // set a flag on the action to determine its visibility later
+        action->setData(QVariant(is_reaction_format));
     };
 
     init_menu(get_standard_export_formats(), false);
