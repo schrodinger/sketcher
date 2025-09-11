@@ -82,6 +82,13 @@ class SKETCHER_API AbstractSceneTool : public QObject
     virtual void onStructureUpdated();
 
     /**
+     * Called when the selection of the scene changes. It does nothing
+     * by default, but can be reimplemented in subclasses to update the tool's
+     * state (e.g. graphics items that needs to be updated)
+     */
+    virtual void onSelectionChanged();
+
+    /**
      * Called whenever the mouse leaves the scene.
      */
     virtual void onMouseLeave();

@@ -191,6 +191,12 @@ std::vector<QGraphicsItem*> MoveRotateSceneTool::getGraphicsItems()
     return graphics_items;
 }
 
+void MoveRotateSceneTool::onSelectionChanged()
+{
+    updateMoveSelectionItem();
+    updateRotationItem();
+}
+
 void MoveRotateSceneTool::onStructureUpdated()
 {
     /**
