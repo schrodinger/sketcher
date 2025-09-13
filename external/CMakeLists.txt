@@ -28,7 +28,8 @@ endfunction()
 
 if(EMSCRIPTEN)
   set(EXTRA_BOOST_CMAKE_ARGS
-      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0)
+      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
+  )
   set(EXTRA_QT_CMAKE_ARGS
       -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
   set(EXTRA_RDKIT_CMAKE_ARGS
@@ -78,8 +79,7 @@ ExternalProject_Add(
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-    -DBUILD_SHARED_LIBS=OFF
-    -DZLIB_BUILD_EXAMPLES=OFF)
+    -DBUILD_SHARED_LIBS=OFF -DZLIB_BUILD_EXAMPLES=OFF)
 
 # Build zstd library
 ExternalProject_Add(
@@ -126,6 +126,7 @@ set_cmake_arg(
   geometry
   iostreams
   json
+  locale
   multi_array
   multiprecision
   program_options
@@ -196,11 +197,9 @@ if(EMSCRIPTEN)
 endif()
 # Prevent RDKit from trying to build shared libs
 list(APPEND RDKIT_PATCH_COMMAND && git apply
-      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 list(APPEND RDKIT_PATCH_COMMAND && git apply
-      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
-list(APPEND RDKIT_PATCH_COMMAND && git apply
-      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
