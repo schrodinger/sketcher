@@ -12,26 +12,29 @@ inputs:
     description: "Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)"
     required: false
     default: false
-  cache-suffix:
-    description: "An additional string to append to the cache key. Can be used to specify versions of the dependencies of the package being built/fetched."
-    required: false
 
 outputs:
   path:
     description: "Absolute path to the installed dependency"
-    # FIXME: collapse this with cache-check.path
-    value: ${{ github.workspace }}/build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}${{ inputs.library }}-${{ inputs.version }}
+    value: ${{ github.workspace }}/${{ steps.vars.outputs.lib-dir }}
 
 runs:
   using: "composite"
   steps:
+    - name: Determine the build directories
+      id: vars
+      shell: bash
+      run: |
+        BUILD_DIR="build/external${{ inputs.host-build == 'true' && '/host' || '' }}"
+        echo "build-dir=${BUILD_DIR}" >> $GITHUB_OUTPUT
+        echo "lib-dir=${BUILD_DIR}/${{ inputs.library }}-${{ inputs.version }}" >> $GITHUB_OUTPUT
+
     - uses: actions/cache@v4
       id: cache-check
-      env:
-        lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
       with:
-        path: ${{ env.lib-build-dir }}${{ inputs.library }}-${{ inputs.version }}
-        key: ${{ inputs.library }}-${{ inputs.version }}${{inputs.cache-suffix}}-${{ runner.os }}-${{ inputs.host-build == 'true' && 'host' || matrix.build-output }}
+        path: ${{ steps.vars.outputs.lib-dir }}
+        # Regenerate the cache is the version OR external/CMakeLists.txt changes
+        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt') }}
 
     - name: Build library
       if: steps.cache-check.outputs.cache-hit != 'true'
@@ -40,11 +43,10 @@ runs:
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
         use-emsdk: ${{ matrix.build-output == 'wasm' && inputs.host-build == 'false' && 'true' }}
-        lib-build-dir: build/external/${{ inputs.host-build == 'true' && 'host/' || '' }}
-        # cmd uses ^ for escaping newlines instead of \
+        # cmd uses ^ for escaping newlines instead of
         endl: ${{ runner.os == 'windows' && '^' || '\' }}
       run: |
         ${{ env.use-emsdk == 'true' && 'source emsdk_env.sh && ' || '' }}${{env.endl}}
-        cmake --build ${{ env.lib-build-dir }} --verbose${{env.endl}}
+        cmake --build ${{ steps.vars.outputs.build-dir }} --verbose${{env.endl}}
               --target ${{ inputs.library }}${{env.endl}}
               --config ${{ env.BUILD_TYPE }}
