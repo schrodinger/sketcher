@@ -31,7 +31,7 @@ class QApplicationRequiredFixture
     {
         if (!has_display()) {
             BOOST_TEST_MESSAGE("Skipping tests that require a display.");
-            return;
+            exit(0);
         }
 
         if (QCoreApplication::instance() != nullptr) {
