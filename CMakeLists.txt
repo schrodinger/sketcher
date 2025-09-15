@@ -27,7 +27,6 @@ if(${ENFORCE_DEPENDENCY_VERSIONS})
   foreach(dep ${DEPENDENCIES})
     string(TOUPPER ${dep} dep_upper)
     string(JSON ${dep_upper}_VERSION GET ${VERSIONS} ${dep})
-    set(${dep_upper}_VERSION ${${dep_upper}_VERSION})
   endforeach()
 endif()
 

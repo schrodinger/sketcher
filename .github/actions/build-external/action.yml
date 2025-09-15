@@ -33,7 +33,7 @@ runs:
       id: cache-check
       with:
         path: ${{ steps.vars.outputs.lib-dir }}
-        # Regenerate the cache is the version OR external/CMakeLists.txt changes
+        # Regenerate the cache if the version OR external/CMakeLists.txt changes
         key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt') }}
 
     - name: Build library
