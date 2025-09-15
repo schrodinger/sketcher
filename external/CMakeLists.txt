@@ -43,7 +43,9 @@ else()
   endif()
 endif()
 
-set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
+    -DCMAKE_BUILD_TYPE=Release)
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
@@ -201,7 +203,7 @@ list(APPEND RDKIT_PATCH_COMMAND && git apply
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
 # list(APPEND RDKIT_PATCH_COMMAND && git apply
-#       ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
+# ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
