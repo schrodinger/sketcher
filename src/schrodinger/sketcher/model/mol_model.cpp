@@ -1161,8 +1161,13 @@ void MolModel::cleanUpSelection()
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
 }
 
-void MolModel::regenerateCoordinates()
+void MolModel::regenerateCoordinates(bool selection_only)
 {
+    if (selection_only) {
+        cleanUpSelection();
+        return;
+    }
+
     auto cmd = [this]() {
         // if this is a reaction, we'll generate new pluses
         m_pluses.clear();
