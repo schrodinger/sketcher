@@ -691,4 +691,7 @@ BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)
     sk.setColorScheme(ColorScheme::DARK_MODE);
     QCoreApplication::processEvents();
     BOOST_TEST(sk.m_sketcher_model->getColorScheme() == ColorScheme::DARK_MODE);
+    // make sure that the bond color is close to white for dark mode
+    auto bond_color = sk.m_sketcher_model->getBondDisplaySettingsPtr()->m_color;
+    BOOST_TEST(bond_color.lightnessF() > 0.9);
 }
