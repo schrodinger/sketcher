@@ -33,8 +33,8 @@ test.describe('WASM Sketcher API', () => {
         await page.evaluate(() => {
             Module.sketcher_import_text("C");
         });
-        const is_not_empty = await page.evaluate(() => Module.sketcher_is_empty());
-        expect(is_not_empty).toBe(false);
+        const is_empty = await page.evaluate(() => Module.sketcher_is_empty());
+        expect(is_empty).toBe(false);
         // Clear the sketcher and confirm it's empty again
         await page.evaluate(() => {
             Module.sketcher_clear();
