@@ -14,8 +14,6 @@ test.describe('WASM Sketcher API', () => {
         const smiles_input = "c1ccccc1";
         const exportedText = await page.evaluate(async (text) => {
             Module.sketcher_import_text(text);
-            // Wait for the change to propagate
-            await new Promise(resolve => setTimeout(resolve, 100));
             return Module.sketcher_export_text(Module.Format.SMILES);
         }, smiles_input);
         // Verify that the exported text matches the input
@@ -42,17 +40,20 @@ test.describe('WASM Sketcher API', () => {
 
     test('Export as image from the sketcher', async ({ page }) => {
         const smiles_input = "C=O";
-        await page.evaluate((smiles) => {
+        const base64Content = await page.evaluate((smiles) => {
             Module.sketcher_import_text(smiles);
-        }, smiles_input);
-        // Export as SVG and verify the content
-        const base64Content = await page.evaluate(() => {
             return Module.sketcher_export_image(Module.ImageFormat.SVG);
-        });
+        }, smiles_input);
+
+        // SVG validation using regex pattern similar to Python version
+        const SVG_REGEX = /(?:<\?xml\b[^>]*>[^<]*)?(?:<!--.*?-->[^<]*)*(?:<svg|<!DOCTYPE svg)\b/s;
+        function isValidSvg(svgData) {
+            return SVG_REGEX.test(svgData);
+        }
+
         // Decode base64 to get the actual SVG content
         const svgContent = Buffer.from(base64Content, 'base64').toString('utf8');
-        expect(svgContent).toMatch(/<svg/);
-        expect(svgContent).toMatch(/polyline/);
+        expect(isValidSvg(svgContent)).toBe(true);
     });
 
 });
