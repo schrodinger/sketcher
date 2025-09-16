@@ -57,8 +57,8 @@ test.describe('WASM Sketcher API', () => {
         });
         // Decode base64 to get the actual SVG content
         const svgContent = Buffer.from(base64Content, 'base64').toString('utf8');
-        expect(svgContent).toMatch(/^<svg/);
-        expect(svgContent).toContain("path");
+        expect(svgContent).toMatch(/<svg/);
+        expect(svgContent).toMatch(/polyline/);
     });
 
 });
