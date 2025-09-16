@@ -222,6 +222,20 @@ BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
     BOOST_TEST(!sk.m_mol_model->hasSelection());
 }
 
+/**
+ * Make sure that pasting a string containing Windows newline characters work
+ * correctly.  (RDKit parsing can't handle \r's on WASM builds, so
+ * SketcherWidget must remove those manually.)
+ */
+BOOST_AUTO_TEST_CASE(test_paste_with_windows_newline)
+{
+    TestSketcherWidget sk;
+    sk.setClipboardContents("CCC\n\r");
+    sk.paste();
+    auto mol = sk.m_mol_model->getMol();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+}
+
 BOOST_AUTO_TEST_CASE(test_importText_slot)
 {
     TestSketcherWidget sk;
