@@ -82,7 +82,7 @@ function(setup_target TARGET)
   endif()
   # Compilation optimization, warnings, and error handling
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE -WX)
+    target_compile_options(${TARGET} PRIVATE)
   elseif(WIN32)
     target_compile_options(
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
@@ -179,6 +179,7 @@ build_schrodinger_library(${SKETCHER_TARGET})
 target_link_libraries(
   ${SKETCHER_TARGET}
   PRIVATE Boost::boost
+          Boost::filesystem
           fmt::fmt
           Qt6::Svg
           Qt6::SvgWidgets
@@ -204,9 +205,15 @@ if(EMSCRIPTEN)
       -fexceptions
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
+
+if(WIN32)
+target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${PROJECT_BINARY_DIR}/CMakeFiles/sketcher.dir/sketcher_autogen/PMZGBCCIHK/qrc_sketcher.cpp.obj
+                                            ${SKETCHER_TARGET})
+else()
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
                                             ${SKETCHER_TARGET}
                                             ${EXTRA_SKETCHER_APP_LINK_FLAGS})
+endif()
 
 # Tests
 if(ENABLE_TESTING)
@@ -281,3 +288,6 @@ if(ENABLE_TESTING)
     endif()
   endforeach()
 endif()
+
+install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET} DESTINATION ${CMAKE_INSTALL_LIBDIR})
