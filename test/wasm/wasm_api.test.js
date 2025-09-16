@@ -2,9 +2,6 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('WASM Sketcher API', () => {
 
-    // Increase timeout for this test suite to 60 seconds
-    test.setTimeout(60000);
-
     test.beforeEach(async ({ page }) => {
         // Navigate to the page that loads the WASM module and
         // wait for the WASM module to be fully loaded and available
