@@ -1,95 +1,152 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en-us">
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
     <!--Set visual viewport size for mobile devices to the device size,
         which results in a scale of 1 and a 1:1 mapping between CSS pixels
         and Qt device independent pixels. -->
-    <meta name="viewport" content="width=device-width, height=device-height, user-scalable=0, maximum-scale=1, minimum-scale=1"/>
+    <meta
+      name="viewport"
+      content="width=device-width, height=device-height, user-scalable=0, maximum-scale=1, minimum-scale=1"
+    />
 
     <title>sketcher</title>
     <style>
       /* Make the html body cover the entire (visual) viewport with no scroll bars. */
-      html, body { padding: 0; margin: 0; overflow: hidden; height: 100%; background-color:white; }
-      #screen { width: 100%; height: 100%; }
+      html,
+      body {
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+        height: 100%;
+        background-color: white;
+      }
+      #screen {
+        width: 100%;
+        height: 100%;
+      }
     </style>
   </head>
   <body onload="init()">
-    <div style="display:flex; flex-direction:column; align-items:center; height:100%; font-family:sans-serif; color:#505050;" id="qtspinner">
-      <img src="sketcher_loading.gif" style="margin-top:auto" />
-      <div id="qtstatus" style="text-align:center"></div>
-      <img src="schrodinger_logo.png" width="150" style="margin-top:auto; margin-bottom:10px;" />
+    <div
+      style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+        font-family: sans-serif;
+        color: #505050;
+      "
+      id="qtspinner"
+    >
+      <img src="sketcher_loading.gif" style="margin-top: auto" />
+      <div id="qtstatus" style="text-align: center"></div>
+      <img src="schrodinger_logo.png" width="150" style="margin-top: auto; margin-bottom: 10px" />
       <noscript>JavaScript is disabled. Please enable JavaScript to use this application.</noscript>
     </div>
-    <div id="qterror" style="flex-direction:column; align-items:center; justify-content:center; height:100%; font-family:sans-serif; color:#505050; padding-inline:10%;">
+    <div
+      id="qterror"
+      style="
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        font-family: sans-serif;
+        color: #505050;
+        padding-inline: 10%;
+      "
+    >
       <h1 style="margin-top: auto">The application could not be loaded.</h1>
-      <p>Try restarting or refreshing the page. If the problem persists, contact <a href="help@schrodinger.com">help@schrodinger.com</a> and provide the following error message:</p>
-      <div style="background:#f5f5f5; padding:16px; border-radius:5px;">
-        <div id="error-text" style="max-height:200px; overflow:hidden;"></div>
+      <p>
+        Try restarting or refreshing the page. If the problem persists, contact
+        <a href="help@schrodinger.com">help@schrodinger.com</a> and provide the following error
+        message:
+      </p>
+      <div style="background: #f5f5f5; padding: 16px; border-radius: 5px">
+        <div id="error-text" style="max-height: 200px; overflow: hidden"></div>
         <button
           onclick="copyErrorToClipboard()"
-          style="background:#fbfbfb; color:#505050; width:100%; padding:10px; margin-top:16px; border:1px solid #ebebeb; border-radius:5px; cursor:pointer; display: flex; align-items:center; justify-content:center; gap:3px;"
+          style="
+            background: #fbfbfb;
+            color: #505050;
+            width: 100%;
+            padding: 10px;
+            margin-top: 16px;
+            border: 1px solid #ebebeb;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+          "
         >
           <img src="copy_icon.svg" /> Copy to Clipboard
         </button>
       </div>
-      <img src="schrodinger_logo.png" width="150" style="margin-top:auto; margin-bottom:10px;" />
+      <img src="schrodinger_logo.png" width="150" style="margin-top: auto; margin-bottom: 10px" />
     </div>
     <div id="screen"></div>
 
-    <script type='text/javascript'>
-        let qtLoader = undefined;
-        function init() {
-          var spinner = document.querySelector('#qtspinner');
-          var canvas = document.querySelector('#screen');
-          var status = document.querySelector('#qtstatus');
-          var error = document.querySelector('#qterror');
-          var errorTextContainer = document.querySelector('#error-text');
+    <script type="text/javascript" src="qtloader.js"></script>
+    <script type="text/javascript" src="sketcher_app.js"></script>
+    <script type="text/javascript">
+      async function init() {
+        const spinner = document.querySelector('#qtspinner');
+        const status = document.querySelector('#qtstatus');
+        const error = document.querySelector('#qterror');
+        const errorTextContainer = document.querySelector('#error-text');
+        const container = document.querySelector('#screen');
 
-          // SKETCH-2309: lock down the value to prevent distortion when zooming
-          window.devicePixelRatio = Math.round(window.devicePixelRatio * 2) / 2;
+        // SKETCH-2309: lock down the value to prevent distortion when zooming
+        window.devicePixelRatio = Math.round(window.devicePixelRatio * 2) / 2;
 
-          qtLoader = new QtLoader({
-              canvasElements : [canvas],
-              showLoader: function(loaderStatus) {
-                  spinner.style.display = 'flex';
-                  canvas.style.display = 'none';
-                  error.style.display = 'none';
-                  status.innerHTML = loaderStatus + "...";
+        try {
+          const sketcherInstance = await qtLoad({
+            qt: {
+              entryFunction: createSketcherModule,
+              containerElements: [container],
+
+              onLoaded: () => {
+                error.style.display = 'none';
+                spinner.style.display = 'none';
+                container.style.display = 'block';
               },
-              showError: function(errorText) {
-                  errorTextContainer.innerHTML = errorText;
-                  error.style.display = 'flex';
-                  spinner.style.display = 'none';
-                  canvas.style.display = 'none';
+
+              onExit: (exit) => {
+                errorTextContainer.innerHTML = 'Application exit';
+                if (exit.crashed) {
+                  errorTextContainer.innerHTML += ' (' + exit.text + ')';
+                } else {
+                  errorTextContainer.innerHTML += ' with code ' + exit.code;
+                }
+                error.style.display = 'flex';
+                spinner.style.display = 'none';
+                container.style.display = 'none';
               },
-              showExit: function() {
-                  errorTextContainer.innerHTML = "Application exit";
-                  if (qtLoader.exitCode !== undefined)
-                      errorTextContainer.innerHTML += " with code " + qtLoader.exitCode;
-                  if (qtLoader.exitText !== undefined)
-                      errorTextContainer.innerHTML += " (" + qtLoader.exitText + ")";
-                  error.style.display = 'flex';
-                  spinner.style.display = 'none';
-                  canvas.style.display = 'none';
-              },
-              showCanvas: function() {
-                  error.style.display = 'none';
-                  spinner.style.display = 'none';
-                  canvas.style.display = 'block';
-              },
+            },
           });
-          qtLoader.loadEmscriptenModule("sketcher");
-          // Explicitly allow qtLoader to be accessible on the iframe window
-          window.qtLoader = qtLoader;
+        } catch (err) {
+          console.error(err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          errorTextContainer.innerHTML = errorMessage;
+          error.style.display = 'flex';
+          spinner.style.display = 'none';
+          container.style.display = 'none';
+        }
 
-          // SS-36925: Focuses sketcher on actions like dragging compound into sketcher
-          // SS-37677: Clicking on buttons didn't focus sketcher. This avoids such situation
-          canvas.addEventListener('mouseover', function () {
-            canvas.focus();
-          })
+        // SS-36925: Focuses sketcher on actions like dragging compound into sketcher
+        // SS-37677: Clicking on buttons didn't focus sketcher. This avoids such situation
+        // LDGRID-1067: Focuses sketcher on hover so you don't have to click to focus before pasting
+        container.addEventListener('mouseover', function () {
+          const qtShadowRoot = [...container.children].find((el) => !!el.shadowRoot);
+          if (qtShadowRoot) {
+            qtShadowRoot.tabIndex = -1;
+            qtShadowRoot.focus();
+          }
+        });
       }
 
       function copyErrorToClipboard() {
@@ -97,6 +154,5 @@
         navigator.clipboard.writeText(errorContainer.innerHTML);
       }
     </script>
-    <script type="text/javascript" src="qtloader.js"></script>
   </body>
 </html>

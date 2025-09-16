@@ -47,6 +47,7 @@ class SketcherModel;
 enum class ImageFormat;
 enum class ModelKey;
 enum class SceneSubset;
+enum class ColorScheme;
 class FileExportDialog;
 class FileSaveImageDialog;
 class RenderingSettingsDialog;
@@ -108,6 +109,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      * user interaction to selecting items.
      */
     void setSelectOnlyMode(bool select_only_mode_enabled);
+
+    /**
+     * Set the color scheme, which controls the atom and bond colors as well as
+     * the background color.
+     */
+    void setColorScheme(ColorScheme color_scheme);
 
     /**
      * Pass the specified keypress to the top bar.  Explicit calls to this

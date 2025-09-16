@@ -2458,13 +2458,28 @@ void MolModel::deselectSGroupsThatWillBeImplicitlyDeleted(
     }
 }
 
-void MolModel::addMolCommandFunc(const RDKit::ROMol& mol)
+void MolModel::addMolCommandFunc(RDKit::ROMol mol)
 {
     Q_ASSERT(m_allow_edits);
     // get the starting index for the atoms and bonds to be inserted
     unsigned int old_num_atoms = m_mol.getNumAtoms();
     unsigned int old_num_bonds = m_mol.getNumBonds();
     bool is_monomeric = rdkit_extensions::isMonomeric(mol);
+
+    // insertMol will only copy coordinates if mol has the same number of
+    // conformers as m_mol.  If one of these molecules has two conformers (one
+    // 2d and one 3d) and the other doesn't, then add an extra conformer where
+    // it's needed
+    auto add_empty_3d_conformer = [](RDKit::ROMol& mol) {
+        auto* new_conformer = new RDKit::Conformer(mol.getNumAtoms());
+        new_conformer->set3D(true);
+        mol.addConformer(new_conformer, true);
+    };
+    if (m_mol.getNumConformers() == 1 && mol.getNumConformers() == 2) {
+        add_empty_3d_conformer(m_mol);
+    } else if (m_mol.getNumConformers() == 2 && mol.getNumConformers() == 1) {
+        add_empty_3d_conformer(mol);
+    }
     m_mol.insertMol(mol);
 
     for (auto& sgroup : getSubstanceGroups(m_mol)) {

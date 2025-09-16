@@ -1316,7 +1316,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param mol The molecule to add
      */
-    void addMolCommandFunc(const RDKit::ROMol& mol);
+    void addMolCommandFunc(RDKit::ROMol mol);
 
     /**
      * Add the given reaction to the model. This method must only be called as
