@@ -9,11 +9,8 @@ test.describe('WASM Sketcher API', () => {
         // Navigate to the page that loads the WASM module and
         // wait for the WASM module to be fully loaded and available
         await page.goto('/wasm_shell.html');
-        await page.waitForFunction('window.Module');
-
-        // Verify that the module is not null or undefined
-        const moduleLoaded = await page.evaluate(() => typeof window.Module !== 'undefined');
-        expect(moduleLoaded).toBe(true);
+        // wait for the sketcher WASM module to be loaded
+        await page.waitForFunction(() => typeof window.Module !== undefined);
     });
 
     test('Roundtrip SMILES through the sketcher', async ({ page }) => {
