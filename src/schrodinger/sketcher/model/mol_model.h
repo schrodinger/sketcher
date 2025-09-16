@@ -541,6 +541,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void flipAllVertical();
 
     /**
+     * Undoably flip selected atoms coordinates horizontally or vertically.
+     */
+    void flipSelectionHorizontal();
+    void flipSelectionVertical();
+
+    /**
      * rotate all atoms by the given angle (the rdkit coordinates rotate
      * clockwise, while the representation in the scene
      * rotates counter-clockwise,  since the y axis is inverted)

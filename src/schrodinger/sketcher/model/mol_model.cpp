@@ -1478,6 +1478,48 @@ void MolModel::flipAroundSegment(
     flipBondStereo(bonds);
 }
 
+void MolModel::flipSelectionHorizontal()
+{
+    auto atoms = getSelectedAtoms();
+    if (atoms.empty()) {
+        return;
+    }
+    auto center = find_centroid(m_mol, atoms, {});
+    auto flip_x = [center](auto& coord) { coord.x = 2 * center.x - coord.x; };
+    transformCoordinatesWithFunction("", flip_x, MergeId::NO_MERGE, atoms);
+    std::unordered_set<const RDKit::Bond*> bonds;
+    for (auto& atom : atoms) {
+        for (auto& bond : m_mol.atomBonds(atom)) {
+            if (atoms.count(bond->getBeginAtom()) &&
+                atoms.count(bond->getEndAtom())) {
+                bonds.insert(bond);
+            }
+        }
+    }
+    flipBondStereo(bonds);
+}
+
+void MolModel::flipSelectionVertical()
+{
+    auto atoms = getSelectedAtoms();
+    if (atoms.empty()) {
+        return;
+    }
+    auto center = find_centroid(m_mol, atoms, {});
+    auto flip_y = [center](auto& coord) { coord.y = 2 * center.y - coord.y; };
+    transformCoordinatesWithFunction("", flip_y, MergeId::NO_MERGE, atoms);
+    std::unordered_set<const RDKit::Bond*> bonds;
+    for (auto& atom : atoms) {
+        for (auto& bond : m_mol.atomBonds(atom)) {
+            if (atoms.count(bond->getBeginAtom()) &&
+                atoms.count(bond->getEndAtom())) {
+                bonds.insert(bond);
+            }
+        }
+    }
+    flipBondStereo(bonds);
+}
+
 void MolModel::flipAllHorizontal()
 {
     auto undo_macro_raii = createUndoMacro("Flip all horizontal");
