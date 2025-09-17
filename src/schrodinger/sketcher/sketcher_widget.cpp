@@ -383,13 +383,10 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 void SketcherWidget::copyAsImage(SceneSubset subset)
 {
     QByteArray image_bytes;
-    // If this is a reaction or a reaction selection, export the entire reaction
-    bool get_full_reaction = (m_mol_model->hasReactionArrow() &&
-                              (subset == SceneSubset::ALL ||
-                               m_mol_model->hasSelectedNonMolecularObjects()));
-    if (get_full_reaction) {
-        auto reaction = getRDKitReaction();
-        image_bytes = get_image_bytes(*reaction, ImageFormat::PNG);
+    bool full_scene = (subset == SceneSubset::ALL);
+    if (full_scene) {
+        RenderOptions opts;
+        image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
     } else {
         auto mol = extract_mol(m_mol_model, subset);
         image_bytes = get_image_bytes(*mol, ImageFormat::PNG);
