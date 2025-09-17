@@ -306,9 +306,8 @@ void groupRemainingAtoms(const RDKit::ROMol& atomistic_mol,
                         q.push(nbr->getIdx());
                     } else {
                         // Deduce attachment point from attachment point on
-                        // neighboring monomer If neighboring monomer has
-                        // attachment point, use it
-                        unsigned int neighbor_attach_num;
+                        // neighboring monomer, if there.
+                        unsigned int neighbor_attach_num = NO_ATTACHMENT;
                         if (nbr->getPropIfPresent(ATTACH_NUM,
                                                   neighbor_attach_num)) {
                             if (neighbor_attach_num == 1) {
@@ -342,7 +341,7 @@ void groupRemainingAtoms(const RDKit::ROMol& atomistic_mol,
             auto at = atomistic_mol.getAtomWithIdx(monomer.atom_indices[0]);
             if (at->getDegree() == 1) {
                 auto neigh = *atomistic_mol.atomNeighbors(at).begin();
-                unsigned int neigh_attach_num;
+                unsigned int neigh_attach_num = 0;
                 if (neigh->getPropIfPresent(ATTACH_NUM, neigh_attach_num) &&
                     neigh_attach_num == NO_ATTACHMENT) {
                     auto neigh_monomer_idx =
@@ -571,11 +570,12 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                 auto this_at = atomistic_mol.getAtomWithIdx(monomer.r3);
                 auto monomer_idx = this_at->getProp<unsigned int>(MONOMER_IDX);
                 for (auto& neigh : atomistic_mol.atomNeighbors(this_at)) {
-                    unsigned int neigh_monomer_idx;
+                    unsigned int neigh_monomer_idx = NO_ATTACHMENT;
                     if (neigh->getPropIfPresent(MONOMER_IDX,
                                                 neigh_monomer_idx) &&
                         neigh_monomer_idx != monomer_idx) {
                         has_r3 = true;
+                        break;
                     }
                 }
                 if (has_r3) {
