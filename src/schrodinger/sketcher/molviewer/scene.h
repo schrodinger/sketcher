@@ -258,6 +258,11 @@ class SKETCHER_API Scene : public QGraphicsScene
     void updateSelectionHighlighting();
 
     /**
+     * Update the current tool when the selection changes
+     */
+    void updateSceneToolAfterSelection();
+
+    /**
      * Update the path drawn to show item colored highlights
      */
     void updateHaloHighlighting();

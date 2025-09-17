@@ -34,11 +34,17 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install ninja clang-format==14.0.6
+        run: python3 -m pip install clang-format==14.0.6 cmake==3.24 ninja==1.13.0
 
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
+
+      - name: Install playwright
+        if: matrix.build-output == 'wasm'
+        run: |
+          npm install -D @playwright/test
+          npx playwright install --with-deps
 
       - name: Code formatting check
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
@@ -128,9 +134,6 @@ jobs:
         with:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
-          # RDKit depends on Boost, so make sure that we rebuild RDKit if Boost
-          # has been upgraded
-          cache-suffix: -boost-${{ fromJson(env.VERSIONS_JSON).boost }}
 
       - name: Install Qt's required packages
         if: matrix.os == 'ubuntu-latest'
@@ -196,15 +199,26 @@ jobs:
                 ${{ matrix.build-output == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
 
       - name: Build
-        run: cmake --build build --config ${{ env.BUILD_TYPE }}
+        run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
+
+      - name: Create wasm tarball
+        if: matrix.build-output == 'wasm'
+        env:
+            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
+        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Run tests
         working-directory: build
         if: matrix.build-output == 'app'
-        # Launching `xvfb-run -a` required for Ubuntu non-wasm builds
+        # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
           ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure --output-junit junit-report.xml
+
+      - name: Run wasm tests
+        if: matrix.build-output == 'wasm'
+        run: |
+          npx playwright test --config test/wasm/playwright.config.js
 
       - name: Run memtests
         working-directory: build
@@ -216,7 +230,7 @@ jobs:
         uses: test-summary/action@v2
         with:
           paths: "build/junit-report.xml"
-        if: always() && matrix.build-output != 'wasm'
+        if: always()
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
@@ -227,12 +241,6 @@ jobs:
         with:
           name: sketcher-${{ matrix.os }}-${{ matrix.build-output }}${{env.EXT}}
           path: build/sketcher_app${{env.EXT}}
-
-      - name: Create wasm tarball
-        if: matrix.build-output == 'wasm'
-        env:
-            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
-        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
         if: matrix.build-output == 'wasm'

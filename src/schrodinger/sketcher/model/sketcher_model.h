@@ -442,17 +442,18 @@ class SKETCHER_API SketcherModel : public QObject
     int getFontSize() const;
 
     /**
-     * save the color scheme information and apply it to the model. This will
-     * set the colors for background, atoms and bonds
-     * @param color_schemes a std::pair containing the color schemes for color
-     * and black and white modes.
-     * @param use_colors whether to use the color scheme or the black & white
-     * scheme
+     * Update the color scheme, which controls colors for atoms and bonds, as
+     * well as the background color
      */
-    void setColorSchemes(std::pair<ColorScheme, ColorScheme>, bool use_colors);
+    void setColorScheme(const ColorScheme scheme);
 
     /**
-     * @return a std::pair containg the color schemes for color and black &
+     * @return the currently active color scheme
+     */
+    ColorScheme getColorScheme() const;
+
+    /**
+     * @return a std::pair containing the color schemes for color and black &
      * white modes. Which one is actually in use depends on the state of
      * COLOR_HETEROATOMS
      */
@@ -603,10 +604,7 @@ class SKETCHER_API SketcherModel : public QObject
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
     bool m_allow_select_tool_when_scene_empty = false;
 
-    // color and B&W schemes. Which one will be used depends on the state of
-    // COLOR_HETEROATOMS
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
-    ColorScheme m_black_white_scheme = ColorScheme::BLACK_WHITE;
 };
 
 } // namespace sketcher
