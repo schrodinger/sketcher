@@ -4,9 +4,11 @@
 #include <unordered_set>
 
 #include <boost/shared_ptr.hpp>
+#include <QSet>
 #include <QWidget>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 
 class QGraphicsPixmapItem;
@@ -117,6 +119,43 @@ class SKETCHER_API SketcherWidget : public QWidget
     void setColorScheme(ColorScheme color_scheme);
 
     /**
+     * Undoably select or deselect the specified atoms and bonds.
+     *
+     * @param atoms The atoms to select or deselect
+     * @param bonds The bonds to select or deselect
+     * @param select_mode Whether to select, deselect, toggle selection, or
+     * select-only (i.e. clear the selection and then select)
+     *
+     * @note If either an attachment point dummy atom or the associated bond are
+     * selected (or deselected, etc.), then the other will automatically be
+     * selected (or deselected, etc.) as well.
+     */
+    void select(const QSet<const RDKit::Atom*>& atoms = {},
+                const QSet<const RDKit::Bond*>& bonds = {},
+                const SelectMode select_mode = SelectMode::SELECT);
+
+    /**
+     * Undoably clear all selected atoms, bonds, s-groups, and non-molecular
+     * objects.
+     */
+    void clearSelection();
+
+    /**
+     * Undoably select all atoms, bonds, s-groups, and non-molecular objects.
+     */
+    void selectAll();
+
+    /**
+     * @return all atoms that are currently selected in the workspace
+     */
+    QSet<const RDKit::Atom*> getSelectedAtoms() const;
+
+    /**
+     * @return all bonds that are currently selected in the workspace
+     */
+    QSet<const RDKit::Bond*> getSelectedBonds() const;
+
+    /**
      * Pass the specified keypress to the top bar.  Explicit calls to this
      * method are necessary on Mac to prevent the Maestro window from stealing
      * keypresses.
@@ -161,6 +200,23 @@ class SKETCHER_API SketcherWidget : public QWidget
      *     be emitted *at the end* of the click-and-drag.
      */
     void representationChanged();
+
+    /**
+     * Emitted when the workspace selection changes
+     */
+    void selectionChanged();
+
+    /**
+     * Emitted when the user hovers over an atom, or emitted with nullptr
+     * if the user is no longer hovering over an atom.
+     */
+    void atomHovered(const RDKit::Atom* const atom);
+
+    /**
+     * Emitted when the user hovers over a bond, or emitted with nullptr if the
+     * user is no longer hovering over a bond.
+     */
+    void bondHovered(const RDKit::Bond* const bond);
 
   protected slots:
 
@@ -274,6 +330,13 @@ class SKETCHER_API SketcherWidget : public QWidget
     QGraphicsPixmapItem* m_watermark_item = nullptr;
 
     bool m_select_only_mode_active = false;
+
+    /**
+     * We cache a copy of the MolModel molecule so that the atoms/bonds returned
+     * from, e.g., getSelectedAtom() will belong to the molecule returned by
+     * getRDKitMolecule()
+     */
+    mutable boost::shared_ptr<RDKit::ROMol> m_copy_of_mol_model_mol = nullptr;
 
     /**
      * Methods for getting and setting the system clipboard. These methods are
@@ -391,6 +454,15 @@ class SKETCHER_API SketcherWidget : public QWidget
         const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
         const std::unordered_set<const NonMolecularObject*>
             non_molecular_objects);
+
+    /**
+     * Emit the corresponding signal when the user hovers over an atom or bond.
+     * Note that SketcherWidget::atomHovered and bondHovered are emitted with a
+     * *copy* of the hovered atom or bond, not the actual MolModel atom/bond,
+     * since Python won't respect the constness of the pointer.
+     */
+    void onAtomHovered(const RDKit::Atom* atom);
+    void onBondHovered(const RDKit::Bond* bond);
 };
 
 } // namespace sketcher
