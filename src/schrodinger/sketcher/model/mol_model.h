@@ -535,6 +535,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                            const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
+     * Undoably flip the given atoms coordinates using the given flip function.
+     */
+    void flipAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                   const std::function<void(RDGeom::Point3D& coord)>& flip);
+
+    /**
      * Undoably flip all atoms coordinates horizontally or vertically.
      */
     void flipAllHorizontal();
