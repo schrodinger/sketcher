@@ -289,7 +289,7 @@ qreal get_rounded_angle_radians(const QPointF& start, const QPointF& end)
     return rounded / 6.0 * M_PI;
 }
 
-void trim_line_to_rect(QLineF& line, const QRectF& rect)
+void trim_line_to_rect(QLineF& line, const QRectF& rect, qreal min_length)
 {
     // expand rect by 4 pixels in all directions
     const QMarginsF margins(ATOM_LABEL_MARGIN, ATOM_LABEL_MARGIN,
@@ -305,11 +305,15 @@ void trim_line_to_rect(QLineF& line, const QRectF& rect)
     }
     if (enlarged_rect.contains(line.p1()) &&
         intersection_of_line_and_rect(line, enlarged_rect, inter_point)) {
-        line.setP1(inter_point);
+        if (QLineF(inter_point, line.p2()).length() >= min_length) {
+            line.setP1(inter_point);
+        }
     } else if (enlarged_rect.contains(line.p2()) &&
                intersection_of_line_and_rect(line, enlarged_rect,
                                              inter_point)) {
-        line.setP2(inter_point);
+        if (QLineF(line.p1(), inter_point).length() >= min_length) {
+            line.setP2(inter_point);
+        }
     }
 }
 

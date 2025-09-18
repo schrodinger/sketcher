@@ -217,6 +217,10 @@ const float KEY_SCROLL_BOND_LENGTH_RATIO = 0.5;
 /// The width of the pen to use for drawing bond lines
 const qreal BOND_DEFAULT_PEN_WIDTH = 2.4;
 
+/// The minimum length of a bond, measured in Scene units. Avoiding collisions
+/// with the atom labels will not force bonds to be shorter than this.
+const qreal MINIMUM_BOND_LENGTH = BOND_LENGTH * VIEW_SCALE * 0.10;
+
 /// The default spacing between the two lines of a double bond, or between pairs
 /// of adjacent lines in triple bonds.
 const qreal DEFAULT_DOUBLE_BOND_SPACING = 5.5;
