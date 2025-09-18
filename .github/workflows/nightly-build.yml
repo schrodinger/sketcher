@@ -1,14 +1,15 @@
 name: Nightly Build
 
-env:
-  RELEASE_BRANCH: '2025-4'
-
 on:
   workflow_dispatch:
     inputs:
-      branch:
+      target-branch:
         description: 'Branch to build'
         required: true
+        type: string
+      release-branch:
+        description: 'Release branch to merge from (when target is main)'
+        required: false
         type: string
       token:
         description: 'Token with push permissions'
@@ -24,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.branch }}
+          ref: ${{ inputs.target-branch }}
           fetch-depth: 0
 
       - name: Configure Git
@@ -33,18 +34,18 @@ jobs:
           git config --local user.name "GitHub Action"
 
       - name: Merge release branch into main
-        if: inputs.branch == 'main' && env.RELEASE_BRANCH != ''
+        if: inputs.target-branch != 'main'
         env:
           GITHUB_TOKEN: ${{ inputs.token }}
         run: |
-          git fetch origin ${{ env.RELEASE_BRANCH }}
-          git merge origin/${{ env.RELEASE_BRANCH }} --no-ff -m "Merge ${{ env.RELEASE_BRANCH }} into main"
+          git fetch origin ${{ inputs.release-branch }}
+          git merge origin/${{ inputs.release-branch }} --no-ff -m "Merge ${{ inputs.release-branch }} into main"
           git push origin main
 
       - name: Check for recent commits
         id: check-commits
         run: |
-          has_recent=$(git log origin/${{ inputs.branch }} --since="24 hours ago" --oneline | grep -v "GitHub Action" | wc -l)
+          has_recent=$(git log origin/${{ inputs.target-branch }} --since="24 hours ago" --oneline | grep -v "GitHub Action" | wc -l)
           echo "has_recent_commits=$([ $has_recent -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - name: Increment patch version for build
@@ -62,11 +63,11 @@ jobs:
         run: |
           git add CMakeLists.txt
           git commit -m "Increment to build ${{ env.NEW_VERSION }}"
-          git push origin ${{ inputs.branch }}
+          git push origin ${{ inputs.target-branch }}
 
   build-and-test:
     needs: nightly-build
     if: needs.nightly-build.outputs.has_recent_commits == 'true'
     uses: ./.github/workflows/sketcher-builder.yml
     with:
-      ref: ${{ inputs.branch }}
+      ref: ${{ inputs.target-branch }}
