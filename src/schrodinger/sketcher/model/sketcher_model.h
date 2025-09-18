@@ -10,6 +10,7 @@
 #include <boost/functional/hash.hpp>
 
 #include "schrodinger/sketcher/image_constants.h"
+#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 #include "schrodinger/sketcher/molviewer/bond_display_settings.h"
@@ -32,16 +33,6 @@ struct RenderOptions;
  * Whether to the entire scene or a selection subset should be used
  */
 enum class SceneSubset { ALL, SELECTION, HOVERED, SELECTED_OR_HOVERED };
-
-/**
- * Possible selection tools to equip
- */
-enum class SelectionTool {
-    RECTANGLE,
-    ELLIPSE,
-    LASSO,
-    FRAGMENT,
-};
 
 /**
  * All supported elements.
