@@ -1,5 +1,5 @@
 #pragma once
-#include <iostream>
+#include <iosfwd>
 #include <memory>
 #include <optional>
 #include <string>

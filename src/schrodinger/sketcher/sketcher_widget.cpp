@@ -390,6 +390,10 @@ void SketcherWidget::pasteAt(std::optional<QPointF> position)
     if (text.empty()) {
         return;
     }
+    // On WASM builds, RDKit doesn't like Windows newline characters, so we
+    // explicitly remove the /r's, which converts Windows-style newlines to
+    // Unix-style
+    std::erase_if(text, [](char c) { return c == '\r'; });
     std::optional<RDGeom::Point3D> mol_position = std::nullopt;
     if (position.has_value()) {
         // Convert the position from global to scene coordinates
