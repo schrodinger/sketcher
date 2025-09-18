@@ -3556,7 +3556,7 @@ BOOST_AUTO_TEST_CASE(test_flip_all, *utf::tolerance(0.001))
 }
 
 /**
- * test that both version of flip selection  work as expected, mirroring atom
+ * test that both version of flip selection work as expected, mirroring atom
  * coordinates and inverting bond dashes and wedges only for selected atoms
  */
 BOOST_AUTO_TEST_CASE(test_flip_selection, *utf::tolerance(0.001))
@@ -3597,11 +3597,6 @@ BOOST_AUTO_TEST_CASE(test_flip_selection, *utf::tolerance(0.001))
             {RDKit::Bond::BondDir::BEGINDASH, RDKit::Bond::BondDir::BEGINWEDGE},
         };
     model.flipSelectionHorizontal();
-    std::cerr << "After flipSelectionHorizontal\n";
-    for (auto* atom : mol->atoms()) {
-        auto pos = mol->getConformer().getAtomPos(atom->getIdx());
-        std::cerr << atom->getIdx() << " (" << pos.x << "," << pos.y << ")\n";
-    }
     for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
         bool selected = i >= 8;
         auto& pos = positions[i];

@@ -1432,12 +1432,13 @@ void MolModel::flipAtoms(
     if (atoms.empty()) {
         return;
     }
+    auto undo_macro_raii = createUndoMacro("Flip atoms");
     transformCoordinatesWithFunction("", flip, MergeId::NO_MERGE, atoms);
     std::unordered_set<const RDKit::Bond*> bonds;
     for (auto& atom : atoms) {
         for (auto& bond : m_mol.atomBonds(atom)) {
-            if (atoms.count(bond->getBeginAtom()) &&
-                atoms.count(bond->getEndAtom())) {
+            if (atoms.contains(bond->getBeginAtom()) &&
+                atoms.contains(bond->getEndAtom())) {
                 bonds.insert(bond);
             }
         }
@@ -1481,7 +1482,6 @@ void MolModel::flipAroundSegment(
     if (atoms.empty()) {
         return;
     }
-    auto undo_macro_raii = createUndoMacro("Flip selection");
     auto flip = [p1, p2](RDGeom::Point3D& coord) {
         coord = flip_point(coord, p1, p2);
     };
@@ -1490,7 +1490,6 @@ void MolModel::flipAroundSegment(
 
 void MolModel::flipSelectionHorizontal()
 {
-    auto undo_macro_raii = createUndoMacro("Flip selection");
     auto atoms = getSelectedAtoms();
     if (atoms.empty()) {
         return;
@@ -1504,7 +1503,6 @@ void MolModel::flipSelectionHorizontal()
 
 void MolModel::flipSelectionVertical()
 {
-    auto undo_macro_raii = createUndoMacro("Flip selection");
     auto atoms = getSelectedAtoms();
     if (atoms.empty()) {
         return;
