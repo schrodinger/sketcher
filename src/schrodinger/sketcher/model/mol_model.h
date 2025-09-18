@@ -693,11 +693,8 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Fully generate coordinates for the current molecule and regenerate
      * wedges/dashes according to the new coordinates.
-     * @param selection_only If true, only regenerate coordinates for the
-     * current selection.  If false (the default), regenerate coordinates for
-     * the entire molecule.
      */
-    void regenerateCoordinates(bool selection_only = false);
+    void regenerateCoordinates();
 
     /**
      * regenerate coordinates for the current selection and regenerate
