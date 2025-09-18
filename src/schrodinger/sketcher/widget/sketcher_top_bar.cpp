@@ -18,11 +18,14 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_top_bar.h"
 #include "schrodinger/sketcher/version.h"
+#include "schrodinger/sketcher/sketcher_css_style.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
+
+static const char* APPLY_TO_SELECTION_PROPERTY = "apply_to_selection";
 
 SketcherTopBar::SketcherTopBar(QWidget* parent) : SketcherView(parent)
 {
@@ -41,11 +44,16 @@ void SketcherTopBar::initButtons()
             &SketcherTopBar::undoRequested);
     connect(ui->redo_btn, &QToolButton::clicked, this,
             &SketcherTopBar::redoRequested);
-    connect(ui->fit_btn, &QToolButton::clicked, this,
-            &SketcherTopBar::fitToScreenRequested);
-    connect(ui->cleanup_btn, &QToolButton::clicked, this,
-            &SketcherTopBar::cleanupRequested);
-
+    connect(ui->fit_btn, &QToolButton::clicked, this, [this]() {
+        bool apply_to_selection =
+            ui->fit_btn->property(APPLY_TO_SELECTION_PROPERTY).toBool();
+        emit fitToScreenRequested(apply_to_selection);
+    });
+    connect(ui->cleanup_btn, &QToolButton::clicked, this, [this]() {
+        bool apply_to_selection =
+            ui->cleanup_btn->property(APPLY_TO_SELECTION_PROPERTY).toBool();
+        emit cleanupRequested(apply_to_selection);
+    });
     connect(ui->clear_btn, &QToolButton::clicked, this,
             &SketcherTopBar::clearSketcherRequested);
 }
@@ -159,6 +167,10 @@ void SketcherTopBar::updateWidgetsEnabled()
          }) {
         act->setEnabled(has_selection);
     }
+    ui->fit_btn->setProperty(APPLY_TO_SELECTION_PROPERTY, has_selection);
+    ui->fit_btn->setStyleSheet(has_selection ? SELECTION_ACTIVE_STYLE : "");
+    ui->cleanup_btn->setProperty(APPLY_TO_SELECTION_PROPERTY, has_selection);
+    ui->cleanup_btn->setStyleSheet(has_selection ? SELECTION_ACTIVE_STYLE : "");
 
     auto [can_undo, can_redo] = model->getUndoStackData();
     ui->undo_btn->setEnabled(can_undo);
