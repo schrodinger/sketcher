@@ -27,6 +27,8 @@ using schrodinger::rdkit_extensions::to_rdkit;
 using schrodinger::rdkit_extensions::to_rdkit_reaction;
 using schrodinger::rdkit_extensions::to_string;
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::ColorScheme)
+
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
@@ -729,4 +731,18 @@ BOOST_AUTO_TEST_CASE(test_selection)
     auto new_mol = sk.getRDKitMolecule();
     BOOST_TEST(new_mol->getNumAtoms() == 5);
     BOOST_TEST(mol.get() != new_mol.get());
+}
+
+/*
+ * Make sure that the color scheme doesn't get reset when events are processed
+ */
+BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)
+{
+    TestSketcherWidget sk;
+    sk.setColorScheme(ColorScheme::DARK_MODE);
+    QCoreApplication::processEvents();
+    BOOST_TEST(sk.m_sketcher_model->getColorScheme() == ColorScheme::DARK_MODE);
+    // make sure that the bond color is close to white for dark mode
+    auto bond_color = sk.m_sketcher_model->getBondDisplaySettingsPtr()->m_color;
+    BOOST_TEST(bond_color.lightnessF() > 0.9);
 }
