@@ -234,13 +234,13 @@ void addMatchesToMonomers(
                     monomer.r1 = atom->getIdx();
                 } else if (map_no == 2) {
                     monomer.r2 = atom->getIdx();
+                } else if (map_no == 3) {
+                    monomer.r3 = atom->getIdx();
                 } else if (map_no == SIDECHAIN_ATTCHPT) {
                     // if there is a side chain, the attachment point will be at
                     // the SIDECHAIN_IDX and will be indicated by the presence
                     // of the atom map number.
                     sidechain_attch_pts[monomer_idx] = atom_idx;
-                } else if (map_no == 3) {
-                    monomer.r3 = atom->getIdx();
                 }
             }
         }
@@ -365,7 +365,7 @@ void groupRemainingAtoms(const RDKit::ROMol& atomistic_mol,
     }
 }
 
-void detectLinkages(RDKit::ROMol& atomistic_mol,
+void detectLinkages(const RDKit::ROMol& atomistic_mol,
                     std::vector<MonomerMatch>& monomers,
                     std::vector<Linkage>& linkages)
 {
@@ -394,7 +394,7 @@ void detectLinkages(RDKit::ROMol& atomistic_mol,
                     at1->getIdx(), at2->getIdx()));
             }
 
-            // If no attachment point is present for one of the , we assume it
+            // If no attachment point is present, we assume it
             // is R3
             if (attach_num1 == NO_ATTACHMENT) {
                 monomers[monomer_idx1].r3 = at1->getIdx();
