@@ -4,10 +4,12 @@ env:
   RELEASE_BRANCH: '2025-4'
 
 on:
-  schedule:
-    - cron: '7 2 * * *'  # Avoid demand peaks at minute 0
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Branch to build'
+        required: true
+        type: string
       token:
         description: 'Token with push permissions'
         required: false
@@ -16,16 +18,13 @@ on:
 jobs:
   nightly-build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        branch: [main, 2025-4]
     outputs:
       has_recent_commits: ${{ steps.check-commits.outputs.has_recent_commits }}
 
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ matrix.branch }}
+          ref: ${{ inputs.branch }}
           fetch-depth: 0
 
       - name: Configure Git
@@ -34,7 +33,7 @@ jobs:
           git config --local user.name "GitHub Action"
 
       - name: Merge release branch into main
-        if: matrix.branch == 'main' && env.RELEASE_BRANCH != ''
+        if: inputs.branch == 'main' && env.RELEASE_BRANCH != ''
         env:
           GITHUB_TOKEN: ${{ inputs.token }}
         run: |
@@ -45,7 +44,7 @@ jobs:
       - name: Check for recent commits
         id: check-commits
         run: |
-          has_recent=$(git log origin/${{ matrix.branch }} --since="24 hours ago" --oneline | grep -v "GitHub Action" | wc -l)
+          has_recent=$(git log origin/${{ inputs.branch }} --since="24 hours ago" --oneline | grep -v "GitHub Action" | wc -l)
           echo "has_recent_commits=$([ $has_recent -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
 
       - name: Increment patch version for build
@@ -63,14 +62,11 @@ jobs:
         run: |
           git add CMakeLists.txt
           git commit -m "Increment to build ${{ env.NEW_VERSION }}"
-          git push origin ${{ matrix.branch }}
+          git push origin ${{ inputs.branch }}
 
   build-and-test:
     needs: nightly-build
     if: needs.nightly-build.outputs.has_recent_commits == 'true'
-    strategy:
-      matrix:
-        branch: [main, 2025-4]
     uses: ./.github/workflows/sketcher-builder.yml
     with:
-      ref: ${{ matrix.branch }}
+      ref: ${{ inputs.branch }}
