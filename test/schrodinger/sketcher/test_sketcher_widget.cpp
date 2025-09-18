@@ -224,6 +224,20 @@ BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
     BOOST_TEST(!sk.m_mol_model->hasSelection());
 }
 
+/**
+ * Make sure that pasting a string containing Windows newline characters work
+ * correctly.  (RDKit parsing can't handle \r's on WASM builds, so
+ * SketcherWidget must remove those manually.)
+ */
+BOOST_AUTO_TEST_CASE(test_paste_with_windows_newline)
+{
+    TestSketcherWidget sk;
+    sk.setClipboardContents("CCC\n\r");
+    sk.paste();
+    auto mol = sk.m_mol_model->getMol();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+}
+
 BOOST_AUTO_TEST_CASE(test_importText_slot)
 {
     TestSketcherWidget sk;
@@ -683,6 +697,43 @@ BOOST_AUTO_TEST_CASE(test_wasm_API)
 }
 
 /**
+ * Make sure that we can select atoms/bonds and retrieve the selection via the
+ * SketcherWidget.  Also make sure that the selected atoms/bonds belong to the
+ * molecule returned by getRDKitMolecule.
+ */
+BOOST_AUTO_TEST_CASE(test_selection)
+{
+    TestSketcherWidget sk;
+    sk.addFromString("NCCC");
+    auto mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    // make sure that getRDKitMolecule return the same molecule twice in a row
+    BOOST_TEST(mol.get() == sk.getRDKitMolecule().get());
+
+    sk.select({mol->getAtomWithIdx(0)},
+              {mol->getBondWithIdx(0), mol->getBondWithIdx(1)});
+    auto sel_atoms = sk.getSelectedAtoms();
+    BOOST_TEST(sel_atoms.size() == 1);
+    auto* atom = *sel_atoms.begin();
+    BOOST_TEST(atom->hasOwningMol());
+    // make sure that the atom is owned by mol
+    BOOST_TEST(&atom->getOwningMol() == mol.get());
+
+    auto sel_bonds = sk.getSelectedBonds();
+    BOOST_TEST(sel_bonds.size() == 2);
+    auto* bond = *sel_bonds.begin();
+    BOOST_TEST(bond->hasOwningMol());
+    BOOST_TEST(&bond->getOwningMol() == mol.get());
+
+    // make sure that the sk.getRDKitMolecule() return value is updated when the
+    // underlying molecule changes
+    sk.addFromString("C");
+    auto new_mol = sk.getRDKitMolecule();
+    BOOST_TEST(new_mol->getNumAtoms() == 5);
+    BOOST_TEST(mol.get() != new_mol.get());
+}
+
+/*
  * Make sure that the color scheme doesn't get reset when events are processed
  */
 BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)

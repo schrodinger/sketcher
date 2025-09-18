@@ -18,6 +18,7 @@
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -51,13 +52,6 @@ namespace sketcher
 enum class SubgroupType;
 enum class RepeatPattern;
 enum class BondTopology;
-
-enum class SelectMode {
-    SELECT,      // Shift + click
-    DESELECT,    //
-    TOGGLE,      // Ctrl + click
-    SELECT_ONLY, // normal click (no Shift or Ctrl)
-};
 
 enum class MergeId {
     NO_MERGE = -1,
@@ -1315,7 +1309,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param mol The molecule to add
      */
-    void addMolCommandFunc(const RDKit::ROMol& mol);
+    void addMolCommandFunc(RDKit::ROMol mol);
 
     /**
      * Add the given reaction to the model. This method must only be called as

@@ -14,6 +14,7 @@
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
+#include <rdkit/RDGeneral/Invariant.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -119,6 +120,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
             &View::translateViewportFromScreenCoords);
     connect(m_scene, &Scene::newCursorHintRequested, m_ui->view,
             &View::onNewCursorHintRequested);
+    connect(m_scene, &Scene::atomHovered, this, &SketcherWidget::onAtomHovered);
+    connect(m_scene, &Scene::bondHovered, this, &SketcherWidget::onBondHovered);
 
     // Connect the SketcherModel to the undo stack
     connect(m_sketcher_model, &SketcherModel::undoStackCanUndoRequested,
@@ -141,7 +144,13 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
             &SketcherWidget::onBackgroundColorChanged);
 
+    connect(m_mol_model, &MolModel::selectionChanged, this,
+            &SketcherWidget::selectionChanged);
     connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
+        // even if what_changed doesn't contain MOLECULE, it's possible that the
+        // molecule's coordinates have changed so we should clear our cached
+        // copy of the molecule no matter what
+        m_copy_of_mol_model_mol = nullptr;
         if (what_changed & WhatChanged::MOLECULE) {
             emit moleculeChanged();
         } else {
@@ -278,7 +287,10 @@ void SketcherWidget::addRDKitReaction(const RDKit::ChemicalReaction& rxn)
 
 boost::shared_ptr<RDKit::ROMol> SketcherWidget::getRDKitMolecule() const
 {
-    return extract_mol(m_mol_model, SceneSubset::ALL);
+    if (m_copy_of_mol_model_mol == nullptr) {
+        m_copy_of_mol_model_mol = m_mol_model->getMolForExport();
+    }
+    return m_copy_of_mol_model_mol;
 }
 
 boost::shared_ptr<RDKit::ChemicalReaction>
@@ -330,6 +342,91 @@ void SketcherWidget::setSelectOnlyMode(bool select_only_mode_enabled)
 void SketcherWidget::setColorScheme(ColorScheme color_scheme)
 {
     m_sketcher_model->setColorScheme(color_scheme);
+}
+
+static std::unordered_set<const RDKit::Atom*>
+get_corresponding_atoms_from_different_mol(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const RDKit::ROMol* mol)
+{
+    std::unordered_set<const RDKit::Atom*> new_atoms;
+    std::transform(atoms.begin(), atoms.end(),
+                   std::inserter(new_atoms, new_atoms.begin()),
+                   [&mol](const auto* atom) {
+                       return mol->getAtomWithIdx(atom->getIdx());
+                   });
+    return new_atoms;
+}
+
+static std::unordered_set<const RDKit::Bond*>
+get_corresponding_bonds_from_different_mol(
+    const std::unordered_set<const RDKit::Bond*>& bonds,
+    const RDKit::ROMol* mol)
+{
+    std::unordered_set<const RDKit::Bond*> new_bonds;
+    std::transform(bonds.begin(), bonds.end(),
+                   std::inserter(new_bonds, new_bonds.begin()),
+                   [&mol](const auto* bond) {
+                       return mol->getBondWithIdx(bond->getIdx());
+                   });
+    return new_bonds;
+}
+
+void SketcherWidget::select(const QSet<const RDKit::Atom*>& qatoms,
+                            const QSet<const RDKit::Bond*>& qbonds,
+                            const SelectMode select_mode)
+{
+    // convert from qsets to unordered_sets
+    std::unordered_set<const RDKit::Atom*> atoms(qatoms.begin(), qatoms.end());
+    std::unordered_set<const RDKit::Bond*> bonds(qbonds.begin(), qbonds.end());
+
+    // MolModel expects atoms and bonds that belong to its internal molecule, so
+    // we need to get the corresponding atoms and bonds
+    const auto* mol = m_mol_model->getMol();
+    std::unordered_set<const RDKit::Atom*> mol_model_atoms;
+    std::unordered_set<const RDKit::Bond*> mol_model_bonds;
+    try {
+        mol_model_atoms =
+            get_corresponding_atoms_from_different_mol(atoms, mol);
+        mol_model_bonds =
+            get_corresponding_bonds_from_different_mol(bonds, mol);
+    } catch (const Invar::Invariant&) {
+        throw std::runtime_error(
+            "Atoms and bonds must belong to the Sketcher molecule.");
+    }
+    m_mol_model->select(mol_model_atoms, mol_model_bonds, {}, {}, select_mode);
+}
+
+void SketcherWidget::clearSelection()
+{
+    m_mol_model->clearSelection();
+}
+
+void SketcherWidget::selectAll()
+{
+    m_mol_model->selectAll();
+}
+
+QSet<const RDKit::Atom*> SketcherWidget::getSelectedAtoms() const
+{
+    auto atoms = m_mol_model->getSelectedAtoms();
+    // Python won't respect the constness of the Atom pointers, so we return
+    // atoms from a copy of the molecule instead
+    auto mol = getRDKitMolecule();
+    auto atoms_from_copy =
+        get_corresponding_atoms_from_different_mol(atoms, mol.get());
+    return QSet(atoms_from_copy.begin(), atoms_from_copy.end());
+}
+
+QSet<const RDKit::Bond*> SketcherWidget::getSelectedBonds() const
+{
+    auto bonds = m_mol_model->getSelectedBonds();
+    // Python won't respect the constness of the Bond pointers, so we return
+    // bonds from a copy of the molecule instead
+    auto mol = getRDKitMolecule();
+    auto bonds_from_copy =
+        get_corresponding_bonds_from_different_mol(bonds, mol.get());
+    return QSet(bonds_from_copy.begin(), bonds_from_copy.end());
 }
 
 std::string SketcherWidget::getClipboardContents() const
@@ -390,6 +487,10 @@ void SketcherWidget::pasteAt(std::optional<QPointF> position)
     if (text.empty()) {
         return;
     }
+    // On WASM builds, RDKit doesn't like Windows newline characters, so we
+    // explicitly remove the /r's, which converts Windows-style newlines to
+    // Unix-style
+    std::erase_if(text, [](char c) { return c == '\r'; });
     std::optional<RDGeom::Point3D> mol_position = std::nullopt;
     if (position.has_value()) {
         // Convert the position from global to scene coordinates
@@ -958,6 +1059,22 @@ void SketcherWidget::applyModelValuePingToTargets(
         default:
             break;
     }
+}
+
+void SketcherWidget::onAtomHovered(const RDKit::Atom* atom)
+{
+    if (atom != nullptr) {
+        atom = getRDKitMolecule()->getAtomWithIdx(atom->getIdx());
+    }
+    emit atomHovered(atom);
+}
+
+void SketcherWidget::onBondHovered(const RDKit::Bond* bond)
+{
+    if (bond != nullptr) {
+        bond = getRDKitMolecule()->getBondWithIdx(bond->getIdx());
+    }
+    emit bondHovered(bond);
 }
 
 bool SketcherWidget::handleShortcutAction(const QKeySequence& key)

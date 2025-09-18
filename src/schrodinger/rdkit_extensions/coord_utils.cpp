@@ -78,18 +78,31 @@ unsigned int compute2DCoords(RDKit::ROMol& mol,
 
 void update_2d_coordinates(RDKit::ROMol& mol)
 {
-    auto conf = std::find_if_not(mol.beginConformers(), mol.endConformers(),
-                                 std::mem_fn(&RDKit::Conformer::is3D));
-    if (conf == mol.endConformers() || coordinates_are_all_zero(**conf)) {
+
+    ::RDKit::Conformer* conf_to_keep_3d = nullptr;
+    auto conf_3d = std::find_if(mol.beginConformers(), mol.endConformers(),
+                                std::mem_fn(&RDKit::Conformer::is3D));
+    if (conf_3d != mol.endConformers() &&
+        !coordinates_are_all_zero(**conf_3d)) {
+        conf_to_keep_3d = new ::RDKit::Conformer(**conf_3d);
+    }
+
+    auto conf_2d = std::find_if_not(mol.beginConformers(), mol.endConformers(),
+                                    std::mem_fn(&RDKit::Conformer::is3D));
+    if (conf_2d == mol.endConformers() || coordinates_are_all_zero(**conf_2d)) {
         // remove all (3d) conformers and generate new 2d coordinates
         mol.clearConformers();
         compute2DCoords(mol);
     } else {
         // keep only the first 2D conformer and rescale the bond length
-        auto conf_to_keep = new ::RDKit::Conformer(**conf);
+        auto conf_to_keep_2d = new ::RDKit::Conformer(**conf_2d);
         mol.clearConformers();
-        mol.addConformer(conf_to_keep, true);
+        mol.addConformer(conf_to_keep_2d, true);
         rescale_bond_length_if_needed(mol);
+    }
+
+    if (conf_to_keep_3d != nullptr) {
+        mol.addConformer(conf_to_keep_3d, true);
     }
 }
 
