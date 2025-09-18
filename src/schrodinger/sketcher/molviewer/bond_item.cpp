@@ -591,7 +591,7 @@ QLineF BondItem::trimLineToBoundAtoms(const QLineF& line) const
             // it partially transparent
             continue;
         }
-        trim_line_to_rect(trimmed_line, subrect);
+        trim_line_to_rect(trimmed_line, subrect, MINIMUM_BOND_LENGTH);
     }
     // trim to the end atom
     for (const QRectF& subrect : m_end_item.getSubrects()) {
@@ -601,7 +601,7 @@ QLineF BondItem::trimLineToBoundAtoms(const QLineF& line) const
             continue;
         }
         QRectF mapped_rect = mapRectFromItem(&m_end_item, subrect);
-        trim_line_to_rect(trimmed_line, mapped_rect);
+        trim_line_to_rect(trimmed_line, mapped_rect, MINIMUM_BOND_LENGTH);
     }
     return trimmed_line;
 }
