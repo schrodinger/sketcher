@@ -33,6 +33,15 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
 
+      - name: Merge release branch into main
+        if: matrix.branch == 'main' && env.RELEASE_BRANCH != ''
+        env:
+          GITHUB_TOKEN: ${{ inputs.token }}
+        run: |
+          git fetch origin ${{ env.RELEASE_BRANCH }}
+          git merge origin/${{ env.RELEASE_BRANCH }} --no-ff -m "Merge ${{ env.RELEASE_BRANCH }} into main"
+          git push origin main
+
       - name: Check for recent commits
         id: check-commits
         run: |
@@ -55,15 +64,6 @@ jobs:
           git add CMakeLists.txt
           git commit -m "Increment to build ${{ env.NEW_VERSION }}"
           git push origin ${{ matrix.branch }}
-
-      - name: Merge release branch into main
-        if: matrix.branch == 'main' && env.RELEASE_BRANCH != ''
-        env:
-          GITHUB_TOKEN: ${{ inputs.token }}
-        run: |
-          git fetch origin ${{ env.RELEASE_BRANCH }}
-          git merge origin/${{ env.RELEASE_BRANCH }} --no-ff -m "Merge ${{ env.RELEASE_BRANCH }} into main"
-          git push origin main
 
   build-and-test:
     needs: nightly-build
