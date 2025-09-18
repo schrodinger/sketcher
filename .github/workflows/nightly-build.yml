@@ -1,10 +1,76 @@
 name: Nightly Build
 
+env:
+  RELEASE_BRANCH: '2025-4'
+
 on:
-  workflow_dispatch: ~
+  schedule:
+    - cron: '7 2 * * *'  # Avoid demand peaks at minute 0
+  workflow_dispatch:
+    inputs:
+      token:
+        description: 'Token with push permissions'
+        required: false
+        type: string
 
 jobs:
-  placeholder:
+  nightly-build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        branch: [main, 2025-4]
+    outputs:
+      has_recent_commits: ${{ steps.check-commits.outputs.has_recent_commits }}
+
     steps:
-      - run: echo "Use 'Use workflow from' dropdown to select branch"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.branch }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Check for recent commits
+        id: check-commits
+        run: |
+          has_recent=$(git log origin/${{ matrix.branch }} --since="24 hours ago" --oneline | grep -v "GitHub Action" | wc -l)
+          echo "has_recent_commits=$([ $has_recent -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Increment patch version for build
+        if: steps.check-commits.outputs.has_recent_commits == 'true'
+        run: |
+          current_version=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+          new_version=$(echo $current_version | awk -F. '{print $1"."$2"."($3+1)}')
+          sed -i "s/VERSION $current_version/VERSION $new_version/" CMakeLists.txt
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
+
+      - name: Commit build version increment
+        if: steps.check-commits.outputs.has_recent_commits == 'true'
+        env:
+          GITHUB_TOKEN: ${{ inputs.token }}
+        run: |
+          git add CMakeLists.txt
+          git commit -m "Increment to build ${{ env.NEW_VERSION }}"
+          git push origin ${{ matrix.branch }}
+
+      - name: Merge release branch into main
+        if: matrix.branch == 'main' && env.RELEASE_BRANCH != ''
+        env:
+          GITHUB_TOKEN: ${{ inputs.token }}
+        run: |
+          git fetch origin ${{ env.RELEASE_BRANCH }}
+          git merge origin/${{ env.RELEASE_BRANCH }} --no-ff -m "Merge ${{ env.RELEASE_BRANCH }} into main"
+          git push origin main
+
+  build-and-test:
+    needs: nightly-build
+    if: needs.nightly-build.outputs.has_recent_commits == 'true'
+    strategy:
+      matrix:
+        branch: [main, 2025-4]
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: ${{ matrix.branch }}
