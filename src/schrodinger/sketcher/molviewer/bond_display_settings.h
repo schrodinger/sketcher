@@ -24,6 +24,7 @@ class SKETCHER_API BondDisplaySettings
     // Prevent implicit copies, since that could cause bugs, as the Scene shares
     // a single BondDisplaySettings object with all BondItems.
     explicit BondDisplaySettings(const BondDisplaySettings&) = default;
+    virtual ~BondDisplaySettings() = default;
     /// The width of the pen to use for drawing bond lines
     qreal m_bond_width = BOND_DEFAULT_PEN_WIDTH;
     /// How far apart to draw the lines of a double (or triple) bond

@@ -21,6 +21,7 @@ class SKETCHER_API AbstractAtomOrBondDisplaySettings
     AbstractAtomOrBondDisplaySettings() = default;
     explicit AbstractAtomOrBondDisplaySettings(
         const AbstractAtomOrBondDisplaySettings&) = default;
+    virtual ~AbstractAtomOrBondDisplaySettings() = default;
 
     /**
      * Set a pre-defined RDKit color scheme
