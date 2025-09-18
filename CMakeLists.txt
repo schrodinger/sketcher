@@ -7,13 +7,10 @@ project(
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-cmake_policy(SET CMP0167 NEW)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(ENABLE_TESTING "Build and enable tests" ON)
-option(ENFORCE_DEPENDENCY_VERSIONS
-       "Require that the dependencies match the versions listed in \
-    external/versions.json" ON)
+option(ENFORCE_DEPENDENCY_VERSIONS "Require versions.json enforcement" ON)
 
 # Load dependency versions
 if(${ENFORCE_DEPENDENCY_VERSIONS})
@@ -30,9 +27,6 @@ if(${ENFORCE_DEPENDENCY_VERSIONS})
   foreach(dep ${DEPENDENCIES})
     string(TOUPPER ${dep} dep_upper)
     string(JSON ${dep_upper}_VERSION GET ${VERSIONS} ${dep})
-    set(${dep_upper}_VERSION
-        ${${dep_upper}_VERSION}
-        PARENT_SCOPE)
   endforeach()
 endif()
 
@@ -109,7 +103,12 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS)
+    # We optimize for space in WASM builds because otherwise binaryen (run
+    # because of ASYNCIFY) runs out of memory
+    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
+                        -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
+    target_compile_options(${TARGET} PRIVATE -fexceptions
+                                             -sDISABLE_EXCEPTION_CATCHING=0 -Os)
   endif()
 endfunction()
 
@@ -187,8 +186,18 @@ enable_qt_moc(${SKETCHER_TARGET})
 set(APP_TARGET sketcher_app)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
-target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
-                                            ${SKETCHER_TARGET})
+if(EMSCRIPTEN)
+  set(EXTRA_SKETCHER_APP_LINK_FLAGS
+      -sEXPORT_NAME=createSketcherModule
+      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sASYNCIFY
+      -lembind
+      -fexceptions
+      -sDISABLE_EXCEPTION_CATCHING=0)
+endif()
+target_link_libraries(
+  ${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${SKETCHER_TARGET}
+                        ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
 if(ENABLE_TESTING)

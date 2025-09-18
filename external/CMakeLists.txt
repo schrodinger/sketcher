@@ -27,11 +27,14 @@ function(set_cmake_arg VAR_NAME)
 endfunction()
 
 if(EMSCRIPTEN)
-  set(EXTRA_BOOST_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread)
+  set(EXTRA_BOOST_CMAKE_ARGS
+      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
+  )
   set(EXTRA_QT_CMAKE_ARGS
       -DQT_HOST_PATH=${CMAKE_CURRENT_BINARY_DIR}/host/qt-${QT_VERSION})
-  set(EXTRA_RDKIT_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread
-                             -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
+  set(EXTRA_RDKIT_CMAKE_ARGS
+      -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
+      -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
   if(LINUX)
@@ -40,7 +43,9 @@ else()
   endif()
 endif()
 
-set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS -DCMAKE_BUILD_TYPE=Release)
+set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
+    -DCMAKE_BUILD_TYPE=Release)
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
@@ -76,8 +81,7 @@ ExternalProject_Add(
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
-    -DBUILD_SHARED_LIBS=OFF
-    -DZLIB_BUILD_EXAMPLES=OFF)
+    -DBUILD_SHARED_LIBS=OFF -DZLIB_BUILD_EXAMPLES=OFF)
 
 # Build zstd library
 ExternalProject_Add(
@@ -124,6 +128,7 @@ set_cmake_arg(
   geometry
   iostreams
   json
+  locale
   multi_array
   multiprecision
   program_options
@@ -191,13 +196,14 @@ if(EMSCRIPTEN)
   # function name as the right one
   list(APPEND RDKIT_PATCH_COMMAND && git apply
        ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
-else()
-  # Prevent RDKit from trying to build shared libs
-  list(APPEND RDKIT_PATCH_COMMAND && git apply
-       ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
-  list(APPEND RDKIT_PATCH_COMMAND && git apply
-       ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
 endif()
+# Prevent RDKit from trying to build shared libs
+list(APPEND RDKIT_PATCH_COMMAND && git apply
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+list(APPEND RDKIT_PATCH_COMMAND && git apply
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
+list(APPEND RDKIT_PATCH_COMMAND && git apply
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
