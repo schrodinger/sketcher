@@ -34,6 +34,7 @@ class SKETCHER_API CutCopyActionManager : public QWidget
     void cutRequested(schrodinger::rdkit_extensions::Format format);
     void copyRequested(schrodinger::rdkit_extensions::Format format,
                        SceneSubset subset);
+    void copyAsImageRequested(SceneSubset subset);
 
   private:
     /**
