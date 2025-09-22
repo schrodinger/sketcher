@@ -126,7 +126,7 @@ AbstractHintFragmentItem::AbstractHintFragmentItem(
 void AbstractHintFragmentItem::updateSettings()
 {
     m_atom_display_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
-    m_bond_display_settings.m_color = STRUCTURE_HINT_COLOR;
+    m_bond_display_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
 }
 
 void AbstractHintFragmentItem::createGraphicsItems()

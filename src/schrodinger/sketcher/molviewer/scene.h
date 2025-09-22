@@ -3,6 +3,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <variant>
 
 #include <QGraphicsScene>
 #include <QPolygonF>
@@ -21,6 +22,7 @@
 
 class QObject;
 class QFont;
+class QPointF;
 
 namespace RDKit
 {
@@ -207,6 +209,9 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     void representationChangingAtomDragFinished();
 
+    void atomHovered(const RDKit::Atom*);
+    void bondHovered(const RDKit::Bond*);
+
   protected:
     using QGraphicsScene::clear;
     using QGraphicsScene::clearSelection;
@@ -300,6 +305,12 @@ class SKETCHER_API Scene : public QGraphicsScene
     void onAtomDragStarted();
     void onAtomDragFinished(const bool were_atoms_merged);
 
+    void updateHovered(const QPointF& pos);
+    void setHovered(
+        std::variant<std::monostate, const RDKit::Atom*, const RDKit::Bond*>
+            new_hovered);
+    void clearHovered();
+
     /**
      * Set the scene tool (i.e. the mouse cursor mode) to the given value
      */
@@ -335,6 +346,12 @@ class SKETCHER_API Scene : public QGraphicsScene
      * was active when the mouse was pressed and clear it on mouse release.
      */
     std::shared_ptr<AbstractSceneTool> m_scene_tool_from_mouse_press;
+
+    /**
+     * The atom or bond (or nothing) that the cursor is currently over
+     */
+    std::variant<std::monostate, const RDKit::Atom*, const RDKit::Bond*>
+        m_hovered = std::monostate();
 
     /**
      * Objects associated with the context menu instance that is currently open.
