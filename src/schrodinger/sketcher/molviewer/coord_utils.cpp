@@ -305,13 +305,24 @@ void trim_line_to_rect(QLineF& line, const QRectF& rect, qreal min_length)
     }
     if (enlarged_rect.contains(line.p1()) &&
         intersection_of_line_and_rect(line, enlarged_rect, inter_point)) {
-        if (QLineF(inter_point, line.p2()).length() >= min_length) {
+        if (QLineF(inter_point, line.p2()).length() < min_length) {
+            // trim to exactly min_length. We use a temporary line in the
+            // opposite direction because setLenght() moves p2 and we want to
+            // move p1 here
+            auto trimmed_line = QLineF(line.p2(), inter_point);
+            trimmed_line.setLength(min_length);
+            line.setP1(trimmed_line.p2());
+        } else {
             line.setP1(inter_point);
         }
     } else if (enlarged_rect.contains(line.p2()) &&
                intersection_of_line_and_rect(line, enlarged_rect,
                                              inter_point)) {
-        if (QLineF(line.p1(), inter_point).length() >= min_length) {
+        if (QLineF(line.p1(), inter_point).length() < min_length) {
+            auto trimmed_line = QLineF(line.p1(), inter_point);
+            trimmed_line.setLength(min_length);
+            line.setP2(trimmed_line.p2());
+        } else {
             line.setP2(inter_point);
         }
     }
