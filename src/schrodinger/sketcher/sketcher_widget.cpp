@@ -723,6 +723,10 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::copy);
     connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
             &MolModel::flipSelection);
+    connect(&menu, &SelectionContextMenu::flipHorizontalRequested, m_mol_model,
+            &MolModel::flipSelectionHorizontal);
+    connect(&menu, &SelectionContextMenu::flipVerticalRequested, m_mol_model,
+            &MolModel::flipSelectionVertical);
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
     connect(&menu, &SelectionContextMenu::bracketSubgroupDialogRequested, this,
