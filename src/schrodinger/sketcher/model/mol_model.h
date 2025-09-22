@@ -18,6 +18,7 @@
 
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -51,13 +52,6 @@ namespace sketcher
 enum class SubgroupType;
 enum class RepeatPattern;
 enum class BondTopology;
-
-enum class SelectMode {
-    SELECT,      // Shift + click
-    DESELECT,    //
-    TOGGLE,      // Ctrl + click
-    SELECT_ONLY, // normal click (no Shift or Ctrl)
-};
 
 enum class MergeId {
     NO_MERGE = -1,
@@ -536,10 +530,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                            const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
+     * Undoably flip the given atoms coordinates using the given flip function.
+     */
+    void flipAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                   const std::function<void(RDGeom::Point3D& coord)>& flip);
+
+    /**
      * Undoably flip all atoms coordinates horizontally or vertically.
      */
     void flipAllHorizontal();
     void flipAllVertical();
+
+    /**
+     * Undoably flip selected atoms coordinates horizontally or vertically.
+     */
+    void flipSelectionHorizontal();
+    void flipSelectionVertical();
 
     /**
      * rotate all atoms by the given angle (the rdkit coordinates rotate

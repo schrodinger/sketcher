@@ -57,7 +57,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     void exportToFileRequested();
     void undoRequested();
     void redoRequested();
-    void cleanupRequested();
+    void cleanupRequested(bool selection_only);
     void selectAllRequested();
     void clearSelectionRequested();
     void expandSelectionRequested();
@@ -73,7 +73,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     void removeExplicitHydrogensRequested();
     void addCustomFragmentRequested(const std::string& text);
     void adjustRenderingSettingsRequested();
-    void fitToScreenRequested();
+    void fitToScreenRequested(bool selection_only = false);
 
   protected:
     std::unique_ptr<Ui::SketcherTopBar> ui;

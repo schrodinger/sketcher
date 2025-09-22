@@ -1430,6 +1430,27 @@ void MolModel::flipSubstituent(const RDKit::Bond* const bond)
         m_mol.getConformer().getAtomPos(bond->getEndAtom()->getIdx()), atoms);
 }
 
+void MolModel::flipAtoms(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    const std::function<void(RDGeom::Point3D& coord)>& flip)
+{
+    if (atoms.empty()) {
+        return;
+    }
+    auto undo_macro_raii = createUndoMacro("Flip atoms");
+    transformCoordinatesWithFunction("", flip, MergeId::NO_MERGE, atoms);
+    std::unordered_set<const RDKit::Bond*> bonds;
+    for (auto& atom : atoms) {
+        for (auto& bond : m_mol.atomBonds(atom)) {
+            if (atoms.contains(bond->getBeginAtom()) &&
+                atoms.contains(bond->getEndAtom())) {
+                bonds.insert(bond);
+            }
+        }
+    }
+    flipBondStereo(bonds);
+}
+
 void MolModel::flipSelection()
 {
     auto selected_atoms = getSelectedAtoms();
@@ -1466,21 +1487,36 @@ void MolModel::flipAroundSegment(
     if (atoms.empty()) {
         return;
     }
-    auto flip = [p1, p2](auto& coord) { coord = flip_point(coord, p1, p2); };
-    auto undo_macro_raii = createUndoMacro("Flip selection");
-    transformCoordinatesWithFunction("", flip, MergeId::NO_MERGE, atoms);
-    // get all bonds between atoms and flip wedges to dashes and vice-versa
-    std::unordered_set<const RDKit::Bond*> bonds;
-    auto& mol = (*atoms.begin())->getOwningMol();
-    for (auto& atom : atoms) {
-        for (auto& bond : mol.atomBonds(atom)) {
-            if (atoms.count(bond->getBeginAtom()) &&
-                atoms.count(bond->getEndAtom())) {
-                bonds.insert(bond);
-            }
-        }
+    auto flip = [p1, p2](RDGeom::Point3D& coord) {
+        coord = flip_point(coord, p1, p2);
+    };
+    flipAtoms(atoms, flip);
+}
+
+void MolModel::flipSelectionHorizontal()
+{
+    auto atoms = getSelectedAtoms();
+    if (atoms.empty()) {
+        return;
     }
-    flipBondStereo(bonds);
+    auto center = find_centroid(m_mol, atoms, {});
+    auto flip_x = [center](RDGeom::Point3D& coord) {
+        coord.x = 2 * center.x - coord.x;
+    };
+    flipAtoms(atoms, flip_x);
+}
+
+void MolModel::flipSelectionVertical()
+{
+    auto atoms = getSelectedAtoms();
+    if (atoms.empty()) {
+        return;
+    }
+    auto center = find_centroid(m_mol, atoms, {});
+    auto flip_y = [center](RDGeom::Point3D& coord) {
+        coord.y = 2 * center.y - coord.y;
+    };
+    flipAtoms(atoms, flip_y);
 }
 
 void MolModel::flipAllHorizontal()
