@@ -95,9 +95,11 @@ class SKETCHER_API Scene : public QGraphicsScene
      * specified type
      * @param types The subset of interactive items to return.  Defaults to
      * returning all interactive items.
+     * @param selection_only If true, only consider selected items
      */
     QRectF getInteractiveItemsBoundingRect(
-        const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
+        const InteractiveItemFlagType types = InteractiveItemFlag::ALL,
+        bool selection_only = false) const;
 
     /**
      * get atoms, bonds, sgroups and non-molecular objects in the scene

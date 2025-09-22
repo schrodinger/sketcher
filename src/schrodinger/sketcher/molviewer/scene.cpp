@@ -215,13 +215,18 @@ Scene::getInteractiveItems(const InteractiveItemFlagType types) const
     return interactive_items;
 }
 
-QRectF Scene::getInteractiveItemsBoundingRect(
-    const InteractiveItemFlagType types) const
+QRectF
+Scene::getInteractiveItemsBoundingRect(const InteractiveItemFlagType types,
+                                       bool selection_only) const
 {
     QRectF bounding_rect;
     const auto items = getInteractiveItems(types);
-    for (QGraphicsItem* item : items)
+    for (QGraphicsItem* item : items) {
+        if (selection_only && !item->isSelected()) {
+            continue;
+        }
         bounding_rect |= item->sceneBoundingRect();
+    }
     return bounding_rect;
 }
 

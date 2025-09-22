@@ -594,10 +594,15 @@ void SketcherWidget::connectTopBarSlots()
             &QUndoStack::undo);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::redoRequested, m_undo_stack,
             &QUndoStack::redo);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested, [this]() {
-        m_mol_model->regenerateCoordinates();
-        m_ui->view->fitToScreen();
-    });
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested,
+            [this](bool selection_only) {
+                if (selection_only) {
+                    m_mol_model->cleanUpSelection();
+                } else {
+                    m_mol_model->regenerateCoordinates();
+                }
+                m_ui->view->fitToScreen();
+            });
     connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
             m_ui->view, &View::fitToScreen);
 
