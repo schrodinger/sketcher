@@ -3,9 +3,7 @@
 #include <rdkit/GraphMol/MolDraw2D/MolDraw2DHelpers.h>
 #include <QColor>
 
-#include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/image_constants.h"
-#include "schrodinger/sketcher/molviewer/abstract_atom_or_bond_display_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
@@ -16,8 +14,7 @@ namespace sketcher
 /**
  * An object used to store all settings relevant to the display of atoms
  */
-class SKETCHER_API AtomDisplaySettings
-    : public AbstractAtomOrBondDisplaySettings
+class AtomDisplaySettings
 {
   public:
     AtomDisplaySettings();
@@ -35,7 +32,13 @@ class SKETCHER_API AtomDisplaySettings
      * used (or black for monochrome color schemes).
      */
     void setColorScheme(const ColorScheme& scheme,
-                        const QColor& carbon_color = QColor()) override;
+                        QColor carbon_color = QColor());
+
+    /**
+     * Set a color scheme where all atoms use the same color
+     * @param color the color for all atoms
+     */
+    void setMonochromeColorScheme(const QColor& color);
 
     /**
      * @param atomic_number the atomic number of the atom
@@ -90,9 +93,17 @@ class SKETCHER_API AtomDisplaySettings
      */
     qreal m_squiggle_pen_width = BOND_DEFAULT_PEN_WIDTH;
 
+    QColor m_annotation_color = ANNOTATION_COLOR;
+
   private:
     RDKit::ColourPalette m_color_palette;
 };
+
+/**
+ * @return the light gray color that RDKit uses to color carbons when using the
+ * dark mode palette
+ */
+RDKit::DrawColour get_rdkit_dark_mode_carbon_color();
 
 } // namespace sketcher
 } // namespace schrodinger
