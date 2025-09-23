@@ -12,6 +12,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
+#include <QPointF>
 #include <QString>
 #include <QTransform>
 #include <QUndoStack>
@@ -157,6 +158,7 @@ void Scene::updateItems(const WhatChangedType what_changed)
             addItem(item);
             m_interactive_items.insert(item);
         }
+        clearHovered();
     }
     if (what_changed & WhatChanged::NON_MOL_OBJS) {
         clearInteractiveItems(InteractiveItemFlag::NON_MOLECULAR);
@@ -213,13 +215,18 @@ Scene::getInteractiveItems(const InteractiveItemFlagType types) const
     return interactive_items;
 }
 
-QRectF Scene::getInteractiveItemsBoundingRect(
-    const InteractiveItemFlagType types) const
+QRectF
+Scene::getInteractiveItemsBoundingRect(const InteractiveItemFlagType types,
+                                       bool selection_only) const
 {
     QRectF bounding_rect;
     const auto items = getInteractiveItems(types);
-    for (QGraphicsItem* item : items)
+    for (QGraphicsItem* item : items) {
+        if (selection_only && !item->isSelected()) {
+            continue;
+        }
         bounding_rect |= item->sceneBoundingRect();
+    }
     return bounding_rect;
 }
 
@@ -355,6 +362,59 @@ void Scene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
     m_scene_tool->mouseMoveEvent(event);
     event->accept();
+    updateHovered(event->scenePos());
+}
+
+void Scene::updateHovered(const QPointF& pos)
+{
+    // update the hovered atom or bond
+    auto* top_graphics_item =
+        getTopInteractiveItemAt(pos, InteractiveItemFlag::ALL);
+    if (auto* atom_item =
+            dynamic_cast<AbstractAtomOrMonomerItem*>(top_graphics_item)) {
+        setHovered(atom_item->getAtom());
+    } else if (auto* bond_item = dynamic_cast<AbstractBondOrConnectorItem*>(
+                   top_graphics_item)) {
+        setHovered(bond_item->getBond());
+    } else {
+        clearHovered();
+    }
+}
+
+void Scene::setHovered(
+    std::variant<std::monostate, const RDKit::Atom*, const RDKit::Bond*>
+        new_hovered)
+{
+    if (new_hovered == m_hovered) {
+        // nothing has changed
+        return;
+    }
+
+    auto old_hovered = m_hovered;
+    m_hovered = new_hovered;
+
+    if (std::holds_alternative<const RDKit::Atom*>(old_hovered) &&
+        !std::holds_alternative<const RDKit::Atom*>(new_hovered)) {
+        // we'd been hovering over an atom, but now we're not
+        emit atomHovered(nullptr);
+    } else if (std::holds_alternative<const RDKit::Bond*>(old_hovered) &&
+               !std::holds_alternative<const RDKit::Bond*>(new_hovered)) {
+        // we'd been hovering over an bond, but now we're not
+        emit bondHovered(nullptr);
+    }
+
+    if (std::holds_alternative<const RDKit::Atom*>(new_hovered)) {
+        // we've just started hovering over this atom
+        emit atomHovered(std::get<const RDKit::Atom*>(new_hovered));
+    } else if (std::holds_alternative<const RDKit::Bond*>(new_hovered)) {
+        // we've just started hovering over this bond
+        emit bondHovered(std::get<const RDKit::Bond*>(new_hovered));
+    }
+}
+
+void Scene::clearHovered()
+{
+    setHovered(std::monostate());
 }
 
 void Scene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
@@ -373,6 +433,7 @@ void Scene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* event)
 void Scene::onMouseLeave()
 {
     m_scene_tool->onMouseLeave();
+    clearHovered();
 }
 
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
