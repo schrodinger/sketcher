@@ -44,6 +44,12 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
     addSeparator();
     m_flip_action =
         addAction("Flip", this, &SelectionContextMenu::flipRequested);
+    m_flip_molecule_menu = new QMenu("Flip Molecule");
+    m_flip_molecule_menu->addAction(
+        "Horizontally", this, &SelectionContextMenu::flipHorizontalRequested);
+    m_flip_molecule_menu->addAction(
+        "Vertically", this, &SelectionContextMenu::flipVerticalRequested);
+    addMenu(m_flip_molecule_menu);
     addMenu(m_modify_atoms_menu);
     addMenu(m_modify_bonds_menu);
     addMenu(createAddToSelectionMenu());
@@ -100,8 +106,18 @@ void SelectionContextMenu::updateActions()
             return m_atoms.count(bond->getBeginAtom()) !=
                    m_atoms.count(bond->getEndAtom());
         });
-    m_flip_action->setEnabled(crossing_bonds_count == 1 &&
-                              in_same_fragment(m_atoms));
+    bool one_fragment = !m_atoms.empty() && in_same_fragment(m_atoms);
+    m_flip_action->setEnabled(true);
+    m_flip_action->setVisible(crossing_bonds_count == 1 && one_fragment);
+    m_flip_molecule_menu->menuAction()->setVisible(crossing_bonds_count == 0 &&
+                                                   one_fragment);
+
+    // if neither flip actions is displayed, show a disabled flip action
+    if (!m_flip_action->isVisible() &&
+        !m_flip_molecule_menu->menuAction()->isVisible()) {
+        m_flip_action->setVisible(true);
+        m_flip_action->setEnabled(false);
+    }
 }
 
 QMenu* SelectionContextMenu::createAddToSelectionMenu()
