@@ -4,6 +4,10 @@ on:
   workflow_dispatch: ~
   push: ~
   pull_request: ~
+  merge_group:
+    branches:
+      - main
+      - "20??-?"
   schedule:
     - cron: "0 4 * * *"
 
