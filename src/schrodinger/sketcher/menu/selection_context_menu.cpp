@@ -108,7 +108,7 @@ void SelectionContextMenu::updateActions()
             return m_atoms.count(bond->getBeginAtom()) !=
                    m_atoms.count(bond->getEndAtom());
         });
-    bool one_fragment = in_same_fragment(m_atoms);
+    bool one_fragment = !m_atoms.empty() && in_same_fragment(m_atoms);
     m_flip_action->setEnabled(true);
     m_flip_action->setVisible(crossing_bonds_count == 1 && one_fragment);
     m_flip_molecule_menu->menuAction()->setVisible(crossing_bonds_count == 0 &&

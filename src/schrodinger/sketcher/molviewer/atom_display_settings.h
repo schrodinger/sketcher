@@ -26,6 +26,8 @@ class SKETCHER_API AtomDisplaySettings
     // a single AtomDisplaySettings object with all AtomItems.
     explicit AtomDisplaySettings(const AtomDisplaySettings&) = default;
 
+    virtual ~AtomDisplaySettings() = default;
+
     /**
      * Set a pre-defined RDKit color scheme
      * @param scheme color scheme to apply to atom items
