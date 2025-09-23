@@ -238,9 +238,8 @@ class SKETCHER_API SketcherWidget : public QWidget
     /**
      * Copy the contents of the scene to the clipboard as an image.
      *
-     * @param subset The portion of the scene structure to copy to clipboard
      */
-    void copyAsImage(SceneSubset subset);
+    void copyAsImage();
 
     /**
      * Paste clipboard content into the scene.

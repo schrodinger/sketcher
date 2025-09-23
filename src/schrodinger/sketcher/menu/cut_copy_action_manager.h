@@ -34,7 +34,7 @@ class SKETCHER_API CutCopyActionManager : public QWidget
     void cutRequested(schrodinger::rdkit_extensions::Format format);
     void copyRequested(schrodinger::rdkit_extensions::Format format,
                        SceneSubset subset);
-    void copyAsImageRequested(SceneSubset subset);
+    void copyAsImageRequested();
 
   private:
     /**
@@ -54,6 +54,7 @@ class SKETCHER_API CutCopyActionManager : public QWidget
 
     SketcherModel* m_sketcher_model = nullptr;
     bool m_always_copy_all = false;
+    QVector<QAction*> m_hide_for_selections;
 };
 
 } // namespace sketcher

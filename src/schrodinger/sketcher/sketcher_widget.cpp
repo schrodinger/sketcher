@@ -477,17 +477,11 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 #endif
 }
 
-void SketcherWidget::copyAsImage(SceneSubset subset)
+void SketcherWidget::copyAsImage()
 {
     QByteArray image_bytes;
-    bool full_scene = (subset == SceneSubset::ALL);
-    if (full_scene) {
-        RenderOptions opts;
-        image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
-    } else {
-        auto mol = extract_mol(m_mol_model, subset);
-        image_bytes = get_image_bytes(*mol, ImageFormat::PNG);
-    }
+    RenderOptions opts;
+    image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
     QImage image;
     image.loadFromData(image_bytes, "PNG");
     QApplication::clipboard()->setImage(image);
