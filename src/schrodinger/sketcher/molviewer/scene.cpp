@@ -505,6 +505,17 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
     }
 }
 
+void Scene::onBackgroundColorChanged(const QColor& color)
+{
+    bool dark_mode = color == DARK_BACKGROUND_COLOR;
+    m_selection_highlighting_item->setPen(
+        dark_mode ? SELECTION_OUTLINE_COLOR_DARK_BG : SELECTION_OUTLINE_COLOR);
+    m_selection_highlighting_item->setBrush(
+        dark_mode ? SELECTION_BACKGROUND_COLOR_DARK_BG
+                  : SELECTION_BACKGROUND_COLOR);
+    m_scene_tool->onBackgroundColorChanged(dark_mode);
+}
+
 void Scene::onMolModelSelectionChanged()
 {
     // block the per-item signals for performance reasons

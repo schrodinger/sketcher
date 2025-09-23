@@ -141,6 +141,9 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
             &SketcherWidget::onBackgroundColorChanged);
 
+    connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, m_scene,
+            &Scene::onBackgroundColorChanged);
+
     connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
         if (what_changed & WhatChanged::MOLECULE) {
             emit moleculeChanged();
