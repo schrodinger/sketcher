@@ -77,20 +77,18 @@ void CutCopyActionManager::initCopyAsMenu()
             // set a flag on the action to determine its visibility later
             action->setData(QVariant(is_reaction_format));
         }
-        // Add a separator and the option to export as an image
-        auto separator = m_copy_as_menu->addSeparator();
-        separator->setData(QVariant(is_reaction_format));
-        auto action = m_copy_as_menu->addAction(
-            "Image", this, [this]() { emit copyAsImageRequested(); });
-        // export as image should only be allowed for full scene
-        m_hide_for_selections.push_back(separator);
-        m_hide_for_selections.push_back(action);
-        // set a flag on the action to determine its visibility later
-        action->setData(QVariant(is_reaction_format));
     };
 
     init_menu(get_standard_export_formats(), false);
     init_menu(get_reaction_export_formats(), true);
+
+    // Add a separator and the option to export as an image
+    auto separator = m_copy_as_menu->addSeparator();
+    auto action = m_copy_as_menu->addAction(
+        "Image", this, [this]() { emit copyAsImageRequested(); });
+    // export as image should only be allowed for full scene
+    m_hide_for_selections.push_back(separator);
+    m_hide_for_selections.push_back(action);
 }
 
 void CutCopyActionManager::updateActions()
@@ -118,13 +116,12 @@ void CutCopyActionManager::updateActions()
     }
 
     for (auto act : m_copy_as_menu->actions()) {
-        act->setVisible(act->data().toBool() == show_reaction);
-    }
-    // make sure to show or hide actions that should only be available for full
-    // scene. This should not override the reaction format visibility
-    for (auto act : m_hide_for_selections) {
-        if (act->data().toBool() == show_reaction) {
+        if (m_hide_for_selections.contains(act)) {
+            // export as image and its separator, only show for full scene
             act->setVisible(!export_selection);
+        } else {
+            // structure vs reaction formats
+            act->setVisible(act->data().toBool() == show_reaction);
         }
     }
 }
