@@ -48,6 +48,8 @@ BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
     mol = sk.getRDKitMolecule();
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 1);
+
+    BOOST_TEST(false);
 }
 
 BOOST_AUTO_TEST_CASE(test_addRDKitReaction_getRDKitReaction)
