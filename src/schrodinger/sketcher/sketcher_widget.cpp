@@ -92,9 +92,7 @@ ModelObjsByType::ModelObjsByType(
 SketcherWidget::SketcherWidget(QWidget* parent) :
     QWidget(parent),
     m_undo_stack(new QUndoStack(this)),
-    m_mol_model(new MolModel(m_undo_stack)),
-    m_sketcher_model(new SketcherModel(this)),
-    m_scene(new Scene(m_mol_model, m_sketcher_model, this))
+    m_mol_model(new MolModel(m_undo_stack))
 {
     // The tools in ~Scene will access the underlying mol, so we need to
     // make sure the mol model still exists when the scene is destroyed.
@@ -104,6 +102,16 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     m_ui.reset(new Ui::SketcherWidgetForm());
     m_ui->setupUi(this);
+
+    // Load fonts BEFORE creating objects that use them
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Regular.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Bold.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Italic.ttf");
+    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-BoldItalic.ttf");
+
+    // Now create Scene and other objects that depend on fonts
+    m_sketcher_model = new SketcherModel(this);
+    m_scene = new Scene(m_mol_model, m_sketcher_model, this);
 
     m_ui->top_bar_wdg->setModel(m_sketcher_model);
     m_ui->side_bar_wdg->setModel(m_sketcher_model);
@@ -218,12 +226,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     // Update stylesheet and fonts
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Regular.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Bold.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Italic.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-BoldItalic.ttf");
 
-    // Set up the watermark  after loading fonts because the SVG uses them
+    // Set up the watermark after loading fonts because the SVG uses them
     m_watermark_item = new QGraphicsPixmapItem();
     m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
