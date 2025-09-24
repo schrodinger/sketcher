@@ -7,7 +7,7 @@ on:
     - cron: "0 4 * * *"
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
