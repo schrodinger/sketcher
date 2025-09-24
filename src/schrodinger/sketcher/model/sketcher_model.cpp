@@ -445,6 +445,11 @@ int SketcherModel::getFontSize() const
     return m_font_size;
 }
 
+QColor SketcherModel::getBackgroundColor() const
+{
+    return m_background_color;
+}
+
 void SketcherModel::loadRenderOptions(const RenderOptions& opts)
 {
     m_font_size = opts.font_size;

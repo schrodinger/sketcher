@@ -63,6 +63,16 @@ StandardSceneToolBase::StandardSceneToolBase(Scene* scene,
 {
 }
 
+void StandardSceneToolBase::loadColors(bool dark_mode)
+{
+    m_predictive_highlighting_item.setPen(
+        dark_mode ? PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
+                  : PREDICTIVE_HIGHLIGHTING_COLOR);
+    m_predictive_highlighting_item.setBrush(
+        dark_mode ? PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
+                  : PREDICTIVE_HIGHLIGHTING_COLOR);
+}
+
 void StandardSceneToolBase::onRightButtonClick(
     QGraphicsSceneMouseEvent* const event)
 {

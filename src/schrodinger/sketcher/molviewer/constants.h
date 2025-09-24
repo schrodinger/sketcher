@@ -133,6 +133,9 @@ const qreal DOUBLE_BOND_INNER_LINE_SHORTENING = 6.0;
 // DOUBLE_BOND_BEST_RING_SIZE_CUTOFF atoms.
 const unsigned int DOUBLE_BOND_BEST_RING_SIZE_CUTOFF = 8;
 
+const QColor SELECT_TOOL_LINE_COLOR_DARK_BG = QColor("#eeeeee");
+const QColor SELECT_TOOL_LINE_COLOR = QColor("#000000");
+
 const QColor DARK_BACKGROUND_COLOR = QColor("#1e1e1e");
 const QColor LIGHT_BACKGROUND_COLOR = QColor("#ffffff");
 
@@ -147,6 +150,7 @@ const QColor SELECTION_OUTLINE_COLOR_DARK_BG = QColor("#82a664");
 // The color for drawing predictive highlighting.  The same color is used for
 // both the outline and the background.
 const QColor PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#e2eadb");
+const QColor PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG = QColor("#555a54");
 
 // the color for drawing predictive highlighting for the move-rotate tool
 const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#eaeaea");

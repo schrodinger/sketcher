@@ -87,7 +87,7 @@ class SKETCHER_API AbstractSceneTool : public QObject
      * state (e.g. graphics items that are on different colors on dark
      * background)
      */
-    virtual void onBackgroundColorChanged(bool is_dark_mode);
+    virtual void loadColors(bool is_dark_mode);
 
     /**
      * Called when the selection of the scene changes. It does nothing
