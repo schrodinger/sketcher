@@ -37,11 +37,14 @@ BOOST_AUTO_TEST_CASE(TestBasicCoarseGrainMol)
                       "PEPTIDE1{A.G.C}$$$$V2.0");
     BOOST_CHECK_EQUAL(to_string(monomer_mol, Format::FASTA), ">\nAGC\n");
 
+    std::cout << ::RDKit::MolToSmiles(monomer_mol) << std::endl;
+
     // making it a cyclic peptide
     addConnection(monomer_mol, 2, 0);
     assignChains(monomer_mol);
     BOOST_CHECK_EQUAL(to_string(monomer_mol, Format::HELM),
                       "PEPTIDE1{A.G.C}$PEPTIDE1,PEPTIDE1,3:R2-1:R1$$$V2.0");
+    std::cout << ::RDKit::MolToSmiles(monomer_mol) << std::endl;
     // This is a cyclic peptide, should FASTA throw?
     // BOOST_CHECK_THROW(to_string(monomer_mol, Format::FASTA),
     // std::invalid_argument);
