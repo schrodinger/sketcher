@@ -122,7 +122,7 @@ static void compute_full_ring_info(const RDKit::ROMol& polymer)
         polymer.getRingInfo()->reset();
     }
     constexpr bool include_dative_bonds = true;
-    RDKit::MolOps::findSSSR(polymer, /*res=*/ nullptr, include_dative_bonds);
+    RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
 
     for (auto bond_idx : zob_idxs) {
         const_cast<RDKit::Bond*>(polymer.getBondWithIdx(bond_idx))
@@ -138,7 +138,7 @@ static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
 {
     if (!polymer.getRingInfo()->isInitialized()) {
         constexpr bool include_dative_bonds = true;
-        RDKit::MolOps::findSSSR(polymer, /*res=*/ nullptr, include_dative_bonds);
+        RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
     }
 
     std::vector<int> largest_ring{};
@@ -412,7 +412,7 @@ static void lay_out_polymer(RDKit::ROMol& polymer, const bool rotate = false)
 {
     if (!polymer.getRingInfo()->isInitialized()) {
         constexpr bool include_dative_bonds = true;
-        RDKit::MolOps::findSSSR(polymer, /*res=*/ nullptr, include_dative_bonds);
+        RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
     }
     if (polymer.getRingInfo()->numRings() > 0) {
         lay_out_cyclic_polymer(polymer);
