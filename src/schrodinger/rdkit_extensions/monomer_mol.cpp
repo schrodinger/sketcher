@@ -345,10 +345,10 @@ void assignChains(RDKit::RWMol& monomer_mol)
     }
 
     // Determine and mark the 'connection bonds'
-    if (!monomer_mol.getRingInfo()->isInitialized()) {
-        ::RDKit::MolOps::findSSSR(monomer_mol);
-    }
-    // get atom rings that belong to a single polymer
+    constexpr bool include_dative_bonds = true;
+    ::RDKit::MolOps::findSSSR(monomer_mol, /*res =*/ nullptr, include_dative_bonds);
+
+        // get atom rings that belong to a single polymer
     const auto& bnd_rings = monomer_mol.getRingInfo()->bondRings();
 
     for (const auto& ring : bnd_rings) {
