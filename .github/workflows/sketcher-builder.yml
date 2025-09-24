@@ -2,16 +2,13 @@ name: Sketcher Build and Test
 
 on:
   workflow_dispatch: ~
-  push: ~
   pull_request: ~
-  merge_group:
-    types: [checks_requested]
+  merge_group: ~
   schedule:
     - cron: "0 4 * * *"
 
 jobs:
-  build-and-test:
-    name: Build and Run Tests
+  build:
     runs-on: ${{ matrix.os }}
     defaults:
       run:
