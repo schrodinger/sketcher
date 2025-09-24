@@ -2,10 +2,8 @@ name: Sketcher Build and Test
 
 on:
   workflow_dispatch: ~
-  push: ~
   pull_request: ~
-  merge_group:
-    types: [checks_requested]
+  merge_group: ~
   schedule:
     - cron: "0 4 * * *"
 
