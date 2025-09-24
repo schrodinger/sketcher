@@ -162,7 +162,7 @@ const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 
 // the color of the stereo annotations (e.g. "R" and "S")
 const QColor ANNOTATION_COLOR = QColor("#333333");
-const QColor ANNOTATION_COLOR_DARK = QColor("#bababa");
+const QColor ANNOTATION_COLOR_DARK_BG = QColor("#bababa");
 
 // the color of structure hints (e.g. the blue lines that show where a bond will
 // be drawn when using the bond tool or the fragment structure when mousing over
