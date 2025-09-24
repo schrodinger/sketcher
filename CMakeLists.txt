@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
   schrodinger_sketcher
-  VERSION 2025.4.1
+  VERSION 2025.4.2
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
