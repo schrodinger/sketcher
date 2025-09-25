@@ -11,6 +11,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -481,28 +482,34 @@ BOOST_AUTO_TEST_CASE(test_zoom_on_small_molecule)
 BOOST_DATA_TEST_CASE(test_auto_detect_through_sketcher_interface,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
-    std::string reference = "c1ccccc1";
-    auto mol = to_rdkit(reference, Format::SMILES);
-    auto text = to_string(*mol, sample);
+    std::string orig_smiles = "c1ccccc1";
+    auto mol = to_rdkit(orig_smiles, Format::SMILES);
+    ::schrodinger::rdkit_extensions::update_2d_coordinates(*mol);
+    auto input_string = to_string(*mol, sample);
 
-    if (sample == Format::MAESTRO || sample == Format::INCHI ||
-        sample == Format::PDB || sample == Format::XYZ) {
-        // these exports force kekulization
-        reference = "C1=CC=CC=C1";
-    } else if (sample == Format::SMARTS || sample == Format::EXTENDED_SMARTS ||
-               sample == Format::MDL_MOLV2000 ||
-               sample == Format::MDL_MOLV3000 || sample == Format::MRV) {
+    Format export_format = sample;
+    std::string reference = input_string;
+    // this test doesn't work for some formats, so just sanity check the SMILES
+    // string in those cases
+    if (sample == Format::MDL_MOLV2000) {
+        // Sketcher doesn't support exporting to V2000
+        export_format = Format::SMILES;
+        // we'll lose aromaticity information for atoms when converting to a
+        // molblock, so we can't use the original SMILES string
         reference = "C1:C:C:C:C:C:1";
+    } else if (sample == Format::RDMOL_BINARY_BASE64) {
+        // we won't get bit-for-bit fidelity with the round-trip
+        export_format = Format::SMILES;
+        reference = orig_smiles;
     }
-    // all other formats should roundtrip the aromatic input
 
     // Check roundtripping and auto-detect
     TestSketcherWidget sk;
-    sk.addFromString(text, sample);
-    BOOST_TEST(sk.getString(Format::SMILES) == reference);
+    sk.addFromString(input_string, sample);
+    BOOST_TEST(sk.getString(export_format) == reference);
     sk.clear();
-    sk.addFromString(text);
-    BOOST_TEST(sk.getString(Format::SMILES) == reference);
+    sk.addFromString(input_string);
+    BOOST_TEST(sk.getString(export_format) == reference);
 }
 
 BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
