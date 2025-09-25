@@ -110,13 +110,21 @@ class SKETCHER_API SketcherWidget : public QWidget
      * Enable or disable select-only mode, which removes the toolbars and limits
      * user interaction to selecting items.
      */
-    void setSelectOnlyMode(bool select_only_mode_enabled);
+    void setSelectOnlyMode(const bool select_only_mode_enabled);
 
     /**
      * Set the color scheme, which controls the atom and bond colors as well as
      * the background color.
      */
-    void setColorScheme(ColorScheme color_scheme);
+    void setColorScheme(const ColorScheme color_scheme);
+
+    /**
+     * Switch to the specified selection tool. Note that this call will have no
+     * effect if select-only mode is disabled and the workspace is empty, as the
+     * select tool isn't allowed in that scenario (since there's nothing to
+     * select).
+     */
+    void activateSelectionTool(const SelectionTool tool);
 
     /**
      * Undoably select or deselect the specified atoms and bonds.
