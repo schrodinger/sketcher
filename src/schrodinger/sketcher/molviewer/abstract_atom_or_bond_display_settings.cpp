@@ -12,7 +12,7 @@ void AbstractAtomOrBondDisplaySettings::setColorScheme(
 {
     m_annotation_color =
         (scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK)
-            ? ANNOTATION_COLOR_DARK
+            ? ANNOTATION_COLOR_DARK_BG
             : ANNOTATION_COLOR;
 }
 
