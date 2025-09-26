@@ -4,8 +4,12 @@ on:
   workflow_dispatch: ~
   pull_request: ~
   merge_group: ~
-  schedule:
-    - cron: "0 4 * * *"
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        default: ${{ github.ref }}
 
 jobs:
   build:
@@ -25,6 +29,8 @@ jobs:
         #     build-output: memtest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
         if: matrix.os == 'macos-latest'
