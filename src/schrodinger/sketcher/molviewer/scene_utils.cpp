@@ -2,6 +2,7 @@
 
 #include <QBitmap>
 #include <QColor>
+#include <QFile>
 #include <QGraphicsItem>
 #include <QLineF>
 #include <QPixmap>
@@ -10,6 +11,7 @@
 #include <QPen>
 #include <QPointF>
 #include <QRect>
+#include <QRegularExpression>
 #include <QRegion>
 #include <QSvgRenderer>
 #include <QTransform>
@@ -300,17 +302,46 @@ QPixmap cursor_hint_from_svg(const QString& path, const bool recolor)
     return pixmap.copy(bounding_rect);
 }
 
-QPixmap get_arrow_cursor_pixmap()
+QPixmap get_arrow_cursor_pixmap(const QColor& arrow_color,
+                                const QColor& outline_color)
 {
-    QSvgRenderer renderer(ARROW_CURSOR_PATH);
-    QPixmap pixmap(renderer.defaultSize());
+    // read in the contents of the SVG
+    QString svg_contents;
+    {
+        QFile file(ARROW_CURSOR_PATH);
+        file.open(QIODevice::ReadOnly);
+        svg_contents = file.readAll();
+    } // close the file
+
+    // replace the colors in the SVG with the colors that were passed in to this
+    // function
+    QRegularExpression fill_color_re(R"(fill\s*:\s*#\w{3,8})");
+    svg_contents.replace(fill_color_re, QString("fill:") + arrow_color.name());
+    QRegularExpression stroke_color_re(R"(stroke\s*:\s*#\w{3,8})");
+    svg_contents.replace(stroke_color_re,
+                         QString("stroke:") + outline_color.name());
+
+    QSvgRenderer renderer(svg_contents.toUtf8());
+    // figure out how large the arrow should be, taking CURSOR_SCALE into
+    // account
+    auto scaled_box = renderer.viewBoxF();
+    scaled_box.setWidth(scaled_box.width() * CURSOR_SCALE);
+    scaled_box.setHeight(scaled_box.height() * CURSOR_SCALE);
+    // shift the image so that the tip of the arrow lines up exactly with the
+    // hotspot coordinates.  We can't scale the hotspot coordinates themselves
+    // (at least not precisely) because the coordinates must be integers.
+    scaled_box.translate(CURSOR_HOTSPOT_X - CURSOR_SCALE,
+                         CURSOR_HOTSPOT_Y - CURSOR_SCALE);
+
+    // render the svg
+    QPixmap pixmap(scaled_box.toAlignedRect().size());
     pixmap.fill(Qt::transparent);
     {
         // paint the SVG image to our pixmap
         QPainter painter(&pixmap);
         painter.setRenderHints(QPainter::Antialiasing |
                                QPainter::SmoothPixmapTransform);
-        renderer.render(&painter, pixmap.rect());
+        renderer.render(&painter, scaled_box);
     } // end the painter
     return pixmap;
 }
