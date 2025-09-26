@@ -1,0 +1,24 @@
+name: 'Checkout and Configure Git'
+description: 'Checkout repository and configure Git for automated commits'
+inputs:
+  ref:
+    description: 'Branch/ref to checkout'
+    required: true
+  token:
+    description: 'GitHub token for authentication'
+    default: ${{ github.token }}
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref }}
+        fetch-depth: 0
+
+    - name: Configure Git
+      shell: bash
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git

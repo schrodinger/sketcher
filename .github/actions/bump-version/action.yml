@@ -1,0 +1,43 @@
+name: 'Bump Version'
+description: 'Check for recent commits, bump version if needed, and commit changes'
+inputs:
+  ref:
+    description: 'Branch to check and bump'
+    required: true
+  token:
+    description: 'GitHub token for authentication'
+    default: ${{ github.token }}
+
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: ./.github/actions/checkout-and-configure-git
+      with:
+        ref: ${{ inputs.ref }}
+        token: ${{ inputs.token }}
+
+    - name: Check for recent commits
+      id: check-commits
+      shell: bash
+      run: |
+        has_recent=$(git log HEAD --since="24 hours ago" --oneline | grep -v "GitHub Action" | wc -l)
+        echo "has_recent_commits=$([ $has_recent -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+    - name: Increment patch version
+      id: increment-version
+      if: steps.check-commits.outputs.has_recent_commits == 'true'
+      shell: bash
+      run: |
+        current_version=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+        new_version=$(echo $current_version | awk -F. '{print $1"."$2"."($3+1)}')
+        sed -i "s/VERSION $current_version/VERSION $new_version/" CMakeLists.txt
+        echo "new_version=$new_version" >> $GITHUB_OUTPUT
+
+    - name: Commit build version increment
+      if: steps.check-commits.outputs.has_recent_commits == 'true'
+      shell: bash
+      run: |
+        git add CMakeLists.txt
+        git commit -m "Increment to build ${{ steps.increment-version.outputs.new_version }}"
+        git push origin ${{ inputs.ref }}
