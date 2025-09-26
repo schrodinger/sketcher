@@ -63,6 +63,8 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
             &SelectionContextMenu::cutRequested);
     connect(m_cut_copy_actions, &CutCopyActionManager::copyRequested, this,
             &SelectionContextMenu::copyRequested);
+    connect(m_cut_copy_actions, &CutCopyActionManager::copyAsImageRequested,
+            this, &SelectionContextMenu::copyAsImageRequested);
 }
 
 void SelectionContextMenu::setContextItems(
