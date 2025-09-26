@@ -398,10 +398,8 @@ void SketcherModel::setBondWidthScale(qreal scale)
 void SketcherModel::setColorScheme(const ColorScheme scheme)
 {
     m_color_scheme = scheme;
-    bool dark_background =
-        scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK;
-    setBackgroundColor(dark_background ? DARK_BACKGROUND_COLOR
-                                       : LIGHT_BACKGROUND_COLOR);
+    setBackgroundColor(isDarkMode() ? DARK_BACKGROUND_COLOR
+                                    : LIGHT_BACKGROUND_COLOR);
     m_atom_display_settings.setColorScheme(scheme);
     m_bond_display_settings.setColorScheme(scheme);
     // if this color scheme changes the COLOR_HETEROATOMS setting, update the
@@ -432,6 +430,12 @@ void SketcherModel::setBackgroundColor(QColor color)
 {
     m_background_color = color;
     emit backgroundColorChanged(color);
+}
+
+bool SketcherModel::isDarkMode() const
+{
+    return m_color_scheme == ColorScheme::DARK_MODE ||
+           m_color_scheme == ColorScheme::WHITE_BLACK;
 }
 
 void SketcherModel::setFontSize(int size)
