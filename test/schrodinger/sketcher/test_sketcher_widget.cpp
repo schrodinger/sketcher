@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <QString>
+
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
@@ -111,6 +113,32 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
     sk.addFromString(text);
 
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
+}
+
+/**
+ * Make sure that we export PDB files with a single model, even if the MolModel
+ * mol stores 3d coordinates in a second conformer.
+ */
+BOOST_AUTO_TEST_CASE(test_PDB_format_single_model)
+{
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCC"));
+    auto conf = new RDKit::Conformer(3);
+    conf->set3D(true);
+    conf->setAtomPos(0, {1, 1, 1});
+    conf->setAtomPos(1, {2, 2, 2});
+    conf->setAtomPos(2, {3, 3, 3});
+    mol_to_add->addConformer(conf, true);
+
+    TestSketcherWidget sk;
+    sk.addRDKitMolecule(*mol_to_add);
+    // RDKit mol exports should contain both the 2D and the 3D conformers
+    auto mol_out = sk.getRDKitMolecule();
+    BOOST_TEST(mol_out->getNumConformers() == 2);
+
+    auto pdb_text = sk.getString(Format::PDB);
+    auto pdb_qtext = QString::fromStdString(pdb_text);
+    BOOST_TEST(!pdb_qtext.contains("MODEL"));
+    BOOST_TEST(pdb_qtext.count("HETATM") == 3);
 }
 
 /**
