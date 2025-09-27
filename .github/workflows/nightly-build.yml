@@ -1,10 +1,61 @@
 name: Nightly Build
 
 on:
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      release-branch:
+        description: 'Release branch to bump and merge (leave empty to skip)'
+        required: false
+        type: string
+      token:
+        description: 'Token with push permissions'
+        required: false
+        type: string
 
 jobs:
-  placeholder:
+  bump-and-merge:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Use 'Use workflow from' dropdown to select branch"
+      - uses: actions/checkout@v4
+      - name: Configure Git
+        run: |
+          git config --local user.name "Nightly Build Action"
+          git config --local user.email "action@github.com"
+          git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
+
+      - uses: ./.github/actions/bump-version
+        if: inputs.release-branch != ''
+        with:
+          ref: ${{ inputs.release-branch }}
+          token: ${{ inputs.token }}
+
+      - name: Merge release branch into main
+        if: inputs.release-branch != ''
+        run: |
+          git checkout main
+          git fetch origin ${{ inputs.release-branch }}
+          commits=$(git log main..origin/${{ inputs.release-branch }} --oneline --grep="Increment to build" --invert-grep --format="%H" | tac)
+          if [ -n "$commits" ]; then
+            git cherry-pick $commits
+            git push origin main
+          fi
+
+      - uses: ./.github/actions/bump-version
+        with:
+          ref: main
+          token: ${{ inputs.token }}
+
+  # Create Nightly Builds
+
+  build-release-branch:
+    needs: bump-and-merge
+    if: inputs.release-branch != ''
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: ${{ inputs.release-branch }}
+
+  build-main-branch:
+    needs: bump-and-merge
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: main
