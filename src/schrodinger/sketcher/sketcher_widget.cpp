@@ -477,6 +477,16 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 #endif
 }
 
+void SketcherWidget::copyAsImage()
+{
+    QByteArray image_bytes;
+    RenderOptions opts;
+    image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
+    QImage image;
+    image.loadFromData(image_bytes, "PNG");
+    QApplication::clipboard()->setImage(image);
+}
+
 /**
  * @internal
  * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
@@ -726,6 +736,8 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::cut);
     connect(&menu, &SelectionContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &SelectionContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
             &MolModel::flipSelection);
     connect(&menu, &SelectionContextMenu::flipHorizontalRequested, m_mol_model,
@@ -782,6 +794,8 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::selectAll);
     connect(&menu, &BackgroundContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &BackgroundContextMenu::pasteRequested, this,
             &SketcherWidget::pasteAt);
     connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,

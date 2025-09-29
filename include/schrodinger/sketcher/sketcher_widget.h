@@ -236,6 +236,12 @@ class SKETCHER_API SketcherWidget : public QWidget
     void copy(rdkit_extensions::Format format, SceneSubset subset);
 
     /**
+     * Copy the contents of the scene to the clipboard as an image.
+     *
+     */
+    void copyAsImage();
+
+    /**
      * Paste clipboard content into the scene.
      * @param position The position to paste the content at
      */

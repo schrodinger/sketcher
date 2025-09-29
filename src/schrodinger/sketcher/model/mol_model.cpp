@@ -329,6 +329,11 @@ bool MolModel::hasSelectedAtoms() const
     return !m_selected_atom_tags.empty();
 }
 
+bool MolModel::hasSelectedNonMolecularObjects() const
+{
+    return !m_selected_non_molecular_tags.empty();
+}
+
 bool MolModel::hasSelection() const
 {
     return !(m_selected_atom_tags.empty() && m_selected_bond_tags.empty() &&
