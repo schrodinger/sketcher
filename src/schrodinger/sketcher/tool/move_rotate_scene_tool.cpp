@@ -36,15 +36,15 @@ MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
     updateMoveSelectionItem();
 }
 
-void MoveRotateSceneTool::loadColors(bool dark_mode)
+void MoveRotateSceneTool::loadColors(bool is_dark_mode)
 {
-    m_predictive_highlighting_item.setPen(
-        dark_mode ? MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
-                  : MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR);
-    m_predictive_highlighting_item.setBrush(
-        dark_mode ? MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
-                  : MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR);
-    StandardSceneToolBase::loadColors(dark_mode);
+    auto color = is_dark_mode
+                     ? MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
+                     : MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR;
+
+    m_predictive_highlighting_item.setPen(color);
+    m_predictive_highlighting_item.setBrush(color);
+    StandardSceneToolBase::loadColors(is_dark_mode);
 }
 
 void MoveRotateSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)

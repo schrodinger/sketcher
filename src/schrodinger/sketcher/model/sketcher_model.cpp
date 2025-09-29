@@ -445,9 +445,10 @@ int SketcherModel::getFontSize() const
     return m_font_size;
 }
 
-QColor SketcherModel::getBackgroundColor() const
+bool SketcherModel::hasDarkColorScheme() const
 {
-    return m_background_color;
+    return (m_color_scheme == ColorScheme::DARK_MODE ||
+            m_color_scheme == ColorScheme::WHITE_BLACK);
 }
 
 void SketcherModel::loadRenderOptions(const RenderOptions& opts)

@@ -719,9 +719,7 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
             &Scene::onAtomDragFinished);
     requestCursorHintUpdate();
     // set the correct colors for the new scene tool
-    bool dark_mode =
-        (m_sketcher_model->getBackgroundColor() == DARK_BACKGROUND_COLOR);
-    m_scene_tool->loadColors(dark_mode);
+    m_scene_tool->loadColors(m_sketcher_model->hasDarkColorScheme());
 }
 
 void Scene::requestCursorHintUpdate()

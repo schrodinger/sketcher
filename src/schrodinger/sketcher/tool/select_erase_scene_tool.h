@@ -66,7 +66,7 @@ template <typename T> class SKETCHER_API SelectSceneTool
     virtual void
     onLeftButtonDoubleClick(QGraphicsSceneMouseEvent* const event) override;
 
-    virtual void loadColors(bool dark_mode) override;
+    virtual void loadColors(bool is_dark_mode) override;
 
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
 
