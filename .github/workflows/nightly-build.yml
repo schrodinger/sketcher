@@ -17,7 +17,9 @@ jobs:
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: ${{ inputs.release-branch }}
+      publish-npm-package: true
   build-main-branch:
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: main
+      publish-npm-package: true
