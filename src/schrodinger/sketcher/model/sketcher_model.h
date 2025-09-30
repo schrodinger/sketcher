@@ -450,7 +450,7 @@ class SKETCHER_API SketcherModel : public QObject
      */
     std::pair<ColorScheme, ColorScheme> getColorSchemes() const;
 
-    QColor getBackgroundColor() const;
+    bool hasDarkColorScheme() const;
 
     /**
      * @param opts render options to load into the model

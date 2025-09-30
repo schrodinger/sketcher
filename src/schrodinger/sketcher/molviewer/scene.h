@@ -174,6 +174,13 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     bool isDuringAtomDrag();
 
+    /**
+     * Update the graphical items colors in response to a change in the
+     * background color (e.g. switching to/from dark mode).
+     */
+
+    void onBackgroundColorChanged();
+
   signals:
     /**
      * Request that the widget import the given text in the given format

@@ -56,7 +56,7 @@ AtomItem::AtomItem(const RDKit::Atom* atom, const Fonts& fonts,
     m_valence_error_pen.setWidthF(VALENCE_ERROR_BORDER_WIDTH);
     m_valence_error_pen.setStyle(Qt::DotLine);
     m_valence_error_pen.setCapStyle(Qt::RoundCap);
-    m_valence_error_brush = QBrush(VALENCE_ERROR_AREA_COLOR);
+    m_valence_error_brush = QBrush(settings.m_valence_error_area_color);
 
     // setup chirality pen
     m_chirality_pen = QPen(settings.m_annotation_color);
