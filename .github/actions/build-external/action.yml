@@ -10,7 +10,6 @@ inputs:
     required: true
   host-build:
     description: "Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)"
-    required: false
     default: false
 
 outputs:

@@ -1,10 +1,59 @@
 name: Nightly Build
 
 on:
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      release-branch:
+        description: 'Release branch to bump and merge (leave empty to skip)'
+        required: false
+        type: string
+      token:
+        description: 'Token with push permissions'
+        required: false
+        type: string
 
 jobs:
-  placeholder:
+  bump-release-branch:
     runs-on: ubuntu-latest
+    if: inputs.release-branch != ''
     steps:
-      - run: echo "Use 'Use workflow from' dropdown to select branch"
+      - uses: ./.github/actions/bump-version
+        with:
+          branch: ${{ inputs.release-branch }}
+          token: ${{ inputs.token }}
+
+  build-release-branch:
+    needs: bump-release-branch
+    if: inputs.release-branch != ''
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: ${{ inputs.release-branch }}
+
+  merge-to-main:
+    runs-on: ubuntu-latest
+    needs: bump-release-branch
+    if: inputs.release-branch != ''
+    steps:
+      - uses: ./.github/actions/checkout-and-configure-git
+        with:
+          ref: main
+          token: ${{ inputs.token }}
+      - name: Merge release branch into main
+        run: |
+          git fetch origin ${{ inputs.release-branch }}
+          git merge origin/${{ inputs.release-branch }} --no-ff -m "Merge ${{ inputs.release-branch }} into main"
+
+  bump-main-branch:
+    runs-on: ubuntu-latest
+    needs: merge-to-main
+    steps:
+      - uses: ./.github/actions/bump-version
+        with:
+          branch: main
+          token: ${{ inputs.token }}
+
+  build-main-branch:
+    needs: bump-main-branch
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: main
