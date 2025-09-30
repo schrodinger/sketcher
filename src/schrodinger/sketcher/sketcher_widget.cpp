@@ -12,6 +12,7 @@
 #include <QScreen>
 #include <QWidget>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/RDGeneral/Invariant.h>
@@ -276,7 +277,14 @@ static std::string extract_string(MolModel* mol_model, Format format,
     }
 
     auto mol = extract_mol(mol_model, subset);
-    return rdkit_extensions::to_string(*mol, format);
+    // remove the 3D conformer if one is present, since we don't want to
+    // serialize that
+    RDKit::ROMol mol_copy(*mol);
+    auto* default_conf = new RDKit::Conformer(mol_copy.getConformer());
+    mol_copy.clearConformers();
+    mol_copy.addConformer(default_conf);
+
+    return rdkit_extensions::to_string(mol_copy, format);
 }
 
 void SketcherWidget::addRDKitMolecule(const RDKit::ROMol& mol)
