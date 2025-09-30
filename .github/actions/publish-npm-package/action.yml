@@ -18,7 +18,7 @@ runs:
       run: |
         mv sketcher-wasm/* wasm/package/dist
 
-        SKETCHER_VERSION=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9+]")
+        SKETCHER_VERSION=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
         sed -i -e "s/<SKETCHER_VERSION>/$SKETCHER_VERSION/" wasm/package/package.json
 
         TAG_NAME=$(echo $SKETCHER_VERSION | awk -F . '{print "v"$1"-"$2}')
