@@ -1,0 +1,35 @@
+name: publish-npm-package
+description: Publishes the @schrodinger/sketcher npm package with the WASM artifacts
+
+outputs:
+  version:
+    description: The package version that was published the npm registry
+    value: ${{ steps.publish.outputs.published-version }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install node
+      uses: actions/setup-node@v5
+      with:
+        node-version: latest
+
+    - id: prepare-package
+      run: |
+        mv sketcher-wasm/* wasm/package/dist
+
+        SKETCHER_VERSION=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+        sed -i -e "s/<SKETCHER_VERSION>/$SKETCHER_VERSION/" wasm/package/package.json
+
+        TAG_NAME=$(echo $SKETCHER_VERSION | awk -F . '{print "v"$1"-"$2}')
+        echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+    
+    - id: publish
+      uses: schrodinger/action-npm-publish@v2
+      with:
+        path: wasm/package
+        pre-release: true
+        tag: ${{ steps.prepare-package.outputs.TAG_NAME }}
+        version-conflict-strategy: skip
+
