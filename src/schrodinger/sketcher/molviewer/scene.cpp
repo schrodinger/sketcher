@@ -571,11 +571,9 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
 
 void Scene::onBackgroundColorChanged()
 {
-    bool dark_mode =
-        m_sketcher_model->hasDarkColorScheme()
-            m_selection_highlighting_item->setPen(
-                dark_mode ? SELECTION_OUTLINE_COLOR_DARK_BG
-                          : SELECTION_OUTLINE_COLOR);
+    bool dark_mode = m_sketcher_model->hasDarkColorScheme();
+    m_selection_highlighting_item->setPen(
+        dark_mode ? SELECTION_OUTLINE_COLOR_DARK_BG : SELECTION_OUTLINE_COLOR);
     m_selection_highlighting_item->setBrush(
         dark_mode ? SELECTION_BACKGROUND_COLOR_DARK_BG
                   : SELECTION_BACKGROUND_COLOR);
