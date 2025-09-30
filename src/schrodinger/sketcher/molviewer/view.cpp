@@ -304,7 +304,7 @@ void View::updateCursor(const QPixmap& cursor_hint)
 {
     // get the arrow image, colored for either light or dark mode
     QColor arrow_color, outline_color;
-    if (m_sketcher_model->isDarkMode()) {
+    if (m_sketcher_model->hasDarkColorScheme()) {
         arrow_color = DARK_CURSOR_COLOR;
         outline_color = DARK_BACKGROUND_COLOR;
     } else {

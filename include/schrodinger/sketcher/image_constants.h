@@ -1,4 +1,7 @@
 #pragma once
+
+#include <unordered_set>
+
 #include <QColor>
 
 namespace schrodinger
@@ -43,6 +46,9 @@ enum class ColorScheme {
     /// very, very light gray structure (matches DARK_MODE's carbon color)
     WHITE_BLACK
 };
+
+const std::unordered_set<ColorScheme> DARK_MODE_COLOR_SCHEMES = {
+    ColorScheme::DARK_MODE, ColorScheme::WHITE_BLACK};
 
 /**
  * The default font size for atom labels, measured in Scene pixels
