@@ -92,6 +92,8 @@ class SKETCHER_API AtomDisplaySettings
      */
     qreal m_squiggle_pen_width = BOND_DEFAULT_PEN_WIDTH;
 
+    QColor m_valence_error_area_color = VALENCE_ERROR_AREA_COLOR;
+
   private:
     RDKit::ColourPalette m_color_palette;
 };

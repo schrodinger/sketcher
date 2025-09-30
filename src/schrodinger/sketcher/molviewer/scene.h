@@ -179,7 +179,7 @@ class SKETCHER_API Scene : public QGraphicsScene
      * background color (e.g. switching to/from dark mode).
      */
 
-    void onBackgroundColorChanged(const QColor& color);
+    void onBackgroundColorChanged();
 
   signals:
     /**

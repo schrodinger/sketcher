@@ -91,6 +91,9 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
 
+    connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
+            &Scene::onBackgroundColorChanged);
+
     connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
             &Scene::onModelValuesChanged);
     connect(m_sketcher_model, &SketcherModel::displaySettingsChanged, this,
@@ -566,11 +569,13 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
     }
 }
 
-void Scene::onBackgroundColorChanged(const QColor& color)
+void Scene::onBackgroundColorChanged()
 {
-    bool dark_mode = (color == DARK_BACKGROUND_COLOR);
-    m_selection_highlighting_item->setPen(
-        dark_mode ? SELECTION_OUTLINE_COLOR_DARK_BG : SELECTION_OUTLINE_COLOR);
+    bool dark_mode =
+        m_sketcher_model->hasDarkColorScheme()
+            m_selection_highlighting_item->setPen(
+                dark_mode ? SELECTION_OUTLINE_COLOR_DARK_BG
+                          : SELECTION_OUTLINE_COLOR);
     m_selection_highlighting_item->setBrush(
         dark_mode ? SELECTION_BACKGROUND_COLOR_DARK_BG
                   : SELECTION_BACKGROUND_COLOR);

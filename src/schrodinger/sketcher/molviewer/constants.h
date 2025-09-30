@@ -155,7 +155,7 @@ const QColor PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG = QColor("#555a54");
 // the color for drawing predictive highlighting for the move-rotate tool
 const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#eaeaea");
 const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG =
-    QColor("#555a54");
+    QColor("#4c4c4c");
 
 // the color of the dotted line around valence errors
 const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
@@ -210,6 +210,7 @@ const qreal VALENCE_ERROR_BORDER_WIDTH = 2.f;
 
 // the color of the area of valence errors
 const QColor VALENCE_ERROR_AREA_COLOR = QColor("#ffecc5");
+const QColor VALENCE_ERROR_AREA_COLOR_DARK_BG = QColor("#71471e");
 
 // the border size around the main element to define the valence error area
 const qreal VALENCE_ERROR_AREA_BORDER = 3.f;
