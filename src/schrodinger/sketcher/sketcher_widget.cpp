@@ -325,21 +325,17 @@ bool SketcherWidget::isEmpty() const
     return m_mol_model->isEmpty();
 }
 
-void SketcherWidget::setSelectOnlyMode(bool select_only_mode_enabled)
+void SketcherWidget::activateSelectOnlyMode(const SelectionTool tool)
 {
-    m_select_only_mode_active = select_only_mode_enabled;
-    setToolbarsVisible(!select_only_mode_enabled);
-    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(
-        select_only_mode_enabled);
-    if (select_only_mode_enabled) {
-        m_sketcher_model->setValues(
-            {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
-             {ModelKey::SELECTION_TOOL,
-              QVariant::fromValue(SelectionTool::RECTANGLE)}});
-    }
+    m_select_only_mode_active = true;
+    setToolbarsVisible(false);
+    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(true);
+    m_sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
+         {ModelKey::SELECTION_TOOL, QVariant::fromValue(tool)}});
 }
 
-void SketcherWidget::setColorScheme(ColorScheme color_scheme)
+void SketcherWidget::setColorScheme(const ColorScheme color_scheme)
 {
     m_sketcher_model->setColorScheme(color_scheme);
 }
