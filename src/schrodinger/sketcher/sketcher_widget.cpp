@@ -119,6 +119,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     m_ui->view->setScene(m_scene);
     m_ui->view->setMolModel(m_mol_model);
+    m_ui->view->setSketcherModel(m_sketcher_model);
     connect(m_scene, &Scene::importTextRequested, this,
             &SketcherWidget::importText);
     connect(m_scene, &Scene::showContextMenuRequested, this,

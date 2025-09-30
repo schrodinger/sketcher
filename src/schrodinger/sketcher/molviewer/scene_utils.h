@@ -118,8 +118,13 @@ SKETCHER_API QPixmap cursor_hint_from_svg(const QString& path,
 
 /**
  * @return A pixmap containing the arrow cursor
+ * @param arrow_color the color to use for the arrow itself
+ * @param outline_color the color to use for the thin outline around the arrow
+ * (used to ensure that the cursor doesn't disappear when its over something
+ * that's the same color as the arrow)
  */
-SKETCHER_API QPixmap get_arrow_cursor_pixmap();
+SKETCHER_API QPixmap get_arrow_cursor_pixmap(const QColor& arrow_color,
+                                             const QColor& outline_color);
 
 /**
  * Get a predictive hightlighting path for all atoms and bonds contained within
