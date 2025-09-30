@@ -10,6 +10,10 @@ on:
         description: 'Git ref to checkout'
         type: string
         default: ${{ github.ref }}
+      publish-npm-package:
+        description: Whether an npm package should be published with the WASM build artifacts
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -256,5 +260,5 @@ jobs:
           path: sketcher-wasm.tar.gz
 
       - name: Publish sketcher npm package
-        if: matrix.build-output == 'wasm' && github.event_name == 'workflow_call'
+        if: matrix.build-output == 'wasm' && inputs.publish-npm-package
         uses: ./.github/actions/publish-npm-package
