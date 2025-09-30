@@ -2,10 +2,14 @@ name: Sketcher Build and Test
 
 on:
   workflow_dispatch: ~
-  push: ~
   pull_request: ~
-  schedule:
-    - cron: "0 4 * * *"
+  merge_group: ~
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        default: ${{ github.ref }}
 
 jobs:
   build:
@@ -25,6 +29,8 @@ jobs:
         #     build-output: memtest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
         if: matrix.os == 'macos-latest'
