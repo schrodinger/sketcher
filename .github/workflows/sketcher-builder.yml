@@ -254,3 +254,7 @@ jobs:
         with:
           name: sketcher-${{ inputs.ref }}-${{ matrix.build-output }}
           path: sketcher-wasm.tar.gz
+
+      - name: Publish sketcher npm package
+        if: matrix.build-output == 'wasm' && github.event_name == 'workflow_call'
+        uses: ./.github/actions/publish-npm-package
