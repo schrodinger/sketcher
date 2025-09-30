@@ -57,6 +57,14 @@ const int SAVED_PICTURE_PADDING = 10;
 // smaller than 1 pt.
 const int VIEW_SCALE = std::floor(50 / BOND_LENGTH);
 
+// Mac uses a smaller default system cursor than other platforms, so we reduce
+// the size of our cursor on Mac
+#ifdef __APPLE__
+const qreal CURSOR_SCALE = 0.8;
+#else
+const qreal CURSOR_SCALE = 1.0;
+#endif
+
 const QString FONT_NAME = "Arimo";
 // Ratios for the size of specified font to the size of the atom label font.
 // Note that the atom label font size is declared in the public image_constants
@@ -68,7 +76,7 @@ const qreal MAPPING_FONT_RATIO = 0.5;
 const qreal QUERY_LABEL_FONT_RATIO = 0.5;
 const qreal CHIRALITY_FONT_RATIO = 0.6;
 const qreal SGROUP_FONT_RATIO = 1.0;
-const qreal CURSOR_HINT_FONT_RATIO = 1.0;
+const qreal CURSOR_HINT_FONT_RATIO = 1.0 * CURSOR_SCALE;
 
 // The font size used to display the number of bonds that the Draw Chain scene
 // tool will draw
@@ -343,20 +351,27 @@ const qreal DRAG_MERGE_HINT_WIDTH = 4.0;
 const QString ARROW_CURSOR_PATH = ":/icons/cursor-arrow.svg";
 
 // The "hotspot" of the above cursor image, i.e., (x, y) coordinates for where
-// in the image the click should happen
-const int CURSOR_HOTSPOT_X = 2;
-const int CURSOR_HOTSPOT_Y = 5;
+// in the image the click should happen. (Note that we don't bother to multiply
+// these values by CURSOR_SCALE because we can't put 0.8 into an integer.
+// Instead, we translate the image in get_arrow_cursor_pixmap to keep the
+// hotspot in the right place.)
+const int CURSOR_HOTSPOT_X = 1;
+const int CURSOR_HOTSPOT_Y = 1;
 
 // When attaching a hint image to the cursor, the (x, y) coordinates of the
 // upper-left corner of the hint
-const int CURSOR_HINT_X = 16;
-const int CURSOR_HINT_Y = 18;
+const int CURSOR_HINT_X = 15 * CURSOR_SCALE;
+const int CURSOR_HINT_Y = 13 * CURSOR_SCALE;
 
 // The maximum allowable width and height for a cursor hint image generated from
 // a toolbar icon.  Note that the cursor hint image won't necessarily be a
 // square of this exact size due to both the aspect ratio and because the image
 // is cropped after resizing.
-const int CURSOR_HINT_IMAGE_SIZE = 28;
+const int CURSOR_HINT_IMAGE_SIZE = 28 * CURSOR_SCALE;
+
+// the colors for the cursor arrow
+const QColor LIGHT_CURSOR_COLOR = DARK_BACKGROUND_COLOR;
+const QColor DARK_CURSOR_COLOR = LIGHT_BACKGROUND_COLOR;
 
 // The maximum number of atoms that can be imported at once. Attempting to
 // import a molecule or reaction with too many atoms will result in an error

@@ -462,6 +462,11 @@ class SKETCHER_API SketcherModel : public QObject
     QColor getBackgroundColor() const;
 
     /**
+     * @return whether the current color scheme uses a dark background
+     */
+    bool hasDarkColorScheme() const;
+
+    /**
      * @param opts render options to load into the model
      */
     void loadRenderOptions(const RenderOptions& opts);
