@@ -1,0 +1,16 @@
+{
+  "name": "@schrodinger/sketcher",
+  "version": "<SKETCHER_VERSION>",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/schrodinger/sketcher"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "dist"
+  ]
+}
