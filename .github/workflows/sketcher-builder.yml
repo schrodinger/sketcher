@@ -245,12 +245,12 @@ jobs:
             # ".exe" on Windows, no extension everywhere else
             EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
-          name: sketcher-${{ matrix.os }}-${{ matrix.build-output }}${{env.EXT}}
+          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
           path: build/sketcher_app${{env.EXT}}
 
       - name: Download wasm tarball
         if: matrix.build-output == 'wasm'
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher-${{ matrix.build-output }}.tar.gz
+          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output }}
           path: sketcher-wasm.tar.gz
