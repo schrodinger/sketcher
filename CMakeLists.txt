@@ -99,7 +99,6 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                         BOOST_BEAST_HEADER_ONLY)
     if(WIN32)
-      target_compile_definitions(${TARGET} PRIVATE CHEMDRAW_BUILD)
       target_link_libraries(${TARGET} PUBLIC -static)
     endif()
   endif()
