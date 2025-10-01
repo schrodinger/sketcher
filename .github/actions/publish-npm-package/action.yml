@@ -15,6 +15,7 @@ runs:
         node-version: latest
 
     - id: prepare-package
+      shell: bash
       run: |
         mv sketcher-wasm/* wasm/package/dist
 
