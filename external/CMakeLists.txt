@@ -157,6 +157,7 @@ ExternalProject_Add(
     -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
     -DBOOST_IOSTREAMS_ENABLE_ZSTD=ON
     -DBOOST_IOSTREAMS_ZSTD_TARGET=zstd::libzstd_static
+    -DRDK_BUILD_CHEMDRAW_SUPPORT=OFF
     ${EXTRA_BOOST_CMAKE_ARGS})
 
 # building boost::beast will fail on wasm builds because it pulls in
