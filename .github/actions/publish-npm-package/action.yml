@@ -50,7 +50,7 @@ runs:
 
           # Error == 404 means this package version does not already exist so we can publish
           if [[ "$error_code" == "E404" ]]; then
-            npm publish --dry-run --tag $TAG_NAME --access public
+            npm publish --tag $TAG_NAME --access public
           else
             echo "Unexpected error while retrieving package details:" >&2
             echo $npm_error >&2
