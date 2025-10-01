@@ -157,7 +157,6 @@ ExternalProject_Add(
     -DBOOST_IOSTREAMS_ENABLE_LZMA=OFF
     -DBOOST_IOSTREAMS_ENABLE_ZSTD=ON
     -DBOOST_IOSTREAMS_ZSTD_TARGET=zstd::libzstd_static
-    -DRDK_BUILD_CHEMDRAW_SUPPORT=OFF
     ${EXTRA_BOOST_CMAKE_ARGS})
 
 # building boost::beast will fail on wasm builds because it pulls in
@@ -237,6 +236,7 @@ ExternalProject_Add(
     -DRDK_INSTALL_STATIC_LIBS=${RDKIT_INSTALL_STATIC_LIBS_VAL}
     -DRDK_OPTIMIZE_POPCNT=OFF
     -DRDK_USE_BOOST_STACKTRACE=OFF
+    -DRDK_BUILD_CHEMDRAW_SUPPORT=OFF
     ${EXTRA_RDKIT_CMAKE_ARGS})
 
 # Build Qt library
