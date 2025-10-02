@@ -14,9 +14,7 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 
 BOOST_AUTO_TEST_CASE(test_get_import_export_formats)
 {
-    // ChemDraw format is disabled as of SKETCH-2543
-    // BOOST_TEST(get_import_formats().size() == 12);
-    BOOST_TEST(get_import_formats().size() == 11);
+    BOOST_TEST(get_import_formats().size() == 12);
     BOOST_TEST(get_standard_export_formats().size() == 11);
     BOOST_TEST(get_reaction_export_formats().size() == 5);
     BOOST_TEST(get_image_export_formats().size() == 2);
