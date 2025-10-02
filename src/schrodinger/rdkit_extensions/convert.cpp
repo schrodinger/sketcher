@@ -541,7 +541,9 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 // crash the Sketcher.  This #ifndef should be removed as part
                 // of SKETCH-2357.
                 Format::MRV,
-                Format::CDXML,
+        // Support for CDXML has been disabled
+        // due to build issues (SKETCH-2543)
+        // Format::CDXML,
 #endif
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
@@ -720,9 +722,11 @@ to_rdkit_reaction(const std::string& text, const Format format)
                 Format::RDMOL_BINARY_BASE64,
                 Format::MDL_MOLV2000,
 #ifndef __EMSCRIPTEN__
-                // CDXML doesn't parse correctly in WASM builds and may crash
-                // the Sketcher. See SKETCH-2357.
-                Format::CDXML,
+        // CDXML doesn't parse correctly in WASM builds and may crash
+        // the Sketcher. See SKETCH-2357.
+        // Support for CDXML has been disabled
+        // due to build issues (SKETCH-2543)
+        // Format::CDXML,
 #endif
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,

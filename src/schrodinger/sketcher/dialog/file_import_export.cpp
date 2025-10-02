@@ -29,7 +29,9 @@ FormatList<Format> get_import_formats()
         // crash the Sketcher.  This #ifndef should be removed as part
         // of SKETCH-2357.
         {Format::MRV, "Marvin Document"},
-        {Format::CDXML, "ChemDraw XML"},
+    // Support for CDXML has been disabled
+    // due to build issues (SKETCH-2543)
+    // {Format::CDXML, "ChemDraw XML"},
 #endif
     };
     std::vector<std::tuple<Format, std::string>> rxn_import_formats = {
