@@ -60,3 +60,15 @@ index 40bd8b31b..50544ef2b 100644
    endif()
    IF(RDKLIB_LINK_LIBRARIES)
      target_link_libraries(${RDKLIB_NAME} PUBLIC ${RDKLIB_LINK_LIBRARIES})
+diff --git a/External/ChemDraw/CMakeLists.txt b/External/ChemDraw/CMakeLists.txt
+index d4e88ebc..7a7dc67f 100644
+--- a/External/ChemDraw/CMakeLists.txt
++++ b/External/ChemDraw/CMakeLists.txt
+@@ -96,6 +96,7 @@ endif()
+   endif()
+ 
+   install(TARGETS ChemDraw DESTINATION ${RDKit_LibDir})
++  install(TARGETS expat EXPORT ${RDKit_EXPORTED_TARGETS} COMPONENT dev)
+ 
+   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+       set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-comment -Wno-parentheses -Wno-logical-op-parentheses -Wno-pointer-bool-conversion -Wno-unused-value -Wno-unsequenced -Wno-constant-logical-operand")
