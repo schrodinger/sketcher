@@ -5,18 +5,20 @@ on:
     inputs:
       release-branch:
         description: 'Release branch to bump and merge (leave empty to skip)'
-        default: 2025-4
         type: string
   schedule:
     - cron: '0 4 * * *'
 
+env:
+  DEFAULT_RELEASE_BRANCH: 2025-4
+
 jobs:
   # Create Nightly Builds
   build-release-branch:
-    if: inputs.release-branch != ''
+    if: ${{ inputs.release-branch != '' || github.event_name == 'schedule' }}
     uses: ./.github/workflows/sketcher-builder.yml
     with:
-      ref: ${{ inputs.release-branch }}
+      ref: ${{ inputs.release-branch || env.DEFAULT_RELEASE_BRANCH }}
       publish-npm-package: true
   build-main-branch:
     uses: ./.github/workflows/sketcher-builder.yml
