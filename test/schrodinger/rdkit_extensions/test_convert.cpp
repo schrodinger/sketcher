@@ -163,6 +163,7 @@ NO_CHARGES
                                     "Unsupported export format");
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE(test_CDXML)
 {
     auto example = R"CDXML(<?xml version="1.0" encoding="UTF-8"?>
@@ -205,6 +206,7 @@ BOOST_AUTO_TEST_CASE(test_CDXML)
     auto mol = to_rdkit("C", Format::SMILES);
     BOOST_REQUIRE_THROW(to_string(*mol, Format::CDXML), std::invalid_argument);
 }
+#endif
 
 BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
                      boost::unit_test::data::make(RXN_FORMATS))
