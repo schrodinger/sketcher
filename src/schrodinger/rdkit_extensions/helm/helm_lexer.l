@@ -8,6 +8,14 @@
  *          flex helm_lexer.l
  */
 
+/* We must include stdint.h before the generated file tries to define its own
+ * integral limits.  Otherwise, MSVC will complain about the macros being
+ * redefined when it gets transitively included later
+ */
+%top{
+#include <stdint.h>
+}
+
 %{
 
 #include <string>
