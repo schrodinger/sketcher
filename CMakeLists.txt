@@ -82,7 +82,7 @@ function(setup_target TARGET)
   endif()
   # Compilation optimization, warnings, and error handling
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE)
+    target_compile_options(${TARGET} PRIVATE -WX)
   elseif(WIN32)
     target_compile_options(
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
@@ -207,7 +207,7 @@ if(EMSCRIPTEN)
 endif()
 
 if(WIN32)
-target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${PROJECT_BINARY_DIR}/CMakeFiles/sketcher.dir/sketcher_autogen/PMZGBCCIHK/qrc_sketcher.cpp.obj
+target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Boost::filesystem Qt6::Widgets ${PROJECT_BINARY_DIR}/CMakeFiles/sketcher.dir/sketcher_autogen/PMZGBCCIHK/qrc_sketcher.cpp.obj
                                             ${SKETCHER_TARGET})
 else()
 target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
