@@ -76,7 +76,10 @@ function(setup_target TARGET)
   endif()
   # Compilation optimization, warnings, and error handling
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE -WX)
+    target_compile_options(${TARGET} PRIVATE -WX -EHsc)
+    if(${BUILD_SHARED_LIBS})
+        target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
+    endif()
   elseif(WIN32)
     target_compile_options(
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
@@ -170,6 +173,7 @@ build_schrodinger_library(${SKETCHER_TARGET})
 target_link_libraries(
   ${SKETCHER_TARGET}
   PRIVATE Boost::boost
+          Boost::filesystem
           fmt::fmt
           Qt6::Svg
           Qt6::SvgWidgets
@@ -196,7 +200,10 @@ if(EMSCRIPTEN)
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
 target_link_libraries(
-  ${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${SKETCHER_TARGET}
+  ${APP_TARGET} PRIVATE Boost::boost
+                        Boost::filesystem
+                        Qt6::Widgets
+                        ${SKETCHER_TARGET}
                         ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
@@ -237,6 +244,10 @@ if(ENABLE_TESTING)
     target_include_directories(${TEST_TARGET}
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
     target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+    if(MSVC)
+        # ignore discarded [[nodiscard]] values for the tests
+        target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
+    endif()
     enable_qt_moc(${TEST_TARGET})
     if(EMSCRIPTEN)
       set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)

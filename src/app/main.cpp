@@ -126,7 +126,9 @@ void apply_stylesheet(QApplication& app)
 int main(int argc, char** argv)
 {
     QApplication application(argc, argv);
+#ifdef SKETCHER_STATIC_DEFINE
     Q_INIT_RESOURCE(sketcher);
+#endif
 
 #ifdef __EMSCRIPTEN__
     // Only apply this stylesheet for the WASM build
