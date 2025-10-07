@@ -10,10 +10,9 @@ namespace sketcher
 void AbstractAtomOrBondDisplaySettings::setColorScheme(
     const ColorScheme& scheme, const QColor& carbon_color)
 {
-    m_annotation_color =
-        (scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK)
-            ? ANNOTATION_COLOR_DARK_BG
-            : ANNOTATION_COLOR;
+    m_annotation_color = DARK_MODE_COLOR_SCHEMES.contains(scheme)
+                             ? ANNOTATION_COLOR_DARK
+                             : ANNOTATION_COLOR;
 }
 
 void AbstractAtomOrBondDisplaySettings::populatePaletteForColorScheme(
