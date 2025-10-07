@@ -448,12 +448,6 @@ int SketcherModel::getFontSize() const
     return m_font_size;
 }
 
-bool SketcherModel::hasDarkColorScheme() const
-{
-    return (m_color_scheme == ColorScheme::DARK_MODE ||
-            m_color_scheme == ColorScheme::WHITE_BLACK);
-}
-
 void SketcherModel::loadRenderOptions(const RenderOptions& opts)
 {
     m_font_size = opts.font_size;

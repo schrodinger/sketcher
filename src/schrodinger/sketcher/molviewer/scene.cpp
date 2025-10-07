@@ -577,7 +577,7 @@ void Scene::onBackgroundColorChanged()
     m_selection_highlighting_item->setBrush(
         dark_mode ? SELECTION_BACKGROUND_COLOR_DARK_BG
                   : SELECTION_BACKGROUND_COLOR);
-    m_scene_tool->loadColors(dark_mode);
+    m_scene_tool->updateColorsAfterBackgroundColorChange(dark_mode);
 }
 
 void Scene::onMolModelSelectionChanged()
@@ -722,7 +722,8 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
             &Scene::onAtomDragFinished);
     requestCursorHintUpdate();
     // set the correct colors for the new scene tool
-    m_scene_tool->loadColors(m_sketcher_model->hasDarkColorScheme());
+    m_scene_tool->updateColorsAfterBackgroundColorChange(
+        m_sketcher_model->hasDarkColorScheme());
 }
 
 void Scene::requestCursorHintUpdate()

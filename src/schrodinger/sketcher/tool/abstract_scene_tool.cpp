@@ -162,7 +162,7 @@ void AbstractSceneTool::onStructureUpdated()
 {
 }
 
-void AbstractSceneTool::loadColors(bool)
+void AbstractSceneTool::updateColorsAfterBackgroundColorChange(bool)
 {
 }
 

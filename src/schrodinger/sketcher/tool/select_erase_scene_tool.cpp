@@ -48,11 +48,12 @@ SelectSceneTool<T>::SelectSceneTool(Scene* scene, MolModel* mol_model) :
     m_select_item.setVisible(false);
 }
 
-template <typename T> void SelectSceneTool<T>::loadColors(bool is_dark_mode)
+template <typename T> void
+SelectSceneTool<T>::updateColorsAfterBackgroundColorChange(bool is_dark_mode)
 {
     m_select_item.setPen(is_dark_mode ? SELECT_TOOL_LINE_COLOR_DARK_BG
                                       : SELECT_TOOL_LINE_COLOR);
-    StandardSceneToolBase::loadColors(is_dark_mode);
+    StandardSceneToolBase::updateColorsAfterBackgroundColorChange(is_dark_mode);
 }
 
 template <typename T> void

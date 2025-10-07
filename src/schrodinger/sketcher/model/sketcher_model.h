@@ -450,8 +450,6 @@ class SKETCHER_API SketcherModel : public QObject
      */
     std::pair<ColorScheme, ColorScheme> getColorSchemes() const;
 
-    bool hasDarkColorScheme() const;
-
     /**
      * @return whether the current color scheme uses a dark background
      */

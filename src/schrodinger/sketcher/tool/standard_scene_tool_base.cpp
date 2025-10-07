@@ -63,7 +63,8 @@ StandardSceneToolBase::StandardSceneToolBase(Scene* scene,
 {
 }
 
-void StandardSceneToolBase::loadColors(bool is_dark_mode)
+void StandardSceneToolBase::updateColorsAfterBackgroundColorChange(
+    bool is_dark_mode)
 {
     auto color = is_dark_mode ? PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
                               : PREDICTIVE_HIGHLIGHTING_COLOR;
