@@ -46,6 +46,10 @@ jobs:
       - name: Install Python packages
         run: python3 -m pip install clang-format==14.0.6 cmake==3.24 ninja==1.13.0
 
+      - name: Setup MSVC
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
