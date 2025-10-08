@@ -644,14 +644,6 @@ bool AtomItem::determineLabelIsVisible() const
     if (m_atom->getFormalCharge() != 0) {
         return true;
     }
-    if (m_atom->getNumExplicitHs()) {
-        // "explicit" hydrogens (at least according to RDKit) are hydrogens that
-        // are involved in determining a stereocenter. We always want to draw
-        // these since RDKit won't automatically remove them if we add another
-        // bond to this atom. This can lead to valence errors, so we don't want
-        // them to be a surprise to the user.
-        return true;
-    }
     int num_bonds = m_atom->getDegree();
     if (num_bonds == 0) {
         return true;
