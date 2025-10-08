@@ -103,9 +103,9 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
 
 static bool is_nucleic_acid(const RDKit::ROMol& polymer)
 {
-    auto polymerId = polymer.getProp<std::string>(POLYMER_ID);
-    return boost::starts_with(polymerId, "DNA") ||
-           boost::starts_with(polymerId, "RNA");
+    auto polymer_id = polymer.getProp<std::string>(POLYMER_ID);
+    return boost::starts_with(polymer_id, "DNA") ||
+           boost::starts_with(polymer_id, "RNA");
 }
 
 /**
@@ -572,6 +572,37 @@ static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
     return (*lowest_point).y - (*highest_point).y - MONOMER_BOND_LENGTH;
 }
 
+static void translate_polymer(RDKit::ROMol& polymer_to_translate,
+                              const RDKit::ROMol& reference_polymer)
+{
+    auto polymer_bonds =
+        get_bonds_between_polymers(polymer_to_translate, reference_polymer);
+    auto pos_offset = RDGeom::Point3D(0, 0, 0);
+    if (polymer_bonds.empty()) {
+        auto y_offset =
+            get_y_offset_for_polymer(polymer_to_translate, reference_polymer);
+        pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
+    } else {
+        auto& monomer_coords = polymer_to_translate.getConformer().getAtomPos(
+            polymer_bonds[0].first);
+        auto& placed_monomer_coords =
+            reference_polymer.getConformer().getAtomPos(
+                polymer_bonds[0].second);
+        auto y_offset =
+            get_y_offset_for_polymer(polymer_to_translate, reference_polymer);
+        // This is where the monomer on this polymer should end up after
+        // translation - directly under the placed monomer so the bond
+        // is vertical
+        auto translated_monomer_coords = RDGeom::Point3D(
+            placed_monomer_coords.x, monomer_coords.y + y_offset,
+            placed_monomer_coords.z);
+        pos_offset = translated_monomer_coords - monomer_coords;
+    }
+    for (auto& pos : polymer_to_translate.getConformer().getPositions()) {
+        pos += pos_offset;
+    }
+}
+
 /**
  * Adds a conformer to the monomer_mol copying all the coordinates from the
  * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX prop
@@ -705,18 +736,6 @@ is_double_stranded_nucleic_acid(const RDKit::ROMol& monomer_mol,
     if (polymer_bonds.size() < 1) {
         return false;
     }
-    compute_full_ring_info(monomer_mol);
-    if (monomer_mol.getRingInfo()->numRings() > 0) {
-        // reset ring info so it can get recomputed by the appropriate layout
-        // method
-        monomer_mol.getRingInfo()->reset();
-        return false;
-    }
-    for (auto monomer : monomer_mol.atoms()) {
-        if (monomer->getProp<bool>(BRANCH_MONOMER)) {
-            return false;
-        }
-    }
     return true;
 }
 
@@ -735,6 +754,7 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
         // strands run anti-parallel to each other
         lay_out_polymer(*polymers[0]);
         lay_out_polymer(*polymers[1], true);
+        translate_polymer(*polymers[1], *polymers[0]);
     } else {
         for (size_t i = 0; i < polymers.size(); i++) {
             auto polymer = polymers[i];
@@ -749,31 +769,7 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
             auto rotate_polymer =
                 !polymer_bonds.empty() && (polymer_bonds.size() > 1);
             lay_out_polymer(*polymer, rotate_polymer);
-
-            auto pos_offset = RDGeom::Point3D(0, 0, 0);
-            if (polymer_bonds.empty()) {
-                auto y_offset =
-                    get_y_offset_for_polymer(*polymer, *last_polymer);
-                pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
-            } else {
-                auto& monomer_coords =
-                    polymer->getConformer().getAtomPos(polymer_bonds[0].first);
-                auto& placed_monomer_coords =
-                    last_polymer->getConformer().getAtomPos(
-                        polymer_bonds[0].second);
-                auto y_offset =
-                    get_y_offset_for_polymer(*polymer, *last_polymer);
-                // This is where the monomer on this polymer should end up after
-                // translation - directly under the placed monomer so the bond
-                // is vertical
-                auto translated_monomer_coords = RDGeom::Point3D(
-                    placed_monomer_coords.x, monomer_coords.y + y_offset,
-                    placed_monomer_coords.z);
-                pos_offset = translated_monomer_coords - monomer_coords;
-            }
-            for (auto& pos : polymer->getConformer().getPositions()) {
-                pos += pos_offset;
-            }
+            translate_polymer(*polymer, *last_polymer);
         }
     }
 
