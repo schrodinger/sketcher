@@ -43,7 +43,7 @@ class SKETCHER_API MoveRotateSceneTool : public StandardSceneToolBase
     virtual void
     onLeftButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
     virtual void
-    updateColorsAfterBackgroundColorChange(bool dark_mode) override;
+    updateColorsAfterBackgroundColorChange(bool has_dark_color_scheme) override;
     virtual void onSelectionChanged() override;
     virtual void onStructureUpdated() override;
     QPixmap createDefaultCursorPixmap() const override;
