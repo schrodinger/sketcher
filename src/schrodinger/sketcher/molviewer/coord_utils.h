@@ -233,8 +233,11 @@ SKETCHER_API qreal get_rounded_angle_radians(const QPointF& start,
  *
  * @param line[in,out] The line to trim
  * @param subrect[in] The rectangle to trim to
+ * @param min_length[in] The minimum length the line should be.  The line will
+ * not be trimmed to less than this.
  */
-SKETCHER_API void trim_line_to_rect(QLineF& line, const QRectF& subrect);
+SKETCHER_API void trim_line_to_rect(QLineF& line, const QRectF& subrect,
+                                    qreal min_length = 0);
 
 /**
  * Calculate the intersection point (if any) of a line and a rectangle.  See

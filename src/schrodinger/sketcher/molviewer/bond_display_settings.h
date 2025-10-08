@@ -3,8 +3,10 @@
 #include <QtGlobal>
 #include <QColor>
 
-#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/image_constants.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_bond_display_settings.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
 {
@@ -14,13 +16,15 @@ namespace sketcher
 /**
  * An object used to store all settings relevant to BondItems
  */
-class BondDisplaySettings
+class SKETCHER_API BondDisplaySettings
+    : public AbstractAtomOrBondDisplaySettings
 {
   public:
-    BondDisplaySettings() = default;
+    BondDisplaySettings();
     // Prevent implicit copies, since that could cause bugs, as the Scene shares
     // a single BondDisplaySettings object with all BondItems.
     explicit BondDisplaySettings(const BondDisplaySettings&) = default;
+    virtual ~BondDisplaySettings() = default;
     /// The width of the pen to use for drawing bond lines
     qreal m_bond_width = BOND_DEFAULT_PEN_WIDTH;
     /// How far apart to draw the lines of a double (or triple) bond
@@ -30,11 +34,9 @@ class BondDisplaySettings
     /// The distance between hash marks in "down" (i.e. dashed) wedges
     qreal m_hash_spacing = DEFAULT_BOND_HASH_SPACING;
     /// The bond color
-    QColor m_color = Qt::black;
+    QColor m_color;
     /// Whether to display stereochemistry labels when present
     bool m_stereo_labels_shown = true;
-    /// The color of the annotation text
-    QColor m_annotation_color = ANNOTATION_COLOR;
 
     /**
      * Scale bond width by the specified value.  Note that double bond spacing
@@ -51,7 +53,8 @@ class BondDisplaySettings
      * color of annotations (which is lighter on dark modes)
      * @param scheme The color scheme to use
      */
-    void setColorScheme(const ColorScheme& scheme);
+    void setColorScheme(const ColorScheme& scheme,
+                        const QColor& carbon_color = QColor()) override;
 };
 } // namespace sketcher
 } // namespace schrodinger

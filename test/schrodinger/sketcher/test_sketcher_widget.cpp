@@ -2,6 +2,8 @@
 
 #include <string>
 
+#include <QString>
+
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
@@ -11,6 +13,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -26,6 +29,8 @@ using schrodinger::rdkit_extensions::RXN_FORMATS;
 using schrodinger::rdkit_extensions::to_rdkit;
 using schrodinger::rdkit_extensions::to_rdkit_reaction;
 using schrodinger::rdkit_extensions::to_string;
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::ColorScheme)
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
@@ -108,6 +113,32 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
     sk.addFromString(text);
 
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
+}
+
+/**
+ * Make sure that we export PDB files with a single model, even if the MolModel
+ * mol stores 3d coordinates in a second conformer.
+ */
+BOOST_AUTO_TEST_CASE(test_PDB_format_single_model)
+{
+    std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCC"));
+    auto conf = new RDKit::Conformer(3);
+    conf->set3D(true);
+    conf->setAtomPos(0, {1, 1, 1});
+    conf->setAtomPos(1, {2, 2, 2});
+    conf->setAtomPos(2, {3, 3, 3});
+    mol_to_add->addConformer(conf, true);
+
+    TestSketcherWidget sk;
+    sk.addRDKitMolecule(*mol_to_add);
+    // RDKit mol exports should contain both the 2D and the 3D conformers
+    auto mol_out = sk.getRDKitMolecule();
+    BOOST_TEST(mol_out->getNumConformers() == 2);
+
+    auto pdb_text = sk.getString(Format::PDB);
+    auto pdb_qtext = QString::fromStdString(pdb_text);
+    BOOST_TEST(!pdb_qtext.contains("MODEL"));
+    BOOST_TEST(pdb_qtext.count("HETATM") == 3);
 }
 
 /**
@@ -479,28 +510,34 @@ BOOST_AUTO_TEST_CASE(test_zoom_on_small_molecule)
 BOOST_DATA_TEST_CASE(test_auto_detect_through_sketcher_interface,
                      boost::unit_test::data::make(MOL_FORMATS))
 {
-    std::string reference = "c1ccccc1";
-    auto mol = to_rdkit(reference, Format::SMILES);
-    auto text = to_string(*mol, sample);
+    std::string orig_smiles = "c1ccccc1";
+    auto mol = to_rdkit(orig_smiles, Format::SMILES);
+    ::schrodinger::rdkit_extensions::update_2d_coordinates(*mol);
+    auto input_string = to_string(*mol, sample);
 
-    if (sample == Format::MAESTRO || sample == Format::INCHI ||
-        sample == Format::PDB || sample == Format::XYZ) {
-        // these exports force kekulization
-        reference = "C1=CC=CC=C1";
-    } else if (sample == Format::SMARTS || sample == Format::EXTENDED_SMARTS ||
-               sample == Format::MDL_MOLV2000 ||
-               sample == Format::MDL_MOLV3000 || sample == Format::MRV) {
+    Format export_format = sample;
+    std::string reference = input_string;
+    // this test doesn't work for some formats, so just sanity check the SMILES
+    // string in those cases
+    if (sample == Format::MDL_MOLV2000) {
+        // Sketcher doesn't support exporting to V2000
+        export_format = Format::SMILES;
+        // we'll lose aromaticity information for atoms when converting to a
+        // molblock, so we can't use the original SMILES string
         reference = "C1:C:C:C:C:C:1";
+    } else if (sample == Format::RDMOL_BINARY_BASE64) {
+        // we won't get bit-for-bit fidelity with the round-trip
+        export_format = Format::SMILES;
+        reference = orig_smiles;
     }
-    // all other formats should roundtrip the aromatic input
 
     // Check roundtripping and auto-detect
     TestSketcherWidget sk;
-    sk.addFromString(text, sample);
-    BOOST_TEST(sk.getString(Format::SMILES) == reference);
+    sk.addFromString(input_string, sample);
+    BOOST_TEST(sk.getString(export_format) == reference);
     sk.clear();
-    sk.addFromString(text);
-    BOOST_TEST(sk.getString(Format::SMILES) == reference);
+    sk.addFromString(input_string);
+    BOOST_TEST(sk.getString(export_format) == reference);
 }
 
 BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
@@ -692,4 +729,55 @@ BOOST_AUTO_TEST_CASE(test_wasm_API)
     assert_roundtrip(read_rxn, "rxn_r_group.rxn");
     assert_roundtrip(read_rxn, "rxn_aryl.rxn");
     assert_roundtrip(read_rxn, "reaction_smarts.rsmi");
+}
+
+/**
+ * Make sure that we can select atoms/bonds and retrieve the selection via the
+ * SketcherWidget.  Also make sure that the selected atoms/bonds belong to the
+ * molecule returned by getRDKitMolecule.
+ */
+BOOST_AUTO_TEST_CASE(test_selection)
+{
+    TestSketcherWidget sk;
+    sk.addFromString("NCCC");
+    auto mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    // make sure that getRDKitMolecule return the same molecule twice in a row
+    BOOST_TEST(mol.get() == sk.getRDKitMolecule().get());
+
+    sk.select({mol->getAtomWithIdx(0)},
+              {mol->getBondWithIdx(0), mol->getBondWithIdx(1)});
+    auto sel_atoms = sk.getSelectedAtoms();
+    BOOST_TEST(sel_atoms.size() == 1);
+    auto* atom = *sel_atoms.begin();
+    BOOST_TEST(atom->hasOwningMol());
+    // make sure that the atom is owned by mol
+    BOOST_TEST(&atom->getOwningMol() == mol.get());
+
+    auto sel_bonds = sk.getSelectedBonds();
+    BOOST_TEST(sel_bonds.size() == 2);
+    auto* bond = *sel_bonds.begin();
+    BOOST_TEST(bond->hasOwningMol());
+    BOOST_TEST(&bond->getOwningMol() == mol.get());
+
+    // make sure that the sk.getRDKitMolecule() return value is updated when the
+    // underlying molecule changes
+    sk.addFromString("C");
+    auto new_mol = sk.getRDKitMolecule();
+    BOOST_TEST(new_mol->getNumAtoms() == 5);
+    BOOST_TEST(mol.get() != new_mol.get());
+}
+
+/*
+ * Make sure that the color scheme doesn't get reset when events are processed
+ */
+BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)
+{
+    TestSketcherWidget sk;
+    sk.setColorScheme(ColorScheme::DARK_MODE);
+    QCoreApplication::processEvents();
+    BOOST_TEST(sk.m_sketcher_model->getColorScheme() == ColorScheme::DARK_MODE);
+    // make sure that the bond color is close to white for dark mode
+    auto bond_color = sk.m_sketcher_model->getBondDisplaySettingsPtr()->m_color;
+    BOOST_TEST(bond_color.lightnessF() > 0.9);
 }

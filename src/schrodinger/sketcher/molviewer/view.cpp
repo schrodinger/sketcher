@@ -14,10 +14,12 @@
 #include <QWheelEvent>
 #include <QWheelEvent>
 
-#include "schrodinger/sketcher/molviewer/scene.h"
-#include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/model/mol_model.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 
 namespace schrodinger
 {
@@ -171,7 +173,7 @@ void View::zoomOutToIncludeAll()
     fitRecToScreen(rec);
 }
 
-void View::fitToScreen()
+void View::fitToScreen(bool selection_only)
 {
     if (!m_initial_geometry_set) {
         // If the view hasn't been shown yet then it doesn't know how large it
@@ -187,7 +189,8 @@ void View::fitToScreen()
     if (!cur_scene) {
         return;
     }
-    QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
+    QRectF rec = cur_scene->getInteractiveItemsBoundingRect(
+        InteractiveItemFlag::ALL, selection_only);
     // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
     // molecule too close to the border
     rec.adjust(-rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
@@ -211,12 +214,20 @@ void View::fitRecToScreen(const QRectF& rec)
     enlargeSceneIfNeeded();
 }
 
-void View::setMolModel(schrodinger::sketcher::MolModel* mol_model)
+void View::setMolModel(MolModel* mol_model)
 {
     m_mol_model = mol_model;
-    connect(mol_model, &MolModel::newMoleculeAdded, this, &View::fitToScreen);
+    connect(mol_model, &MolModel::newMoleculeAdded, this,
+            &View::fitAllToScreen);
     connect(mol_model, &MolModel::modelChanged, this,
             &View::zoomOutToIncludeAll);
+}
+
+void View::setSketcherModel(SketcherModel* sketcher_model)
+{
+    m_sketcher_model = sketcher_model;
+    connect(sketcher_model, &SketcherModel::displaySettingsChanged, this,
+            &View::onNewCursorColorRequested);
 }
 
 void View::translateViewportFromScreenCoords(
@@ -278,28 +289,49 @@ void View::showEvent(QShowEvent* event)
     }
 }
 
+void View::onNewCursorColorRequested()
+{
+    updateCursor(m_cursor_hint);
+}
+
 void View::onNewCursorHintRequested(const QPixmap& cursor_hint)
 {
-    if (cursor_hint.isNull()) {
-        unsetCursor();
+    m_cursor_hint = cursor_hint;
+    updateCursor(cursor_hint);
+}
+
+void View::updateCursor(const QPixmap& cursor_hint)
+{
+    // get the arrow image, colored for either light or dark mode
+    QColor arrow_color, outline_color;
+    if (m_sketcher_model->hasDarkColorScheme()) {
+        arrow_color = DARK_CURSOR_COLOR;
+        outline_color = DARK_BACKGROUND_COLOR;
     } else {
-        auto arrow = get_arrow_cursor_pixmap();
-        // Without the +1, the right-most column and bottom-most row of inset's
-        // pixels are cut off
-        int combined_width =
-            std::max(arrow.width(), CURSOR_HINT_X + cursor_hint.width() + 1);
-        int combined_height =
-            std::max(arrow.height(), CURSOR_HINT_Y + cursor_hint.height() + 1);
-        QPixmap combined = QPixmap(combined_width, combined_height);
-        combined.fill(Qt::transparent);
-        {
-            QPainter painter(&combined);
-            painter.drawPixmap(0, 0, arrow);
-            painter.drawPixmap(CURSOR_HINT_X, CURSOR_HINT_Y, cursor_hint);
-        } // destroy the painter to finish painting
-        QCursor cursor(combined, CURSOR_HOTSPOT_X, CURSOR_HOTSPOT_Y);
-        setCursor(cursor);
+        arrow_color = LIGHT_CURSOR_COLOR;
+        outline_color = LIGHT_BACKGROUND_COLOR;
     }
+    auto arrow = get_arrow_cursor_pixmap(arrow_color, outline_color);
+
+    // Figure out the size required to fit both the arrow and the cursor hint.
+    // Note that, without the +1, the right-most column and bottom-most row of
+    // inset's pixels will be cut off.
+    int combined_width =
+        std::max(arrow.width(), CURSOR_HINT_X + cursor_hint.width() + 1);
+    int combined_height =
+        std::max(arrow.height(), CURSOR_HINT_Y + cursor_hint.height() + 1);
+    QPixmap combined = QPixmap(combined_width, combined_height);
+
+    // paint both the arrow and the cursor hint into a single pixmap
+    combined.fill(Qt::transparent);
+    {
+        QPainter painter(&combined);
+        painter.drawPixmap(0, 0, arrow);
+        painter.drawPixmap(CURSOR_HINT_X, CURSOR_HINT_Y, cursor_hint);
+    } // destroy the painter to finish painting
+
+    QCursor cursor(combined, CURSOR_HOTSPOT_X, CURSOR_HOTSPOT_Y);
+    setCursor(cursor);
 }
 
 } // namespace sketcher

@@ -16,6 +16,7 @@ namespace schrodinger
 namespace sketcher
 {
 class MolModel;
+class SketcherModel;
 
 /**
  * A Qt graphics view for displaying molecules in a molviewer Scene.
@@ -27,6 +28,7 @@ class SKETCHER_API View : public QGraphicsView
     View(QGraphicsScene* scene, QWidget* parent = nullptr);
     View(QWidget* parent = nullptr);
     void setMolModel(MolModel* mol_model);
+    void setSketcherModel(SketcherModel* sketcher_model);
 
     /**
      * @return true if the user is in the middle of a pinch gesture rotation or
@@ -36,10 +38,16 @@ class SKETCHER_API View : public QGraphicsView
 
   public slots:
     /**
-     * Scale and center the view matrix so that all objects in the scene are
+     * Scale and center the view matrix so that objects in the scene are
      * visible, but avoid zooming in too much for small molecules
+     * @param selection_only If true, only consider selected objects
      */
-    void fitToScreen();
+    void fitToScreen(bool selection_only = false);
+
+    void fitAllToScreen()
+    {
+        fitToScreen(false);
+    }
 
     /**
      * If needed scale the view matrix to include objects that are off-screen.
@@ -132,7 +140,20 @@ class SKETCHER_API View : public QGraphicsView
      */
     void fitRecToScreen(const QRectF& rec);
 
+    /**
+     * Update the cursor when the color scheme is changed, since the cursor and
+     * the background should always be contrasting colors
+     */
+    void onNewCursorColorRequested();
+
+    /**
+     * Update the cursor using the specified cursor hint
+     */
+    void updateCursor(const QPixmap& cursor_hint);
+
     MolModel* m_mol_model = nullptr;
+    SketcherModel* m_sketcher_model = nullptr;
+    QPixmap m_cursor_hint;
     bool m_currently_pinching_trackpad = false;
     bool m_delayed_fit_to_screen = false;
     bool m_initial_geometry_set = false;

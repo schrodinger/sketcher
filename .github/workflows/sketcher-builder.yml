@@ -2,10 +2,18 @@ name: Sketcher Build and Test
 
 on:
   workflow_dispatch: ~
-  push: ~
   pull_request: ~
-  schedule:
-    - cron: "0 4 * * *"
+  merge_group: ~
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        default: ${{ github.ref }}
+      publish-npm-package:
+        description: Whether an npm package should be published with the WASM build artifacts
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -25,6 +33,8 @@ jobs:
         #     build-output: memtest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
         if: matrix.os == 'macos-latest'
@@ -39,6 +49,12 @@ jobs:
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
+
+      - name: Install playwright
+        if: matrix.build-output == 'wasm'
+        run: |
+          npm install -D @playwright/test
+          npx playwright install --with-deps
 
       - name: Code formatting check
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
@@ -195,6 +211,12 @@ jobs:
       - name: Build
         run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
+      - name: Create wasm tarball
+        if: matrix.build-output == 'wasm'
+        env:
+            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
+        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
+
       - name: Run tests
         working-directory: build
         if: matrix.build-output == 'app'
@@ -202,6 +224,11 @@ jobs:
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
           ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure --output-junit junit-report.xml
+
+      - name: Run wasm tests
+        if: matrix.build-output == 'wasm'
+        run: |
+          npx playwright test --config test/wasm/playwright.config.js
 
       - name: Run memtests
         working-directory: build
@@ -213,7 +240,7 @@ jobs:
         uses: test-summary/action@v2
         with:
           paths: "build/junit-report.xml"
-        if: always() && matrix.build-output != 'wasm'
+        if: always()
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
@@ -222,18 +249,16 @@ jobs:
             # ".exe" on Windows, no extension everywhere else
             EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
-          name: sketcher-${{ matrix.os }}-${{ matrix.build-output }}${{env.EXT}}
+          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
           path: build/sketcher_app${{env.EXT}}
-
-      - name: Create wasm tarball
-        if: matrix.build-output == 'wasm'
-        env:
-            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
-        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
 
       - name: Download wasm tarball
         if: matrix.build-output == 'wasm'
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher-${{ matrix.build-output }}.tar.gz
+          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output }}
           path: sketcher-wasm.tar.gz
+
+      - name: Publish sketcher npm package
+        if: matrix.build-output == 'wasm' && inputs.publish-npm-package
+        uses: ./.github/actions/publish-npm-package

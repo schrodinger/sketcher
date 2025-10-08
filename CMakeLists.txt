@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
   schrodinger_sketcher
-  VERSION 2025.4.0
+  VERSION 2026.1.0
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -76,7 +76,10 @@ function(setup_target TARGET)
   endif()
   # Compilation optimization, warnings, and error handling
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE -WX)
+    target_compile_options(${TARGET} PRIVATE -WX -EHsc)
+    if(${BUILD_SHARED_LIBS})
+        target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
+    endif()
   elseif(WIN32)
     target_compile_options(
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
@@ -196,15 +199,12 @@ if(EMSCRIPTEN)
       -fexceptions
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
-
-if(WIN32)
-target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Boost::filesystem Qt6::Widgets ${PROJECT_BINARY_DIR}/CMakeFiles/sketcher.dir/sketcher_autogen/PMZGBCCIHK/qrc_sketcher.cpp.obj
-                                            ${SKETCHER_TARGET})
-else()
-target_link_libraries(${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets
-                                            ${SKETCHER_TARGET}
-                                            ${EXTRA_SKETCHER_APP_LINK_FLAGS})
-endif()
+target_link_libraries(
+  ${APP_TARGET} PRIVATE Boost::boost
+                        Boost::filesystem
+                        Qt6::Widgets
+                        ${SKETCHER_TARGET}
+                        ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
 if(ENABLE_TESTING)
@@ -244,6 +244,10 @@ if(ENABLE_TESTING)
     target_include_directories(${TEST_TARGET}
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
     target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+    if(MSVC)
+        # ignore discarded [[nodiscard]] values for the tests
+        target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
+    endif()
     enable_qt_moc(${TEST_TARGET})
     if(EMSCRIPTEN)
       set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)

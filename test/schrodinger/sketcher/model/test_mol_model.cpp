@@ -3555,6 +3555,102 @@ BOOST_AUTO_TEST_CASE(test_flip_all, *utf::tolerance(0.001))
     }
 }
 
+/**
+ * test that both version of flip selection work as expected, mirroring atom
+ * coordinates and inverting bond dashes and wedges only for selected atoms
+ */
+BOOST_AUTO_TEST_CASE(test_flip_selection, *utf::tolerance(0.001))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(
+        RDKit::SmilesToMol("CC(C)[C@@H](C)[C@H](C)N"));
+    model.addMol(*mol_to_add);
+    const RDKit::ROMol* mol = model.getMol();
+
+    BOOST_TEST(mol->getNumAtoms() == 8);
+
+    model.selectAll();
+    // add a second molecule to make sure that only the selected atoms are
+    // flipped
+    model.addMol(*mol_to_add);
+    mol = model.getMol();
+    auto centroid = find_centroid(*mol, model.getSelectedAtoms());
+
+    BOOST_TEST(mol->getNumAtoms() == 16);
+    auto selected_atoms = model.getSelectedAtoms();
+    BOOST_TEST(selected_atoms.size() == 8);
+    // the selected atoms are the second half of the molecule
+    for (auto* atom : selected_atoms) {
+        BOOST_TEST(atom->getIdx() >= 8);
+    }
+
+    auto positions = mol->getConformer().getPositions();
+    std::vector<RDKit::Bond::BondDir> bond_dirs;
+    for (auto* bond : mol->bonds()) {
+        bond_dirs.push_back(bond->getBondDir());
+    }
+    std::map<RDKit::Bond::BondDir, RDKit::Bond::BondDir>
+        opposite_bond_direction = {
+            {RDKit::Bond::BondDir::NONE, RDKit::Bond::BondDir::NONE},
+            {RDKit::Bond::BondDir::BEGINWEDGE, RDKit::Bond::BondDir::BEGINDASH},
+            {RDKit::Bond::BondDir::BEGINDASH, RDKit::Bond::BondDir::BEGINWEDGE},
+        };
+    model.flipSelectionHorizontal();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        bool selected = i >= 8;
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(atom_coords.x ==
+                   (selected ? 2 * centroid.x - pos.x : pos.x));
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        bool selected = (mol->getBondWithIdx(i)->getBeginAtomIdx() >= 8) &&
+                        (mol->getBondWithIdx(i)->getEndAtomIdx() >= 8);
+        BOOST_TEST(
+            mol->getBondWithIdx(i)->getBondDir() ==
+            (selected ? opposite_bond_direction[bond_dirs[i]] : bond_dirs[i]));
+    }
+    model.flipSelectionHorizontal();
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == bond_dirs[i]);
+    }
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+
+    model.flipSelectionVertical();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        bool selected = i >= 8;
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(atom_coords.y ==
+                   (selected ? 2 * centroid.y - pos.y : pos.y));
+    }
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        bool selected = (mol->getBondWithIdx(i)->getBeginAtomIdx() >= 8) &&
+                        (mol->getBondWithIdx(i)->getEndAtomIdx() >= 8);
+        BOOST_TEST(
+            mol->getBondWithIdx(i)->getBondDir() ==
+            (selected ? opposite_bond_direction[bond_dirs[i]] : bond_dirs[i]));
+    }
+    model.flipSelectionVertical();
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == bond_dirs[i]);
+    }
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_smarts_no_radicals)
 {
     QUndoStack undo_stack;

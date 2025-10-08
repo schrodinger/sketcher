@@ -53,8 +53,11 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
 
   signals:
     void flipRequested();
+    void flipHorizontalRequested();
+    void flipVerticalRequested();
     void cutRequested(rdkit_extensions::Format format);
     void copyRequested(rdkit_extensions::Format format, SceneSubset subset);
+    void copyAsImageRequested();
     void deleteRequested(
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
@@ -82,6 +85,7 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     QMenu* createAddToSelectionMenu();
     QAction* m_bracket_group_action = nullptr;
     QAction* m_flip_action = nullptr;
+    QMenu* m_flip_molecule_menu = nullptr;
 };
 
 } // namespace sketcher
