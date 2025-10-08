@@ -1,3 +1,4 @@
+#include <stdint.h>
 
 #define YY_INT_ALIGNED short int
 
