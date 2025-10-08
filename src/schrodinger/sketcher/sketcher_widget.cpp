@@ -95,11 +95,6 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_undo_stack(new QUndoStack(this)),
     m_mol_model(new MolModel(m_undo_stack))
 {
-    // Initialize Qt resources for static builds
-#ifdef SKETCHER_STATIC_DEFINE
-    Q_INIT_RESOURCE(sketcher);
-#endif
-
     // The tools in ~Scene will access the underlying mol, so we need to
     // make sure the mol model still exists when the scene is destroyed.
     // This is controlled by the order in which parent relationships
