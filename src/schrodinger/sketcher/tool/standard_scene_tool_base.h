@@ -110,6 +110,9 @@ class SKETCHER_API StandardSceneToolBase : public AbstractSceneTool
     virtual void
     onRightButtonDragRelease(QGraphicsSceneMouseEvent* const event) override;
 
+    virtual void
+    updateColorsAfterBackgroundColorChange(bool is_dark_mode) override;
+
     void finishDrag();
 
     void

@@ -161,6 +161,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &SketcherWidget::selectionChanged);
+
     connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
         // even if what_changed doesn't contain MOLECULE, it's possible that the
         // molecule's coordinates have changed so we should clear our cached

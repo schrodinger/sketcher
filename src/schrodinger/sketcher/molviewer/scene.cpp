@@ -91,6 +91,9 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
 
+    connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
+            &Scene::onBackgroundColorChanged);
+
     connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
             &Scene::onModelValuesChanged);
     connect(m_sketcher_model, &SketcherModel::displaySettingsChanged, this,
@@ -566,6 +569,18 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
     }
 }
 
+void Scene::onBackgroundColorChanged()
+{
+    bool has_dark_color_scheme = m_sketcher_model->hasDarkColorScheme();
+    m_selection_highlighting_item->setPen(has_dark_color_scheme
+                                              ? SELECTION_OUTLINE_COLOR_DARK_BG
+                                              : SELECTION_OUTLINE_COLOR);
+    m_selection_highlighting_item->setBrush(
+        has_dark_color_scheme ? SELECTION_BACKGROUND_COLOR_DARK_BG
+                              : SELECTION_BACKGROUND_COLOR);
+    m_scene_tool->updateColorsAfterBackgroundColorChange(has_dark_color_scheme);
+}
+
 void Scene::onMolModelSelectionChanged()
 {
     // block the per-item signals for performance reasons
@@ -707,6 +722,9 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
     connect(new_scene_tool.get(), &AbstractSceneTool::atomDragFinished, this,
             &Scene::onAtomDragFinished);
     requestCursorHintUpdate();
+    // set the correct colors for the new scene tool
+    m_scene_tool->updateColorsAfterBackgroundColorChange(
+        m_sketcher_model->hasDarkColorScheme());
 }
 
 void Scene::requestCursorHintUpdate()

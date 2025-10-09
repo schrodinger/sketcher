@@ -82,6 +82,14 @@ class SKETCHER_API AbstractSceneTool : public QObject
     virtual void onStructureUpdated();
 
     /**
+     * Called when the background color of the scene changes. It does nothing
+     * by default, but can be reimplemented in subclasses to update the tool's
+     * state (e.g. graphics items that are on different colors on dark
+     * background)
+     */
+    virtual void updateColorsAfterBackgroundColorChange(bool is_dark_mode);
+
+    /**
      * Called when the selection of the scene changes. It does nothing
      * by default, but can be reimplemented in subclasses to update the tool's
      * state (e.g. graphics items that needs to be updated)
