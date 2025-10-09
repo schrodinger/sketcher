@@ -105,10 +105,15 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_ui->setupUi(this);
 
     // Load fonts BEFORE creating objects that use them
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Regular.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Bold.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Italic.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-BoldItalic.ttf");
+    for (const auto& font_path : {":resources/fonts/Arimo-Regular.ttf",
+                                  ":resources/fonts/Arimo-Bold.ttf",
+                                  ":resources/fonts/Arimo-Italic.ttf",
+                                  ":resources/fonts/Arimo-BoldItalic.ttf"}) {
+        if (QFontDatabase::addApplicationFont(font_path) == -1) {
+            throw std::runtime_error(
+                fmt::format("Failed to load font: {}", font_path));
+        }
+    }
 
     // Now create Scene and other objects that depend on fonts
     m_sketcher_model = new SketcherModel(this);
