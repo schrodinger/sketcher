@@ -140,8 +140,10 @@ void FileExportDialog::exportFile()
         file_content = QByteArray::fromStdString(text);
     }
 
-    QFileDialog::saveFileContent(file_content, filename);
+    // make sure we call accept() *before* we call saveFileContent(). Otherwise,
+    // accept() will close the new file dialog on Windows only.
     accept();
+    QFileDialog::saveFileContent(file_content, filename);
 }
 
 } // namespace sketcher
