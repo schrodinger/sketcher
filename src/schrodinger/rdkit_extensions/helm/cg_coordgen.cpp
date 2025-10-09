@@ -717,26 +717,45 @@ static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-static bool
-is_double_stranded_nucleic_acid(const RDKit::ROMol& monomer_mol,
-                                std::vector<RDKit::ROMOL_SPTR> polymers)
+static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
+                                             RDKit::ROMOL_SPTR polymer2)
 {
-    // return true if there's exactly two polymers, with no rings nor branches,
-    // and both are nucleic acids and there's at least one bond between them.
-    if (polymers.size() != 2) {
-        return false;
-    }
-    for (auto polymer : polymers) {
+    // return true if the two polymers are nucleic acids and there are at least
+    // two bonds between them.
+
+    for (auto polymer : {polymer1, polymer2}) {
         if (!is_nucleic_acid(*polymer)) {
             return false;
         }
     }
-    const auto polymer_bonds =
-        get_bonds_between_polymers(*polymers[0], *polymers[1]);
-    if (polymer_bonds.size() < 1) {
+    const auto polymer_bonds = get_bonds_between_polymers(*polymer1, *polymer2);
+    if (polymer_bonds.size() < 2) {
         return false;
     }
     return true;
+}
+
+void lay_out_polymers(const std::vector<RDKit::ROMOL_SPTR>& polymers)
+{
+    // lay out the polymers in connection order so connected polymers are laid
+    // out next to each other.
+    RDKit::ROMOL_SPTR last_polymer = nullptr;
+    for (auto polymer : polymers) {
+        bool rotate_polymer = false;
+        if (last_polymer != nullptr) {
+            if (are_double_stranded_nucleic_acid(polymer, last_polymer)) {
+                // For double stranded nucleic acids we want to lay out the
+                // first polymer normally and then rotate the other polymer
+                // 180° so the strands run anti-parallel to each other
+                rotate_polymer = true;
+            }
+        }
+        lay_out_polymer(*polymer, rotate_polymer);
+        if (last_polymer != nullptr) {
+            translate_polymer(*polymer, *last_polymer);
+        }
+        last_polymer = polymer;
+    }
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
@@ -748,31 +767,9 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     if (is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } // SKETCH-2522: Special case for double stranded nucleic acids:
-    else if (is_double_stranded_nucleic_acid(monomer_mol, polymers)) {
-        // For double stranded nucleic acids we want to lay out the first
-        // polymer normally and then rotate the other polymer 180° so the
-        // strands run anti-parallel to each other
-        lay_out_polymer(*polymers[0]);
-        lay_out_polymer(*polymers[1], true);
-        translate_polymer(*polymers[1], *polymers[0]);
-    } else {
-        for (size_t i = 0; i < polymers.size(); i++) {
-            auto polymer = polymers[i];
-            if (i == 0) {
-                lay_out_polymer(*polymer);
-                continue;
-            }
-
-            auto last_polymer = polymers[i - 1];
-            const auto polymer_bonds =
-                get_bonds_between_polymers(*polymer, *last_polymer);
-            auto rotate_polymer =
-                !polymer_bonds.empty() && (polymer_bonds.size() > 1);
-            lay_out_polymer(*polymer, rotate_polymer);
-            translate_polymer(*polymer, *last_polymer);
-        }
+    else {
+        lay_out_polymers(polymers);
     }
-
     remove_cxsmiles_labels(monomer_mol);
     auto conformer_id =
         copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);

@@ -67,14 +67,14 @@ BOOST_DATA_TEST_CASE(
           {7.5, 0},
           {9, 0},
           {10.5, 0},
-          {9, -1.5},
-          {7.5, -1.5},
-          {6, -1.5},
-          {4.5, -1.5},
           {3, -1.5},
-          {1.5, -1.5},
-          {0, -1.5},
-          {-1.5, -1.5}}},
+          {4.5, -1.5},
+          {6, -1.5},
+          {7.5, -1.5},
+          {9, -1.5},
+          {10.5, -1.5},
+          {12, -1.5},
+          {13.5, -1.5}}},
 
         // Snaking linear polymers
         {"PEPTIDE1{K.W.L.N.A.L.L.H.H.G.L}$$$$V2.0",
@@ -120,6 +120,26 @@ BOOST_DATA_TEST_CASE(
           {-3, -4.5},
           {-3, -3},
           {-4.5, -4.5}}},
+
+        {"PEPTIDE1{R.A.Y}|RNA1{r(G).p.r(A).p.r(U).p.r(C).p.[mR](U).p.[mR](U).p."
+         "r(A).p}|RNA2{p.r(U).p.r(A).p.r(A).p.r(G).p.r(A).p.r(U).p.r(C).p.r(A)."
+         "p.r(A)}$RNA1,RNA2,2:pair-21:pair|RNA1,RNA2,5:pair-18:pair|RNA1,RNA2,"
+         "8:pair-15:pair|RNA1,RNA2,11:pair-12:pair|RNA1,RNA2,14:pair-9:pair|"
+         "RNA1,RNA2,17:pair-6:pair|RNA1,RNA2,20:pair-3:pair|RNA1,PEPTIDE1,21:"
+         "R2-1:R1$$$V2.0",
+         {{0, 0},        {1.5, 0},      {3, 0},        {-19.5, -1.5},
+          {-19.5, -3},   {-18, -1.5},   {-16.5, -1.5}, {-16.5, -3},
+          {-15, -1.5},   {-13.5, -1.5}, {-13.5, -3},   {-12, -1.5},
+          {-10.5, -1.5}, {-10.5, -3},   {-9, -1.5},    {-7.5, -1.5},
+          {-7.5, -3},    {-6, -1.5},    {-4.5, -1.5},  {-4.5, -3},
+          {-3, -1.5},    {-1.5, -1.5},  {-1.5, -3},    {0, -1.5},
+          {0, -6},       {-1.5, -6},    {-1.5, -4.5},  {-3, -6},
+          {-4.5, -6},    {-4.5, -4.5},  {-6, -6},      {-7.5, -6},
+          {-7.5, -4.5},  {-9, -6},      {-10.5, -6},   {-10.5, -4.5},
+          {-12, -6},     {-13.5, -6},   {-13.5, -4.5}, {-15, -6},
+          {-16.5, -6},   {-16.5, -4.5}, {-18, -6},     {-19.5, -6},
+          {-19.5, -4.5}, {-21, -6},     {-22.5, -6},   {-22.5, -4.5},
+          {-24, -6},     {-25.5, -6},   {-25.5, -4.5}}},
 
         // Cyclic polymers
         {"PEPTIDE1{A.Y.V.[Orn].L.[dF].P.F.[dF].N}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$"
@@ -303,6 +323,13 @@ BOOST_DATA_TEST_CASE(
 
     for (auto monomer : mol->atoms()) {
         auto monomer_idx = monomer->getIdx();
+        if (monomer_idx >= monomer_coords.size()) {
+            failed = true;
+            BOOST_FAIL("Monomer has "
+                       << mol->getNumAtoms() << " atoms, but only "
+                       << monomer_coords.size() << " sets of expected coords");
+            break;
+        }
         auto expected_coords = monomer_coords[monomer_idx];
         auto actual_coords = conformer.getAtomPos(monomer_idx);
 
