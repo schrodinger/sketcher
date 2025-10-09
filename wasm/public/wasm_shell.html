@@ -148,9 +148,12 @@
         // LDGRID-1067: Focuses sketcher on hover so you don't have to click to focus before pasting
         container.addEventListener('mouseover', function () {
           const qtShadowRoot = [...container.children].find((el) => !!el.shadowRoot);
-          if (qtShadowRoot) {
-            qtShadowRoot.tabIndex = -1;
-            qtShadowRoot.focus();
+          if (qtShadowRoot && document.activeElement !== qtShadowRoot) {
+            const qtCanvas = qtShadowRoot.shadowRoot.querySelector('canvas');
+            if (qtCanvas) {
+              qtCanvas.tabIndex = -1;
+              qtCanvas.focus();
+            }
           }
         });
       }
