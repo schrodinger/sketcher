@@ -107,16 +107,19 @@ class SKETCHER_API SketcherWidget : public QWidget
     bool isEmpty() const;
 
     /**
-     * Enable or disable select-only mode, which removes the toolbars and limits
-     * user interaction to selecting items.
+     * Enable select-only mode, which removes the toolbars and limits user
+     * interaction to selecting items. This method also activates the specified
+     * selection tool, and may be called again when already in select-only mode
+     * to change the selection tool.
      */
-    void setSelectOnlyMode(bool select_only_mode_enabled);
+    void
+    activateSelectOnlyMode(const SelectionTool tool = SelectionTool::RECTANGLE);
 
     /**
      * Set the color scheme, which controls the atom and bond colors as well as
      * the background color.
      */
-    void setColorScheme(ColorScheme color_scheme);
+    void setColorScheme(const ColorScheme color_scheme);
 
     /**
      * Undoably select or deselect the specified atoms and bonds.
@@ -234,6 +237,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @param subset The portion of the scene structure to copy to clipboard
      */
     void copy(rdkit_extensions::Format format, SceneSubset subset);
+
+    /**
+     * Copy the contents of the scene to the clipboard as an image.
+     *
+     */
+    void copyAsImage();
 
     /**
      * Paste clipboard content into the scene.

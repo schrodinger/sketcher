@@ -2,12 +2,18 @@ name: Sketcher Build and Test
 
 on:
   workflow_dispatch: ~
-  push: ~
   pull_request: ~
-  merge_group:
-    types: [checks_requested]
-  schedule:
-    - cron: "0 4 * * *"
+  merge_group: ~
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to checkout'
+        type: string
+        default: ${{ github.ref }}
+      publish-npm-package:
+        description: Whether an npm package should be published with the WASM build artifacts
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -27,6 +33,8 @@ jobs:
         #     build-output: memtest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
         if: matrix.os == 'macos-latest'
@@ -241,12 +249,16 @@ jobs:
             # ".exe" on Windows, no extension everywhere else
             EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
-          name: sketcher-${{ matrix.os }}-${{ matrix.build-output }}${{env.EXT}}
+          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
           path: build/sketcher_app${{env.EXT}}
 
       - name: Download wasm tarball
         if: matrix.build-output == 'wasm'
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher-${{ matrix.build-output }}.tar.gz
+          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output }}
           path: sketcher-wasm.tar.gz
+
+      - name: Publish sketcher npm package
+        if: matrix.build-output == 'wasm' && inputs.publish-npm-package
+        uses: ./.github/actions/publish-npm-package

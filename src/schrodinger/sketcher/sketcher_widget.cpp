@@ -12,6 +12,7 @@
 #include <QScreen>
 #include <QWidget>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/RDGeneral/Invariant.h>
@@ -92,9 +93,7 @@ ModelObjsByType::ModelObjsByType(
 SketcherWidget::SketcherWidget(QWidget* parent) :
     QWidget(parent),
     m_undo_stack(new QUndoStack(this)),
-    m_mol_model(new MolModel(m_undo_stack)),
-    m_sketcher_model(new SketcherModel(this)),
-    m_scene(new Scene(m_mol_model, m_sketcher_model, this))
+    m_mol_model(new MolModel(m_undo_stack))
 {
     // The tools in ~Scene will access the underlying mol, so we need to
     // make sure the mol model still exists when the scene is destroyed.
@@ -105,11 +104,27 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_ui.reset(new Ui::SketcherWidgetForm());
     m_ui->setupUi(this);
 
+    // Load fonts BEFORE creating objects that use them
+    for (const auto& font_path : {":resources/fonts/Arimo-Regular.ttf",
+                                  ":resources/fonts/Arimo-Bold.ttf",
+                                  ":resources/fonts/Arimo-Italic.ttf",
+                                  ":resources/fonts/Arimo-BoldItalic.ttf"}) {
+        if (QFontDatabase::addApplicationFont(font_path) == -1) {
+            throw std::runtime_error(
+                fmt::format("Failed to load font: {}", font_path));
+        }
+    }
+
+    // Now create Scene and other objects that depend on fonts
+    m_sketcher_model = new SketcherModel(this);
+    m_scene = new Scene(m_mol_model, m_sketcher_model, this);
+
     m_ui->top_bar_wdg->setModel(m_sketcher_model);
     m_ui->side_bar_wdg->setModel(m_sketcher_model);
 
     m_ui->view->setScene(m_scene);
     m_ui->view->setMolModel(m_mol_model);
+    m_ui->view->setSketcherModel(m_sketcher_model);
     connect(m_scene, &Scene::importTextRequested, this,
             &SketcherWidget::importText);
     connect(m_scene, &Scene::showContextMenuRequested, this,
@@ -218,12 +233,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     // Update stylesheet and fonts
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Regular.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Bold.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-Italic.ttf");
-    QFontDatabase::addApplicationFont(":resources/fonts/Arimo-BoldItalic.ttf");
 
-    // Set up the watermark  after loading fonts because the SVG uses them
+    // Set up the watermark after loading fonts because the SVG uses them
     m_watermark_item = new QGraphicsPixmapItem();
     m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
@@ -272,7 +283,14 @@ static std::string extract_string(MolModel* mol_model, Format format,
     }
 
     auto mol = extract_mol(mol_model, subset);
-    return rdkit_extensions::to_string(*mol, format);
+    // remove the 3D conformer if one is present, since we don't want to
+    // serialize that
+    RDKit::ROMol mol_copy(*mol);
+    auto* default_conf = new RDKit::Conformer(mol_copy.getConformer());
+    mol_copy.clearConformers();
+    mol_copy.addConformer(default_conf);
+
+    return rdkit_extensions::to_string(mol_copy, format);
 }
 
 void SketcherWidget::addRDKitMolecule(const RDKit::ROMol& mol)
@@ -325,21 +343,17 @@ bool SketcherWidget::isEmpty() const
     return m_mol_model->isEmpty();
 }
 
-void SketcherWidget::setSelectOnlyMode(bool select_only_mode_enabled)
+void SketcherWidget::activateSelectOnlyMode(const SelectionTool tool)
 {
-    m_select_only_mode_active = select_only_mode_enabled;
-    setToolbarsVisible(!select_only_mode_enabled);
-    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(
-        select_only_mode_enabled);
-    if (select_only_mode_enabled) {
-        m_sketcher_model->setValues(
-            {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
-             {ModelKey::SELECTION_TOOL,
-              QVariant::fromValue(SelectionTool::RECTANGLE)}});
-    }
+    m_select_only_mode_active = true;
+    setToolbarsVisible(false);
+    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(true);
+    m_sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
+         {ModelKey::SELECTION_TOOL, QVariant::fromValue(tool)}});
 }
 
-void SketcherWidget::setColorScheme(ColorScheme color_scheme)
+void SketcherWidget::setColorScheme(const ColorScheme color_scheme)
 {
     m_sketcher_model->setColorScheme(color_scheme);
 }
@@ -475,6 +489,16 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
     navigator["clipboard"].call<emscripten::val>("writeText",
                                                  emscripten::val(text));
 #endif
+}
+
+void SketcherWidget::copyAsImage()
+{
+    QByteArray image_bytes;
+    RenderOptions opts;
+    image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
+    QImage image;
+    image.loadFromData(image_bytes, "PNG");
+    QApplication::clipboard()->setImage(image);
 }
 
 /**
@@ -726,6 +750,8 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::cut);
     connect(&menu, &SelectionContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &SelectionContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
             &MolModel::flipSelection);
     connect(&menu, &SelectionContextMenu::flipHorizontalRequested, m_mol_model,
@@ -782,6 +808,8 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::selectAll);
     connect(&menu, &BackgroundContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &BackgroundContextMenu::pasteRequested, this,
             &SketcherWidget::pasteAt);
     connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,

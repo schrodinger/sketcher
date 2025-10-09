@@ -1,0 +1,11 @@
+# Default owner for all files
+* christopher.vonbargen@schrodinger.com
+
+# RDKit extensions
+**/rdkit_extensions/ rachel.walker@schrodinger.com
+
+# Sketcher code
+**/sketcher/ ethan.alguire@schrodinger.com
+
+# WASM code
+**/wasm/ juzer.zarif@schrodinger.com

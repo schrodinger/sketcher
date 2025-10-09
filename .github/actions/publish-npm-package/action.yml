@@ -1,0 +1,59 @@
+name: publish-npm-package
+description: Publishes the @schrodinger/sketcher npm package with the WASM artifacts
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install node
+      uses: actions/setup-node@v5
+      with:
+        node-version: latest
+        registry-url: https://npm.pkg.github.com
+
+    - id: prepare-package
+      shell: bash
+      run: |
+        # Move WASM assets into package directory
+        mv sketcher-wasm/* wasm/package/dist
+
+        # Set pre-release version in package manifest
+        sketcher_version=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+        tag_name=$(echo $sketcher_version | awk -F . '{print "v"$1"-"$2}')
+        commit_timestamp=$(git show --no-patch --pretty=format:%ct)
+        commit_datetime=$(TZ=UTC0 date --date @$commit_timestamp +%Y%m%d%H%M%S)
+        short_sha=$(git rev-parse --short HEAD)
+        
+        full_version="$sketcher_version-$tag_name.$commit_datetime.$short_sha"
+        sed -i -e "s/<SKETCHER_VERSION>/$full_version/" wasm/package/package.json
+        echo "VERSION=$full_version" >> $GITHUB_OUTPUT
+        echo "TAG_NAME=$tag_name" >> $GITHUB_OUTPUT
+        
+        # Add authentication config to .npmrc
+        echo "//npm.pkg.github.com:_authToken=\${NODE_AUTH_TOKEN}" >> wasm/package/.npmrc
+    
+    - id: publish
+      shell: bash
+      env:
+        NODE_AUTH_TOKEN: ${{ github.token }}
+        VERSION: ${{ steps.prepare-package.outputs.VERSION }}
+        TAG_NAME: ${{ steps.prepare-package.outputs.TAG_NAME }}
+      run: |
+        cd wasm/package
+
+        echo "Checking for existing version $VERSION for @schrodinger/sketcher..."
+        npm_error=$(npm view @schrodinger/sketcher@$VERSION --json 2> /dev/null | jq -r .error || true)
+
+        if [[ "$npm_error" == "null" ]]; then
+          echo "Package version $VERSION already exists for @schrodinger/sketcher, no new version was published" >> $GITHUB_STEP_SUMMARY
+        else
+          error_code=$(echo $npm_error | jq -r .code)
+
+          # Error == 404 means this package version does not already exist so we can publish
+          if [[ "$error_code" == "E404" ]]; then
+            npm publish --tag $TAG_NAME --access public
+          else
+            echo "Unexpected error while retrieving package details:" >&2
+            echo $npm_error >&2
+            exit 1
+          fi
+        fi
