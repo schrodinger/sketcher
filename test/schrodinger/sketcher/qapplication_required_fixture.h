@@ -56,7 +56,9 @@ class QApplicationRequiredFixture
             boost::unit_test::framework::master_test_suite().argv));
 
         // Initialize Qt resources (fonts, icons, etc.)
+#ifdef SKETCHER_STATIC_DEFINE
         Q_INIT_RESOURCE(sketcher);
+#endif
     }
 
   private:
