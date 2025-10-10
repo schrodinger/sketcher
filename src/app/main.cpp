@@ -134,6 +134,10 @@ int main(int argc, char** argv)
     // Only apply this stylesheet for the WASM build
     apply_stylesheet(application);
     auto& sk = get_sketcher_instance();
+    // Qt::WA_AlwaysShowToolTips works around QTBUG-94583
+    // (https://bugreports.qt.io/browse/QTBUG-94583), which would otherwise
+    // prevent tooltips from showing up. (See SKETCH-2565.)
+    sk.setAttribute(Qt::WA_AlwaysShowToolTips);
     QObject::connect(&sk, &SketcherWidget::moleculeChanged, &sketcher_changed);
     QObject::connect(&sk, &SketcherWidget::representationChanged,
                      &sketcher_changed);
