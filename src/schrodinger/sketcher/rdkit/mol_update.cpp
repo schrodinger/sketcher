@@ -77,8 +77,9 @@ static void assign_chiral_types_from_bond_dirs_preserving_explicit_hs(
 
     // Reset explicit H counts back to their original values and recalculate
     // implicit H counts.
-    for (size_t i = 0; auto atom : mol.atoms()) {
-        unsigned int initial_explicit_hs = initial_num_explicit_hs[i++];
+    for (size_t i = 0; i < mol.getNumAtoms(); ++i) {
+        auto atom = mol.getAtomWithIdx(i);
+        unsigned int initial_explicit_hs = initial_num_explicit_hs[i];
         if (atom->getNumExplicitHs() != initial_explicit_hs) {
             atom->setNumExplicitHs(initial_explicit_hs);
             atom->updatePropertyCache(false);
