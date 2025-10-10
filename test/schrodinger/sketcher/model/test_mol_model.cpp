@@ -3863,7 +3863,7 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     BOOST_TEST(!contains_monomeric_atom(*mol_for_export_3));
 }
 
-BOOST_AUTO_TEST_CASE(test_cyclohexane_wedged_bond_hydrogen_preservation)
+BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
 {
     // Test that assignChiralTypesFromBondDirs preserves explicit H counts
     // when adding wedged/dashed bonds to cyclohexane

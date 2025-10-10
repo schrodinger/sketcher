@@ -61,10 +61,8 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
 
 /**
  * Workaround for RDKit's assignChiralTypesFromBondDirs setting explicit H
- * counts on 3-coordinate chiral atoms (see Chirality.cpp:3533).
- * This wrapper preserves the original explicit H counts and restores them
- * after the call.
- * TODO: File RDKit issue and remove this wrapper once fixed upstream.
+ * counts on 3-coordinate chiral atoms; this wrapper preserves the original
+ * explicit H counts and restores them after the call.
  */
 static void assign_chiral_types_from_bond_dirs_preserving_explicit_hs(
     RDKit::RWMol& mol)
@@ -83,7 +81,7 @@ static void assign_chiral_types_from_bond_dirs_preserving_explicit_hs(
         unsigned int initial_explicit_hs = initial_num_explicit_hs[i++];
         if (atom->getNumExplicitHs() != initial_explicit_hs) {
             atom->setNumExplicitHs(initial_explicit_hs);
-            atom->updatePropertyCache(/* strict = */ false);
+            atom->updatePropertyCache(false);
         }
     }
 }
