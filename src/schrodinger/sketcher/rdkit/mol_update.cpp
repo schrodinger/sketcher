@@ -64,8 +64,8 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
  * counts on 3-coordinate chiral atoms; this wrapper preserves the original
  * explicit H counts and restores them after the call.
  */
-static void assign_chiral_types_from_bond_dirs_preserving_explicit_hs(
-    RDKit::RWMol& mol)
+static void
+assign_chiral_types_from_bond_dirs_preserving_explicit_hs(RDKit::RWMol& mol)
 {
     std::vector<unsigned int> initial_num_explicit_hs;
     initial_num_explicit_hs.reserve(mol.getNumAtoms());

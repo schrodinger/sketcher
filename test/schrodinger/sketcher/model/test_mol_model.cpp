@@ -3880,7 +3880,8 @@ BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
     // Pick a carbon atom (index 0)
     auto* carbon = mol->getAtomWithIdx(0);
 
-    // Initial state: carbon in cyclohexane has 2 ring bonds and 2 implicit hydrogens
+    // Initial state: carbon in cyclohexane has 2 ring bonds and 2 implicit
+    // hydrogens
     BOOST_TEST(carbon->getDegree() == 2);
     BOOST_TEST(carbon->getNumImplicitHs() == 2);
     BOOST_TEST(carbon->getNumExplicitHs() == 0);
