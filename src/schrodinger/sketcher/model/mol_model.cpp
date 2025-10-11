@@ -2525,6 +2525,18 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
          ++bond_index) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
         setTagForBond(bond, m_next_bond_tag++);
+
+        // Copy bond direction from source mol to preserve wiggly bonds.
+        // insertMol doesn't preserve BondDir, so we need to do it manually.
+        auto* src_bond = mol.getBondWithIdx(bond_index - old_num_bonds);
+        bond->setBondDir(src_bond->getBondDir());
+
+        // For CXSMILES input, RDKit sets BondDir::UNKNOWN but not _MolFileBondCfg.
+        // Set _MolFileBondCfg so prepare_mol can preserve the wiggly bond.
+        if (src_bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN &&
+            !src_bond->hasProp(RDKit::common_properties::_MolFileBondCfg)) {
+            bond->setProp(RDKit::common_properties::_MolFileBondCfg, 2);
+        }
     }
     if (attachment_point_added) {
         renumber_attachment_points(&m_mol);

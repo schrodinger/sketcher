@@ -98,5 +98,33 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBondse)
                       false);
 }
 
+/**
+ * Verify that wedgeMolBonds preserves wiggly bonds (unknown stereochemistry).
+ * Without this preservation, wiggly bonds would be lost when recalculating
+ * wedging, since ClearSingleBondDirFlags clears BondDir::UNKNOWN.
+ */
+BOOST_AUTO_TEST_CASE(test_wedgeMolBonds_preserves_wiggly_bonds)
+{
+    // Create a molecule with a wiggly bond using CXSMILES
+    const std::string cxsmiles = "CCC(C)N |w:2.3|";
+    auto mol = to_rdkit(cxsmiles, Format::EXTENDED_SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+
+    // Generate 2D coordinates
+    compute2DCoords(*mol);
+
+    // Set BondDir to UNKNOWN to simulate a wiggly bond
+    auto* bond = mol->getBondWithIdx(2);
+    BOOST_REQUIRE(bond != nullptr);
+    bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
+
+    // Call wedgeMolBonds - it should preserve the wiggly bond
+    wedgeMolBonds(*mol, &mol->getConformer());
+
+    // Verify that BondDir::UNKNOWN was preserved
+    BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger
