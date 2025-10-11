@@ -2527,7 +2527,7 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
         setTagForBond(bond, m_next_bond_tag++);
 
         // Copy bond direction from source mol to preserve wiggly bonds.
-        // insertMol doesn't preserve BondDir, so we need to do it manually.
+        // RDKit's insertMol doesn't preserve BondDir, so we need to do it manually.
         auto* src_bond = mol.getBondWithIdx(bond_index - old_num_bonds);
         bond->setBondDir(src_bond->getBondDir());
 
