@@ -173,9 +173,9 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     }
 
     // Restore wiggly bond directions that were cleared by ClearSingleBondDirFlags
-    size_t bond_idx = 0;
-    for (auto bond : mol.bonds()) {
-        if (had_wiggly_bond[bond_idx++]) {
+    for (size_t bond_idx = 0; bond_idx < mol.getNumBonds(); ++bond_idx) {
+        auto bond = mol.getBondWithIdx(bond_idx);
+        if (had_wiggly_bond[bond_idx]) {
             bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
         }
     }
