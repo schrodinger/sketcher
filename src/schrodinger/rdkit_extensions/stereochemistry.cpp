@@ -151,6 +151,10 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
                                wiggly_bond_v2000);
         bond->getPropIfPresent(RDKit::common_properties::_MolFileBondCfg,
                                wiggly_bond_v3000);
+        // MDL V2000 uses _MolFileBondStereo=4 for wiggly bonds
+        // MDL V3000 uses _MolFileBondCfg=2 for wiggly bonds
+        // (These values are from the MDL molfile specification, not defined as
+        // constants in RDKit)
         bool is_wiggly = (wiggly_bond_v2000 == 4 || wiggly_bond_v3000 == 2 ||
                           bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
         had_wiggly_bond.push_back(is_wiggly);
@@ -176,8 +180,8 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     // Restore wiggly bond directions that were cleared by
     // ClearSingleBondDirFlags
     for (size_t bond_idx = 0; bond_idx < mol.getNumBonds(); ++bond_idx) {
-        auto bond = mol.getBondWithIdx(bond_idx);
         if (had_wiggly_bond[bond_idx]) {
+            auto bond = mol.getBondWithIdx(bond_idx);
             bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
         }
     }
