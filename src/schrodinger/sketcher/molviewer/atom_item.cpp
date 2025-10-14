@@ -782,9 +782,6 @@ QPointF AtomItem::findPositionInEmptySpace(bool avoid_subrects) const
         for (auto rect : getSubrects()) {
             if (rect == m_main_label_rect)
                 continue;
-            std::cerr << "avoiding rect: " << rect.left() << ", " << rect.top()
-                      << ", " << rect.right() << ", " << rect.bottom()
-                      << std::endl;
             qpositions.push_back(rect.topLeft());
             qpositions.push_back(rect.topRight());
             qpositions.push_back(rect.bottomLeft());
