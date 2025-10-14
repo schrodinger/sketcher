@@ -4125,7 +4125,8 @@ $$$$
     add_text_to_mol_model(model_mdl, mdl_wiggly_bond);
 
     // Verify EXTENDED_SMILES export shows wiggly bond from MDL input
-    std::string exported_smiles_from_mdl = get_mol_text(&model_mdl, Format::EXTENDED_SMILES);
+    std::string exported_smiles_from_mdl =
+        get_mol_text(&model_mdl, Format::EXTENDED_SMILES);
     BOOST_TEST(exported_smiles_from_mdl == "CCC(C)N |w:2.3|");
 
     // Test EXTENDED_SMILES format roundtrip
@@ -4136,7 +4137,8 @@ $$$$
     add_text_to_mol_model(model_smiles, "CCC(C)N |w:2.3|");
 
     // Extract it as EXTENDED_SMILES and verify the wiggly bond is preserved
-    std::string exported_smiles = get_mol_text(&model_smiles, Format::EXTENDED_SMILES);
+    std::string exported_smiles =
+        get_mol_text(&model_smiles, Format::EXTENDED_SMILES);
     BOOST_TEST(exported_smiles == "CCC(C)N |w:2.3|");
 }
 
