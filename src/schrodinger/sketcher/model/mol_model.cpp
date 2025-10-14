@@ -2534,7 +2534,7 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
 
         // For CXSMILES input, RDKit sets BondDir::UNKNOWN but not
         // _MolFileBondCfg. Set _MolFileBondCfg so prepare_mol can preserve the
-        // wiggly bond.
+        // wiggly bond. (2 = wiggly bond in MDL V3000 format)
         if (src_bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN &&
             !src_bond->hasProp(RDKit::common_properties::_MolFileBondCfg)) {
             bond->setProp(RDKit::common_properties::_MolFileBondCfg, 2);

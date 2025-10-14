@@ -1,9 +1,7 @@
 /* -------------------------------------------------------------------------
  * Tests demonstrating RDKit behaviors with wiggly bonds (unknown
- stereochemistry)
- * These tests document the specific RDKit behaviors that necessitate wiggly
- bond
- * preservation code in the sketcher.
+ * stereochemistry). These tests document the specific RDKit behaviors that
+ * necessitate wiggly bond preservation code in the sketcher.
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
