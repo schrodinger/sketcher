@@ -138,9 +138,10 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
         }
     }
 
-    // Save wiggly bonds (unknown stereochemistry) before ClearSingleBondDirFlags
-    // clears them. We check both the properties (set by MDL input) and BondDir
-    // (set when CXSMILES wiggly bonds are copied in mol_model.cpp).
+    // Save wiggly bonds (unknown stereochemistry) before
+    // ClearSingleBondDirFlags clears them. We check both the properties (set by
+    // MDL input) and BondDir (set when CXSMILES wiggly bonds are copied in
+    // mol_model.cpp).
     std::vector<bool> had_wiggly_bond;
     had_wiggly_bond.reserve(mol.getNumBonds());
     for (auto bond : mol.bonds()) {
@@ -172,7 +173,8 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
         bond->setBondType(RDKit::Bond::SINGLE);
     }
 
-    // Restore wiggly bond directions that were cleared by ClearSingleBondDirFlags
+    // Restore wiggly bond directions that were cleared by
+    // ClearSingleBondDirFlags
     for (size_t bond_idx = 0; bond_idx < mol.getNumBonds(); ++bond_idx) {
         auto bond = mol.getBondWithIdx(bond_idx);
         if (had_wiggly_bond[bond_idx]) {

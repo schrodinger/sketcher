@@ -1,6 +1,8 @@
 /* -------------------------------------------------------------------------
- * Tests demonstrating RDKit behaviors with wiggly bonds (unknown stereochemistry)
- * These tests document the specific RDKit behaviors that necessitate wiggly bond
+ * Tests demonstrating RDKit behaviors with wiggly bonds (unknown
+ stereochemistry)
+ * These tests document the specific RDKit behaviors that necessitate wiggly
+ bond
  * preservation code in the sketcher.
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
@@ -41,11 +43,12 @@ BOOST_AUTO_TEST_CASE(test_cxsmiles_wiggly_bonds_lack_molfile_property)
     // (unlike MDL input which sets both BondDir AND the property)
     int cfg{-1};
     bond->getPropIfPresent(RDKit::common_properties::_MolFileBondCfg, cfg);
-    BOOST_TEST(cfg == -1);  // property not set for CXSMILES input
+    BOOST_TEST(cfg == -1); // property not set for CXSMILES input
 
     // RDKit's CXSMILES parser also doesn't set BondDir to UNKNOWN initially.
     // The wiggly bond information is only preserved in the CXSMILES extension.
-    // When coordinates are generated and the molecule is processed, BondDir gets set.
+    // When coordinates are generated and the molecule is processed, BondDir
+    // gets set.
 
     // However, we can manually set BondDir to UNKNOWN (like mol_model.cpp does)
     // to simulate what happens when the mol is copied
@@ -60,7 +63,8 @@ BOOST_AUTO_TEST_CASE(test_cxsmiles_wiggly_bonds_lack_molfile_property)
     BOOST_REQUIRE(dest_bond != nullptr);
     BOOST_TEST(dest_bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
 
-    // But the property still isn't there - this is why we need to set it in mol_model.cpp
+    // But the property still isn't there - this is why we need to set it in
+    // mol_model.cpp
     cfg = -1;
     dest_bond->getPropIfPresent(RDKit::common_properties::_MolFileBondCfg, cfg);
     BOOST_TEST(cfg == -1);
