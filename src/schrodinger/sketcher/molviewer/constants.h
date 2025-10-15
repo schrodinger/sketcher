@@ -141,28 +141,36 @@ const qreal DOUBLE_BOND_INNER_LINE_SHORTENING = 6.0;
 // DOUBLE_BOND_BEST_RING_SIZE_CUTOFF atoms.
 const unsigned int DOUBLE_BOND_BEST_RING_SIZE_CUTOFF = 8;
 
+const QColor SELECT_TOOL_LINE_COLOR_DARK_BG = QColor("#eeeeee");
+const QColor SELECT_TOOL_LINE_COLOR = QColor("#000000");
+
 const QColor DARK_BACKGROUND_COLOR = QColor("#1e1e1e");
 const QColor LIGHT_BACKGROUND_COLOR = QColor("#ffffff");
 
 // The background color for drawing selection highlighting
 const QColor SELECTION_BACKGROUND_COLOR = QColor("#c7d5b8");
+const QColor SELECTION_BACKGROUND_COLOR_DARK_BG = QColor("#4d5d3f");
 
 // The outline color for drawing selection highlighting
 const QColor SELECTION_OUTLINE_COLOR = QColor("#779c59");
+const QColor SELECTION_OUTLINE_COLOR_DARK_BG = QColor("#82a664");
 
 // The color for drawing predictive highlighting.  The same color is used for
 // both the outline and the background.
 const QColor PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#e2eadb");
+const QColor PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG = QColor("#555a54");
 
 // the color for drawing predictive highlighting for the move-rotate tool
 const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR = QColor("#eaeaea");
+const QColor MOVE_ROTATE_PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG =
+    QColor("#4c4c4c");
 
 // the color of the dotted line around valence errors
 const QColor VALENCE_ERROR_BORDER_COLOR = QColor("#fb7100");
 
 // the color of the stereo annotations (e.g. "R" and "S")
 const QColor ANNOTATION_COLOR = QColor("#333333");
-const QColor ANNOTATION_COLOR_DARK = QColor("#bababa");
+const QColor ANNOTATION_COLOR_DARK_BG = QColor("#bababa");
 
 // the color of structure hints (e.g. the blue lines that show where a bond will
 // be drawn when using the bond tool or the fragment structure when mousing over
@@ -210,6 +218,7 @@ const qreal VALENCE_ERROR_BORDER_WIDTH = 2.f;
 
 // the color of the area of valence errors
 const QColor VALENCE_ERROR_AREA_COLOR = QColor("#ffecc5");
+const QColor VALENCE_ERROR_AREA_COLOR_DARK_BG = QColor("#71471e");
 
 // the border size around the main element to define the valence error area
 const qreal VALENCE_ERROR_AREA_BORDER = 3.f;

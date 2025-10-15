@@ -54,6 +54,11 @@ class QApplicationRequiredFixture
         d_app.reset(new QApplication(
             boost::unit_test::framework::master_test_suite().argc,
             boost::unit_test::framework::master_test_suite().argv));
+
+        // Initialize Qt resources (fonts, icons, etc.)
+#ifdef SKETCHER_STATIC_DEFINE
+        Q_INIT_RESOURCE(sketcher);
+#endif
     }
 
   private:

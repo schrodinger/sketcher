@@ -17,6 +17,10 @@ void AtomDisplaySettings::setColorScheme(const ColorScheme& scheme,
 {
     // update the annotation color
     AbstractAtomOrBondDisplaySettings::setColorScheme(scheme, carbon_color);
+    m_valence_error_area_color =
+        (scheme == ColorScheme::DARK_MODE || scheme == ColorScheme::WHITE_BLACK)
+            ? VALENCE_ERROR_AREA_COLOR_DARK_BG
+            : VALENCE_ERROR_AREA_COLOR;
     populatePaletteForColorScheme(scheme, carbon_color, m_color_palette);
 }
 

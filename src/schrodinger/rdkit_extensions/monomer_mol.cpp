@@ -12,6 +12,23 @@
 
 #include "schrodinger/rdkit_extensions/helm.h"
 
+namespace
+{
+
+std::pair<unsigned int, unsigned int> getAttchpts(const std::string& linkage)
+{
+    // in form RX-RY, returns {X, Y}
+    auto dash = linkage.find('-');
+    if (dash == std::string::npos) {
+        throw std::runtime_error(
+            fmt::format("Invalid linkage format: {}", linkage));
+    }
+    return {std::stoi(linkage.substr(1, dash - 1)),
+            std::stoi(linkage.substr(dash + 2))};
+}
+
+} // unnamed namespace
+
 namespace schrodinger::rdkit_extensions
 {
 
@@ -90,15 +107,44 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         // Update the linkage property
         bond->setProp(CUSTOM_BOND, linkage);
     } else {
-        auto bond_type = (linkage.front() == 'p' ? ::RDKit::Bond::ZERO
-                                                 : ::RDKit::Bond::SINGLE);
-        const auto new_total =
-            monomer_mol.addBond(monomer1, monomer2, bond_type);
-        bond = monomer_mol.getBondWithIdx(new_total - 1);
-        bond->setProp(LINKAGE, linkage);
+        auto create_bond = [&](unsigned int first_monomer,
+                               unsigned int second_monomer,
+                               ::RDKit::Bond::BondType bond_type,
+                               const std::string& linkage_prop) {
+            const auto new_total =
+                monomer_mol.addBond(first_monomer, second_monomer, bond_type);
+            auto bond = monomer_mol.getBondWithIdx(new_total - 1);
+            bond->setProp(LINKAGE, linkage_prop);
+            if (is_custom_bond) {
+                bond->setProp(CUSTOM_BOND, linkage_prop);
+            }
+        };
 
-        if (is_custom_bond) {
-            bond->setProp(CUSTOM_BOND, linkage);
+        // Connections that use specific and different attachment points (such
+        // as R2-R1 or R3-R1) should be set as directional (dative) bonds so
+        // that substructure matching and canonicalization can take sequence
+        // direction into account. To ensure consistent bond directionality, we
+        // always set the direction from the higher attachment point to the
+        // lower attachment point.
+        bool set_directional_bond = false;
+        if (linkage.front() != 'p' && linkage.find('?') == std::string::npos) {
+            auto [begin_attchpt, end_attchpt] = getAttchpts(linkage);
+            if (begin_attchpt > end_attchpt) {
+                create_bond(monomer1, monomer2, ::RDKit::Bond::DATIVE, linkage);
+                set_directional_bond = true;
+            } else if (begin_attchpt < end_attchpt) {
+                auto new_linkage =
+                    fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
+                create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
+                            new_linkage);
+                set_directional_bond = true;
+            }
+        }
+
+        if (!set_directional_bond) {
+            auto bond_type = (linkage.front() == 'p' ? ::RDKit::Bond::ZERO
+                                                     : ::RDKit::Bond::SINGLE);
+            create_bond(monomer1, monomer2, bond_type, linkage);
         }
     }
 
@@ -305,9 +351,10 @@ void assignChains(RDKit::RWMol& monomer_mol)
     }
 
     // Determine and mark the 'connection bonds'
-    if (!monomer_mol.getRingInfo()->isInitialized()) {
-        ::RDKit::MolOps::findSSSR(monomer_mol);
-    }
+    constexpr bool include_dative_bonds = true;
+    ::RDKit::MolOps::findSSSR(monomer_mol, /*res =*/nullptr,
+                              include_dative_bonds);
+
     // get atom rings that belong to a single polymer
     const auto& bnd_rings = monomer_mol.getRingInfo()->bondRings();
 
