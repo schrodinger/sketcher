@@ -118,7 +118,10 @@ EMSCRIPTEN_BINDINGS(sketcher)
 void apply_stylesheet(QApplication& app)
 {
     QFile styleFile(":resources/schrodinger_livedesign.qss");
-    styleFile.open(QFile::ReadOnly);
+    bool success = styleFile.open(QFile::ReadOnly);
+    if (!success) {
+        throw std::runtime_error("Could not open style sheet file");
+    }
     QString style(styleFile.readAll());
     app.setStyleSheet(style);
 }

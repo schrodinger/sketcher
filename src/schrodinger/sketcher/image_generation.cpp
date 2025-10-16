@@ -423,7 +423,10 @@ template <typename T> void save_image_file(const T& input,
     auto format = get_format(path);
     auto data = get_image_bytes(input, format, opts);
     QFile file(path);
-    file.open(QIODevice::WriteOnly);
+    bool success = file.open(QIODevice::WriteOnly);
+    if (!success) {
+        throw std::runtime_error("Could not open file for writing");
+    }
     file.write(data);
 }
 
