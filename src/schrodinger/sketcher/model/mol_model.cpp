@@ -2720,19 +2720,6 @@ void MolModel::setSelectionCommandFunc(
     emit selectionChanged();
 }
 
-void MolModel::clearSelectionCommandFunc()
-{
-    Q_ASSERT(m_allow_edits);
-    bool selection_changed = hasSelection();
-    m_selected_atom_tags.clear();
-    m_selected_bond_tags.clear();
-    m_selected_s_group_tags.clear();
-    m_selected_non_molecular_tags.clear();
-    if (selection_changed) {
-        emit selectionChanged();
-    }
-}
-
 static std::vector<unsigned int>
 get_atom_indices(const std::unordered_set<const RDKit::Atom*>& atoms)
 {
