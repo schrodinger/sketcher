@@ -102,7 +102,15 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                         BOOST_BEAST_HEADER_ONLY)
     if(WIN32)
-      target_link_libraries(${TARGET} PUBLIC -static)
+      if (MSVC)
+        # use the static version of the runtime library instead of the default
+        # shared version
+        set_property(TARGET ${TARGET}
+                     PROPERTY MSVC_RUNTIME_LIBRARY
+                     "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+      else()
+        target_link_options(${TARGET} PUBLIC -static)
+      endif()
     endif()
   endif()
   if(EMSCRIPTEN)
