@@ -309,7 +309,10 @@ QPixmap get_arrow_cursor_pixmap(const QColor& arrow_color,
     QString svg_contents;
     {
         QFile file(ARROW_CURSOR_PATH);
-        file.open(QIODevice::ReadOnly);
+        bool success = file.open(QIODevice::ReadOnly);
+        if (!success) {
+            throw std::runtime_error("Could not open cursor pixmap file");
+        }
         svg_contents = file.readAll();
     } // close the file
 
