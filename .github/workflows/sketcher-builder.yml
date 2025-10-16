@@ -209,6 +209,7 @@ jobs:
                 ${{ matrix.build-output == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
 
       - name: Build
+        id: sketcher-build
         run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
       - name: Create wasm tarball
@@ -240,7 +241,7 @@ jobs:
         uses: test-summary/action@v2
         with:
           paths: "build/junit-report.xml"
-        if: always()
+        if: always() && steps.sketcher-build.outcome == 'success'
 
       - name: Download sketcher executable
         if: matrix.build-output != 'wasm'
