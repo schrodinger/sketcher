@@ -66,8 +66,8 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
  * after the call.
  * TODO: File RDKit issue and remove this wrapper once fixed upstream.
  */
-static void assign_chiral_types_from_bond_dirs_preserving_explicit_hs(
-    RDKit::RWMol& mol)
+static void
+assign_chiral_types_from_bond_dirs_preserving_explicit_hs(RDKit::RWMol& mol)
 {
     std::vector<unsigned int> initial_num_explicit_hs;
     initial_num_explicit_hs.reserve(mol.getNumAtoms());
