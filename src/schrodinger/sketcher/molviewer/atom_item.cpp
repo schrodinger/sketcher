@@ -413,12 +413,19 @@ QPainterPath AtomItem::getWavyLine() const
 
 void AtomItem::updateChiralityLabel()
 {
+    m_chirality_label_rect = QRectF();
     auto strip_abs = !m_settings.m_explicit_abs_labels_shown;
     auto show_unknown_chirality =
         (m_settings.m_stereo_labels_visibility == StereoLabels::ALL);
     auto label = rdkit_extensions::get_atom_chirality_label(
         *m_atom, strip_abs, show_unknown_chirality);
     m_chirality_label_text = QString::fromStdString(label);
+    if (m_chirality_label_text.isEmpty()) {
+        return;
+    }
+    // find a position for the chirality label before the rectangle is created,
+    // otherwise it will be considered as a rectangle to avoid
+    auto new_position = findPositionInEmptySpace(true);
     m_chirality_label_rect =
         make_text_rect(m_fonts.m_chirality_fm, m_chirality_label_text);
     // the center of the label is positioned r + k points away from the atom,
@@ -434,8 +441,7 @@ void AtomItem::updateChiralityLabel()
                      label_half_diagonal;
 
     auto chirality_label_position =
-        findPositionInEmptySpace(true) / (BOND_LENGTH * VIEW_SCALE) * distance;
-
+        new_position / (BOND_LENGTH * VIEW_SCALE) * distance;
     m_chirality_label_rect.moveCenter(chirality_label_position);
 }
 

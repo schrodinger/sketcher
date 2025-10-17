@@ -70,6 +70,14 @@ createAtomItems(std::string smiles)
 {
     auto test_scene = TestScene::getScene();
     import_mol_text(test_scene->m_mol_model, smiles);
+    std::map<const RDKit::Atom*, QPointF> atom_to_position;
+    // get atom positions
+    for (auto* item : test_scene->items()) {
+        if (auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+            atom_to_position[atom_item->getAtom()] = atom_item->pos();
+        }
+    }
+
     std::vector<std::shared_ptr<TestAtomItem>> atom_items;
     for (auto atom : test_scene->m_mol_model->getMol()->atoms()) {
         BOOST_TEST_REQUIRE(atom != nullptr);
@@ -77,6 +85,7 @@ createAtomItems(std::string smiles)
         auto atom_item = std::make_shared<TestAtomItem>(
             atom, test_scene->m_fonts,
             *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
+        atom_item->setPos(atom_to_position[atom]);
         atom_items.push_back(atom_item);
     }
     return std::make_pair(atom_items, test_scene);
@@ -261,7 +270,6 @@ BOOST_AUTO_TEST_CASE(test_findPositionInEmptySpace,
     auto first_atom_position = atom_items.at(0)->pos();
     auto second_atom_position = atom_items.at(2)->pos();
     auto empty_space_position = central_atom->findPositionInEmptySpace(false);
-
     for (const auto& pos : {first_atom_position, second_atom_position}) {
         BOOST_TEST(QLineF(pos, empty_space_position).length() == 71.9);
     }
@@ -402,6 +410,40 @@ BOOST_AUTO_TEST_CASE(test_queries_rendering)
         BOOST_TEST(atom_item->m_main_label_text == "XH");
         BOOST_TEST(atom_item->m_query_label_text == "X2&R4");
         BOOST_TEST(atom_item->m_charge_and_radical_label_text == "3+");
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_chirality_label_positioning)
+{
+    /*check the chirality labels are positioned correctly inside the ring
+    SKETCH-2576*/
+
+    std::string smiles = "FC1(S)C(F)(S)C(F)(S)C(F)(S)C(F)(S)C1(F)S";
+
+    auto [atom_items, scene] = createAtomItems(smiles);
+    // get the positions from the scene atoms
+
+    // get all the atoms with a chirality label (i.e. the C atoms)
+    std::vector<std::shared_ptr<TestAtomItem>> carbon_items;
+    for (auto item : atom_items) {
+        if (item->m_chirality_label_rect.isValid()) {
+            carbon_items.push_back(item);
+        }
+    }
+    BOOST_TEST(carbon_items.size() == 6);
+    // find the centroid of the C atoms
+    QPointF centroid(0, 0);
+    for (auto item : carbon_items) {
+        centroid += item->pos();
+    }
+    centroid /= carbon_items.size();
+    // for each C atom, check that the center of the chirality label is closer
+    // to the centroid than the C atom position, i.e. the labels points towards
+    // the center of the ring
+    for (auto item : carbon_items) {
+        auto chirality_label_center = item->m_chirality_label_rect.center();
+        BOOST_TEST(QLineF(centroid, chirality_label_center).length() <
+                   QLineF(centroid, item->pos()).length());
     }
 }
 
