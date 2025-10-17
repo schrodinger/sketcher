@@ -64,7 +64,7 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
  * counts on 3-coordinate chiral atoms (see Chirality.cpp:3533).
  * This wrapper preserves the original explicit H counts and restores them
  * after the call.
- * TODO: File RDKit issue and remove this wrapper once fixed upstream.
+ * TODO: After updating with rdkit/rdkit#8872, investigate removing this
  */
 static void
 assign_chiral_types_from_bond_dirs_preserving_explicit_hs(RDKit::RWMol& mol)
