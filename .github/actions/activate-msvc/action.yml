@@ -1,4 +1,4 @@
-name: "activate-emscripten"
+name: "activate-msvc"
 description: >
   Activates the MSVC compiler. Also installs and activates the Intel Fortran
   compiler, since gfortran doesn't work with MSVC. This action should only be
