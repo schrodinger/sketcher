@@ -1408,12 +1408,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const bool selected);
 
     /**
-     * Clear all selected atoms and bonds.  This method must only be called
-     * as part of an undo command.
-     */
-    void clearSelectionCommandFunc();
-
-    /**
      * Add a fragment to the molecule and create new bonds between the new
      * fragment and the core (i.e. the existing molecule).  This method must
      * only be called as part of an undo command.
