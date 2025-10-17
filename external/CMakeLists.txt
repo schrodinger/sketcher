@@ -206,6 +206,8 @@ list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_8738_8736.patch)
+list(APPEND RDKIT_PATCH_COMMAND && git apply
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_assignChiralTypesFromBondDirs.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
