@@ -20,20 +20,21 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Determine the build directories
+    - name: Determine the build directories and cache key
       id: vars
       shell: bash
       run: |
         BUILD_DIR="build/external${{ inputs.host-build == 'true' && '/host' || '' }}"
         echo "build-dir=${BUILD_DIR}" >> $GITHUB_OUTPUT
         echo "lib-dir=${BUILD_DIR}/${{ inputs.library }}-${{ inputs.version }}" >> $GITHUB_OUTPUT
+        echo "cache-key=${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt') }}" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v4
       id: cache-check
       with:
         path: ${{ steps.vars.outputs.lib-dir }}
         # Regenerate the cache if the version OR external/CMakeLists.txt changes
-        key: ${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt') }}
+        key: ${{ steps.vars.outputs.cache-key }}
 
     - name: Build library
       if: steps.cache-check.outputs.cache-hit != 'true'
@@ -49,3 +50,11 @@ runs:
         cmake --build ${{ steps.vars.outputs.build-dir }} --verbose${{env.endl}}
               --target ${{ inputs.library }}${{env.endl}}
               --config ${{ env.BUILD_TYPE }}
+
+    # save the dependency build even if the rest of the build fails
+    - name: Save dependency to cache
+      if: steps.cache-check.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ steps.vars.outputs.lib-dir }}
+        key: ${{ steps.vars.outputs.cache-key }}
