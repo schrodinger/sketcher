@@ -3863,5 +3863,91 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     BOOST_TEST(!contains_monomeric_atom(*mol_for_export_3));
 }
 
+BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
+{
+    // Test that assignChiralTypesFromBondDirs preserves explicit H counts
+    // when adding wedged/dashed bonds to cyclohexane
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Load cyclohexane from SMILES
+    add_text_to_mol_model(model, "C1CCCCC1");
+    const RDKit::ROMol* mol = model.getMol();
+
+    BOOST_TEST(mol->getNumAtoms() == 6);
+    BOOST_TEST(mol->getNumBonds() == 6);
+
+    // Pick a carbon atom (index 0)
+    auto* carbon = mol->getAtomWithIdx(0);
+
+    // Initial state: carbon in cyclohexane has 2 ring bonds and 2 implicit
+    // hydrogens
+    BOOST_TEST(carbon->getDegree() == 2);
+    BOOST_TEST(carbon->getNumImplicitHs() == 2);
+    BOOST_TEST(carbon->getNumExplicitHs() == 0);
+    BOOST_TEST(carbon->getTotalNumHs() == 2);
+    BOOST_TEST(!carbon->hasValenceViolation());
+
+    // Create a new carbon and bond it with a wedged up bond
+    model.addAtom(Element::C, RDGeom::Point3D(1.5, 0.0, 0.0));
+    carbon = mol->getAtomWithIdx(0);
+    auto* new_carbon_1 = mol->getAtomWithIdx(6);
+    model.addBond(carbon, new_carbon_1, RDKit::Bond::BondType::SINGLE,
+                  RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // Assert bond was added correctly
+    carbon = mol->getAtomWithIdx(0);
+    auto* bond_1 = mol->getBondBetweenAtoms(0, 6);
+    BOOST_REQUIRE(bond_1 != nullptr);
+    BOOST_TEST(bond_1->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // Verify hydrogen counts are preserved (this is what the fix addresses)
+    BOOST_TEST(carbon->getDegree() == 3);
+    BOOST_TEST(carbon->getNumImplicitHs() == 1);
+    BOOST_TEST(carbon->getNumExplicitHs() == 0);
+    BOOST_TEST(carbon->getTotalNumHs() == 1);
+    BOOST_TEST(!carbon->hasValenceViolation());
+
+    // Create a new carbon and bond it with a wedged down bond
+    model.addAtom(Element::C, RDGeom::Point3D(0.0, 1.5, 0.0));
+    carbon = mol->getAtomWithIdx(0);
+    auto* new_carbon_2 = mol->getAtomWithIdx(7);
+    model.addBond(carbon, new_carbon_2, RDKit::Bond::BondType::SINGLE,
+                  RDKit::Bond::BondDir::BEGINDASH);
+
+    // Assert bond was added correctly
+    carbon = mol->getAtomWithIdx(0);
+    auto* bond_2 = mol->getBondBetweenAtoms(0, 7);
+    BOOST_REQUIRE(bond_2 != nullptr);
+    BOOST_TEST(bond_2->getBondDir() == RDKit::Bond::BondDir::BEGINDASH);
+
+    // Verify hydrogen counts are still preserved
+    BOOST_TEST(carbon->getDegree() == 4);
+    BOOST_TEST(carbon->getNumImplicitHs() == 0);
+    BOOST_TEST(carbon->getNumExplicitHs() == 0);
+    BOOST_TEST(carbon->getTotalNumHs() == 0);
+    BOOST_TEST(!carbon->hasValenceViolation());
+
+    // Create yet another carbon and bond it to create a pentavalent carbon
+    model.addAtom(Element::C, RDGeom::Point3D(-1.5, 0.0, 0.0));
+    carbon = mol->getAtomWithIdx(0);
+    auto* new_carbon_3 = mol->getAtomWithIdx(8);
+    model.addBond(carbon, new_carbon_3, RDKit::Bond::BondType::SINGLE,
+                  RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // Assert bond was added correctly
+    carbon = mol->getAtomWithIdx(0);
+    auto* bond_3 = mol->getBondBetweenAtoms(0, 8);
+    BOOST_REQUIRE(bond_3 != nullptr);
+    BOOST_TEST(bond_3->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // Verify we now have a pentavalent carbon with valence violation
+    BOOST_TEST(carbon->getDegree() == 5);
+    BOOST_TEST(carbon->getNumImplicitHs() == 0);
+    BOOST_TEST(carbon->getNumExplicitHs() == 0);
+    BOOST_TEST(carbon->getTotalNumHs() == 0);
+    BOOST_TEST(carbon->hasValenceViolation());
+}
+
 } // namespace sketcher
 } // namespace schrodinger
