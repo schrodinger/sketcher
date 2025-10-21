@@ -549,9 +549,3 @@
    fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
    fun:_ZN7QThread4execEv
 }
-{
-   Mesa/GPU driver JIT code Cond suppression
-   Memcheck:Cond
-   obj:*
-   obj:*
-}
