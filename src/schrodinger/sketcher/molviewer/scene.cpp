@@ -722,9 +722,13 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
     connect(new_scene_tool.get(), &AbstractSceneTool::atomDragFinished, this,
             &Scene::onAtomDragFinished);
     requestCursorHintUpdate();
-    // set the correct colors for the new scene tool
-    m_scene_tool->updateColorsAfterBackgroundColorChange(
-        m_sketcher_model->hasDarkColorScheme());
+    // set the correct colors for the new scene tool, but only
+    // if this is not a NullSceneTool. This is required so that we
+    // don't hit this when destroying the Scene.
+    if (dynamic_cast<NullSceneTool*>(m_scene_tool.get()) == nullptr) {
+        m_scene_tool->updateColorsAfterBackgroundColorChange(
+            m_sketcher_model->hasDarkColorScheme());
+    }
 }
 
 void Scene::requestCursorHintUpdate()
