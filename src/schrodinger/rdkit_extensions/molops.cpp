@@ -102,6 +102,9 @@ void removeHs(RDKit::RWMol& rdk_mol)
     // conversion from 3D Structure, there is no way to create queries.
     ps.removeWithQuery = true;
 
+    // preserve hydrides
+    ps.removeHydrides = false;
+
     // Disable displaying warnings
     ps.showWarnings = false;
 
