@@ -1010,3 +1010,66 @@ BOOST_DATA_TEST_CASE(test_converting_structures_with_wiggly_bonds,
     // Wiggly bonds should have UNKNOWN Direction
     BOOST_TEST(test_bond->getBondDir() == RDKit::Bond::UNKNOWN);
 }
+
+BOOST_DATA_TEST_CASE(TestCombiningAbsoluteEnhancedStereoGroups,
+                     (bdata::make(std::vector<std::string>{
+                          "STEABS",
+                      }) ^
+                      bdata::make(std::vector<std::string>{
+                          "|a:2,4|",
+                      })) *
+                         (bdata::make(std::vector<std::string>{
+                              "3",
+                              "4",
+                          }) ^
+                          bdata::make(std::vector<std::string>{
+                              "4",
+                              "3",
+                          })),
+                     test_stereo_group_type, expected_stereo_group_extension,
+                     test_atom1, test_atom2)
+{
+    auto molblock = fmt::format(R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 8 7 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -4.092597 -1.392509 0.000000 0
+M  V30 2 C -2.683821 -0.875482 0.000000 0
+M  V30 3 C -4.347972 -2.872425 0.000000 0
+M  V30 4 C -3.194885 -3.830086 0.000000 0
+M  V30 5 C -1.787157 -3.315618 0.000000 0
+M  V30 6 C -3.451094 -5.309555 0.000000 0
+M  V30 7 C -4.859281 -5.826684 0.000000 0
+M  V30 8 C -5.755263 -3.391590 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 3 1
+M  V30 3 1 4 3
+M  V30 4 1 5 4
+M  V30 5 1 4 6 CFG=1
+M  V30 6 1 6 7
+M  V30 7 1 3 8 CFG=3
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/{0} ATOMS=(1 {1})
+M  V30 MDLV30/{0} ATOMS=(1 {2})
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+$$$$)MDL",
+                                test_stereo_group_type, test_atom1, test_atom2);
+    auto mol = to_rdkit(molblock);
+
+    // we should only have one stereo group
+    BOOST_TEST(mol->getStereoGroups().size() == 1);
+
+    // clear coordinates to make the cxsmiles output cleaner
+    mol->clearConformers();
+    auto cxsmiles = to_string(*mol, Format::EXTENDED_SMILES);
+
+    BOOST_TEST(cxsmiles.ends_with(expected_stereo_group_extension));
+}
