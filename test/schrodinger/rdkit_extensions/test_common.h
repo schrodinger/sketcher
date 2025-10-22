@@ -1,10 +1,17 @@
 #pragma once
 
-#include <cstdlib>
 #include <exception>
+#include <filesystem>
 #include <string>
 
-#include <filesystem>
+#include <boost/dll/runtime_symbol_info.hpp>
+#include <boost/filesystem.hpp>
+
+#include <fmt/format.h>
+
+#include <QByteArray> // qgetenv, qputemv, qunsetenv
+
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 
 /**
  * Gets full path to a file in the testfiles directory in the source
