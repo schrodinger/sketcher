@@ -758,6 +758,33 @@ void lay_out_polymers(const std::vector<RDKit::ROMOL_SPTR>& polymers)
     }
 }
 
+static bool check_clashes(const RDKit::ROMol& monomer_mol)
+{
+    const double CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
+    auto& conformer = monomer_mol.getConformer();
+    auto positions = conformer.getPositions();
+    for (size_t i = 0; i < positions.size(); i++) {
+        for (size_t j = i + 1; j < positions.size(); j++) {
+            if (positions[i].x - positions[j].x > CLASH_DISTANCE ||
+                positions[i].x - positions[j].x < -CLASH_DISTANCE ||
+                positions[i].y - positions[j].y > CLASH_DISTANCE ||
+                positions[i].y - positions[j].y < -CLASH_DISTANCE) {
+                continue;
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool check_coords(RDKit::ROMol& monomer_mol)
+{
+    if (!check_clashes(monomer_mol)) {
+        return false;
+    }
+    return true;
+}
+
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 {
     // clear layout related props so we can start a fresh layout
@@ -775,6 +802,12 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     adjust_chem_polymer_coords(monomer_mol);
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
+
+    if (!check_coords(monomer_mol)) {
+        std::cerr << "Warning: Generated coordinates for monomer mol have "
+                     "clashing atoms."
+                  << std::endl;
+    }
     return conformer_id;
 }
 
