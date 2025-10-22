@@ -221,8 +221,8 @@ if(ENABLE_TESTING)
   set(SUPPRESSION_FILE "test_valgrind.suppressions")
   set(MEMTEST_COMMAND
       "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
-        --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
-        --error-exitcode=29")
+        --gen-suppressions=all --leak-check=full \
+        --keep-debuginfo=no --error-exitcode=29")
   separate_arguments(MEMTEST_COMMAND)
 
   foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
