@@ -20,9 +20,9 @@
    fun:_ZN23QCoreApplicationPrivate4initEv
    fun:_ZN22QGuiApplicationPrivate4initEv
    fun:_ZN19QApplicationPrivate4initEv
-   fun:QApplicationRequiredFixture
+   fun:*QApplicationRequiredFixture*
    fun:_ZN5boost9unit_test9ut_detail25global_configuration_implI27QApplicationRequiredFixtureE10test_startEmm
-   fun:_ZN5boost6detail8function21function_obj_invoker0INS0_7forwardEiE6invokeERNS1_15function_bufferE
+   fun:_ZN5boost*function*obj_invoker*invoke*
    fun:_ZN5boost17execution_monitor13catch_signalsERKNS_8functionIFivEEE
 }
 {
@@ -86,6 +86,31 @@
    fun:_ZN14QThreadPrivate5startEPv
    fun:start_thread
    fun:clone
+}
+{
+   Qt suppression - QDBus calloc with variable obj depth (definite)
+   Memcheck:Leak
+   match-leak-kinds: definite
+   fun:calloc
+   ...
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+   fun:_ZN9QtPrivate15QCallableObjectIM22QDBusConnectionManagerFP22QDBusConnectionPrivateN15QDBusConnection7BusTypeERK7QStringbENS_4ListIJRS5_S8_RbEEES3_E4implEiPNS_15QSlotObjectBaseEP7QObjectPPvPb
+}
+{
+   Qt suppression - QDBus possibly lost (realloc)
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:realloc
+   ...
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
+}
+{
+   Qt suppression - QDBus possibly lost (calloc)
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   ...
+   fun:_ZN22QDBusConnectionManager22doConnectToStandardBusEN15QDBusConnection7BusTypeERK7QStringb
 }
 {
    Qt suppression
@@ -369,6 +394,12 @@
    fun:_ZN7QThread4execEv
 }
 {
+   Mesa/GPU driver JIT code Cond suppression
+   Memcheck:Cond
+   obj:*
+   obj:*
+}
+{
    Qt suppression
    Memcheck:Leak
    match-leak-kinds: possible
@@ -415,10 +446,9 @@
    fun:_ZN23QCoreApplicationPrivate4initEv
    fun:_ZN22QGuiApplicationPrivate4initEv
    fun:_ZN19QApplicationPrivate4initEv
-   fun:QApplicationRequiredFixture
+   fun:*QApplicationRequiredFixture*
    fun:_ZN5boost9unit_test9ut_detail25global_configuration_implI27QApplicationRequiredFixtureE10test_startEmm
-   fun:_ZN5boost6detail8function21function_obj_invoker0INS0_7forwardEiE6invokeERNS1_15function_bufferE
-   fun:_ZN5boost17execution_monitor13catch_signalsERKNS_8functionIFivEEE
+   fun:_ZN5boost*function*obj_invoker*invoke*
    fun:_ZN5boost17execution_monitor7executeERKNS_8functionIFivEEE
    fun:_ZN5boost17execution_monitor8vexecuteERKNS_8functionIFvvEEE
 }
@@ -445,7 +475,7 @@
    fun:_ZN23QCoreApplicationPrivate4initEv
    fun:_ZN22QGuiApplicationPrivate4initEv
    fun:_ZN19QApplicationPrivate4initEv
-   fun:QApplicationRequiredFixture
+   fun:*QApplicationRequiredFixture*
    fun:_ZN5boost9unit_test9ut_detail25global_configuration_implI27QApplicationRequiredFixtureE10test_startEmm
 }
 {

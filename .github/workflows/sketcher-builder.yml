@@ -29,8 +29,8 @@ jobs:
         include:
           - os: ubuntu-latest
             build-output: wasm
-        #   - os: ubuntu-latest
-        #     build-output: memtest
+          - os: ubuntu-latest
+            build-output: memtest
     steps:
       - uses: actions/checkout@v4
         with:
