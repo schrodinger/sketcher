@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <string>
 
-#include <boost/dll/runtime_symbol_info.hpp>
 #include <boost/filesystem.hpp>
 
 #include <fmt/format.h>
@@ -45,7 +44,7 @@ class LocalMonomerDbFixture
         // have custom definitions in the tests.
         m_custom_db = qgetenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data());
 
-        auto test_dir = boost::dll::program_location().parent_path();
+        auto test_dir = boost::filesystem::current_path();
         auto db_fname =
             boost::unit_test::framework::master_test_suite().p_name.value +
             "_custom_monomers.db";
