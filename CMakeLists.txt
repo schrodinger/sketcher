@@ -148,9 +148,31 @@ function(enable_qt_moc TARGET)
                AUTORCC ON)
 endfunction()
 
+# Add a dependency on the generated header
+function(add_generated_header_dependency TARGET)
+  # The header is generated with a Python script, so we need
+  # to find the Python interpreter
+  find_package (Python COMPONENTS Interpreter REQUIRED)
+  set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/rdkit_extensions)
+  set(HDR_PATH ${PROJECT_BINARY_DIR}/include/schrodinger/rdkit_extensions/monomer_db_default_monomers.h)
+  add_custom_command(
+      OUTPUT  ${HDR_PATH}
+      COMMAND ${Python_EXECUTABLE}
+                ${SRC_DIR}/generate_default_monomers_header.py
+                ${SRC_DIR}/default_monomer_definitions.json
+                ${HDR_PATH}
+      DEPENDS ${SRC_DIR}/default_monomer_definitions.json
+              ${SRC_DIR}/generate_default_monomers_header.py
+      COMMENT "Generating monomer_db_default_monomers.h"
+  )
+  add_custom_target(generated_header DEPENDS ${HDR_PATH})
+  add_dependencies(${TARGET} generated_header)
+endfunction()
+
 # schrodinger::rdkit_extensions library
 set(RDKIT_EXTENSIONS_TARGET rdkit_extensions)
 build_schrodinger_library(${RDKIT_EXTENSIONS_TARGET})
+add_generated_header_dependency(${RDKIT_EXTENSIONS_TARGET})
 target_link_libraries(
   ${RDKIT_EXTENSIONS_TARGET}
   PRIVATE Boost::filesystem
@@ -166,6 +188,7 @@ target_link_libraries(
           SQLite::SQLite3
           ZLIB::ZLIB
           ${ZSTD_LIB_NAME})
+
 
 # schrodinger::sketcher library
 set(SKETCHER_TARGET sketcher)
