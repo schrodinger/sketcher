@@ -100,14 +100,16 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
              "Tho", "I", "PS"))},
         {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
-        {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::ATOMISTIC)}};
+        {ModelKey::MOLECULE_TYPE,
+         QVariant::fromValue(MoleculeType::ATOMISTIC)}};
 
     TestSketcherModel model;
     QSignalSpy pinged_spy(&model, &SketcherModel::valuePinged);
     QSignalSpy changed_spy(&model, &SketcherModel::valuesChanged);
     std::vector<QSignalSpy*> spies = {&pinged_spy, &changed_spy};
     for (auto& key : get_model_keys()) {
-        if (key == ModelKey::RESIDUE_TYPE || key == ModelKey::CUSTOM_NUCLEOTIDE) {
+        if (key == ModelKey::RESIDUE_TYPE ||
+            key == ModelKey::CUSTOM_NUCLEOTIDE) {
             continue;
         }
         // Access the current value
