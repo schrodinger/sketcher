@@ -258,6 +258,7 @@ enum class DrawTool {
     ENUMERATION,
     RESIDUE,
     EXPLICIT_H,
+    MONOMER,
 };
 
 /**
@@ -282,7 +283,96 @@ enum class ModelKey {
     ATOM_QUERY,
     RGROUP_NUMBER,
     RESIDUE_TYPE,
+    MONOMER_TOOL_TYPE, /// whether the MONOMER tool should activate an
+                       ///   AMINO_ACID_TOOL or a NUCLEIC_ACID_TOOL
+    AMINO_ACID_TOOL,   /// the amino acid monomer to draw
+    NUCLEIC_ACID_TOOL, /// the nucleic acid monomer or full nucleotide to draw
+    RNA_NUCLEOBASE,    /// the base to use for the RNA_NUCLEOTIDE tool
+    DNA_NUCLEOBASE,    /// the base to use for the DNA_NUCLEOTIDE tool
+    CUSTOM_NUCLEOTIDE, /// a tuple of (sugar, base, phosphate) to use for the
+                       ///   CUSTOM_NUCLEOTIDE tool
+    INTERFACE_TYPE,    /// whether the Sketcher is intended for use with
+                       ///   atomistic models, monomeric models, or both
+    TOOL_SET,          /// whether the side bar shows the atomistic tools or
+                       ///   monomeric tools, which (along with
+                       ///   MONOMER_TOOL_TYPE) controls the keyboard shortcuts
+                       ///   (i.e. should "C" activate carbon, cysteine, or
+                       ///   cytosine)
+    MOLECULE_TYPE,     /// whether the Sketcher workspace contains an atomistic
+                       ///   model, a monomeric model, or is empty
 };
+
+enum class MoleculeType {
+    EMPTY,
+    ATOMISTIC,
+    MONOMERIC,
+};
+
+enum class ToolSet {
+    ATOMISTIC,
+    MONOMERIC,
+};
+
+enum class MonomerToolType {
+    AMINO_ACID,
+    NUCLEIC_ACID,
+};
+
+enum class AminoAcidTool {
+    ALA,
+    ARG,
+    ASN,
+    ASP,
+    CYS,
+    GLN,
+    GLU,
+    GLY,
+    HIS,
+    ILE,
+    LEU,
+    LYS,
+    MET,
+    PHE,
+    PRO,
+    SER,
+    THR,
+    TRP,
+    TYR,
+    VAL,
+    UNK,
+};
+
+enum class NucleicAcidTool {
+    A,
+    U,
+    G,
+    C,
+    T,
+    N,
+    R,
+    P,
+    dR,
+    RNA_NUCLEOTIDE,
+    DNA_NUCLEOTIDE,
+    CUSTOM_NUCLEOTIDE,
+};
+
+enum class StdNucleobase {
+    A,
+    U_OR_T,
+    G,
+    C,
+    N,
+};
+
+/**
+ * Convert a StdNucleobase instance to a string
+ *
+ * @param base The base to convert
+ * @param u_or_t The string to use for U_OR_T. Should be either "U" or "T".
+ */
+SKETCHER_API std::string std_nucleobase_to_string(StdNucleobase base,
+                                                  std::string u_or_t);
 
 /**
  * @return Every element of `ModelKey`.
@@ -327,6 +417,14 @@ class SKETCHER_API SketcherModel : public QObject
     EnumerationTool getEnumerationTool() const;
     Element getElement() const;
     AtomQuery getAtomQuery() const;
+    MonomerToolType getMonomerToolType() const;
+    AminoAcidTool getAminoAcidTool() const;
+    NucleicAcidTool getNucleicAcidTool() const;
+    StdNucleobase getRNANucleobase() const;
+    StdNucleobase getDNANucleobase() const;
+    InterfaceTypeType getInterfaceType() const;
+    ToolSet getToolSet() const;
+    MoleculeType getMoleculeType() const;
 
     /**
      * Retrieve data from the model's state map.
@@ -360,6 +458,13 @@ class SKETCHER_API SketcherModel : public QObject
      * @param key_value_map (key, value) pairs to assign to the model
      */
     void setValues(const std::unordered_map<ModelKey, QVariant>& key_value_map);
+
+    /**
+     * If the current tool is a monomeric nucleotide, return the nucleotide as a
+     * tuple of (sugar, base, phosphate). If not, return std::nullopt.
+     */
+    std::optional<std::tuple<std::string, std::string, std::string>>
+    getNucleotide() const;
 
     /**
      * @return whether a reaction is present

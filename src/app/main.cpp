@@ -9,6 +9,8 @@
 #include <emscripten/bind.h>
 #endif
 
+#include <cstring>
+
 #include <QApplication>
 #include <QFile>
 
@@ -149,5 +151,10 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
+    // check for the command line option to enable the monomeric tools
+    if (argc >= 2 && strcmp(argv[1], "--allow-monomeric") == 0) {
+        sk.setInterfaceType(
+            schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    }
     return application.exec();
 }
