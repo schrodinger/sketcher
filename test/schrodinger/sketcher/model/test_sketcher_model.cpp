@@ -110,6 +110,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
     for (auto& key : get_model_keys()) {
         if (key == ModelKey::RESIDUE_TYPE ||
             key == ModelKey::CUSTOM_NUCLEOTIDE) {
+            // These values are not stored as int-like objects
             continue;
         }
         // Access the current value
