@@ -14,11 +14,11 @@ namespace sketcher
 NucleotidePopup::NucleotidePopup(const NucleicAcidTool tool,
                                  const ModelKey model_key, const QString& sugar,
                                  const QString& u_or_t, QWidget* parent) :
+    ModularPopup(parent),
     m_tool(tool),
     m_model_key(model_key),
     m_sugar(sugar),
-    m_u_or_t(u_or_t),
-    ModularPopup(parent)
+    m_u_or_t(u_or_t)
 {
     ui.reset(new Ui::NucleotidePopup());
     ui->setupUi(this);
