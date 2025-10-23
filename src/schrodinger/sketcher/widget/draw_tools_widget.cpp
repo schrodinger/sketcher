@@ -36,7 +36,6 @@ DrawToolsWidget::DrawToolsWidget(QWidget* parent) :
     ui->stereo_bond1_btn->setPopupWidget(m_stereo_bond1_wdg);
     ui->stereo_bond2_btn->setPopupWidget(m_stereo_bond2_wdg);
 
-    ui->title_lbl->setStyleSheet(PALETTE_TITLE_STYLE);
     ui->bond_query_btn->setStyleSheet(BOND_QUERY_STYLE);
 
     // Not all of these IDs will be used, but because we need to assign some of
@@ -120,8 +119,6 @@ void DrawToolsWidget::updateWidgetsEnabled()
     ui->atom_chain_btn->setEnabled(!has_selection);
 
     // Update title label and background color based on selection
-    std::string title = has_selection ? "EDIT ACTIONS" : "DRAW";
-    ui->title_lbl->setText(QString::fromStdString(title));
     ui->atom_frame->setStyleSheet(sel_has_atom ? SELECTION_ACTIVE_STYLE : "");
     ui->bond_frame->setStyleSheet(sel_has_bond ? SELECTION_ACTIVE_STYLE : "");
 }

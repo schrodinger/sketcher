@@ -63,7 +63,9 @@ class SKETCHER_API SketcherWidget : public QWidget
     Q_OBJECT
 
   public:
-    SketcherWidget(QWidget* parent = nullptr);
+    SketcherWidget(
+        QWidget* parent = nullptr,
+        const InterfaceTypeType interface_type = InterfaceType::ATOMISTIC);
     ~SketcherWidget();
 
     /**
@@ -105,6 +107,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @return true if the scene is empty
      */
     bool isEmpty() const;
+
+    /**
+     * Set whether this Sketcher can be used to draw atomistic models (i.e.
+     * small molecules), monomeric models (i.e. HELM models), or both
+     */
+    void setInterfaceType(const InterfaceTypeType interface_type);
 
     /**
      * Enable select-only mode, which removes the toolbars and limits user
@@ -472,6 +480,8 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void onAtomHovered(const RDKit::Atom* atom);
     void onBondHovered(const RDKit::Bond* bond);
+
+    void onMolModelChanged(const bool molecule_changed);
 };
 
 } // namespace sketcher
