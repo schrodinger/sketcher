@@ -458,12 +458,29 @@ static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
     }
 }
 
+static std::vector<unsigned int>
+get_bonded_monomer_indices(const RDKit::Atom* monomer)
+{
+    std::vector<unsigned int> bonded_monomer_indices{};
+    if (!monomer->hasProp(BOND_TO)) {
+        return bonded_monomer_indices;
+    }
+    std::string bond_to = monomer->getProp<std::string>(BOND_TO);
+    std::stringstream ss(bond_to);
+    std::string token;
+    while (std::getline(ss, token, ',')) {
+        bonded_monomer_indices.push_back(std::stoi(token));
+    }
+    return bonded_monomer_indices;
+}
+
 /**
  * Sorts polymers in connection order i.e. a polymer is followed by all its
  * neighbors contiguously that are then followed by their neighbors contiguously
  * and so on.
  */
-static std::vector<RDKit::ROMOL_SPTR>
+std::pair<std::vector<RDKit::ROMOL_SPTR>,
+          std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
 sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
 {
     std::map<unsigned int, RDKit::ROMOL_SPTR> polymer_for_monomer_idx;
@@ -476,6 +493,7 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
 
     std::vector<RDKit::ROMOL_SPTR> sorted_polymers;
     std::set<std::string> visited_polymers;
+    std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR> parent_polymer;
     for (auto polymer : polymers) {
         std::queue<RDKit::ROMOL_SPTR> polymer_queue;
         for (polymer_queue.push(polymer); !polymer_queue.empty();
@@ -492,16 +510,26 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
                 if (!monomer->hasProp(BOND_TO)) {
                     continue;
                 }
-                auto neighbor_monomer = monomer->getProp<unsigned int>(BOND_TO);
-                polymer_queue.push(polymer_for_monomer_idx[neighbor_monomer]);
+                auto neighbor_monomers = get_bonded_monomer_indices(monomer);
+                for (auto neighbor_monomer : neighbor_monomers) {
+                    auto neighbor_polymer =
+                        polymer_for_monomer_idx[neighbor_monomer];
+                    if (visited_polymers.find(
+                            neighbor_polymer->getProp<std::string>(
+                                POLYMER_ID)) == visited_polymers.end()) {
+                        parent_polymer[neighbor_polymer] = polymer;
+                    }
+                    polymer_queue.push(neighbor_polymer);
+                }
             }
         }
     }
 
-    return sorted_polymers;
+    return std::make_pair(sorted_polymers, parent_polymer);
 }
 
-static std::vector<RDKit::ROMOL_SPTR>
+static std::pair<std::vector<RDKit::ROMOL_SPTR>,
+                 std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
 break_into_polymers(const RDKit::ROMol& monomer_mol)
 {
     for (auto atom : monomer_mol.atoms()) {
@@ -515,8 +543,22 @@ break_into_polymers(const RDKit::ROMol& monomer_mol)
         if (get_polymer_id(beginMonomer) == get_polymer_id(endMonomer)) {
             continue;
         }
-        beginMonomer->setProp(BOND_TO, endMonomer->getIdx());
-        endMonomer->setProp(BOND_TO, beginMonomer->getIdx());
+        // store the connected indices as comman separated values in the BOND_TO
+        // prop
+        std::string begin_monomer_bond_to =
+            beginMonomer->hasProp(BOND_TO)
+                ? beginMonomer->getProp<std::string>(BOND_TO) + "," +
+                      std::to_string(endMonomer->getIdx())
+                : std::to_string(endMonomer->getIdx());
+
+        beginMonomer->setProp(BOND_TO, begin_monomer_bond_to);
+        std::string end_monomer_bond_to =
+            endMonomer->hasProp(BOND_TO)
+                ? endMonomer->getProp<std::string>(BOND_TO) + "," +
+                      std::to_string(beginMonomer->getIdx())
+                : std::to_string(beginMonomer->getIdx());
+
+        endMonomer->setProp(BOND_TO, end_monomer_bond_to);
     }
 
     std::vector<RDKit::ROMOL_SPTR> polymers;
@@ -541,13 +583,15 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
 
     BOND_IDX_VEC bonds{};
     for (auto monomer : from.atoms()) {
-        if (!monomer->hasProp(BOND_TO)) {
+        auto bonded_monomers_indices = get_bonded_monomer_indices(monomer);
+        if (bonded_monomers_indices.empty()) {
             continue;
         }
-        auto bond_end_idx = monomer->getProp<unsigned int>(BOND_TO);
-        if (end_monomers.find(bond_end_idx) != end_monomers.end()) {
-            bonds.push_back(
-                {monomer->getIdx(), end_monomers[bond_end_idx]->getIdx()});
+        for (auto bonded_idx : bonded_monomers_indices) {
+            if (end_monomers.find(bonded_idx) != end_monomers.end()) {
+                bonds.push_back(
+                    {monomer->getIdx(), end_monomers[bonded_idx]->getIdx()});
+            }
         }
     }
     return bonds;
@@ -738,23 +782,26 @@ static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
     return polymer_bonds.size() >= 2;
 }
 
-void lay_out_polymers(const std::vector<RDKit::ROMOL_SPTR>& polymers)
+void lay_out_polymers(
+    const std::vector<RDKit::ROMOL_SPTR>& polymers,
+    const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
 {
     // lay out the polymers in connection order so connected polymers are laid
     // out next to each other.
-    RDKit::ROMOL_SPTR previous_polymer = nullptr;
     for (auto polymer : polymers) {
+        RDKit::ROMOL_SPTR parent = nullptr;
+        if (parent_polymer.find(polymer) != parent_polymer.end()) {
+            parent = parent_polymer.at(polymer);
+        }
         // For double stranded nucleic acids we want to lay out the
         // first polymer normally and then rotate the other polymer
         // 180° so the strands run anti-parallel to each other
-        bool rotate_polymer =
-            (previous_polymer != nullptr) &&
-            are_double_stranded_nucleic_acid(polymer, previous_polymer);
+        bool rotate_polymer = (parent != nullptr) &&
+                              are_double_stranded_nucleic_acid(polymer, parent);
         lay_out_polymer(*polymer, rotate_polymer);
-        if (previous_polymer != nullptr) {
-            orient_polymer(*polymer, *previous_polymer);
+        if (parent != nullptr) {
+            orient_polymer(*polymer, *parent);
         }
-        previous_polymer = polymer;
     }
 }
 
@@ -762,12 +809,12 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 {
     // clear layout related props so we can start a fresh layout
     clear_layout_props(monomer_mol);
-    auto polymers = break_into_polymers(monomer_mol);
+    auto [polymers, parent_polymer] = break_into_polymers(monomer_mol);
     // SHARED-9795: Special case for single polymers that are strictly chains
     if (is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } else {
-        lay_out_polymers(polymers);
+        lay_out_polymers(polymers, parent_polymer);
     }
     remove_cxsmiles_labels(monomer_mol);
     auto conformer_id =
