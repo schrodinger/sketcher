@@ -951,8 +951,6 @@ BOOST_AUTO_TEST_CASE(test_atom_mapping_rgroups)
 BOOST_DATA_TEST_CASE(test_converting_biologics_to_non_reaction_formats,
                      bdata::make(MOL_FORMATS), mol_format)
 {
-    set_default_monomer_db_path();
-
     using test_info_t = std::pair<std::string, Format>;
     for (auto [input, input_format] : std::array<test_info_t, 4>{{
              {">\nACG\n", Format::FASTA_DNA},

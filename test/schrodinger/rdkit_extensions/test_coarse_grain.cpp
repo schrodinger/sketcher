@@ -144,8 +144,6 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
 
 BOOST_AUTO_TEST_CASE(Test_annotated_toMonomeric)
 {
-    set_default_monomer_db_path();
-
     auto atomistic_mol =
         RDKit::v2::FileParsers::MolFromPDBFile(testfile_path("1dng.pdb"));
     auto monomer_mol = toMonomeric(*atomistic_mol);

@@ -1098,7 +1098,8 @@ void detectLinkages(RDKit::RWMol& monomer_mol,
 }
 
 std::optional<std::tuple<std::string, std::string, ChainType>>
-getHelmInfo(MonomerDatabase& db, const RDKit::Atom* atom, bool has_pdb_codes)
+getHelmInfo(const MonomerDatabase& db, const RDKit::Atom* atom,
+            bool has_pdb_codes)
 {
     if (has_pdb_codes) {
         // This comes from something like a PDB or MAE file
@@ -1151,22 +1152,13 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
     ChainsAndResidues chains_and_residues;
     findChainsAndResidues(mol, chains_and_residues);
 
-    // Monomer database connection to verify monomers and get HELM info
-    auto path = getMonomerDbPath();
-    if (!path.has_value()) {
-        // This shouldn't happen since DEFAULT_MONOMER_DB_PATH_ENV_VAR points to
-        // mmshare/data/helm/core_monomerlib.db and that should always exist
-        throw std::runtime_error(fmt::format(
-            "Could not find monomer database, try setting env variable {}",
-            CUSTOM_MONOMER_DB_PATH_ENV_VAR));
-    }
-    MonomerDatabase db(*path);
+    auto& db = MonomerDatabase::instance();
+
     std::map<ChainType, unsigned int> chain_counts = {{ChainType::PEPTIDE, 0},
                                                       {ChainType::RNA, 0},
                                                       {ChainType::DNA, 0},
                                                       {ChainType::CHEM, 0}};
-    boost::shared_ptr<RDKit::RWMol> monomer_mol =
-        boost::make_shared<RDKit::RWMol>();
+    auto monomer_mol = boost::make_shared<RDKit::RWMol>();
     for (const auto& [chain_id, residues] : chains_and_residues) {
         // Use first residue to determine chain type. We assume that PDB data
         // is correct and there aren't multiple chain types in a single chain.
