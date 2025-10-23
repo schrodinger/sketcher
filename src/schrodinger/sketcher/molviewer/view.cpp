@@ -163,7 +163,7 @@ void View::zoomOutToIncludeAll()
         return;
     }
     auto visible_rect = mapToScene(rect()).boundingRect();
-    QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
+    QRectF rec = cur_scene->getSceneItemsBoundingRect();
     rec = rec.united(visible_rect);
     if (rec == visible_rect) {
         // If the bounding rect is the same as the visible rect, then we
@@ -189,7 +189,7 @@ void View::fitToScreen()
     if (!cur_scene) {
         return;
     }
-    QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
+    QRectF rec = cur_scene->getSceneItemsBoundingRect();
     // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
     // molecule too close to the border
     rec.adjust(-rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,

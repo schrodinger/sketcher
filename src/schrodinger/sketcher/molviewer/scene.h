@@ -100,9 +100,16 @@ class SKETCHER_API Scene : public QGraphicsScene
         const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
 
     /**
+     * @return the bounding rectangle of all items in the scene. This includes
+     * all interactive items plus any annotation items such as the simplified
+     * stereo label
+     */
+    QRectF getSceneItemsBoundingRect() const;
+
+    /**
      * get atoms, bonds, sgroups and non-molecular objects in the scene
-     * @param subset The subset of objects to return (all, selected, selected or
-    hovered).  Defaults to returning all
+     * @param subset The subset of objects to return (all, selected,
+    selected or hovered).  Defaults to returning all
      * objects.
      * @param pos The position of the mouse cursor, this is needed to figure
     out which items are hovered
@@ -360,6 +367,11 @@ class SKETCHER_API Scene : public QGraphicsScene
      */
     std::vector<const RDKit::Atom*> m_context_menu_atoms;
     bool m_currently_dragging_atom;
+
+    /**
+     * Check if we are currently displaying a simplified stereo annotation
+     */
+    bool isSimplifiedStereoAnnotationVisible() const;
 
   private:
     /**
