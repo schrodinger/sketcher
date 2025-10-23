@@ -444,6 +444,11 @@ QSet<const RDKit::Bond*> SketcherWidget::getSelectedBonds() const
     return QSet(bonds_from_copy.begin(), bonds_from_copy.end());
 }
 
+void SketcherWidget::fitToScreen(bool selection_only)
+{
+    m_ui->view->fitToScreen(selection_only);
+}
+
 std::string SketcherWidget::getClipboardContents() const
 {
     auto data = QApplication::clipboard()->mimeData();
