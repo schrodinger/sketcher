@@ -462,6 +462,20 @@ MolModel::getNonMolecularObjects() const
     return objs;
 }
 
+void MolModel::setCalculateStereoOnChange(bool calculate_stereo)
+{
+    m_calculate_stereo = calculate_stereo;
+    if (m_calculate_stereo) { // if turned back on, force a stereo update
+        update_molecule_on_change(m_mol, m_calculate_stereo);
+        // Notify observers (e.g., Scene) that molecule metadata has changed
+        // Need to temporarily unblock signals since this is called outside
+        // of a command execution context
+        bool signals_blocked = blockSignals(false);
+        emit modelChanged(WhatChanged::MOLECULE);
+        blockSignals(signals_blocked);
+    }
+}
+
 void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
                                        const QString& description,
                                        const WhatChangedType to_be_changed)
@@ -471,7 +485,7 @@ void MolModel::doCommandUsingSnapshots(const std::function<void()> do_func,
     m_allow_edits = true;
     do_func();
     if (to_be_changed & WhatChanged::MOLECULE) {
-        update_molecule_on_change(m_mol);
+        update_molecule_on_change(m_mol, m_calculate_stereo);
     }
     // We don't need to call updateNonMolecularMetadata here since
     // m_tag_to_non_molecular_object (which is what updateNonMolecularMetadata
@@ -863,12 +877,6 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
             ? WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED
             : WhatChanged::MOLECULE;
 
-    if (mol.getNumAtoms() > MAX_NUM_ATOMS_FOR_IMPORT) {
-        throw std::runtime_error(
-            fmt::format("Cannot import molecules containing more than {} atoms",
-                        MAX_NUM_ATOMS_FOR_IMPORT));
-    }
-
     // Ensure the newly added mol has coords and necessary stereo information
     prepare_mol(mol);
 
@@ -899,24 +907,6 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
     }
 }
 
-/**
- * @return the total number of atoms in all of a reaction's products and
- * reactants
- */
-static unsigned int
-num_atoms_in_reaction(const RDKit::ChemicalReaction& reaction)
-{
-    auto sum_num_atoms = [](unsigned int num_atoms, RDKit::ROMOL_SPTR mol) {
-        return num_atoms + mol->getNumAtoms();
-    };
-    auto num_atoms =
-        std::accumulate(reaction.beginReactantTemplates(),
-                        reaction.endReactantTemplates(), 0u, sum_num_atoms);
-    return std::accumulate(reaction.beginProductTemplates(),
-                           reaction.endProductTemplates(), num_atoms,
-                           sum_num_atoms);
-}
-
 void MolModel::addReaction(RDKit::ChemicalReaction reaction)
 {
     if (!reaction.getNumReactantTemplates() &&
@@ -927,11 +917,6 @@ void MolModel::addReaction(RDKit::ChemicalReaction reaction)
     if (m_arrow.has_value()) {
         throw std::runtime_error(
             "Sketcher does not support more than one reaction.");
-    }
-    if (num_atoms_in_reaction(reaction) > MAX_NUM_ATOMS_FOR_IMPORT) {
-        throw std::runtime_error(
-            fmt::format("Cannot import reactions containing more than {} atoms",
-                        MAX_NUM_ATOMS_FOR_IMPORT));
     }
 
     for (auto mol : reaction.getReactants()) {
