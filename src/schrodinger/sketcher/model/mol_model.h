@@ -862,6 +862,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void kekulize();
 
+    /**
+     * @param calculate_stereo whether or not to calculate stereochemistry
+     *        on each change of the underlying mol; this is disabled when the
+     *        user turns off the display of stereo labels, which is useful for
+     *        importing very large structures that would otherwise be slow
+     */
+    void setCalculateStereoOnChange(bool calculate_stereo);
+
   signals:
 
     /**
@@ -914,6 +922,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::unordered_set<NonMolecularTag> m_selected_non_molecular_tags;
 
     std::vector<HighlightingInfo> m_highlighting_info;
+    bool m_calculate_stereo = true;
 
     /**
      * create an empty conformer for m_mol so it's ready to be used by other

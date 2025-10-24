@@ -243,7 +243,7 @@ void prepare_mol(RDKit::ROMol& mol)
 /**
  * Called every time the mol is changed in the sketcher
  */
-void update_molecule_on_change(RDKit::RWMol& mol)
+void update_molecule_on_change(RDKit::RWMol& mol, bool calculate_stereolabels)
 {
     // save the simplified stereo annotation as a mol property
     RDKit::Chirality::simplifyEnhancedStereo(
@@ -266,31 +266,16 @@ void update_molecule_on_change(RDKit::RWMol& mol)
     // This is the bare minimum we need to do to be able to detect stereo.
     RDKit::MolOps::symmetrizeSSSR(mol);
 
-    assign_stereochemistry_with_bond_directions_and_coordinates(mol);
-
-    // Generate R/S/E/Z labels
-    assign_CIP_labels(mol);
-
-    // Add the newly found chiral atoms to StereoGroups
-    add_enhanced_stereo_to_chiral_atoms(mol);
+    if (calculate_stereolabels) {
+        assign_stereochemistry_with_bond_directions_and_coordinates(mol);
+        assign_CIP_labels(mol); // generate R/S/E/Z label
+        add_enhanced_stereo_to_chiral_atoms(mol);
+    }
 
     // Preserve IDs of any new enhanced stereo groups, which includes any
     // groups newly inserted from file/paste input. Run this after
     // cleanupStereoGroups(), because that one only preserves input ids
     RDKit::forwardStereoGroupIds(mol);
-
-    /**
-     * note that the ABSOLUTE_STEREO_PREFIX might be stripped away by the
-     * rendering code depending on rendering preferences. Note that the molModel
-     * remains unaware of these rendering preferences (which are part of
-     * sketcherModel) because we want everything in the molModel to be savable
-     * as an undoable snapshot. The rendering preferences might get exposed to
-     * the GUI in the future and we don't want them to be undoable.
-     */
-    std::string abs_label =
-        rdkit_extensions::ABSOLUTE_STEREO_PREFIX + "({cip})";
-    std::string or_label = rdkit_extensions::OR_STEREO_PREFIX + "{id}";
-    std::string and_label = rdkit_extensions::AND_STEREO_PREFIX + "{id}";
 
     // addStereoAnnotations will not clear existing annotations,
     // just override the ones on atoms/bonds that require labels.
@@ -303,7 +288,21 @@ void update_molecule_on_change(RDKit::RWMol& mol)
         bond->clearProp(RDKit::common_properties::bondNote);
     }
 
-    RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label, and_label);
+    if (calculate_stereolabels) {
+        // Note that the ABSOLUTE_STEREO_PREFIX might be stripped away by the
+        // rendering code depending on rendering preferences. Note that the
+        // molModel remains unaware of these rendering preferences (which are
+        // part of sketcherModel) because we want everything in the molModel to
+        // be savable as an undoable snapshot. The rendering preferences might
+        // get exposed to the GUI in the future and we don't want them to be
+        // undoable.
+        std::string abs_label =
+            rdkit_extensions::ABSOLUTE_STEREO_PREFIX + "({cip})";
+        std::string or_label = rdkit_extensions::OR_STEREO_PREFIX + "{id}";
+        std::string and_label = rdkit_extensions::AND_STEREO_PREFIX + "{id}";
+        RDKit::Chirality::addStereoAnnotations(mol, abs_label, or_label,
+                                               and_label);
+    }
 
     clear_abs_labels_with_unresolved_cip(mol);
 }
