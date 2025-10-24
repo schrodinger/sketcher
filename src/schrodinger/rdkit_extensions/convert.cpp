@@ -584,12 +584,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 Format::MOL2,
                 Format::XYZ,
                 Format::MRV,
-#ifndef __EMSCRIPTEN__
-                // These formats don't parse correctly in WASM builds and may
-                // crash the Sketcher.  This #ifndef should be removed as part
-                // of SKETCH-2357.
                 Format::CDXML,
-#endif
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
                 Format::SMARTS,
@@ -696,9 +691,6 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             }
             break;
         case Format::CDXML:
-#ifndef __EMSCRIPTEN__
-            // This format doesn't parse correctly in WASM builds and may crash
-            // the Sketcher. See SKETCH-2357.
             mol.reset(new RDKit::RWMol());
             try { // combine multiple molecules into one like SmilesToMol
                 for (auto& m : RDKit::CDXMLToMols(text, sanitize, removeHs)) {
@@ -708,7 +700,6 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 mol.reset();
             }
             break;
-#endif
         case Format::HELM:
             mol = helm::helm_to_rdkit(text);
             break;

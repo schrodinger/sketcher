@@ -25,12 +25,7 @@ FormatList<Format> get_import_formats()
         {Format::PDB, "PDB"},
         {Format::XYZ, "XYZ"},
         {Format::MRV, "Marvin Document"},
-#ifndef __EMSCRIPTEN__
-        // These formats don't parse correctly in WASM builds and may
-        // crash the Sketcher.  This #ifndef should be removed as part
-        // of SKETCH-2357.
         {Format::CDXML, "ChemDraw XML"},
-#endif
     };
     std::vector<std::tuple<Format, std::string>> rxn_import_formats = {
         {Format::MDL_MOLV3000, "MDL RXN"},
