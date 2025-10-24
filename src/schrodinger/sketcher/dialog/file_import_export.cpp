@@ -24,11 +24,11 @@ FormatList<Format> get_import_formats()
         {Format::MOL2, "MOL2"},
         {Format::PDB, "PDB"},
         {Format::XYZ, "XYZ"},
+        {Format::MRV, "Marvin Document"},
 #ifndef __EMSCRIPTEN__
         // These formats don't parse correctly in WASM builds and may
         // crash the Sketcher.  This #ifndef should be removed as part
         // of SKETCH-2357.
-        {Format::MRV, "Marvin Document"},
         {Format::CDXML, "ChemDraw XML"},
 #endif
     };

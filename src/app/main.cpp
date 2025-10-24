@@ -13,6 +13,7 @@
 #include <QFile>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 
@@ -59,6 +60,13 @@ bool sketcher_is_empty()
     return sk.isEmpty();
 }
 
+bool sketcher_has_monomers()
+{
+    auto& sk = get_sketcher_instance();
+    auto mol = sk.getRDKitMolecule();
+    return schrodinger::rdkit_extensions::isMonomeric(*mol);
+}
+
 void sketcher_changed()
 {
 #ifdef __EMSCRIPTEN__
@@ -92,15 +100,17 @@ EMSCRIPTEN_BINDINGS(sketcher)
         .value("INCHI", Format::INCHI)
         .value("INCHI_KEY", Format::INCHI_KEY)
         .value("PDB", Format::PDB)
+        .value("MOL2", Format::MOL2)
         .value("XYZ", Format::XYZ)
         .value("MRV", Format::MRV)
         .value("CDXML", Format::CDXML)
         .value("HELM", Format::HELM)
-        .value("FASTA_PEPTIDE", Format::HELM)
-        .value("FASTA_DNA", Format::HELM)
-        .value("FASTA_RNA", Format::HELM)
-        .value("FASTA", Format::HELM)
-        .value("FMP", Format::HELM);
+        .value("FASTA_PEPTIDE", Format::FASTA_PEPTIDE)
+        .value("FASTA_DNA", Format::FASTA_DNA)
+        .value("FASTA_RNA", Format::FASTA_RNA)
+        .value("FASTA", Format::FASTA)
+        .value("FMP", Format::FMP)
+        .value("CUSTOM_ENTITY", Format::CUSTOM_ENTITY);
 
     emscripten::enum_<ImageFormat>("ImageFormat")
         .value("PNG", ImageFormat::PNG)
@@ -111,6 +121,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_export_image", &sketcher_export_image);
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
+    emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     // see sketcher_changed_callback above
 }
 #endif
