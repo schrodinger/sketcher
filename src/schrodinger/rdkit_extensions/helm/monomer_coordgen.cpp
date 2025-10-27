@@ -478,8 +478,6 @@ get_bonded_monomer_indices(const RDKit::Atom* monomer)
  * Sorts polymers in connection order i.e. a polymer is followed by all its
  * neighbors contiguously that are then followed by their neighbors contiguously
  * and so on.
- * @return the sorted polymers vector and a map of child polymer to parent
- * polymer
  */
 std::pair<std::vector<RDKit::ROMOL_SPTR>,
           std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
@@ -494,7 +492,7 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
     }
 
     std::vector<RDKit::ROMOL_SPTR> sorted_polymers;
-    std::set<std::string> visited_polymers_ids;
+    std::set<std::string> visited_polymers;
     std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR> parent_polymer;
     for (auto polymer : polymers) {
         std::queue<RDKit::ROMOL_SPTR> polymer_queue;
@@ -502,24 +500,23 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
              polymer_queue.pop()) {
             auto polymer = polymer_queue.front();
             auto polymer_id = polymer->getProp<std::string>(POLYMER_ID);
-            if (visited_polymers_ids.contains(polymer_id)) {
+            if (visited_polymers.find(polymer_id) != visited_polymers.end()) {
                 continue;
             }
-            visited_polymers_ids.insert(polymer_id);
+            visited_polymers.insert(polymer_id);
             sorted_polymers.push_back(polymer);
 
             for (auto monomer : polymer->atoms()) {
                 if (!monomer->hasProp(BOND_TO)) {
                     continue;
                 }
-                auto neighbor_monomer_idcs =
-                    get_bonded_monomer_indices(monomer);
-                for (auto neighbor_monomer_idx : neighbor_monomer_idcs) {
+                auto neighbor_monomers = get_bonded_monomer_indices(monomer);
+                for (auto neighbor_monomer : neighbor_monomers) {
                     auto neighbor_polymer =
-                        polymer_for_monomer_idx[neighbor_monomer_idx];
-                    if (visited_polymers_ids.contains(
+                        polymer_for_monomer_idx[neighbor_monomer];
+                    if (visited_polymers.find(
                             neighbor_polymer->getProp<std::string>(
-                                POLYMER_ID))) {
+                                POLYMER_ID)) == visited_polymers.end()) {
                         parent_polymer[neighbor_polymer] = polymer;
                     }
                     polymer_queue.push(neighbor_polymer);
@@ -548,20 +545,18 @@ break_into_polymers(const RDKit::ROMol& monomer_mol)
         }
         // store the connected indices as comman separated values in the BOND_TO
         // prop
-        std::string begin_monomer_bond_to;
-        if (beginMonomer->hasProp(BOND_TO)) {
-            begin_monomer_bond_to +=
-                beginMonomer->getProp<std::string>(BOND_TO) + ",";
-        }
-        begin_monomer_bond_to += std::to_string(endMonomer->getIdx());
+        std::string begin_monomer_bond_to =
+            beginMonomer->hasProp(BOND_TO)
+                ? beginMonomer->getProp<std::string>(BOND_TO) + "," +
+                      std::to_string(endMonomer->getIdx())
+                : std::to_string(endMonomer->getIdx());
 
         beginMonomer->setProp(BOND_TO, begin_monomer_bond_to);
-        std::string end_monomer_bond_to;
-        if (endMonomer->hasProp(BOND_TO)) {
-            end_monomer_bond_to +=
-                endMonomer->getProp<std::string>(BOND_TO) + ",";
-        }
-        end_monomer_bond_to += std::to_string(beginMonomer->getIdx());
+        std::string end_monomer_bond_to =
+            endMonomer->hasProp(BOND_TO)
+                ? endMonomer->getProp<std::string>(BOND_TO) + "," +
+                      std::to_string(beginMonomer->getIdx())
+                : std::to_string(beginMonomer->getIdx());
 
         endMonomer->setProp(BOND_TO, end_monomer_bond_to);
     }
@@ -593,7 +588,7 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
             continue;
         }
         for (auto bonded_idx : bonded_monomers_indices) {
-            if (end_monomers.contains(bonded_idx)) {
+            if (end_monomers.find(bonded_idx) != end_monomers.end()) {
                 bonds.push_back(
                     {monomer->getIdx(), end_monomers[bonded_idx]->getIdx()});
             }
@@ -795,7 +790,7 @@ void lay_out_polymers(
     // out next to each other.
     for (auto polymer : polymers) {
         RDKit::ROMOL_SPTR parent = nullptr;
-        if (parent_polymer.contains(polymer)) {
+        if (parent_polymer.find(polymer) != parent_polymer.end()) {
             parent = parent_polymer.at(polymer);
         }
         // For double stranded nucleic acids we want to lay out the
