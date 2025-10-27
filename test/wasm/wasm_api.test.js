@@ -1,152 +1,108 @@
-const { test, expect } = require("@playwright/test");
+import { expect, test } from '@playwright/test';
 
-test.describe("WASM Sketcher API", () => {
+test.describe('WASM Sketcher API', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the page that loads the WASM module and
     // wait for the WASM module to be fully loaded and available
-    await page.goto("/wasm_shell.html");
-    // wait for the sketcher WASM module to be loaded
-    await page.waitForFunction(() => typeof window.Module !== "undefined");
+    await page.goto('/wasm_shell.html');
+    await page.waitForFunction(() => typeof window.Module !== 'undefined');
   });
 
   // Test import and export for all formats
-  const allFormats = [
-    // AUTO_DETECT doesn't make sense to test here
-    { name: "RDMOL_BINARY_BASE64" },
-    { name: "SMILES" },
-    { name: "EXTENDED_SMILES" },
-    { name: "SMARTS" },
-    { name: "EXTENDED_SMARTS" },
-    // MDL_MOLV2000 is import only
-    { name: "MDL_MOLV3000" },
-    { name: "MAESTRO" },
-    { name: "INCHI" },
-    // INCHI_KEY is export only
-    { name: "PDB" },
-    // MOL2 is import only
-    { name: "XYZ" },
-    { name: "MRV" },
-    // CDXML does not import correctly in WASM builds
-    { name: "HELM" },
-    // FASTA_PEPTIDE, FASTA_DNA, FASTA_RNA are import-only formats
-    // FASTA is an export-only format
-    // FMP and CUSTOM_ENTITY are not supported
+  const FORMATS = [
+    { format: 'AUTO_DETECT', skip: [true, "Doesn't make sense to test here"] },
+    { format: 'RDMOL_BINARY_BASE64' },
+    { format: 'SMILES' },
+    { format: 'EXTENDED_SMILES' },
+    { format: 'SMARTS' },
+    { format: 'EXTENDED_SMARTS' },
+    { format: 'MDL_MOLV2000', exportUnsupported: true },
+    { format: 'MDL_MOLV3000' },
+    { format: 'MAESTRO' },
+    { format: 'INCHI' },
+    { format: 'INCHI_KEY', importUnsupported: true },
+    { format: 'PDB' },
+    { format: 'MOL2', exportUnsupported: true },
+    { format: 'XYZ' },
+    { format: 'MRV' },
+    { format: 'CDXML', skip: [true, "Format doesn't import correctly in WASM builds"] },
+    { format: 'HELM' },
+    { format: 'FASTA_PEPTIDE', exportUnsupported: true },
+    { format: 'FASTA_DNA', exportUnsupported: true },
+    { format: 'FASTA_RNA', exportUnsupported: true },
+    { format: 'FASTA', importUnsupported: true },
+    { format: 'FMP', skip: [true, 'Format not supported'] },
+    { format: 'CUSTOM_ENTITY', skip: [true, 'Format not supported'] },
   ];
 
-  allFormats.forEach(({ name }) => {
-    test(`Import/Export Format ${name}`, async ({ page }) => {
-      // Export a molecule in the specified format
-      const exported = await page.evaluate(
-        (data) => {
-          const { formatName } = data;
-          Module.sketcher_clear();
-          // Use alanine - works for both atomistic and biologics formats
-          Module.sketcher_import_text("C[C@H](N)C=O");
-          const exported = Module.sketcher_export_text(
-            Module.Format[formatName],
-          );
-          return exported;
-        },
-        { formatName: name },
-      );
-
-      // Verify that export produces non-empty output
-      expect(exported).toBeTruthy();
-      expect(typeof exported).toBe("string");
-      expect(exported.length).toBeGreaterThan(0);
-    });
-  });
-
-  test("Clear the sketcher", async ({ page }) => {
-    // Confirm the sketcher starts empty
-    const is_empty = await page.evaluate(() => Module.sketcher_is_empty());
-    expect(is_empty).toBe(true);
-    // Import a molecule and confirm it's no longer empty
-    await page.evaluate(() => {
-      Module.sketcher_import_text("C");
-    });
-    const has_content = await page.evaluate(() => !Module.sketcher_is_empty());
-    expect(has_content).toBe(true);
-    // Clear the sketcher and confirm it's empty again
-    await page.evaluate(() => {
-      Module.sketcher_clear();
-    });
-    const is_cleared = await page.evaluate(() => Module.sketcher_is_empty());
-    expect(is_cleared).toBe(true);
-  });
-
-  test("Check if molecule has monomers", async ({ page }) => {
-    // Empty sketcher should return false
-    const empty_has_monomers = await page.evaluate(() =>
-      Module.sketcher_has_monomers(),
-    );
-    expect(empty_has_monomers).toBe(false);
-
-    // SMILES should return false
-    const smiles_has_monomers = await page.evaluate(() => {
-      Module.sketcher_import_text("c1ccccc1");
-      return Module.sketcher_has_monomers();
-    });
-    expect(smiles_has_monomers).toBe(false);
-
-    // HELM should return true
-    const helm_has_monomers = await page.evaluate(() => {
-      Module.sketcher_clear();
-      Module.sketcher_import_text("PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0");
-      return Module.sketcher_has_monomers();
-    });
-    expect(helm_has_monomers).toBe(true);
-
-    // After clearing, should return false again
-    const cleared_has_monomers = await page.evaluate(() => {
-      Module.sketcher_clear();
-      return Module.sketcher_has_monomers();
-    });
-    expect(cleared_has_monomers).toBe(false);
-  });
-
-  // Parameterized test for image export formats
-  const imageFormats = ["SVG", "PNG"];
-
-  imageFormats.forEach((imageFormat) => {
-    test(`Export as ${imageFormat} image from the sketcher`, async ({
-      page,
-    }) => {
-      const smiles_input = "C=O";
-      const base64Content = await page.evaluate(
-        (data) => {
-          const { smiles, format } = data;
-          Module.sketcher_import_text(smiles);
-          return Module.sketcher_export_image(Module.ImageFormat[format]);
-        },
-        { smiles: smiles_input, format: imageFormat },
-      );
-
-      // Verify we got non-empty base64 content
-      expect(base64Content).toBeTruthy();
-      expect(typeof base64Content).toBe("string");
-      expect(base64Content.length).toBeGreaterThan(0);
-
-      if (imageFormat === "SVG") {
-        const SVG_REGEX =
-          /(?:<\?xml\b[^>]*>[^<]*)?(?:<!--.*?-->[^<]*)*(?:<svg|<!DOCTYPE svg)\b/s;
-        function isValidSvg(svgData) {
-          return SVG_REGEX.test(svgData);
-        }
-        // Decode base64 to get the actual SVG content
-        const svgContent = Buffer.from(base64Content, "base64").toString(
-          "utf8",
-        );
-        expect(isValidSvg(svgContent)).toBe(true);
-      } else if (imageFormat === "PNG") {
-        const pngBuffer = Buffer.from(base64Content, "base64");
-        expect(pngBuffer.length).toBeGreaterThan(8);
-        // PNG files start with specific magic bytes (89 50 4E 47 0D 0A 1A 0A)
-        const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-        for (let i = 0; i < pngSignature.length; i++) {
-          expect(pngBuffer[i]).toBe(pngSignature[i]);
-        }
+  FORMATS.forEach(({ format, skip, exportUnsupported }) => {
+    test(`importing SMILES and exporting ${format}`, async ({ page }) => {
+      if (skip) {
+        test.skip(...skip);
+      } else {
+        test.skip(!!exportUnsupported, `${format} is import only`);
       }
+      const exportedText = await page.evaluate((format) => {
+        Module.sketcher_clear();
+        Module.sketcher_import_text('C[C@H](N)C=O');
+        const exported = Module.sketcher_export_text(Module.Format[format]);
+        return exported;
+      }, format);
+      expect(exportedText).toMatchSnapshot(`export_text_${format}.txt`);
+    });
+  });
+
+  test('clearing the sketcher', async ({ page }) => {
+    const isEmptyOnLoad = await page.evaluate(() => Module.sketcher_is_empty());
+    expect(isEmptyOnLoad).toBe(true);
+
+    const isEmptyAfterImport = await page.evaluate(() => {
+      Module.sketcher_import_text('C');
+      return Module.sketcher_is_empty();
+    });
+    expect(isEmptyAfterImport).toBe(false);
+
+    const isEmptyAfterClear = await page.evaluate(() => {
+      Module.sketcher_clear();
+      return Module.sketcher_is_empty();
+    });
+    expect(isEmptyAfterClear).toBe(true);
+  });
+
+  test('checking if molecule has monomers', async ({ page }) => {
+    const hasMonomersOnLoad = await page.evaluate(() => Module.sketcher_has_monomers());
+    expect(hasMonomersOnLoad).toBe(false);
+
+    const hasMonomersAfterSmilesImport = await page.evaluate(() => {
+      Module.sketcher_import_text('c1ccccc1');
+      return Module.sketcher_has_monomers();
+    });
+    expect(hasMonomersAfterSmilesImport).toBe(false);
+
+    const hasMonomersAfterHelmImport = await page.evaluate(() => {
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0');
+      return Module.sketcher_has_monomers();
+    });
+    expect(hasMonomersAfterHelmImport).toBe(true);
+
+    const hasMonomersAfterClear = await page.evaluate(() => {
+      Module.sketcher_clear();
+      return Module.sketcher_has_monomers();
+    });
+    expect(hasMonomersAfterClear).toBe(false);
+  });
+
+  // Test image export for all formats
+  ['SVG', 'PNG'].forEach((imageFormat) => {
+    test(`exporting a ${imageFormat} image`, async ({ page }) => {
+      const base64Content = await page.evaluate((imageFormat) => {
+        Module.sketcher_import_text('C=O');
+        return Module.sketcher_export_image(Module.ImageFormat[imageFormat]);
+      }, imageFormat);
+      const buffer = Buffer.from(base64Content, 'base64');
+
+      expect(buffer).toMatchSnapshot(`export_image.${imageFormat.toLowerCase()}`);
     });
   });
 });

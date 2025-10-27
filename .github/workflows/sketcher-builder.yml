@@ -50,12 +50,6 @@ jobs:
         if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
 
-      - name: Install playwright
-        if: matrix.build-output == 'wasm'
-        run: |
-          npm install -D @playwright/test
-          npx playwright install --with-deps
-
       - name: Code formatting check
         run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
@@ -229,7 +223,9 @@ jobs:
       - name: Run wasm tests
         if: matrix.build-output == 'wasm'
         run: |
-          npx playwright test --config test/wasm/playwright.config.js
+          cd test/wasm
+          npm install
+          npm run test
 
       - name: Run memtests
         working-directory: build
