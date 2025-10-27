@@ -242,12 +242,11 @@ void HelmParser::saveError(const unsigned int num_chars_processed,
         return true;
     }
 
-    // Small optimization to exit early
-    if (std::ranges::all_of(token.substr(1, token.size() - 2),
-                            [](unsigned char c) {
-                                return c == '-' || c == '_' || std::isalnum(c);
-                            })) {
-        return false;
+    auto monomer = token.substr(1, token.size() - 2);
+    // Assume it's SMILES if it has these rgroup chars
+    // NOTE: token is still surrounded by [] tokens
+    if (monomer.find_first_of("*:[]=+") != std::string_view::npos) {
+        return true;
     }
 
     // Parse the SMILES literally
@@ -255,7 +254,7 @@ void HelmParser::saveError(const unsigned int num_chars_processed,
         .sanitize = false, .removeHs = false, .replacements = {}};
 
     [[maybe_unused]] schrodinger::rdkit_extensions::CaptureRDErrorLog rdkit_log;
-    const std::string smiles{token.substr(1, token.size() - 2)};
+    const std::string smiles{monomer};
     return RDKit::v2::SmilesParse::MolFromSmiles(smiles, smi_opts) != nullptr;
 }
 } // namespace helm

@@ -162,6 +162,10 @@ void AbstractSceneTool::onStructureUpdated()
 {
 }
 
+void AbstractSceneTool::updateColorsAfterBackgroundColorChange(bool)
+{
+}
+
 void AbstractSceneTool::onSelectionChanged()
 {
 }

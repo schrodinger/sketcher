@@ -173,7 +173,7 @@ void View::zoomOutToIncludeAll()
     fitRecToScreen(rec);
 }
 
-void View::fitToScreen()
+void View::fitToScreen(bool selection_only)
 {
     if (!m_initial_geometry_set) {
         // If the view hasn't been shown yet then it doesn't know how large it
@@ -189,7 +189,8 @@ void View::fitToScreen()
     if (!cur_scene) {
         return;
     }
-    QRectF rec = cur_scene->getSceneItemsBoundingRect();
+    QRectF rec = cur_scene->getInteractiveItemsBoundingRect(
+        InteractiveItemFlag::ALL, selection_only);
     // SKETCH-1703 make the bounding rect a bit bigger to avoid having the
     // molecule too close to the border
     rec.adjust(-rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
@@ -216,7 +217,8 @@ void View::fitRecToScreen(const QRectF& rec)
 void View::setMolModel(MolModel* mol_model)
 {
     m_mol_model = mol_model;
-    connect(mol_model, &MolModel::newMoleculeAdded, this, &View::fitToScreen);
+    connect(mol_model, &MolModel::newMoleculeAdded, this,
+            &View::fitAllToScreen);
     connect(mol_model, &MolModel::modelChanged, this,
             &View::zoomOutToIncludeAll);
 }

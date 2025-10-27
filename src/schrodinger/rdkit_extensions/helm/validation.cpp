@@ -20,7 +20,8 @@ namespace
 {
 [[nodiscard]] bool validate_smiles(const std::string_view& monomer_smiles,
                                    const size_t residue_number,
-                                   const size_t num_monomers)
+                                   const size_t num_monomers,
+                                   const bool is_branch_monomer)
 {
     // NOTE: Types of Rgroups in smiles, [OH:1], [*:1]
     static std::regex modern_rgroup_pattern(R"(\[\w*\*?\:([1-9][0-9]*)\])");
@@ -52,8 +53,9 @@ namespace
         if (residue_number > 1 && !rgroup_ids.count(1)) {
             return false;
         }
-        // We need either or both of R2 and R3 to form the next bond
-        if (residue_number < num_monomers &&
+        // We need either or both of R2 and R3 to form the next bond if this
+        // isn't a branch monomer
+        if (residue_number < num_monomers && !is_branch_monomer &&
             !(rgroup_ids.count(2) || rgroup_ids.count(3))) {
             return false;
         }
@@ -78,7 +80,7 @@ void validate_polymer(const polymer& polymer,
     for (const auto& monomer : polymer.monomers) {
         ++i;
         if (monomer.is_smiles &&
-            !validate_smiles(monomer.id, i, num_monomers)) {
+            !validate_smiles(monomer.id, i, num_monomers, monomer.is_branch)) {
             parser.saveError(monomer.id,
                              "The inline smiles has missing rgroups.");
         } else if (monomer.id == "_") {

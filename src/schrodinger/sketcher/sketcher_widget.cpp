@@ -161,6 +161,7 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &SketcherWidget::selectionChanged);
+
     connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
         // even if what_changed doesn't contain MOLECULE, it's possible that the
         // molecule's coordinates have changed so we should clear our cached
@@ -343,21 +344,17 @@ bool SketcherWidget::isEmpty() const
     return m_mol_model->isEmpty();
 }
 
-void SketcherWidget::setSelectOnlyMode(bool select_only_mode_enabled)
+void SketcherWidget::activateSelectOnlyMode(const SelectionTool tool)
 {
-    m_select_only_mode_active = select_only_mode_enabled;
-    setToolbarsVisible(!select_only_mode_enabled);
-    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(
-        select_only_mode_enabled);
-    if (select_only_mode_enabled) {
-        m_sketcher_model->setValues(
-            {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
-             {ModelKey::SELECTION_TOOL,
-              QVariant::fromValue(SelectionTool::RECTANGLE)}});
-    }
+    m_select_only_mode_active = true;
+    setToolbarsVisible(false);
+    m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(true);
+    m_sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
+         {ModelKey::SELECTION_TOOL, QVariant::fromValue(tool)}});
 }
 
-void SketcherWidget::setColorScheme(ColorScheme color_scheme)
+void SketcherWidget::setColorScheme(const ColorScheme color_scheme)
 {
     m_sketcher_model->setColorScheme(color_scheme);
 }
@@ -495,6 +492,16 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 #endif
 }
 
+void SketcherWidget::copyAsImage()
+{
+    QByteArray image_bytes;
+    RenderOptions opts;
+    image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
+    QImage image;
+    image.loadFromData(image_bytes, "PNG");
+    QApplication::clipboard()->setImage(image);
+}
+
 /**
  * @internal
  * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
@@ -612,10 +619,15 @@ void SketcherWidget::connectTopBarSlots()
             &QUndoStack::undo);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::redoRequested, m_undo_stack,
             &QUndoStack::redo);
-    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested, [this]() {
-        m_mol_model->regenerateCoordinates();
-        m_ui->view->fitToScreen();
-    });
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::cleanupRequested,
+            [this](bool selection_only) {
+                if (selection_only) {
+                    m_mol_model->cleanUpSelection();
+                } else {
+                    m_mol_model->regenerateCoordinates();
+                }
+                m_ui->view->fitToScreen();
+            });
     connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
             m_ui->view, &View::fitToScreen);
 
@@ -739,8 +751,14 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &SketcherWidget::cut);
     connect(&menu, &SelectionContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &SelectionContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &SelectionContextMenu::flipRequested, m_mol_model,
             &MolModel::flipSelection);
+    connect(&menu, &SelectionContextMenu::flipHorizontalRequested, m_mol_model,
+            &MolModel::flipSelectionHorizontal);
+    connect(&menu, &SelectionContextMenu::flipVerticalRequested, m_mol_model,
+            &MolModel::flipSelectionVertical);
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
     connect(&menu, &SelectionContextMenu::bracketSubgroupDialogRequested, this,
@@ -791,6 +809,8 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::selectAll);
     connect(&menu, &BackgroundContextMenu::copyRequested, this,
             &SketcherWidget::copy);
+    connect(&menu, &BackgroundContextMenu::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(&menu, &BackgroundContextMenu::pasteRequested, this,
             &SketcherWidget::pasteAt);
     connect(&menu, &BackgroundContextMenu::clearRequested, m_mol_model,
@@ -860,6 +880,8 @@ void SketcherWidget::setToolbarsVisible(const bool visible)
 {
     m_ui->side_bar_wdg->setVisible(visible);
     m_ui->top_bar_wdg->setVisible(visible);
+    // also hide the line that's between the workspace and the top toolbar
+    m_ui->line->setVisible(visible);
 }
 
 void SketcherWidget::keyPressEvent(QKeyEvent* event)

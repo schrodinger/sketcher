@@ -95,9 +95,11 @@ class SKETCHER_API Scene : public QGraphicsScene
      * specified type
      * @param types The subset of interactive items to return.  Defaults to
      * returning all interactive items.
+     * @param selection_only If true, only consider selected items
      */
     QRectF getInteractiveItemsBoundingRect(
-        const InteractiveItemFlagType types = InteractiveItemFlag::ALL) const;
+        const InteractiveItemFlagType types = InteractiveItemFlag::ALL,
+        bool selection_only = false) const;
 
     /**
      * @return the bounding rectangle of all items in the scene. This includes
@@ -109,10 +111,9 @@ class SKETCHER_API Scene : public QGraphicsScene
     /**
      * get atoms, bonds, sgroups and non-molecular objects in the scene
      * @param subset The subset of objects to return (all, selected,
-    selected or hovered).  Defaults to returning all
-     * objects.
+     * selected_or_hovered).  Defaults to returning all objects.
      * @param pos The position of the mouse cursor, this is needed to figure
-    out which items are hovered
+     * out which items are hovered
      * @return a tuple of sets of atoms, bonds, sgroups and non-molecular
      * objects
      */
@@ -178,6 +179,13 @@ class SKETCHER_API Scene : public QGraphicsScene
      * translation.  False otherwise.
      */
     bool isDuringAtomDrag();
+
+    /**
+     * Update the graphical items colors in response to a change in the
+     * background color (e.g. switching to/from dark mode).
+     */
+
+    void onBackgroundColorChanged();
 
   signals:
     /**

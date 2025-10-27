@@ -46,12 +46,19 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     // there is a mol or a reaction present
     BOOST_TEST(mgr.m_copy_as_menu->actions().size() ==
                get_standard_export_formats().size() +
-                   get_reaction_export_formats().size());
+                   get_reaction_export_formats().size() +
+                   2); // + (separator + image)
 
     // confirm copy as menu toggles based on reactions
     auto reaction_actions_visible = [&mgr](bool expect_reaction) {
         for (auto act : mgr.m_copy_as_menu->actions()) {
             bool expected = act->data().toBool() == expect_reaction;
+            // copy as image (and its separator) are only visible for Copy All
+            // As
+            if (act->isSeparator() || act->text() == "Image") {
+                expected =
+                    mgr.m_copy_as_menu->title().toStdString() == "Copy All As";
+            }
             if (act->isVisible() != expected) {
                 return false;
             }

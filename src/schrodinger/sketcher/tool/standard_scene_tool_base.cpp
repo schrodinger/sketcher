@@ -63,6 +63,17 @@ StandardSceneToolBase::StandardSceneToolBase(Scene* scene,
 {
 }
 
+void StandardSceneToolBase::updateColorsAfterBackgroundColorChange(
+    bool is_dark_mode)
+{
+    auto color = is_dark_mode ? PREDICTIVE_HIGHLIGHTING_COLOR_DARK_BG
+                              : PREDICTIVE_HIGHLIGHTING_COLOR;
+    m_predictive_highlighting_item.setPen(color);
+    m_predictive_highlighting_item.setBrush(color);
+    m_angle_text_item.setPen(is_dark_mode ? ANNOTATION_COLOR_DARK_BG
+                                          : ANNOTATION_COLOR);
+}
+
 void StandardSceneToolBase::onRightButtonClick(
     QGraphicsSceneMouseEvent* const event)
 {

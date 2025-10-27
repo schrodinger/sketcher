@@ -207,6 +207,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
 
     bool hasSelectedBonds() const;
     bool hasSelectedAtoms() const;
+    bool hasSelectedNonMolecularObjects() const;
 
     /**
      * @return halo highlighting information
@@ -529,10 +530,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                            const std::unordered_set<const RDKit::Atom*>& atoms);
 
     /**
+     * Undoably flip the given atoms coordinates using the given flip function.
+     */
+    void flipAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
+                   const std::function<void(RDGeom::Point3D& coord)>& flip);
+
+    /**
      * Undoably flip all atoms coordinates horizontally or vertically.
      */
     void flipAllHorizontal();
     void flipAllVertical();
+
+    /**
+     * Undoably flip selected atoms coordinates horizontally or vertically.
+     */
+    void flipSelectionHorizontal();
+    void flipSelectionVertical();
 
     /**
      * rotate all atoms by the given angle (the rdkit coordinates rotate
@@ -1393,12 +1406,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::unordered_set<SGroupTag>& s_group_tags,
         const std::unordered_set<NonMolecularTag>& non_molecular_tags,
         const bool selected);
-
-    /**
-     * Clear all selected atoms and bonds.  This method must only be called
-     * as part of an undo command.
-     */
-    void clearSelectionCommandFunc();
 
     /**
      * Add a fragment to the molecule and create new bonds between the new

@@ -49,6 +49,14 @@ SelectSceneTool<T>::SelectSceneTool(Scene* scene, MolModel* mol_model) :
 }
 
 template <typename T> void
+SelectSceneTool<T>::updateColorsAfterBackgroundColorChange(bool is_dark_mode)
+{
+    m_select_item.setPen(is_dark_mode ? SELECT_TOOL_LINE_COLOR_DARK_BG
+                                      : SELECT_TOOL_LINE_COLOR);
+    StandardSceneToolBase::updateColorsAfterBackgroundColorChange(is_dark_mode);
+}
+
+template <typename T> void
 SelectSceneTool<T>::onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event)
 {
     StandardSceneToolBase::onLeftButtonDragStart(event);

@@ -424,3 +424,21 @@ BOOST_AUTO_TEST_CASE(TestCombineMolsWithUnknownMonomer)
                    helm::rdkit_to_helm(*combined));
     }
 }
+
+BOOST_DATA_TEST_CASE(TestRemoveHsPreservesHydrides,
+                     bdata::make(std::vector<std::string>{
+                         "[H-]->[Li+]",
+                         "[H-]->[Fe+2]",
+                     }),
+                     test_smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    auto mol = MolFromSmiles(
+        test_smiles, SmilesParserParams{.removeHs = false, .replacements = {}});
+
+    // should preserve the hydrides
+    removeHs(*mol);
+
+    BOOST_TEST(RDKit::MolToSmiles(*mol) == test_smiles);
+}

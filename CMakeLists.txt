@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.24)
 
 project(
   schrodinger_sketcher
-  VERSION 2025.4.0
+  VERSION 2026.1.0
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -76,7 +76,10 @@ function(setup_target TARGET)
   endif()
   # Compilation optimization, warnings, and error handling
   if(MSVC)
-    target_compile_options(${TARGET} PRIVATE -WX)
+    target_compile_options(${TARGET} PRIVATE -WX -EHsc)
+    if(${BUILD_SHARED_LIBS})
+        target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
+    endif()
   elseif(WIN32)
     target_compile_options(
       ${TARGET} PRIVATE -Wall -Werror -Wswitch -O2 -fvisibility=${VISIBILITY}
@@ -170,6 +173,7 @@ build_schrodinger_library(${SKETCHER_TARGET})
 target_link_libraries(
   ${SKETCHER_TARGET}
   PRIVATE Boost::boost
+          Boost::filesystem
           fmt::fmt
           Qt6::Svg
           Qt6::SvgWidgets
@@ -196,7 +200,10 @@ if(EMSCRIPTEN)
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
 target_link_libraries(
-  ${APP_TARGET} PRIVATE Boost::boost Qt6::Widgets ${SKETCHER_TARGET}
+  ${APP_TARGET} PRIVATE Boost::boost
+                        Boost::filesystem
+                        Qt6::Widgets
+                        ${SKETCHER_TARGET}
                         ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
@@ -221,8 +228,8 @@ if(ENABLE_TESTING)
   set(SUPPRESSION_FILE "test_valgrind.suppressions")
   set(MEMTEST_COMMAND
       "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
-        --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
-        --error-exitcode=29")
+        --gen-suppressions=all --leak-check=full \
+        --keep-debuginfo=no --error-exitcode=29")
   separate_arguments(MEMTEST_COMMAND)
 
   foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
@@ -237,6 +244,10 @@ if(ENABLE_TESTING)
     target_include_directories(${TEST_TARGET}
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
     target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+    if(MSVC)
+        # ignore discarded [[nodiscard]] values for the tests
+        target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
+    endif()
     enable_qt_moc(${TEST_TARGET})
     if(EMSCRIPTEN)
       set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)
@@ -272,3 +283,6 @@ if(ENABLE_TESTING)
     endif()
   endforeach()
 endif()
+
+install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET} DESTINATION ${CMAKE_INSTALL_LIBDIR})

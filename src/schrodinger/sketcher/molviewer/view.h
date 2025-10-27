@@ -38,10 +38,16 @@ class SKETCHER_API View : public QGraphicsView
 
   public slots:
     /**
-     * Scale and center the view matrix so that all objects in the scene are
+     * Scale and center the view matrix so that objects in the scene are
      * visible, but avoid zooming in too much for small molecules
+     * @param selection_only If true, only consider selected objects
      */
-    void fitToScreen();
+    void fitToScreen(bool selection_only = false);
+
+    void fitAllToScreen()
+    {
+        fitToScreen(false);
+    }
 
     /**
      * If needed scale the view matrix to include objects that are off-screen.

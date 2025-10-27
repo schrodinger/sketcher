@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <QSignalSpy>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -1256,10 +1257,21 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(!model.hasSelection());
+    int selection_changed_count = 0;
+
+    QSignalSpy selection_changed_spy(&model, &MolModel::selectionChanged);
+    auto test_selection_changed_emitted = [&selection_changed_count,
+                                           &selection_changed_spy](
+                                              bool emitted, int increment = 1) {
+        if (emitted)
+            selection_changed_count += increment;
+        BOOST_TEST(selection_changed_spy.count() == selection_changed_count);
+    };
 
     // calls that don't change anything shouldn't add a command to the undo
-    // stack
+    // stack or emit selectionChanged signal
     model.clearSelection();
+    test_selection_changed_emitted(false);
     BOOST_TEST(!undo_stack.count());
     model.select({}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(!undo_stack.count());
@@ -1282,7 +1294,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     // calls that don't change anything shouldn't add a command to the undo
     // stack
     model.clearSelection();
-    BOOST_TEST(undo_stack.count() == 3);
+    test_selection_changed_emitted(false);
     model.select({}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(undo_stack.count() == 3);
     model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
@@ -1294,57 +1306,69 @@ BOOST_AUTO_TEST_CASE(test_selection)
     auto* arrow = &model.m_arrow.value();
     auto* plus = &model.m_pluses[0];
     model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT);
+    test_selection_changed_emitted(true); // 1
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     BOOST_TEST(model.hasSelection());
 
     model.select({atom1}, {bond1}, {}, {arrow}, SelectMode::DESELECT);
+    test_selection_changed_emitted(true); // 2
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(model.hasSelection());
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 3
+
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     BOOST_TEST(model.hasSelection());
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 4
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(!model.hasSelection());
     undo_stack.redo();
+    test_selection_changed_emitted(true); // 5
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     BOOST_TEST(model.hasSelection());
 
     model.clearSelection();
+    test_selection_changed_emitted(true); // 6
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(!model.hasSelection());
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 7
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     BOOST_TEST(model.hasSelection());
     undo_stack.redo();
+    test_selection_changed_emitted(true); // 8
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(!model.hasSelection());
 
     model.select({atom2}, {bond1}, {}, {plus}, SelectMode::SELECT);
+    test_selection_changed_emitted(true); // 9
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 10
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     undo_stack.redo();
+    test_selection_changed_emitted(true); // 11
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
@@ -1354,15 +1378,18 @@ BOOST_AUTO_TEST_CASE(test_selection)
     auto* bond2 = model.getBondFromTag(BondTag(2));
     model.select({atom1, atom2}, {bond1, bond2}, {}, {arrow, plus},
                  SelectMode::SELECT);
+    test_selection_changed_emitted(true); // 12
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1, bond2}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() ==
                nmo_set({arrow, plus}));
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 13
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     undo_stack.redo();
+    test_selection_changed_emitted(true); // 14
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1, bond2}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() ==
@@ -1371,62 +1398,78 @@ BOOST_AUTO_TEST_CASE(test_selection)
     // make sure that deselecting atoms/bonds that are already deselected can be
     // undone correctly
     model.select({}, {}, {}, {arrow}, SelectMode::DESELECT);
+    test_selection_changed_emitted(true); // 15
     auto* atom3 = model.getAtomFromTag(AtomTag(3));
     auto* bond3 = model.getBondFromTag(BondTag(3));
     model.select({atom2, atom3}, {bond2, bond3}, {}, {arrow},
                  SelectMode::DESELECT);
+    test_selection_changed_emitted(true); // 16
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 17
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1, bond2}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     undo_stack.redo();
+    test_selection_changed_emitted(true); // 18
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
 
     // toggle the selection
     model.select({atom1}, {}, {}, {arrow}, SelectMode::TOGGLE);
+    // toggle emits the signal twice
+    test_selection_changed_emitted(true, 2); // 20
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() ==
                nmo_set({arrow, plus}));
     model.select({atom1}, {}, {}, {arrow}, SelectMode::TOGGLE);
+    test_selection_changed_emitted(true, 2); // 22
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     undo_stack.undo();
+    test_selection_changed_emitted(true, 2); // 24
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() ==
                nmo_set({arrow, plus}));
     undo_stack.undo();
+    test_selection_changed_emitted(true, 2); // 26
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
 
     // select-only
     model.select({atom2}, {bond3}, {}, {arrow}, SelectMode::SELECT_ONLY);
+    // select_only emits the signal twice
+    test_selection_changed_emitted(true, 2); // 28
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond3}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     undo_stack.undo();
+    test_selection_changed_emitted(true, 2); // 30
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
     undo_stack.redo();
+    test_selection_changed_emitted(true, 2); // 32
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond3}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     // select-only with no atoms or bonds specified should clear the selection
     model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    // in this case only one signal is emitted
+    test_selection_changed_emitted(true); // 33
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     undo_stack.undo();
+    test_selection_changed_emitted(true); // 34
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond3}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -3552,6 +3595,102 @@ BOOST_AUTO_TEST_CASE(test_flip_all, *utf::tolerance(0.001))
     for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
         BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() ==
                    opposite_bond_direction[bond_dirs[i]]);
+    }
+}
+
+/**
+ * test that both version of flip selection work as expected, mirroring atom
+ * coordinates and inverting bond dashes and wedges only for selected atoms
+ */
+BOOST_AUTO_TEST_CASE(test_flip_selection, *utf::tolerance(0.001))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    std::shared_ptr<RDKit::ROMol> mol_to_add(
+        RDKit::SmilesToMol("CC(C)[C@@H](C)[C@H](C)N"));
+    model.addMol(*mol_to_add);
+    const RDKit::ROMol* mol = model.getMol();
+
+    BOOST_TEST(mol->getNumAtoms() == 8);
+
+    model.selectAll();
+    // add a second molecule to make sure that only the selected atoms are
+    // flipped
+    model.addMol(*mol_to_add);
+    mol = model.getMol();
+    auto centroid = find_centroid(*mol, model.getSelectedAtoms());
+
+    BOOST_TEST(mol->getNumAtoms() == 16);
+    auto selected_atoms = model.getSelectedAtoms();
+    BOOST_TEST(selected_atoms.size() == 8);
+    // the selected atoms are the second half of the molecule
+    for (auto* atom : selected_atoms) {
+        BOOST_TEST(atom->getIdx() >= 8);
+    }
+
+    auto positions = mol->getConformer().getPositions();
+    std::vector<RDKit::Bond::BondDir> bond_dirs;
+    for (auto* bond : mol->bonds()) {
+        bond_dirs.push_back(bond->getBondDir());
+    }
+    std::map<RDKit::Bond::BondDir, RDKit::Bond::BondDir>
+        opposite_bond_direction = {
+            {RDKit::Bond::BondDir::NONE, RDKit::Bond::BondDir::NONE},
+            {RDKit::Bond::BondDir::BEGINWEDGE, RDKit::Bond::BondDir::BEGINDASH},
+            {RDKit::Bond::BondDir::BEGINDASH, RDKit::Bond::BondDir::BEGINWEDGE},
+        };
+    model.flipSelectionHorizontal();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        bool selected = i >= 8;
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(atom_coords.x ==
+                   (selected ? 2 * centroid.x - pos.x : pos.x));
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        bool selected = (mol->getBondWithIdx(i)->getBeginAtomIdx() >= 8) &&
+                        (mol->getBondWithIdx(i)->getEndAtomIdx() >= 8);
+        BOOST_TEST(
+            mol->getBondWithIdx(i)->getBondDir() ==
+            (selected ? opposite_bond_direction[bond_dirs[i]] : bond_dirs[i]));
+    }
+    model.flipSelectionHorizontal();
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == bond_dirs[i]);
+    }
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(pos.y == atom_coords.y);
+    }
+
+    model.flipSelectionVertical();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        bool selected = i >= 8;
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(atom_coords.y ==
+                   (selected ? 2 * centroid.y - pos.y : pos.y));
+    }
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        bool selected = (mol->getBondWithIdx(i)->getBeginAtomIdx() >= 8) &&
+                        (mol->getBondWithIdx(i)->getEndAtomIdx() >= 8);
+        BOOST_TEST(
+            mol->getBondWithIdx(i)->getBondDir() ==
+            (selected ? opposite_bond_direction[bond_dirs[i]] : bond_dirs[i]));
+    }
+    model.flipSelectionVertical();
+    for (unsigned int i = 0; i < mol->getNumBonds(); i++) {
+        BOOST_TEST(mol->getBondWithIdx(i)->getBondDir() == bond_dirs[i]);
+    }
+    for (unsigned int i = 0; i < mol->getNumAtoms(); i++) {
+        auto& pos = positions[i];
+        auto atom_coords = mol->getConformer().getAtomPos(i);
+        BOOST_TEST(pos.x == atom_coords.x);
+        BOOST_TEST(pos.y == atom_coords.y);
     }
 }
 

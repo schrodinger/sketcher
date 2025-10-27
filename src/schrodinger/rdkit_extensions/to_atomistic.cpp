@@ -282,9 +282,14 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
         auto [core_aid2, attachment_point2] =
             attachment_point_map.at({to_res, to_rgroup});
 
+        auto bond_type = bond->getBondType();
+        if (bond_type == RDKit::Bond::DATIVE) {
+            // Only relevant at the monomer mol level, this is just
+            // a single bond at the atomistic level
+            bond_type = RDKit::Bond::SINGLE;
+        }
         auto atomistic_bond_idx =
-            atomistic_mol.addBond(core_aid1, core_aid2, bond->getBondType()) -
-            1;
+            atomistic_mol.addBond(core_aid1, core_aid2, bond_type) - 1;
         remove_atoms.push_back(attachment_point1);
         remove_atoms.push_back(attachment_point2);
 
@@ -357,7 +362,13 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
             begin_attachment_points.at({begin_res, from_rgroup});
         auto [core_atom2, attachment_point2] =
             end_attachment_points.at({end_res, to_rgroup});
-        atomistic_mol->addBond(core_atom1, core_atom2, bnd->getBondType());
+        auto bond_type = bnd->getBondType();
+        if (bond_type == RDKit::Bond::DATIVE) {
+            // Only relevant at the monomer mol level, this is just
+            // a single bond at the atomistic level
+            bond_type = RDKit::Bond::SINGLE;
+        }
+        atomistic_mol->addBond(core_atom1, core_atom2, bond_type);
         remove_atoms.push_back(attachment_point1);
         remove_atoms.push_back(attachment_point2);
     }

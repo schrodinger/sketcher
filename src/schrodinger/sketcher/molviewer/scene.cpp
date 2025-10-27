@@ -91,6 +91,9 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
 
+    connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
+            &Scene::onBackgroundColorChanged);
+
     connect(m_sketcher_model, &SketcherModel::valuesChanged, this,
             &Scene::onModelValuesChanged);
     connect(m_sketcher_model, &SketcherModel::displaySettingsChanged, this,
@@ -149,10 +152,16 @@ void Scene::updateItems(const WhatChangedType what_changed)
             m_sketcher_model->getAtomDisplaySettingsPtr();
         auto bond_display_settings_ptr =
             m_sketcher_model->getBondDisplaySettingsPtr();
+        // if we have requested a simplified stereo annotation but it is not
+        // available, remove the option from the atoms display settings so the
+        // atomic labels are correctly drawn
+        AtomDisplaySettings atom_display_settings(*atom_display_settings_ptr);
+        if (!isSimplifiedStereoAnnotationVisible()) {
+            atom_display_settings.m_show_simplified_stereo_annotation = false;
+        }
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
                  m_s_group_to_s_group_item) =
-            create_graphics_items_for_mol(mol, m_fonts,
-                                          *atom_display_settings_ptr,
+            create_graphics_items_for_mol(mol, m_fonts, atom_display_settings,
                                           *bond_display_settings_ptr);
 
         for (auto* item : all_items) {
@@ -216,13 +225,18 @@ Scene::getInteractiveItems(const InteractiveItemFlagType types) const
     return interactive_items;
 }
 
-QRectF Scene::getInteractiveItemsBoundingRect(
-    const InteractiveItemFlagType types) const
+QRectF
+Scene::getInteractiveItemsBoundingRect(const InteractiveItemFlagType types,
+                                       bool selection_only) const
 {
     QRectF bounding_rect;
     const auto items = getInteractiveItems(types);
-    for (QGraphicsItem* item : items)
+    for (QGraphicsItem* item : items) {
+        if (selection_only && !item->isSelected()) {
+            continue;
+        }
         bounding_rect |= item->sceneBoundingRect();
+    }
     return bounding_rect;
 }
 
@@ -276,6 +290,9 @@ void Scene::onDisplaySettingsChanged()
             RDKit::common_properties::molNote, note);
         simplified_stereo_annotation = QString::fromStdString(note);
     }
+    simplified_stereo_annotation = QString();
+    std::cerr << "Simplified stereo annotation: "
+              << simplified_stereo_annotation.toStdString() << std::endl;
 
     m_simplified_stereo_label->setPlainText(simplified_stereo_annotation);
     m_simplified_stereo_label->setVisible(
@@ -557,6 +574,18 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
     }
 }
 
+void Scene::onBackgroundColorChanged()
+{
+    bool has_dark_color_scheme = m_sketcher_model->hasDarkColorScheme();
+    m_selection_highlighting_item->setPen(has_dark_color_scheme
+                                              ? SELECTION_OUTLINE_COLOR_DARK_BG
+                                              : SELECTION_OUTLINE_COLOR);
+    m_selection_highlighting_item->setBrush(
+        has_dark_color_scheme ? SELECTION_BACKGROUND_COLOR_DARK_BG
+                              : SELECTION_BACKGROUND_COLOR);
+    m_scene_tool->updateColorsAfterBackgroundColorChange(has_dark_color_scheme);
+}
+
 void Scene::onMolModelSelectionChanged()
 {
     // block the per-item signals for performance reasons
@@ -698,6 +727,13 @@ void Scene::setSceneTool(std::shared_ptr<AbstractSceneTool> new_scene_tool)
     connect(new_scene_tool.get(), &AbstractSceneTool::atomDragFinished, this,
             &Scene::onAtomDragFinished);
     requestCursorHintUpdate();
+    // set the correct colors for the new scene tool, but only
+    // if this is not a NullSceneTool. This is required so that we
+    // don't hit this when destroying the Scene.
+    if (dynamic_cast<NullSceneTool*>(m_scene_tool.get()) == nullptr) {
+        m_scene_tool->updateColorsAfterBackgroundColorChange(
+            m_sketcher_model->hasDarkColorScheme());
+    }
 }
 
 void Scene::requestCursorHintUpdate()
