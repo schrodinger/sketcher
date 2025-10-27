@@ -517,7 +517,7 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
                 for (auto neighbor_monomer_idx : neighbor_monomer_idcs) {
                     auto neighbor_polymer =
                         polymer_for_monomer_idx[neighbor_monomer_idx];
-                    if (visited_polymers_ids.contains(
+                    if (!visited_polymers_ids.contains(
                             neighbor_polymer->getProp<std::string>(
                                 POLYMER_ID))) {
                         parent_polymer[neighbor_polymer] = polymer;
