@@ -133,8 +133,6 @@ resolve_his(const RDKit::ROMol& mol)
     rwmol.commitBatchEdit();
 }
 
-BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
-
 BOOST_DATA_TEST_CASE(
     TestAtomisticSmilesToMonomeric,
     bdata::make(std::vector<TestData>{
