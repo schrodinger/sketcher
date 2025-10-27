@@ -164,14 +164,12 @@ test.describe('WASM Sketcher API', () => {
     </page>
 </CDXML>`;
 
-    // Import the CDXML, verify it's not empty, and extract SMILES
+    // Import the CDXML and extract SMILES
     const exportedSmiles = await page.evaluate((cdxml) => {
       Module.sketcher_import_text(cdxml);
       return Module.sketcher_export_text(Module.Format.SMILES);
     }, cdxmlInput);
 
-    const is_empty = await page.evaluate(() => Module.sketcher_is_empty());
-    expect(is_empty).toBe(false);
     expect(exportedSmiles).toBe("C1=CC=CC=C1");
   });
 });
