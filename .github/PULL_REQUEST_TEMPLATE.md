@@ -1,6 +1,5 @@
 * Linked Case: <issue>
-* Branch: <branch>
- 
+
 ### Description
 <!--Provide a detailed description what these changes are and why they are necessary -->
 
