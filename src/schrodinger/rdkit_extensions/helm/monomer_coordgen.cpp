@@ -827,17 +827,19 @@ static double distance_segments(const RDGeom::Point3D& p1,
                                 const RDGeom::Point3D& q1,
                                 const RDGeom::Point3D& q2)
 {
+    auto cross2d = [](double x1, double y1, double x2, double y2) {
+        return x1 * y2 - y1 * x2;
+    };
+
     auto dist_point_to_segment = [](const RDGeom::Point3D& p,
                                     const RDGeom::Point3D& a,
                                     const RDGeom::Point3D& b) {
-        // Work in 2D (ignore z)
         double abx = b.x - a.x;
         double aby = b.y - a.y;
         double apx = p.x - a.x;
         double apy = p.y - a.y;
         double ab_len2 = abx * abx + aby * aby;
         if (ab_len2 < 1e-18) {
-            // Degenerate segment
             double dx = p.x - a.x;
             double dy = p.y - a.y;
             return std::sqrt(dx * dx + dy * dy);
@@ -851,11 +853,30 @@ static double distance_segments(const RDGeom::Point3D& p1,
         return std::sqrt(dx * dx + dy * dy);
     };
 
+    // Check 2D segment intersection
+    double r_px = p2.x - p1.x;
+    double r_py = p2.y - p1.y;
+    double s_px = q2.x - q1.x;
+    double s_py = q2.y - q1.y;
+
+    double denom = cross2d(r_px, r_py, s_px, s_py);
+    double qp_x = q1.x - p1.x;
+    double qp_y = q1.y - p1.y;
+
+    if (std::fabs(denom) > 1e-18) {
+        double t = cross2d(qp_x, qp_y, s_px, s_py) / denom;
+        double u = cross2d(qp_x, qp_y, r_px, r_py) / denom;
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+            // Segments intersect
+            return 0.0;
+        }
+    }
+
+    // Otherwise, no intersection → compute closest approach
     double d1 = dist_point_to_segment(p1, q1, q2);
     double d2 = dist_point_to_segment(p2, q1, q2);
     double d3 = dist_point_to_segment(q1, p1, p2);
     double d4 = dist_point_to_segment(q2, p1, p2);
-
     return std::min({d1, d2, d3, d4});
 }
 
@@ -904,7 +925,7 @@ static bool check_bond_crossing(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-static bool check_coords(RDKit::ROMol& monomer_mol)
+[[maybe_unused]] static bool check_coords(RDKit::ROMol& monomer_mol)
 {
     if (!check_clashes(monomer_mol)) {
         return false;
@@ -932,12 +953,6 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     adjust_chem_polymer_coords(monomer_mol);
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
-
-    if (!check_coords(monomer_mol)) {
-        std::cerr << "Warning: Generated coordinates for monomer mol have "
-                     "clashing atoms."
-                  << std::endl;
-    }
     return conformer_id;
 }
 

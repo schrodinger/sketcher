@@ -365,24 +365,28 @@ static RDKit::RWMol
 make_molecule_with_coords(const std::vector<std::pair<double, double>>& xy,
                           const std::vector<std::pair<int, int>>& bonds = {})
 {
-    RDKit::RWMol mol;
-    for (size_t i = 0; i < xy.size(); ++i) {
-        mol.addAtom(new RDKit::Atom(), true, true);
-    }
+    auto mol = RDKit::RWMol();
 
-    for (auto [a, b] : bonds) {
-        mol.addBond(a, b);
-    }
-
-    RDKit::Conformer conf(xy.size());
+    // Add atoms
     for (size_t i = 0; i < xy.size(); ++i)
-        conf.setAtomPos(i, RDGeom::Point3D(xy[i].first, xy[i].second, 0.0));
-    mol.addConformer(&conf);
+        mol.addAtom(new RDKit::Atom(), false, false); // no extra processing
+
+    // Add bonds
+    for (auto [a, b] : bonds)
+        mol.addBond(a, b);
+
+    auto conf = new RDKit::Conformer(mol.getNumAtoms());
+    for (size_t i = 0; i < xy.size(); ++i)
+        conf->setAtomPos(i, RDGeom::Point3D(xy[i].first, xy[i].second, 0.0));
+
+    mol.addConformer(conf);
+
     return mol;
 }
 
 BOOST_AUTO_TEST_CASE(DetectsClashingAtoms)
 {
+
     // Two atoms very close together
     RDKit::ROMol mol = make_molecule_with_coords({{0.0, 0.0}, {0.01, 0.01}});
 
@@ -435,6 +439,64 @@ BOOST_AUTO_TEST_CASE(DistanceCrossingSegments)
     RDGeom::Point3D q1(0, 1, 0), q2(1, 0, 0);
     double d = schrodinger::rdkit_extensions::distance_segments(p1, p2, q1, q2);
     BOOST_CHECK_SMALL(d, 1e-6);
+}
+
+BOOST_AUTO_TEST_CASE(BondCrossingDetected)
+{
+    // Make an "X"-shaped molecule with two crossing bonds
+    RDKit::ROMol mol = make_molecule_with_coords(
+        {
+            {0.0, 0.0}, // 0
+            {1.0, 1.0}, // 1
+            {0.0, 1.0}, // 2
+            {1.0, 0.0}  // 3
+        },
+        {
+            {0, 1}, // bond 0–1
+            {2, 3}  // bond 2–3 (crosses the first)
+        });
+
+    BOOST_CHECK(!schrodinger::rdkit_extensions::check_bond_crossing(
+        mol)); // bonds intersect → should detect crossing
+}
+
+BOOST_AUTO_TEST_CASE(NoBondCrossing)
+{
+    // Make two parallel bonds that don't intersect
+    RDKit::ROMol mol = make_molecule_with_coords(
+        {
+            {0.0, 0.0}, // 0
+            {1.0, 0.0}, // 1
+            {0.0, 1.0}, // 2
+            {1.0, 1.0}  // 3
+        },
+        {
+            {0, 1}, // horizontal lower
+            {2, 3}  // horizontal upper, no intersection
+        });
+
+    BOOST_CHECK(schrodinger::rdkit_extensions::check_bond_crossing(
+        mol)); // no crossing → should pass
+}
+
+BOOST_AUTO_TEST_CASE(TouchingBondsNoCross)
+{
+    // Two bonds that are nearly touching at one endpoint.
+    // Will still be considered crossing because their distance is less than the
+    // threshold
+    RDKit::ROMol mol = make_molecule_with_coords(
+        {
+            {0.0, 0.0}, // 0
+            {1.0, 0.0}, // 1
+            {1.1, 0.0}, // 2
+            {2.0, 1.0}  // 3
+        },
+        {
+            {0, 1}, // first bond
+            {2, 3}  // second bond
+        });
+
+    BOOST_CHECK(!schrodinger::rdkit_extensions::check_bond_crossing(mol));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
