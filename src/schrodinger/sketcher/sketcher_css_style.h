@@ -98,5 +98,10 @@ const QString ENUMERATION_STYLE{
     "QToolButton { font: bold 14px; color: #444444; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
+/// style for the popup that allows the user to specify a custom nucleotide
+const QString CUSTOM_NUCLEOTIDE_STYLE{
+    "#CustomNucleotidePopup { background-color:white }"
+    "QLabel { font: 9px; color: #666666; }"};
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -22,19 +22,11 @@ ButtonPacket::ButtonPacket(QToolButton* button, int enum_int) :
 {
 }
 
-ModularPopup::ModularPopup(QWidget* parent) : SketcherView(parent)
+ModularPopup::ModularPopup(QWidget* parent) :
+    SketcherViewWithWhiteBackground(parent)
 {
     // Show as a pop-up top-level window
     setWindowFlags(Qt::Popup);
-}
-
-void ModularPopup::paintEvent(QPaintEvent*)
-{
-    // NOTE: Duplicated code; see PeriodicTableWidget and FileSaveImagePopup
-    QStyleOption opt;
-    opt.initFrom(this);
-    QPainter p(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 void ModularPopup::setButtonGroup(QButtonGroup* group)

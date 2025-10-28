@@ -18,7 +18,8 @@ namespace schrodinger
 namespace sketcher
 {
 
-PeriodicTableWidget::PeriodicTableWidget(QWidget* parent) : SketcherView(parent)
+PeriodicTableWidget::PeriodicTableWidget(QWidget* parent) :
+    SketcherViewWithWhiteBackground(parent)
 {
     ui.reset(new Ui::PeriodicTableForm());
     ui->setupUi(this);
@@ -69,15 +70,6 @@ void PeriodicTableWidget::onButtonClicked(int button_id)
     if (m_close_on_click) {
         close();
     }
-}
-
-void PeriodicTableWidget::paintEvent(QPaintEvent*)
-{
-    // NOTE: Duplicated code; see ModularPopup and FileSaveImagePopup
-    QStyleOption opt;
-    opt.initFrom(this);
-    QPainter p(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 } // namespace sketcher

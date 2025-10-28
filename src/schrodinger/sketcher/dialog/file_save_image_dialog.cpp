@@ -15,7 +15,7 @@ namespace sketcher
 {
 
 FileSaveImagePopup::FileSaveImagePopup(QWidget* parent, SketcherModel* model) :
-    SketcherView(parent)
+    SketcherViewWithWhiteBackground(parent)
 {
     m_ui.reset(new Ui::FileSaveImagePopup());
     m_ui->setupUi(this);
@@ -47,15 +47,6 @@ RenderOptions FileSaveImagePopup::getRenderOptions() const
                                 ? Qt::transparent
                                 : m_background_color;
     return opts;
-}
-
-void FileSaveImagePopup::paintEvent(QPaintEvent*)
-{
-    // NOTE: Duplicated code; see ModularPopup and PeriodicTableWidget
-    QStyleOption opt;
-    opt.initFrom(this);
-    QPainter p(this);
-    style()->drawPrimitive(QStyle::PE_Widget, &opt, &p, this);
 }
 
 FileSaveImageDialog::FileSaveImageDialog(SketcherModel* model, QWidget* parent,
