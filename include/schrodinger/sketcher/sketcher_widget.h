@@ -167,6 +167,14 @@ class SKETCHER_API SketcherWidget : public QWidget
     QSet<const RDKit::Bond*> getSelectedBonds() const;
 
     /**
+     * Zoom and translate the view such that the workspace contents fill the
+     * canvas.
+     * @param selection_only If true, zoom and center only the selected objects
+     * instead of the entire workspace contents
+     */
+    void fitToScreen(bool selection_only = false);
+
+    /**
      * Pass the specified keypress to the top bar.  Explicit calls to this
      * method are necessary on Mac to prevent the Maestro window from stealing
      * keypresses.

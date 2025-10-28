@@ -21,6 +21,7 @@
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 
 using namespace schrodinger::rdkit_extensions;
 namespace bdata = boost::unit_test::data;
@@ -131,8 +132,6 @@ resolve_his(const RDKit::ROMol& mol)
     }
     rwmol.commitBatchEdit();
 }
-
-BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
 
 BOOST_DATA_TEST_CASE(
     TestAtomisticSmilesToMonomeric,
@@ -556,4 +555,17 @@ BOOST_DATA_TEST_CASE(
     auto roundtrip_monomer_mol = toMonomeric(*atomistic_mol, use_residue_info);
     auto helm_sountrip = to_string(*roundtrip_monomer_mol, Format::HELM);
     BOOST_TEST(helm_sountrip == helm_str);
+}
+
+BOOST_AUTO_TEST_CASE(TestShared11819)
+{
+    auto monomer_mol = to_rdkit("CHEM1{[c1ccccc1]}$$$$V2.0");
+
+    bool is_smiles = false;
+    BOOST_TEST(monomer_mol->getAtomWithIdx(0)->getPropIfPresent(SMILES_MONOMER,
+                                                                is_smiles));
+    BOOST_TEST(is_smiles);
+
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_TEST(RDKit::MolToSmiles(*atomistic_mol) == "c1ccccc1");
 }

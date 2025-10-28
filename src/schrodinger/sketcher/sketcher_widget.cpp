@@ -440,6 +440,11 @@ QSet<const RDKit::Bond*> SketcherWidget::getSelectedBonds() const
     return QSet(bonds_from_copy.begin(), bonds_from_copy.end());
 }
 
+void SketcherWidget::fitToScreen(bool selection_only)
+{
+    m_ui->view->fitToScreen(selection_only);
+}
+
 void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
 {
     m_sketcher_model->setValue(ModelKey::INTERFACE_TYPE, interface_type);
