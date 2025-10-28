@@ -48,8 +48,6 @@ std::ostream& operator<<(std::ostream& os,
 }
 } // namespace std
 
-BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
-
 BOOST_AUTO_TEST_CASE(test_partial_removeHs)
 {
     auto ps = RDKit::SmilesParserParams();
