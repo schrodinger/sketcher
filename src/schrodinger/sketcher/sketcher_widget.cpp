@@ -444,6 +444,11 @@ QSet<const RDKit::Bond*> SketcherWidget::getSelectedBonds() const
     return QSet(bonds_from_copy.begin(), bonds_from_copy.end());
 }
 
+void SketcherWidget::fitToScreen(bool selection_only)
+{
+    m_ui->view->fitToScreen(selection_only);
+}
+
 std::string SketcherWidget::getClipboardContents() const
 {
     auto data = QApplication::clipboard()->mimeData();
@@ -880,6 +885,8 @@ void SketcherWidget::setToolbarsVisible(const bool visible)
 {
     m_ui->side_bar_wdg->setVisible(visible);
     m_ui->top_bar_wdg->setVisible(visible);
+    // also hide the line that's between the workspace and the top toolbar
+    m_ui->line->setVisible(visible);
 }
 
 void SketcherWidget::keyPressEvent(QKeyEvent* event)
