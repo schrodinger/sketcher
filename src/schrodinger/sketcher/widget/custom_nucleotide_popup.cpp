@@ -22,10 +22,12 @@ CustomNucleotidePopup::CustomNucleotidePopup(QWidget* parent) :
     setStyleSheet(CUSTOM_NUCLEOTIDE_STYLE);
 
     auto alphanumeric_re = QRegularExpression("\\w+");
-    auto* alphanumeric_validator = new QRegularExpressionValidator(alphanumeric_re, this);
+    auto* alphanumeric_validator =
+        new QRegularExpressionValidator(alphanumeric_re, this);
     for (auto le : {ui->sugar_le, ui->base_le, ui->phosphate_le}) {
         le->setValidator(alphanumeric_validator);
-        connect(le, &QLineEdit::textEdited, this, &CustomNucleotidePopup::onTextEdited);
+        connect(le, &QLineEdit::textEdited, this,
+                &CustomNucleotidePopup::onTextEdited);
     }
 }
 
@@ -37,7 +39,8 @@ void CustomNucleotidePopup::setModel(SketcherModel* model)
     updateFromModel();
 }
 
-void CustomNucleotidePopup::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
+void CustomNucleotidePopup::onModelValuesChanged(
+    const std::unordered_set<ModelKey>& keys)
 {
     SketcherView::onModelValuesChanged(keys);
     if (!m_updating_model && keys.contains(ModelKey::CUSTOM_NUCLEOTIDE)) {
@@ -51,15 +54,13 @@ void CustomNucleotidePopup::onTextEdited()
     for (auto le : {ui->sugar_le, ui->base_le, ui->phosphate_le}) {
         auto le_contents = le->text();
         int pos = 0;
-        if (le->validator()->validate(le_contents, pos) != QValidator::State::Acceptable) {
+        if (le->validator()->validate(le_contents, pos) !=
+            QValidator::State::Acceptable) {
             return;
         }
     }
     std::tuple<QString, QString, QString> nt = {
-        ui->sugar_le->text(),
-        ui->base_le->text(),
-        ui->phosphate_le->text()
-    };
+        ui->sugar_le->text(), ui->base_le->text(), ui->phosphate_le->text()};
     m_updating_model = true;
     getModel()->setValue(ModelKey::CUSTOM_NUCLEOTIDE, nt);
     m_updating_model = false;
