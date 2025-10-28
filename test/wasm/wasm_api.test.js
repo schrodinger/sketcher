@@ -35,8 +35,8 @@ test.describe('WASM Sketcher API', () => {
     { format: 'CUSTOM_ENTITY', skip: [true, 'Format not supported'] },
   ];
 
-  FORMATS.forEach(({ format, skip, exportUnsupported }) => {
-    test(`importing SMILES and exporting ${format}`, async ({ page }) => {
+  FORMATS.forEach(({ format, skip, exportUnsupported, importUnsupported }) => {
+    test(`exporting/importing ${format}`, async ({ page }) => {
       if (skip) {
         test.skip(...skip);
       } else {
@@ -49,6 +49,16 @@ test.describe('WASM Sketcher API', () => {
         return exported;
       }, format);
       expect(exportedText).toMatchSnapshot(`export_text_${format}.txt`);
+
+      // Test importing the exported value (round-trip test)
+      if (!importUnsupported) {
+        const importSuccessful = await page.evaluate((exportedText) => {
+          Module.sketcher_clear();
+          Module.sketcher_import_text(exportedText);
+          return !Module.sketcher_is_empty();
+        }, exportedText);
+        expect(importSuccessful).toBe(true);
+      }
     });
   });
 
