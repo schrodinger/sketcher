@@ -11,6 +11,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   snapshotPathTemplate: '{testDir}/{testFileDir}/__snapshots__/{testFileName}/{arg}{ext}',
+  expect: {
+    toMatchSnapshot: { maxDiffPixelRatio: 0.1 },
+  },
   // Output to the same place as executable tests for GitHub actions
   reporter: [['junit', { outputFile: '../../build/junit-report.xml' }]],
 });

@@ -102,7 +102,18 @@ test.describe('WASM Sketcher API', () => {
       }, imageFormat);
       const buffer = Buffer.from(base64Content, 'base64');
 
-      expect(buffer).toMatchSnapshot(`export_image.${imageFormat.toLowerCase()}`);
+      let actualImage = buffer;
+      // For SVGs, we render them in the browser and take a screenshot so we can do actual visual
+      // comparison instead of comparing the markup (which might differ slightly by platform)
+      if (imageFormat === 'SVG') {
+        const svgDataUri = `data:image/svg+xml;charset=utf-8;base64,${buffer.toString('base64')}`;
+        await page.goto(svgDataUri);
+        actualImage = await page
+          .locator('svg')
+          .screenshot({ type: 'png', omitBackground: true, scale: 'css' });
+      }
+
+      expect(actualImage).toMatchSnapshot(`export-image-${imageFormat}.png`);
     });
   });
 });
