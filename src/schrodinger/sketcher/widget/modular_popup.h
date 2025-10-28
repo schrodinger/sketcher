@@ -2,7 +2,7 @@
 #include <QToolButton>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/widget/sketcher_view.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_white_background.h"
 
 class QButtonGroup;
 class QIcon;
@@ -26,7 +26,7 @@ struct SKETCHER_API ButtonPacket {
  * meant to indicate a selection of a new appearance/functionality to the parent
  * `ModularToolButton` instance.
  */
-class SKETCHER_API ModularPopup : public SketcherView
+class SKETCHER_API ModularPopup : public SketcherViewWithWhiteBackground
 {
     Q_OBJECT
 
@@ -120,12 +120,6 @@ class SKETCHER_API ModularPopup : public SketcherView
      * @param button_id The group ID of the clicked button
      */
     void onButtonClicked(int button_id);
-
-  private:
-    /**
-     * NOTE: Required to pick up stylesheet that makes the background white
-     */
-    void paintEvent(QPaintEvent* event) override;
 };
 
 } // namespace sketcher

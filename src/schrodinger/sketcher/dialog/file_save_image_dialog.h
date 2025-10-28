@@ -3,7 +3,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/widget/sketcher_view.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_white_background.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace Ui
@@ -22,7 +22,7 @@ enum class ImageFormat;
 /**
  * Popup widget containing rendering options
  */
-class SKETCHER_API FileSaveImagePopup : public SketcherView
+class SKETCHER_API FileSaveImagePopup : public SketcherViewWithWhiteBackground
 {
     Q_OBJECT
 
@@ -42,11 +42,6 @@ class SKETCHER_API FileSaveImagePopup : public SketcherView
     void renderOptionsChanged();
 
   private:
-    /**
-     * NOTE: Required to pick up stylesheet that makes the background white
-     */
-    void paintEvent(QPaintEvent* event) override;
-
     std::unique_ptr<Ui::FileSaveImagePopup> m_ui;
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
 };

@@ -12,7 +12,7 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 
-using MonomericNucleotide = std::tuple<std::string, std::string, std::string>;
+using MonomericNucleotide = std::tuple<QString, QString, QString>;
 Q_DECLARE_METATYPE(MonomericNucleotide);
 
 namespace schrodinger
@@ -20,7 +20,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-std::string std_nucleobase_to_string(StdNucleobase base, std::string u_or_t)
+QString std_nucleobase_to_qstring(StdNucleobase base, QString u_or_t)
 {
     switch (base) {
         case StdNucleobase::A:
@@ -102,7 +102,7 @@ SketcherModel::SketcherModel(QObject* parent) : QObject(parent)
         {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
         {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
         {ModelKey::CUSTOM_NUCLEOTIDE,
-         QVariant::fromValue(MonomericNucleotide("R", "A", "P"))},
+         QVariant::fromValue(MonomericNucleotide("R", "N", "P"))},
         {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
         {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},
@@ -189,21 +189,26 @@ StdNucleobase SketcherModel::getDNANucleobase() const
     return m_model_map.at(ModelKey::DNA_NUCLEOBASE).value<StdNucleobase>();
 }
 
-std::optional<std::tuple<std::string, std::string, std::string>>
+std::tuple<QString, QString, QString> SketcherModel::getCustomNucleotide() const
+{
+    return m_model_map.at(ModelKey::CUSTOM_NUCLEOTIDE)
+        .value<MonomericNucleotide>();
+}
+
+std::optional<std::tuple<QString, QString, QString>>
 SketcherModel::getNucleotide() const
 {
     if (getToolSet() != ToolSet::MONOMERIC ||
         getMonomerToolType() != MonomerToolType::NUCLEIC_ACID) {
         return std::nullopt;
     } else if (getNucleicAcidTool() == NucleicAcidTool::RNA_NUCLEOTIDE) {
-        auto base = std_nucleobase_to_string(getRNANucleobase(), "U");
+        auto base = std_nucleobase_to_qstring(getRNANucleobase(), "U");
         return {{"R", base, "P"}};
     } else if (getNucleicAcidTool() == NucleicAcidTool::DNA_NUCLEOTIDE) {
-        auto base = std_nucleobase_to_string(getDNANucleobase(), "T");
+        auto base = std_nucleobase_to_qstring(getDNANucleobase(), "T");
         return {{"dR", base, "P"}};
     } else if (getNucleicAcidTool() == NucleicAcidTool::CUSTOM_NUCLEOTIDE) {
-        return {m_model_map.at(ModelKey::CUSTOM_NUCLEOTIDE)
-                    .value<MonomericNucleotide>()};
+        return getCustomNucleotide();
     } else {
         return std::nullopt;
     }

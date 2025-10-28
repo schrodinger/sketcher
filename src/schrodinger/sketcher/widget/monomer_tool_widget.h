@@ -23,6 +23,7 @@ namespace sketcher
 
 enum class AminoAcidTool;
 enum class NucleicAcidTool;
+class CustomNucleotidePopup;
 class NucleotidePopup;
 
 /**
@@ -44,6 +45,7 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     boost::bimap<QAbstractButton*, NucleicAcidTool> m_button_nucleic_acid_bimap;
     NucleotidePopup* m_rna_popup = nullptr;
     NucleotidePopup* m_dna_popup = nullptr;
+    CustomNucleotidePopup* m_custom_nt_popup = nullptr;
 
     /**
      * Respond to the AMINO or NUCLEIC buttons being clicked, which toggles the
