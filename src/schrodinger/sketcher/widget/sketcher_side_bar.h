@@ -3,8 +3,10 @@
 #include <memory>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/widget/sketcher_view.h"
 
+class QAbstractButton;
 class QWidget;
 
 namespace Ui
@@ -29,6 +31,8 @@ class SKETCHER_API SketcherSideBar : public SketcherView
     ~SketcherSideBar();
 
     void setModel(SketcherModel* model) override;
+    void updateWidgetsEnabled() override;
+    void updateCheckState() override;
 
   signals:
     void selectAllRequested();
@@ -37,6 +41,10 @@ class SKETCHER_API SketcherSideBar : public SketcherView
 
   protected:
     std::unique_ptr<Ui::SketcherSideBar> ui;
+
+    void onAtomisticOrMonomerButtonClicked(QAbstractButton* button);
+
+    DrawTool m_previous_atomistic_draw_tool = DrawTool::ATOM;
 };
 
 } // namespace sketcher

@@ -46,7 +46,7 @@ const QString TEXT_LINK_STYLE{
     "QToolButton:hover { color: #5b8aa8; background-color: transparent; }"};
 
 /**
- * A text link that uses a larger font (12 pt instead of 10 pt) and a brighter
+ * A text link that uses a larger font (12 px instead of 10 px) and a brighter
  * blue
  */
 const QString BRIGHTER_TEXT_LINK_STYLE{
@@ -54,8 +54,13 @@ const QString BRIGHTER_TEXT_LINK_STYLE{
     "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:hover { color: #00b6e0; background-color: transparent; }"};
 
-const QString ATOM_ELEMENT_STYLE{
+const QString ATOM_ELEMENT_OR_MONOMER_STYLE{
     "QToolButton { font: bold 14px; color: #333333; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
+
+/// style for an unknown monomer (e.g. amino acid X or nucleotide N)
+const QString UNKNOWN_MONOMER_STYLE{
+    "QToolButton { font: bold italic 14px; color: #333333; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 const QString ATOM_QUERY_STYLE{

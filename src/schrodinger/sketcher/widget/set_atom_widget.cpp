@@ -27,7 +27,7 @@ SetAtomWidget::SetAtomWidget(QWidget* parent) : AbstractDrawToolWidget(parent)
     ui->last_picked_element_btn->setElement(Element::SI);
 
     for (auto btn : ui->atom_group->buttons()) {
-        btn->setStyleSheet(ATOM_ELEMENT_STYLE);
+        btn->setStyleSheet(ATOM_ELEMENT_OR_MONOMER_STYLE);
     }
     ui->atom_query_btn->setStyleSheet(ATOM_QUERY_STYLE);
 

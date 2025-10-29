@@ -89,15 +89,28 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::Q)},
         {ModelKey::RGROUP_NUMBER, 2u},
         {ModelKey::RESIDUE_TYPE, QString("foo")},
-    };
+        {ModelKey::MONOMER_TOOL_TYPE,
+         QVariant::fromValue(MonomerToolType::NUCLEIC_ACID)},
+        {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::UNK)},
+        {ModelKey::NUCLEIC_ACID_TOOL, QVariant::fromValue(NucleicAcidTool::dR)},
+        {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::G)},
+        {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::U_OR_T)},
+        {ModelKey::CUSTOM_NUCLEOTIDE,
+         QVariant::fromValue(std::tuple<std::string, std::string, std::string>(
+             "Tho", "I", "PS"))},
+        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC},
+        {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
+        {ModelKey::MOLECULE_TYPE,
+         QVariant::fromValue(MoleculeType::ATOMISTIC)}};
 
     TestSketcherModel model;
     QSignalSpy pinged_spy(&model, &SketcherModel::valuePinged);
     QSignalSpy changed_spy(&model, &SketcherModel::valuesChanged);
     std::vector<QSignalSpy*> spies = {&pinged_spy, &changed_spy};
     for (auto& key : get_model_keys()) {
-        if (key == ModelKey::RESIDUE_TYPE) {
-            // This value is not stored as an int-like object
+        if (key == ModelKey::RESIDUE_TYPE ||
+            key == ModelKey::CUSTOM_NUCLEOTIDE) {
+            // These values are not stored as int-like objects
             continue;
         }
         // Access the current value
