@@ -115,6 +115,14 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
      */
     bool labelIsVisible() const;
 
+    /**
+     * Do not show the stereochemistry labels for this atom. This is used when
+     * the scene is displaying a simplified molecular stereo annotation. Note
+     * that this method won't trigger the AtomItem to update itself, so the
+     * change won't take effect until updateCachedData is called.
+     */
+    void setHideStereoLabels(bool hide);
+
     QRectF getChiralityLabelRect() const;
     QString getChiralityLabelText() const;
 
@@ -152,6 +160,7 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
     QPen m_squiggle_pen;
     QPen m_query_label_line_pen;
     QBrush m_valence_error_brush;
+    bool m_hide_stereo_labels = false;
 
     /**
      * @return A painter path with the specified radius for use with either
