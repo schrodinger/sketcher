@@ -114,6 +114,11 @@ HsDirection AtomItem::findHsDirection() const
     }
 }
 
+void AtomItem::setHideStereoLabels(bool hide)
+{
+    m_hide_stereo_labels = hide;
+}
+
 void AtomItem::updateCachedData()
 {
     // prepareGeometryChange notifies the scene to schedule a repaint and to
@@ -203,7 +208,7 @@ void AtomItem::updateCachedData()
         }
     }
     if ((m_settings.m_stereo_labels_visibility != StereoLabels::NONE) &&
-        !m_settings.m_show_simplified_stereo_annotation) {
+        !m_hide_stereo_labels) {
         updateChiralityLabel();
     }
     // merge all of the subrects with the predictive highlighting path to create
