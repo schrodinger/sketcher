@@ -94,6 +94,13 @@ class SKETCHER_API AtomDisplaySettings
 
     QColor m_valence_error_area_color = VALENCE_ERROR_AREA_COLOR;
 
+    /**
+     * The simplified stereo annotation to display, if any.  This is set by the
+     * Scene when the display settings are changed and it is used by AtomItems
+     * to decide whether to show or hide their atomic labels.
+     */
+    std::string m_simplified_stereo_annotation = "";
+
   private:
     RDKit::ColourPalette m_color_palette;
 };

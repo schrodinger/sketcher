@@ -152,11 +152,13 @@ void Scene::updateItems(const WhatChangedType what_changed)
             m_sketcher_model->getAtomDisplaySettingsPtr();
         auto bond_display_settings_ptr =
             m_sketcher_model->getBondDisplaySettingsPtr();
+
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
                  m_s_group_to_s_group_item) =
             create_graphics_items_for_mol(mol, m_fonts,
                                           *atom_display_settings_ptr,
                                           *bond_display_settings_ptr);
+
         for (auto* item : all_items) {
             addItem(item);
             m_interactive_items.insert(item);
@@ -233,6 +235,20 @@ Scene::getInteractiveItemsBoundingRect(const InteractiveItemFlagType types,
     return bounding_rect;
 }
 
+bool Scene::isSimplifiedStereoAnnotationVisible() const
+{
+    return m_simplified_stereo_label->isVisible();
+}
+
+QRectF Scene::getSceneItemsBoundingRect() const
+{
+    auto items_bounding_rect = getInteractiveItemsBoundingRect();
+    if (isSimplifiedStereoAnnotationVisible()) {
+        items_bounding_rect |= m_simplified_stereo_label->sceneBoundingRect();
+    }
+    return items_bounding_rect;
+}
+
 void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
 {
     // remove all interactive items and reset the rdkit molecule; this will
@@ -259,9 +275,9 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
 
 void Scene::onDisplaySettingsChanged()
 {
+    auto display_settings_ptr = m_sketcher_model->getAtomDisplaySettingsPtr();
     bool show_simplified_stereo_annotation =
-        m_sketcher_model->getAtomDisplaySettingsPtr()
-            ->m_show_simplified_stereo_annotation;
+        display_settings_ptr->m_show_simplified_stereo_annotation;
     QString simplified_stereo_annotation;
     if (show_simplified_stereo_annotation) {
         std::string note;
@@ -269,32 +285,27 @@ void Scene::onDisplaySettingsChanged()
             RDKit::common_properties::molNote, note);
         simplified_stereo_annotation = QString::fromStdString(note);
     }
+    if (simplified_stereo_annotation.toStdString() !=
+        display_settings_ptr->m_simplified_stereo_annotation) {
+        // save the actual simplified stereo annotation in the display settings,
+        // so that each AtomItem can access it and decide whether to show or
+        // hide its labels (atomic labels should be hidden only if the
+        // annotation is actually shown and not empty)
+        auto new_display_settings(*display_settings_ptr);
+
+        new_display_settings.m_simplified_stereo_annotation =
+            simplified_stereo_annotation.toStdString();
+        // avoid recursive calls to onDisplaySettingsChanged
+        QSignalBlocker signal_blocker(m_sketcher_model);
+        m_sketcher_model->setAtomDisplaySettings(new_display_settings);
+    }
+
     m_simplified_stereo_label->setPlainText(simplified_stereo_annotation);
     m_simplified_stereo_label->setVisible(
         !simplified_stereo_annotation.isEmpty());
     m_simplified_stereo_label->setPos(
         getInteractiveItemsBoundingRect().bottomLeft());
-
     m_fonts.setSize(m_sketcher_model->getFontSize());
-
-    // we need to update all of the atom items before we update any bond
-    // items, since bond items pull information from their associated atom
-    // items
-    for (auto item : getInteractiveItems(InteractiveItemFlag::ATOM)) {
-        // if the scene displays a simplified stereo annotation, we hide the
-        // atomic ones
-        auto atom_item = static_cast<AtomItem*>(item);
-        atom_item->setHideStereoLabels(!simplified_stereo_annotation.isEmpty());
-        atom_item->updateCachedData();
-    }
-    for (auto item : getInteractiveItems(InteractiveItemFlag::MONOMER)) {
-        static_cast<AbstractAtomOrMonomerItem*>(item)->updateCachedData();
-    }
-
-    for (auto item :
-         getInteractiveItems(InteractiveItemFlag::BOND_OR_CONNECTOR)) {
-        static_cast<AbstractBondOrConnectorItem*>(item)->updateCachedData();
-    }
 
     // DrawFragmentSceneTool inherits most of the settings from the Scene's
     // AtomDisplaySettings and BondDisplaySettings.  Since this method gets
