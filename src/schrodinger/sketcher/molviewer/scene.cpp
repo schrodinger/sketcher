@@ -285,7 +285,6 @@ void Scene::onDisplaySettingsChanged()
     bool show_simplified_stereo_annotation =
         m_sketcher_model->getAtomDisplaySettingsPtr()
             ->m_show_simplified_stereo_annotation;
-    show_simplified_stereo_annotation = true;
     QString simplified_stereo_annotation;
     if (show_simplified_stereo_annotation) {
         std::string note;
