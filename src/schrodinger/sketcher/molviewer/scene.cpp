@@ -152,18 +152,11 @@ void Scene::updateItems(const WhatChangedType what_changed)
             m_sketcher_model->getAtomDisplaySettingsPtr();
         auto bond_display_settings_ptr =
             m_sketcher_model->getBondDisplaySettingsPtr();
-        // if we have requested a simplified stereo annotation but it is not
-        // available, remove the option from the atoms display settings so the
-        // atomic labels are correctly drawn
-        AtomDisplaySettings atom_display_settings(*atom_display_settings_ptr);
 
-        if (atom_display_settings.m_show_simplified_stereo_annotation &&
-            !isSimplifiedStereoAnnotationVisible()) {
-            atom_display_settings.m_show_simplified_stereo_annotation = false;
-        }
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
                  m_s_group_to_s_group_item) =
-            create_graphics_items_for_mol(mol, m_fonts, atom_display_settings,
+            create_graphics_items_for_mol(mol, m_fonts,
+                                          *atom_display_settings_ptr,
                                           *bond_display_settings_ptr);
 
         for (auto* item : all_items) {
