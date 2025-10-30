@@ -275,15 +275,29 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
 
 void Scene::onDisplaySettingsChanged()
 {
+    auto display_settings_ptr = m_sketcher_model->getAtomDisplaySettingsPtr();
     bool show_simplified_stereo_annotation =
-        m_sketcher_model->getAtomDisplaySettingsPtr()
-            ->m_show_simplified_stereo_annotation;
+        display_settings_ptr->m_show_simplified_stereo_annotation;
     QString simplified_stereo_annotation;
     if (show_simplified_stereo_annotation) {
         std::string note;
         m_mol_model->getMol()->getPropIfPresent(
             RDKit::common_properties::molNote, note);
         simplified_stereo_annotation = QString::fromStdString(note);
+    }
+    if (simplified_stereo_annotation.toStdString() !=
+        display_settings_ptr->m_simplified_stereo_annotation) {
+        // save the actual simplified stereo annotation in the display settings,
+        // so that each AtomItem can access it and decide whether to show or
+        // hide its labels (atomic labels should be hidden only if the
+        // annotation is actually shown and not empty)
+        auto new_display_settings(*display_settings_ptr);
+
+        new_display_settings.m_simplified_stereo_annotation =
+            simplified_stereo_annotation.toStdString();
+        // avoid recursive calls to onDisplaySettingsChanged
+        QSignalBlocker signal_blocker(m_sketcher_model);
+        m_sketcher_model->setAtomDisplaySettings(new_display_settings);
     }
 
     m_simplified_stereo_label->setPlainText(simplified_stereo_annotation);
