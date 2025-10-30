@@ -40,7 +40,7 @@ static void check_if_input_is_atomistic(const RDKit::ROMol& mol)
     }
 }
 
-bool is_dummy_atom(const ::RDKit::Atom* atom)
+[[nodiscard]] bool is_dummy_atom(const ::RDKit::Atom* atom)
 {
     return atom->hasProp(REPETITION_DUMMY_ID);
 }

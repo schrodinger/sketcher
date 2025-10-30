@@ -76,6 +76,9 @@ get_polymer_id(const ::RDKit::Atom* atom);
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);
 
+[[nodiscard]] RDKIT_EXTENSIONS_API bool
+is_dummy_atom(const ::RDKit::Atom* atom);
+
 /**
  * Connections (in the HELM context) are bonds that are written in the
  * connection section of a HELM string. These are bonds that either connect
