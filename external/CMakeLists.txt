@@ -190,22 +190,11 @@ set_cmake_arg(
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
-if(EMSCRIPTEN)
-  # The InChi build tries to guess whether the compiler provides isascii() or
-  # __isascii(). It guesses wrong when using Emscripten, so we #define the wrong
-  # function name as the right one
-  list(APPEND RDKIT_PATCH_COMMAND && git apply
-       ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_inchi_isascii.patch)
-endif()
 # Prevent RDKit from trying to build shared libs
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 list(APPEND RDKIT_PATCH_COMMAND && git apply
-     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_cstdint.patch)
-list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
-list(APPEND RDKIT_PATCH_COMMAND && git apply
-     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_8738_8736.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
