@@ -16,7 +16,21 @@ on:
         default: false
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install pre-commit
+        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6
+
+      - name: Code formatting check
+        run: pre-commit run --all-files
+
   build:
+    needs: pre-commit
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -44,14 +58,11 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install clang-format==14.0.6 cmake==3.24 ninja==1.13.0
+        run: python3 -m pip install cmake==3.24 ninja==1.13.0
 
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
-
-      - name: Code formatting check
-        run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
       - name: Determine build type
         run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
