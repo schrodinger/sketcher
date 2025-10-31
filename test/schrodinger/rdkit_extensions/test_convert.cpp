@@ -1071,3 +1071,15 @@ $$$$)MDL",
 
     BOOST_TEST(cxsmiles.ends_with(expected_stereo_group_extension));
 }
+
+BOOST_AUTO_TEST_CASE(test_wiggly_bond_cxsmiles_roundtrip)
+{
+    // Test that wiggly bonds are preserved when round-tripping through
+    // to_rdkit and to_string with EXTENDED_SMILES format
+    const std::string input_smiles = "CCC(C)N |w:2.3|";
+    auto mol = to_rdkit(input_smiles, Format::EXTENDED_SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+
+    std::string output_smiles = to_string(*mol, Format::EXTENDED_SMILES);
+    BOOST_TEST(output_smiles == input_smiles);
+}
