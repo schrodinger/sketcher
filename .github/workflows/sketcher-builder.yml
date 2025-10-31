@@ -229,7 +229,7 @@ jobs:
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
-          ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest -j --output-on-failure --output-junit junit-report.xml
+          ctest -j --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure --output-junit junit-report.xml
 
       - name: Run wasm tests
         if: matrix.build-output == 'wasm'
@@ -242,8 +242,8 @@ jobs:
         working-directory: build
         if: matrix.build-output == 'memtest'
         run: |
-          xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest \
-            -j --output-on-failure --output-junit junit-report.xml
+          xvfb-run -a ctest -j --build-config ${{ env.BUILD_TYPE }} -L memtest \
+            --output-on-failure --output-junit junit-report.xml
 
       - name: Publish Test Summary
         uses: test-summary/action@v2
