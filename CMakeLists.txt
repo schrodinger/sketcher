@@ -255,6 +255,26 @@ if(ENABLE_TESTING)
         --keep-debuginfo=no --error-exitcode=29")
   separate_arguments(MEMTEST_COMMAND)
 
+  # List of tests that require Qt MOC/UIC features (Q_OBJECT or UI files)
+  set(TESTS_REQUIRING_QT_MOC
+      test_abstract_undoable_model
+      test_atom_query_popup
+      test_bond_order_popup
+      test_bond_query_popup
+      test_bracket_subgroup_dialog
+      test_draw_tools_widget
+      test_edit_atom_properties
+      test_enumeration_tool_widget
+      test_file_export_dialog
+      test_paste_in_text_dialog
+      test_periodic_table_widget
+      test_ring_tool_widget
+      test_select_options_widget
+      test_set_atom_widget
+      test_sketcher_top_bar
+      test_sketcher_widget
+      test_stereo_bond_popup)
+
   foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
     cmake_path(GET TEST_SOURCE STEM TEST_STEM)
     cmake_path(RELATIVE_PATH TEST_SOURCE OUTPUT_VARIABLE TEST_PATH)
@@ -271,15 +291,19 @@ if(ENABLE_TESTING)
       # ignore discarded [[nodiscard]] values for the tests
       target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
     endif()
-    enable_qt_moc(${TEST_TARGET})
+
+    if(TEST_STEM IN_LIST TESTS_REQUIRING_QT_MOC)
+      enable_qt_moc(${TEST_TARGET})
+    endif()
+
     if(EMSCRIPTEN)
       set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)
     else()
       set(TEST_COMMAND ${TEST_TARGET})
     endif()
-    set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                    ${PREFIX_PATH}
-                                                    OUTPUT_NAME ${TEST_STEM})
+    set_target_properties(
+      ${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PREFIX_PATH}
+                                OUTPUT_NAME ${TEST_STEM})
     # Create memtest target and command
     if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
       # create the valgrind test
