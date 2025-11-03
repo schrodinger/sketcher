@@ -3,7 +3,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 #include <rdkit/GraphMol/RWMol.h>
-#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.cpp"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include <vector>
 #include <string>
@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE(DetectsClashingAtoms)
     // Two atoms very close together
     RDKit::ROMol mol = make_molecule_with_coords({{0.0, 0.0}, {0.01, 0.01}});
 
-    BOOST_CHECK(!schrodinger::rdkit_extensions::check_clashes(
+    BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_clashes(
         mol)); // should detect clash
 }
 
@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE(NoClashForSeparatedAtoms)
 {
     RDKit::ROMol mol = make_molecule_with_coords({{0.0, 0.0}, {10.0, 10.0}});
 
-    BOOST_CHECK(schrodinger::rdkit_extensions::check_clashes(mol)); // no clash
+    BOOST_CHECK(schrodinger::rdkit_extensions::has_no_clashes(mol)); // no clash
 }
 
 BOOST_AUTO_TEST_CASE(IntersectingSegments)
@@ -444,7 +444,8 @@ BOOST_AUTO_TEST_CASE(DistanceParallelSegments)
 {
     RDGeom::Point3D p1(0, 0, 0), p2(1, 0, 0);
     RDGeom::Point3D q1(0, 1, 0), q2(1, 1, 0);
-    double d = schrodinger::rdkit_extensions::distance_segments(p1, p2, q1, q2);
+    double d = schrodinger::rdkit_extensions::compute_distance_between_segments(
+        p1, p2, q1, q2);
     BOOST_CHECK_CLOSE(d, 1.0, 1e-4);
 }
 
@@ -452,7 +453,8 @@ BOOST_AUTO_TEST_CASE(DistanceCrossingSegments)
 {
     RDGeom::Point3D p1(0, 0, 0), p2(1, 1, 0);
     RDGeom::Point3D q1(0, 1, 0), q2(1, 0, 0);
-    double d = schrodinger::rdkit_extensions::distance_segments(p1, p2, q1, q2);
+    double d = schrodinger::rdkit_extensions::compute_distance_between_segments(
+        p1, p2, q1, q2);
     BOOST_CHECK_SMALL(d, 1e-6);
 }
 
@@ -471,7 +473,7 @@ BOOST_AUTO_TEST_CASE(BondCrossingDetected)
             {2, 3}  // bond 2–3 (crosses the first)
         });
 
-    BOOST_CHECK(!schrodinger::rdkit_extensions::check_bond_crossing(
+    BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_bond_crossings(
         mol)); // bonds intersect → should detect crossing
 }
 
@@ -490,7 +492,7 @@ BOOST_AUTO_TEST_CASE(NoBondCrossing)
             {2, 3}  // horizontal upper, no intersection
         });
 
-    BOOST_CHECK(schrodinger::rdkit_extensions::check_bond_crossing(
+    BOOST_CHECK(schrodinger::rdkit_extensions::has_no_bond_crossings(
         mol)); // no crossing → should pass
 }
 
@@ -511,7 +513,7 @@ BOOST_AUTO_TEST_CASE(TouchingBondsNoCross)
             {2, 3}  // second bond
         });
 
-    BOOST_CHECK(!schrodinger::rdkit_extensions::check_bond_crossing(mol));
+    BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_bond_crossings(mol));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

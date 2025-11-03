@@ -9,6 +9,7 @@
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/ChemTransforms/MolFragmenter.h>
 #include <rdkit/Geometry/point.h>
+#include <boost/geometry.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +30,9 @@ constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
 
+constexpr double MONOMER_CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
+constexpr double BOND_CLASH_DISTANCE = MONOMER_CLASH_DISTANCE;
+
 // Props used in the fragmented polymer mols to store monomer graph info from
 // the monomersitc mol
 const std::string BOND_TO{"bondTo"};
@@ -45,6 +49,10 @@ const std::string SMILES_MONOMER_LABEL{"CX"};
 enum ChainDirection { LTR, RTL };
 enum BranchDirection { UP, DOWN };
 enum PolygonStartSide { LEFT, RIGHT };
+
+namespace bg = boost::geometry;
+using point_t = bg::model::d2::point_xy<double>;
+using segment_t = bg::model::segment<point_t>;
 
 static auto default_stop_condition = [](const RDKit::Atom* monomer) {
     return false;
@@ -795,17 +803,16 @@ void lay_out_polymers(
     }
 }
 
-static bool check_clashes(const RDKit::ROMol& monomer_mol)
+bool has_no_clashes(const RDKit::ROMol& monomer_mol)
 {
-    const double CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
     auto& conformer = monomer_mol.getConformer();
     auto positions = conformer.getPositions();
     for (size_t i = 0; i < positions.size(); i++) {
         for (size_t j = i + 1; j < positions.size(); j++) {
-            if (positions[i].x - positions[j].x > CLASH_DISTANCE ||
-                positions[i].x - positions[j].x < -CLASH_DISTANCE ||
-                positions[i].y - positions[j].y > CLASH_DISTANCE ||
-                positions[i].y - positions[j].y < -CLASH_DISTANCE) {
+            if (positions[i].x - positions[j].x > MONOMER_CLASH_DISTANCE ||
+                positions[i].x - positions[j].x < -MONOMER_CLASH_DISTANCE ||
+                positions[i].y - positions[j].y > MONOMER_CLASH_DISTANCE ||
+                positions[i].y - positions[j].y < -MONOMER_CLASH_DISTANCE) {
                 continue;
             }
             return false;
@@ -814,122 +821,38 @@ static bool check_clashes(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-static bool segments_intersect(const RDGeom::Point3D& p1,
-                               const RDGeom::Point3D& p2,
-                               const RDGeom::Point3D& q1,
-                               const RDGeom::Point3D& q2)
+bool segments_intersect(const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
+                        const RDGeom::Point3D& q1, const RDGeom::Point3D& q2)
 {
-    double eps = 1e-6;
-    auto orientation = [&](const RDGeom::Point3D& a, const RDGeom::Point3D& b,
-                           const RDGeom::Point3D& c) {
-        double val = (b.y - a.y) * (c.x - a.x) - (b.x - a.x) * (c.y - a.y);
-        if (std::fabs(val) < eps)
-            return 0;             // collinear
-        return (val > 0) ? 1 : 2; // clockwise or counterclockwise
-    };
-
-    auto on_segment = [&](const RDGeom::Point3D& a, const RDGeom::Point3D& b,
-                          const RDGeom::Point3D& c) {
-        // Check if b lies on segment a–c (assuming collinear)
-        return (b.x <= std::max(a.x, c.x) + eps &&
-                b.x >= std::min(a.x, c.x) - eps &&
-                b.y <= std::max(a.y, c.y) + eps &&
-                b.y >= std::min(a.y, c.y) - eps);
-    };
-
-    int o1 = orientation(p1, p2, q1);
-    int o2 = orientation(p1, p2, q2);
-    int o3 = orientation(q1, q2, p1);
-    int o4 = orientation(q1, q2, p2);
-
-    // General case
-    if (o1 != o2 && o3 != o4)
-        return true;
-
-    // Special collinear cases
-    if (o1 == 0 && on_segment(p1, q1, p2))
-        return true;
-    if (o2 == 0 && on_segment(p1, q2, p2))
-        return true;
-    if (o3 == 0 && on_segment(q1, p1, q2))
-        return true;
-    if (o4 == 0 && on_segment(q1, p2, q2))
-        return true;
-
-    return false;
+    segment_t seg_p = {{p1.x, p1.y}, {p2.x, p2.y}};
+    segment_t seg_q = {{q1.x, q1.y}, {q2.x, q2.y}};
+    std::vector<point_t> intersection_pts;
+    bg::intersection(seg_p, seg_q, intersection_pts);
+    return !intersection_pts.empty();
 }
 
-static double distance_segments(const RDGeom::Point3D& p1,
-                                const RDGeom::Point3D& p2,
-                                const RDGeom::Point3D& q1,
-                                const RDGeom::Point3D& q2)
+double compute_distance_between_segments(const RDGeom::Point3D& p1,
+                                         const RDGeom::Point3D& p2,
+                                         const RDGeom::Point3D& q1,
+                                         const RDGeom::Point3D& q2)
 {
-    auto cross2d = [](double x1, double y1, double x2, double y2) {
-        return x1 * y2 - y1 * x2;
-    };
-
-    auto dist_point_to_segment = [](const RDGeom::Point3D& p,
-                                    const RDGeom::Point3D& a,
-                                    const RDGeom::Point3D& b) {
-        double abx = b.x - a.x;
-        double aby = b.y - a.y;
-        double apx = p.x - a.x;
-        double apy = p.y - a.y;
-        double ab_len2 = abx * abx + aby * aby;
-        if (ab_len2 < 1e-18) {
-            double dx = p.x - a.x;
-            double dy = p.y - a.y;
-            return std::sqrt(dx * dx + dy * dy);
-        }
-        double t = (apx * abx + apy * aby) / ab_len2;
-        t = std::clamp(t, 0.0, 1.0);
-        double projx = a.x + t * abx;
-        double projy = a.y + t * aby;
-        double dx = p.x - projx;
-        double dy = p.y - projy;
-        return std::sqrt(dx * dx + dy * dy);
-    };
-
-    // Check 2D segment intersection
-    double r_px = p2.x - p1.x;
-    double r_py = p2.y - p1.y;
-    double s_px = q2.x - q1.x;
-    double s_py = q2.y - q1.y;
-
-    double denom = cross2d(r_px, r_py, s_px, s_py);
-    double qp_x = q1.x - p1.x;
-    double qp_y = q1.y - p1.y;
-
-    if (std::fabs(denom) > 1e-18) {
-        double t = cross2d(qp_x, qp_y, s_px, s_py) / denom;
-        double u = cross2d(qp_x, qp_y, r_px, r_py) / denom;
-        if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-            // Segments intersect
-            return 0.0;
-        }
-    }
-
-    // Otherwise, no intersection → compute closest approach
-    double d1 = dist_point_to_segment(p1, q1, q2);
-    double d2 = dist_point_to_segment(p2, q1, q2);
-    double d3 = dist_point_to_segment(q1, p1, p2);
-    double d4 = dist_point_to_segment(q2, p1, p2);
-    return std::min({d1, d2, d3, d4});
+    segment_t seg_p = {{p1.x, p1.y}, {p2.x, p2.y}};
+    segment_t seg_q = {{q1.x, q1.y}, {q2.x, q2.y}};
+    return bg::distance(seg_p, seg_q);
 }
 
-static bool check_bond_crossing(const RDKit::ROMol& monomer_mol)
+bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 {
-    const double CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
     auto& conformer = monomer_mol.getConformer();
     auto positions = conformer.getPositions();
     for (size_t i = 0; i < monomer_mol.getNumBonds(); i++) {
         auto bond1 = monomer_mol.getBondWithIdx(i);
         auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
         auto end1_pos = conformer.getAtomPos(bond1->getEndAtomIdx());
-        auto minx1 = std::min(begin1_pos.x, end1_pos.x) - CLASH_DISTANCE;
-        auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + CLASH_DISTANCE;
-        auto miny1 = std::min(begin1_pos.y, end1_pos.y) - CLASH_DISTANCE;
-        auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + CLASH_DISTANCE;
+        auto minx1 = std::min(begin1_pos.x, end1_pos.x) - BOND_CLASH_DISTANCE;
+        auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + BOND_CLASH_DISTANCE;
+        auto miny1 = std::min(begin1_pos.y, end1_pos.y) - BOND_CLASH_DISTANCE;
+        auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + BOND_CLASH_DISTANCE;
 
         for (size_t j = i + 1; j < monomer_mol.getNumBonds(); j++) {
             auto bond2 = monomer_mol.getBondWithIdx(j);
@@ -942,10 +865,14 @@ static bool check_bond_crossing(const RDKit::ROMol& monomer_mol)
             }
             auto begin2_pos = conformer.getAtomPos(bond2->getBeginAtomIdx());
             auto end2_pos = conformer.getAtomPos(bond2->getEndAtomIdx());
-            auto minx2 = std::min(begin2_pos.x, end2_pos.x) - CLASH_DISTANCE;
-            auto maxx2 = std::max(begin2_pos.x, end2_pos.x) + CLASH_DISTANCE;
-            auto miny2 = std::min(begin2_pos.y, end2_pos.y) - CLASH_DISTANCE;
-            auto maxy2 = std::max(begin2_pos.y, end2_pos.y) + CLASH_DISTANCE;
+            auto minx2 =
+                std::min(begin2_pos.x, end2_pos.x) - BOND_CLASH_DISTANCE;
+            auto maxx2 =
+                std::max(begin2_pos.x, end2_pos.x) + BOND_CLASH_DISTANCE;
+            auto miny2 =
+                std::min(begin2_pos.y, end2_pos.y) - BOND_CLASH_DISTANCE;
+            auto maxy2 =
+                std::max(begin2_pos.y, end2_pos.y) + BOND_CLASH_DISTANCE;
             // bounding box check
             if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 ||
                 maxy2 < miny1) {
@@ -953,8 +880,9 @@ static bool check_bond_crossing(const RDKit::ROMol& monomer_mol)
             }
             if (segments_intersect(begin1_pos, end1_pos, begin2_pos,
                                    end2_pos) ||
-                distance_segments(begin1_pos, end1_pos, begin2_pos, end2_pos) <
-                    CLASH_DISTANCE) {
+                compute_distance_between_segments(begin1_pos, end1_pos,
+                                                  begin2_pos, end2_pos) <
+                    BOND_CLASH_DISTANCE) {
                 return false;
             }
         }
@@ -962,15 +890,9 @@ static bool check_bond_crossing(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-[[maybe_unused]] static bool check_coords(RDKit::ROMol& monomer_mol)
+[[maybe_unused]] static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
 {
-    if (!check_clashes(monomer_mol)) {
-        return false;
-    }
-    if (!check_bond_crossing(monomer_mol)) {
-        return false;
-    }
-    return true;
+    return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
