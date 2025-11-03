@@ -29,7 +29,7 @@ jobs:
       - name: Code formatting check
         run: pre-commit run --all-files
 
-  build-test:
+  build:
     needs: pre-commit
     runs-on: ${{ matrix.os }}
     defaults:
@@ -58,7 +58,7 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install cmake==3.24 ninja==1.13.0
+        run: python3 -m pip install cmake==3.24 ninja==1.13.0 pytest pytest-cpp pytest-xdist
 
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
@@ -226,10 +226,12 @@ jobs:
       - name: Run tests
         working-directory: build
         if: matrix.build-output == 'app'
+        env:
+          SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
-          ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure --output-junit junit-report.xml
+          pytest -n auto --ignore=external --junitxml=junit-report.xml
 
       - name: Run wasm tests
         if: matrix.build-output == 'wasm'
@@ -242,7 +244,7 @@ jobs:
         working-directory: build
         if: matrix.build-output == 'memtest'
         run: |
-          xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
+          xvfb-run -a ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
       - name: Publish Test Summary
         uses: test-summary/action@v2

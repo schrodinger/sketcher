@@ -278,7 +278,8 @@ if(ENABLE_TESTING)
       set(TEST_COMMAND ${TEST_TARGET})
     endif()
     set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                    ${PREFIX_PATH})
+                                                    ${PREFIX_PATH}
+                                                    OUTPUT_NAME ${TEST_STEM})
     # Create memtest target and command
     if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
       # create the valgrind test
@@ -291,7 +292,7 @@ if(ENABLE_TESTING)
         list(APPEND CURRENT_MEMTEST_COMMAND
              "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
       endforeach()
-      list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
+      list(APPEND CURRENT_MEMTEST_COMMAND "$<TARGET_FILE:${TEST_TARGET}>")
       set(TEST_TARGET "memtest_${TEST_TARGET}")
       set(TEST_COMMAND "${CURRENT_MEMTEST_COMMAND}")
     endif()
