@@ -78,7 +78,7 @@ function(setup_target TARGET)
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX -EHsc)
     if(${BUILD_SHARED_LIBS})
-        target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
+      target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
     endif()
   elseif(WIN32)
     target_compile_options(
@@ -150,21 +150,23 @@ endfunction()
 
 # Add a dependency on the generated header
 function(add_generated_header_dependency TARGET)
-  # The header is generated with a Python script, so we need
-  # to find the Python interpreter
-  find_package (Python COMPONENTS Interpreter REQUIRED)
+  # The header is generated with a Python script, so we need to find the Python
+  # interpreter
+  find_package(
+    Python
+    COMPONENTS Interpreter
+    REQUIRED)
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/rdkit_extensions)
-  set(HDR_PATH ${PROJECT_BINARY_DIR}/include/schrodinger/rdkit_extensions/monomer_db_default_monomers.h)
-  add_custom_command(
-      OUTPUT  ${HDR_PATH}
-      COMMAND ${Python_EXECUTABLE}
-                ${SRC_DIR}/generate_default_monomers_header.py
-                ${SRC_DIR}/default_monomer_definitions.json
-                ${HDR_PATH}
-      DEPENDS ${SRC_DIR}/default_monomer_definitions.json
-              ${SRC_DIR}/generate_default_monomers_header.py
-      COMMENT "Generating monomer_db_default_monomers.h"
+  set(HDR_PATH
+      ${PROJECT_BINARY_DIR}/include/schrodinger/rdkit_extensions/monomer_db_default_monomers.h
   )
+  add_custom_command(
+    OUTPUT ${HDR_PATH}
+    COMMAND ${Python_EXECUTABLE} ${SRC_DIR}/generate_default_monomers_header.py
+            ${SRC_DIR}/default_monomer_definitions.json ${HDR_PATH}
+    DEPENDS ${SRC_DIR}/default_monomer_definitions.json
+            ${SRC_DIR}/generate_default_monomers_header.py
+    COMMENT "Generating monomer_db_default_monomers.h")
   add_custom_target(generated_header DEPENDS ${HDR_PATH})
   add_dependencies(${TARGET} generated_header)
 endfunction()
@@ -188,7 +190,6 @@ target_link_libraries(
           SQLite::SQLite3
           ZLIB::ZLIB
           ${ZSTD_LIB_NAME})
-
 
 # schrodinger::sketcher library
 set(SKETCHER_TARGET sketcher)
@@ -223,12 +224,10 @@ if(EMSCRIPTEN)
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
 target_link_libraries(
-  ${APP_TARGET} PRIVATE Boost::boost
-                        Boost::filesystem
-                        Qt6::Widgets
-                        ${RDKIT_EXTENSIONS_TARGET}
-                        ${SKETCHER_TARGET}
-                        ${EXTRA_SKETCHER_APP_LINK_FLAGS})
+  ${APP_TARGET}
+  PRIVATE Boost::boost Boost::filesystem Qt6::Widgets
+          ${RDKIT_EXTENSIONS_TARGET} ${SKETCHER_TARGET}
+          ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
 if(ENABLE_TESTING)
@@ -269,8 +268,8 @@ if(ENABLE_TESTING)
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
     target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
     if(MSVC)
-        # ignore discarded [[nodiscard]] values for the tests
-        target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
+      # ignore discarded [[nodiscard]] values for the tests
+      target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
     endif()
     enable_qt_moc(${TEST_TARGET})
     if(EMSCRIPTEN)
@@ -309,4 +308,5 @@ if(ENABLE_TESTING)
 endif()
 
 install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR})
