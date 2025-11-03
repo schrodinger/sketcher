@@ -1,7 +1,9 @@
 repos:
   - repo: local
     hooks:
-      - id: sketcher-precommit
-        name: sketcher-precommit
-        entry: sketcher-precommit.py
-        language: script
+      - id: clang-format
+        name: clang-format
+        entry: clang-format
+        language: system
+        files: \.(cpp|h)$
+        args: [--dry-run, --Werror]
