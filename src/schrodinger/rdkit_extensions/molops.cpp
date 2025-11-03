@@ -144,7 +144,7 @@ void removeHs(RDKit::RWMol& rdk_mol, std::vector<unsigned> atom_ids)
     std::vector<RDKit::Atom*> protected_atoms;
     const auto input_num_atoms = rdk_mol.getNumAtoms();
     for (unsigned i = 0; i < input_num_atoms; ++i) {
-        if (i == *remove_id_itr) {
+        if (remove_id_itr != atom_ids.end() && i == *remove_id_itr) {
             ++remove_id_itr;
             continue;
         }

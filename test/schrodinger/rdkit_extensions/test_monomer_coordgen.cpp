@@ -142,6 +142,19 @@ BOOST_DATA_TEST_CASE(
           {-19.5, -4.5}, {-21, -6},     {-22.5, -6},   {-22.5, -4.5},
           {-24, -6},     {-25.5, -6},   {-25.5, -4.5}}},
 
+        // branching polymer connections
+        {"PEPTIDE1{A.C.G.C.G}|PEPTIDE2{K.L}|PEPTIDE3{S.T}$PEPTIDE1,PEPTIDE2,2:"
+         "R2-1:R1|PEPTIDE1,PEPTIDE3,5:R1-1:R3$$$V2.0",
+         {{0, 0},
+          {1.5, 0},
+          {3, 0},
+          {4.5, 0},
+          {6, 0},
+          {1.5, -1.5},
+          {3, -1.5},
+          {6, -1.5},
+          {7.5, -1.5}}},
+
         // Cyclic polymers
         {"PEPTIDE1{A.Y.V.[Orn].L.[dF].P.F.[dF].N}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$"
          "$$",
@@ -298,6 +311,7 @@ BOOST_DATA_TEST_CASE(
           {-6.37886, -2.635},  {-6.37886, -1.135},  {-7.87886, -2.635},
           {-9.37886, -2.635},  {-9.37886, -1.135},  {-10.8789, -2.635},
           {-12.3789, -2.635},  {-12.3789, -1.135}}}}),
+
     test_data)
 {
     std::string helm = test_data.first;
@@ -310,7 +324,8 @@ BOOST_DATA_TEST_CASE(
     std::string expected_str = "{";
     std::string actual_str = "{";
 
-    // Helper to convert double to string without unnecessary trailing zeros
+    // Helper to convert double to string without unnecessary trailing
+    // zeros
     auto fmt = [](double x) -> std::string {
         std::ostringstream oss;
         oss << std::fixed << std::setprecision(6) << x;

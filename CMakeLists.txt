@@ -226,6 +226,7 @@ target_link_libraries(
   ${APP_TARGET} PRIVATE Boost::boost
                         Boost::filesystem
                         Qt6::Widgets
+                        ${RDKIT_EXTENSIONS_TARGET}
                         ${SKETCHER_TARGET}
                         ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
