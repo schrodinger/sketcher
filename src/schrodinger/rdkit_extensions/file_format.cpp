@@ -69,10 +69,6 @@ const std::unordered_map<Format, std::vector<std::string>> SEQ_FORMAT_EXTS = {
     {Format::FASTA, {".fasta", ".fas", ".fa", ".fst", ".seq"}},
 };
 
-const std::unordered_map<Format, std::vector<std::string>> SCHRO_FORMAT_EXTS = {
-    {Format::FMP, {".fmp"}},
-};
-
 std::vector<Format> get_roundtrip_keys(
     const std::unordered_map<Format, std::vector<std::string>>& map)
 {
@@ -115,18 +111,13 @@ Format get_file_format(const boost::filesystem::path& filename)
     auto extension = filename.extension().string();
     boost::to_lower(extension);
 
-    if (extension == ".json") {
-        return Format::CUSTOM_ENTITY;
-    }
-
     if (extension == ".gz" || extension == ".zst") {
         extension = filename.stem().extension().string() + extension;
         boost::to_lower(extension);
     }
 
     for (const auto& format_to_extensions_map :
-         {MOL_FORMAT_EXTS, RXN_FORMAT_EXTS, SEQ_FORMAT_EXTS,
-          SCHRO_FORMAT_EXTS}) {
+         {MOL_FORMAT_EXTS, RXN_FORMAT_EXTS, SEQ_FORMAT_EXTS}) {
         for (const auto& [format, exts] : format_to_extensions_map) {
             if (std::find(exts.begin(), exts.end(), extension) != exts.end()) {
                 return format;

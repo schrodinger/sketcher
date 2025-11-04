@@ -75,14 +75,6 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(get_file_format(filename) == format);
 }
 
-BOOST_AUTO_TEST_CASE(test_schrodinger_specific_extensions)
-{
-    BOOST_TEST(get_file_format(".fmp") == Format::FMP);
-    BOOST_REQUIRE_THROW(get_mol_extensions(Format::FMP), std::out_of_range);
-    BOOST_REQUIRE_THROW(get_rxn_extensions(Format::FMP), std::out_of_range);
-    BOOST_REQUIRE_THROW(get_seq_extensions(Format::FMP), std::out_of_range);
-}
-
 BOOST_DATA_TEST_CASE(
     TestGetCompressionType,
     boost::unit_test::data::make(std::vector<std::string>{
