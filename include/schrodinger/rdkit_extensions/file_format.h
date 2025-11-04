@@ -44,9 +44,6 @@ enum class Format {
     FASTA_DNA,     // only used to read
     FASTA_RNA,     // only used to read
     FASTA,         // only used to write
-    // Schrodinger-specific formats unknown to RDKit
-    FMP,
-    CUSTOM_ENTITY, // user-defined entity
 };
 
 /**
