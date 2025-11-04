@@ -362,6 +362,11 @@ class SKETCHER_API SketcherModel : public QObject
     void setValues(const std::unordered_map<ModelKey, QVariant>& key_value_map);
 
     /**
+     * Reset the model to default state
+     */
+    void reset();
+
+    /**
      * @return whether a reaction is present
      */
     bool hasReaction() const;
