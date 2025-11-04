@@ -17,6 +17,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 
 using schrodinger::rdkit_extensions::Format;
@@ -67,6 +68,13 @@ bool sketcher_has_monomers()
     auto& sk = get_sketcher_instance();
     auto mol = sk.getRDKitMolecule();
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
+}
+
+void sketcher_allow_monomeric()
+{
+    auto& sk = get_sketcher_instance();
+    return sk.setInterfaceType(
+        schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
 }
 
 void sketcher_changed()
@@ -123,7 +131,11 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_export_image", &sketcher_export_image);
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
+<<<<<<< HEAD
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
+=======
+    emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+>>>>>>> e723b8e (changes based on PR comments)
     // see sketcher_changed_callback above
 }
 #endif

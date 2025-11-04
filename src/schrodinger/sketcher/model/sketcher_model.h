@@ -369,10 +369,10 @@ enum class StdNucleobase {
  * Convert a StdNucleobase instance to a string
  *
  * @param base The base to convert
- * @param u_or_t The string to use for U_OR_T. Should be either "U" or "T".
+ * @param U_or_T The string to use for U_OR_T. Should be either "U" or "T".
  */
 SKETCHER_API std::string std_nucleobase_to_string(StdNucleobase base,
-                                                  std::string u_or_t);
+                                                  std::string U_or_T);
 
 /**
  * @return Every element of `ModelKey`.

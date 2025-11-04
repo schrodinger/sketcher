@@ -20,13 +20,13 @@ namespace schrodinger
 namespace sketcher
 {
 
-std::string std_nucleobase_to_string(StdNucleobase base, std::string u_or_t)
+std::string std_nucleobase_to_string(StdNucleobase base, std::string U_or_T)
 {
     switch (base) {
         case StdNucleobase::A:
             return "A";
         case StdNucleobase::U_OR_T:
-            return u_or_t;
+            return U_or_T;
         case StdNucleobase::G:
             return "G";
         case StdNucleobase::C:
