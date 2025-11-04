@@ -152,18 +152,11 @@ void Scene::updateItems(const WhatChangedType what_changed)
             m_sketcher_model->getAtomDisplaySettingsPtr();
         auto bond_display_settings_ptr =
             m_sketcher_model->getBondDisplaySettingsPtr();
-        // if we have requested a simplified stereo annotation but it is not
-        // available, remove the option from the atoms display settings so the
-        // atomic labels are correctly drawn
-        AtomDisplaySettings atom_display_settings(*atom_display_settings_ptr);
 
-        if (atom_display_settings.m_show_simplified_stereo_annotation &&
-            !isSimplifiedStereoAnnotationVisible()) {
-            atom_display_settings.m_show_simplified_stereo_annotation = false;
-        }
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
                  m_s_group_to_s_group_item) =
-            create_graphics_items_for_mol(mol, m_fonts, atom_display_settings,
+            create_graphics_items_for_mol(mol, m_fonts,
+                                          *atom_display_settings_ptr,
                                           *bond_display_settings_ptr);
 
         for (auto* item : all_items) {
@@ -282,16 +275,29 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
 
 void Scene::onDisplaySettingsChanged()
 {
+    auto display_settings_ptr = m_sketcher_model->getAtomDisplaySettingsPtr();
     bool show_simplified_stereo_annotation =
-        m_sketcher_model->getAtomDisplaySettingsPtr()
-            ->m_show_simplified_stereo_annotation;
-    show_simplified_stereo_annotation = true;
+        display_settings_ptr->m_show_simplified_stereo_annotation;
     QString simplified_stereo_annotation;
     if (show_simplified_stereo_annotation) {
         std::string note;
         m_mol_model->getMol()->getPropIfPresent(
             RDKit::common_properties::molNote, note);
         simplified_stereo_annotation = QString::fromStdString(note);
+    }
+    if (simplified_stereo_annotation.toStdString() !=
+        display_settings_ptr->m_simplified_stereo_annotation) {
+        // save the actual simplified stereo annotation in the display settings,
+        // so that each AtomItem can access it and decide whether to show or
+        // hide its labels (atomic labels should be hidden only if the
+        // annotation is actually shown and not empty)
+        auto new_display_settings(*display_settings_ptr);
+
+        new_display_settings.m_simplified_stereo_annotation =
+            simplified_stereo_annotation.toStdString();
+        // avoid recursive calls to onDisplaySettingsChanged
+        QSignalBlocker signal_blocker(m_sketcher_model);
+        m_sketcher_model->setAtomDisplaySettings(new_display_settings);
     }
 
     m_simplified_stereo_label->setPlainText(simplified_stereo_annotation);

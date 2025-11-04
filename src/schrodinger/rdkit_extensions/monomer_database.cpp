@@ -47,6 +47,12 @@ constexpr std::string_view polymer_type_column{"POLYMER_TYPE"};
 constexpr std::string_view smiles_column{"SMILES"};
 constexpr std::string_view symbol_column{"SYMBOL"};
 
+// Legacy column names that we need to temporarily support for backwards
+// compatibility, no underscores between words
+constexpr std::string_view legacy_analog_column{"NATURALANALOG"};
+constexpr std::string_view legacy_monomer_type_column{"MONOMERTYPE"};
+constexpr std::string_view legacy_polymer_type_column{"POLYMERTYPE"};
+
 inline const char* _sqlite3_column_cstring(sqlite3_stmt* stmt, int idx)
 {
     auto result = sqlite3_column_text(stmt, idx);
@@ -133,9 +139,10 @@ inline void assign_monomer_info(MonomerInfo& m, std::string key, const T& value)
     boost::to_upper(key);
     if (key == symbol_column) {
         m.symbol = convert(value);
-    } else if (key == polymer_type_column) {
+    } else if (key == polymer_type_column ||
+               key == legacy_polymer_type_column) {
         m.polymer_type = convert(value);
-    } else if (key == analog_column) {
+    } else if (key == analog_column || key == legacy_analog_column) {
         m.natural_analog = convert(value);
     } else if (key == smiles_column) {
         m.smiles = convert(value);
@@ -143,7 +150,8 @@ inline void assign_monomer_info(MonomerInfo& m, std::string key, const T& value)
         m.core_smiles = convert(value);
     } else if (key == name_column) {
         m.name = convert(value);
-    } else if (key == monomer_type_column) {
+    } else if (key == monomer_type_column ||
+               key == legacy_monomer_type_column) {
         m.monomer_type = convert(value);
     } else if (key == author_column) {
         m.author = convert(value);

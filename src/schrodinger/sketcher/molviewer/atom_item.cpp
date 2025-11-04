@@ -203,7 +203,7 @@ void AtomItem::updateCachedData()
         }
     }
     if ((m_settings.m_stereo_labels_visibility != StereoLabels::NONE) &&
-        !m_settings.m_show_simplified_stereo_annotation) {
+        m_settings.m_simplified_stereo_annotation.empty()) {
         updateChiralityLabel();
     }
     // merge all of the subrects with the predictive highlighting path to create

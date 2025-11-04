@@ -16,7 +16,21 @@ on:
         default: false
 
 jobs:
-  build:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Install pre-commit
+        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6
+
+      - name: Code formatting check
+        run: pre-commit run --all-files
+
+  build-test:
+    needs: pre-commit
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -44,20 +58,11 @@ jobs:
           echo PATH=$PATH >> $GITHUB_ENV
 
       - name: Install Python packages
-        run: python3 -m pip install clang-format==14.0.6 cmake==3.24 ninja==1.13.0
+        run: python3 -m pip install cmake==3.24 ninja==1.13.0 pytest pytest-cpp pytest-xdist
 
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
-
-      - name: Install playwright
-        if: matrix.build-output == 'wasm'
-        run: |
-          npm install -D @playwright/test
-          npx playwright install --with-deps
-
-      - name: Code formatting check
-        run: git ls-files | grep -E '\.(cpp|h)$' | xargs clang-format -n --Werror
 
       - name: Determine build type
         run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
@@ -221,21 +226,26 @@ jobs:
       - name: Run tests
         working-directory: build
         if: matrix.build-output == 'app'
+        env:
+          SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
-          ctest --build-config ${{ env.BUILD_TYPE }} -LE memtest --output-on-failure --output-junit junit-report.xml
+          pytest -n auto --ignore=external --junitxml=junit-report.xml
 
       - name: Run wasm tests
         if: matrix.build-output == 'wasm'
         run: |
-          npx playwright test --config test/wasm/playwright.config.js
+          cd test/wasm
+          npm install
+          npm run test
 
       - name: Run memtests
         working-directory: build
         if: matrix.build-output == 'memtest'
+        # Using -j4 instead of -j because cmake 3.24 requires a specific number
         run: |
-          xvfb-run -a ctest --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
+          xvfb-run -a ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
       - name: Publish Test Summary
         uses: test-summary/action@v2
