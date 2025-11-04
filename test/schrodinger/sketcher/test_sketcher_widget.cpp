@@ -34,9 +34,31 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::ColorScheme)
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
+// Reuse a single widget instance across all tests for better performance
+// Note: Widget is intentionally leaked to avoid Qt destruction order issues.
+// The widget cannot be safely destroyed after QApplication cleanup without
+// causing crashes on Linux/Windows. This small leak (< 1MB) is acceptable for
+// test code and only occurs at program exit when the OS reclaims all memory.
+struct TestWidgetFixture {
+    static TestSketcherWidget* get()
+    {
+        static TestSketcherWidget* widget = nullptr;
+        if (!widget) {
+            widget = new TestSketcherWidget();
+        }
+        // Clear state before each test for isolation
+        widget->clear();
+        widget->m_undo_stack->clear();
+        widget->m_sketcher_model->reset();
+        return widget;
+    }
+};
+
+BOOST_GLOBAL_FIXTURE(TestWidgetFixture);
+
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     auto mol = sk.getRDKitMolecule();
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
@@ -57,7 +79,7 @@ BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 
 BOOST_AUTO_TEST_CASE(test_addRDKitReaction_getRDKitReaction)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     // we can't get a reaction from an empty model
     BOOST_CHECK_THROW(sk.getRDKitReaction(), std::runtime_error);
 
@@ -92,7 +114,7 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_mol,
     auto mol = to_rdkit("C1=CC=CC=C1");
     auto text = to_string(*mol, format);
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString(text);
     BOOST_TEST(sk.getString(Format::SMILES) == "C1=CC=CC=C1");
 
@@ -109,7 +131,7 @@ BOOST_DATA_TEST_CASE(test_addFromString_getString_reaction,
     auto rxn = to_rdkit_reaction("CC(=O)O.OCC>>CC(=O)OCC");
     auto text = to_string(*rxn, format);
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString(text);
 
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
@@ -129,7 +151,7 @@ BOOST_AUTO_TEST_CASE(test_PDB_format_single_model)
     conf->setAtomPos(2, {3, 3, 3});
     mol_to_add->addConformer(conf, true);
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addRDKitMolecule(*mol_to_add);
     // RDKit mol exports should contain both the 2D and the 3D conformers
     auto mol_out = sk.getRDKitMolecule();
@@ -146,7 +168,7 @@ BOOST_AUTO_TEST_CASE(test_PDB_format_single_model)
  */
 BOOST_AUTO_TEST_CASE(test_2D_molfile)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString("C");
     auto molfile = sk.getString(Format::MDL_MOLV3000);
     BOOST_TEST(molfile.find("2D") != std::string::npos);
@@ -155,7 +177,7 @@ BOOST_AUTO_TEST_CASE(test_2D_molfile)
 
 BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     std::string smiles{"C1=CC=CC=C1"};
     sk.importText(smiles, Format::SMILES);
 
@@ -260,7 +282,7 @@ BOOST_AUTO_TEST_CASE(test_cut_copy_paste)
  */
 BOOST_AUTO_TEST_CASE(test_paste_with_windows_newline)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setClipboardContents("CCC\n\r");
     sk.paste();
     auto mol = sk.m_mol_model->getMol();
@@ -269,7 +291,7 @@ BOOST_AUTO_TEST_CASE(test_paste_with_windows_newline)
 
 BOOST_AUTO_TEST_CASE(test_importText_slot)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.importText("c1nccc2n1ccc2", Format::SMILES);
     auto mol = sk.m_mol_model->getMol();
     BOOST_TEST_REQUIRE(mol != nullptr);
@@ -307,7 +329,7 @@ BOOST_AUTO_TEST_CASE(test_importText_slot)
  */
 BOOST_AUTO_TEST_CASE(test_watermark)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     // Without the event loop, we need to manually trigger Scene::changed
     QList<QRectF> region;
     sk.m_scene->changed(region);
@@ -323,7 +345,7 @@ BOOST_AUTO_TEST_CASE(test_watermark)
 
 BOOST_AUTO_TEST_CASE(test_undo)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     // Add a structure to the scene
     sk.addFromString("[H][C@@](C)(Cl)[C@@]([H])(C)C([H])(C)Br", Format::SMILES);
@@ -385,7 +407,7 @@ BOOST_AUTO_TEST_CASE(test_undo)
  */
 BOOST_AUTO_TEST_CASE(test_toolChangeOnSelection)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     // import a molecule and select all of the atoms
     sk.addFromString("CCCC", Format::SMILES);
@@ -435,7 +457,7 @@ BOOST_AUTO_TEST_CASE(test_toolChangeOnSelection)
  */
 BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     // import a molecule
     sk.addFromString("CCC", Format::SMILES);
@@ -477,7 +499,7 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
  */
 BOOST_AUTO_TEST_CASE(test_switch_to_C_on_empty_scene)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     for (auto drawTool :
          {DrawTool::SELECT, DrawTool::MOVE_ROTATE, DrawTool::ERASE}) {
         sk.addFromString("CCC", Format::SMILES);
@@ -496,7 +518,7 @@ BOOST_AUTO_TEST_CASE(test_switch_to_C_on_empty_scene)
 BOOST_AUTO_TEST_CASE(test_zoom_on_small_molecule)
 {
     // test that zooming in on a small molecule doesn't zoom too much in
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString("C", Format::SMILES);
     auto view = sk.m_ui->view;
     view->fitToScreen();
@@ -532,7 +554,7 @@ BOOST_DATA_TEST_CASE(test_auto_detect_through_sketcher_interface,
     }
 
     // Check roundtripping and auto-detect
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString(input_string, sample);
     BOOST_TEST(sk.getString(export_format) == reference);
     sk.clear();
@@ -548,7 +570,7 @@ BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
     auto text = to_string(*reaction, sample);
 
     // Check auto-detect import through the sketcher interface as well
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString(text);
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(=O)O.CCO>>CCOC(C)=O");
 }
@@ -556,7 +578,7 @@ BOOST_DATA_TEST_CASE(test_reactions_roundtrip,
 BOOST_AUTO_TEST_CASE(testRGRoup0)
 {
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     auto molblock = read_testfile("shared_8381.sdf");
 
@@ -585,7 +607,7 @@ BOOST_AUTO_TEST_CASE(testRGRoup0)
 BOOST_AUTO_TEST_CASE(testSMARTSRGRoup)
 {
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     std::string cxsmarts{
         "[H][#7](-[$([#1,*])])-[#6]-1=[#7]-[#6]-2=[#6](-[#7]-1)-"
@@ -601,7 +623,7 @@ BOOST_AUTO_TEST_CASE(testCXSMILESRGRoup)
 {
     // SKETCH-1399
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     std::string cxsmiles{"[*]C1=CC=CC=C1 |$_R1;;;;;;$,c:3,5,t:1|"};
 
@@ -614,7 +636,7 @@ BOOST_AUTO_TEST_CASE(testLeakStereoChemDoneProp)
 {
     // SKETCH-1701
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString("C[C@H](N)O", Format::SMILES);
     auto molblock = sk.getString(Format::MDL_MOLV3000);
     BOOST_TEST(molblock.find(">  <_StereochemDone>") == std::string::npos);
@@ -624,7 +646,7 @@ BOOST_AUTO_TEST_CASE(testPreserveStereoGroupIds)
 {
     // SKETCH-2000
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString("C[C@H](O)Cl |o5:1|", Format::EXTENDED_SMILES);
 
     auto cxsmiles = sk.getString(Format::EXTENDED_SMILES);
@@ -689,7 +711,7 @@ f_m_ct {{
 )";
     auto maeblock = fmt::format(maeblock_template, invalid_chirality_label);
 
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     // we should be able to import the text without any issues
     sk.addFromString(maeblock, Format::MAESTRO);
     BOOST_TEST(sk.getString(Format::SMILES) == "CC(F)(Cl)Br");
@@ -697,7 +719,7 @@ f_m_ct {{
 
 BOOST_AUTO_TEST_CASE(test_wasm_API)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
 
     auto assert_roundtrip = [&sk](auto rdkit_read, const auto& filename) {
         auto text = read_testfile(filename);
@@ -738,7 +760,7 @@ BOOST_AUTO_TEST_CASE(test_wasm_API)
  */
 BOOST_AUTO_TEST_CASE(test_selection)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.addFromString("NCCC");
     auto mol = sk.getRDKitMolecule();
     BOOST_TEST(mol->getNumAtoms() == 4);
@@ -773,7 +795,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
  */
 BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)
 {
-    TestSketcherWidget sk;
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setColorScheme(ColorScheme::DARK_MODE);
     QCoreApplication::processEvents();
     BOOST_TEST(sk.m_sketcher_model->getColorScheme() == ColorScheme::DARK_MODE);
