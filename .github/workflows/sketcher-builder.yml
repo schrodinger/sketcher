@@ -243,6 +243,7 @@ jobs:
       - name: Run memtests
         working-directory: build
         if: matrix.build-output == 'memtest'
+        # Using -j4 instead of -j because cmake 3.24 requires a specific number
         run: |
           xvfb-run -a ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
