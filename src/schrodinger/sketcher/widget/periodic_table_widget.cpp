@@ -19,7 +19,7 @@ namespace sketcher
 {
 
 PeriodicTableWidget::PeriodicTableWidget(QWidget* parent) :
-    SketcherViewWithWhiteBackground(parent)
+    SketcherViewWithWasmOutlineFix(parent)
 {
     ui.reset(new Ui::PeriodicTableForm());
     ui->setupUi(this);

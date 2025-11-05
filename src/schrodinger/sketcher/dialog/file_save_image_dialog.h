@@ -3,7 +3,7 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/widget/sketcher_view_with_white_background.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_wasm_outline_fix.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace Ui
@@ -22,7 +22,7 @@ enum class ImageFormat;
 /**
  * Popup widget containing rendering options
  */
-class SKETCHER_API FileSaveImagePopup : public SketcherViewWithWhiteBackground
+class SKETCHER_API FileSaveImagePopup : public SketcherViewWithWasmOutlineFix
 {
     Q_OBJECT
 

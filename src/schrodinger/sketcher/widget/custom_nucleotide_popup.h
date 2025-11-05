@@ -2,7 +2,7 @@
 #include <memory>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/widget/sketcher_view_with_white_background.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_wasm_outline_fix.h"
 
 namespace Ui
 {
@@ -18,8 +18,7 @@ namespace sketcher
  * Popup used to provide sugar, base, and phosphate entry for the custom
  * nucleotide
  */
-class SKETCHER_API CustomNucleotidePopup
-    : public SketcherViewWithWhiteBackground
+class SKETCHER_API CustomNucleotidePopup : public SketcherViewWithWasmOutlineFix
 {
   public:
     CustomNucleotidePopup(QWidget* parent = nullptr);

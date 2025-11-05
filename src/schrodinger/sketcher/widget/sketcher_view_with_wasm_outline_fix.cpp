@@ -1,4 +1,4 @@
-#include "schrodinger/sketcher/widget/sketcher_view_with_white_background.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_wasm_outline_fix.h"
 
 #include <QPainter>
 #include <QPaintEvent>
@@ -9,15 +9,15 @@ namespace schrodinger
 namespace sketcher
 {
 
-SketcherViewWithWhiteBackground::SketcherViewWithWhiteBackground(
+SketcherViewWithWasmOutlineFix::SketcherViewWithWasmOutlineFix(
     QWidget* parent) :
     SketcherView(parent)
 {
 }
 
-SketcherViewWithWhiteBackground::~SketcherViewWithWhiteBackground() = default;
+SketcherViewWithWasmOutlineFix::~SketcherViewWithWasmOutlineFix() = default;
 
-void SketcherViewWithWhiteBackground::paintEvent(QPaintEvent*)
+void SketcherViewWithWasmOutlineFix::paintEvent(QPaintEvent*)
 {
     QStyleOption opt;
     opt.initFrom(this);

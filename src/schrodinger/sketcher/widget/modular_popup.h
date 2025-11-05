@@ -2,7 +2,7 @@
 #include <QToolButton>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/widget/sketcher_view_with_white_background.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_wasm_outline_fix.h"
 
 class QButtonGroup;
 class QIcon;
@@ -26,7 +26,7 @@ struct SKETCHER_API ButtonPacket {
  * meant to indicate a selection of a new appearance/functionality to the parent
  * `ModularToolButton` instance.
  */
-class SKETCHER_API ModularPopup : public SketcherViewWithWhiteBackground
+class SKETCHER_API ModularPopup : public SketcherViewWithWasmOutlineFix
 {
     Q_OBJECT
 
