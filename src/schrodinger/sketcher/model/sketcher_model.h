@@ -369,10 +369,10 @@ enum class StdNucleobase {
  * Convert a StdNucleobase instance to a string
  *
  * @param base The base to convert
- * @param u_or_t The string to use for U_OR_T. Should be either "U" or "T".
+ * @param U_or_T The string to use for U_OR_T. Should be either "U" or "T".
  */
 SKETCHER_API QString std_nucleobase_to_qstring(StdNucleobase base,
-                                               QString u_or_t);
+                                               QString U_or_T);
 
 /**
  * @return Every element of `ModelKey`.
@@ -459,6 +459,11 @@ class SKETCHER_API SketcherModel : public QObject
      * @param key_value_map (key, value) pairs to assign to the model
      */
     void setValues(const std::unordered_map<ModelKey, QVariant>& key_value_map);
+
+    /**
+     * Reset the model to default state
+     */
+    void reset();
 
     /**
      * If the current tool is a monomeric nucleotide, return the nucleotide as a

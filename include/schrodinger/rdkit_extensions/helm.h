@@ -99,14 +99,6 @@ Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& monomer_mol,
                                        std::string_view polymer_id);
 
 /**
- * @param monomer_mol monomeric molecule
- * @return The id of the conformer added to the molecule with the computed
- * coordinates
- */
-unsigned int RDKIT_EXTENSIONS_API
-compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
-
-/**
  * Get the HELM supplementary info substance group
  *
  * @param cg_mol coarse grain molecule

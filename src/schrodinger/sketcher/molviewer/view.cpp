@@ -163,7 +163,7 @@ void View::zoomOutToIncludeAll()
         return;
     }
     auto visible_rect = mapToScene(rect()).boundingRect();
-    QRectF rec = cur_scene->getInteractiveItemsBoundingRect();
+    QRectF rec = cur_scene->getSceneItemsBoundingRect();
     rec = rec.united(visible_rect);
     if (rec == visible_rect) {
         // If the bounding rect is the same as the visible rect, then we

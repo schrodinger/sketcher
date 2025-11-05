@@ -48,8 +48,6 @@ std::ostream& operator<<(std::ostream& os,
 }
 } // namespace std
 
-BOOST_GLOBAL_FIXTURE(SetDefaultMonomerDbPath);
-
 BOOST_AUTO_TEST_CASE(test_partial_removeHs)
 {
     auto ps = RDKit::SmilesParserParams();
@@ -423,4 +421,22 @@ BOOST_AUTO_TEST_CASE(TestCombineMolsWithUnknownMonomer)
         BOOST_TEST("CHEM1{[CC]}|PEPTIDE1{A}$$$$V2.0" ==
                    helm::rdkit_to_helm(*combined));
     }
+}
+
+BOOST_DATA_TEST_CASE(TestRemoveHsPreservesHydrides,
+                     bdata::make(std::vector<std::string>{
+                         "[H-]->[Li+]",
+                         "[H-]->[Fe+2]",
+                     }),
+                     test_smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    auto mol = MolFromSmiles(
+        test_smiles, SmilesParserParams{.removeHs = false, .replacements = {}});
+
+    // should preserve the hydrides
+    removeHs(*mol);
+
+    BOOST_TEST(RDKit::MolToSmiles(*mol) == test_smiles);
 }

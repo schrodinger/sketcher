@@ -9,6 +9,7 @@
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/ChemTransforms/MolFragmenter.h>
 #include <rdkit/Geometry/point.h>
+#include <boost/geometry.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +30,9 @@ constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
 
+constexpr double MONOMER_CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
+constexpr double BOND_CLASH_DISTANCE = MONOMER_CLASH_DISTANCE;
+
 // Props used in the fragmented polymer mols to store monomer graph info from
 // the monomersitc mol
 const std::string BOND_TO{"bondTo"};
@@ -45,6 +49,10 @@ const std::string SMILES_MONOMER_LABEL{"CX"};
 enum ChainDirection { LTR, RTL };
 enum BranchDirection { UP, DOWN };
 enum PolygonStartSide { LEFT, RIGHT };
+
+namespace bg = boost::geometry;
+using point_t = bg::model::d2::point_xy<double>;
+using segment_t = bg::model::segment<point_t>;
 
 static auto default_stop_condition = [](const RDKit::Atom* monomer) {
     return false;
@@ -462,8 +470,11 @@ static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
  * Sorts polymers in connection order i.e. a polymer is followed by all its
  * neighbors contiguously that are then followed by their neighbors contiguously
  * and so on.
+ * @return the sorted polymers vector and a map of child polymer to parent
+ * polymer
  */
-static std::vector<RDKit::ROMOL_SPTR>
+std::pair<std::vector<RDKit::ROMOL_SPTR>,
+          std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
 sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
 {
     std::map<unsigned int, RDKit::ROMOL_SPTR> polymer_for_monomer_idx;
@@ -475,33 +486,46 @@ sort_polymers_by_connectivity(const std::vector<RDKit::ROMOL_SPTR>& polymers)
     }
 
     std::vector<RDKit::ROMOL_SPTR> sorted_polymers;
-    std::set<std::string> visited_polymers;
+    std::set<std::string> visited_polymers_ids;
+    std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR> parent_polymer;
     for (auto polymer : polymers) {
         std::queue<RDKit::ROMOL_SPTR> polymer_queue;
         for (polymer_queue.push(polymer); !polymer_queue.empty();
              polymer_queue.pop()) {
             auto polymer = polymer_queue.front();
             auto polymer_id = polymer->getProp<std::string>(POLYMER_ID);
-            if (visited_polymers.find(polymer_id) != visited_polymers.end()) {
+            if (visited_polymers_ids.contains(polymer_id)) {
                 continue;
             }
-            visited_polymers.insert(polymer_id);
+            visited_polymers_ids.insert(polymer_id);
             sorted_polymers.push_back(polymer);
 
             for (auto monomer : polymer->atoms()) {
                 if (!monomer->hasProp(BOND_TO)) {
                     continue;
                 }
-                auto neighbor_monomer = monomer->getProp<unsigned int>(BOND_TO);
-                polymer_queue.push(polymer_for_monomer_idx[neighbor_monomer]);
+                std::vector<int> neighbor_monomer_idcs;
+                monomer->getPropIfPresent<std::vector<int>>(
+                    BOND_TO, neighbor_monomer_idcs);
+                for (auto neighbor_monomer_idx : neighbor_monomer_idcs) {
+                    auto neighbor_polymer =
+                        polymer_for_monomer_idx[neighbor_monomer_idx];
+                    if (!visited_polymers_ids.contains(
+                            neighbor_polymer->getProp<std::string>(
+                                POLYMER_ID))) {
+                        parent_polymer[neighbor_polymer] = polymer;
+                    }
+                    polymer_queue.push(neighbor_polymer);
+                }
             }
         }
     }
 
-    return sorted_polymers;
+    return std::make_pair(sorted_polymers, parent_polymer);
 }
 
-static std::vector<RDKit::ROMOL_SPTR>
+static std::pair<std::vector<RDKit::ROMOL_SPTR>,
+                 std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
 break_into_polymers(const RDKit::ROMol& monomer_mol)
 {
     for (auto atom : monomer_mol.atoms()) {
@@ -515,8 +539,22 @@ break_into_polymers(const RDKit::ROMol& monomer_mol)
         if (get_polymer_id(beginMonomer) == get_polymer_id(endMonomer)) {
             continue;
         }
-        beginMonomer->setProp(BOND_TO, endMonomer->getIdx());
-        endMonomer->setProp(BOND_TO, beginMonomer->getIdx());
+        // store the connected indices as comman separated values in the
+        // BOND_TO prop
+        std::vector<int> begin_monomer_bond_to;
+        if (beginMonomer->hasProp(BOND_TO)) {
+            begin_monomer_bond_to =
+                beginMonomer->getProp<std::vector<int>>(BOND_TO);
+        }
+        begin_monomer_bond_to.push_back(endMonomer->getIdx());
+        beginMonomer->setProp(BOND_TO, begin_monomer_bond_to);
+        std::vector<int> end_monomer_bond_to;
+        if (endMonomer->hasProp(BOND_TO)) {
+            end_monomer_bond_to =
+                endMonomer->getProp<std::vector<int>>(BOND_TO);
+        }
+        end_monomer_bond_to.push_back(beginMonomer->getIdx());
+        endMonomer->setProp(BOND_TO, end_monomer_bond_to);
     }
 
     std::vector<RDKit::ROMOL_SPTR> polymers;
@@ -541,13 +579,17 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
 
     BOND_IDX_VEC bonds{};
     for (auto monomer : from.atoms()) {
-        if (!monomer->hasProp(BOND_TO)) {
+        std::vector<int> bonded_monomers_indices;
+        monomer->getPropIfPresent<std::vector<int>>(BOND_TO,
+                                                    bonded_monomers_indices);
+        if (bonded_monomers_indices.empty()) {
             continue;
         }
-        auto bond_end_idx = monomer->getProp<unsigned int>(BOND_TO);
-        if (end_monomers.find(bond_end_idx) != end_monomers.end()) {
-            bonds.push_back(
-                {monomer->getIdx(), end_monomers[bond_end_idx]->getIdx()});
+        for (auto bonded_idx : bonded_monomers_indices) {
+            if (end_monomers.contains(bonded_idx)) {
+                bonds.push_back(
+                    {monomer->getIdx(), end_monomers[bonded_idx]->getIdx()});
+            }
         }
     }
     return bonds;
@@ -575,8 +617,8 @@ static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
     return (*lowest_point).y - (*highest_point).y - MONOMER_BOND_LENGTH;
 }
 /**
- * Move polymer_to_orient so that it is positioned below reference_polymer with
- * no overlap.
+ * Move polymer_to_orient so that it is positioned below reference_polymer
+ * with no overlap.
  */
 static void orient_polymer(RDKit::ROMol& polymer_to_orient,
                            const RDKit::ROMol& reference_polymer)
@@ -611,9 +653,9 @@ static void orient_polymer(RDKit::ROMol& polymer_to_orient,
 
 /**
  * Adds a conformer to the monomer_mol copying all the coordinates from the
- * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX prop
- * pointing to the corresponding index for that monomer in the monomer_mol.
- * Returns the id of the added conformer.
+ * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX
+ * prop pointing to the corresponding index for that monomer in the
+ * monomer_mol. Returns the id of the added conformer.
  */
 static unsigned int copy_polymer_coords_to_monomer_mol(
     RDKit::ROMol& monomer_mol, const std::vector<RDKit::ROMOL_SPTR>& polymers)
@@ -642,8 +684,8 @@ static void remove_cxsmiles_labels(RDKit::ROMol& monomer_mol)
 
 /**
  * Adjust CHEM polymers (polymers with a single monomer typically used to
- * connect a polymer back to itself or two polymers together) to position them
- * between the two polymers they are connecting.
+ * connect a polymer back to itself or two polymers together) to position
+ * them between the two polymers they are connecting.
  */
 static void adjust_chem_polymer_coords(RDKit::ROMol& monomer_mol)
 {
@@ -709,8 +751,8 @@ static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
 
     compute_full_ring_info(monomer_mol);
     if (monomer_mol.getRingInfo()->numRings() > 0) {
-        // reset ring info so it can get recomputed by the appropriate layout
-        // method
+        // reset ring info so it can get recomputed by the appropriate
+        // layout method
         monomer_mol.getRingInfo()->reset();
         return false;
     }
@@ -726,8 +768,8 @@ static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
 static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
                                              RDKit::ROMOL_SPTR polymer2)
 {
-    // return true if the two polymers are nucleic acids and there are at least
-    // two bonds between them.
+    // return true if the two polymers are nucleic acids and there are at
+    // least two bonds between them.
 
     for (auto polymer : {polymer1, polymer2}) {
         if (!is_nucleic_acid(*polymer)) {
@@ -738,36 +780,132 @@ static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
     return polymer_bonds.size() >= 2;
 }
 
-void lay_out_polymers(const std::vector<RDKit::ROMOL_SPTR>& polymers)
+void lay_out_polymers(
+    const std::vector<RDKit::ROMOL_SPTR>& polymers,
+    const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
 {
-    // lay out the polymers in connection order so connected polymers are laid
-    // out next to each other.
-    RDKit::ROMOL_SPTR previous_polymer = nullptr;
+    // lay out the polymers in connection order so connected polymers are
+    // laid out next to each other.
     for (auto polymer : polymers) {
+        RDKit::ROMOL_SPTR parent = nullptr;
+        if (parent_polymer.contains(polymer)) {
+            parent = parent_polymer.at(polymer);
+        }
         // For double stranded nucleic acids we want to lay out the
         // first polymer normally and then rotate the other polymer
         // 180° so the strands run anti-parallel to each other
-        bool rotate_polymer =
-            (previous_polymer != nullptr) &&
-            are_double_stranded_nucleic_acid(polymer, previous_polymer);
+        bool rotate_polymer = (parent != nullptr) &&
+                              are_double_stranded_nucleic_acid(polymer, parent);
         lay_out_polymer(*polymer, rotate_polymer);
-        if (previous_polymer != nullptr) {
-            orient_polymer(*polymer, *previous_polymer);
+        if (parent != nullptr) {
+            orient_polymer(*polymer, *parent);
         }
-        previous_polymer = polymer;
     }
+}
+
+bool has_no_clashes(const RDKit::ROMol& monomer_mol)
+{
+    auto& conformer = monomer_mol.getConformer();
+    auto positions = conformer.getPositions();
+    for (size_t i = 0; i < positions.size(); i++) {
+        for (size_t j = i + 1; j < positions.size(); j++) {
+            if (positions[i].x - positions[j].x > MONOMER_CLASH_DISTANCE ||
+                positions[i].x - positions[j].x < -MONOMER_CLASH_DISTANCE ||
+                positions[i].y - positions[j].y > MONOMER_CLASH_DISTANCE ||
+                positions[i].y - positions[j].y < -MONOMER_CLASH_DISTANCE) {
+                continue;
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+bool segments_intersect(const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
+                        const RDGeom::Point3D& q1, const RDGeom::Point3D& q2)
+{
+    segment_t seg_p = {{p1.x, p1.y}, {p2.x, p2.y}};
+    segment_t seg_q = {{q1.x, q1.y}, {q2.x, q2.y}};
+    std::vector<point_t> intersection_pts;
+    bg::intersection(seg_p, seg_q, intersection_pts);
+    return !intersection_pts.empty();
+}
+
+double compute_distance_between_segments(const RDGeom::Point3D& p1,
+                                         const RDGeom::Point3D& p2,
+                                         const RDGeom::Point3D& q1,
+                                         const RDGeom::Point3D& q2)
+{
+    segment_t seg_p = {{p1.x, p1.y}, {p2.x, p2.y}};
+    segment_t seg_q = {{q1.x, q1.y}, {q2.x, q2.y}};
+    return bg::distance(seg_p, seg_q);
+}
+
+bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
+{
+    auto& conformer = monomer_mol.getConformer();
+    auto positions = conformer.getPositions();
+    for (size_t i = 0; i < monomer_mol.getNumBonds(); i++) {
+        auto bond1 = monomer_mol.getBondWithIdx(i);
+        auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
+        auto end1_pos = conformer.getAtomPos(bond1->getEndAtomIdx());
+        auto minx1 = std::min(begin1_pos.x, end1_pos.x) - BOND_CLASH_DISTANCE;
+        auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + BOND_CLASH_DISTANCE;
+        auto miny1 = std::min(begin1_pos.y, end1_pos.y) - BOND_CLASH_DISTANCE;
+        auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + BOND_CLASH_DISTANCE;
+
+        for (size_t j = i + 1; j < monomer_mol.getNumBonds(); j++) {
+            auto bond2 = monomer_mol.getBondWithIdx(j);
+            // skip if the bonds share an atom
+            if (bond1->getBeginAtomIdx() == bond2->getBeginAtomIdx() ||
+                bond1->getBeginAtomIdx() == bond2->getEndAtomIdx() ||
+                bond1->getEndAtomIdx() == bond2->getBeginAtomIdx() ||
+                bond1->getEndAtomIdx() == bond2->getEndAtomIdx()) {
+                continue;
+            }
+            auto begin2_pos = conformer.getAtomPos(bond2->getBeginAtomIdx());
+            auto end2_pos = conformer.getAtomPos(bond2->getEndAtomIdx());
+            auto minx2 =
+                std::min(begin2_pos.x, end2_pos.x) - BOND_CLASH_DISTANCE;
+            auto maxx2 =
+                std::max(begin2_pos.x, end2_pos.x) + BOND_CLASH_DISTANCE;
+            auto miny2 =
+                std::min(begin2_pos.y, end2_pos.y) - BOND_CLASH_DISTANCE;
+            auto maxy2 =
+                std::max(begin2_pos.y, end2_pos.y) + BOND_CLASH_DISTANCE;
+            // bounding box check
+            if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 ||
+                maxy2 < miny1) {
+                continue;
+            }
+            if (segments_intersect(begin1_pos, end1_pos, begin2_pos,
+                                   end2_pos) ||
+                compute_distance_between_segments(begin1_pos, end1_pos,
+                                                  begin2_pos, end2_pos) <
+                    BOND_CLASH_DISTANCE) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+[[maybe_unused]] static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
+{
+    return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 {
     // clear layout related props so we can start a fresh layout
     clear_layout_props(monomer_mol);
-    auto polymers = break_into_polymers(monomer_mol);
-    // SHARED-9795: Special case for single polymers that are strictly chains
+    auto [polymers, parent_polymer] = break_into_polymers(monomer_mol);
+    // SHARED-9795: Special case for single polymers that are strictly
+    // chains
     if (is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } else {
-        lay_out_polymers(polymers);
+        lay_out_polymers(polymers, parent_polymer);
     }
     remove_cxsmiles_labels(monomer_mol);
     auto conformer_id =

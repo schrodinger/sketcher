@@ -110,7 +110,7 @@ void fillAttachmentPointMap(const RDKit::ROMol& new_monomer,
 void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
                     unsigned int residue_number, char chain_id,
                     ChainType chain_type, unsigned int current_residue,
-                    MonomerDatabase& db)
+                    const MonomerDatabase& db)
 {
     std::string residue_name =
         (chain_type == ChainType::PEPTIDE) ? "UNK" : "UNL";
@@ -191,15 +191,7 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
     auto chain_type = getChainType(polymer_id);
     bool sanitize = false;
 
-    auto path = getMonomerDbPath();
-    if (!path.has_value()) {
-        // This shouldn't happen since DEFAULT_MONOMER_DB_PATH_ENV_VAR points to
-        // mmshare/data/helm/core_monomerlib.db and that should always exist
-        throw std::runtime_error(fmt::format(
-            "Could not find monomer database, try setting env variable {}",
-            CUSTOM_MONOMER_DB_PATH_ENV_VAR));
-    }
-    MonomerDatabase db(*path);
+    auto& db = MonomerDatabase::instance();
 
     // Add the monomers to the atomistic mol
     for (const auto monomer_idx : chain.atoms) {

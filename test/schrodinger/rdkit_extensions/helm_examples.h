@@ -148,9 +148,11 @@ static const std::vector<std::string>
         R"(RNA1{R(A)P.R(C)P.(R(T)P)'2'.R(G)}$$$$V2.0)",
         R"(RNA1{R(C)P.(R(U)P)'3'.R(A)P}$$$$V2.0)",
         /* Inline smiles */
+        "CHEM1{[c1ccccc1]}$$$$V2.0",
         R"(CHEM1{[[*:1]OCCCCC=C]}$$$$)",
         R"(CHEM1{[[*:1]OCCCCC=C]}|CHEM2{[[*:2]C(=O)[C@H](C)N([*:1])CC]}$CHEM1,CHEM2,1:R1-1:R1$$$V2.0)",
         R"(CHEM1{[[*:2]C(=O)[C@H](C)N([*:1])CC]}$$$$)",
+        "PEPTIDE1{C.C([O[*:1]])C}$$$$V2.0",
         R"(PEPTIDE1{A.[C(=O)[C@H](C)N([*:1])C]}$$$$)",
         R"(PEPTIDE1{A.[[*:2]C(=O)[C@H](C)N([*:1])C].A}$$$$)",
         R"(PEPTIDE1{A.[[*:2]C(=O)[C@H](C)N([*:1])C]}$$$$)",
