@@ -31,8 +31,6 @@ test.describe('WASM Sketcher API', () => {
     { format: 'FASTA_DNA', exportUnsupported: true },
     { format: 'FASTA_RNA', exportUnsupported: true },
     { format: 'FASTA', importUnsupported: true },
-    { format: 'FMP', skip: [true, 'Format not supported'] },
-    { format: 'CUSTOM_ENTITY', skip: [true, 'Format not supported'] },
   ];
 
   FORMATS.forEach(({ format, skip, exportUnsupported, importUnsupported }) => {

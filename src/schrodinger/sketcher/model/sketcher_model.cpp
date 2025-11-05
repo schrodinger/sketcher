@@ -73,41 +73,8 @@ std::vector<ModelKey> get_model_keys()
 
 SketcherModel::SketcherModel(QObject* parent) : QObject(parent)
 {
-    m_model_map = {
-        {ModelKey::NEW_STRUCTURES_REPLACE_CONTENT, true},
-        {ModelKey::SHOW_LID_LEGEND, false},
-        {ModelKey::ALLOW_MULTIPLE_RXNS, false},
-        {ModelKey::SHOW_VALENCE_ERRORS, true},
-        {ModelKey::COLOR_HETEROATOMS, true},
-        {ModelKey::SHOW_STEREO_LABELS, true},
-        {ModelKey::USE_IMPLICIT_HYDROGENS, false},
-        {ModelKey::SELECTION_TOOL,
-         QVariant::fromValue(SelectionTool::RECTANGLE)},
-        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
-        {ModelKey::ATOM_TOOL, QVariant::fromValue(AtomTool::ELEMENT)},
-        {ModelKey::BOND_TOOL, QVariant::fromValue(BondTool::SINGLE)},
-        {ModelKey::CHARGE_TOOL, QVariant::fromValue(ChargeTool::DECREASE)},
-        {ModelKey::RING_TOOL, QVariant::fromValue(RingTool::CYCLOPROPANE)},
-        {ModelKey::ENUMERATION_TOOL,
-         QVariant::fromValue(EnumerationTool::NEW_RGROUP)},
-        {ModelKey::ELEMENT, QVariant::fromValue(Element::C)},
-        {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::A)},
-        {ModelKey::RGROUP_NUMBER, 1u},
-        {ModelKey::RESIDUE_TYPE, QString("")},
-        {ModelKey::MONOMER_TOOL_TYPE,
-         QVariant::fromValue(MonomerToolType::AMINO_ACID)},
-        {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::ALA)},
-        {ModelKey::NUCLEIC_ACID_TOOL,
-         QVariant::fromValue(NucleicAcidTool::RNA_NUCLEOTIDE)},
-        {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
-        {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
-        {ModelKey::CUSTOM_NUCLEOTIDE,
-         QVariant::fromValue(MonomericNucleotide("R", "A", "P"))},
-        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
-        {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
-        {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},
-    };
-
+    // Initialize model to default state
+    reset();
     connect(this, &SketcherModel::selectionChanged, this,
             &SketcherModel::onSelectionChanged);
     connect(this, &SketcherModel::interactiveItemsChanged, this,
@@ -237,6 +204,52 @@ int SketcherModel::getValueInt(ModelKey key) const
 QString SketcherModel::getValueString(ModelKey key) const
 {
     return m_model_map.at(key).value<QString>();
+}
+
+void SketcherModel::reset()
+{
+    // Reset all model values to defaults
+    m_model_map = {
+        {ModelKey::NEW_STRUCTURES_REPLACE_CONTENT, true},
+        {ModelKey::SHOW_LID_LEGEND, false},
+        {ModelKey::ALLOW_MULTIPLE_RXNS, false},
+        {ModelKey::SHOW_VALENCE_ERRORS, true},
+        {ModelKey::COLOR_HETEROATOMS, true},
+        {ModelKey::SHOW_STEREO_LABELS, true},
+        {ModelKey::USE_IMPLICIT_HYDROGENS, false},
+        {ModelKey::SELECTION_TOOL,
+         QVariant::fromValue(SelectionTool::RECTANGLE)},
+        {ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ATOM)},
+        {ModelKey::ATOM_TOOL, QVariant::fromValue(AtomTool::ELEMENT)},
+        {ModelKey::BOND_TOOL, QVariant::fromValue(BondTool::SINGLE)},
+        {ModelKey::CHARGE_TOOL, QVariant::fromValue(ChargeTool::DECREASE)},
+        {ModelKey::RING_TOOL, QVariant::fromValue(RingTool::CYCLOPROPANE)},
+        {ModelKey::ENUMERATION_TOOL,
+         QVariant::fromValue(EnumerationTool::NEW_RGROUP)},
+        {ModelKey::ELEMENT, QVariant::fromValue(Element::C)},
+        {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::A)},
+        {ModelKey::RGROUP_NUMBER, 1u},
+        {ModelKey::RESIDUE_TYPE, QString("")},
+        {ModelKey::MONOMER_TOOL_TYPE,
+         QVariant::fromValue(MonomerToolType::AMINO_ACID)},
+        {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::ALA)},
+        {ModelKey::NUCLEIC_ACID_TOOL,
+         QVariant::fromValue(NucleicAcidTool::RNA_NUCLEOTIDE)},
+        {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
+        {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
+        {ModelKey::CUSTOM_NUCLEOTIDE,
+         QVariant::fromValue(MonomericNucleotide("R", "A", "P"))},
+        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
+        {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
+        {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},
+    };
+    // Notify listeners that all values have changed
+    std::unordered_set<ModelKey> all_keys;
+    all_keys.reserve(m_model_map.size());
+    for (const auto& [key, _] : m_model_map) {
+        all_keys.insert(key);
+    }
+    emit valuesChanged(all_keys);
 }
 
 void SketcherModel::setValues(

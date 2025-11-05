@@ -460,6 +460,11 @@ class SKETCHER_API SketcherModel : public QObject
     void setValues(const std::unordered_map<ModelKey, QVariant>& key_value_map);
 
     /**
+     * Reset the model to default state
+     */
+    void reset();
+
+    /**
      * If the current tool is a monomeric nucleotide, return the nucleotide as a
      * tuple of (sugar, base, phosphate). If not, return std::nullopt.
      */

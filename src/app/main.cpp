@@ -118,9 +118,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
         .value("FASTA_PEPTIDE", Format::FASTA_PEPTIDE)
         .value("FASTA_DNA", Format::FASTA_DNA)
         .value("FASTA_RNA", Format::FASTA_RNA)
-        .value("FASTA", Format::FASTA)
-        .value("FMP", Format::FMP)
-        .value("CUSTOM_ENTITY", Format::CUSTOM_ENTITY);
+        .value("FASTA", Format::FASTA);
 
     emscripten::enum_<ImageFormat>("ImageFormat")
         .value("PNG", ImageFormat::PNG)
