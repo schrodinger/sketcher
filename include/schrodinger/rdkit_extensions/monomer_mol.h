@@ -75,6 +75,19 @@ addMonomer(RDKit::RWMol& monomer_mol, std::string_view name,
            MonomerType monomer_type = MonomerType::REGULAR);
 
 /*
+ * Mutate a monomer in the provided monomer mol to a new monomer specified
+ * by a HELM symbol. Assumes the monomer is mutated to another monomer of the
+ * same chain type (such as PEPTIDE or RNA).
+ *
+ * @param monomer_mol The monomeric molecule to mutate
+ * @param monomer_idx The index of the monomer to mutate
+ * @param helm_symbol The HELM symbol to mutate the monomer to
+ */
+RDKIT_EXTENSIONS_API void mutateMonomer(RDKit::ROMol& monomer_mol,
+                                        unsigned int monomer_idx,
+                                        std::string_view helm_symbol);
+
+/*
  * Add a connection between two monomers in the molecule. The connection has
  * directionality that starts at monomer1 and ends at monomer2.
  *
