@@ -71,20 +71,19 @@ helm_info HelmParser::parse()
     // success return 0
     if (parser.parse() != 0) {
         std::stringstream ss;
-        std::copy(m_errors.begin(), m_errors.end(),
-                  std::ostream_iterator<std::string>(ss, "\n"));
+        std::ranges::copy(m_errors,
+                          std::ostream_iterator<std::string>(ss, "\n"));
         throw std::invalid_argument(ss.str());
     }
 
     addExtendedAnnotations(extended_annotations);
     addHelmVersion(helm_version);
 
-    validate_parsed_info(m_parsed_info, *this);
-    if (hasErrors()) {
+    if (!validate_parsed_info(m_parsed_info, m_errors, m_input)) {
         std::stringstream ss;
         ss << "Parsing failed because of the following: \n";
-        std::copy(m_errors.begin(), m_errors.end(),
-                  std::ostream_iterator<std::string>(ss, "\n"));
+        std::ranges::copy(m_errors,
+                          std::ostream_iterator<std::string>(ss, "\n"));
         throw std::invalid_argument(ss.str());
     }
 
@@ -191,48 +190,17 @@ void HelmParser::addWildcardOrUnknownResidue()
     polymer.wildcard_and_unknown_residues.insert(polymer.monomers.size() + 1);
 }
 
-bool HelmParser::hasErrors()
-{
-    return !m_errors.empty();
-}
-
 void HelmParser::saveError(const std::string_view& failed_token,
                            const std::string& err_msg)
 {
-    const auto num_chars_processed =
-        std::distance(m_input.data(), failed_token.data()) + 1;
-    saveError(num_chars_processed, err_msg);
+    m_errors.push_back(construct_error_msg(err_msg, failed_token, m_input));
 }
 
 void HelmParser::saveError(const unsigned int num_chars_processed,
                            const std::string& err_msg)
 {
-    // NOTE: If the input is very long, the pointer to the failed location
-    // becomes less useful. We should truncate the length of the error message
-    // to 101 chars.
-    static constexpr unsigned int error_size{101};
-    static constexpr unsigned int prefix_size{error_size / 2};
-    static auto truncate_input = [](const auto& input, const unsigned int pos) {
-        if ((pos >= prefix_size) && (pos + prefix_size) < input.size()) {
-            return input.substr(pos - prefix_size, error_size);
-        } else if (pos >= prefix_size) {
-            return input.substr(pos - prefix_size);
-        } else {
-            return input.substr(
-                0, std::min(input.size(), static_cast<size_t>(error_size)));
-        }
-    };
-
-    size_t num_dashes =
-        (num_chars_processed >= prefix_size ? prefix_size
-                                            : num_chars_processed - 1);
-    m_errors.push_back(fmt::format(
-        "Malformed HELM string: check for mistakes around position {}:\n"
-        "{}\n"
-        "{}^\n"
-        "{}",
-        num_chars_processed, truncate_input(m_input, num_chars_processed - 1),
-        std::string(num_dashes, '-'), err_msg));
+    m_errors.push_back(
+        construct_error_msg(err_msg, num_chars_processed - 1, m_input));
 }
 
 [[nodiscard]] bool is_smiles_monomer(const std::string_view& token)
@@ -257,4 +225,47 @@ void HelmParser::saveError(const unsigned int num_chars_processed,
     const std::string smiles{monomer};
     return RDKit::v2::SmilesParse::MolFromSmiles(smiles, smi_opts) != nullptr;
 }
+
+[[nodiscard]] std::string
+construct_error_msg(const std::string& err_msg,
+                    const std::string_view& failed_token,
+                    const std::string_view& input)
+{
+    auto pos = std::distance(input.data(), failed_token.data());
+    return construct_error_msg(err_msg, pos, input);
+}
+
+[[nodiscard]] std::string construct_error_msg(const std::string& err_msg,
+                                              const unsigned int pos,
+                                              const std::string_view& input)
+{
+    // Defines the maximum length of the snippet and the prefix size before the
+    // error
+    static constexpr unsigned int error_size{101};
+    static constexpr unsigned int prefix_size{error_size / 2};
+
+    size_t start_idx = 0;
+    size_t pointer_offset = pos;
+
+    // Calculate the start position to center the error pointer
+    if (pos >= prefix_size) {
+        start_idx = pos - prefix_size;
+        pointer_offset = prefix_size;
+    }
+
+    // Get truncated context snippet
+    auto truncated_input = input.substr(start_idx, error_size);
+
+    // Create pointer to line (e.g., "---^")
+    std::string pointer_line(pointer_offset, '-');
+
+    return fmt::format(
+        "Malformed HELM string: check for mistakes around position {}:\n"
+        "{}\n"
+        "{}^\n"
+        "{}\n",
+        pos + 1, // 1-based index for user output
+        truncated_input, pointer_line, err_msg);
+}
+
 } // namespace helm

@@ -103,7 +103,6 @@ class RDKIT_EXTENSIONS_API HelmParser
     // apis for version
     void addHelmVersion(const std::string_view helm_version);
 
-    bool hasErrors();
     void saveError(const std::string_view& failed_token,
                    const std::string& err_msg);
     void saveError(const unsigned int num_chars_processed,
@@ -114,6 +113,34 @@ class RDKIT_EXTENSIONS_API HelmParser
     std::vector<std::string> m_errors;
     helm_info m_parsed_info;
 };
+
+/**
+ * @brief Constructs a detailed, user-friendly error message, including a
+ *        truncated snippet of the input string and an error pointer.
+ *
+ * @param err_msg The high-level error description
+ * @param pos The 0-based index where the error occurred.
+ * @param input The fill input string
+ * @return A formatted error string suitable for output
+ */
+[[nodiscard]] std::string construct_error_msg(const std::string& err_msg,
+                                              const unsigned int pos,
+                                              const std::string_view& input);
+/**
+ * @brief Constructs a detailed, user-friendly error message, including a
+ *        truncated snippet of the input string and an error pointer.
+ *
+ * @param err_msg The high-level error description
+ * @param failed_token The rejected token. This must point to a location within
+ *        the input value i.e. the memory address of the underlying value must
+ *        fall under that of the input string.
+ * @param input The fill input string
+ * @return A formatted error string suitable for output
+ */
+[[nodiscard]] std::string
+construct_error_msg(const std::string& err_msg,
+                    const std::string_view& failed_token,
+                    const std::string_view& input);
 
 /// Helper api to determine whether a multi-character monomer token is a valid
 /// inline SMILES monomer.
