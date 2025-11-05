@@ -384,7 +384,7 @@ make_molecule_with_coords(const std::vector<std::pair<double, double>>& xy,
 
     // Add atoms
     for (size_t i = 0; i < xy.size(); ++i)
-        mol.addAtom(new RDKit::Atom(), false, false); // no extra processing
+        mol.addAtom(new RDKit::Atom(), false, true); // no extra processing
 
     // Add bonds
     for (auto [a, b] : bonds)
