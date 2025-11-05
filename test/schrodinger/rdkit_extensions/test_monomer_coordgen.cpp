@@ -3,6 +3,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 #include <rdkit/GraphMol/RWMol.h>
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include <vector>
 #include <string>
@@ -372,3 +373,147 @@ BOOST_DATA_TEST_CASE(
                                      << "\nExpected coords: " << expected_str
                                      << "\nComputed coords: " << actual_str);
 }
+
+BOOST_AUTO_TEST_SUITE(TestMonomerCoordgenCheckCoords)
+
+static RDKit::RWMol
+make_molecule_with_coords(const std::vector<std::pair<double, double>>& xy,
+                          const std::vector<std::pair<int, int>>& bonds = {})
+{
+    auto mol = RDKit::RWMol();
+
+    // Add atoms
+    for (size_t i = 0; i < xy.size(); ++i)
+        mol.addAtom(new RDKit::Atom(), true, true);
+
+    // Add bonds
+    for (auto [a, b] : bonds)
+        mol.addBond(a, b);
+
+    auto conf = new RDKit::Conformer(mol.getNumAtoms());
+    for (size_t i = 0; i < xy.size(); ++i)
+        conf->setAtomPos(i, RDGeom::Point3D(xy[i].first, xy[i].second, 0.0));
+
+    mol.addConformer(conf);
+
+    return mol;
+}
+
+BOOST_AUTO_TEST_CASE(DetectsClashingAtoms)
+{
+
+    // Two atoms very close together
+    RDKit::ROMol mol = make_molecule_with_coords({{0.0, 0.0}, {0.01, 0.01}});
+
+    BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_clashes(
+        mol)); // should detect clash
+}
+
+BOOST_AUTO_TEST_CASE(NoClashForSeparatedAtoms)
+{
+    RDKit::ROMol mol = make_molecule_with_coords({{0.0, 0.0}, {10.0, 10.0}});
+
+    BOOST_CHECK(schrodinger::rdkit_extensions::has_no_clashes(mol)); // no clash
+}
+
+BOOST_AUTO_TEST_CASE(IntersectingSegments)
+{
+    RDGeom::Point3D p1(0, 0, 0), p2(2, 2, 0);
+    RDGeom::Point3D q1(0, 2, 0), q2(2, 0, 0);
+    BOOST_CHECK(
+        schrodinger::rdkit_extensions::segments_intersect(p1, p2, q1, q2));
+}
+
+BOOST_AUTO_TEST_CASE(NonIntersectingSegments)
+{
+    RDGeom::Point3D p1(0, 0, 0), p2(1, 0, 0);
+    RDGeom::Point3D q1(0, 1, 0), q2(1, 1, 0);
+    BOOST_CHECK(
+        !schrodinger::rdkit_extensions::segments_intersect(p1, p2, q1, q2));
+}
+
+BOOST_AUTO_TEST_CASE(CollinearTouchingSegments)
+{
+    RDGeom::Point3D p1(0, 0, 0), p2(2, 0, 0);
+    RDGeom::Point3D q1(2, 0, 0), q2(3, 0, 0);
+    BOOST_CHECK(schrodinger::rdkit_extensions::segments_intersect(
+        p1, p2, q1, q2)); // endpoint touch
+}
+
+BOOST_AUTO_TEST_CASE(DistanceParallelSegments)
+{
+    RDGeom::Point3D p1(0, 0, 0), p2(1, 0, 0);
+    RDGeom::Point3D q1(0, 1, 0), q2(1, 1, 0);
+    double d = schrodinger::rdkit_extensions::compute_distance_between_segments(
+        p1, p2, q1, q2);
+    BOOST_CHECK_CLOSE(d, 1.0, 1e-4);
+}
+
+BOOST_AUTO_TEST_CASE(DistanceCrossingSegments)
+{
+    RDGeom::Point3D p1(0, 0, 0), p2(1, 1, 0);
+    RDGeom::Point3D q1(0, 1, 0), q2(1, 0, 0);
+    double d = schrodinger::rdkit_extensions::compute_distance_between_segments(
+        p1, p2, q1, q2);
+    BOOST_CHECK_SMALL(d, 1e-6);
+}
+
+BOOST_AUTO_TEST_CASE(BondCrossingDetected)
+{
+    // Make an "X"-shaped molecule with two crossing bonds
+    RDKit::ROMol mol = make_molecule_with_coords(
+        {
+            {0.0, 0.0}, // 0
+            {1.0, 1.0}, // 1
+            {0.0, 1.0}, // 2
+            {1.0, 0.0}  // 3
+        },
+        {
+            {0, 1}, // bond 0–1
+            {2, 3}  // bond 2–3 (crosses the first)
+        });
+
+    BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_bond_crossings(
+        mol)); // bonds intersect → should detect crossing
+}
+
+BOOST_AUTO_TEST_CASE(NoBondCrossing)
+{
+    // Make two parallel bonds that don't intersect
+    RDKit::ROMol mol = make_molecule_with_coords(
+        {
+            {0.0, 0.0}, // 0
+            {1.0, 0.0}, // 1
+            {0.0, 1.0}, // 2
+            {1.0, 1.0}  // 3
+        },
+        {
+            {0, 1}, // horizontal lower
+            {2, 3}  // horizontal upper, no intersection
+        });
+
+    BOOST_CHECK(schrodinger::rdkit_extensions::has_no_bond_crossings(
+        mol)); // no crossing → should pass
+}
+
+BOOST_AUTO_TEST_CASE(TouchingBondsNoCross)
+{
+    // Two bonds that are nearly touching at one endpoint.
+    // Will still be considered crossing because their distance is less than the
+    // threshold
+    RDKit::ROMol mol = make_molecule_with_coords(
+        {
+            {0.0, 0.0}, // 0
+            {1.0, 0.0}, // 1
+            {1.1, 0.0}, // 2
+            {2.0, 1.0}  // 3
+        },
+        {
+            {0, 1}, // first bond
+            {2, 3}  // second bond
+        });
+
+    BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_bond_crossings(mol));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
