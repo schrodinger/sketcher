@@ -346,8 +346,6 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     QGraphicsPixmapItem* m_watermark_item = nullptr;
 
-    bool m_select_only_mode_active = false;
-
     /**
      * We cache a copy of the MolModel molecule so that the atoms/bonds returned
      * from, e.g., getSelectedAtom() will belong to the molecule returned by

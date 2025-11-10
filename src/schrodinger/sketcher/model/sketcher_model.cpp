@@ -494,12 +494,12 @@ void SketcherModel::setSelectToolAllowedWhenSceneEmpty(const bool allowed)
 
 void SketcherModel::setSelectOnlyMode(const bool select_only_mode)
 {
-    m_select_only_mode = select_only_mode;
+    m_select_only_mode_active = select_only_mode;
 }
 
 bool SketcherModel::isSelectOnlyMode() const
 {
-    return m_select_only_mode;
+    return m_select_only_mode_active;
 }
 
 const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const

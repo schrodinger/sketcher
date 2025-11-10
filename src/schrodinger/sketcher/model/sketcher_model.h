@@ -608,7 +608,7 @@ class SKETCHER_API SketcherModel : public QObject
     int m_font_size = DEFAULT_FONT_SIZE;
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
     bool m_allow_select_tool_when_scene_empty = false;
-    bool m_select_only_mode = false;
+    bool m_select_only_mode_active = false;
 
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
 };
