@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"

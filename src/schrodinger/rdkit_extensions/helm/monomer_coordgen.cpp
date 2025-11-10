@@ -1,6 +1,7 @@
 // -------------------------------------------------------------------------
 // Copyright Schrodinger LLC, All Rights Reserved.
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -9,7 +10,19 @@
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/ChemTransforms/MolFragmenter.h>
 #include <rdkit/Geometry/point.h>
+#ifdef _MSC_VER
+// In Boost 1.81, boost::geometry contains a Windows-only
+// "#pragma warning ( pop )" that doesn't have a corresponding push. This
+// triggers a compiler warning that gets treated as an error, so we need to
+// disable that warning temporarily without using push/pop (otherwise Boost's
+// extra pop will pop our push, and then our pop will generate the warning).
+// This issue has been fixed in Boost 1.87.
+#pragma warning(disable : 4193)
+#endif
 #include <boost/geometry.hpp>
+#ifdef _MSC_VER
+#pragma warning(default : 4193)
+#endif
 
 #include <algorithm>
 #include <cmath>
