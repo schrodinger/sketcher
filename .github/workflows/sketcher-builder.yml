@@ -261,7 +261,7 @@ jobs:
             EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
         with:
           name: sketcher-${{ inputs.ref }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
-          path: build/sketcher_app${{env.EXT}}
+          path: build/schrodinger_sketcher${{env.EXT}}
 
       - name: Download wasm tarball
         if: matrix.build-output == 'wasm'

@@ -131,6 +131,7 @@ function(build_schrodinger_library TARGET)
     ${SRC_DIR}/*.qrc)
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
+  set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME schrodinger_${TARGET})
   setup_target(${TARGET})
   # Auto-generate compile definitions
   string(TOUPPER ${TARGET} TARGET_UPPER)
@@ -211,7 +212,7 @@ configure_file(${PROJECT_SOURCE_DIR}/include/schrodinger/sketcher/version.h.in
 enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
-set(APP_TARGET sketcher_app)
+set(APP_TARGET schrodinger_sketcher)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
 if(EMSCRIPTEN)
@@ -332,6 +333,12 @@ if(ENABLE_TESTING)
   endforeach()
 endif()
 
+
+# Install public headers, generated version header, libraries, and executable
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
 install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET}
         DESTINATION ${CMAKE_INSTALL_LIBDIR})

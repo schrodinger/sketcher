@@ -26,6 +26,31 @@ function(set_cmake_arg VAR_NAME)
       PARENT_SCOPE)
 endfunction()
 
+# Generate URLS for downloading the SQLite amalgamation, which contains all of
+# the SQLite source code concatenated into a single header and a single
+# implementation file. The URL contains the release year, but there's no trivial
+# way to determine the year from the version number, so we just try a range of
+# years until we find the correct one. This could fail for edge cases (e.g. the
+# filenames for versions 3.5.0, 3.50.0, and 3.500.0 will all be the same, so we
+# might find the wrong one if our range of years is way too large), but it
+# should be good enough for our needs.
+function(generate_sqlite_urls VAR_NAME)
+    # pull out the digits from the SQLite version
+    string(REGEX REPLACE "[^0-9]" "" SQLITE_VERS_DIGITS "${SQLITE_VERSION}")
+    # the file name is padded with zeroes to seven digits
+    string(LENGTH "${SQLITE_VERS_DIGITS}" SQLITE_VERS_NUM_DIGITS)
+    math(EXPR NUM_ZEROS "7 - ${SQLITE_VERS_NUM_DIGITS}")
+    string(REPEAT "0" ${NUM_ZEROS} TRAILING_ZEROS)
+    foreach(YEAR RANGE 2023 2035)
+        list(APPEND URLS_FOR_YEARS "https://www.sqlite.org/${YEAR}/sqlite-amalgamation-${SQLITE_VERS_DIGITS}${TRAILING_ZEROS}.zip")
+    endforeach(YEAR)
+    list(JOIN URLS_FOR_YEARS ";" JOINED_URLS)
+    set(${VAR_NAME}
+      "${JOINED_URLS}"
+      PARENT_SCOPE)
+endfunction()
+    
+
 if(EMSCRIPTEN)
   set(EXTRA_BOOST_CMAKE_ARGS
       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
@@ -106,11 +131,12 @@ ExternalProject_Add(
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/eigen-${EIGEN_VERSION})
 
 # Build SQLite library
+generate_sqlite_urls(SQLITE_URLS)
 ExternalProject_Add(
   sqlite
-  GIT_REPOSITORY https://github.com/algoritnl/sqlite-amalgamation.git
-  GIT_TAG version-${SQLITE_VERSION}
-  GIT_SHALLOW TRUE
+  URL ${SQLITE_URLS}
+  # SQLite doesn't work with CMake out of the box, so copy in our CMake files
+  PATCH_COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/sqlite_cmake <SOURCE_DIR>
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/sqlite-${SQLITE_VERSION}

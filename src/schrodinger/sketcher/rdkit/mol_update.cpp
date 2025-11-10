@@ -172,21 +172,6 @@ static void assign_CIP_labels(RDKit::RWMol& mol)
     }
 }
 
-static void enforce_dummy_atoms_for_list_queries(RDKit::ROMol& mol)
-{
-    for (auto& atom : mol.atoms()) {
-        if (atom->hasQuery()) {
-            auto props = read_properties_from_atom(atom);
-            auto query_props =
-                *static_cast<const AtomQueryProperties*>(props.get());
-            if (query_props.query_type == QueryType::ALLOWED_LIST ||
-                query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
-                atom->setAtomicNum(rdkit_extensions::DUMMY_ATOMIC_NUMBER);
-            }
-        }
-    }
-}
-
 // If we can't resolve an atoms CIP code (e.g. due to timing out),
 // the {cip} placeholder in the label won't be updated to the actual
 // code, and the placeholder will be displayed. To prevent this from
@@ -215,10 +200,6 @@ static void clear_abs_labels_with_unresolved_cip(RDKit::RWMol& mol)
  */
 void prepare_mol(RDKit::ROMol& mol)
 {
-
-    // make sure that list queries use dummy atoms SKETCH-2390
-    enforce_dummy_atoms_for_list_queries(mol);
-
     // Make sure valences are available.
     mol.updatePropertyCache(false);
 
