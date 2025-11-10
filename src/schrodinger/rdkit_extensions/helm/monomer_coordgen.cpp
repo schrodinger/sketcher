@@ -25,7 +25,16 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
-constexpr double MONOMER_BOND_LENGTH = 1.5;
+// distance between the right end of a monomer and the left end of the next
+// monomer in a chain
+constexpr double SIDE_TO_SIDE_DISTANCE = 1.0;
+// when a monomer size is not specified or its value is lower than this, this
+// value is used as the minimum size
+constexpr double MONOMER_MINIMUM_SIDE_LENGTH = 0.25;
+
+constexpr double MONOMER_BOND_LENGTH =
+    SIDE_TO_SIDE_DISTANCE + 2 * MONOMER_MINIMUM_SIDE_LENGTH;
+
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
@@ -42,6 +51,9 @@ const std::string ORIGINAL_INDEX{"originalIndex"};
 const std::string MONOMER_PLACED{"monomerPlaced"};
 // Set on the polymer mol
 const std::string POLYMER_ID{"polymerID"};
+
+// The  size of the monomer's label
+const std::string MONOMER_SIZE{"monomerSize"};
 
 // Replacement atom label for monomers with SMILES strings as their atom label
 const std::string SMILES_MONOMER_LABEL{"CX"};
@@ -895,6 +907,44 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
     return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
 }
 
+void resize_monomer(int index, RDKit::ROMol& monomer_mol,
+                    const RDGeom::Point3D& new_size)
+{
+    // get current size
+    auto atom = monomer_mol.getAtomWithIdx(index);
+    RDGeom::Point3D current_size;
+    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_SIZE, current_size);
+
+    // calculate difference
+    auto difference = new_size - current_size;
+
+    // move every atom position accordingly
+    auto& conformer = monomer_mol.getConformer();
+    auto reference_monomer_position = conformer.getAtomPos(index);
+    for (int i = 0; i < conformer.getNumAtoms(); ++i) {
+        if (i == index) {
+            continue;
+        }
+        auto atom_pos = conformer.getAtomPos(i);
+        if (atom_pos.x >
+            reference_monomer_position.x + MONOMER_MINIMUM_SIDE_LENGTH) {
+            atom_pos.x += difference.x / 2;
+        } else if (atom_pos.x <
+                   reference_monomer_position.x - MONOMER_MINIMUM_SIDE_LENGTH) {
+            atom_pos.x -= difference.x / 2;
+        }
+        if (atom_pos.y >
+            reference_monomer_position.y + MONOMER_MINIMUM_SIDE_LENGTH) {
+            atom_pos.y += difference.y / 2;
+        } else if (atom_pos.y <
+                   reference_monomer_position.y - MONOMER_MINIMUM_SIDE_LENGTH) {
+            atom_pos.y -= difference.y / 2;
+        }
+        conformer.setAtomPos(i, atom_pos);
+    }
+    atom->setProp<RDGeom::Point3D>(MONOMER_SIZE, new_size);
+}
+
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 {
     // clear layout related props so we can start a fresh layout
@@ -913,6 +963,9 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     adjust_chem_polymer_coords(monomer_mol);
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
+
+    // remove me
+    resize_monomer(2, monomer_mol, RDGeom::Point3D(10, 0, 0));
     return conformer_id;
 }
 
