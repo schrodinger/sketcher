@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <QMetaType>
 #include <QPointF>
 #include <rdkit/GraphMol/Atom.h>
 
@@ -11,10 +12,31 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 
+using MonomericNucleotide = std::tuple<std::string, std::string, std::string>;
+Q_DECLARE_METATYPE(MonomericNucleotide);
+
 namespace schrodinger
 {
 namespace sketcher
 {
+
+std::string std_nucleobase_to_string(StdNucleobase base, std::string U_or_T)
+{
+    switch (base) {
+        case StdNucleobase::A:
+            return "A";
+        case StdNucleobase::U_OR_T:
+            return U_or_T;
+        case StdNucleobase::G:
+            return "G";
+        case StdNucleobase::C:
+            return "C";
+        case StdNucleobase::N:
+            return "N";
+        default:
+            return "";
+    }
+}
 
 std::vector<ModelKey> get_model_keys()
 {
@@ -37,6 +59,15 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::ATOM_QUERY,
         ModelKey::RGROUP_NUMBER,
         ModelKey::RESIDUE_TYPE,
+        ModelKey::MONOMER_TOOL_TYPE,
+        ModelKey::AMINO_ACID_TOOL,
+        ModelKey::NUCLEIC_ACID_TOOL,
+        ModelKey::RNA_NUCLEOBASE,
+        ModelKey::DNA_NUCLEOBASE,
+        ModelKey::CUSTOM_NUCLEOTIDE,
+        ModelKey::INTERFACE_TYPE,
+        ModelKey::TOOL_SET,
+        ModelKey::MOLECULE_TYPE,
     };
 }
 
@@ -100,6 +131,66 @@ AtomQuery SketcherModel::getAtomQuery() const
     return m_model_map.at(ModelKey::ATOM_QUERY).value<AtomQuery>();
 }
 
+MonomerToolType SketcherModel::getMonomerToolType() const
+{
+    return m_model_map.at(ModelKey::MONOMER_TOOL_TYPE).value<MonomerToolType>();
+}
+
+AminoAcidTool SketcherModel::getAminoAcidTool() const
+{
+    return m_model_map.at(ModelKey::AMINO_ACID_TOOL).value<AminoAcidTool>();
+}
+
+NucleicAcidTool SketcherModel::getNucleicAcidTool() const
+{
+    return m_model_map.at(ModelKey::NUCLEIC_ACID_TOOL).value<NucleicAcidTool>();
+}
+
+StdNucleobase SketcherModel::getRNANucleobase() const
+{
+    return m_model_map.at(ModelKey::RNA_NUCLEOBASE).value<StdNucleobase>();
+}
+
+StdNucleobase SketcherModel::getDNANucleobase() const
+{
+    return m_model_map.at(ModelKey::DNA_NUCLEOBASE).value<StdNucleobase>();
+}
+
+std::optional<std::tuple<std::string, std::string, std::string>>
+SketcherModel::getNucleotide() const
+{
+    if (getToolSet() != ToolSet::MONOMERIC ||
+        getMonomerToolType() != MonomerToolType::NUCLEIC_ACID) {
+        return std::nullopt;
+    } else if (getNucleicAcidTool() == NucleicAcidTool::RNA_NUCLEOTIDE) {
+        auto base = std_nucleobase_to_string(getRNANucleobase(), "U");
+        return {{"R", base, "P"}};
+    } else if (getNucleicAcidTool() == NucleicAcidTool::DNA_NUCLEOTIDE) {
+        auto base = std_nucleobase_to_string(getDNANucleobase(), "T");
+        return {{"dR", base, "P"}};
+    } else if (getNucleicAcidTool() == NucleicAcidTool::CUSTOM_NUCLEOTIDE) {
+        return {m_model_map.at(ModelKey::CUSTOM_NUCLEOTIDE)
+                    .value<MonomericNucleotide>()};
+    } else {
+        return std::nullopt;
+    }
+}
+
+InterfaceTypeType SketcherModel::getInterfaceType() const
+{
+    return m_model_map.at(ModelKey::INTERFACE_TYPE).value<InterfaceTypeType>();
+}
+
+ToolSet SketcherModel::getToolSet() const
+{
+    return m_model_map.at(ModelKey::TOOL_SET).value<ToolSet>();
+}
+
+MoleculeType SketcherModel::getMoleculeType() const
+{
+    return m_model_map.at(ModelKey::MOLECULE_TYPE).value<MoleculeType>();
+}
+
 bool SketcherModel::getValueBool(ModelKey key) const
 {
     return m_model_map.at(key).value<bool>();
@@ -139,6 +230,18 @@ void SketcherModel::reset()
         {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::A)},
         {ModelKey::RGROUP_NUMBER, 1u},
         {ModelKey::RESIDUE_TYPE, QString("")},
+        {ModelKey::MONOMER_TOOL_TYPE,
+         QVariant::fromValue(MonomerToolType::AMINO_ACID)},
+        {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::ALA)},
+        {ModelKey::NUCLEIC_ACID_TOOL,
+         QVariant::fromValue(NucleicAcidTool::RNA_NUCLEOTIDE)},
+        {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
+        {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
+        {ModelKey::CUSTOM_NUCLEOTIDE,
+         QVariant::fromValue(MonomericNucleotide("R", "A", "P"))},
+        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
+        {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
+        {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},
     };
     // Notify listeners that all values have changed
     std::unordered_set<ModelKey> all_keys;
