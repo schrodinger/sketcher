@@ -4,12 +4,18 @@ description: >
   compiler, since gfortran doesn't work with MSVC. This action should only be
   run on Windows runners.
 
+# this action doesn't need any permissions for reading from or writing to the
+# repository itself
+permissions:
+  contents: none
+
 runs:
   using: "composite"
   steps:
     - name: Install Fortran
       id: install-fortran
-      uses: fortran-lang/setup-fortran@v1
+      # this hash specifies version 1.8.0
+      uses: fortran-lang/setup-fortran@d2ba6ea44297a24407def2f6e117954d844a5368
       with:
         compiler: 'intel'
         version: '2025.2'
@@ -24,4 +30,5 @@ runs:
       run: echo FC=${{ steps.install-fortran.outputs.fc }} >> $GITHUB_ENV
 
     - name: Activate MSVC
-      uses: ilammy/msvc-dev-cmd@v1
+      # this hash specifies 1.13.0
+      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
