@@ -27,7 +27,7 @@ runs:
         BUILD_DIR="build/external${{ inputs.host-build == 'true' && '/host' || '' }}"
         echo "build-dir=${BUILD_DIR}" >> $GITHUB_OUTPUT
         echo "lib-dir=${BUILD_DIR}/${{ inputs.library }}-${{ inputs.version }}" >> $GITHUB_OUTPUT
-        echo "cache-key=${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt') }}" >> $GITHUB_OUTPUT
+        echo "cache-key=${{ inputs.library }}-${{ inputs.version }}-${{ runner.os }}-${{ matrix.build-output }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt') }}-${{ hashFiles('external/versions.json') }}" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v4
       id: cache-check
