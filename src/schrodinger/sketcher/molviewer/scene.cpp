@@ -616,6 +616,9 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::ELEMENT:
             case ModelKey::ATOM_QUERY:
             case ModelKey::RGROUP_NUMBER:
+            case ModelKey::MONOMER_TOOL_TYPE:
+            case ModelKey::AMINO_ACID_TOOL:
+            case ModelKey::NUCLEIC_ACID_TOOL:
                 updateSceneTool();
                 break;
             default:
@@ -700,6 +703,15 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
             *m_sketcher_model->getBondDisplaySettingsPtr(), this, m_mol_model);
     } else if (draw_tool == DrawTool::EXPLICIT_H) {
         return std::make_shared<ExplicitHsSceneTool>(this, m_mol_model);
+    } else if (draw_tool == DrawTool::MONOMER) {
+        auto monomer_tool_type = m_sketcher_model->getMonomerToolType();
+        if (monomer_tool_type == MonomerToolType::AMINO_ACID) {
+            // TODO: make amino acid scene tool
+            // auto tool = m_sketcher_model->getAminoAcidTool();
+        } else {
+            // TODO: make nucleic acid scene tool
+            // auto tool = m_sketcher_model->getNucleicAcidTool();
+        }
     }
     // tool not yet implemented
     return std::make_shared<NullSceneTool>();

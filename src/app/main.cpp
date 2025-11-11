@@ -9,12 +9,15 @@
 #include <emscripten/bind.h>
 #endif
 
+#include <cstring>
+
 #include <QApplication>
 #include <QFile>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 
 using schrodinger::rdkit_extensions::Format;
@@ -65,6 +68,13 @@ bool sketcher_has_monomers()
     auto& sk = get_sketcher_instance();
     auto mol = sk.getRDKitMolecule();
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
+}
+
+void sketcher_allow_monomeric()
+{
+    auto& sk = get_sketcher_instance();
+    return sk.setInterfaceType(
+        schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
 }
 
 void sketcher_changed()
@@ -120,6 +130,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
+    emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
     // see sketcher_changed_callback above
 }
 #endif
@@ -158,5 +169,10 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
+    // check for the command line option to enable the monomeric tools
+    if (argc >= 2 && strcmp(argv[1], "--allow-monomeric") == 0) {
+        sk.setInterfaceType(
+            schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    }
     return application.exec();
 }
