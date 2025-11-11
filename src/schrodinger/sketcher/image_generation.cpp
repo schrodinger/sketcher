@@ -290,7 +290,7 @@ template <> std::shared_ptr<QPaintDevice>
 paint_scene(const Scene& input, const RenderOptions& opts,
             const PaintDeviceFunction& instantiate_paint_device_to_size)
 {
-    auto scene_rect = input.getInteractiveItemsBoundingRect();
+    auto scene_rect = input.getSceneItemsBoundingRect();
     scene_rect.adjust(-SAVED_PICTURE_PADDING, -SAVED_PICTURE_PADDING,
                       SAVED_PICTURE_PADDING, SAVED_PICTURE_PADDING);
     auto image_size = get_image_size(opts, scene_rect);
@@ -423,7 +423,10 @@ template <typename T> void save_image_file(const T& input,
     auto format = get_format(path);
     auto data = get_image_bytes(input, format, opts);
     QFile file(path);
-    file.open(QIODevice::WriteOnly);
+    bool success = file.open(QIODevice::WriteOnly);
+    if (!success) {
+        throw std::runtime_error("Could not open file for writing");
+    }
     file.write(data);
 }
 
@@ -437,8 +440,7 @@ qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
     Scene scene(&mol_model, &sketcher_model);
     opts.scale = AUTOSCALE;
     init_molviewer_image(mol_model, sketcher_model, mol_or_rxn, opts);
-    return get_scale(scene.getInteractiveItemsBoundingRect(),
-                     opts.width_height);
+    return get_scale(scene.getSceneItemsBoundingRect(), opts.width_height);
 }
 
 } // unnamed namespace
@@ -578,8 +580,8 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
     Scene scene(&mol_model, &sketcher_model);
     for (auto rdmol : all_rdmols) {
         init_molviewer_image(mol_model, sketcher_model, *rdmol, opts);
-        qreal cur_scale = get_scale(scene.getInteractiveItemsBoundingRect(),
-                                    opts.width_height);
+        qreal cur_scale =
+            get_scale(scene.getSceneItemsBoundingRect(), opts.width_height);
         best_scale = std::min(best_scale, cur_scale);
         mol_model.clear();
     }

@@ -200,6 +200,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     bool isEmpty() const;
 
     /**
+     * @return whether the molecule has monomeric elements
+     */
+    bool isMonomeric() const;
+
+    /**
+     * @return whether the molecule itself is non-empty. Unlike isEmpty(), this
+     * function will ignore non-molecular objects, such as reaction arrows and
+     * plus signs.
+     */
+    bool hasMolecularObjects() const;
+
+    /**
      * @return whether anything (atoms, bonds, or non-molecular objects) is
      * selected
      */
@@ -1406,12 +1418,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
         const std::unordered_set<SGroupTag>& s_group_tags,
         const std::unordered_set<NonMolecularTag>& non_molecular_tags,
         const bool selected);
-
-    /**
-     * Clear all selected atoms and bonds.  This method must only be called
-     * as part of an undo command.
-     */
-    void clearSelectionCommandFunc();
 
     /**
      * Add a fragment to the molecule and create new bonds between the new

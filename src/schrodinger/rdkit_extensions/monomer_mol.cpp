@@ -11,6 +11,7 @@
 #include <fmt/format.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/helm_parser.h" // for is_smiles_monomer
 
 namespace
 {
@@ -192,6 +193,42 @@ std::unique_ptr<Monomer> makeMonomer(std::string_view name,
     residue_info->setChainId(std::string{chain_id});
     a->setMonomerInfo(residue_info);
     return a;
+}
+
+void mutateMonomer(RDKit::ROMol& monomer_mol, unsigned int monomer_idx,
+                   std::string_view helm_symbol)
+{
+    // Currently assumes helm_symbol is in monomer DB
+    auto* atom = monomer_mol.getAtomWithIdx(monomer_idx);
+    if (atom == nullptr) {
+        throw std::runtime_error(fmt::format("Atom {} not found", monomer_idx));
+    }
+    if (is_dummy_atom(atom)) {
+        throw std::runtime_error(
+            fmt::format("Cannot mutate dummy atom {}", monomer_idx));
+    }
+    std::string helm_symbol_str{helm_symbol};
+    atom->setProp(ATOM_LABEL, helm_symbol_str);
+    atom->setProp("Name", helm_symbol_str);
+    atom->setProp("smilesSymbol", helm_symbol_str);
+    atom->clearProp(MONOMER_LIST);
+
+    // Note: If the atom was a branch monomer before, it remains one after
+    // mutation.
+    bool is_smiles = helm::is_smiles_monomer(helm_symbol_str);
+    atom->setProp(SMILES_MONOMER, is_smiles);
+
+    // hack to get some level of canonicalization for monomer mols
+    static boost::hash<std::string> hasher;
+    atom->setIsotope(hasher(helm_symbol_str));
+
+    auto res_info =
+        dynamic_cast<RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
+    if (res_info == nullptr) {
+        throw std::runtime_error(
+            fmt::format("Atom {} does not have residue info", atom->getIdx()));
+    }
+    res_info->setResidueName(helm_symbol_str);
 }
 
 size_t addMonomer(RDKit::RWMol& monomer_mol, std::string_view name,

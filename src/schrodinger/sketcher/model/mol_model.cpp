@@ -319,6 +319,16 @@ bool MolModel::isEmpty() const
     return !m_mol.getNumAtoms() && m_pluses.empty() && !m_arrow.has_value();
 }
 
+bool MolModel::isMonomeric() const
+{
+    return rdkit_extensions::isMonomeric(m_mol);
+}
+
+bool MolModel::hasMolecularObjects() const
+{
+    return !m_mol.getNumAtoms();
+}
+
 bool MolModel::hasSelectedBonds() const
 {
     return !m_selected_bond_tags.empty();
@@ -1734,21 +1744,9 @@ void MolModel::clearSelection()
         // nothing to clear
         return;
     }
-    auto sel_atom_tags = m_selected_atom_tags;
-    auto sel_bond_tags = m_selected_bond_tags;
-    auto sel_s_group_tags = m_selected_s_group_tags;
-    auto sel_non_molecular_tags = m_selected_non_molecular_tags;
-
-    QString desc = QString("Clear selection");
-    auto redo = [this]() { clearSelectionCommandFunc(); };
-    auto undo = [this, sel_atom_tags, sel_bond_tags, sel_s_group_tags,
-                 sel_non_molecular_tags]() {
-        m_selected_atom_tags = sel_atom_tags;
-        m_selected_bond_tags = sel_bond_tags;
-        m_selected_s_group_tags = sel_s_group_tags;
-        m_selected_non_molecular_tags = sel_non_molecular_tags;
-    };
-    doCommand(redo, undo, desc);
+    doSelectionCommand(m_selected_atom_tags, m_selected_bond_tags,
+                       m_selected_s_group_tags, m_selected_non_molecular_tags,
+                       false, "Clear selection");
 }
 
 void MolModel::selectAll()
@@ -2730,19 +2728,6 @@ void MolModel::setSelectionCommandFunc(
         }
     }
     emit selectionChanged();
-}
-
-void MolModel::clearSelectionCommandFunc()
-{
-    Q_ASSERT(m_allow_edits);
-    bool selection_changed = hasSelection();
-    m_selected_atom_tags.clear();
-    m_selected_bond_tags.clear();
-    m_selected_s_group_tags.clear();
-    m_selected_non_molecular_tags.clear();
-    if (selection_changed) {
-        emit selectionChanged();
-    }
 }
 
 static std::vector<unsigned int>

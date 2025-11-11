@@ -11,12 +11,14 @@ on:
 
 jobs:
   # Create Nightly Builds
+
   build-release-branch:
     if: ${{ inputs.release-branch != '' || github.event_name == 'schedule' }}
     uses: ./.github/workflows/sketcher-builder.yml
     with:
-      ref: ${{ inputs.release-branch || '2025-4' }}
+      ref: ${{ inputs.release-branch }}
       publish-npm-package: true
+
   build-main-branch:
     uses: ./.github/workflows/sketcher-builder.yml
     with:

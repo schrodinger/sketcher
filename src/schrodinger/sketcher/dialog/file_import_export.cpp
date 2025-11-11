@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
@@ -24,13 +25,8 @@ FormatList<Format> get_import_formats()
         {Format::MOL2, "MOL2"},
         {Format::PDB, "PDB"},
         {Format::XYZ, "XYZ"},
-#ifndef __EMSCRIPTEN__
-        // These formats don't parse correctly in WASM builds and may
-        // crash the Sketcher.  This #ifndef should be removed as part
-        // of SKETCH-2357.
         {Format::MRV, "Marvin Document"},
         {Format::CDXML, "ChemDraw XML"},
-#endif
     };
     std::vector<std::tuple<Format, std::string>> rxn_import_formats = {
         {Format::MDL_MOLV3000, "MDL RXN"},

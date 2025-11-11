@@ -76,6 +76,9 @@ get_polymer_id(const ::RDKit::Atom* atom);
 [[nodiscard]] RDKIT_EXTENSIONS_API unsigned int
 get_residue_number(const ::RDKit::Atom* atom);
 
+[[nodiscard]] RDKIT_EXTENSIONS_API bool
+is_dummy_atom(const ::RDKit::Atom* atom);
+
 /**
  * Connections (in the HELM context) are bonds that are written in the
  * connection section of a HELM string. These are bonds that either connect
@@ -97,14 +100,6 @@ std::vector<std::string>
 
 Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& monomer_mol,
                                        std::string_view polymer_id);
-
-/**
- * @param monomer_mol monomeric molecule
- * @return The id of the conformer added to the molecule with the computed
- * coordinates
- */
-unsigned int RDKIT_EXTENSIONS_API
-compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
 
 /**
  * Get the HELM supplementary info substance group

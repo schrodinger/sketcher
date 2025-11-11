@@ -1,6 +1,6 @@
 ## Schrödinger 2D Sketcher
 
-![build-status](https://github.com/schrodinger/sketcher/actions/workflows/sketcher-builder.yml/badge.svg?branch=main)
+![build-status](https://github.com/schrodinger/sketcher/actions/workflows/nightly-build.yml/badge.svg?branch=main)
 
 [![sketcher](https://github.com/schrodinger/sketcher/blob/main/.github/schrodinger-sketcher-screenshot.png)](https://www.schrodinger.com/2dsketcher)
 

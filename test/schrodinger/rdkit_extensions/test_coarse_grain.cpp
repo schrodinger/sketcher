@@ -144,8 +144,6 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
 
 BOOST_AUTO_TEST_CASE(Test_annotated_toMonomeric)
 {
-    set_default_monomer_db_path();
-
     auto atomistic_mol =
         RDKit::v2::FileParsers::MolFromPDBFile(testfile_path("1dng.pdb"));
     auto monomer_mol = toMonomeric(*atomistic_mol);
@@ -209,4 +207,77 @@ BOOST_AUTO_TEST_CASE(Test_reordering_residues)
 
     BOOST_CHECK_EQUAL(to_string(monomer_mol, Format::HELM),
                       "PEPTIDE1{A.B.C.D}$$$$V2.0");
+}
+
+BOOST_AUTO_TEST_CASE(Test_mutate_monomer)
+{
+    {
+        // mutations are based off monomer index, not residue number
+        auto monomer_mol = to_rdkit("PEPTIDE1{A.G.C}$$$$V2.0", Format::HELM);
+        mutateMonomer(*monomer_mol, 1, "C");
+        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
+                          "PEPTIDE1{A.C.C}$$$$V2.0");
+    }
+    {
+        // interesting example, cyclic peptide mutation
+        auto monomer_mol =
+            to_rdkit("PEPTIDE1{C.C.[dN].C.S.S.K.L.C.R.D.H.S.R.C.C.[am]}$"
+                     "PEPTIDE1,PEPTIDE1,1:R3-9:R3|PEPTIDE1,PEPTIDE1,2:R3-15:R3|"
+                     "PEPTIDE1,PEPTIDE1,4:R3-16:R3$$$",
+                     Format::HELM);
+
+        // mutating to a multicharacter code should work, nothing is verified
+        // with monomer DB
+        mutateMonomer(*monomer_mol, 3, "XYZ");
+        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
+                          "PEPTIDE1{C.C.[dN].[XYZ].S.S.K.L.C.R.D.H.S.R.C.C.[am]"
+                          "}$PEPTIDE1,PEPTIDE1,1:R3-9:R3|PEPTIDE1,PEPTIDE1,2:"
+                          "R3-15:R3|PEPTIDE1,PEPTIDE1,4:R3-16:R3$$$V2.0");
+
+        // note that mutation itself doesn't throw or fix the output structure
+        // if you mutate to something invalid (i.e a cysteine to a glycine which
+        // would break disulfide bonds)
+        mutateMonomer(*monomer_mol, 0, "G");
+        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
+                          "PEPTIDE1{G.C.[dN].[XYZ].S.S.K.L.C.R.D.H.S.R.C.C.[am]"
+                          "}$PEPTIDE1,PEPTIDE1,1:R3-9:R3|PEPTIDE1,PEPTIDE1,2:"
+                          "R3-15:R3|PEPTIDE1,PEPTIDE1,4:R3-16:R3$$$V2.0");
+    }
+    {
+        // multichain mutation and CHEM/RNA works (but once again, no validation
+        // on attachment point usage)
+        auto monomer_mol =
+            to_rdkit("PEPTIDE1{A.G.C}|RNA1{P.[dR](A)P.[dR](C)}|CHEM1{[XYZ]}$"
+                     "PEPTIDE1,RNA1,3:R3-1:R1$$$V2.0",
+                     Format::HELM);
+
+        mutateMonomer(*monomer_mol, 3, "Q"); // this is the phosphate linker
+        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
+                          "PEPTIDE1{A.G.C}|RNA1{Q.[dR](A)P.[dR](C)}|CHEM1{[XYZ]"
+                          "}$PEPTIDE1,RNA1,3:R3-1:R1$$$V2.0");
+        mutateMonomer(*monomer_mol, 4, "R"); // sugar
+        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
+                          "PEPTIDE1{A.G.C}|RNA1{Q.R(A)P.[dR](C)}|CHEM1{[XYZ]}$"
+                          "PEPTIDE1,RNA1,3:R3-1:R1$$$V2.0");
+
+        // mutate the CHEM monomer to a SMILES monomer
+        mutateMonomer(*monomer_mol, 9, "[C@H](F)(Cl)Br");
+        BOOST_CHECK(
+            monomer_mol->getAtomWithIdx(9)->getProp<bool>(SMILES_MONOMER));
+        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
+                          "PEPTIDE1{A.G.C}|RNA1{Q.R(A)P.[dR](C)}|CHEM1{[[C@H]("
+                          "F)(Cl)Br]}$PEPTIDE1,RNA1,3:R3-1:R1$$$V2.0");
+    }
+    {
+        // throws if this isn't a monomer mol
+        auto atomistic_mol = RDKit::v2::SmilesParse::MolFromSmiles("CCO");
+        BOOST_CHECK_THROW(mutateMonomer(*atomistic_mol, 0, "A"),
+                          std::runtime_error);
+    }
+    {
+        // mutating a repetition should throw
+        auto monomer_mol = to_rdkit("PEPTIDE1{A'11'}$$$$V2.0", Format::HELM);
+        BOOST_CHECK_THROW(mutateMonomer(*monomer_mol, 1, "G"),
+                          std::runtime_error);
+    }
 }

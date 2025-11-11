@@ -78,7 +78,7 @@ function(setup_target TARGET)
   if(MSVC)
     target_compile_options(${TARGET} PRIVATE -WX -EHsc)
     if(${BUILD_SHARED_LIBS})
-        target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
+      target_compile_definitions(${TARGET} PRIVATE RDKIT_DYN_LINK)
     endif()
   elseif(WIN32)
     target_compile_options(
@@ -139,6 +139,7 @@ function(build_schrodinger_library TARGET)
     ${SRC_DIR}/*.qrc)
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
+  set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME schrodinger_${TARGET})
   setup_target(${TARGET})
   # Auto-generate compile definitions
   string(TOUPPER ${TARGET} TARGET_UPPER)
@@ -156,9 +157,33 @@ function(enable_qt_moc TARGET)
                AUTORCC ON)
 endfunction()
 
+# Add a dependency on the generated header
+function(add_generated_header_dependency TARGET)
+  # The header is generated with a Python script, so we need to find the Python
+  # interpreter
+  find_package(
+    Python
+    COMPONENTS Interpreter
+    REQUIRED)
+  set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/rdkit_extensions)
+  set(HDR_PATH
+      ${PROJECT_BINARY_DIR}/include/schrodinger/rdkit_extensions/monomer_db_default_monomers.h
+  )
+  add_custom_command(
+    OUTPUT ${HDR_PATH}
+    COMMAND ${Python_EXECUTABLE} ${SRC_DIR}/generate_default_monomers_header.py
+            ${SRC_DIR}/default_monomer_definitions.json ${HDR_PATH}
+    DEPENDS ${SRC_DIR}/default_monomer_definitions.json
+            ${SRC_DIR}/generate_default_monomers_header.py
+    COMMENT "Generating monomer_db_default_monomers.h")
+  add_custom_target(generated_header DEPENDS ${HDR_PATH})
+  add_dependencies(${TARGET} generated_header)
+endfunction()
+
 # schrodinger::rdkit_extensions library
 set(RDKIT_EXTENSIONS_TARGET rdkit_extensions)
 build_schrodinger_library(${RDKIT_EXTENSIONS_TARGET})
+add_generated_header_dependency(${RDKIT_EXTENSIONS_TARGET})
 target_link_libraries(
   ${RDKIT_EXTENSIONS_TARGET}
   PRIVATE Boost::filesystem
@@ -195,7 +220,7 @@ configure_file(${PROJECT_SOURCE_DIR}/include/schrodinger/sketcher/version.h.in
 enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
-set(APP_TARGET sketcher_app)
+set(APP_TARGET schrodinger_sketcher)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
 if(EMSCRIPTEN)
@@ -208,11 +233,10 @@ if(EMSCRIPTEN)
       -sDISABLE_EXCEPTION_CATCHING=0)
 endif()
 target_link_libraries(
-  ${APP_TARGET} PRIVATE Boost::boost
-                        Boost::filesystem
-                        Qt6::Widgets
-                        ${SKETCHER_TARGET}
-                        ${EXTRA_SKETCHER_APP_LINK_FLAGS})
+  ${APP_TARGET}
+  PRIVATE Boost::boost Boost::filesystem Qt6::Widgets
+          ${RDKIT_EXTENSIONS_TARGET} ${SKETCHER_TARGET}
+          ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Tests
 if(ENABLE_TESTING)
@@ -236,9 +260,29 @@ if(ENABLE_TESTING)
   set(SUPPRESSION_FILE "test_valgrind.suppressions")
   set(MEMTEST_COMMAND
       "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
-        --gen-suppressions=all --leak-check=yes --keep-debuginfo=no \
-        --error-exitcode=29")
+        --gen-suppressions=all --leak-check=full \
+        --keep-debuginfo=no --error-exitcode=29")
   separate_arguments(MEMTEST_COMMAND)
+
+  # List of tests that require Qt MOC/UIC features (Q_OBJECT or UI files)
+  set(TESTS_REQUIRING_QT_MOC
+      test_abstract_undoable_model
+      test_atom_query_popup
+      test_bond_order_popup
+      test_bond_query_popup
+      test_bracket_subgroup_dialog
+      test_draw_tools_widget
+      test_edit_atom_properties
+      test_enumeration_tool_widget
+      test_file_export_dialog
+      test_paste_in_text_dialog
+      test_periodic_table_widget
+      test_ring_tool_widget
+      test_select_options_widget
+      test_set_atom_widget
+      test_sketcher_top_bar
+      test_sketcher_widget
+      test_stereo_bond_popup)
 
   foreach(TEST_SOURCE ${TEST_SOURCE_LIST})
     cmake_path(GET TEST_SOURCE STEM TEST_STEM)
@@ -253,17 +297,22 @@ if(ENABLE_TESTING)
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
     target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
     if(MSVC)
-        # ignore discarded [[nodiscard]] values for the tests
-        target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
+      # ignore discarded [[nodiscard]] values for the tests
+      target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
     endif()
-    enable_qt_moc(${TEST_TARGET})
+
+    if(TEST_STEM IN_LIST TESTS_REQUIRING_QT_MOC)
+      enable_qt_moc(${TEST_TARGET})
+    endif()
+
     if(EMSCRIPTEN)
       set(TEST_COMMAND node $<TARGET_FILE:${TEST_TARGET}>)
     else()
       set(TEST_COMMAND ${TEST_TARGET})
     endif()
-    set_target_properties(${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                                    ${PREFIX_PATH})
+    set_target_properties(
+      ${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PREFIX_PATH}
+                                OUTPUT_NAME ${TEST_STEM})
     # Create memtest target and command
     if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
       # create the valgrind test
@@ -276,7 +325,7 @@ if(ENABLE_TESTING)
         list(APPEND CURRENT_MEMTEST_COMMAND
              "--suppressions=${CURRENT_GLOBAL_SUPPRESSION}")
       endforeach()
-      list(APPEND CURRENT_MEMTEST_COMMAND "${PREFIX_PATH}/${TEST_COMMAND}")
+      list(APPEND CURRENT_MEMTEST_COMMAND "$<TARGET_FILE:${TEST_TARGET}>")
       set(TEST_TARGET "memtest_${TEST_TARGET}")
       set(TEST_COMMAND "${CURRENT_MEMTEST_COMMAND}")
     endif()
@@ -292,5 +341,12 @@ if(ENABLE_TESTING)
   endforeach()
 endif()
 
+
+# Install public headers, generated version header, libraries, and executable
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
 install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR})

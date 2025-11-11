@@ -63,7 +63,9 @@ class SKETCHER_API SketcherWidget : public QWidget
     Q_OBJECT
 
   public:
-    SketcherWidget(QWidget* parent = nullptr);
+    SketcherWidget(
+        QWidget* parent = nullptr,
+        const InterfaceTypeType interface_type = InterfaceType::ATOMISTIC);
     ~SketcherWidget();
 
     /**
@@ -105,6 +107,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @return true if the scene is empty
      */
     bool isEmpty() const;
+
+    /**
+     * Set whether this Sketcher can be used to draw atomistic models (i.e.
+     * small molecules), monomeric models, or both
+     */
+    void setInterfaceType(const InterfaceTypeType interface_type);
 
     /**
      * Enable select-only mode, which removes the toolbars and limits user
@@ -157,6 +165,14 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @return all bonds that are currently selected in the workspace
      */
     QSet<const RDKit::Bond*> getSelectedBonds() const;
+
+    /**
+     * Zoom and translate the view such that the workspace contents fill the
+     * canvas.
+     * @param selection_only If true, zoom and center only the selected objects
+     * instead of the entire workspace contents
+     */
+    void fitToScreen(bool selection_only = false);
 
     /**
      * Pass the specified keypress to the top bar.  Explicit calls to this
@@ -472,6 +488,8 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void onAtomHovered(const RDKit::Atom* atom);
     void onBondHovered(const RDKit::Bond* bond);
+
+    void onMolModelChanged(const bool molecule_changed);
 };
 
 } // namespace sketcher

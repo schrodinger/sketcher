@@ -36,6 +36,7 @@
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
@@ -90,7 +91,8 @@ ModelObjsByType::ModelObjsByType(
 {
 }
 
-SketcherWidget::SketcherWidget(QWidget* parent) :
+SketcherWidget::SketcherWidget(QWidget* parent,
+                               const InterfaceTypeType interface_type) :
     QWidget(parent),
     m_undo_stack(new QUndoStack(this)),
     m_mol_model(new MolModel(m_undo_stack))
@@ -105,10 +107,10 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_ui->setupUi(this);
 
     // Load fonts BEFORE creating objects that use them
-    for (const auto& font_path : {":resources/fonts/Arimo-Regular.ttf",
-                                  ":resources/fonts/Arimo-Bold.ttf",
-                                  ":resources/fonts/Arimo-Italic.ttf",
-                                  ":resources/fonts/Arimo-BoldItalic.ttf"}) {
+    for (const auto& font_path : {":/resources/fonts/Arimo-Regular.ttf",
+                                  ":/resources/fonts/Arimo-Bold.ttf",
+                                  ":/resources/fonts/Arimo-Italic.ttf",
+                                  ":/resources/fonts/Arimo-BoldItalic.ttf"}) {
         if (QFontDatabase::addApplicationFont(font_path) == -1) {
             throw std::runtime_error(
                 fmt::format("Failed to load font: {}", font_path));
@@ -161,18 +163,10 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
 
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &SketcherWidget::selectionChanged);
-
-    connect(m_mol_model, &MolModel::modelChanged, [this](auto what_changed) {
-        // even if what_changed doesn't contain MOLECULE, it's possible that the
-        // molecule's coordinates have changed so we should clear our cached
-        // copy of the molecule no matter what
-        m_copy_of_mol_model_mol = nullptr;
-        if (what_changed & WhatChanged::MOLECULE) {
-            emit moleculeChanged();
-        } else {
-            emit representationChanged();
-        }
-    });
+    connect(m_mol_model, &MolModel::modelChanged, this,
+            [this](auto what_changed) {
+                onMolModelChanged(what_changed & WhatChanged::MOLECULE);
+            });
     connect(m_mol_model, &MolModel::coordinatesChanged, [this]() {
         if (!m_ui->view->isDuringPinchGesture() &&
             !m_scene->isDuringAtomDrag()) {
@@ -242,6 +236,8 @@ SketcherWidget::SketcherWidget(QWidget* parent) :
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
+
+    setInterfaceType(interface_type);
 }
 
 SketcherWidget::~SketcherWidget() = default;
@@ -442,6 +438,16 @@ QSet<const RDKit::Bond*> SketcherWidget::getSelectedBonds() const
     auto bonds_from_copy =
         get_corresponding_bonds_from_different_mol(bonds, mol.get());
     return QSet(bonds_from_copy.begin(), bonds_from_copy.end());
+}
+
+void SketcherWidget::fitToScreen(bool selection_only)
+{
+    m_ui->view->fitToScreen(selection_only);
+}
+
+void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
+{
+    m_sketcher_model->setValue(ModelKey::INTERFACE_TYPE, interface_type);
 }
 
 std::string SketcherWidget::getClipboardContents() const
@@ -880,6 +886,8 @@ void SketcherWidget::setToolbarsVisible(const bool visible)
 {
     m_ui->side_bar_wdg->setVisible(visible);
     m_ui->top_bar_wdg->setVisible(visible);
+    // also hide the line that's between the workspace and the top toolbar
+    m_ui->line->setVisible(visible);
 }
 
 void SketcherWidget::keyPressEvent(QKeyEvent* event)
@@ -900,7 +908,14 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
 
     bool handled = handleCommonKeyboardShortcuts(event, cursor_pos, targets);
     if (!handled) {
-        handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
+        if (m_sketcher_model->getToolSet() == ToolSet::ATOMISTIC) {
+            handleAtomisticKeyboardShortcuts(event, cursor_pos, targets);
+        } else if (m_sketcher_model->getMonomerToolType() ==
+                   MonomerToolType::AMINO_ACID) {
+            // TODO: handle amino acid keyboard shortcuts
+        } else {
+            // TODO: handle nucleic acid keyboard shortcuts
+        }
     }
 }
 
@@ -1113,6 +1128,49 @@ void SketcherWidget::onBondHovered(const RDKit::Bond* bond)
         bond = getRDKitMolecule()->getBondWithIdx(bond->getIdx());
     }
     emit bondHovered(bond);
+}
+
+void SketcherWidget::onMolModelChanged(const bool molecule_changed)
+{
+    // even if what_changed doesn't contain MOLECULE, it's possible that the
+    // molecule's coordinates have changed so we should clear our cached
+    // copy of the molecule no matter what
+    m_copy_of_mol_model_mol = nullptr;
+
+    if (molecule_changed) {
+        // update MOLECULE_TYPE (i.e. is the Sketcher workspace empty,
+        // atomistic, or monomeric) and TOOL_SET (i.e. does the side bar
+        // currently display atomistic or monomeric tools). Note that we don't
+        // allow the workspace to contain both atomistic and monomeric models at
+        // the same time; it must be one or the other (or empty).
+        std::unordered_map<ModelKey, QVariant> kv_pairs;
+        auto interface = m_sketcher_model->getInterfaceType();
+        if (m_mol_model->hasMolecularObjects()) {
+            kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
+                             QVariant::fromValue(MoleculeType::EMPTY));
+        } else if (m_mol_model->isMonomeric()) {
+            kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
+                             QVariant::fromValue(MoleculeType::MONOMERIC));
+            if (interface & InterfaceType::MONOMERIC) {
+                kv_pairs.emplace(ModelKey::TOOL_SET,
+                                 QVariant::fromValue(ToolSet::MONOMERIC));
+            }
+        } else {
+            kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
+                             QVariant::fromValue(MoleculeType::ATOMISTIC));
+            if (interface & InterfaceType::ATOMISTIC) {
+                kv_pairs.emplace(ModelKey::TOOL_SET,
+                                 QVariant::fromValue(ToolSet::ATOMISTIC));
+            }
+        }
+        m_sketcher_model->setValues(kv_pairs);
+    }
+
+    if (molecule_changed) {
+        emit moleculeChanged();
+    } else {
+        emit representationChanged();
+    }
 }
 
 bool SketcherWidget::handleShortcutAction(const QKeySequence& key)

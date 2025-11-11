@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <boost/algorithm/string.hpp>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <string_view>

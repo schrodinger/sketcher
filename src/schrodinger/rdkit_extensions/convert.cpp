@@ -31,6 +31,7 @@
 #include <rdkit/GraphMol/SmilesParse/SmartsWrite.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/StereoGroup.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/inchi.h>
 
@@ -333,6 +334,52 @@ void adjust_for_mdl_v2k_format(RDKit::RWMol& mol)
     mol.setStereoGroups({});
 }
 
+// This will allow us to combine absolute stereo groups into one. e.g.
+// |a:1,a:3| -> |a:1,3|
+void combine_absolute_stereo_groups(RDKit::RWMol& mol)
+{
+    using namespace RDKit;
+
+    // get copy of stereo groups
+    auto stereo_groups = mol.getStereoGroups();
+
+    // clear stereo groups
+    mol.setStereoGroups({});
+
+    // we only need to merge the atoms; other info can be accessed via the
+    // original stereo group
+    std::vector<Atom*>* combined_absolute_stereo_atoms = nullptr;
+    std::vector<std::pair<StereoGroup*, std::vector<Atom*>>> combined;
+    for (auto& sg : stereo_groups) {
+        // always add OR and AND stereo groups
+        if (sg.getGroupType() != StereoGroupType::STEREO_ABSOLUTE) {
+            combined.push_back({&sg, sg.getAtoms()});
+        }
+        // this is the first ABS stereo group
+        else if (combined_absolute_stereo_atoms == nullptr) {
+            combined.push_back({&sg, sg.getAtoms()});
+            combined_absolute_stereo_atoms = &combined.back().second;
+        }
+        // this is an ABS stereo group, but not the first one
+        else {
+            std::ranges::transform(
+                sg.getAtoms(),
+                std::back_inserter(*combined_absolute_stereo_atoms),
+                [](auto& entry) { return entry; });
+        }
+    }
+
+    // now construct the new stereo groups
+    std::vector<StereoGroup> new_stereogroups;
+    for (const auto& [sg, atoms] : combined) {
+        new_stereogroups.push_back(
+            {sg->getGroupType(), atoms, {}, sg->getReadId()});
+        new_stereogroups.back().setWriteId(sg->getWriteId());
+    }
+
+    mol.setStereoGroups(std::move(new_stereogroups));
+}
+
 void set_xyz_title(RDKit::RWMol& mol)
 {
     std::string title;
@@ -536,13 +583,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 Format::PDB,
                 Format::MOL2,
                 Format::XYZ,
-#ifndef __EMSCRIPTEN__
-                // These formats don't parse correctly in WASM builds and may
-                // crash the Sketcher.  This #ifndef should be removed as part
-                // of SKETCH-2357.
                 Format::MRV,
                 Format::CDXML,
-#endif
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
                 Format::SMARTS,
@@ -575,6 +617,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             if (mol != nullptr) {
                 fix_cxsmiles_rgroups(*mol);
             }
+
             break;
         }
         case Format::SMARTS:
@@ -641,20 +684,13 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
 #endif
             break;
         case Format::MRV:
-#ifndef __EMSCRIPTEN__
-            // This format doesn't parse correctly in WASM builds and may crash
-            // the Sketcher. See SKETCH-2357.
             try {
                 mol.reset(RDKit::MrvBlockToMol(text, sanitize, removeHs));
             } catch (const std::exception&) {
                 mol.reset();
             }
             break;
-#endif
         case Format::CDXML:
-#ifndef __EMSCRIPTEN__
-            // This format doesn't parse correctly in WASM builds and may crash
-            // the Sketcher. See SKETCH-2357.
             mol.reset(new RDKit::RWMol());
             try { // combine multiple molecules into one like SmilesToMol
                 for (auto& m : RDKit::CDXMLToMols(text, sanitize, removeHs)) {
@@ -664,7 +700,6 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                 mol.reset();
             }
             break;
-#endif
         case Format::HELM:
             mol = helm::helm_to_rdkit(text);
             break;
@@ -706,6 +741,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     }
 
     assign_stereochemistry(*mol);
+    combine_absolute_stereo_groups(*mol);
 
     return mol;
 }
@@ -719,11 +755,6 @@ to_rdkit_reaction(const std::string& text, const Format format)
             {
                 Format::RDMOL_BINARY_BASE64,
                 Format::MDL_MOLV2000,
-#ifndef __EMSCRIPTEN__
-                // CDXML doesn't parse correctly in WASM builds and may crash
-                // the Sketcher. See SKETCH-2357.
-                Format::CDXML,
-#endif
                 // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
                 Format::SMILES,
                 Format::SMARTS,
@@ -817,6 +848,8 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
     bool include_stereo = true;
     int confId = -1;
     bool kekulize = false;
+
+    combine_absolute_stereo_groups(*mol);
 
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:

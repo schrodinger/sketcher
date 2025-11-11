@@ -60,6 +60,35 @@ static bool has_molblock_cfgs(RDKit::ROMol& mol)
 }
 
 /**
+ * Workaround for RDKit's assignChiralTypesFromBondDirs setting explicit H
+ * counts on 3-coordinate chiral atoms (see Chirality.cpp:3533).
+ * This wrapper preserves the original explicit H counts and restores them
+ * after the call.
+ * TODO: After updating with rdkit/rdkit#8872, investigate removing this
+ */
+static void
+assign_chiral_types_from_bond_dirs_preserving_explicit_hs(RDKit::RWMol& mol)
+{
+    std::vector<unsigned int> initial_num_explicit_hs;
+    initial_num_explicit_hs.reserve(mol.getNumAtoms());
+    for (auto atom : mol.atoms()) {
+        initial_num_explicit_hs.push_back(atom->getNumExplicitHs());
+    }
+
+    RDKit::MolOps::assignChiralTypesFromBondDirs(mol);
+
+    // Reset explicit H counts back to their original values and recalculate
+    // implicit H counts.
+    for (size_t i = 0; auto atom : mol.atoms()) {
+        unsigned int initial_explicit_hs = initial_num_explicit_hs[i++];
+        if (atom->getNumExplicitHs() != initial_explicit_hs) {
+            atom->setNumExplicitHs(initial_explicit_hs);
+            atom->updatePropertyCache(/* strict = */ false);
+        }
+    }
+}
+
+/**
  * Uses coordinates and bond directions to calculate stereochemistry from
  * scratch.
  */
@@ -87,7 +116,7 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
     }
 
     // Convert up/down bonds into parities
-    RDKit::MolOps::assignChiralTypesFromBondDirs(mol);
+    assign_chiral_types_from_bond_dirs_preserving_explicit_hs(mol);
 
     // Detect atropisomer chirality & clean up unwanted/redundant atrop markers:
     // This is currently not done by assignStereochemistry()
@@ -143,21 +172,6 @@ static void assign_CIP_labels(RDKit::RWMol& mol)
     }
 }
 
-static void enforce_dummy_atoms_for_list_queries(RDKit::ROMol& mol)
-{
-    for (auto& atom : mol.atoms()) {
-        if (atom->hasQuery()) {
-            auto props = read_properties_from_atom(atom);
-            auto query_props =
-                *static_cast<const AtomQueryProperties*>(props.get());
-            if (query_props.query_type == QueryType::ALLOWED_LIST ||
-                query_props.query_type == QueryType::NOT_ALLOWED_LIST) {
-                atom->setAtomicNum(rdkit_extensions::DUMMY_ATOMIC_NUMBER);
-            }
-        }
-    }
-}
-
 // If we can't resolve an atoms CIP code (e.g. due to timing out),
 // the {cip} placeholder in the label won't be updated to the actual
 // code, and the placeholder will be displayed. To prevent this from
@@ -186,10 +200,6 @@ static void clear_abs_labels_with_unresolved_cip(RDKit::RWMol& mol)
  */
 void prepare_mol(RDKit::ROMol& mol)
 {
-
-    // make sure that list queries use dummy atoms SKETCH-2390
-    enforce_dummy_atoms_for_list_queries(mol);
-
     // Make sure valences are available.
     mol.updatePropertyCache(false);
 

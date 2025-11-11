@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>98</width>
-    <height>134</height>
+    <height>141</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -53,25 +53,6 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
-      <item>
-       <widget class="QLabel" name="title_lbl">
-        <property name="font">
-         <font>
-          <pointsize>9</pointsize>
-          <bold>true</bold>
-         </font>
-        </property>
-        <property name="text">
-         <string>DRAW</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-        <property name="margin">
-         <number>3</number>
-        </property>
-       </widget>
-      </item>
       <item>
        <widget class="schrodinger::sketcher::SetAtomWidget" name="set_atom_wdg" native="true"/>
       </item>
@@ -398,8 +379,8 @@
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="bond_group"/>
   <buttongroup name="charge_group"/>
   <buttongroup name="explicit_h_group"/>
+  <buttongroup name="bond_group"/>
  </buttongroups>
 </ui>

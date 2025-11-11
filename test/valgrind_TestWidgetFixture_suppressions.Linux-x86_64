@@ -1,0 +1,9 @@
+{
+   TestWidgetFixture Intentional Leak - TestSketcherWidget singleton
+   Memcheck:Leak
+   match-leak-kinds: reachable,possible,definite
+   ...
+   fun:_ZN11schrodinger8sketcher14SketcherWidgetC1EP7QWidget*
+   fun:TestSketcherWidget
+   fun:_ZN17TestWidgetFixture3getEv
+}
