@@ -271,5 +271,5 @@ jobs:
           path: sketcher-wasm.tar.gz
 
       - name: Publish sketcher npm package
-        if: matrix.build-output == 'wasm' && inputs.publish-npm-package
+        if: matrix.build-output == 'wasm' && inputs.publish-npm-package && github.repository_owner == 'schrodinger'
         uses: ./.github/actions/publish-npm-package
