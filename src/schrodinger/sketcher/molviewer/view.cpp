@@ -193,7 +193,7 @@ void View::fitToScreen(bool selection_only)
         InteractiveItemFlag::ALL, selection_only);
     // SKETCH-1703 SKETCH-2534 if the sketcher is editable, make the bounding
     // rect a bit bigger to avoid having the molecule too close to the border
-    if (m_sketcher_model && !m_sketcher_model->isSelectOnlyMode()) {
+    if (m_sketcher_model && !m_sketcher_model->isSelectOnlyModeActive()) {
         rec.adjust(-rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,
                    -rec.height() * FIT_TO_SCREEN_MARGIN_FACTOR,
                    rec.width() * FIT_TO_SCREEN_MARGIN_FACTOR,

@@ -510,9 +510,11 @@ class SKETCHER_API SketcherModel : public QObject
 
     /**
      * getter and setter for select-only mode.
+     * the setter function is only intended to be used by
+     * SketcherWidget::activateSelectOnlyMode.
      */
-    void setSelectOnlyMode(const bool select_only_mode);
-    bool isSelectOnlyMode() const;
+    void setSelectOnlyModeActive(const bool select_only_mode);
+    bool isSelectOnlyModeActive() const;
 
     /**
      * @return Whether all items in the scene are selected.
