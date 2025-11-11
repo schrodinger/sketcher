@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
 
@@ -19,5 +20,7 @@ namespace helm
  *
  * See implementation for a more exhaustive list of things we don't support.
  */
-void validate_parsed_info(const helm_info& parsed_info, HelmParser& parser);
+bool validate_parsed_info(const helm_info& parsed_info,
+                          std::vector<std::string>& errors,
+                          const std::string_view& input);
 } // namespace helm
