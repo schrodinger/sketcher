@@ -40,13 +40,13 @@ namespace rdkit_extensions
 {
 // distance between the right end of a monomer and the left end of the next
 // monomer in a chain
-constexpr double SIDE_TO_SIDE_DISTANCE = 1.0;
+constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
 // when a monomer size is not specified or its value is lower than this, this
 // value is used as the minimum size
-constexpr double MONOMER_MINIMUM_SIDE_LENGTH = 0.25;
+constexpr double MONOMER_MINIMUM_SIDE_LENGTH = 0.80;
 
 constexpr double MONOMER_BOND_LENGTH =
-    SIDE_TO_SIDE_DISTANCE + 2 * MONOMER_MINIMUM_SIDE_LENGTH;
+    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIDE_LENGTH;
 
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MONOMERS_PER_SNAKE = 10;
@@ -920,13 +920,15 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
     return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
 }
 
-void resize_monomer(int index, RDKit::ROMol& monomer_mol,
+void resize_monomer(RDKit::ROMol& monomer_mol, int index,
                     const RDGeom::Point3D& new_size)
 {
     // get current size
     auto atom = monomer_mol.getAtomWithIdx(index);
-    RDGeom::Point3D current_size;
+    RDGeom::Point3D current_size(MONOMER_MINIMUM_SIDE_LENGTH,
+                                 MONOMER_MINIMUM_SIDE_LENGTH, 0);
     atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_SIZE, current_size);
+    std::cerr << "new size: " << new_size << std::endl;
 
     // calculate difference
     auto difference = new_size - current_size;
@@ -977,8 +979,6 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
 
-    // remove me
-    resize_monomer(2, monomer_mol, RDGeom::Point3D(10, 0, 0));
     return conformer_id;
 }
 
