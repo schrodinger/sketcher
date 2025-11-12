@@ -14,8 +14,7 @@ runs:
   steps:
     - name: Install Fortran
       id: install-fortran
-      # this hash specifies version 1.8.0
-      uses: fortran-lang/setup-fortran@d2ba6ea44297a24407def2f6e117954d844a5368
+      uses: fortran-lang/setup-fortran@v1.8.0
       with:
         compiler: 'intel'
         version: '2025.2'
@@ -30,5 +29,4 @@ runs:
       run: echo FC=${{ steps.install-fortran.outputs.fc }} >> $GITHUB_ENV
 
     - name: Activate MSVC
-      # this hash specifies 1.13.0
-      uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+      uses: ilammy/msvc-dev-cmd@v1.13.0
