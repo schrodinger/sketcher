@@ -200,6 +200,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     bool isEmpty() const;
 
     /**
+     * @return whether the molecule has monomeric elements
+     */
+    bool isMonomeric() const;
+
+    /**
+     * @return whether the molecule itself is non-empty. Unlike isEmpty(), this
+     * function will ignore non-molecular objects, such as reaction arrows and
+     * plus signs.
+     */
+    bool hasMolecularObjects() const;
+
+    /**
      * @return whether anything (atoms, bonds, or non-molecular objects) is
      * selected
      */

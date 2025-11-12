@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/widget/sketcher_view.h"
+#include "schrodinger/sketcher/widget/sketcher_view_with_wasm_outline_fix.h"
 
 class QPushButton;
 
@@ -24,7 +24,7 @@ class SketcherModel;
  * A free-floating widget that contains a button corresponding to each element
  * on the periodic table.
  */
-class SKETCHER_API PeriodicTableWidget : public SketcherView
+class SKETCHER_API PeriodicTableWidget : public SketcherViewWithWasmOutlineFix
 {
     Q_OBJECT
   public:
@@ -50,11 +50,6 @@ class SKETCHER_API PeriodicTableWidget : public SketcherView
     std::unique_ptr<Ui::PeriodicTableForm> ui;
 
   private:
-    /**
-     * NOTE: Required to pick up stylesheet that makes the background white
-     */
-    void paintEvent(QPaintEvent* event) override;
-
     /**
      * Whether to close the widget when the user clicks any element button.
      */

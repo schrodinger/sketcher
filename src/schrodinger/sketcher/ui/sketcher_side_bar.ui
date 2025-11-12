@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>95</width>
-    <height>226</height>
+    <width>117</width>
+    <height>139</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -45,27 +45,134 @@
       </widget>
      </item>
      <item>
-      <widget class="schrodinger::sketcher::DrawToolsWidget" name="draw_tools_wdg" native="true"/>
-     </item>
-     <item>
-      <widget class="Line" name="line_3">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+      <widget class="QLabel" name="title_lbl">
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>DRAW</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignCenter</set>
+       </property>
+       <property name="margin">
+        <number>3</number>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="schrodinger::sketcher::RingToolWidget" name="ring_tool_wdg" native="true"/>
+      <layout class="QHBoxLayout" name="atomistic_or_monomer_layout">
+       <item>
+        <widget class="QToolButton" name="atomistic_btn">
+         <property name="font">
+          <font>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>ATOM</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">atomistic_or_monomeric_group</string>
+         </attribute>
+        </widget>
+       </item>
+       <item>
+        <widget class="QToolButton" name="monomeric_btn">
+         <property name="font">
+          <font>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>MONO</string>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <attribute name="buttonGroup">
+          <string notr="true">atomistic_or_monomeric_group</string>
+         </attribute>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item>
-      <widget class="Line" name="line_4">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
+      <widget class="QStackedWidget" name="atomistic_or_monomeric_stack">
+       <widget class="QWidget" name="atomistic_page">
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="schrodinger::sketcher::DrawToolsWidget" name="draw_tools_wdg" native="true"/>
+         </item>
+         <item>
+          <widget class="Line" name="line_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="schrodinger::sketcher::RingToolWidget" name="ring_tool_wdg" native="true"/>
+         </item>
+         <item>
+          <widget class="Line" name="line_4">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="schrodinger::sketcher::EnumerationToolWidget" name="enumeration_tool_wdg" native="true"/>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="monomeric_page">
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <property name="spacing">
+          <number>2</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="schrodinger::sketcher::MonomerToolWidget" name="monomeric_wdg" native="true"/>
+         </item>
+        </layout>
+       </widget>
       </widget>
-     </item>
-     <item>
-      <widget class="schrodinger::sketcher::EnumerationToolWidget" name="enumeration_tool_wdg" native="true"/>
      </item>
      <item>
       <spacer name="verticalSpacer">
@@ -116,9 +223,18 @@
    <header>schrodinger/sketcher/widget/ring_tool_widget.h</header>
    <container>1</container>
   </customwidget>
+  <customwidget>
+   <class>schrodinger::sketcher::MonomerToolWidget</class>
+   <extends>QWidget</extends>
+   <header>schrodinger/sketcher/widget/monomer_tool_widget.h</header>
+   <container>1</container>
+  </customwidget>
  </customwidgets>
  <resources>
   <include location="../sketcher.qrc"/>
  </resources>
  <connections/>
+ <buttongroups>
+  <buttongroup name="atomistic_or_monomeric_group"/>
+ </buttongroups>
 </ui>
