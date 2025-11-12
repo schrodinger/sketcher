@@ -233,7 +233,7 @@ list(APPEND RDKIT_PATCH_COMMAND && git apply
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_8738_8736.patch)
 list(APPEND RDKIT_PATCH_COMMAND && git apply --ignore-whitespace
-     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_8930.patch)
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_8930_updated.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
