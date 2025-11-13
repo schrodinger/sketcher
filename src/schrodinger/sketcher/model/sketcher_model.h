@@ -509,6 +509,14 @@ class SKETCHER_API SketcherModel : public QObject
     virtual bool hasNonMolecularObjectSelection() const;
 
     /**
+     * getter and setter for select-only mode.
+     * the setter function is only intended to be used by
+     * SketcherWidget::activateSelectOnlyMode.
+     */
+    void setSelectOnlyModeActive(const bool select_only_mode);
+    bool isSelectOnlyModeActive() const;
+
+    /**
      * @return Whether all items in the scene are selected.
      */
     bool allItemsSelected() const;
@@ -707,6 +715,7 @@ class SKETCHER_API SketcherModel : public QObject
     int m_font_size = DEFAULT_FONT_SIZE;
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
     bool m_allow_select_tool_when_scene_empty = false;
+    bool m_select_only_mode_active = false;
 
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
 };

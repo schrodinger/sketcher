@@ -342,7 +342,7 @@ bool SketcherWidget::isEmpty() const
 
 void SketcherWidget::activateSelectOnlyMode(const SelectionTool tool)
 {
-    m_select_only_mode_active = true;
+    m_sketcher_model->setSelectOnlyModeActive(true);
     setToolbarsVisible(false);
     m_sketcher_model->setSelectToolAllowedWhenSceneEmpty(true);
     m_sketcher_model->setValues(
@@ -830,7 +830,7 @@ void SketcherWidget::showContextMenu(
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
-    if (m_select_only_mode_active) {
+    if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
         // context menus are disabled when select-only mode is active to prevent
         // the user from mutating the structure via the context menu
         return;
@@ -894,7 +894,7 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
     QWidget::keyPressEvent(event);
 
-    if (m_select_only_mode_active) {
+    if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
         // keyboard shortcuts are disabled when select-only mode is active to
         // prevent the user from switching tools
         return;
