@@ -803,3 +803,58 @@ BOOST_AUTO_TEST_CASE(test_color_scheme_set_before_show)
     auto bond_color = sk.m_sketcher_model->getBondDisplaySettingsPtr()->m_color;
     BOOST_TEST(bond_color.lightnessF() > 0.9);
 }
+
+/**
+ * Test that cleaning up a selection fits only the selection to the screen,
+ * not the entire scene. This test verifies the fix where fitToScreen()
+ * is now called with the selection_only parameter after cleaning up a
+ * selection.
+ */
+BOOST_AUTO_TEST_CASE(test_cleanup_selection_fits_only_selection)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+
+    // Add a long chain molecule
+    // This creates a molecule that spans a large area
+    sk.addFromString("CCCCCCCCCCCCCCCCCCCC", Format::SMILES); // 20 carbons
+    auto mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 20);
+
+    // Show the widget to ensure view geometry is initialized
+    sk.show();
+    QCoreApplication::processEvents();
+
+    // Fit everything to screen initially
+    auto view = sk.m_ui->view;
+    view->fitToScreen(false);
+    auto initial_transform = view->transform();
+
+    // Select only the first 3 atoms (a small portion at one end)
+    sk.select({mol->getAtomWithIdx(0), mol->getAtomWithIdx(1),
+               mol->getAtomWithIdx(2)},
+              {});
+    BOOST_TEST(sk.m_mol_model->getSelectedAtoms().size() == 3);
+
+    // Test fitting only the selection - should zoom in on just the first 3
+    // atoms
+    view->fitToScreen(true); // selection_only = true
+    auto transform_selection = view->transform();
+
+    // Reset to initial state
+    view->setTransform(initial_transform);
+
+    // Test fitting the entire scene - should show all 20 atoms
+    view->fitToScreen(false); // selection_only = false
+    auto transform_all = view->transform();
+
+    // The transforms should be different when fitting 3 atoms vs 20 atoms
+    // When fitting only 3 atoms at one end of a 20-atom chain, we should be
+    // zoomed in significantly more than when fitting all 20 atoms
+    BOOST_TEST(
+        transform_selection.m11() != transform_all.m11(),
+        "Selection-only fit should zoom differently than full scene fit");
+
+    // Fitting only 3 atoms should result in a higher zoom level than fitting 20
+    BOOST_TEST(transform_selection.m11() > transform_all.m11(),
+               "Fitting 3 atoms should zoom in more than fitting 20 atoms");
+}

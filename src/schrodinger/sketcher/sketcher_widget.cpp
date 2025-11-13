@@ -632,7 +632,7 @@ void SketcherWidget::connectTopBarSlots()
                 } else {
                     m_mol_model->regenerateCoordinates();
                 }
-                m_ui->view->fitToScreen();
+                m_ui->view->fitToScreen(selection_only);
             });
     connect(m_ui->top_bar_wdg, &SketcherTopBar::fitToScreenRequested,
             m_ui->view, &View::fitToScreen);
