@@ -175,5 +175,12 @@ SKETCHER_API std::tuple<std::unordered_set<const RDKit::Atom*>,
                         std::unordered_set<const NonMolecularObject*>>
 get_model_objects_for_graphics_items(const T& items);
 
+/**
+ * Construct and return a monomer graphics item for representing the given
+ * monomer atom.
+ */
+SKETCHER_API AbstractAtomOrMonomerItem*
+get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts);
+
 } // namespace sketcher
 } // namespace schrodinger
