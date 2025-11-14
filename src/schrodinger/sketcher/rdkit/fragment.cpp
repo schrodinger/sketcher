@@ -562,7 +562,7 @@ RDKit::Atom* prepare_fragment_for_insertion(RDKit::RWMol& fragment)
     // remove the attachment point atom, which will automatically remove the
     // attachment point bond
     fragment.removeAtom(frag_ap_dummy_atom->getIdx());
-    update_molecule_on_change(fragment);
+    update_molecule_on_change(fragment, false);
     // strip constness from frag_ap_parent_atom, since get_frag_info returns
     // const values
     return fragment.getAtomWithIdx(frag_ap_parent_atom->getIdx());

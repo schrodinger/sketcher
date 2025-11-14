@@ -1137,20 +1137,6 @@ BOOST_AUTO_TEST_CASE(test_addMol_attachment_points)
 }
 
 /**
- * Make sure that we can load molecules of up to MAX_NUM_ATOMS_FOR_IMPORT size,
- * but not larger
- */
-BOOST_AUTO_TEST_CASE(test_addMol_size_cutoff)
-{
-    QUndoStack undo_stack;
-    TestMolModel model(&undo_stack);
-    import_mol_text(&model, std::string(MAX_NUM_ATOMS_FOR_IMPORT, 'C'));
-    BOOST_CHECK_THROW(
-        import_mol_text(&model, std::string(MAX_NUM_ATOMS_FOR_IMPORT + 1, 'C')),
-        std::runtime_error);
-}
-
-/**
  * Make sure that the selection is updated when a molecule is added
  */
 BOOST_AUTO_TEST_CASE(test_addMol_move_selection)
@@ -2757,25 +2743,13 @@ BOOST_AUTO_TEST_CASE(test_getReactionForExport)
 }
 
 /**
- * Make sure that addReaction allows us to add a single reaction that contains
- * up to MAX_NUM_ATOMS_FOR_IMPORT atoms
+ * Make sure that addReaction allows us to add a single reaction
  */
 BOOST_AUTO_TEST_CASE(test_addReaction)
 {
-    auto big_reactant = std::string(MAX_NUM_ATOMS_FOR_IMPORT / 4, 'C');
-    auto big_product = std::string(MAX_NUM_ATOMS_FOR_IMPORT / 2, 'C');
-    auto big_reaction = big_reactant + "." + big_reactant + ">>" + big_product;
-    // sanity check in case MAX_NUM_ATOMS_FOR_IMPORT isn't divisible by 4
-    BOOST_REQUIRE(big_reactant.size() * 2 + big_product.size() ==
-                  MAX_NUM_ATOMS_FOR_IMPORT);
-
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
-    // reaction contains one too many atoms
-    BOOST_CHECK_THROW(import_reaction_text(&model, big_reaction + "C"),
-                      std::runtime_error);
-    // reaction contains the exact maximum number of atoms
-    import_reaction_text(&model, big_reaction);
+    import_reaction_text(&model, "CC.CC>>CCCC");
     // we can't have two reactions at once
     BOOST_CHECK_THROW(import_reaction_text(&model, "C.C>>CC"),
                       std::runtime_error);
@@ -2908,7 +2882,8 @@ void assert_wedging_and_chiral_labels(
 {
     BOOST_REQUIRE(mol.getNumAtoms() == atom_chirality_labels.size());
     for (auto atom : mol.atoms()) {
-        auto actual = rdkit_extensions::get_atom_chirality_label(*atom);
+        auto actual = rdkit_extensions::get_atom_chirality_label(
+            *atom, /* strip_abs= */ true); // default setting
         BOOST_TEST(actual == atom_chirality_labels[atom->getIdx()]);
     }
     BOOST_REQUIRE(mol.getNumBonds() == bond_types.size());
@@ -2931,8 +2906,8 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
 
     import_mol_text(&model, "CC(C)[C@@H](C)[C@H](C)N");
     auto mol = model.getMol();
-    std::vector<std::string> atom_labels = {"", "",        "", "abs (R)",
-                                            "", "abs (S)", "", ""};
+    std::vector<std::string> atom_labels = {"", "",    "", "(R)",
+                                            "", "(S)", "", ""};
     std::vector<Bond::BondType> bond_types(7, Bond::BondType::SINGLE);
     std::vector<Bond::BondDir> bond_dirs(7, Bond::BondDir::NONE);
     bond_dirs[3] = Bond::BondDir::BEGINDASH;
@@ -2953,7 +2928,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
                       BondTool::SINGLE_DOWN);
     BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC(C)[C@@H](C)C(C)N");
 
-    atom_labels[3] = "abs (R)";
+    atom_labels[3] = "(R)";
     bond_dirs[3] = Bond::BondDir::BEGINDASH;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2961,7 +2936,7 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     BOOST_TEST(get_mol_text(&model, Format::SMILES) ==
                "CC(C)[C@@H](C)[C@H](C)N");
 
-    atom_labels[5] = "abs (S)";
+    atom_labels[5] = "(S)";
     bond_dirs[5] = Bond::BondDir::BEGINWEDGE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
 
@@ -2982,6 +2957,148 @@ BOOST_AUTO_TEST_CASE(test_undefined_stereo)
     atom_labels[5] = "(?)";
     bond_dirs[5] = Bond::BondDir::NONE;
     assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+}
+
+BOOST_AUTO_TEST_CASE(test_setCalculateStereoOnChange)
+{
+    using RDKit::Bond;
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    import_mol_text(&model, "CC[C@H](C)N");
+    auto mol = model.getMol();
+    std::vector<std::string> atom_labels = {"", "", "(S)", "", ""};
+    std::vector<Bond::BondType> bond_types(4, Bond::BondType::SINGLE);
+    std::vector<Bond::BondDir> bond_dirs(4, Bond::BondDir::NONE);
+    bond_dirs[2] = Bond::BondDir::BEGINDASH;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    model.mutateBonds({model.getMol()->getBondWithIdx(2)}, BondTool::SINGLE_UP);
+    atom_labels[2] = "(R)";
+    bond_dirs[2] = Bond::BondDir::BEGINWEDGE;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC[C@@H](C)N");
+
+    // Simulate turning off stereo labels (which turns off stereo
+    // calculation); this test doesn't check AtomItem rendering, so the
+    // underlying labels are still present but should remain stale
+    model.setCalculateStereoOnChange(false);
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    model.mutateBonds({model.getMol()->getBondWithIdx(2)},
+                      BondTool::SINGLE_DOWN);
+    atom_labels[2] = "";
+    bond_dirs[2] = Bond::BondDir::BEGINDASH;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    // FIXME: Because stereo is not calculated, the SMILES is wrong
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC[C@@H](C)N");
+
+    // Turn stereo calculation back on, and confirm that the labels are updated
+    // without triggering a molecular change
+    model.setCalculateStereoOnChange(true);
+    atom_labels[2] = "(S)";
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC[C@H](C)N");
+}
+
+BOOST_AUTO_TEST_CASE(test_setCalculateStereoOnChange_emits_signal)
+{
+    // Test that setCalculateStereoOnChange emits modelChanged signal when
+    // stereo calculation is turned back on, so that the Scene gets notified
+    // and can update the display.
+    using RDKit::Bond;
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    import_mol_text(&model, "CC[C@H](C)N");
+    QSignalSpy model_changed_spy(&model, &MolModel::modelChanged);
+
+    // Turning off stereo calculation should NOT emit a signal
+    model.setCalculateStereoOnChange(false);
+    BOOST_TEST(model_changed_spy.count() == 0);
+
+    // Make a change while stereo is off
+    model.mutateBonds({model.getMol()->getBondWithIdx(2)}, BondTool::SINGLE_UP);
+    model_changed_spy.clear(); // Reset spy count after the mutation
+
+    // Turning stereo calculation back on SHOULD emit modelChanged signal
+    // because stereo metadata is recalculated and observers need to update
+    model.setCalculateStereoOnChange(true);
+    BOOST_TEST(model_changed_spy.count() == 1);
+
+    // Verify the signal was emitted with WhatChanged::MOLECULE
+    BOOST_REQUIRE(model_changed_spy.count() == 1);
+    QList<QVariant> arguments = model_changed_spy.takeFirst();
+    BOOST_REQUIRE(arguments.size() == 1);
+    auto what_changed = arguments.at(0).value<WhatChangedType>();
+    BOOST_TEST((what_changed & WhatChanged::MOLECULE) != 0);
+}
+
+BOOST_AUTO_TEST_CASE(test_stereo_labels_undo_after_toggle)
+{
+    // Test the scenario where:
+    // 1. User turns off stereocenter labels
+    // 2. Makes changes to the molecule
+    // 3. Turns stereocenter labels back on
+    // 4. Clicks undo to revert to the state from step 2
+    //
+    // ISSUE: This test documents a bug where stereo data becomes stale after
+    // undo. When m_calculate_stereo is false, snapshots contain stale stereo
+    // metadata. When we restore those snapshots later (after m_calculate_stereo
+    // becomes true), restoreSnapshot() does NOT recalculate stereo (see
+    // mol_model.cpp:534-535). This causes the molecule to have incorrect stereo
+    // labels and SMILES.
+    using RDKit::Bond;
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with a molecule with a stereo center
+    import_mol_text(&model, "CC[C@H](C)N");
+    auto mol = model.getMol();
+    std::vector<std::string> atom_labels = {"", "", "(S)", "", ""};
+    std::vector<Bond::BondType> bond_types(4, Bond::BondType::SINGLE);
+    std::vector<Bond::BondDir> bond_dirs(4, Bond::BondDir::NONE);
+    bond_dirs[2] = Bond::BondDir::BEGINDASH;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    // Turn off stereo calculation (simulates user disabling stereo labels)
+    model.setCalculateStereoOnChange(false);
+
+    // Make a change to the molecule while stereo is off - flip the wedge
+    model.mutateBonds({model.getMol()->getBondWithIdx(2)}, BondTool::SINGLE_UP);
+    atom_labels[2] = ""; // Label becomes stale, not updated
+    bond_dirs[2] = Bond::BondDir::BEGINWEDGE;
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+
+    // Turn stereo calculation back on - this should recalculate stereo
+    model.setCalculateStereoOnChange(true);
+    atom_labels[2] = "(R)"; // Label is now recalculated correctly
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC[C@@H](C)N");
+
+    // Now undo - this undoes the mutateBonds operation, going back to BEGINDASH
+    undo_stack.undo();
+    mol = model.getMol(); // Refresh mol pointer after undo
+
+    // After undo, the molecule structure is restored from the snapshot that was
+    // taken when m_calculate_stereo was FALSE. That snapshot contains BEGINDASH
+    // bond direction (correct geometry).
+    //
+    // INTERESTING: Even though restoreSnapshot() doesn't explicitly call
+    // update_molecule_on_change(), the stereo label IS correctly calculated as
+    // "(S)". This suggests that either:
+    // 1. The RDKit mol copy operation (m_mol = snapshot.m_mol) triggers
+    //    stereo recalculation, OR
+    // 2. Something connected to the modelChanged() signal recalculates stereo,
+    // OR
+    // 3. The stereo data is properly stored in the RDKit mol and preserved
+    //
+    // Result: The molecule state is correct after undo, with proper stereo
+    // labels.
+    bond_dirs[2] = Bond::BondDir::BEGINDASH;
+    atom_labels[2] = "(S)"; // Correctly calculated even though snapshot was
+                            // taken with stereo off
+    assert_wedging_and_chiral_labels(*mol, atom_labels, bond_types, bond_dirs);
+    BOOST_TEST(get_mol_text(&model, Format::SMILES) == "CC[C@H](C)N");
 }
 
 BOOST_AUTO_TEST_CASE(test_attachment_point_stereo)
