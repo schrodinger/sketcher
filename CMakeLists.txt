@@ -102,7 +102,15 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                         BOOST_BEAST_HEADER_ONLY)
     if(WIN32)
-      target_link_libraries(${TARGET} PUBLIC -static)
+      if (MSVC)
+        # use the static version of the runtime library instead of the default
+        # shared version
+        set_property(TARGET ${TARGET}
+                     PROPERTY MSVC_RUNTIME_LIBRARY
+                     "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+      else()
+        target_link_options(${TARGET} PUBLIC -static)
+      endif()
     endif()
   endif()
   if(EMSCRIPTEN)
@@ -229,6 +237,16 @@ target_link_libraries(
   PRIVATE Boost::boost Boost::filesystem Qt6::Widgets
           ${RDKIT_EXTENSIONS_TARGET} ${SKETCHER_TARGET}
           ${EXTRA_SKETCHER_APP_LINK_FLAGS})
+if(MSVC AND NOT ${BUILD_SHARED_LIBS})
+  # When using MSVC and building static libs, this target generates a file named
+  # schrodinger_sketcher.lib, which conflicts with an identically named file
+  # from the SKETCHER_TARGET, leading to an error from the linker. By setting
+  # IMPORT_SUFFIX, we change the filename for this target to
+  # schrodinger_sketcher_bin.lib.
+  set_target_properties(
+    ${APP_TARGET}
+    PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
+endif()
 
 # Tests
 if(ENABLE_TESTING)

@@ -83,6 +83,12 @@ if(CMAKE_FIND_ROOT_PATH)
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
        -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 endif()
+if(MSVC)
+  # force MSVC to use the static linking runtime library instead of the default
+  # shared version
+  list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
+       -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$<$<CONFIG:Debug>:Debug>)
+endif()
 
 # Build fmt library
 ExternalProject_Add(
