@@ -13,7 +13,7 @@ jobs:
   # Create Nightly Builds
 
   build-release-branch:
-    if: ${{ inputs.release-branch != '' || github.event_name == 'schedule' }}
+    if: ${{ inputs.release-branch != '' }}
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: ${{ inputs.release-branch }}
