@@ -25,7 +25,7 @@ from collections.abc import Iterable
 import pytest
 
 SKETCHER_TEST_DIR = pathlib.Path(__file__).parent
-SKETCHER_VERSION_FILE = SKETCHER_TEST_DIR / ".." / "external" / "versions.json"
+SKETCHER_VERSION_FILE = SKETCHER_TEST_DIR / ".." / "versions.json"
 # The name of the package factory virtual environment to use when fetching
 # version info from mmshare
 MMSHARE_PF_ENVIRONMENT = "schrodinger"

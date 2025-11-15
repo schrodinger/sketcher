@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.24)
 
+# Read all versions from versions.json
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
+string(JSON SKETCHER_VERSION GET ${VERSIONS} sketcher)
+
 project(
   schrodinger_sketcher
-  VERSION 2026.1.0
+  VERSION ${SKETCHER_VERSION}
   LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -14,20 +18,14 @@ option(ENFORCE_DEPENDENCY_VERSIONS "Require versions.json enforcement" ON)
 
 # Load dependency versions
 if(${ENFORCE_DEPENDENCY_VERSIONS})
-  file(READ external/versions.json VERSIONS)
-  set(DEPENDENCIES
-      boost
-      eigen
-      fmt
-      qt
-      rdkit
-      sqlite
-      zlib
-      zstd)
-  foreach(dep ${DEPENDENCIES})
-    string(TOUPPER ${dep} dep_upper)
-    string(JSON ${dep_upper}_VERSION GET ${VERSIONS} ${dep})
-  endforeach()
+  string(JSON BOOST_VERSION GET ${VERSIONS} boost)
+  string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
+  string(JSON FMT_VERSION GET ${VERSIONS} fmt)
+  string(JSON QT_VERSION GET ${VERSIONS} qt)
+  string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+  string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
+  string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
+  string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
 endif()
 
 if(${BUILD_SHARED_LIBS})
@@ -332,7 +330,6 @@ if(ENABLE_TESTING)
     endif()
   endforeach()
 endif()
-
 
 # Install public headers, generated version header, libraries, and executable
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger

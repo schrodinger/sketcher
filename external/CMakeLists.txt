@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Collect dependency versions
-file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/../versions.json VERSIONS)
 string(JSON BOOST_VERSION GET ${VERSIONS} boost)
 string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
 string(JSON FMT_VERSION GET ${VERSIONS} fmt)

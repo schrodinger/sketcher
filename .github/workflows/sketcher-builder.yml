@@ -67,11 +67,11 @@ jobs:
       - name: Determine build type
         run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
-      - name: Read external/versions.json
+      - name: Read versions.json
         run: |
           {
               echo 'VERSIONS_JSON<<EOF'
-              cat external/versions.json
+              cat versions.json
               echo -e '\nEOF'
           } >> "$GITHUB_ENV"
 
