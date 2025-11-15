@@ -3,16 +3,6 @@ cmake_minimum_required(VERSION 3.24)
 # Read all versions from versions.json
 file(READ ${CMAKE_CURRENT_SOURCE_DIR}/versions.json VERSIONS)
 string(JSON SKETCHER_VERSION GET ${VERSIONS} sketcher)
-if(${ENFORCE_DEPENDENCY_VERSIONS})
-  string(JSON BOOST_VERSION GET ${VERSIONS} boost)
-  string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
-  string(JSON FMT_VERSION GET ${VERSIONS} fmt)
-  string(JSON QT_VERSION GET ${VERSIONS} qt)
-  string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
-  string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
-  string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
-  string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
-endif()
 
 project(
   schrodinger_sketcher
@@ -25,6 +15,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(ENABLE_TESTING "Build and enable tests" ON)
 option(ENFORCE_DEPENDENCY_VERSIONS "Require versions.json enforcement" ON)
+
+# Load dependency versions
+if(${ENFORCE_DEPENDENCY_VERSIONS})
+  string(JSON BOOST_VERSION GET ${VERSIONS} boost)
+  string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
+  string(JSON FMT_VERSION GET ${VERSIONS} fmt)
+  string(JSON QT_VERSION GET ${VERSIONS} qt)
+  string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
+  string(JSON SQLITE_VERSION GET ${VERSIONS} sqlite)
+  string(JSON ZLIB_VERSION GET ${VERSIONS} zlib)
+  string(JSON ZSTD_VERSION GET ${VERSIONS} zstd)
+endif()
 
 if(${BUILD_SHARED_LIBS})
   set(ZSTD_LIB_NAME zstd::libzstd_shared)
@@ -328,7 +330,6 @@ if(ENABLE_TESTING)
     endif()
   endforeach()
 endif()
-
 
 # Install public headers, generated version header, libraries, and executable
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
