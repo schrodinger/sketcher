@@ -1,0 +1,25 @@
+name: Bump Sketcher Version
+description: 'Increment sketcher build number in versions.json'
+inputs:
+  branch:
+    description: 'Branch to bump sketcher version'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Bump sketcher version
+      shell: bash
+      run: |
+        git checkout ${{ inputs.branch }}
+        current_version=$(jq -r '.sketcher' versions.json)
+        if [ "$current_version" = "null" ] || [ -z "$current_version" ]; then
+          echo "Error: 'sketcher' field not found in versions.json"
+          exit 1
+        fi
+        new_version=$(echo $current_version | awk -F. '{print $1"."$2"."($3+1)}')
+        jq --arg version "$new_version" '.sketcher = $version' versions.json > versions.json.tmp
+        mv versions.json.tmp versions.json
+        git add versions.json
+        git commit -m "Increment to build $new_version"
+        git push origin ${{ inputs.branch }}
