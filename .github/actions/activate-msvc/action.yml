@@ -1,0 +1,32 @@
+name: "activate-msvc"
+description: >
+  Activates the MSVC compiler. Also installs and activates the Intel Fortran
+  compiler, since gfortran doesn't work with MSVC. This action should only be
+  run on Windows runners.
+
+# this action doesn't need any permissions for reading from or writing to the
+# repository itself
+permissions:
+  contents: none
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Fortran
+      id: install-fortran
+      uses: fortran-lang/setup-fortran@v1.8.0
+      with:
+        compiler: 'intel'
+        version: '2025.2'
+        update-environment: false
+
+      # If we'd let the previous step update the environment variables, it
+      # would've also set the C and C++ compilers, and we only want the Fortran
+      # compiler. Instead, we manually set the Fortran compiler environment
+      # variable here.
+    - name: Activate Fortran
+      shell: bash
+      run: echo FC=${{ steps.install-fortran.outputs.fc }} >> $GITHUB_ENV
+
+    - name: Activate MSVC
+      uses: ilammy/msvc-dev-cmd@v1.13.0
