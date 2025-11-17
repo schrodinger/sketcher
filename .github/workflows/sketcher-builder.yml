@@ -54,7 +54,7 @@ jobs:
           echo "Free space before cleanup = $(df -h / | awk 'NR==2 {print $4}')"
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           echo "Free space after cleanup = $(df -h / | awk 'NR==2 {print $4}')"
-    
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
