@@ -45,6 +45,8 @@ const double PI = boost::math::constants::pi<double>();
 
 constexpr double MONOMER_CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
 constexpr double BOND_CLASH_DISTANCE = MONOMER_CLASH_DISTANCE;
+constexpr double MIN_ANGLE_BETWEEN_CONSECUTIVE_BONDS =
+    boost::math::constants::pi<double>() / 18; // 10 degrees
 
 // Props used in the fragmented polymer mols to store monomer graph info from
 // the monomersitc mol
@@ -638,29 +640,79 @@ static void orient_polymer(RDKit::ROMol& polymer_to_orient,
 {
     auto polymer_bonds =
         get_bonds_between_polymers(polymer_to_orient, reference_polymer);
-    auto pos_offset = RDGeom::Point3D(0, 0, 0);
-    if (polymer_bonds.empty()) {
+
+    auto place_polymer = [&](RDKit::ROMol& polymer_to_orient,
+                             const RDKit::ROMol& reference_polymer,
+                             const BOND_IDX_VEC& polymer_bonds) {
+        auto pos_offset = RDGeom::Point3D(0, 0, 0);
         auto y_offset =
             get_y_offset_for_polymer(polymer_to_orient, reference_polymer);
-        pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
-    } else {
-        auto& monomer_coords =
-            polymer_to_orient.getConformer().getAtomPos(polymer_bonds[0].first);
-        auto& placed_monomer_coords =
-            reference_polymer.getConformer().getAtomPos(
-                polymer_bonds[0].second);
-        auto y_offset =
-            get_y_offset_for_polymer(polymer_to_orient, reference_polymer);
-        // This is where the monomer on this polymer should end up after
-        // translation - directly under the placed monomer so the bond
-        // is vertical
-        auto translated_monomer_coords = RDGeom::Point3D(
-            placed_monomer_coords.x, monomer_coords.y + y_offset,
-            placed_monomer_coords.z);
-        pos_offset = translated_monomer_coords - monomer_coords;
+        if (polymer_bonds.empty()) {
+            pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
+        } else {
+            auto& monomer_coords = polymer_to_orient.getConformer().getAtomPos(
+                polymer_bonds[0].first);
+            auto& placed_monomer_coords =
+                reference_polymer.getConformer().getAtomPos(
+                    polymer_bonds[0].second);
+            // This is where the monomer on this polymer should end up after
+            // translation - directly under the placed monomer so the bond
+            // is vertical
+            auto translated_monomer_coords = RDGeom::Point3D(
+                placed_monomer_coords.x, monomer_coords.y + y_offset,
+                placed_monomer_coords.z);
+            pos_offset = translated_monomer_coords - monomer_coords;
+        }
+        for (auto& pos : polymer_to_orient.getConformer().getPositions()) {
+            pos += pos_offset;
+        }
+    };
+    place_polymer(polymer_to_orient, reference_polymer, polymer_bonds);
+    // if any of the bonds between the two polymers clashes with bonds of
+    // polymer_to_orient, flip it vertically
+    bool needs_to_flip = false;
+    for (auto bond_between_polymers : polymer_bonds) {
+        auto start_pos = polymer_to_orient.getConformer().getAtomPos(
+            bond_between_polymers.first);
+        auto end_pos = reference_polymer.getConformer().getAtomPos(
+            bond_between_polymers.second);
+        for (auto bond_in_polymer : polymer_to_orient.bonds()) {
+            auto bond_start_pos = polymer_to_orient.getConformer().getAtomPos(
+                bond_in_polymer->getBeginAtomIdx());
+            auto bond_end_pos = polymer_to_orient.getConformer().getAtomPos(
+                bond_in_polymer->getEndAtomIdx());
+            if (bond_between_polymers.first ==
+                    bond_in_polymer->getBeginAtomIdx() ||
+                bond_between_polymers.first ==
+                    bond_in_polymer->getEndAtomIdx()) {
+                // the bonds are consecutive
+
+                auto pos1 = bond_start_pos;
+                auto pos2 = bond_end_pos;
+                if (bond_between_polymers.first ==
+                    bond_in_polymer->getBeginAtomIdx()) {
+                    pos1 = bond_end_pos;
+                    pos2 = bond_start_pos;
+                }
+                auto pos3 = end_pos;
+                if (consecutive_bonds_are_too_close(pos1, pos2, pos3)) {
+                    needs_to_flip = true;
+                    break;
+                }
+            } else if (bonds_are_too_close(start_pos, end_pos, bond_start_pos,
+                                           bond_end_pos)) {
+                needs_to_flip = true;
+                break;
+            }
+        }
     }
-    for (auto& pos : polymer_to_orient.getConformer().getPositions()) {
-        pos += pos_offset;
+    if (needs_to_flip) {
+        // flip vertically
+        auto& conformer = polymer_to_orient.getConformer();
+        for (auto& pos : conformer.getPositions()) {
+            pos.y = -1 * pos.y;
+        }
+        place_polymer(polymer_to_orient, reference_polymer, polymer_bonds);
     }
 }
 
@@ -844,6 +896,25 @@ bool segments_intersect(const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
     return !intersection_pts.empty();
 }
 
+double compute_angle_between_consecutive_segments(const RDGeom::Point3D& a,
+                                                  const RDGeom::Point3D& b,
+                                                  const RDGeom::Point3D& c)
+{
+    // Vector BA = A - B
+    const double bax = a.x - b.x;
+    const double bay = a.y - b.y;
+
+    // Vector BC = C - B
+    const double bcx = c.x - b.x;
+    const double bcy = c.y - b.y;
+
+    // Dot and 2D cross-product magnitude
+    const double dot = bax * bcx + bay * bcy;
+    const double cross = bax * bcy - bay * bcx;
+
+    return std::fabs(std::atan2(cross, dot));
+}
+
 double compute_distance_between_segments(const RDGeom::Point3D& p1,
                                          const RDGeom::Point3D& p2,
                                          const RDGeom::Point3D& q1,
@@ -854,6 +925,39 @@ double compute_distance_between_segments(const RDGeom::Point3D& p1,
     return bg::distance(seg_p, seg_q);
 }
 
+bool consecutive_bonds_are_too_close(const RDGeom::Point3D& point1,
+                                     const RDGeom::Point3D& point2,
+                                     const RDGeom::Point3D& point3)
+{
+    return compute_angle_between_consecutive_segments(point1, point2, point3) <
+           MIN_ANGLE_BETWEEN_CONSECUTIVE_BONDS;
+}
+
+bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
+                         const RDGeom::Point3D& end1_pos,
+                         const RDGeom::Point3D& begin2_pos,
+                         const RDGeom::Point3D& end2_pos)
+{
+    auto minx1 = std::min(begin1_pos.x, end1_pos.x) - BOND_CLASH_DISTANCE;
+    auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + BOND_CLASH_DISTANCE;
+    auto miny1 = std::min(begin1_pos.y, end1_pos.y) - BOND_CLASH_DISTANCE;
+    auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + BOND_CLASH_DISTANCE;
+    auto minx2 = std::min(begin2_pos.x, end2_pos.x) - BOND_CLASH_DISTANCE;
+    auto maxx2 = std::max(begin2_pos.x, end2_pos.x) + BOND_CLASH_DISTANCE;
+    auto miny2 = std::min(begin2_pos.y, end2_pos.y) - BOND_CLASH_DISTANCE;
+    auto maxy2 = std::max(begin2_pos.y, end2_pos.y) + BOND_CLASH_DISTANCE;
+    // bounding box check
+    if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 || maxy2 < miny1) {
+        return false;
+    }
+    if (segments_intersect(begin1_pos, end1_pos, begin2_pos, end2_pos) ||
+        compute_distance_between_segments(begin1_pos, end1_pos, begin2_pos,
+                                          end2_pos) < BOND_CLASH_DISTANCE) {
+        return true;
+    }
+    return false;
+}
+
 bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 {
     auto& conformer = monomer_mol.getConformer();
@@ -862,10 +966,6 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
         auto bond1 = monomer_mol.getBondWithIdx(i);
         auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
         auto end1_pos = conformer.getAtomPos(bond1->getEndAtomIdx());
-        auto minx1 = std::min(begin1_pos.x, end1_pos.x) - BOND_CLASH_DISTANCE;
-        auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + BOND_CLASH_DISTANCE;
-        auto miny1 = std::min(begin1_pos.y, end1_pos.y) - BOND_CLASH_DISTANCE;
-        auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + BOND_CLASH_DISTANCE;
 
         for (size_t j = i + 1; j < monomer_mol.getNumBonds(); j++) {
             auto bond2 = monomer_mol.getBondWithIdx(j);
@@ -878,24 +978,8 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
             }
             auto begin2_pos = conformer.getAtomPos(bond2->getBeginAtomIdx());
             auto end2_pos = conformer.getAtomPos(bond2->getEndAtomIdx());
-            auto minx2 =
-                std::min(begin2_pos.x, end2_pos.x) - BOND_CLASH_DISTANCE;
-            auto maxx2 =
-                std::max(begin2_pos.x, end2_pos.x) + BOND_CLASH_DISTANCE;
-            auto miny2 =
-                std::min(begin2_pos.y, end2_pos.y) - BOND_CLASH_DISTANCE;
-            auto maxy2 =
-                std::max(begin2_pos.y, end2_pos.y) + BOND_CLASH_DISTANCE;
-            // bounding box check
-            if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 ||
-                maxy2 < miny1) {
-                continue;
-            }
-            if (segments_intersect(begin1_pos, end1_pos, begin2_pos,
-                                   end2_pos) ||
-                compute_distance_between_segments(begin1_pos, end1_pos,
-                                                  begin2_pos, end2_pos) <
-                    BOND_CLASH_DISTANCE) {
+            if (bonds_are_too_close(begin1_pos, end1_pos, begin2_pos,
+                                    end2_pos)) {
                 return false;
             }
         }

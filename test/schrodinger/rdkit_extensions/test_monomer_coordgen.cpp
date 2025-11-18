@@ -24,6 +24,10 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(mol_data_t)
 BOOST_DATA_TEST_CASE(
     TestComputeCGCoords,
     bdata::make(std::vector<mol_data_t>{
+        {"CHEM1{[[*:1]N]}|PEPTIDE1{A.C.R.K}$PEPTIDE1,CHEM1,4:R2-1:R1|PEPTIDE1,"
+         "PEPTIDE1,2:R3-4:R3$$$V2.0",
+         {{0, 0}, {1.5, -3}, {0, -3}, {-1.299038, -2.25}, {0, -1.5}}},
+
         // Linear polymers
         {"RNA1{R(U)P.R(T)P.R(G)P.R(C)P.R(A)}$$$$",
          {{0, 0},

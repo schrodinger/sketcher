@@ -47,6 +47,23 @@ bool RDKIT_EXTENSIONS_API segments_intersect(const RDGeom::Point3D& p1,
                                              const RDGeom::Point3D& q1,
                                              const RDGeom::Point3D& q2);
 
+/**
+ * Check whether two consecutive bonds
+ * (defined by three points) form an angle
+ * smaller than a threshold
+ */
+bool RDKIT_EXTENSIONS_API consecutive_bonds_are_too_close(
+    const RDGeom::Point3D& point1, const RDGeom::Point3D& point2,
+    const RDGeom::Point3D& point3);
+
+/**
+ * Check whether two bonds are too close to each other or intersect
+ */
+bool RDKIT_EXTENSIONS_API bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
+                                              const RDGeom::Point3D& end1_pos,
+                                              const RDGeom::Point3D& begin2_pos,
+                                              const RDGeom::Point3D& end2_pos);
+
 /* Compute the distance between two line segments defined by points p1, p2 and
  * q1, q2 */
 double RDKIT_EXTENSIONS_API compute_distance_between_segments(
