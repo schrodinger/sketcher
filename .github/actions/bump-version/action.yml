@@ -13,11 +13,11 @@ runs:
       run: |
         git checkout ${{ inputs.branch }}
         current_version=$(jq -r '.sketcher' versions.json)
-        if [ "$current_version" = "null" ] || [ -z "$current_version" ]; then
+        if [[ "$current_version" = "null" || -z "$current_version" ]]; then
           echo "Error: 'sketcher' field not found in versions.json"
           exit 1
         fi
-        new_version=$(echo $current_version | awk -F. '{print $1"."$2"."($3+1)}')
+        new_version=$(awk -F. '{print $1"."$2"."($3+1)}' <<< "$current_version")
         jq --arg version "$new_version" '.sketcher = $version' versions.json > versions.json.tmp
         mv versions.json.tmp versions.json
         git add versions.json
