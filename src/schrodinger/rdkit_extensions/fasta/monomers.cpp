@@ -3,9 +3,10 @@
 #include <algorithm>
 #include <boost/assign.hpp>
 #include <boost/bimap.hpp>
-#include <fmt/format.h>
 #include <initializer_list>
 #include <unordered_map>
+
+#include <fmt/format.h>
 
 namespace fasta
 {

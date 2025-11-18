@@ -1,9 +1,6 @@
 #include "schrodinger/rdkit_extensions/fasta/to_rdkit.h"
 
 #include <algorithm>
-#include <boost/algorithm/string.hpp>
-#include <fmt/format.h>
-#include <fmt/ranges.h>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -12,6 +9,11 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+
+#include <boost/algorithm/string.hpp>
+
+#include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <rdkit/GraphMol/RWMol.h>
 
