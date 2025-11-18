@@ -46,6 +46,15 @@ jobs:
           - os: ubuntu-latest
             build-output: memtest
     steps:
+      # the memtest runner may run out of space if it has to build the
+      # dependencies, so erase stuff that we know we don't need
+      - name: Free up space on runner
+        if: matrix.build-output == 'memtest'
+        run: |
+          echo "Free space before cleanup = $(df -h / | awk 'NR==2 {print $4}')"
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          echo "Free space after cleanup = $(df -h / | awk 'NR==2 {print $4}')"
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
@@ -88,6 +97,10 @@ jobs:
         run: |
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+
+      - name: Activate MSVC
+        if: matrix.os == 'windows-latest'
+        uses: ./.github/actions/activate-msvc
 
       - name: Configure Dependency CMake
         run: |

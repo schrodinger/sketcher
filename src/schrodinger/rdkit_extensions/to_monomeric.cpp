@@ -4,9 +4,9 @@
 #include <span>
 #include <unordered_map>
 #include <memory>
-#include <fmt/format.h>
 
 #include <fmt/format.h>
+
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/MolOps.h>
@@ -15,6 +15,7 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
+
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/helm.h"

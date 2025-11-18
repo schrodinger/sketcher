@@ -41,9 +41,6 @@ PACKAGES_TO_XFAIL = [
     "qt",
     # this repo is currently on a newer Boost version than the core suite
     "boost",
-    # fmt 10.1.1 reports itself as version 10.1.0, which confuses CMake, so we
-    # use 10.1.0 for this repo
-    "fmt"
 ]
 
 

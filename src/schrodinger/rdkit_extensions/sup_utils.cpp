@@ -1,7 +1,6 @@
 #include "schrodinger/rdkit_extensions/sup_utils.h"
 
 #include <algorithm>
-#include <fmt/format.h>
 #include <queue>
 #include <string>
 #include <unordered_map>

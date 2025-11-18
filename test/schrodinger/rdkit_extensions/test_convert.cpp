@@ -14,7 +14,7 @@
 
 #include <Eigen/Dense>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
