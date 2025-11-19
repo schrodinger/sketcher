@@ -21,6 +21,8 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
+
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
@@ -2829,6 +2831,14 @@ void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
             }
         }
         throw;
+    }
+}
+
+void MolModel::setMonomerSizes(
+    std::unordered_map<int, RDGeom::Point3D> monomer_sizes)
+{
+    for (const auto& [idx, size] : monomer_sizes) {
+        rdkit_extensions::resize_monomer(m_mol, idx, size);
     }
 }
 
