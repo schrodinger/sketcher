@@ -1,11 +1,13 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <unordered_set>
 
 #include <boost/shared_ptr.hpp>
 #include <QSet>
 #include <QWidget>
+#include <rdkit/Geometry/point.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/public_constants.h"
@@ -14,6 +16,11 @@
 class QGraphicsPixmapItem;
 class QGraphicsSceneMouseEvent;
 class QUndoStack;
+
+namespace RDGeom
+{
+class Point3D;
+}
 
 namespace RDKit
 {
@@ -510,6 +517,24 @@ class SKETCHER_API SketcherWidget : public QWidget
     void onBondHovered(const RDKit::Bond* bond);
 
     void onMolModelChanged(const bool molecule_changed);
+
+    /**
+     * Attempt to add the given text to the MolModel instance. See
+     * add_mol_or_reaction_to_mol_model in mol_model.h for param documentation.
+     *
+     * @throw std::exception in any of the following scenarios:
+     *   - the text cannot be interpretted as the specified format
+     *   - the text specifies an atomistic/monomeric model and this
+     *     SketcherWidget only allows monomeric/atomistic models
+     *   - the text specifies an atomistic/monomeric model and this
+     *     SketcherWidget already contains a monomeric/atomistic model
+     */
+    void addTextToMolModel(
+        const std::string& text,
+        const rdkit_extensions::Format format =
+            rdkit_extensions::Format::AUTO_DETECT,
+        const std::optional<RDGeom::Point3D> position = std::nullopt,
+        const bool recenter_view = true);
 };
 
 } // namespace sketcher

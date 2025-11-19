@@ -90,7 +90,7 @@ struct HighlightingInfo {
                      const QColor& color) :
         atom_tags(atom_tags),
         bond_tags(bond_tags),
-        color(color){};
+        color(color) {};
     std::unordered_set<AtomTag> atom_tags;
     std::unordered_set<BondTag> bond_tags;
     QColor color;
@@ -1510,12 +1510,52 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     createReaction(const bool strip_tags) const;
 };
 
-SKETCHER_API void
-add_text_to_mol_model(MolModel& mol_model, const std::string& text,
-                      const rdkit_extensions::Format format =
-                          rdkit_extensions::Format::AUTO_DETECT,
-                      std::optional<RDGeom::Point3D> position = std::nullopt,
-                      bool recenter_view = true);
+/**
+ * Convert the text to either a molecule or a reaction
+ *
+ * @param text the text to convert
+ * @param format the format to interpret the text as
+ *
+ * @throw std::exception if the text cannot be interpretted as the specified
+ * format
+ */
+SKETCHER_API std::variant<boost::shared_ptr<RDKit::RWMol>,
+                          boost::shared_ptr<RDKit::ChemicalReaction>>
+convert_text_to_mol_or_reaction(const std::string& text,
+                                const rdkit_extensions::Format format);
+
+/**
+ * Add the molecule or reaction to the given MolModel
+ *
+ * @param mol_model the MolModel to add the molecule or reaction to
+ * @param mol_or_reaction the molecule or reaction to add
+ * @param position if given **and mol_or_reaction is a molecule**, then the
+ * molecule will be centered at the specified position
+ * @param recenter_view If true **and mol_or_reaction is a molecule**, the
+ * imported molecule will be repositioned to avoid overlap, or centered at the
+ * origin if the scene is empty.
+ */
+SKETCHER_API void add_mol_or_reaction_to_mol_model(
+    MolModel& mol_model,
+    const std::variant<boost::shared_ptr<RDKit::RWMol>,
+                       boost::shared_ptr<RDKit::ChemicalReaction>>
+        mol_or_reaction,
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view);
+
+/**
+ * Add the molecule or reaction to the given MolModel.  See
+ * convert_text_to_mol_or_reaction and add_mol_or_reaction_to_mol_model for
+ * param documentation.
+ *
+ * @throw std::exception if the text cannot be interpretted as the specified
+ * format
+ */
+SKETCHER_API void add_text_to_mol_model(
+    MolModel& mol_model, const std::string& text,
+    const rdkit_extensions::Format format =
+        rdkit_extensions::Format::AUTO_DETECT,
+    const std::optional<RDGeom::Point3D> position = std::nullopt,
+    const bool recenter_view = true);
 
 } // namespace sketcher
 } // namespace schrodinger
