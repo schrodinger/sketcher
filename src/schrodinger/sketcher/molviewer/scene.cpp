@@ -48,7 +48,7 @@
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
 #include "schrodinger/sketcher/molviewer/halo_highlighting_item.h"
-
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 namespace schrodinger
@@ -834,8 +834,14 @@ QRectF Scene::getSelectionRect() const
 
 void Scene::updateMonomerLabelSizeOnModel()
 {
+    if (!m_mol_model->isMonomeric()) {
+        return;
+    }
     std::unordered_map<int, RDGeom::Point3D> sizes;
     for (auto atom : m_mol_model->getMol()->atoms()) {
+        if (!is_atom_monomeric(atom)) {
+            continue;
+        }
         // create a temporary graphics item to figure out the label size
         auto* item = get_monomer_graphics_item(atom, m_fonts);
         const auto bounding_rect = item->boundingRect();
