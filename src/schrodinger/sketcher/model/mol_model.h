@@ -90,7 +90,7 @@ struct HighlightingInfo {
                      const QColor& color) :
         atom_tags(atom_tags),
         bond_tags(bond_tags),
-        color(color) {};
+        color(color){};
     std::unordered_set<AtomTag> atom_tags;
     std::unordered_set<BondTag> bond_tags;
     QColor color;
