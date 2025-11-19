@@ -1,2 +1,0 @@
-# Always keep main's version of versions.json during merges
-version.json merge=ours
