@@ -922,7 +922,7 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
     return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
 }
 
-void resize_monomer(RDKit::ROMol& monomer_mol, int index,
+void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
                     const RDGeom::Point3D& new_size)
 {
     // get current size
