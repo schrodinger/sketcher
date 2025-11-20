@@ -939,7 +939,7 @@ void resize_monomer(RDKit::ROMol& monomer_mol, int index,
     // move every atom position accordingly
     auto& conformer = monomer_mol.getConformer();
     auto reference_monomer_position = conformer.getAtomPos(index);
-    for (int i = 0; i < conformer.getNumAtoms(); ++i) {
+    for (unsigned int i = 0u; i < conformer.getNumAtoms(); ++i) {
         if (i == index) {
             continue;
         }
