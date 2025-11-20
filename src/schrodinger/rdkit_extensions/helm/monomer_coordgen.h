@@ -48,16 +48,18 @@ bool RDKIT_EXTENSIONS_API segments_intersect(const RDGeom::Point3D& p1,
                                              const RDGeom::Point3D& q2);
 
 /**
- * Check whether two consecutive bonds
- * (defined by three points) form an angle
- * smaller than a threshold
+ * Check whether two consecutive bonds (defined by three points) form an angle
+ * smaller than a threshold. This is used for pairs of bonds that share an atom,
+ * to make sure that the bonds are not collinear, or nearly so.
  */
 bool RDKIT_EXTENSIONS_API consecutive_bonds_are_too_close(
     const RDGeom::Point3D& point1, const RDGeom::Point3D& point2,
     const RDGeom::Point3D& point3);
 
 /**
- * Check whether two bonds are too close to each other or intersect
+ * Check whether two bonds are too close to each other or intersect. Note that
+ * if the two bonds share an atom this will always return true. Use
+ * consecutive_bonds_are_too_close() for that case instead
  */
 bool RDKIT_EXTENSIONS_API bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
                                               const RDGeom::Point3D& end1_pos,
