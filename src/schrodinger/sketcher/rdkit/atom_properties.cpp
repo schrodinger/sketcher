@@ -313,7 +313,7 @@ bool AtomQueryProperties::hasPropertiesBeyondQueryType() const
 {
     // General properties excluding enhanced_stereo (stereo doesn't affect
     // whether we can display allowed lists with element symbols - SKETCH-2487)
-    const AtomQueryPropertyList general_props_excl_stereo = {
+    const AtomQueryPropertyList GENERAL_PROPS_EXCL_STEREO = {
         &AtomQueryProperties::isotope,
         &AtomQueryProperties::charge,
         &AtomQueryProperties::unpaired_electrons,
@@ -322,7 +322,7 @@ bool AtomQueryProperties::hasPropertiesBeyondQueryType() const
     return !compare_query_properties(
         this, &default_props,
         concat_query_props(
-            {general_props_excl_stereo, ADVANCED_QUERY_PROPERTIES}));
+            {GENERAL_PROPS_EXCL_STEREO, ADVANCED_QUERY_PROPERTIES}));
 }
 
 bool AtomQueryProperties::hasAdvancedProperties() const
