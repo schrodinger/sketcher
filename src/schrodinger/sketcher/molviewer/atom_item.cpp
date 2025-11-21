@@ -502,7 +502,8 @@ QString AtomItem::getTooltip() const
     // Check if this is a query atom (wildcard or has query constraints)
     auto props = read_properties_from_atom(m_atom);
 
-    if (auto* query_props = dynamic_cast<const AtomQueryProperties*>(props.get())) {
+    if (auto* query_props =
+            dynamic_cast<const AtomQueryProperties*>(props.get())) {
         // If there are additional constraints, show them
         if (!m_query_label_text.isEmpty()) {
             tooltip_parts.append(QUERY_PREFIX + m_query_label_text);

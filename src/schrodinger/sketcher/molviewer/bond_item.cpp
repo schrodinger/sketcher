@@ -669,7 +669,8 @@ QString BondItem::getTooltip() const
         } else if (m_annotation_text == "D/A") {
             tooltip_parts.append(QUERY_PREFIX + "Double or aromatic bond");
         } else if (m_annotation_text == "S/D/A") {
-            tooltip_parts.append(QUERY_PREFIX + "Single, double, or aromatic bond");
+            tooltip_parts.append(QUERY_PREFIX +
+                                 "Single, double, or aromatic bond");
         } else {
             // For other labels, show as-is with appropriate prefix
             // Most likely query-related

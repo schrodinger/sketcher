@@ -123,9 +123,9 @@ class SKETCHER_API BondItem : public AbstractBondOrConnectorItem
 
     /**
      * Get tooltip text based on bond stereochemistry or query labels.
-     * Returns tooltip text for features related to stereochemistry or query features.
-     * If a bond has both stereochemistry and query features, both are shown on
-     * separate lines (e.g., "Stereo: (E)\nQuery: Any bond type").
+     * Returns tooltip text for features related to stereochemistry or query
+     * features. If a bond has both stereochemistry and query features, both are
+     * shown on separate lines (e.g., "Stereo: (E)\nQuery: Any bond type").
      * @return tooltip text, or empty string if no tooltip should be shown
      */
     QString getTooltip() const;

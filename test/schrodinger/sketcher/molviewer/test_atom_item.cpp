@@ -486,8 +486,7 @@ BOOST_AUTO_TEST_CASE(test_wildcard_atom_tooltips)
         {AtomQuery::QH, "Query: Any heteroatom or hydrogen"},
         {AtomQuery::AH, "Query: Any heavy atom or hydrogen"},
         {AtomQuery::XH, "Query: Any halogen or hydrogen"},
-        {AtomQuery::MH, "Query: Any metal or hydrogen"}
-    };
+        {AtomQuery::MH, "Query: Any metal or hydrogen"}};
 
     for (const auto& [wildcard, expected_tooltip] : test_cases) {
         auto props = std::make_shared<AtomQueryProperties>();
@@ -497,13 +496,15 @@ BOOST_AUTO_TEST_CASE(test_wildcard_atom_tooltips)
         auto [atom_item, test_scene] = createAtomItem(props);
 
         // Wildcards should have descriptive tooltips
-        BOOST_TEST(atom_item->toolTip().toStdString() == expected_tooltip.toStdString());
+        BOOST_TEST(atom_item->toolTip().toStdString() ==
+                   expected_tooltip.toStdString());
     }
 }
 
 BOOST_AUTO_TEST_CASE(test_query_atom_with_constraints_tooltip)
 {
-    // Test that query atoms with additional constraints show the constraint text
+    // Test that query atoms with additional constraints show the constraint
+    // text
     auto props = std::make_shared<AtomQueryProperties>();
     props->query_type = QueryType::WILDCARD;
     props->wildcard = AtomQuery::X;
@@ -557,14 +558,16 @@ BOOST_AUTO_TEST_CASE(test_chirality_takes_precedence_over_query)
     for (auto item : atom_items) {
         if (!item->m_chirality_label_text.isEmpty()) {
             // Should show chirality with Stereo prefix
-            BOOST_TEST(item->toolTip() == "Stereo: " + item->m_chirality_label_text);
+            BOOST_TEST(item->toolTip() ==
+                       "Stereo: " + item->m_chirality_label_text);
         }
     }
 }
 
 BOOST_AUTO_TEST_CASE(test_atom_with_both_chirality_and_query)
 {
-    // Test that atoms with both chirality and query features show both in tooltip
+    // Test that atoms with both chirality and query features show both in
+    // tooltip
     auto props = std::make_shared<AtomQueryProperties>();
     props->query_type = QueryType::SPECIFIC_ELEMENT;
     props->element = Element::C;

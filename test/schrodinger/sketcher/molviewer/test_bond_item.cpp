@@ -325,7 +325,8 @@ BOOST_AUTO_TEST_CASE(test_bond_stereo_tooltips)
 {
     // Test that E/Z double bonds have correct tooltips
     // The annotation text comes with parentheses like "(E)" or "(Z)"
-    // and the tooltip should preserve them for consistency with atom stereo labels
+    // and the tooltip should preserve them for consistency with atom stereo
+    // labels
     auto [bond_items, scene] = createStructure("C/C(N)=C(/C)O");
 
     // Find the double bond with E stereochemistry
