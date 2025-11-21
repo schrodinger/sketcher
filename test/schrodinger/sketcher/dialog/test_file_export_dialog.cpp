@@ -50,17 +50,18 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     TestFileExportDialog dlg(&model);
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
-    // 8 atomistic formats with extensions + HELM + FASTA = 10
-    BOOST_TEST(dlg.m_ui->format_combo->count() == 10);
+    // 12 atomistic entries (compressed variants listed separately) + HELM +
+    // FASTA = 14
+    BOOST_TEST(dlg.m_ui->format_combo->count() == 14);
     auto exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.size() == 8); // MDL available extensions
+    BOOST_TEST(exts.size() == 8); // MDL all extensions (including compressed)
     BOOST_TEST(contains(exts, ".mol"));
 
     // Change format to PDB and confirm available extensions
     dlg.setComboFormat(Format::PDB);
     BOOST_TEST(dlg.getComboFormat() == Format::PDB);
     exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.size() == 6);
+    BOOST_TEST(exts.size() == 6); // PDB all extensions (including compressed)
     BOOST_TEST(contains(exts, ".pdb"));
 
     // HELM and FASTA are always available regardless of model state;
@@ -83,7 +84,7 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
 
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
-    // There are only 2 available reaction formats
+    // There are 2 reaction formats
     BOOST_TEST(dlg.m_ui->format_combo->count() == 2);
     auto exts = dlg.getValidExtensions();
     // And MDL has only 1 available extension

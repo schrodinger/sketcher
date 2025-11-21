@@ -3,6 +3,8 @@
 #include <QFileDialog>
 #include <QTimer>
 
+#include <fmt/format.h>
+
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
@@ -67,10 +69,10 @@ void FileExportDialog::setIsReactionExport(bool has_reaction)
                 // reaction state, so nothing to do
     }
     m_ui->format_combo->clear();
-    for (const auto& [fmt, label, extensions] : get_format_list(has_reaction)) {
+    for (const auto& [format, label, extensions] : get_format_list(has_reaction)) {
         if (!extensions.empty()) {
-            auto filter = get_filter_name(label, extensions);
-            m_ui->format_combo->addItem(filter, QVariant::fromValue(fmt));
+            // For export combo box, just show the format name without extensions
+            m_ui->format_combo->addItem(QString::fromStdString(label), QVariant::fromValue(format));
         }
     }
     // reset the format index

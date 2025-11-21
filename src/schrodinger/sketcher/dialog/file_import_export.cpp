@@ -19,10 +19,7 @@ std::vector<std::tuple<Format, std::string>> get_mol_import_formats()
     return {
         {Format::MDL_MOLV3000, "MDL SD"},
         {Format::MAESTRO, "Maestro"},
-        {Format::SMILES, "SMILES"},
-        {Format::EXTENDED_SMILES, "Extended SMILES"},
-        {Format::SMARTS, "SMARTS"},
-        {Format::EXTENDED_SMARTS, "Extended SMARTS"},
+        {Format::EXTENDED_SMILES, "SMILES"},
         {Format::INCHI, "InChI"},
         {Format::MOL2, "MOL2"},
         {Format::PDB, "PDB"},
@@ -59,6 +56,11 @@ FormatList<Format> get_import_formats()
     FormatList<Format> import_formats;
     for (const auto& [format, label] : mol_import_formats) {
         auto extensions = rdkit_extensions::get_mol_extensions(format);
+        // For EXTENDED_SMILES, also add extensions from SMILES
+        if (format == Format::EXTENDED_SMILES) {
+            auto smiles_extensions = rdkit_extensions::get_mol_extensions(Format::SMILES);
+            extensions.insert(extensions.begin(), smiles_extensions.begin(), smiles_extensions.end());
+        }
         // we skip SMARTS and EXTENDED_SMARTS since those don't have any
         // associated extensions
         if (!extensions.empty()) {
@@ -71,6 +73,36 @@ FormatList<Format> get_import_formats()
     }
     return import_formats;
 }
+
+namespace
+{
+// Helper function to check if an extension is compressed
+bool is_compressed_extension(const std::string& ext)
+{
+    return ext.find(".gz") != std::string::npos ||
+           ext.find("gz") == ext.length() - 2 ||
+           ext.find(".zst") != std::string::npos ||
+           ext.find("zst") == ext.length() - 3;
+}
+
+// Helper function to separate compressed and uncompressed extensions
+std::pair<std::vector<std::string>, std::vector<std::string>>
+separate_compressed_extensions(const std::vector<std::string>& extensions)
+{
+    std::vector<std::string> uncompressed;
+    std::vector<std::string> compressed;
+
+    for (const auto& ext : extensions) {
+        if (is_compressed_extension(ext)) {
+            compressed.push_back(ext);
+        } else {
+            uncompressed.push_back(ext);
+        }
+    }
+
+    return {uncompressed, compressed};
+}
+} // namespace
 
 FormatList<Format> get_standard_export_formats()
 {
@@ -97,7 +129,17 @@ FormatList<Format> get_standard_export_formats()
     FormatList<Format> export_formats;
     for (const auto& [format, label] : mol_and_seq_export_formats) {
         auto extensions = rdkit_extensions::get_mol_and_seq_extensions(format);
-        export_formats.push_back({format, label, extensions});
+        auto [uncompressed, compressed] = separate_compressed_extensions(extensions);
+
+        // Add uncompressed version if it has extensions
+        if (!uncompressed.empty()) {
+            export_formats.push_back({format, label, uncompressed});
+        }
+
+        // Add compressed version if it has extensions
+        if (!compressed.empty()) {
+            export_formats.push_back({format, label + " [compressed]", compressed});
+        }
     }
     return export_formats;
 };
@@ -116,7 +158,17 @@ FormatList<Format> get_reaction_export_formats()
     FormatList<Format> export_formats;
     for (const auto& [format, label] : rxn_export_formats) {
         auto extensions = rdkit_extensions::get_rxn_extensions(format);
-        export_formats.push_back({format, label, extensions});
+        auto [uncompressed, compressed] = separate_compressed_extensions(extensions);
+
+        // Add uncompressed version if it has extensions
+        if (!uncompressed.empty()) {
+            export_formats.push_back({format, label, uncompressed});
+        }
+
+        // Add compressed version if it has extensions
+        if (!compressed.empty()) {
+            export_formats.push_back({format, label + " [compressed]", compressed});
+        }
     }
     return export_formats;
 };

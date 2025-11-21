@@ -14,10 +14,11 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(Format);
 
 BOOST_AUTO_TEST_CASE(test_get_import_export_formats)
 {
-    BOOST_TEST(get_import_formats().size() == 12);
-    // 11 atomistic + HELM + FASTA = 13
-    BOOST_TEST(get_standard_export_formats().size() == 13);
-    BOOST_TEST(get_reaction_export_formats().size() == 5);
+    BOOST_TEST(get_import_formats().size() == 11);
+    // Formats with both compressed and uncompressed extensions are listed
+    // twice; formats with no extensions at all are omitted
+    BOOST_TEST(get_standard_export_formats().size() == 14);
+    BOOST_TEST(get_reaction_export_formats().size() == 2);
     BOOST_TEST(get_image_export_formats().size() == 2);
 }
 
