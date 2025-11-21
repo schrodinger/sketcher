@@ -18,6 +18,7 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnhancedStereo)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(
     std::optional<schrodinger::sketcher::EnhancedStereo>)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::nullopt_t)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryType)
 
 namespace schrodinger
 {
@@ -331,6 +332,7 @@ BOOST_DATA_TEST_CASE(test_atom_properties_round_trip_smarts,
 /**
  * Ensure that hasAdvancedProperties() and hasPropertiesBeyondQueryType() return
  * true when the appropriate properties are set to non-default values.
+ * Note: hasPropertiesBeyondQueryType excludes stereo properties (SKETCH-2487).
  */
 BOOST_AUTO_TEST_CASE(test_hasAdvancedProperties)
 {
@@ -341,6 +343,15 @@ BOOST_AUTO_TEST_CASE(test_hasAdvancedProperties)
     query_props.element = Element::O;
     BOOST_TEST(!query_props.hasPropertiesBeyondQueryType());
     BOOST_TEST(!query_props.hasAdvancedProperties());
+
+    // Setting stereo should NOT trigger hasPropertiesBeyondQueryType
+    // (SKETCH-2487)
+    query_props.enhanced_stereo =
+        EnhancedStereo(RDKit::StereoGroupType::STEREO_ABSOLUTE, 0);
+    BOOST_TEST(!query_props.hasPropertiesBeyondQueryType());
+    BOOST_TEST(!query_props.hasAdvancedProperties());
+    query_props.enhanced_stereo = std::nullopt;
+
     query_props.charge = 2;
     BOOST_TEST(query_props.hasPropertiesBeyondQueryType());
     BOOST_TEST(!query_props.hasAdvancedProperties());

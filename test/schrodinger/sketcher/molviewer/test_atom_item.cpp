@@ -398,6 +398,19 @@ BOOST_AUTO_TEST_CASE(test_queries_rendering)
         BOOST_TEST(atom_item->m_query_label_text == "\"[#6,#7;+]\"");
     }
 
+    { // atom list with enhanced stereo (SKETCH-2487)
+        // Stereo properties shouldn't prevent displaying element symbols
+        auto props = std::make_shared<AtomQueryProperties>();
+        props->query_type = QueryType::ALLOWED_LIST;
+        props->allowed_list = {Element::N, Element::C, Element::O, Element::F};
+        props->enhanced_stereo =
+            EnhancedStereo(RDKit::StereoGroupType::STEREO_ABSOLUTE, 0);
+        auto [atom_item, test_scene] = createAtomItem(props);
+        BOOST_TEST(atom_item->m_main_label_text == "*");
+        // Should use element symbols, not atomic numbers
+        BOOST_TEST(atom_item->m_query_label_text == "[N,C,O,F]");
+    }
+
     { // wildcard query with advanced properties
         auto props = std::make_shared<AtomQueryProperties>();
         props->query_type = QueryType::WILDCARD;
