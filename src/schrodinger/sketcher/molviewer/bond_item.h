@@ -122,6 +122,15 @@ class SKETCHER_API BondItem : public AbstractBondOrConnectorItem
     std::vector<QColor> m_colors;
 
     /**
+     * Get tooltip text based on bond stereochemistry or query labels.
+     * Returns tooltip text for features related to stereochemistry or query features.
+     * If a bond has both stereochemistry and query features, both are shown on
+     * separate lines (e.g., "Stereo: (E)\nQuery: Any bond type").
+     * @return tooltip text, or empty string if no tooltip should be shown
+     */
+    QString getTooltip() const;
+
+    /**
      * @return a list of the colors to be used for painting this bond. If the
      * user has selected a color for this bond, then the list will contain only
      * that. If the user has not selected a color for the bond, but has selected
