@@ -28,6 +28,7 @@
 #include <QMarginsF>
 #include <QPainter>
 #include <QPointF>
+#include <QStringList>
 #include <QSvgGenerator>
 #include <QTransform>
 #include <Qt>
@@ -170,6 +171,8 @@ void BondItem::updateCachedData()
     }
 
     m_colors = getColors();
+
+    setToolTip(getTooltip());
 
     // TODO: calculate bond intersections, store clipping path
     // TODO: deal with atom radii for aromatics
@@ -627,6 +630,55 @@ std::vector<QColor> BondItem::getColors() const
         return {start_color, end_color};
     }
     return {start_color};
+}
+
+QString BondItem::getTooltip() const
+{
+    const QString STEREO_PREFIX = "Stereo: ";
+    const QString QUERY_PREFIX = "Query: ";
+    QStringList tooltip_parts;
+    RDKit::Bond::BondDir bond_direction = m_bond->getBondDir();
+
+    // Check for stereochemistry indicators on single bonds
+    if (m_bond->getBondType() == RDKit::Bond::BondType::SINGLE) {
+        if (bond_direction == RDKit::Bond::BondDir::UNKNOWN) {
+            tooltip_parts.append(STEREO_PREFIX + "unknown");
+        }
+    }
+
+    // Check for crossed double bond (E/Z unknown)
+    if (m_bond->getBondType() == RDKit::Bond::BondType::DOUBLE) {
+        if (bond_direction == RDKit::Bond::BondDir::EITHERDOUBLE) {
+            tooltip_parts.append(STEREO_PREFIX + "E/Z unknown");
+        }
+    }
+
+    // Add annotation text tooltip with descriptions for bond queries
+    if (!m_annotation_text.isEmpty()) {
+        // Determine if this is a stereo label or query
+        // Note: RDKit's addStereoAnnotations sets bondNote to "(E)" or "(Z)"
+        // with parentheses, so we check for those exact formats
+        if (m_annotation_text == "(E)" || m_annotation_text == "(Z)") {
+            tooltip_parts.append(STEREO_PREFIX + m_annotation_text);
+        } else if (m_annotation_text == "Any") {
+            tooltip_parts.append(QUERY_PREFIX + "Any bond type");
+        } else if (m_annotation_text == "S/D") {
+            tooltip_parts.append(QUERY_PREFIX + "Single or double bond");
+        } else if (m_annotation_text == "S/A") {
+            tooltip_parts.append(QUERY_PREFIX + "Single or aromatic bond");
+        } else if (m_annotation_text == "D/A") {
+            tooltip_parts.append(QUERY_PREFIX + "Double or aromatic bond");
+        } else if (m_annotation_text == "S/D/A") {
+            tooltip_parts.append(QUERY_PREFIX +
+                                 "Single, double, or aromatic bond");
+        } else {
+            // For other labels, show as-is with appropriate prefix
+            // Most likely query-related
+            tooltip_parts.append(QUERY_PREFIX + m_annotation_text);
+        }
+    }
+
+    return tooltip_parts.join("\n");
 }
 
 void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
