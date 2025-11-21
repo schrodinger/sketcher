@@ -9,6 +9,7 @@
 #include <QPointF>
 #include <QString>
 #include <Qt>
+#include <unordered_map>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -509,35 +510,21 @@ QString AtomItem::getTooltip() const
             tooltip_parts.append(QUERY_PREFIX + m_query_label_text);
         } else if (query_props->query_type == QueryType::WILDCARD) {
             // For plain wildcards, provide descriptive tooltips
-            QString description;
-            switch (query_props->wildcard) {
-                case AtomQuery::A:
-                    description = "Any heavy atom";
-                    break;
-                case AtomQuery::AH:
-                    description = "Any heavy atom or hydrogen";
-                    break;
-                case AtomQuery::Q:
-                    description = "Any heteroatom";
-                    break;
-                case AtomQuery::QH:
-                    description = "Any heteroatom or hydrogen";
-                    break;
-                case AtomQuery::M:
-                    description = "Any metal";
-                    break;
-                case AtomQuery::MH:
-                    description = "Any metal or hydrogen";
-                    break;
-                case AtomQuery::X:
-                    description = "Any halogen";
-                    break;
-                case AtomQuery::XH:
-                    description = "Any halogen or hydrogen";
-                    break;
-            }
-            if (!description.isEmpty()) {
-                tooltip_parts.append(QUERY_PREFIX + description);
+            static const std::unordered_map<AtomQuery, QString>
+                wildcard_descriptions = {
+                    {AtomQuery::A, "Any heavy atom"},
+                    {AtomQuery::AH, "Any heavy atom or hydrogen"},
+                    {AtomQuery::Q, "Any heteroatom"},
+                    {AtomQuery::QH, "Any heteroatom or hydrogen"},
+                    {AtomQuery::M, "Any metal"},
+                    {AtomQuery::MH, "Any metal or hydrogen"},
+                    {AtomQuery::X, "Any halogen"},
+                    {AtomQuery::XH, "Any halogen or hydrogen"},
+                };
+
+            auto it = wildcard_descriptions.find(query_props->wildcard);
+            if (it != wildcard_descriptions.end()) {
+                tooltip_parts.append(QUERY_PREFIX + it->second);
             }
         }
     }
