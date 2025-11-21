@@ -124,7 +124,9 @@ struct SKETCHER_API AtomQueryProperties : AbstractAtomProperties {
 
     /**
      * Does this query have any properties other than those that directly relate
-     * to the query type (e.g. allowed_list)?
+     * to the query type (e.g. allowed_list)? Note: stereo properties are
+     * excluded from this check since they don't prevent displaying allowed
+     * lists with element symbols (SKETCH-2487).
      */
     bool hasPropertiesBeyondQueryType() const;
 

@@ -311,11 +311,18 @@ std::ostream& operator<<(std::ostream& os, const AbstractAtomProperties& props)
 
 bool AtomQueryProperties::hasPropertiesBeyondQueryType() const
 {
+    // General properties excluding enhanced_stereo (stereo doesn't affect
+    // whether we can display allowed lists with element symbols - SKETCH-2487)
+    const AtomQueryPropertyList general_props_excl_stereo = {
+        &AtomQueryProperties::isotope,
+        &AtomQueryProperties::charge,
+        &AtomQueryProperties::unpaired_electrons,
+    };
     auto default_props = AtomQueryProperties();
     return !compare_query_properties(
         this, &default_props,
         concat_query_props(
-            {GENERAL_QUERY_PROPERTIES, ADVANCED_QUERY_PROPERTIES}));
+            {general_props_excl_stereo, ADVANCED_QUERY_PROPERTIES}));
 }
 
 bool AtomQueryProperties::hasAdvancedProperties() const
