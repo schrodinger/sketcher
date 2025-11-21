@@ -22,6 +22,7 @@
 #include <emscripten/val.h>
 #endif
 
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
@@ -316,7 +317,7 @@ SketcherWidget::getRDKitReaction() const
 
 void SketcherWidget::addFromString(const std::string& text, Format format)
 {
-    add_text_to_mol_model(*m_mol_model, text, format);
+    addTextToMolModel(text, format);
 }
 
 std::string SketcherWidget::getString(Format format) const
@@ -531,9 +532,8 @@ void SketcherWidget::pasteAt(std::optional<QPointF> position)
         mol_position = to_mol_xy(scene_position);
     }
     try {
-        add_text_to_mol_model(*m_mol_model, text, Format::AUTO_DETECT,
-                              mol_position,
-                              /*recenter_view*/ false);
+        addTextToMolModel(text, Format::AUTO_DETECT, mol_position,
+                          /*recenter_view*/ false);
     } catch (const std::exception& exc) {
         show_error_dialog("Paste Error", exc.what(), window());
     }
@@ -1300,7 +1300,7 @@ void SketcherWidget::onMolModelChanged(const bool molecule_changed)
         // the same time; it must be one or the other (or empty).
         std::unordered_map<ModelKey, QVariant> kv_pairs;
         auto interface = m_sketcher_model->getInterfaceType();
-        if (m_mol_model->hasMolecularObjects()) {
+        if (!m_mol_model->hasMolecularObjects()) {
             kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
                              QVariant::fromValue(MoleculeType::EMPTY));
         } else if (m_mol_model->isMonomeric()) {
@@ -1331,6 +1331,40 @@ void SketcherWidget::onMolModelChanged(const bool molecule_changed)
 bool SketcherWidget::handleShortcutAction(const QKeySequence& key)
 {
     return m_ui->top_bar_wdg->handleShortcutAction(key);
+}
+
+void SketcherWidget::addTextToMolModel(
+    const std::string& text, const rdkit_extensions::Format format,
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view)
+{
+    auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
+    auto* mol_ptr_ptr =
+        std::get_if<boost::shared_ptr<RDKit::RWMol>>(&mol_or_reaction);
+    // we assume that reactions are atomistic
+    bool mol_to_add_is_monomeric =
+        (mol_ptr_ptr && rdkit_extensions::isMonomeric(**mol_ptr_ptr));
+
+    auto interface_type = m_sketcher_model->getInterfaceType();
+    auto cur_molecule_type = m_sketcher_model->getMoleculeType();
+    if (mol_to_add_is_monomeric &&
+        !(interface_type & InterfaceType::MONOMERIC)) {
+        throw std::runtime_error("Monomeric models not allowed");
+    } else if (!mol_to_add_is_monomeric &&
+               !(interface_type & InterfaceType::ATOMISTIC)) {
+        throw std::runtime_error("Atomistic models not allowed");
+    } else if (cur_molecule_type == MoleculeType::ATOMISTIC &&
+               mol_to_add_is_monomeric) {
+        throw std::runtime_error(
+            "Cannot add a monomeric model when the Sketcher already contains "
+            "an atomistic model");
+    } else if (cur_molecule_type == MoleculeType::MONOMERIC &&
+               !mol_to_add_is_monomeric) {
+        throw std::runtime_error(
+            "Cannot add an atomistic model when the Sketcher already contains "
+            "a monomeric model");
+    }
+    add_mol_or_reaction_to_mol_model(*m_mol_model, mol_or_reaction, position,
+                                     recenter_view);
 }
 
 } // namespace sketcher
