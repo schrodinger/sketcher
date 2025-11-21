@@ -12,14 +12,6 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "qapplication_required_fixture.h"
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::rdkit_extensions::Format)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomQuery)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::AtomTool)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::DrawTool)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::Element)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnumerationTool)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::SelectionTool)
-
 /**
  * Gets full path to a file in the testfiles directory in the source
  * @param filename file found in the testfiles folder
@@ -39,10 +31,41 @@ std::string read_testfile(const std::string& filename)
                        std::istreambuf_iterator<char>());
 }
 
+// allow Boost to print QStrings to the log
+std::ostream& operator<<(std::ostream& os, const QString& qstring)
+{
+    os << qstring.toStdString();
+    return os;
+}
+
+// To allow an enum class to be printed to Boost's test logging, add
+// `MAKE_ENUM_LOGGABLE(MyEnumClassName)` to the test file inside the
+// schrodinger::sketcher namespace (assuming that's the same namespace as the
+// enum)
+#define MAKE_ENUM_LOGGABLE(T)                                 \
+    std::ostream& operator<<(std::ostream& os, const T value) \
+    {                                                         \
+        os << #T << "<" << static_cast<int>(value) << ">";    \
+        return os;                                            \
+    }
+
 namespace schrodinger
 {
+namespace rdkit_extensions
+{
+MAKE_ENUM_LOGGABLE(Format)
+} // namespace rdkit_extensions
+
 namespace sketcher
 {
+
+MAKE_ENUM_LOGGABLE(AtomQuery)
+MAKE_ENUM_LOGGABLE(AtomTool)
+MAKE_ENUM_LOGGABLE(DrawTool)
+MAKE_ENUM_LOGGABLE(Element)
+MAKE_ENUM_LOGGABLE(EnumerationTool)
+MAKE_ENUM_LOGGABLE(MoleculeType);
+MAKE_ENUM_LOGGABLE(SelectionTool)
 
 class TestSketcherWidget : public SketcherWidget
 {
