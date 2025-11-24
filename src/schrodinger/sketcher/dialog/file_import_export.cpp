@@ -58,8 +58,10 @@ FormatList<Format> get_import_formats()
         auto extensions = rdkit_extensions::get_mol_extensions(format);
         // For EXTENDED_SMILES, also add extensions from SMILES
         if (format == Format::EXTENDED_SMILES) {
-            auto smiles_extensions = rdkit_extensions::get_mol_extensions(Format::SMILES);
-            extensions.insert(extensions.begin(), smiles_extensions.begin(), smiles_extensions.end());
+            auto smiles_extensions =
+                rdkit_extensions::get_mol_extensions(Format::SMILES);
+            extensions.insert(extensions.begin(), smiles_extensions.begin(),
+                              smiles_extensions.end());
         }
         // we skip SMARTS and EXTENDED_SMARTS since those don't have any
         // associated extensions
@@ -127,20 +129,30 @@ FormatList<Format> get_standard_export_formats()
     };
 
     FormatList<Format> export_formats;
+
+    // First pass: add all uncompressed formats
     for (const auto& [format, label] : mol_and_seq_export_formats) {
         auto extensions = rdkit_extensions::get_mol_and_seq_extensions(format);
-        auto [uncompressed, compressed] = separate_compressed_extensions(extensions);
+        auto [uncompressed, compressed] =
+            separate_compressed_extensions(extensions);
 
-        // Add uncompressed version if it has extensions
         if (!uncompressed.empty()) {
             export_formats.push_back({format, label, uncompressed});
         }
+    }
 
-        // Add compressed version if it has extensions
+    // Second pass: add all compressed formats at the end
+    for (const auto& [format, label] : mol_and_seq_export_formats) {
+        auto extensions = rdkit_extensions::get_mol_and_seq_extensions(format);
+        auto [uncompressed, compressed] =
+            separate_compressed_extensions(extensions);
+
         if (!compressed.empty()) {
-            export_formats.push_back({format, label + " [compressed]", compressed});
+            export_formats.push_back(
+                {format, label + " [compressed]", compressed});
         }
     }
+
     return export_formats;
 };
 
@@ -156,20 +168,30 @@ FormatList<Format> get_reaction_export_formats()
     };
 
     FormatList<Format> export_formats;
+
+    // First pass: add all uncompressed formats
     for (const auto& [format, label] : rxn_export_formats) {
         auto extensions = rdkit_extensions::get_rxn_extensions(format);
-        auto [uncompressed, compressed] = separate_compressed_extensions(extensions);
+        auto [uncompressed, compressed] =
+            separate_compressed_extensions(extensions);
 
-        // Add uncompressed version if it has extensions
         if (!uncompressed.empty()) {
             export_formats.push_back({format, label, uncompressed});
         }
+    }
 
-        // Add compressed version if it has extensions
+    // Second pass: add all compressed formats at the end
+    for (const auto& [format, label] : rxn_export_formats) {
+        auto extensions = rdkit_extensions::get_rxn_extensions(format);
+        auto [uncompressed, compressed] =
+            separate_compressed_extensions(extensions);
+
         if (!compressed.empty()) {
-            export_formats.push_back({format, label + " [compressed]", compressed});
+            export_formats.push_back(
+                {format, label + " [compressed]", compressed});
         }
     }
+
     return export_formats;
 };
 

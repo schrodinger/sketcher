@@ -19,18 +19,30 @@ class TestFileExportDialog : public FileExportDialog
     TestFileExportDialog(SketcherModel* model) : FileExportDialog(model){};
     using FileExportDialog::getFileContent;
     using FileExportDialog::getValidExtensions;
+    using FileExportDialog::m_current_format_list;
     using FileExportDialog::m_ui;
 
     void setComboFormat(Format format)
     {
-        auto value = QVariant::fromValue(format);
-        auto index = m_ui->format_combo->findData(value);
-        m_ui->format_combo->setCurrentIndex(index);
+        // Find the index in the format list that matches this format
+        for (int i = 0; i < static_cast<int>(m_current_format_list.size());
+             i++) {
+            if (std::get<0>(m_current_format_list[i]) == format) {
+                // Find the combo box item with this index
+                for (int j = 0; j < m_ui->format_combo->count(); j++) {
+                    if (m_ui->format_combo->itemData(j).toInt() == i) {
+                        m_ui->format_combo->setCurrentIndex(j);
+                        return;
+                    }
+                }
+            }
+        }
     };
 
     Format getComboFormat()
     {
-        return m_ui->format_combo->currentData().value<Format>();
+        int format_index = m_ui->format_combo->currentData().toInt();
+        return std::get<0>(m_current_format_list[format_index]);
     };
 };
 
@@ -54,14 +66,14 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     // FASTA = 14
     BOOST_TEST(dlg.m_ui->format_combo->count() == 14);
     auto exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.size() == 8); // MDL all extensions (including compressed)
+    BOOST_TEST(exts.size() == 4); // MDL uncompressed extensions only
     BOOST_TEST(contains(exts, ".mol"));
 
     // Change format to PDB and confirm available extensions
     dlg.setComboFormat(Format::PDB);
     BOOST_TEST(dlg.getComboFormat() == Format::PDB);
     exts = dlg.getValidExtensions();
-    BOOST_TEST(exts.size() == 6); // PDB all extensions (including compressed)
+    BOOST_TEST(exts.size() == 2); // PDB uncompressed extensions only
     BOOST_TEST(contains(exts, ".pdb"));
 
     // HELM and FASTA are always available regardless of model state;
