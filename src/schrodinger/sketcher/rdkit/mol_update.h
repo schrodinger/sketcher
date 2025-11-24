@@ -27,8 +27,10 @@ SKETCHER_API void prepare_mol(RDKit::ROMol& mol);
  * and sgroups.
  *
  * @param mol The molecule to update
+ * @param calculate_stereolabels Whether to calculate and add stereo labels
  */
-SKETCHER_API void update_molecule_on_change(RDKit::RWMol& mol);
+SKETCHER_API void update_molecule_on_change(RDKit::RWMol& mol,
+                                            bool calculate_stereolabels);
 
 } // namespace sketcher
 } // namespace schrodinger
