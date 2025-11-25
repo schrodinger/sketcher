@@ -62,8 +62,27 @@ const std::string POLYMER_ID{"polymerID"};
 const std::string SMILES_MONOMER_LABEL{"CX"};
 
 enum class ChainDirection { LTR, RTL };
-enum class BranchDirection { UP, DOWN, LEFT, RIGHT };
+enum class BranchDirection { UP, DOWN };
+enum class Direction { N, S, E, W, NW, NE, SW, SE };
 enum class PolygonStartSide { LEFT, RIGHT };
+static const std::map<Direction, RDGeom::Point3D> DIRECTION_TO_POINT_MAP = {
+    {Direction::N, RDGeom::Point3D(0, 1, 0)},
+    {Direction::S, RDGeom::Point3D(0, -1, 0)},
+    {Direction::E, RDGeom::Point3D(1, 0, 0)},
+    {Direction::W, RDGeom::Point3D(-1, 0, 0)},
+    {Direction::NE, RDGeom::Point3D(1, 1, 0)},
+    {Direction::NW, RDGeom::Point3D(-1, 1, 0)},
+    {Direction::SE, RDGeom::Point3D(1, -1, 0)},
+    {Direction::SW, RDGeom::Point3D(-1, -1, 0)}};
+
+static RDGeom::Point3D direction_to_point(Direction dir)
+{
+    auto it = DIRECTION_TO_POINT_MAP.find(dir);
+    if (it != DIRECTION_TO_POINT_MAP.end()) {
+        return it->second;
+    }
+    return RDGeom::Point3D(0, 0, 0);
+}
 
 namespace bg = boost::geometry;
 using point_t = bg::model::d2::point_xy<double>;
@@ -133,54 +152,59 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
                 branches.push_back(neighbor);
             }
         }
-        // list the available directions for branch monomers, in order of
-        // preference
-        std::vector<BranchDirection> available_directions;
-        // first try the main branch direction
-        if ((!bonded_to_child_polymer &&
-             branch_direction == BranchDirection::DOWN) ||
-            (!bonded_to_parent_polymer &&
-             branch_direction == BranchDirection::UP)) {
-            available_directions.push_back(branch_direction);
-        }
-        // if this is the first or last direction, we can branch along
-        // the chain
-        if (!next_monomer_to_layout) {
-            available_directions.push_back(chain_dir == ChainDirection::LTR
-                                               ? BranchDirection::RIGHT
-                                               : BranchDirection::LEFT);
-        }
-        if (!last_laidout_monomer) {
-            available_directions.push_back(chain_dir == ChainDirection::LTR
-                                               ? BranchDirection::LEFT
-                                               : BranchDirection::RIGHT);
-        }
-        // as a last resort, try the opposite of the main branch direction
-        if (!bonded_to_parent_polymer &&
-            branch_direction == BranchDirection::DOWN) {
-            available_directions.push_back(BranchDirection::UP);
-        } else if (!bonded_to_child_polymer &&
-                   branch_direction == BranchDirection::UP) {
-            available_directions.push_back(BranchDirection::DOWN);
-        }
+
+        // Lambda to determine available directions for branch monomers, in
+        // order of preference
+        auto get_available_directions = [&]() -> std::vector<Direction> {
+            std::vector<Direction> dirs;
+            // first try the main branch direction
+            if (!bonded_to_child_polymer &&
+                branch_direction == BranchDirection::DOWN) {
+                dirs.push_back(Direction::S);
+            } else if (!bonded_to_parent_polymer &&
+                       branch_direction == BranchDirection::UP) {
+                dirs.push_back(Direction::N);
+            }
+            // if this is the first or last direction, we can branch along
+            // the chain
+            if (!next_monomer_to_layout) {
+                dirs.push_back(chain_dir == ChainDirection::LTR ? Direction::E
+                                                                : Direction::W);
+            }
+            if (!last_laidout_monomer) {
+                dirs.push_back(chain_dir == ChainDirection::LTR ? Direction::W
+                                                                : Direction::E);
+            }
+            // as a last resort, try the opposite of the main branch direction
+            if (!bonded_to_parent_polymer &&
+                branch_direction == BranchDirection::DOWN) {
+                dirs.push_back(Direction::N);
+            } else if (!bonded_to_child_polymer &&
+                       branch_direction == BranchDirection::UP) {
+                dirs.push_back(Direction::S);
+            }
+            // add diagonal directions. These are not normally used, but can if
+            // necessary
+            dirs.push_back(Direction::NE);
+            dirs.push_back(Direction::SW);
+            dirs.push_back(Direction::NW);
+            dirs.push_back(Direction::SE);
+            if (dirs.size() < branches.size()) {
+                throw std::runtime_error(
+                    "Unable to place all branch monomers without clashes");
+            }
+            return dirs;
+        };
+
+        std::vector<Direction> available_directions =
+            get_available_directions();
         auto first_available_direction = available_directions.begin();
 
         for (auto branch_monomer : branches) {
             RDGeom::Point3D pos(x_pos, start_pos.y, start_pos.z);
-            switch (*first_available_direction++) {
-                case BranchDirection::UP:
-                    pos.y += MONOMER_BOND_LENGTH;
-                    break;
-                case BranchDirection::DOWN:
-                    pos.y -= MONOMER_BOND_LENGTH;
-                    break;
-                case BranchDirection::LEFT:
-                    pos.x -= MONOMER_BOND_LENGTH;
-                    break;
-                case BranchDirection::RIGHT:
-                    pos.x += MONOMER_BOND_LENGTH;
-                    break;
-            }
+            pos += direction_to_point(*first_available_direction++) *
+                   MONOMER_BOND_LENGTH;
+
             conformer.setAtomPos(branch_monomer->getIdx(), pos);
             branch_monomer->setProp(MONOMER_PLACED, true);
             placed_monomers.insert(
