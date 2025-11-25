@@ -74,6 +74,13 @@ void SketcherSideBar::updateWidgetsEnabled()
         auto mol_type = model->getMoleculeType();
         ui->atomistic_btn->setEnabled(mol_type != MoleculeType::MONOMERIC);
         ui->monomeric_btn->setEnabled(mol_type != MoleculeType::ATOMISTIC);
+        // make sure that the correct button is checked if the molecule type is
+        // not EMPTY
+        if (mol_type == MoleculeType::ATOMISTIC) {
+            ui->atomistic_btn->setChecked(true);
+        } else if (mol_type == MoleculeType::MONOMERIC) {
+            ui->monomeric_btn->setChecked(true);
+        }
     }
 }
 

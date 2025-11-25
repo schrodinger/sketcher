@@ -858,3 +858,36 @@ BOOST_AUTO_TEST_CASE(test_cleanup_selection_fits_only_selection)
     BOOST_TEST(transform_selection.m11() > transform_all.m11(),
                "Fitting 3 atoms should zoom in more than fitting 20 atoms");
 }
+
+/**
+ * Make sure that SketcherWidget::addTextToMolModel properly prevents the user
+ * from adding atomistic or monomeric models when appropriate.
+ */
+BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    const std::string MONOMERIC_STRING = "PEPTIDE1{D.E.F.G}$$$$V2.0";
+    const std::string ATOMISTIC_STRING = "CCC";
+
+    sk.setInterfaceType(InterfaceType::ATOMISTIC);
+    BOOST_CHECK_THROW(sk.addTextToMolModel(MONOMERIC_STRING), std::exception);
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(ATOMISTIC_STRING));
+    sk.clear();
+
+    sk.setInterfaceType(InterfaceType::MONOMERIC);
+    BOOST_CHECK_THROW(sk.addTextToMolModel(ATOMISTIC_STRING), std::exception);
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(MONOMERIC_STRING));
+    sk.clear();
+
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(ATOMISTIC_STRING));
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(ATOMISTIC_STRING));
+    // we can't add monomers if there are already atoms
+    BOOST_CHECK_THROW(sk.addTextToMolModel(MONOMERIC_STRING), std::exception);
+    sk.clear();
+
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(MONOMERIC_STRING));
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(MONOMERIC_STRING));
+    // we can't add atoms if there are already monomers
+    BOOST_CHECK_THROW(sk.addTextToMolModel(ATOMISTIC_STRING), std::exception);
+}
