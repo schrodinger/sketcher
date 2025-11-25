@@ -24,8 +24,9 @@
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
-// Boost doesn't know how to print QPoints
+// Boost doesn't know how to print QPoints or QStrings
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QPointF);
+BOOST_TEST_DONT_PRINT_LOG_VALUE(QString);
 
 using schrodinger::rdkit_extensions::Format;
 
@@ -318,6 +319,36 @@ BOOST_AUTO_TEST_CASE(test_dashed_bond_zero_length)
     auto [num_dashes, wedge_start, offset_towards_p2, offset_towards_p3,
           dashes] = bond_item->calcDashedWedgeParams(QLineF(0, 0, 0, 0));
     BOOST_TEST(num_dashes == 1);
+}
+
+BOOST_AUTO_TEST_CASE(test_bond_stereo_tooltips)
+{
+    // Test that E/Z double bonds have correct tooltips
+    // The annotation text comes with parentheses like "(E)" or "(Z)"
+    // and the tooltip should preserve them for consistency with atom stereo
+    // labels
+    auto [bond_items, scene] = createStructure("C/C(N)=C(/C)O");
+
+    // Find the double bond with E stereochemistry
+    bool found_stereo_bond = false;
+    for (auto bond_item : bond_items) {
+        if (bond_item->m_annotation_text == "(E)") {
+            BOOST_TEST(bond_item->toolTip() == "Stereo: (E)");
+            found_stereo_bond = true;
+        }
+    }
+    BOOST_TEST(found_stereo_bond);
+
+    // Test Z stereochemistry
+    auto [bond_items_z, scene_z] = createStructure("C\\C=C/C");
+    found_stereo_bond = false;
+    for (auto bond_item : bond_items_z) {
+        if (bond_item->m_annotation_text == "(Z)") {
+            BOOST_TEST(bond_item->toolTip() == "Stereo: (Z)");
+            found_stereo_bond = true;
+        }
+    }
+    BOOST_TEST(found_stereo_bond);
 }
 
 } // namespace sketcher
