@@ -1039,12 +1039,9 @@ bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
     if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 || maxy2 < miny1) {
         return false;
     }
-    if (segments_intersect(begin1_pos, end1_pos, begin2_pos, end2_pos) ||
-        compute_distance_between_segments(begin1_pos, end1_pos, begin2_pos,
-                                          end2_pos) < BOND_CLASH_DISTANCE) {
-        return true;
-    }
-    return false;
+    return (segments_intersect(begin1_pos, end1_pos, begin2_pos, end2_pos) ||
+            compute_distance_between_segments(begin1_pos, end1_pos, begin2_pos,
+                                              end2_pos) < BOND_CLASH_DISTANCE);
 }
 
 bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
