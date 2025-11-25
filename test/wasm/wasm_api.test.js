@@ -52,6 +52,7 @@ test.describe('WASM Sketcher API', () => {
       if (!importUnsupported) {
         const importSuccessful = await page.evaluate((exportedText) => {
           Module.sketcher_clear();
+          Module.sketcher_allow_monomeric();
           Module.sketcher_import_text(exportedText);
           return !Module.sketcher_is_empty();
         }, exportedText);
@@ -89,6 +90,7 @@ test.describe('WASM Sketcher API', () => {
 
     const hasMonomersAfterHelmImport = await page.evaluate(() => {
       Module.sketcher_clear();
+      Module.sketcher_allow_monomeric();
       Module.sketcher_import_text('PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0');
       return Module.sketcher_has_monomers();
     });

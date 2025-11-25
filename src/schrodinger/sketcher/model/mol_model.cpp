@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 
 #include <algorithm>
+#include <variant>
 
 #include <fmt/format.h>
 
@@ -323,12 +324,12 @@ bool MolModel::isEmpty() const
 
 bool MolModel::isMonomeric() const
 {
-    return rdkit_extensions::isMonomeric(m_mol);
+    return contains_monomeric_atom(m_mol);
 }
 
 bool MolModel::hasMolecularObjects() const
 {
-    return !m_mol.getNumAtoms();
+    return m_mol.getNumAtoms();
 }
 
 bool MolModel::hasSelectedBonds() const
@@ -2801,28 +2802,19 @@ void MolModel::kekulize()
     doCommandUsingSnapshots(kekulize, "Kekulize", WhatChanged::MOLECULE);
 }
 
-void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
-                           const rdkit_extensions::Format format,
-                           std::optional<RDGeom::Point3D> position,
-                           const bool recenter_view)
+std::variant<boost::shared_ptr<RDKit::RWMol>,
+             boost::shared_ptr<RDKit::ChemicalReaction>>
+convert_text_to_mol_or_reaction(const std::string& text,
+                                const rdkit_extensions::Format format)
 {
     auto probably_a_reaction = [](const auto& text) {
         return boost::starts_with(text, "$RXN") || boost::contains(text, ">>");
     };
-
     try {
-        auto mol = to_rdkit(text, format);
-        if (position.has_value()) {
-            mol_model.addMolAt(*mol, *position, "Import molecule");
-
-        } else {
-            mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
-                             recenter_view);
-        }
+        return to_rdkit(text, format);
     } catch (const std::exception&) {
         try { // if molecule parsing fails, see if it's a reaction
-            mol_model.addReaction(*to_rdkit_reaction(text, format));
-            return;
+            return to_rdkit_reaction(text, format);
         } catch (const std::exception&) {
             // parsing this text as a molecule and as a reaction have both
             // failed, so try to throw the more-relevant exception
@@ -2832,6 +2824,39 @@ void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
         }
         throw;
     }
+}
+
+void add_mol_or_reaction_to_mol_model(
+    MolModel& mol_model,
+    const std::variant<boost::shared_ptr<RDKit::RWMol>,
+                       boost::shared_ptr<RDKit::ChemicalReaction>>
+        mol_or_reaction,
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view)
+{
+    if (std::holds_alternative<boost::shared_ptr<RDKit::RWMol>>(
+            mol_or_reaction)) {
+        auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
+        if (position.has_value()) {
+            mol_model.addMolAt(*mol, *position, "Import molecule");
+        } else {
+            mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
+                             recenter_view);
+        }
+    } else {
+        auto reaction = std::get<boost::shared_ptr<RDKit::ChemicalReaction>>(
+            mol_or_reaction);
+        mol_model.addReaction(*reaction);
+    }
+}
+
+void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
+                           const rdkit_extensions::Format format,
+                           const std::optional<RDGeom::Point3D> position,
+                           const bool recenter_view)
+{
+    auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
+    add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, position,
+                                     recenter_view);
 }
 
 void MolModel::setMonomerSizes(
