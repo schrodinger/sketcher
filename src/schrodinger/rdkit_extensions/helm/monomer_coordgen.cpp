@@ -929,7 +929,7 @@ void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
     // get current size
     auto atom = monomer_mol.getAtomWithIdx(index);
     RDGeom::Point3D current_size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
-    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_SIZE, current_size);
+    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_LABEL_SIZE, current_size);
 
     // calculate difference
     auto difference = new_size - current_size;
@@ -959,7 +959,7 @@ void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
         }
         conformer.setAtomPos(i, atom_pos);
     }
-    atom->setProp<RDGeom::Point3D>(MONOMER_SIZE, new_size);
+    atom->setProp<RDGeom::Point3D>(MONOMER_LABEL_SIZE, new_size);
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
