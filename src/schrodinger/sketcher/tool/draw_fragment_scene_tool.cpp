@@ -127,6 +127,8 @@ void AbstractHintFragmentItem::updateSettings()
 {
     m_atom_display_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
     m_bond_display_settings.setMonochromeColorScheme(STRUCTURE_HINT_COLOR);
+    // Disable atom indices for hints/previews
+    m_atom_display_settings.m_show_atom_indices = false;
 }
 
 void AbstractHintFragmentItem::createGraphicsItems()
