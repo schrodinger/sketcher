@@ -108,7 +108,7 @@ BOOST_DATA_TEST_CASE(
         {"RNA1{R(C).P.R(A).P.R(T).P}|RNA2{R(C).P.R(A).P.R(T).P}$RNA1,RNA2,1:R1-"
          "5:R1|RNA1,RNA2,5:R1-1:R1$$$V2.0",
          {{0, 0},
-          {0, -1.5},
+          {-1.5, 0},
           {1.5, 0},
           {3, 0},
           {3, -1.5},
@@ -116,15 +116,15 @@ BOOST_DATA_TEST_CASE(
           {6, 0},
           {6, -1.5},
           {7.5, 0},
-          {3, -3},
           {3, -4.5},
-          {1.5, -3},
-          {0, -3},
+          {4.5, -4.5},
+          {1.5, -4.5},
           {0, -4.5},
-          {-1.5, -3},
-          {-3, -3},
+          {0, -3},
+          {-1.5, -4.5},
           {-3, -4.5},
-          {-4.5, -3}}},
+          {-3, -3},
+          {-4.5, -4.5}}},
 
         {"PEPTIDE1{R.A.Y}|RNA1{r(G).p.r(A).p.r(U).p.r(C).p.[mR](U).p.[mR](U).p."
          "r(A).p}|RNA2{p.r(U).p.r(A).p.r(A).p.r(G).p.r(A).p.r(U).p.r(C).p.r(A)."
@@ -263,7 +263,7 @@ BOOST_DATA_TEST_CASE(
         {"RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)"
          "P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{[sDBl]}$RNA2,CHEM1,1:R2-"
          "1:R3|RNA1,CHEM1,1:R2-1:R2$$$",
-         {{0, 0},       {0, -1.5},    {1.5, 0},     {3, 0},       {3, -1.5},
+         {{0, 0},       {-1.5, 0},    {1.5, 0},     {3, 0},       {3, -1.5},
           {4.5, 0},     {6, 0},       {6, -1.5},    {7.5, 0},     {9, 0},
           {9, -1.5},    {10.5, 0},    {12, 0},      {12, -1.5},   {13.5, 0},
           {15, 0},      {15, -1.5},   {16.5, 0},    {18, 0},      {18, -1.5},
@@ -511,8 +511,8 @@ BOOST_AUTO_TEST_CASE(NoBondCrossing)
 BOOST_AUTO_TEST_CASE(TouchingBondsNoCross)
 {
     // Two bonds that are nearly touching at one endpoint.
-    // Will still be considered crossing because their distance is less than the
-    // threshold
+    // Will still be considered crossing because their distance is less
+    // than the threshold
     RDKit::ROMol mol = make_molecule_with_coords(
         {
             {0.0, 0.0}, // 0
