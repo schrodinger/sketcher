@@ -67,9 +67,9 @@ const std::string MONOMER_PLACED{"monomerPlaced"};
 // Set on the polymer mol
 const std::string POLYMER_ID{"polymerID"};
 
-// The  size of the monomer's label. This is also the size of the monomer object
-// itself
-const std::string MONOMER_SIZE{"monomerLabelSize"};
+// The RDKit property containing the size of the monomer's label. This is also
+// the size of the monomer object itself
+const std::string MONOMER_LABEL_SIZE{"monomerLabelSize"};
 
 // Replacement atom label for monomers with SMILES strings as their atom label
 const std::string SMILES_MONOMER_LABEL{"CX"};
