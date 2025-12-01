@@ -155,6 +155,110 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
         return eof() ? '\0' : m_input[m_current_pos];
     }
 
+    /**
+     * @brief Parses the next token from the input.
+     * @param token Output for the parsed token
+     * @return True if parsing was successful, False otherwise
+     */
+    [[nodiscard]] constexpr bool get_next_token(std::string_view& token)
+    {
+        // unlikely, but we should handle this
+        if (eof()) {
+            m_error_handler("unexpected end of string.", m_current_pos,
+                            m_input);
+            return false;
+        }
+
+        const size_t N = m_input.size();
+        auto end_pos = N;
+        auto seen_quote = false;
+        for (size_t i = m_current_pos; i < N; ++i) {
+            switch (m_input[i]) {
+                case '-':
+                case '.':
+                case ',':
+                case '(':
+                case ')':
+                case '[':
+                case ']':
+                case '|':
+                case '$':
+                case '{':
+                case '}':
+                    if (seen_quote) {
+                        continue;
+                    }
+                    end_pos = i == m_current_pos ? i + 1 : i;
+                    break;
+                case '"':  // to capture inline annotations
+                case '\'': // to capture monomer repetitions
+                    if (i == m_current_pos) {
+                        seen_quote = true;
+                        continue;
+                    } else if (seen_quote &&
+                               m_input[i] == m_input[m_current_pos]) {
+                        seen_quote = false;
+                        end_pos = i + 1;
+                        break;
+                    } else {
+                        end_pos = i == m_current_pos ? i + 1 : i;
+                        break;
+                    }
+                default:
+                    continue;
+            }
+            break;
+        }
+
+        // unclosed quotes should be rejected
+        if (seen_quote) {
+            m_error_handler("Unclosed quote", m_current_pos, m_input);
+            return false;
+        }
+
+        // construct the token
+        const auto length = end_pos - m_current_pos;
+        token = m_input.substr(m_current_pos, length);
+        m_current_pos += length;
+
+        return true;
+    }
+
+    /**
+     * @brief Parses the next grouped token from the input. A grouped
+     *        token is defined as a token with unique opening and closing
+     *        characters. Tokens can be nested.
+     * @param token Output for the parsed token
+     * @param group_start The group open character
+     * @param group_end The group close character
+     * @return True if parsing was successful, False otherwise
+     */
+    [[nodiscard]] constexpr bool get_grouped_token(std::string_view& token,
+                                                   unsigned char group_start,
+                                                   unsigned char group_end)
+    {
+        // Assume group start character is at the beginning
+        auto depth = 0;
+        for (size_t i = m_current_pos; i < m_input.size(); ++i) {
+            if (m_input[i] == group_start) {
+                ++depth;
+            } else if (m_input[i] == group_end) {
+                --depth;
+                if (depth == 0) {
+                    // construct the token
+                    const auto length = i - m_current_pos + 1;
+                    token = m_input.substr(m_current_pos, length);
+                    m_current_pos += length;
+
+                    return true;
+                }
+            }
+        }
+
+        m_error_handler("Unclosed group token", m_current_pos, m_input);
+        return false;
+    }
+
   private:
     const std::string_view m_input;
     size_t m_current_pos;
@@ -398,8 +502,134 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return parse_blob_monomer(lexer, monomers);
         }
 
-        m_error_handler("Unsupported polymer type", polymer_id, lexer.input());
-        return false;
+        while (!lexer.eof() && lexer.peek() != '}' /* end of monomers */) {
+            if (!monomers.empty() && !lexer.expect('.') &&
+                !monomers.back().is_branch) {
+                m_error_handler("Expected character '.' before this token.",
+                                lexer.pos(), lexer.input());
+                return false;
+            }
+
+            auto monomer = parse_monomer_unit(lexer);
+            if (!monomer) { // we failed to get monomer
+                return false;
+            }
+
+            monomers.push_back(std::move(*monomer));
+        }
+
+        // unlikely but we should handle it anyway
+        if (monomers.size() == 0) {
+            m_error_handler("Failed to parse any monomers", lexer.pos(),
+                            lexer.input());
+            return false;
+        }
+
+        // CHEM polymers shouldn't be multimeric
+        if (polymer_id.starts_with("CHEM") && monomers.size() > 1) {
+            m_error_handler("CHEM polymers can only have one monomer",
+                            polymer_id, lexer.input());
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Parses a single monomer unit from the lexer
+     * @param lexer The lexer instance.
+     * @return an optional monomer instance if parsing is successful
+     */
+    std::optional<monomer> parse_monomer_unit(lexer_t<error_handler_t>& lexer)
+    {
+        if (lexer.eof()) {
+            m_error_handler("Expected monomer unit here.", lexer.pos(),
+                            lexer.input());
+            return std::optional<monomer>{};
+        }
+
+        // FIXME: Add monomer list support
+        if (lexer.peek() == '(') {
+            m_error_handler("Monomer lists are currently unsupported.",
+                            lexer.pos(), lexer.input());
+            return std::optional<monomer>{};
+        }
+
+        monomer result;
+        if (lexer.peek() == '[') {
+            std::ignore = lexer.get_grouped_token(result.id, '[', ']');
+        } else {
+            std::ignore = lexer.get_next_token(result.id);
+        }
+
+        // NOTE: assume syntax error was handled by lexer
+        if (result.id.empty() ||
+            !is_valid_monomer_id(result.id, lexer.input())) {
+            return std::optional<monomer>{};
+        }
+
+        // mark smiles monomers
+        if (result.id.front() == '[' && helm::is_smiles_monomer(result.id)) {
+            result.is_smiles = true;
+        }
+
+        // strip group token for multi-character ids or monomer lists
+        if (result.id.front() == '[' || result.id.front() == '(') {
+            result.id.remove_prefix(1);
+            result.id.remove_suffix(1);
+        }
+
+        if (lexer.peek() == '"' &&
+            !parse_annotation(lexer, result.annotation)) {
+            return std::optional<monomer>{};
+        }
+
+        return std::make_optional<monomer>(std::move(result));
+    }
+
+    /**
+     * @brief Checks if a monomer id or inline SMILES monomer follows the
+     *        HELMV2.0 specification.
+     * @param monomer_id the monomer id to validate
+     * @param input the entire HELMV2.0 input
+     * @return True if the monomer id is valid False otherwise
+     */
+    bool is_valid_monomer_id(std::string_view monomer_id,
+                             std::string_view input)
+    {
+        // unlikely, but we should check this
+        if (monomer_id.empty()) {
+            m_error_handler("Empty monomer ids are not supported.", monomer_id,
+                            input);
+            return false;
+        }
+
+        // we want to handle this special case
+        if (monomer_id.find('\n') != std::string_view::npos) {
+            m_error_handler(
+                "New-line characters are not allowed in monomer ids.",
+                monomer_id, input);
+            return false;
+        }
+
+        // bracket-enclosed tokens should have multiple characters.
+        if (monomer_id.front() == '[') {
+            if (monomer_id.size() <= 3) {
+                m_error_handler("Bracket-enclosed monomer ids are only "
+                                "supported for multi-character monomers.",
+                                monomer_id, input);
+                return false;
+            }
+        }
+        // these should have only one character
+        else if (monomer_id.size() != 1) {
+            m_error_handler(
+                "Multi-character monomer ids should be surrounded by brackets.",
+                monomer_id, input);
+            return false;
+        }
+
+        return true;
     }
 
     /**

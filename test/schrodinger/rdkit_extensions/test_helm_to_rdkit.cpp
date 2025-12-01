@@ -205,8 +205,12 @@ static auto check_converted_properties = [](const auto& mol) {
     BOOST_TEST(mol->hasProp(HELM_MODEL));
 };
 
-static auto check_helm_conversion = [](const auto& helm_info) {
-    const auto& mol = helm_to_rdkit(helm_info.toString());
+static void check_helm_conversion(const HELMInfo& helm_info,
+                                  bool use_v2_parser = false)
+{
+    constexpr auto do_throw = true;
+    const auto& mol =
+        helm_to_rdkit(helm_info.toString(), use_v2_parser, do_throw);
     check_converted_properties(mol);
     check_converted_atoms(helm_info, mol);
     check_converted_bonds(helm_info, mol);
@@ -220,10 +224,11 @@ BOOST_DATA_TEST_CASE(TestConversionOfLinearMonomers,
                          {{{"PEPTIDE1", {"A", "H", "D"}}}},
                          {{{"RNA1", {"R", "A"}}}},
                          {{{"RNA1", {"R", "A", "P"}}}},
-                         {{{"CHEM1", {"K"}}}}}),
-                     helm_info)
+                         {{{"CHEM1", {"K"}}}}}) *
+                         bdata::make(std::vector<bool>{false, true}),
+                     helm_info, use_v2_parser)
 {
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMulticharacterMonomers,
@@ -232,10 +237,11 @@ BOOST_DATA_TEST_CASE(TestConversionOfMulticharacterMonomers,
                          {{{"PEPTIDE1", {"A", "dA"}}}},
                          {{{"PEPTIDE1", {"dG", "P", "dF"}}}},
                          {{{"RNA1", {"dG", "P"}}}},
-                         {{{"BLOB1", {"BEAD"}}}}}),
-                     helm_info)
+                         {{{"BLOB1", {"BEAD"}}}}}) *
+                         bdata::make(std::vector<bool>{false, true}),
+                     helm_info, use_v2_parser)
 {
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(
@@ -243,10 +249,10 @@ BOOST_DATA_TEST_CASE(
     bdata::make(std::vector<HELMInfo>{
         {{{"PEPTIDE1", {"[*:1]N[C@@H](C=O)C([*:2])=O", "A"}}}},
         {{{"PEPTIDE1", {"A", "[*]N[C@@H](C=O)C([*])=O |$_R1;;;;;;_R2;$|"}}}},
-    }),
-    helm_info)
+    }) * bdata::make(std::vector<bool>{false, true}),
+    helm_info, use_v2_parser)
 {
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMonomerLists,
@@ -524,6 +530,14 @@ BOOST_DATA_TEST_CASE_F(schrodinger::test::silence_stdlog,
                            "BLOB1{HELLO WORLD\"my annotation\"}$$$$V2.0",
                            "BLOB1{HELLO WORLD}$$$$V3.0",
                            "BLOB1{HELLO WORLD}$$$not valid json$V2.0",
+                           "CHEM1{A.B}$$$$V2.0",
+                           "CHEM1{[]}$$$$V2.0",
+                           "CHEM1{[A}$$$$V2.0",
+                           "CHEM1{[A]}$$$$V2.0",
+                           "CHEM1{dA]}$$$$V2.0",
+                           "CHEM1{A]}$$$$V2.0",
+                           "CHEM1{dA}$$$$V2.0",
+                           "PEPTIDE1{dA}$$$$V2.0",
                        }),
                        test_helm)
 {
@@ -546,12 +560,53 @@ BOOST_DATA_TEST_CASE_F(schrodinger::test::silence_stdlog,
 }
 
 BOOST_DATA_TEST_CASE(
-    TestLinearBlobPolymerSupport,
+    TestLinearPolymerSupport,
     bdata::make(std::vector<std::string>{
         R"(BLOB1{BEAD}$$$$V2.0)",
         R"(BLOB1{BEAD}"Animated Polystyrene"$$$$V2.0)",
         R"(BLOB1{BEAD}$$${"key":"value"}$V2.0)",
         R"(BLOB1{Bead}"Aminated Polystyrene"|BLOB2{Something here}$$$$V2.0)",
+        R"(PEPTIDE1{L.V.A}$$${"PEPTIDE1":{"ChainType":"hc"}}$V2.0)",
+        R"(PEPTIDE1{A.G.A.C.A}$$$$V2.0)",
+        "CHEM1{[c1ccccc1]}$$$$V2.0",
+        R"(CHEM1{[[*:1]OCCCCC=C]}$$$$V2.0)",
+        R"(CHEM1{[[*:2]C(=O)[C@H](C)N([*:1])CC]}$$$$V2.0)",
+        R"(PEPTIDE1{A.[C(=O)[C@H](C)N([*:1])C]}$$$$V2.0)",
+        R"(PEPTIDE1{A.[[*:2]C(=O)[C@H](C)N([*:1])C]}$$$$V2.0)",
+        R"(PEPTIDE1{A.C.D}"Polymer 1"|PEPTIDE2{D.A.C}"Polymer 2"$$$$V2.0)",
+        R"(CHEM1{*}$$$$V2.0)",
+        R"(CHEM1{[SMCC]}|PEPTIDE1{L.M}$$$$V2.0)",
+        R"(CHEM1{[sDBl]}$$$$V2.0)",
+        R"(PEPTIDE1{A.*.G.C}$$$$V2.0)",
+        R"(PEPTIDE1{A.[*C(=O)[C@H](C)N(*)C |$_R2;;;;;;_R1;;;$].A}$$$$V2.0)",
+        R"(PEPTIDE1{A.[*C(=O)[C@H](C)N(*)C |$_R2;;;;;;_R1;;;$]}$$$$V2.0)",
+        R"(PEPTIDE1{A.[C(=O)[C@H](C)N([*])C |$;;;;;;;_R1;;;$]}$$$$V2.0)",
+        R"(PEPTIDE1{A.[C[C@@H](C=O)N(C)(*) |$;;;;;;_R1$|]}$$$$V2.0)",
+        R"(PEPTIDE1{A.[[*]C(=O)[C@H](C)N([*])C |$_R2;;;;;;_R1;;;$].A}$$$$V2.0)",
+        R"(PEPTIDE1{A.[[*]C(=O)[C@H](C)N([*])C |$_R2;;;;;;_R1;;;$]}$$$$V2.0)",
+        R"(PEPTIDE1{A.[meA].C}$$$$V2.0)",
+        R"(PEPTIDE1{L.V.A}|PEPTIDE2{L.V.A}$$$$V2.0)",
+        R"(PEPTIDE1{[*C(=O)[C@H](C)N(*)C |$_R2;;;;;;_R1;;;$]}$$$$V2.0)",
+        R"(PEPTIDE1{[C(=O)[C@H](C)N(*)C |$_;;;;;;;_R1;;;$]}$$$$V2.0)",
+        R"(PEPTIDE1{[C(=O)[C@H](C)N([*])C |$_;;;;;;;_R1;;;$]}$$$$V2.0)",
+        R"(PEPTIDE1{[C[C@@H](N*)C(*)=O |$;;;_R1;;_R2;;$|].[O=C(*)[C@@H](C(C)C)N* |$;;_R2;;;;;;_R1;$|].[O=C(*)[C@@H](CC(C)C)N* |$;;_R2;;;;;;;_R1;$|]}$$$$V2.0)",
+        R"(PEPTIDE1{*"IL6"}$$$$V2.0)",
+        R"(PEPTIDE1{A.A.C"mutation".D.E.E}$$$$V2.0)",
+        R"(BLOB1{Bead}"Aminated Polystyrene"|PEPTIDE1{A.G.T}$$$$V2.0)",
+        R"(CHEM1{[A6OH]}"Test annotation"$$$$V2.0)",
+        R"(PEPTIDE1{A.C.D.D.E}"HC"|PEPTIDE2{G.C.S.S.S.P.K.K.V.K}"LC"$$$$V2.0)",
+        "PEPTIDE1{[Phe_3Cl]}$$$$V2.0",
+        "PEPTIDE1{[Phe-3Cl]}$$$$V2.0",
+        "PEPTIDE1{[D-1Nal]}$$$$V2.0",
+        "PEPTIDE1{[D-Phe_4F]}$$$$V2.0",
+        "RNA1{R.[Phe_3Cl].P}$$$$V2.0",
+        "RNA1{R.[Phe-3Cl].P}$$$$V2.0",
+        "RNA1{R.[D-1Nal].P}$$$$V2.0",
+        "RNA1{R.[D-Phe_4F].P}$$$$V2.0",
+        "CHEM1{[Phe_3Cl]}$$$$V2.0",
+        "CHEM1{[Phe-3Cl]}$$$$V2.0",
+        "CHEM1{[D-1Nal]}$$$$V2.0",
+        "CHEM1{[D-Phe_4F]}$$$$V2.0",
     }),
     test_helm)
 {
