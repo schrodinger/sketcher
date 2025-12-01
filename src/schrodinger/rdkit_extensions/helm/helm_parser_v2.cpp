@@ -2,6 +2,7 @@
 
 #include <array>
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 
 #include <rdkit/GraphMol/RWMol.h>
 #include "schrodinger/rdkit_extensions/helm/validation.h"
