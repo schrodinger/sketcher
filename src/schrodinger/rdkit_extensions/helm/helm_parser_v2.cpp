@@ -143,7 +143,7 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
             return true;
         }
 
-        auto err_msg = fmt::format("Expected character '{}' here", c);
+        auto err_msg = fmt::format("Expected character '{:c}' here", c);
         m_error_handler(err_msg, pos(), input());
         return false;
     }
@@ -297,6 +297,14 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
 template <class error_handler_t> class [[nodiscard]] parser_t
 {
   public:
+    static constexpr std::string_view BRANCH_MONOMER_GROUP_ERR_MESSAGE{
+        "Only one branch monomer is allowed. If you intended to create a "
+        "branched group, create a second polymer with the monomer sequence and "
+        "define a custom connection with the desired linkage. E.g.: "
+        "PEPTIDE1{A(C.G.K)P} could be either "
+        "PEPTIDE1{A(C)P}|PEPTIDE2{G.K}$PEPTIDE1,PEPTIDE2,2:R2-1:R1$$$$V2.0 or "
+        "PEPTIDE1{A.P}|PEPTIDE2{C.G.K}$PEPTIDE1,PEPTIDE2,1:R3-1:R1$$$$V2.0"};
+
     parser_t() = default;
 
     /**
@@ -647,11 +655,15 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         }
 
         while (!lexer.eof() && lexer.peek() != '}' /* end of monomers */) {
-            if (!monomers.empty() && !lexer.expect('.') &&
-                !monomers.back().is_branch) {
-                m_error_handler("Expected character '.' before this token.",
-                                lexer.pos(), lexer.input());
-                return false;
+            if (!monomers.empty()) { // we might need a '.' to separate monomers
+                // for examples like R(C)P, we don't require a '.' token.
+                if (monomers.back().is_branch && lexer.peek() != '.') {
+                    // nothing to do here
+                }
+                // Anything else should require a '.' token
+                else if (!lexer.expect('.')) {
+                    return false;
+                }
             }
 
             std::string_view repetition_count;
@@ -671,6 +683,15 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             }
 
             monomers.push_back(std::move(*monomer));
+
+            if (lexer.peek() == '(') { // assume branch monomer
+                auto branch_monomer = parse_branch_monomer(lexer);
+                if (!branch_monomer) {
+                    return false;
+                }
+
+                monomers.push_back(std::move(*branch_monomer));
+            }
         }
 
         // unlikely but we should handle it anyway
@@ -770,6 +791,52 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         }
 
         return std::make_optional<monomer>(std::move(result));
+    }
+
+    /**
+     * @brief Parses a single branch monomer unit from the lexer
+     * @param lexer The lexer instance.
+     * @return an optional monomer instance if parsing is successful
+     */
+    std::optional<monomer> parse_branch_monomer(lexer_t<error_handler_t>& lexer)
+    {
+        if (!lexer.expect('(')) {
+            return std::optional<monomer>{};
+        }
+
+        std::string_view repetition_count;
+        if (auto result = parse_monomer_unit(lexer, repetition_count); result) {
+            if (lexer.peek() != ')') {
+                // NOTE: We're intentionally verbosely handling this since it's
+                // a likely use case. People will find it easier to create
+                // custom connections this way.
+                if (lexer.peek() == '.' || lexer.peek() == '(') {
+                    m_error_handler(BRANCH_MONOMER_GROUP_ERR_MESSAGE,
+                                    lexer.pos(), lexer.input());
+                }
+                // The generic failure case
+                else {
+                    m_error_handler("Expected character ')' here to close "
+                                    "branch monomer.",
+                                    lexer.pos(), lexer.input());
+                }
+                return std::optional<monomer>{};
+            }
+
+            // you can't repeat branch monomers
+            if (!repetition_count.empty()) {
+                m_error_handler("Branch monomers can't be repeated",
+                                repetition_count, lexer.input());
+                return std::optional<monomer>{};
+            }
+
+            lexer.advance(1); // consume ')'
+
+            result->is_branch = true;
+            return result;
+        }
+
+        return std::optional<monomer>{};
     }
 
     /**

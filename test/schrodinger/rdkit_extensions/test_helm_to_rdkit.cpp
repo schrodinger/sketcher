@@ -569,6 +569,11 @@ BOOST_DATA_TEST_CASE_F(schrodinger::test::silence_stdlog,
                            "PEPTIDE1{[dA]'3-05'}$$$$V2.0",
                            "PEPTIDE1{[dA]'3-1'}$$$$V2.0",
                            "PEPTIDE1{[dA]'3-3'}$$$$V2.0",
+                           "RNA1{R(AP}$$$$V2.0",
+                           "RNA1{R(A'3')P}$$$$V2.0",
+                           "RNA1{R(A.L'3')P}$$$$V2.0",
+                           "RNA1{R(A.L(C)P)P}$$$$V2.0",
+                           "RNA1{R(A(C)P)P}$$$$V2.0",
                        }),
                        test_helm)
 {
@@ -651,6 +656,12 @@ BOOST_DATA_TEST_CASE(
         R"(PEPTIDE1{A.G.A.C'5'.A}$$$$V2.0)",
         R"(PEPTIDE1{A.G.A.C.A'5-30'}$$$$V2.0)",
         R"(PEPTIDE1{A.G'70-100'"repeatingMonomer"}$$$$V2.0)",
+        R"(RNA1{R(A)P.R(U)P}$$$$V2.0)",
+        R"(RNA1{R((A,[dA]))P.R(U)P}$$$$V2.0)",
+        R"(RNA1{R((A,[dA]:0.2))P.R(U)P}$$$$V2.0)",
+        R"(RNA1{R(A"mutation")P.R(U)P}$$$$V2.0)",
+        R"(RNA1{R(A)P.R(C)P.R(G)}|RNA2{R(A)P.R(C)P}$$$$V2.0)",
+        R"(RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0)",
     }),
     test_helm)
 {
