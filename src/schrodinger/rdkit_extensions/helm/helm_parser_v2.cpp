@@ -32,6 +32,25 @@ constexpr bool isdigit(unsigned char c) noexcept
 }
 
 /**
+ * @brief Checks if a value can be used as a ratio.
+ * @note a ratio is defined as a non-zero unsigned number
+ */
+bool is_valid_ratio(const std::string_view& sv)
+{
+    // ratio should be non-zero value
+    if (std::ranges::all_of(
+            sv, [](unsigned char c) { return c == '0' || c == '.'; })) {
+        return false;
+    }
+
+    static std::regex ratio_regex{"^(([0-9]+\\.?[0-9]*)|([0-9]*\\.[0-9]+))$"};
+    static std::smatch match;
+
+    std::string val{sv};
+    return std::regex_match(val, match, ratio_regex);
+}
+
+/**
  * @brief Standard error handler that throws a std::invalid_argument exception.
  *        Suitable for contexts where the parser must abort on the first error.
  */
@@ -532,6 +551,9 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return false;
         }
 
+        // FIXME: add extra information for validating connections. e.g. unknown
+        // and wildcard monomer info
+
         return true;
     }
 
@@ -548,29 +570,38 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return std::optional<monomer>{};
         }
 
-        // FIXME: Add monomer list support
-        if (lexer.peek() == '(') {
-            m_error_handler("Monomer lists are currently unsupported.",
-                            lexer.pos(), lexer.input());
-            return std::optional<monomer>{};
-        }
-
         monomer result;
-        if (lexer.peek() == '[') {
+        if (lexer.peek() == '[') { // multi-character ids or inline SMILES
             std::ignore = lexer.get_grouped_token(result.id, '[', ']');
+        } else if (lexer.peek() == '(') { // monomer lists
+            std::ignore = lexer.get_grouped_token(result.id, '(', ')');
         } else {
             std::ignore = lexer.get_next_token(result.id);
         }
 
         // NOTE: assume syntax error was handled by lexer
-        if (result.id.empty() ||
+        if (result.id.empty()) {
+            return std::optional<monomer>{};
+        }
+
+        if (result.id.front() != '(' &&
             !is_valid_monomer_id(result.id, lexer.input())) {
+            return std::optional<monomer>{};
+        }
+
+        if (result.id.front() == '(' &&
+            !is_valid_monomer_list(result.id, lexer.input())) {
             return std::optional<monomer>{};
         }
 
         // mark smiles monomers
         if (result.id.front() == '[' && helm::is_smiles_monomer(result.id)) {
             result.is_smiles = true;
+        }
+
+        // mark monomer lists
+        if (result.id.front() == '(') {
+            result.is_list = true;
         }
 
         // strip group token for multi-character ids or monomer lists
@@ -597,13 +628,6 @@ template <class error_handler_t> class [[nodiscard]] parser_t
     bool is_valid_monomer_id(std::string_view monomer_id,
                              std::string_view input)
     {
-        // unlikely, but we should check this
-        if (monomer_id.empty()) {
-            m_error_handler("Empty monomer ids are not supported.", monomer_id,
-                            input);
-            return false;
-        }
-
         // we want to handle this special case
         if (monomer_id.find('\n') != std::string_view::npos) {
             m_error_handler(
@@ -613,7 +637,7 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         }
 
         // bracket-enclosed tokens should have multiple characters.
-        if (monomer_id.front() == '[') {
+        if (monomer_id.front() == '[' && monomer_id.back() == ']') {
             if (monomer_id.size() <= 3) {
                 m_error_handler("Bracket-enclosed monomer ids are only "
                                 "supported for multi-character monomers.",
@@ -627,6 +651,153 @@ template <class error_handler_t> class [[nodiscard]] parser_t
                 "Multi-character monomer ids should be surrounded by brackets.",
                 monomer_id, input);
             return false;
+        } else if (monomer_id != "_" && monomer_id != "*" &&
+                   monomer_id != "?" && !std::isalpha(monomer_id.front())) {
+            m_error_handler("The allowed single character monomer ids are "
+                            "alphabets or any of '_', '?', and '*'.",
+                            monomer_id, input);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Checks if there is consistent usage of entity list separators.
+     * @param entity_list the entity list to validate
+     * @param input the entire HELMV2.0 input
+     * @return True if the entity list has valid separators False otherwise
+     */
+    bool has_valid_entity_list_separators(std::string_view entity_list,
+                                          std::string_view input)
+    {
+        auto separator_pos = entity_list.find_first_of(",+");
+        if (separator_pos == std::string_view::npos) {
+            m_error_handler("Entity lists should have more than one item.",
+                            entity_list, input);
+            return false;
+        }
+
+        auto separator = entity_list[separator_pos];
+        // leading separator
+        if (entity_list.front() == separator) {
+            m_error_handler("Expected list item before this", entity_list,
+                            input);
+            return false;
+        }
+
+        // trailing separator
+        if (entity_list.back() == separator) {
+            m_error_handler("Expected list item after this",
+                            entity_list.substr(entity_list.size() - 1), input);
+            return false;
+        }
+
+        if (separator == '+' &&
+            entity_list.find(',') != std::string_view::npos) {
+            m_error_handler(
+                "Inconsistent use of list separators. Expected '+' here.",
+                entity_list.substr(entity_list.find(',')), input);
+            return false;
+        } else if (separator == ',' &&
+                   entity_list.find('+') != std::string_view::npos) {
+            m_error_handler(
+                "Inconsistent use of list separators. Expected ',' here.",
+                entity_list.substr(entity_list.find('+')), input);
+            return false;
+        }
+
+        size_t start = 0;
+        while (start < entity_list.size()) {
+            size_t end = entity_list.find(separator, start);
+            if (end == start) { // assume extra delimiter e.g (A,,B)
+                m_error_handler("Remove extra monomer list separator here.",
+                                entity_list.substr(end), input);
+                return false;
+            }
+
+            // we're done
+            if (end == std::string_view::npos) {
+                break;
+            }
+
+            start = end + 1; // advance location of separator
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Checks if a monomer list follows the HELMV2.0 specification. This
+     *        mostly checks that there is consistent usage of the monomer list
+     *        separators and that monomer list items are fully formed. E.g.
+     *          - A+G+C
+     *          - A,[dG],L
+     *          - A:1+G:2+C:3
+     *          - A+G:?
+     * @param monomer_list the monomer list to validate
+     * @param input the entire HELMV2.0 input
+     * @return True if the monomer list is valid False otherwise
+     */
+    bool is_valid_monomer_list(std::string_view monomer_list,
+                               std::string_view input)
+    {
+        // it should have enough values. this will catch things like ()
+        if (monomer_list.size() <= 3) {
+            m_error_handler("Monomer lists should have more than one item.",
+                            monomer_list, input);
+            return false;
+        }
+
+        // strip surrounding parenthesis
+        monomer_list.remove_prefix(1);
+        monomer_list.remove_suffix(1);
+
+        // make sure there's consistent use of + or ,
+        if (!has_valid_entity_list_separators(monomer_list, input)) {
+            return false;
+        }
+
+        auto separator = monomer_list[monomer_list.find_first_of(",+")];
+
+        // Validate individual monomers
+        size_t start = 0;
+        while (start < monomer_list.size()) {
+            size_t end = monomer_list.find(separator, start);
+            if (end == std::string_view::npos) {
+                end = monomer_list.size();
+            }
+
+            auto item = monomer_list.substr(start, end - start);
+            start = end + 1; // advance location of separator
+
+            // monomer list items should be monomer ids followed by an optional
+            // ratio. the monomer id and the ratio should be separated by a
+            // colon
+            auto colon_pos = item.find(':');
+            if (!is_valid_monomer_id(item.substr(0, colon_pos), input)) {
+                return false;
+            }
+
+            // nothing to validate
+            if (colon_pos == std::string_view::npos) {
+                continue;
+            }
+
+            // it should have values after it
+            if (colon_pos == item.size() - 1) {
+                m_error_handler("Expected a valid ratio after this.",
+                                item.substr(colon_pos), input);
+                return false;
+            }
+
+            // ensure this is a numeric value
+            auto ratio = item.substr(colon_pos + 1);
+            if (ratio != "?" && !detail::is_valid_ratio(ratio)) {
+                m_error_handler("Expected a non-zero unsigned number here.",
+                                ratio, input);
+                return false;
+            }
         }
 
         return true;
