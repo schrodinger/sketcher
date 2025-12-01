@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 #include <regex>
@@ -142,7 +143,7 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
             return true;
         }
 
-        auto err_msg = fmt::format("Expected character '{}' here", c);
+        auto err_msg = fmt::format("Expected character '{:c}' here", c);
         m_error_handler(err_msg, pos(), input());
         return false;
     }
@@ -296,6 +297,14 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
 template <class error_handler_t> class [[nodiscard]] parser_t
 {
   public:
+    static constexpr std::string_view BRANCH_MONOMER_GROUP_ERR_MESSAGE{
+        "Only one branch monomer is allowed. If you intended to create a "
+        "branched group, create a second polymer with the monomer sequence and "
+        "define a custom connection with the desired linkage. E.g.: "
+        "PEPTIDE1{A(C.G.K)P} could be either "
+        "PEPTIDE1{A(C)P}|PEPTIDE2{G.K}$PEPTIDE1,PEPTIDE2,2:R2-1:R1$$$$V2.0 or "
+        "PEPTIDE1{A.P}|PEPTIDE2{C.G.K}$PEPTIDE1,PEPTIDE2,1:R3-1:R1$$$$V2.0"};
+
     parser_t() = default;
 
     /**
@@ -432,6 +441,124 @@ template <class error_handler_t> class [[nodiscard]] parser_t
     }
 
     /**
+     * @brief Attempts to parse and set a monomer repetition value
+     * @param lexer The lexer instance
+     * @param repetition_count Output for the monomer repetition value
+     * @return True if a monomer repetition block was found and consumed
+     */
+    [[nodiscard]] bool
+    parse_repetition_count(lexer_t<error_handler_t>& lexer,
+                           std::string_view& repetition_count)
+    {
+        std::string_view value;
+        if (!parse_quoted_literal(lexer, value, '\'')) {
+            return false;
+        }
+
+        // empty values shouldn't be allowed
+        if (value.size() == 2) {
+            m_error_handler("Empty repetition counts are not supported.", value,
+                            lexer.input());
+            return false;
+        }
+
+        // remove surrounding quotes
+        value.remove_prefix(1);
+        value.remove_suffix(1);
+
+        // make sure number of repetitions are valid
+        if (auto pos = value.find('-'); pos != std::string_view::npos) {
+            // leading dash
+            if (pos == 0) {
+                m_error_handler(
+                    "Expected an unsigned non-zero integer before this.", value,
+                    lexer.input());
+                return false;
+            }
+
+            // trailing dash
+            if (pos == value.size() - 1) {
+                m_error_handler(
+                    "Expected an unsigned non-zero integer after this.",
+                    value.substr(pos), lexer.input());
+                return false;
+            }
+
+            // multiple dashes
+            auto pos2 = value.find('-', pos + 1);
+            if (pos2 != std::string_view::npos) {
+                m_error_handler("Repetition counts can't have multiple dashes.",
+                                value.substr(pos2), lexer.input());
+                return false;
+            }
+
+            // both values should be valid
+            auto start = value.substr(0, pos);
+            auto end = value.substr(pos + 1);
+            if (!(is_valid_num_repetitions(start, lexer.input()) &&
+                  is_valid_num_repetitions(end, lexer.input()))) {
+                return false;
+            }
+
+            auto value1 = 0;
+            auto value2 = 0;
+            // assume values we can always convert values
+            std::from_chars(start.data(), start.data() + start.size(), value1);
+            std::from_chars(end.data(), end.data() + end.size(), value2);
+
+            // make sure repetition makes sense
+            if (value1 >= value2) {
+                m_error_handler(
+                    "Repetition counts should be strictly increasing. i.e. for "
+                    "'N-M', N should be lesser than M.",
+                    start, lexer.input());
+                return false;
+            }
+        }
+        // this isn't a range
+        else if (!is_valid_num_repetitions(value, lexer.input())) {
+            return false;
+        }
+
+        repetition_count = value;
+        return true;
+    }
+
+    /**
+     * @brief Checks if a repetition count is a positive unsigned integer
+     * @param repetition_count the monomer repetition value
+     * @param input the entire HELMV2.0 input
+     * @return True if the repetition count is valid False otherwise
+     */
+    [[nodiscard]] bool
+    is_valid_num_repetitions(std::string_view repetition_count,
+                             std::string_view input)
+    {
+        if (!std::ranges::all_of(repetition_count, detail::isdigit)) {
+            m_error_handler("Repetition count is expected to be an unsigned "
+                            "non-zero integer.",
+                            repetition_count, input);
+            return false;
+        }
+
+        if (std::ranges::all_of(repetition_count,
+                                [](unsigned char c) { return c == '0'; })) {
+            m_error_handler("Repetition count is expected to be an unsigned "
+                            "non-zero integer.",
+                            repetition_count, input);
+            return false;
+        }
+
+        if (repetition_count.front() == '0') {
+            m_error_handler("Repetition count can't have leading zeros.",
+                            repetition_count, input);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
      * @brief Parses a quoted literal, stripping the quotes. Used for parsing
      *        both repetitions('...') and general annotations("...").
      * @param lexer The lexer instance
@@ -495,9 +622,10 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         polymer result;
 
         // Enforce the strict sequential grammar for the Simple Polymer section
-        if (!(parse_polymer_id(lexer, result.id) &&                //
-              lexer.expect('{') &&                                 //
-              parse_monomers(lexer, result.id, result.monomers) && //
+        if (!(parse_polymer_id(lexer, result.id) && //
+              lexer.expect('{') &&                  //
+              parse_monomers(lexer, result.id, result.monomers,
+                             result.repetitions) && //
               lexer.expect('}') &&
               // polymer annotations are optional
               (lexer.peek() != '"' ||
@@ -514,30 +642,56 @@ template <class error_handler_t> class [[nodiscard]] parser_t
      * @param lexer The lexer instance.
      * @param polymer_id The ID of the current polymer.
      * @param monomers Output to add parsed monomers to.
+     * @param repetitions Output to add parsed monomer repetitions to.
      * @return True if successfully parsed the list of monomers.
      */
     [[nodiscard]] bool parse_monomers(lexer_t<error_handler_t>& lexer,
                                       const std::string_view& polymer_id,
-                                      std::vector<monomer>& monomers)
+                                      std::vector<monomer>& monomers,
+                                      std::vector<repetition>& repetitions)
     {
         if (polymer_id.starts_with("BLOB")) { // needs special handling
             return parse_blob_monomer(lexer, monomers);
         }
 
         while (!lexer.eof() && lexer.peek() != '}' /* end of monomers */) {
-            if (!monomers.empty() && !lexer.expect('.') &&
-                !monomers.back().is_branch) {
-                m_error_handler("Expected character '.' before this token.",
-                                lexer.pos(), lexer.input());
-                return false;
+            if (!monomers.empty()) { // we might need a '.' to separate monomers
+                // for examples like R(C)P, we don't require a '.' token.
+                if (monomers.back().is_branch && lexer.peek() != '.') {
+                    // nothing to do here
+                }
+                // Anything else should require a '.' token
+                else if (!lexer.expect('.')) {
+                    return false;
+                }
             }
 
-            auto monomer = parse_monomer_unit(lexer);
+            std::string_view repetition_count;
+            auto monomer = parse_monomer_unit(lexer, repetition_count);
             if (!monomer) { // we failed to get monomer
                 return false;
             }
 
+            if (!repetition_count.empty()) {
+                repetitions.push_back({.start = monomers.size(),
+                                       .size = 1,
+                                       .num_repetitions = repetition_count,
+                                       .annotation = {}});
+                // re-assign the annotation to the repetition since it looks
+                // like A'11'"value"
+                std::swap(repetitions.back().annotation, monomer->annotation);
+            }
+
             monomers.push_back(std::move(*monomer));
+
+            if (lexer.peek() == '(') { // assume branch monomer
+                auto branch_monomer = parse_branch_monomer(lexer);
+                if (!branch_monomer) {
+                    return false;
+                }
+
+                monomers.push_back(std::move(*branch_monomer));
+            }
         }
 
         // unlikely but we should handle it anyway
@@ -547,11 +701,21 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return false;
         }
 
-        // CHEM polymers shouldn't be multimeric
-        if (polymer_id.starts_with("CHEM") && monomers.size() > 1) {
-            m_error_handler("CHEM polymers can only have one monomer",
-                            polymer_id, lexer.input());
-            return false;
+        if (polymer_id.starts_with("CHEM")) {
+            // CHEM polymers shouldn't be multimeric
+            if (monomers.size() > 1) {
+                m_error_handler("CHEM polymers can only have one monomer",
+                                polymer_id, lexer.input());
+                return false;
+            }
+
+            // CHEM monomers can't be repeated
+            if (repetitions.size() >= 1) {
+                m_error_handler("CHEM polymers can only have one monomer, so "
+                                "CHEM monomers can't be repeated.",
+                                polymer_id, lexer.input());
+                return false;
+            }
         }
 
         // FIXME: add extra information for validating connections. e.g. unknown
@@ -563,9 +727,12 @@ template <class error_handler_t> class [[nodiscard]] parser_t
     /**
      * @brief Parses a single monomer unit from the lexer
      * @param lexer The lexer instance.
+     * @param repetition_count Output for the monomer repetition value
      * @return an optional monomer instance if parsing is successful
      */
-    std::optional<monomer> parse_monomer_unit(lexer_t<error_handler_t>& lexer)
+    std::optional<monomer>
+    parse_monomer_unit(lexer_t<error_handler_t>& lexer,
+                       std::string_view& repetition_count)
     {
         if (lexer.eof()) {
             m_error_handler("Expected monomer unit here.", lexer.pos(),
@@ -613,12 +780,63 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             result.id.remove_suffix(1);
         }
 
+        if (lexer.peek() == '\'' &&
+            !parse_repetition_count(lexer, repetition_count)) {
+            return std::optional<monomer>{};
+        }
+
         if (lexer.peek() == '"' &&
             !parse_annotation(lexer, result.annotation)) {
             return std::optional<monomer>{};
         }
 
         return std::make_optional<monomer>(std::move(result));
+    }
+
+    /**
+     * @brief Parses a single branch monomer unit from the lexer
+     * @param lexer The lexer instance.
+     * @return an optional monomer instance if parsing is successful
+     */
+    std::optional<monomer> parse_branch_monomer(lexer_t<error_handler_t>& lexer)
+    {
+        if (!lexer.expect('(')) {
+            return std::optional<monomer>{};
+        }
+
+        std::string_view repetition_count;
+        if (auto result = parse_monomer_unit(lexer, repetition_count); result) {
+            if (lexer.peek() != ')') {
+                // NOTE: We're intentionally verbosely handling this since it's
+                // a likely use case. People will find it easier to create
+                // custom connections this way.
+                if (lexer.peek() == '.' || lexer.peek() == '(') {
+                    m_error_handler(BRANCH_MONOMER_GROUP_ERR_MESSAGE,
+                                    lexer.pos(), lexer.input());
+                }
+                // The generic failure case
+                else {
+                    m_error_handler("Expected character ')' here to close "
+                                    "branch monomer.",
+                                    lexer.pos(), lexer.input());
+                }
+                return std::optional<monomer>{};
+            }
+
+            // you can't repeat branch monomers
+            if (!repetition_count.empty()) {
+                m_error_handler("Branch monomers can't be repeated",
+                                repetition_count, lexer.input());
+                return std::optional<monomer>{};
+            }
+
+            lexer.advance(1); // consume ')'
+
+            result->is_branch = true;
+            return result;
+        }
+
+        return std::optional<monomer>{};
     }
 
     /**
