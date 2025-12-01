@@ -72,6 +72,7 @@ class TestSketcherWidget : public SketcherWidget
   public:
     TestSketcherWidget() : SketcherWidget(){};
     using SketcherWidget::addFromString;
+    using SketcherWidget::addTextToMolModel;
     using SketcherWidget::copy;
     using SketcherWidget::cut;
     using SketcherWidget::importText;
