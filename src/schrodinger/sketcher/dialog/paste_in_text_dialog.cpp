@@ -7,6 +7,8 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
+#include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_paste_in_text_dialog.h"
 
@@ -14,7 +16,8 @@ using ::schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
 {
-
+namespace sketcher
+{
 namespace
 {
 
@@ -32,59 +35,44 @@ enum : FormatMoleculeType_t {
 } // namespace FormatMoleculeType
 
 /**
+ * @return a list of tuples of
+ *   - format name
+ *   - format enum
+ *   - whether the format applies to atomistic models, monomeric models, or both
+ * for all formats to load into the format combo box
+ */
+static std::vector<std::tuple<QString, Format, FormatMoleculeType_t>>
+build_format_list()
+{
+    std::vector<std::tuple<QString, Format, FormatMoleculeType_t>> formats = {
+        {"Autodetect", Format::AUTO_DETECT, FormatMoleculeType::BOTH},
+    };
+    auto append_to_formats =
+        [&formats](std::vector<std::tuple<Format, std::string>> to_append,
+                   FormatMoleculeType_t fmt_mol_type) {
+            std::transform(
+                to_append.begin(), to_append.end(), std::back_inserter(formats),
+                [fmt_mol_type](auto cur_format)
+                    -> std::tuple<QString, Format, FormatMoleculeType_t> {
+                    auto [fmt_val, fmt_name] = cur_format;
+                    return {QString::fromStdString(fmt_name), fmt_val,
+                            fmt_mol_type};
+                });
+        };
+    auto mol_import_formats = get_mol_import_formats(/*include_SMARTS =*/true);
+    auto monomeric_import_formats = get_monomoric_import_formats();
+    append_to_formats(mol_import_formats, FormatMoleculeType::ATOMISTIC);
+    append_to_formats(monomeric_import_formats, FormatMoleculeType::MONOMERIC);
+    return formats;
+}
+
+/**
  * All formats to load into the format combo box, and whether they apply to
  * atomistic or monomeric models
  */
-const std::vector<std::tuple<QString, Format, FormatMoleculeType_t>> FORMATS = {
-    {"Autodetect", Format::AUTO_DETECT, FormatMoleculeType::BOTH},
-    {"RDKit Base64", Format::RDMOL_BINARY_BASE64, FormatMoleculeType::BOTH},
-    {"SMILES", Format::SMILES, FormatMoleculeType::ATOMISTIC},
-    {"Extended SMILES", Format::EXTENDED_SMILES, FormatMoleculeType::ATOMISTIC},
-    {"SMARTS", Format::SMARTS, FormatMoleculeType::ATOMISTIC},
-    {"Extended SMARTS", Format::EXTENDED_SMARTS, FormatMoleculeType::ATOMISTIC},
-    {"MDL SD V3000", Format::MDL_MOLV3000, FormatMoleculeType::ATOMISTIC},
-    {"MDL SD V2000", Format::MDL_MOLV2000, FormatMoleculeType::ATOMISTIC},
-    {"Maestro", Format::MAESTRO, FormatMoleculeType::ATOMISTIC},
-    {"InChI", Format::INCHI, FormatMoleculeType::ATOMISTIC},
-    {"PDB", Format::PDB, FormatMoleculeType::ATOMISTIC},
-    {"MOL2", Format::MOL2, FormatMoleculeType::ATOMISTIC},
-    {"XYZ", Format::XYZ, FormatMoleculeType::ATOMISTIC},
-    {"Marvin Document", Format::MRV, FormatMoleculeType::ATOMISTIC},
-    {"ChemDraw XML", Format::CDXML, FormatMoleculeType::ATOMISTIC},
-    {"HELM", Format::HELM, FormatMoleculeType::MONOMERIC},
-    {"FASTA Peptide", Format::FASTA_PEPTIDE, FormatMoleculeType::MONOMERIC},
-    {"FASTA DNA", Format::FASTA_DNA, FormatMoleculeType::MONOMERIC},
-    {"FASTA RNA", Format::FASTA_RNA, FormatMoleculeType::MONOMERIC},
-};
-
-/**
- * Formats to auto-detect, in the order that they'll be tried. Note that we'll
- * skip any atomistic/monomeric formats here if the SketcherWidget can't
- * currently accept that type of model.
- */
-const std::vector<Format> AUTO_DETECT_FORMATS = {
-    Format::RDMOL_BINARY_BASE64,
-    Format::MDL_MOLV3000,
-    Format::MDL_MOLV2000,
-    Format::MAESTRO,
-    Format::INCHI,
-    Format::PDB,
-    Format::MOL2,
-    Format::XYZ,
-    Format::MRV,
-    Format::CDXML,
-    // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
-    Format::SMILES,
-    Format::EXTENDED_SMILES,
-    Format::SMARTS,
-    Format::EXTENDED_SMARTS,
-    Format::HELM,
-};
+const auto COMBO_BOX_FORMATS = build_format_list();
 
 } // namespace
-
-namespace sketcher
-{
 
 PasteInTextDialog::PasteInTextDialog(SketcherModel* model, QWidget* parent) :
     ModalDialog(parent)
@@ -135,7 +123,8 @@ void PasteInTextDialog::onModelValuesChanged()
     // then iterate through the available formats and load tha applicable ones
     // into the combo box
     ui->format_combo->clear();
-    for (const auto& [format_name, format, format_mol_type] : FORMATS) {
+    for (const auto& [format_name, format, format_mol_type] :
+         COMBO_BOX_FORMATS) {
         if (!(format_mol_type & allowed_mol_type)) {
             // this format doesn't apply, so skip it
             continue;
@@ -159,18 +148,11 @@ void PasteInTextDialog::onModelValuesChanged()
 static bool text_is_readable_as(const std::string& text, const Format format)
 {
     try {
-        rdkit_extensions::to_rdkit(text, format);
+        convert_text_to_mol_or_reaction(text, format);
         return true;
     } catch (const std::exception&) {
+        return false;
     }
-
-    try {
-        rdkit_extensions::to_rdkit_reaction(text, format);
-        return true;
-    } catch (const std::exception&) {
-    }
-
-    return false;
 }
 
 void PasteInTextDialog::autodetectCurrentFormat()
@@ -182,7 +164,7 @@ void PasteInTextDialog::autodetectCurrentFormat()
         m_autodetected_format = std::nullopt;
         found_format = true;
     } else {
-        for (const auto cur_format : AUTO_DETECT_FORMATS) {
+        for (const auto cur_format : rdkit_extensions::AUTO_DETECT_FORMATS) {
             if (!m_formats.contains(cur_format)) {
                 continue;
             }
@@ -198,7 +180,7 @@ void PasteInTextDialog::autodetectCurrentFormat()
         // the user has entered text, but we can't parse it
         m_autodetected_format = std::nullopt;
         autodetect_label += " (unrecognized)";
-    } else if (m_autodetected_format != std::nullopt) {
+    } else if (m_autodetected_format.has_value()) {
         // there is text and we could parse it
         auto format_name = m_formats.at(*m_autodetected_format);
         autodetect_label += QString(" (%1)").arg(format_name);

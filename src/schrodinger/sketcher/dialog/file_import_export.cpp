@@ -14,13 +14,16 @@ namespace schrodinger
 namespace sketcher
 {
 
-FormatList<Format> get_import_formats()
+std::vector<std::tuple<Format, std::string>>
+get_mol_import_formats(bool include_SMARTS)
 {
     std::vector<std::tuple<Format, std::string>> mol_import_formats = {
         {Format::MDL_MOLV3000, "MDL SD"},
         {Format::MAESTRO, "Maestro"},
         {Format::SMILES, "SMILES"},
         {Format::EXTENDED_SMILES, "Extended SMILES"},
+        {Format::SMARTS, "SMARTS"},
+        {Format::EXTENDED_SMARTS, "Extended SMARTS"},
         {Format::INCHI, "InChI"},
         {Format::MOL2, "MOL2"},
         {Format::PDB, "PDB"},
@@ -28,10 +31,39 @@ FormatList<Format> get_import_formats()
         {Format::MRV, "Marvin Document"},
         {Format::CDXML, "ChemDraw XML"},
     };
-    std::vector<std::tuple<Format, std::string>> rxn_import_formats = {
+    if (!include_SMARTS) {
+        std::erase_if(mol_import_formats, [](auto format_tuple) {
+            auto format_val = std::get<0>(format_tuple);
+            return (format_val == Format::SMARTS ||
+                    format_val == Format::EXTENDED_SMARTS);
+        });
+    }
+    return mol_import_formats;
+}
+
+std::vector<std::tuple<Format, std::string>> get_reaction_import_formats()
+{
+    return {
         {Format::MDL_MOLV3000, "MDL RXN"},
         {Format::SMILES, "Reaction SMILES"},
     };
+}
+
+std::vector<std::tuple<Format, std::string>> get_monomoric_import_formats()
+{
+    return {
+        {Format::HELM, "HELM"},
+        {Format::FASTA_PEPTIDE, "FASTA Peptide"},
+        {Format::FASTA_DNA, "FASTA DNA"},
+        {Format::FASTA_RNA, "FASTA RNA"},
+    };
+}
+
+FormatList<Format> get_import_formats()
+{
+
+    auto mol_import_formats = get_mol_import_formats(/*include_SMARTS =*/false);
+    auto rxn_import_formats = get_reaction_import_formats();
 
     FormatList<Format> import_formats;
     for (const auto& [format, label] : mol_import_formats) {

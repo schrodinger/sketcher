@@ -4,11 +4,15 @@
 #include <boost/test/data/test_case.hpp>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_paste_in_text_dialog.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
+
+using schrodinger::rdkit_extensions::Format;
 
 namespace bdata = boost::unit_test::data;
 
@@ -93,30 +97,30 @@ BOOST_DATA_TEST_CASE(
     test_format_combo_contents,
     bdata::make(std::vector<std::tuple<InterfaceTypeType, MoleculeType, bool,
                                        int, bool, bool>>{
-        {InterfaceType::ATOMISTIC, MoleculeType::EMPTY, false, 15, true, false},
-        {InterfaceType::ATOMISTIC, MoleculeType::ATOMISTIC, false, 15, true,
+        {InterfaceType::ATOMISTIC, MoleculeType::EMPTY, false, 13, true, false},
+        {InterfaceType::ATOMISTIC, MoleculeType::ATOMISTIC, false, 13, true,
          false},
-        {InterfaceType::ATOMISTIC, MoleculeType::EMPTY, true, 15, true, false},
-        {InterfaceType::ATOMISTIC, MoleculeType::ATOMISTIC, true, 15, true,
+        {InterfaceType::ATOMISTIC, MoleculeType::EMPTY, true, 13, true, false},
+        {InterfaceType::ATOMISTIC, MoleculeType::ATOMISTIC, true, 13, true,
          false},
-        {InterfaceType::MONOMERIC, MoleculeType::EMPTY, false, 6, false, true},
-        {InterfaceType::MONOMERIC, MoleculeType::MONOMERIC, false, 6, false,
+        {InterfaceType::MONOMERIC, MoleculeType::EMPTY, false, 5, false, true},
+        {InterfaceType::MONOMERIC, MoleculeType::MONOMERIC, false, 5, false,
          true},
-        {InterfaceType::MONOMERIC, MoleculeType::EMPTY, true, 6, false, true},
-        {InterfaceType::MONOMERIC, MoleculeType::MONOMERIC, true, 6, false,
+        {InterfaceType::MONOMERIC, MoleculeType::EMPTY, true, 5, false, true},
+        {InterfaceType::MONOMERIC, MoleculeType::MONOMERIC, true, 5, false,
          true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::EMPTY, false, 19,
+        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::EMPTY, false, 17,
          true, true},
         {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::ATOMISTIC, false,
-         15, true, false},
+         13, true, false},
         {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::MONOMERIC, false,
-         6, false, true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::EMPTY, true, 19,
+         5, false, true},
+        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::EMPTY, true, 17,
          true, true},
         {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::ATOMISTIC, true,
-         19, true, true},
+         17, true, true},
         {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::MONOMERIC, true,
-         19, true, true},
+         17, true, true},
     }),
     interface_type, molecule_type, replace_contents, num_formats,
     accepts_atomistic, accepts_monomeric)
@@ -153,6 +157,25 @@ BOOST_DATA_TEST_CASE(
     // clearing the text should remove the parenthetical
     dlg.setText("");
     BOOST_TEST(dlg.ui->format_combo->currentText() == "Autodetect");
+}
+
+/**
+ * Make sure that the list of formats includes all of the reaction formats.
+ * These aren't explicitly loaded into the dialog, as we assume that they're a
+ * subset of the atomistic formats. This test ensures that this assumption is
+ * still valid.
+ */
+BOOST_AUTO_TEST_CASE(test_reaction_formats)
+{
+    SketcherModel model;
+    model.setValues(
+        {{ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC}});
+    TestPasteInTextDialog dlg(&model);
+    for (auto& [rxn_format, format_name] : get_reaction_import_formats()) {
+        auto found_idx =
+            dlg.ui->format_combo->findData(QVariant::fromValue(rxn_format));
+        BOOST_TEST(found_idx > 0);
+    }
 }
 
 } // namespace sketcher

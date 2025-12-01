@@ -42,7 +42,7 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_2">
      <item>
-      <widget class="QLabel" name="format_label">
+      <widget class="QLabel" name="format_lbl">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
          <horstretch>0</horstretch>
@@ -60,7 +60,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QLabel" name="status_label">
+    <widget class="QLabel" name="status_lbl">
      <property name="font">
       <font>
        <italic>true</italic>

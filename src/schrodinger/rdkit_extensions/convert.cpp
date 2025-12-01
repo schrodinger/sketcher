@@ -573,25 +573,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
                                          const Format format)
 {
     if (format == Format::AUTO_DETECT) {
-        return auto_detect<RDKit::RWMol>(
-            text,
-            {
-                Format::RDMOL_BINARY_BASE64,
-                Format::MDL_MOLV3000,
-                Format::MAESTRO,
-                Format::INCHI,
-                Format::PDB,
-                Format::MOL2,
-                Format::XYZ,
-                Format::MRV,
-                Format::CDXML,
-                // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
-                Format::SMILES,
-                Format::SMARTS,
-                // Guess at HELM after guessing atomistic formats
-                Format::HELM,
-            },
-            &to_rdkit);
+        return auto_detect<RDKit::RWMol>(text, AUTO_DETECT_FORMATS, &to_rdkit);
     }
 
     CaptureRDErrorLog rd_error_log;
