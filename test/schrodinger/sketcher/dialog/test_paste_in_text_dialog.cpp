@@ -39,7 +39,7 @@ class TestPasteInTextDialog : public PasteInTextDialog
 
     std::string getLabelText()
     {
-        return ui->status_label->text().toStdString();
+        return ui->status_lbl->text().toStdString();
     }
 
     using PasteInTextDialog::ui;

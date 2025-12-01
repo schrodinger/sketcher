@@ -104,8 +104,8 @@ void PasteInTextDialog::onModelValuesChanged()
         replace ? "Specified structure will <b>replace</b> Sketcher content"
                 : "Specified structure will be added to Sketcher content";
     QString style = replace ? "color : #c87c00" : "color : gray";
-    ui->status_label->setText(text);
-    ui->status_label->setStyleSheet(style);
+    ui->status_lbl->setText(text);
+    ui->status_lbl->setStyleSheet(style);
 
     // load data into the format combo box
     auto interface_type = m_sketcher_model->getInterfaceType();
