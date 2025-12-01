@@ -227,7 +227,7 @@ void HelmParser::saveError(const unsigned int num_chars_processed,
 }
 
 [[nodiscard]] std::string
-construct_error_msg(const std::string& err_msg,
+construct_error_msg(const std::string_view err_msg,
                     const std::string_view& failed_token,
                     const std::string_view& input)
 {
@@ -235,7 +235,7 @@ construct_error_msg(const std::string& err_msg,
     return construct_error_msg(err_msg, pos, input);
 }
 
-[[nodiscard]] std::string construct_error_msg(const std::string& err_msg,
+[[nodiscard]] std::string construct_error_msg(const std::string_view err_msg,
                                               const unsigned int pos,
                                               const std::string_view& input)
 {

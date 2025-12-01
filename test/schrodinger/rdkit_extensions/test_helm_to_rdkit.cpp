@@ -513,3 +513,61 @@ BOOST_AUTO_TEST_CASE(TestReadingInlineSmilesSurroundedBySquareBrackets)
     BOOST_TEST(test_atom->template getProp<std::string>(ATOM_LABEL) ==
                "[H][*:1]");
 }
+
+BOOST_DATA_TEST_CASE_F(schrodinger::test::silence_stdlog,
+                       TestInvalidExpressionsV2,
+                       bdata::make(std::vector<std::string>{
+                           "BLOB1{}$$$$V2.0",
+                           "BLOB1{          }$$$$V2.0",
+                           "BLOB0{HELLO WORLD}$$$$V2.0",
+                           "BLOB0D{HELLO WORLD}$$$$V2.0",
+                           "BLOB1{HELLO WORLD\"my annotation\"}$$$$V2.0",
+                           "BLOB1{HELLO WORLD}$$$$V3.0",
+                           "BLOB1{HELLO WORLD}$$$not valid json$V2.0",
+                       }),
+                       test_helm)
+{
+    constexpr auto use_v2_parser = true;
+
+    // std::invalid_argument should be thrown
+    {
+        constexpr auto do_throw = true;
+        BOOST_CHECK_THROW(std::ignore =
+                              helm_to_rdkit(test_helm, use_v2_parser, do_throw),
+                          std::invalid_argument);
+    }
+
+    // log and return nullptr
+    {
+        constexpr auto do_throw = false;
+        BOOST_TEST(helm_to_rdkit(test_helm, use_v2_parser, do_throw) ==
+                   nullptr);
+    }
+}
+
+BOOST_DATA_TEST_CASE(
+    TestLinearBlobPolymerSupport,
+    bdata::make(std::vector<std::string>{
+        R"(BLOB1{BEAD}$$$$V2.0)",
+        R"(BLOB1{BEAD}"Animated Polystyrene"$$$$V2.0)",
+        R"(BLOB1{BEAD}$$${"key":"value"}$V2.0)",
+        R"(BLOB1{Bead}"Aminated Polystyrene"|BLOB2{Something here}$$$$V2.0)",
+    }),
+    test_helm)
+{
+    constexpr auto use_v2_parser = true;
+
+    // turn on exceptions
+    {
+        constexpr auto do_throw = true;
+        auto mol = helm_to_rdkit(test_helm, use_v2_parser, do_throw);
+        BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
+    }
+
+    // turn on logging
+    {
+        constexpr auto do_throw = false;
+        auto mol = helm_to_rdkit(test_helm, use_v2_parser, do_throw);
+        BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
+    }
+}
