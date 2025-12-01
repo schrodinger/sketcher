@@ -1,8 +1,10 @@
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
 
+#include <algorithm>
 #include <array>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
+#include <regex>
 
 #include <rdkit/GraphMol/RWMol.h>
 #include "schrodinger/rdkit_extensions/helm/validation.h"
