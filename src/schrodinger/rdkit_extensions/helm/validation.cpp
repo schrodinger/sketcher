@@ -351,11 +351,11 @@ bool validate_parsed_info(const helm_info& parsed_info,
            helm_version] = parsed_info;
 
     std::unordered_set<std::string_view> polymer_ids;
-    validate_helm_version(helm_version, extended_annotations, errors, input);
     validate_polymers(polymers, polymer_ids, errors, input);
     validate_connections(connections, polymers, polymer_ids, errors, input);
     validate_polymer_groups(polymer_groups, polymer_ids, errors, input);
     validate_extended_annotations(extended_annotations, errors, input);
+    validate_helm_version(helm_version, extended_annotations, errors, input);
 
     return errors.empty();
 }

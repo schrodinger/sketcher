@@ -2,6 +2,7 @@
 
 #include "schrodinger/rdkit_extensions/definitions.h"
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -34,7 +35,7 @@ struct monomer {
     bool is_smiles = false;
     bool is_branch = false;
     bool is_list = false;
-    std::string_view annotation;
+    std::string_view annotation = {};
 };
 
 struct repetition {
@@ -123,7 +124,7 @@ class RDKIT_EXTENSIONS_API HelmParser
  * @param input The fill input string
  * @return A formatted error string suitable for output
  */
-[[nodiscard]] std::string construct_error_msg(const std::string& err_msg,
+[[nodiscard]] std::string construct_error_msg(const std::string_view err_msg,
                                               const unsigned int pos,
                                               const std::string_view& input);
 /**
@@ -138,12 +139,32 @@ class RDKIT_EXTENSIONS_API HelmParser
  * @return A formatted error string suitable for output
  */
 [[nodiscard]] std::string
-construct_error_msg(const std::string& err_msg,
+construct_error_msg(const std::string_view err_msg,
                     const std::string_view& failed_token,
                     const std::string_view& input);
 
 /// Helper api to determine whether a multi-character monomer token is a valid
 /// inline SMILES monomer.
 [[nodiscard]] bool is_smiles_monomer(const std::string_view&);
+
+namespace v2
+{
+
+/**
+ * @brief Parses a HELM v2 string into a structured representation.
+ *
+ * Produces a `helm_info` object describing polymers, connections,
+ * annotations, and version fields.
+ *
+ * @param input  HELM v2 input string (e.g. "BLOB1{Bead}$$$$V2.0").
+ * @param do_throw  Throw on parse errors if true; otherwise log and return
+ *        std::nullopt (default: true).
+ *
+ * @return Parsed HELM info, or std::nullopt on failure.
+ * @throws std::invalid_argument if parsing fails and `doThrow == true`.
+ */
+std::optional<helm_info> parse_helm(std::string_view input,
+                                    bool do_throw = true);
+} // namespace v2
 
 } /* end namespace helm */
