@@ -9,6 +9,7 @@
 #include <QPointF>
 #include <QString>
 #include <Qt>
+#include <unordered_map>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/molops.h"
@@ -19,6 +20,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/rdkit/atom_properties.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/queries.h"
@@ -214,6 +216,8 @@ void AtomItem::updateCachedData()
         m_shape.addRect(rect);
     }
     m_bounding_rect = m_shape.boundingRect();
+
+    setToolTip(getTooltip());
 }
 
 QString AtomItem::advancedPropertiesSmarts() const
@@ -482,6 +486,50 @@ void AtomItem::updateMappingLabel()
         m_mapping_label_rect =
             make_text_rect(m_fonts.m_mapping_fm, m_mapping_label_text);
     }
+}
+
+QString AtomItem::getTooltip() const
+{
+    const QString STEREO_PREFIX = "Stereo: ";
+    const QString QUERY_PREFIX = "Query: ";
+
+    QStringList tooltip_parts;
+
+    // Check for chirality
+    if (!m_chirality_label_text.isEmpty()) {
+        tooltip_parts.append(STEREO_PREFIX + m_chirality_label_text);
+    }
+
+    // Check if this is a query atom (wildcard or has query constraints)
+    auto props = read_properties_from_atom(m_atom);
+
+    if (auto* query_props =
+            dynamic_cast<const AtomQueryProperties*>(props.get())) {
+        // If there are additional constraints, show them
+        if (!m_query_label_text.isEmpty()) {
+            tooltip_parts.append(QUERY_PREFIX + m_query_label_text);
+        } else if (query_props->query_type == QueryType::WILDCARD) {
+            // For plain wildcards, provide descriptive tooltips
+            static const std::unordered_map<AtomQuery, QString>
+                wildcard_descriptions = {
+                    {AtomQuery::A, "Any heavy atom"},
+                    {AtomQuery::AH, "Any heavy atom or hydrogen"},
+                    {AtomQuery::Q, "Any heteroatom"},
+                    {AtomQuery::QH, "Any heteroatom or hydrogen"},
+                    {AtomQuery::M, "Any metal"},
+                    {AtomQuery::MH, "Any metal or hydrogen"},
+                    {AtomQuery::X, "Any halogen"},
+                    {AtomQuery::XH, "Any halogen or hydrogen"},
+                };
+
+            auto it = wildcard_descriptions.find(query_props->wildcard);
+            if (it != wildcard_descriptions.end()) {
+                tooltip_parts.append(QUERY_PREFIX + it->second);
+            }
+        }
+    }
+
+    return tooltip_parts.join("\n");
 }
 
 void AtomItem::updateChargeAndRadicalLabel()
