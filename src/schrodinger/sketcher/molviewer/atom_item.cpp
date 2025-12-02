@@ -393,6 +393,11 @@ AtomItem::determineLabelType() const
         label_is_visible = true;
     }
 
+    // Append atom index to the main label when debug mode is enabled
+    if (m_settings.m_show_atom_indices && label_is_visible) {
+        main_label_text += ":" + std::to_string(m_atom->getIdx());
+    }
+
     return {QString::fromStdString(main_label_text),
             squiggle_path,
             label_is_visible,
@@ -675,6 +680,9 @@ bool AtomItem::determineLabelIsVisible() const
     // note that this method does not take m_valence_error_is_visible into
     // account.  If that value is true (and up-to-date), then the label should
     // be visible.
+    if (m_settings.m_show_atom_indices) {
+        return true;
+    }
     if (m_settings.m_carbon_labels == CarbonLabels::ALL) {
         return true;
     }

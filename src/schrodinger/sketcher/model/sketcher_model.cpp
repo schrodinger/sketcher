@@ -566,6 +566,11 @@ void SketcherModel::setFontSize(int size)
 
 int SketcherModel::getFontSize() const
 {
+    // Apply debug mode scaling if atom indices are shown
+    constexpr double DEBUG_MODE_FONT_SCALING = 0.7;
+    if (m_atom_display_settings.m_show_atom_indices) {
+        return static_cast<int>(m_font_size * DEBUG_MODE_FONT_SCALING);
+    }
     return m_font_size;
 }
 
