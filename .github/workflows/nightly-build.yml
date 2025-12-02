@@ -1,6 +1,9 @@
 name: Nightly Build
 
 on:
+  schedule:
+    # Run at 12:07am EST (5:07am UTC)
+    - cron: '7 5 * * *'
   workflow_dispatch:
     inputs:
       release-branch:
@@ -9,11 +12,13 @@ on:
         type: string
       token:
         description: 'Token with push permissions'
-        required: true
+        required: false
         type: string
 
 jobs:
   bump-and-merge:
+    # Only run version bumping when manually triggered, not on scheduled runs
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +75,7 @@ jobs:
 
   build-main-branch:
     needs: bump-and-merge
+    if: always() && !cancelled()
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: main
