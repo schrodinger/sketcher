@@ -75,7 +75,6 @@ SketcherModel::SketcherModel(QObject* parent) : QObject(parent)
 {
     // Initialize model to default state
     reset();
-    setFontSize(m_font_size); // to apply debug mode scaling if needed
     connect(this, &SketcherModel::selectionChanged, this,
             &SketcherModel::onSelectionChanged);
     connect(this, &SketcherModel::interactiveItemsChanged, this,
@@ -561,17 +560,17 @@ bool SketcherModel::hasDarkColorScheme() const
 
 void SketcherModel::setFontSize(int size)
 {
-    // Apply debug mode scaling if atom indices are shown
-    constexpr double DEBUG_MODE_FONT_SCALING = 0.7;
-    if (m_atom_display_settings.m_show_atom_indices) {
-        size = static_cast<int>(size * DEBUG_MODE_FONT_SCALING);
-    }
     m_font_size = size;
     emit displaySettingsChanged();
 }
 
 int SketcherModel::getFontSize() const
 {
+    // Apply debug mode scaling if atom indices are shown
+    constexpr double DEBUG_MODE_FONT_SCALING = 0.7;
+    if (m_atom_display_settings.m_show_atom_indices) {
+        return static_cast<int>(m_font_size * DEBUG_MODE_FONT_SCALING);
+    }
     return m_font_size;
 }
 

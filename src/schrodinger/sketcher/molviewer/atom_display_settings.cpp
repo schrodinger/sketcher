@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
 
 #include <cstdlib>
+#include <cstring>
 
 #include "schrodinger/sketcher/model/sketcher_model.h"
 
@@ -13,12 +14,10 @@ AtomDisplaySettings::AtomDisplaySettings()
 {
     setColorScheme(ColorScheme::DEFAULT);
 
-    // Check if debug mode should be enabled via environment variable
+    // Enable debug mode if env var is set to "1"
     const char* debug_mode_env = std::getenv("SCHRODINGER_SKETCHER_DEBUG_MODE");
-    if (debug_mode_env != nullptr && debug_mode_env[0] != '\0') {
-        // Any non-empty value enables the feature
-        m_show_atom_indices = true;
-    }
+    m_show_atom_indices =
+        (debug_mode_env != nullptr && std::strcmp(debug_mode_env, "1") == 0);
 }
 
 void AtomDisplaySettings::setColorScheme(const ColorScheme& scheme,
