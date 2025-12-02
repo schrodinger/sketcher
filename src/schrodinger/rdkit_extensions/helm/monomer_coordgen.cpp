@@ -109,11 +109,23 @@ static auto default_stop_condition = [](const RDKit::Atom* monomer) {
     return false;
 };
 
+/**
+ * Get the available directions in which branches for a given monomer can be
+ * placed
+ * @param bonded_to_parent_polymer true if the monomer has a bond to an already
+ * placed polymer
+ * @param bonded_to_child_polymer true if the monomer has a bond to an unplaced
+ * polymer
+ * @param branch_direction the general direction in which branches should be
+ * placed
+ * @param chain_dir the direction in which the monomer chain is being laid out
+ * @param is_last_of_chain true if the monomer is the last in the chain
+ * @param is_first_of_chain true if the monomer is the first in the chain
+ */
 static std::vector<Direction> get_available_directions(
     bool bonded_to_parent_polymer, bool bonded_to_child_polymer,
     BranchDirection branch_direction, ChainDirection chain_dir,
-    const RDKit::Atom* next_monomer_to_place,
-    const RDKit::Atom* last_placed_monomer)
+    bool is_last_of_chain, bool is_first_of_chain)
 {
     std::vector<Direction> dirs;
     // first try the main branch direction
@@ -123,13 +135,13 @@ static std::vector<Direction> get_available_directions(
                branch_direction == BranchDirection::UP) {
         dirs.push_back(Direction::N);
     }
-    // if this is the first or last direction, we can branch along
+    // if this is the first or last polymer, we can branch along
     // the chain
-    if (!next_monomer_to_place) {
+    if (is_last_of_chain) {
         dirs.push_back(chain_dir == ChainDirection::LTR ? Direction::E
                                                         : Direction::W);
     }
-    if (!last_placed_monomer) {
+    if (is_first_of_chain) {
         dirs.push_back(chain_dir == ChainDirection::LTR ? Direction::W
                                                         : Direction::E);
     }
@@ -214,7 +226,8 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
 
         std::vector<Direction> available_directions = get_available_directions(
             bonded_to_parent_polymer, bonded_to_child_polymer, branch_direction,
-            chain_dir, next_monomer_to_place, last_placed_monomer);
+            chain_dir, next_monomer_to_place == nullptr,
+            last_placed_monomer == nullptr);
         auto first_available_direction = available_directions.begin();
         if (available_directions.size() < branches.size()) {
             throw std::runtime_error(
