@@ -234,6 +234,15 @@ class SKETCHER_API AtomItem : public AbstractAtomOrMonomerItem
     void updateMappingLabel();
 
     /**
+     * Get tooltip text based on atom labels (chirality or query).
+     * Returns tooltip text for labels related to stereochemistry or query
+     * features. If an atom has both stereochemistry and query features, both
+     * are shown on separate lines (e.g., "Stereo: (R)\nQuery: X2").
+     * @return tooltip text, or empty string if no tooltip should be shown
+     */
+    QString getTooltip() const;
+
+    /**
      * create a label for the charge and radical information  (if present)
      */
     void updateChargeAndRadicalLabel();

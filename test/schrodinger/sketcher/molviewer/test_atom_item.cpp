@@ -36,6 +36,7 @@ class TestAtomItem : public AtomItem
     using AtomItem::findHsDirection;
     using AtomItem::getQueryLabel;
     using AtomItem::getSubrects;
+    using AtomItem::getTooltip;
     using AtomItem::m_bounding_rect;
     using AtomItem::m_charge_and_radical_label_rect;
     using AtomItem::m_charge_and_radical_label_text;
@@ -458,6 +459,143 @@ BOOST_AUTO_TEST_CASE(test_chirality_label_positioning)
         BOOST_TEST(QLineF(centroid, chirality_label_center).length() <
                    QLineF(centroid, item->pos()).length());
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_chirality_label_tooltip)
+{
+    // Test that atoms with chirality labels have tooltips
+    auto [atom_items, scene] = createAtomItems("CC[C@H](C)N");
+
+    // Find the chiral center (should be at index 2)
+    std::shared_ptr<TestAtomItem> chiral_atom;
+    for (auto item : atom_items) {
+        if (!item->m_chirality_label_text.isEmpty()) {
+            chiral_atom = item;
+            break;
+        }
+    }
+
+    BOOST_TEST_REQUIRE(chiral_atom != nullptr);
+    BOOST_TEST(chiral_atom->m_chirality_label_text == "(S)");
+    BOOST_TEST(chiral_atom->m_chirality_label_rect.isValid());
+
+    // Tooltip should show the chirality label with Stereo prefix
+    BOOST_TEST(chiral_atom->toolTip() == "Stereo: (S)");
+}
+
+BOOST_AUTO_TEST_CASE(test_wildcard_atom_tooltips)
+{
+    // Test that wildcard atoms have descriptive tooltips
+    struct TestCase {
+        AtomQuery wildcard;
+        QString expected_tooltip;
+    };
+
+    std::vector<TestCase> test_cases = {
+        {AtomQuery::Q, "Query: Any heteroatom"},
+        {AtomQuery::A, "Query: Any heavy atom"},
+        {AtomQuery::X, "Query: Any halogen"},
+        {AtomQuery::M, "Query: Any metal"},
+        {AtomQuery::QH, "Query: Any heteroatom or hydrogen"},
+        {AtomQuery::AH, "Query: Any heavy atom or hydrogen"},
+        {AtomQuery::XH, "Query: Any halogen or hydrogen"},
+        {AtomQuery::MH, "Query: Any metal or hydrogen"}};
+
+    for (const auto& [wildcard, expected_tooltip] : test_cases) {
+        auto props = std::make_shared<AtomQueryProperties>();
+        props->query_type = QueryType::WILDCARD;
+        props->wildcard = wildcard;
+
+        auto [atom_item, test_scene] = createAtomItem(props);
+
+        // Wildcards should have descriptive tooltips
+        BOOST_TEST(atom_item->toolTip().toStdString() ==
+                   expected_tooltip.toStdString());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_query_atom_with_constraints_tooltip)
+{
+    // Test that query atoms with additional constraints show the constraint
+    // text
+    auto props = std::make_shared<AtomQueryProperties>();
+    props->query_type = QueryType::WILDCARD;
+    props->wildcard = AtomQuery::X;
+    props->ring_count_type = QueryCount::EXACTLY;
+    props->ring_count_exact_val = 2;
+    props->num_connections = 2;
+
+    auto [atom_item, test_scene] = createAtomItem(props);
+
+    BOOST_TEST(atom_item->m_main_label_text == "X");
+    BOOST_TEST(atom_item->m_query_label_text == "X2&R2");
+
+    // Should show the query constraint text with Query prefix
+    BOOST_TEST(atom_item->toolTip() == "Query: X2&R2");
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_list_tooltip)
+{
+    // Test that atom lists show the list as tooltip
+    auto props = std::make_shared<AtomQueryProperties>();
+    props->query_type = QueryType::ALLOWED_LIST;
+    props->allowed_list = {Element::C, Element::N};
+
+    auto [atom_item, test_scene] = createAtomItem(props);
+
+    BOOST_TEST(atom_item->m_main_label_text == "*");
+    BOOST_TEST(atom_item->m_query_label_text == "[C,N]");
+
+    // Should show the atom list with Query prefix
+    BOOST_TEST(atom_item->toolTip() == "Query: [C,N]");
+}
+
+BOOST_AUTO_TEST_CASE(test_no_tooltip_for_normal_atoms)
+{
+    // Test that normal atom labels don't have tooltips
+    std::vector<std::string> normal_atoms = {"C", "N", "O", "S", "P"};
+
+    for (const auto& smiles : normal_atoms) {
+        auto [atom_item, scene] = createAtomItem(smiles);
+
+        // Normal atoms should not have tooltips
+        BOOST_TEST(atom_item->toolTip().isEmpty());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_chirality_takes_precedence_over_query)
+{
+    // Test that atoms with only chirality (no query) show only stereo tooltip
+    auto [atom_items, scene] = createAtomItems("C[C@H](N)S");
+
+    for (auto item : atom_items) {
+        if (!item->m_chirality_label_text.isEmpty()) {
+            // Should show chirality with Stereo prefix
+            BOOST_TEST(item->toolTip() ==
+                       "Stereo: " + item->m_chirality_label_text);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_with_both_chirality_and_query)
+{
+    // Test that atoms with both chirality and query features show both in
+    // tooltip
+    auto props = std::make_shared<AtomQueryProperties>();
+    props->query_type = QueryType::SPECIFIC_ELEMENT;
+    props->element = Element::C;
+    props->num_connections = 2;
+
+    auto [atom_item, test_scene] = createAtomItem(props);
+
+    // Manually set chirality label to simulate a chiral query atom
+    atom_item->m_chirality_label_text = "(R)";
+    atom_item->m_query_label_text = "X2";
+
+    // Tooltip should show both stereo and query on separate lines
+    QString tooltip = atom_item->getTooltip();
+    BOOST_TEST(tooltip.contains("Stereo: (R)"));
+    BOOST_TEST(tooltip.contains("Query: X2"));
 }
 
 } // namespace sketcher
