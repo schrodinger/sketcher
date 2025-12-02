@@ -88,20 +88,27 @@ void add_polymer_groups_and_extended_annotations(
 } // namespace
 
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
-helm_to_rdkit(const std::string& helm_string)
+helm_to_rdkit(const std::string& helm_string, bool use_v2_parser, bool do_throw)
 {
-    const auto parsed_info = helm::HelmParser(helm_string).parse();
-    const auto polymers = create_helm_polymers(parsed_info.polymers);
+    std::optional<helm_info> parsed_info =
+        use_v2_parser ? helm::v2::parse_helm(helm_string, do_throw)
+                      : helm::HelmParser(helm_string).parse();
+
+    if (!parsed_info) {
+        return nullptr;
+    }
+
+    const auto polymers = create_helm_polymers(parsed_info->polymers);
 
     std::unique_ptr<::RDKit::RWMol> mol(new ::RDKit::RWMol);
     std::for_each(polymers.begin(), polymers.end(),
                   [&](const auto& polymer) { mol->insertMol(polymer); });
 
     // TODO: Keep track of unused rgroups
-    add_helm_connections(*mol, parsed_info.connections);
+    add_helm_connections(*mol, parsed_info->connections);
 
     add_polymer_groups_and_extended_annotations(
-        *mol, parsed_info.polymer_groups, parsed_info.extended_annotations);
+        *mol, parsed_info->polymer_groups, parsed_info->extended_annotations);
 
     // store this as an easy way to identify monomeric mols
     mol->setProp<bool>(HELM_MODEL, true);
