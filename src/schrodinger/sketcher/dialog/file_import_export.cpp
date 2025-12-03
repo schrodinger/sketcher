@@ -14,10 +14,9 @@ namespace schrodinger
 namespace sketcher
 {
 
-std::vector<std::tuple<Format, std::string>>
-get_mol_import_formats(bool include_SMARTS)
+std::vector<std::tuple<Format, std::string>> get_mol_import_formats()
 {
-    std::vector<std::tuple<Format, std::string>> mol_import_formats = {
+    return {
         {Format::MDL_MOLV3000, "MDL SD"},
         {Format::MAESTRO, "Maestro"},
         {Format::SMILES, "SMILES"},
@@ -31,14 +30,6 @@ get_mol_import_formats(bool include_SMARTS)
         {Format::MRV, "Marvin Document"},
         {Format::CDXML, "ChemDraw XML"},
     };
-    if (!include_SMARTS) {
-        std::erase_if(mol_import_formats, [](auto format_tuple) {
-            auto format_val = std::get<0>(format_tuple);
-            return (format_val == Format::SMARTS ||
-                    format_val == Format::EXTENDED_SMARTS);
-        });
-    }
-    return mol_import_formats;
 }
 
 std::vector<std::tuple<Format, std::string>> get_reaction_import_formats()
@@ -62,13 +53,17 @@ std::vector<std::tuple<Format, std::string>> get_monomoric_import_formats()
 FormatList<Format> get_import_formats()
 {
 
-    auto mol_import_formats = get_mol_import_formats(/*include_SMARTS =*/false);
+    auto mol_import_formats = get_mol_import_formats();
     auto rxn_import_formats = get_reaction_import_formats();
 
     FormatList<Format> import_formats;
     for (const auto& [format, label] : mol_import_formats) {
         auto extensions = rdkit_extensions::get_mol_extensions(format);
-        import_formats.push_back({format, label, extensions});
+        // we skip SMARTS and EXTENDED_SMARTS since those don't have any
+        // associated extensions
+        if (!extensions.empty()) {
+            import_formats.push_back({format, label, extensions});
+        }
     }
     for (const auto& [format, label] : rxn_import_formats) {
         auto extensions = rdkit_extensions::get_rxn_extensions(format);

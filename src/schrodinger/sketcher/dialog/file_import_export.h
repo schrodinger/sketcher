@@ -24,10 +24,9 @@ template <class T> using FormatList =
 /**
  * @return a list of all atomistic import formats with a human readable name for
  * each
- * @param include_SMARTS whether to include SMARTS and EXTENDED_SMARTS
  */
 SKETCHER_API std::vector<std::tuple<rdkit_extensions::Format, std::string>>
-get_mol_import_formats(bool include_SMARTS);
+get_mol_import_formats();
 
 /**
  * @return a list of all monomeric import formats with a human readable name for

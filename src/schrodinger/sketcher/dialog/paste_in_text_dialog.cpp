@@ -21,19 +21,6 @@ namespace sketcher
 namespace
 {
 
-typedef uint8_t FormatMoleculeType_t;
-namespace FormatMoleculeType
-{
-/**
- * Whether a given format applies to atomistic models, monomeric models, or both
- */
-enum : FormatMoleculeType_t {
-    ATOMISTIC = 1 << 0,
-    MONOMERIC = 1 << 1,
-    BOTH = ATOMISTIC | MONOMERIC,
-};
-} // namespace FormatMoleculeType
-
 /**
  * @return a list of tuples of
  *   - format name
@@ -41,28 +28,29 @@ enum : FormatMoleculeType_t {
  *   - whether the format applies to atomistic models, monomeric models, or both
  * for all formats to load into the format combo box
  */
-static std::vector<std::tuple<QString, Format, FormatMoleculeType_t>>
+static std::vector<std::tuple<QString, Format, InterfaceTypeType>>
 build_format_list()
 {
-    std::vector<std::tuple<QString, Format, FormatMoleculeType_t>> formats = {
-        {"Autodetect", Format::AUTO_DETECT, FormatMoleculeType::BOTH},
+    std::vector<std::tuple<QString, Format, InterfaceTypeType>> formats = {
+        {"Autodetect", Format::AUTO_DETECT,
+         InterfaceType::ATOMISTIC_OR_MONOMERIC},
     };
     auto append_to_formats =
         [&formats](std::vector<std::tuple<Format, std::string>> to_append,
-                   FormatMoleculeType_t fmt_mol_type) {
+                   InterfaceTypeType fmt_mol_type) {
             std::transform(
                 to_append.begin(), to_append.end(), std::back_inserter(formats),
                 [fmt_mol_type](auto cur_format)
-                    -> std::tuple<QString, Format, FormatMoleculeType_t> {
+                    -> std::tuple<QString, Format, InterfaceTypeType> {
                     auto [fmt_val, fmt_name] = cur_format;
                     return {QString::fromStdString(fmt_name), fmt_val,
                             fmt_mol_type};
                 });
         };
-    auto mol_import_formats = get_mol_import_formats(/*include_SMARTS =*/true);
+    auto mol_import_formats = get_mol_import_formats();
     auto monomeric_import_formats = get_monomoric_import_formats();
-    append_to_formats(mol_import_formats, FormatMoleculeType::ATOMISTIC);
-    append_to_formats(monomeric_import_formats, FormatMoleculeType::MONOMERIC);
+    append_to_formats(mol_import_formats, InterfaceType::ATOMISTIC);
+    append_to_formats(monomeric_import_formats, InterfaceType::MONOMERIC);
     return formats;
 }
 
@@ -112,13 +100,13 @@ void PasteInTextDialog::onModelValuesChanged()
     auto cur_mol_type = m_sketcher_model->getMoleculeType();
     // first figure out whether we want atomistic formats, monomeric formats, or
     // both
-    auto allowed_mol_type = FormatMoleculeType::BOTH;
+    auto allowed_mol_type = InterfaceType::ATOMISTIC_OR_MONOMERIC;
     if (interface_type == InterfaceType::ATOMISTIC ||
         (!replace && cur_mol_type == MoleculeType::ATOMISTIC)) {
-        allowed_mol_type = FormatMoleculeType::ATOMISTIC;
+        allowed_mol_type = InterfaceType::ATOMISTIC;
     } else if (interface_type == InterfaceType::MONOMERIC ||
                (!replace && cur_mol_type == MoleculeType::MONOMERIC)) {
-        allowed_mol_type = FormatMoleculeType::MONOMERIC;
+        allowed_mol_type = InterfaceType::MONOMERIC;
     }
     // then iterate through the available formats and load tha applicable ones
     // into the combo box
