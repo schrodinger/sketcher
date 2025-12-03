@@ -123,9 +123,9 @@ static auto default_stop_condition = [](const RDKit::Atom* monomer) {
  * @param is_first_of_chain true if the monomer is the first in the chain
  */
 static std::vector<Direction> get_available_directions(
-    bool bonded_to_parent_polymer, bool bonded_to_child_polymer,
-    BranchDirection branch_direction, ChainDirection chain_dir,
-    bool is_last_of_chain, bool is_first_of_chain)
+    const bool bonded_to_parent_polymer, const bool bonded_to_child_polymer,
+    const BranchDirection branch_direction, const ChainDirection chain_dir,
+    const bool is_last_of_chain, const bool is_first_of_chain)
 {
     std::vector<Direction> dirs;
     // first try the main branch direction
@@ -228,7 +228,7 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
             bonded_to_parent_polymer, bonded_to_child_polymer, branch_direction,
             chain_dir, next_monomer_to_place == nullptr,
             last_placed_monomer == nullptr);
-        auto first_available_direction = available_directions.begin();
+        auto next_available_direction = available_directions.begin();
         if (available_directions.size() < branches.size()) {
             throw std::runtime_error(
                 "Not enough available directions to place all branch monomers");
@@ -236,7 +236,7 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
 
         for (auto branch_monomer : branches) {
             RDGeom::Point3D pos(x_pos, start_pos.y, start_pos.z);
-            pos += direction_to_point(*first_available_direction++) *
+            pos += direction_to_point(*next_available_direction++) *
                    MONOMER_BOND_LENGTH;
             place_monomer_at(conformer, branch_monomer, pos,
                              placed_monomers_idcs);
