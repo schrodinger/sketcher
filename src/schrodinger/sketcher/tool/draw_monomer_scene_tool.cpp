@@ -44,9 +44,9 @@ void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
         // drag logic is handled in onDragMove
         return;
     }
-    QPointF scene_pos = event->scenePos();
-    auto* item = m_scene->getTopInteractiveItemAt(scene_pos,
-                                                  InteractiveItemFlag::MONOMER);
+    // QPointF scene_pos = event->scenePos();
+    // auto* item = m_scene->getTopInteractiveItemAt(scene_pos,
+    //                                               InteractiveItemFlag::MONOMER);
     // TODO: add connector nubs to hovered monomers
 }
 
