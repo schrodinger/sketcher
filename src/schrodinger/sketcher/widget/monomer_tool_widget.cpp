@@ -200,19 +200,20 @@ on_tool_clicked(SketcherModel* model, const ModelKey key,
 
 /**
  * If the model has a selection, ping the specified key/value.  Otherwise, set
- * the key to the value.
+ * the key to the value and ensure that the draw tool is set to MONOMER.
  */
 template <typename T> static void
 ping_or_set_model_value(SketcherModel* model, const ModelKey key, const T value)
 {
-    auto value_as_variant = QVariant::fromValue(value);
     if (model->hasActiveSelection()) {
         // ping the model to indicate that we want to replace the selection
         // without changing the tool
         model->pingValue(key, value);
     } else {
         // change the tool
-        model->setValue(key, value);
+        model->setValues(
+            {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::MONOMER)},
+             {key, QVariant::fromValue(value)}});
     }
 }
 

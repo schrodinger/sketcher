@@ -23,6 +23,7 @@
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/rdkit_extensions/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
@@ -617,6 +618,31 @@ void MolModel::addAttachmentPoint(const RDGeom::Point3D& coords,
     };
     doCommandUsingSnapshots(cmd_func, "Add attachment point",
                             WhatChanged::MOLECULE);
+}
+
+// TODO: add bound_to_atom param
+void MolModel::addMonomer(const std::string_view res_name,
+                          const rdkit_extensions::ChainType chain_type,
+                          const RDGeom::Point3D& coords)
+{
+    // we'll renumber the chains in assignChains, so for now we just need
+    // something with the correct prefix and a unique number
+    auto chain_id = rdkit_extensions::toString(chain_type) + "999999";
+    auto create_atom = [res_name, chain_id]() {
+        auto monomer_unique_ptr =
+            rdkit_extensions::makeMonomer(res_name, chain_id, 1, false);
+        std::shared_ptr<RDKit::Atom> monomer;
+        monomer.reset(monomer_unique_ptr.release());
+        set_atom_monomeric(monomer.get());
+        return monomer;
+    };
+    auto bound_to_atom_tag = getTagForAtom(nullptr, true);
+    auto cmd_func = [this, create_atom, coords, bound_to_atom_tag]() {
+        addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
+                                bound_to_atom_tag);
+        rdkit_extensions::assignChains(m_mol);
+    };
+    doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
 }
 
 void MolModel::addAtomChain(const Element& element,
