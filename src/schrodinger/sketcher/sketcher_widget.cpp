@@ -271,13 +271,14 @@ static std::string extract_string(MolModel* mol_model, Format format,
             "Sketcher does not support exporting MDL_MOLV2000 format");
     }
 
-    if (mol_model->hasReactionArrow()) {
-        if (subset == SceneSubset::SELECTION) {
-            throw std::runtime_error(
-                "Reaction selection export is not supported");
-        }
+    if (mol_model->hasReactionArrow() && subset == SceneSubset::ALL) {
         return rdkit_extensions::to_string(*mol_model->getReactionForExport(),
                                            format);
+    }
+
+    // Prevent export of partial selection if any non-molecular objects selected
+    if (!mol_model->getSelectedNonMolecularObjects().empty()) {
+        throw std::runtime_error("Cannot export a partial reaction");
     }
 
     auto mol = extract_mol(mol_model, subset);
