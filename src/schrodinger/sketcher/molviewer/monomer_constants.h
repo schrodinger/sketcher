@@ -224,5 +224,17 @@ const qreal CHEM_CONNECTOR_WIDTH = 2;
 
 const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
 
+/**
+ * A scaling factor for generating the cursor hints for monomers. If this value
+ * is greater than one, then the cursor hint for smaller monomers (as measured
+ * by the size of the border outline around the label) will be zoomed out,
+ * ensuring that the cursor hint is smaller than an actual monomer in the scene.
+ * Increasing this value will zoom out further (i.e. will decrease the size of
+ * the cursor hint). Note that this setting will have no effect on the cursor
+ * hint of larger monomers, as those are already zoomed out to ensure that they
+ * fit within the maximum cursor hint size (CURSOR_HINT_IMAGE_SIZE).
+ */
+const qreal MONOMER_CURSOR_HINT_MIN_SCENE_SIZE_SCALE = 1.4;
+
 } // namespace sketcher
 } // namespace schrodinger

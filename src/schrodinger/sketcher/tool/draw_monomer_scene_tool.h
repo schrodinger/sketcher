@@ -5,6 +5,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace RDKit
@@ -47,7 +48,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
   protected:
     std::string m_res_name;
     rdkit_extensions::ChainType m_chain_type;
-    const Fonts* m_fonts = nullptr;
+    Fonts m_fonts;
 
     QPixmap createDefaultCursorPixmap() const override;
 };

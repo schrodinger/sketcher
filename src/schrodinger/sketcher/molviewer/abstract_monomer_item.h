@@ -34,10 +34,16 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     AbstractMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
                         QGraphicsItem* parent = nullptr);
 
+    /**
+     * Replace the monomer-specific colors with the given colors.
+     */
+    void setMonomerColors(const QColor& background_color,
+                          const QColor& outline_color,
+                          const QColor& font_color);
+
     // Overridden QGraphicsItem methods
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override;
-    ;
 
   protected:
     const Fonts& m_fonts;
