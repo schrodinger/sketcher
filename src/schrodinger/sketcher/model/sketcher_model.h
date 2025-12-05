@@ -342,6 +342,31 @@ enum class AminoAcidTool {
     UNK,
 };
 
+const std::unordered_map<AminoAcidTool, std::string>
+    AMINO_ACID_TOOL_TO_RES_NAME{
+        {AminoAcidTool::ALA, "A"}, // clang-format off
+        {AminoAcidTool::ARG, "R"},
+        {AminoAcidTool::ASN, "N"},
+        {AminoAcidTool::ASP, "D"},
+        {AminoAcidTool::CYS, "C"},
+        {AminoAcidTool::GLN, "Q"},
+        {AminoAcidTool::GLU, "E"},
+        {AminoAcidTool::GLY, "G"},
+        {AminoAcidTool::HIS, "H"},
+        {AminoAcidTool::ILE, "I"},
+        {AminoAcidTool::LEU, "L"},
+        {AminoAcidTool::LYS, "K"},
+        {AminoAcidTool::MET, "M"},
+        {AminoAcidTool::PHE, "F"},
+        {AminoAcidTool::PRO, "P"},
+        {AminoAcidTool::SER, "S"},
+        {AminoAcidTool::THR, "T"},
+        {AminoAcidTool::TRP, "W"},
+        {AminoAcidTool::TYR, "Y"},
+        {AminoAcidTool::VAL, "V"},
+        {AminoAcidTool::UNK, "X"},
+    }; // clang-format on
+
 enum class NucleicAcidTool {
     A,
     U,
@@ -356,6 +381,19 @@ enum class NucleicAcidTool {
     DNA_NUCLEOTIDE,
     CUSTOM_NUCLEOTIDE,
 };
+
+const std::unordered_map<NucleicAcidTool, std::string>
+    NUCLEIC_ACID_TOOL_TO_RES_NAME{
+        {NucleicAcidTool::A, "A"}, // clang-format off
+        {NucleicAcidTool::U, "U"},
+        {NucleicAcidTool::G, "G"},
+        {NucleicAcidTool::C, "C"},
+        {NucleicAcidTool::T, "T"},
+        {NucleicAcidTool::N, "N"},
+        {NucleicAcidTool::R, "R"},
+        {NucleicAcidTool::P, "P"},
+        {NucleicAcidTool::dR, "dR"},
+    }; // clang-format on
 
 enum class StdNucleobase {
     A,

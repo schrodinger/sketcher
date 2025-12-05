@@ -168,9 +168,10 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
     }
 }
 
-std::unique_ptr<Monomer> makeMonomer(std::string_view name,
-                                     std::string_view chain_id,
-                                     int residue_number, bool is_smiles)
+std::unique_ptr<Monomer> makeMonomer(const std::string_view name,
+                                     const std::string_view chain_id,
+                                     const int residue_number,
+                                     const bool is_smiles)
 {
     auto a = std::make_unique<::RDKit::Atom>();
     std::string n{name};

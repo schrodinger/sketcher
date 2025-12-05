@@ -4,6 +4,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -17,6 +18,7 @@
 #include <QUndoStack>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/model/abstract_undoable_model.h"
@@ -382,6 +384,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void addAttachmentPoint(const RDGeom::Point3D& coords,
                             const RDKit::Atom* const bound_to_atom);
+
+    /**
+     * Undoably add an atom that represents a monomer
+     *
+     * @param res_name The residue name of the monomer
+     * @param chain_type The chain type of the monomer. Note that this should be
+     * ChainType::RNA for any form of nucleic acid (since HELM considers DNA to
+     * be a type of RNA)
+     * @param coords The coordinates for the new monomer
+     */
+    void addMonomer(const std::string_view res_name,
+                    const rdkit_extensions::ChainType chain_type,
+                    const RDGeom::Point3D& coords);
 
     /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
