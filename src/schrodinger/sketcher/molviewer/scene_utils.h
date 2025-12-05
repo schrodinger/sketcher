@@ -35,6 +35,7 @@ namespace sketcher
 
 class AbstractAtomOrMonomerItem;
 class AbstractGraphicsItem;
+class AbstractMonomerItem;
 class AtomItem;
 class AtomDisplaySettings;
 class BondItem;
@@ -54,6 +55,16 @@ enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
  * @throw std::runtime_error if the atom does not represent a monomer
  */
 MonomerType get_monomer_type(const RDKit::Atom* atom);
+
+/**
+ * Create and return a graphics item for the given monomer
+ * @param atom An atom that represents a monomer
+ * @param fonts The fonts for the graphics item to use
+ * @return The newly created graphics item. Destruction of this graphics item is
+ * the responsibility of the calling scope.
+ */
+SKETCHER_API AbstractMonomerItem*
+get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts);
 
 /**
  * Create all graphics items needed to represent the given molecule
@@ -115,6 +126,18 @@ SKETCHER_API QPixmap render_text_to_pixmap(const QString& text,
  */
 SKETCHER_API QPixmap cursor_hint_from_svg(const QString& path,
                                           const bool recolor = true);
+
+/**
+ * Create a cursor hint image showing the given graphics item
+ * @param graphics_item The item to render
+ * @param min_scene_size If greater than zero, the minimum width and height of
+ * the scene to be rendered to the cursor hint. If the bounding rect of
+ * graphics_item is small, this will effectively zoom out when generating the
+ * cursor hint. If the bounding rect of graphics_item is larger than
+ * min_scene_size, then this setting will have no effect.
+ */
+SKETCHER_API QPixmap cursor_hint_from_graphics_item(
+    QGraphicsItem* graphics_item, const qreal min_scene_size = -1.0);
 
 /**
  * @return A pixmap containing the arrow cursor

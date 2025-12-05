@@ -259,22 +259,7 @@ std::vector<QGraphicsItem*> DrawFragmentSceneTool::getGraphicsItems()
 QPixmap DrawFragmentSceneTool::createDefaultCursorPixmap() const
 {
     HintPixmapFragmentItem frag_item(m_hint_item);
-    QGraphicsScene scene;
-    QPixmap pixmap(CURSOR_HINT_IMAGE_SIZE, CURSOR_HINT_IMAGE_SIZE);
-    scene.addItem(&frag_item);
-    pixmap.fill(Qt::transparent);
-    {
-        QPainter painter(&pixmap);
-        painter.setRenderHints(QPainter::Antialiasing |
-                               QPainter::SmoothPixmapTransform);
-        scene.render(&painter);
-    }
-
-    // remove frag_item from the scene, otherwise it'll potentially get
-    // destroying by both Qt (when the scene is destroyed) and by C++ (when we
-    // leave this scope)
-    scene.removeItem(&frag_item);
-    return pixmap;
+    return cursor_hint_from_graphics_item(&frag_item);
 }
 
 void DrawFragmentSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)

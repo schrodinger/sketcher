@@ -113,7 +113,13 @@ void AminoAcidItem::updateCachedData()
     set_path_to_rounded_rect(m_predictive_highlighting_path, border_rect,
                              MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
     m_main_label_rect = border_rect;
-    m_bounding_rect = border_rect;
+    // the bounding rect needs to account for the thickness of the border
+    // outline (which is centered on the outline, so half of it is *outside*
+    // border_rect)
+    auto border_line_half_width = border_line_width / 2.0;
+    m_bounding_rect =
+        border_rect.adjusted(-border_line_half_width, -border_line_half_width,
+                             border_line_half_width, border_line_half_width);
     m_shape = m_border_path;
     auto rect_color = get_color_for_monomer(
         res_name, AMINO_ACID_COLOR_BY_RES_NAME, DEFAULT_AA_BACKGROUND_COLOR);

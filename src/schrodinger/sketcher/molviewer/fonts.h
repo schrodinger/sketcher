@@ -22,6 +22,7 @@ class SKETCHER_API Fonts
     // Prevent implicit copies, since that could cause bugs, as the Scene shares
     // a single Fonts object with all AtomItems.
     explicit Fonts(const Fonts&) = default;
+
     /**
      * Return the size in pixels of the font used to paint the main label.  The
      * main label is typically the element symbol, but it can also be a query
@@ -30,6 +31,16 @@ class SKETCHER_API Fonts
      */
     int size() const;
     void setSize(int size);
+
+    /**
+     * Update the font metrics after manually making changes to this object's
+     * fonts.
+     *
+     * @note This method is called automatically by setSize() and only needs to
+     * be explicitly called when directly manipulating the individual font
+     * objects.
+     */
+    void updateFontMetrics();
 
     QFont m_main_label_font;
     QFont m_subscript_font;

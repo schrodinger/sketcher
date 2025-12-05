@@ -46,7 +46,13 @@ void NucleicAcidSugarItem::updateCachedData()
     set_path_to_rect(m_predictive_highlighting_path, border_rect,
                      MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
     m_main_label_rect = border_rect;
-    m_bounding_rect = border_rect;
+    // the bounding rect needs to account for the thickness of the border
+    // outline (which is centered on the outline, so half of it is *outside*
+    // border_rect)
+    auto border_pen_half_width = border_pen_width / 2.0;
+    m_bounding_rect = m_border_path.boundingRect().adjusted(
+        -border_pen_half_width, -border_pen_half_width, border_pen_half_width,
+        border_pen_half_width);
     m_shape = m_border_path;
 }
 
