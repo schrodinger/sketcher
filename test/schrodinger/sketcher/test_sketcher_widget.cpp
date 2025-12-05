@@ -891,3 +891,128 @@ BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
     // we can't add atoms if there are already monomers
     BOOST_CHECK_THROW(sk.addTextToMolModel(ATOMISTIC_STRING), std::exception);
 }
+
+/**
+ * Test copying partial reactions with and without non-molecular objects
+ * selected. This validates that SKETCH-2632 allows copying partial selections
+ * when no reaction elements (arrow, plus signs) are selected, but prevents
+ * copying when they are selected.
+ */
+BOOST_AUTO_TEST_CASE(test_copy_partial_reaction)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    auto mol_model = sk.m_mol_model;
+
+    // Test with simple reaction: reactants >> products
+    sk.addFromString("CC>>CCC");
+    BOOST_TEST(mol_model->hasReactionArrow());
+
+    auto mol = mol_model->getMol();
+    // Reactants: atoms 0-1 (CC)
+    // Products: atoms 2-4 (CCC)
+    auto reactant_atoms = std::unordered_set<const RDKit::Atom*>{
+        mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)};
+    auto product_atoms = std::unordered_set<const RDKit::Atom*>{
+        mol->getAtomWithIdx(2), mol->getAtomWithIdx(3), mol->getAtomWithIdx(4)};
+
+    // Select reactants only (no arrow) - should succeed
+    mol_model->select(reactant_atoms, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->hasSelection());
+    BOOST_TEST(mol_model->getSelectedNonMolecularObjects().empty());
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getClipboardContents() == "CC");
+
+    // Select products only (no arrow) - should succeed
+    mol_model->select(product_atoms, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->hasSelection());
+    BOOST_TEST(mol_model->getSelectedNonMolecularObjects().empty());
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getClipboardContents() == "CCC");
+
+    // Select reactants + arrow - should fail (clipboard unchanged)
+    auto arrow = mol_model->getReactionArrow();
+    BOOST_REQUIRE(arrow != nullptr);
+    mol_model->select(reactant_atoms, {}, {}, {arrow}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->hasSelection());
+    BOOST_TEST(!mol_model->getSelectedNonMolecularObjects().empty());
+    std::string clipboard_before = sk.getClipboardContents();
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    // Error shown internally, clipboard should not update
+    BOOST_TEST(sk.getClipboardContents() == clipboard_before);
+
+    // Select products + arrow - should fail (clipboard unchanged)
+    mol_model->select(product_atoms, {}, {}, {arrow}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->hasSelection());
+    BOOST_TEST(!mol_model->getSelectedNonMolecularObjects().empty());
+    clipboard_before = sk.getClipboardContents();
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getClipboardContents() == clipboard_before);
+
+    // Copy all - should work as complete reaction
+    sk.copy(Format::SMILES, SceneSubset::ALL);
+    BOOST_TEST(sk.getClipboardContents() == "CC>>CCC");
+
+    // Test with multi-component reaction: A + B >> C
+    sk.clear();
+    sk.addFromString("CC.CCC>>CCCCC");
+    BOOST_TEST(mol_model->hasReactionArrow());
+
+    mol = mol_model->getMol();
+    // Reactant A: atoms 0-1 (CC)
+    // Reactant B: atoms 2-4 (CCC)
+    // Product C: atoms 5-9 (CCCCC)
+    auto reactantA_atoms = std::unordered_set<const RDKit::Atom*>{
+        mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)};
+    auto reactantB_atoms = std::unordered_set<const RDKit::Atom*>{
+        mol->getAtomWithIdx(2), mol->getAtomWithIdx(3), mol->getAtomWithIdx(4)};
+    auto productC_atoms = std::unordered_set<const RDKit::Atom*>{
+        mol->getAtomWithIdx(5), mol->getAtomWithIdx(6), mol->getAtomWithIdx(7),
+        mol->getAtomWithIdx(8), mol->getAtomWithIdx(9)};
+
+    // Select one reactant component - should succeed
+    mol_model->select(reactantA_atoms, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->getSelectedNonMolecularObjects().empty());
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getClipboardContents() == "CC");
+
+    // Select both reactant components - should succeed
+    auto both_reactants = reactantA_atoms;
+    both_reactants.insert(reactantB_atoms.begin(), reactantB_atoms.end());
+    mol_model->select(both_reactants, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->getSelectedNonMolecularObjects().empty());
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    // Result may be "CC.CCC" or "CCC.CC" depending on atom ordering
+    auto clip = sk.getClipboardContents();
+    BOOST_TEST((clip == "CC.CCC" || clip == "CCC.CC"));
+
+    // Select reactants + plus sign - should fail
+    auto all_non_mol = mol_model->getNonMolecularObjects();
+    arrow = mol_model->getReactionArrow();
+    // Find a plus sign (any non-molecular object that isn't the arrow)
+    const NonMolecularObject* plus_sign = nullptr;
+    for (auto* obj : all_non_mol) {
+        if (obj != arrow) {
+            plus_sign = obj;
+            break;
+        }
+    }
+    BOOST_REQUIRE(plus_sign != nullptr);
+    mol_model->select(both_reactants, {}, {}, {plus_sign},
+                      SelectMode::SELECT_ONLY);
+    BOOST_TEST(!mol_model->getSelectedNonMolecularObjects().empty());
+    clipboard_before = sk.getClipboardContents();
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getClipboardContents() == clipboard_before);
+
+    // Select product component - should succeed
+    mol_model->select(productC_atoms, {}, {}, {}, SelectMode::SELECT_ONLY);
+    BOOST_TEST(mol_model->getSelectedNonMolecularObjects().empty());
+    sk.copy(Format::SMILES, SceneSubset::SELECTION);
+    BOOST_TEST(sk.getClipboardContents() == "CCCCC");
+
+    // Copy all - complete multi-component reaction
+    sk.copy(Format::SMILES, SceneSubset::ALL);
+    // RDKit may reorder components
+    clip = sk.getClipboardContents();
+    BOOST_TEST((clip == "CC.CCC>>CCCCC" || clip == "CCC.CC>>CCCCC"));
+}
