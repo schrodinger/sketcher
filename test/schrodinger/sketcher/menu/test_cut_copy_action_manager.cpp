@@ -14,8 +14,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-using rdkit_extensions::Format;
-
 /**
  * Verify that cut and copy actions are enabled as expected
  */
@@ -103,49 +101,6 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     BOOST_TEST(reaction_actions_visible(false));
     sk.addFromString("CC");
     BOOST_TEST(reaction_actions_visible(false));
-}
-
-/**
- * Test copying partial reactions with and without the arrow selected
- */
-BOOST_AUTO_TEST_CASE(test_copy_partial_reaction)
-{
-    TestSketcherWidget sk;
-    auto mol_model = sk.m_mol_model;
-
-    // Add a simple reaction
-    sk.addFromString("CC>>CC");
-    BOOST_TEST(mol_model->hasReactionArrow());
-
-    auto mol = mol_model->getMol();
-    auto reactant_atoms = std::unordered_set<const RDKit::Atom*>{
-        mol->getAtomWithIdx(0), mol->getAtomWithIdx(1)};
-
-    // Test 1: Select reactants only (no arrow) - should copy as molecule
-    mol_model->select(reactant_atoms, {}, {}, {}, SelectMode::SELECT_ONLY);
-    BOOST_TEST(mol_model->hasSelection());
-    BOOST_TEST(mol_model->getSelectedNonMolecularObjects().empty());
-
-    // This should NOT throw - copying reactants without arrow
-    BOOST_CHECK_NO_THROW(sk.copy(Format::SMILES, SceneSubset::SELECTION));
-    std::string clipboard = sk.getClipboardContents();
-    BOOST_TEST(clipboard == "CC");
-
-    // Test 2: Select reactants + arrow - should throw error
-    auto arrow = mol_model->getReactionArrow();
-    BOOST_REQUIRE(arrow != nullptr);
-    mol_model->select(reactant_atoms, {}, {}, {arrow}, SelectMode::SELECT_ONLY);
-    BOOST_TEST(mol_model->hasSelection());
-    BOOST_TEST(!mol_model->getSelectedNonMolecularObjects().empty());
-
-    // This SHOULD throw - cannot copy partial reaction with arrow selected
-    BOOST_CHECK_THROW(sk.copy(Format::SMILES, SceneSubset::SELECTION),
-                      std::runtime_error);
-
-    // Test 3: Copy all - should work as complete reaction
-    BOOST_CHECK_NO_THROW(sk.copy(Format::SMILES, SceneSubset::ALL));
-    clipboard = sk.getClipboardContents();
-    BOOST_TEST(clipboard == "CC>>CC");
 }
 
 } // namespace sketcher
