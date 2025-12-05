@@ -14,6 +14,8 @@ namespace schrodinger
 namespace sketcher
 {
 
+using rdkit_extensions::Format;
+
 /**
  * Verify that cut and copy actions are enabled as expected
  */
