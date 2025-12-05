@@ -260,10 +260,12 @@ static boost::shared_ptr<RDKit::ROMol> extract_mol(MolModel* mol_model,
 /**
  * @internal
  * @param mol_model the model to extract the molecule from
+ * @param sketcher_model the sketcher model (for checking if all items selected)
  * @param format the format to serialize the molecule to
  * @param subset whether to extract everything or just the current selection
  */
-static std::string extract_string(MolModel* mol_model, Format format,
+static std::string extract_string(MolModel* mol_model,
+                                  SketcherModel* sketcher_model, Format format,
                                   SceneSubset subset)
 {
     if (format == Format::MDL_MOLV2000) {
@@ -271,7 +273,8 @@ static std::string extract_string(MolModel* mol_model, Format format,
             "Sketcher does not support exporting MDL_MOLV2000 format");
     }
 
-    if (mol_model->hasReactionArrow() && subset == SceneSubset::ALL) {
+    if (mol_model->hasReactionArrow() &&
+        (subset == SceneSubset::ALL || sketcher_model->allItemsSelected())) {
         return rdkit_extensions::to_string(*mol_model->getReactionForExport(),
                                            format);
     }
@@ -323,7 +326,8 @@ void SketcherWidget::addFromString(const std::string& text, Format format)
 
 std::string SketcherWidget::getString(Format format) const
 {
-    return extract_string(m_mol_model, format, SceneSubset::ALL);
+    return extract_string(m_mol_model, m_sketcher_model, format,
+                          SceneSubset::ALL);
 }
 
 QByteArray SketcherWidget::getImageBytes(ImageFormat format) const
@@ -484,7 +488,7 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
 {
     std::string text;
     try {
-        text = extract_string(m_mol_model, format, subset);
+        text = extract_string(m_mol_model, m_sketcher_model, format, subset);
     } catch (const std::exception& exc) {
         show_error_dialog("Copy Error", exc.what(), window());
         return;
