@@ -4,14 +4,11 @@
 
 #include <QString>
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/definitions.h"
 
 namespace schrodinger
 {
-namespace rdkit_extensions
-{
-enum class Format;
-} // namespace rdkit_extensions
 
 namespace sketcher
 {
@@ -23,6 +20,27 @@ enum class ImageFormat;
 // stored as an ordered list to preserve menu initialization order.
 template <class T> using FormatList =
     std::vector<std::tuple<T, std::string, std::vector<std::string>>>;
+
+/**
+ * @return a list of all atomistic import formats with a human readable name for
+ * each
+ */
+SKETCHER_API std::vector<std::tuple<rdkit_extensions::Format, std::string>>
+get_mol_import_formats();
+
+/**
+ * @return a list of all monomeric import formats with a human readable name for
+ * each
+ */
+SKETCHER_API std::vector<std::tuple<rdkit_extensions::Format, std::string>>
+get_monomoric_import_formats();
+
+/**
+ * @return a list of all atomistic reaction import formats with a human readable
+ * name for each
+ */
+SKETCHER_API std::vector<std::tuple<rdkit_extensions::Format, std::string>>
+get_reaction_import_formats();
 
 /**
  * @return list of importable (format enum, menu label, allowable extensions)

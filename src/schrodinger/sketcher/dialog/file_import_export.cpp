@@ -14,13 +14,15 @@ namespace schrodinger
 namespace sketcher
 {
 
-FormatList<Format> get_import_formats()
+std::vector<std::tuple<Format, std::string>> get_mol_import_formats()
 {
-    std::vector<std::tuple<Format, std::string>> mol_import_formats = {
+    return {
         {Format::MDL_MOLV3000, "MDL SD"},
         {Format::MAESTRO, "Maestro"},
         {Format::SMILES, "SMILES"},
         {Format::EXTENDED_SMILES, "Extended SMILES"},
+        {Format::SMARTS, "SMARTS"},
+        {Format::EXTENDED_SMARTS, "Extended SMARTS"},
         {Format::INCHI, "InChI"},
         {Format::MOL2, "MOL2"},
         {Format::PDB, "PDB"},
@@ -28,15 +30,40 @@ FormatList<Format> get_import_formats()
         {Format::MRV, "Marvin Document"},
         {Format::CDXML, "ChemDraw XML"},
     };
-    std::vector<std::tuple<Format, std::string>> rxn_import_formats = {
+}
+
+std::vector<std::tuple<Format, std::string>> get_reaction_import_formats()
+{
+    return {
         {Format::MDL_MOLV3000, "MDL RXN"},
         {Format::SMILES, "Reaction SMILES"},
     };
+}
+
+std::vector<std::tuple<Format, std::string>> get_monomoric_import_formats()
+{
+    return {
+        {Format::HELM, "HELM"},
+        {Format::FASTA_PEPTIDE, "FASTA Peptide"},
+        {Format::FASTA_DNA, "FASTA DNA"},
+        {Format::FASTA_RNA, "FASTA RNA"},
+    };
+}
+
+FormatList<Format> get_import_formats()
+{
+
+    auto mol_import_formats = get_mol_import_formats();
+    auto rxn_import_formats = get_reaction_import_formats();
 
     FormatList<Format> import_formats;
     for (const auto& [format, label] : mol_import_formats) {
         auto extensions = rdkit_extensions::get_mol_extensions(format);
-        import_formats.push_back({format, label, extensions});
+        // we skip SMARTS and EXTENDED_SMARTS since those don't have any
+        // associated extensions
+        if (!extensions.empty()) {
+            import_formats.push_back({format, label, extensions});
+        }
     }
     for (const auto& [format, label] : rxn_import_formats) {
         auto extensions = rdkit_extensions::get_rxn_extensions(format);
