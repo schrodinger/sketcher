@@ -17,7 +17,7 @@ runs:
         mv sketcher-wasm/* wasm/package/dist
 
         # Set pre-release version in package manifest
-        sketcher_version=$(grep "VERSION " CMakeLists.txt | grep -oE "[0-9]+\.[0-9]+\.[0-9]+")
+        sketcher_version=$(jq -r '.sketcher' version.json)
         tag_name=$(echo $sketcher_version | awk -F . '{print "v"$1"-"$2}')
         commit_timestamp=$(git show --no-patch --pretty=format:%ct)
         commit_datetime=$(TZ=UTC0 date --date @$commit_timestamp +%Y%m%d%H%M%S)

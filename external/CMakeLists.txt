@@ -35,21 +35,24 @@ endfunction()
 # might find the wrong one if our range of years is way too large), but it
 # should be good enough for our needs.
 function(generate_sqlite_urls VAR_NAME)
-    # pull out the digits from the SQLite version
-    string(REGEX REPLACE "[^0-9]" "" SQLITE_VERS_DIGITS "${SQLITE_VERSION}")
-    # the file name is padded with zeroes to seven digits
-    string(LENGTH "${SQLITE_VERS_DIGITS}" SQLITE_VERS_NUM_DIGITS)
-    math(EXPR NUM_ZEROS "7 - ${SQLITE_VERS_NUM_DIGITS}")
-    string(REPEAT "0" ${NUM_ZEROS} TRAILING_ZEROS)
-    foreach(YEAR RANGE 2023 2035)
-        list(APPEND URLS_FOR_YEARS "https://www.sqlite.org/${YEAR}/sqlite-amalgamation-${SQLITE_VERS_DIGITS}${TRAILING_ZEROS}.zip")
-    endforeach(YEAR)
-    list(JOIN URLS_FOR_YEARS ";" JOINED_URLS)
-    set(${VAR_NAME}
+  # pull out the digits from the SQLite version
+  string(REGEX REPLACE "[^0-9]" "" SQLITE_VERS_DIGITS "${SQLITE_VERSION}")
+  # the file name is padded with zeroes to seven digits
+  string(LENGTH "${SQLITE_VERS_DIGITS}" SQLITE_VERS_NUM_DIGITS)
+  math(EXPR NUM_ZEROS "7 - ${SQLITE_VERS_NUM_DIGITS}")
+  string(REPEAT "0" ${NUM_ZEROS} TRAILING_ZEROS)
+  foreach(YEAR RANGE 2023 2035)
+    list(
+      APPEND
+      URLS_FOR_YEARS
+      "https://www.sqlite.org/${YEAR}/sqlite-amalgamation-${SQLITE_VERS_DIGITS}${TRAILING_ZEROS}.zip"
+    )
+  endforeach(YEAR)
+  list(JOIN URLS_FOR_YEARS ";" JOINED_URLS)
+  set(${VAR_NAME}
       "${JOINED_URLS}"
       PARENT_SCOPE)
 endfunction()
-    
 
 if(EMSCRIPTEN)
   set(EXTRA_BOOST_CMAKE_ARGS
@@ -142,7 +145,8 @@ ExternalProject_Add(
   sqlite
   URL ${SQLITE_URLS}
   # SQLite doesn't work with CMake out of the box, so copy in our CMake files
-  PATCH_COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/sqlite_cmake <SOURCE_DIR>
+  PATCH_COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/sqlite_cmake <SOURCE_DIR>
   CMAKE_ARGS
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/sqlite-${SQLITE_VERSION}
