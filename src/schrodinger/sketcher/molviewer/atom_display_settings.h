@@ -88,6 +88,11 @@ class SKETCHER_API AtomDisplaySettings
     bool m_show_symbol_for_H_isotopes = false;
 
     /**
+     * Whether to display RDKit mol atom indices as labels (developer option)
+     */
+    bool m_show_atom_indices = false;
+
+    /**
      * The width of the pen used to draw attachment point squiggles.
      */
     qreal m_squiggle_pen_width = BOND_DEFAULT_PEN_WIDTH;

@@ -100,12 +100,12 @@ function(setup_target TARGET)
       ${TARGET} PRIVATE RDKIT_EXTENSIONS_STATIC_DEFINE SKETCHER_STATIC_DEFINE
                         BOOST_BEAST_HEADER_ONLY)
     if(WIN32)
-      if (MSVC)
+      if(MSVC)
         # use the static version of the runtime library instead of the default
         # shared version
-        set_property(TARGET ${TARGET}
-                     PROPERTY MSVC_RUNTIME_LIBRARY
-                     "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        set_property(
+          TARGET ${TARGET} PROPERTY MSVC_RUNTIME_LIBRARY
+                                    "MultiThreaded$<$<CONFIG:Debug>:Debug>")
       else()
         target_link_options(${TARGET} PUBLIC -static)
       endif()
@@ -242,8 +242,7 @@ if(MSVC AND NOT ${BUILD_SHARED_LIBS})
   # IMPORT_SUFFIX, we change the filename for this target to
   # schrodinger_sketcher_bin.lib.
   set_target_properties(
-    ${APP_TARGET}
-    PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
+    ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
 endif()
 
 # Tests

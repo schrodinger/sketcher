@@ -56,14 +56,14 @@ const double PI = boost::math::constants::pi<double>();
 
 constexpr double MONOMER_CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
 constexpr double BOND_CLASH_DISTANCE = MONOMER_CLASH_DISTANCE;
+constexpr double MIN_ANGLE_BETWEEN_CONSECUTIVE_BONDS =
+    boost::math::constants::pi<double>() / 18; // 10 degrees
 
 // Props used in the fragmented polymer mols to store monomer graph info from
 // the monomersitc mol
 const std::string BOND_TO{"bondTo"};
 const std::string ORIGINAL_INDEX{"originalIndex"};
-// Used to indicate whether a monomer has had its position calculated and set in
-// the conformer
-const std::string MONOMER_PLACED{"monomerPlaced"};
+
 // Set on the polymer mol
 const std::string POLYMER_ID{"polymerID"};
 
@@ -74,9 +74,47 @@ const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 // Replacement atom label for monomers with SMILES strings as their atom label
 const std::string SMILES_MONOMER_LABEL{"CX"};
 
-enum ChainDirection { LTR, RTL };
-enum BranchDirection { UP, DOWN };
-enum PolygonStartSide { LEFT, RIGHT };
+// the direction in which to lay out a monomer chain (from left to right or
+// right to left)
+enum class ChainDirection { LTR, RTL };
+
+// the general direction in which to lay out branch monomers (above or below the
+// chain)
+enum class BranchDirection { UP, DOWN };
+
+// the direction in which to place branch monomers relative to their parent
+// monomer. This might be differtent from the general branch direction if there
+// are clashes.
+enum class Direction { N, S, E, W, NW, NE, SW, SE };
+enum class PolygonStartSide { LEFT, RIGHT };
+static const std::map<Direction, RDGeom::Point3D> DIRECTION_TO_POINT_MAP = {
+    {Direction::N, RDGeom::Point3D(0, 1, 0)},
+    {Direction::S, RDGeom::Point3D(0, -1, 0)},
+    {Direction::E, RDGeom::Point3D(1, 0, 0)},
+    {Direction::W, RDGeom::Point3D(-1, 0, 0)},
+    {Direction::NE, RDGeom::Point3D(1, 1, 0)},
+    {Direction::NW, RDGeom::Point3D(-1, 1, 0)},
+    {Direction::SE, RDGeom::Point3D(1, -1, 0)},
+    {Direction::SW, RDGeom::Point3D(-1, -1, 0)}};
+
+static RDGeom::Point3D direction_to_point(Direction dir)
+{
+    auto it = DIRECTION_TO_POINT_MAP.find(dir);
+    if (it != DIRECTION_TO_POINT_MAP.end()) {
+        return it->second;
+    }
+    throw std::runtime_error("Invalid direction");
+}
+
+static void place_monomer_at(RDKit::Conformer& conformer,
+                             const RDKit::Atom* monomer_to_place,
+                             const RDGeom::Point3D& position,
+                             std::unordered_set<int>& placed_monomers_idcs)
+{
+    auto monomer_idx = monomer_to_place->getIdx();
+    conformer.setAtomPos(monomer_idx, position);
+    placed_monomers_idcs.insert(monomer_to_place->getProp<int>(ORIGINAL_INDEX));
+}
 
 namespace bg = boost::geometry;
 using point_t = bg::model::d2::point_xy<double>;
@@ -85,55 +123,144 @@ using segment_t = bg::model::segment<point_t>;
 static auto default_stop_condition = [](const RDKit::Atom* monomer) {
     return false;
 };
+
+/**
+ * Get the available directions in which branches for a given monomer can be
+ * placed
+ * @param bonded_to_parent_polymer true if the monomer has a bond to an already
+ * placed polymer
+ * @param bonded_to_child_polymer true if the monomer has a bond to an unplaced
+ * polymer
+ * @param branch_direction the general direction in which branches should be
+ * placed
+ * @param chain_dir the direction in which the monomer chain is being laid out
+ * @param is_last_of_chain true if the monomer is the last in the chain
+ * @param is_first_of_chain true if the monomer is the first in the chain
+ */
+static std::vector<Direction> get_available_directions(
+    const bool bonded_to_parent_polymer, const bool bonded_to_child_polymer,
+    const BranchDirection branch_direction, const ChainDirection chain_dir,
+    const bool is_last_of_chain, const bool is_first_of_chain)
+{
+    std::vector<Direction> dirs;
+    // first try the main branch direction
+    if (!bonded_to_child_polymer && branch_direction == BranchDirection::DOWN) {
+        dirs.push_back(Direction::S);
+    } else if (!bonded_to_parent_polymer &&
+               branch_direction == BranchDirection::UP) {
+        dirs.push_back(Direction::N);
+    }
+    // if this is the first or last polymer, we can branch along
+    // the chain
+    if (is_last_of_chain) {
+        dirs.push_back(chain_dir == ChainDirection::LTR ? Direction::E
+                                                        : Direction::W);
+    }
+    if (is_first_of_chain) {
+        dirs.push_back(chain_dir == ChainDirection::LTR ? Direction::W
+                                                        : Direction::E);
+    }
+    // as a last resort, try the opposite of the main branch direction
+    if (!bonded_to_parent_polymer &&
+        branch_direction == BranchDirection::DOWN) {
+        dirs.push_back(Direction::N);
+    } else if (!bonded_to_child_polymer &&
+               branch_direction == BranchDirection::UP) {
+        dirs.push_back(Direction::S);
+    }
+    // add diagonal directions. These are not normally used, but can if
+    // necessary
+    dirs.push_back(Direction::NE);
+    dirs.push_back(Direction::SW);
+    dirs.push_back(Direction::NW);
+    dirs.push_back(Direction::SE);
+    return dirs;
+}
 /**
  * Lays out a monomer chain in `polymer` by traversing through the monomer graph
  * until either the `stop_condition` is met for all visited monomers or we run
  * out of unplaced monomers reachable from start_monomer. Expects all monomers
- * to have the MONOMER_PLACED prop set to indicate if they've already been
- * placed (polymers returned from `break_into_polymers` below already have this
- * prop set on all monomers).
+ * to have their indices in `placed_monomers_idcs` to indicate if they've
+ * already been placed (polymers returned from `break_into_polymers` below
+ * already have this prop set on all monomers).
  */
 template <typename _Cond = decltype(default_stop_condition)> static void
 lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
+              std::unordered_set<int>& placed_monomers_idcs,
               const RDGeom::Point3D& start_pos = RDGeom::Point3D(0, 0, 0),
-              ChainDirection chain_dir = LTR,
-              BranchDirection branch_direction = UP,
+              ChainDirection chain_dir = ChainDirection::LTR,
+              BranchDirection branch_direction = BranchDirection::UP,
               _Cond stop_condition = default_stop_condition)
 {
     auto& conformer = polymer.getConformer();
     auto x_pos = start_pos.x;
-    auto monomer_to_layout = start_monomer;
-    while (monomer_to_layout != nullptr) {
-        if (stop_condition(monomer_to_layout)) {
+    auto monomer_to_place = start_monomer;
+    const RDKit::Atom* last_placed_monomer = nullptr;
+    while (monomer_to_place != nullptr) {
+        if (stop_condition(monomer_to_place)) {
             break;
         }
-        auto monomer_idx = monomer_to_layout->getIdx();
-        conformer.setAtomPos(monomer_idx,
-                             RDGeom::Point3D(x_pos, start_pos.y, start_pos.z));
-        monomer_to_layout->setProp(MONOMER_PLACED, true);
+        place_monomer_at(conformer, monomer_to_place,
+                         RDGeom::Point3D(x_pos, start_pos.y, start_pos.z),
+                         placed_monomers_idcs);
+        auto monomer_neighbors = polymer.atomNeighbors(monomer_to_place);
+        bool bonded_to_parent_polymer = false;
+        bool bonded_to_child_polymer = false;
+        std::vector<int> neighbor_monomer_idcs;
+        monomer_to_place->getPropIfPresent<std::vector<int>>(
+            BOND_TO, neighbor_monomer_idcs);
+        for (auto neighbor_idx : neighbor_monomer_idcs) {
+            if (placed_monomers_idcs.contains(neighbor_idx)) {
+                bonded_to_parent_polymer = true;
+            } else {
+                bonded_to_child_polymer = true;
+            }
+        }
+        auto monomer_to_place_idx = monomer_to_place->getIdx();
+        monomer_to_place = nullptr;
+        const RDKit::Atom* next_monomer_to_place = nullptr;
 
-        auto monomer_neighbors = polymer.atomNeighbors(monomer_to_layout);
-        monomer_to_layout = nullptr;
+        std::vector<const RDKit::Atom*> branches;
         for (auto neighbor : monomer_neighbors) {
-            if (neighbor->getProp<bool>(MONOMER_PLACED) ||
+            if (placed_monomers_idcs.contains(
+                    neighbor->getProp<int>(ORIGINAL_INDEX)) ||
                 // This is a connection attachment point
-                polymer.getBondBetweenAtoms(neighbor->getIdx(), monomer_idx)
+                polymer
+                    .getBondBetweenAtoms(neighbor->getIdx(),
+                                         monomer_to_place_idx)
                     ->hasProp(CUSTOM_BOND)) {
                 continue;
             }
 
             if (!neighbor->getProp<bool>(BRANCH_MONOMER)) {
-                monomer_to_layout = neighbor;
+                next_monomer_to_place = neighbor;
             } else {
-                // branch monomer - placed with a y offset at the same x coord
-                double y_offset = branch_direction == UP ? MONOMER_BOND_LENGTH
-                                                         : -MONOMER_BOND_LENGTH;
-                RDGeom::Point3D pos(x_pos, start_pos.y + y_offset, start_pos.z);
-                conformer.setAtomPos(neighbor->getIdx(), pos);
-                neighbor->setProp(MONOMER_PLACED, true);
+                branches.push_back(neighbor);
             }
         }
-        x_pos += chain_dir == LTR ? MONOMER_BOND_LENGTH : -MONOMER_BOND_LENGTH;
+
+        std::vector<Direction> available_directions = get_available_directions(
+            bonded_to_parent_polymer, bonded_to_child_polymer, branch_direction,
+            chain_dir, next_monomer_to_place == nullptr,
+            last_placed_monomer == nullptr);
+        auto next_available_direction = available_directions.begin();
+        if (available_directions.size() < branches.size()) {
+            throw std::runtime_error(
+                "Not enough available directions to place all branch monomers");
+        }
+
+        for (auto branch_monomer : branches) {
+            RDGeom::Point3D pos(x_pos, start_pos.y, start_pos.z);
+            pos += direction_to_point(*next_available_direction++) *
+                   MONOMER_BOND_LENGTH;
+            place_monomer_at(conformer, branch_monomer, pos,
+                             placed_monomers_idcs);
+        }
+        last_placed_monomer = monomer_to_place;
+        monomer_to_place = next_monomer_to_place;
+
+        x_pos += chain_dir == ChainDirection::LTR ? MONOMER_BOND_LENGTH
+                                                  : -MONOMER_BOND_LENGTH;
     }
 }
 
@@ -230,7 +357,8 @@ static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
  * parallel to the y-axis) should be on
  */
 static std::vector<RDGeom::Point3D>
-get_coords_for_ngon(size_t n, PolygonStartSide start_side = RIGHT)
+get_coords_for_ngon(size_t n,
+                    PolygonStartSide start_side = PolygonStartSide::RIGHT)
 {
     // radius for n-sided polygon with equal sides
     double radius = MONOMER_BOND_LENGTH / (2 * std::sin(PI / n));
@@ -247,7 +375,9 @@ get_coords_for_ngon(size_t n, PolygonStartSide start_side = RIGHT)
     return points;
 }
 
-static void lay_out_cyclic_polymer(RDKit::ROMol& polymer)
+static void
+lay_out_cyclic_polymer(RDKit::ROMol& polymer,
+                       std::unordered_set<int>& placed_monomers_idcs)
 {
     std::vector<int> largest_cycle = find_largest_ring(polymer);
     auto cycle_coords = get_coords_for_ngon(largest_cycle.size());
@@ -256,15 +386,16 @@ static void lay_out_cyclic_polymer(RDKit::ROMol& polymer)
     // lay out all the monomers in the ring
     for (size_t i = 0; i < largest_cycle.size(); i++) {
         auto monomer = polymer.getAtomWithIdx(largest_cycle[i]);
-        conformer.setAtomPos(monomer->getIdx(), cycle_coords[i]);
-        monomer->setProp(MONOMER_PLACED, true);
+        place_monomer_at(conformer, monomer, cycle_coords[i],
+                         placed_monomers_idcs);
     }
 
     // lay out all the monomers attached to monomers in the ring
     for (auto monomer_idx : largest_cycle) {
         auto monomer = polymer.getAtomWithIdx(monomer_idx);
         for (auto neighbor : polymer.atomNeighbors(monomer)) {
-            if (neighbor->getProp<bool>(MONOMER_PLACED)) {
+            if (placed_monomers_idcs.contains(
+                    neighbor->getProp<int>(ORIGINAL_INDEX))) {
                 continue;
             }
 
@@ -286,11 +417,13 @@ static void lay_out_cyclic_polymer(RDKit::ROMol& polymer)
             // branch monomer i.e. single monomer branched off the polymer
             // backbone is just placed along the radius
             if (neighbor->getProp<bool>(BRANCH_MONOMER)) {
-                conformer.setAtomPos(neighbor->getIdx(), pos);
-                neighbor->setProp(MONOMER_PLACED, true);
+                place_monomer_at(conformer, neighbor, pos,
+                                 placed_monomers_idcs);
             } else {
-                ChainDirection chain_dir = pos.x < 0 ? RTL : LTR;
-                lay_out_chain(polymer, neighbor, pos, chain_dir);
+                ChainDirection chain_dir =
+                    pos.x < 0 ? ChainDirection::RTL : ChainDirection::LTR;
+                lay_out_chain(polymer, neighbor, placed_monomers_idcs, pos,
+                              chain_dir);
             }
         }
     }
@@ -371,7 +504,9 @@ find_hairpin_turn(const RDKit::ROMol& polymer)
  * Lays out a "hairpin" style polymer i.e. a polymer with one or more hydrogen
  * bond connections with itself.
  */
-static void layout_hairpin_polymer(RDKit::ROMol& polymer)
+static void
+layout_hairpin_polymer(RDKit::ROMol& polymer,
+                       std::unordered_set<int>& placed_monomers_idcs)
 {
     auto hairpin_turn = find_hairpin_turn(polymer);
     auto& conformer = polymer.getConformer();
@@ -393,28 +528,31 @@ static void layout_hairpin_polymer(RDKit::ROMol& polymer)
     for (size_t i = 1; i < hairpin_turn.size() - 1; i++) {
         auto monomer = hairpin_turn[i];
         auto coords = cycle_coords[i + turn_start];
-        conformer.setAtomPos(monomer->getIdx(), coords);
-        monomer->setProp(MONOMER_PLACED, true);
+        place_monomer_at(conformer, monomer, coords, placed_monomers_idcs);
 
         for (auto neighbor : polymer.atomNeighbors(monomer)) {
             if (neighbor->getProp<bool>(BRANCH_MONOMER)) {
                 auto radius = coords.length();
                 auto multiplier = (radius + MONOMER_BOND_LENGTH) / radius;
-                conformer.setAtomPos(neighbor->getIdx(), coords * multiplier);
-                neighbor->setProp(MONOMER_PLACED, true);
+                place_monomer_at(conformer, neighbor, coords * multiplier,
+                                 placed_monomers_idcs);
             }
         }
     }
 
     // layout the chains
-    lay_out_chain(polymer, hairpin_turn.front(), cycle_coords[turn_start],
-                  ChainDirection::RTL, BranchDirection::DOWN);
-    lay_out_chain(polymer, hairpin_turn.back(), cycle_coords[turn_end],
-                  ChainDirection::RTL, BranchDirection::UP);
+    lay_out_chain(polymer, hairpin_turn.front(), placed_monomers_idcs,
+                  cycle_coords[turn_start], ChainDirection::RTL,
+                  BranchDirection::DOWN);
+    lay_out_chain(polymer, hairpin_turn.back(), placed_monomers_idcs,
+                  cycle_coords[turn_end], ChainDirection::RTL,
+                  BranchDirection::UP);
 }
 
-static void lay_out_linear_polymer(RDKit::ROMol& polymer,
-                                   const bool rotate = false)
+static void
+lay_out_linear_polymer(RDKit::ROMol& polymer,
+                       std::unordered_set<int>& placed_monomers_idcs,
+                       const bool rotate = false)
 {
     auto monomers = polymer.atoms();
     auto start_monomer =
@@ -423,8 +561,8 @@ static void lay_out_linear_polymer(RDKit::ROMol& polymer,
         });
     auto branch_dir = rotate ? BranchDirection::UP : BranchDirection::DOWN;
     auto chain_dir = rotate ? ChainDirection::RTL : ChainDirection::LTR;
-    lay_out_chain(polymer, start_monomer, RDGeom::Point3D(0, 0, 0), chain_dir,
-                  branch_dir);
+    lay_out_chain(polymer, start_monomer, placed_monomers_idcs,
+                  RDGeom::Point3D(0, 0, 0), chain_dir, branch_dir);
 }
 
 /**
@@ -451,18 +589,20 @@ static void lay_out_linear_polymer(RDKit::ROMol& polymer,
  * @param rotate This only applies for linear polymers. Rotates the direction of
  * monomer chains and branches 180° (chains go RTL and branches go UP).
  */
-static void lay_out_polymer(RDKit::ROMol& polymer, const bool rotate = false)
+static void lay_out_polymer(RDKit::ROMol& polymer,
+                            std::unordered_set<int>& placed_monomers_idcs,
+                            const bool rotate = false)
 {
     if (!polymer.getRingInfo()->isInitialized()) {
         constexpr bool include_dative_bonds = true;
         RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
     }
     if (polymer.getRingInfo()->numRings() > 0) {
-        lay_out_cyclic_polymer(polymer);
+        lay_out_cyclic_polymer(polymer, placed_monomers_idcs);
     } else if (polymer.getNumAtoms() == polymer.getNumBonds() + 1) {
-        lay_out_linear_polymer(polymer, rotate);
+        lay_out_linear_polymer(polymer, placed_monomers_idcs, rotate);
     } else {
-        layout_hairpin_polymer(polymer);
+        layout_hairpin_polymer(polymer, placed_monomers_idcs);
     }
 }
 
@@ -473,21 +613,24 @@ static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
 {
     auto& conformer = polymer.getConformer();
     RDGeom::Point3D chain_start_pos(0, 0, 0);
-    ChainDirection chain_dir = LTR;
+    ChainDirection chain_dir = ChainDirection::LTR;
+    auto placed_monomers_idcs = std::unordered_set<int>{};
 
     for (size_t i = 0; i < polymer.getNumAtoms(); i += MONOMERS_PER_SNAKE) {
         auto start_idx = i;
         auto end_idx = start_idx + MONOMERS_PER_SNAKE;
 
         lay_out_chain(polymer, polymer.getAtomWithIdx(start_idx),
-                      chain_start_pos, chain_dir, BranchDirection::UP,
+                      placed_monomers_idcs, chain_start_pos, chain_dir,
+                      BranchDirection::UP,
                       [end_idx](const RDKit::Atom* monomer) {
                           return monomer->getIdx() == end_idx;
                       });
 
         if (end_idx < polymer.getNumAtoms()) {
             // next chain will be under this one and in the opposite direction
-            chain_dir = chain_dir == LTR ? RTL : LTR;
+            chain_dir = chain_dir == ChainDirection::LTR ? ChainDirection::RTL
+                                                         : ChainDirection::LTR;
             chain_start_pos = conformer.getAtomPos(end_idx - 1);
             chain_start_pos.y -= MONOMER_BOND_LENGTH;
         }
@@ -558,7 +701,6 @@ break_into_polymers(const RDKit::ROMol& monomer_mol)
 {
     for (auto atom : monomer_mol.atoms()) {
         atom->setProp(ORIGINAL_INDEX, atom->getIdx());
-        atom->setProp(MONOMER_PLACED, false);
     }
 
     for (auto bond : monomer_mol.bonds()) {
@@ -567,7 +709,7 @@ break_into_polymers(const RDKit::ROMol& monomer_mol)
         if (get_polymer_id(beginMonomer) == get_polymer_id(endMonomer)) {
             continue;
         }
-        // store the connected indices as comman separated values in the
+        // store the connected indices as comma separated values in the
         // BOND_TO prop
         std::vector<int> begin_monomer_bond_to;
         if (beginMonomer->hasProp(BOND_TO)) {
@@ -653,29 +795,79 @@ static void orient_polymer(RDKit::ROMol& polymer_to_orient,
 {
     auto polymer_bonds =
         get_bonds_between_polymers(polymer_to_orient, reference_polymer);
-    auto pos_offset = RDGeom::Point3D(0, 0, 0);
-    if (polymer_bonds.empty()) {
+
+    auto place_polymer = [&](RDKit::ROMol& polymer_to_orient,
+                             const RDKit::ROMol& reference_polymer,
+                             const BOND_IDX_VEC& polymer_bonds) {
+        auto pos_offset = RDGeom::Point3D(0, 0, 0);
         auto y_offset =
             get_y_offset_for_polymer(polymer_to_orient, reference_polymer);
-        pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
-    } else {
-        auto& monomer_coords =
-            polymer_to_orient.getConformer().getAtomPos(polymer_bonds[0].first);
-        auto& placed_monomer_coords =
-            reference_polymer.getConformer().getAtomPos(
-                polymer_bonds[0].second);
-        auto y_offset =
-            get_y_offset_for_polymer(polymer_to_orient, reference_polymer);
-        // This is where the monomer on this polymer should end up after
-        // translation - directly under the placed monomer so the bond
-        // is vertical
-        auto translated_monomer_coords = RDGeom::Point3D(
-            placed_monomer_coords.x, monomer_coords.y + y_offset,
-            placed_monomer_coords.z);
-        pos_offset = translated_monomer_coords - monomer_coords;
+        if (polymer_bonds.empty()) {
+            pos_offset.y = y_offset - DIST_BETWEEN_MULTIPLE_POLYMERS;
+        } else {
+            auto& monomer_coords = polymer_to_orient.getConformer().getAtomPos(
+                polymer_bonds[0].first);
+            auto& placed_monomer_coords =
+                reference_polymer.getConformer().getAtomPos(
+                    polymer_bonds[0].second);
+            // This is where the monomer on this polymer should end up after
+            // translation - directly under the placed monomer so the bond
+            // is vertical
+            auto translated_monomer_coords = RDGeom::Point3D(
+                placed_monomer_coords.x, monomer_coords.y + y_offset,
+                placed_monomer_coords.z);
+            pos_offset = translated_monomer_coords - monomer_coords;
+        }
+        for (auto& pos : polymer_to_orient.getConformer().getPositions()) {
+            pos += pos_offset;
+        }
+    };
+    place_polymer(polymer_to_orient, reference_polymer, polymer_bonds);
+    // if any of the bonds between the two polymers clashes with bonds of
+    // polymer_to_orient, flip it vertically
+    bool needs_to_flip = false;
+    for (auto bond_between_polymers : polymer_bonds) {
+        auto start_pos = polymer_to_orient.getConformer().getAtomPos(
+            bond_between_polymers.first);
+        auto end_pos = reference_polymer.getConformer().getAtomPos(
+            bond_between_polymers.second);
+        for (auto bond_in_polymer : polymer_to_orient.bonds()) {
+            auto bond_start_pos = polymer_to_orient.getConformer().getAtomPos(
+                bond_in_polymer->getBeginAtomIdx());
+            auto bond_end_pos = polymer_to_orient.getConformer().getAtomPos(
+                bond_in_polymer->getEndAtomIdx());
+            if (bond_between_polymers.first ==
+                    bond_in_polymer->getBeginAtomIdx() ||
+                bond_between_polymers.first ==
+                    bond_in_polymer->getEndAtomIdx()) {
+                // the bonds are consecutive
+
+                auto pos1 = bond_start_pos;
+                auto pos2 = bond_end_pos;
+                if (bond_between_polymers.first ==
+                    bond_in_polymer->getBeginAtomIdx()) {
+                    pos1 = bond_end_pos;
+                    pos2 = bond_start_pos;
+                }
+                auto pos3 = end_pos;
+                if (consecutive_bonds_are_too_close(pos1, pos2, pos3)) {
+                    needs_to_flip = true;
+                    break;
+                }
+            } else if (bonds_are_too_close(start_pos, end_pos, bond_start_pos,
+                                           bond_end_pos)) {
+                needs_to_flip = true;
+                break;
+            }
+        }
     }
-    for (auto& pos : polymer_to_orient.getConformer().getPositions()) {
-        pos += pos_offset;
+    if (needs_to_flip) {
+        // flip vertically
+        auto& conformer = polymer_to_orient.getConformer();
+        for (auto& pos : conformer.getPositions()) {
+            pos.y = -1 * pos.y;
+        }
+        place_polymer(polymer_to_orient, reference_polymer, polymer_bonds);
     }
 }
 
@@ -757,8 +949,7 @@ static void adjust_chem_polymer_coords(RDKit::ROMol& monomer_mol)
  */
 static void clear_layout_props(RDKit::ROMol& monomer_mol)
 {
-    std::vector<std::string> layout_props{BOND_TO, MONOMER_PLACED,
-                                          ORIGINAL_INDEX};
+    std::vector<std::string> layout_props{BOND_TO, ORIGINAL_INDEX};
     for (auto monomer : monomer_mol.atoms()) {
         for (auto prop : layout_props) {
             monomer->clearProp(prop);
@@ -812,6 +1003,8 @@ void lay_out_polymers(
     const std::vector<RDKit::ROMOL_SPTR>& polymers,
     const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
 {
+    std::unordered_set<int> placed_monomers_idcs{};
+
     // lay out the polymers in connection order so connected polymers are
     // laid out next to each other.
     for (auto polymer : polymers) {
@@ -824,7 +1017,7 @@ void lay_out_polymers(
         // 180° so the strands run anti-parallel to each other
         bool rotate_polymer = (parent != nullptr) &&
                               are_double_stranded_nucleic_acid(polymer, parent);
-        lay_out_polymer(*polymer, rotate_polymer);
+        lay_out_polymer(*polymer, placed_monomers_idcs, rotate_polymer);
         if (parent != nullptr) {
             orient_polymer(*polymer, *parent);
         }
@@ -859,6 +1052,25 @@ bool segments_intersect(const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
     return !intersection_pts.empty();
 }
 
+double compute_angle_between_consecutive_segments(const RDGeom::Point3D& a,
+                                                  const RDGeom::Point3D& b,
+                                                  const RDGeom::Point3D& c)
+{
+    // Vector BA = A - B
+    const double bax = a.x - b.x;
+    const double bay = a.y - b.y;
+
+    // Vector BC = C - B
+    const double bcx = c.x - b.x;
+    const double bcy = c.y - b.y;
+
+    // Dot and 2D cross-product magnitude
+    const double dot = bax * bcx + bay * bcy;
+    const double cross = bax * bcy - bay * bcx;
+
+    return std::fabs(std::atan2(cross, dot));
+}
+
 double compute_distance_between_segments(const RDGeom::Point3D& p1,
                                          const RDGeom::Point3D& p2,
                                          const RDGeom::Point3D& q1,
@@ -869,6 +1081,36 @@ double compute_distance_between_segments(const RDGeom::Point3D& p1,
     return bg::distance(seg_p, seg_q);
 }
 
+bool consecutive_bonds_are_too_close(const RDGeom::Point3D& point1,
+                                     const RDGeom::Point3D& point2,
+                                     const RDGeom::Point3D& point3)
+{
+    return compute_angle_between_consecutive_segments(point1, point2, point3) <
+           MIN_ANGLE_BETWEEN_CONSECUTIVE_BONDS;
+}
+
+bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
+                         const RDGeom::Point3D& end1_pos,
+                         const RDGeom::Point3D& begin2_pos,
+                         const RDGeom::Point3D& end2_pos)
+{
+    auto minx1 = std::min(begin1_pos.x, end1_pos.x) - BOND_CLASH_DISTANCE;
+    auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + BOND_CLASH_DISTANCE;
+    auto miny1 = std::min(begin1_pos.y, end1_pos.y) - BOND_CLASH_DISTANCE;
+    auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + BOND_CLASH_DISTANCE;
+    auto minx2 = std::min(begin2_pos.x, end2_pos.x) - BOND_CLASH_DISTANCE;
+    auto maxx2 = std::max(begin2_pos.x, end2_pos.x) + BOND_CLASH_DISTANCE;
+    auto miny2 = std::min(begin2_pos.y, end2_pos.y) - BOND_CLASH_DISTANCE;
+    auto maxy2 = std::max(begin2_pos.y, end2_pos.y) + BOND_CLASH_DISTANCE;
+    // bounding box check
+    if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 || maxy2 < miny1) {
+        return false;
+    }
+    return (segments_intersect(begin1_pos, end1_pos, begin2_pos, end2_pos) ||
+            compute_distance_between_segments(begin1_pos, end1_pos, begin2_pos,
+                                              end2_pos) < BOND_CLASH_DISTANCE);
+}
+
 bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 {
     auto& conformer = monomer_mol.getConformer();
@@ -877,10 +1119,6 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
         auto bond1 = monomer_mol.getBondWithIdx(i);
         auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
         auto end1_pos = conformer.getAtomPos(bond1->getEndAtomIdx());
-        auto minx1 = std::min(begin1_pos.x, end1_pos.x) - BOND_CLASH_DISTANCE;
-        auto maxx1 = std::max(begin1_pos.x, end1_pos.x) + BOND_CLASH_DISTANCE;
-        auto miny1 = std::min(begin1_pos.y, end1_pos.y) - BOND_CLASH_DISTANCE;
-        auto maxy1 = std::max(begin1_pos.y, end1_pos.y) + BOND_CLASH_DISTANCE;
 
         for (size_t j = i + 1; j < monomer_mol.getNumBonds(); j++) {
             auto bond2 = monomer_mol.getBondWithIdx(j);
@@ -893,24 +1131,8 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
             }
             auto begin2_pos = conformer.getAtomPos(bond2->getBeginAtomIdx());
             auto end2_pos = conformer.getAtomPos(bond2->getEndAtomIdx());
-            auto minx2 =
-                std::min(begin2_pos.x, end2_pos.x) - BOND_CLASH_DISTANCE;
-            auto maxx2 =
-                std::max(begin2_pos.x, end2_pos.x) + BOND_CLASH_DISTANCE;
-            auto miny2 =
-                std::min(begin2_pos.y, end2_pos.y) - BOND_CLASH_DISTANCE;
-            auto maxy2 =
-                std::max(begin2_pos.y, end2_pos.y) + BOND_CLASH_DISTANCE;
-            // bounding box check
-            if (maxx1 < minx2 || maxx2 < minx1 || maxy1 < miny2 ||
-                maxy2 < miny1) {
-                continue;
-            }
-            if (segments_intersect(begin1_pos, end1_pos, begin2_pos,
-                                   end2_pos) ||
-                compute_distance_between_segments(begin1_pos, end1_pos,
-                                                  begin2_pos, end2_pos) <
-                    BOND_CLASH_DISTANCE) {
+            if (bonds_are_too_close(begin1_pos, end1_pos, begin2_pos,
+                                    end2_pos)) {
                 return false;
             }
         }
