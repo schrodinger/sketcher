@@ -67,9 +67,9 @@ const std::string MONOMER_PLACED{"monomerPlaced"};
 // Set on the polymer mol
 const std::string POLYMER_ID{"polymerID"};
 
-// The RDKit property containing the size of the monomer's label. This is also
-// the size of the monomer object itself
-const std::string MONOMER_LABEL_SIZE{"monomerLabelSize"};
+// The RDKit property containing the size of the monomer's graphics item, as
+// measured in scene units
+const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
 // Replacement atom label for monomers with SMILES strings as their atom label
 const std::string SMILES_MONOMER_LABEL{"CX"};
@@ -929,7 +929,7 @@ void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
     // get current size
     auto atom = monomer_mol.getAtomWithIdx(index);
     RDGeom::Point3D current_size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
-    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_LABEL_SIZE, current_size);
+    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, current_size);
 
     // calculate difference
     auto difference = new_size - current_size;
@@ -959,7 +959,7 @@ void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
         }
         conformer.setAtomPos(i, atom_pos);
     }
-    atom->setProp<RDGeom::Point3D>(MONOMER_LABEL_SIZE, new_size);
+    atom->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE, new_size);
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
