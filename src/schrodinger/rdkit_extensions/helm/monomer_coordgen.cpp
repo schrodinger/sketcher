@@ -67,10 +67,6 @@ const std::string ORIGINAL_INDEX{"originalIndex"};
 // Set on the polymer mol
 const std::string POLYMER_ID{"polymerID"};
 
-// The RDKit property containing the size of the monomer's graphics item, as
-// measured in scene units
-const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
-
 // Replacement atom label for monomers with SMILES strings as their atom label
 const std::string SMILES_MONOMER_LABEL{"CX"};
 

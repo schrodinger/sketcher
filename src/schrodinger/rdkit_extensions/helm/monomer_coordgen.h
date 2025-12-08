@@ -16,6 +16,9 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
+// The RDKit property containing the size of the monomer's graphics item, as
+// measured in scene units
+const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
 /**
  * @param monomer_mol monomeric molecule
