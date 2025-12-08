@@ -39,6 +39,10 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 constexpr double MONOMER_BOND_LENGTH = 1.5;
+
+// maximum allowed bond length as a multiple of the ideal bond length. Any bond
+// longer than this will be considered "stretched"
+constexpr double MAX_BOND_STRETCH = 3.0;
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
@@ -1099,7 +1103,6 @@ bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
 bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 {
     auto& conformer = monomer_mol.getConformer();
-    auto positions = conformer.getPositions();
     for (size_t i = 0; i < monomer_mol.getNumBonds(); i++) {
         auto bond1 = monomer_mol.getBondWithIdx(i);
         auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
@@ -1125,9 +1128,24 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
+bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
+{
+    auto& conformer = monomer_mol.getConformer();
+    for (auto bond : monomer_mol.bonds()) {
+        auto begin_pos = conformer.getAtomPos(bond->getBeginAtomIdx());
+        auto end_pos = conformer.getAtomPos(bond->getEndAtomIdx());
+        auto bond_length = (end_pos - begin_pos).length();
+        if (bond_length > MAX_BOND_STRETCH * MONOMER_BOND_LENGTH) {
+            return false;
+        }
+    }
+    return true;
+}
+
 [[maybe_unused]] static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
 {
-    return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
+    return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol) &&
+           has_no_stretched_bonds(monomer_mol);
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
@@ -1142,10 +1160,18 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     } else {
         lay_out_polymers(polymers, parent_polymer);
     }
+
     remove_cxsmiles_labels(monomer_mol);
     auto conformer_id =
         copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);
     adjust_chem_polymer_coords(monomer_mol);
+
+    if (!coordinates_are_valid(monomer_mol)) {
+        std::cerr << "Warning: Generated coordinates for monomer mol "
+                     "contain clashes, bond crossings, or stretched bonds."
+                  << std::endl;
+    }
+
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
     return conformer_id;
