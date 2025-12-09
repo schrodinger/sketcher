@@ -136,9 +136,16 @@ BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)
             "NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]2CCCN2C1=O"));
         bool use_residue_info = false;
         auto monomer_mol = toMonomeric(*mol, use_residue_info);
-        BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
-                          "PEPTIDE1{P.P.F.L.W.L.N.K.P.I}$PEPTIDE1,PEPTIDE1,10:"
-                          "R2-1:R1$$$V2.0");
+
+        // Note that the two last monomers (probably a Proline and an
+        // Isoleucine) are missing one chirality each (P on the C alpha,
+        // Isoleucine on C beta, and as a result, they don't match the templates
+        // from the monomer DB.
+        BOOST_CHECK_EQUAL(
+            to_string(*monomer_mol, Format::HELM),
+            "PEPTIDE1{[dP].P.F.L.W.L.N.K.[O=C(C1CCCN1[*:1])[*:2]]."
+            "[CCC(C)[C@H](N[*:1])C(=O)[*:2]]}$PEPTIDE1,PEPTIDE1,"
+            "10:R2-1:R1$$$V2.0");
     }
 }
 

@@ -1,5 +1,6 @@
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 
+#include <chrono>
 #include <queue>
 #include <span>
 #include <unordered_map>
@@ -21,6 +22,10 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/sup_utils.h"
+
+// Uncomment this to enable benchmarking the enumeration
+// of Monomer DB Core SMILES required to identify monomers
+// #define BENCHMARK_ENUMERATION
 
 namespace schrodinger
 {
@@ -69,67 +74,16 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query)
     return query;
 };
 
-// attachment points 1 and 2 are backbone attachment points
-// and 3 is the side chain attachment point or cysteine's sulfur
+// clang-format off
+// attachment points 1 and 2 are backbone attachment points,
+// 8 is the side chain attachment point, 3 is cysteine's sulfur
 static const ResidueQuery CYSTEINE_QUERY{prepare_static_mol_query(
-    "[O]=[C:2]([C]([C][S:3])[N:1])[O,N:9]")}; // matches C, dC, meC
+    "[NX3,NX4+:1][CX4H]([CX4H2][S:3])[CX3:2](=[OX1])[O,N:9]")}; // matches C, dC, meC
 static const ResidueQuery GENERIC_AMINO_ACID_QUERY{prepare_static_mol_query(
     "[NX3,NX4+:1][CX4H]([*:8])[CX3:2](=[OX1])[O,N:9]")};
 static const ResidueQuery GLYCINE_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[N:1][CX4H2][CX3:2](=[OX1])[O,N:9]")}; // no side chain
-
-// Temporary lookup map for amino acids, each entry has two versions;
-// one with the terminal oxygen and one without. This is to allow the
-// SMILES lookup without or without the terminal oxygen.
-static const std::unordered_map<std::string, std::string> amino_acids = {
-    {"CC(N)C=O", "A"},
-    {"CC(N)C(=O)O", "A"},
-    {"NC(C=O)CS", "C"},
-    {"NC(CS)C(=O)O", "C"},
-    {"NC(C=O)CC(=O)O", "D"},
-    {"NC(CC(=O)O)C(=O)O", "D"},
-    {"NC(C=O)CCC(=O)O", "E"},
-    {"NC(CCC(=O)O)C(=O)O", "E"},
-    {"NC(C=O)Cc1ccccc1", "F"},
-    {"NC(Cc1ccccc1)C(=O)O", "F"},
-    {"NCC=O", "G"},
-    {"NCC(=O)O", "G"},
-    {"NC(C=O)Cc1cnc[nH]1", "H"},
-    {"NC(Cc1cnc[nH]1)C(=O)O", "H"},
-    {"CCC(C)C(N)C=O", "I"},
-    {"CCC(C)C(N)C(=O)O", "I"},
-    {"NCCCCC(N)C=O", "K"},
-    {"NCCCCC(N)C(=O)O", "K"},
-    {"CC(C)CC(N)C=O", "L"},
-    {"CC(C)CC(N)C(=O)O", "L"},
-    {"CSCCC(N)C=O", "M"},
-    {"CSCCC(N)C(=O)O", "M"},
-    {"NC(=O)CC(N)C=O", "N"},
-    {"NC(=O)CC(N)C(=O)O", "N"},
-    {"CC1CC=NC1C(=O)NCCCCC(N)C=O", "O"},
-    {"CC1CC=NC1C(=O)NCCCCC(N)C(=O)O", "O"},
-    {"O=CC1CCCN1", "P"},
-    {"O=C(O)C1CCCN1", "P"},
-    {"NC(=O)CCC(N)C=O", "Q"},
-    {"NC(=O)CCC(N)C(=O)O", "Q"},
-    {"N=C(N)NCCCC(N)C=O", "R"},
-    {"N=C(N)NCCCC(N)C(=O)O", "R"},
-    {"NC(C=O)CO", "S"},
-    {"NC(CO)C(=O)O", "S"},
-    {"CC(O)C(N)C=O", "T"},
-    {"CC(O)C(N)C(=O)O", "T"},
-    {"NC(C=O)C[SeH]", "U"},
-    {"NC(C[SeH])C(=O)O", "U"},
-    {"CC(C)C(N)C=O", "V"},
-    {"CC(C)C(N)C(=O)O", "V"},
-    {"NC(C=O)Cc1c[nH]c2ccccc12", "W"},
-    {"NC(Cc1c[nH]c2ccccc12)C(=O)O", "W"},
-    {"NC(C=O)Cc1ccc(O)cc1", "Y"},
-    {"NC(Cc1ccc(O)cc1)C(=O)O", "Y"},
-    {"N", "am"},
-    {"CC=O", "ac"},
-    {"NC(C=O)CC=O", "D"} // Aspartic acid with R3 removed
-};
+    "[NX3,NX4+:1][CX4H2][CX3:2](=[OX1])[O,N:9]")}; // no side chain
+// clang-format on
 
 static const std::unordered_map<std::string, ChainType> BIOVIA_CHAIN_TYPE_MAP =
     {{"AA", ChainType::PEPTIDE}};
@@ -396,14 +350,16 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
             }
 
             // If no attachment point is present, we assume it
-            // is R3
+            // is R3 and store it for future reference
             if (attach_num1 == NO_ATTACHMENT) {
-                monomers[monomer_idx1].r3 = at1->getIdx();
                 attach_num1 = 3;
+                monomers[monomer_idx1].r3 = at1->getIdx();
+                at1->setProp<unsigned int>(ATTACH_NUM, attach_num1);
             }
             if (attach_num2 == NO_ATTACHMENT) {
-                monomers[monomer_idx2].r3 = at2->getIdx();
                 attach_num2 = 3;
+                monomers[monomer_idx2].r3 = at2->getIdx();
+                at2->setProp<unsigned int>(ATTACH_NUM, attach_num2);
             }
 
             if (attach_num2 > attach_num1) {
@@ -507,18 +463,142 @@ void neutralizeAtoms(RDKit::ROMol& mol)
     }
 }
 
+std::vector<std::string> enumerate_smiles(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
+
+    static RDKit::Atom dummy_atom(0);
+
+    std::vector<std::string> enumerated_smiles;
+
+    std::queue<std::unique_ptr<RDKit::RWMol>> q;
+
+    q.emplace(MolFromSmiles(smiles, p));
+
+    while (!q.empty()) {
+        auto mol = std::move(q.front());
+        q.pop();
+
+        bool found_mapnum = false;
+        for (const auto& atom : mol->atoms()) {
+            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                found_mapnum = true;
+
+                // Clear the map number: We don't want them to be
+                // in the final SMILES, and pushing a copy of the
+                // modified molecule back onto the queue.
+                atom->clearProp(RDKit::common_properties::molAtomMapNumber);
+                q.emplace(new RDKit::RWMol(*mol));
+
+                // Now, replace the atom with a dummy, and push
+                // the mol back onto the queue.
+                mol->replaceAtom(atom->getIdx(), &dummy_atom);
+                q.push(std::move(mol));
+
+                // Only handle one map number at a time
+                break;
+            }
+        }
+
+        // This mol has been fully enumerated, so push the SMILES
+        // to the output vector.
+        if (!found_mapnum) {
+            // The mols we check against have all Hs removed.
+            RDKit::MolOps::removeAllHs(*mol);
+            enumerated_smiles.push_back(RDKit::MolToSmiles(*mol));
+        }
+    }
+
+    return enumerated_smiles;
+}
+
+std::unordered_map<std::string, std::string> enumerate_all_core_smiles()
+{
+#ifdef BENCHMARK_ENUMERATION
+    using namespace std::chrono;
+    auto t1 = high_resolution_clock::now();
+#endif
+
+    std::unordered_map<std::string, std::string> core_smiles_to_monomer;
+
+    const auto& db = MonomerDatabase::instance();
+
+    unsigned monomer_defs_count = 0;
+    unsigned enumerated_count = 0;
+    for (auto& [smiles, symbol] : db.getAllSMILES()) {
+        ++monomer_defs_count;
+        for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
+            ++enumerated_count;
+            // TO DO: should we check for duplicates ? how do we handle them?
+            core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
+                                           symbol);
+        }
+    }
+
+#ifdef BENCHMARK_ENUMERATION
+    auto t2 = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(t2 - t1).count();
+
+    std::cerr << "Enumeration of " << monomer_defs_count
+              << " monomer definitions into " << enumerated_count
+              << " possible substitutions took " << duration << " ms\n";
+#endif
+
+    return core_smiles_to_monomer;
+}
+
 std::optional<std::string>
 findHelmSymbol(const RDKit::ROMol& atomistic_mol,
                const std::vector<unsigned int>& atom_indices)
 {
-    constexpr bool isomeric_smiles = false;
-    auto mol_fragment = ExtractMolFragment(atomistic_mol, atom_indices, false);
-    auto monomer_smiles = RDKit::MolToSmiles(*mol_fragment, isomeric_smiles);
+    static RDKit::Atom dummy_atom(0);
 
-    // If the monomer is a known amino acid, use the 1-letter code
-    if (amino_acids.find(monomer_smiles) != amino_acids.end()) {
-        return amino_acids.at(monomer_smiles);
+    // This may get big and slow. Currently, enumeration of the 62 default
+    // monomer definitions in default_monomer_definitions.json into 292
+    // possible substitution states takes about 20 ms on my linux desktop.
+    // But it may get untractable if we need to handle thousands of monomer
+    // definitions or more.
+    static auto amino_acids = enumerate_all_core_smiles();
+
+    auto mol_fragment = ExtractMolFragment(atomistic_mol, atom_indices, false);
+
+    constexpr bool update_label = false;
+    constexpr bool take_ownership = false; // make a copy
+    mol_fragment->beginBatchEdit();
+    for (auto* at : mol_fragment->atoms()) {
+        if (auto attach_num = NO_ATTACHMENT;
+            at->getPropIfPresent(ATTACH_NUM, attach_num) &&
+            attach_num != NO_ATTACHMENT) {
+
+            if (attach_num == TERMINAL_ATTCHPT) {
+                // This is a chain terminating O/N. We need to remove it, since
+                // in the enumeration we replace these with dummy atoms
+                mol_fragment->removeAtom(at->getIdx());
+            } else {
+                auto atom_idx = mol_fragment->addAtom(&dummy_atom, update_label,
+                                                      take_ownership);
+                mol_fragment->addBond(atom_idx, at->getIdx(),
+                                      RDKit::Bond::SINGLE);
+            }
+        }
     }
+    mol_fragment->commitBatchEdit();
+    // we only replaced attachment points with dummy atoms, I think
+    // we shouldn't require a ring finding or a sanitization,
+    // just updating the valence (RDKit now resets them when adding bonds).
+    mol_fragment->updatePropertyCache(false);
+
+    auto monomer_smiles = RDKit::MolToSmiles(*mol_fragment, true);
+
+    // Using the enumerated amino acids
+    std::string monomer_symbol;
+    if (amino_acids.find(monomer_smiles) != amino_acids.end()) {
+        monomer_symbol = amino_acids.at(monomer_smiles);
+        return monomer_symbol;
+    }
+
     return std::nullopt;
 }
 
