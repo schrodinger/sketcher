@@ -23,10 +23,6 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/sup_utils.h"
 
-// Uncomment this to enable benchmarking the enumeration
-// of Monomer DB Core SMILES required to identify monomers
-// #define BENCHMARK_ENUMERATION
-
 namespace schrodinger
 {
 namespace rdkit_extensions
@@ -516,35 +512,17 @@ std::vector<std::string> enumerate_smiles(const std::string& smiles)
 
 std::unordered_map<std::string, std::string> enumerate_all_core_smiles()
 {
-#ifdef BENCHMARK_ENUMERATION
-    using namespace std::chrono;
-    auto t1 = high_resolution_clock::now();
-#endif
-
     std::unordered_map<std::string, std::string> core_smiles_to_monomer;
 
     const auto& db = MonomerDatabase::instance();
 
-    unsigned monomer_defs_count = 0;
-    unsigned enumerated_count = 0;
     for (auto& [smiles, symbol] : db.getAllSMILES()) {
-        ++monomer_defs_count;
         for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
-            ++enumerated_count;
             // TO DO: should we check for duplicates ? how do we handle them?
             core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
                                            symbol);
         }
     }
-
-#ifdef BENCHMARK_ENUMERATION
-    auto t2 = high_resolution_clock::now();
-    auto duration = duration_cast<milliseconds>(t2 - t1).count();
-
-    std::cerr << "Enumeration of " << monomer_defs_count
-              << " monomer definitions into " << enumerated_count
-              << " possible substitutions took " << duration << " ms\n";
-#endif
 
     return core_smiles_to_monomer;
 }
