@@ -11,7 +11,7 @@ on:
         type: string
         default: ${{ github.ref }}
       publish-npm-package:
-        description: Whether an npm package should be published with the WASM build artifacts
+        description: Whether an npm package should be published with the wasm build artifacts
         type: boolean
         default: false
 
@@ -230,12 +230,6 @@ jobs:
         id: sketcher-build
         run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
-      - name: Create wasm tarball
-        if: matrix.build-output == 'wasm'
-        env:
-            QT_DIR: ${{ steps.fetch-qt.outputs.path }}
-        run: ./wasm/create_wasm_tarball.sh sketcher-wasm
-
       - name: Run tests
         working-directory: build
         if: matrix.build-output == 'app'
@@ -266,22 +260,13 @@ jobs:
           paths: "build/junit-report.xml"
         if: always() && steps.sketcher-build.outcome == 'success'
 
-      - name: Download sketcher executable
-        if: matrix.build-output != 'wasm'
-        uses: actions/upload-artifact@v4
-        env:
-            # ".exe" on Windows, no extension everywhere else
-            EXT: ${{matrix.os == 'windows-latest' && '.exe' || ''}}
-        with:
-          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
-          path: build/schrodinger_sketcher${{env.EXT}}
-
-      - name: Download wasm tarball
-        if: matrix.build-output == 'wasm'
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher-${{ inputs.ref }}-${{ matrix.build-output }}
-          path: sketcher-wasm.tar.gz
+          name: sketcher-${{ github.ref_name }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
+          path: |
+            build/sketcher_app
+            !build/sketcher_app/*.manifest
 
       - name: Publish sketcher npm package
         if: matrix.build-output == 'wasm' && inputs.publish-npm-package

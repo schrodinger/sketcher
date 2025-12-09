@@ -127,6 +127,11 @@
                 container.style.display = 'none';
               },
             },
+            setStatus: (loaderStatus) => {
+              if (loaderStatus) {
+                status.innerHTML = loaderStatus + '...';
+              }
+            },
           });
           Object.defineProperty(window, 'Module', {
             value: sketcherInstance,
