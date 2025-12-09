@@ -41,6 +41,8 @@ const std::vector<Format> AUTO_DETECT_FORMATS = {
     Format::SMARTS,
     // Guess at HELM after guessing atomistic formats
     Format::HELM,
+    // Assume peptide FASTA since there's no way to guess otherwise
+    Format::FASTA_PEPTIDE,
 };
 
 /**
