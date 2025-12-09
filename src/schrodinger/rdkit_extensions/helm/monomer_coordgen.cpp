@@ -1162,15 +1162,23 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     }
 
     remove_cxsmiles_labels(monomer_mol);
-    auto conformer_id =
-        copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);
-    adjust_chem_polymer_coords(monomer_mol);
 
     if (!coordinates_are_valid(monomer_mol)) {
         std::cerr << "Warning: Generated coordinates for monomer mol "
                      "contain clashes, bond crossings, or stretched bonds."
                   << std::endl;
+        clear_layout_props(monomer_mol);
+        auto sp = RDKit::ROMOL_SPTR(new RDKit::ROMol(monomer_mol));
+        std::vector<RDKit::ROMOL_SPTR> vec{sp};
+        std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR> parents;
+        parents[sp] = nullptr;
+
+        lay_out_polymers(vec, parents);
     }
+
+    auto conformer_id =
+        copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);
+    adjust_chem_polymer_coords(monomer_mol);
 
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
