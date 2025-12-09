@@ -264,10 +264,7 @@ void SketcherTopBar::onPasteInTextClicked()
 
     auto dialog = new PasteInTextDialog(model, this);
     connect(dialog, &PasteInTextDialog::textAccepted, this,
-            [this](const QString& text) {
-                emit importTextRequested(text.toStdString(),
-                                         rdkit_extensions::Format::AUTO_DETECT);
-            });
+            &SketcherTopBar::importTextRequested);
     dialog->show();
 }
 

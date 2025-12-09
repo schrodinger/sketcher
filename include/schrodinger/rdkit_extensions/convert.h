@@ -26,6 +26,25 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+const std::vector<Format> AUTO_DETECT_FORMATS = {
+    Format::RDMOL_BINARY_BASE64,
+    Format::MDL_MOLV3000,
+    Format::MAESTRO,
+    Format::INCHI,
+    Format::PDB,
+    Format::MOL2,
+    Format::XYZ,
+    Format::MRV,
+    Format::CDXML,
+    // Attempt SMILES before SMARTS, given not all SMARTS are SMILES
+    Format::SMILES,
+    Format::SMARTS,
+    // Guess at HELM after guessing atomistic formats
+    Format::HELM,
+    // Assume peptide FASTA since there's no way to guess otherwise
+    Format::FASTA_PEPTIDE,
+};
+
 /**
  * @param text input text block
  * @param format specified format from which to interpret the text
