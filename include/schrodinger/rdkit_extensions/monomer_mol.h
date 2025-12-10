@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -73,6 +74,17 @@ RDKIT_EXTENSIONS_API size_t addMonomer(
 RDKIT_EXTENSIONS_API size_t
 addMonomer(RDKit::RWMol& monomer_mol, std::string_view name,
            MonomerType monomer_type = MonomerType::REGULAR);
+
+/**
+ * Create and return a new monomer
+ * @param name The name of the monomer
+ * @param chain_id The chain ID of the monomer
+ * @param residue_number The residue number of the monomer
+ * @param is_smiles Whether the monomer is a SMILES monomer
+ */
+RDKIT_EXTENSIONS_API std::unique_ptr<Monomer>
+makeMonomer(const std::string_view name, const std::string_view chain_id,
+            const int residue_number, const bool is_smiles);
 
 /*
  * Mutate a monomer in the provided monomer mol to a new monomer specified
