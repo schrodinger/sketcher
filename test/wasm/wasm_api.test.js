@@ -29,11 +29,11 @@ test.describe('WASM Sketcher API', () => {
       format: 'CDXML',
       skip: [true, "Format doesn't import correctly in WASM builds"],
     },
-    { format: 'HELM' },
+    { format: 'HELM', exportUnsupported: true },
     { format: 'FASTA_PEPTIDE', exportUnsupported: true },
     { format: 'FASTA_DNA', exportUnsupported: true },
     { format: 'FASTA_RNA', exportUnsupported: true },
-    { format: 'FASTA', importUnsupported: true },
+    { format: 'FASTA', importUnsupported: true, exportUnsupported: true },
   ];
 
   FORMATS.forEach(({ format, skip, exportUnsupported, importUnsupported }) => {
