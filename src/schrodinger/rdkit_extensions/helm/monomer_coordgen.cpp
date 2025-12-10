@@ -781,7 +781,9 @@ static void assign_ring_unit_ids(const RDKit::ROMol& mol,
     }
 }
 
-// Assign unit IDs to chains connected to rings
+// Assign unit IDs to chains connected to rings. Chains directly connected to
+// rings get the same unit ID as the ring, branches off those chains get new
+// unit IDs.
 static void
 assign_chain_unit_ids(const RDKit::ROMol& mol,
                       std::unordered_map<int, std::string>& unit_ids)
@@ -867,7 +869,6 @@ set_atom_chain_ids(const RDKit::ROMol& mol,
     }
 }
 
-// Main orchestrator
 static std::pair<std::vector<RDKit::ROMOL_SPTR>,
                  std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
 break_into_topological_units(const RDKit::ROMol& monomer_mol)
