@@ -197,13 +197,10 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
 
     // create substance group items
     for (auto& sgroup : getSubstanceGroups(*mol)) {
-        std::string type;
-        std::string fieldname;
-        sgroup.getPropIfPresent("TYPE", type);
-        sgroup.getPropIfPresent("FIELDNAME", fieldname);
-        if (type == "DAT" && fieldname == SUPPLEMENTARY_INFORMATION) {
-            // this isn't an actual S-group; it's just additional data about the
-            // HELM molecule
+        if (rdkit_extensions::is_polymer_annotation_s_group(sgroup) ||
+            rdkit_extensions::is_supplementary_information_s_group(sgroup)) {
+            // this isn't an actual S-group; it's just additional data about a
+            // monomeric model
             continue;
         }
         SGroupItem* sgroup_item = new SGroupItem(sgroup, fonts);
