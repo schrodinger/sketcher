@@ -263,7 +263,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher-${{ github.ref_name }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
+          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
           path: |
             build/sketcher_app
             !build/sketcher_app/*.manifest
