@@ -14,7 +14,7 @@ runs:
       shell: bash
       run: |
         # Move WASM assets into package directory
-        mv sketcher-wasm/* wasm/package/dist
+        mv build/sketcher_app/* wasm/package/dist
 
         # Set pre-release version in package manifest
         sketcher_version=$(jq -r '.sketcher' version.json)
