@@ -33,10 +33,16 @@ SketcherWidget& get_sketcher_instance()
     return instance;
 }
 
-void sketcher_import_text(const std::string& text)
+void sketcher_import_text_auto(const std::string& text)
 {
     auto& sk = get_sketcher_instance();
-    sk.addFromString(text);
+    sk.addFromString(text, Format::AUTO_DETECT);
+}
+
+void sketcher_import_text_format(const std::string& text, Format format)
+{
+    auto& sk = get_sketcher_instance();
+    sk.addFromString(text, format);
 }
 
 std::string sketcher_export_text(Format format)
@@ -124,7 +130,8 @@ EMSCRIPTEN_BINDINGS(sketcher)
         .value("PNG", ImageFormat::PNG)
         .value("SVG", ImageFormat::SVG);
 
-    emscripten::function("sketcher_import_text", &sketcher_import_text);
+    emscripten::function("sketcher_import_text", &sketcher_import_text_auto);
+    emscripten::function("sketcher_import_text", &sketcher_import_text_format);
     emscripten::function("sketcher_export_text", &sketcher_export_text);
     emscripten::function("sketcher_export_image", &sketcher_export_image);
     emscripten::function("sketcher_clear", &sketcher_clear);

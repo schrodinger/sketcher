@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE CDXML SYSTEM "http://www.cambridgesoft.com/xml/cdxml.dtd">
+<CDXML BondLength="30.000000" LabelFont="3" CaptionFont="4">
+    <fonttable id="1">
+        <font id="2" charset="utf-8" name="Arial"/>
+        <font id="3" charset="utf-8" name="Times New Roman"/>
+    </fonttable>
+    <colortable>
+        <color r="1" g="1" b="1"/>
+        <color r="0" g="0" b="0"/>
+        <color r="1" g="0" b="0"/>
+        <color r="1" g="1" b="0"/>
+        <color r="0" g="1" b="0"/>
+        <color r="0" g="1" b="1"/>
+        <color r="0" g="0" b="1"/>
+        <color r="1" g="0" b="1"/>
+        <color r="0.5" g="0.5" b="0.5"/>
+    </colortable>
+    <page HeightPages="1" WidthPages="1" BoundingBox="207.028854 192.000000 284.971130 147.000000">
+        <fragment id="4">
+            <n id="5" p="0.000000 45.000000"/>
+            <n id="6" p="25.980762 30.000000" Geometry="Tetrahedral" BondOrdering="5 8 7 5" EnhancedStereoType="Absolute"/>
+            <n id="7" Element="7" NumHydrogens="2" p="25.980762 -0.000000">
+                <t p="25.980762 -0.000000" LabelJustification="Left">
+                    <s font="3" size="10" face="96">NH</s>
+                    <s font="3" size="10" face="32">2</s>
+                </t>
+            </n>
+            <n id="8" p="51.961525 45.000000"/>
+            <n id="9" Element="8" NumHydrogens="0" p="77.942276 30.000000">
+                <t p="77.942276 30.000000" LabelJustification="Left">
+                    <s font="3" size="10" face="96">O</s>
+                </t>
+            </n>
+            <b id="10" B="6" E="5" Display="WedgedHashBegin"/>
+            <b id="11" B="6" E="7"/>
+            <b id="12" B="6" E="8"/>
+            <b id="13" B="8" E="9" Order="2"/>
+            <graphic BoundingBox="77.942276 -0.000000 77.942276 -0.000000" GraphicType="Symbol" SymbolType="Absolute" FrameType="None">
+                <t p="77.942276 -0.000000" Justification="Center" InterpretChemically="no">
+                    <s font="3" size="10" face="96">Chiral</s>
+                </t>
+            </graphic>
+        </fragment>
+    </page>
+</CDXML>
