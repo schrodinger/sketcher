@@ -16,6 +16,9 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
+// The RDKit property containing the size of the monomer's graphics item, as
+// measured in scene units
+const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
 /**
  * @param monomer_mol monomeric molecule
@@ -24,6 +27,14 @@ namespace rdkit_extensions
  */
 unsigned int RDKIT_EXTENSIONS_API
 compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
+
+/**
+ * Resize the monomer at the given index to the new size by moving other
+ * monomers accordingly
+ */
+void RDKIT_EXTENSIONS_API resize_monomer(RDKit::ROMol& monomer_mol,
+                                         unsigned int index,
+                                         const RDGeom::Point3D& new_size);
 
 /**
  * Check whether any bonds in the given monomer mol cross each other or are
@@ -46,6 +57,25 @@ bool RDKIT_EXTENSIONS_API segments_intersect(const RDGeom::Point3D& p1,
                                              const RDGeom::Point3D& p2,
                                              const RDGeom::Point3D& q1,
                                              const RDGeom::Point3D& q2);
+
+/**
+ * Check whether two consecutive bonds (defined by three points) form an angle
+ * smaller than a threshold. This is used for pairs of bonds that share an atom,
+ * to make sure that the bonds are not collinear, or nearly so.
+ */
+bool RDKIT_EXTENSIONS_API consecutive_bonds_are_too_close(
+    const RDGeom::Point3D& point1, const RDGeom::Point3D& point2,
+    const RDGeom::Point3D& point3);
+
+/**
+ * Check whether two bonds are too close to each other or intersect. Note that
+ * if the two bonds share an atom this will always return true. Use
+ * consecutive_bonds_are_too_close() for that case instead
+ */
+bool RDKIT_EXTENSIONS_API bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
+                                              const RDGeom::Point3D& end1_pos,
+                                              const RDGeom::Point3D& begin2_pos,
+                                              const RDGeom::Point3D& end2_pos);
 
 /* Compute the distance between two line segments defined by points p1, p2 and
  * q1, q2 */

@@ -52,7 +52,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
   signals:
     void clearSketcherRequested();
     void importTextRequested(const std::string& text,
-                             rdkit_extensions::Format format);
+                             const rdkit_extensions::Format format);
     void saveImageRequested();
     void exportToFileRequested();
     void undoRequested();

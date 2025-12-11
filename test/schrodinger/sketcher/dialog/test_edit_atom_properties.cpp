@@ -9,7 +9,6 @@
 #include "schrodinger/sketcher/widget/widget_utils.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
-BOOST_TEST_DONT_PRINT_LOG_VALUE(QString)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::optional<int>)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::optional<unsigned int>)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::nullopt_t)
