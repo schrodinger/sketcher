@@ -18,8 +18,6 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
-// Boost doesn't know how to print QStrings
-BOOST_TEST_DONT_PRINT_LOG_VALUE(QString);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::HsDirection);
 
 using schrodinger::rdkit_extensions::Format;
@@ -596,6 +594,38 @@ BOOST_AUTO_TEST_CASE(test_atom_with_both_chirality_and_query)
     QString tooltip = atom_item->getTooltip();
     BOOST_TEST(tooltip.contains("Stereo: (R)"));
     BOOST_TEST(tooltip.contains("Query: X2"));
+}
+
+BOOST_AUTO_TEST_CASE(test_atom_index_display)
+{
+    auto [atom_items, test_scene] = createAtomItems("CCN");
+
+    // By default, atom indices should not be shown (carbons are unlabeled)
+    BOOST_TEST(!atom_items[0]->m_label_is_visible); // C
+    BOOST_TEST(!atom_items[1]->m_label_is_visible); // C
+    BOOST_TEST(atom_items[2]->m_label_is_visible);  // N
+    BOOST_TEST(atom_items[2]->m_main_label_text == "N");
+
+    // Enable atom index display
+    auto display_settings(
+        *test_scene->m_sketcher_model->getAtomDisplaySettingsPtr());
+    display_settings.m_show_atom_indices = true;
+    test_scene->m_sketcher_model->setAtomDisplaySettings(display_settings);
+
+    // Update all atom items
+    for (auto atom_item : atom_items) {
+        atom_item->updateCachedData();
+    }
+
+    // Verify that all atoms now show labels with indices appended
+    BOOST_TEST(atom_items[0]->m_label_is_visible);
+    BOOST_TEST(atom_items[0]->m_main_label_text == "C:0");
+
+    BOOST_TEST(atom_items[1]->m_label_is_visible);
+    BOOST_TEST(atom_items[1]->m_main_label_text == "C:1");
+
+    BOOST_TEST(atom_items[2]->m_label_is_visible);
+    BOOST_TEST(atom_items[2]->m_main_label_text == "N:2");
 }
 
 } // namespace sketcher

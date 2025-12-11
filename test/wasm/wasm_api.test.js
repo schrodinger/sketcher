@@ -25,7 +25,10 @@ test.describe('WASM Sketcher API', () => {
     { format: 'MOL2', exportUnsupported: true },
     { format: 'XYZ' },
     { format: 'MRV' },
-    { format: 'CDXML', skip: [true, "Format doesn't import correctly in WASM builds"] },
+    {
+      format: 'CDXML',
+      skip: [true, "Format doesn't import correctly in WASM builds"],
+    },
     { format: 'HELM' },
     { format: 'FASTA_PEPTIDE', exportUnsupported: true },
     { format: 'FASTA_DNA', exportUnsupported: true },
@@ -127,7 +130,7 @@ test.describe('WASM Sketcher API', () => {
     });
   });
 
-  test("Import CDXML from ketcher file", async ({ page }) => {
+  test('Import CDXML from ketcher file', async ({ page }) => {
     const cdxmlInput = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE CDXML SYSTEM "http://www.cambridgesoft.com/xml/cdxml.dtd">
 <CDXML BondLength="30.000000" LabelFont="3" CaptionFont="4">
@@ -170,6 +173,6 @@ test.describe('WASM Sketcher API', () => {
       return Module.sketcher_export_text(Module.Format.SMILES);
     }, cdxmlInput);
 
-    expect(exportedSmiles).toBe("C1=CC=CC=C1");
+    expect(exportedSmiles).toBe('C1=CC=CC=C1');
   });
 });

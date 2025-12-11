@@ -20,6 +20,7 @@
 #include <QWidget>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
+
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -48,7 +49,7 @@
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 #include "schrodinger/sketcher/tool/explicit_h_scene_tool.h"
 #include "schrodinger/sketcher/molviewer/halo_highlighting_item.h"
-
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 namespace schrodinger
@@ -91,7 +92,6 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
 
     connect(m_mol_model, &MolModel::selectionChanged, this,
             &Scene::onMolModelSelectionChanged);
-
     connect(m_sketcher_model, &SketcherModel::backgroundColorChanged, this,
             &Scene::onBackgroundColorChanged);
 
@@ -146,6 +146,7 @@ void Scene::updateItems(const WhatChangedType what_changed)
     Scene::SelectionChangeSignalBlocker signal_blocker(this);
 
     if (what_changed & WhatChanged::MOLECULE) {
+        updateMonomerLabelSizeOnModel();
         clearInteractiveItems(InteractiveItemFlag::MOLECULAR_OR_MONOMERIC);
         const auto* mol = m_mol_model->getMol();
         std::vector<QGraphicsItem*> all_items;
@@ -843,6 +844,27 @@ void Scene::dragLeaveEvent(QGraphicsSceneDragDropEvent* event)
 QRectF Scene::getSelectionRect() const
 {
     return m_selection_highlighting_item->shape().boundingRect();
+}
+
+void Scene::updateMonomerLabelSizeOnModel()
+{
+    if (!m_mol_model->isMonomeric()) {
+        return;
+    }
+    std::unordered_map<int, RDGeom::Point3D> sizes;
+    for (auto atom : m_mol_model->getMol()->atoms()) {
+        if (!is_atom_monomeric(atom)) {
+            continue;
+        }
+        // create a temporary graphics item to figure out the label size
+        auto* item = get_monomer_graphics_item(atom, m_fonts);
+        const auto bounding_rect = item->boundingRect();
+        sizes[atom->getIdx()] =
+            RDGeom::Point3D(bounding_rect.width() / VIEW_SCALE,
+                            bounding_rect.height() / VIEW_SCALE, 0);
+        delete item;
+    }
+    m_mol_model->setMonomerSizes(sizes);
 }
 
 } // namespace sketcher

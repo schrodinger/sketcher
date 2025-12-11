@@ -1,8 +1,8 @@
 diff --git a/Code/RDGeneral/types.cpp b/Code/RDGeneral/types.cpp
-index 8ff43d854..67637b665 100644
+index f3118a10f..f47d22823 100644
 --- a/Code/RDGeneral/types.cpp
 +++ b/Code/RDGeneral/types.cpp
-@@ -12,144 +12,6 @@
+@@ -12,145 +12,6 @@
  #include "types.h"
  
  namespace RDKit {
@@ -126,10 +126,10 @@ index 8ff43d854..67637b665 100644
 -const std::string molAttachOrderTemplate = "molAttachOrderTemplate";
 -const std::string molAtomClass = "molClass";
 -const std::string molAtomSeqId = "molSeqid";
+-const std::string molAtomSeqName = "molSeqname";
 -const std::string molRxnExactChange = "molRxnExachg";
 -const std::string molReactStatus = "molReactStatus";
 -const std::string _fromAttachPoint = "_fromAttchpt";
--const std::string natReplace = "natReplace";
 -const std::string templateNames = "templateNames";
 -
 -const std::string molNote = "molNote";
@@ -144,20 +144,23 @@ index 8ff43d854..67637b665 100644
 -const std::string _displayLabelW = "_displayLabelW";
 -
 -}  // namespace common_properties
- 
+-
  const double MAX_DOUBLE = std::numeric_limits<double>::max();
  const double EPS_DOUBLE = std::numeric_limits<double>::epsilon();
+ const double SMALL_DOUBLE = 1.0e-8;
 diff --git a/Code/RDGeneral/types.h b/Code/RDGeneral/types.h
-index 9e5e59a3f..6e382f8e3 100644
+index f8d39e957..a264b66a3 100644
 --- a/Code/RDGeneral/types.h
 +++ b/Code/RDGeneral/types.h
-@@ -47,232 +47,144 @@ namespace RDKit {
+@@ -46,234 +46,144 @@
+ namespace RDKit {
  
  namespace detail {
- // used in various places for computed properties
+-// used in various places for computed properties
 -RDKIT_RDGENERAL_EXPORT extern const std::string computedPropName;
+-}  // namespace detail
 +inline const std::string computedPropName = "__computedProps";
- }  // namespace detail
++}
  
  namespace common_properties {
  ///////////////////////////////////////////////////////////////
@@ -290,10 +293,11 @@ index 9e5e59a3f..6e382f8e3 100644
 -    molAttachOrderTemplate;  // std::vector<AtomAttchOrd>
 -
 -RDKIT_RDGENERAL_EXPORT extern const std::string molAtomClass;  // string
--RDKIT_RDGENERAL_EXPORT extern const std::string natReplace;    // string
 -RDKIT_RDGENERAL_EXPORT extern const std::string
 -    templateNames;  // vector of strings
+-
 -RDKIT_RDGENERAL_EXPORT extern const std::string molAtomSeqId;       // int
+-RDKIT_RDGENERAL_EXPORT extern const std::string molAtomSeqName;     // string
 -RDKIT_RDGENERAL_EXPORT extern const std::string molRxnExactChange;  // int
 -RDKIT_RDGENERAL_EXPORT extern const std::string molReactStatus;     // int
 -RDKIT_RDGENERAL_EXPORT extern const std::string molFileLinkNodes;   // string
@@ -474,10 +478,10 @@ index 9e5e59a3f..6e382f8e3 100644
 +inline const std::string molAttachOrderTemplate = "molAttachOrderTemplate";
 +inline const std::string molAtomClass = "molClass";
 +inline const std::string molAtomSeqId = "molSeqid";
++inline const std::string molAtomSeqName = "molSeqname";
 +inline const std::string molRxnExactChange = "molRxnExachg";
 +inline const std::string molReactStatus = "molReactStatus";
 +inline const std::string _fromAttachPoint = "_fromAttchpt";
-+inline const std::string natReplace = "natReplace";
 +inline const std::string templateNames = "templateNames";
 +
 +inline const std::string molNote = "molNote";
@@ -515,16 +519,3 @@ index 9e5e59a3f..6e382f8e3 100644
  
  }  // namespace common_properties
  #ifndef WIN32
-diff --git a/Code/GraphMol/MolInterchange/CMakeLists.txt b/Code/GraphMol/MolInterchange/CMakeLists.txt
-index c092d463c..0607181fd 100644
---- a/Code/GraphMol/MolInterchange/CMakeLists.txt
-+++ b/Code/GraphMol/MolInterchange/CMakeLists.txt
-@@ -10,7 +10,7 @@ if(NOT EXISTS "${RDKit_ExternalDir}/rapidjson/rapidjson-1.1.0")
-     # (based on the change which has already been applied to the RapidJSON master branch, see
-     # https://github.com/Tencent/rapidjson/blob/24b5e7a8b27f42fa16b96fc70aade9106cf7102f/include/rapidjson/document.h#L414
-     # and https://patch-diff.githubusercontent.com/raw/Tencent/rapidjson/pull/1698.diff
--    execute_process(COMMAND git --git-dir= apply
-+    execute_process(COMMAND git --git-dir= apply --ignore-whitespace
-       ${RDKit_ExternalDir}/rapidjson/patch-rapidjson-1.1.0.diff
-       WORKING_DIRECTORY ${RDKit_ExternalDir}/rapidjson)
- else()

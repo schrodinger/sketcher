@@ -22,6 +22,8 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
+
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
@@ -133,6 +135,7 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
     for (auto* atom : mol.atoms()) {
         atom->clearProp(TAG_PROPERTY);
         atom->clearProp(USER_COLOR);
+        atom->clearProp(rdkit_extensions::MONOMER_ITEM_SIZE);
         atom->clearProp(RDKit::common_properties::atomNote);
         clear_monomeric_property(atom);
     }
@@ -2881,6 +2884,14 @@ void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
     auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
     add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, position,
                                      recenter_view);
+}
+
+void MolModel::setMonomerSizes(
+    std::unordered_map<int, RDGeom::Point3D> monomer_sizes)
+{
+    for (const auto& [idx, size] : monomer_sizes) {
+        rdkit_extensions::resize_monomer(m_mol, idx, size);
+    }
 }
 
 } // namespace sketcher

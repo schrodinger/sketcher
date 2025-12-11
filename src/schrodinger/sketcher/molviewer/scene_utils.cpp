@@ -94,8 +94,8 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
 /**
  * Construct and return a monomer graphics item for representing the given atom.
  */
-static AbstractAtomOrMonomerItem*
-get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts)
+AbstractAtomOrMonomerItem* get_monomer_graphics_item(const RDKit::Atom* atom,
+                                                     const Fonts& fonts)
 {
     switch (get_monomer_type(atom)) {
         case MonomerType::PEPTIDE:
