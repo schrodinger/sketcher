@@ -36,6 +36,15 @@ void AbstractMonomerItem::paint(QPainter* painter,
     painter->restore();
 }
 
+void AbstractMonomerItem::setMonomerColors(const QColor& background_color,
+                                           const QColor& outline_color,
+                                           const QColor& font_color)
+{
+    m_border_brush.setColor(background_color);
+    m_border_pen.setColor(outline_color);
+    m_main_label_pen.setColor(font_color);
+}
+
 QString elide_text(const std::string& text)
 {
     auto qtext = QString::fromStdString(text);
@@ -190,6 +199,14 @@ void set_path_to_rect(QPainterPath& path, const QRectF& rect,
                       highlighting_thickness, highlighting_thickness);
     path.clear();
     path.addRect(expanded_rect);
+}
+
+QRectF rect_expanded_by_half_pen_width(const QRectF& rect,
+                                       const qreal pen_width)
+{
+    auto half_pen_width = pen_width / 2.0;
+    return rect.adjusted(-half_pen_width, -half_pen_width, half_pen_width,
+                         half_pen_width);
 }
 
 QColor get_color_for_monomer(

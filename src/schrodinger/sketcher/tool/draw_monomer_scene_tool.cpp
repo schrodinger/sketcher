@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
 
 #include <cmath>
+#include <memory>
 
 #include <QtMath>
 #include <QPen>
@@ -8,11 +9,14 @@
 #include <rdkit/Geometry/point.h>
 #include <rdkit/GraphMol/ROMol.h>
 
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 
 namespace schrodinger
 {
@@ -25,9 +29,12 @@ DrawMonomerSceneTool::DrawMonomerSceneTool(
     StandardSceneToolBase(scene, mol_model),
     m_res_name(res_name),
     m_chain_type(chain_type),
-    m_fonts(&fonts)
+    m_fonts(fonts)
 {
     m_highlight_types = InteractiveItemFlag::MONOMER;
+    // make sure that the cursor hint font is more easily readable at small size
+    m_fonts.m_main_label_font.setBold(true);
+    m_fonts.updateFontMetrics();
 }
 
 std::vector<QGraphicsItem*> DrawMonomerSceneTool::getGraphicsItems()
@@ -71,11 +78,21 @@ void DrawMonomerSceneTool::onLeftButtonClick(
 
 QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
 {
-    // TODO: use a picture of the monomer with the outline so that the cursor
-    //       hint indicates the monomer type
-    return render_text_to_pixmap(QString::fromStdString(m_res_name),
-                                 m_fonts->m_cursor_hint_font,
-                                 CURSOR_HINT_COLOR);
+    // the specific number used here (the "1") doesn't matter - we just need any
+    // number to form a proper chain ID
+    auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
+    auto monomer =
+        rdkit_extensions::makeMonomer(m_res_name, chain_id, 1, false);
+
+    std::shared_ptr<AbstractMonomerItem> monomer_item;
+    monomer_item.reset(get_monomer_graphics_item(monomer.get(), m_fonts));
+    monomer_item->setMonomerColors(Qt::GlobalColor::transparent,
+                                   CURSOR_HINT_COLOR, CURSOR_HINT_COLOR);
+    // make sure that the cursor hint is at least a little smaller than an
+    // actual monomer
+    auto min_scene_size =
+        CURSOR_HINT_IMAGE_SIZE * MONOMER_CURSOR_HINT_MIN_SCENE_SIZE_SCALE;
+    return cursor_hint_from_graphics_item(monomer_item.get(), min_scene_size);
 }
 
 } // namespace sketcher
