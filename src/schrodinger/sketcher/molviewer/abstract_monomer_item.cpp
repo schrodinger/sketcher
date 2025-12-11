@@ -201,6 +201,14 @@ void set_path_to_rect(QPainterPath& path, const QRectF& rect,
     path.addRect(expanded_rect);
 }
 
+QRectF rect_expanded_by_half_pen_width(const QRectF& rect,
+                                       const qreal pen_width)
+{
+    auto half_pen_width = pen_width / 2.0;
+    return rect.adjusted(-half_pen_width, -half_pen_width, half_pen_width,
+                         half_pen_width);
+}
+
 QColor get_color_for_monomer(
     const std::string& res_name,
     const std::unordered_map<std::string, QColor>& color_by_res_name,

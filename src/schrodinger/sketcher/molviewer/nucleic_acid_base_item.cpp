@@ -92,14 +92,9 @@ void NucleicAcidBaseItem::updateCachedData()
                         border_height,
                         MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
     m_main_label_rect = m_border_path.boundingRect();
-    // the bounding rect needs to account for the thickness of the border
-    // outline (which is centered on the outline, so half of it is *outside*
-    // border_rect)
-    auto border_pen_half_width = border_pen_width / 2.0;
-    m_bounding_rect = m_border_path.boundingRect().adjusted(
-        -border_pen_half_width, -border_pen_half_width, border_pen_half_width,
-        border_pen_half_width);
-    m_shape = m_border_path;
+    set_path_to_diamond(m_shape, border_width, border_height,
+                        border_pen_width / 2.0);
+    m_bounding_rect = m_shape.boundingRect();
 
     auto rect_color = get_color_for_monomer(
         res_name, NUCLEIC_ACID_COLOR_BY_RES_NAME, DEFAULT_NA_BACKGROUND_COLOR);

@@ -78,6 +78,8 @@ void DrawMonomerSceneTool::onLeftButtonClick(
 
 QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
 {
+    // the specific number used here (the "1") doesn't matter - we just need any
+    // number to form a proper chain ID
     auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
     auto monomer =
         rdkit_extensions::makeMonomer(m_res_name, chain_id, 1, false);

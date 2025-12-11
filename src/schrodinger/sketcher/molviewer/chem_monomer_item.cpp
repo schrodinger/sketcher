@@ -40,14 +40,10 @@ void ChemMonomerItem::updateCachedData()
     set_path_to_rect(m_predictive_highlighting_path, border_rect,
                      MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
     m_main_label_rect = border_rect;
-    // the bounding rect needs to account for the thickness of the border
-    // outline (which is centered on the outline, so half of it is *outside*
-    // border_rect)
-    auto border_line_half_width = CHEM_MONOMER_BORDER_LINE_WIDTH / 2.0;
-    m_bounding_rect =
-        border_rect.adjusted(-border_line_half_width, -border_line_half_width,
-                             border_line_half_width, border_line_half_width);
-    m_shape = m_border_path;
+    m_bounding_rect = rect_expanded_by_half_pen_width(
+        border_rect, CHEM_MONOMER_BORDER_LINE_WIDTH);
+    set_path_to_rect(m_shape, border_rect,
+                     CHEM_MONOMER_BORDER_LINE_WIDTH / 2.0);
 }
 
 } // namespace sketcher
