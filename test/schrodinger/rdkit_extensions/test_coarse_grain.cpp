@@ -193,6 +193,21 @@ BOOST_AUTO_TEST_CASE(Test_toMonomeric)
     }
 }
 
+BOOST_AUTO_TEST_CASE(Test_toMonomericRNA)
+{
+    // SHARED-11862: Ensure RNA with pair-pair linkages don't throw in
+    // toAtomistic
+    // TODO: Actually add hbonds in toAtomistic
+    auto monomer_mol =
+        to_rdkit("RNA1{R(A)P.R(G)P.R(C)P.R(U)P.R(C)P.R(C)P.R(C)}|RNA2{R(U)P.R("
+                 "G)P.R(G)P.R(G)P.R(G)P.R(A)P.R(G)}$RNA1,RNA2,17:pair-11:pair|"
+                 "RNA1,RNA2,20:pair-8:pair|RNA1,RNA2,14:pair-14:pair|RNA1,RNA2,"
+                 "11:pair-17:pair|RNA1,RNA2,8:pair-20:pair$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+    BOOST_CHECK(atomistic_mol->getNumAtoms() == 296);
+}
+
 BOOST_AUTO_TEST_CASE(Test_reordering_residues)
 {
     ::RDKit::RWMol monomer_mol;
