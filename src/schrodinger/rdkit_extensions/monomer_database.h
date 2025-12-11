@@ -121,6 +121,9 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // to make sure the SMILES strings are correctly canonicalized.
     void canonicalizeSmilesFields(bool include_core = false);
 
+    [[nodiscard]] std::vector<std::pair<std::string, std::string>>
+    getAllSMILES() const;
+
   private:
     // this is private because we don't want to allow managing
     // just any db -- we require the proper schema!
