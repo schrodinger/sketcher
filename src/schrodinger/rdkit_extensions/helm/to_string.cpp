@@ -156,7 +156,7 @@ get_polymer_helm(const ::RDKit::ROMol& mol,
 
         if (repeated_group_starts.count(idx)) {
             sru_idx = repeated_group_starts.at(idx);
-            ss << (idx == atoms.front() ? "" : ".");
+            ss << (idx == atoms.front() || prev_is_branch ? "" : ".");
             ss << (sgroups[sru_idx].getAtoms().size() == 1 ? "" : "(");
         }
 

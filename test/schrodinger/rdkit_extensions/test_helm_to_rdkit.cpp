@@ -259,12 +259,12 @@ BOOST_DATA_TEST_CASE(TestConversionOfMonomerLists,
                      bdata::make(std::vector<HELMInfo>{
                          {{{"PEPTIDE1", {"X,G,L"}}}},
                          {{{"PEPTIDE1", {"A", "P+K+H"}}}},
-                     }),
-                     helm_info)
+                     }) * bdata::make(std::vector<bool>{false, true}),
+                     helm_info, use_v2_parser)
 {
     // NOTE: Not adding monomer lists with ratios because the ratios are
     // discarded during parsing
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMultiplePolymers,
@@ -272,23 +272,26 @@ BOOST_DATA_TEST_CASE(TestConversionOfMultiplePolymers,
                          {{{"PEPTIDE1", {"dA"}}, {"PEPTIDE2", {"A", "dA"}}}},
                          {{{"PEPTIDE1", {"dG", "X,H,K", "dF"}},
                            {"RNA1", {"dG", "P"}}}},
-                         {{{"RNA1", {"dG", "P"}}, {"BLOB1", {"BEAD"}}}}}),
-                     helm_info)
+                         {{{"RNA1", {"dG", "P"}}, {"BLOB1", {"BEAD"}}}}}) *
+                         bdata::make(std::vector<bool>{false, true}),
+                     helm_info, use_v2_parser)
 {
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(TestMonomerRepetitions,
-                     bdata::make(std::vector<std::string>{
-                         "A'3'",
-                         "(X,C,L)'3-5'",
-                         "(A.C.K.L)'3'",
-                         "(A.C.K.L)'3-5'",
-                     }) ^ bdata::make(std::vector<int>{3, 3, 6, 6}),
-                     repeated_monomers, num_monomers)
+                     (bdata::make(std::vector<std::string>{
+                          "A'3'",
+                          "(X,C,L)'3-5'",
+                          "(A.C.K.L)'3'",
+                          "(A.C.K.L)'3-5'",
+                      }) ^
+                      bdata::make(std::vector<int>{3, 3, 6, 6})) *
+                         bdata::make(std::vector<bool>{false, true}),
+                     repeated_monomers, num_monomers, use_v2_parser)
 {
-    const auto mol =
-        helm_to_rdkit("PEPTIDE1{" + repeated_monomers + "}$$$$V2.0");
+    const auto mol = helm_to_rdkit(
+        "PEPTIDE1{" + repeated_monomers + "}$$$$V2.0", use_v2_parser);
 
     BOOST_TEST(mol->getNumAtoms() == num_monomers);
 
@@ -520,62 +523,68 @@ BOOST_AUTO_TEST_CASE(TestReadingInlineSmilesSurroundedBySquareBrackets)
                "[H][*:1]");
 }
 
-BOOST_DATA_TEST_CASE_F(schrodinger::test::silence_stdlog,
-                       TestInvalidExpressionsV2,
-                       bdata::make(std::vector<std::string>{
-                           "BLOB1{}$$$$V2.0",
-                           "BLOB1{          }$$$$V2.0",
-                           "BLOB0{HELLO WORLD}$$$$V2.0",
-                           "BLOB0D{HELLO WORLD}$$$$V2.0",
-                           "BLOB1{HELLO WORLD\"my annotation\"}$$$$V2.0",
-                           "BLOB1{HELLO WORLD}$$$$V3.0",
-                           "BLOB1{HELLO WORLD}$$$not valid json$V2.0",
-                           "CHEM1{A.B}$$$$V2.0",
-                           "CHEM1{[]}$$$$V2.0",
-                           "CHEM1{[A}$$$$V2.0",
-                           "CHEM1{[A]}$$$$V2.0",
-                           "CHEM1{dA]}$$$$V2.0",
-                           "CHEM1{A]}$$$$V2.0",
-                           "CHEM1{dA}$$$$V2.0",
-                           "PEPTIDE1{dA}$$$$V2.0",
-                           "PEPTIDE1{(dA}$$$$V2.0",
-                           "PEPTIDE1{dA)}$$$$V2.0",
-                           "PEPTIDE1{(A,[dA)}$$$$V2.0",
-                           "PEPTIDE1{(A,dA])}$$$$V2.0",
-                           "PEPTIDE1{(A,[])}$$$$V2.0",
-                           "PEPTIDE1{(A,[A])}$$$$V2.0",
-                           "PEPTIDE1{(A:,[A])}$$$$V2.0",
-                           "PEPTIDE1{(A,[A]:)}$$$$V2.0",
-                           "PEPTIDE1{(A,[A]+)}$$$$V2.0",
-                           "PEPTIDE1{(A,[A]+A)}$$$$V2.0",
-                           "PEPTIDE1{(+A:9+[aA]+A)}$$$$V2.0",
-                           "PEPTIDE1{(A:9+[aA]+A+)}$$$$V2.0",
-                           "PEPTIDE1{(A:9++[aA]+A)}$$$$V2.0",
-                           "PEPTIDE1{(A:0+[aA]+A)}$$$$V2.0",
-                           "PEPTIDE1{(A:0.1+[aA]+A:0.0)}$$$$V2.0",
-                           R"(CHEM1{[Az]'3'}$$$$V2.0)",
-                           "PEPTIDE1{[dA]''}$$$$V2.0",
-                           "PEPTIDE1{[dA]'hi'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'hi-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'1-hi'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'0'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'000'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'0-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'10-'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'1-3-5'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'01'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'01-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'3-05'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'3-1'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'3-3'}$$$$V2.0",
-                           "RNA1{R(AP}$$$$V2.0",
-                           "RNA1{R(A'3')P}$$$$V2.0",
-                           "RNA1{R(A.L'3')P}$$$$V2.0",
-                           "RNA1{R(A.L(C)P)P}$$$$V2.0",
-                           "RNA1{R(A(C)P)P}$$$$V2.0",
-                       }),
-                       test_helm)
+BOOST_DATA_TEST_CASE_F(
+    schrodinger::test::silence_stdlog, TestInvalidExpressionsV2,
+    bdata::make(std::vector<std::string>{
+        "BLOB1{}$$$$V2.0",
+        "BLOB1{          }$$$$V2.0",
+        "BLOB0{HELLO WORLD}$$$$V2.0",
+        "BLOB0D{HELLO WORLD}$$$$V2.0",
+        "BLOB1{HELLO WORLD\"my annotation\"}$$$$V2.0",
+        "BLOB1{HELLO WORLD}$$$$V3.0",
+        "BLOB1{HELLO WORLD}$$$not valid json$V2.0",
+        "CHEM1{A.B}$$$$V2.0",
+        "CHEM1{[]}$$$$V2.0",
+        "CHEM1{[A}$$$$V2.0",
+        "CHEM1{[A]}$$$$V2.0",
+        "CHEM1{dA]}$$$$V2.0",
+        "CHEM1{A]}$$$$V2.0",
+        "CHEM1{dA}$$$$V2.0",
+        "PEPTIDE1{dA}$$$$V2.0",
+        "PEPTIDE1{(dA}$$$$V2.0",
+        "PEPTIDE1{dA)}$$$$V2.0",
+        "PEPTIDE1{(A,[dA)}$$$$V2.0",
+        "PEPTIDE1{(A,dA])}$$$$V2.0",
+        "PEPTIDE1{(A,[])}$$$$V2.0",
+        "PEPTIDE1{(A,[A])}$$$$V2.0",
+        "PEPTIDE1{(A:,[A])}$$$$V2.0",
+        "PEPTIDE1{(A,[A]:)}$$$$V2.0",
+        "PEPTIDE1{(A,[A]+)}$$$$V2.0",
+        "PEPTIDE1{(A,[A]+A)}$$$$V2.0",
+        "PEPTIDE1{(+A:9+[aA]+A)}$$$$V2.0",
+        "PEPTIDE1{(A:9+[aA]+A+)}$$$$V2.0",
+        "PEPTIDE1{(A:9++[aA]+A)}$$$$V2.0",
+        "PEPTIDE1{(A:0+[aA]+A)}$$$$V2.0",
+        "PEPTIDE1{(A:0.1+[aA]+A:0.0)}$$$$V2.0",
+        R"(CHEM1{[Az]'3'}$$$$V2.0)",
+        "PEPTIDE1{[dA]''}$$$$V2.0",
+        "PEPTIDE1{[dA]'hi'}$$$$V2.0",
+        "PEPTIDE1{[dA]'hi-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'1-hi'}$$$$V2.0",
+        "PEPTIDE1{[dA]'0'}$$$$V2.0",
+        "PEPTIDE1{[dA]'000'}$$$$V2.0",
+        "PEPTIDE1{[dA]'0-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'10-'}$$$$V2.0",
+        "PEPTIDE1{[dA]'1-3-5'}$$$$V2.0",
+        "PEPTIDE1{[dA]'01'}$$$$V2.0",
+        "PEPTIDE1{[dA]'01-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'3-05'}$$$$V2.0",
+        "PEPTIDE1{[dA]'3-1'}$$$$V2.0",
+        "PEPTIDE1{[dA]'3-3'}$$$$V2.0",
+        "RNA1{R(AP}$$$$V2.0",
+        "RNA1{R(A'3')P}$$$$V2.0",
+        "RNA1{R(A.L'3')P}$$$$V2.0",
+        "RNA1{R(A.L(C)P)P}$$$$V2.0",
+        "RNA1{R(A(C)P)P}$$$$V2.0",
+        "PEPTIDE1{A.(G.A.C)''.A}$$$$V2.0",
+        R"(PEPTIDE1{A(C(A)L)P'9-10'"hello world".A(C)}$$$$V2.0)",
+        R"(PEPTIDE1{A(C.A.L)P'9-10'"hello world".A(C)}$$$$V2.0)",
+        R"(PEPTIDE1{A((C.A.L))P'9-10'"hello world".A(C)}$$$$V2.0)",
+        "PEPTIDE1{A.(G.A.(L.A.P)'9'.C)'3'.A}$$$$V2.0",
+        "PEPTIDE1{A.(G.A.C(P))'3'(C).A}$$$$V2.0",
+    }),
+    test_helm)
 {
     constexpr auto use_v2_parser = true;
 
@@ -662,6 +671,15 @@ BOOST_DATA_TEST_CASE(
         R"(RNA1{R(A"mutation")P.R(U)P}$$$$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)}|RNA2{R(A)P.R(C)P}$$$$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0)",
+
+        R"(PEPTIDE1{A.(G.A.C)'3'.A}$$$$V2.0)",
+        R"(PEPTIDE1{A.(G.A.C)'3'"my annotation".A}$$$$V2.0)",
+        "PEPTIDE1{A.(G.A.C)'3'.A}$$$$V2.0",
+        "RNA1{R(A)P.(R(N)P)'4'.(R(G)P)'3-7'}$$$$V2.0",
+        "RNA1{R(A)P.R(C)P.(R(T)P)'2'.R(G)}$$$$V2.0",
+        R"(PEPTIDE1{A.(C.A.L)'9-10'"hello world".A(C)}$$$$V2.0)",
+        "PEPTIDE1{[Bal]'11'(G)C'9'(C)A'9'(L)}$$$$V2.0",
+        "PEPTIDE1{[Bal]'11'(G)(G.C)'9'(C)(A.L)'9'(L)}$$$$V2.0",
     }),
     test_helm)
 {
