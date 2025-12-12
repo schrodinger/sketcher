@@ -876,6 +876,84 @@ template <class error_handler_t> class [[nodiscard]] parser_t
     }
 
     /**
+     * @brief Parse repeated monomer list in a Simple Polymer token. e.g.,
+     *        (A.C.L)'4'
+     * @param lexer The lexer instance.
+     * @param polymer_id The ID of the current polymer.
+     * @param monomers Output to add parsed monomers to.
+     * @param repetitions Output to add parsed monomer repetitions to.
+     * @return True if successfully parsed the repeated monomer sequence.
+     */
+    bool parse_repeated_monomer_sequence(lexer_t<error_handler_t>& lexer,
+                                         const std::string_view& polymer_id,
+                                         std::vector<monomer>& monomers,
+                                         std::vector<repetition>& repetitions)
+    {
+        if (lexer.peek() != '(') {
+            m_error_handler("Expected character '(' here to begin repeated "
+                            "monomer sequence.",
+                            lexer.pos(), lexer.input());
+            return false;
+        }
+
+        std::string_view monomer_sequence;
+        // this is unlikely to fail, since we make sure it's a valid monomer
+        // sequence before parsing
+        if (!lexer.get_grouped_token(monomer_sequence, '(', ')')) {
+            return false;
+        }
+
+        // strip leading and trailing parenthesis
+        monomer_sequence.remove_suffix(1);
+        monomer_sequence.remove_prefix(1);
+
+        // use a temporary list of entities so subsequent checks are easier
+        lexer_t<error_handler_t> repeated_monomers_lexer(monomer_sequence);
+        std::vector<monomer> repeated_monomers;
+        std::vector<repetition> nested_repetitions;
+        if (!parse_monomers(repeated_monomers_lexer, polymer_id,
+                            repeated_monomers, nested_repetitions)) {
+            return false;
+        }
+
+        if (!nested_repetitions.empty()) {
+            m_error_handler("Repeated monomer lists cannot be nested",
+                            nested_repetitions[0].num_repetitions,
+                            lexer.input());
+            return false;
+        }
+
+        if (lexer.peek() != '\'') {
+            m_error_handler(
+                "Expected a repetition token here. e.g. '4', '1-4'.",
+                lexer.pos(), lexer.input());
+            return false;
+        }
+
+        std::string_view repetition_count;
+        if (!parse_repetition_count(lexer, repetition_count)) {
+            return false;
+        }
+
+        std::string_view annotation;
+        if (lexer.peek() == '"' && !parse_annotation(lexer, annotation)) {
+            return false;
+        }
+
+        // add repetitions to output
+        repetitions.push_back({.start = monomers.size(),
+                               .size = repeated_monomers.size(),
+                               .num_repetitions = repetition_count,
+                               .annotation = annotation});
+
+        // extend output monomer list
+        monomers.insert(monomers.end(), repeated_monomers.begin(),
+                        repeated_monomers.end());
+
+        return true;
+    }
+
+    /**
      * @brief Parses a single monomer unit from the lexer
      * @param lexer The lexer instance.
      * @param repetition_count Output for the monomer repetition value
