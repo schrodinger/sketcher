@@ -90,10 +90,7 @@ void add_polymer_groups_and_extended_annotations(
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
 helm_to_rdkit(const std::string& helm_string, bool use_v2_parser, bool do_throw)
 {
-    std::optional<helm_info> parsed_info =
-        use_v2_parser ? helm::v2::parse_helm(helm_string, do_throw)
-                      : helm::HelmParser(helm_string).parse();
-
+    auto parsed_info = helm::v2::parse_helm(helm_string, do_throw);
     if (!parsed_info) {
         return nullptr;
     }
