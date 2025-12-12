@@ -8,9 +8,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "schrodinger/rdkit_extensions/helm/token_scanner.h"
-#include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
-
 namespace helm
 {
 
@@ -62,59 +59,6 @@ struct helm_info {
     std::string_view helm_version;
 };
 
-class RDKIT_EXTENSIONS_API HelmParser
-{
-  public:
-    HelmParser(const std::string_view input_helm);
-    // top-level function to initiate parsing
-    helm_info parse();
-
-    // apis for polymers
-    void addMonomer(const std::string_view monomer_id, const bool is_smiles,
-                    const bool is_branch, const bool is_list,
-                    const std::string_view annotation);
-
-    void addMonomerWithId(const std::string_view monomer_id,
-                          const std::string_view annotation);
-    void addSmilesMonomer(const std::string_view monomer_id,
-                          const std::string_view annotation);
-    void addMonomerList(const std::string_view monomer_id,
-                        const std::string_view annotation);
-    void addResidueName(const std::string_view monomer_id);
-    void addWildcardOrUnknownResidue();
-
-    void markBranchMonomer(const size_t branch_group_size);
-    void markLastNMonomersAsRepeated(const size_t repetition_size,
-                                     const std::string_view num_repetitions,
-                                     const std::string_view annotation);
-    void addPolymer(const std::string_view polymer_id,
-                    const std::string_view annotation);
-
-    // apis for connections
-    void addConnection(connection&& connection);
-
-    // apis for polymer groups
-    void addPolymerGroup(const std::string_view polymer_group_id,
-                         const std::string_view items,
-                         const bool is_polymer_union);
-
-    // apis for extended annotations
-    void addExtendedAnnotations(const std::string_view extended_annotations);
-
-    // apis for version
-    void addHelmVersion(const std::string_view helm_version);
-
-    void saveError(const std::string_view& failed_token,
-                   const std::string& err_msg);
-    void saveError(const unsigned int num_chars_processed,
-                   const std::string& err_msg);
-
-  private:
-    std::string_view m_input;
-    std::vector<std::string> m_errors;
-    helm_info m_parsed_info;
-};
-
 /**
  * @brief Constructs a detailed, user-friendly error message, including a
  *        truncated snippet of the input string and an error pointer.
@@ -147,9 +91,6 @@ construct_error_msg(const std::string_view err_msg,
 /// inline SMILES monomer.
 [[nodiscard]] bool is_smiles_monomer(const std::string_view&);
 
-namespace v2
-{
-
 /**
  * @brief Parses a HELM v2 string into a structured representation.
  *
@@ -163,8 +104,6 @@ namespace v2
  * @return Parsed HELM info, or std::nullopt on failure.
  * @throws std::invalid_argument if parsing fails and `doThrow == true`.
  */
-std::optional<helm_info> parse_helm(std::string_view input,
-                                    bool do_throw = true);
-} // namespace v2
-
+RDKIT_EXTENSIONS_API std::optional<helm_info> parse_helm(std::string_view input,
+                                                         bool do_throw = true);
 } /* end namespace helm */

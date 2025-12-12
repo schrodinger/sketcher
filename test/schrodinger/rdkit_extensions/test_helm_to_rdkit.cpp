@@ -205,12 +205,10 @@ static auto check_converted_properties = [](const auto& mol) {
     BOOST_TEST(mol->hasProp(HELM_MODEL));
 };
 
-static void check_helm_conversion(const HELMInfo& helm_info,
-                                  bool use_v2_parser = false)
+static void check_helm_conversion(const HELMInfo& helm_info)
 {
     constexpr auto do_throw = true;
-    const auto& mol =
-        helm_to_rdkit(helm_info.toString(), use_v2_parser, do_throw);
+    const auto& mol = helm_to_rdkit(helm_info.toString(), do_throw);
     check_converted_properties(mol);
     check_converted_atoms(helm_info, mol);
     check_converted_bonds(helm_info, mol);
@@ -224,11 +222,10 @@ BOOST_DATA_TEST_CASE(TestConversionOfLinearMonomers,
                          {{{"PEPTIDE1", {"A", "H", "D"}}}},
                          {{{"RNA1", {"R", "A"}}}},
                          {{{"RNA1", {"R", "A", "P"}}}},
-                         {{{"CHEM1", {"K"}}}}}) *
-                         bdata::make(std::vector<bool>{false, true}),
-                     helm_info, use_v2_parser)
+                         {{{"CHEM1", {"K"}}}}}),
+                     helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMulticharacterMonomers,
@@ -237,11 +234,10 @@ BOOST_DATA_TEST_CASE(TestConversionOfMulticharacterMonomers,
                          {{{"PEPTIDE1", {"A", "dA"}}}},
                          {{{"PEPTIDE1", {"dG", "P", "dF"}}}},
                          {{{"RNA1", {"dG", "P"}}}},
-                         {{{"BLOB1", {"BEAD"}}}}}) *
-                         bdata::make(std::vector<bool>{false, true}),
-                     helm_info, use_v2_parser)
+                         {{{"BLOB1", {"BEAD"}}}}}),
+                     helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(
@@ -249,22 +245,22 @@ BOOST_DATA_TEST_CASE(
     bdata::make(std::vector<HELMInfo>{
         {{{"PEPTIDE1", {"[*:1]N[C@@H](C=O)C([*:2])=O", "A"}}}},
         {{{"PEPTIDE1", {"A", "[*]N[C@@H](C=O)C([*])=O |$_R1;;;;;;_R2;$|"}}}},
-    }) * bdata::make(std::vector<bool>{false, true}),
-    helm_info, use_v2_parser)
+    }),
+    helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMonomerLists,
                      bdata::make(std::vector<HELMInfo>{
                          {{{"PEPTIDE1", {"X,G,L"}}}},
                          {{{"PEPTIDE1", {"A", "P+K+H"}}}},
-                     }) * bdata::make(std::vector<bool>{false, true}),
-                     helm_info, use_v2_parser)
+                     }),
+                     helm_info)
 {
     // NOTE: Not adding monomer lists with ratios because the ratios are
     // discarded during parsing
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMultiplePolymers,
@@ -272,26 +268,23 @@ BOOST_DATA_TEST_CASE(TestConversionOfMultiplePolymers,
                          {{{"PEPTIDE1", {"dA"}}, {"PEPTIDE2", {"A", "dA"}}}},
                          {{{"PEPTIDE1", {"dG", "X,H,K", "dF"}},
                            {"RNA1", {"dG", "P"}}}},
-                         {{{"RNA1", {"dG", "P"}}, {"BLOB1", {"BEAD"}}}}}) *
-                         bdata::make(std::vector<bool>{false, true}),
-                     helm_info, use_v2_parser)
+                         {{{"RNA1", {"dG", "P"}}, {"BLOB1", {"BEAD"}}}}}),
+                     helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(TestMonomerRepetitions,
-                     (bdata::make(std::vector<std::string>{
-                          "A'3'",
-                          "(X,C,L)'3-5'",
-                          "(A.C.K.L)'3'",
-                          "(A.C.K.L)'3-5'",
-                      }) ^
-                      bdata::make(std::vector<int>{3, 3, 6, 6})) *
-                         bdata::make(std::vector<bool>{false, true}),
-                     repeated_monomers, num_monomers, use_v2_parser)
+                     bdata::make(std::vector<std::string>{
+                         "A'3'",
+                         "(X,C,L)'3-5'",
+                         "(A.C.K.L)'3'",
+                         "(A.C.K.L)'3-5'",
+                     }) ^ bdata::make(std::vector<int>{3, 3, 6, 6}),
+                     repeated_monomers, num_monomers)
 {
-    const auto mol = helm_to_rdkit(
-        "PEPTIDE1{" + repeated_monomers + "}$$$$V2.0", use_v2_parser);
+    const auto mol =
+        helm_to_rdkit("PEPTIDE1{" + repeated_monomers + "}$$$$V2.0");
 
     BOOST_TEST(mol->getNumAtoms() == num_monomers);
 
@@ -597,21 +590,17 @@ BOOST_DATA_TEST_CASE_F(
     }),
     test_helm)
 {
-    constexpr auto use_v2_parser = true;
-
     // std::invalid_argument should be thrown
     {
         constexpr auto do_throw = true;
-        BOOST_CHECK_THROW(std::ignore =
-                              helm_to_rdkit(test_helm, use_v2_parser, do_throw),
+        BOOST_CHECK_THROW(std::ignore = helm_to_rdkit(test_helm, do_throw),
                           std::invalid_argument);
     }
 
     // log and return nullptr
     {
         constexpr auto do_throw = false;
-        BOOST_TEST(helm_to_rdkit(test_helm, use_v2_parser, do_throw) ==
-                   nullptr);
+        BOOST_TEST(helm_to_rdkit(test_helm, do_throw) == nullptr);
     }
 }
 
@@ -701,19 +690,17 @@ BOOST_DATA_TEST_CASE(
     }),
     test_helm)
 {
-    constexpr auto use_v2_parser = true;
-
     // turn on exceptions
     {
         constexpr auto do_throw = true;
-        auto mol = helm_to_rdkit(test_helm, use_v2_parser, do_throw);
+        auto mol = helm_to_rdkit(test_helm, do_throw);
         BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
     }
 
     // turn on logging
     {
         constexpr auto do_throw = false;
-        auto mol = helm_to_rdkit(test_helm, use_v2_parser, do_throw);
+        auto mol = helm_to_rdkit(test_helm, do_throw);
         BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
     }
 }
