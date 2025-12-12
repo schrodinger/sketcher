@@ -1016,6 +1016,17 @@ template <class error_handler_t> class [[nodiscard]] parser_t
                                 monomer_id, input);
                 return false;
             }
+
+            // strip surrounding parenthesis
+            monomer_id.remove_prefix(1);
+            monomer_id.remove_suffix(1);
+
+            if (std::ranges::all_of(monomer_id, detail::isdigit)) {
+                m_error_handler(
+                    "Bracket-enclosed monomer ids shouldn't be numeric.",
+                    monomer_id, input);
+                return false;
+            }
         }
         // these should have only one character
         else if (monomer_id.size() != 1) {
@@ -1541,10 +1552,32 @@ template <class error_handler_t> class [[nodiscard]] parser_t
                 return false;
             }
 
-            // ensure this is a numeric value
             auto ratio = item.substr(colon_pos + 1);
-            if (ratio != "?" && !detail::is_valid_ratio(ratio)) {
-                m_error_handler("Expected a non-zero unsigned number here.",
+
+            // special case
+            if (ratio == "?") {
+                continue;
+            }
+
+            auto dash_pos = ratio.find('-');
+            if (dash_pos == 0 || dash_pos == ratio.size() - 1) {
+                m_error_handler("Polymer group ratios can't have leading or "
+                                "trailing dashes.",
+                                ratio, input);
+                return false;
+            }
+
+            // ensure this is a numeric value
+            if (!detail::is_valid_ratio(ratio.substr(0, dash_pos))) {
+                m_error_handler("Expected a valid ratio here.", ratio, input);
+                return false;
+            }
+
+            // ensure this is a numeric value
+            if (dash_pos != std::string_view::npos &&
+                !detail::is_valid_ratio(ratio.substr(dash_pos + 1))) {
+                m_error_handler("Expected two ratios separated by a dash here. "
+                                "e.g., 0.2-0.5.",
                                 ratio, input);
                 return false;
             }

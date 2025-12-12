@@ -86,10 +86,10 @@ BOOST_DATA_TEST_CASE(TestRoundtrippingPolymerGroups,
                          "CHEM1{*}|CHEM2{*}$$G1(CHEM1:20-30,CHEM2)$$V2.0",
                          "CHEM1{*}|CHEM2{*}$$G1(CHEM1+CHEM2)$$V2.0",
                          "CHEM1{*}|CHEM2{*}$$G1(CHEM1+CHEM2:0.3-3)$$V2.0",
-                     }),
-                     input_helm)
+                     }) * bdata::make(std::vector<bool>{false, true}),
+                     input_helm, use_v2_parser)
 {
-    BOOST_TEST(get_roundtripped_helm(input_helm) == input_helm);
+    BOOST_TEST(get_roundtripped_helm(input_helm, use_v2_parser) == input_helm);
 }
 
 // Check that connections will be expanded
