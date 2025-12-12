@@ -224,6 +224,8 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
                 case '$':
                 case '{':
                 case '}':
+                case ':':
+                case '?':
                     if (seen_quote) {
                         continue;
                     }
@@ -629,8 +631,70 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return false;
         }
 
+        // add extra information for validating connections. e.g. unknown
+        // and wildcard monomer info
+        add_ambiguous_monomer_information_to_polymer(result);
+
         polymers.push_back(std::move(result));
         return true;
+    }
+
+    /** @brief Records which monomers are wildcards or unknown, and records the
+     *         list of seen residue names. This information will be used to
+     *         validate ambiguous connections.
+     */
+    void add_ambiguous_monomer_information_to_polymer(polymer& result)
+    {
+        auto monomer_idx = 0;
+        for (auto& monomer : result.monomers) {
+            ++monomer_idx; // 1-indexed
+
+            if (monomer.is_smiles) {
+                continue;
+            }
+
+            auto separator = '\n';
+            if (monomer.is_list) {
+                bool is_monomer_union = std::ranges::count(monomer.id, '+');
+                separator = (is_monomer_union ? '+' : ',');
+            }
+
+            size_t start = 0;
+            while (start < monomer.id.size()) {
+                size_t end = monomer.id.find(separator, start);
+                if (end == std::string_view::npos) {
+                    end = monomer.id.size();
+                }
+
+                auto monomer_id = monomer.id.substr(start, end - start);
+                monomer_id = monomer_id.substr(0, monomer_id.find(':'));
+
+                // strip brackets
+                if (monomer_id.front() == '[') {
+                    monomer_id.remove_prefix(1);
+                    monomer_id.remove_suffix(1);
+                }
+
+                if (monomer_id == "*") { // this is a wildcard monomer
+                    // this will be used to validate ambiguous connections
+                    result.wildcard_and_unknown_residues.insert(monomer_idx);
+                } else if (result.id.starts_with("PEPTIDE") &&
+                           monomer_id == "X") { // this is an unknown amino acid
+                    // this will be used to validate ambiguous connections
+                    result.wildcard_and_unknown_residues.insert(monomer_idx);
+                }
+                // this is an unknown nucleotide
+                else if (result.id.starts_with("RNA") && monomer_id == "N") {
+                    // this will be used to validate ambiguous connections
+                    result.wildcard_and_unknown_residues.insert(monomer_idx);
+                }
+
+                // this will be used to validate ambiguous connections
+                result.residue_names.insert(monomer_id);
+
+                start = end + 1; // advance location of separator
+            }
+        }
     }
 
     /**
@@ -729,9 +793,6 @@ template <class error_handler_t> class [[nodiscard]] parser_t
                 return false;
             }
         }
-
-        // FIXME: add extra information for validating connections. e.g. unknown
-        // and wildcard monomer info
 
         return true;
     }
@@ -1177,8 +1238,189 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return true;
         }
 
-        m_error_handler("Unsupported feature", lexer.pos(), lexer.input());
-        return false;
+        while (!lexer.eof() && lexer.peek() != '$') {
+            // multiple connections should be separated by '|'
+            if (!connections.empty() && !lexer.expect('|')) {
+                return false;
+            }
+
+            // parse connection
+            if (!parse_connection(lexer, connections)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** @brief Parses a single connection token from the lexer. A connection
+     *         token should have the following structure:
+     *
+     *         CONNECTION_POLYMER,CONNECTION_POLYMER,CONNECTION_MONOMER:ATTACHMENT_POINT-CONNECTION_MONOMER:ATTACHMENT_POINT
+     *
+     *         Connections can have inline annotations.
+     */
+    [[nodiscard]] bool parse_connection(lexer_t<error_handler_t>& lexer,
+                                        std::vector<connection>& connections)
+    {
+        // parse the connection token
+        connection result;
+        if (!(lexer.get_next_token(result.from_id) && lexer.expect(',') &&
+              lexer.get_next_token(result.to_id) && lexer.expect(',') &&
+              parse_connection_monomer(lexer, result.from_res) &&
+              lexer.expect(':') &&
+              parse_connection_attachment_point(lexer, result.from_rgroup) &&
+              lexer.expect('-') &&
+              parse_connection_monomer(lexer, result.to_res) &&
+              lexer.expect(':') &&
+              parse_connection_attachment_point(lexer, result.to_rgroup))) {
+            return false;
+        }
+
+        // parse optional inline annotation
+        if (lexer.peek() == '"' &&
+            !parse_annotation(lexer, result.annotation)) {
+            return false;
+        }
+
+        connections.push_back(std::move(result));
+        return true;
+    }
+
+    /**
+     * @brief Parses a single connection monomer. A connection monomer is
+     *        defined as:
+     *          * connection residue
+     *          * undefined residue i.e. ?
+     *          * ( residue_and_list )
+     *          * ( residue_or_list )
+     */
+    [[nodiscard]] bool
+    parse_connection_monomer(lexer_t<error_handler_t>& lexer,
+                             std::string_view& connection_monomer)
+    {
+        if (lexer.peek() != '(') {
+            // this should be a connection residue or ?
+            return lexer.get_next_token(connection_monomer) &&
+                   (connection_monomer == "?" ||
+                    is_valid_connection_residue(connection_monomer,
+                                                lexer.input()));
+        }
+
+        // this should be a residue list
+        std::string_view residue_list;
+        if (!lexer.get_grouped_token(residue_list, '(', ')')) {
+            return false;
+        }
+
+        // strip surrounding parenthesis
+        residue_list.remove_prefix(1);
+        residue_list.remove_suffix(1);
+
+        // make sure there's consistent use of + or ,
+        if (!has_valid_entity_list_separators(residue_list, lexer.input())) {
+            return false;
+        }
+
+        auto separator = residue_list[residue_list.find_first_of(",+")];
+
+        // Validate individual entities
+        size_t start = 0;
+        while (start < residue_list.size()) {
+            size_t end = residue_list.find(separator, start);
+            if (end == std::string_view::npos) {
+                end = residue_list.size();
+            }
+
+            auto item = residue_list.substr(start, end - start);
+            start = end + 1; // advance location of separator
+
+            if (!is_valid_connection_residue(item, lexer.input())) {
+                return false;
+            }
+        }
+
+        connection_monomer = residue_list;
+        return true;
+    }
+
+    /** @brief Checks if a token is a valid connection residue/monomer */
+    [[nodiscard]] bool
+    is_valid_connection_residue(std::string_view connection_residue,
+                                std::string_view input)
+    {
+        // assume this is a residue number
+        if (std::ranges::all_of(connection_residue, detail::isdigit)) {
+            if (connection_residue.front() == '0') {
+                m_error_handler("Connection residue numbers shouldn't have "
+                                "leading zeros.",
+                                connection_residue, input);
+                return false;
+            }
+
+            return true;
+        }
+
+        // NOTE: only support alpha-numeric monomer ids for now.
+        if (!std::ranges::all_of(connection_residue, [](unsigned char c) {
+                return std::isalnum(c);
+            })) {
+            m_error_handler("Connection residues are expected to be residue "
+                            "numbers or residue names. Only alphanumeric "
+                            "residue names are currently supported.",
+                            connection_residue, input);
+            return false;
+        }
+
+        return true;
+    }
+
+    /** @brief Parses a single connection attachment point token from the lexer
+     */
+    [[nodiscard]] bool
+    parse_connection_attachment_point(lexer_t<error_handler_t>& lexer,
+                                      std::string_view& attachment_point)
+    {
+        return lexer.get_next_token(attachment_point) &&
+               is_valid_connection_attachment_point(attachment_point,
+                                                    lexer.input());
+    }
+
+    /** @brief Checks if a token is a valid connection attachment point */
+    [[nodiscard]] bool
+    is_valid_connection_attachment_point(std::string_view attachment_point,
+                                         std::string_view input)
+    {
+        // these are special cases
+        if (attachment_point == "?" || attachment_point == "pair") {
+            return true;
+        }
+
+        // this has to be an r-group
+        if (attachment_point.size() == 1 || attachment_point.front() != 'R') {
+            m_error_handler("The supported attachment points are '?', 'pair', "
+                            "and r-groups. R-groups are defined as R#, where # "
+                            "is an unsigned positive number",
+                            attachment_point, input);
+            return false;
+        }
+
+        attachment_point.remove_prefix(1); // consume R
+
+        if (attachment_point.front() == '0') {
+            m_error_handler("R-group numbers shouldn't have leading zeros.",
+                            attachment_point, input);
+            return false;
+        }
+
+        if (!std::ranges::all_of(attachment_point, detail::isdigit)) {
+            m_error_handler("R-groups are defined as R#, where # is an "
+                            "unsigned positive number",
+                            attachment_point, input);
+            return false;
+        }
+
+        return true;
     }
 
     /** @brief Parses the Polymer Groups section (Section 3) */
