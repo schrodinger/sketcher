@@ -4086,5 +4086,59 @@ BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
     BOOST_TEST(carbon->hasValenceViolation());
 }
 
+/**
+ * Test that wiggly bonds (unknown stereochemistry) are preserved when
+ * round-tripping through add_text_to_mol_model and EXTENDED_SMILES export.
+ */
+BOOST_AUTO_TEST_CASE(test_wiggly_bond_preservation)
+{
+    // Test MDL V3000 format roundtrip
+    QUndoStack undo_stack_mdl;
+    TestMolModel model_mdl(&undo_stack_mdl);
+
+    const std::string mdl_wiggly_bond = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -2.078434 0.000000 0.000000 0
+M  V30 2 C -0.779413 -0.750012 0.000000 0
+M  V30 3 C 0.519609 0.000000 0.000000 0
+M  V30 4 C 1.818630 -0.750012 0.000000 0
+M  V30 5 N 0.519609 1.500025 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 3 5 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+$$$$
+)";
+
+    add_text_to_mol_model(model_mdl, mdl_wiggly_bond);
+
+    // Verify EXTENDED_SMILES export shows wiggly bond from MDL input
+    std::string exported_smiles_from_mdl =
+        get_mol_text(&model_mdl, Format::EXTENDED_SMILES);
+    BOOST_TEST(exported_smiles_from_mdl == "CCC(C)N |w:2.3|");
+
+    // Test EXTENDED_SMILES format roundtrip
+    QUndoStack undo_stack_smiles;
+    TestMolModel model_smiles(&undo_stack_smiles);
+
+    // Add a molecule with a wiggly bond using add_text_to_mol_model
+    add_text_to_mol_model(model_smiles, "CCC(C)N |w:2.3|");
+
+    // Extract it as EXTENDED_SMILES and verify the wiggly bond is preserved
+    std::string exported_smiles =
+        get_mol_text(&model_smiles, Format::EXTENDED_SMILES);
+    BOOST_TEST(exported_smiles == "CCC(C)N |w:2.3|");
+}
+
 } // namespace sketcher
 } // namespace schrodinger
