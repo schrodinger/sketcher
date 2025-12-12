@@ -583,6 +583,17 @@ BOOST_DATA_TEST_CASE_F(
         R"(PEPTIDE1{A((C.A.L))P'9-10'"hello world".A(C)}$$$$V2.0)",
         "PEPTIDE1{A.(G.A.(L.A.P)'9'.C)'3'.A}$$$$V2.0",
         "PEPTIDE1{A.(G.A.C(P))'3'(C).A}$$$$V2.0",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$V1(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G01(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G00(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$GA(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1,RNA2,)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(,RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1+RNA2+)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(+RNA1+RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1+RNA2)|$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$|G1(RNA1+RNA2)$$V2.0)",
     }),
     test_helm)
 {
@@ -671,7 +682,6 @@ BOOST_DATA_TEST_CASE(
         R"(RNA1{R(A"mutation")P.R(U)P}$$$$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)}|RNA2{R(A)P.R(C)P}$$$$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0)",
-
         R"(PEPTIDE1{A.(G.A.C)'3'.A}$$$$V2.0)",
         R"(PEPTIDE1{A.(G.A.C)'3'"my annotation".A}$$$$V2.0)",
         "PEPTIDE1{A.(G.A.C)'3'.A}$$$$V2.0",
@@ -680,6 +690,14 @@ BOOST_DATA_TEST_CASE(
         R"(PEPTIDE1{A.(C.A.L)'9-10'"hello world".A(C)}$$$$V2.0)",
         "PEPTIDE1{[Bal]'11'(G)C'9'(C)A'9'(L)}$$$$V2.0",
         "PEPTIDE1{[Bal]'11'(G)(G.C)'9'(C)(A.L)'9'(L)}$$$$V2.0",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1:3,RNA2:2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1+RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1:3+RNA2:2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1,RNA2)|G2(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1,RNA2)|G2(G1,RNA2,RNA3)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1+RNA2)|G2(RNA1+RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1+RNA2)|G2(G1+RNA2+RNA3)$$V2.0)",
     }),
     test_helm)
 {

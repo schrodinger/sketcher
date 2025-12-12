@@ -203,7 +203,7 @@ template <class error_handler_t> class [[nodiscard]] lexer_t
     {
         // unlikely, but we should handle this
         if (eof()) {
-            m_error_handler("unexpected end of string.", m_current_pos,
+            m_error_handler("Unexpected end of string.", m_current_pos,
                             m_input);
             return false;
         }
@@ -344,12 +344,13 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         lexer_t<error_handler_t> lexer(input);
 
         // Enforce the strict sequential grammar for the HELM sections
-        if (!(parse_simple_polymers(lexer, result.polymers) &&      //
-              lexer.expect('$') &&                                  //
-              parse_connections(lexer, result.connections) &&       //
-              lexer.expect('$') &&                                  //
-              parse_polymer_groups(lexer, result.polymer_groups) && //
-              lexer.expect('$') &&                                  //
+        if (!(parse_simple_polymers(lexer, result.polymers) && //
+              lexer.expect('$') &&                             //
+              parse_connections(lexer, result.connections) &&  //
+              lexer.expect('$') &&                             //
+              parse_third_helm_section(lexer, result.connections,
+                                       result.polymer_groups) && //
+              lexer.expect('$') &&                               //
               parse_extended_annotations(lexer,
                                          result.extended_annotations) && //
               lexer.expect('$') &&                                       //
@@ -391,46 +392,18 @@ template <class error_handler_t> class [[nodiscard]] parser_t
     [[nodiscard]] bool parse_polymer_id(lexer_t<error_handler_t>& lexer,
                                         std::string_view& polymer_id)
     {
-        // Define all supported polymer types
-        constexpr std::array<std::string_view, 4> supported_polymers{
-            "BLOB", "CHEM", "PEPTIDE", "RNA"};
-
-        auto remainder = lexer.remainder();
-        auto matched_polymer =
-            std::ranges::find_if(supported_polymers, [&](auto& entry) {
-                return remainder.starts_with(entry);
-            });
-
-        if (matched_polymer == supported_polymers.end()) {
-            m_error_handler("Expected polymer id here. Only PEPTIDE, RNA, "
-                            "CHEM, and BLOB polymers are currently supported",
-                            lexer.pos(), lexer.input());
+        std::string_view result;
+        if (!lexer.get_next_token(result)) {
             return false;
         }
 
-        // Enforce numeric suffix
-        auto suffix_start = matched_polymer->size();
-        if (suffix_start == remainder.size() ||
-            !detail::isdigit(remainder[suffix_start])) {
-            m_error_handler(
-                "Polymer ids are expected to have numeric suffixes. e.g., RNA1",
-                lexer.pos(), lexer.input());
-            return false;
-        }
-
-        // Reject suffixes with leading zeros.
-        if (remainder[suffix_start] == '0') {
-            m_error_handler("Polymer ids shouldn't have leading zeros.",
-                            lexer.pos(), lexer.input());
+        if (!is_valid_polymer_id(result, lexer.input())) {
             return false;
         }
 
         // construct the polymer ID
-        auto suffix_end =
-            remainder.find_first_not_of("0123456789", suffix_start);
-        polymer_id = remainder.substr(0, suffix_end);
+        polymer_id = result;
 
-        lexer.advance(suffix_end); // advance the lexer position
         return true;
     }
 
@@ -1217,8 +1190,267 @@ template <class error_handler_t> class [[nodiscard]] parser_t
             return true;
         }
 
-        m_error_handler("Unsupported feature", lexer.pos(), lexer.input());
-        return false;
+        while (!lexer.eof() && lexer.peek() != '$') {
+            if (!polymer_groups.empty() && !lexer.expect('|')) {
+                return false;
+            }
+
+            // parse polymer group id
+            std::string_view polymer_group_id;
+            if (!(lexer.get_next_token(polymer_group_id) &&
+                  is_valid_polymer_group_id(polymer_group_id, lexer.input()))) {
+                return false;
+            }
+
+            // parse polymer group items
+            if (lexer.peek() != '(') {
+                m_error_handler(
+                    "Expected a polymer group list after the polymer group id.",
+                    lexer.pos(), lexer.input());
+                return false;
+            }
+
+            std::string_view polymer_group_list;
+            if (!(lexer.get_grouped_token(polymer_group_list, '(', ')') &&
+                  is_valid_polymer_group_list(polymer_group_list,
+                                              lexer.input()))) {
+                return false;
+            }
+
+            // strip surrounding parenthesis
+            polymer_group_list.remove_prefix(1);
+            polymer_group_list.remove_suffix(1);
+
+            bool is_polymer_union = std::ranges::count(polymer_group_list, '+');
+            polymer_groups.push_back({.id = polymer_group_id,
+                                      .items = polymer_group_list,
+                                      .is_polymer_union = is_polymer_union});
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Checks if a polymer group list follows the HELMV2.0 specification.
+     * This mostly checks that there is consistent usage of the list separators
+     * and that list items are fully formed. E.g.
+     *          - CHEM1+CHEM2
+     *          - CHEM1,CHEM2
+     *          - G1:0.5,CHEM2
+     * @param polymer_group_list the polymer group list to validate
+     * @param input the entire HELMV2.0 input
+     * @return True if the polymer group list is valid False otherwise
+     */
+    bool is_valid_polymer_group_list(std::string_view polymer_group_list,
+                                     std::string_view input)
+    {
+        // it should have enough values. this will catch things like ()
+        if (polymer_group_list.size() <= 3) {
+            m_error_handler("Monomer lists should have more than one item.",
+                            polymer_group_list, input);
+            return false;
+        }
+
+        // strip surrounding parenthesis
+        polymer_group_list.remove_prefix(1);
+        polymer_group_list.remove_suffix(1);
+
+        // make sure there's consistent use of + or ,
+        if (!has_valid_entity_list_separators(polymer_group_list, input)) {
+            return false;
+        }
+
+        auto separator =
+            polymer_group_list[polymer_group_list.find_first_of(",+")];
+
+        // Validate individual monomers
+        size_t start = 0;
+        while (start < polymer_group_list.size()) {
+            size_t end = polymer_group_list.find(separator, start);
+            if (end == std::string_view::npos) {
+                end = polymer_group_list.size();
+            }
+
+            auto item = polymer_group_list.substr(start, end - start);
+            start = end + 1; // advance location of separator
+
+            // polymer group list items should be monomer ids followed by an
+            // optional ratio. the polymer group item and the ratio should be
+            // separated by a colon
+            auto colon_pos = item.find(':');
+            auto id = item.substr(0, colon_pos);
+            if (item.front() == 'G' && !is_valid_polymer_group_id(id, input)) {
+                return false;
+            }
+
+            if (item.front() != 'G' && !is_valid_polymer_id(id, input)) {
+                return false;
+            }
+
+            // nothing to validate
+            if (colon_pos == std::string_view::npos) {
+                continue;
+            }
+
+            // it should have values after it
+            if (colon_pos == item.size() - 1) {
+                m_error_handler("Expected a valid ratio after this.",
+                                item.substr(colon_pos), input);
+                return false;
+            }
+
+            // ensure this is a numeric value
+            auto ratio = item.substr(colon_pos + 1);
+            if (ratio != "?" && !detail::is_valid_ratio(ratio)) {
+                m_error_handler("Expected a non-zero unsigned number here.",
+                                ratio, input);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Checks if a value is a valid polymer group id.
+     * @param polymer_group_id the value to validate
+     * @param input the entire HELMV2.0 input
+     * @return True if the value is a valid polymer group id False otherwise
+     */
+    bool is_valid_polymer_group_id(std::string_view polymer_group_id,
+                                   std::string_view input)
+    {
+        // polymer group ids should start with G
+        if (polymer_group_id.front() != 'G') {
+            m_error_handler("Polymer group ids should start with 'G'. e.g. G1.",
+                            polymer_group_id, input);
+            return false;
+        }
+
+        if (polymer_group_id.size() == 1) {
+            m_error_handler("Polymer group ids are expected to have numeric "
+                            "suffixes. e.g. G1.",
+                            polymer_group_id, input);
+            return false;
+        }
+
+        // strip leading G
+        polymer_group_id.remove_prefix(1);
+
+        if (!std::ranges::all_of(polymer_group_id, detail::isdigit)) {
+            m_error_handler("Polymer group ids are expected to have numeric "
+                            "suffixes. e.g. G1.",
+                            polymer_group_id, input);
+            return false;
+        }
+
+        // Polymer group ids with leading zeros.
+        if (polymer_group_id.front() == '0') {
+            m_error_handler("Polymer group ids shouldn't have leading zeros.",
+                            polymer_group_id, input);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Checks if a value is a valid polymer id.
+     * @param polymer_id the value to validate
+     * @param input the entire HELMV2.0 input
+     * @return True if the value is a valid polymer id False otherwise
+     */
+    bool is_valid_polymer_id(std::string_view polymer_id,
+                             std::string_view input)
+    {
+        // Define all supported polymer types
+        constexpr std::array<std::string_view, 4> supported_polymers{
+            "BLOB", "CHEM", "PEPTIDE", "RNA"};
+
+        auto matched_polymer =
+            std::ranges::find_if(supported_polymers, [&](auto& entry) {
+                return polymer_id.starts_with(entry);
+            });
+
+        if (matched_polymer == supported_polymers.end()) {
+            m_error_handler("Expected polymer id here. Only PEPTIDE, RNA, "
+                            "CHEM, and BLOB polymers are currently supported",
+                            polymer_id, input);
+            return false;
+        }
+
+        // Enforce numeric suffix
+        auto suffix_start = matched_polymer->size();
+        if (suffix_start == polymer_id.size() ||
+            !detail::isdigit(polymer_id[suffix_start])) {
+            m_error_handler(
+                "Polymer ids are expected to have numeric suffixes. e.g., RNA1",
+                polymer_id, input);
+            return false;
+        }
+
+        // Reject suffixes with leading zeros.
+        if (polymer_id[suffix_start] == '0') {
+            m_error_handler("Polymer id suffixes shouldn't have leading zeros.",
+                            polymer_id, input);
+            return false;
+        }
+
+        return true;
+    }
+
+    /** @brief Parses the third section of a HELM or HELMV2.0 input. The content
+     *         of the third section is as follows:
+     *              * HELM: hydrogen pairings
+     *              * HELMV2.0: polymer groups
+     */
+    [[nodiscard]] bool
+    parse_third_helm_section(lexer_t<error_handler_t>& lexer,
+                             std::vector<connection>& connections,
+                             std::vector<polymer_group>& polymer_groups)
+    {
+        if (lexer.peek() == '$') { // this section is optional
+            return true;
+        }
+
+        auto remainder = lexer.remainder();
+
+        // remove trailing whitespace
+        while (!remainder.empty() && detail::isspace(remainder.back())) {
+            remainder.remove_suffix(1);
+        }
+
+        // Handle the HELMV2.0 case
+        if (remainder.ends_with("V2.0")) {
+            return parse_polymer_groups(lexer, polymer_groups);
+        }
+
+        // This is the HELM case. The third section should only have hydrogen
+        // pairings
+        std::vector<connection> hydrogen_pairings;
+        if (!parse_connections(lexer, hydrogen_pairings)) {
+            return false;
+        }
+
+        // make sure they're only hydrogen pairings
+        auto bad_connection =
+            std::ranges::find_if(hydrogen_pairings, [](auto& entry) {
+                return entry.from_rgroup != "pair" || entry.to_rgroup != "pair";
+            });
+        if (bad_connection != hydrogen_pairings.end()) {
+            auto bad_token = bad_connection->from_rgroup == "pair"
+                                 ? bad_connection->from_rgroup
+                                 : bad_connection->to_rgroup;
+            m_error_handler(
+                "HELM only supports hydrogen pairings in the third section",
+                bad_token, lexer.input());
+            return false;
+        }
+
+        // add to result
+        connections.insert(connections.end(), hydrogen_pairings.begin(),
+                           hydrogen_pairings.end());
+        return true;
     }
 
     /** @brief Parses the Extended Annotations section (Section 4) */
