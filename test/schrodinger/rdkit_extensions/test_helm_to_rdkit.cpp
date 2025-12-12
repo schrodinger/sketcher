@@ -255,12 +255,12 @@ BOOST_DATA_TEST_CASE(TestConversionOfMonomerLists,
                      bdata::make(std::vector<HELMInfo>{
                          {{{"PEPTIDE1", {"X,G,L"}}}},
                          {{{"PEPTIDE1", {"A", "P+K+H"}}}},
-                     }),
-                     helm_info)
+                     }) * bdata::make(std::vector<bool>{false, true}),
+                     helm_info, use_v2_parser)
 {
     // NOTE: Not adding monomer lists with ratios because the ratios are
     // discarded during parsing
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMultiplePolymers,
@@ -268,23 +268,26 @@ BOOST_DATA_TEST_CASE(TestConversionOfMultiplePolymers,
                          {{{"PEPTIDE1", {"dA"}}, {"PEPTIDE2", {"A", "dA"}}}},
                          {{{"PEPTIDE1", {"dG", "X,H,K", "dF"}},
                            {"RNA1", {"dG", "P"}}}},
-                         {{{"RNA1", {"dG", "P"}}, {"BLOB1", {"BEAD"}}}}}),
-                     helm_info)
+                         {{{"RNA1", {"dG", "P"}}, {"BLOB1", {"BEAD"}}}}}) *
+                         bdata::make(std::vector<bool>{false, true}),
+                     helm_info, use_v2_parser)
 {
-    check_helm_conversion(helm_info);
+    check_helm_conversion(helm_info, use_v2_parser);
 }
 
 BOOST_DATA_TEST_CASE(TestMonomerRepetitions,
-                     bdata::make(std::vector<std::string>{
-                         "A'3'",
-                         "(X,C,L)'3-5'",
-                         "(A.C.K.L)'3'",
-                         "(A.C.K.L)'3-5'",
-                     }) ^ bdata::make(std::vector<int>{3, 3, 6, 6}),
-                     repeated_monomers, num_monomers)
+                     (bdata::make(std::vector<std::string>{
+                          "A'3'",
+                          "(X,C,L)'3-5'",
+                          "(A.C.K.L)'3'",
+                          "(A.C.K.L)'3-5'",
+                      }) ^
+                      bdata::make(std::vector<int>{3, 3, 6, 6})) *
+                         bdata::make(std::vector<bool>{false, true}),
+                     repeated_monomers, num_monomers, use_v2_parser)
 {
-    const auto mol =
-        helm_to_rdkit("PEPTIDE1{" + repeated_monomers + "}$$$$V2.0");
+    const auto mol = helm_to_rdkit(
+        "PEPTIDE1{" + repeated_monomers + "}$$$$V2.0", use_v2_parser);
 
     BOOST_TEST(mol->getNumAtoms() == num_monomers);
 
