@@ -15,20 +15,19 @@ namespace bdata = boost::unit_test::data;
 BOOST_DATA_TEST_CASE(TestInvalidHelmInputs, bdata::make(INVALID_EXAMPLES),
                      input_helm)
 {
-    BOOST_CHECK_THROW(helm::HelmParser(input_helm).parse(),
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(helm::parse_helm(input_helm), std::invalid_argument);
 }
 
 BOOST_DATA_TEST_CASE(TestValidHelmInputs, bdata::make(VALID_EXAMPLES),
                      input_helm)
 {
-    helm::HelmParser(input_helm).parse();
+    BOOST_CHECK_NO_THROW(helm::parse_helm(input_helm));
 }
 
 BOOST_DATA_TEST_CASE(TestUnsupportedHelmInputs,
                      bdata::make(UNSUPPORTED_EXAMPLES), input_helm)
 {
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(helm::HelmParser(input_helm).parse(),
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(helm::parse_helm(input_helm),
                                     std::invalid_argument,
                                     "currently unsupported");
 }
@@ -41,7 +40,7 @@ BOOST_DATA_TEST_CASE(TestBranchMonomerGroups,
                      }),
                      input_helm)
 {
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(helm::HelmParser(input_helm).parse(),
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(helm::parse_helm(input_helm),
                                     std::invalid_argument,
                                     "Only one branch monomer is allowed");
 }
