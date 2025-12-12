@@ -33,6 +33,7 @@ const std::string SGROUP_PROP_LABEL{"LABEL"};
 const std::string SGROUP_PROP_RESNUM{"ID"};
 
 const std::string ATOM_PROP_SGROUP_IDX("SGROUP_IDX");
+const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 
 using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
                                std::pair<unsigned int, unsigned int>>;
@@ -254,8 +255,12 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
     // removed
     for (const auto bond_idx : chain.bonds) {
         auto bond = monomer_mol.getBondWithIdx(bond_idx);
-        auto [from_rgroup, to_rgroup] =
-            getAttchpts(bond->getProp<std::string>(LINKAGE));
+        auto linkage = bond->getProp<std::string>(LINKAGE);
+        if (linkage == HYDROGEN_BOND_LINKAGE) {
+            // TODO: Handle hydrogen bonds
+            continue;
+        }
+        auto [from_rgroup, to_rgroup] = getAttchpts(linkage);
         auto from_res = get_residue_number(bond->getBeginAtom());
         auto to_res = get_residue_number(bond->getEndAtom());
 
@@ -331,8 +336,12 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
         }
         auto begin_res = get_residue_number(begin_atom);
         auto end_res = get_residue_number(end_atom);
-        auto [from_rgroup, to_rgroup] =
-            getAttchpts(bnd->getProp<std::string>(LINKAGE));
+        auto linkage = bnd->getProp<std::string>(LINKAGE);
+        if (linkage == HYDROGEN_BOND_LINKAGE) {
+            // TODO: Handle hydrogen bonds
+            continue;
+        }
+        auto [from_rgroup, to_rgroup] = getAttchpts(linkage);
 
         const auto& begin_attachment_points =
             polymer_attachment_points.at(get_polymer_id(begin_atom));

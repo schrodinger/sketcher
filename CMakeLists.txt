@@ -112,7 +112,7 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    # We optimize for space in WASM builds because otherwise binaryen (run
+    # We optimize for space in wasm builds because otherwise binaryen (run
     # because of ASYNCIFY) runs out of memory
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
                         -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
@@ -221,6 +221,8 @@ enable_qt_moc(${SKETCHER_TARGET})
 set(APP_TARGET schrodinger_sketcher)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
+set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                               ${CMAKE_BINARY_DIR}/sketcher_app)
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=createSketcherModule
@@ -243,6 +245,21 @@ if(MSVC AND NOT ${BUILD_SHARED_LIBS})
   # schrodinger_sketcher_bin.lib.
   set_target_properties(
     ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
+endif()
+
+# Copy over the necessary wasm files into the application directory
+if(EMSCRIPTEN)
+  add_custom_target(
+    update_wasm_files ALL
+    DEPENDS ${APP_TARGET}
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_CURRENT_BINARY_DIR}/external/qt-${QT_VERSION}/plugins/platforms/qtloader.js
+      ${CMAKE_BINARY_DIR}/sketcher_app/qtloader.js
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/wasm/public/
+            ${CMAKE_BINARY_DIR}/sketcher_app/
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
+            ${CMAKE_BINARY_DIR}/sketcher_app --app-target ${APP_TARGET})
 endif()
 
 # Tests

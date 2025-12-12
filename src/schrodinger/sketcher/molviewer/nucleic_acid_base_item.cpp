@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/molviewer/nucleic_acid_base_item.h"
 
+#include <cmath>
+
 #include <QPainter>
 #include <QPointF>
 #include <QPolygonF>
@@ -42,8 +44,13 @@ int NucleicAcidBaseItem::type() const
  */
 static void set_path_to_diamond(QPainterPath& path, const qreal width,
                                 const qreal height,
-                                const qreal highlighting_thickness = 0.0)
+                                qreal highlighting_thickness = 0.0)
 {
+    // the passed-in highlighting_thickness should specify the thickness as
+    // measured perpendicular to the diamond (so that the size of the diamond
+    // highlighting matches the size of the square highlighting), so calculate
+    // the corresponding axis-aligned thickness
+    highlighting_thickness *= std::sqrt(2.0);
     // scale the additional distance so that the shape maintains the same aspect
     // ratio as the original
     auto half_width = width / 2 + highlighting_thickness * width / height;
@@ -85,8 +92,9 @@ void NucleicAcidBaseItem::updateCachedData()
                         border_height,
                         MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
     m_main_label_rect = m_border_path.boundingRect();
-    m_bounding_rect = m_border_path.boundingRect();
-    m_shape = m_border_path;
+    set_path_to_diamond(m_shape, border_width, border_height,
+                        border_pen_width / 2.0);
+    m_bounding_rect = m_shape.boundingRect();
 
     auto rect_color = get_color_for_monomer(
         res_name, NUCLEIC_ACID_COLOR_BY_RES_NAME, DEFAULT_NA_BACKGROUND_COLOR);

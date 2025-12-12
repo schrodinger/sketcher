@@ -67,7 +67,12 @@ void Fonts::setSize(int size)
         size * OTHER_NA_SUGAR_AND_PHOSPHATE_FONT_RATIO);
     m_other_nucleic_acid_base_font.setPixelSize(size *
                                                 OTHER_NA_BASE_FONT_RATIO);
+    m_radical_dot_size = size * RADICAL_DOT_RATIO;
+    updateFontMetrics();
+}
 
+void Fonts::updateFontMetrics()
+{
     // font metrics objects don't update themselves when their font changes, so
     // we need to create new ones
     m_main_label_fm = QFontMetrics(m_main_label_font);
@@ -83,8 +88,6 @@ void Fonts::setSize(int size)
     m_other_nucleic_acid_sugar_and_phosphate_fm =
         QFontMetrics(m_other_nucleic_acid_sugar_and_phosphate_font);
     m_other_nucleic_acid_base_fm = QFontMetrics(m_other_nucleic_acid_base_font);
-
-    m_radical_dot_size = size * RADICAL_DOT_RATIO;
 }
 
 } // namespace sketcher
