@@ -27,9 +27,9 @@
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
@@ -811,7 +811,7 @@ void MolModel::addVariableAttachmentBond(
     QString desc = QString("Add variable attachment bond");
     auto cmd_func = [this, atoms]() {
         auto [dummy_atom, carbon_atom, bond] =
-            rdkit_extensions::add_variable_attachment_bond_to_mol(m_mol, atoms);
+            add_variable_attachment_bond_to_mol(m_mol, atoms);
         setTagForAtom(dummy_atom, m_next_atom_tag++);
         setTagForAtom(carbon_atom, m_next_atom_tag++);
         setTagForBond(bond, m_next_bond_tag++);
@@ -1899,8 +1899,7 @@ void MolModel::mutateAtoms(const std::unordered_set<const RDKit::Atom*>& atoms,
             mutateAtomCommandFunc(atom_tag, create_atom);
             if (enh_stereo.has_value()) {
                 auto* mutated_atom = m_mol.getUniqueAtomWithBookmark(atom_tag);
-                rdkit_extensions::set_enhanced_stereo_for_atom(mutated_atom,
-                                                               *enh_stereo);
+                set_enhanced_stereo_for_atom(mutated_atom, *enh_stereo);
             }
         }
     };
@@ -2088,7 +2087,7 @@ void MolModel::addSGroup(const std::unordered_set<const RDKit::Atom*>& atoms,
     std::transform(atoms.begin(), atoms.end(), std::back_inserter(atom_idxs),
                    [](auto atom) { return atom->getIdx(); });
     std::vector<unsigned int> bond_idxs =
-        rdkit_extensions::get_bonds_for_sgroup_atoms(atoms, m_mol);
+        get_bonds_for_sgroup_atoms(atoms, m_mol);
     auto subgroup_type_str =
         SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.left.at(subgroup_type);
     auto repeat_pattern_str =
@@ -2098,8 +2097,8 @@ void MolModel::addSGroup(const std::unordered_set<const RDKit::Atom*>& atoms,
         RDKit::SubstanceGroup s_group(&m_mol, subgroup_type_str);
         s_group.setAtoms(atom_idxs);
         s_group.setBonds(bond_idxs);
-        rdkit_extensions::set_repeat_pattern_label(s_group, repeat_pattern_str);
-        rdkit_extensions::set_polymer_label(s_group, polymer_label);
+        set_repeat_pattern_label(s_group, repeat_pattern_str);
+        set_polymer_label(s_group, polymer_label);
         setTagForSGroup(s_group, m_next_s_group_tag++);
         addSubstanceGroup(m_mol, s_group);
     };
@@ -2119,11 +2118,10 @@ void MolModel::modifySGroup(const RDKit::SubstanceGroup* substance_group,
     auto* s_group = getMutableSGroup(substance_group);
     auto cmd_func = [s_group, subgroup_type_str, repeat_pattern_str,
                      polymer_label]() {
-        rdkit_extensions::set_sgroup_type(*s_group, subgroup_type_str);
-        rdkit_extensions::set_sgroup_subtype(*s_group, "");
-        rdkit_extensions::set_repeat_pattern_label(*s_group,
-                                                   repeat_pattern_str);
-        rdkit_extensions::set_polymer_label(*s_group, polymer_label);
+        set_sgroup_type(*s_group, subgroup_type_str);
+        set_sgroup_subtype(*s_group, "");
+        set_repeat_pattern_label(*s_group, repeat_pattern_str);
+        set_polymer_label(*s_group, polymer_label);
     };
     doCommandUsingSnapshots(cmd_func, "Modify substance group",
                             WhatChanged::MOLECULE);
@@ -2264,7 +2262,7 @@ MolModel::addDummyAtomsFromInvalidatedVariableAttachmentBonds(
     for (auto* cur_bond : all_bonds_to_be_deleted) {
         atoms_to_be_invalidated.insert(cur_bond->getBeginAtom());
         atoms_to_be_invalidated.insert(cur_bond->getEndAtom());
-        if (rdkit_extensions::is_variable_attachment_bond(cur_bond)) {
+        if (is_variable_attachment_bond(cur_bond)) {
             // if we're deleting a variable attachment bond directly, then we
             // need to delete the dummy atom as well
             auto* dummy_atom =
@@ -2277,7 +2275,7 @@ MolModel::addDummyAtomsFromInvalidatedVariableAttachmentBonds(
     // attachment atoms and mark the bond's dummy atom for deletion
     for (auto* cur_bond : m_mol.bonds()) {
         auto variable_attachment_atoms =
-            rdkit_extensions::get_variable_attachment_atoms(cur_bond);
+            get_variable_attachment_atoms(cur_bond);
         bool bond_invalidated = std::any_of(
             variable_attachment_atoms.begin(), variable_attachment_atoms.end(),
             [&atoms_to_be_invalidated](auto* cur_atom) {
@@ -2462,7 +2460,7 @@ void MolModel::removeSGroupsCommandFunc(
         auto tag = getTagForSGroup(*s_group);
         m_selected_s_group_tags.erase(tag);
     }
-    rdkit_extensions::remove_sgroups_from_molecule(m_mol, s_groups);
+    remove_sgroups_from_molecule(m_mol, s_groups);
 }
 
 void MolModel::deselectSGroupsThatWillBeImplicitlyDeleted(
@@ -2643,7 +2641,7 @@ void MolModel::mutateBondCommandFunc(const BondTag bond_tag,
     RDKit::Bond* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
     int bond_index = bond->getIdx();
     auto new_bond = create_bond();
-    if (rdkit_extensions::is_variable_attachment_bond(bond)) {
+    if (is_variable_attachment_bond(bond)) {
         // make sure we preserve variable attachment bond properties, otherwise
         // the bond will no longer be a variable attachment bond after mutation
         std::string endpts_prop, attach_prop;
@@ -2701,7 +2699,7 @@ void MolModel::setCoordinates(
     // update the brackets for the sgroups with the new coordinates; this is
     // otherwise called when WhatChanged::MOLECULE but needs to be explicitly
     // done here to update the bracket positions
-    rdkit_extensions::update_s_group_brackets(m_mol);
+    update_s_group_brackets(m_mol);
 
     emit coordinatesChanged();
 }

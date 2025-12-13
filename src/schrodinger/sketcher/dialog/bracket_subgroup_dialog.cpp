@@ -5,7 +5,7 @@
 
 #include <QString>
 
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 #include "schrodinger/sketcher/numeric_label_validator.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/ui/ui_bracket_subgroup_dialog.h"
@@ -203,15 +203,14 @@ void BracketSubgroupDialog::setAtoms(
 static std::tuple<SubgroupType, QString, RepeatPattern>
 get_sgroup_data(const RDKit::SubstanceGroup* const s_group)
 {
-    auto subgroup_type_str = rdkit_extensions::get_sgroup_type(*s_group);
+    auto subgroup_type_str = get_sgroup_type(*s_group);
     auto subgroup_type =
         SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.at(subgroup_type_str);
 
-    auto polymer_label_str = rdkit_extensions::get_polymer_label(*s_group);
+    auto polymer_label_str = get_polymer_label(*s_group);
     auto polymer_label = QString::fromStdString(polymer_label_str);
 
-    auto repeat_pattern_str =
-        rdkit_extensions::get_repeat_pattern_label(*s_group);
+    auto repeat_pattern_str = get_repeat_pattern_label(*s_group);
     auto repeat_pattern =
         REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.at(repeat_pattern_str);
 

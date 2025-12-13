@@ -1,4 +1,4 @@
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 
 #include <string>
 #include <sstream>
@@ -10,12 +10,13 @@
 #include <rdkit/GraphMol/Depictor/DepictUtils.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
-#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/rdkit_extensions/dummy_atom.h"
+#include "schrodinger/sketcher/rdkit/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 /**
@@ -33,7 +34,7 @@ bool is_dummy_atom_for_variable_attachment_bond(const RDKit::Atom* atom)
 {
     // is this a dummy atom with exactly one bond that's a variable attachment
     // bond?
-    return (atom->getAtomicNum() == DUMMY_ATOMIC_NUMBER &&
+    return (atom->getAtomicNum() == rdkit_extensions::DUMMY_ATOMIC_NUMBER &&
             atom->getDegree() == 1 &&
             is_variable_attachment_bond(
                 *(atom->getOwningMol().atomBonds(atom).begin())));
@@ -49,10 +50,10 @@ get_variable_attachment_atoms(const RDKit::Bond* bond)
         // the bond is missing the end points property, or it's empty
         return {};
     }
-    bool begin_atom_is_dummy =
-        bond->getBeginAtom()->getAtomicNum() == DUMMY_ATOMIC_NUMBER;
-    bool end_atom_is_dummy =
-        bond->getEndAtom()->getAtomicNum() == DUMMY_ATOMIC_NUMBER;
+    bool begin_atom_is_dummy = bond->getBeginAtom()->getAtomicNum() ==
+                               rdkit_extensions::DUMMY_ATOMIC_NUMBER;
+    bool end_atom_is_dummy = bond->getEndAtom()->getAtomicNum() ==
+                             rdkit_extensions::DUMMY_ATOMIC_NUMBER;
     if (begin_atom_is_dummy == end_atom_is_dummy) {
         // the bond must have exactly one bound dummy atom
         return {};
@@ -281,7 +282,7 @@ create_and_add_atoms_and_variable_attachment_bond(
     RDKit::RWMol& mol, const RDGeom::Point3D& dummy_coords,
     const RDGeom::Point3D& real_atom_coords, std::string bond_end_pts_text)
 {
-    auto dummy_atom = create_dummy_atom();
+    auto dummy_atom = rdkit_extensions::create_dummy_atom();
     auto carbon = std::make_shared<RDKit::Atom>("C");
     auto bond = std::make_shared<RDKit::Bond>(RDKit::Bond::BondType::SINGLE);
     bond->setProp(RDKit::common_properties::_MolFileBondAttach,
@@ -333,5 +334,5 @@ add_variable_attachment_bond_to_mol(
         mol, dummy_coords, real_atom_coords, bond_end_pts_text);
 }
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger

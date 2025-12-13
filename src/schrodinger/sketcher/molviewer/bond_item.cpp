@@ -35,8 +35,8 @@
 #include <QtGlobal>
 #include <QtMath>
 
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
@@ -137,7 +137,7 @@ void BondItem::updateCachedData()
     if (!query_label.empty()) {
         label_text = query_label;
     } else if (m_settings.m_stereo_labels_shown) {
-        label_text = rdkit_extensions::get_bond_stereo_label(*m_bond);
+        label_text = get_bond_stereo_label(*m_bond);
     }
     m_annotation_text = QString::fromStdString(label_text);
 

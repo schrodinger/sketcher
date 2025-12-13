@@ -3,7 +3,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/rdkit/variable_attachment_bond.h"
 
 namespace schrodinger
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(test_fix_variable_attachment_bond_coordinates,
     auto mol = rdkit_extensions::to_rdkit(DISTORTED_VAR_ATTACH_MOL);
     auto& conf = mol->getConformer();
     auto* var_attach_bond = mol->getBondWithIdx(6);
-    BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(var_attach_bond));
+    BOOST_TEST(is_variable_attachment_bond(var_attach_bond));
     auto bond_length = (conf.getAtomPos(6) - conf.getAtomPos(7)).length();
     BOOST_TEST(bond_length == 1.5);
     auto dummy_to_ring_dist =

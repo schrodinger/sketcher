@@ -4,7 +4,7 @@
 #include <stdexcept>
 #include <unordered_set>
 
-#include "schrodinger/rdkit_extensions/definitions.h"
+#include "schrodinger/sketcher/definitions.h"
 
 namespace RDKit
 {
@@ -21,7 +21,7 @@ class Point3D;
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 /**
@@ -30,8 +30,7 @@ namespace rdkit_extensions
  * least two variable attachment atoms and they should be part of the same
  * connected molecule.)
  */
-class RDKIT_EXTENSIONS_API variable_attachment_bond_error
-    : public std::runtime_error
+class SKETCHER_API variable_attachment_bond_error : public std::runtime_error
 {
   public:
     variable_attachment_bond_error(const std::string& message) :
@@ -41,13 +40,13 @@ class RDKIT_EXTENSIONS_API variable_attachment_bond_error
 /**
  * @return Whether the specified bond is a variable attachment bond
  */
-RDKIT_EXTENSIONS_API bool is_variable_attachment_bond(const RDKit::Bond* bond);
+SKETCHER_API bool is_variable_attachment_bond(const RDKit::Bond* bond);
 
 /**
  * @return Whether the specified atom is a dummy atom (used to represent the
  * ring center) for a variable attachment bond
  */
-RDKIT_EXTENSIONS_API bool
+SKETCHER_API bool
 is_dummy_atom_for_variable_attachment_bond(const RDKit::Atom* atom);
 
 /**
@@ -55,7 +54,7 @@ is_dummy_atom_for_variable_attachment_bond(const RDKit::Atom* atom);
  * bond. Will return an empty set if the bond is not a variable attachment bond,
  * or if the variable attachment atom property cannot be parsed.
  */
-RDKIT_EXTENSIONS_API std::unordered_set<const RDKit::Atom*>
+SKETCHER_API std::unordered_set<const RDKit::Atom*>
 get_variable_attachment_atoms(const RDKit::Bond* bond);
 
 /**
@@ -72,7 +71,7 @@ get_variable_attachment_atoms(const RDKit::Bond* bond);
  *   - Coordinates for the carbon atom at the non-variable end of the variable
  *     attachment bond
  */
-RDKIT_EXTENSIONS_API std::pair<RDGeom::Point3D, RDGeom::Point3D>
+SKETCHER_API std::pair<RDGeom::Point3D, RDGeom::Point3D>
 get_coordinates_for_variable_attachment_bond(
     const RDKit::ROMol& mol,
     const std::unordered_set<const RDKit::Atom*>& atoms);
@@ -91,9 +90,9 @@ get_coordinates_for_variable_attachment_bond(
  *   - The carbon atom at the non-variable end of the variable attachment bond
  *   - The variable attachment bond
  */
-RDKIT_EXTENSIONS_API std::tuple<RDKit::Atom*, RDKit::Atom*, RDKit::Bond*>
+SKETCHER_API std::tuple<RDKit::Atom*, RDKit::Atom*, RDKit::Bond*>
 add_variable_attachment_bond_to_mol(
     RDKit::RWMol& mol, const std::unordered_set<const RDKit::Atom*>& atoms);
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger

@@ -2,7 +2,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
 
@@ -16,7 +16,7 @@ namespace sketcher
 BOOST_AUTO_TEST_CASE(test_get_overlapping_atom_idxs)
 {
     auto mol = rdkit_extensions::to_rdkit("C.C.C");
-    rdkit_extensions::update_2d_coordinates(*mol);
+    sketcher::update_2d_coordinates(*mol);
     auto& conf = mol->getConformer();
     conf.setAtomPos(0, {-MAX_DIST_FOR_DRAG_MERGE / 2, 0, 0});
     conf.setAtomPos(1, {MAX_DIST_FOR_DRAG_MERGE / 2, 0, 0});
