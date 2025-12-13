@@ -4,7 +4,7 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/ROMol.h>
 
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -253,9 +253,8 @@ AtomContextMenu::AtomContextMenu(SketcherModel* model, MolModel* mol_model,
 void AtomContextMenu::updateActions()
 {
     auto& mol = (*m_atoms.begin())->getOwningMol();
-    bool enable_bracket =
-        rdkit_extensions::can_atoms_form_sgroup(m_atoms, mol) &&
-        !rdkit_extensions::get_existing_sgroup_for_atoms(m_atoms, mol);
+    bool enable_bracket = can_atoms_form_sgroup(m_atoms, mol) &&
+                          !get_existing_sgroup_for_atoms(m_atoms, mol);
     m_add_brackets_act->setEnabled(enable_bracket);
 
     ModifyAtomsMenu::updateActions();

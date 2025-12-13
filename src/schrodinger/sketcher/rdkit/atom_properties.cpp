@@ -14,6 +14,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 
 namespace schrodinger::sketcher
@@ -891,8 +892,7 @@ read_properties_from_atom(const RDKit::Atom* const atom)
         auto* query_atom = static_cast<const RDKit::QueryAtom*>(atom);
         props = read_query(query_atom->getQuery());
     }
-    props->enhanced_stereo =
-        rdkit_extensions::get_enhanced_stereo_for_atom(atom);
+    props->enhanced_stereo = get_enhanced_stereo_for_atom(atom);
     return props;
 }
 

@@ -9,7 +9,7 @@
 
 #include <rdkit/GraphMol/Depictor/DepictUtils.h>
 
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 
 namespace schrodinger
 {
@@ -339,8 +339,8 @@ const qreal S_GROUP_HIGHLIGHT_PADDING = 6.0;
 const double MAX_DIST_FOR_FRAG_OVERLAP = 0.01;
 
 // the dimensions of brackets around substance groups. BRAKETS_LONG_SIDE is
-// defined in rdkit_extensions/sgroup.h
-const qreal BRACKETS_SHORT_SIDE = rdkit_extensions::BRACKETS_LONG_SIDE * 0.2;
+// defined in sketcher/rdkit/sgroup.h
+const qreal BRACKETS_SHORT_SIDE = BRACKETS_LONG_SIDE * 0.2;
 const qreal LABEL_DISTANCE_FROM_BRACKETS = BRACKETS_SHORT_SIDE * 0.5;
 
 // At the end of a drag-and-drop with the Move/Rotate tool, overlapping atoms

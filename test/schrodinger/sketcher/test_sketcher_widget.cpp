@@ -13,7 +13,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -534,7 +534,7 @@ BOOST_DATA_TEST_CASE(test_auto_detect_through_sketcher_interface,
 {
     std::string orig_smiles = "c1ccccc1";
     auto mol = to_rdkit(orig_smiles, Format::SMILES);
-    ::schrodinger::rdkit_extensions::update_2d_coordinates(*mol);
+    ::schrodinger::sketcher::update_2d_coordinates(*mol);
     auto input_string = to_string(*mol, sample);
 
     Format export_format = sample;

@@ -10,10 +10,11 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/coord_utils.h"
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 std::string GIANT_BENZENE = R"(
@@ -132,7 +133,7 @@ BOOST_DATA_TEST_CASE(test_rescale_bond_length_if_needed,
                          bdata::make(std::vector<double>{2.0, 1.0}),
                      mol_text, exp_starting_bond_length)
 {
-    auto mol = to_rdkit(mol_text);
+    auto mol = rdkit_extensions::to_rdkit(mol_text);
     auto starting_bond_length = get_most_common_bond_length(*mol);
     BOOST_TEST(starting_bond_length == exp_starting_bond_length);
     rescale_bond_length_if_needed(*mol);
@@ -146,13 +147,13 @@ BOOST_DATA_TEST_CASE(test_rescale_bond_length_if_needed,
  */
 BOOST_AUTO_TEST_CASE(test_rescaling_mol_with_no_bonds)
 {
-    auto mol = to_rdkit("C.C");
+    auto mol = rdkit_extensions::to_rdkit("C.C");
     BOOST_TEST(!mol->getNumConformers());
     BOOST_TEST(get_most_common_bond_length(*mol) == -1.0);
     // make sure that rescale_bond_length_if_needed doesn't throw an exception
     rescale_bond_length_if_needed(*mol);
     BOOST_TEST(get_most_common_bond_length(*mol) == -1.0);
-    compute2DCoords(*mol);
+    rdkit_extensions::compute2DCoords(*mol);
     BOOST_TEST(mol->getNumConformers() == 1);
     BOOST_TEST(get_most_common_bond_length(*mol) == -1.0);
     // make sure that rescale_bond_length_if_needed doesn't throw an exception
@@ -226,7 +227,8 @@ BOOST_AUTO_TEST_CASE(test_discard_old_wedging_on_2d_regeneration)
  25 18  1  0
 M  END)CTAB";
 
-    auto mol = to_rdkit(molblock, Format::MDL_MOLV2000);
+    auto mol = rdkit_extensions::to_rdkit(
+        molblock, rdkit_extensions::Format::MDL_MOLV2000);
     BOOST_REQUIRE(mol->getNumConformers() == 1);
 
     auto conf = mol->getConformer();
@@ -244,7 +246,7 @@ M  END)CTAB";
 
     BOOST_REQUIRE(has_wedging_props(*mol) == true);
 
-    compute2DCoords(*mol);
+    rdkit_extensions::compute2DCoords(*mol);
 
     conf = mol->getConformer();
     BOOST_CHECK(conf.is3D() == false);
@@ -252,5 +254,5 @@ M  END)CTAB";
     BOOST_CHECK(has_wedging_props(*mol) == false);
 }
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger

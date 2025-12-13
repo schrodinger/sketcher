@@ -8,9 +8,9 @@
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 
-#include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/coord_utils.h"
 #include "schrodinger/rdkit_extensions/molops.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
@@ -208,7 +208,7 @@ void prepare_mol(RDKit::ROMol& mol)
     // this call will intentionally keep a 3d conformer if one is found, since
     // Maestro may use that later to align the Sketcher structure with the
     // Maestro workspace structure
-    rdkit_extensions::update_2d_coordinates(mol);
+    update_2d_coordinates(mol);
 
     // Update all input chiral centers to have enhanced stereo; honors MDL input
     add_enhanced_stereo_to_chiral_atoms(mol);
@@ -231,7 +231,7 @@ void update_molecule_on_change(RDKit::RWMol& mol)
         mol, /*removeAffectedStereoGroups = */ false);
 
     // Explicitly update the brackets for the sgroups
-    rdkit_extensions::update_s_group_brackets(mol);
+    update_s_group_brackets(mol);
 
     // DO NOT REPLACE THIS WITH rdkit_extensions::apply_sanitization(PARTIAL) or
     // any sanitization that includes FINDRADICALS: it will turn atoms with

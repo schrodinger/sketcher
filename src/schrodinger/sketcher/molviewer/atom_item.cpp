@@ -14,8 +14,8 @@
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -314,8 +314,7 @@ AtomItem::determineLabelType() const
             main_label_text = m_atom->getProp<std::string>(
                 RDKit::common_properties::atomLabel);
             has_user_set_label = true;
-        } else if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
-                       m_atom)) {
+        } else if (is_dummy_atom_for_variable_attachment_bond(m_atom)) {
 
             // dummy atoms for variable attachment bonds aren't shown, but we
             // still need to set label_is_visible to false here so that the
@@ -421,8 +420,8 @@ void AtomItem::updateChiralityLabel()
     auto strip_abs = !m_settings.m_explicit_abs_labels_shown;
     auto show_unknown_chirality =
         (m_settings.m_stereo_labels_visibility == StereoLabels::ALL);
-    auto label = rdkit_extensions::get_atom_chirality_label(
-        *m_atom, strip_abs, show_unknown_chirality);
+    auto label =
+        get_atom_chirality_label(*m_atom, strip_abs, show_unknown_chirality);
     m_chirality_label_text = QString::fromStdString(label);
     if (m_chirality_label_text.isEmpty()) {
         return;

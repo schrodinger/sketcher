@@ -10,11 +10,11 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 const std::string VAR_ATTACH_MOL = R"(
@@ -56,8 +56,8 @@ $$$$
  */
 BOOST_AUTO_TEST_CASE(test_add_variable_attachment_bond_to_mol)
 {
-    auto mol = to_rdkit("C1CCCCC1");
-    compute2DCoords(*mol);
+    auto mol = rdkit_extensions::to_rdkit("C1CCCCC1");
+    rdkit_extensions::compute2DCoords(*mol);
     const std::unordered_set<const RDKit::Atom*> atoms{
         mol->getAtomWithIdx(1), mol->getAtomWithIdx(2), mol->getAtomWithIdx(3)};
     auto [dummy_atom, carbon_atom, bond] =
@@ -92,8 +92,8 @@ BOOST_AUTO_TEST_CASE(test_add_variable_attachment_bond_to_mol)
 BOOST_AUTO_TEST_CASE(
     test_add_variable_attachment_bond_to_mol_using_first_and_last_atoms)
 {
-    auto mol = to_rdkit("C1CCCCC1");
-    compute2DCoords(*mol);
+    auto mol = rdkit_extensions::to_rdkit("C1CCCCC1");
+    rdkit_extensions::compute2DCoords(*mol);
     const std::unordered_set<const RDKit::Atom*> atoms{
         mol->getAtomWithIdx(0), mol->getAtomWithIdx(3), mol->getAtomWithIdx(5)};
     auto [dummy_atom, carbon_atom, bond] =
@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(
  */
 BOOST_AUTO_TEST_CASE(test_get_variable_attachment_atoms)
 {
-    auto mol = to_rdkit(VAR_ATTACH_MOL);
+    auto mol = rdkit_extensions::to_rdkit(VAR_ATTACH_MOL);
     const auto* normal_bond = mol->getBondWithIdx(0);
     BOOST_TEST(!is_variable_attachment_bond(normal_bond));
     BOOST_TEST(get_variable_attachment_atoms(normal_bond).empty());
@@ -142,8 +142,8 @@ BOOST_AUTO_TEST_CASE(test_get_variable_attachment_atoms)
  */
 BOOST_AUTO_TEST_CASE(test_get_variable_attachment_atoms_misformatted_bond_props)
 {
-    auto mol = to_rdkit("C1CCCCC1");
-    compute2DCoords(*mol);
+    auto mol = rdkit_extensions::to_rdkit("C1CCCCC1");
+    rdkit_extensions::compute2DCoords(*mol);
     const std::unordered_set<const RDKit::Atom*> atoms{
         mol->getAtomWithIdx(1), mol->getAtomWithIdx(2), mol->getAtomWithIdx(3)};
     auto [dummy_atom, carbon_atom, bond] =
@@ -190,8 +190,8 @@ BOOST_AUTO_TEST_CASE(test_get_variable_attachment_atoms_misformatted_bond_props)
  */
 BOOST_AUTO_TEST_CASE(test_get_variable_attachment_atoms_double_digit_numbers)
 {
-    auto mol = to_rdkit("CCCCCCCCCCC1CCCCC1");
-    compute2DCoords(*mol);
+    auto mol = rdkit_extensions::to_rdkit("CCCCCCCCCCC1CCCCC1");
+    rdkit_extensions::compute2DCoords(*mol);
     const std::unordered_set<const RDKit::Atom*> atoms{mol->getAtomWithIdx(11),
                                                        mol->getAtomWithIdx(12),
                                                        mol->getAtomWithIdx(13)};
@@ -203,5 +203,5 @@ BOOST_AUTO_TEST_CASE(test_get_variable_attachment_atoms_double_digit_numbers)
     BOOST_TEST(get_variable_attachment_atoms(bond) == atoms);
 }
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger

@@ -4,7 +4,7 @@
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
@@ -91,10 +91,9 @@ void SelectionContextMenu::updateActions()
     m_variable_bond_action->setEnabled(enable);
 
     auto* mol = m_mol_model->getMol();
-    bool enable_bracket =
-        !m_atoms.empty() && m_sgroups.empty() &&
-        rdkit_extensions::can_atoms_form_sgroup(m_atoms, *mol) &&
-        !rdkit_extensions::get_existing_sgroup_for_atoms(m_atoms, *mol);
+    bool enable_bracket = !m_atoms.empty() && m_sgroups.empty() &&
+                          can_atoms_form_sgroup(m_atoms, *mol) &&
+                          !get_existing_sgroup_for_atoms(m_atoms, *mol);
     m_bracket_group_action->setEnabled(enable_bracket);
 
     /**

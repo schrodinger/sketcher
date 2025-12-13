@@ -8,11 +8,11 @@
 #include <boost/test/data/test_case.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 const std::string S_GROUP_SMILES = "CCCCCCCCC |Sg:n:3,4,5,6:1:ht:::|";
@@ -25,7 +25,7 @@ const std::string MULTIPLE_S_GROUP_SMILES =
  */
 BOOST_AUTO_TEST_CASE(test_get_existing_sgroup_for_atoms)
 {
-    auto mol = to_rdkit(MULTIPLE_S_GROUP_SMILES);
+    auto mol = rdkit_extensions::to_rdkit(MULTIPLE_S_GROUP_SMILES);
     std::unordered_set<const RDKit::Atom*> atoms({mol->getAtomWithIdx(2),
                                                   mol->getAtomWithIdx(3),
                                                   mol->getAtomWithIdx(4)});
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(test_get_existing_sgroup_for_atoms)
  */
 BOOST_AUTO_TEST_CASE(test_can_atoms_form_sgroup)
 {
-    auto mol = to_rdkit("CCCCCCCC");
+    auto mol = rdkit_extensions::to_rdkit("CCCCCCCC");
     std::unordered_set<const RDKit::Atom*> atoms({mol->getAtomWithIdx(2),
                                                   mol->getAtomWithIdx(3),
                                                   mol->getAtomWithIdx(4)});
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(test_can_atoms_form_sgroup)
     // a single atom at the end of the chain can't since it only has one bond
     BOOST_TEST(!can_atoms_form_sgroup({mol->getAtomWithIdx(7)}, *mol));
 
-    mol = to_rdkit("CCC(CC)CC");
+    mol = rdkit_extensions::to_rdkit("CCC(CC)CC");
     // atom 1 has two bonds, so it can form an S-group
     BOOST_TEST(can_atoms_form_sgroup({mol->getAtomWithIdx(1)}, *mol));
     // but atom 2 has three bonds, so it can't
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(test_can_atoms_form_sgroup)
  */
 BOOST_AUTO_TEST_CASE(test_get_bonds_for_sgroup_atoms)
 {
-    auto mol = to_rdkit("CCCCC");
+    auto mol = rdkit_extensions::to_rdkit("CCCCC");
     std::unordered_set<const RDKit::Atom*> atoms(
         {mol->getAtomWithIdx(2), mol->getAtomWithIdx(3)});
     auto bond_idxs = get_bonds_for_sgroup_atoms(atoms, *mol);
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(test_get_bonds_for_sgroup_atoms)
  */
 BOOST_AUTO_TEST_CASE(test_get_bonds_within_sgroup)
 {
-    auto mol = to_rdkit(S_GROUP_SMILES);
+    auto mol = rdkit_extensions::to_rdkit(S_GROUP_SMILES);
     auto s_group = RDKit::getSubstanceGroups(*mol)[0];
     auto bonds = get_bonds_within_sgroup(s_group);
     BOOST_TEST(bonds.size() == 3);
@@ -136,5 +136,5 @@ BOOST_AUTO_TEST_CASE(test_get_bonds_within_sgroup)
     BOOST_TEST(bond_idxs == std::unordered_set<unsigned int>({3, 4, 5}));
 }
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger
