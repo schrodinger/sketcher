@@ -18,6 +18,9 @@ using helm::rdkit_to_helm;
 using schrodinger::rdkit_extensions::extract_helm_polymers;
 using schrodinger::rdkit_extensions::get_atoms_in_polymer_chain;
 using schrodinger::rdkit_extensions::get_atoms_in_polymer_chains;
+using schrodinger::rdkit_extensions::get_supplementary_info;
+using schrodinger::rdkit_extensions::is_polymer_annotation_s_group;
+using schrodinger::rdkit_extensions::is_supplementary_information_s_group;
 
 namespace bdata = boost::unit_test::data;
 
@@ -192,6 +195,40 @@ BOOST_DATA_TEST_CASE(
     BOOST_CHECK_THROW(std::ignore = extract_helm_polymers(
                           *mol, {"PEPTIDE1", "RNA1", "CHEM1", "BLOB1"}),
                       std::invalid_argument);
+}
+
+/**
+ * Ensure that we can retrieve and correctly identify a supplementary
+ * information S-group
+ */
+BOOST_AUTO_TEST_CASE(TestSupplementaryInformationSGroup)
+{
+    std::string helm =
+        R"(RNA1{R(A)P.R(C)P.R(G)}$$${"my chain":"my annotation"}$V2.0)";
+    auto mol = helm_to_rdkit(helm);
+    auto* supplementary_s_group = get_supplementary_info(*mol);
+    BOOST_TEST(supplementary_s_group != nullptr);
+    BOOST_TEST(is_supplementary_information_s_group(*supplementary_s_group));
+    BOOST_TEST(!is_polymer_annotation_s_group(*supplementary_s_group));
+}
+
+/**
+ * Ensure that we can correctly identify a polymer annotation S-group
+ */
+BOOST_AUTO_TEST_CASE(TestPolymerAnnotationSGroup)
+{
+    std::string helm = R"(PEPTIDE1{A.C.D.D.E}"HC"$$$$V2.0)";
+    auto mol = helm_to_rdkit(helm);
+
+    // there shouldn't be a supplementary info S-group
+    auto* supplementary_s_group = get_supplementary_info(*mol);
+    BOOST_TEST(supplementary_s_group == nullptr);
+
+    auto sgroups = RDKit::getSubstanceGroups(*mol);
+    BOOST_TEST(sgroups.size() == 1);
+    auto annotation_s_group = sgroups.front();
+    BOOST_TEST(is_polymer_annotation_s_group(annotation_s_group));
+    BOOST_TEST(!is_supplementary_information_s_group(annotation_s_group));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

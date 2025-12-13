@@ -109,5 +109,18 @@ Chain RDKIT_EXTENSIONS_API get_polymer(const RDKit::ROMol& monomer_mol,
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API const RDKit::SubstanceGroup*
 get_supplementary_info(const RDKit::ROMol& cg_mol);
+
+/**
+ * @return whether the given substance group contains HELM supplementary info
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API bool
+is_supplementary_information_s_group(const RDKit::SubstanceGroup& sgroup);
+
+/**
+ * @return whether the given substance group contains a polymer annotation
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API bool
+is_polymer_annotation_s_group(const RDKit::SubstanceGroup& sgroup);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

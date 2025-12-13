@@ -222,8 +222,7 @@ Chain get_polymer(const RDKit::ROMol& monomer_mol, std::string_view polymer_id)
 
     std::string annotation{};
     for (const auto& sg : ::RDKit::getSubstanceGroups(monomer_mol)) {
-        if ((sg.getProp<std::string>("TYPE") != "COP") ||
-            !sg.hasProp(ANNOTATION) || !sg.hasProp("ID")) {
+        if (!is_polymer_annotation_s_group(sg)) {
             continue;
         }
         if (sg.getProp<std::string>("ID") == polymer_id) {
@@ -237,28 +236,39 @@ Chain get_polymer(const RDKit::ROMol& monomer_mol, std::string_view polymer_id)
 [[nodiscard]] const RDKit::SubstanceGroup*
 get_supplementary_info(const RDKit::ROMol& mol)
 {
+    for (auto& sgroup : ::RDKit::getSubstanceGroups(mol)) {
+        if (is_supplementary_information_s_group(sgroup)) {
+            return &sgroup;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] bool
+is_supplementary_information_s_group(const RDKit::SubstanceGroup& sgroup)
+{
     std::string type;
     std::string fieldname;
-    for (auto& sgroup : ::RDKit::getSubstanceGroups(mol)) {
-        static const std::string TYPE{"TYPE"};
-        static const std::string FIELDNAME{"FIELDNAME"};
-        if (!(sgroup.getPropIfPresent(TYPE, type) && type == "DAT" &&
-              sgroup.getPropIfPresent(FIELDNAME, fieldname) &&
-              fieldname == SUPPLEMENTARY_INFORMATION)) {
-            continue;
-        }
-
-        std::vector<std::string> datafields;
-        static const std::string DATAFIELDS{"DATAFIELDS"};
-        if (!sgroup.getPropIfPresent(DATAFIELDS, datafields) ||
-            datafields.size() < 2u) {
-            continue;
-        }
-
-        return &sgroup;
+    static const std::string TYPE{"TYPE"};
+    static const std::string FIELDNAME{"FIELDNAME"};
+    if (!(sgroup.getPropIfPresent(TYPE, type) && type == "DAT" &&
+          sgroup.getPropIfPresent(FIELDNAME, fieldname) &&
+          fieldname == SUPPLEMENTARY_INFORMATION)) {
+        return false;
     }
 
-    return nullptr;
+    std::vector<std::string> datafields;
+    static const std::string DATAFIELDS{"DATAFIELDS"};
+    return sgroup.getPropIfPresent(DATAFIELDS, datafields) &&
+           datafields.size() >= 2u;
+}
+
+[[nodiscard]] bool
+is_polymer_annotation_s_group(const RDKit::SubstanceGroup& sgroup)
+{
+    std::string type;
+    return sgroup.getPropIfPresent("TYPE", type) && type == "COP" &&
+           sgroup.hasProp(ANNOTATION) && sgroup.hasProp("ID");
 }
 
 } // namespace rdkit_extensions
