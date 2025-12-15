@@ -1,9 +1,6 @@
 name: Nightly Build
 
 on:
-  schedule:
-    # Run at 12:07am EST (5:07am UTC)
-    - cron: '7 5 * * *'
   workflow_dispatch:
     inputs:
       release-branch:
