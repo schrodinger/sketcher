@@ -60,6 +60,7 @@ find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets Test)
 
 # Workaround for Qt 6.5.8 AGL framework issue on modern macOS
 # AGL (Apple Graphics Layer) was deprecated and removed from modern macOS SDKs
+# This workaround can be removed after BLDMGR-10714
 if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
     get_target_property(_qt_opengl_libs WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
     if(_qt_opengl_libs)
