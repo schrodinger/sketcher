@@ -36,8 +36,8 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
@@ -957,16 +957,14 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     const RDKit::ROMol* mol = model.getMol();
 
     auto sanity_check = [&mol]() {
-        BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(
-            mol->getBondWithIdx(6)));
+        BOOST_TEST(is_variable_attachment_bond(mol->getBondWithIdx(6)));
         BOOST_TEST(mol->getNumAtoms() == 8);
         BOOST_TEST(mol->getNumBonds() == 7);
     };
     auto test_no_variable_attachment_bond_nor_dummy_atom = [&mol]() {
         BOOST_TEST(std::none_of(
-            mol->bonds().begin(), mol->bonds().end(), [](auto* bond) {
-                return rdkit_extensions::is_variable_attachment_bond(bond);
-            }));
+            mol->bonds().begin(), mol->bonds().end(),
+            [](auto* bond) { return is_variable_attachment_bond(bond); }));
         BOOST_TEST(
             std::none_of(mol->atoms().begin(), mol->atoms().end(),
                          [](auto* atom) { return atom->getAtomicNum() == 0; }));
@@ -1029,8 +1027,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     model.remove({mol->getAtomWithIdx(5)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 7);
     BOOST_TEST(mol->getNumBonds() == 5);
-    BOOST_TEST(
-        rdkit_extensions::is_variable_attachment_bond(mol->getBondWithIdx(4)));
+    BOOST_TEST(is_variable_attachment_bond(mol->getBondWithIdx(4)));
     undo_stack.undo();
     sanity_check();
 
@@ -1039,8 +1036,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     model.remove({}, {mol->getBondWithIdx(4)}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 8);
     BOOST_TEST(mol->getNumBonds() == 6);
-    BOOST_TEST(
-        rdkit_extensions::is_variable_attachment_bond(mol->getBondWithIdx(5)));
+    BOOST_TEST(is_variable_attachment_bond(mol->getBondWithIdx(5)));
     undo_stack.undo();
     sanity_check();
 }
@@ -1874,7 +1870,7 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsEnhancedStereo)
     import_mol_text(&model, "N[C@H](C)C(=O)O");
     auto* mol = model.getMol();
     auto* atom = mol->getAtomWithIdx(1);
-    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+    BOOST_TEST(get_enhanced_stereo_for_atom(atom) ==
                rdkit_extensions::EnhancedStereo(
                    RDKit::StereoGroupType::STEREO_ABSOLUTE, 0));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
@@ -1883,19 +1879,19 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsEnhancedStereo)
     model.mutateAtoms({atom}, to_atom,
                       EnhancedStereo(RDKit::StereoGroupType::STEREO_AND, 1));
     atom = mol->getAtomWithIdx(1);
-    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+    BOOST_TEST(get_enhanced_stereo_for_atom(atom) ==
                rdkit_extensions::EnhancedStereo(
                    RDKit::StereoGroupType::STEREO_AND, 1));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
     undo_stack.undo();
     atom = mol->getAtomWithIdx(1);
-    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+    BOOST_TEST(get_enhanced_stereo_for_atom(atom) ==
                rdkit_extensions::EnhancedStereo(
                    RDKit::StereoGroupType::STEREO_ABSOLUTE, 0));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
     undo_stack.redo();
     atom = mol->getAtomWithIdx(1);
-    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+    BOOST_TEST(get_enhanced_stereo_for_atom(atom) ==
                rdkit_extensions::EnhancedStereo(
                    RDKit::StereoGroupType::STEREO_AND, 1));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
@@ -1904,19 +1900,19 @@ BOOST_AUTO_TEST_CASE(test_mutateAtomsEnhancedStereo)
                       EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
     atom = mol->getAtomWithIdx(1);
     BOOST_TEST(
-        rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+        get_enhanced_stereo_for_atom(atom) ==
         rdkit_extensions::EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
     undo_stack.undo();
     atom = mol->getAtomWithIdx(1);
-    BOOST_TEST(rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+    BOOST_TEST(get_enhanced_stereo_for_atom(atom) ==
                rdkit_extensions::EnhancedStereo(
                    RDKit::StereoGroupType::STEREO_AND, 1));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
     undo_stack.redo();
     atom = mol->getAtomWithIdx(1);
     BOOST_TEST(
-        rdkit_extensions::get_enhanced_stereo_for_atom(atom) ==
+        get_enhanced_stereo_for_atom(atom) ==
         rdkit_extensions::EnhancedStereo(RDKit::StereoGroupType::STEREO_OR, 3));
     BOOST_TEST(mol->getStereoGroups().size() == 1);
 }
@@ -2906,7 +2902,7 @@ void assert_wedging_and_chiral_labels(
 {
     BOOST_REQUIRE(mol.getNumAtoms() == atom_chirality_labels.size());
     for (auto atom : mol.atoms()) {
-        auto actual = rdkit_extensions::get_atom_chirality_label(*atom);
+        auto actual = get_atom_chirality_label(*atom);
         BOOST_TEST(actual == atom_chirality_labels[atom->getIdx()]);
     }
     BOOST_REQUIRE(mol.getNumBonds() == bond_types.size());
@@ -3135,9 +3131,9 @@ BOOST_AUTO_TEST_CASE(test_s_group_creation_and_modification)
     auto& all_s_groups = RDKit::getSubstanceGroups(*mol);
     BOOST_TEST(all_s_groups.size() == 1);
     auto& s_group = all_s_groups[0];
-    BOOST_TEST(rdkit_extensions::get_sgroup_type(s_group) == "SRU");
-    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(s_group) == "HT");
-    BOOST_TEST(rdkit_extensions::get_polymer_label(s_group) == "1");
+    BOOST_TEST(get_sgroup_type(s_group) == "SRU");
+    BOOST_TEST(get_repeat_pattern_label(s_group) == "HT");
+    BOOST_TEST(get_polymer_label(s_group) == "1");
 
     // modify an S-group that came from the SMILES input
     model.modifySGroup(&s_group, SubgroupType::SRU_POLYMER,
@@ -3145,9 +3141,9 @@ BOOST_AUTO_TEST_CASE(test_s_group_creation_and_modification)
     auto& all_s_groups2 = RDKit::getSubstanceGroups(*mol);
     BOOST_TEST(all_s_groups2.size() == 1);
     auto& s_group2 = all_s_groups2[0];
-    BOOST_TEST(rdkit_extensions::get_sgroup_type(s_group2) == "SRU");
-    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(s_group2) == "HH");
-    BOOST_TEST(rdkit_extensions::get_polymer_label(s_group) == "10,11");
+    BOOST_TEST(get_sgroup_type(s_group2) == "SRU");
+    BOOST_TEST(get_repeat_pattern_label(s_group2) == "HH");
+    BOOST_TEST(get_polymer_label(s_group) == "10,11");
 
     // create a new S-group
     std::unordered_set<const RDKit::Atom*> atoms = {mol->getAtomWithIdx(4)};
@@ -3156,9 +3152,9 @@ BOOST_AUTO_TEST_CASE(test_s_group_creation_and_modification)
     auto& all_s_groups3 = RDKit::getSubstanceGroups(*mol);
     BOOST_TEST(all_s_groups3.size() == 2);
     auto& new_s_group = all_s_groups3[1];
-    BOOST_TEST(rdkit_extensions::get_sgroup_type(new_s_group) == "COP");
-    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(new_s_group) == "EU");
-    BOOST_TEST(rdkit_extensions::get_polymer_label(new_s_group) == "co");
+    BOOST_TEST(get_sgroup_type(new_s_group) == "COP");
+    BOOST_TEST(get_repeat_pattern_label(new_s_group) == "EU");
+    BOOST_TEST(get_polymer_label(new_s_group) == "co");
 
     // modify the newly created S-group
     model.modifySGroup(&new_s_group, SubgroupType::SRU_POLYMER,
@@ -3166,20 +3162,18 @@ BOOST_AUTO_TEST_CASE(test_s_group_creation_and_modification)
     auto& all_s_groups4 = RDKit::getSubstanceGroups(*mol);
     BOOST_TEST(all_s_groups4.size() == 2);
     auto& new_s_group2 = all_s_groups4[1];
-    BOOST_TEST(rdkit_extensions::get_sgroup_type(new_s_group2) == "SRU");
-    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(new_s_group2) ==
-               "HT");
-    BOOST_TEST(rdkit_extensions::get_polymer_label(new_s_group2) == "999");
+    BOOST_TEST(get_sgroup_type(new_s_group2) == "SRU");
+    BOOST_TEST(get_repeat_pattern_label(new_s_group2) == "HT");
+    BOOST_TEST(get_polymer_label(new_s_group2) == "999");
 
     // undo the modifications
     undo_stack.undo();
     auto& all_s_groups5 = RDKit::getSubstanceGroups(*mol);
     BOOST_TEST(all_s_groups5.size() == 2);
     auto& new_s_group3 = all_s_groups5[1];
-    BOOST_TEST(rdkit_extensions::get_sgroup_type(new_s_group3) == "COP");
-    BOOST_TEST(rdkit_extensions::get_repeat_pattern_label(new_s_group3) ==
-               "EU");
-    BOOST_TEST(rdkit_extensions::get_polymer_label(new_s_group3) == "co");
+    BOOST_TEST(get_sgroup_type(new_s_group3) == "COP");
+    BOOST_TEST(get_repeat_pattern_label(new_s_group3) == "EU");
+    BOOST_TEST(get_polymer_label(new_s_group3) == "co");
 }
 
 /**
@@ -3342,10 +3336,10 @@ BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
     BOOST_TEST(model.getTagForAtom(mol->getAtomWithIdx(7)) == 7);
     const auto* bond = mol->getBondWithIdx(6);
     BOOST_TEST(model.getTagForBond(bond) == 6);
-    BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(bond));
+    BOOST_TEST(is_variable_attachment_bond(bond));
     atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
              mol->getAtomWithIdx(3)};
-    BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+    BOOST_TEST(get_variable_attachment_atoms(bond) == atoms);
 
     // sanity check undo and redo
     undo_stack.undo();
@@ -3357,16 +3351,16 @@ BOOST_AUTO_TEST_CASE(test_addVariableAttachmentBond)
     bond = mol->getBondWithIdx(6);
     atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
              mol->getAtomWithIdx(3)};
-    BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+    BOOST_TEST(get_variable_attachment_atoms(bond) == atoms);
 
     // mutate the bond and make sure that it remains a variable attachment bond
     model.mutateBonds({bond}, BondTool::DOUBLE);
     bond = mol->getBondWithIdx(6);
-    BOOST_TEST(rdkit_extensions::is_variable_attachment_bond(bond));
+    BOOST_TEST(is_variable_attachment_bond(bond));
     BOOST_TEST(bond->getBondType() == RDKit::Bond::BondType::DOUBLE);
     atoms = {mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
              mol->getAtomWithIdx(3)};
-    BOOST_TEST(rdkit_extensions::get_variable_attachment_atoms(bond) == atoms);
+    BOOST_TEST(get_variable_attachment_atoms(bond) == atoms);
 }
 BOOST_AUTO_TEST_CASE(test_enhanced_stereo_groups_smiles)
 {

@@ -5,7 +5,7 @@
 #include <rdkit/GraphMol/ROMol.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/subset.h"
 
@@ -20,8 +20,7 @@ void fix_variable_attachment_bond_coordinates(RDKit::ROMol& mol)
     auto& conf = mol.getConformer();
 
     for (auto* bond : mol.bonds()) {
-        auto variable_attachment_atoms =
-            rdkit_extensions::get_variable_attachment_atoms(bond);
+        auto variable_attachment_atoms = get_variable_attachment_atoms(bond);
         if (variable_attachment_atoms.empty()) {
             // this isn't a variable attachment bond
             continue;
@@ -38,9 +37,9 @@ void fix_variable_attachment_bond_coordinates(RDKit::ROMol& mol)
         RDGeom::Point3D new_dummy_pos, new_real_atom_pos;
         try {
             std::tie(new_dummy_pos, new_real_atom_pos) =
-                rdkit_extensions::get_coordinates_for_variable_attachment_bond(
+                get_coordinates_for_variable_attachment_bond(
                     mol, variable_attachment_atoms);
-        } catch (rdkit_extensions::variable_attachment_bond_error&) {
+        } catch (variable_attachment_bond_error&) {
             // This variable attachment bond isn't valid (it has either to few
             // variable attachment atoms or the variable attachment atoms aren't
             // involved in any bonds) so we can't fix it

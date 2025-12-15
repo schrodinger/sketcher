@@ -10,16 +10,17 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
-#include "schrodinger/rdkit_extensions/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/stereochemistry.h"
+#include "schrodinger/sketcher/rdkit/atom_properties.h"
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::rdkit_extensions::EnhancedStereo)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::EnhancedStereo)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(
-    std::optional<schrodinger::rdkit_extensions::EnhancedStereo>)
+    std::optional<schrodinger::sketcher::EnhancedStereo>)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::nullopt_t)
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 /**
@@ -30,7 +31,8 @@ void check_atom_stereochemstry(
     const std::string& smiles,
     const std::optional<EnhancedStereo>& exp_enh_stereo)
 {
-    auto mol = to_rdkit(smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+    auto mol = rdkit_extensions::to_rdkit(
+        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
     auto* atom = mol->getAtomWithIdx(1);
     auto enh_stereo = get_enhanced_stereo_for_atom(atom);
     BOOST_TEST(enh_stereo == exp_enh_stereo, smiles);
@@ -53,7 +55,7 @@ BOOST_AUTO_TEST_CASE(test_get_enhanced_stereo_for_atom)
 
 BOOST_AUTO_TEST_CASE(test_set_enhanced_stereo_for_atom)
 {
-    auto mol = to_rdkit("NC(C)C(=O)O");
+    auto mol = rdkit_extensions::to_rdkit("NC(C)C(=O)O");
     auto* atom = mol->getAtomWithIdx(1);
     BOOST_TEST(get_enhanced_stereo_for_atom(atom) == std::nullopt);
     BOOST_TEST(mol->getStereoGroups().empty());
@@ -75,22 +77,23 @@ BOOST_AUTO_TEST_CASE(test_set_enhanced_stereo_for_atom)
     BOOST_TEST(mol->getStereoGroups().size() == 1);
 }
 
-BOOST_AUTO_TEST_CASE(test_wedgeMolBondse)
+BOOST_AUTO_TEST_CASE(test_wedgeMolBonds)
 {
     // SHARED-11495
-    auto mol = to_rdkit("C[C@H](Cl)F", rdkit_extensions::Format::SMILES);
-    compute2DCoords(*mol);
+    auto mol = rdkit_extensions::to_rdkit("C[C@H](Cl)F",
+                                          rdkit_extensions::Format::SMILES);
+    rdkit_extensions::compute2DCoords(*mol);
 
     auto b = mol->getBondWithIdx(0);
 
     // The chirality would be encoded with a dash bond
-    wedgeMolBonds(*mol, &mol->getConformer());
+    rdkit_extensions::wedgeMolBonds(*mol, &mol->getConformer());
     BOOST_REQUIRE_EQUAL(b->getBondDir(), RDKit::Bond::BondDir::BEGINDASH);
 
     // Check that a misleading mol bond cfg property does
     // not result in the wrong wedging.
     b->setProp(RDKit::common_properties::_MolFileBondCfg, 1); // UP
-    wedgeMolBonds(*mol, &mol->getConformer());
+    rdkit_extensions::wedgeMolBonds(*mol, &mol->getConformer());
     BOOST_CHECK_EQUAL(b->getBondDir(), RDKit::Bond::BondDir::BEGINDASH);
 
     // the outdated property should be removed after recalculating wedges
@@ -98,5 +101,5 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBondse)
                       false);
 }
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger

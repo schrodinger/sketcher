@@ -21,8 +21,8 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
@@ -152,8 +152,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                 : new AtomItem(atom, fonts, atom_display_settings);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
-        if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
-                atom)) {
+        if (is_dummy_atom_for_variable_attachment_bond(atom)) {
             // hide the dummy atoms for variable attachment bonds
             atom_item->setVisible(false);
         }
@@ -382,7 +381,7 @@ QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
         cur_path.translate(to_scene_xy(atom_pos));
         path.addPath(cur_path);
     }
-    for (auto* bond : rdkit_extensions::get_bonds_within_sgroup(s_group)) {
+    for (auto* bond : get_bonds_within_sgroup(s_group)) {
         auto cur_path = get_predictive_highlighting_path_for_bond(bond, conf);
         auto& bond_pos = conf.getAtomPos(bond->getBeginAtomIdx());
         // translate the path out of the bond's local coordinate system
@@ -462,7 +461,7 @@ get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
 {
     auto path = get_highlighting_path_for_bond(
         bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH, conf);
-    auto atoms = rdkit_extensions::get_variable_attachment_atoms(bond);
+    auto atoms = get_variable_attachment_atoms(bond);
     if (atoms.empty()) {
         // this isn't a variable attachment bond, so we don't need to add
         // anything else to the path
