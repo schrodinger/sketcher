@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       release-branch:
-        description: 'Release branch to bump and merge (leave empty to skip)'
+        description: '[Optional] Release branch to build'
         required: false
         type: string
       token:
-        description: 'Token with push permissions (leave empty to skip bump-and-merge)'
+        description: '[Optional] Token with push permissions for bump-and-merge'
         required: false
         type: string
 
@@ -63,7 +63,7 @@ jobs:
 
   build-release-branch:
     needs: bump-and-merge
-    if: (success() || skipped()) && inputs.release-branch != ''
+    if: (!cancelled() && inputs.release-branch != '')
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: ${{ inputs.release-branch }}
@@ -71,7 +71,7 @@ jobs:
 
   build-main-branch:
     needs: bump-and-merge
-    if: success() || skipped()
+    if: (!cancelled())
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: main
