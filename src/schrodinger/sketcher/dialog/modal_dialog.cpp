@@ -76,8 +76,13 @@ void connect_input_widgets_to_timer(const QWidget* const dialog,
             dialog->connect(rb, &QRadioButton::toggled, timer,
                             qOverload<>(&QTimer::start));
         } else if (auto* cb = qobject_cast<QCheckBox*>(child)) {
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+            dialog->connect(cb, &QCheckBox::checkStateChanged, timer,
+                            qOverload<>(&QTimer::start));
+#else
             dialog->connect(cb, &QCheckBox::stateChanged, timer,
                             qOverload<>(&QTimer::start));
+#endif
         } else if (auto* le = qobject_cast<QLineEdit*>(child)) {
             dialog->connect(le, &QLineEdit::textChanged, timer,
                             qOverload<>(&QTimer::start));
