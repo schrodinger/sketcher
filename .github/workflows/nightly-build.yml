@@ -34,26 +34,30 @@ jobs:
           fi
 
       - name: Verify Token Validity
-        if: false
+        env:
+          TOKEN: ${{ inputs.token }}
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: Bearer ${{ inputs.token }}" \
-            "https://api.github.com/repos/${{ github.repository }}")
+          echo "Checking permissions for the generated token..."
 
-          if [ "$RESPONSE" -ne 200 ]; then
-            echo "::error::Token is invalid or expired (HTTP $RESPONSE). Check how the token is passed."
-            exit 1
-          else
-            echo "Token is valid and has access to the repository."
-          fi
+          TARGET_REPO=sketcher
+
+          RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository_owner}}/$TARGET_REPO")
+
+          # Print the granular permissions the token holds
+          echo "--- Token Permissions for $TARGET_REPO ---"
+          echo "$RESPONSE" | jq '.permissions'
 
       - name: Debug Token Permissions
+        env:
+          TOKEN: ${{ inputs.token }}
         run: |
           # 1. Check basic connectivity and token validity
           # 2. Extract the 'permissions' object for the first repo in the list
           echo "Checking permissions for the provided token..."
 
-          RESPONSE=$(curl -s -H "Authorization: Bearer ${{ inputs.token }}" \
+          RESPONSE=$(curl -s -H "Authorization: Bearer $$TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/installation/repositories)
 
