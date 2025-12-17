@@ -26,7 +26,7 @@ jobs:
       - name: Verify Token Validity
         run: |
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -H "Authorization: token ${{ inputs.token }}" \
+            -H "Authorization: Bearer ${{ inputs.token }}" \
             "https://api.github.com/repos/${{ github.repository }}")
 
           if [ "$RESPONSE" -ne 200 ]; then
