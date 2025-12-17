@@ -21,7 +21,7 @@ jobs:
         run: |
           echo "${{ github.actor }}"
           url=https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
-          git clone --depth 0 "$url"
+          git clone "$url"
           git config --local user.name "sdgr-core-suite-rw[bot]"
           git config --local user.email "195196685+sdgr-core-suite-rw[bot]@users.noreply.github.com"
 
