@@ -19,11 +19,13 @@ jobs:
     steps:
       - name: Configure Git
         run: |
-          echo "${{ github.actor }}"
-          url=https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
+          actor="${{ github.actor }}"
+          echo "$actor"
+          user_id=$(gh api "/users/$actor" --jq '.id')
+          git config --global user.name "$actor"
+          git config --global user.email "$user_id+$actor@users.noreply.github.com"
+          url="https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git"
           git clone "$url" .
-          git config --local user.name "sdgr-core-suite-rw[bot]"
-          git config --local user.email "195196685+sdgr-core-suite-rw[bot]@users.noreply.github.com"
 
       - name: Bump version on release branch
         if: inputs.release-branch != ''
@@ -61,7 +63,7 @@ jobs:
 
   build-release-branch:
     needs: bump-and-merge
-    if: (!cancelled() && inputs.release-branch != '')
+    if: (false && !cancelled() && inputs.release-branch != '')
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: ${{ inputs.release-branch }}
@@ -69,7 +71,7 @@ jobs:
 
   build-main-branch:
     needs: bump-and-merge
-    if: (!cancelled())
+    if: (false && !cancelled())
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: main
