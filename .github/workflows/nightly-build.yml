@@ -17,6 +17,12 @@ jobs:
     if: inputs.token != ''
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ inputs.token }}
+          persist-credentials: false
+
       - name: Configure Git
         run: |
           actor="${{ github.actor }}"
@@ -24,8 +30,7 @@ jobs:
           user_id=$(gh api "/users/$actor" --jq '.id')
           git config --global user.name "$actor"
           git config --global user.email "$user_id+$actor@users.noreply.github.com"
-          url="https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git"
-          git clone "$url" .
+          git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
         env:
           GH_TOKEN: ${{ github.token }}
 
