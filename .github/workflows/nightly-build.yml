@@ -26,6 +26,8 @@ jobs:
           git config --global user.email "$user_id+$actor@users.noreply.github.com"
           url="https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git"
           git clone "$url" .
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Bump version on release branch
         if: inputs.release-branch != ''
