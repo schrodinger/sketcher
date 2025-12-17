@@ -23,6 +23,16 @@ jobs:
         run: |
           echo "Token length: ${#TOKEN}"
 
+          if [[ "$TOKEN" == ghs_* ]]; then
+            echo "✅ Token format starts with ghs_"
+          else
+            echo "❌ Token DOES NOT start with ghs_. It starts with: ${TOKEN_VAL:0:4}..."
+          fi
+
+          if [[ "$TOKEN" == "***" ]]; then
+            echo "❌ ERROR: The token was masked (***) during the hand-off!"
+          fi
+
       - name: Verify Token Validity
         if: false
         run: |
