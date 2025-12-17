@@ -22,11 +22,6 @@ jobs:
           TOKEN: ${{ inputs.token }}
         run: |
           echo "Token length: ${#TOKEN}"
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          token: ${{ inputs.token }}
-          persist-credentials: false
 
       - name: Configure Git
         run: |
@@ -36,6 +31,8 @@ jobs:
           git config --global user.name "$actor"
           git config --global user.email "$user_id+$actor@users.noreply.github.com"
           #git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
+          url="https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git"
+          git clone "$url" .
         env:
           GH_TOKEN: ${{ github.token }}
 
