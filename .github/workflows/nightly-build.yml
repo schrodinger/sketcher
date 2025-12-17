@@ -23,6 +23,40 @@ jobs:
         run: |
           echo "Token length: ${#TOKEN}"
 
+      - name: Verify Token Validity
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token ${{ inputs.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}")
+
+          if [ "$RESPONSE" -ne 200 ]; then
+            echo "::error::Token is invalid or expired (HTTP $RESPONSE). Check how the token is passed."
+            exit 1
+          else
+            echo "Token is valid and has access to the repository."
+          fi
+
+      - name: Debug Token Permissions
+        run: |
+          # 1. Check basic connectivity and token validity
+          # 2. Extract the 'permissions' object for the first repo in the list
+          echo "Checking permissions for the provided token..."
+
+          RESPONSE=$(curl -s -H "Authorization: Bearer ${{ inputs.token }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/installation/repositories)
+
+          # Check if the response contains an error
+          if echo "$RESPONSE" | grep -q "message"; then
+            echo "::error::API Error: $(echo "$RESPONSE" | jq -r '.message')"
+            exit 1
+          fi
+
+          # Print the granular permissions the token holds
+          echo "--- Token Permissions ---"
+          echo "$RESPONSE" | jq '.repositories[0].permissions'
+        shell: bash
+
       - name: Configure Git
         run: |
           actor="${{ github.actor }}"
