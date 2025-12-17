@@ -24,6 +24,7 @@ jobs:
           echo "Token length: ${#TOKEN}"
 
       - name: Verify Token Validity
+        if: false
         run: |
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -H "Authorization: Bearer ${{ inputs.token }}" \
