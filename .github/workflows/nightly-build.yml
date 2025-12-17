@@ -17,6 +17,11 @@ jobs:
     if: inputs.token != ''
     runs-on: ubuntu-latest
     steps:
+      - name: Check inputs
+        env:
+          TOKEN: ${{ inputs.token }}
+        run: |
+          echo "Token length: ${#TOKEN}"
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -30,7 +35,7 @@ jobs:
           user_id=$(gh api "/users/$actor" --jq '.id')
           git config --global user.name "$actor"
           git config --global user.email "$user_id+$actor@users.noreply.github.com"
-          git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
+          #git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
         env:
           GH_TOKEN: ${{ github.token }}
 
@@ -47,7 +52,8 @@ jobs:
         run: |
           git checkout main
           git merge origin/${{ inputs.release-branch }}
-          git push origin main
+          url="https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git"
+          git push "$url" HEAD:main
 
       - name: Create issue on merge failure
         if: inputs.release-branch != '' && steps.auto-merge.outcome == 'failure'
