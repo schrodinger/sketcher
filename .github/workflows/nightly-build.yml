@@ -42,15 +42,17 @@ jobs:
         env:
           TOKEN: ${{ inputs.token }}
         run: |
+          set +x
           echo "Checking permissions for the generated token..."
 
           TARGET_REPO=sketcher
 
           RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository_owner}}/$TARGET_REPO")
+            "https://api.github.com/repos/${{ github.repository_owner }}/$TARGET_REPO")
 
-          # Print the granular permissions the token holds
+          echo "$RESPONSE"
+
           echo "--- Token Permissions for $TARGET_REPO ---"
           echo "$RESPONSE" | jq '.permissions'
 
