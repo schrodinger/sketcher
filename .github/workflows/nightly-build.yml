@@ -42,7 +42,7 @@ jobs:
         env:
           TOKEN: ${{ inputs.token }}
         run: |
-          set +x
+          set -x
           echo "Checking permissions for the generated token..."
 
           TARGET_REPO=sketcher
