@@ -47,6 +47,13 @@ jobs:
           set -x
           echo "Checking permissions for the generated token..."
 
+          if [[ "$TOKEN" == ghs_* ]]; then
+            RAW_TOKEN=$TOKEN
+          else
+            RAW_TOKEN=$(echo "$TOKEN" | base64 --decode)
+          fi
+          echo "::add-mask::$RAW_TOKEN"
+
           TARGET_REPO=sketcher
 
           RESPONSE=$(curl -s -H "Authorization: Bearer $TOKEN" \
