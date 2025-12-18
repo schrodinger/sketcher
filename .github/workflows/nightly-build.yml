@@ -47,6 +47,7 @@ jobs:
           set -x
           echo "Checking permissions for the generated token..."
 
+          echo "::add-mask::$TOKEN"
           if [[ "$TOKEN" == ghs_* ]]; then
             RAW_TOKEN=$TOKEN
           else
