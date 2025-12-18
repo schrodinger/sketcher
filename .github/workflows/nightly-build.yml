@@ -28,6 +28,8 @@ jobs:
         run: |
           echo "Token length: ${#TOKEN}"
 
+          echo -n "$TOKEN" | wc -c
+
           if [[ "$TOKEN" == ghs_* ]]; then
             echo "✅ Token format starts with ghs_"
           else
