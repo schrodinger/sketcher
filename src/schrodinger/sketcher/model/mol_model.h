@@ -51,6 +51,8 @@ enum class Format;
 namespace sketcher
 {
 
+class BondOrSecondaryConnection;
+
 enum class SubgroupType;
 enum class RepeatPattern;
 enum class BondTopology;
@@ -257,9 +259,20 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     std::unordered_set<const RDKit::Atom*> getSelectedAtoms() const;
 
     /**
-     * @return A set of all currently selected bonds
+     * @return A set of all currently selected bonds.  If a bond has a secondary
+     * connection (which occurs in monomeric models when one RDKit::Bond
+     * represents multiple connections between a pair of monomers), it will only
+     * be included in this set if the primary connection is selected.
      */
     std::unordered_set<const RDKit::Bond*> getSelectedBonds() const;
+
+    /**
+     * @return A set of all bonds for which the secondary connection is
+     * selected. A secondary connection occurs in monomeric models when one
+     * RDKit::Bond represents multiple connections between a pair of monomers.
+     */
+    std::unordered_set<const RDKit::Bond*>
+    getSelectedSecondaryConnections() const;
 
     /**
      * @return A set of all currently selected non-molecular objects
@@ -521,12 +534,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                const RDGeom::Point3D& coords);
 
     /**
-     * Undoably remove the given atoms, bonds, S-groups and non-molecular
-     * objects (pluses and/or the reaction arrow).  Note that, even though this
-     * method accepts pointers to const objects, the passed in objects will be
-     * destroyed as a result of this method and will no longer be valid.
-     * (Without the const, it wouldn't be possible to pass in values returned
-     * from getMol.)
+     * Undoably remove the given atoms, bonds, secondary connections, (when one
+     * RDKit::Bond represents multiple connections between a pair of monomers)
+     * S-groups and non-molecular objects (pluses and/or the reaction arrow).
+     * Note that, even though this method accepts pointers to const objects, the
+     * passed in objects will be destroyed as a result of this method and will
+     * no longer be valid. (Without the const, it wouldn't be possible to pass
+     * in values returned from getMol.)
      *
      * @note If either an attachment point dummy atom or the associated bond are
      * removed, then the other will automatically be removed as well.
@@ -534,6 +548,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void
     remove(const std::unordered_set<const RDKit::Atom*>& atoms,
            const std::unordered_set<const RDKit::Bond*>& bonds,
+           const std::unordered_set<const RDKit::Bond*>& secondary_connections,
            const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
            const std::unordered_set<const NonMolecularObject*>&
                non_molecular_objects);
@@ -747,6 +762,12 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      *
      * @param atoms The atoms to select or deselect
      * @param bonds The bonds to select or deselect
+     * @param secondary_connections The bonds to select or deselect the
+     * secondary connection of.  Secondary connections are only found in
+     * monomeric models, and occur when there is more than one connection
+     * between two monomers (e.g. neighboring cysteines additionally joined by a
+     * disulfide bond). RDKit does not allow more than one bond between two
+     * atoms, so a single bond object must represent both connections.
      * @param non_molecular_objects The non-molecular objects to select or
      * deselect
      * @param s_groups The substance groups (i.e. brackets) to select or
@@ -761,6 +782,7 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void
     select(const std::unordered_set<const RDKit::Atom*>& atoms,
            const std::unordered_set<const RDKit::Bond*>& bonds,
+           const std::unordered_set<const RDKit::Bond*>& secondary_connections,
            const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
            const std::unordered_set<const NonMolecularObject*>&
                non_molecular_objects,
@@ -1002,29 +1024,59 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atom The atom to get the tag for
      * @param allow_null If this is true, return -1 if the nullptr is passed in.
      * Otherwise, raise an exception
-     *
-     * Note that this method is const, but not marked as such because RDKit
-     * does not implement a const version of getAtomBookmarks.  (And because
-     * this method isn't public, so it's not worth using const_cast unless we
-     * need this to be const.)
      */
     AtomTag getTagForAtom(const RDKit::Atom* const atom,
-                          const bool allow_null = false);
+                          const bool allow_null = false) const;
 
     /**
-     * Set the bond tag for the specified bond
+     * Set the bond tag for the specified bond. If a bond represents multiple
+     * connections (which can only occur in monomeric models), this will set the
+     * tag for the primary connection.
      */
     void setTagForBond(RDKit::Bond* const bond, const BondTag bond_tag);
 
     /**
-     * Find the bond tag for the specified bond.
-     *
-     * Note that this method is const, but not marked as such because RDKit
-     * does not implement a const version of getBondBookmarks.  (And because
-     * this method isn't public, so it's not worth using const_cast unless we
-     * need this to be const.)
+     * @return the bond tag for the specified bond. If a bond represents
+     * multiple connections (which can only occur in monomeric models), this
+     * will return the tag for the primary connection.
      */
-    BondTag getTagForBond(const RDKit::Bond* const bond);
+    BondTag getTagForBond(const RDKit::Bond* const bond) const;
+
+    /**
+     * Set the bond tag for the secondary connection of the specified bond.
+     * Secondary connections are only found in monomeric models, and occur when
+     * there is more than one connection between two monomers (e.g. neighboring
+     * cysteines additionally joined by a disulfide bond). RDKit does not allow
+     * more than one bond between two atoms, so a single bond object must
+     * represent both connections.
+     */
+    void setSecondaryConnectionTagForBond(RDKit::Bond* const bond,
+                                          const BondTag bond_tag);
+
+    /**
+     * @return the bond tag for the secondary connection of hte specified bond.
+     * If a bond doesn't have a secondary connection, a tag of -1 will be
+     * returned.
+     */
+    BondTag
+    getSecondaryConnectionTagForBond(const RDKit::Bond* const bond) const;
+
+    /**
+     * Determine whether the given bond tag is for the primary or secondary
+     * connection of a bond.
+     */
+    bool isSecondaryConnectionTag(const BondTag bond_tag) const;
+
+    /**
+     * @return A set of all currently selected bonds or secondary connections.
+     *
+     * @param secondary If true, only bonds for which the secondary connection
+     * is selected will be returned.  If false, only "normal" bonds (i.e. bonds
+     * that don't represent multiple monomeric connections) and bonds for which
+     * the primary connection is selected will be returned.
+     */
+    std::unordered_set<const RDKit::Bond*>
+    getSelectedBonds(bool secondary) const;
 
     /**
      * Return the atom identified by the given atom tag.  Note that an atom tag
