@@ -9,6 +9,7 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 
 namespace schrodinger
 {
@@ -337,6 +338,67 @@ bool processSupGroups(RDKit::ROMol& mol)
     orderResidues(mol);
 
     return true;
+}
+
+void createSupGroupsFromResidueInfo(RDKit::RWMol& mol)
+{
+    // Map to track (chain_id, residue_number) -> sgroup index
+    std::map<std::pair<std::string, int>, unsigned int> residue_to_sgroup;
+    std::vector<RDKit::SubstanceGroup> sgroups;
+
+    // DB connection; Monomer info only stores the PDB code
+    auto& monomer_db = MonomerDatabase::instance();
+
+    // Create SUP groups for each unique residue
+    for (const auto& at : mol.atoms()) {
+        auto* monomer_info =
+            dynamic_cast<RDKit::AtomPDBResidueInfo*>(at->getMonomerInfo());
+        if (!monomer_info) {
+            continue; // Skip atoms without PDB residue info
+        }
+
+        std::string chain_id = monomer_info->getChainId();
+        // For now, only PEPTIDE monomers are written to SUP groups
+        if (chain_id.find("PEPTIDE") != 0) {
+            continue;
+        }
+
+        int residue_number = monomer_info->getResidueNumber();
+        std::string residue_name = monomer_info->getResidueName();
+
+        auto helm_info = monomer_db.getHelmInfo(residue_name);
+        std::string monomer_label = "X";
+        if (helm_info) {
+            monomer_label = std::get<0>(*helm_info);
+        }
+
+        // Chains are not identified by anything in SUP groups, we just need
+        // to make sure monomers from different chains get different SUP groups
+        auto residue_key = std::make_pair(chain_id, residue_number);
+
+        // Check if we've already created a SUP group for this residue
+        if (residue_to_sgroup.find(residue_key) == residue_to_sgroup.end()) {
+            // Create a new SUP group for this residue
+            RDKit::SubstanceGroup sgroup(&mol, "SUP");
+            sgroup.setProp(SGROUP_PROP_CLASS, "AA");
+            sgroup.setProp(SGROUP_PROP_LABEL, monomer_label);
+            sgroup.setProp<unsigned int>(
+                SGROUP_PROP_RESNUM,
+                static_cast<unsigned int>(sgroups.size() + 1));
+
+            unsigned int sgroup_idx = sgroups.size();
+            sgroups.push_back(sgroup);
+            residue_to_sgroup[residue_key] = sgroup_idx;
+        }
+
+        // Add this atom to its residue's SUP group
+        unsigned int sgroup_idx = residue_to_sgroup[residue_key];
+        sgroups[sgroup_idx].addAtomWithIdx(at->getIdx());
+    }
+
+    // Add all the SUP groups to the molecule
+    auto& mol_sgroups = RDKit::getSubstanceGroups(mol);
+    mol_sgroups = std::move(sgroups);
 }
 
 } // namespace rdkit_extensions
