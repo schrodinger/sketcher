@@ -157,6 +157,7 @@ void Scene::updateItems(const WhatChangedType what_changed)
             m_sketcher_model->getBondDisplaySettingsPtr();
 
         std::tie(all_items, m_atom_to_atom_item, m_bond_to_bond_item,
+                 m_bond_to_secondary_connection_item,
                  m_s_group_to_s_group_item) =
             create_graphics_items_for_mol(mol, m_fonts,
                                           *atom_display_settings_ptr,
@@ -197,6 +198,9 @@ void Scene::updateItemSelection()
     }
     for (auto* bond : m_mol_model->getSelectedBonds()) {
         m_bond_to_bond_item[bond]->setSelected(true);
+    }
+    for (auto* bond : m_mol_model->getSelectedSecondaryConnections()) {
+        m_bond_to_secondary_connection_item[bond]->setSelected(true);
     }
     for (auto* s_group : m_mol_model->getSelectedSGroups()) {
         m_s_group_to_s_group_item[s_group]->setSelected(true);
@@ -267,6 +271,7 @@ void Scene::clearInteractiveItems(const InteractiveItemFlagType types)
     }
     if (types & InteractiveItemFlag::BOND_OR_CONNECTOR) {
         m_bond_to_bond_item.clear();
+        m_bond_to_secondary_connection_item.clear();
     }
     if (types & InteractiveItemFlag::S_GROUP) {
         m_s_group_to_s_group_item.clear();
@@ -456,10 +461,10 @@ void Scene::onMouseLeave()
 void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
 {
     auto pos = event->scenePos();
-    auto [atoms, bonds, sgroups, non_molecular_objects] =
+    auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         getModelObjects(SceneSubset::HOVERED, &pos);
-    emit showContextMenuRequested(event, atoms, bonds, sgroups,
-                                  non_molecular_objects);
+    emit showContextMenuRequested(event, atoms, bonds, secondary_connections,
+                                  sgroups, non_molecular_objects);
 }
 
 std::unordered_set<QGraphicsItem*> Scene::getSelectedInteractiveItems() const
@@ -472,6 +477,7 @@ std::unordered_set<QGraphicsItem*> Scene::getSelectedInteractiveItems() const
 }
 
 std::tuple<std::unordered_set<const RDKit::Atom*>,
+           std::unordered_set<const RDKit::Bond*>,
            std::unordered_set<const RDKit::Bond*>,
            std::unordered_set<const RDKit::SubstanceGroup*>,
            std::unordered_set<const NonMolecularObject*>>

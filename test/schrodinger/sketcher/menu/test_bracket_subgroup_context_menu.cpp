@@ -36,15 +36,15 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
 
     // modify should only be enabled for a single sgroup
     TestBracketSubgroupContextMenu menu;
-    menu.setContextItems({}, {}, {}, {});
+    menu.setContextItems({}, {}, {}, {}, {});
     menu.updateActions();
     BOOST_TEST(!menu.m_modify_notation_action->isEnabled());
 
-    menu.setContextItems({}, {}, {&sgroups[0]}, {});
+    menu.setContextItems({}, {}, {}, {&sgroups[0]}, {});
     menu.updateActions();
     BOOST_TEST(menu.m_modify_notation_action->isEnabled());
 
-    menu.setContextItems({}, {}, {&sgroups[0], &sgroups[1]}, {});
+    menu.setContextItems({}, {}, {}, {&sgroups[0], &sgroups[1]}, {});
     menu.updateActions();
     BOOST_TEST(!menu.m_modify_notation_action->isEnabled());
 }

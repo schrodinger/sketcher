@@ -78,11 +78,15 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts);
  *   - A list of all newly created graphics items.
  *   - A map of atom -> the graphics item used to represent that atom
  *   - A map of bond -> the graphics item used to represent that bond
+ *   - A map of bond -> the graphics item used to represent the secondary
+ *     connection of that bond (when there is more than one connection between a
+ *     pair of monomers
  *   - A map of S-group -> the graphics item used to represent that S-group
  */
 SKETCHER_API
 std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Atom*, QGraphicsItem*>,
+           std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
@@ -189,10 +193,13 @@ SKETCHER_API bool item_matches_type_flag(QGraphicsItem* item,
 
 /**
  * Return all model objects that are represented by the given collection of
- * graphics items.
+ * graphics items. Note that the second set of bonds is for graphics objects
+ * that represent secondary connections of bonds (when there is more than one
+ * connection between a pair of monomers).
  */
 template <typename T>
 SKETCHER_API std::tuple<std::unordered_set<const RDKit::Atom*>,
+                        std::unordered_set<const RDKit::Bond*>,
                         std::unordered_set<const RDKit::Bond*>,
                         std::unordered_set<const RDKit::SubstanceGroup*>,
                         std::unordered_set<const NonMolecularObject*>>

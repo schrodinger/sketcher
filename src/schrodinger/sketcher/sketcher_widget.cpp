@@ -71,11 +71,13 @@ class ModelObjsByType
     ModelObjsByType(
         const std::unordered_set<const RDKit::Atom*> atoms,
         const std::unordered_set<const RDKit::Bond*> bonds,
+        const std::unordered_set<const RDKit::Bond*> secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
         const std::unordered_set<const NonMolecularObject*>
             non_molecular_objects);
     const std::unordered_set<const RDKit::Atom*> atoms;
     const std::unordered_set<const RDKit::Bond*> bonds;
+    const std::unordered_set<const RDKit::Bond*> secondary_connections;
     const std::unordered_set<const RDKit::SubstanceGroup*> sgroups;
     const std::unordered_set<const NonMolecularObject*> non_molecular_objects;
 };
@@ -83,10 +85,12 @@ class ModelObjsByType
 ModelObjsByType::ModelObjsByType(
     const std::unordered_set<const RDKit::Atom*> atoms,
     const std::unordered_set<const RDKit::Bond*> bonds,
+    const std::unordered_set<const RDKit::Bond*> secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
     const std::unordered_set<const NonMolecularObject*> non_molecular_objects) :
     atoms(atoms),
     bonds(bonds),
+    secondary_connections(secondary_connections),
     sgroups(sgroups),
     non_molecular_objects(non_molecular_objects)
 {
@@ -411,7 +415,8 @@ void SketcherWidget::select(const QSet<const RDKit::Atom*>& qatoms,
         throw std::runtime_error(
             "Atoms and bonds must belong to the Sketcher molecule.");
     }
-    m_mol_model->select(mol_model_atoms, mol_model_bonds, {}, {}, select_mode);
+    m_mol_model->select(mol_model_atoms, mol_model_bonds, {}, {}, {},
+                        select_mode);
 }
 
 void SketcherWidget::clearSelection()
@@ -724,8 +729,9 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
     if (auto context_menu = dynamic_cast<const AtomContextMenu*>(&menu)) {
         connect(context_menu, &AtomContextMenu::bracketSubgroupDialogRequested,
                 this, &SketcherWidget::showBracketSubgroupDialogForAtoms);
-        connect(context_menu, &AtomContextMenu::deleteRequested, this,
-                [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}); });
+        connect(
+            context_menu, &AtomContextMenu::deleteRequested, this,
+            [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
     }
 }
 
@@ -749,7 +755,10 @@ void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
     });
     if (auto context_menu = dynamic_cast<const BondContextMenu*>(&menu)) {
         connect(context_menu, &BondContextMenu::deleteRequested, this,
-                [this](auto bonds) { m_mol_model->remove({}, bonds, {}, {}); });
+                [this](auto bonds, auto secondary_conditions) {
+                    m_mol_model->remove({}, bonds, secondary_conditions, {},
+                                        {});
+                });
     }
 }
 void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
@@ -782,8 +791,10 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
                 m_mol_model->clearSelection();
             });
     connect(&menu, &SelectionContextMenu::deleteRequested, this,
-            [this](auto atoms, auto bonds, auto sgroups, auto non_mol_objs) {
-                m_mol_model->remove(atoms, bonds, sgroups, non_mol_objs);
+            [this](auto atoms, auto bonds, auto secondary_connections,
+                   auto sgroups, auto non_mol_objs) {
+                m_mol_model->remove(atoms, bonds, secondary_connections,
+                                    sgroups, non_mol_objs);
             });
 }
 
@@ -798,8 +809,9 @@ void SketcherWidget::connectContextMenu(const BracketSubgroupContextMenu& menu)
                 }
                 showBracketSubgroupDialogForSGroup(*sgroups.begin());
             });
-    connect(&menu, &BracketSubgroupContextMenu::deleteRequested, this,
-            [this](auto sgroups) { m_mol_model->remove({}, {}, sgroups, {}); });
+    connect(
+        &menu, &BracketSubgroupContextMenu::deleteRequested, this,
+        [this](auto sgroups) { m_mol_model->remove({}, {}, {}, sgroups, {}); });
 }
 
 void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
@@ -832,6 +844,7 @@ void SketcherWidget::showContextMenu(
     QGraphicsSceneMouseEvent* event,
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
@@ -842,13 +855,14 @@ void SketcherWidget::showContextMenu(
     }
 
     AbstractContextMenu* menu = nullptr;
+    bool bond_selected = bonds.size() || secondary_connections.size();
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
-    } else if (atoms.size() && bonds.size()) {
+    } else if (atoms.size() && bond_selected) {
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
         menu = m_atom_context_menu;
-    } else if (bonds.size()) {
+    } else if (bond_selected) {
         menu = m_bond_context_menu;
     } else if (non_molecular_objects.size()) {
         /** a non molecular object is clicked, do nothing as there's no context
@@ -859,7 +873,8 @@ void SketcherWidget::showContextMenu(
         // show the background context menu
         menu = m_background_context_menu;
     }
-    menu->setContextItems(atoms, bonds, sgroups, non_molecular_objects);
+    menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
+                          non_molecular_objects);
 
     menu->move(event->screenPos());
     auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();
@@ -907,9 +922,10 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
 
     auto cursor_pos =
         m_ui->view->mapToScene(m_ui->view->mapFromGlobal(QCursor::pos()));
-    auto [atoms, bonds, sgroups, non_molecular_objects] =
+    auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         m_scene->getModelObjects(SceneSubset::SELECTED_OR_HOVERED, &cursor_pos);
-    ModelObjsByType targets(atoms, bonds, sgroups, non_molecular_objects);
+    ModelObjsByType targets(atoms, bonds, secondary_connections, sgroups,
+                            non_molecular_objects);
 
     bool handled = handleCommonKeyboardShortcuts(event, cursor_pos, targets);
     if (!handled) {
@@ -938,7 +954,8 @@ void SketcherWidget::updateModelForKeyboardShortcut(
     if (has_targets) {
         applyModelValuePingToTargets(
             kv_pair.first, kv_pair.second, targets.atoms, targets.bonds,
-            targets.sgroups, targets.non_molecular_objects);
+            targets.secondary_connections, targets.sgroups,
+            targets.non_molecular_objects);
     }
 }
 
@@ -952,9 +969,12 @@ bool SketcherWidget::handleCommonKeyboardShortcuts(
                 ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::ERASE)};
             bool has_target_atoms = !targets.atoms.empty();
             bool has_target_bonds = !targets.bonds.empty();
+            bool has_target_secondary_connections =
+                !targets.secondary_connections.empty();
             bool has_target_non_molecular_objects =
                 !targets.non_molecular_objects.empty();
             bool has_targets = has_target_atoms || has_target_bonds ||
+                               has_target_secondary_connections ||
                                has_target_non_molecular_objects;
             updateModelForKeyboardShortcut(has_targets, kv_pair, {}, targets);
             return true;
@@ -979,6 +999,8 @@ void SketcherWidget::handleAtomisticKeyboardShortcuts(
     bool has_targets;
     bool has_target_atoms = !targets.atoms.empty();
     bool has_target_bonds = !targets.bonds.empty();
+    // we don't need to worry about secondary_connections here since they don't
+    // exist in atomistic models
 
     switch (Qt::Key(event->key())) {
         case Qt::Key_Minus:
@@ -1224,9 +1246,10 @@ void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
     if (!view) {
         return;
     }
-    auto [atoms, bonds, sgroups, non_molecular_objects] =
+    auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         m_scene->getModelObjects(SceneSubset::SELECTION);
-    applyModelValuePingToTargets(key, value, atoms, bonds, sgroups,
+    applyModelValuePingToTargets(key, value, atoms, bonds,
+                                 secondary_connections, sgroups,
                                  non_molecular_objects);
 }
 
@@ -1234,6 +1257,7 @@ void SketcherWidget::applyModelValuePingToTargets(
     const ModelKey key, const QVariant value,
     const std::unordered_set<const RDKit::Atom*> atoms,
     const std::unordered_set<const RDKit::Bond*> bonds,
+    const std::unordered_set<const RDKit::Bond*> secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
     const std::unordered_set<const NonMolecularObject*> non_molecular_objects)
 {
@@ -1262,8 +1286,8 @@ void SketcherWidget::applyModelValuePingToTargets(
         case ModelKey::DRAW_TOOL: {
             auto tool = value.value<DrawTool>();
             if (tool == DrawTool::ERASE) {
-                m_mol_model->remove(atoms, bonds, sgroups,
-                                    non_molecular_objects);
+                m_mol_model->remove(atoms, bonds, secondary_connections,
+                                    sgroups, non_molecular_objects);
             } else if (tool == DrawTool::EXPLICIT_H) {
                 m_mol_model->toggleExplicitHsOnAtoms(atoms);
             }

@@ -40,6 +40,7 @@ class SKETCHER_API AbstractContextMenu : public QMenu
     virtual void setContextItems(
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
             non_molecular_objects);
@@ -57,6 +58,7 @@ class SKETCHER_API AbstractContextMenu : public QMenu
 
     std::unordered_set<const RDKit::Atom*> m_atoms;
     std::unordered_set<const RDKit::Bond*> m_bonds;
+    std::unordered_set<const RDKit::Bond*> m_secondary_connections;
     std::unordered_set<const RDKit::SubstanceGroup*> m_sgroups;
     std::unordered_set<const NonMolecularObject*> m_non_molecular_objects;
 };

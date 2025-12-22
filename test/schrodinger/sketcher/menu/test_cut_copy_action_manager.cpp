@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
 
     auto select_one_atom = [mol_model]() {
         auto atom = mol_model->getMol()->getAtomWithIdx(0);
-        mol_model->select({atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
+        mol_model->select({atom}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     };
 
     BOOST_TEST(reaction_actions_visible(false));

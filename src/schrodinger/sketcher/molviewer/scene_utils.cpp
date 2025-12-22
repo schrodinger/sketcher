@@ -42,6 +42,7 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
 
 namespace
 {
@@ -117,6 +118,7 @@ AbstractMonomerItem* get_monomer_graphics_item(const RDKit::Atom* atom,
 std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Atom*, QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
+           std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
@@ -128,13 +130,15 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         // If there are no atoms, then there's nothing more to do.  Also, if
         // there are no atoms, then shorten_attachment_point_bonds() will raise
         // a ConformerException.
-        return {{}, {}, {}, {}};
+        return {{}, {}, {}, {}, {}};
     }
     RDKit::Conformer conformer = mol->getConformer();
 
     std::vector<QGraphicsItem*> all_items;
     std::unordered_map<const RDKit::Atom*, QGraphicsItem*> atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, QGraphicsItem*> bond_to_bond_item;
+    std::unordered_map<const RDKit::Bond*, QGraphicsItem*>
+        bond_to_secondary_connection_item;
     std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
         s_group_to_s_group_items;
 
@@ -160,7 +164,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
     }
 
     // create bond items
-    for (auto bond : mol->bonds()) {
+    for (auto* bond : mol->bonds()) {
         if (!draw_attachment_points && is_attachment_point_bond(bond)) {
             continue;
         }
@@ -176,19 +180,26 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             dynamic_cast<const AbstractMonomerItem*>(from_graphics_item);
         const auto* to_monomer_item =
             dynamic_cast<const AbstractMonomerItem*>(to_graphics_item);
-        QGraphicsItem* bond_item = nullptr;
         if (from_atom_item != nullptr && to_atom_item != nullptr) {
-            bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
-                                     fonts, bond_display_settings);
+            auto bond_item = new BondItem(bond, *from_atom_item, *to_atom_item,
+                                          fonts, bond_display_settings);
+            bond_to_bond_item[bond] = bond_item;
+            all_items.push_back(bond_item);
         } else if (from_monomer_item != nullptr && to_monomer_item != nullptr) {
-            bond_item = new MonomerConnectorItem(bond, *from_monomer_item,
-                                                 *to_monomer_item);
-        } else {
-            // skip bonds that go between a monomer and an atomistic atom
-            continue;
+            auto connector_item = new MonomerConnectorItem(
+                bond, *from_monomer_item, *to_monomer_item);
+            bond_to_bond_item[bond] = connector_item;
+            all_items.push_back(connector_item);
+            if (contains_two_monomer_linkages(bond)) {
+                auto secondary_connector_item = new MonomerConnectorItem(
+                    bond, *from_monomer_item, *to_monomer_item,
+                    /* is_secondary_connection = */ true);
+                bond_to_secondary_connection_item[bond] =
+                    secondary_connector_item;
+                all_items.push_back(secondary_connector_item);
+            }
         }
-        bond_to_bond_item[bond] = bond_item;
-        all_items.push_back(bond_item);
+        // we skip bonds that go between a monomer and an atomistic atom
     }
 
     // create substance group items
@@ -205,7 +216,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
     }
 
     return {all_items, atom_to_atom_item, bond_to_bond_item,
-            s_group_to_s_group_items};
+            bond_to_secondary_connection_item, s_group_to_s_group_items};
 }
 
 void update_conf_for_mol_graphics_items(
@@ -580,12 +591,14 @@ bool item_matches_type_flag(QGraphicsItem* item,
 template <typename T>
 std::tuple<std::unordered_set<const RDKit::Atom*>,
            std::unordered_set<const RDKit::Bond*>,
+           std::unordered_set<const RDKit::Bond*>,
            std::unordered_set<const RDKit::SubstanceGroup*>,
            std::unordered_set<const NonMolecularObject*>>
 get_model_objects_for_graphics_items(const T& items)
 {
     std::unordered_set<const RDKit::Atom*> atoms;
     std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<const RDKit::Bond*> secondary_connections;
     std::unordered_set<const RDKit::SubstanceGroup*> s_groups;
     std::unordered_set<const NonMolecularObject*> non_molecular_objects;
     for (auto item : items) {
@@ -594,11 +607,19 @@ get_model_objects_for_graphics_items(const T& items)
             const auto* atom_or_monomer_item =
                 static_cast<const AbstractAtomOrMonomerItem*>(item);
             atoms.insert(atom_or_monomer_item->getAtom());
+        } else if (item_matches_type_flag(item, InteractiveItemFlag::BOND)) {
+            auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
+            bonds.insert(bond_item->getBond());
         } else if (item_matches_type_flag(
-                       item, InteractiveItemFlag::BOND_OR_CONNECTOR)) {
-            const auto* bond_or_connector_item =
-                static_cast<const AbstractBondOrConnectorItem*>(item);
-            bonds.insert(bond_or_connector_item->getBond());
+                       item, InteractiveItemFlag::MONOMER_CONNECTOR)) {
+            auto* connector_item =
+                qgraphicsitem_cast<MonomerConnectorItem*>(item);
+            auto* bond = connector_item->getBond();
+            if (connector_item->isSecondaryConnection()) {
+                secondary_connections.insert(bond);
+            } else {
+                bonds.insert(bond);
+            }
         } else if (auto s_group_item = qgraphicsitem_cast<SGroupItem*>(item)) {
             s_groups.insert(s_group_item->getSubstanceGroup());
         } else if (auto nonmolecular_item =
@@ -607,11 +628,13 @@ get_model_objects_for_graphics_items(const T& items)
                 nonmolecular_item->getNonMolecularObject());
         }
     }
-    return {atoms, bonds, s_groups, non_molecular_objects};
+    return {atoms, bonds, secondary_connections, s_groups,
+            non_molecular_objects};
 }
 
 template SKETCHER_API
     std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
                std::unordered_set<const RDKit::Bond*>,
                std::unordered_set<const RDKit::SubstanceGroup*>,
                std::unordered_set<const NonMolecularObject*>>
@@ -620,6 +643,7 @@ template SKETCHER_API
 
 template SKETCHER_API
     std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
                std::unordered_set<const RDKit::Bond*>,
                std::unordered_set<const RDKit::SubstanceGroup*>,
                std::unordered_set<const NonMolecularObject*>>

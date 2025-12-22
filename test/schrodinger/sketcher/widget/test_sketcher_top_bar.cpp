@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE(widgets_enabled)
         if (sel_empty) {
             mol_model->clearSelection();
         } else {
-            mol_model->select({atoms}, {}, {}, {}, SelectMode::SELECT_ONLY);
+            mol_model->select({atoms}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
         }
         BOOST_TEST(menu->m_clear_selection_act->isEnabled() == !sel_empty);
         for (auto has_rxn : {true, false}) {

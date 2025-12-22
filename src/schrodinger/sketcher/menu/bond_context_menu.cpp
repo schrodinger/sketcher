@@ -108,7 +108,9 @@ QMenu* ModifyBondsMenu::createTopologyMenu()
 BondContextMenu::BondContextMenu(QWidget* parent) : ModifyBondsMenu(parent)
 {
     addSeparator();
-    addAction("Delete", this, [this]() { emit deleteRequested(m_bonds); });
+    addAction("Delete", this, [this]() {
+        emit deleteRequested(m_bonds, m_secondary_connections);
+    });
 }
 
 } // namespace sketcher

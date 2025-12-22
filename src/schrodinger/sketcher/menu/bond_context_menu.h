@@ -60,7 +60,9 @@ class BondContextMenu : public ModifyBondsMenu
     BondContextMenu(QWidget* parent = nullptr);
 
   signals:
-    void deleteRequested(const std::unordered_set<const RDKit::Bond*>& bonds);
+    void deleteRequested(
+        const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections);
 };
 
 } // namespace sketcher

@@ -52,27 +52,27 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     // Variable bond will be disabled if fewer than 2 atoms are selected
 
     // Select nothing
-    menu.setContextItems({}, {}, {}, {});
+    menu.setContextItems({}, {}, {}, {}, {});
     // Use updateActions() as a placeholder for showEvent()
     menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
 
     // Select 1 atom
-    menu.setContextItems({*c_atoms.begin()}, {}, {}, {});
+    menu.setContextItems({*c_atoms.begin()}, {}, {}, {}, {});
     menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
 
     // Select all atoms on the same molecule
-    menu.setContextItems(n_atoms, {}, {}, {});
+    menu.setContextItems(n_atoms, {}, {}, {}, {});
     menu.updateActions();
     BOOST_TEST(menu.m_variable_bond_action->isEnabled());
 
-    menu.setContextItems(c_atoms, {}, {}, {});
+    menu.setContextItems(c_atoms, {}, {}, {}, {});
     menu.updateActions();
     BOOST_TEST(menu.m_variable_bond_action->isEnabled());
 
     // Select atoms from different molecules
-    menu.setContextItems({*c_atoms.begin(), *n_atoms.begin()}, {}, {}, {});
+    menu.setContextItems({*c_atoms.begin(), *n_atoms.begin()}, {}, {}, {}, {});
     menu.updateActions();
     BOOST_TEST(!menu.m_variable_bond_action->isEnabled());
 
@@ -81,14 +81,14 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     menu.setContextItems(c_atoms,
                          {mol_model.getMol()->getBondWithIdx(1),
                           mol_model.getMol()->getBondWithIdx(2)},
-                         {}, {});
+                         {}, {}, {});
     menu.updateActions();
     BOOST_TEST(menu.m_clean_up_region_action->isEnabled());
 
     // clean up region action should be disabled if there is no contiguous
     // region of atoms and bonds
     menu.setContextItems(c_atoms, {mol_model.getMol()->getBondWithIdx(0)}, {},
-                         {});
+                         {}, {});
     menu.updateActions();
     BOOST_TEST(!menu.m_clean_up_region_action->isEnabled());
 }

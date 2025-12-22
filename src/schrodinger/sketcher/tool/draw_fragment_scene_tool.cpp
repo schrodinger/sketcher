@@ -134,7 +134,7 @@ void AbstractHintFragmentItem::updateSettings()
 void AbstractHintFragmentItem::createGraphicsItems()
 {
     auto [all_items, atom_to_atom_item, bond_to_bond_item,
-          s_group_to_s_group_item] =
+          bond_to_secondary_connection_item, s_group_to_s_group_item] =
         create_graphics_items_for_mol(
             &m_frag, *m_fonts, m_atom_display_settings, m_bond_display_settings,
             /*draw_attachment_points = */ false);
@@ -145,6 +145,9 @@ void AbstractHintFragmentItem::createGraphicsItems()
         m_atom_items.append(kv.second);
     }
     for (auto& kv : bond_to_bond_item) {
+        m_bond_items.append(kv.second);
+    }
+    for (auto& kv : bond_to_secondary_connection_item) {
         m_bond_items.append(kv.second);
     }
     for (auto& kv : s_group_to_s_group_item) {

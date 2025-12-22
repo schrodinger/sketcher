@@ -15,6 +15,7 @@
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
 #include "schrodinger/sketcher/rdkit/subset.h"
 
 namespace schrodinger
@@ -118,6 +119,12 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
     }
     auto [atoms_to_select, bonds_to_select] =
         get_connected_atoms_and_bonds(atom);
+    std::unordered_set<const RDKit::Bond*> secondary_connections_to_select;
+    // if any of the bonds have a secondary connection, select that as well
+    std::copy_if(bonds_to_select.begin(), bonds_to_select.end(),
+                 std::inserter(secondary_connections_to_select,
+                               secondary_connections_to_select.end()),
+                 contains_two_monomer_linkages);
     auto select_mode = getSelectMode(event);
     if (select_mode == SelectMode::TOGGLE) {
         // Toggle behaves strangely because the first click gets processed
@@ -125,7 +132,8 @@ template <typename T> void SelectSceneTool<T>::onLeftButtonDoubleClick(
         // Ctrl-click as a regular click here
         select_mode = SelectMode::SELECT_ONLY;
     }
-    m_mol_model->select(atoms_to_select, bonds_to_select, {}, {}, select_mode);
+    m_mol_model->select(atoms_to_select, bonds_to_select,
+                        secondary_connections_to_select, {}, {}, select_mode);
 }
 
 template <typename T> void
@@ -137,9 +145,11 @@ SelectSceneTool<T>::onRightButtonClick(QGraphicsSceneMouseEvent* const event)
     auto item = m_scene->getTopInteractiveItemAt(
         pos, InteractiveItemFlag::MOLECULAR_OR_MONOMERIC);
     if (item && !item->isSelected()) {
-        auto [atoms, bonds, sgroups, non_molecular_objects] =
+        auto [atoms, bonds, secondary_connections, sgroups,
+              non_molecular_objects] =
             m_scene->getModelObjects(SceneSubset::HOVERED, &pos);
-        m_mol_model->select(atoms, bonds, sgroups, {}, SelectMode::SELECT_ONLY);
+        m_mol_model->select(atoms, bonds, secondary_connections, sgroups,
+                            non_molecular_objects, SelectMode::SELECT_ONLY);
     }
     StandardSceneToolBase::onRightButtonClick(event);
 }
@@ -170,10 +180,10 @@ void SelectSceneTool<T>::onSelectionMade(const QList<QGraphicsItem*>& items,
                                          QGraphicsSceneMouseEvent* const event)
 {
     auto select_mode = getSelectMode(event);
-    auto [atoms, bonds, sgroups, non_molecular_objects] =
+    auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         get_model_objects_for_graphics_items(items);
-    m_mol_model->select(atoms, bonds, sgroups, non_molecular_objects,
-                        select_mode);
+    m_mol_model->select(atoms, bonds, secondary_connections, sgroups,
+                        non_molecular_objects, select_mode);
 }
 
 LassoSelectSceneTool::LassoSelectSceneTool(Scene* scene, MolModel* mol_model) :
@@ -270,9 +280,10 @@ void EraseSceneTool::onSelectionMade(const QList<QGraphicsItem*>& items,
     // immediately clear the predictive highlighting, since the highlighted
     // items won't exist after the removeAtomsAndBonds call
     m_predictive_highlighting_item.clearHighlightingPath();
-    auto [atoms, bonds, sgroups, non_molecular_objects] =
+    auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         get_model_objects_for_graphics_items(items);
-    m_mol_model->remove(atoms, bonds, sgroups, non_molecular_objects);
+    m_mol_model->remove(atoms, bonds, secondary_connections, sgroups,
+                        non_molecular_objects);
 }
 
 void EraseSceneTool::onLeftButtonDoubleClick(
