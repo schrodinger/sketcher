@@ -24,7 +24,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Install pre-commit
-        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6
+        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6 yapf==0.43.0
 
       - name: Code formatting check
         run: pre-commit run --all-files
@@ -66,8 +66,10 @@ jobs:
           source .venv/bin/activate
           echo PATH=$PATH >> $GITHUB_ENV
 
-      - name: Install Python packages
-        run: python3 -m pip install cmake==3.24 ninja==1.13.0 pytest pytest-cpp pytest-xdist
+      - name: Install build and test dependencies
+        run: |
+          python3 -m pip install cmake==3.24 ninja==1.13.0
+          python3 -m pip install -r test/requirements.txt
 
       - name: Install valgrind
         if: matrix.build-output == 'memtest'
@@ -230,22 +232,19 @@ jobs:
         id: sketcher-build
         run: cmake --build build --verbose --config ${{ env.BUILD_TYPE }}
 
+      - name: Install Playwright
+        if: matrix.build-output == 'wasm'
+        run: playwright install --with-deps
+
       - name: Run tests
         working-directory: build
-        if: matrix.build-output == 'app'
+        if: matrix.build-output != 'memtest'
         env:
           SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
           pytest -n auto --ignore=external --junitxml=junit-report.xml
-
-      - name: Run wasm tests
-        if: matrix.build-output == 'wasm'
-        run: |
-          cd test/wasm
-          npm install
-          npm run test
 
       - name: Run memtests
         working-directory: build
