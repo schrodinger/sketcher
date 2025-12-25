@@ -237,14 +237,14 @@ jobs:
         run: playwright install --with-deps
 
       - name: Run tests
-        working-directory: build
         if: matrix.build-output != 'memtest'
         env:
           SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
+        # pytest.ini configures test discovery for build/ and test/
         run: |
           ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
-          pytest -n auto --ignore=external --junitxml=junit-report.xml
+          pytest -n auto --junitxml=build/junit-report.xml
 
       - name: Run memtests
         working-directory: build
