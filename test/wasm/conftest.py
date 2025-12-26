@@ -15,14 +15,18 @@ SERVER_DIR = Path(__file__).parent.parent.parent / "build" / "sketcher_app"
 
 
 def pytest_configure(config):
-    """Configure Playwright base URL and screenshot comparison tolerance."""
+    """
+    Configure Playwright base URL and screenshot comparison tolerance.
+    """
     if not config.option.base_url:
         config.option.base_url = f"http://localhost:{SERVER_PORT}"
     config.option.playwright_max_diff_pixel_ratio = 0.1
 
 
 def pytest_collection_modifyitems(config, items):
-    """Skip WASM tests when build artifacts are missing."""
+    """
+    Skip WASM tests when build artifacts are missing.
+    """
     if not (SERVER_DIR / "wasm_shell.html").exists():
         skip_wasm = pytest.mark.skip(reason="WASM build artifacts not found")
         wasm_test_dir = Path(__file__).parent
@@ -32,7 +36,9 @@ def pytest_collection_modifyitems(config, items):
 
 
 def _wait_for_server(port: int, timeout: float = 10.0) -> bool:
-    """Wait for server to become available on the given port."""
+    """
+    Wait for server to become available on the given port.
+    """
     start_time = time.time()
     while time.time() - start_time < timeout:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -46,7 +52,9 @@ def _wait_for_server(port: int, timeout: float = 10.0) -> bool:
 
 
 class _QuietHTTPHandler(http.server.SimpleHTTPRequestHandler):
-    """HTTP handler that only logs errors."""
+    """
+    HTTP handler that only logs errors.
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(SERVER_DIR), **kwargs)
@@ -99,7 +107,9 @@ def web_server():
 
 @pytest.fixture(scope="session")
 def browser_context_args(browser_context_args):
-    """Configure browser viewport size."""
+    """
+    Configure browser viewport size.
+    """
     return {
         **browser_context_args,
         "viewport": {
