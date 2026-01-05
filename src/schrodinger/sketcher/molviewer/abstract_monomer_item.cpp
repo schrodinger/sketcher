@@ -8,6 +8,8 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 namespace schrodinger
 {
@@ -210,16 +212,27 @@ QRectF rect_expanded_by_half_pen_width(const QRectF& rect,
 }
 
 QColor get_color_for_monomer(
-    const std::string& res_name,
+    const std::string& res_name, rdkit_extensions::ChainType chain_type,
     const std::unordered_map<std::string, QColor>& color_by_res_name,
     const QColor& default_color)
 {
-
     auto color_find = color_by_res_name.find(res_name);
     if (color_find != color_by_res_name.end()) {
         return color_find->second;
     }
-    // TODO: check Monomer DB for natural analog
+
+    // Check Monomer DB for natural analog
+    auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
+    auto natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
+
+    // If a valid natural analog exists (not "X"), try to get its color
+    if (natural_analog != "X" && natural_analog != res_name) {
+        auto analog_color_find = color_by_res_name.find(natural_analog);
+        if (analog_color_find != color_by_res_name.end()) {
+            return analog_color_find->second;
+        }
+    }
+
     return default_color;
 }
 
