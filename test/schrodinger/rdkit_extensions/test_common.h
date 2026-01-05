@@ -65,12 +65,12 @@ class LocalMonomerDbFixture
 
         // We want to keep this one while the fixture is in effect,
         // so that we don't pull the rug from under the env var.
-        m_tmp_db = tmp_db.string();
+        test_custom_monomer_db = tmp_db.string();
 
         // We ust Qt for env vars because putenv/setenv are not portable
         // (they don't exist in MSVC)
-        if (qputenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data(), m_tmp_db.c_str()) ==
-            0) {
+        if (qputenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data(),
+                    test_custom_monomer_db.c_str()) == 0) {
             throw std::runtime_error("\n\nError: Failed setting temporary "
                                      "custom monomer db file.\n\n");
         }
@@ -78,10 +78,10 @@ class LocalMonomerDbFixture
         if (auto check = getMonomerDbPath(); !check.has_value()) {
             throw std::runtime_error(
                 "\n\nError: getMonomerDbPath() did not return a value.\n\n");
-        } else if (*check != m_tmp_db) {
+        } else if (*check != test_custom_monomer_db) {
             auto msg = fmt::format("\n\nError: getMonomerDbPath() does not "
                                    "match the env var: {} != {}.\n\n",
-                                   *check, m_tmp_db);
+                                   *check, test_custom_monomer_db);
             throw std::runtime_error(msg);
         }
     }
@@ -97,9 +97,12 @@ class LocalMonomerDbFixture
         }
     }
 
+    static std::string test_custom_monomer_db;
+
   private:
     QByteArray m_custom_db;
-    std::string m_tmp_db;
 };
+
+std::string LocalMonomerDbFixture::test_custom_monomer_db;
 
 BOOST_GLOBAL_FIXTURE(LocalMonomerDbFixture);

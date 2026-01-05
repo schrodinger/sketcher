@@ -511,7 +511,7 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
         "Problem opening database: '{}'"};
     sqlite3* _db = nullptr;
     if (auto rc = sqlite3_open_v2(db_file.string().c_str(), &_db,
-                                  SQLITE_OPEN_READONLY, nullptr);
+                                  SQLITE_OPEN_READWRITE, nullptr);
         rc != SQLITE_OK) {
         throw std::runtime_error(
             fmt::format(err_msg_template, db_file.string()));
