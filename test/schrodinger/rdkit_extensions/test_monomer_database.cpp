@@ -191,3 +191,25 @@ BOOST_AUTO_TEST_CASE(TestGetMonomerDbFromJson)
     BOOST_CHECK_THROW(monomer_db.loadMonomersFromJson("not really json"),
                       std::runtime_error);
 }
+
+BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
+{
+    constexpr std::string_view dummy_json =
+        ("[{"
+         "\"symbol\": \"dummy_symbol\","
+         "\"polymer_type\": \"PEPTIDE\"," // This one needs to be real!
+         "\"natural_analog\": \"dummy_analog1\","
+         "\"smiles\": \"NNNN\"," // This needs to be parseable
+         "\"core_smiles\": \"dummy_core_smiles1\","
+         "\"name\": \"dummy_name1\","
+         "\"monomer_type\": \"dummy_monomertype1\","
+         "\"author\": \"dummy_author1\","
+         "\"pdbcode\": \"dummy_pdbcode1\""
+         "}]");
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(dummy_json);
+
+    monomer_db.loadMonomersFromSQLiteFile(
+        LocalMonomerDbFixture::test_custom_monomer_db);
+}
