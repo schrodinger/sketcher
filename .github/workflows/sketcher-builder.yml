@@ -166,7 +166,7 @@ jobs:
       - name: Install Qt's required packages
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get install \
+          sudo apt-get update && sudo apt-get install \
             libfontconfig1-dev \
             libfreetype-dev \
             libx11-dev \
