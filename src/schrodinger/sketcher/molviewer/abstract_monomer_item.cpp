@@ -225,9 +225,9 @@ QColor get_color_for_monomer(
     auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
     auto natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
 
-    // If a valid natural analog exists (not "X"), try to get its color
-    if (natural_analog != "X" && natural_analog != res_name) {
-        auto analog_color_find = color_by_res_name.find(natural_analog);
+    // If a valid natural analog exists, try to get its color
+    if (natural_analog.has_value() && *natural_analog != res_name) {
+        auto analog_color_find = color_by_res_name.find(*natural_analog);
         if (analog_color_find != color_by_res_name.end()) {
             return analog_color_find->second;
         }

@@ -61,8 +61,10 @@ BOOST_AUTO_TEST_CASE(TestColorForNonNaturalMonomerWithNaturalAnalog)
     monomer_db.loadMonomersFromJson(custom_monomer_json);
 
     // Verify the natural analog was set correctly
-    BOOST_CHECK_EQUAL(
-        monomer_db.getNaturalAnalog("CustomAla", ChainType::PEPTIDE), "A");
+    auto custom_ala_analog =
+        monomer_db.getNaturalAnalog("CustomAla", ChainType::PEPTIDE);
+    BOOST_REQUIRE(custom_ala_analog.has_value());
+    BOOST_CHECK_EQUAL(*custom_ala_analog, "A");
 
     // Now test that CustomAla gets the same color as its natural analog "A"
     auto color = get_color_for_monomer("CustomAla", ChainType::PEPTIDE,
@@ -102,7 +104,9 @@ BOOST_AUTO_TEST_CASE(TestColorForNucleicAcidMonomerWithNaturalAnalog)
     monomer_db.loadMonomersFromJson(custom_monomer_json);
 
     // Verify the natural analog was set correctly
-    BOOST_CHECK_EQUAL(monomer_db.getNaturalAnalog("ModA", ChainType::RNA), "A");
+    auto mod_a_analog = monomer_db.getNaturalAnalog("ModA", ChainType::RNA);
+    BOOST_REQUIRE(mod_a_analog.has_value());
+    BOOST_CHECK_EQUAL(*mod_a_analog, "A");
 
     // Now test that ModA gets the same color as its natural analog "A"
     auto color = get_color_for_monomer(
