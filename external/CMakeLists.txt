@@ -231,6 +231,8 @@ list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
+list(APPEND RDKIT_PATCH_COMMAND && git apply
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_pr_9006_9016.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
