@@ -1,0 +1,126 @@
+diff --git a/Code/GraphMol/FileParsers/MolFileParser.cpp b/Code/GraphMol/FileParsers/MolFileParser.cpp
+index dae8d6edc..105f14593 100644
+--- a/Code/GraphMol/FileParsers/MolFileParser.cpp
++++ b/Code/GraphMol/FileParsers/MolFileParser.cpp
+@@ -3298,24 +3298,25 @@ bool ParseV3000CTAB(std::istream *inStream, unsigned int &line, RWMol *mol,
+           throw FileParseException(errout.str());
+         } else {
+           BOOST_LOG(rdWarningLog) << errout.str() << std::endl;
++          // Prepare to read a lot of sgroups
++          nSgroups = std::numeric_limits<unsigned int>::max();
+         }
+-      } else {
+-        sgroupFound = true;
+-        tempStr = ParseV3000SGroupsBlock(inStream, line, nSgroups, mol,
+-                                         strictParsing);
+-        boost::to_upper(tempStr);
+-        if (tempStr.length() < 10 || tempStr.substr(0, 10) != "END SGROUP") {
+-          std::ostringstream errout;
+-          errout << "END SGROUP line not found on line " << line;
+-          if (strictParsing) {
+-            throw FileParseException(errout.str());
+-          } else {
+-            BOOST_LOG(rdWarningLog) << errout.str() << std::endl;
+-          }
++      }
++      sgroupFound = true;
++      tempStr =
++          ParseV3000SGroupsBlock(inStream, line, nSgroups, mol, strictParsing);
++      boost::to_upper(tempStr);
++      if (tempStr.length() < 10 || tempStr.substr(0, 10) != "END SGROUP") {
++        std::ostringstream errout;
++        errout << "END SGROUP line not found on line " << line;
++        if (strictParsing) {
++          throw FileParseException(errout.str());
+         } else {
+-          tempStr = getV3000Line(inStream, line);
+-          boost::to_upper(tempStr);
++          BOOST_LOG(rdWarningLog) << errout.str() << std::endl;
+         }
++      } else {
++        tempStr = getV3000Line(inStream, line);
++        boost::to_upper(tempStr);
+       }
+ 
+     } else if (tempStr.length() >= 15 &&
+diff --git a/Code/GraphMol/FileParsers/MolSGroupParsing.cpp b/Code/GraphMol/FileParsers/MolSGroupParsing.cpp
+index ed16a256a..9e4eb2fed 100644
+--- a/Code/GraphMol/FileParsers/MolSGroupParsing.cpp
++++ b/Code/GraphMol/FileParsers/MolSGroupParsing.cpp
+@@ -1235,6 +1235,14 @@ std::string ParseV3000SGroupsBlock(std::istream *inStream, unsigned int &line,
+       std::ostringstream errout;
+       errout << "Unsupported SGroup type '" << type << "' on line " << line;
+       throw MolFileUnhandledFeatureException(errout.str());
++    } else if (!strictParsing &&
++               nSgroups == std::numeric_limits<unsigned int>::max() &&
++               lineStream.fail()) {
++      // something went wrong and we didn't know how many SGroups to expect, and
++      // now we have seen something that doesn't look like an SGroup start.
++      // So we assume we're done.
++      nSgroups = 0;
++      break;
+     }
+ 
+     SubstanceGroup sgroup(mol, type);
+diff --git a/Code/GraphMol/FileParsers/testMolSupplier.cpp b/Code/GraphMol/FileParsers/testMolSupplier.cpp
+index f8a557a22..8597e8091 100644
+--- a/Code/GraphMol/FileParsers/testMolSupplier.cpp
++++ b/Code/GraphMol/FileParsers/testMolSupplier.cpp
+@@ -12,8 +12,10 @@
+ #include <GraphMol/RDKitBase.h>
+ #include <string>
+ #include <fstream>
++#include <future>
+ #include <map>
+ #include <memory>
++#include <string>
+ 
+ #include "MolSupplier.h"
+ #include "MolWriters.h"
+diff --git a/Code/GraphMol/MolInterchange/Parser.cpp b/Code/GraphMol/MolInterchange/Parser.cpp
+index 9379c2683..5a8761abe 100644
+--- a/Code/GraphMol/MolInterchange/Parser.cpp
++++ b/Code/GraphMol/MolInterchange/Parser.cpp
+@@ -47,7 +47,7 @@ namespace MolInterchange {
+ 
+ namespace {
+ struct DefaultValueCache {
+-  DefaultValueCache(const bj::value &defs) : bjDefaults(defs) {};
++  DefaultValueCache(const bj::value &defs) : bjDefaults(defs){};
+   const bj::value &bjDefaults;
+   mutable std::map<const char *, int> intMap;
+   mutable std::map<const char *, bool> boolMap;
+@@ -203,7 +203,8 @@ void readBond(RWMol *mol, const bj::value &bondVal,
+   bnd->setBeginAtomIdx(static_cast<int>(aids.at(0).as_int64()));
+   bnd->setEndAtomIdx(static_cast<int>(aids.at(1).as_int64()));
+   bnd->setBondType(bondOrder->second);
+-  mol->addBond(bnd.release());
++  bool takeOwnership = true;
++  mol->addBond(bnd.release(), takeOwnership);
+   std::string stereo = getStringDefaultValue("stereo", bondVal, bondDefaults);
+   if (stereo != "unspecified") {
+     needStereoLoop = true;
+diff --git a/Code/GraphMol/SmilesParse/smiles.tab.cpp.cmake b/Code/GraphMol/SmilesParse/smiles.tab.cpp.cmake
+index 5ba7016eb..fa858ace7 100644
+--- a/Code/GraphMol/SmilesParse/smiles.tab.cpp.cmake
++++ b/Code/GraphMol/SmilesParse/smiles.tab.cpp.cmake
+@@ -1711,6 +1711,7 @@ yyreduce:
+       yyerror(input,molList,branchPoints,scanner,start_token, current_token_position,
+             "chiral permutation cannot be zero");
+       yyErrorCleanup(molList);
++      delete (yyvsp[-2].atom);
+       YYABORT;
+     }
+     (yyvsp[-2].atom)->setChiralTag((yyvsp[-1].chiraltype)); (yyvsp[-2].atom)->setProp(common_properties::_chiralPermutation,(yyvsp[0].ival)); 
+diff --git a/Code/GraphMol/SmilesParse/smiles.yy b/Code/GraphMol/SmilesParse/smiles.yy
+index 3003bdef8..1dd028b11 100644
+--- a/Code/GraphMol/SmilesParse/smiles.yy
++++ b/Code/GraphMol/SmilesParse/smiles.yy
+@@ -419,6 +419,7 @@ chiral_element:	 element
+       yyerror(input,molList,branchPoints,scanner,start_token, current_token_position,
+             "chiral permutation cannot be zero");
+       yyErrorCleanup(molList);
++      delete $1;
+       YYABORT;
+     }
+     $1->setChiralTag($2); $1->setProp(common_properties::_chiralPermutation,$3); 
