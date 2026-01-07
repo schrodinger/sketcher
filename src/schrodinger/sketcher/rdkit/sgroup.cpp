@@ -1,10 +1,10 @@
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 #include <Geometry/point.h>
 #include <rdkit/GraphMol/ROMol.h>
 
 namespace schrodinger
 {
-namespace rdkit_extensions
+namespace sketcher
 {
 
 const std::string RDKIT_KEY_CONNECT = "CONNECT";
@@ -239,5 +239,5 @@ get_bonds_within_sgroup(const RDKit::SubstanceGroup& s_group)
     return bonds;
 }
 
-} // namespace rdkit_extensions
+} // namespace sketcher
 } // namespace schrodinger

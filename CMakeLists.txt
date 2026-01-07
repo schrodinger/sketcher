@@ -57,6 +57,18 @@ find_package(
   Boost ${BOOST_VERSION} REQUIRED COMPONENTS filesystem iostreams json
                                              serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets Test)
+
+# Workaround for Qt 6.5.8 AGL framework issue on modern macOS
+# AGL (Apple Graphics Layer) was deprecated and removed from modern macOS SDKs
+# This workaround can be removed after BLDMGR-10714
+if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
+    get_target_property(_qt_opengl_libs WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
+    if(_qt_opengl_libs)
+        list(FILTER _qt_opengl_libs EXCLUDE REGEX "AGL")
+        set_target_properties(WrapOpenGL::WrapOpenGL PROPERTIES INTERFACE_LINK_LIBRARIES "${_qt_opengl_libs}")
+    endif()
+endif()
+
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
@@ -112,7 +124,7 @@ function(setup_target TARGET)
     endif()
   endif()
   if(EMSCRIPTEN)
-    # We optimize for space in WASM builds because otherwise binaryen (run
+    # We optimize for space in wasm builds because otherwise binaryen (run
     # because of ASYNCIFY) runs out of memory
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
                         -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
@@ -221,10 +233,13 @@ enable_qt_moc(${SKETCHER_TARGET})
 set(APP_TARGET schrodinger_sketcher)
 add_executable(${APP_TARGET} src/app/main.cpp)
 setup_target(${APP_TARGET})
+set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                               ${CMAKE_BINARY_DIR}/sketcher_app)
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
-      -sEXPORT_NAME=createSketcherModule
-      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sEXPORT_NAME=schrodinger_sketcher_entry
+      -sMODULARIZE=1
+      -sEXPORTED_RUNTIME_METHODS=[callMain,FS,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
       -sASYNCIFY
       -lembind
       -fexceptions
@@ -243,6 +258,21 @@ if(MSVC AND NOT ${BUILD_SHARED_LIBS})
   # schrodinger_sketcher_bin.lib.
   set_target_properties(
     ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
+endif()
+
+# Copy over the necessary wasm files into the application directory
+if(EMSCRIPTEN)
+  add_custom_target(
+    update_wasm_files ALL
+    DEPENDS ${APP_TARGET}
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_CURRENT_BINARY_DIR}/external/qt-${QT_VERSION}/plugins/platforms/qtloader.js
+      ${CMAKE_BINARY_DIR}/sketcher_app/qtloader.js
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/wasm/public/
+            ${CMAKE_BINARY_DIR}/sketcher_app/
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
+            ${CMAKE_BINARY_DIR}/sketcher_app --app-target ${APP_TARGET})
 endif()
 
 # Tests

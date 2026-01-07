@@ -31,5 +31,19 @@ const std::string SGROUP_PROP_TYPE{"TYPE"};
  */
 bool processSupGroups(RDKit::ROMol& mol);
 
+/**
+ * Create SUP substance groups from PDB residue info on a molecule's atoms
+ *
+ * This function creates SUP (superatom) substance groups based on the
+ * PDB residue information stored on each atom's MonomerInfo. Atoms with
+ * the same chain ID and residue number are grouped together.
+ *
+ * These SUP groups can be used to preserve residue information when writing
+ * to SDF.
+ *
+ * @param mol molecule to add SUP groups to (modified in place)
+ */
+void createSupGroupsFromResidueInfo(RDKit::RWMol& mol);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

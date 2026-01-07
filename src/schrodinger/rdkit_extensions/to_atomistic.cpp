@@ -18,6 +18,7 @@
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/sup_utils.h"
 
 namespace schrodinger
 {
@@ -28,11 +29,8 @@ namespace
 {
 namespace fs = boost::filesystem;
 
-const std::string SGROUP_PROP_CLASS{"CLASS"};
-const std::string SGROUP_PROP_LABEL{"LABEL"};
-const std::string SGROUP_PROP_RESNUM{"ID"};
-
-const std::string ATOM_PROP_SGROUP_IDX("SGROUP_IDX");
+const std::string ATOM_PROP_GRAPH_H("_GRAPH_H_TO_REMOVE");
+const std::string HYDROGEN_BOND_LINKAGE{"pair-pair"};
 
 using AttachmentMap = std::map<std::pair<unsigned int, unsigned int>,
                                std::pair<unsigned int, unsigned int>>;
@@ -123,18 +121,6 @@ void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
         residue_name = three_character_codes.at(monomer_label);
     }
 
-    // For now, SUP group annotations are only supported for peptides
-    if (chain_type == ChainType::PEPTIDE) {
-        // Create a SUP substance group for writing to SD
-        RDKit::SubstanceGroup sgroup(&new_monomer, "SUP");
-        sgroup.setProp(SGROUP_PROP_CLASS, "AA");
-        sgroup.setProp(SGROUP_PROP_LABEL, monomer_label);
-        sgroup.setProp(SGROUP_PROP_RESNUM, current_residue);
-
-        // Add to mol
-        RDKit::addSubstanceGroup(new_monomer, sgroup);
-    }
-
     // Set PDB residue info on the atoms
     for (auto atom : new_monomer.atoms()) {
         auto* res_info = new RDKit::AtomPDBResidueInfo();
@@ -154,9 +140,6 @@ void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
         }
 
         atom->setMonomerInfo(res_info);
-        // add atoms later so the sgroups aren't stripped when extra atoms are
-        // removed
-        atom->setProp<unsigned int>(ATOM_PROP_SGROUP_IDX, current_residue - 1);
     }
 }
 
@@ -239,6 +222,17 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
             }
         }
 
+        // Mark graph hydrogens with atom map numbers for later removal
+        for (auto atom : new_monomer->atoms()) {
+            if (atom->getAtomicNum() == 1) {
+                unsigned int map_num;
+                if (atom->getPropIfPresent(
+                        RDKit::common_properties::molAtomMapNumber, map_num)) {
+                    atom->setProp(ATOM_PROP_GRAPH_H, true);
+                }
+            }
+        }
+
         auto residue_number = get_residue_number(monomer);
         fillAttachmentPointMap(*new_monomer, attachment_point_map,
                                residue_number, atomistic_mol.getNumAtoms());
@@ -248,14 +242,16 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
         atomistic_mol.insertMol(*new_monomer);
     }
 
-    auto& sgroups = RDKit::getSubstanceGroups(atomistic_mol);
-
     // Add the bonds between monomers and mark the replaced rgroups to be
     // removed
     for (const auto bond_idx : chain.bonds) {
         auto bond = monomer_mol.getBondWithIdx(bond_idx);
-        auto [from_rgroup, to_rgroup] =
-            getAttchpts(bond->getProp<std::string>(LINKAGE));
+        auto linkage = bond->getProp<std::string>(LINKAGE);
+        if (linkage == HYDROGEN_BOND_LINKAGE) {
+            // TODO: Handle hydrogen bonds
+            continue;
+        }
+        auto [from_rgroup, to_rgroup] = getAttchpts(linkage);
         auto from_res = get_residue_number(bond->getBeginAtom());
         auto to_res = get_residue_number(bond->getEndAtom());
 
@@ -280,26 +276,9 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
             // a single bond at the atomistic level
             bond_type = RDKit::Bond::SINGLE;
         }
-        auto atomistic_bond_idx =
-            atomistic_mol.addBond(core_aid1, core_aid2, bond_type) - 1;
+        atomistic_mol.addBond(core_aid1, core_aid2, bond_type);
         remove_atoms.push_back(attachment_point1);
         remove_atoms.push_back(attachment_point2);
-
-        if (sgroups.size()) {
-            // Add the attachment points and XBONDs to the substance groups
-            auto core_atom1 = atomistic_mol.getAtomWithIdx(core_aid1);
-            auto core_atom2 = atomistic_mol.getAtomWithIdx(core_aid2);
-            auto& sgroup1 = sgroups[core_atom1->getProp<unsigned int>(
-                ATOM_PROP_SGROUP_IDX)];
-            auto& sgroup2 = sgroups[core_atom2->getProp<unsigned int>(
-                ATOM_PROP_SGROUP_IDX)];
-            sgroup1.addBondWithIdx(atomistic_bond_idx);
-            sgroup2.addBondWithIdx(atomistic_bond_idx);
-            sgroup1.addAttachPoint(core_aid1, core_aid2,
-                                   BIOVIA_ATTCHPT_MAP.at(from_rgroup));
-            sgroup2.addAttachPoint(core_aid2, core_aid1,
-                                   BIOVIA_ATTCHPT_MAP.at(to_rgroup));
-        }
     }
 
     return attachment_point_map;
@@ -331,8 +310,12 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
         }
         auto begin_res = get_residue_number(begin_atom);
         auto end_res = get_residue_number(end_atom);
-        auto [from_rgroup, to_rgroup] =
-            getAttchpts(bnd->getProp<std::string>(LINKAGE));
+        auto linkage = bnd->getProp<std::string>(LINKAGE);
+        if (linkage == HYDROGEN_BOND_LINKAGE) {
+            // TODO: Handle hydrogen bonds
+            continue;
+        }
+        auto [from_rgroup, to_rgroup] = getAttchpts(linkage);
 
         const auto& begin_attachment_points =
             polymer_attachment_points.at(get_polymer_id(begin_atom));
@@ -365,41 +348,35 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
         remove_atoms.push_back(attachment_point2);
     }
 
-    // Remove atoms that represented attachment points and dummy atoms
+    // Remove atoms that represented attachment points/dummy atoms
+    // and graph hydrogens marked earlier. The latter is faster than
+    // calling removeHs explicitly which checks all hydrogens.
     atomistic_mol->beginBatchEdit();
     for (auto at_idx : remove_atoms) {
         atomistic_mol->removeAtom(at_idx);
     }
     for (auto at : atomistic_mol->atoms()) {
-        if (at->getAtomicNum() == 0) {
+        bool is_graph_h = false;
+        if (at->getPropIfPresent(ATOM_PROP_GRAPH_H, is_graph_h) && is_graph_h) {
+            atomistic_mol->removeAtom(at->getIdx());
+        } else if (at->getAtomicNum() == 0) {
             atomistic_mol->removeAtom(at->getIdx());
         }
     }
     atomistic_mol->commitBatchEdit();
 
-    // Now populate the substance groups with their atoms
-    auto& sgroups = RDKit::getSubstanceGroups(*atomistic_mol);
-    if (sgroups.size()) {
-        for (const auto& at : atomistic_mol->atoms()) {
-            auto sgroup_idx = at->getProp<unsigned int>(ATOM_PROP_SGROUP_IDX);
-            sgroups[sgroup_idx].addAtomWithIdx(at->getIdx());
-            at->clearProp(ATOM_PROP_SGROUP_IDX);
-        }
-    }
-
     // Let sanitization errors bubble up for now -- it means we did something
     // wrong
     RDKit::MolOps::sanitizeMol(*atomistic_mol);
-
-    // Remove graph hydrogens where some RGroups previously were. This will turn
-    // H - NH to NH2, etc
-    RDKit::MolOps::removeHs(*atomistic_mol);
 
     // Remove atom map numbers -- anything remaining is a capping group and the
     // map numbers are no longer meaningful
     for (auto at : atomistic_mol->atoms()) {
         at->setAtomMapNum(0);
     }
+
+    // Add SUP substance groups to annotate residues for SDFs
+    createSupGroupsFromResidueInfo(*atomistic_mol);
 
     return atomistic_mol;
 }

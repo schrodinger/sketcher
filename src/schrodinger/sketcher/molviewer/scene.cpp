@@ -25,6 +25,7 @@
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/sgroup_item.h"
@@ -43,6 +44,7 @@
 #include "schrodinger/sketcher/tool/draw_bond_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_chain_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
@@ -707,11 +709,24 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
     } else if (draw_tool == DrawTool::MONOMER) {
         auto monomer_tool_type = m_sketcher_model->getMonomerToolType();
         if (monomer_tool_type == MonomerToolType::AMINO_ACID) {
-            // TODO: make amino acid scene tool
-            // auto tool = m_sketcher_model->getAminoAcidTool();
+            auto tool = m_sketcher_model->getAminoAcidTool();
+            auto res_name = AMINO_ACID_TOOL_TO_RES_NAME.at(tool);
+            return std::make_shared<DrawMonomerSceneTool>(
+                res_name, rdkit_extensions::ChainType::PEPTIDE, m_fonts, this,
+                m_mol_model);
         } else {
-            // TODO: make nucleic acid scene tool
-            // auto tool = m_sketcher_model->getNucleicAcidTool();
+            auto tool = m_sketcher_model->getNucleicAcidTool();
+            if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool)) {
+                // the tool is for a single monomer
+                auto res_name = NUCLEIC_ACID_TOOL_TO_RES_NAME.at(tool);
+                // HELM considers DNA to be a type of RNA, so we want an RNA
+                // chain type regardless of which nucleic acid we're drawing
+                return std::make_shared<DrawMonomerSceneTool>(
+                    res_name, rdkit_extensions::ChainType::RNA, m_fonts, this,
+                    m_mol_model);
+            } else {
+                // TODO: the tool is for a full nucleotide
+            }
         }
     }
     // tool not yet implemented

@@ -205,12 +205,10 @@ static auto check_converted_properties = [](const auto& mol) {
     BOOST_TEST(mol->hasProp(HELM_MODEL));
 };
 
-static void check_helm_conversion(const HELMInfo& helm_info,
-                                  bool use_v2_parser = false)
+static void check_helm_conversion(const HELMInfo& helm_info)
 {
     constexpr auto do_throw = true;
-    const auto& mol =
-        helm_to_rdkit(helm_info.toString(), use_v2_parser, do_throw);
+    const auto& mol = helm_to_rdkit(helm_info.toString(), do_throw);
     check_converted_properties(mol);
     check_converted_atoms(helm_info, mol);
     check_converted_bonds(helm_info, mol);
@@ -224,11 +222,10 @@ BOOST_DATA_TEST_CASE(TestConversionOfLinearMonomers,
                          {{{"PEPTIDE1", {"A", "H", "D"}}}},
                          {{{"RNA1", {"R", "A"}}}},
                          {{{"RNA1", {"R", "A", "P"}}}},
-                         {{{"CHEM1", {"K"}}}}}) *
-                         bdata::make(std::vector<bool>{false, true}),
-                     helm_info, use_v2_parser)
+                         {{{"CHEM1", {"K"}}}}}),
+                     helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMulticharacterMonomers,
@@ -237,11 +234,10 @@ BOOST_DATA_TEST_CASE(TestConversionOfMulticharacterMonomers,
                          {{{"PEPTIDE1", {"A", "dA"}}}},
                          {{{"PEPTIDE1", {"dG", "P", "dF"}}}},
                          {{{"RNA1", {"dG", "P"}}}},
-                         {{{"BLOB1", {"BEAD"}}}}}) *
-                         bdata::make(std::vector<bool>{false, true}),
-                     helm_info, use_v2_parser)
+                         {{{"BLOB1", {"BEAD"}}}}}),
+                     helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(
@@ -249,10 +245,10 @@ BOOST_DATA_TEST_CASE(
     bdata::make(std::vector<HELMInfo>{
         {{{"PEPTIDE1", {"[*:1]N[C@@H](C=O)C([*:2])=O", "A"}}}},
         {{{"PEPTIDE1", {"A", "[*]N[C@@H](C=O)C([*])=O |$_R1;;;;;;_R2;$|"}}}},
-    }) * bdata::make(std::vector<bool>{false, true}),
-    helm_info, use_v2_parser)
+    }),
+    helm_info)
 {
-    check_helm_conversion(helm_info, use_v2_parser);
+    check_helm_conversion(helm_info);
 }
 
 BOOST_DATA_TEST_CASE(TestConversionOfMonomerLists,
@@ -520,78 +516,91 @@ BOOST_AUTO_TEST_CASE(TestReadingInlineSmilesSurroundedBySquareBrackets)
                "[H][*:1]");
 }
 
-BOOST_DATA_TEST_CASE_F(schrodinger::test::silence_stdlog,
-                       TestInvalidExpressionsV2,
-                       bdata::make(std::vector<std::string>{
-                           "BLOB1{}$$$$V2.0",
-                           "BLOB1{          }$$$$V2.0",
-                           "BLOB0{HELLO WORLD}$$$$V2.0",
-                           "BLOB0D{HELLO WORLD}$$$$V2.0",
-                           "BLOB1{HELLO WORLD\"my annotation\"}$$$$V2.0",
-                           "BLOB1{HELLO WORLD}$$$$V3.0",
-                           "BLOB1{HELLO WORLD}$$$not valid json$V2.0",
-                           "CHEM1{A.B}$$$$V2.0",
-                           "CHEM1{[]}$$$$V2.0",
-                           "CHEM1{[A}$$$$V2.0",
-                           "CHEM1{[A]}$$$$V2.0",
-                           "CHEM1{dA]}$$$$V2.0",
-                           "CHEM1{A]}$$$$V2.0",
-                           "CHEM1{dA}$$$$V2.0",
-                           "PEPTIDE1{dA}$$$$V2.0",
-                           "PEPTIDE1{(dA}$$$$V2.0",
-                           "PEPTIDE1{dA)}$$$$V2.0",
-                           "PEPTIDE1{(A,[dA)}$$$$V2.0",
-                           "PEPTIDE1{(A,dA])}$$$$V2.0",
-                           "PEPTIDE1{(A,[])}$$$$V2.0",
-                           "PEPTIDE1{(A,[A])}$$$$V2.0",
-                           "PEPTIDE1{(A:,[A])}$$$$V2.0",
-                           "PEPTIDE1{(A,[A]:)}$$$$V2.0",
-                           "PEPTIDE1{(A,[A]+)}$$$$V2.0",
-                           "PEPTIDE1{(A,[A]+A)}$$$$V2.0",
-                           "PEPTIDE1{(+A:9+[aA]+A)}$$$$V2.0",
-                           "PEPTIDE1{(A:9+[aA]+A+)}$$$$V2.0",
-                           "PEPTIDE1{(A:9++[aA]+A)}$$$$V2.0",
-                           "PEPTIDE1{(A:0+[aA]+A)}$$$$V2.0",
-                           "PEPTIDE1{(A:0.1+[aA]+A:0.0)}$$$$V2.0",
-                           R"(CHEM1{[Az]'3'}$$$$V2.0)",
-                           "PEPTIDE1{[dA]''}$$$$V2.0",
-                           "PEPTIDE1{[dA]'hi'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'hi-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'1-hi'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'0'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'000'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'0-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'10-'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'1-3-5'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'01'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'01-10'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'3-05'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'3-1'}$$$$V2.0",
-                           "PEPTIDE1{[dA]'3-3'}$$$$V2.0",
-                           "RNA1{R(AP}$$$$V2.0",
-                           "RNA1{R(A'3')P}$$$$V2.0",
-                           "RNA1{R(A.L'3')P}$$$$V2.0",
-                           "RNA1{R(A.L(C)P)P}$$$$V2.0",
-                           "RNA1{R(A(C)P)P}$$$$V2.0",
-                       }),
-                       test_helm)
+BOOST_DATA_TEST_CASE_F(
+    schrodinger::test::silence_stdlog, TestInvalidExpressionsV2,
+    bdata::make(std::vector<std::string>{
+        "BLOB1{}$$$$V2.0",
+        "BLOB1{          }$$$$V2.0",
+        "BLOB0{HELLO WORLD}$$$$V2.0",
+        "BLOB0D{HELLO WORLD}$$$$V2.0",
+        "BLOB1{HELLO WORLD\"my annotation\"}$$$$V2.0",
+        "BLOB1{HELLO WORLD}$$$$V3.0",
+        "BLOB1{HELLO WORLD}$$$not valid json$V2.0",
+        "CHEM1{A.B}$$$$V2.0",
+        "CHEM1{[]}$$$$V2.0",
+        "CHEM1{[A}$$$$V2.0",
+        "CHEM1{[A]}$$$$V2.0",
+        "CHEM1{dA]}$$$$V2.0",
+        "CHEM1{A]}$$$$V2.0",
+        "CHEM1{dA}$$$$V2.0",
+        "PEPTIDE1{dA}$$$$V2.0",
+        "PEPTIDE1{(dA}$$$$V2.0",
+        "PEPTIDE1{dA)}$$$$V2.0",
+        "PEPTIDE1{(A,[dA)}$$$$V2.0",
+        "PEPTIDE1{(A,dA])}$$$$V2.0",
+        "PEPTIDE1{(A,[])}$$$$V2.0",
+        "PEPTIDE1{(A,[A])}$$$$V2.0",
+        "PEPTIDE1{(A:,[A])}$$$$V2.0",
+        "PEPTIDE1{(A,[A]:)}$$$$V2.0",
+        "PEPTIDE1{(A,[A]+)}$$$$V2.0",
+        "PEPTIDE1{(A,[A]+A)}$$$$V2.0",
+        "PEPTIDE1{(+A:9+[aA]+A)}$$$$V2.0",
+        "PEPTIDE1{(A:9+[aA]+A+)}$$$$V2.0",
+        "PEPTIDE1{(A:9++[aA]+A)}$$$$V2.0",
+        "PEPTIDE1{(A:0+[aA]+A)}$$$$V2.0",
+        "PEPTIDE1{(A:0.1+[aA]+A:0.0)}$$$$V2.0",
+        R"(CHEM1{[Az]'3'}$$$$V2.0)",
+        "PEPTIDE1{[dA]''}$$$$V2.0",
+        "PEPTIDE1{[dA]'hi'}$$$$V2.0",
+        "PEPTIDE1{[dA]'hi-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'1-hi'}$$$$V2.0",
+        "PEPTIDE1{[dA]'0'}$$$$V2.0",
+        "PEPTIDE1{[dA]'000'}$$$$V2.0",
+        "PEPTIDE1{[dA]'0-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'10-'}$$$$V2.0",
+        "PEPTIDE1{[dA]'1-3-5'}$$$$V2.0",
+        "PEPTIDE1{[dA]'01'}$$$$V2.0",
+        "PEPTIDE1{[dA]'01-10'}$$$$V2.0",
+        "PEPTIDE1{[dA]'3-05'}$$$$V2.0",
+        "PEPTIDE1{[dA]'3-1'}$$$$V2.0",
+        "PEPTIDE1{[dA]'3-3'}$$$$V2.0",
+        "RNA1{R(AP}$$$$V2.0",
+        "RNA1{R(A'3')P}$$$$V2.0",
+        "RNA1{R(A.L'3')P}$$$$V2.0",
+        "RNA1{R(A.L(C)P)P}$$$$V2.0",
+        "RNA1{R(A(C)P)P}$$$$V2.0",
+        "PEPTIDE1{A.(G.A.C)''.A}$$$$V2.0",
+        R"(PEPTIDE1{A(C(A)L)P'9-10'"hello world".A(C)}$$$$V2.0)",
+        R"(PEPTIDE1{A(C.A.L)P'9-10'"hello world".A(C)}$$$$V2.0)",
+        R"(PEPTIDE1{A((C.A.L))P'9-10'"hello world".A(C)}$$$$V2.0)",
+        "PEPTIDE1{A.(G.A.(L.A.P)'9'.C)'3'.A}$$$$V2.0",
+        "PEPTIDE1{A.(G.A.C(P))'3'(C).A}$$$$V2.0",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$V1(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G01(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G00(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$GA(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1,RNA2,)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(,RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1+RNA2+)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(+RNA1+RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$G1(RNA1+RNA2)|$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}$$|G1(RNA1+RNA2)$$V2.0)",
+    }),
+    test_helm)
 {
-    constexpr auto use_v2_parser = true;
-
     // std::invalid_argument should be thrown
     {
         constexpr auto do_throw = true;
-        BOOST_CHECK_THROW(std::ignore =
-                              helm_to_rdkit(test_helm, use_v2_parser, do_throw),
+        BOOST_CHECK_THROW(std::ignore = helm_to_rdkit(test_helm, do_throw),
                           std::invalid_argument);
     }
 
     // log and return nullptr
     {
         constexpr auto do_throw = false;
-        BOOST_TEST(helm_to_rdkit(test_helm, use_v2_parser, do_throw) ==
-                   nullptr);
+        BOOST_TEST(helm_to_rdkit(test_helm, do_throw) == nullptr);
     }
 }
 
@@ -662,22 +671,36 @@ BOOST_DATA_TEST_CASE(
         R"(RNA1{R(A"mutation")P.R(U)P}$$$$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)}|RNA2{R(A)P.R(C)P}$$$$V2.0)",
         R"(RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0)",
+        R"(PEPTIDE1{A.(G.A.C)'3'.A}$$$$V2.0)",
+        R"(PEPTIDE1{A.(G.A.C)'3'"my annotation".A}$$$$V2.0)",
+        "PEPTIDE1{A.(G.A.C)'3'.A}$$$$V2.0",
+        "RNA1{R(A)P.(R(N)P)'4'.(R(G)P)'3-7'}$$$$V2.0",
+        "RNA1{R(A)P.R(C)P.(R(T)P)'2'.R(G)}$$$$V2.0",
+        R"(PEPTIDE1{A.(C.A.L)'9-10'"hello world".A(C)}$$$$V2.0)",
+        "PEPTIDE1{[Bal]'11'(G)C'9'(C)A'9'(L)}$$$$V2.0",
+        "PEPTIDE1{[Bal]'11'(G)(G.C)'9'(C)(A.L)'9'(L)}$$$$V2.0",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1:3,RNA2:2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1+RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1:3+RNA2:2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1,RNA2)|G2(RNA1,RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1,RNA2)|G2(G1,RNA2,RNA3)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1+RNA2)|G2(RNA1+RNA2)$$V2.0)",
+        R"(RNA1{R(C)P}"HC"|RNA2{R(U)P}|RNA3{R(A)P}$$G1(RNA1+RNA2)|G2(G1+RNA2+RNA3)$$V2.0)",
     }),
     test_helm)
 {
-    constexpr auto use_v2_parser = true;
-
     // turn on exceptions
     {
         constexpr auto do_throw = true;
-        auto mol = helm_to_rdkit(test_helm, use_v2_parser, do_throw);
+        auto mol = helm_to_rdkit(test_helm, do_throw);
         BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
     }
 
     // turn on logging
     {
         constexpr auto do_throw = false;
-        auto mol = helm_to_rdkit(test_helm, use_v2_parser, do_throw);
+        auto mol = helm_to_rdkit(test_helm, do_throw);
         BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
     }
 }

@@ -41,20 +41,25 @@ std::ostream& operator<<(std::ostream& os, const TestData& pair)
 // HELM -> atomistic -> monomeric -> HELM with the different residue
 // identification methods (pdb info, substance groups, smarts matching)
 static const std::vector<std::string> ROUNDTRIP_HELM_TEST_SET = {
-    "PEPTIDE1{F.Y.K.A.R.L}$$$$V2.0", "PEPTIDE1{A.A.P.L}$$$$V2.0",
-    "PEPTIDE1{A.K.A}$$$$V2.0", "PEPTIDE1{A.C.D.R.L}$$$$V2.0",
+    "PEPTIDE1{F.Y.K.A.R.L}$$$$V2.0",
+    "PEPTIDE1{A.A.P.L}$$$$V2.0",
+    "PEPTIDE1{A.K.A}$$$$V2.0",
+    "PEPTIDE1{A.C.D.R.L}$$$$V2.0",
     // Examples with glycine, which requires a special query
-    "PEPTIDE1{F.Y.K.G.R.L}$$$$V2.0", "PEPTIDE1{A.C.D.G.L}$$$$V2.0",
+    "PEPTIDE1{F.Y.K.G.R.L}$$$$V2.0",
+    "PEPTIDE1{A.C.D.G.L}$$$$V2.0",
     // Cyclic peptide with R2-R1 closure
     "PEPTIDE1{A.A.A.A.A.A.A.A}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0",
     // Cyclic peptide using disulfide R3 - R3 bond
     "PEPTIDE1{C.A.A.A.C}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
     // Branches using R3 connections
-    "PEPTIDE1{A.D(C)P}$$$$V2.0", "PEPTIDE1{A.C(A)G.C.D(K)A.D}$$$$V2.0",
+    "PEPTIDE1{A.D(C)P}$$$$V2.0",
+    "PEPTIDE1{A.C(A)G.C.D(K)A.D}$$$$V2.0",
     // Example with endcaps
     "PEPTIDE1{[ac].P.A.D(A)K.[am]}$$$$V2.0",
     // Example with a branch and a disulfide bond
-    "PEPTIDE1{C.A.A.A.C.G.D(K)L.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0"};
+    "PEPTIDE1{C.A.A.A.C.G.D(K)L.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
+};
 
 static boost::shared_ptr<RDKit::RWMol>
 file_to_rdkit(const std::string& filename)
@@ -139,11 +144,15 @@ BOOST_DATA_TEST_CASE(
         {"NCCCC[C@H](NC(=O)[C@H](CS)NC(=O)[C@@H](Cc1ccccc1)NC(=O)CNC(=O)[C@H]("
          "CCCNC(=N)N)NC(=O)[C@H](C)N)C(=O)N(C)[C@@H](C)C(=O)N[C@@H](CCC(=O)O)C("
          "=O)N[C@@H](CC(=O)O)C(=O)N[C@@H](C)C(=O)O",
-         "PEPTIDE1{A.R.G.F.C.K.[C[C@@H](C(=O)[*:2])N(C)[*:1]].E.D.A}$$$$V2.0"},
+         "PEPTIDE1{A.R.G.[dF].C.K.[meA].E.D.A}$$$$V2.0"},
         {"CC(C)C[C@@H]1NC(=O)[C@H](Cc2c[nH]c3ccccc23)NC(=O)[C@H](CCCCN)NC(=O)["
          "C@H](Cc2ccccc2)NC(=O)[C@@H]2CCCN2C(=O)[C@H]2CCCN2C(=O)[C@H](C(C)O)NC("
          "=O)[C@H](CCC(=O)O)NC(=O)[C@H](Cc2ccccc2)NC(=O)[C@H](CC(N)=O)NC1=O",
-         "PEPTIDE1{N.F.E.T.P.P.F.K.W.L}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$$$V2.0"}}),
+
+         // The SMILEs is for a Threonine residue, which is missing one
+         // chirality, so it doesn't match the template in the monomer DB.
+         "PEPTIDE1{N.F.E.[CC(O)[C@H](N[*:1])C(=O)[*:2]].[dP]"
+         ".P.F.K.W.L}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$$$V2.0"}}),
     test_data)
 {
     boost::shared_ptr<RDKit::ROMol> atomistic_mol(
@@ -482,8 +491,12 @@ BOOST_AUTO_TEST_CASE(TestAutoDetectIfNoResidueInfo)
             RDKit::SmilesToMol(smiles));
         auto monomer_mol = toMonomeric(*atomistic_mol);
         auto helm_result = to_string(*monomer_mol, Format::HELM);
-        BOOST_TEST(helm_result == "PEPTIDE1{N.F.E.T.P.P.F.K.W.L}$PEPTIDE1,"
-                                  "PEPTIDE1,10:R2-1:R1$$$V2.0");
+
+        // The SMILEs is for a Threonine residue, which is missing one
+        // chirality, so it doesn't match the template in the monomer DB.
+        BOOST_TEST(helm_result ==
+                   "PEPTIDE1{N.F.E.[CC(O)[C@H](N[*:1])C(=O)[*:2]]"
+                   ".[dP].P.F.K.W.L}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$$$V2.0");
     }
 
     {
@@ -523,15 +536,17 @@ BOOST_DATA_TEST_CASE(
         "PEPTIDE1{[ac].[CC(C)(S[*:3])[C@@H](N[*:1])C(=O)[*:2]].I.P.R.G.D.["
         "COc1ccc(C[C@H](N[*:1])C(=O)[*:2])cc1].R.C.[am]}$PEPTIDE1,PEPTIDE1,2:"
         "R3-10:R3$$$V2.0",
+        // ----
         "PEPTIDE1{D.[CC(C)(S[*:3])[C@@H](N[*:1])C(=O)[*:2]].F.W.[NCCC[C@@H](N[*"
         ":1])C(=O)[*:2]].Y.C.V}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$V2.0",
+        // ----
         "PEPTIDE1{F.W.[CC(C)(C[*:3])[C@@H](N[*:1])C(=O)[*:2]].P.A.G.C.K}$"
         "PEPTIDE1,PEPTIDE1,3:R3-7:R3$$$V2.0",
         // Example of R3 attachment point use on non-standard backbone (doesn't
         // match general AA query)
         "PEPTIDE1{F.W.[CC(C)(C[*:3])C(CO[*:1])C(=N)[*:2]].P.A.G.C.K}$PEPTIDE1,"
         "PEPTIDE1,3:R3-7:R3$$$V2.0",
-        // Disulfide bond on a SMILES monomer not identifed by the cysteine
+        // Disulfide bond on a SMILES monomer not identified by the cysteine
         // query
         "PEPTIDE1{[ac].[CC(C)(CS[*:3])[C@@H](N[*:1])C(=O)[*:2]].I.P.R.G.D.["
         "COc1ccc(C[C@H](N[*:1])C(=O)[*:2])cc1].R.C.[am]}$PEPTIDE1,PEPTIDE1,2:"
@@ -540,8 +555,7 @@ BOOST_DATA_TEST_CASE(
         // R3 attachment point since it isn't used
         "PEPTIDE1{Q.R.F.[CC(C)(S)[C@@H](N[*:1])C(=O)[*:2]].T.G.H.F.G.G.L.Y.[O="
         "C([C@H]1CCCCCN1[*:1])[*:2]].[O=C([C@@H](CCS)N[*:1])[*:2]].N.G.P}$$$$"
-        "V2."
-        "0"}),
+        "V2.0"}),
     helm_str)
 {
     // Test SMILES -> MonomerMol where some of the monomers are SMILES monomers

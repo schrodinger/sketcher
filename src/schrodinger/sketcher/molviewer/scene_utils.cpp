@@ -4,6 +4,7 @@
 #include <QColor>
 #include <QFile>
 #include <QGraphicsItem>
+#include <QGraphicsScene>
 #include <QLineF>
 #include <QPixmap>
 #include <QPainter>
@@ -20,8 +21,8 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
-#include "schrodinger/rdkit_extensions/sgroup.h"
-#include "schrodinger/rdkit_extensions/variable_attachment_bond.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
+#include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
@@ -94,25 +95,20 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
 /**
  * Construct and return a monomer graphics item for representing the given atom.
  */
-AbstractAtomOrMonomerItem* get_monomer_graphics_item(const RDKit::Atom* atom,
-                                                     const Fonts& fonts)
+AbstractMonomerItem* get_monomer_graphics_item(const RDKit::Atom* atom,
+                                               const Fonts& fonts)
 {
     switch (get_monomer_type(atom)) {
         case MonomerType::PEPTIDE:
             return new AminoAcidItem(atom, fonts);
-            break;
         case MonomerType::CHEM:
             return new ChemMonomerItem(atom, fonts);
-            break;
         case MonomerType::NA_BASE:
             return new NucleicAcidBaseItem(atom, fonts);
-            break;
         case MonomerType::NA_PHOSPHATE:
             return new NucleicAcidPhosphateItem(atom, fonts);
-            break;
         case MonomerType::NA_SUGAR:
             return new NucleicAcidSugarItem(atom, fonts);
-            break;
         default:
             throw std::runtime_error("Unrecognized monomer type");
     }
@@ -151,12 +147,12 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         const auto pos = conformer.getAtomPos(i);
         QGraphicsItem* atom_item =
             is_atom_monomeric(atom)
-                ? get_monomer_graphics_item(atom, fonts)
+                ? static_cast<QGraphicsItem*>(
+                      get_monomer_graphics_item(atom, fonts))
                 : new AtomItem(atom, fonts, atom_display_settings);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
-        if (rdkit_extensions::is_dummy_atom_for_variable_attachment_bond(
-                atom)) {
+        if (is_dummy_atom_for_variable_attachment_bond(atom)) {
             // hide the dummy atoms for variable attachment bonds
             atom_item->setVisible(false);
         }
@@ -197,13 +193,10 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
 
     // create substance group items
     for (auto& sgroup : getSubstanceGroups(*mol)) {
-        std::string type;
-        std::string fieldname;
-        sgroup.getPropIfPresent("TYPE", type);
-        sgroup.getPropIfPresent("FIELDNAME", fieldname);
-        if (type == "DAT" && fieldname == SUPPLEMENTARY_INFORMATION) {
-            // this isn't an actual S-group; it's just additional data about the
-            // HELM molecule
+        if (rdkit_extensions::is_polymer_annotation_s_group(sgroup) ||
+            rdkit_extensions::is_supplementary_information_s_group(sgroup)) {
+            // this isn't an actual S-group; it's just additional data about a
+            // monomeric model
             continue;
         }
         SGroupItem* sgroup_item = new SGroupItem(sgroup, fonts);
@@ -302,6 +295,30 @@ QPixmap cursor_hint_from_svg(const QString& path, const bool recolor)
     return pixmap.copy(bounding_rect);
 }
 
+QPixmap cursor_hint_from_graphics_item(QGraphicsItem* graphics_item,
+                                       const qreal min_scene_size)
+{
+    QGraphicsScene scene;
+    QPixmap pixmap(CURSOR_HINT_IMAGE_SIZE, CURSOR_HINT_IMAGE_SIZE);
+    scene.addItem(graphics_item);
+    QRectF render_source = scene.sceneRect();
+    render_source.setWidth(std::max(render_source.width(), min_scene_size));
+    render_source.setHeight(std::max(render_source.height(), min_scene_size));
+
+    pixmap.fill(Qt::transparent);
+    {
+        QPainter painter(&pixmap);
+        painter.setRenderHints(QPainter::Antialiasing |
+                               QPainter::SmoothPixmapTransform);
+        scene.render(&painter, QRectF(), render_source);
+    }
+
+    // remove graphics_item from the scene, otherwise it'll get destroyed by Qt
+    // when the scene is destroyed at the end of this function
+    scene.removeItem(graphics_item);
+    return pixmap;
+}
+
 QPixmap get_arrow_cursor_pixmap(const QColor& arrow_color,
                                 const QColor& outline_color)
 {
@@ -364,7 +381,7 @@ QPainterPath get_predictive_highlighting_path_for_s_group_atoms_and_bonds(
         cur_path.translate(to_scene_xy(atom_pos));
         path.addPath(cur_path);
     }
-    for (auto* bond : rdkit_extensions::get_bonds_within_sgroup(s_group)) {
+    for (auto* bond : get_bonds_within_sgroup(s_group)) {
         auto cur_path = get_predictive_highlighting_path_for_bond(bond, conf);
         auto& bond_pos = conf.getAtomPos(bond->getBeginAtomIdx());
         // translate the path out of the bond's local coordinate system
@@ -444,7 +461,7 @@ get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
 {
     auto path = get_highlighting_path_for_bond(
         bond, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH, conf);
-    auto atoms = rdkit_extensions::get_variable_attachment_atoms(bond);
+    auto atoms = get_variable_attachment_atoms(bond);
     if (atoms.empty()) {
         // this isn't a variable attachment bond, so we don't need to add
         // anything else to the path

@@ -13,7 +13,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/sketcher/rdkit/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -534,7 +534,7 @@ BOOST_DATA_TEST_CASE(test_auto_detect_through_sketcher_interface,
 {
     std::string orig_smiles = "c1ccccc1";
     auto mol = to_rdkit(orig_smiles, Format::SMILES);
-    ::schrodinger::rdkit_extensions::update_2d_coordinates(*mol);
+    ::schrodinger::sketcher::update_2d_coordinates(*mol);
     auto input_string = to_string(*mol, sample);
 
     Format export_format = sample;
@@ -892,6 +892,35 @@ BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
     BOOST_CHECK_THROW(sk.addTextToMolModel(ATOMISTIC_STRING), std::exception);
 }
 
+/**
+ * Make sure that we can read in monomeric models that contain additional data
+ * in S-groups.
+ */
+BOOST_AUTO_TEST_CASE(test_addTextToMolModel_monomeric_s_sroups)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+
+    // extended annotations are currently unsupported, but make sure that we
+    // throw an exception (which will be caught and put in an error dialog)
+    // instead of crashing
+    const std::string HELM_WITH_EXTENDED_ANNOTATION =
+        R"(RNA1{R(A)P.R(C)P.R(G)}$$${"my chain":"my annotation"}$V2.0)";
+    BOOST_CHECK_THROW(sk.addTextToMolModel(HELM_WITH_EXTENDED_ANNOTATION),
+                      std::exception);
+
+    // basic annotations create a COP S-group
+    const std::string HELM_WITH_ANNOTATION =
+        R"(PEPTIDE1{A.C.D.D.E}"HC"|PEPTIDE2{G.C.S.S.S.P.K.K.V.K}"LC"$$$$V2.0)";
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(HELM_WITH_ANNOTATION));
+    BOOST_TEST(sk.getRDKitMolecule()->getNumAtoms() == 15);
+    sk.clear();
+
+    // FASTA strings also create a COP S-group
+    const std::string FASTA = ">foo\nAAA";
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(FASTA));
+    BOOST_TEST(sk.getRDKitMolecule()->getNumAtoms() == 3);
+}
 /**
  * Test copying partial reactions with and without non-molecular objects
  * selected. This validates that SKETCH-2632 allows copying partial selections

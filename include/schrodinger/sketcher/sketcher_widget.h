@@ -188,6 +188,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     bool handleShortcutAction(const QKeySequence& key);
 
+    /**
+     * Return the smallest rectangle that covers the entire molecule, as
+     * measured in scene coordinates (not pixels).
+     */
+    QRectF getSceneRect();
+
   signals:
 
     /**

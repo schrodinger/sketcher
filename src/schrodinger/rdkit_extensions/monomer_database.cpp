@@ -511,7 +511,7 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
         "Problem opening database: '{}'"};
     sqlite3* _db = nullptr;
     if (auto rc = sqlite3_open_v2(db_file.string().c_str(), &_db,
-                                  SQLITE_OPEN_READONLY, nullptr);
+                                  SQLITE_OPEN_READWRITE, nullptr);
         rc != SQLITE_OK) {
         throw std::runtime_error(
             fmt::format(err_msg_template, db_file.string()));
@@ -777,6 +777,37 @@ void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
             canonicalize_db(db);
         }
     }
+}
+
+[[nodiscard]] std::vector<std::pair<std::string, std::string>>
+MonomerDatabase::getAllSMILES() const
+{
+    static constexpr const char* sql =
+        "SELECT SMILES, SYMBOL FROM monomer_definitions WHERE "
+        "POLYMER_TYPE='PEPTIDE' ORDER BY id ASC;";
+
+    std::vector<std::pair<std::string, std::string>> ret;
+
+    for (sqlite3* db : {m_core_monomers_db, m_custom_monomers_db}) {
+        if (db == nullptr) {
+            continue;
+        }
+        sqlite3_stmt* stmt = nullptr;
+        if (sqlite3_prepare_v2(db, sql, -1, &stmt, NULL) == SQLITE_OK) {
+            managed_stmt_t statement(stmt, &sqlite3_finalize);
+
+            for (auto rc = sqlite3_step(stmt); rc == SQLITE_ROW;
+                 rc = sqlite3_step(stmt)) {
+
+                auto smiles = _sqlite3_column_cstring(stmt, 0);
+                auto symbol = _sqlite3_column_cstring(stmt, 1);
+
+                ret.emplace_back(smiles, symbol);
+            }
+        }
+    }
+
+    return ret;
 }
 
 } // namespace rdkit_extensions

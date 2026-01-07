@@ -1,4 +1,4 @@
-#include "schrodinger/rdkit_extensions/sgroup.h"
+#include "schrodinger/sketcher/rdkit/sgroup.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -48,7 +48,7 @@ std::pair<QPointF, bool> SGroupItem::getFieldDataDisplayInfo() const
 static QString get_repeat_connect_text(const RDKit::SubstanceGroup& sgroup)
 {
     QString text;
-    auto repeat_str = rdkit_extensions::get_repeat_pattern_label(sgroup);
+    auto repeat_str = get_repeat_pattern_label(sgroup);
     if (REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.count(repeat_str)) {
         auto repeat = REPEATPATTERN_TO_RDKITSTRING_BIMAP.right.at(repeat_str);
         if (repeat != RepeatPattern::HEAD_TO_TAIL) {
@@ -65,10 +65,10 @@ static QString get_repeat_connect_text(const RDKit::SubstanceGroup& sgroup)
 static QString get_repeat_label_text(const RDKit::SubstanceGroup& sgroup)
 {
     QString text;
-    auto type_str = rdkit_extensions::get_sgroup_type(sgroup);
+    auto type_str = get_sgroup_type(sgroup);
     if (SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.count(type_str)) {
         auto type = SUBGROUPTYPE_TO_RDKITSTRING_BIMAP.right.at(type_str);
-        auto label = rdkit_extensions::get_polymer_label(sgroup);
+        auto label = get_polymer_label(sgroup);
         if (type == SubgroupType::SRU_POLYMER && label.empty()) {
             text = "n";
         } else if (type == SubgroupType::COPOLYMER && label.empty()) {

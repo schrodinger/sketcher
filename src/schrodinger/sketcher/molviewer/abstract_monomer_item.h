@@ -34,10 +34,16 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     AbstractMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
                         QGraphicsItem* parent = nullptr);
 
+    /**
+     * Replace the monomer-specific colors with the given colors.
+     */
+    void setMonomerColors(const QColor& background_color,
+                          const QColor& outline_color,
+                          const QColor& font_color);
+
     // Overridden QGraphicsItem methods
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override;
-    ;
 
   protected:
     const Fonts& m_fonts;
@@ -129,6 +135,17 @@ get_border_and_font_settings_for_nucleic_acid(const std::string& res_name,
  */
 SKETCHER_API void set_path_to_rect(QPainterPath& path, const QRectF& rect,
                                    const qreal highlighting_thickness = 0);
+
+/**
+ * @return a new rect that's larger than the given rect by half of the specified
+ * pen width on all four sides
+ *
+ * @note This is typically used to create a bounding rect that accounts for the
+ * width of the pen used to draw an outline. The drawn line is centered on
+ * the outline, so half of the pen width is *outside* of the outline.
+ */
+QRectF rect_expanded_by_half_pen_width(const QRectF& rect,
+                                       const qreal pen_width);
 
 /**
  * Get the appropriate color to use for a monomer of the given residue name

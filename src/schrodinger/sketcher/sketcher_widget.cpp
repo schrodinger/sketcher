@@ -1338,6 +1338,11 @@ bool SketcherWidget::handleShortcutAction(const QKeySequence& key)
     return m_ui->top_bar_wdg->handleShortcutAction(key);
 }
 
+QRectF SketcherWidget::getSceneRect()
+{
+    return m_scene->getSceneItemsBoundingRect();
+}
+
 void SketcherWidget::addTextToMolModel(
     const std::string& text, const rdkit_extensions::Format format,
     const std::optional<RDGeom::Point3D> position, const bool recenter_view)

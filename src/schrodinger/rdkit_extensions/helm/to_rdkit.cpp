@@ -17,7 +17,6 @@
 #include <rdkit/GraphMol/SubstanceGroup.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
-#include "schrodinger/rdkit_extensions/helm/generated/helm_parser.tab.hh"
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 
@@ -88,12 +87,9 @@ void add_polymer_groups_and_extended_annotations(
 } // namespace
 
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
-helm_to_rdkit(const std::string& helm_string, bool use_v2_parser, bool do_throw)
+helm_to_rdkit(const std::string& helm_string, bool do_throw)
 {
-    std::optional<helm_info> parsed_info =
-        use_v2_parser ? helm::v2::parse_helm(helm_string, do_throw)
-                      : helm::HelmParser(helm_string).parse();
-
+    auto parsed_info = helm::parse_helm(helm_string, do_throw);
     if (!parsed_info) {
         return nullptr;
     }

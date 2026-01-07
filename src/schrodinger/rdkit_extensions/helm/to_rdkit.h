@@ -17,10 +17,8 @@ namespace helm
  * @brief Converts a HELM string to an RDKit molecule.
  *
  * Parses a HELM notation string and builds a corresponding RDKit `RWMol`.
- * Supports both the legacy and v2 HELM parsers.
  *
  * @param helm_string  Input HELM string (e.g. "BLOB1{Bead}$$$$V2.0").
- * @param use_v2_parser  Use the new v2 parser if true (default: false).
  * @param do_throw  If true, throw on parse errors; otherwise log and return
  *        nullptr (default: true).
  *
@@ -29,7 +27,6 @@ namespace helm
  * @throws std::invalid_argument on invalid HELM input when `do_throw == true`.
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::unique_ptr<::RDKit::RWMol>
-helm_to_rdkit(const std::string& helm_string, bool use_v2_parser = false,
-              bool do_throw = true);
+helm_to_rdkit(const std::string& helm_string, bool do_throw = true);
 
 } // namespace helm
