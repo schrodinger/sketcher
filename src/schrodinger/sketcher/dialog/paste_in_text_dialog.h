@@ -1,10 +1,14 @@
 #pragma once
 
 #include <memory>
+#include <optional>
+#include <unordered_map>
+#include <vector>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
 
+class QShowEvent;
 class QString;
 
 namespace Ui
@@ -14,6 +18,12 @@ class PasteInTextDialog;
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+enum class Format;
+}
+
 namespace sketcher
 {
 class SketcherModel;
@@ -36,6 +46,19 @@ class SKETCHER_API PasteInTextDialog : public ModalDialog
   protected:
     SketcherModel* m_sketcher_model = nullptr;
     std::unique_ptr<Ui::PasteInTextDialog> ui;
+    int m_autodetect_index = 0;
+    QString m_autodetect_base_name;
+    /**
+     * The autodetected format. Will be set to std::nullopt whenever the text
+     * edit is empty or when we can't determine the format.
+     */
+    std::optional<rdkit_extensions::Format> m_autodetected_format =
+        std::nullopt;
+    /**
+     * A map of all formats currently loaded into the Format combo box to their
+     * name
+     */
+    std::unordered_map<rdkit_extensions::Format, QString> m_formats;
 
   protected slots:
     /**
@@ -43,8 +66,14 @@ class SKETCHER_API PasteInTextDialog : public ModalDialog
      */
     void onModelValuesChanged();
 
+    /**
+     * Update the autodetection detected format
+     */
+    void autodetectCurrentFormat();
+
   signals:
-    void textAccepted(const QString& text);
+    void textAccepted(const std::string& text,
+                      const rdkit_extensions::Format format);
 };
 
 } // namespace sketcher

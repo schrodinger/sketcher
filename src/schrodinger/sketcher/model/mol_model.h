@@ -874,6 +874,17 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      */
     void kekulize();
 
+    /**
+     * if the molecule contains any monomers, set their sizes to the provided
+     * values (calculating from Scene information). This is used to avoid
+     * clashes when rendering polymers with big labels. This command is not
+     * undoable and should only be used internally by the Scene.
+     * @param monomer_sizes A map from monomer index to its size in mol
+     * coordinates (x is width, y is height, z is ignored)
+     */
+    void
+    setMonomerSizes(std::unordered_map<int, RDGeom::Point3D> monomer_sizes);
+
   signals:
 
     /**

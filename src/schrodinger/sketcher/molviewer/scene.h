@@ -273,6 +273,13 @@ class SKETCHER_API Scene : public QGraphicsScene
     void onDisplaySettingsChanged();
 
     /**
+     * calculate a preview of monomer label sizes for all monomeric atoms and
+     * store them as RDKit properties. This is needed in monomer coordgen to
+     * allocate enough space for the labels and avoid overlaps
+     */
+    void updateMonomerLabelSizeOnModel();
+
+    /**
      * Update the path drawn to show selection highlighting.
      */
     void updateSelectionHighlighting();

@@ -40,7 +40,17 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
-constexpr double MONOMER_BOND_LENGTH = 1.5;
+// empty space gap between a monomer and the one following it in the chain. This
+// will be the length of the visibile bond line connecting the two.
+constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
+// when a monomer size is not specified or its value is lower than this, this
+// value is used as the minimum size
+constexpr double MONOMER_MINIMUM_SIZE = 0.80;
+
+// total distance from the center of one monomer to the center of the following
+// in the chain
+constexpr double MONOMER_BOND_LENGTH =
+    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
 
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
@@ -1274,6 +1284,84 @@ bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
            has_no_stretched_bonds(monomer_mol);
 }
 
+void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
+                    const RDGeom::Point3D& new_size)
+{
+    // get current size
+    auto atom = monomer_mol.getAtomWithIdx(index);
+    RDGeom::Point3D current_size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
+    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, current_size);
+
+    // calculate difference
+    auto difference = new_size - current_size;
+    if (difference.x == 0. && difference.y == 0.) {
+        return;
+    }
+
+    // move every atom position accordingly
+    auto& conformer = monomer_mol.getConformer();
+    auto reference_monomer_position = conformer.getAtomPos(index);
+    for (unsigned int i = 0u; i < conformer.getNumAtoms(); ++i) {
+        if (i == index) {
+            continue;
+        }
+        auto atom_pos = conformer.getAtomPos(i);
+        if (atom_pos.x > reference_monomer_position.x + MONOMER_MINIMUM_SIZE) {
+            atom_pos.x += difference.x / 2;
+        } else if (atom_pos.x <
+                   reference_monomer_position.x - MONOMER_MINIMUM_SIZE) {
+            atom_pos.x -= difference.x / 2;
+        }
+        if (atom_pos.y > reference_monomer_position.y + MONOMER_MINIMUM_SIZE) {
+            atom_pos.y += difference.y / 2;
+        } else if (atom_pos.y <
+                   reference_monomer_position.y - MONOMER_MINIMUM_SIZE) {
+            atom_pos.y -= difference.y / 2;
+        }
+        conformer.setAtomPos(i, atom_pos);
+    }
+    atom->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE, new_size);
+}
+
+void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
+                    const RDGeom::Point3D& new_size)
+{
+    // get current size
+    auto atom = monomer_mol.getAtomWithIdx(index);
+    RDGeom::Point3D current_size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
+    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, current_size);
+
+    // calculate difference
+    auto difference = new_size - current_size;
+    if (difference.x == 0. && difference.y == 0.) {
+        return;
+    }
+
+    // move every atom position accordingly
+    auto& conformer = monomer_mol.getConformer();
+    auto reference_monomer_position = conformer.getAtomPos(index);
+    for (unsigned int i = 0u; i < conformer.getNumAtoms(); ++i) {
+        if (i == index) {
+            continue;
+        }
+        auto atom_pos = conformer.getAtomPos(i);
+        if (atom_pos.x > reference_monomer_position.x + MONOMER_MINIMUM_SIZE) {
+            atom_pos.x += difference.x / 2;
+        } else if (atom_pos.x <
+                   reference_monomer_position.x - MONOMER_MINIMUM_SIZE) {
+            atom_pos.x -= difference.x / 2;
+        }
+        if (atom_pos.y > reference_monomer_position.y + MONOMER_MINIMUM_SIZE) {
+            atom_pos.y += difference.y / 2;
+        } else if (atom_pos.y <
+                   reference_monomer_position.y - MONOMER_MINIMUM_SIZE) {
+            atom_pos.y -= difference.y / 2;
+        }
+        conformer.setAtomPos(i, atom_pos);
+    }
+    atom->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE, new_size);
+}
+
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 {
     // clear layout related props so we can start a fresh layout
@@ -1295,34 +1383,6 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
 
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
-
-    if (!coordinates_are_valid(monomer_mol)) {
-        // the coordinates are not good, try breaking the molecule into
-        // topological units. This considers rings as a single unit, even if
-        // they are made of monomers that belong to different polymers.
-        // Branching chains are also considered separate units. create a copy of
-        // monomer_mol to avoid modifying the original
-        RDKit::ROMol monomer_mol_copy(monomer_mol);
-        monomer_mol_copy.getRingInfo()->reset();
-
-        clear_layout_props(monomer_mol_copy);
-        auto [units, parent_unit] =
-            break_into_topological_units(monomer_mol_copy);
-        lay_out_polymers(units, parent_unit);
-        monomer_mol.removeConformer(conformer_id);
-        conformer_id = copy_polymer_coords_to_monomer_mol(monomer_mol, units);
-        if (!coordinates_are_valid(monomer_mol)) {
-            // These are not good either, fall back on the original coordinates
-            // and politely admit defeat
-
-            monomer_mol.removeConformer(conformer_id);
-            conformer_id =
-                copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);
-            std::cerr << "Warning: Generated coordinates for monomer mol "
-                         "contain clashes, bond crossings, or stretched bonds."
-                      << std::endl;
-        }
-    }
 
     return conformer_id;
 }

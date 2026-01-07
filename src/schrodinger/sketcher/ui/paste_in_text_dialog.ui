@@ -40,7 +40,27 @@
     <widget class="QPlainTextEdit" name="structure_text_edit"/>
    </item>
    <item>
-    <widget class="QLabel" name="status_label">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="format_lbl">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Text format: </string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QComboBox" name="format_combo"/>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <widget class="QLabel" name="status_lbl">
      <property name="font">
       <font>
        <italic>true</italic>
