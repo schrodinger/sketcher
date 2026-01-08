@@ -7,9 +7,10 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 
-#include "schrodinger/sketcher/molviewer/monomer_constants.h"
-#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 
 namespace schrodinger
 {
@@ -117,7 +118,8 @@ void AminoAcidItem::updateCachedData()
         rect_expanded_by_half_pen_width(border_rect, border_line_width);
     set_path_to_rounded_rect(m_shape, border_rect, border_line_width / 2.0);
     auto rect_color = get_color_for_monomer(
-        res_name, AMINO_ACID_COLOR_BY_RES_NAME, DEFAULT_AA_BACKGROUND_COLOR);
+        res_name, rdkit_extensions::ChainType::PEPTIDE,
+        AMINO_ACID_COLOR_BY_RES_NAME, DEFAULT_AA_BACKGROUND_COLOR);
     m_border_brush.setColor(rect_color);
 }
 

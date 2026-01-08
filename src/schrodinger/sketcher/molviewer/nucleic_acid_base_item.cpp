@@ -10,6 +10,7 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
 
@@ -96,8 +97,10 @@ void NucleicAcidBaseItem::updateCachedData()
                         border_pen_width / 2.0);
     m_bounding_rect = m_shape.boundingRect();
 
+    // According to HELM, DNA is a subtype of RNA, so both use ChainType::RNA
     auto rect_color = get_color_for_monomer(
-        res_name, NUCLEIC_ACID_COLOR_BY_RES_NAME, DEFAULT_NA_BACKGROUND_COLOR);
+        res_name, rdkit_extensions::ChainType::RNA,
+        NUCLEIC_ACID_COLOR_BY_RES_NAME, DEFAULT_NA_BACKGROUND_COLOR);
     m_border_brush.setColor(rect_color);
 }
 

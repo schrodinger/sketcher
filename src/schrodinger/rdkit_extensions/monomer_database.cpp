@@ -642,21 +642,17 @@ opt_string_t MonomerDatabase::getMonomerSmiles(const std::string& monomer_id,
                                   smiles_getter);
 }
 
-std::string MonomerDatabase::getNaturalAnalog(const std::string& monomer_id,
-                                              ChainType polymer_type) const
+opt_string_t MonomerDatabase::getNaturalAnalog(const std::string& monomer_id,
+                                               ChainType polymer_type) const
 {
     auto sql = get_monomer_query_sql(monomer_id, polymer_type, analog_column);
 
-    auto analog_getter = [](sqlite3_stmt* stmt) -> std::string {
-        return _sqlite3_column_cstring(stmt, 0);
+    auto analog_getter = [](sqlite3_stmt* stmt) -> opt_string_t {
+        return std::make_optional(_sqlite3_column_cstring(stmt, 0));
     };
 
-    auto ret = get_info_from_database(m_custom_monomers_db, m_core_monomers_db,
-                                      sql, analog_getter);
-    if (ret.empty()) {
-        return "X";
-    }
-    return ret;
+    return get_info_from_database(m_custom_monomers_db, m_core_monomers_db, sql,
+                                  analog_getter);
 }
 
 [[nodiscard]] MonomerDatabase::helm_info_t

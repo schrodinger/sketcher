@@ -98,8 +98,8 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] opt_string_t getMonomerSmiles(const std::string& monomer_id,
                                                 ChainType polymer_type) const;
 
-    [[nodiscard]] std::string getNaturalAnalog(const std::string& monomer_id,
-                                               ChainType polymer_type) const;
+    [[nodiscard]] opt_string_t getNaturalAnalog(const std::string& monomer_id,
+                                                ChainType polymer_type) const;
 
     [[nodiscard]] opt_string_t getPdbCode(const std::string& monomer_id,
                                           ChainType polymer_type) const;
