@@ -22,7 +22,6 @@ jobs:
       publish-npm-package: ${{ !inputs.dry-run }}
 
   build-main-branch:
-    if: (!cancelled())
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: main
