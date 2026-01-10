@@ -1170,7 +1170,7 @@ void lay_out_polymers(
 
 bool has_no_clashes(const RDKit::ROMol& monomer_mol)
 {
-    auto& conformer = monomer_mol.getConformer();
+    const auto& conformer = monomer_mol.getConformer();
     auto positions = conformer.getPositions();
     for (size_t i = 0; i < positions.size(); i++) {
         for (size_t j = i + 1; j < positions.size(); j++) {
@@ -1257,7 +1257,7 @@ bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
 
 bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 {
-    auto& conformer = monomer_mol.getConformer();
+    const auto& conformer = monomer_mol.getConformer();
     for (size_t i = 0; i < monomer_mol.getNumBonds(); i++) {
         auto bond1 = monomer_mol.getBondWithIdx(i);
         auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
@@ -1285,7 +1285,7 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 
 static bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
 {
-    auto& conformer = monomer_mol.getConformer();
+    const auto& conformer = monomer_mol.getConformer();
     for (auto bond : monomer_mol.bonds()) {
         auto begin_pos = conformer.getAtomPos(bond->getBeginAtomIdx());
         auto end_pos = conformer.getAtomPos(bond->getEndAtomIdx());
