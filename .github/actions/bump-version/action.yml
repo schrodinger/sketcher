@@ -21,5 +21,5 @@ runs:
         jq --indent 4 --arg version "$new_version" '.sketcher = $version' version.json > version.json.tmp
         mv version.json.tmp version.json
         git add version.json
-        git commit -m "Increment to build $new_version"
+        git commit -m "Bump version for $new_version"
         git push origin ${{ inputs.branch }}

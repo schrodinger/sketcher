@@ -7,69 +7,14 @@ on:
         description: '[Optional] Release branch to build'
         required: false
         type: string
-      token:
-        description: '[Optional] Token with push permissions for bump-and-merge'
-        required: false
-        type: string
       dry-run:
-        description: 'Dry run mode - skip version bumps, merges, and npm publishing'
+        description: 'Skip npm publishing'
         required: false
         type: boolean
         default: false
 
 jobs:
-  bump-and-merge:
-    if: inputs.token != ''
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Configure Git
-        run: |
-          git config --local user.name "sdgr-core-suite-rw[bot]"
-          git config --local user.email "195196685+sdgr-core-suite-rw[bot]@users.noreply.github.com"
-          git config --local merge.ours.driver "true"
-          git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
-
-      - name: Bump version on release branch
-        if: inputs.release-branch != '' && !inputs.dry-run
-        uses: ./.github/actions/bump-version
-        with:
-          branch: ${{ inputs.release-branch }}
-
-      - name: Merge release branch into main
-        id: auto-merge
-        if: inputs.release-branch != '' && !inputs.dry-run
-        continue-on-error: true  # Always version bump even if merge fails
-        run: |
-          git checkout main
-          git merge origin/${{ inputs.release-branch }}
-          git push origin main
-
-      - name: Create issue on merge failure
-        if: inputs.release-branch != '' && steps.auto-merge.outcome == 'failure' && !inputs.dry-run
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `Nightly build: ${context.payload.inputs['release-branch']} merge conflict`,
-              body: `The nightly build workflow failed to merge \`${context.payload.inputs['release-branch']}\` into \`main\` due to merge conflicts.\n\nPlease resolve the conflicts manually and merge the release branch into main.\n\nWorkflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
-            });
-
-      - name: Bump version on main branch
-        if: '!inputs.dry-run'
-        uses: ./.github/actions/bump-version
-        with:
-          branch: main
-
-  # Create Nightly Builds
-
   build-release-branch:
-    needs: bump-and-merge
     if: (!cancelled() && inputs.release-branch != '')
     uses: ./.github/workflows/sketcher-builder.yml
     with:
@@ -77,8 +22,6 @@ jobs:
       publish-npm-package: ${{ !inputs.dry-run }}
 
   build-main-branch:
-    needs: bump-and-merge
-    if: (!cancelled())
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: main

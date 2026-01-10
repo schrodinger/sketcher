@@ -237,9 +237,8 @@ set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                ${CMAKE_BINARY_DIR}/sketcher_app)
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
-      -sEXPORT_NAME=schrodinger_sketcher_entry
-      -sMODULARIZE=1
-      -sEXPORTED_RUNTIME_METHODS=[callMain,FS,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sEXPORT_NAME=createSketcherModule
+      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
       -sASYNCIFY
       -lembind
       -fexceptions

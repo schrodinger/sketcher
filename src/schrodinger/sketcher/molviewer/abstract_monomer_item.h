@@ -22,6 +22,11 @@ class Atom;
 
 namespace schrodinger
 {
+namespace rdkit_extensions
+{
+enum class ChainType;
+}
+
 namespace sketcher
 {
 
@@ -148,14 +153,17 @@ QRectF rect_expanded_by_half_pen_width(const QRectF& rect,
                                        const qreal pen_width);
 
 /**
- * Get the appropriate color to use for a monomer of the given residue name
+ * Get the appropriate color to use for a monomer of the given residue name.
+ * If the residue name is not in the color map, this function will check the
+ * monomer database for a natural analog and use its color if available.
  * @param res_name the residue name of the monomer
+ * @param chain_type the chain type of the monomer (PEPTIDE, RNA, DNA, or CHEM)
  * @param color_by_res_name a mapping of residue name to color
  * @param default_color the default color to use if the residue name is not
- * found in the mapping
+ * found in the mapping and no natural analog is available
  */
 SKETCHER_API QColor get_color_for_monomer(
-    const std::string& res_name,
+    const std::string& res_name, rdkit_extensions::ChainType chain_type,
     const std::unordered_map<std::string, QColor>& color_by_res_name,
     const QColor& default_color);
 

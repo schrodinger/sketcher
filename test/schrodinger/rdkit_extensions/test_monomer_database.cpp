@@ -77,17 +77,21 @@ BOOST_AUTO_TEST_CASE(TestNonExistingResidue)
 
 BOOST_AUTO_TEST_CASE(TestGetNaturalAnalog)
 {
-    // SHARED-11627
-    // getNaturalAnalog() does NOT return std::optional, like the rest
-    // of the MonomerDatabase methods.
+    // getNaturalAnalog() now returns std::optional, consistent with other
+    // MonomerDatabase methods. This resolves the X/N ambiguity issue.
     const auto& mdb = MonomerDatabase::instance();
 
-    BOOST_CHECK_EQUAL(mdb.getNaturalAnalog("A", ChainType::PEPTIDE), "A");
+    auto analog = mdb.getNaturalAnalog("A", ChainType::PEPTIDE);
+    BOOST_REQUIRE(analog.has_value());
+    BOOST_CHECK_EQUAL(*analog, "A");
 
-    BOOST_CHECK_EQUAL(mdb.getNaturalAnalog("DUMMY", ChainType::PEPTIDE), "X");
+    // Non-existent monomers return nullopt instead of "X"
+    auto dummy_analog = mdb.getNaturalAnalog("DUMMY", ChainType::PEPTIDE);
+    BOOST_CHECK(!dummy_analog.has_value());
 
     // peptide caps do not have analogs!
-    BOOST_CHECK_EQUAL(mdb.getNaturalAnalog("ACE", ChainType::PEPTIDE), "X");
+    auto ace_analog = mdb.getNaturalAnalog("ACE", ChainType::PEPTIDE);
+    BOOST_CHECK(!ace_analog.has_value());
 }
 
 BOOST_AUTO_TEST_CASE(TestGetMonomerDbFromSql)
@@ -129,18 +133,21 @@ BOOST_AUTO_TEST_CASE(TestGetMonomerDbFromSql)
     monomer_db.loadMonomersFromSql(dummy_sql);
 
     // Default monomers are available from the core_monomers table
-    BOOST_CHECK_EQUAL(monomer_db.getNaturalAnalog("A", ChainType::PEPTIDE),
-                      "A");
+    auto a_analog = monomer_db.getNaturalAnalog("A", ChainType::PEPTIDE);
+    BOOST_REQUIRE(a_analog.has_value());
+    BOOST_CHECK_EQUAL(*a_analog, "A");
 
     // The "C" definition in the custom monomers table overrides/hides the
     // one from the core monomers table
-    BOOST_CHECK_EQUAL(monomer_db.getNaturalAnalog("C", ChainType::PEPTIDE),
-                      "dummy_analog2");
+    auto c_analog = monomer_db.getNaturalAnalog("C", ChainType::PEPTIDE);
+    BOOST_REQUIRE(c_analog.has_value());
+    BOOST_CHECK_EQUAL(*c_analog, "dummy_analog2");
 
     // This is the one we just added
-    BOOST_CHECK_EQUAL(
-        monomer_db.getNaturalAnalog("dummy_symbol", ChainType::PEPTIDE),
-        "dummy_analog1");
+    auto dummy_analog =
+        monomer_db.getNaturalAnalog("dummy_symbol", ChainType::PEPTIDE);
+    BOOST_REQUIRE(dummy_analog.has_value());
+    BOOST_CHECK_EQUAL(*dummy_analog, "dummy_analog1");
 
     BOOST_CHECK_THROW(monomer_db.loadMonomersFromSql("not really sql"),
                       std::runtime_error);
@@ -175,18 +182,21 @@ BOOST_AUTO_TEST_CASE(TestGetMonomerDbFromJson)
     monomer_db.loadMonomersFromJson(dummy_json);
 
     // Default monomers are available from the core_monomers table
-    BOOST_CHECK_EQUAL(monomer_db.getNaturalAnalog("A", ChainType::PEPTIDE),
-                      "A");
+    auto a_analog = monomer_db.getNaturalAnalog("A", ChainType::PEPTIDE);
+    BOOST_REQUIRE(a_analog.has_value());
+    BOOST_CHECK_EQUAL(*a_analog, "A");
 
     // The "C" definition in the custom monomers table overrides/hides the
     // one from the core monomers table
-    BOOST_CHECK_EQUAL(monomer_db.getNaturalAnalog("C", ChainType::PEPTIDE),
-                      "dummy_analog2");
+    auto c_analog = monomer_db.getNaturalAnalog("C", ChainType::PEPTIDE);
+    BOOST_REQUIRE(c_analog.has_value());
+    BOOST_CHECK_EQUAL(*c_analog, "dummy_analog2");
 
     // This is the one we just added
-    BOOST_CHECK_EQUAL(
-        monomer_db.getNaturalAnalog("dummy_symbol", ChainType::PEPTIDE),
-        "dummy_analog1");
+    auto dummy_analog =
+        monomer_db.getNaturalAnalog("dummy_symbol", ChainType::PEPTIDE);
+    BOOST_REQUIRE(dummy_analog.has_value());
+    BOOST_CHECK_EQUAL(*dummy_analog, "dummy_analog1");
 
     BOOST_CHECK_THROW(monomer_db.loadMonomersFromJson("not really json"),
                       std::runtime_error);
