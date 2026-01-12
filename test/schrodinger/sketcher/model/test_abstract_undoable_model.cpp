@@ -180,9 +180,6 @@ BOOST_AUTO_TEST_CASE(test_moveUndoMacro)
  */
 BOOST_AUTO_TEST_CASE(test_exception)
 {
-#ifdef __APPLE__
-    return; // Skip on Mac due to runtime error during exception handling
-#endif
     QUndoStack undo_stack;
     TestUndoableModel model(&undo_stack);
     BOOST_CHECK_THROW(model.addTwice(5), std::runtime_error);
