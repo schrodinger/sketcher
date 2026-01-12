@@ -881,6 +881,12 @@ static void
 set_atom_chain_ids(const RDKit::ROMol& mol,
                    const std::unordered_map<int, std::string>& unit_ids)
 {
+    if (unit_ids.size() != mol.getNumAtoms()) {
+        std::cerr << "set_atom_chain_ids:: Warning: unit_ids size "
+                  << unit_ids.size() << " does not match number of atoms "
+                  << mol.getNumAtoms() << "\n";
+        return;
+    }
     for (auto atom : mol.atoms()) {
         if (auto res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
                 atom->getMonomerInfo())) {
