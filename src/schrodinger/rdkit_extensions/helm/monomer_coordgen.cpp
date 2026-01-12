@@ -854,7 +854,7 @@ assign_chain_unit_ids(const RDKit::ROMol& mol,
                     while (found_atom) {
                         found_atom = false;
                         for (auto& dp : sorted_distances) {
-                            int farthest_atom = dp.first;
+                            unsigned int farthest_atom = dp.first;
                             while (farthest_atom != start_atom_idx) {
                                 if (!unit_ids[farthest_atom].empty()) {
                                     break;
