@@ -34,6 +34,12 @@ class SKETCHER_API SketcherSideBar : public SketcherView
     void updateWidgetsEnabled() override;
     void updateCheckState() override;
 
+    /**
+     * Disconnect signals from each widget's updateWidgetsEnabled()
+     * slot; called when selection-only mode is enabled in SketcherWidget.
+     */
+    void disconnectAllUpdateWidgetsEnabled();
+
   signals:
     void selectAllRequested();
     void clearSelectionRequested();
