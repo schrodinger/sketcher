@@ -1141,43 +1141,258 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
     return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
 }
 
-void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
-                    const RDGeom::Point3D& new_size)
-{
-    // get current size
-    auto atom = monomer_mol.getAtomWithIdx(index);
-    RDGeom::Point3D current_size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
-    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, current_size);
+/**
+ * Internal representation of a resize operation.
+ */
+struct ResizeData {
+    unsigned int index;         // Atom index being resized
+    RDGeom::Point3D ref_pos;    // Reference atom position
+    RDGeom::Point3D delta;      // Size delta (new - old)
+    unsigned int x_cluster = 0; // Vertical stack identifier
+    unsigned int y_cluster = 0; // Horizontal stack identifier
+};
 
-    // calculate difference
-    auto difference = new_size - current_size;
-    if (difference.x == 0. && difference.y == 0.) {
+/**
+ * Assign cluster IDs along a given axis.
+ *
+ * @param resize_data  vector of monomers to cluster
+ * @param get_coord    function to extract coordinate from RDGeom::Point3D
+ * @param cluster_field function to get/set cluster id for a ResizeData
+ * @param eps          clustering epsilon (distance threshold)
+ */
+template <typename GetCoordFn, typename ClusterFieldFn>
+void assign_clusters(std::vector<ResizeData>& resize_data, GetCoordFn get_coord,
+                     ClusterFieldFn cluster_field, double eps)
+{
+    unsigned int next_cluster_id = 1;
+
+    for (size_t i = 0; i < resize_data.size(); ++i) {
+        if (cluster_field(resize_data[i]) != 0)
+            continue; // already assigned
+        cluster_field(resize_data[i]) = next_cluster_id;
+
+        for (size_t j = i + 1; j < resize_data.size(); ++j) {
+            if (std::abs(get_coord(resize_data[i].ref_pos) -
+                         get_coord(resize_data[j].ref_pos)) < eps) {
+                cluster_field(resize_data[j]) = next_cluster_id;
+            }
+        }
+        ++next_cluster_id;
+    }
+}
+
+/**
+ * Read the stored monomer size for an atom.
+ * Falls back to MONOMER_MINIMUM_SIZE when not present.
+ */
+inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
+                                        unsigned int index)
+{
+    RDGeom::Point3D size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
+
+    mol.getAtomWithIdx(index)->getPropIfPresent<RDGeom::Point3D>(
+        MONOMER_ITEM_SIZE, size);
+
+    return size;
+}
+
+/**
+ * Convert user resize requests into internal resize data.
+ * This function performs NO geometry mutation.
+ */
+std::vector<ResizeData>
+collect_resize_data(RDKit::ROMol& mol,
+                    const std::unordered_map<int, RDGeom::Point3D>& resizes)
+{
+    std::vector<ResizeData> result;
+    auto& conformer = mol.getConformer();
+
+    result.reserve(resizes.size());
+
+    for (const auto& r : resizes) {
+        const unsigned int index = r.first;
+        const RDGeom::Point3D& new_size = r.second;
+
+        const RDGeom::Point3D current_size = get_monomer_size(mol, index);
+
+        RDGeom::Point3D delta = new_size - current_size;
+        // Skip no-op resizes
+        if (delta.x == 0. && delta.y == 0.) {
+            continue;
+        }
+
+        result.push_back({index, conformer.getAtomPos(index), delta, 0});
+    }
+
+    // group vertically stacked monomers to avoid compound horizontal shifts
+    assign_clusters(
+        result, [](const RDGeom::Point3D& p) { return p.x; },
+        [](ResizeData& r) -> unsigned int& { return r.x_cluster; },
+        MONOMER_MINIMUM_SIZE * 0.25);
+
+    // group horizontally stacked monomers to avoid compound vertical shifts
+
+    assign_clusters(
+        result, [](const RDGeom::Point3D& p) { return p.y; },
+        [](ResizeData& r) -> unsigned int& { return r.y_cluster; },
+        MONOMER_MINIMUM_SIZE * 0.25);
+
+    return result;
+}
+
+/**
+ * Compute per-atom displacement vectors based on resize data.
+ *
+ * Horizontal and Vertical displacements are computed separately and clustered:
+ *  - applied at most once per cluster
+ *  - magnitude is the MAX delta among monomers in that cluster
+
+ * No atom positions are modified here.
+ */
+std::vector<RDGeom::Point3D>
+compute_displacements(RDKit::ROMol& mol,
+                      const std::vector<ResizeData>& resize_data)
+{
+    auto& conformer = mol.getConformer();
+    const unsigned int num_atoms = conformer.getNumAtoms();
+
+    std::vector<RDGeom::Point3D> displacements(num_atoms,
+                                               RDGeom::Point3D(0, 0, 0));
+
+    /**
+     * Precompute maximum deltas per cluster for both X and Y axes.
+     */
+    std::unordered_map<unsigned int, double> max_dx_per_cluster;
+    std::unordered_map<unsigned int, double> max_dy_per_cluster;
+
+    for (const auto& r : resize_data) {
+        auto& max_dx = max_dx_per_cluster[r.x_cluster];
+        max_dx = std::max(max_dx, r.delta.x);
+
+        auto& max_dy = max_dy_per_cluster[r.y_cluster];
+        max_dy = std::max(max_dy, r.delta.y);
+    }
+
+    /**
+     * Lambda to compute displacement for a single axis.
+     *
+     * @param pos           atom's coordinate on that axis
+     * @param ref           monomer reference coordinate
+     * @param cluster       cluster id
+     * @param max_per_cluster  map of cluster -> max delta
+     * @param used_clusters set of clusters already applied
+     * @return displacement delta for this axis
+     */
+    auto compute_axis_disp =
+        [](double pos, double ref, unsigned int cluster,
+           const std::unordered_map<unsigned int, double>& max_per_cluster,
+           std::unordered_set<unsigned int>& used_clusters) -> double {
+        if (used_clusters.count(cluster) != 0) {
+            return 0.0;
+        }
+
+        double disp = 0.0;
+        const double max_delta = max_per_cluster.at(cluster);
+
+        if (pos > ref + MONOMER_MINIMUM_SIZE) {
+            disp = max_delta / 2.0;
+            used_clusters.insert(cluster);
+        } else if (pos < ref - MONOMER_MINIMUM_SIZE) {
+            disp = -max_delta / 2.0;
+            used_clusters.insert(cluster);
+        }
+
+        return disp;
+    };
+
+    /**
+     * Compute displacements for all atoms
+     */
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        const RDGeom::Point3D atom_pos = conformer.getAtomPos(i);
+
+        std::unordered_set<unsigned int> used_x_clusters;
+        std::unordered_set<unsigned int> used_y_clusters;
+
+        for (const auto& r : resize_data) {
+            if (i == r.index)
+                continue;
+
+            displacements[i].x +=
+                compute_axis_disp(atom_pos.x, r.ref_pos.x, r.x_cluster,
+                                  max_dx_per_cluster, used_x_clusters);
+
+            displacements[i].y +=
+                compute_axis_disp(atom_pos.y, r.ref_pos.y, r.y_cluster,
+                                  max_dy_per_cluster, used_y_clusters);
+        }
+    }
+
+    return displacements;
+}
+
+/**
+ * Apply precomputed displacements to atom positions.
+ * Each atom is moved at most once.
+ */
+void apply_displacements(RDKit::ROMol& mol,
+                         const std::vector<RDGeom::Point3D>& displacements)
+{
+    auto& conformer = mol.getConformer();
+
+    for (unsigned int i = 0; i < displacements.size(); ++i) {
+        if (displacements[i].x == 0. && displacements[i].y == 0.) {
+            continue;
+        }
+
+        auto pos = conformer.getAtomPos(i);
+        pos += displacements[i];
+        conformer.setAtomPos(i, pos);
+    }
+}
+
+/**
+ * Persist new monomer sizes on atoms.
+ */
+void update_monomer_sizes(
+    RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
+{
+    for (const auto& r : monomer_sizes) {
+        mol.getAtomWithIdx(r.first)->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE,
+                                                              r.second);
+    }
+}
+
+/**
+ * Resize multiple monomers (atoms) in a single, batched operation.
+ *
+ * This function:
+ *  - avoids compounding movements when multiple monomers are resized
+ *  - avoids horizontal compounding when resized monomers are vertically stacked
+ *  - applies atom displacements exactly once
+ */
+void resize_monomers(RDKit::ROMol& mol,
+                     std::unordered_map<int, RDGeom::Point3D> monomer_sizes)
+{
+    if (monomer_sizes.empty()) {
         return;
     }
 
-    // move every atom position accordingly
-    auto& conformer = monomer_mol.getConformer();
-    auto reference_monomer_position = conformer.getAtomPos(index);
-    for (unsigned int i = 0u; i < conformer.getNumAtoms(); ++i) {
-        if (i == index) {
-            continue;
-        }
-        auto atom_pos = conformer.getAtomPos(i);
-        if (atom_pos.x > reference_monomer_position.x + MONOMER_MINIMUM_SIZE) {
-            atom_pos.x += difference.x / 2;
-        } else if (atom_pos.x <
-                   reference_monomer_position.x - MONOMER_MINIMUM_SIZE) {
-            atom_pos.x -= difference.x / 2;
-        }
-        if (atom_pos.y > reference_monomer_position.y + MONOMER_MINIMUM_SIZE) {
-            atom_pos.y += difference.y / 2;
-        } else if (atom_pos.y <
-                   reference_monomer_position.y - MONOMER_MINIMUM_SIZE) {
-            atom_pos.y -= difference.y / 2;
-        }
-        conformer.setAtomPos(i, atom_pos);
+    // collect resize intents
+    auto resize_data = collect_resize_data(mol, monomer_sizes);
+    if (resize_data.empty()) {
+        return;
     }
-    atom->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE, new_size);
+
+    // compute atom displacements
+    auto displacements = compute_displacements(mol, resize_data);
+
+    // apply movement once
+    apply_displacements(mol, displacements);
+
+    // persist new sizes
+    update_monomer_sizes(mol, monomer_sizes);
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)

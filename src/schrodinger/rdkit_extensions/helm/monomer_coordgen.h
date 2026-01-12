@@ -32,9 +32,9 @@ compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
  * Resize the monomer at the given index to the new size by moving other
  * monomers accordingly
  */
-void RDKIT_EXTENSIONS_API resize_monomer(RDKit::ROMol& monomer_mol,
-                                         unsigned int index,
-                                         const RDGeom::Point3D& new_size);
+void RDKIT_EXTENSIONS_API
+resize_monomers(RDKit::ROMol& monomer_mol,
+                std::unordered_map<int, RDGeom::Point3D> monomer_sizes);
 
 /**
  * Check whether any bonds in the given monomer mol cross each other or are
