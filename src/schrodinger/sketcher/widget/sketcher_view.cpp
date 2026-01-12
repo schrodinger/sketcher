@@ -117,6 +117,15 @@ void SketcherView::connectToModel()
             &SketcherView::updateWidgetsEnabled);
 }
 
+void SketcherView::disconnectUpdateWidgetsEnabled()
+{
+    auto model = getModel();
+    disconnect(model, &SketcherModel::selectionChanged, this,
+               &SketcherView::updateWidgetsEnabled);
+    disconnect(model, &SketcherModel::interactiveItemsChanged, this,
+               &SketcherView::updateWidgetsEnabled);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
 

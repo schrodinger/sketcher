@@ -354,6 +354,12 @@ void SketcherWidget::activateSelectOnlyMode(const SelectionTool tool)
     m_sketcher_model->setValues(
         {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::SELECT)},
          {ModelKey::SELECTION_TOOL, QVariant::fromValue(tool)}});
+
+    // This avoids unnecessary signals/slots when the palettes are hidden
+    // In 2D Overlay, there is a lag when selecting atoms that we
+    // fix here by disconnecting signals to updateWidgetsEnabled()
+    // slots of each widget in the sketcher.
+    m_ui->side_bar_wdg->disconnectAllUpdateWidgetsEnabled();
 }
 
 void SketcherWidget::setColorScheme(const ColorScheme color_scheme)
