@@ -57,20 +57,21 @@ BOOST_DATA_TEST_CASE(test_create_graphics_items_for_mol_monomeric,
         set_atom_monomeric(atom);
     }
     auto [all_items, atom_items, bond_items, secondary_connection_items,
-            sgroup_items] =
-        create_graphics_items_for_mol(
-            mol.get(), fonts, atom_display_settings, bond_display_settings);
-    BOOST_TEST(all_items.size() == exp_num_atoms + exp_num_connections + exp_num_secondary_connections);
+          sgroup_items] =
+        create_graphics_items_for_mol(mol.get(), fonts, atom_display_settings,
+                                      bond_display_settings);
+    BOOST_TEST(all_items.size() == exp_num_atoms + exp_num_connections +
+                                       exp_num_secondary_connections);
     BOOST_TEST(atom_items.size() == exp_num_atoms);
     BOOST_TEST(bond_items.size() == exp_num_connections);
-    BOOST_TEST(secondary_connection_items.size() == exp_num_secondary_connections);
+    BOOST_TEST(secondary_connection_items.size() ==
+               exp_num_secondary_connections);
     BOOST_TEST(sgroup_items.empty());
 
     std::unordered_set<QGraphicsItem*> all_items_set;
     std::copy(all_items.begin(), all_items.end(),
-                std::inserter(all_items_set, all_items_set.end()));
-    auto [atoms, bonds, secondary_connections, sgroups,
-            non_molecular_objects] =
+              std::inserter(all_items_set, all_items_set.end()));
+    auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         get_model_objects_for_graphics_items(all_items_set);
     BOOST_TEST(atoms.size() == exp_num_atoms);
     BOOST_TEST(bonds.size() == exp_num_connections);
