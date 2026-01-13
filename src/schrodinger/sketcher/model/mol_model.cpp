@@ -2786,10 +2786,10 @@ void MolModel::setCoordinates(
         non_mol_obj->setCoords(cur_coords);
     }
 
-    // update the brackets for the sgroups with the new coordinates; this is
-    // otherwise called when WhatChanged::MOLECULE but needs to be explicitly
-    // done here to update the bracket positions
-    update_s_group_brackets(m_mol);
+    // update_molecule_on_change handles stereochemistry perception, CIP label
+    // assignment, and S-group bracket updates. This ensures stereo labels
+    // update in real-time as atoms are moved (SKETCH-2590).
+    update_molecule_on_change(m_mol);
 
     emit coordinatesChanged();
 }

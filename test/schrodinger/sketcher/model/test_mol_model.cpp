@@ -4171,5 +4171,65 @@ BOOST_AUTO_TEST_CASE(test_secondary_connections)
     BOOST_TEST(contains_two_monomer_linkages(bond));
 }
 
+/**
+ * Test that stereo labels update in real-time when atoms are moved
+ * Regression test for SKETCH-2590
+ */
+BOOST_AUTO_TEST_CASE(test_stereo_labels_update_on_atom_movement)
+{
+    // Create a molecule with a chiral center using a simpler SMILES
+    // N[C@H](C)O creates a chiral center at the carbon
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "N[C@H](C)O");
+    auto* mol = model.getMol();
+
+    // Get the chiral center atom (index 1, the carbon with N, C, and O)
+    auto* chiral_atom = mol->getAtomWithIdx(1);
+
+    // Get initial chirality label (should be "R" or "S" or "abs (R)" or "abs
+    // (S)")
+    std::string initial_label;
+    if (chiral_atom->hasProp(RDKit::common_properties::atomNote)) {
+        chiral_atom->getProp(RDKit::common_properties::atomNote, initial_label);
+    }
+
+    // The atom should have a chirality label after import
+    BOOST_REQUIRE(!initial_label.empty());
+
+    // Get the N atom (index 0) and calculate a translation to move it
+    // to a position that will flip the chirality
+    auto* n_atom = mol->getAtomWithIdx(0);
+    auto& conf = mol->getConformer();
+    RDGeom::Point3D n_pos = conf.getAtomPos(n_atom->getIdx());
+    RDGeom::Point3D chiral_pos = conf.getAtomPos(chiral_atom->getIdx());
+
+    // Move N atom to the opposite side of the chiral center (mirror position)
+    // This should flip the R/S designation
+    RDGeom::Point3D vector_to_move = chiral_pos - n_pos;
+    vector_to_move *= 2.0; // Move to the opposite side
+
+    // Use translateByVector to move the N atom
+    std::unordered_set<const RDKit::Atom*> atoms = {n_atom};
+    std::unordered_set<const NonMolecularObject*> non_mol_objs;
+    model.translateByVector(vector_to_move, atoms, non_mol_objs);
+
+    // Get the updated chirality label
+    chiral_atom = mol->getAtomWithIdx(1); // Refresh pointer
+    std::string updated_label;
+    if (chiral_atom->hasProp(RDKit::common_properties::atomNote)) {
+        chiral_atom->getProp(RDKit::common_properties::atomNote, updated_label);
+    }
+
+    // The chirality label should have been updated
+    // It should either be the opposite chirality (R->S or S->R, or abs (R)->abs
+    // (S)) or potentially undefined (?) if atoms are collinear
+    BOOST_REQUIRE(!updated_label.empty());
+    BOOST_TEST(updated_label != initial_label,
+               "Chirality label should update when atom positions change. "
+               "Initial: "
+                   << initial_label << ", Updated: " << updated_label);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
