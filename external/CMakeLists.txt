@@ -69,6 +69,7 @@ else()
   # particularly important on macOS/Clang but doesn't hurt on other platforms
   # (Windows ignores this setting, Linux benefits from it).
   # Also disable inline hiding and add explicit exception flags.
+  # Force cache rebuild
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no
                           -DCMAKE_CXX_VISIBILITY_PRESET=default
                           -DCMAKE_VISIBILITY_INLINES_HIDDEN=OFF)
