@@ -64,7 +64,18 @@ if(EMSCRIPTEN)
       -DCMAKE_CXX_FLAGS=-fdeclspec\ -pthread\ -fexceptions\ -sDISABLE_EXCEPTION_CATCHING=0
       -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
-  set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
+  # Ensure exception typeinfo has default visibility for proper exception
+  # propagation through statically-linked Qt code (SKETCH-2504). This is
+  # particularly important on macOS/Clang but doesn't hurt on other platforms
+  # (Windows ignores this setting, Linux benefits from it).
+  # Also disable inline hiding and add explicit exception flags.
+  set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no
+                          -DCMAKE_CXX_VISIBILITY_PRESET=default
+                          -DCMAKE_VISIBILITY_INLINES_HIDDEN=OFF)
+  if(APPLE)
+    # On macOS, ensure exceptions can propagate through Qt code
+    list(APPEND EXTRA_QT_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fexceptions)
+  endif()
   if(LINUX)
     list(APPEND EXTRA_QT_CMAKE_ARGS -DFEATURE_xlib=ON -DFEATURE_xcb=ON
          -DFEATURE_xcb_xlib=ON -DFEATURE_xkbcommon=ON)
