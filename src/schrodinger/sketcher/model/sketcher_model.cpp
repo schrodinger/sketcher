@@ -415,6 +415,11 @@ bool SketcherModel::hasNonMolecularObjectSelection() const
     return contains_item<NonMolecularItem>(*this);
 }
 
+bool SketcherModel::selectionContainsOnlyAttachmentPoints() const
+{
+    return emit selectionContainsOnlyAttachmentPointsRequested();
+}
+
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const
 {
     return emit interactiveItemsRequested();
