@@ -31,14 +31,18 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
 {
     throwIfAlreadyAllowingEdits();
     if (m_error_during_command) {
-        return;  // Nested call detected, propagate error to outer doCommand
+        return; // Nested call detected, propagate error to outer doCommand
     }
 
     // RAII guard ensures command cleanup on exceptions
     struct CommandGuard {
         UndoableModelUndoCommand* cmd;
         bool should_delete = true;
-        ~CommandGuard() { if (should_delete && cmd) delete cmd; }
+        ~CommandGuard()
+        {
+            if (should_delete && cmd)
+                delete cmd;
+        }
     };
 
     UndoableModelUndoCommand* command =
@@ -52,13 +56,13 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
         m_error_during_command = false;
         m_error_message.clear();
 
-        m_undo_stack->undo();  // Remove failed command from stack
-        guard.should_delete = false;  // Stack manages command memory
+        m_undo_stack->undo();        // Remove failed command from stack
+        guard.should_delete = false; // Stack manages command memory
 
         throw std::runtime_error(error.toStdString());
     }
 
-    guard.should_delete = false;  // Success - stack owns command
+    guard.should_delete = false; // Success - stack owns command
 }
 
 void AbstractUndoableModel::throwIfAlreadyAllowingEdits()
