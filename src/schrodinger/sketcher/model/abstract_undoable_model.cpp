@@ -30,8 +30,9 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
                                       const QString& description)
 {
     throwIfAlreadyAllowingEdits();
-    // If error flag was set (e.g., by throwIfAlreadyAllowingEdits), return early
-    // to avoid entering Qt code. The error will propagate to the outer doCommand.
+    // If error flag was set (e.g., by throwIfAlreadyAllowingEdits), return
+    // early to avoid entering Qt code. The error will propagate to the outer
+    // doCommand.
     if (m_error_during_command) {
         return;
     }
@@ -61,8 +62,8 @@ void AbstractUndoableModel::doCommand(const std::function<void()> redo,
         m_error_during_command = false;
         m_error_message.clear();
 
-        // Undo the command from the stack. The stack still manages the command's
-        // memory, so we shouldn't delete it.
+        // Undo the command from the stack. The stack still manages the
+        // command's memory, so we shouldn't delete it.
         m_undo_stack->undo();
 
         // Clear any error flag set during undo
