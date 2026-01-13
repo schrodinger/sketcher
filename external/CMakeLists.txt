@@ -68,13 +68,13 @@ else()
   # propagation through statically-linked Qt code (SKETCH-2504). This is
   # particularly important on macOS/Clang but doesn't hurt on other platforms
   # (Windows ignores this setting, Linux benefits from it).
-  # Also disable inline hiding and add explicit exception flags.
-  # Force cache rebuild
+  # Also disable inline hiding and explicitly enable Qt's exception feature.
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no
                           -DCMAKE_CXX_VISIBILITY_PRESET=default
-                          -DCMAKE_VISIBILITY_INLINES_HIDDEN=OFF)
+                          -DCMAKE_VISIBILITY_INLINES_HIDDEN=OFF
+                          -DFEATURE_exceptions=ON)
   if(APPLE)
-    # On macOS, ensure exceptions can propagate through Qt code
+    # On macOS, ensure C++ exceptions are enabled
     list(APPEND EXTRA_QT_CMAKE_ARGS -DCMAKE_CXX_FLAGS=-fexceptions)
   endif()
   if(LINUX)
