@@ -182,7 +182,31 @@ BOOST_AUTO_TEST_CASE(test_exception)
 {
     QUndoStack undo_stack;
     TestUndoableModel model(&undo_stack);
-    BOOST_CHECK_THROW(model.addTwice(5), std::runtime_error);
+
+    // Diagnostic version: explicitly catch to see what happens
+    bool exception_thrown = false;
+    bool correct_exception_type = false;
+    std::string exception_message;
+
+    try {
+        model.addTwice(5);
+    } catch (const std::runtime_error& e) {
+        exception_thrown = true;
+        correct_exception_type = true;
+        exception_message = e.what();
+    } catch (const std::exception& e) {
+        exception_thrown = true;
+        correct_exception_type = false;
+        exception_message = std::string("Wrong exception type: ") + e.what();
+    } catch (...) {
+        exception_thrown = true;
+        correct_exception_type = false;
+        exception_message = "Unknown exception type";
+    }
+
+    BOOST_TEST(exception_thrown, "Expected exception to be thrown");
+    BOOST_TEST(correct_exception_type,
+               "Expected std::runtime_error, got: " + exception_message);
 }
 
 BOOST_AUTO_TEST_CASE(test_merging)
