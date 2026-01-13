@@ -176,6 +176,11 @@ class SKETCHER_API AbstractUndoableModel : public QObject
     // before and after running a command
     bool m_allow_edits = false;
 
+    // Error flag mechanism to avoid throwing exceptions through Qt code.
+    // Set during command execution, checked after push() returns.
+    bool m_error_during_command = false;
+    QString m_error_message;
+
     template <typename T> friend class AbstractUndoableModelUndoCommand;
 };
 

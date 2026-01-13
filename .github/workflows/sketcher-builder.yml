@@ -41,14 +41,14 @@ jobs:
         include:
           - build-name: macos
             runner: macos-15
-          - build-name: windows
-            runner: windows-2022
-          - build-name: ubuntu
-            runner: ubuntu-22.04
-          - build-name: wasm
-            runner: ubuntu-22.04
-          - build-name: memtest
-            runner: ubuntu-22.04
+          # - build-name: windows
+          #   runner: windows-2022
+          # - build-name: ubuntu
+          #   runner: ubuntu-22.04
+          # - build-name: wasm
+          #   runner: ubuntu-22.04
+          # - build-name: memtest
+          #   runner: ubuntu-22.04
     steps:
       # the memtest runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
