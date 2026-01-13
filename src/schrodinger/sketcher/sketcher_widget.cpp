@@ -30,6 +30,7 @@
 #include "schrodinger/sketcher/font_loader.h"
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/menu/attachment_point_context_menu.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
@@ -179,6 +180,7 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     connectSideBarSlots();
 
     // Create and connect the context menus
+    m_attachment_point_context_menu = new AttachmentPointContextMenu(this);
     m_atom_context_menu =
         new AtomContextMenu(m_sketcher_model, m_mol_model, this);
     m_bond_context_menu = new BondContextMenu(this);
@@ -187,6 +189,7 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     m_sgroup_context_menu = new BracketSubgroupContextMenu(this);
     m_background_context_menu =
         new BackgroundContextMenu(m_sketcher_model, this);
+    connectContextMenu(*m_attachment_point_context_menu);
     connectContextMenu(*m_atom_context_menu);
     connectContextMenu(*m_bond_context_menu);
     connectContextMenu(*m_selection_context_menu);
@@ -697,6 +700,14 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::invertSelection);
 }
 
+void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
+{
+    connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
+            [this](auto atoms, auto bonds) {
+                m_mol_model->remove(atoms, bonds, {}, {});
+            });
+}
+
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
@@ -850,11 +861,27 @@ void SketcherWidget::showContextMenu(
         return;
     }
 
+    // SKETCH-2556: Check if all selected items are attachment points
+    bool all_atoms_are_attachment_points =
+        !atoms.empty() &&
+        std::all_of(atoms.begin(), atoms.end(),
+                    [](const auto* atom) { return is_attachment_point(atom); });
+    bool all_bonds_are_attachment_point_bonds =
+        !bonds.empty() &&
+        std::all_of(bonds.begin(), bonds.end(), [](const auto* bond) {
+            return is_attachment_point_bond(bond);
+        });
+
     AbstractContextMenu* menu = nullptr;
     bool bond_selected = bonds.size() || secondary_connections.size();
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
-    } else if (atoms.size() && bond_selected) {
+    } else if (all_atoms_are_attachment_points ||
+               (all_atoms_are_attachment_points &&
+                all_bonds_are_attachment_point_bonds)) {
+        // Show attachment point menu if only attachment points are selected
+        menu = m_attachment_point_context_menu;
+    } else if (atoms.size() && bonds.size()) {
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
         menu = m_atom_context_menu;

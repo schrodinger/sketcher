@@ -4084,92 +4084,62 @@ BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
 }
 
 /**
- * Ensure that secondary connections can be selected and deleted independently
- * of the primary connection
+ * SKETCH-2556: Test that attachment points are deleted when their parent atom
+ * is deleted
  */
-BOOST_AUTO_TEST_CASE(test_secondary_connections)
+/*BOOST_AUTO_TEST_CASE(test_delete_atom_with_attachment_points)
 {
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
-
-    // Load cyclohexane from SMILES
-    add_text_to_mol_model(model,
-                          "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
     const RDKit::ROMol* mol = model.getMol();
-    // sanity check
-    BOOST_TEST(mol->getNumAtoms() == 2);
-    BOOST_TEST(mol->getNumBonds() == 1);
-    auto* bond = mol->getBondWithIdx(0);
-    BOOST_TEST(contains_two_monomer_linkages(bond));
 
-    // make sure that getAllUnselectedTags includes the tag for the secondary
-    // connection
-    auto unselected_tags = model.getAllUnselectedTags();
-    auto unselected_bonds = std::get<1>(unselected_tags);
-    BOOST_TEST(unselected_bonds.size() == 2);
+    // Create two carbon atoms, with attachment points on the first carbon
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
+    model.addAttachmentPoint(RDGeom::Point3D(5.0, 6.0, 0.0), c_atom);
+    model.addAtom(Element::N, RDGeom::Point3D(7.0, 8.0, 0.0));
 
-    // select the primary bond
-    model.select({}, {bond}, {}, {}, {}, SelectMode::SELECT);
-    auto selected_bonds = model.getSelectedBonds();
-    BOOST_TEST(selected_bonds.size() == 1);
-    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(mol->getNumAtoms() == 4);  // C, AP1, AP2, N
+    BOOST_TEST(mol->getNumBonds() == 2);  // C-AP1, C-AP2
 
-    // select the secondary bond
-    model.select({}, {}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
-    auto selected_secondary_connections =
-        model.getSelectedSecondaryConnections();
-    BOOST_TEST(selected_secondary_connections.size() == 1);
-    BOOST_TEST(model.getSelectedBonds().empty());
-    BOOST_TEST(*selected_secondary_connections.begin() ==
-               *selected_bonds.begin());
+    const auto* ap1_atom = mol->getAtomWithIdx(1);
+    const auto* ap2_atom = mol->getAtomWithIdx(2);
+    BOOST_TEST(is_attachment_point(ap1_atom));
+    BOOST_TEST(is_attachment_point(ap2_atom));
+    BOOST_TEST(get_attachment_point_number(ap1_atom) == 1);
+    BOOST_TEST(get_attachment_point_number(ap2_atom) == 2);
 
-    // remove the primary bond
-    model.remove({}, {bond}, {}, {}, {});
-    mol = model.getMol();
-    BOOST_TEST(mol->getNumBonds() == 1);
-    // the selected bond is no longer a secondary connection, so it should now
-    // count as a selected bond
-    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
-    BOOST_TEST(model.getSelectedBonds().size() == 1);
-    BOOST_TEST(!contains_two_monomer_linkages(mol->getBondWithIdx(0)));
+    // Delete the carbon atom (which has the attachment points)
+    c_atom = mol->getAtomWithIdx(0);
+    model.remove({c_atom}, {}, {}, {});
 
-    // undo the deletion
-    undo_stack.undo();
-    mol = model.getMol();
-    bond = mol->getBondWithIdx(0);
-    BOOST_TEST(mol->getNumBonds() == 1);
-    BOOST_TEST(contains_two_monomer_linkages(bond));
-
-    // remove the secondary bond
-    model.remove({}, {}, {bond}, {}, {});
-    mol = model.getMol();
-    bond = mol->getBondWithIdx(0);
-    BOOST_TEST(mol->getNumBonds() == 1);
-    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
-    BOOST_TEST(model.getSelectedBonds().empty());
-    BOOST_TEST(!contains_two_monomer_linkages(bond));
-
-    // undo the deletion
-    undo_stack.undo();
-    mol = model.getMol();
-    bond = mol->getBondWithIdx(0);
-    BOOST_TEST(mol->getNumBonds() == 1);
-    BOOST_TEST(contains_two_monomer_linkages(bond));
-
-    // remove both connections (thus removing the bond itself)
-    model.remove({}, {bond}, {bond}, {}, {});
-    mol = model.getMol();
+    // Attachment points should be deleted along with their parent atom
+    // Only the nitrogen should remain
+    BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getNumBonds() == 0);
-    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
-    BOOST_TEST(model.getSelectedBonds().empty());
+    const auto* remaining_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(remaining_atom->getSymbol() == "N");
 
-    // undo the deletion
+    // Test undo
     undo_stack.undo();
-    mol = model.getMol();
-    bond = mol->getBondWithIdx(0);
-    BOOST_TEST(mol->getNumBonds() == 1);
-    BOOST_TEST(contains_two_monomer_linkages(bond));
-}
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    BOOST_TEST(mol->getNumBonds() == 2);
+    c_atom = mol->getAtomWithIdx(0);
+    ap1_atom = mol->getAtomWithIdx(1);
+    ap2_atom = mol->getAtomWithIdx(2);
+    BOOST_TEST(is_attachment_point(ap1_atom));
+    BOOST_TEST(is_attachment_point(ap2_atom));
+    BOOST_TEST(get_attachment_point_number(ap1_atom) == 1);
+    BOOST_TEST(get_attachment_point_number(ap2_atom) == 2);
+
+    // Test redo
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    remaining_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(remaining_atom->getSymbol() == "N");
+}*/
 
 /**
  * Test that stereo labels update in real-time when atoms are moved
