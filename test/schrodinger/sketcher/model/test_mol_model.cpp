@@ -4201,6 +4201,10 @@ BOOST_AUTO_TEST_CASE(test_stereo_labels_update_on_atom_movement)
                    << initial_label);
 }
 
+/**
+ * Ensure that secondary connections can be selected and deleted independently
+ * of the primary connection
+ */
 BOOST_AUTO_TEST_CASE(test_secondary_connections)
 {
     QUndoStack undo_stack;
