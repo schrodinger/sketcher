@@ -228,3 +228,25 @@ BOOST_AUTO_TEST_CASE(test_trim_image)
     BOOST_TEST(image_size.width() >= 50);
     BOOST_TEST(image_size.height() == 100);
 }
+
+/**
+ * Verify that Qt's default title and description elements are removed from SVG
+ */
+BOOST_AUTO_TEST_CASE(test_SVG_title_and_description)
+{
+    auto rdmol = rdkit_extensions::to_rdkit("c1nccc2n1ccc2");
+    RenderOptions opts;
+    opts.width_height = {400, 400};
+
+    auto bytes = get_image_bytes(*rdmol, ImageFormat::SVG, opts);
+    BOOST_TEST(bytes.size() > 0);
+    auto svg = QString::fromUtf8(bytes);
+
+    // Verify Qt's default title and description are not present
+    BOOST_TEST(!svg.contains("<title>"));
+    BOOST_TEST(!svg.contains("</title>"));
+    BOOST_TEST(!svg.contains("<desc>"));
+    BOOST_TEST(!svg.contains("</desc>"));
+    BOOST_TEST(!svg.contains("Qt SVG Document"));
+    BOOST_TEST(!svg.contains("Generated with Qt"));
+}

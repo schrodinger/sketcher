@@ -48,13 +48,16 @@ QPainterPath AbstractHighlightingItem::buildHighlightingPathForItems(
     const QList<QGraphicsItem*>& items) const
 {
     QPainterPath path;
+    // Set fill rule to ensure overlapping areas don't create "holes"
+    path.setFillRule(Qt::WindingFill);
+
     for (auto item : items) {
         if (auto* molviewer_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
             QPainterPath local_path = getPathForItem(molviewer_item);
-            path |= molviewer_item->mapToScene(local_path);
+            path.addPath(molviewer_item->mapToScene(local_path));
         }
     }
-    return path;
+    return path.simplified();
 }
 
 } // namespace sketcher

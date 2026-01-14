@@ -543,12 +543,6 @@
    fun:LLVMBuildInsertElement
    obj:/usr/lib64/dri/swrast_dri.so
 }
-{
-   nvidia-01
-   Memcheck:ReallocZero
-   fun:realloc
-   obj:/usr/lib64/libnvidia-glcore.so.*
-}
 # GLDispatch library on buildbot only
 {
    gldispatch-01
@@ -1210,4 +1204,20 @@
    obj:*
    fun:_ZL24qt_gl_resolve_extensionsv
    fun:_ZNK17QOpenGLExtensions18hasOpenGLExtensionENS_15OpenGLExtensionE
+}
+{
+   inchi-memcpy-overlap
+   Memcheck:Overlap
+   fun:__memcpy_chk
+   fun:FillOutAtomInvariant2
+   fun:GetBaseCanonRanking
+   fun:Create_INChI
+}
+{
+   qt-xcb-uninitialised-writev
+   Memcheck:Param
+   writev(vector[...])
+   fun:__writev
+   fun:writev
+   obj:*/libxcb.so*
 }

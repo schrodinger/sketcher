@@ -31,25 +31,29 @@ jobs:
 
   build-test:
     needs: pre-commit
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: bash
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        build-output: [app]
         include:
-          - os: ubuntu-latest
-            build-output: wasm
-          - os: ubuntu-latest
-            build-output: memtest
+          - build-name: macos
+            runner: macos-15
+          - build-name: windows
+            runner: windows-2022
+          - build-name: ubuntu
+            runner: ubuntu-22.04
+          - build-name: wasm
+            runner: ubuntu-22.04
+          - build-name: memtest
+            runner: ubuntu-22.04
     steps:
       # the memtest runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
       - name: Free up space on runner
-        if: matrix.build-output == 'memtest'
+        if: matrix.build-name == 'memtest'
         run: |
           echo "Free space before cleanup = $(df -h / | awk 'NR==2 {print $4}')"
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
@@ -60,7 +64,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
-        if: matrix.os == 'macos-latest'
+        if: matrix.build-name == 'macos'
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -70,11 +74,11 @@ jobs:
         run: python3 -m pip install cmake==3.24 ninja==1.13.0 pytest pytest-cpp pytest-xdist
 
       - name: Install valgrind
-        if: matrix.build-output == 'memtest'
+        if: matrix.build-name == 'memtest'
         run: sudo apt-get update && sudo apt-get install valgrind
 
       - name: Determine build type
-        run: echo BUILD_TYPE=${{ matrix.build-output == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
+        run: echo BUILD_TYPE=${{ matrix.build-name == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
       - name: Read external/versions.json
         run: |
@@ -85,13 +89,13 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Fetch emscripten
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-name == 'wasm'
         uses: ./.github/actions/activate-emsdk
         with:
           version: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
 
       - name: Add emscripten to PATH
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-name == 'wasm'
         env:
           VERSION: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
         run: |
@@ -99,17 +103,17 @@ jobs:
             echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Activate MSVC
-        if: matrix.os == 'windows-latest'
+        if: matrix.build-name == 'windows'
         uses: ./.github/actions/activate-msvc
 
       - name: Configure Dependency CMake
         run: |
-            ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
+            ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
                 cmake -B build/external/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Configure host Qt CMake
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-name == 'wasm'
         run: |
             cmake -B build/external/host/ -S external/ -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
@@ -164,7 +168,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
       - name: Install Qt's required packages
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.build-name != 'macos' && matrix.build-name != 'windows'
         run: |
           sudo apt-get update && sudo apt-get install \
             libfontconfig1-dev \
@@ -194,7 +198,7 @@ jobs:
             libxrender-dev
 
       - name: Fetch host Qt
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-name == 'wasm'
         uses: ./.github/actions/build-external
         with:
           library: qt
@@ -219,12 +223,12 @@ jobs:
                               ${{ steps.fetch-sqlite.outputs.path }};\
                               ${{ steps.fetch-qt.outputs.path }}"
         run: |
-          ${{ matrix.build-output == 'wasm' && 'emcmake ' || '' }}\
+          ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
-                ${{ matrix.build-output == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
+                ${{ matrix.build-name == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
 
       - name: Build
         id: sketcher-build
@@ -232,16 +236,16 @@ jobs:
 
       - name: Run tests
         working-directory: build
-        if: matrix.build-output == 'app'
+        if: matrix.build-name != 'wasm' && matrix.build-name != 'memtest'
         env:
           SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
-          ${{ matrix.os == 'ubuntu-latest' && 'xvfb-run -a' || ''}} \
+          ${{ matrix.build-name == 'ubuntu' && 'xvfb-run -a' || ''}} \
           pytest -n auto --ignore=external --junitxml=junit-report.xml
 
       - name: Run wasm tests
-        if: matrix.build-output == 'wasm'
+        if: matrix.build-name == 'wasm'
         run: |
           cd test/wasm
           npm install
@@ -249,7 +253,7 @@ jobs:
 
       - name: Run memtests
         working-directory: build
-        if: matrix.build-output == 'memtest'
+        if: matrix.build-name == 'memtest'
         # Using -j4 instead of -j because cmake 3.24 requires a specific number
         run: |
           xvfb-run -a ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
@@ -263,11 +267,11 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-output == 'app' && matrix.os || matrix.build-output }}
+          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
           path: |
             build/sketcher_app
             !build/sketcher_app/*.manifest
 
       - name: Publish sketcher npm package
-        if: matrix.build-output == 'wasm' && inputs.publish-npm-package
+        if: matrix.build-name == 'wasm' && inputs.publish-npm-package
         uses: ./.github/actions/publish-npm-package
