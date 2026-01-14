@@ -860,24 +860,23 @@ void SketcherWidget::showContextMenu(
         return;
     }
 
-    // SKETCH-2556: Check if all selected items are attachment points
-    bool all_atoms_are_attachment_points =
-        !atoms.empty() &&
-        std::all_of(atoms.begin(), atoms.end(),
-                    [](const auto* atom) { return is_attachment_point(atom); });
-    bool all_bonds_are_attachment_point_bonds =
-        !bonds.empty() &&
-        std::all_of(bonds.begin(), bonds.end(), [](const auto* bond) {
-            return is_attachment_point_bond(bond);
-        });
+    // SKETCH-2556: Check if selection contains only attachment points/bonds
+    bool only_attachment_points =
+        (!atoms.empty() || !bonds.empty()) &&
+        (atoms.empty() || std::all_of(atoms.begin(), atoms.end(),
+                                      [](const auto* atom) {
+                                          return is_attachment_point(atom);
+                                      })) &&
+        (bonds.empty() ||
+         std::all_of(bonds.begin(), bonds.end(), [](const auto* bond) {
+             return is_attachment_point_bond(bond);
+         }));
 
     AbstractContextMenu* menu = nullptr;
     bool bond_selected = bonds.size() || secondary_connections.size();
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
-    } else if ((all_atoms_are_attachment_points &&
-                (bonds.empty() || all_bonds_are_attachment_point_bonds)) ||
-               (atoms.empty() && all_bonds_are_attachment_point_bonds)) {
+    } else if (only_attachment_points) {
         // Show attachment point menu if only attachment points are selected
         menu = m_attachment_point_context_menu;
     } else if (atoms.size() && bonds.size()) {
