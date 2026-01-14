@@ -4114,7 +4114,7 @@ BOOST_AUTO_TEST_CASE(test_delete_atom_with_attachment_points)
     // Delete the carbon atom - attachment points should be deleted too
     // Re-fetch atom pointer before deletion to ensure it's valid
     c_atom = mol->getAtomWithIdx(0);
-    model.remove({c_atom}, {}, {}, {});
+    model.remove({c_atom}, {}, {}, {}, {});
 
     // Only nitrogen should remain
     BOOST_TEST(mol->getNumAtoms() == 1);
