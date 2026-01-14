@@ -56,7 +56,7 @@ const double PI = boost::math::constants::pi<double>();
 
 constexpr double MONOMER_CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
 constexpr double BOND_CLASH_DISTANCE = MONOMER_CLASH_DISTANCE;
-constexpr double MIN_ANGLE_BETWEEN_CONSECUTIVE_BONDS =
+constexpr double MIN_ANGLE_BETWEEN_ADJACENT_BONDS =
     boost::math::constants::pi<double>() / 18; // 10 degrees
 
 // Props used in the fragmented polymer mols to store monomer graph info from
@@ -764,7 +764,7 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
 /**
  * Provides the y-coordinate offset to apply to each monomer in
  * `polymer_to_translate` to place it one `MONOMER_BOND_LENGTH` away below
- * `reference_polymer` with no overlap
+ * `reference_polymer` with no overlap.
  */
 static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
                                        const RDKit::ROMol& reference_polymer)
@@ -796,6 +796,10 @@ static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
  *
  * This function performs translation only (no rotation or reflection).
  * It may be called multiple times after flips to restore correct placement.
+ * @param polymer the polymer to be placed
+ * @param reference the reference polymer used for placement
+ * @param polymer_bonds list of inter-polymer bonds. The start atom of each bond
+ * is in `polymer`, the end atom is in `reference`
  */
 static void place_polymer_below_reference(RDKit::ROMol& polymer,
                                           const RDKit::ROMol& reference,
@@ -834,10 +838,9 @@ static void place_polymer_below_reference(RDKit::ROMol& polymer,
 }
 
 /**
- * Determine whether `polymer` needs to be flipped vertically (Y-axis)
+ * Determine whether `polymer` needs to be flipped vertically (along the Y-axis)
  * to avoid geometric clashes between inter-polymer bonds (polymer <->
- reference)
- * Special handling is applied for consecutive bonds sharing an atom,
+ * reference) Special handling is applied for adjacent bonds sharing an atom,
  * since they represent a chemically valid continuation and require
  * a more local proximity check.
  *
@@ -852,39 +855,43 @@ needs_vertical_flip_due_to_clashes(const RDKit::ROMol& polymer,
 {
     for (auto bond_between_polymers : polymer_bonds) {
         // Geometry of the inter-polymer bond
-        auto start_pos =
+        auto interpolymer_bond_start_pos =
             polymer.getConformer().getAtomPos(bond_between_polymers.first);
-        auto end_pos =
+        auto interpolymer_bond_end_pos =
             reference.getConformer().getAtomPos(bond_between_polymers.second);
 
         // Check against all bonds of the polymer
         for (auto bond_in_polymer : polymer.bonds()) {
-            auto bond_start_pos = polymer.getConformer().getAtomPos(
-                bond_in_polymer->getBeginAtomIdx());
-            auto bond_end_pos = polymer.getConformer().getAtomPos(
+            auto intrapolymer_bond_start_pos =
+                polymer.getConformer().getAtomPos(
+                    bond_in_polymer->getBeginAtomIdx());
+            auto intrapolymer_bond_end_pos = polymer.getConformer().getAtomPos(
                 bond_in_polymer->getEndAtomIdx());
 
-            // Case 1: consecutive bonds sharing the attachment atom
+            // Case 1: bonds sharing an atom – use adjacent bond check
             if (bond_between_polymers.first ==
                     bond_in_polymer->getBeginAtomIdx() ||
                 bond_between_polymers.first ==
                     bond_in_polymer->getEndAtomIdx()) {
 
-                auto pos1 = bond_start_pos;
-                auto pos2 = bond_end_pos;
+                auto pos1 = intrapolymer_bond_start_pos;
+                auto pos2 = intrapolymer_bond_end_pos;
                 if (bond_between_polymers.first ==
                     bond_in_polymer->getBeginAtomIdx()) {
-                    pos1 = bond_end_pos;
-                    pos2 = bond_start_pos;
+                    pos1 = intrapolymer_bond_end_pos;
+                    pos2 = intrapolymer_bond_start_pos;
                 }
 
-                if (consecutive_bonds_are_too_close(pos1, pos2, end_pos)) {
+                if (adjacent_bonds_are_too_close(pos1, pos2,
+                                                 interpolymer_bond_end_pos)) {
                     return true;
                 }
             }
-            // Case 2: non-consecutive bonds – generic proximity check
-            else if (bonds_are_too_close(start_pos, end_pos, bond_start_pos,
-                                         bond_end_pos)) {
+            // Case 2: non-adjacent bonds – generic proximity check
+            else if (bonds_are_too_close(interpolymer_bond_start_pos,
+                                         interpolymer_bond_end_pos,
+                                         intrapolymer_bond_start_pos,
+                                         intrapolymer_bond_end_pos)) {
                 return true;
             }
         }
@@ -893,20 +900,24 @@ needs_vertical_flip_due_to_clashes(const RDKit::ROMol& polymer,
 }
 
 /**
- * Determine whether `polymer` needs to be flipped horizontally (X-axis)
- * to resolve topological crossings between multiple inter-polymer bonds.
+ * Determine whether `polymer` needs to be flipped horizontally (along the
+ * X-axis) to resolve topological crossings between multiple inter-polymer
+ * bonds.
  *
  * This uses an index-based inversion test rather than geometry and assumes:
  *
  *   - Atom indices are assumed to follow a left-to-right (LTR) layout
- *   -Atom are assumed to be listed in growing index order
+ *   - Atom are assumed to be listed in growing index order
  *   - Each inter-polymer bond maps a polymer atom index to a reference
  *     atom index
  *   - If the sequence of reference indices is not monotonic when sorted
  *     by polymer indices, at least one pair of connections must cross
  *
  *
- * Returns true if a horizontal flip is required to remove crossings.
+ * Returns true if a horizontal flip is required to remove crossings. The flip
+ * is only performed if it solves the inversion, otherwise keep the original
+ * orientation even if there are fewer crossings because we assume that LTR is a
+ * more readable layout.
  */
 static bool needs_horizontal_flip_due_to_inversion(BOND_IDX_VEC polymer_bonds)
 {
@@ -917,13 +928,14 @@ static bool needs_horizontal_flip_due_to_inversion(BOND_IDX_VEC polymer_bonds)
     std::sort(polymer_bonds.begin(), polymer_bonds.end(),
               [](const auto& a, const auto& b) { return a.first < b.first; });
 
-    // Check for inversions in the reference atom index sequence
+    // Flip only if the reference indices are strictly decreasing
     for (size_t i = 1; i < polymer_bonds.size(); ++i) {
-        if (polymer_bonds[i - 1].second > polymer_bonds[i].second) {
-            return true; // crossing detected
+        if (polymer_bonds[i].second > polymer_bonds[i - 1].second) {
+            return false; // not fully reversed
         }
     }
-    return false;
+
+    return true;
 }
 
 /**
@@ -970,7 +982,8 @@ static void orient_polymer(RDKit::ROMol& polymer_to_orient,
     place_polymer_below_reference(polymer_to_orient, reference_polymer,
                                   polymer_bonds);
 
-    // if the polymer was rotated during layout, skip flipping steps
+    // if the polymer was rotated during layout, skip flipping steps to avoid
+    // undoing the rotation
     if (polymer_was_rotated) {
         return;
     }
@@ -1172,9 +1185,9 @@ bool segments_intersect(const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
     return !intersection_pts.empty();
 }
 
-double compute_angle_between_consecutive_segments(const RDGeom::Point3D& a,
-                                                  const RDGeom::Point3D& b,
-                                                  const RDGeom::Point3D& c)
+double compute_angle_between_adjacent_segments(const RDGeom::Point3D& a,
+                                               const RDGeom::Point3D& b,
+                                               const RDGeom::Point3D& c)
 {
     // Vector BA = A - B
     const double bax = a.x - b.x;
@@ -1201,12 +1214,12 @@ double compute_distance_between_segments(const RDGeom::Point3D& p1,
     return bg::distance(seg_p, seg_q);
 }
 
-bool consecutive_bonds_are_too_close(const RDGeom::Point3D& point1,
-                                     const RDGeom::Point3D& point2,
-                                     const RDGeom::Point3D& point3)
+bool adjacent_bonds_are_too_close(const RDGeom::Point3D& point1,
+                                  const RDGeom::Point3D& point2,
+                                  const RDGeom::Point3D& point3)
 {
-    return compute_angle_between_consecutive_segments(point1, point2, point3) <
-           MIN_ANGLE_BETWEEN_CONSECUTIVE_BONDS;
+    return compute_angle_between_adjacent_segments(point1, point2, point3) <
+           MIN_ANGLE_BETWEEN_ADJACENT_BONDS;
 }
 
 bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
