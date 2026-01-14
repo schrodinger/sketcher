@@ -391,46 +391,42 @@ bool SketcherModel::hasActiveSelection() const
 
 namespace
 {
+// SKETCH-2556: Check if selection contains items of type T, filtering out
+// attachment points for atom/bond types
 template <typename T> bool contains_item(const SketcherModel& model)
 {
-    auto contains = [](QGraphicsItem* item) {
-        return dynamic_cast<T*>(item) != nullptr;
-    };
     auto selection = model.getSelection();
-    return std::any_of(selection.begin(), selection.end(), contains);
+    for (auto* item : selection) {
+        auto* typed_item = dynamic_cast<T*>(item);
+        if (typed_item) {
+            if constexpr (std::is_same_v<T, AbstractAtomOrMonomerItem>) {
+                // For atoms, only count non-attachment-points
+                if (!is_attachment_point(typed_item->getAtom())) {
+                    return true;
+                }
+            } else if constexpr (std::is_same_v<T, BondItem>) {
+                // For bonds, only count non-attachment-point bonds
+                if (!is_attachment_point_bond(typed_item->getBond())) {
+                    return true;
+                }
+            } else {
+                // For other types (NonMolecularItem, etc.), no filtering
+                return true;
+            }
+        }
+    }
+    return false;
 }
 } // namespace
 
 bool SketcherModel::hasAtomSelection() const
 {
-    auto selection = getSelection();
-    for (auto* item : selection) {
-        auto* atom_item = dynamic_cast<AbstractAtomOrMonomerItem*>(item);
-        if (atom_item) {
-            // Return true if at least one atom is NOT an attachment point
-            if (!is_attachment_point(atom_item->getAtom())) {
-                return true;
-            }
-        }
-    }
-    // Return false if all atoms are attachment points (or no atoms found)
-    return false;
+    return contains_item<AbstractAtomOrMonomerItem>(*this);
 }
 
 bool SketcherModel::hasBondSelection() const
 {
-    auto selection = getSelection();
-    for (auto* item : selection) {
-        auto* bond_item = dynamic_cast<BondItem*>(item);
-        if (bond_item) {
-            // Return true if at least one bond is NOT an attachment point bond
-            if (!is_attachment_point_bond(bond_item->getBond())) {
-                return true;
-            }
-        }
-    }
-    // Return false if all bonds are attachment point bonds (or no bonds found)
-    return false;
+    return contains_item<BondItem>(*this);
 }
 
 bool SketcherModel::hasNonMolecularObjectSelection() const
