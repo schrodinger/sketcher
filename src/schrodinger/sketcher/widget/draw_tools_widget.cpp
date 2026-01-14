@@ -97,15 +97,10 @@ void DrawToolsWidget::updateWidgetsEnabled()
     auto model = getModel();
     auto has_selection = model->hasActiveSelection();
 
-    // SKETCH-2556: If selection contains only attachment points, disable atom
-    // and bond tools
-    bool selection_only_attachment_points =
-        model->selectionContainsOnlyAttachmentPoints();
-
     // Atom tools
+    // SKETCH-2556: hasAtomSelection() returns false for AP-only selections
     auto sel_has_atom = model->hasAtomSelection();
-    bool enable_atom =
-        (!has_selection || sel_has_atom) && !selection_only_attachment_points;
+    bool enable_atom = !has_selection || sel_has_atom;
     std::vector<QWidget*> widgets = {
         ui->increase_charge_btn, ui->decrease_charge_btn, ui->explicit_h_btn};
     for (auto wdg : widgets) {
@@ -113,9 +108,9 @@ void DrawToolsWidget::updateWidgetsEnabled()
     }
 
     // Bond tools
+    // SKETCH-2556: hasBondSelection() returns false for AP-only selections
     bool sel_has_bond = model->hasBondSelection();
-    bool enable_bond =
-        (!has_selection || sel_has_bond) && !selection_only_attachment_points;
+    bool enable_bond = !has_selection || sel_has_bond;
     widgets = {ui->single_bond_btn, ui->bond_order_btn, ui->bond_query_btn,
                ui->stereo_bond1_btn, ui->stereo_bond2_btn};
     for (auto wdg : widgets) {
@@ -126,15 +121,8 @@ void DrawToolsWidget::updateWidgetsEnabled()
     ui->atom_chain_btn->setEnabled(!has_selection);
 
     // Update title label and background color based on selection
-    // SKETCH-2556: Don't highlight frames if only attachment points selected
-    ui->atom_frame->setStyleSheet(
-        (sel_has_atom && !selection_only_attachment_points)
-            ? SELECTION_ACTIVE_STYLE
-            : "");
-    ui->bond_frame->setStyleSheet(
-        (sel_has_bond && !selection_only_attachment_points)
-            ? SELECTION_ACTIVE_STYLE
-            : "");
+    ui->atom_frame->setStyleSheet(sel_has_atom ? SELECTION_ACTIVE_STYLE : "");
+    ui->bond_frame->setStyleSheet(sel_has_bond ? SELECTION_ACTIVE_STYLE : "");
 }
 
 std::unordered_set<QAbstractButton*> DrawToolsWidget::getCheckableButtons()

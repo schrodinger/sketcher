@@ -11,6 +11,7 @@
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 
 using MonomericNucleotide = std::tuple<QString, QString, QString>;
 Q_DECLARE_METATYPE(MonomericNucleotide);
@@ -402,22 +403,39 @@ template <typename T> bool contains_item(const SketcherModel& model)
 
 bool SketcherModel::hasAtomSelection() const
 {
-    return contains_item<AbstractAtomOrMonomerItem>(*this);
+    auto selection = getSelection();
+    for (auto* item : selection) {
+        auto* atom_item = dynamic_cast<AbstractAtomOrMonomerItem*>(item);
+        if (atom_item) {
+            // Return true if at least one atom is NOT an attachment point
+            if (!is_attachment_point(atom_item->getAtom())) {
+                return true;
+            }
+        }
+    }
+    // Return false if all atoms are attachment points (or no atoms found)
+    return false;
 }
 
 bool SketcherModel::hasBondSelection() const
 {
-    return contains_item<BondItem>(*this);
+    auto selection = getSelection();
+    for (auto* item : selection) {
+        auto* bond_item = dynamic_cast<BondItem*>(item);
+        if (bond_item) {
+            // Return true if at least one bond is NOT an attachment point bond
+            if (!is_attachment_point_bond(bond_item->getBond())) {
+                return true;
+            }
+        }
+    }
+    // Return false if all bonds are attachment point bonds (or no bonds found)
+    return false;
 }
 
 bool SketcherModel::hasNonMolecularObjectSelection() const
 {
     return contains_item<NonMolecularItem>(*this);
-}
-
-bool SketcherModel::selectionContainsOnlyAttachmentPoints() const
-{
-    return emit selectionContainsOnlyAttachmentPointsRequested();
 }
 
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const

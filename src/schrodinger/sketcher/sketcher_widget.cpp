@@ -748,59 +748,46 @@ std::unordered_set<const RDKit::Bond*> filterOutAttachmentPointBonds(
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
-    // SKETCH-2556: Filter out attachment points for all atom modification
-    // actions
+    // SKETCH-2556: Attachment points are filtered at the source (in
+    // showContextMenu) before being passed to the menu
     connect(&menu, &ModifyAtomsMenu::requestElementChange, this,
             [this](const RDKitAtoms& atoms, const Element element) {
-                m_mol_model->mutateAtoms(filterOutAttachmentPoints(atoms),
-                                         element);
+                m_mol_model->mutateAtoms(atoms, element);
             });
     connect(&menu, &ModifyAtomsMenu::adjustChargeRequested, this,
             [this](const RDKitAtoms& atoms, int charge) {
-                m_mol_model->adjustChargeOnAtoms(
-                    filterOutAttachmentPoints(atoms), charge);
+                m_mol_model->adjustChargeOnAtoms(atoms, charge);
             });
 
     connect(&menu, &ModifyAtomsMenu::addRemoveExplicitHydrogensRequested, this,
             [this](const RDKitAtoms& atoms) {
-                m_mol_model->toggleExplicitHsOnAtoms(
-                    filterOutAttachmentPoints(atoms));
+                m_mol_model->toggleExplicitHsOnAtoms(atoms);
             });
     connect(&menu, &ModifyAtomsMenu::adjustRadicalElectronsRequested, this,
             [this](const RDKitAtoms& atoms, int electrons) {
-                m_mol_model->adjustRadicalElectronsOnAtoms(
-                    filterOutAttachmentPoints(atoms), electrons);
+                m_mol_model->adjustRadicalElectronsOnAtoms(atoms, electrons);
             });
 
-    // SKETCH-2556: Don't show Edit Atom Properties dialog for attachment points
     connect(&menu, &ModifyAtomsMenu::showEditAtomPropertiesRequested, this,
             [this](const RDKit::Atom* atom, bool show_allowed_list) {
-                // Only show dialog if the atom is not an attachment point
-                if (!is_attachment_point(atom)) {
-                    showEditAtomPropertiesDialog(atom, show_allowed_list);
-                }
+                showEditAtomPropertiesDialog(atom, show_allowed_list);
             });
     connect(&menu, &ModifyAtomsMenu::changeTypeRequested, this,
             [this](const RDKitAtoms& atoms, const AtomQuery query) {
-                m_mol_model->mutateAtoms(filterOutAttachmentPoints(atoms),
-                                         query);
+                m_mol_model->mutateAtoms(atoms, query);
             });
-    connect(&menu, &ModifyAtomsMenu::newRGroupRequested, this,
-            [this](const RDKitAtoms& atoms) {
-                m_mol_model->mutateRGroups(filterOutAttachmentPoints(atoms));
-            });
+    connect(
+        &menu, &ModifyAtomsMenu::newRGroupRequested, this,
+        [this](const RDKitAtoms& atoms) { m_mol_model->mutateRGroups(atoms); });
     connect(&menu, &ModifyAtomsMenu::existingRGroupRequested, this,
             [this](const RDKitAtoms& atoms, const unsigned int rgroup_num) {
-                m_mol_model->mutateRGroups(filterOutAttachmentPoints(atoms),
-                                           rgroup_num);
+                m_mol_model->mutateRGroups(atoms, rgroup_num);
             });
 
     if (auto context_menu = dynamic_cast<const AtomContextMenu*>(&menu)) {
-        // SKETCH-2556: Filter attachment points for bracket subgroup action
         connect(context_menu, &AtomContextMenu::bracketSubgroupDialogRequested,
                 this, [this](const auto& atoms) {
-                    showBracketSubgroupDialogForAtoms(
-                        filterOutAttachmentPoints(atoms));
+                    showBracketSubgroupDialogForAtoms(atoms);
                 });
         connect(context_menu, &AtomContextMenu::deleteRequested, this,
                 [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}); });
@@ -809,26 +796,23 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 
 void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
 {
-    // SKETCH-2556: Filter out attachment point bonds for all bond modification
-    // actions
+    // SKETCH-2556: Attachment point bonds are filtered at the source (in
+    // showContextMenu) before being passed to the menu
     connect(&menu, &ModifyBondsMenu::changeTypeRequested, this,
             [this](auto bond_tool, auto bonds) {
-                m_mol_model->mutateBonds(filterOutAttachmentPointBonds(bonds),
-                                         bond_tool);
+                m_mol_model->mutateBonds(bonds, bond_tool);
             });
     connect(&menu, &ModifyBondsMenu::changeQueryRequested, this,
             [this](auto bond_tool, auto bonds) {
-                m_mol_model->setBondTopology(
-                    filterOutAttachmentPointBonds(bonds), bond_tool);
+                m_mol_model->setBondTopology(bonds, bond_tool);
             });
     connect(&menu, &ModifyBondsMenu::flipRequested, this, [this](auto bonds) {
         // flip substituent only makes sense if there is only one bond
-        auto filtered_bonds = filterOutAttachmentPointBonds(bonds);
-        if (filtered_bonds.size() != 1) {
+        if (bonds.size() != 1) {
             throw std::runtime_error(
                 "Cannot flip substituent for multiple bonds");
         }
-        m_mol_model->flipSubstituent(*(filtered_bonds.begin()));
+        m_mol_model->flipSubstituent(*(bonds.begin()));
     });
     if (auto context_menu = dynamic_cast<const BondContextMenu*>(&menu)) {
         connect(context_menu, &BondContextMenu::deleteRequested, this,
@@ -858,19 +842,15 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
             &MolModel::flipSelectionVertical);
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
-    // SKETCH-2556: Filter attachment points for bracket subgroup and variable
-    // attachment bond actions
     connect(&menu, &SelectionContextMenu::bracketSubgroupDialogRequested, this,
             [this](const auto& atoms) {
-                showBracketSubgroupDialogForAtoms(
-                    filterOutAttachmentPoints(atoms));
+                showBracketSubgroupDialogForAtoms(atoms);
             });
     connect(&menu, &SelectionContextMenu::variableAttachmentBondRequested, this,
             [this](const auto& atoms) {
                 auto undo_raii = m_mol_model->createUndoMacro(
                     "Add variable attachment bond");
-                m_mol_model->addVariableAttachmentBond(
-                    filterOutAttachmentPoints(atoms));
+                m_mol_model->addVariableAttachmentBond(atoms);
                 m_mol_model->clearSelection();
             });
     connect(&menu, &SelectionContextMenu::deleteRequested, this,
@@ -972,7 +952,17 @@ void SketcherWidget::showContextMenu(
         // show the background context menu
         menu = m_background_context_menu;
     }
-    menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
+
+    // SKETCH-2556: Filter out attachment points for chemical modification menus
+    // (but not for the attachment point menu itself)
+    auto filtered_atoms = atoms;
+    auto filtered_bonds = bonds;
+    if (menu != m_attachment_point_context_menu) {
+        filtered_atoms = filterOutAttachmentPoints(atoms);
+        filtered_bonds = filterOutAttachmentPointBonds(bonds);
+    }
+
+    menu->setContextItems(filtered_atoms, filtered_bonds, sgroups,
                           non_molecular_objects);
 
     menu->move(event->screenPos());

@@ -547,12 +547,6 @@ class SKETCHER_API SketcherModel : public QObject
     virtual bool hasNonMolecularObjectSelection() const;
 
     /**
-     * @return Whether the selection contains only attachment points (no other
-     * atoms or molecular objects).
-     */
-    virtual bool selectionContainsOnlyAttachmentPoints() const;
-
-    /**
      * getter and setter for select-only mode.
      * the setter function is only intended to be used by
      * SketcherWidget::activateSelectOnlyMode.
@@ -694,15 +688,6 @@ class SKETCHER_API SketcherModel : public QObject
      * @return context menu information from the associated scene
      */
     std::vector<const RDKit::Atom*> contextMenuAtomsRequested() const;
-
-    /**
-     * Signal used to request whether the current selection contains only
-     * attachment points.
-     *
-     * @return true if selection contains only attachment points, false
-     * otherwise
-     */
-    bool selectionContainsOnlyAttachmentPointsRequested() const;
 
     /**
      * @return the number of reaction arrows in the scene

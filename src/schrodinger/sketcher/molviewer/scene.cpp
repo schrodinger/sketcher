@@ -106,48 +106,6 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
             [this]() { return selectedItems(); });
     connect(m_sketcher_model, &SketcherModel::contextMenuAtomsRequested, this,
             [this]() { return m_context_menu_atoms; });
-    connect(m_sketcher_model,
-            &SketcherModel::selectionContainsOnlyAttachmentPointsRequested,
-            this, [this]() {
-                auto selected_atoms = m_mol_model->getSelectedAtoms();
-                auto selected_bonds = m_mol_model->getSelectedBonds();
-                auto selected_sgroups = m_mol_model->getSelectedSGroups();
-                auto selected_non_molecular =
-                    m_mol_model->getSelectedNonMolecularObjects();
-
-                // Return false if there's nothing selected
-                if (selected_atoms.empty() && selected_bonds.empty()) {
-                    return false;
-                }
-
-                // Return false if there are sgroups or non-molecular objects
-                if (!selected_sgroups.empty() ||
-                    !selected_non_molecular.empty()) {
-                    return false;
-                }
-
-                // Check if all selected atoms are attachment points (or no
-                // atoms)
-                bool all_atoms_are_aps =
-                    selected_atoms.empty() ||
-                    std::all_of(selected_atoms.begin(), selected_atoms.end(),
-                                [](const auto* atom) {
-                                    return is_attachment_point(atom);
-                                });
-
-                // Check if all selected bonds are attachment point bonds (or no
-                // bonds)
-                bool all_bonds_are_ap_bonds =
-                    selected_bonds.empty() ||
-                    std::all_of(selected_bonds.begin(), selected_bonds.end(),
-                                [](const auto* bond) {
-                                    return is_attachment_point_bond(bond);
-                                });
-
-                // Return true only if we have at least one AP atom or bond
-                return all_atoms_are_aps && all_bonds_are_ap_bonds &&
-                       (!selected_atoms.empty() || !selected_bonds.empty());
-            });
 
     updateSceneTool();
 }
