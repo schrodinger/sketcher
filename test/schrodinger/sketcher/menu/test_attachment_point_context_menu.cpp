@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(test_attachment_point_menu_actions)
 
 /**
  * SKETCH-2556: Verify that the menu can be populated with attachment point
- * atoms and bonds without errors.
+ * atoms and bonds without errors, including bond-only selection.
  */
 BOOST_AUTO_TEST_CASE(test_attachment_point_menu_set_context_items)
 {
@@ -49,13 +49,21 @@ BOOST_AUTO_TEST_CASE(test_attachment_point_menu_set_context_items)
     BOOST_TEST(is_attachment_point(ap_atom));
     BOOST_TEST(is_attachment_point_bond(ap_bond));
 
-    // Set context items to the attachment point - should not throw
+    // Test 1: Set context to both atom and bond
     std::unordered_set<const RDKit::Atom*> atoms = {ap_atom};
     std::unordered_set<const RDKit::Bond*> bonds = {ap_bond};
     menu.setContextItems(atoms, bonds, {}, {});
-
-    // Verify the Delete action is still enabled after setting context
     auto actions = menu.actions();
+    BOOST_TEST(actions[0]->isEnabled() == true);
+
+    // Test 2: Set context to only the bond (Scenario 2 from JIRA)
+    menu.setContextItems({}, {ap_bond}, {}, {});
+    actions = menu.actions();
+    BOOST_TEST(actions[0]->isEnabled() == true);
+
+    // Test 3: Set context to only the atom (Scenario 1 from JIRA)
+    menu.setContextItems({ap_atom}, {}, {}, {});
+    actions = menu.actions();
     BOOST_TEST(actions[0]->isEnabled() == true);
 }
 

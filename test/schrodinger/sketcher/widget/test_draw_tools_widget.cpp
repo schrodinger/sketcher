@@ -310,8 +310,22 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     const auto* c_atom = mol_model->getMol()->getAtomWithIdx(0);
     mol_model->addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
     const auto* ap_atom = mol_model->getMol()->getAtomWithIdx(1);
+    const auto* ap_bond = mol_model->getMol()->getBondWithIdx(0);
     BOOST_TEST(is_attachment_point(ap_atom));
+    BOOST_TEST(is_attachment_point_bond(ap_bond));
+
+    // Test selecting only the attachment point atom
     mol_model->select({ap_atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, false);
+    test_enabled(bond_widgets, false);
+
+    // Test selecting only the attachment point bond
+    mol_model->select({}, {ap_bond}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, false);
+    test_enabled(bond_widgets, false);
+
+    // Test selecting both attachment point atom and bond
+    mol_model->select({ap_atom}, {ap_bond}, {}, {}, SelectMode::SELECT_ONLY);
     test_enabled(other_widgets, false);
     test_enabled(bond_widgets, false);
 }
