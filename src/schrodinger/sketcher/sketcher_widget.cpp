@@ -30,8 +30,8 @@
 #include "schrodinger/sketcher/font_loader.h"
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/menu/attachment_point_context_menu.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
+#include "schrodinger/sketcher/menu/attachment_point_context_menu.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
@@ -180,9 +180,9 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     connectSideBarSlots();
 
     // Create and connect the context menus
-    m_attachment_point_context_menu = new AttachmentPointContextMenu(this);
     m_atom_context_menu =
         new AtomContextMenu(m_sketcher_model, m_mol_model, this);
+    m_attachment_point_context_menu = new AttachmentPointContextMenu(this);
     m_bond_context_menu = new BondContextMenu(this);
     m_selection_context_menu =
         new SelectionContextMenu(m_sketcher_model, m_mol_model, this);
@@ -700,14 +700,6 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::invertSelection);
 }
 
-void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
-{
-    connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
-            [this](auto atoms, auto bonds) {
-                m_mol_model->remove(atoms, bonds, {}, {});
-            });
-}
-
 namespace
 {
 /**
@@ -745,50 +737,42 @@ std::unordered_set<const RDKit::Bond*> filterOutAttachmentPointBonds(
 }
 } // anonymous namespace
 
+void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
+{
+    connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
+            [this](auto atoms, auto bonds) {
+                m_mol_model->remove(atoms, bonds, {}, {});
+            });
+}
+
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
-    // SKETCH-2556: Attachment points are filtered at the source (in
-    // showContextMenu) before being passed to the menu
-    connect(&menu, &ModifyAtomsMenu::requestElementChange, this,
-            [this](const RDKitAtoms& atoms, const Element element) {
-                m_mol_model->mutateAtoms(atoms, element);
-            });
-    connect(&menu, &ModifyAtomsMenu::adjustChargeRequested, this,
-            [this](const RDKitAtoms& atoms, int charge) {
-                m_mol_model->adjustChargeOnAtoms(atoms, charge);
-            });
+    connect(
+        &menu, &ModifyAtomsMenu::requestElementChange, m_mol_model,
+        qOverload<const RDKitAtoms&, const Element>(&MolModel::mutateAtoms));
+    connect(&menu, &ModifyAtomsMenu::adjustChargeRequested, m_mol_model,
+            &MolModel::adjustChargeOnAtoms);
 
-    connect(&menu, &ModifyAtomsMenu::addRemoveExplicitHydrogensRequested, this,
-            [this](const RDKitAtoms& atoms) {
-                m_mol_model->toggleExplicitHsOnAtoms(atoms);
-            });
-    connect(&menu, &ModifyAtomsMenu::adjustRadicalElectronsRequested, this,
-            [this](const RDKitAtoms& atoms, int electrons) {
-                m_mol_model->adjustRadicalElectronsOnAtoms(atoms, electrons);
-            });
+    connect(&menu, &ModifyAtomsMenu::addRemoveExplicitHydrogensRequested,
+            m_mol_model, &MolModel::toggleExplicitHsOnAtoms);
+    connect(&menu, &ModifyAtomsMenu::adjustRadicalElectronsRequested,
+            m_mol_model, &MolModel::adjustRadicalElectronsOnAtoms);
 
     connect(&menu, &ModifyAtomsMenu::showEditAtomPropertiesRequested, this,
-            [this](const RDKit::Atom* atom, bool show_allowed_list) {
-                showEditAtomPropertiesDialog(atom, show_allowed_list);
-            });
-    connect(&menu, &ModifyAtomsMenu::changeTypeRequested, this,
-            [this](const RDKitAtoms& atoms, const AtomQuery query) {
-                m_mol_model->mutateAtoms(atoms, query);
-            });
+            &SketcherWidget::showEditAtomPropertiesDialog);
     connect(
-        &menu, &ModifyAtomsMenu::newRGroupRequested, this,
-        [this](const RDKitAtoms& atoms) { m_mol_model->mutateRGroups(atoms); });
-    connect(&menu, &ModifyAtomsMenu::existingRGroupRequested, this,
-            [this](const RDKitAtoms& atoms, const unsigned int rgroup_num) {
-                m_mol_model->mutateRGroups(atoms, rgroup_num);
-            });
+        &menu, &ModifyAtomsMenu::changeTypeRequested, m_mol_model,
+        qOverload<const RDKitAtoms&, const AtomQuery>(&MolModel::mutateAtoms));
+    connect(&menu, &ModifyAtomsMenu::newRGroupRequested, m_mol_model,
+            qOverload<const RDKitAtoms&>(&MolModel::mutateRGroups));
+    connect(&menu, &ModifyAtomsMenu::existingRGroupRequested, m_mol_model,
+            qOverload<const RDKitAtoms&, const unsigned int>(
+                &MolModel::mutateRGroups));
 
     if (auto context_menu = dynamic_cast<const AtomContextMenu*>(&menu)) {
         connect(context_menu, &AtomContextMenu::bracketSubgroupDialogRequested,
-                this, [this](const auto& atoms) {
-                    showBracketSubgroupDialogForAtoms(atoms);
-                });
+                this, &SketcherWidget::showBracketSubgroupDialogForAtoms);
         connect(context_menu, &AtomContextMenu::deleteRequested, this,
                 [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}); });
     }
@@ -796,8 +780,6 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 
 void SketcherWidget::connectContextMenu(const ModifyBondsMenu& menu)
 {
-    // SKETCH-2556: Attachment point bonds are filtered at the source (in
-    // showContextMenu) before being passed to the menu
     connect(&menu, &ModifyBondsMenu::changeTypeRequested, this,
             [this](auto bond_tool, auto bonds) {
                 m_mol_model->mutateBonds(bonds, bond_tool);
@@ -843,9 +825,7 @@ void SketcherWidget::connectContextMenu(const SelectionContextMenu& menu)
     connectContextMenu(*menu.m_modify_atoms_menu);
     connectContextMenu(*menu.m_modify_bonds_menu);
     connect(&menu, &SelectionContextMenu::bracketSubgroupDialogRequested, this,
-            [this](const auto& atoms) {
-                showBracketSubgroupDialogForAtoms(atoms);
-            });
+            &SketcherWidget::showBracketSubgroupDialogForAtoms);
     connect(&menu, &SelectionContextMenu::variableAttachmentBondRequested, this,
             [this](const auto& atoms) {
                 auto undo_raii = m_mol_model->createUndoMacro(
