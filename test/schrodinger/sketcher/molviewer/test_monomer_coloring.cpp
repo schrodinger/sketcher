@@ -9,6 +9,9 @@
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
 
+// Include the LocalMonomerDbFixture from rdkit_extensions tests
+#include "../../rdkit_extensions/test_common.h"
+
 using namespace schrodinger::sketcher;
 using namespace schrodinger::rdkit_extensions;
 

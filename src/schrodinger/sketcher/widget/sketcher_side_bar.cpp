@@ -46,6 +46,15 @@ void SketcherSideBar::setModel(SketcherModel* model)
     ui->monomeric_wdg->setModel(model);
 }
 
+void SketcherSideBar::disconnectAllUpdateWidgetsEnabled()
+{
+    this->disconnectUpdateWidgetsEnabled();
+    ui->draw_tools_wdg->disconnectUpdateWidgetsEnabled();
+    ui->enumeration_tool_wdg->disconnectUpdateWidgetsEnabled();
+    ui->ring_tool_wdg->disconnectUpdateWidgetsEnabled();
+    ui->monomeric_wdg->disconnectUpdateWidgetsEnabled();
+    ui->select_options_wdg->disconnectUpdateWidgetsEnabled();
+}
 void SketcherSideBar::updateWidgetsEnabled()
 {
     auto model = getModel();
