@@ -772,8 +772,14 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
                     filterOutAttachmentPoints(atoms), electrons);
             });
 
+    // SKETCH-2556: Don't show Edit Atom Properties dialog for attachment points
     connect(&menu, &ModifyAtomsMenu::showEditAtomPropertiesRequested, this,
-            &SketcherWidget::showEditAtomPropertiesDialog);
+            [this](const RDKit::Atom* atom, bool show_allowed_list) {
+                // Only show dialog if the atom is not an attachment point
+                if (!is_attachment_point(atom)) {
+                    showEditAtomPropertiesDialog(atom, show_allowed_list);
+                }
+            });
     connect(&menu, &ModifyAtomsMenu::changeTypeRequested, this,
             [this](const RDKitAtoms& atoms, const AtomQuery query) {
                 m_mol_model->mutateAtoms(filterOutAttachmentPoints(atoms),

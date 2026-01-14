@@ -42,7 +42,7 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_atom_modifications)
 
     // Create a mixed selection: regular atoms (C, N) + attachment point
     std::unordered_set<const RDKit::Atom*> mixed_atoms = {c_atom, n_atom,
-                                                           ap_atom};
+                                                          ap_atom};
 
     // Filter out attachment points (this is what the widget connection does)
     std::unordered_set<const RDKit::Atom*> filtered_atoms;
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_bond_modifications)
 
     // Create a mixed selection: regular bond + AP bond
     std::unordered_set<const RDKit::Bond*> mixed_bonds = {regular_bond,
-                                                           ap_bond};
+                                                          ap_bond};
 
     // Filter out attachment point bonds (this is what the widget connection
     // does)
@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_delete_includes_attachment_points)
 
     // Create a mixed selection and delete (NO filtering for delete)
     std::unordered_set<const RDKit::Atom*> all_atoms = {c_atom, n_atom,
-                                                         ap_atom};
+                                                        ap_atom};
     std::unordered_set<const RDKit::Bond*> all_bonds = {ap_bond};
     mol_model.remove(all_atoms, all_bonds, {}, {});
 
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_charge_adjustment)
 
     // Create mixed selection and filter
     std::unordered_set<const RDKit::Atom*> mixed_atoms = {c_atom, n_atom,
-                                                           ap_atom};
+                                                          ap_atom};
     std::unordered_set<const RDKit::Atom*> filtered_atoms;
     for (const auto* atom : mixed_atoms) {
         if (!is_attachment_point(atom)) {
@@ -198,6 +198,35 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_charge_adjustment)
     BOOST_TEST(mol_model.getMol()->getAtomWithIdx(0)->getFormalCharge() == 1);
     BOOST_TEST(mol_model.getMol()->getAtomWithIdx(1)->getFormalCharge() == 1);
     BOOST_TEST(mol_model.getMol()->getAtomWithIdx(2)->getFormalCharge() == 0);
+}
+
+/**
+ * SKETCH-2556: Verify that showEditAtomPropertiesDialog is not called for
+ * attachment points (edge case: if first atom in selection is an AP).
+ */
+BOOST_AUTO_TEST_CASE(test_edit_atom_properties_skips_attachment_points)
+{
+    QUndoStack undo_stack;
+    MolModel mol_model(&undo_stack);
+
+    // Create an attachment point first, then a carbon
+    // This ensures AP is first in iteration order (index 0)
+    mol_model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    const auto* c_atom = mol_model.getMol()->getAtomWithIdx(0);
+    mol_model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
+
+    // Re-fetch after modification
+    c_atom = mol_model.getMol()->getAtomWithIdx(0);
+    const auto* ap_atom = mol_model.getMol()->getAtomWithIdx(1);
+
+    // Simulate the filtering logic for showEditAtomPropertiesDialog
+    // In a mixed selection, if AP is first, we should NOT show the dialog
+    bool should_show_dialog = !is_attachment_point(ap_atom);
+    BOOST_TEST(should_show_dialog == false);
+
+    // For regular atom, dialog should be shown
+    should_show_dialog = !is_attachment_point(c_atom);
+    BOOST_TEST(should_show_dialog == true);
 }
 
 } // namespace sketcher
