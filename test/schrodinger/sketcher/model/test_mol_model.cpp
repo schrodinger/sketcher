@@ -4226,9 +4226,9 @@ BOOST_AUTO_TEST_CASE(test_stereo_labels_update_on_atom_movement)
     // (S)) or potentially undefined (?) if atoms are collinear
     BOOST_REQUIRE(!updated_label.empty());
     BOOST_TEST(updated_label != initial_label,
-               "Chirality label should update when atom positions change. "
-               "Initial: "
-                   << initial_label << ", Updated: " << updated_label);
+               "Chirality label should update when atom positions change, "
+               "but it remained: "
+                   << initial_label);
 }
 
 } // namespace sketcher
