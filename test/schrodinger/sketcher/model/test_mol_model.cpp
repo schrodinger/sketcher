@@ -4141,6 +4141,10 @@ BOOST_AUTO_TEST_CASE(test_delete_atom_with_attachment_points)
     BOOST_TEST(mol->getAtomWithIdx(0)->getSymbol() == "N");
 }
 
+/**
+ * Ensure that secondary connections can be selected and deleted independently
+ * of the primary connection
+ */
 BOOST_AUTO_TEST_CASE(test_secondary_connections)
 {
     QUndoStack undo_stack;
