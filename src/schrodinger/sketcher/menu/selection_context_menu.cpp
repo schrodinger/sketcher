@@ -55,8 +55,8 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
     addMenu(createAddToSelectionMenu());
     addSeparator();
     addAction("Delete", this, [this]() {
-        emit deleteRequested(m_atoms, m_bonds, m_sgroups,
-                             m_non_molecular_objects);
+        emit deleteRequested(m_atoms, m_bonds, m_secondary_connections,
+                             m_sgroups, m_non_molecular_objects);
     });
 
     connect(m_cut_copy_actions, &CutCopyActionManager::cutRequested, this,
@@ -70,15 +70,16 @@ SelectionContextMenu::SelectionContextMenu(SketcherModel* model,
 void SelectionContextMenu::setContextItems(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
-    m_modify_atoms_menu->setContextItems(atoms, bonds, sgroups,
-                                         non_molecular_objects);
-    m_modify_bonds_menu->setContextItems(atoms, bonds, sgroups,
-                                         non_molecular_objects);
-    AbstractContextMenu::setContextItems(atoms, bonds, sgroups,
-                                         non_molecular_objects);
+    m_modify_atoms_menu->setContextItems(atoms, bonds, secondary_connections,
+                                         sgroups, non_molecular_objects);
+    m_modify_bonds_menu->setContextItems(atoms, bonds, secondary_connections,
+                                         sgroups, non_molecular_objects);
+    AbstractContextMenu::setContextItems(atoms, bonds, secondary_connections,
+                                         sgroups, non_molecular_objects);
 }
 
 void SelectionContextMenu::updateActions()

@@ -395,12 +395,15 @@ class SKETCHER_API SketcherWidget : public QWidget
 
     /**
      * Show the relevant context menu given some combination of atoms, bonds,
-     * and sgroups as emitted by the scene.
+     * and sgroups as emitted by the scene.  (Refer to the
+     * applyModelValuePingToTargets docstring for an explanation of
+     * secondary_connections.)
      */
     void showContextMenu(
         QGraphicsSceneMouseEvent* event,
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
             non_molecular_objects);
@@ -501,6 +504,12 @@ class SKETCHER_API SketcherWidget : public QWidget
      * @param value The SketcherModel value for key
      * @param atoms The atoms, if any, to apply the action to
      * @param bonds The bonds, if any, to apply the action to
+     * @param secondary_connections The secondary connections, if any, to apply
+     * the action to. Secondary connections, which are only found in monomeric
+     * models, occur when there is more than one connection between two monomers
+     * (e.g. neighboring cysteines additionally joined by a disulfide bond).
+     * RDKit does not allow more than one bond between two atoms, so a single
+     * bond object must represent both connections.
      * @param sgroups The substance groups, if any, to apply the action to
      * @param non_molecular_objects The non-molecular objects (e.g. a reaction
      * arrow or plus sign), if any, to apply the action to
@@ -509,6 +518,7 @@ class SKETCHER_API SketcherWidget : public QWidget
         const ModelKey key, const QVariant value,
         const std::unordered_set<const RDKit::Atom*> atoms,
         const std::unordered_set<const RDKit::Bond*> bonds,
+        const std::unordered_set<const RDKit::Bond*> secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*> sgroups,
         const std::unordered_set<const NonMolecularObject*>
             non_molecular_objects);

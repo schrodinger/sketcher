@@ -77,7 +77,7 @@ $$$$
     std::unordered_set<const RDKit::Atom*> atoms = {c_atom, a_atom, r_atom};
 
     // Without anything selected, the actions should all be disabled
-    menu.setContextItems({}, {}, {}, {});
+    menu.setContextItems({}, {}, {}, {}, {});
     int disabled_count = get_disabled_action_count(menu);
     BOOST_TEST(disabled_count == 6);
 
@@ -96,13 +96,13 @@ $$$$
             exp_disabled_count = 1;
         }
 
-        menu.setContextItems({atom}, {}, {}, {});
+        menu.setContextItems({atom}, {}, {}, {}, {});
         disabled_count = get_disabled_action_count(menu);
         BOOST_TEST(disabled_count == exp_disabled_count);
     }
 
     // Test after altering the state of the element atom
-    menu.setContextItems({c_atom}, {}, {}, {});
+    menu.setContextItems({c_atom}, {}, {}, {}, {});
     for (unsigned int unpaired_e_count = MIN_UNPAIRED_E;
          unpaired_e_count <= MAX_UNPAIRED_E; ++unpaired_e_count) {
         c_atom->setNumRadicalElectrons(unpaired_e_count);
@@ -119,11 +119,11 @@ $$$$
                 1 + unpaired_at_extreme + charge_at_extreme;
 
             // Assign all objects in the scene to the context menu
-            menu.setContextItems(atoms, {}, {}, {});
+            menu.setContextItems(atoms, {}, {}, {}, {});
             disabled_count = get_disabled_action_count(menu);
             BOOST_TEST(disabled_count == exp_disabled_count);
 
-            menu.setContextItems({c_atom}, {}, {}, {});
+            menu.setContextItems({c_atom}, {}, {}, {}, {});
             --exp_disabled_count;
             disabled_count = get_disabled_action_count(menu);
             BOOST_TEST(disabled_count == exp_disabled_count);

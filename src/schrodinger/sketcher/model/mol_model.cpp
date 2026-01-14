@@ -37,6 +37,7 @@
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
+#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
@@ -52,6 +53,17 @@ namespace sketcher
  * The name of the RDKit property used to store atom tags and bond tags
  */
 const std::string TAG_PROPERTY = "SKETCHER_TAG";
+
+/**
+ * The name of the RDKit property used to store bond tags for the secondary
+ * connections of bonds. Secondary connections are only found in monomeric
+ * models, and occur when there is more than one connection between two monomers
+ * (e.g. neighboring cysteines additionally joined by a disulfide bond). RDKit
+ * does not allow more than one bond between two atoms, so a single bond object
+ * must represent both connections.
+ */
+const std::string SECONDARY_CONNECTION_TAG_PROPERTY =
+    "SKETCHER_TAG_SECONDARY_CONNECTION";
 
 namespace
 {
@@ -141,6 +153,7 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
     }
     for (auto* bond : mol.bonds()) {
         bond->clearProp(TAG_PROPERTY);
+        bond->clearProp(SECONDARY_CONNECTION_TAG_PROPERTY);
         bond->clearProp(USER_COLOR);
         bond->clearProp(RDKit::common_properties::bondNote);
     }
@@ -227,7 +240,7 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMolForExport()
         atoms_to_select.insert(bond->getBeginAtom());
         atoms_to_select.insert(bond->getEndAtom());
     }
-    select(atoms_to_select, {}, {}, {}, SelectMode::SELECT);
+    select(atoms_to_select, {}, {}, {}, {}, SelectMode::SELECT);
 
     // Copy the entire molecule, then remove all atoms and bonds which are not
     // selected, as to preserve any underlying features in the selection; note
@@ -367,9 +380,23 @@ std::unordered_set<const RDKit::Atom*> MolModel::getSelectedAtoms() const
 
 std::unordered_set<const RDKit::Bond*> MolModel::getSelectedBonds() const
 {
+    return getSelectedBonds(false);
+}
+
+std::unordered_set<const RDKit::Bond*>
+MolModel::getSelectedSecondaryConnections() const
+{
+    return getSelectedBonds(true);
+}
+
+std::unordered_set<const RDKit::Bond*>
+MolModel::getSelectedBonds(bool secondary) const
+{
     std::unordered_set<const RDKit::Bond*> sel_bonds;
     for (auto bond_tag : m_selected_bond_tags) {
-        sel_bonds.insert(getBondFromTag(bond_tag));
+        if (secondary == isSecondaryConnectionTag(bond_tag)) {
+            sel_bonds.insert(getBondFromTag(bond_tag));
+        }
     }
     return sel_bonds;
 }
@@ -835,11 +862,13 @@ void MolModel::addNonMolecularObject(const NonMolecularType& type,
 void MolModel::remove(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
 {
     WhatChangedType to_be_changed = WhatChanged::NOTHING;
-    if (!(atoms.empty() && bonds.empty() && s_groups.empty())) {
+    if (!(atoms.empty() && bonds.empty() && secondary_connections.empty() &&
+          s_groups.empty())) {
         to_be_changed |= WhatChanged::MOLECULE;
     }
     if (!non_molecular_objects.empty()) {
@@ -862,6 +891,13 @@ void MolModel::remove(
     std::vector<std::tuple<BondTag, AtomTag, AtomTag>> bond_tags;
     for (auto cur_bond : expanded_bonds) {
         auto bond_tag = getTagForBond(cur_bond);
+        auto start_atom_tag = getTagForAtom(cur_bond->getBeginAtom());
+        auto end_atom_tag = getTagForAtom(cur_bond->getEndAtom());
+        bond_tags.push_back({bond_tag, start_atom_tag, end_atom_tag});
+    }
+
+    for (auto cur_bond : secondary_connections) {
+        auto bond_tag = getSecondaryConnectionTagForBond(cur_bond);
         auto start_atom_tag = getTagForAtom(cur_bond->getBeginAtom());
         auto end_atom_tag = getTagForAtom(cur_bond->getEndAtom());
         bond_tags.push_back({bond_tag, start_atom_tag, end_atom_tag});
@@ -1635,6 +1671,7 @@ void MolModel::mergeAtomsCommandFunc(
 void MolModel::select(
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
+    const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& s_groups,
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
     const SelectMode select_mode)
@@ -1648,6 +1685,9 @@ void MolModel::select(
     std::unordered_set<BondTag> bond_tags;
     for (auto* cur_bond : expanded_bonds) {
         bond_tags.insert(getTagForBond(cur_bond));
+    }
+    for (auto* cur_bond : secondary_connections) {
+        bond_tags.insert(getSecondaryConnectionTagForBond(cur_bond));
     }
     std::unordered_set<SGroupTag> s_group_tags;
     for (auto* cur_s_group : s_groups) {
@@ -1841,7 +1881,8 @@ void MolModel::invertSelection()
 
 void MolModel::removeSelected()
 {
-    remove(getSelectedAtoms(), getSelectedBonds(), getSelectedSGroups(),
+    remove(getSelectedAtoms(), getSelectedBonds(),
+           getSelectedSecondaryConnections(), getSelectedSGroups(),
            getSelectedNonMolecularObjects());
 }
 
@@ -2134,7 +2175,7 @@ void MolModel::setTagForAtom(RDKit::Atom* const atom, const AtomTag atom_tag)
 }
 
 AtomTag MolModel::getTagForAtom(const RDKit::Atom* const atom,
-                                const bool allow_null)
+                                const bool allow_null) const
 {
     if (atom == nullptr) {
         if (allow_null) {
@@ -2152,9 +2193,30 @@ void MolModel::setTagForBond(RDKit::Bond* const bond, const BondTag bond_tag)
     bond->setProp<int>(TAG_PROPERTY, bond_tag);
 }
 
-BondTag MolModel::getTagForBond(const RDKit::Bond* const bond)
+BondTag MolModel::getTagForBond(const RDKit::Bond* const bond) const
 {
     return BondTag(bond->getProp<int>(TAG_PROPERTY));
+}
+
+void MolModel::setSecondaryConnectionTagForBond(RDKit::Bond* const bond,
+                                                const BondTag bond_tag)
+{
+    m_mol.setBondBookmark(bond, bond_tag);
+    bond->setProp<int>(SECONDARY_CONNECTION_TAG_PROPERTY, bond_tag);
+}
+
+BondTag
+MolModel::getSecondaryConnectionTagForBond(const RDKit::Bond* const bond) const
+{
+    int tag = -1;
+    bond->getPropIfPresent(SECONDARY_CONNECTION_TAG_PROPERTY, tag);
+    return BondTag(tag);
+}
+
+bool MolModel::isSecondaryConnectionTag(const BondTag bond_tag) const
+{
+    const auto* bond = getBondFromTag(bond_tag);
+    return bond_tag == getSecondaryConnectionTagForBond(bond);
 }
 
 const RDKit::Atom* MolModel::getAtomFromTag(AtomTag atom_tag) const
@@ -2367,6 +2429,8 @@ void MolModel::addBondCommandFunc(const AtomTag start_atom_tag,
                                   const AtomTag end_atom_tag,
                                   const BondFunc create_bond)
 {
+    // TODO: if there is already a bond here, add an additional monomeric
+    // connection to the bond
     Q_ASSERT(m_allow_edits);
     RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
     RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
@@ -2387,10 +2451,32 @@ bool MolModel::removeBondCommandFunc(const BondTag bond_tag,
                                      const AtomTag end_atom_tag)
 {
     Q_ASSERT(m_allow_edits);
-    RDKit::Atom* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
-    RDKit::Atom* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
     bool selection_changed = m_selected_bond_tags.erase(bond_tag);
-    m_mol.removeBond(start_atom->getIdx(), end_atom->getIdx());
+    auto* bond = m_mol.getUniqueBondWithBookmark(bond_tag);
+    if (contains_two_monomer_linkages(bond)) {
+        if (isSecondaryConnectionTag(bond_tag)) {
+            // we're removing the secondary connection
+            bond->clearProp(CUSTOM_BOND);
+        } else {
+            // We're removing the primary connection and "promoting" the
+            // secondary connection to the primary connection. Note that this is
+            // still a custom connection, so we don't want to clear the
+            // CUSTOM_BOND property; instead we change it to match the LINKAGE
+            // property.
+            auto linkage = bond->getProp<std::string>(CUSTOM_BOND);
+            bond->setProp(LINKAGE, linkage);
+            // replace the bond tag with the secondary tag
+            auto secondary_tag =
+                bond->getProp<int>(SECONDARY_CONNECTION_TAG_PROPERTY);
+            bond->setProp<int>(TAG_PROPERTY, secondary_tag);
+        }
+        bond->clearProp(SECONDARY_CONNECTION_TAG_PROPERTY);
+        m_mol.clearBondBookmark(static_cast<int>(bond_tag));
+    } else {
+        auto* start_atom = m_mol.getUniqueAtomWithBookmark(start_atom_tag);
+        auto* end_atom = m_mol.getUniqueAtomWithBookmark(end_atom_tag);
+        m_mol.removeBond(start_atom->getIdx(), end_atom->getIdx());
+    }
     return selection_changed;
 }
 
@@ -2436,6 +2522,7 @@ void MolModel::removeCommandFunc(
     // then remove the bonds so that they don't get implicitly deleted when we
     // remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
+        std::cout << "Removing bond with tag " << static_cast<int>(bond_tag);
         removeBondCommandFunc(bond_tag, start_atom_tag, end_atom_tag);
     }
     for (auto cur_atom_tag : atom_tags) {
@@ -2563,6 +2650,9 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
          ++bond_index) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
         setTagForBond(bond, m_next_bond_tag++);
+        if (contains_two_monomer_linkages(bond)) {
+            setSecondaryConnectionTagForBond(bond, m_next_bond_tag++);
+        }
     }
     if (attachment_point_added) {
         renumber_attachment_points(&m_mol);
