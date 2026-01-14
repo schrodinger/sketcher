@@ -325,7 +325,8 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     test_enabled(bond_widgets, false);
 
     // Test selecting both attachment point atom and bond
-    mol_model->select({ap_atom}, {ap_bond}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({ap_atom}, {ap_bond}, {}, {}, {},
+                      SelectMode::SELECT_ONLY);
     test_enabled(other_widgets, false);
     test_enabled(bond_widgets, false);
 }

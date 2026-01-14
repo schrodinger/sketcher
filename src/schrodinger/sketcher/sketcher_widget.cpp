@@ -736,8 +736,9 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
     if (auto context_menu = dynamic_cast<const AtomContextMenu*>(&menu)) {
         connect(context_menu, &AtomContextMenu::bracketSubgroupDialogRequested,
                 this, &SketcherWidget::showBracketSubgroupDialogForAtoms);
-        connect(context_menu, &AtomContextMenu::deleteRequested, this,
-                [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
+        connect(
+            context_menu, &AtomContextMenu::deleteRequested, this,
+            [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
     }
 }
 
@@ -867,15 +868,14 @@ void SketcherWidget::showContextMenu(
                                       [](const auto* atom) {
                                           return is_attachment_point(atom);
                                       })) &&
-        (bonds.empty() ||
-         std::all_of(bonds.begin(), bonds.end(), [](const auto* bond) {
-             return is_attachment_point_bond(bond);
-         })) &&
+        (bonds.empty() || std::all_of(bonds.begin(), bonds.end(),
+                                      [](const auto* bond) {
+                                          return is_attachment_point_bond(bond);
+                                      })) &&
         (secondary_connections.empty() ||
-         std::all_of(secondary_connections.begin(), secondary_connections.end(),
-                     [](const auto* bond) {
-                         return is_attachment_point_bond(bond);
-                     }));
+         std::all_of(
+             secondary_connections.begin(), secondary_connections.end(),
+             [](const auto* bond) { return is_attachment_point_bond(bond); }));
 
     AbstractContextMenu* menu = nullptr;
     bool bond_selected = bonds.size() || secondary_connections.size();
