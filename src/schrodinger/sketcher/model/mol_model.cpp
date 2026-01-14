@@ -2501,26 +2501,6 @@ bool MolModel::removeNonMolecularObjectCommandFunc(
     return selected;
 }
 
-std::vector<AtomTag>
-MolModel::getAtomTagsWithAttachmentPoints(const std::vector<AtomTag>& atom_tags)
-{
-    std::vector<AtomTag> all_atom_tags = atom_tags;
-    for (auto atom_tag : atom_tags) {
-        const auto* atom = getAtomFromTag(atom_tag);
-        for (const auto* bond : m_mol.atomBonds(atom)) {
-            const auto* other_atom = bond->getOtherAtom(atom);
-            if (is_attachment_point(other_atom)) {
-                auto other_tag = getTagForAtom(other_atom);
-                if (std::find(all_atom_tags.begin(), all_atom_tags.end(),
-                              other_tag) == all_atom_tags.end()) {
-                    all_atom_tags.push_back(other_tag);
-                }
-            }
-        }
-    }
-    return all_atom_tags;
-}
-
 void MolModel::removeCommandFunc(
     const std::vector<AtomTag>& atom_tags,
     const std::vector<std::tuple<BondTag, AtomTag, AtomTag>>&
@@ -2531,8 +2511,21 @@ void MolModel::removeCommandFunc(
     Q_ASSERT(m_allow_edits);
 
     // SKETCH-2556: Include attachment points bound to deleted atoms
-    std::vector<AtomTag> all_atom_tags_to_delete =
-        getAtomTagsWithAttachmentPoints(atom_tags);
+    std::vector<AtomTag> all_atom_tags_to_delete = atom_tags;
+    for (auto atom_tag : atom_tags) {
+        const auto* atom = getAtomFromTag(atom_tag);
+        for (const auto* bond : m_mol.atomBonds(atom)) {
+            const auto* other_atom = bond->getOtherAtom(atom);
+            if (is_attachment_point(other_atom)) {
+                auto other_tag = getTagForAtom(other_atom);
+                if (std::find(all_atom_tags_to_delete.begin(),
+                              all_atom_tags_to_delete.end(),
+                              other_tag) == all_atom_tags_to_delete.end()) {
+                    all_atom_tags_to_delete.push_back(other_tag);
+                }
+            }
+        }
+    }
 
     // we have to determine whether we're deleting an attachment point before we
     // delete any of the bonds, since is_attachment_point() will return false

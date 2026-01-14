@@ -1377,13 +1377,6 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                         const std::vector<RDGeom::Point3D>& non_mol_coords);
 
     /**
-     * SKETCH-2556: Find all attachment points bound to the given atoms and
-     * return an expanded list including them for cascade deletion.
-     */
-    std::vector<AtomTag>
-    getAtomTagsWithAttachmentPoints(const std::vector<AtomTag>& atom_tags);
-
-    /**
      * Remove the specified atoms and bonds from the molecule.  This method
      * must only be called as part of an undo command.
      * @param atom_tags The atom tags to delete
