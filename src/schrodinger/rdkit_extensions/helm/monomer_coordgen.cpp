@@ -1453,6 +1453,44 @@ compute_linear_displacements(RDKit::ROMol& mol,
 }
 
 /**
+ * Find all monomers connected to start_idx that are not part of the given
+ * ring.
+ */
+static std::set<int>
+find_all_connected_monomers_outside_ring(const RDKit::ROMol& mol, int start_idx,
+                                         const std::vector<int>& ring)
+{
+    std::set<int> result;
+    std::set<int> visited;
+    std::queue<int> to_visit;
+
+    to_visit.push(start_idx);
+    for (auto monomer_idx : ring) {
+        visited.insert(monomer_idx);
+    }
+    visited.insert(start_idx);
+
+    std::set<int> ring_set(ring.begin(), ring.end());
+
+    while (!to_visit.empty()) {
+        int current_idx = to_visit.front();
+        to_visit.pop();
+
+        for (auto neighbor :
+             mol.atomNeighbors(mol.getAtomWithIdx(current_idx))) {
+            int neighbor_idx = neighbor->getIdx();
+            if (visited.contains(neighbor_idx)) {
+                continue;
+            }
+            result.insert(neighbor_idx);
+            visited.insert(neighbor_idx);
+            to_visit.push(neighbor_idx);
+        }
+    }
+    return result;
+}
+
+/**
  * Compute per-atom displacement vectors based on ring expansion data.
  *
  * Rings are expanded radially outwards from their centroid, so that the regular
@@ -1493,12 +1531,21 @@ std::vector<RDGeom::Point3D> compute_ring_expansion_displacements(
         centroid /= static_cast<double>(ring.size());
 
         // --- scale ring ---
-        for (auto atom_idx : ring) {
-            const RDGeom::Point3D pos = conformer.getAtomPos(atom_idx);
+        for (auto monomer_idx : ring) {
+            const RDGeom::Point3D pos = conformer.getAtomPos(monomer_idx);
             const RDGeom::Point3D new_pos =
                 centroid + ((pos - centroid) * scale);
+            auto monomer_displacement = new_pos - pos;
+            // the displacement also applies to all monomers outside of the ring
+            // that are connected to this monomer
+            auto all_connected_monomers_outside_ring =
+                find_all_connected_monomers_outside_ring(mol, monomer_idx,
+                                                         ring);
 
-            displacements[atom_idx] += (new_pos - pos);
+            displacements[monomer_idx] += monomer_displacement;
+            for (auto bound_monomer_idx : all_connected_monomers_outside_ring) {
+                displacements[bound_monomer_idx] += monomer_displacement;
+            }
         }
     }
 
@@ -1538,8 +1585,8 @@ void update_monomer_sizes(
 }
 
 // helper function to determine if a ring is layed out as a regular polygon.
-// This is done by checking the consistency of the distances from the centroid
-// and the uniformity of the angles between consecutive atoms.
+// This is done by checking the consistency of the distances from the
+// centroid and the uniformity of the angles between consecutive atoms.
 static bool is_geometrically_regular_ring_2d(const RDKit::ROMol& mol,
                                              const std::vector<int>& ring_atoms,
                                              double radius_tol = 0.1,
