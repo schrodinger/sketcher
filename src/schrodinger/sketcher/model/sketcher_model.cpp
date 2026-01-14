@@ -401,12 +401,14 @@ template <typename T> bool contains_item(const SketcherModel& model)
         if (typed_item) {
             if constexpr (std::is_same_v<T, AbstractAtomOrMonomerItem>) {
                 // For atoms, only count non-attachment-points
-                if (!is_attachment_point(typed_item->getAtom())) {
+                const auto* atom = typed_item->getAtom();
+                if (atom && !is_attachment_point(atom)) {
                     return true;
                 }
             } else if constexpr (std::is_same_v<T, BondItem>) {
                 // For bonds, only count non-attachment-point bonds
-                if (!is_attachment_point_bond(typed_item->getBond())) {
+                const auto* bond = typed_item->getBond();
+                if (bond && !is_attachment_point_bond(bond)) {
                     return true;
                 }
             } else {
