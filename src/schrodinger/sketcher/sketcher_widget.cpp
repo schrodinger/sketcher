@@ -904,6 +904,7 @@ void SketcherWidget::showContextMenu(
     // (but not for the attachment point menu itself)
     auto filtered_atoms = atoms;
     auto filtered_bonds = bonds;
+    auto filtered_secondary_connections = secondary_connections;
     if (menu != m_attachment_point_context_menu) {
         filtered_atoms.clear();
         for (const auto* atom : atoms) {
@@ -917,9 +918,16 @@ void SketcherWidget::showContextMenu(
                 filtered_bonds.insert(bond);
             }
         }
+        filtered_secondary_connections.clear();
+        for (const auto* bond : secondary_connections) {
+            if (!is_attachment_point_bond(bond)) {
+                filtered_secondary_connections.insert(bond);
+            }
+        }
     }
 
-    menu->setContextItems(filtered_atoms, filtered_bonds, {}, sgroups,
+    menu->setContextItems(filtered_atoms, filtered_bonds,
+                          filtered_secondary_connections, sgroups,
                           non_molecular_objects);
 
     menu->move(event->screenPos());
