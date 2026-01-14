@@ -700,43 +700,6 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::invertSelection);
 }
 
-namespace
-{
-/**
- * SKETCH-2556: Filter out attachment points from a set of atoms.
- * In mixed selections, actions should only affect regular atoms, not attachment
- * points.
- */
-std::unordered_set<const RDKit::Atom*>
-filterOutAttachmentPoints(const std::unordered_set<const RDKit::Atom*>& atoms)
-{
-    std::unordered_set<const RDKit::Atom*> filtered;
-    for (const auto* atom : atoms) {
-        if (!is_attachment_point(atom)) {
-            filtered.insert(atom);
-        }
-    }
-    return filtered;
-}
-
-/**
- * SKETCH-2556: Filter out attachment point bonds from a set of bonds.
- * In mixed selections, actions should only affect regular bonds, not attachment
- * point bonds.
- */
-std::unordered_set<const RDKit::Bond*> filterOutAttachmentPointBonds(
-    const std::unordered_set<const RDKit::Bond*>& bonds)
-{
-    std::unordered_set<const RDKit::Bond*> filtered;
-    for (const auto* bond : bonds) {
-        if (!is_attachment_point_bond(bond)) {
-            filtered.insert(bond);
-        }
-    }
-    return filtered;
-}
-} // anonymous namespace
-
 void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
 {
     connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
@@ -938,8 +901,18 @@ void SketcherWidget::showContextMenu(
     auto filtered_atoms = atoms;
     auto filtered_bonds = bonds;
     if (menu != m_attachment_point_context_menu) {
-        filtered_atoms = filterOutAttachmentPoints(atoms);
-        filtered_bonds = filterOutAttachmentPointBonds(bonds);
+        filtered_atoms.clear();
+        for (const auto* atom : atoms) {
+            if (!is_attachment_point(atom)) {
+                filtered_atoms.insert(atom);
+            }
+        }
+        filtered_bonds.clear();
+        for (const auto* bond : bonds) {
+            if (!is_attachment_point_bond(bond)) {
+                filtered_bonds.insert(bond);
+            }
+        }
     }
 
     menu->setContextItems(filtered_atoms, filtered_bonds, sgroups,
