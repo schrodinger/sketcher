@@ -844,7 +844,7 @@ static void place_polymer_below_reference(RDKit::ROMol& polymer,
  * since they represent a chemically valid continuation and require
  * a more local proximity check.
  *
- * Assumes  that the polymer has already been placed relative to the reference.
+ * Assumes that the polymer has already been placed relative to the reference.
  *
  * Returns true if a vertical flip is required to resolve overlaps.
  */
