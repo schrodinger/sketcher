@@ -86,11 +86,13 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_bond_modifications)
 
     // Add bond between carbons
     mol_model.addBond(c1_atom, c2_atom, RDKit::Bond::SINGLE);
-    const auto* regular_bond = mol_model.getMol()->getBondBetweenAtoms(0, 1);
 
     // Add attachment point to second carbon
     c2_atom = mol_model.getMol()->getAtomWithIdx(1);
     mol_model.addAttachmentPoint(RDGeom::Point3D(3.0, 1.0, 0.0), c2_atom);
+
+    // Re-fetch bond pointers after molecule modification
+    const auto* regular_bond = mol_model.getMol()->getBondBetweenAtoms(0, 1);
     const auto* ap_bond = mol_model.getMol()->getBondBetweenAtoms(1, 2);
 
     BOOST_TEST(mol_model.getMol()->getNumBonds() == 2);
