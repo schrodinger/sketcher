@@ -876,9 +876,9 @@ void SketcherWidget::showContextMenu(
     bool bond_selected = bonds.size() || secondary_connections.size();
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
-    } else if (all_atoms_are_attachment_points ||
-               (all_atoms_are_attachment_points &&
-                all_bonds_are_attachment_point_bonds)) {
+    } else if ((all_atoms_are_attachment_points &&
+                (bonds.empty() || all_bonds_are_attachment_point_bonds)) ||
+               (atoms.empty() && all_bonds_are_attachment_point_bonds)) {
         // Show attachment point menu if only attachment points are selected
         menu = m_attachment_point_context_menu;
     } else if (atoms.size() && bonds.size()) {

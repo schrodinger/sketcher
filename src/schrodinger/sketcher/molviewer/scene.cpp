@@ -126,15 +126,17 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
                     return false;
                 }
 
-                // Check if all selected atoms are attachment points
+                // Check if all selected atoms are attachment points (or no
+                // atoms)
                 bool all_atoms_are_aps =
-                    !selected_atoms.empty() &&
+                    selected_atoms.empty() ||
                     std::all_of(selected_atoms.begin(), selected_atoms.end(),
                                 [](const auto* atom) {
                                     return is_attachment_point(atom);
                                 });
 
-                // Check if all selected bonds are attachment point bonds
+                // Check if all selected bonds are attachment point bonds (or no
+                // bonds)
                 bool all_bonds_are_ap_bonds =
                     selected_bonds.empty() ||
                     std::all_of(selected_bonds.begin(), selected_bonds.end(),
@@ -142,7 +144,9 @@ Scene::Scene(MolModel* mol_model, SketcherModel* sketcher_model,
                                     return is_attachment_point_bond(bond);
                                 });
 
-                return all_atoms_are_aps && all_bonds_are_ap_bonds;
+                // Return true only if we have at least one AP atom or bond
+                return all_atoms_are_aps && all_bonds_are_ap_bonds &&
+                       (!selected_atoms.empty() || !selected_bonds.empty());
             });
 
     updateSceneTool();
