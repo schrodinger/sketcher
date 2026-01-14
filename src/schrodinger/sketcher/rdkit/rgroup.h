@@ -1,9 +1,7 @@
 #pragma once
 
-#include <algorithm>
 #include <memory>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #include "schrodinger/sketcher/definitions.h"
@@ -107,33 +105,6 @@ number_of_bound_attachment_points(const RDKit::Atom* const atom);
  * @param mol The conformer to modify.
  */
 SKETCHER_API void shorten_attachment_point_bonds(RDKit::Conformer& conf);
-
-/**
- * SKETCH-2556: Check if any atom in the set is not an attachment point.
- * @param atoms The set of atoms to check
- * @return true if at least one atom is not an attachment point, false otherwise
- */
-inline bool
-hasNonAttachmentPointAtom(const std::unordered_set<const RDKit::Atom*>& atoms)
-{
-    return std::any_of(atoms.begin(), atoms.end(), [](const auto* atom) {
-        return !is_attachment_point(atom);
-    });
-}
-
-/**
- * SKETCH-2556: Check if any bond in the set is not an attachment point bond.
- * @param bonds The set of bonds to check
- * @return true if at least one bond is not an attachment point bond, false
- * otherwise
- */
-inline bool
-hasNonAttachmentPointBond(const std::unordered_set<const RDKit::Bond*>& bonds)
-{
-    return std::any_of(bonds.begin(), bonds.end(), [](const auto* bond) {
-        return !is_attachment_point_bond(bond);
-    });
-}
 
 } // namespace sketcher
 } // namespace schrodinger
