@@ -74,6 +74,12 @@ class SKETCHER_API SketcherView : public QWidget
      */
     void setValue(ModelKey key, QVariant value);
 
+    /**
+     * Disconnect signals from changes to the model to trigger
+     * calls to this view's updateWidgetsEnabled() slot.
+     */
+    void disconnectUpdateWidgetsEnabled();
+
   signals:
     void viewStateChanged(ModelKey key, QVariant value);
 

@@ -406,6 +406,13 @@ get_image_bytes(const T& input, ImageFormat format, const RenderOptions& opts)
                                   .arg(opts.width_height.height());
 
         svg_data.insert(start_of_size, height_in_pxls.toUtf8());
+
+        // Remove Qt's default title and description elements for cleaner SVG
+        QString svg_string = QString::fromUtf8(svg_data);
+        svg_string.remove("<title>Qt SVG Document</title>\n");
+        svg_string.remove("<desc>Generated with Qt</desc>\n");
+        svg_data = svg_string.toUtf8();
+
         buffer.setData(svg_data);
         svg_buffer->close();
 
