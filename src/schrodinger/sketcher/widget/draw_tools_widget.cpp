@@ -98,9 +98,8 @@ void DrawToolsWidget::updateWidgetsEnabled()
     auto has_selection = model->hasActiveSelection();
 
     // Atom tools
-    // SKETCH-2556: hasAtomSelection() returns false for AP-only selections
     auto sel_has_atom = model->hasAtomSelection();
-    bool enable_atom = !has_selection || sel_has_atom;
+    bool enable_atom = (!has_selection || sel_has_atom);
     std::vector<QWidget*> widgets = {
         ui->increase_charge_btn, ui->decrease_charge_btn, ui->explicit_h_btn};
     for (auto wdg : widgets) {
@@ -108,9 +107,8 @@ void DrawToolsWidget::updateWidgetsEnabled()
     }
 
     // Bond tools
-    // SKETCH-2556: hasBondSelection() returns false for AP-only selections
     bool sel_has_bond = model->hasBondSelection();
-    bool enable_bond = !has_selection || sel_has_bond;
+    bool enable_bond = (!has_selection || sel_has_bond);
     widgets = {ui->single_bond_btn, ui->bond_order_btn, ui->bond_query_btn,
                ui->stereo_bond1_btn, ui->stereo_bond2_btn};
     for (auto wdg : widgets) {
