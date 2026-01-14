@@ -403,34 +403,32 @@ template <typename T> bool contains_item(const SketcherModel& model)
 
 bool SketcherModel::hasAtomSelection() const
 {
+    // SKETCH-2556: Convert QGraphicsItems to RDKit atoms and check if any are
+    // not attachment points
     auto selection = getSelection();
+    std::unordered_set<const RDKit::Atom*> atoms;
     for (auto* item : selection) {
         auto* atom_item = dynamic_cast<AbstractAtomOrMonomerItem*>(item);
         if (atom_item) {
-            // Return true if at least one atom is NOT an attachment point
-            if (!is_attachment_point(atom_item->getAtom())) {
-                return true;
-            }
+            atoms.insert(atom_item->getAtom());
         }
     }
-    // Return false if all atoms are attachment points (or no atoms found)
-    return false;
+    return hasNonAttachmentPointAtom(atoms);
 }
 
 bool SketcherModel::hasBondSelection() const
 {
+    // SKETCH-2556: Convert QGraphicsItems to RDKit bonds and check if any are
+    // not attachment point bonds
     auto selection = getSelection();
+    std::unordered_set<const RDKit::Bond*> bonds;
     for (auto* item : selection) {
         auto* bond_item = dynamic_cast<BondItem*>(item);
         if (bond_item) {
-            // Return true if at least one bond is NOT an attachment point bond
-            if (!is_attachment_point_bond(bond_item->getBond())) {
-                return true;
-            }
+            bonds.insert(bond_item->getBond());
         }
     }
-    // Return false if all bonds are attachment point bonds (or no bonds found)
-    return false;
+    return hasNonAttachmentPointBond(bonds);
 }
 
 bool SketcherModel::hasNonMolecularObjectSelection() const
