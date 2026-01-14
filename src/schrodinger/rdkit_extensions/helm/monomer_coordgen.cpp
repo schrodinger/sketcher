@@ -302,8 +302,11 @@ static void compute_full_ring_info(const RDKit::ROMol& polymer)
 }
 
 /**
- * Finds the largest ring in `polymer` with exactly one connection attachment
- * point, if none is found return the largest ring found
+ * Finds the largest ring in `polymer` that includes exactly one non-standard
+ * connection (i.e. exactly one connection that's not a standard backbone
+ * connection). This serves to exclude cycles that span multiple chains, such as
+ * DNA base pairing. If no such ring exists, then return the largest ring
+ * regardless of the number of non-standard connections.
  */
 static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
 {
