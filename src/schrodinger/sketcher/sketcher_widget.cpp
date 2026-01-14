@@ -704,7 +704,7 @@ void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
 {
     connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
             [this](auto atoms, auto bonds) {
-                m_mol_model->remove(atoms, bonds, {}, {});
+                m_mol_model->remove(atoms, bonds, {}, {}, {});
             });
 }
 
@@ -737,7 +737,7 @@ void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
         connect(context_menu, &AtomContextMenu::bracketSubgroupDialogRequested,
                 this, &SketcherWidget::showBracketSubgroupDialogForAtoms);
         connect(context_menu, &AtomContextMenu::deleteRequested, this,
-                [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}); });
+                [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
     }
 }
 
@@ -862,7 +862,7 @@ void SketcherWidget::showContextMenu(
 
     // SKETCH-2556: Check if selection contains only attachment points/bonds
     bool only_attachment_points =
-        (!atoms.empty() || !bonds.empty()) &&
+        (!atoms.empty() || !bonds.empty() || !secondary_connections.empty()) &&
         (atoms.empty() || std::all_of(atoms.begin(), atoms.end(),
                                       [](const auto* atom) {
                                           return is_attachment_point(atom);
@@ -870,7 +870,12 @@ void SketcherWidget::showContextMenu(
         (bonds.empty() ||
          std::all_of(bonds.begin(), bonds.end(), [](const auto* bond) {
              return is_attachment_point_bond(bond);
-         }));
+         })) &&
+        (secondary_connections.empty() ||
+         std::all_of(secondary_connections.begin(), secondary_connections.end(),
+                     [](const auto* bond) {
+                         return is_attachment_point_bond(bond);
+                     }));
 
     AbstractContextMenu* menu = nullptr;
     bool bond_selected = bonds.size() || secondary_connections.size();
@@ -879,7 +884,7 @@ void SketcherWidget::showContextMenu(
     } else if (only_attachment_points) {
         // Show attachment point menu if only attachment points are selected
         menu = m_attachment_point_context_menu;
-    } else if (atoms.size() && bonds.size()) {
+    } else if (atoms.size() && bond_selected) {
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
         menu = m_atom_context_menu;
@@ -914,7 +919,7 @@ void SketcherWidget::showContextMenu(
         }
     }
 
-    menu->setContextItems(filtered_atoms, filtered_bonds, sgroups,
+    menu->setContextItems(filtered_atoms, filtered_bonds, {}, sgroups,
                           non_molecular_objects);
 
     menu->move(event->screenPos());

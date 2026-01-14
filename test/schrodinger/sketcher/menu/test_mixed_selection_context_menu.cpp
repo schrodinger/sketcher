@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(test_mixed_selection_delete_includes_attachment_points)
     std::unordered_set<const RDKit::Atom*> all_atoms = {c_atom, n_atom,
                                                         ap_atom};
     std::unordered_set<const RDKit::Bond*> all_bonds = {ap_bond};
-    mol_model.remove(all_atoms, all_bonds, {}, {});
+    mol_model.remove(all_atoms, all_bonds, {}, {}, {});
 
     // All atoms and bonds should be deleted
     BOOST_TEST(mol_model.getMol()->getNumAtoms() == 0);
