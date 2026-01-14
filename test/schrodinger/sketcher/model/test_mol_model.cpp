@@ -4201,5 +4201,89 @@ BOOST_AUTO_TEST_CASE(test_stereo_labels_update_on_atom_movement)
                    << initial_label);
 }
 
+BOOST_AUTO_TEST_CASE(test_secondary_connections)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Load cyclohexane from SMILES
+    add_text_to_mol_model(model,
+                          "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+    const RDKit::ROMol* mol = model.getMol();
+    // sanity check
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+
+    // make sure that getAllUnselectedTags includes the tag for the secondary
+    // connection
+    auto unselected_tags = model.getAllUnselectedTags();
+    auto unselected_bonds = std::get<1>(unselected_tags);
+    BOOST_TEST(unselected_bonds.size() == 2);
+
+    // select the primary bond
+    model.select({}, {bond}, {}, {}, {}, SelectMode::SELECT);
+    auto selected_bonds = model.getSelectedBonds();
+    BOOST_TEST(selected_bonds.size() == 1);
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+
+    // select the secondary bond
+    model.select({}, {}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    auto selected_secondary_connections =
+        model.getSelectedSecondaryConnections();
+    BOOST_TEST(selected_secondary_connections.size() == 1);
+    BOOST_TEST(model.getSelectedBonds().empty());
+    BOOST_TEST(*selected_secondary_connections.begin() ==
+               *selected_bonds.begin());
+
+    // remove the primary bond
+    model.remove({}, {bond}, {}, {}, {});
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 1);
+    // the selected bond is no longer a secondary connection, so it should now
+    // count as a selected bond
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(model.getSelectedBonds().size() == 1);
+    BOOST_TEST(!contains_two_monomer_linkages(mol->getBondWithIdx(0)));
+
+    // undo the deletion
+    undo_stack.undo();
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+
+    // remove the secondary bond
+    model.remove({}, {}, {bond}, {}, {});
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(model.getSelectedBonds().empty());
+    BOOST_TEST(!contains_two_monomer_linkages(bond));
+
+    // undo the deletion
+    undo_stack.undo();
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+
+    // remove both connections (thus removing the bond itself)
+    model.remove({}, {bond}, {bond}, {}, {});
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 0);
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(model.getSelectedBonds().empty());
+
+    // undo the deletion
+    undo_stack.undo();
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+}
+
 } // namespace sketcher
 } // namespace schrodinger
