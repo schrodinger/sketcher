@@ -2522,7 +2522,6 @@ void MolModel::removeCommandFunc(
     // then remove the bonds so that they don't get implicitly deleted when we
     // remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
-        std::cout << "Removing bond with tag " << static_cast<int>(bond_tag);
         removeBondCommandFunc(bond_tag, start_atom_tag, end_atom_tag);
     }
     for (auto cur_atom_tag : atom_tags) {
