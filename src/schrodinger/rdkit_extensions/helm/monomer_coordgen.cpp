@@ -1332,28 +1332,31 @@ struct RingResizeData {
  * Assign cluster IDs along a given axis.
  *
  * @param resize_data  vector of monomers to cluster
- * @param get_coord    function to extract coordinate from RDGeom::Point3D
- * @param cluster_field function to get/set cluster id for a ResizeData
- * @param eps          clustering epsilon (distance threshold)
+ * @param coord_member pointer to either the x or y coordinate
+ * @param cluster_member pointer to either the x_cluster or y_cluster member
+ * @param eps          pointer
  */
-template <typename GetCoordFn, typename ClusterFieldFn>
-void assign_clusters(std::vector<MonomerResizeData>& resize_data,
-                     GetCoordFn get_coord, ClusterFieldFn cluster_field,
-                     double eps)
+template <typename TCoord, typename TCluster>
+void assign_clusters(std::vector<ResizeData>& resize_data,
+                     TCoord ResizeData::*coord_member,
+                     TCluster ResizeData::*cluster_member, double eps)
 {
     unsigned int next_cluster_id = 1;
 
     for (size_t i = 0; i < resize_data.size(); ++i) {
-        if (cluster_field(resize_data[i]) != 0)
+        if (resize_data[i].*cluster_member != 0) {
             continue; // already assigned
-        cluster_field(resize_data[i]) = next_cluster_id;
+        }
+
+        resize_data[i].*cluster_member = next_cluster_id;
 
         for (size_t j = i + 1; j < resize_data.size(); ++j) {
-            if (std::abs(get_coord(resize_data[i].ref_pos) -
-                         get_coord(resize_data[j].ref_pos)) < eps) {
-                cluster_field(resize_data[j]) = next_cluster_id;
+            if (std::abs(resize_data[i].*coord_member -
+                         resize_data[j].*coord_member) < eps) {
+                resize_data[j].*cluster_member = next_cluster_id;
             }
         }
+
         ++next_cluster_id;
     }
 }
@@ -1490,17 +1493,13 @@ std::vector<MonomerResizeData> collect_linear_resize_data(
     }
 
     // group vertically stacked monomers to avoid compound horizontal shifts
-    assign_clusters(
-        result, [](const RDGeom::Point3D& p) { return p.x; },
-        [](MonomerResizeData& r) -> unsigned int& { return r.x_cluster; },
-        MONOMER_MINIMUM_SIZE * 0.25);
+    assign_clusters(result, &RDGeom::Point3D::x, &ResizeData::x_cluster,
+                    MONOMER_MINIMUM_SIZE * 0.25);
 
     // group horizontally stacked monomers to avoid compound vertical shifts
 
-    assign_clusters(
-        result, [](const RDGeom::Point3D& p) { return p.y; },
-        [](MonomerResizeData& r) -> unsigned int& { return r.y_cluster; },
-        MONOMER_MINIMUM_SIZE * 0.25);
+    assign_clusters(result, &RDGeom::Point3D::y, &ResizeData::y_cluster,
+                    MONOMER_MINIMUM_SIZE * 0.25);
 
     return result;
 }
