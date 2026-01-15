@@ -109,15 +109,17 @@ class SKETCHER_API Scene : public QGraphicsScene
     QRectF getSceneItemsBoundingRect() const;
 
     /**
-     * get atoms, bonds, sgroups and non-molecular objects in the scene
+     * get atoms, bonds, secondary connections, sgroups, and non-molecular
+     * objects in the scene
      * @param subset The subset of objects to return (all, selected,
      * selected_or_hovered).  Defaults to returning all objects.
      * @param pos The position of the mouse cursor, this is needed to figure
      * out which items are hovered
-     * @return a tuple of sets of atoms, bonds, sgroups and non-molecular
-     * objects
+     * @return a tuple of sets of atoms, bonds, secondary connections, sgroups,
+     * and non-molecular objects
      */
     std::tuple<std::unordered_set<const RDKit::Atom*>,
+               std::unordered_set<const RDKit::Bond*>,
                std::unordered_set<const RDKit::Bond*>,
                std::unordered_set<const RDKit::SubstanceGroup*>,
                std::unordered_set<const NonMolecularObject*>>
@@ -202,6 +204,7 @@ class SKETCHER_API Scene : public QGraphicsScene
         QGraphicsSceneMouseEvent* event,
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
             non_molecular_objects);
@@ -356,6 +359,14 @@ class SKETCHER_API Scene : public QGraphicsScene
 
     std::unordered_map<const RDKit::Atom*, QGraphicsItem*> m_atom_to_atom_item;
     std::unordered_map<const RDKit::Bond*, QGraphicsItem*> m_bond_to_bond_item;
+    /**
+     * In monomeric models, some bonds represent more than one connection
+     * between two monomers (e.g. neighboring cysteines additionally joined by a
+     * disulfide bond). We keep track of graphics items that represent secondary
+     * connections separately.
+     */
+    std::unordered_map<const RDKit::Bond*, QGraphicsItem*>
+        m_bond_to_secondary_connection_item;
     std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>
         m_s_group_to_s_group_item;
     std::unordered_map<const NonMolecularObject*, NonMolecularItem*>

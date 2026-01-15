@@ -175,16 +175,16 @@ BOOST_AUTO_TEST_CASE(enabled)
     auto bond = mol_model->getMol()->getBondWithIdx(0);
 
     // Empty selection
-    mol_model->select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(wdg.isEnabled());
     // Atom-only selection
-    mol_model->select({atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({atom}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(wdg.isEnabled());
     // Bond-only selection
-    mol_model->select({}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({}, {bond}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(!wdg.isEnabled());
     // Both atoms and bonds selected
-    mol_model->select({atom}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({atom}, {bond}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(wdg.isEnabled());
 }
 

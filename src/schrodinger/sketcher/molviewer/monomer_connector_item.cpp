@@ -20,10 +20,12 @@ namespace sketcher
 
 MonomerConnectorItem::MonomerConnectorItem(
     const RDKit::Bond* bond, const AbstractMonomerItem& start_monomer_item,
-    const AbstractMonomerItem& end_monomer_item, QGraphicsItem* parent) :
+    const AbstractMonomerItem& end_monomer_item,
+    const bool is_secondary_connection, QGraphicsItem* parent) :
     AbstractBondOrConnectorItem(bond, parent),
     m_start_item(start_monomer_item),
-    m_end_item(end_monomer_item)
+    m_end_item(end_monomer_item),
+    m_is_secondary_connection(is_secondary_connection)
 {
 
     setZValue(static_cast<qreal>(ZOrder::MONOMER_CONNECTOR));
@@ -35,6 +37,11 @@ int MonomerConnectorItem::type() const
     return Type;
 }
 
+bool MonomerConnectorItem::isSecondaryConnection() const
+{
+    return m_is_secondary_connection;
+}
+
 /**
  * Determine how the given monomer connector should be drawn, which is based on
  * the types of monomers that it connects. Note that a connector between a CHEM
@@ -43,6 +50,8 @@ int MonomerConnectorItem::type() const
  * PEPTIDE connector.
  *
  * @param bond the bond representing a monomer connector
+ * @param secondary_connection whether we are drawing the primary or secondary
+ * connection of this bond
  * @return A tuple of
  *   - whether the start of the connector should have a diamond arrowhead
  *   - whether the end of the connector should have a diamond arrowhead
@@ -51,7 +60,7 @@ int MonomerConnectorItem::type() const
  *   - the pen style of the connector line
  */
 static std::tuple<bool, bool, QColor, qreal, Qt::PenStyle>
-get_connector_style(const RDKit::Bond* bond)
+get_connector_style(const RDKit::Bond* bond, const bool is_secondary_connection)
 {
     const auto* start_atom = bond->getBeginAtom();
     auto start_res_name = get_monomer_res_name(start_atom);
@@ -69,10 +78,10 @@ get_connector_style(const RDKit::Bond* bond)
     } else if (start_monomer_type == MonomerType::PEPTIDE ||
                end_monomer_type == MonomerType::PEPTIDE) {
         std::string attachment_points;
-        bond->getPropIfPresent(LINKAGE, attachment_points);
+        std::string prop = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
+        bond->getPropIfPresent(prop, attachment_points);
         if (start_res_name.ends_with('C') && end_res_name.ends_with('C') &&
             attachment_points == "R3-R3") {
-            // disulfide bond connector
             return {true, true, DISULFIDE_CONNECTOR_COLOR,
                     DISULFIDE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine};
         }
@@ -157,7 +166,8 @@ void MonomerConnectorItem::updateCachedData()
     prepareGeometryChange();
     m_arrowhead_path.clear();
     auto [start_has_arrowhead, end_has_arrowhead, connector_color,
-          connector_width, connector_pen_style] = get_connector_style(m_bond);
+          connector_width, connector_pen_style] =
+        get_connector_style(m_bond, m_is_secondary_connection);
     m_connector_pen =
         QPen(connector_color, connector_width, connector_pen_style);
     m_arrowhead_pen = QPen(connector_color, connector_width);
