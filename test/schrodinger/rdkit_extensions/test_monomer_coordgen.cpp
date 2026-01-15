@@ -1,4 +1,4 @@
-#define BOOST_TEST_MODULE rdkit_extensions_cg_coordgen
+#define BOOST_TEST_MODULE rdkit_extensions_monomer_coordgen
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
@@ -22,7 +22,7 @@ typedef std::pair<std::string, coords_t> mol_data_t;
 BOOST_TEST_DONT_PRINT_LOG_VALUE(mol_data_t)
 
 BOOST_DATA_TEST_CASE(
-    TestComputeCGCoords,
+    TestComputeMonomerCoords,
     bdata::make(std::vector<mol_data_t>{
         {"CHEM1{[[*:1]N]}|PEPTIDE1{A.C.R.K}$PEPTIDE1,CHEM1,4:R2-1:R1|PEPTIDE1,"
          "PEPTIDE1,2:R3-4:R3$$$V2.0",
