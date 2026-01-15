@@ -70,11 +70,13 @@ bool sketcher_has_monomers()
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
 }
 
-void sketcher_allow_monomeric()
+void sketcher_allow_monomeric(bool allow_monomeric)
 {
     auto& sk = get_sketcher_instance();
     return sk.setInterfaceType(
-        schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
+        allow_monomeric
+            ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
+            : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
 void sketcher_changed()
