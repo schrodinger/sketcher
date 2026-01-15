@@ -277,23 +277,23 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     test_enabled(bond_widgets, true);
 
     // Real atoms
-    mol_model->select({atom}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({atom}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     test_enabled(other_widgets, true);
     test_enabled(bond_widgets, false);
 
     // Non-atoms
-    mol_model->select({query, rgroup}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({query, rgroup}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     test_enabled(other_widgets, true);
     test_enabled(bond_widgets, false);
 
     // All atom objects
-    mol_model->select({atom, query, rgroup}, {}, {}, {},
+    mol_model->select({atom, query, rgroup}, {}, {}, {}, {},
                       SelectMode::SELECT_ONLY);
     test_enabled(other_widgets, true);
     test_enabled(bond_widgets, false);
 
     // Bond
-    mol_model->select({}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    mol_model->select({}, {bond}, {}, {}, {}, SelectMode::SELECT_ONLY);
     test_enabled(other_widgets, false);
     test_enabled(bond_widgets, true);
 

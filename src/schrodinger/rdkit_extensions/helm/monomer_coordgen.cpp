@@ -10,6 +10,8 @@
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/ChemTransforms/MolFragmenter.h>
 #include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
+
 #ifdef _MSC_VER
 // In Boost 1.81, boost::geometry contains a Windows-only
 // "#pragma warning ( pop )" that doesn't have a corresponding push. This
@@ -50,6 +52,9 @@ constexpr double MONOMER_MINIMUM_SIZE = 0.80;
 constexpr double MONOMER_BOND_LENGTH =
     SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
 
+// maximum allowed bond length as a multiple of the ideal bond length. Any bond
+// longer than this will be considered "stretched"
+constexpr double MAX_BOND_STRETCH = 3.0;
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
@@ -297,8 +302,11 @@ static void compute_full_ring_info(const RDKit::ROMol& polymer)
 }
 
 /**
- * Finds the largest ring in `polymer` with exactly one connection attachment
- * point
+ * Finds the largest ring in `polymer` that includes exactly one non-standard
+ * connection (i.e. exactly one connection that's not a standard backbone
+ * connection). This serves to exclude cycles that span multiple chains, such as
+ * DNA base pairing. If no such ring exists, then return the largest ring
+ * regardless of the number of non-standard connections.
  */
 static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
 {
@@ -307,17 +315,18 @@ static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
         RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
     }
 
+    std::vector<int> largest_ring_no_connections{};
     std::vector<int> largest_ring{};
     for (auto cycle : polymer.getRingInfo()->atomRings()) {
-        if (cycle.size() <= largest_ring.size()) {
+        if (cycle.size() <= largest_ring_no_connections.size()) {
             continue;
         }
-
         std::vector<unsigned int> connection_points{};
         for (size_t i = 0; i < cycle.size(); i++) {
             auto monomer = cycle[i];
             auto next_monomer = i == cycle.size() - 1 ? cycle[0] : cycle[i + 1];
             auto bond = polymer.getBondBetweenAtoms(monomer, next_monomer);
+
             if (bond->hasProp(CUSTOM_BOND)) {
                 connection_points.push_back(i);
                 if (connection_points.size() > 1) {
@@ -329,19 +338,27 @@ static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
             // We want to rotate the ring vector so that the first monomer in
             // the connection bond is in the front. That way, the chains will
             // lay out directly to the right of the ring.
+            largest_ring_no_connections = cycle;
+            std::rotate(largest_ring_no_connections.begin(),
+                        largest_ring_no_connections.begin() +
+                            connection_points[0],
+                        largest_ring_no_connections.end());
+        } else if (cycle.size() > largest_ring.size()) {
             largest_ring = cycle;
             std::rotate(largest_ring.begin(),
                         largest_ring.begin() + connection_points[0],
                         largest_ring.end());
         }
     }
-
-    if (largest_ring.size() == 0) {
-        throw std::runtime_error(
-            "No cycles found with exactly one connection bond");
+    if (largest_ring_no_connections.size() > 0) {
+        return largest_ring_no_connections;
+    }
+    if (largest_ring.size() > 0) {
+        return largest_ring;
     }
 
-    return largest_ring;
+    throw std::runtime_error(
+        "No cycles found with exactly one connection bond");
 }
 
 /**
@@ -760,6 +777,146 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
     }
     return bonds;
 }
+// Assign unit IDs to rings. takes a map of atom idx to unit ID string to fill
+// it. Each atom in a ring gets the same unit ID.
+static void assign_ring_unit_ids(const RDKit::ROMol& mol,
+                                 std::unordered_map<int, std::string>& unit_ids)
+{
+    if (!mol.getRingInfo()->isInitialized()) {
+        constexpr bool include_dative_bonds = true;
+        RDKit::MolOps::findSSSR(mol, /*res=*/nullptr, include_dative_bonds);
+    }
+
+    for (auto cycle : mol.getRingInfo()->atomRings()) {
+        std::string ring_id = "ring_" + std::to_string(cycle[0]);
+        for (auto atom_idx : cycle) {
+            unit_ids[atom_idx] = ring_id;
+        }
+    }
+}
+
+static std::pair<std::vector<std::pair<int, int>>, std::unordered_map<int, int>>
+find_chains(const RDKit::ROMol& mol, int start_atom_idx, int ring_atom_id,
+            std::unordered_map<int, std::string>& unit_ids)
+{
+    // BFS to find chains off a ring atom
+    std::unordered_map<int, bool> visited;
+    std::unordered_map<int, int> distance;
+    std::unordered_map<int, int> predecessor;
+    std::queue<int> atom_queue;
+
+    atom_queue.push(start_atom_idx);
+    visited[start_atom_idx] = true;
+    distance[start_atom_idx] = 0;
+    predecessor[start_atom_idx] = -1;
+
+    while (!atom_queue.empty()) {
+        int atom_idx = atom_queue.front();
+        atom_queue.pop();
+        auto atom = mol.getAtomWithIdx(atom_idx);
+        for (auto nbr : mol.atomNeighbors(atom)) {
+            int nbr_idx = nbr->getIdx();
+            if (unit_ids[nbr_idx].empty() && !visited[nbr_idx]) {
+                atom_queue.push(nbr_idx);
+                predecessor[nbr_idx] = atom_idx;
+                distance[nbr_idx] = distance[atom_idx] + 1;
+                visited[nbr_idx] = true;
+            }
+        }
+    }
+    std::vector<std::pair<int, int>> sorted_distances(distance.begin(),
+                                                      distance.end());
+    std::sort(sorted_distances.begin(), sorted_distances.end(),
+              [](auto& a, auto& b) { return a.second > b.second; });
+    return {sorted_distances, predecessor};
+}
+
+// Assign unit IDs to chains connected to rings. Chains directly connected to
+// rings get the same unit ID as the ring, branches off those chains get new
+// unit IDs. Takes a map of atom idx to unit ID string to fill it.
+static void
+assign_chain_unit_ids(const RDKit::ROMol& mol,
+                      std::unordered_map<int, std::string>& unit_ids)
+{
+    for (auto cycle : mol.getRingInfo()->atomRings()) {
+        for (auto ring_atom_id : cycle) {
+            for (auto neighbor :
+                 mol.atomNeighbors(mol.getAtomWithIdx(ring_atom_id))) {
+                if (unit_ids[neighbor->getIdx()].empty()) {
+                    auto start_atom_idx = neighbor->getIdx();
+                    auto [sorted_distances, predecessor] = find_chains(
+                        mol, start_atom_idx, ring_atom_id, unit_ids);
+
+                    // Assign chain IDs, longest gets same as ring, branches get
+                    // new IDs
+
+                    bool found_atom = true;
+                    int chain_n = 1;
+                    std::string chain_id = unit_ids[ring_atom_id];
+
+                    while (found_atom) {
+                        found_atom = false;
+                        for (auto& dp : sorted_distances) {
+                            unsigned int farthest_atom = dp.first;
+                            while (farthest_atom != start_atom_idx) {
+                                if (!unit_ids[farthest_atom].empty()) {
+                                    break;
+                                }
+                                unit_ids[farthest_atom] = chain_id;
+                                farthest_atom = predecessor[farthest_atom];
+                                found_atom = true;
+                            }
+                            if (unit_ids[farthest_atom].empty()) {
+                                unit_ids[farthest_atom] = chain_id;
+                            }
+                            chain_id = "chain_" + std::to_string(chain_n++);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Set the chain IDs on atoms. Takes a map of atom idx to unit ID string that
+// contains the string to set for each atom.
+static void
+set_atom_chain_ids(const RDKit::ROMol& mol,
+                   const std::unordered_map<int, std::string>& unit_ids)
+{
+    if (unit_ids.size() != mol.getNumAtoms()) {
+        std::cerr << "set_atom_chain_ids:: Warning: unit_ids size "
+                  << unit_ids.size() << " does not match number of atoms "
+                  << mol.getNumAtoms() << "\n";
+        return;
+    }
+    for (auto atom : mol.atoms()) {
+        if (auto res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo())) {
+            res_info->setChainId(unit_ids.at(atom->getIdx()));
+        }
+    }
+}
+
+/** assigns unit IDs to each atoms. These are strings that describes the
+ * topology the atom is part of. Each ring will have a unique unit ID, chains
+ * connected to rings will have the same unit ID as the ring, branches off those
+ * chains will have new unit IDs. These IDs will then be used as if they were
+ * chain IDs so that each topological unit is treated as a separate polymer
+ * chain.
+ * @return a pair containing a vector of the topological units and a map of
+ * child unit to parent unit
+ */
+static std::pair<std::vector<RDKit::ROMOL_SPTR>,
+                 std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>>
+break_into_topological_units(const RDKit::ROMol& monomer_mol)
+{
+    std::unordered_map<int, std::string> unit_ids(monomer_mol.getNumAtoms());
+    assign_ring_unit_ids(monomer_mol, unit_ids);
+    assign_chain_unit_ids(monomer_mol, unit_ids);
+    set_atom_chain_ids(monomer_mol, unit_ids);
+    return break_into_polymers(monomer_mol);
+}
 
 /**
  * Provides the y-coordinate offset to apply to each monomer in
@@ -1007,8 +1164,8 @@ static void orient_polymer(RDKit::ROMol& polymer_to_orient,
 /**
  * Adds a conformer to the monomer_mol copying all the coordinates from the
  * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX
- * prop pointing to the corresponding index for that monomer in the
- * monomer_mol. Returns the id of the added conformer.
+ * prop pointing to the corresponding index for that monomer in the monomer_mol.
+ * Returns the id of the added conformer.
  */
 static unsigned int copy_polymer_coords_to_monomer_mol(
     RDKit::ROMol& monomer_mol, const std::vector<RDKit::ROMOL_SPTR>& polymers)
@@ -1037,8 +1194,8 @@ static void remove_cxsmiles_labels(RDKit::ROMol& monomer_mol)
 
 /**
  * Adjust CHEM polymers (polymers with a single monomer typically used to
- * connect a polymer back to itself or two polymers together) to position
- * them between the two polymers they are connecting.
+ * connect a polymer back to itself or two polymers together) to position them
+ * between the two polymers they are connecting.
  */
 static void adjust_chem_polymer_coords(RDKit::ROMol& monomer_mol)
 {
@@ -1091,8 +1248,8 @@ static void clear_layout_props(RDKit::ROMol& monomer_mol)
 }
 
 /**
- * Determines if a monomer mol contains a single linear polymer with no
- * branches or rings
+ * Determines if a monomer mol contains a single linear polymer with no branches
+ * or rings
  */
 static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
 {
@@ -1103,8 +1260,8 @@ static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
 
     compute_full_ring_info(monomer_mol);
     if (monomer_mol.getRingInfo()->numRings() > 0) {
-        // reset ring info so it can get recomputed by the appropriate
-        // layout method
+        // reset ring info so it can get recomputed by the appropriate layout
+        // method
         monomer_mol.getRingInfo()->reset();
         return false;
     }
@@ -1120,8 +1277,8 @@ static bool is_single_linear_polymer(const RDKit::ROMol& monomer_mol)
 static bool are_double_stranded_nucleic_acid(RDKit::ROMOL_SPTR polymer1,
                                              RDKit::ROMOL_SPTR polymer2)
 {
-    // return true if the two polymers are nucleic acids and there are at
-    // least two bonds between them.
+    // return true if the two polymers are nucleic acids and there are at least
+    // two bonds between them.
 
     for (auto polymer : {polymer1, polymer2}) {
         if (!is_nucleic_acid(*polymer)) {
@@ -1138,16 +1295,16 @@ void lay_out_polymers(
 {
     std::unordered_set<int> placed_monomers_idcs{};
 
-    // lay out the polymers in connection order so connected polymers are
-    // laid out next to each other.
+    // lay out the polymers in connection order so connected polymers are laid
+    // out next to each other.
     for (auto polymer : polymers) {
         RDKit::ROMOL_SPTR parent = nullptr;
         if (parent_polymer.contains(polymer)) {
             parent = parent_polymer.at(polymer);
         }
-        // For double stranded nucleic acids we want to lay out the
-        // first polymer normally and then rotate the other polymer
-        // 180° so the strands run anti-parallel to each other
+        // For double stranded nucleic acids we want to lay out the first
+        // polymer normally and then rotate the other polymer 180° so the
+        // strands run anti-parallel to each other
         bool rotate_polymer = (parent != nullptr) &&
                               are_double_stranded_nucleic_acid(polymer, parent);
         lay_out_polymer(*polymer, placed_monomers_idcs, rotate_polymer);
@@ -1159,7 +1316,7 @@ void lay_out_polymers(
 
 bool has_no_clashes(const RDKit::ROMol& monomer_mol)
 {
-    auto& conformer = monomer_mol.getConformer();
+    const auto& conformer = monomer_mol.getConformer();
     auto positions = conformer.getPositions();
     for (size_t i = 0; i < positions.size(); i++) {
         for (size_t j = i + 1; j < positions.size(); j++) {
@@ -1246,8 +1403,7 @@ bool bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
 
 bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
 {
-    auto& conformer = monomer_mol.getConformer();
-    auto positions = conformer.getPositions();
+    const auto& conformer = monomer_mol.getConformer();
     for (size_t i = 0; i < monomer_mol.getNumBonds(); i++) {
         auto bond1 = monomer_mol.getBondWithIdx(i);
         auto begin1_pos = conformer.getAtomPos(bond1->getBeginAtomIdx());
@@ -1273,9 +1429,24 @@ bool has_no_bond_crossings(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-[[maybe_unused]] static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
+static bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
 {
-    return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol);
+    const auto& conformer = monomer_mol.getConformer();
+    for (auto bond : monomer_mol.bonds()) {
+        auto begin_pos = conformer.getAtomPos(bond->getBeginAtomIdx());
+        auto end_pos = conformer.getAtomPos(bond->getEndAtomIdx());
+        auto bond_length = (end_pos - begin_pos).length();
+        if (bond_length > MAX_BOND_STRETCH * MONOMER_BOND_LENGTH) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
+{
+    return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol) &&
+           has_no_stretched_bonds(monomer_mol);
 }
 
 void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
@@ -1329,12 +1500,42 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     } else {
         lay_out_polymers(polymers, parent_polymer);
     }
+
     remove_cxsmiles_labels(monomer_mol);
+
     auto conformer_id =
         copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);
     adjust_chem_polymer_coords(monomer_mol);
+
     // clear layout related props to prevent leaking "internal" props
     clear_layout_props(monomer_mol);
+
+    if (!coordinates_are_valid(monomer_mol)) {
+        // the coordinates are not good, try breaking the molecule into
+        // topological units. This considers rings as a single unit, even if
+        // they are made of monomers that belong to different polymers.
+        // Branching chains are also considered separate units. create a copy of
+        // monomer_mol to avoid modifying the original
+        RDKit::ROMol monomer_mol_copy(monomer_mol);
+        monomer_mol_copy.getRingInfo()->reset();
+        auto [units, parent_unit] =
+            break_into_topological_units(monomer_mol_copy);
+        lay_out_polymers(units, parent_unit);
+        monomer_mol_copy.clearConformers();
+        copy_polymer_coords_to_monomer_mol(monomer_mol_copy, units);
+        if (coordinates_are_valid(monomer_mol_copy)) {
+            // the new coordinates are valid, copy them back to the original
+            // mol. remove the previous conformer first
+            monomer_mol.removeConformer(conformer_id);
+            conformer_id =
+                copy_polymer_coords_to_monomer_mol(monomer_mol, units);
+        } else {
+            std::cerr << "Warning: Generated coordinates for monomer mol "
+                         "contain clashes, bond crossings, or stretched bonds."
+                      << std::endl;
+        }
+        clear_layout_props(monomer_mol_copy);
+    }
 
     return conformer_id;
 }

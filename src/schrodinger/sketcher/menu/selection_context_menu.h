@@ -44,6 +44,7 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     virtual void setContextItems(
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
             non_molecular_objects);
@@ -61,6 +62,7 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     void deleteRequested(
         const std::unordered_set<const RDKit::Atom*>& atoms,
         const std::unordered_set<const RDKit::Bond*>& bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
             non_molecular_objects);

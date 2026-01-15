@@ -43,6 +43,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
+#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -88,6 +89,7 @@ class TestMolModel : public MolModel
     {
     }
     using MolModel::flipBondStereo;
+    using MolModel::getAllUnselectedTags;
     using MolModel::getAtomFromTag;
     using MolModel::getBondFromTag;
     using MolModel::getTagForAtom;
@@ -613,7 +615,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     // make sure that deleting an attachment point renumbers all remaining
     // attachment points and removes the attachment point bond
     attachment_atom2 = mol->getAtomWithIdx(2);
-    model.remove({attachment_atom2}, {}, {}, {});
+    model.remove({attachment_atom2}, {}, {}, {}, {});
     attachment_atom = mol->getAtomWithIdx(1);
     attachment_atom3 = mol->getAtomWithIdx(3);
     attachment_atom4 = mol->getAtomWithIdx(4);
@@ -624,7 +626,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 3);
 
-    model.remove({attachment_atom, attachment_atom3}, {}, {}, {});
+    model.remove({attachment_atom, attachment_atom3}, {}, {}, {}, {});
     attachment_atom4 = mol->getAtomWithIdx(2);
     BOOST_TEST(get_attachment_point_number(attachment_atom4) == 1);
     BOOST_TEST(get_next_attachment_point_number(mol) == 2);
@@ -634,7 +636,7 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     // make sure that deleting an attachment point bond also removes the
     // attachment point itself
     auto* ap4_bond = *(mol->atomBonds(attachment_atom4).begin());
-    model.remove({}, {ap4_bond}, {}, {});
+    model.remove({}, {ap4_bond}, {}, {}, {});
     BOOST_TEST(get_next_attachment_point_number(mol) == 1);
     BOOST_TEST(mol->getNumAtoms() == 2);
     BOOST_TEST(mol->getNumBonds() == 0);
@@ -661,14 +663,14 @@ BOOST_AUTO_TEST_CASE(test_removeAtom)
     c_atom = mol->getAtomWithIdx(0);
     auto* n_atom = mol->getAtomWithIdx(1);
 
-    model.remove({c_atom}, {}, {}, {});
+    model.remove({c_atom}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 1);
     n_atom = mol->getAtomWithIdx(0);
     BOOST_TEST(n_atom->getSymbol() == "N");
     check_coords(mol, 0, 3.0, 4.0);
     BOOST_TEST(model.getAtomFromTag(AtomTag(1)) == n_atom);
     BOOST_TEST(model.getTagForAtom(n_atom) == AtomTag(1));
-    model.remove({n_atom}, {}, {}, {});
+    model.remove({n_atom}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 0);
 
     undo_stack.undo();
@@ -848,7 +850,7 @@ BOOST_AUTO_TEST_CASE(test_removeBond)
     BOOST_TEST(mol->getNumBonds() == 1);
     const auto* bond = mol->getBondWithIdx(0);
 
-    model.remove({}, {bond}, {}, {});
+    model.remove({}, {bond}, {}, {}, {});
     BOOST_TEST(mol->getNumBonds() == 0);
 
     undo_stack.undo();
@@ -883,7 +885,7 @@ BOOST_AUTO_TEST_CASE(test_removeNonMolecularObject)
     BOOST_TEST(model.hasReactionArrow());
 
     auto* arrow = model.getReactionArrow();
-    model.remove({}, {}, {}, {arrow});
+    model.remove({}, {}, {}, {}, {arrow});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
     BOOST_TEST(!model.hasReactionArrow());
@@ -894,13 +896,13 @@ BOOST_AUTO_TEST_CASE(test_removeNonMolecularObject)
     BOOST_TEST(model.hasReactionArrow());
 
     auto* plus2 = &model.m_pluses[1];
-    model.remove({}, {}, {}, {plus2});
+    model.remove({}, {}, {}, {}, {plus2});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 2);
     BOOST_TEST(model.hasReactionArrow());
 
     auto* plus1 = &model.m_pluses[0];
-    model.remove({}, {}, {}, {plus1});
+    model.remove({}, {}, {}, {}, {plus1});
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 1);
     BOOST_TEST(model.hasReactionArrow());
@@ -932,7 +934,7 @@ BOOST_AUTO_TEST_CASE(test_removeAtomsAndBonds)
     const auto* c_atom = mol->getAtomWithIdx(0);
     const auto* n_atom = mol->getAtomWithIdx(1);
     const auto* bond = mol->getBondWithIdx(0);
-    model.remove({c_atom, n_atom}, {bond}, {}, {});
+    model.remove({c_atom, n_atom}, {bond}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 0);
     BOOST_TEST(mol->getNumBonds() == 0);
 
@@ -973,7 +975,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     sanity_check();
 
     // delete the variable attachment bond itself
-    model.remove({}, {mol->getBondWithIdx(6)}, {}, {});
+    model.remove({}, {mol->getBondWithIdx(6)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 7);
     BOOST_TEST(mol->getNumBonds() == 6);
     test_no_variable_attachment_bond_nor_dummy_atom();
@@ -981,7 +983,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     sanity_check();
 
     // delete one of the variable attachment atoms
-    model.remove({mol->getAtomWithIdx(2)}, {}, {}, {});
+    model.remove({mol->getAtomWithIdx(2)}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 6);
     BOOST_TEST(mol->getNumBonds() == 4);
     test_no_variable_attachment_bond_nor_dummy_atom();
@@ -989,7 +991,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     sanity_check();
 
     // delete a bond between two variable attachment atoms
-    model.remove({}, {mol->getBondWithIdx(1)}, {}, {});
+    model.remove({}, {mol->getBondWithIdx(1)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 7);
     BOOST_TEST(mol->getNumBonds() == 5);
     test_no_variable_attachment_bond_nor_dummy_atom();
@@ -997,7 +999,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
     sanity_check();
 
     // delete a bond involving one variable attachment atoms
-    model.remove({}, {mol->getBondWithIdx(0)}, {}, {});
+    model.remove({}, {mol->getBondWithIdx(0)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 7);
     BOOST_TEST(mol->getNumBonds() == 5);
     test_no_variable_attachment_bond_nor_dummy_atom();
@@ -1006,7 +1008,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
 
     // delete an atom bound to one of the variable attachment atoms, which
     // implicitly deletes a bond from a variable attachment atom
-    model.remove({mol->getAtomWithIdx(0)}, {}, {}, {});
+    model.remove({mol->getAtomWithIdx(0)}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 6);
     BOOST_TEST(mol->getNumBonds() == 4);
     test_no_variable_attachment_bond_nor_dummy_atom();
@@ -1015,7 +1017,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
 
     // delete the variable attachment bond's non-dummy atom, which implicitly
     // deletes the variable attachment bond
-    model.remove({mol->getAtomWithIdx(6)}, {}, {}, {});
+    model.remove({mol->getAtomWithIdx(6)}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 6);
     BOOST_TEST(mol->getNumBonds() == 6);
     test_no_variable_attachment_bond_nor_dummy_atom();
@@ -1024,7 +1026,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
 
     // delete an atom that has nothing to do with the variable attachment bond
     // and make sure that the variable attachment bond isn't deleted
-    model.remove({mol->getAtomWithIdx(5)}, {}, {}, {});
+    model.remove({mol->getAtomWithIdx(5)}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 7);
     BOOST_TEST(mol->getNumBonds() == 5);
     BOOST_TEST(is_variable_attachment_bond(mol->getBondWithIdx(4)));
@@ -1033,7 +1035,7 @@ BOOST_AUTO_TEST_CASE(test_remove_variable_attachment_bond)
 
     // delete a bond that has nothing to do with the variable attachment bond
     // and make sure that the variable attachment bond isn't deleted
-    model.remove({}, {mol->getBondWithIdx(4)}, {}, {});
+    model.remove({}, {mol->getBondWithIdx(4)}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 8);
     BOOST_TEST(mol->getNumBonds() == 6);
     BOOST_TEST(is_variable_attachment_bond(mol->getBondWithIdx(5)));
@@ -1159,7 +1161,7 @@ BOOST_AUTO_TEST_CASE(test_addMol_move_selection)
     BOOST_TEST(model.getSelectedAtoms().size() == 0);
 
     // now select an atom and add the molecule again
-    model.select({model.getAtomFromTag(AtomTag(0))}, {}, {}, {},
+    model.select({model.getAtomFromTag(AtomTag(0))}, {}, {}, {}, {},
                  SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms().size() == 1);
     model.addMol(*mol_to_add, "test", true, WhatChanged::MOLECULE);
@@ -1196,7 +1198,7 @@ BOOST_AUTO_TEST_CASE(test_clear)
 
     auto* atom1 = model.getAtomFromTag(AtomTag(1));
     auto* plus = &model.m_pluses[0];
-    model.select({atom1}, {}, {}, {plus}, SelectMode::SELECT);
+    model.select({atom1}, {}, {}, {}, {plus}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds().empty());
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
@@ -1267,9 +1269,9 @@ BOOST_AUTO_TEST_CASE(test_selection)
     model.clearSelection();
     test_selection_changed_emitted(false);
     BOOST_TEST(!undo_stack.count());
-    model.select({}, {}, {}, {}, SelectMode::SELECT);
+    model.select({}, {}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(!undo_stack.count());
-    model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    model.select({}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(!undo_stack.count());
 
     std::shared_ptr<RDKit::ROMol> mol_to_add(RDKit::SmilesToMol("CCCCC"));
@@ -1289,9 +1291,9 @@ BOOST_AUTO_TEST_CASE(test_selection)
     // stack
     model.clearSelection();
     test_selection_changed_emitted(false);
-    model.select({}, {}, {}, {}, SelectMode::SELECT);
+    model.select({}, {}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(undo_stack.count() == 3);
-    model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    model.select({}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     BOOST_TEST(undo_stack.count() == 3);
 
     auto* atom1 = model.getAtomFromTag(AtomTag(1));
@@ -1299,14 +1301,14 @@ BOOST_AUTO_TEST_CASE(test_selection)
     auto* bond1 = model.getBondFromTag(BondTag(1));
     auto* arrow = &model.m_arrow.value();
     auto* plus = &model.m_pluses[0];
-    model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT);
+    model.select({atom1, atom2}, {bond1}, {}, {}, {arrow}, SelectMode::SELECT);
     test_selection_changed_emitted(true); // 1
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
     BOOST_TEST(model.hasSelection());
 
-    model.select({atom1}, {bond1}, {}, {arrow}, SelectMode::DESELECT);
+    model.select({atom1}, {bond1}, {}, {}, {arrow}, SelectMode::DESELECT);
     test_selection_changed_emitted(true); // 2
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds().empty());
@@ -1351,7 +1353,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects().empty());
     BOOST_TEST(!model.hasSelection());
 
-    model.select({atom2}, {bond1}, {}, {plus}, SelectMode::SELECT);
+    model.select({atom2}, {bond1}, {}, {}, {plus}, SelectMode::SELECT);
     test_selection_changed_emitted(true); // 9
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
@@ -1370,7 +1372,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     // make sure that selecting atoms/bonds that are already selected can be
     // undone correctly
     auto* bond2 = model.getBondFromTag(BondTag(2));
-    model.select({atom1, atom2}, {bond1, bond2}, {}, {arrow, plus},
+    model.select({atom1, atom2}, {bond1, bond2}, {}, {}, {arrow, plus},
                  SelectMode::SELECT);
     test_selection_changed_emitted(true); // 12
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
@@ -1391,11 +1393,11 @@ BOOST_AUTO_TEST_CASE(test_selection)
 
     // make sure that deselecting atoms/bonds that are already deselected can be
     // undone correctly
-    model.select({}, {}, {}, {arrow}, SelectMode::DESELECT);
+    model.select({}, {}, {}, {}, {arrow}, SelectMode::DESELECT);
     test_selection_changed_emitted(true); // 15
     auto* atom3 = model.getAtomFromTag(AtomTag(3));
     auto* bond3 = model.getBondFromTag(BondTag(3));
-    model.select({atom2, atom3}, {bond2, bond3}, {}, {arrow},
+    model.select({atom2, atom3}, {bond2, bond3}, {}, {}, {arrow},
                  SelectMode::DESELECT);
     test_selection_changed_emitted(true); // 16
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
@@ -1413,14 +1415,14 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
 
     // toggle the selection
-    model.select({atom1}, {}, {}, {arrow}, SelectMode::TOGGLE);
+    model.select({atom1}, {}, {}, {}, {arrow}, SelectMode::TOGGLE);
     // toggle emits the signal twice
     test_selection_changed_emitted(true, 2); // 20
     BOOST_TEST(model.getSelectedAtoms().empty());
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() ==
                nmo_set({arrow, plus}));
-    model.select({atom1}, {}, {}, {arrow}, SelectMode::TOGGLE);
+    model.select({atom1}, {}, {}, {}, {arrow}, SelectMode::TOGGLE);
     test_selection_changed_emitted(true, 2); // 22
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
@@ -1438,7 +1440,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({plus}));
 
     // select-only
-    model.select({atom2}, {bond3}, {}, {arrow}, SelectMode::SELECT_ONLY);
+    model.select({atom2}, {bond3}, {}, {}, {arrow}, SelectMode::SELECT_ONLY);
     // select_only emits the signal twice
     test_selection_changed_emitted(true, 2); // 28
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
@@ -1456,7 +1458,7 @@ BOOST_AUTO_TEST_CASE(test_selection)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     // select-only with no atoms or bonds specified should clear the selection
-    model.select({}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    model.select({}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
     // in this case only one signal is emitted
     test_selection_changed_emitted(true); // 33
     BOOST_TEST(model.getSelectedAtoms().empty());
@@ -1497,7 +1499,8 @@ BOOST_AUTO_TEST_CASE(test_select_all_and_invert)
     auto* atom2 = model.getAtomFromTag(AtomTag(2));
     auto* bond1 = model.getBondFromTag(BondTag(1));
     auto* arrow = &model.m_arrow.value();
-    model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT_ONLY);
+    model.select({atom1, atom2}, {bond1}, {}, {}, {arrow},
+                 SelectMode::SELECT_ONLY);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
@@ -1557,12 +1560,12 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     auto* atom2 = model.getAtomFromTag(AtomTag(2));
     auto* bond1 = model.getBondFromTag(BondTag(1));
     auto* arrow = &model.m_arrow.value();
-    model.select({atom1, atom2}, {bond1}, {}, {arrow}, SelectMode::SELECT);
+    model.select({atom1, atom2}, {bond1}, {}, {}, {arrow}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom1, atom2}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({bond1}));
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
-    model.remove({}, {bond1}, {}, {arrow});
+    model.remove({}, {bond1}, {}, {}, {arrow});
     atom1 = model.getAtomFromTag(AtomTag(1));
     atom2 = model.getAtomFromTag(AtomTag(2));
 
@@ -1581,7 +1584,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
 
     // removing an atom removes all of its bonds, so this removeAtomsAndBonds
     // call will implicitly remove and deselect bond1
-    model.remove({model.getAtomFromTag(AtomTag(1))}, {}, {}, {});
+    model.remove({model.getAtomFromTag(AtomTag(1))}, {}, {}, {}, {});
     atom2 = model.getAtomFromTag(AtomTag(2));
     arrow = &model.m_arrow.value();
     BOOST_TEST(model.getSelectedAtoms() == atom_set({atom2}));
@@ -1614,7 +1617,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     // removing non-selected atoms and bonds shouldn't have any effect on the
     // selection
     auto* plus = &model.m_pluses[0];
-    model.remove({model.getAtomFromTag(AtomTag(3))}, {}, {}, {plus});
+    model.remove({model.getAtomFromTag(AtomTag(3))}, {}, {}, {}, {plus});
     atom1 = model.getAtomFromTag(AtomTag(1));
     atom2 = model.getAtomFromTag(AtomTag(2));
     bond1 = model.getBondFromTag(BondTag(1));
@@ -1624,7 +1627,7 @@ BOOST_AUTO_TEST_CASE(test_removing_selected)
     BOOST_TEST(model.getSelectedNonMolecularObjects() == nmo_set({arrow}));
 
     undo_stack.undo();
-    model.remove({}, {model.getBondFromTag(BondTag(2))}, {}, {});
+    model.remove({}, {model.getBondFromTag(BondTag(2))}, {}, {}, {});
     atom1 = model.getAtomFromTag(AtomTag(1));
     atom2 = model.getAtomFromTag(AtomTag(2));
     bond1 = model.getBondFromTag(BondTag(1));
@@ -1647,21 +1650,21 @@ BOOST_AUTO_TEST_CASE(test_select_attachment_point)
     const auto* c_atom = mol->getAtomWithIdx(0);
     const auto* ap_atom = mol->getAtomWithIdx(2);
     const auto* ap_bond = mol->getBondWithIdx(1);
-    model.select({c_atom, ap_atom}, {}, {}, {}, SelectMode::SELECT);
+    model.select({c_atom, ap_atom}, {}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
-    model.select({}, {ap_bond}, {}, {}, SelectMode::DESELECT);
+    model.select({}, {ap_bond}, {}, {}, {}, SelectMode::DESELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom}));
     BOOST_TEST(model.getSelectedBonds().empty());
 
-    model.select({}, {ap_bond}, {}, {}, SelectMode::SELECT);
+    model.select({}, {ap_bond}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
-    model.select({ap_atom}, {}, {}, {}, SelectMode::TOGGLE);
+    model.select({ap_atom}, {}, {}, {}, {}, SelectMode::TOGGLE);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom}));
     BOOST_TEST(model.getSelectedBonds().empty());
 
-    model.select({ap_atom}, {ap_bond}, {}, {}, SelectMode::SELECT);
+    model.select({ap_atom}, {ap_bond}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms() == atom_set({c_atom, ap_atom}));
     BOOST_TEST(model.getSelectedBonds() == bond_set({ap_bond}));
 }
@@ -2188,7 +2191,7 @@ BOOST_AUTO_TEST_CASE(test_clean_up_selection, *utf::tolerance(0.01))
                10.099);
 
     // select the last atom
-    model.select({mol->getAtomWithIdx(4)}, {}, {}, {}, SelectMode::SELECT);
+    model.select({mol->getAtomWithIdx(4)}, {}, {}, {}, {}, SelectMode::SELECT);
     BOOST_TEST(model.getSelectedAtoms().size() == 1);
     BOOST_TEST(model.getSelectedBonds().size() == 0);
 
@@ -2311,7 +2314,7 @@ BOOST_AUTO_TEST_CASE(test_regenerate_coords_reaction)
     std::unordered_set<const RDKit::Atom*> reactant_atoms = {
         mol->getAtomWithIdx(0), mol->getAtomWithIdx(1), mol->getAtomWithIdx(2),
         mol->getAtomWithIdx(3)};
-    model.remove(reactant_atoms, {}, {}, {});
+    model.remove(reactant_atoms, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 4);
     model.regenerateCoordinates();
     BOOST_TEST(model.m_arrow.has_value());
@@ -2481,7 +2484,7 @@ BOOST_AUTO_TEST_CASE(test_updateExplictiHs)
     BOOST_TEST(mol->getNumAtoms() == 4);
 
     // delete an H, making it implicit, and leaving the N with only 2 Hs
-    model.remove({mol->getAtomWithIdx(2)}, {}, {}, {});
+    model.remove({mol->getAtomWithIdx(2)}, {}, {}, {}, {});
     BOOST_TEST(mol->getNumAtoms() == 3);
 
     // adding Hs should add the H we deleted
@@ -2680,7 +2683,7 @@ BOOST_AUTO_TEST_CASE(test_getSelectedMolForExport)
 
     // partial selection
     auto atom = model.getMol()->getAtomWithIdx(0);
-    model.select({atom}, {}, {}, {}, SelectMode::SELECT);
+    model.select({atom}, {}, {}, {}, {}, SelectMode::SELECT);
     mol = model.getSelectedMolForExport();
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(mol->getNumBonds() == 0);
@@ -3050,7 +3053,7 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     auto& s_group = RDKit::getSubstanceGroups(*mol)[0];
 
     // select an S-group
-    model.select({}, {}, {&s_group}, {}, SelectMode::SELECT);
+    model.select({}, {}, {}, {&s_group}, {}, SelectMode::SELECT);
     auto selected = model.getSelectedSGroups();
     BOOST_TEST(selected.size() == 1);
     BOOST_TEST(selected.count(&s_group) == 1);
@@ -3067,7 +3070,7 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     BOOST_TEST(model.hasSelection());
 
     // remove the selected S-group and undo
-    model.remove({}, {}, {&s_group}, {});
+    model.remove({}, {}, {}, {&s_group}, {});
     BOOST_TEST(RDKit::getSubstanceGroups(*mol).empty());
     BOOST_TEST(model.getSelectedSGroups().empty());
     BOOST_TEST(!model.hasSelection());
@@ -3081,7 +3084,7 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     // remove an atom in the S-group (which implicitly deletes the S-group) and
     // undo
     auto* atom = mol->getAtomWithIdx(4);
-    model.remove({atom}, {}, {}, {});
+    model.remove({atom}, {}, {}, {}, {});
     BOOST_TEST(RDKit::getSubstanceGroups(*mol).empty());
     BOOST_TEST(model.getSelectedSGroups().empty());
     BOOST_TEST(!model.hasSelection());
@@ -3095,7 +3098,7 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     // remove a bond at the S-group boundary (which implicitly deletes the
     // S-group) and undo
     auto* bond = mol->getBondWithIdx(2);
-    model.remove({}, {bond}, {}, {});
+    model.remove({}, {bond}, {}, {}, {});
     BOOST_TEST(RDKit::getSubstanceGroups(*mol).empty());
     BOOST_TEST(model.getSelectedSGroups().empty());
     BOOST_TEST(!model.hasSelection());
@@ -3110,7 +3113,7 @@ BOOST_AUTO_TEST_CASE(test_s_group_selection)
     // S-group isn't deselected
     auto* different_atom = mol->getAtomWithIdx(8);
     auto* different_bond = mol->getBondWithIdx(7);
-    model.remove({different_atom}, {different_bond}, {}, {});
+    model.remove({different_atom}, {different_bond}, {}, {}, {});
     auto& s_group5 = RDKit::getSubstanceGroups(*mol)[0];
     selected = model.getSelectedSGroups();
     BOOST_TEST(selected.size() == 1);
@@ -4078,6 +4081,154 @@ BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
     BOOST_TEST(carbon->getNumExplicitHs() == 0);
     BOOST_TEST(carbon->getTotalNumHs() == 0);
     BOOST_TEST(carbon->hasValenceViolation());
+}
+
+/**
+ * Ensure that secondary connections can be selected and deleted independently
+ * of the primary connection
+ */
+BOOST_AUTO_TEST_CASE(test_secondary_connections)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Load cyclohexane from SMILES
+    add_text_to_mol_model(model,
+                          "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+    const RDKit::ROMol* mol = model.getMol();
+    // sanity check
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+
+    // make sure that getAllUnselectedTags includes the tag for the secondary
+    // connection
+    auto unselected_tags = model.getAllUnselectedTags();
+    auto unselected_bonds = std::get<1>(unselected_tags);
+    BOOST_TEST(unselected_bonds.size() == 2);
+
+    // select the primary bond
+    model.select({}, {bond}, {}, {}, {}, SelectMode::SELECT);
+    auto selected_bonds = model.getSelectedBonds();
+    BOOST_TEST(selected_bonds.size() == 1);
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+
+    // select the secondary bond
+    model.select({}, {}, {bond}, {}, {}, SelectMode::SELECT_ONLY);
+    auto selected_secondary_connections =
+        model.getSelectedSecondaryConnections();
+    BOOST_TEST(selected_secondary_connections.size() == 1);
+    BOOST_TEST(model.getSelectedBonds().empty());
+    BOOST_TEST(*selected_secondary_connections.begin() ==
+               *selected_bonds.begin());
+
+    // remove the primary bond
+    model.remove({}, {bond}, {}, {}, {});
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 1);
+    // the selected bond is no longer a secondary connection, so it should now
+    // count as a selected bond
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(model.getSelectedBonds().size() == 1);
+    BOOST_TEST(!contains_two_monomer_linkages(mol->getBondWithIdx(0)));
+
+    // undo the deletion
+    undo_stack.undo();
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+
+    // remove the secondary bond
+    model.remove({}, {}, {bond}, {}, {});
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(model.getSelectedBonds().empty());
+    BOOST_TEST(!contains_two_monomer_linkages(bond));
+
+    // undo the deletion
+    undo_stack.undo();
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+
+    // remove both connections (thus removing the bond itself)
+    model.remove({}, {bond}, {bond}, {}, {});
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 0);
+    BOOST_TEST(model.getSelectedSecondaryConnections().empty());
+    BOOST_TEST(model.getSelectedBonds().empty());
+
+    // undo the deletion
+    undo_stack.undo();
+    mol = model.getMol();
+    bond = mol->getBondWithIdx(0);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(contains_two_monomer_linkages(bond));
+}
+
+/**
+ * Test that stereo labels update in real-time when atoms are moved
+ * Regression test for SKETCH-2590
+ */
+BOOST_AUTO_TEST_CASE(test_stereo_labels_update_on_atom_movement)
+{
+    // Create a molecule with a chiral center using a simpler SMILES
+    // N[C@H](C)O creates a chiral center at the carbon
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "N[C@H](C)O");
+    auto* mol = model.getMol();
+
+    // Get the chiral center atom (index 1, the carbon with N, C, and O)
+    auto* chiral_atom = mol->getAtomWithIdx(1);
+
+    // Get initial chirality label (should be "R" or "S" or "abs (R)" or "abs
+    // (S)")
+    std::string initial_label;
+    if (chiral_atom->hasProp(RDKit::common_properties::atomNote)) {
+        chiral_atom->getProp(RDKit::common_properties::atomNote, initial_label);
+    }
+
+    // The atom should have a chirality label after import
+    BOOST_REQUIRE(!initial_label.empty());
+
+    // Get the N atom (index 0) and calculate a translation to move it
+    // to a position that will flip the chirality
+    auto* n_atom = mol->getAtomWithIdx(0);
+    auto& conf = mol->getConformer();
+    RDGeom::Point3D n_pos = conf.getAtomPos(n_atom->getIdx());
+    RDGeom::Point3D chiral_pos = conf.getAtomPos(chiral_atom->getIdx());
+
+    // Move N atom to the opposite side of the chiral center (mirror position)
+    // This should flip the R/S designation
+    RDGeom::Point3D vector_to_move = chiral_pos - n_pos;
+    vector_to_move *= 2.0; // Move to the opposite side
+
+    // Use translateByVector to move the N atom
+    std::unordered_set<const RDKit::Atom*> atoms = {n_atom};
+    std::unordered_set<const NonMolecularObject*> non_mol_objs;
+    model.translateByVector(vector_to_move, atoms, non_mol_objs);
+
+    // Get the updated chirality label
+    chiral_atom = mol->getAtomWithIdx(1); // Refresh pointer
+    std::string updated_label;
+    if (chiral_atom->hasProp(RDKit::common_properties::atomNote)) {
+        chiral_atom->getProp(RDKit::common_properties::atomNote, updated_label);
+    }
+
+    // The chirality label should have been updated
+    // It should either be the opposite chirality (R->S or S->R, or abs (R)->abs
+    // (S)) or potentially undefined (?) if atoms are collinear
+    BOOST_REQUIRE(!updated_label.empty());
+    BOOST_TEST(updated_label != initial_label,
+               "Chirality label should update when atom positions change, "
+               "but it remained: "
+                   << initial_label);
 }
 
 } // namespace sketcher
