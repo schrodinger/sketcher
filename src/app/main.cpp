@@ -24,6 +24,7 @@ using schrodinger::rdkit_extensions::Format;
 using schrodinger::sketcher::ImageFormat;
 using schrodinger::sketcher::SketcherWidget;
 
+#ifdef __EMSCRIPTEN__
 // For the WebAssembly build, we need to be able to get the sketcher
 // instance we are running from a function/static method. We'll use a
 // singleton for that.
@@ -33,10 +34,14 @@ SketcherWidget& get_sketcher_instance()
     return instance;
 }
 
-void sketcher_import_text(const std::string& text)
+void sketcher_import_text(
+    const std::string& text,
+    emscripten::val format_val = emscripten::val::undefined())
 {
     auto& sk = get_sketcher_instance();
-    sk.addFromString(text);
+    auto format = format_val.isUndefined() ? Format::AUTO_DETECT
+                                           : format_val.as<Format>();
+    sk.addFromString(text, format);
 }
 
 std::string sketcher_export_text(Format format)
@@ -79,7 +84,6 @@ void sketcher_allow_monomeric()
 
 void sketcher_changed()
 {
-#ifdef __EMSCRIPTEN__
     EM_ASM({
         if (Module.sketcher_changed_callback) {
             setTimeout(
@@ -91,10 +95,8 @@ void sketcher_changed()
                 100);
         }
     });
-#endif
 }
 
-#ifdef __EMSCRIPTEN__
 EMSCRIPTEN_BINDINGS(sketcher)
 {
     emscripten::enum_<Format>("Format")
@@ -133,7 +135,6 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
     // see sketcher_changed_callback above
 }
-#endif
 
 void apply_stylesheet(QApplication& app)
 {
@@ -145,6 +146,7 @@ void apply_stylesheet(QApplication& app)
     QString style(styleFile.readAll());
     app.setStyleSheet(style);
 }
+#endif
 
 int main(int argc, char** argv)
 {

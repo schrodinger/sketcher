@@ -13,3 +13,9 @@ repos:
         language: system
         files: \.js$
         args: [--check]
+      - id: yapf
+        name: yapf
+        entry: yapf
+        language: system
+        files: \.py$
+        args: [--diff, --parallel]

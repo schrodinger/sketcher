@@ -1,6 +1,7 @@
 # byte-compiled python files
 *.pyc
 *.pyo
+__pycache__/
 # emacs backup files
 *~
 # vim backup files
@@ -31,6 +32,9 @@ TAGS
 *.pb.go
 # pytest files
 .pytest_cache
+# playwright files
+playwright-report/
+playwright/.cache/
 # compilation database
 compile_commands.json
 .vscode/
