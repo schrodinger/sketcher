@@ -553,27 +553,27 @@ BOOST_AUTO_TEST_CASE(IsGeometricallyRegularRing2D_RegularPolygon)
     std::vector<std::pair<double, double>> hex_coords = {
         {1.0, 0.0},  {0.5, std::sqrt(3) / 2},   {-0.5, std::sqrt(3) / 2},
         {-1.0, 0.0}, {-0.5, -std::sqrt(3) / 2}, {0.5, -std::sqrt(3) / 2}};
-    RDKit::ROMol mol = make_molecule_with_coords(
+    RDKit::ROMol hex_mol = make_molecule_with_coords(
         hex_coords, {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 5}, {5, 0}});
     std::vector<int> ring_atoms = {0, 1, 2, 3, 4, 5};
     BOOST_CHECK(schrodinger::rdkit_extensions::is_geometrically_regular_ring_2d(
-        mol, ring_atoms));
+        hex_mol, ring_atoms));
 
     // distort one vertex. The ring should no longer be considered regular
     hex_coords[0] = {1.5, 0.0};
-    mol = make_molecule_with_coords(
+    RDKit::ROMol distorted_hex_mol = make_molecule_with_coords(
         hex_coords, {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 5}, {5, 0}});
     BOOST_CHECK(
         !schrodinger::rdkit_extensions::is_geometrically_regular_ring_2d(
-            mol, ring_atoms));
-
+            distorted_hex_mol, ring_atoms));
     // Equilateral triangle, should be regular
     std::vector<std::pair<double, double>> tri_coords = {
         {0.0, 1.0}, {-std::sqrt(3) / 2, -0.5}, {std::sqrt(3) / 2, -0.5}};
-    mol = make_molecule_with_coords(tri_coords, {{0, 1}, {1, 2}, {2, 0}});
+    RDKit::ROMol tri_mol =
+        make_molecule_with_coords(tri_coords, {{0, 1}, {1, 2}, {2, 0}});
     ring_atoms = {0, 1, 2};
     BOOST_CHECK(schrodinger::rdkit_extensions::is_geometrically_regular_ring_2d(
-        mol, ring_atoms));
+        tri_mol, ring_atoms));
 }
 
 BOOST_AUTO_TEST_CASE(FindAllConnectedMonomersOutsideRing)
