@@ -218,8 +218,10 @@ void SketcherTopBar::generatePackets()
 
 void SketcherTopBar::onImportFromFileClicked()
 {
+    qDebug() << "onImportFromFileClicked called";
     auto file_open_completed = [this](const auto& file_path,
                                       const auto& content) {
+        qDebug() << "file_open_completed callback called with path:" << file_path;
         if (file_path.isEmpty()) {
             /*
              * If the user cancels the file dialog, the file path will be empty.
@@ -227,6 +229,7 @@ void SketcherTopBar::onImportFromFileClicked()
              * behavior recommended in the QFileDialog::getOpenFileContent
              * documentation. SKETCH-2239
              */
+            qDebug() << "File path is empty, user likely cancelled";
             return;
         }
         try {
@@ -235,8 +238,10 @@ void SketcherTopBar::onImportFromFileClicked()
             auto path_string = file_path.toStdString();
             auto format = get_file_format(path_string);
             auto text = get_decompressed_string(content.toStdString());
+            qDebug() << "Emitting importTextRequested";
             emit importTextRequested(text, format);
         } catch (const std::exception& exc) {
+            qDebug() << "Exception during file import:" << exc.what();
             show_error_dialog("File Error", exc.what(), this);
         }
     };
@@ -248,8 +253,10 @@ void SketcherTopBar::onImportFromFileClicked()
     auto name_filter = filters.join(";;");
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 5)
+    qDebug() << "Using Qt 6.5.5+ API (3 parameters) - QT_VERSION:" << QT_VERSION;
     QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
 #else
+    qDebug() << "Using Qt < 6.5.5 API (2 parameters) - QT_VERSION:" << QT_VERSION;
     QFileDialog::getOpenFileContent(name_filter, file_open_completed);
 #endif
 }
