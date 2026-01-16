@@ -61,6 +61,34 @@ index 1581b2ddc..2fe52e1a2 100644
    std::string data(text, len);
    try {
      return v2::FileParsers::MolFromPDBBlock(data);
+diff --git a/Code/GraphMol/MolInterchange/Parser.cpp b/Code/GraphMol/MolInterchange/Parser.cpp
+index 5a8761abe..11f66cb94 100644
+--- a/Code/GraphMol/MolInterchange/Parser.cpp
++++ b/Code/GraphMol/MolInterchange/Parser.cpp
+@@ -35,7 +35,9 @@ using namespace Queries;
+ #include <RDGeneral/BoostStartInclude.h>
+ // make sure we're using boost::json header-only
+ #define BOOST_JSON_NO_LIB
++#ifndef BOOST_CONTAINER_NO_LIB
+ #define BOOST_CONTAINER_NO_LIB
++#endif
+ #include <boost/json.hpp>
+ #include <boost/json/src.hpp>  // only include this once in the project!
+ #include <RDGeneral/BoostEndInclude.h>
+diff --git a/Code/GraphMol/MolInterchange/Writer.cpp b/Code/GraphMol/MolInterchange/Writer.cpp
+index 11fc16b65..0a8bd5036 100644
+--- a/Code/GraphMol/MolInterchange/Writer.cpp
++++ b/Code/GraphMol/MolInterchange/Writer.cpp
+@@ -29,7 +29,9 @@
+ 
+ #include <RDGeneral/BoostStartInclude.h>
+ #define BOOST_JSON_NO_LIB
++#ifndef BOOST_CONTAINER_NO_LIB
+ #define BOOST_CONTAINER_NO_LIB
++#endif
+ #include <boost/json.hpp>
+ #include <RDGeneral/BoostEndInclude.h>
+ 
 diff --git a/Code/GraphMol/SmilesParse/SmilesParse.h b/Code/GraphMol/SmilesParse/SmilesParse.h
 index 3489c37d0..2d672235b 100644
 --- a/Code/GraphMol/SmilesParse/SmilesParse.h
