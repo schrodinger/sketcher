@@ -31,7 +31,6 @@
 #include <rdkit/GraphMol/SmilesParse/SmartsWrite.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
-#include <rdkit/GraphMol/StereoGroup.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/inchi.h>
 
@@ -332,52 +331,6 @@ void adjust_for_mdl_v2k_format(RDKit::RWMol& mol)
     // information loss; here, we explicitly clear enhanced stereo so that
     // V2000 can be written as requested.
     mol.setStereoGroups({});
-}
-
-// This will allow us to combine absolute stereo groups into one. e.g.
-// |a:1,a:3| -> |a:1,3|
-void combine_absolute_stereo_groups(RDKit::RWMol& mol)
-{
-    using namespace RDKit;
-
-    // get copy of stereo groups
-    auto stereo_groups = mol.getStereoGroups();
-
-    // clear stereo groups
-    mol.setStereoGroups({});
-
-    // we only need to merge the atoms; other info can be accessed via the
-    // original stereo group
-    std::vector<Atom*>* combined_absolute_stereo_atoms = nullptr;
-    std::vector<std::pair<StereoGroup*, std::vector<Atom*>>> combined;
-    for (auto& sg : stereo_groups) {
-        // always add OR and AND stereo groups
-        if (sg.getGroupType() != StereoGroupType::STEREO_ABSOLUTE) {
-            combined.push_back({&sg, sg.getAtoms()});
-        }
-        // this is the first ABS stereo group
-        else if (combined_absolute_stereo_atoms == nullptr) {
-            combined.push_back({&sg, sg.getAtoms()});
-            combined_absolute_stereo_atoms = &combined.back().second;
-        }
-        // this is an ABS stereo group, but not the first one
-        else {
-            std::ranges::transform(
-                sg.getAtoms(),
-                std::back_inserter(*combined_absolute_stereo_atoms),
-                [](auto& entry) { return entry; });
-        }
-    }
-
-    // now construct the new stereo groups
-    std::vector<StereoGroup> new_stereogroups;
-    for (const auto& [sg, atoms] : combined) {
-        new_stereogroups.push_back(
-            {sg->getGroupType(), atoms, {}, sg->getReadId()});
-        new_stereogroups.back().setWriteId(sg->getWriteId());
-    }
-
-    mol.setStereoGroups(std::move(new_stereogroups));
 }
 
 void set_xyz_title(RDKit::RWMol& mol)
@@ -723,7 +676,6 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     }
 
     assign_stereochemistry(*mol);
-    combine_absolute_stereo_groups(*mol);
 
     return mol;
 }
@@ -830,8 +782,6 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
     bool include_stereo = true;
     int confId = -1;
     bool kekulize = false;
-
-    combine_absolute_stereo_groups(*mol);
 
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
