@@ -129,8 +129,7 @@ function(setup_target TARGET)
     target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
                         -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
     target_compile_options(${TARGET} PRIVATE -fexceptions
-                                             -sDISABLE_EXCEPTION_CATCHING=0 -Os
-                                             -Wno-deprecated-literal-operator)
+                                             -sDISABLE_EXCEPTION_CATCHING=0 -Os)
   endif()
 endfunction()
 
