@@ -247,7 +247,7 @@ void SketcherTopBar::onImportFromFileClicked()
     }
     auto name_filter = filters.join(";;");
 
-#if QT_6_5_5
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 5)
     QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
 #else
     QFileDialog::getOpenFileContent(name_filter, file_open_completed);

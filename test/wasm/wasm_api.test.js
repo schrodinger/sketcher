@@ -175,4 +175,42 @@ test.describe('WASM Sketcher API', () => {
 
     expect(exportedSmiles).toBe('C1=CC=CC=C1');
   });
+
+  test('Import SDF file content', async ({ page }) => {
+    const sdfContent = `
+  Mrv2311 01161509202D
+
+  6  6  0  0  0  0            999 V2000
+    1.1625   -0.7145    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.9770   -0.3020    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.9770    0.5230    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.1625    0.9355    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.3480    0.5230    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.3480   -0.3020    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  2  0  0  0  0
+  2  3  1  0  0  0  0
+  3  4  2  0  0  0  0
+  4  5  1  0  0  0  0
+  5  6  2  0  0  0  0
+  6  1  1  0  0  0  0
+M  END
+$$$$
+`;
+
+    // Import the SDF content and verify it creates a molecule
+    const importSuccessful = await page.evaluate((sdf) => {
+      Module.sketcher_clear();
+      Module.sketcher_import_text(sdf);
+      return !Module.sketcher_is_empty();
+    }, sdfContent);
+
+    expect(importSuccessful).toBe(true);
+
+    // Verify we can export it back to SMILES
+    const exportedSmiles = await page.evaluate(() => {
+      return Module.sketcher_export_text(Module.Format.SMILES);
+    });
+
+    expect(exportedSmiles).toBe('C1=CC=CC=C1');
+  });
 });
