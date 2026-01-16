@@ -2977,9 +2977,7 @@ void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
 void MolModel::setMonomerSizes(
     std::unordered_map<int, RDGeom::Point3D> monomer_sizes)
 {
-    for (const auto& [idx, size] : monomer_sizes) {
-        rdkit_extensions::resize_monomer(m_mol, idx, size);
-    }
+    rdkit_extensions::resize_monomers(m_mol, monomer_sizes);
 }
 
 } // namespace sketcher
