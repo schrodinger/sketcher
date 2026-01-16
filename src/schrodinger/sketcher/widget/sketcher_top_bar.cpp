@@ -221,7 +221,8 @@ void SketcherTopBar::onImportFromFileClicked()
     qDebug() << "onImportFromFileClicked called";
     auto file_open_completed = [this](const auto& file_path,
                                       const auto& content) {
-        qDebug() << "file_open_completed callback called with path:" << file_path;
+        qDebug() << "file_open_completed callback called with path:"
+                 << file_path;
         if (file_path.isEmpty()) {
             /*
              * If the user cancels the file dialog, the file path will be empty.
@@ -253,10 +254,12 @@ void SketcherTopBar::onImportFromFileClicked()
     auto name_filter = filters.join(";;");
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 5, 5)
-    qDebug() << "Using Qt 6.5.5+ API (3 parameters) - QT_VERSION:" << QT_VERSION;
+    qDebug() << "Using Qt 6.5.5+ API (3 parameters) - QT_VERSION:"
+             << QT_VERSION;
     QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
 #else
-    qDebug() << "Using Qt < 6.5.5 API (2 parameters) - QT_VERSION:" << QT_VERSION;
+    qDebug() << "Using Qt < 6.5.5 API (2 parameters) - QT_VERSION:"
+             << QT_VERSION;
     QFileDialog::getOpenFileContent(name_filter, file_open_completed);
 #endif
 }
