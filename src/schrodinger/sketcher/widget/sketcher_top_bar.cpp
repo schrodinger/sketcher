@@ -238,7 +238,16 @@ void SketcherTopBar::onImportFromFileClicked()
 
             auto path_string = file_path.toStdString();
             auto format = get_file_format(path_string);
+            qDebug() << "Raw content size:" << content.size();
+            qDebug() << "First 100 chars of raw content:"
+                     << content.left(100).toStdString().c_str();
             auto text = get_decompressed_string(content.toStdString());
+            qDebug() << "Decompressed text size:" << text.size();
+            qDebug() << "First 200 chars of decompressed text:"
+                     << text.substr(0, 200).c_str();
+            qDebug() << "Last 100 chars of decompressed text:"
+                     << text.substr(text.size() > 100 ? text.size() - 100 : 0)
+                            .c_str();
             qDebug() << "Emitting importTextRequested";
             emit importTextRequested(text, format);
         } catch (const std::exception& exc) {
