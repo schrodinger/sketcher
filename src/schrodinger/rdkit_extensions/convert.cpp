@@ -565,10 +565,16 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
             // SDMolSupplier will preserve structure level properties
+            qDebug() << "Parsing MDL format, text length:" << text.length()
+                     << "sanitize:" << sanitize << "removeHs:" << removeHs;
             RDKit::SDMolSupplier reader;
             bool strict_parsing = false;
+            qDebug() << "Calling reader.setData...";
             reader.setData(text, sanitize, removeHs, strict_parsing);
+            qDebug() << "Calling read_mol...";
             mol.reset(read_mol(reader, rd_error_log));
+            qDebug() << "read_mol returned, mol is"
+                     << (mol ? "non-null" : "null");
             break;
         }
         case Format::MAESTRO: {
@@ -657,6 +663,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     }
 
     if (mol == nullptr) {
+        qDebug() << "mol is null, throwing parse error. RDKit messages:"
+                 << rd_error_log.messages().c_str();
         throw_parse_error(rd_error_log, text);
     }
 
