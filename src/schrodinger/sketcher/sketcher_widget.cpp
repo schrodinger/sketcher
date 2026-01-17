@@ -566,13 +566,19 @@ void SketcherWidget::paste()
 
 void SketcherWidget::importText(const std::string& text, Format format)
 {
+    qDebug() << "SketcherWidget::importText called with text length:"
+             << text.length() << "format:" << static_cast<int>(format);
     if (m_sketcher_model->getValueBool(
             ModelKey::NEW_STRUCTURES_REPLACE_CONTENT)) {
+        qDebug() << "Clearing mol model before import";
         m_mol_model->clear();
     }
     try {
+        qDebug() << "Calling addFromString";
         addFromString(text, format);
+        qDebug() << "addFromString completed successfully";
     } catch (const std::exception& exc) {
+        qDebug() << "Exception in importText:" << exc.what();
         show_error_dialog("Import Error", exc.what(), window());
     }
 }
@@ -1377,7 +1383,9 @@ void SketcherWidget::addTextToMolModel(
     const std::string& text, const rdkit_extensions::Format format,
     const std::optional<RDGeom::Point3D> position, const bool recenter_view)
 {
+    qDebug() << "addTextToMolModel called";
     auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
+    qDebug() << "convert_text_to_mol_or_reaction completed";
     auto* mol_ptr_ptr =
         std::get_if<boost::shared_ptr<RDKit::RWMol>>(&mol_or_reaction);
     // we assume that reactions are atomistic
@@ -1386,6 +1394,9 @@ void SketcherWidget::addTextToMolModel(
 
     auto interface_type = m_sketcher_model->getInterfaceType();
     auto cur_molecule_type = m_sketcher_model->getMoleculeType();
+    qDebug() << "mol_to_add_is_monomeric:" << mol_to_add_is_monomeric
+             << "interface_type:" << static_cast<int>(interface_type)
+             << "cur_molecule_type:" << static_cast<int>(cur_molecule_type);
     if (mol_to_add_is_monomeric &&
         !(interface_type & InterfaceType::MONOMERIC)) {
         throw std::runtime_error("Monomeric models not allowed");
@@ -1403,8 +1414,10 @@ void SketcherWidget::addTextToMolModel(
             "Cannot add an atomistic model when the Sketcher already contains "
             "a monomeric model");
     }
+    qDebug() << "Calling add_mol_or_reaction_to_mol_model";
     add_mol_or_reaction_to_mol_model(*m_mol_model, mol_or_reaction, position,
                                      recenter_view);
+    qDebug() << "add_mol_or_reaction_to_mol_model completed";
 }
 
 } // namespace sketcher
