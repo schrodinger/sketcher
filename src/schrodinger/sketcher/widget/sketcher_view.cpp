@@ -62,7 +62,11 @@ std::vector<SetterPacket> SketcherView::getSetterPackets() const
 void SketcherView::onModelValuesChanged(
     const std::unordered_set<ModelKey>& keys)
 {
-    updateWidgetsEnabled();
+    // In selection-only mode (e.g. in 2D Overlay) toolbars
+    // are hidden; don't update widgets as there is a performance hit
+    if (!parent() || isVisibleTo(window())) {
+        updateWidgetsEnabled();
+    }
     for (auto key : keys) {
         setValue(key, getModel()->getValue(key));
     }
