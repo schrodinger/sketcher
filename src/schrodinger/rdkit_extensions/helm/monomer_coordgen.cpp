@@ -1294,13 +1294,18 @@ void lay_out_polymers(
     const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
 {
     std::unordered_set<int> placed_monomers_idcs{};
+    RDKit::ROMOL_SPTR last_placed_polymer = nullptr;
 
     // lay out the polymers in connection order so connected polymers are laid
     // out next to each other.
     for (auto polymer : polymers) {
+        // if a polymer has no parent, use the last placed polymer as parent.
+        // This places aligns unconnected polymers vertically
         RDKit::ROMOL_SPTR parent = nullptr;
         if (parent_polymer.contains(polymer)) {
             parent = parent_polymer.at(polymer);
+        } else {
+            parent = last_placed_polymer;
         }
         // For double stranded nucleic acids we want to lay out the first
         // polymer normally and then rotate the other polymer 180° so the
@@ -1311,6 +1316,7 @@ void lay_out_polymers(
         if (parent != nullptr) {
             orient_polymer(*polymer, *parent, rotate_polymer);
         }
+        last_placed_polymer = polymer;
     }
 }
 
