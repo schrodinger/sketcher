@@ -1300,7 +1300,6 @@ void lay_out_polymers(
     // out next to each other.
     for (auto polymer : polymers) {
         // if a polymer has no parent, use the last placed polymer as parent.
-        // This places aligns unconnected polymers vertically
         RDKit::ROMOL_SPTR parent = nullptr;
         if (parent_polymer.contains(polymer)) {
             parent = parent_polymer.at(polymer);
