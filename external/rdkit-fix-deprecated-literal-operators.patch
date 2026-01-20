@@ -1,0 +1,117 @@
+diff --git a/Code/GraphMol/ChemReactions/ReactionParser.h b/Code/GraphMol/ChemReactions/ReactionParser.h
+index 25de3e246..a3d5ce16b 100644
+--- a/Code/GraphMol/ChemReactions/ReactionParser.h
++++ b/Code/GraphMol/ChemReactions/ReactionParser.h
+@@ -390,8 +390,8 @@ inline std::string addChemicalReactionToPNGFile(const ChemicalReaction &rxn,
+ }
+ //! @}
+ 
+-inline std::unique_ptr<ChemicalReaction> operator"" _rxnsmarts(const char *text,
+-                                                               size_t len) {
++inline std::unique_ptr<ChemicalReaction> operator""_rxnsmarts(const char *text,
++                                                              size_t len) {
+   std::string sma(text, len);
+   std::unique_ptr<ChemicalReaction> ptr;
+   try {
+@@ -401,8 +401,8 @@ inline std::unique_ptr<ChemicalReaction> operator"" _rxnsmarts(const char *text,
+   }
+   return ptr;
+ }
+-inline std::unique_ptr<ChemicalReaction> operator"" _rxnsmiles(const char *text,
+-                                                               size_t len) {
++inline std::unique_ptr<ChemicalReaction> operator""_rxnsmiles(const char *text,
++                                                              size_t len) {
+   std::string sma(text, len);
+   std::unique_ptr<ChemicalReaction> ptr;
+   try {
+diff --git a/Code/GraphMol/FileParsers/FileParsers.h b/Code/GraphMol/FileParsers/FileParsers.h
+index 1581b2ddc..2fe52e1a2 100644
+--- a/Code/GraphMol/FileParsers/FileParsers.h
++++ b/Code/GraphMol/FileParsers/FileParsers.h
+@@ -488,8 +488,8 @@ RDKIT_FILEPARSERS_EXPORT RWMol *RDKitSVGToMol(std::istream *instream,
+                                               bool sanitize = true,
+                                               bool removeHs = true);
+ 
+-inline std::unique_ptr<RDKit::RWMol> operator"" _ctab(const char *text,
+-                                                      size_t len) {
++inline std::unique_ptr<RDKit::RWMol> operator""_ctab(const char *text,
++                                                     size_t len) {
+   std::string data(text, len);
+   try {
+     return v2::FileParsers::MolFromMolBlock(data);
+@@ -497,8 +497,8 @@ inline std::unique_ptr<RDKit::RWMol> operator"" _ctab(const char *text,
+     return nullptr;
+   }
+ }
+-inline std::unique_ptr<RDKit::RWMol> operator"" _mol2(const char *text,
+-                                                      size_t len) {
++inline std::unique_ptr<RDKit::RWMol> operator""_mol2(const char *text,
++                                                     size_t len) {
+   std::string data(text, len);
+   try {
+     return v2::FileParsers::MolFromMol2Block(data);
+@@ -507,8 +507,8 @@ inline std::unique_ptr<RDKit::RWMol> operator"" _mol2(const char *text,
+   }
+ }
+ 
+-inline std::unique_ptr<RDKit::RWMol> operator"" _pdb(const char *text,
+-                                                     size_t len) {
++inline std::unique_ptr<RDKit::RWMol> operator""_pdb(const char *text,
++                                                    size_t len) {
+   std::string data(text, len);
+   try {
+     return v2::FileParsers::MolFromPDBBlock(data);
+diff --git a/Code/GraphMol/MolInterchange/Parser.cpp b/Code/GraphMol/MolInterchange/Parser.cpp
+index 5a8761abe..11f66cb94 100644
+--- a/Code/GraphMol/MolInterchange/Parser.cpp
++++ b/Code/GraphMol/MolInterchange/Parser.cpp
+@@ -35,7 +35,9 @@ using namespace Queries;
+ #include <RDGeneral/BoostStartInclude.h>
+ // make sure we're using boost::json header-only
+ #define BOOST_JSON_NO_LIB
++#ifndef BOOST_CONTAINER_NO_LIB
+ #define BOOST_CONTAINER_NO_LIB
++#endif
+ #include <boost/json.hpp>
+ #include <boost/json/src.hpp>  // only include this once in the project!
+ #include <RDGeneral/BoostEndInclude.h>
+diff --git a/Code/GraphMol/MolInterchange/Writer.cpp b/Code/GraphMol/MolInterchange/Writer.cpp
+index 11fc16b65..0a8bd5036 100644
+--- a/Code/GraphMol/MolInterchange/Writer.cpp
++++ b/Code/GraphMol/MolInterchange/Writer.cpp
+@@ -29,7 +29,9 @@
+ 
+ #include <RDGeneral/BoostStartInclude.h>
+ #define BOOST_JSON_NO_LIB
++#ifndef BOOST_CONTAINER_NO_LIB
+ #define BOOST_CONTAINER_NO_LIB
++#endif
+ #include <boost/json.hpp>
+ #include <RDGeneral/BoostEndInclude.h>
+ 
+diff --git a/Code/GraphMol/SmilesParse/SmilesParse.h b/Code/GraphMol/SmilesParse/SmilesParse.h
+index 3489c37d0..2d672235b 100644
+--- a/Code/GraphMol/SmilesParse/SmilesParse.h
++++ b/Code/GraphMol/SmilesParse/SmilesParse.h
+@@ -234,8 +234,8 @@ inline Bond *SmartsToBond(const std::string &sma) {
+ }
+ }  // namespace v1
+ 
+-inline std::unique_ptr<RDKit::RWMol> operator"" _smiles(const char *text,
+-                                                        size_t len) {
++inline std::unique_ptr<RDKit::RWMol> operator""_smiles(const char *text,
++                                                       size_t len) {
+   std::string smi(text, len);
+   try {
+     return v2::SmilesParse::MolFromSmiles(smi);
+@@ -243,8 +243,8 @@ inline std::unique_ptr<RDKit::RWMol> operator"" _smiles(const char *text,
+     return nullptr;
+   }
+ }
+-inline std::unique_ptr<RDKit::RWMol> operator"" _smarts(const char *text,
+-                                                        size_t len) {
++inline std::unique_ptr<RDKit::RWMol> operator""_smarts(const char *text,
++                                                       size_t len) {
+   std::string smi(text, len);
+   return v2::SmilesParse::MolFromSmarts(smi);
+ }
