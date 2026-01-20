@@ -1,0 +1,9 @@
+# Pytest and plugins
+pytest>=7.4.0
+pytest-cpp  # For C++ test integration
+pytest-xdist>=3.5.0  # For parallel test execution
+
+# Playwright (for WASM tests)
+# Note: After pip install, run `playwright install chromium` to download browser binaries
+playwright>=1.40.0
+pytest-playwright>=0.4.4
