@@ -47,41 +47,7 @@ You can also run it manually:
 4. Select your branch
 5. Click "Run workflow"
 
-## What You Created
 
-### New Files
-
-1. **`src/helm_to_svg.cpp`**
-   CLI tool that converts HELM strings to SVG images
-
-2. **`scripts/generate_helm_gallery.py`**
-   Python script that generates the HTML gallery using `helm_to_svg`
-
-3. **`.github/workflows/test-monomer-coordgen.yml`**
-   GitHub Actions workflow configuration
-
-4. **`CMakeLists.txt`** (modified)
-   Added build target for `helm_to_svg` executable
-
-## Using the Gallery Locally
-
-You can also generate the gallery on your local machine:
-
-```bash
-# Build sketcher with helm_to_svg tool
-cd /Users/zonta/builds/latest/source/sketcher
-cmake -B build -S . -G Ninja
-cmake --build build --target helm_to_svg
-
-# Generate gallery
-python3 scripts/generate_helm_gallery.py \
-  test_data/original_test_data.csv \
-  --helm-to-svg build/tools/helm_to_svg \
-  --output my_gallery.html
-
-# Open in browser
-open my_gallery.html
-```
 
 ## Viewing the Gallery
 
@@ -92,7 +58,7 @@ open my_gallery.html
 1. Open or update any PR
 2. Wait for builds to complete (~5-10 minutes)
 3. A comment will be posted with a **browser link** to the gallery
-4. **Click "View Gallery in Browser"** - opens instantly, no download needed!
+4. **Click "View Gallery in Browser"** - opens instantly, no download needed
 5. _(Alternative: Download from artifacts if needed)_
 
 ### On Regular Pushes (non-PR branches)
@@ -133,14 +99,3 @@ The generated HTML gallery includes:
 
 - Verify you changed one of the monitored files
 - Check the `paths` filter in the workflow file matches your changes
-
-## Next Steps
-
-### Optional Enhancements
-
-1. **Add before/after comparison**: Generate gallery before and after the change, show side-by-side
-2. **Deploy to GitHub Pages**: Host gallery online instead of downloading
-3. **Add test pass/fail**: Run unit tests and show results alongside gallery
-4. **Multiple datasets**: Generate galleries for multiple CSV files
-
-Want help implementing any of these? Just ask!

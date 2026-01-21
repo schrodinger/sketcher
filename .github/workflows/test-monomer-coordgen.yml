@@ -222,7 +222,7 @@ jobs:
             const commentBody = [
               '## 🎨 HELM Coordinate Generation Gallery',
               '',
-              'The monomerCoordgen changes have been visualized!',
+              'a gallery showcasing the results of the HELM coordinate generation for this PR has been generated.',
               '',
               '📊 **Gallery Stats:**',
               `- File size: ${fileSizeKB} KB`,
