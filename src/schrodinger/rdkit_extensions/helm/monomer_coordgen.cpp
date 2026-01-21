@@ -1300,17 +1300,15 @@ void lay_out_polymers(
     // out next to each other.
     for (auto polymer : polymers) {
         // If a polymer has no entry in parent_polymer, it's either the first to
-        // be placed or  it is not connected to any other polymer in the HELM
+        // be placed or it is not connected to any other polymer in the HELM
         // graph. In the second case, use the last placed polymer as the
         // parent/reference. This causes successive unconnected polymers to be
         // positioned relative to the previous one (typically stacked
         // vertically), instead of all being placed relative to a null parent at
         // the origin, which would make them overlap.
-        RDKit::ROMOL_SPTR parent = nullptr;
+        RDKit::ROMOL_SPTR parent = last_placed_polymer;
         if (parent_polymer.contains(polymer)) {
             parent = parent_polymer.at(polymer);
-        } else {
-            parent = last_placed_polymer;
         }
         // For double stranded nucleic acids we want to lay out the first
         // polymer normally and then rotate the other polymer 180° so the
