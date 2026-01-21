@@ -127,21 +127,23 @@ static int get_attachment_point_for_atom(const RDKit::Atom* monomer,
  * points of the specified monomer. Attachment points are specified using
  * integers, e.g. 1 for "R1".
  */
-static std::unordered_map<int, const RDKit::Atom*>
+static std::vector<std::pair<int, const RDKit::Atom*>>
 get_bound_attachment_points(const RDKit::Atom* monomer)
 {
     const auto& mol = monomer->getOwningMol();
-    std::unordered_map<int, const RDKit::Atom*> bound_aps;
+    std::unordered_set<int> bound_ap_nums;
+    std::vector<std::pair<int, const RDKit::Atom*>> bound_aps;
 
-    auto record_linkage = [&bound_aps, monomer](const RDKit::Bond* bond,
-                                                const bool is_start_atom,
-                                                const std::string& prop_name) {
+    auto record_linkage = [&bound_aps, &bound_ap_nums, monomer](
+                              const RDKit::Bond* bond, const bool is_start_atom,
+                              const std::string& prop_name) {
         std::string linkage;
         if (bond->getPropIfPresent(prop_name, linkage)) {
             auto ap_value =
                 get_attachment_point_for_atom(linkage, is_start_atom);
-            if (ap_value > 0) {
-                bound_aps[ap_value] = bond->getOtherAtom(monomer);
+            if (ap_value > 0 && !bound_ap_nums.contains(ap_value)) {
+                bound_ap_nums.insert(ap_value);
+                bound_aps.push_back({ap_value, bond->getOtherAtom(monomer)});
             }
         }
     };
@@ -163,11 +165,15 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
  * CHEM monomer should have, so we assume that it has one additional attachment
  * point beyond the highest numbered bound attachment point.
  */
-static std::unordered_set<int>
+static std::vector<int>
 get_available_attachment_points(const RDKit::Atom* monomer)
 {
     auto bound_aps = get_bound_attachment_points(monomer);
     auto monomer_type = get_monomer_type(monomer);
+    std::unordered_set<int> bound_ap_nums;
+    std::transform(bound_aps.begin(), bound_aps.end(),
+                   std::inserter(bound_ap_nums, bound_ap_nums.end()),
+                   [](auto num_and_atom) { return num_and_atom.first; });
     int num_aps = -1;
     if (AP_NAMES.contains(monomer_type)) {
         num_aps = AP_NAMES.at(monomer_type).size();
@@ -175,17 +181,13 @@ get_available_attachment_points(const RDKit::Atom* monomer)
         num_aps = 2;
     } else {
         // a CHEM monomer
-        std::unordered_set<int> bound_ap_nums;
-        std::transform(bound_aps.begin(), bound_aps.end(),
-                       std::inserter(bound_ap_nums, bound_ap_nums.end()),
-                       [](auto num_and_atom) { return num_and_atom.first; });
         num_aps = *std::max_element(bound_ap_nums.begin(), bound_ap_nums.end());
         num_aps += 1;
     }
-    std::unordered_set<int> available_aps;
+    std::vector<int> available_aps;
     for (int ap = 1; ap <= num_aps; ++ap) {
-        if (!bound_aps.contains(ap)) {
-            available_aps.insert(ap);
+        if (!bound_ap_nums.contains(ap)) {
+            available_aps.push_back(ap);
         }
     }
     return available_aps;
