@@ -202,7 +202,7 @@ get_available_attachment_points(const RDKit::Atom* monomer)
 static std::string ap_num_to_name(const int ap_num,
                                   const std::vector<std::string>& all_names)
 {
-    if (0 < ap_num && ap_num <= all_names.size()) {
+    if (0 < ap_num && static_cast<unsigned int>(ap_num) <= all_names.size()) {
         return all_names[ap_num - 1];
     }
     return fmt::format("R{}", ap_num);
@@ -221,10 +221,8 @@ get_attachment_point_name_of_bound_sugar(const RDKit::Atom* phosphate)
     if (mol.getAtomDegree(phosphate) != 1) {
         return "";
     }
-    const RDKit::Bond* bond = *mol.atomBonds(phosphate).begin();
     auto prev_neighbor = phosphate;
     auto cur_neighbor = *mol.atomNeighbors(phosphate).begin();
-    const RDKit::Atom* next_neighbor;
     // if there's a chain of phosphates, continue along it until we reach the
     // sugar
     while (mol.getAtomDegree(cur_neighbor) == 2 &&
