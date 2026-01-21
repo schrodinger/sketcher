@@ -2,6 +2,7 @@
 // Copyright Schrodinger LLC, All Rights Reserved.
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -1454,8 +1455,8 @@ struct MonomerResizeData {
 };
 
 struct RingResizeData {
-    int ring_id;         // Ring index being resized
-    double scale_factor; // Coordinates scale factor (new / old)
+    unsigned int ring_id; // Ring index being resized
+    double scale_factor;  // Coordinates scale factor (new / old)
 };
 
 /**
@@ -1464,7 +1465,7 @@ struct RingResizeData {
  * @param resize_data  vector of monomers to cluster
  * @param coord_member pointer to either the x or y coordinate
  * @param cluster_member pointer to either the x_cluster or y_cluster member
- * @param eps          pointer
+ * @param eps clustering epsilon (distance threshold)
  */
 template <typename TCoord, typename TCluster>
 void assign_clusters(std::vector<MonomerResizeData>& resize_data,
@@ -1512,21 +1513,20 @@ inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
 RDGeom::Point3D compute_centroid(const RDKit::ROMol& mol,
                                  const std::vector<int>& atom_indices)
 {
-    RDGeom::Point3D centroid(0, 0, 0);
     if (atom_indices.empty()) {
-        return centroid;
+        return RDGeom::Point3D(0, 0, 0);
     }
     const auto& conformer = mol.getConformer();
-    for (auto idx : atom_indices) {
-        centroid += conformer.getAtomPos(idx);
-    }
-    centroid /= static_cast<double>(atom_indices.size());
-    return centroid;
+    std::vector<RDGeom::Point3D> positions(atom_indices.size());
+    std::transform(atom_indices.begin(), atom_indices.end(), positions.begin(),
+                   [&conformer](int idx) { return conformer.getAtomPos(idx); });
+
+    return compute_centroid(positions);
 }
 
 struct RingResizeInfo {
     std::vector<std::vector<int>> rings; // list of resizeable rings
-    std::map<int, std::set<int>>
+    std::unordered_map<int, std::set<int>>
         atom_to_ring_map; // atom index -> set of ring indices
 };
 
@@ -1596,7 +1596,7 @@ std::vector<RingResizeData> collect_ring_resize_data(
             const double scale = (current_side + max_side_delta) / current_side;
 
             RingResizeData r;
-            r.ring_id = static_cast<int>(ring_id);
+            r.ring_id = ring_id;
             r.scale_factor = scale;
             result.push_back(r);
         }

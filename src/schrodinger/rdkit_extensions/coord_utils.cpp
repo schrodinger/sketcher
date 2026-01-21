@@ -15,6 +15,21 @@ namespace schrodinger
 namespace rdkit_extensions
 {
 
+RDGeom::Point3D compute_centroid(const std::vector<RDGeom::Point3D>& positions)
+{
+    // Calculate the centroid by averaging the coordinates
+    size_t num_atoms = positions.size();
+    RDGeom::Point3D centroid;
+    for (const auto& coord : positions) {
+        centroid += coord;
+    }
+    // avoid division by zero
+    if (num_atoms > 0) {
+        centroid /= static_cast<double>(num_atoms);
+    }
+    return centroid;
+}
+
 unsigned int compute2DCoords(RDKit::ROMol& mol,
                              const std::vector<unsigned int>& frozen_ids)
 {
