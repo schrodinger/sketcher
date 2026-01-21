@@ -1294,11 +1294,19 @@ void lay_out_polymers(
     const std::map<RDKit::ROMOL_SPTR, RDKit::ROMOL_SPTR>& parent_polymer)
 {
     std::unordered_set<int> placed_monomers_idcs{};
+    RDKit::ROMOL_SPTR last_placed_polymer = nullptr;
 
     // lay out the polymers in connection order so connected polymers are laid
     // out next to each other.
     for (auto polymer : polymers) {
-        RDKit::ROMOL_SPTR parent = nullptr;
+        // If a polymer has no entry in parent_polymer, it's either the first to
+        // be placed or it is not connected to any other polymer in the HELM
+        // graph. In the second case, use the last placed polymer as the
+        // parent/reference. This causes successive unconnected polymers to be
+        // positioned relative to the previous one (typically stacked
+        // vertically), instead of all being placed relative to a null parent at
+        // the origin, which would make them overlap.
+        RDKit::ROMOL_SPTR parent = last_placed_polymer;
         if (parent_polymer.contains(polymer)) {
             parent = parent_polymer.at(polymer);
         }
@@ -1311,6 +1319,7 @@ void lay_out_polymers(
         if (parent != nullptr) {
             orient_polymer(*polymer, *parent, rotate_polymer);
         }
+        last_placed_polymer = polymer;
     }
 }
 
