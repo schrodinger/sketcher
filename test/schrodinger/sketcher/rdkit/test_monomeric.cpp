@@ -180,8 +180,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         BOOST_TEST(get_bound_attachment_point_names_and_atoms(middle_phos) ==
                    exp_bound);
         BOOST_TEST(get_available_attachment_point_names(middle_phos).empty());
-        
-        
+
         exp_bound = {{"", term_sugar}};
         BOOST_TEST(get_bound_attachment_point_names_and_atoms(term_phosphate) ==
                    exp_bound);
