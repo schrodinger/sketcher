@@ -1,0 +1,241 @@
+name: Monomer Coordgen Gallery
+
+on:
+  workflow_run:
+    workflows: ["Sketcher Build and Test"]
+    types:
+      - completed
+    branches:
+      - main
+      - '**'
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA (optional) - leave empty to use latest successful build on current branch'
+        required: false
+        type: string
+
+jobs:
+  generate-helm-gallery:
+    runs-on: ubuntu-22.04
+    # Only run if the sketcher build succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt runtime dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            libqt6widgets6 \
+            libqt6gui6 \
+            libqt6core6 \
+            libfontconfig1 \
+            libfreetype6 \
+            libx11-6 \
+            libx11-xcb1 \
+            libxcb-cursor0 \
+            libxcb-glx0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-shm0 \
+            libxcb-sync1 \
+            libxcb-util1 \
+            libxcb-xfixes0 \
+            libxcb-xinerama0 \
+            libxcb-xkb1 \
+            libxcb1 \
+            libxext6 \
+            libxfixes3 \
+            libxi6 \
+            libxkbcommon0 \
+            libxkbcommon-x11-0 \
+            libxrender1 \
+            xvfb
+
+      - name: Resolve commit SHA to full SHA
+        if: github.event_name == 'workflow_dispatch'
+        id: resolve-sha
+        run: |
+          if [ -n "${{ inputs.commit_sha }}" ]; then
+            # User provided a commit SHA - resolve it to full SHA
+            FULL_SHA=$(git rev-parse ${{ inputs.commit_sha }})
+            echo "full_sha=$FULL_SHA" >> $GITHUB_OUTPUT
+            echo "Resolved ${{ inputs.commit_sha }} to $FULL_SHA"
+          else
+            # No commit SHA provided - find latest successful build on current branch
+            echo "Finding latest successful build on branch ${{ github.ref_name }}..."
+            FULL_SHA=$(gh run list \
+              --workflow=sketcher-builder.yml \
+              --branch=${{ github.ref_name }} \
+              --status=success \
+              --limit=1 \
+              --json headSha \
+              --jq '.[0].headSha')
+
+            if [ -z "$FULL_SHA" ]; then
+              echo "ERROR: No successful builds found on branch ${{ github.ref_name }}"
+              exit 1
+            fi
+
+            echo "full_sha=$FULL_SHA" >> $GITHUB_OUTPUT
+            echo "Using latest successful build: $FULL_SHA"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Get actual commit SHA from workflow run
+        if: github.event_name == 'workflow_run'
+        id: get-run-sha
+        run: |
+          # When triggered by workflow_run, get the actual commit SHA that was built
+          RUN_SHA="${{ github.event.workflow_run.head_sha }}"
+          echo "run_sha=$RUN_SHA" >> $GITHUB_OUTPUT
+          echo "Using commit SHA from workflow run: $RUN_SHA"
+
+      - name: Download ubuntu build artifacts
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          workflow: sketcher-builder.yml
+          # For workflow_run: use regex to find artifact (since we have run_id but commit SHA might not match head)
+          # For workflow_dispatch: use exact name with the resolved commit SHA
+          name_is_regexp: ${{ github.event_name == 'workflow_run' }}
+          name: ${{ github.event_name == 'workflow_run' && 'sketcher-.*-ubuntu' || format('sketcher-{0}-ubuntu', steps.resolve-sha.outputs.full_sha || inputs.commit_sha || github.sha) }}
+          path: build
+          # For workflow_run events, use the triggering run's ID
+          # For manual dispatch, don't specify run_id to search across all runs
+          run_id: ${{ github.event.workflow_run.id || '' }}
+          # Search by commit if manually triggered with commit_sha
+          commit: ${{ steps.resolve-sha.outputs.full_sha || inputs.commit_sha || '' }}
+          # Fail if artifact doesn't exist
+          if_no_artifact_found: fail
+
+      - name: Find and make helm_to_svg executable
+        id: find-tool
+        run: |
+          HELM_TO_SVG=$(find build -name "helm_to_svg" -type f 2>/dev/null | head -1)
+          if [ -z "$HELM_TO_SVG" ]; then
+            echo "ERROR: helm_to_svg not found in build artifacts"
+            echo "Contents of build directory:"
+            ls -R build/ || true
+            exit 1
+          fi
+          chmod +x "$HELM_TO_SVG"
+          echo "path=$HELM_TO_SVG" >> $GITHUB_OUTPUT
+          echo "Found helm_to_svg at: $HELM_TO_SVG"
+
+      - name: Generate HELM gallery
+        run: |
+          xvfb-run -a python3 scripts/generate_helm_gallery.py \
+            test_data/original_test_data.csv \
+            --helm-to-svg "${{ steps.find-tool.outputs.path }}" \
+            --output helm_gallery.html
+
+      - name: Upload gallery as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: helm-gallery-${{ steps.resolve-sha.outputs.full_sha || github.event.workflow_run.head_sha || github.sha }}
+          path: helm_gallery.html
+
+      - name: Deploy gallery to GitHub Pages
+        run: |
+          COMMIT_SHA="${{ steps.resolve-sha.outputs.full_sha || github.event.workflow_run.head_sha || github.sha }}"
+
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Clone gh-pages branch (or create if doesn't exist)
+          git fetch origin gh-pages:gh-pages || git checkout --orphan gh-pages
+          git checkout gh-pages || git checkout --orphan gh-pages
+
+          # Create galleries directory if it doesn't exist
+          mkdir -p galleries
+
+          # Copy the gallery
+          cp helm_gallery.html "galleries/${COMMIT_SHA}.html"
+
+          # Create/update index
+          cat > index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><title>HELM Galleries</title></head>
+          <body>
+          <h1>HELM Coordinate Generation Galleries</h1>
+          <p>Recent galleries are listed in commit order. Click to view.</p>
+          <ul>
+          EOF
+
+          # List all galleries (newest first)
+          for file in galleries/*.html; do
+            if [ -f "$file" ]; then
+              basename=$(basename "$file")
+              commit=${basename%.html}
+              echo "<li><a href='$file'>Gallery for commit ${commit:0:7}</a></li>" >> index.html
+            fi
+          done
+
+          cat >> index.html << 'EOF'
+          </ul>
+          </body>
+          </html>
+          EOF
+
+          # Add and commit
+          git add galleries/ index.html
+          git commit -m "Add gallery for commit ${COMMIT_SHA:0:7}" || echo "No changes to commit"
+
+          # Push to gh-pages
+          git push origin gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Comment on PR with gallery link
+        if: github.event.workflow_run.event == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const fileSize = fs.statSync('helm_gallery.html').size;
+            const fileSizeKB = (fileSize / 1024).toFixed(2);
+
+            // Get PR number from the workflow_run event
+            const pulls = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${context.payload.workflow_run.head_branch}`,
+              state: 'open'
+            });
+
+            if (pulls.data.length === 0) {
+              console.log('No open PR found for this branch');
+              return;
+            }
+
+            const prNumber = pulls.data[0].number;
+            const commitSha = context.payload.workflow_run.head_sha;
+            const galleryUrl = `https://${context.repo.owner}.github.io/${context.repo.repo}/galleries/${commitSha}.html`;
+
+            const commentBody = [
+              '## 🎨 HELM Coordinate Generation Gallery',
+              '',
+              'The monomerCoordgen changes have been visualized!',
+              '',
+              '📊 **Gallery Stats:**',
+              `- File size: ${fileSizeKB} KB`,
+              `- Commit: \`${commitSha.substring(0, 7)}\``,
+              '',
+              `🔗 **[View Gallery in Browser](${galleryUrl})**`,
+              '',
+              `_Alternative:_ [Download from artifacts](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });

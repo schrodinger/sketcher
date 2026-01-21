@@ -259,6 +259,21 @@ if(MSVC AND NOT ${BUILD_SHARED_LIBS})
     ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
 endif()
 
+# HELM to SVG converter tool
+if(NOT EMSCRIPTEN)
+  set(HELM_TO_SVG_TARGET helm_to_svg)
+  add_executable(${HELM_TO_SVG_TARGET} src/helm_to_svg.cpp)
+  setup_target(${HELM_TO_SVG_TARGET})
+  set_target_properties(${HELM_TO_SVG_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                                 ${CMAKE_BINARY_DIR}/tools)
+  target_link_libraries(
+    ${HELM_TO_SVG_TARGET}
+    PRIVATE Boost::boost Boost::filesystem
+            Qt6::Widgets
+            ${RDKIT_EXTENSIONS_TARGET}
+            ${SKETCHER_TARGET})
+endif()
+
 # Copy over the necessary wasm files into the application directory
 if(EMSCRIPTEN)
   add_custom_target(
