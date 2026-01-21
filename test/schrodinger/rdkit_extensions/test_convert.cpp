@@ -1071,3 +1071,106 @@ $$$$)MDL",
 
     BOOST_TEST(cxsmiles.ends_with(expected_stereo_group_extension));
 }
+
+BOOST_AUTO_TEST_CASE(TestCombineStereoGroupsVectorSizingIssue)
+{
+    // SHARED-11993: Previous workaround for combining stereogroups lead to
+    // a dangling pointer, ensure that ABS groups are correctly combined
+    {
+        auto molblock = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 10 9 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -0.321088 1.959235 0.000000 0
+M  V30 2 C 1.087688 2.476262 0.000000 0
+M  V30 3 C -0.576463 0.479319 0.000000 0
+M  V30 4 C 0.576624 -0.478342 0.000000 0
+M  V30 5 C 1.984352 0.036126 0.000000 0
+M  V30 6 C 0.320415 -1.957811 0.000000 0
+M  V30 7 C -1.087772 -2.474940 0.000000 0
+M  V30 8 C -1.983754 -0.039846 0.000000 0
+M  V30 9 C 2.239331 1.515160 0.000000 0
+M  V30 10 N 1.344205 3.954165 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 3 1
+M  V30 3 1 4 3
+M  V30 4 1 5 4
+M  V30 5 1 4 6 CFG=1
+M  V30 6 1 6 7
+M  V30 7 1 3 8 CFG=3
+M  V30 8 1 2 9
+M  V30 9 1 2 10 CFG=1
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STEABS ATOMS=(1 3)
+M  V30 MDLV30/STERAC1 ATOMS=(1 4)
+M  V30 MDLV30/STEABS ATOMS=(1 2)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+$$$$)MDL";
+        auto mol = to_rdkit(molblock);
+
+        // we should only have two stereo groups now == 1 ABS, 1 racemic
+        BOOST_TEST(mol->getStereoGroups().size() == 2);
+
+        // clear coordinates to make the cxsmiles output cleaner
+        mol->clearConformers();
+        auto cxsmiles = to_string(*mol, Format::EXTENDED_SMILES);
+        BOOST_TEST(cxsmiles == "CC[C@H](C)[C@H](C)C[C@H](C)N |a:4,7,&1:2|");
+    }
+
+    {
+        auto molblock = R"MDL(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 10 9 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -0.321088 1.959235 0.000000 0
+M  V30 2 C 1.087688 2.476262 0.000000 0
+M  V30 3 C -0.576463 0.479319 0.000000 0
+M  V30 4 C 0.576624 -0.478342 0.000000 0
+M  V30 5 C 1.984352 0.036126 0.000000 0
+M  V30 6 C 0.320415 -1.957811 0.000000 0
+M  V30 7 C -1.087772 -2.474940 0.000000 0
+M  V30 8 C -1.983754 -0.039846 0.000000 0
+M  V30 9 C 2.239331 1.515160 0.000000 0
+M  V30 10 N 1.344205 3.954165 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 3 1
+M  V30 3 1 4 3
+M  V30 4 1 5 4
+M  V30 5 1 4 6 CFG=1
+M  V30 6 1 6 7
+M  V30 7 1 3 8 CFG=3
+M  V30 8 1 2 9
+M  V30 9 1 2 10 CFG=1
+M  V30 END BOND
+M  V30 BEGIN COLLECTION
+M  V30 MDLV30/STEABS ATOMS=(1 3)
+M  V30 MDLV30/STEREL1 ATOMS=(1 4)
+M  V30 MDLV30/STEABS ATOMS=(1 2)
+M  V30 END COLLECTION
+M  V30 END CTAB
+M  END
+$$$$)MDL";
+        auto mol = to_rdkit(molblock);
+
+        // we should only have two stereo groups now == 1 ABS, 1 relative
+        BOOST_TEST(mol->getStereoGroups().size() == 2);
+
+        // clear coordinates to make the cxsmiles output cleaner
+        mol->clearConformers();
+        auto cxsmiles = to_string(*mol, Format::EXTENDED_SMILES);
+        BOOST_TEST(cxsmiles == "CC[C@H](C)[C@H](C)C[C@H](C)N |a:4,7,o1:2|");
+    }
+}
