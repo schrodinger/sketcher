@@ -9,18 +9,17 @@ import csv
 import subprocess
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, NamedTuple
 
 DEFAULT_OUTPUT_HTML = "helm_gallery.html"
 
 
-class HelmEntry:
-    def __init__(self, helm_string, smiles_string, description, origin):
-        self.helm_string = helm_string
-        self.smiles_string = smiles_string
-        self.description = description
-        self.origin = origin
 
+class HelmEntry(NamedTuple):
+    helm_string: str
+    smiles_string: str
+    description: str
+    origin: str
 
 def parse_helm_csv(file_paths: List[str]) -> List[HelmEntry]:
     """Parse CSV files containing HELM data."""
