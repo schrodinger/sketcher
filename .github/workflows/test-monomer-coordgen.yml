@@ -16,10 +16,43 @@ on:
         type: string
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    # Only run for workflow_run events (not manual dispatch)
+    if: github.event_name == 'workflow_run'
+    outputs:
+      should_run: ${{ steps.check.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need history to compare commits
+
+      - name: Check if monomer_coordgen files changed
+        id: check
+        run: |
+          COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
+          PARENT_SHA=$(git rev-parse ${COMMIT_SHA}^)
+
+          if git diff --name-only ${PARENT_SHA} ${COMMIT_SHA} | \
+             grep -qE "(monomer_coordgen\.(cpp|h)|test_monomer_coordgen\.cpp|test_data/original_test_data\.csv)"; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Monomer coordgen files changed - gallery will be generated"
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "⏭️  No monomer coordgen changes - skipping gallery"
+          fi
+
   generate-helm-gallery:
+    needs: check-changes
     runs-on: ubuntu-22.04
-    # Only run if the sketcher build succeeded
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    # Run if: files changed OR manual trigger OR check job was skipped
+    # AND build succeeded
+    if: |
+      always() &&
+      (needs.check-changes.outputs.should_run == 'true' ||
+       github.event_name == 'workflow_dispatch' ||
+       needs.check-changes.result == 'skipped') &&
+      (github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
 
