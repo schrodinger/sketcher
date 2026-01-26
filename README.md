@@ -42,6 +42,10 @@ To contribute code, please follow these steps:
 
 All contributions are subject to the terms of the BSD license.
 
+### Automated HELM Gallery
+
+This repository includes an automated GitHub Actions workflow that generates a visual gallery of HELM molecules. When a pull request that alters monomer coordinate generation code is submetted, the workflow automatically creates an HTML gallery showing SVG renderings of all test molecules and posts a comment with a browser link for easy review. The galleries are deployed to GitHub Pages, so they can be browsed directly without downloading artifacts. This helps contributors and reviewers quickly verify that changes to the coordgen functionality haven't introduced visual regressions.
+
 ## License
 
 The code is released under the [BSD 3-Clause License](https://github.com/schrodinger/sketcher/blob/master/LICENSE).
