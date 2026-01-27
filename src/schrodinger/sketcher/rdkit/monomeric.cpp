@@ -195,7 +195,8 @@ get_available_attachment_points(const RDKit::Atom* monomer)
 
 /**
  * Convert an attachment point number to a name
- * @param ap_num The attachment point number to convert
+ * @param ap_num The attachment point number to convert. Should be > 0, as
+ * attachment points are 1-indexed.
  * @param all_names A list of "pretty" names for attachment points, starting
  * with R1.
  * @return If all_names contains a "pretty" name for ap_num, then that name will
