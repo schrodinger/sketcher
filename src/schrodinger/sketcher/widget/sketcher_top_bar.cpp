@@ -64,7 +64,7 @@ void SketcherTopBar::initMenus()
     m_import_menu = new ImportMenu(this);
     ui->import_btn->setMenu(m_import_menu);
     connect(m_import_menu->m_import_from_file_act, &QAction::triggered, this,
-            &SketcherTopBar::onImportFromFileClicked);
+            &SketcherTopBar::onImportFromFileClicked, Qt::QueuedConnection);
     // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_import_menu->m_paste_in_text_act, &QAction::triggered, this,
             &SketcherTopBar::onPasteInTextClicked, Qt::QueuedConnection);
