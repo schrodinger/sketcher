@@ -1,3 +1,24 @@
+# HELM Molecule Gallery Generator
+#
+# This workflow generates a visual gallery of HELM molecules to help verify that changes
+# to monomer coordinate generation haven't introduced visual regressions.
+#
+# How it works:
+# - Triggers automatically when monomer_coordgen files are changed in a PR
+# - Downloads WASM build artifacts from the main build workflow
+# - Runs sketcher in a headless browser via Playwright to generate SVG images
+# - Creates an interactive HTML gallery with search functionality
+# - Deploys galleries to GitHub Pages (https://cdvonbargen.github.io/sketcher/)
+# - Posts a comment on the PR with a link to the gallery
+#
+# Manual triggers:
+# - Can be run manually via workflow_dispatch with an optional commit SHA
+# - If no SHA is provided, uses the latest successful build on the current branch
+#
+# Output:
+# - GitHub Pages: https://cdvonbargen.github.io/sketcher/galleries/<commit>.html
+# - Downloadable artifact: helm-gallery-<commit>
+#
 name: Monomer Coordgen Gallery
 
 on:
@@ -56,38 +77,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Qt runtime dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y \
-            libqt6widgets6 \
-            libqt6gui6 \
-            libqt6core6 \
-            libfontconfig1 \
-            libfreetype6 \
-            libx11-6 \
-            libx11-xcb1 \
-            libxcb-cursor0 \
-            libxcb-glx0 \
-            libxcb-icccm4 \
-            libxcb-image0 \
-            libxcb-keysyms1 \
-            libxcb-randr0 \
-            libxcb-render-util0 \
-            libxcb-shape0 \
-            libxcb-shm0 \
-            libxcb-sync1 \
-            libxcb-util1 \
-            libxcb-xfixes0 \
-            libxcb-xinerama0 \
-            libxcb-xkb1 \
-            libxcb1 \
-            libxext6 \
-            libxfixes3 \
-            libxi6 \
-            libxkbcommon0 \
-            libxkbcommon-x11-0 \
-            libxrender1 \
-            xvfb
 
       - name: Resolve commit SHA to full SHA
         if: github.event_name == 'workflow_dispatch'
@@ -129,14 +118,13 @@ jobs:
           echo "run_sha=$RUN_SHA" >> $GITHUB_OUTPUT
           echo "Using commit SHA from workflow run: $RUN_SHA"
 
-      - name: Download ubuntu build artifacts
+      - name: Download WASM build artifacts
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: sketcher-builder.yml
-          # For workflow_run: use regex to find artifact (since we have run_id but commit SHA might not match head)
-          # For workflow_dispatch: use exact name with the resolved commit SHA
-          name_is_regexp: ${{ github.event_name == 'workflow_run' }}
-          name: ${{ github.event_name == 'workflow_run' && 'sketcher-.*-ubuntu' || format('sketcher-{0}-ubuntu', steps.resolve-sha.outputs.full_sha || inputs.commit_sha || github.sha) }}
+          # Always use regex to match any wasm artifact naming scheme
+          name_is_regexp: true
+          name: 'sketcher-.*-wasm'
           path: build
           # For workflow_run events, use the triggering run's ID
           # For manual dispatch, don't specify run_id to search across all runs
@@ -146,25 +134,30 @@ jobs:
           # Fail if artifact doesn't exist
           if_no_artifact_found: fail
 
-      - name: Find and make helm_to_svg executable
-        id: find-tool
+      - name: Find WASM directory
+        id: find-wasm
         run: |
-          HELM_TO_SVG=$(find build -name "helm_to_svg" -type f 2>/dev/null | head -1)
-          if [ -z "$HELM_TO_SVG" ]; then
-            echo "ERROR: helm_to_svg not found in build artifacts"
+          WASM_DIR=$(find build -name "schrodinger_sketcher.js" -type f 2>/dev/null | head -1 | xargs dirname)
+          if [ -z "$WASM_DIR" ]; then
+            echo "ERROR: WASM directory not found in build artifacts"
             echo "Contents of build directory:"
             ls -R build/ || true
             exit 1
           fi
-          chmod +x "$HELM_TO_SVG"
-          echo "path=$HELM_TO_SVG" >> $GITHUB_OUTPUT
-          echo "Found helm_to_svg at: $HELM_TO_SVG"
+          echo "path=$WASM_DIR" >> $GITHUB_OUTPUT
+          echo "Found WASM directory at: $WASM_DIR"
+
+      - name: Install Playwright
+        run: npm install playwright
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
 
       - name: Generate HELM gallery
         run: |
-          xvfb-run -a python3 scripts/generate_helm_gallery.py \
+          node .github/scripts/generate_helm_gallery.mjs \
             test_data/*.csv \
-            --helm-to-svg "${{ steps.find-tool.outputs.path }}" \
+            --wasm-dir "${{ steps.find-wasm.outputs.path }}" \
             --output helm_gallery.html
 
       - name: Upload gallery as artifact

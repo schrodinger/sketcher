@@ -270,7 +270,6 @@ jobs:
           name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
           path: |
             build/sketcher_app
-            build/tools
             !build/sketcher_app/*.manifest
 
       - name: Publish sketcher npm package
