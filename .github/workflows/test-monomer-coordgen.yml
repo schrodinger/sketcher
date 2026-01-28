@@ -219,6 +219,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      - name: Output gallery URL
+        run: |
+          COMMIT_SHA="${{ steps.resolve-sha.outputs.full_sha || github.event.workflow_run.head_sha || github.sha }}"
+          GALLERY_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/galleries/${COMMIT_SHA}.html"
+
+          echo "## 🎨 HELM Gallery Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 **Gallery URL:**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "${GALLERY_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Commit: \`${COMMIT_SHA:0:7}\`" >> $GITHUB_STEP_SUMMARY
+
       - name: Comment on PR with gallery link
         if: github.event.workflow_run.event == 'pull_request'
         uses: actions/github-script@v7

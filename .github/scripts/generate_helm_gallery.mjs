@@ -29,14 +29,49 @@ if (positionals.length === 0) {
   process.exit(1);
 }
 
+/**
+ * Parse a CSV line respecting quoted fields (RFC 4180-compliant)
+ */
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // End of field
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // Push last field
+  result.push(current.trim());
+  return result;
+}
+
 // Parse CSV files
 const entries = [];
 for (const file of positionals) {
   const lines = readFileSync(file, 'utf-8').trim().split('\n');
-  const headers = lines[0].split(',').map(h => h.trim());
+  const headers = parseCSVLine(lines[0]);
 
   for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim());
+    const values = parseCSVLine(lines[i]);
     const entry = {};
     headers.forEach((h, idx) => entry[h] = values[idx] || '');
     entries.push(entry);
