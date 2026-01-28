@@ -44,6 +44,7 @@ BOOST_DATA_TEST_CASE(
           {10.5, 0},
           {12, 0},
           {12, -1.5}}},
+        {"PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$", {{0, 0}, {1.5, 0}}},
 
         {"PEPTIDE1{D.E.F.G}|PEPTIDE2{C.E}$PEPTIDE1,PEPTIDE2,2:R3-1:R1$$$V2.0",
          {{0, 0}, {1.5, 0}, {3, 0}, {4.5, 0}, {1.5, -1.5}, {3, -1.5}}},
