@@ -104,9 +104,13 @@ console.log('WASM module loaded in browser.');
 
 // Generate SVGs
 const cards = [];
+const failures = [];
 let success = 0, failed = 0;
 
-for (const entry of entries) {
+for (let i = 0; i < entries.length; i++) {
+  const entry = entries[i];
+  const progressiveNumber = i + 1;
+
   try {
     const svg = await page.evaluate((helmString) => {
       Module.sketcher_clear();
@@ -120,7 +124,8 @@ for (const entry of entries) {
 
     const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
     cards.push(`
-      <div class="card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all flex flex-col" data-search="${searchText}">
+      <div class="card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}">
+        <div class="absolute top-4 left-4 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded">#${progressiveNumber}</div>
         <div class="p-8 flex-grow flex items-center justify-center bg-white min-h-[250px]">${svgContent}</div>
         <div class="p-5 flex flex-col gap-3">
           <span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase rounded tracking-wider w-fit">${entry.origin}</span>
@@ -133,7 +138,14 @@ for (const entry of entries) {
       </div>`);
     success++;
   } catch (err) {
-    console.error(`Failed: ${entry.helm_string} - ${err.message}`);
+    console.error(`Failed #${progressiveNumber}: ${entry.helm_string} - ${err.message}`);
+    failures.push({
+      number: progressiveNumber,
+      helmString: entry.helm_string,
+      description: entry.description,
+      origin: entry.origin,
+      error: err.message
+    });
     failed++;
   }
 }
@@ -141,6 +153,28 @@ for (const entry of entries) {
 // Cleanup
 await browser.close();
 server.close();
+
+// Build failures section HTML
+const failuresSection = failures.length > 0 ? `
+  <div class="mb-12 bg-red-50 border-2 border-red-200 rounded-2xl p-8">
+    <h2 class="text-2xl font-bold text-red-900 mb-4">⚠️ Failed Structures</h2>
+    <p class="text-red-700 mb-6">The following ${failures.length} structure(s) failed to generate:</p>
+    <div class="space-y-4">
+      ${failures.map(f => `
+        <div class="bg-white border border-red-200 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <span class="bg-red-900 text-white text-xs font-bold px-2 py-1 rounded">#${f.number}</span>
+            <div class="flex-grow">
+              <p class="text-xs font-bold text-red-600 uppercase mb-1">${f.origin} - ${f.description}</p>
+              <p class="text-xs font-mono text-slate-600 break-all bg-slate-50 p-2 rounded border border-slate-200 mb-2">${f.helmString}</p>
+              <p class="text-xs text-red-700"><span class="font-bold">Error:</span> ${f.error}</p>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+` : '';
 
 // Write HTML
 const html = `<!DOCTYPE html>
@@ -154,14 +188,31 @@ const html = `<!DOCTYPE html>
 </head>
 <body class="bg-slate-50 min-h-screen p-6 md:p-12">
   <div class="max-w-7xl mx-auto">
-    <header class="mb-12 border-b border-slate-200 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-      <div>
-        <h1 class="text-4xl font-extrabold text-slate-900">HELM Gallery</h1>
-        <p class="text-slate-500 mt-2 text-lg">Visualizing ${entries.length} entries.</p>
+    <header class="mb-8 border-b border-slate-200 pb-8">
+      <h1 class="text-4xl font-extrabold text-slate-900">HELM Gallery</h1>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p class="text-xs font-bold text-blue-600 uppercase mb-1">Total Input Structures</p>
+          <p class="text-3xl font-bold text-blue-900">${entries.length}</p>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p class="text-xs font-bold text-green-600 uppercase mb-1">Successful</p>
+          <p class="text-3xl font-bold text-green-900">${success}</p>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p class="text-xs font-bold text-red-600 uppercase mb-1">Failed</p>
+          <p class="text-3xl font-bold text-red-900">${failed}</p>
+        </div>
       </div>
-      <input type="text" id="search" placeholder="Filter by HELM, description, or origin..."
-        class="w-full md:w-80 px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
     </header>
+
+    ${failuresSection}
+
+    <div class="mb-6">
+      <input type="text" id="search" placeholder="Filter by HELM, description, or origin..."
+        class="w-full px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+    </div>
+
     <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       ${cards.join('')}
     </div>
