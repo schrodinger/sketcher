@@ -27,6 +27,7 @@
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
 #include "schrodinger/rdkit_extensions/monomer_db_schema.h"
 #include "schrodinger/rdkit_extensions/monomer_db_default_monomers.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 using managed_db_t = std::unique_ptr<sqlite3, decltype(&sqlite3_close_v2)>;
 using managed_stmt_t =
@@ -268,6 +269,10 @@ canonicalize_monomer_smiles(const char* smiles)
                                                 .replacements = {}};
     static const RDKit::SmilesWriteParams write_params;
     constexpr auto cx_flags = RDKit::SmilesWrite::CXSmilesFields::CX_ATOM_PROPS;
+
+    // Canonicalization changes depending on whether we use legacy or
+    // modern stereo, so force modern stereo here.
+    schrodinger::rdkit_extensions::UseModernStereoPerception use_modern_stereo;
 
     auto mol = MolFromSmiles(smiles, read_params);
     if (mol == nullptr) {
