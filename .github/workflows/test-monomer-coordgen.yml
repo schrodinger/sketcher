@@ -66,13 +66,13 @@ jobs:
   generate-helm-gallery:
     needs: check-changes
     runs-on: ubuntu-22.04
-    # Run if: files changed OR manual trigger OR check job was skipped
+    # Run if: files changed OR manual trigger
     # AND build succeeded
+    # AND check-changes didn't fail
     if: |
-      always() &&
+      !failure() &&
       (needs.check-changes.outputs.should_run == 'true' ||
-       github.event_name == 'workflow_dispatch' ||
-       needs.check-changes.result == 'skipped') &&
+       github.event_name == 'workflow_dispatch') &&
       (github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch')
     steps:
       - uses: actions/checkout@v4
