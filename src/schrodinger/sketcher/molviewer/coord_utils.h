@@ -173,15 +173,6 @@ SKETCHER_API RDGeom::Point3D find_centroid(
     const std::unordered_set<const NonMolecularObject*>& non_molecular_objects);
 
 /**
- * An overload of find_centroid that takes a list of points in place of a
- * molecule
- *
- * @overload
- */
-SKETCHER_API RDGeom::Point3D
-find_centroid(const std::vector<RDGeom::Point3D>& positions);
-
-/**
  * @return the angle in radians between vectors ab and bc
  */
 SKETCHER_API double get_angle_radians(const RDGeom::Point3D& a,

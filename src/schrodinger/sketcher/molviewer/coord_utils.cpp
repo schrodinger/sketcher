@@ -14,6 +14,8 @@
 #include <QtMath>
 
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
+
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
@@ -167,7 +169,7 @@ RDGeom::Point3D find_centroid(
             positions.push_back(non_mol_obj->getCoords());
         }
     }
-    return sketcher::find_centroid(positions);
+    return rdkit_extensions::compute_centroid(positions);
 }
 
 RDGeom::Point3D find_centroid(
@@ -178,21 +180,6 @@ RDGeom::Point3D find_centroid(
     std::unordered_set<const RDKit::Atom*> all_atoms_set(all_atoms.begin(),
                                                          all_atoms.end());
     return find_centroid(mol, all_atoms_set, non_molecular_objects);
-}
-
-RDGeom::Point3D find_centroid(const std::vector<RDGeom::Point3D>& positions)
-{
-    // Calculate the centroid by averaging the coordinates
-    size_t num_atoms = positions.size();
-    RDGeom::Point3D centroid;
-    for (const auto& coord : positions) {
-        centroid += coord;
-    }
-    // avoid division by zero
-    if (num_atoms > 0) {
-        centroid /= static_cast<double>(num_atoms);
-    }
-    return centroid;
 }
 
 void center_mol_on(RDKit::ROMol& mol, const RDGeom::Point3D& center)
