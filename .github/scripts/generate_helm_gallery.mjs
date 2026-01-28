@@ -131,6 +131,17 @@ const baseUrl = `http://localhost:${server.address().port}`;
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
+// Capture console messages from the browser (WASM module might log errors here)
+const consoleMessages = [];
+page.on('console', msg => {
+  const text = msg.text();
+  consoleMessages.push(text);
+  // Log warnings and errors from browser console
+  if (msg.type() === 'error' || msg.type() === 'warning') {
+    console.log(`[Browser ${msg.type()}]: ${text}`);
+  }
+});
+
 // Navigate to the WASM shell
 await page.goto(`${baseUrl}/wasm_shell.html`);
 await page.waitForFunction(() => typeof window.Module !== 'undefined', { timeout: 30000 });
@@ -147,6 +158,8 @@ for (let i = 0; i < entries.length; i++) {
   const progressiveNumber = i + 1;
 
   try {
+    const messagesBefore = consoleMessages.length;
+
     const result = await page.evaluate((helmString) => {
       try {
         Module.sketcher_clear();
@@ -165,7 +178,15 @@ for (let i = 0; i < entries.length; i++) {
     }, entry.helm_string);
 
     if (!result.success) {
-      throw new Error(result.error);
+      // Check if there were any console messages during this operation
+      const newMessages = consoleMessages.slice(messagesBefore);
+      const relevantLogs = newMessages.filter(m =>
+        m.includes('error') || m.includes('Error') || m.includes('exception') || m.includes('Exception')
+      );
+      const errorDetail = relevantLogs.length > 0
+        ? `${result.error} (Console: ${relevantLogs.join('; ')})`
+        : result.error;
+      throw new Error(errorDetail);
     }
 
     // Decode base64 SVG
