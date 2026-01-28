@@ -134,17 +134,6 @@ const baseUrl = `http://localhost:${server.address().port}`;
 const browser = await chromium.launch();
 const page = await browser.newPage();
 
-// Capture console messages from the browser (WASM module might log errors here)
-const consoleMessages = [];
-page.on('console', msg => {
-  const text = msg.text();
-  consoleMessages.push(text);
-  // Log warnings and errors from browser console
-  if (msg.type() === 'error' || msg.type() === 'warning') {
-    console.log(`[Browser ${msg.type()}]: ${text}`);
-  }
-});
-
 // Navigate to the WASM shell
 await page.goto(`${baseUrl}/wasm_shell.html`);
 await page.waitForFunction(() => typeof window.Module !== 'undefined', { timeout: 30000 });
@@ -161,8 +150,6 @@ for (let i = 0; i < entries.length; i++) {
   const progressiveNumber = i + 1;
 
   try {
-    const messagesBefore = consoleMessages.length;
-
     const result = await page.evaluate((helmString) => {
       try {
         Module.sketcher_clear();
@@ -172,73 +159,25 @@ for (let i = 0; i < entries.length; i++) {
         return { success: true, svg };
       } catch (e) {
         let errorMsg = e.message || e.toString();
-        const debugInfo = {
-          errorType: typeof e,
-          hasUTF8ToString: typeof Module.UTF8ToString,
-          hasGetLastError: typeof Module.get_last_error,
-          rawError: e,
-          errorMessage: errorMsg
-        };
 
-        // If error is a number, it might be a pointer to a string in WASM memory
-        if (typeof e === 'number' || /^\d+$/.test(errorMsg)) {
-          const errorPtr = typeof e === 'number' ? e : parseInt(errorMsg);
-          debugInfo.parsedPointer = errorPtr;
-
-          // Try to read the string from WASM memory using Emscripten utilities
-          if (typeof Module.UTF8ToString === 'function') {
-            try {
-              const wasmErrorMsg = Module.UTF8ToString(errorPtr);
-              debugInfo.utf8Result = wasmErrorMsg;
-              if (wasmErrorMsg && wasmErrorMsg.length > 0) {
-                errorMsg = wasmErrorMsg;
-              }
-            } catch (readErr) {
-              debugInfo.utf8Error = readErr.toString();
-            }
-          }
-        }
-
-        // Also check for Module.get_last_error function
+        // Try to get the detailed error message from the C++ side
         if (typeof Module.get_last_error === 'function') {
           try {
             const lastError = Module.get_last_error();
-            debugInfo.lastError = lastError;
-            if (lastError) {
+            if (lastError && lastError.length > 0) {
               errorMsg = lastError;
             }
           } catch (getErr) {
-            debugInfo.getLastErrorFailed = getErr.toString();
+            // If get_last_error fails, fall back to the exception message
           }
         }
 
-        return { success: false, error: errorMsg, debug: debugInfo };
+        return { success: false, error: errorMsg };
       }
     }, entry.helm_string);
 
     if (!result.success) {
-      // Check if there were any console messages during this operation
-      const newMessages = consoleMessages.slice(messagesBefore);
-      const relevantLogs = newMessages.filter(m =>
-        m.includes('error') || m.includes('Error') || m.includes('exception') || m.includes('Exception')
-      );
-
-      // Build detailed error message with debug info
-      let errorDetail = result.error;
-      if (result.debug) {
-        errorDetail += ` [Debug: type=${result.debug.errorType}, UTF8ToString=${result.debug.hasUTF8ToString}, get_last_error=${result.debug.hasGetLastError}`;
-        if (result.debug.utf8Result !== undefined) {
-          errorDetail += `, utf8Result="${result.debug.utf8Result}"`;
-        }
-        if (result.debug.utf8Error) {
-          errorDetail += `, utf8Error=${result.debug.utf8Error}`;
-        }
-        errorDetail += `]`;
-      }
-      if (relevantLogs.length > 0) {
-        errorDetail += ` (Console: ${relevantLogs.join('; ')})`;
-      }
-      throw new Error(errorDetail);
+      throw new Error(result.error);
     }
 
     // Decode base64 SVG
