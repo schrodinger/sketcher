@@ -67,10 +67,13 @@ function parseCSVLine(line) {
 // Parse CSV files
 const entries = [];
 for (const file of positionals) {
-  const lines = readFileSync(file, 'utf-8').trim().split('\n');
+  // Handle different line endings (CRLF, LF, CR)
+  const content = readFileSync(file, 'utf-8').trim();
+  const lines = content.split(/\r?\n/);
   const headers = parseCSVLine(lines[0]);
 
   for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue; // Skip empty lines
     const values = parseCSVLine(lines[i]);
     const entry = {};
     headers.forEach((h, idx) => entry[h] = values[idx] || '');
