@@ -171,11 +171,33 @@ for (let i = 0; i < entries.length; i++) {
         const svg = Module.sketcher_export_image(Module.ImageFormat.SVG);
         return { success: true, svg };
       } catch (e) {
-        // Try to get more detailed error info from Module if available
         let errorMsg = e.message || e.toString();
-        if (typeof Module.get_last_error === 'function') {
-          errorMsg = Module.get_last_error() || errorMsg;
+
+        // If error is a number, it might be a pointer to a string in WASM memory
+        if (typeof e === 'number' || /^\d+$/.test(errorMsg)) {
+          const errorPtr = typeof e === 'number' ? e : parseInt(errorMsg);
+
+          // Try to read the string from WASM memory using Emscripten utilities
+          if (typeof Module.UTF8ToString === 'function') {
+            try {
+              const wasmErrorMsg = Module.UTF8ToString(errorPtr);
+              if (wasmErrorMsg && wasmErrorMsg.length > 0) {
+                errorMsg = wasmErrorMsg;
+              }
+            } catch (readErr) {
+              // If reading fails, keep the numeric error
+            }
+          }
         }
+
+        // Also check for Module.get_last_error function
+        if (typeof Module.get_last_error === 'function') {
+          const lastError = Module.get_last_error();
+          if (lastError) {
+            errorMsg = lastError;
+          }
+        }
+
         return { success: false, error: errorMsg };
       }
     }, entry.helm_string);
