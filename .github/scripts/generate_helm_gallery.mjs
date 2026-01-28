@@ -172,33 +172,47 @@ for (let i = 0; i < entries.length; i++) {
         return { success: true, svg };
       } catch (e) {
         let errorMsg = e.message || e.toString();
+        const debugInfo = {
+          errorType: typeof e,
+          hasUTF8ToString: typeof Module.UTF8ToString,
+          hasGetLastError: typeof Module.get_last_error,
+          rawError: e,
+          errorMessage: errorMsg
+        };
 
         // If error is a number, it might be a pointer to a string in WASM memory
         if (typeof e === 'number' || /^\d+$/.test(errorMsg)) {
           const errorPtr = typeof e === 'number' ? e : parseInt(errorMsg);
+          debugInfo.parsedPointer = errorPtr;
 
           // Try to read the string from WASM memory using Emscripten utilities
           if (typeof Module.UTF8ToString === 'function') {
             try {
               const wasmErrorMsg = Module.UTF8ToString(errorPtr);
+              debugInfo.utf8Result = wasmErrorMsg;
               if (wasmErrorMsg && wasmErrorMsg.length > 0) {
                 errorMsg = wasmErrorMsg;
               }
             } catch (readErr) {
-              // If reading fails, keep the numeric error
+              debugInfo.utf8Error = readErr.toString();
             }
           }
         }
 
         // Also check for Module.get_last_error function
         if (typeof Module.get_last_error === 'function') {
-          const lastError = Module.get_last_error();
-          if (lastError) {
-            errorMsg = lastError;
+          try {
+            const lastError = Module.get_last_error();
+            debugInfo.lastError = lastError;
+            if (lastError) {
+              errorMsg = lastError;
+            }
+          } catch (getErr) {
+            debugInfo.getLastErrorFailed = getErr.toString();
           }
         }
 
-        return { success: false, error: errorMsg };
+        return { success: false, error: errorMsg, debug: debugInfo };
       }
     }, entry.helm_string);
 
@@ -208,9 +222,22 @@ for (let i = 0; i < entries.length; i++) {
       const relevantLogs = newMessages.filter(m =>
         m.includes('error') || m.includes('Error') || m.includes('exception') || m.includes('Exception')
       );
-      const errorDetail = relevantLogs.length > 0
-        ? `${result.error} (Console: ${relevantLogs.join('; ')})`
-        : result.error;
+
+      // Build detailed error message with debug info
+      let errorDetail = result.error;
+      if (result.debug) {
+        errorDetail += ` [Debug: type=${result.debug.errorType}, UTF8ToString=${result.debug.hasUTF8ToString}, get_last_error=${result.debug.hasGetLastError}`;
+        if (result.debug.utf8Result !== undefined) {
+          errorDetail += `, utf8Result="${result.debug.utf8Result}"`;
+        }
+        if (result.debug.utf8Error) {
+          errorDetail += `, utf8Error=${result.debug.utf8Error}`;
+        }
+        errorDetail += `]`;
+      }
+      if (relevantLogs.length > 0) {
+        errorDetail += ` (Console: ${relevantLogs.join('; ')})`;
+      }
       throw new Error(errorDetail);
     }
 
