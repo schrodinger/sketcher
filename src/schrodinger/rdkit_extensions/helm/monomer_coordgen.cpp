@@ -2,6 +2,7 @@
 // Copyright Schrodinger LLC, All Rights Reserved.
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -272,14 +273,7 @@ static bool is_nucleic_acid(const RDKit::ROMol& polymer)
            boost::starts_with(polymer_id, "RNA");
 }
 
-/**
- * Initializes RingInfo for `polymer` with all possible rings including any
- * rings that may have been formed with zero order bonds. We do this by
- * converting all the zero order bonds into single order bonds and then looking
- * for rings. (The bond types are restored to their original values by the end
- * of this method)
- */
-static void compute_full_ring_info(const RDKit::ROMol& polymer)
+void compute_full_ring_info(const RDKit::ROMol& polymer)
 {
     std::vector<unsigned int> zob_idxs{};
     for (auto bond : polymer.bonds()) {
@@ -1458,43 +1452,581 @@ static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
            has_no_stretched_bonds(monomer_mol);
 }
 
-void resize_monomer(RDKit::ROMol& monomer_mol, unsigned int index,
-                    const RDGeom::Point3D& new_size)
-{
-    // get current size
-    auto atom = monomer_mol.getAtomWithIdx(index);
-    RDGeom::Point3D current_size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
-    atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, current_size);
+/**
+ * Internal representations of a resize operation.
+ */
+struct MonomerResizeData {
+    unsigned int index;         // Monomer index being resized
+    RDGeom::Point3D ref_pos;    // Reference monomer position
+    RDGeom::Point3D delta;      // Size delta (new - old)
+    unsigned int x_cluster = 0; // Vertical stack identifier
+    unsigned int y_cluster = 0; // Horizontal stack identifier
+};
 
-    // calculate difference
-    auto difference = new_size - current_size;
-    if (difference.x == 0. && difference.y == 0.) {
+struct RingResizeData {
+    unsigned int ring_id; // Ring index being resized
+    double scale_factor;  // Coordinates scale factor (new / old)
+};
+
+/**
+ * Assign cluster IDs along a given axis.
+ *
+ * @param resize_data  vector of monomers to cluster
+ * @param coord_member pointer to either the x or y coordinate
+ * @param cluster_member pointer to either the x_cluster or y_cluster member
+ * @param eps clustering epsilon (distance threshold)
+ */
+template <typename TCoord, typename TCluster>
+void assign_clusters(std::vector<MonomerResizeData>& resize_data,
+                     TCoord RDGeom::Point3D::*coord_member,
+                     TCluster MonomerResizeData::*cluster_member, double eps)
+{
+    unsigned int next_cluster_id = 1;
+
+    for (size_t i = 0; i < resize_data.size(); ++i) {
+        if (resize_data[i].*cluster_member != 0) {
+            continue; // already assigned
+        }
+
+        resize_data[i].*cluster_member = next_cluster_id;
+
+        for (size_t j = i + 1; j < resize_data.size(); ++j) {
+            if (std::abs(resize_data[i].delta.*coord_member -
+                         resize_data[j].delta.*coord_member) < eps) {
+                resize_data[j].*cluster_member = next_cluster_id;
+            }
+        }
+
+        ++next_cluster_id;
+    }
+}
+
+/**
+ * Read the stored monomer size for an atom.
+ * Falls back to MONOMER_MINIMUM_SIZE when not present.
+ */
+inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
+                                        unsigned int index)
+{
+    RDGeom::Point3D size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
+
+    mol.getAtomWithIdx(index)->getPropIfPresent<RDGeom::Point3D>(
+        MONOMER_ITEM_SIZE, size);
+
+    return size;
+}
+
+/**
+ * Compute the centroid of a set of atom indices in a molecule.
+ */
+RDGeom::Point3D compute_centroid(const RDKit::ROMol& mol,
+                                 const std::vector<int>& atom_indices)
+{
+    if (atom_indices.empty()) {
+        return RDGeom::Point3D(0, 0, 0);
+    }
+    const auto& conformer = mol.getConformer();
+    std::vector<RDGeom::Point3D> positions(atom_indices.size());
+    std::transform(atom_indices.begin(), atom_indices.end(), positions.begin(),
+                   [&conformer](int idx) { return conformer.getAtomPos(idx); });
+
+    return compute_centroid(positions);
+}
+
+struct RingResizeInfo {
+    std::vector<std::vector<int>> rings; // list of resizeable rings
+    std::unordered_map<int, std::set<int>>
+        atom_to_ring_map; // atom index -> set of ring indices
+};
+
+/**
+ * Convert user resize requests for monomers in rings into internal resize
+ * data. Compute how much each monomer's resize would contribute to the
+ * expanding or shrinking of the ring, then store the maximum change as a scale
+ * factor to apply to all the ring's monomer coordinates. This function performs
+ * NO geometry mutation.
+ */
+std::vector<RingResizeData> collect_ring_resize_data(
+    const RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& resizes,
+    const RingResizeInfo& ring_resize_info)
+{
+    std::vector<RingResizeData> result;
+    auto& conformer = mol.getConformer();
+
+    for (size_t ring_id = 0; ring_id < ring_resize_info.rings.size();
+         ++ring_id) {
+        const auto& ring = ring_resize_info.rings[ring_id];
+
+        // --- centroid ---
+        auto centroid = compute_centroid(mol, ring);
+
+        // --- compute average current side length ---
+        double side_sum = 0.0;
+        for (size_t i = 0; i < ring.size(); ++i) {
+            const auto& p0 = conformer.getAtomPos(ring[i]);
+            const auto& p1 = conformer.getAtomPos(ring[(i + 1) % ring.size()]);
+            side_sum += (p1 - p0).length();
+        }
+        const double current_side = side_sum / ring.size();
+        if (current_side < 1e-6) {
+            continue;
+        }
+
+        // --- find max projected side delta ---
+        double max_side_delta = 0.0;
+
+        for (const auto& atom_idx : ring) {
+            auto resize_it = resizes.find(atom_idx);
+            if (resize_it == resizes.end()) {
+                continue;
+            }
+
+            const RDGeom::Point3D& new_size = resize_it->second;
+            const RDGeom::Point3D current_size =
+                get_monomer_size(mol, atom_idx);
+
+            RDGeom::Point3D delta_size = new_size - current_size;
+
+            RDGeom::Point3D pos = conformer.getAtomPos(atom_idx);
+            RDGeom::Point3D radial = pos - centroid;
+
+            radial.normalize();
+
+            RDGeom::Point3D tangent(-radial.y, radial.x, 0.0);
+
+            const double side_delta =
+                delta_size.x * tangent.x + delta_size.y * tangent.y;
+
+            max_side_delta = std::max(max_side_delta, side_delta);
+        }
+
+        if (max_side_delta > 0.0) {
+            const double scale = (current_side + max_side_delta) / current_side;
+
+            RingResizeData r;
+            r.ring_id = ring_id;
+            r.scale_factor = scale;
+            result.push_back(r);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Convert user resize requests for monomers in chains into internal resize
+ * data. This function performs NO geometry mutation.
+ */
+std::vector<MonomerResizeData> collect_linear_resize_data(
+    const RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& resizes,
+    const RingResizeInfo& ring_resize_info)
+{
+    std::vector<MonomerResizeData> result;
+    auto& conformer = mol.getConformer();
+
+    result.reserve(resizes.size());
+
+    for (const auto& r : resizes) {
+        const unsigned int index = r.first;
+        // if the monomer is in a ring, skip it
+        if (ring_resize_info.atom_to_ring_map.contains(index)) {
+            continue;
+        }
+        const RDGeom::Point3D& new_size = r.second;
+
+        const RDGeom::Point3D current_size = get_monomer_size(mol, index);
+
+        RDGeom::Point3D delta = new_size - current_size;
+        // Skip no-op resizes
+        if (delta.x == 0. && delta.y == 0.) {
+            continue;
+        }
+
+        result.push_back({index, conformer.getAtomPos(index), delta});
+    }
+
+    // group vertically stacked monomers to avoid compound horizontal shifts
+    assign_clusters(result, &RDGeom::Point3D::x, &MonomerResizeData::x_cluster,
+                    MONOMER_MINIMUM_SIZE * 0.25);
+
+    // group horizontally stacked monomers to avoid compound vertical shifts
+    assign_clusters(result, &RDGeom::Point3D::y, &MonomerResizeData::y_cluster,
+                    MONOMER_MINIMUM_SIZE * 0.25);
+
+    return result;
+}
+
+/**
+ * Compute per-monomer displacement vectors based on resize data.
+ *
+ * Horizontal and Vertical displacements are computed separately and clustered:
+ *  - applied at most once per cluster
+ *  - magnitude is the MAX delta among monomers in that cluster
+ *  Rings are displaced as a rigid body from their centroid.
+
+ * No atom positions are modified here.
+ */
+std::vector<RDGeom::Point3D>
+compute_linear_displacements(const RDKit::ROMol& mol,
+                             const std::vector<MonomerResizeData>& resize_data,
+                             const RingResizeInfo& ring_resize_info)
+{
+    auto& conformer = mol.getConformer();
+    const unsigned int num_atoms = conformer.getNumAtoms();
+
+    std::vector<RDGeom::Point3D> displacements(num_atoms,
+                                               RDGeom::Point3D(0, 0, 0));
+
+    if (resize_data.empty()) {
+        return displacements;
+    }
+
+    /**
+     * Precompute maximum deltas per cluster for both axes
+     */
+    std::unordered_map<unsigned int, double> max_dx_per_cluster;
+    std::unordered_map<unsigned int, double> max_dy_per_cluster;
+
+    for (const auto& r : resize_data) {
+        max_dx_per_cluster[r.x_cluster] =
+            std::max(max_dx_per_cluster[r.x_cluster], r.delta.x);
+        max_dy_per_cluster[r.y_cluster] =
+            std::max(max_dy_per_cluster[r.y_cluster], r.delta.y);
+    }
+
+    /**
+     * Compute displacement along a single axis for one atom,
+     * applying each cluster at most once.
+     */
+    auto compute_axis_displacement =
+        [](double pos, double ref, unsigned int cluster,
+           const std::unordered_map<unsigned int, double>& max_per_cluster,
+           std::unordered_set<unsigned int>& used_clusters) -> double {
+        if (used_clusters.contains(cluster)) {
+            return 0.0;
+        }
+
+        const double max_delta = max_per_cluster.at(cluster);
+
+        if (pos > ref + MONOMER_MINIMUM_SIZE) {
+            used_clusters.insert(cluster);
+            return max_delta / 2.0;
+        }
+        if (pos < ref - MONOMER_MINIMUM_SIZE) {
+            used_clusters.insert(cluster);
+            return -max_delta / 2.0;
+        }
+        return 0.0;
+    };
+
+    /**
+     * Compute displacement for a given position against all resize refs. For
+     * monomers in chains this is used directly. For monomers in rings,
+     * displacement is computed at the ring centroid and applied uniformly to
+     * all ring monomers.
+     */
+    auto compute_displacement_for_position =
+        [&](const RDGeom::Point3D& pos) -> RDGeom::Point3D {
+        RDGeom::Point3D disp(0, 0, 0);
+
+        std::unordered_set<unsigned int> used_x_clusters;
+        std::unordered_set<unsigned int> used_y_clusters;
+
+        for (const auto& r : resize_data) {
+            disp.x +=
+                compute_axis_displacement(pos.x, r.ref_pos.x, r.x_cluster,
+                                          max_dx_per_cluster, used_x_clusters);
+
+            disp.y +=
+                compute_axis_displacement(pos.y, r.ref_pos.y, r.y_cluster,
+                                          max_dy_per_cluster, used_y_clusters);
+        }
+        return disp;
+    };
+
+    /**
+     * Linear (non-ring) atoms
+     */
+    for (unsigned int i = 0; i < num_atoms; ++i) {
+        if (ring_resize_info.atom_to_ring_map.contains(i)) {
+            continue;
+        }
+        const RDGeom::Point3D pos = conformer.getAtomPos(i);
+        displacements[i] = compute_displacement_for_position(pos);
+    }
+
+    /**
+     * Rings: compute displacement at centroid and apply uniformly
+     */
+    for (const auto& ring : ring_resize_info.rings) {
+        auto centroid = compute_centroid(mol, ring);
+        const RDGeom::Point3D ring_disp =
+            compute_displacement_for_position(centroid);
+
+        for (auto atom_idx : ring) {
+            displacements[atom_idx] = ring_disp;
+        }
+    }
+    return displacements;
+}
+
+std::set<int>
+find_all_connected_monomers_outside_ring(const RDKit::ROMol& mol, int start_idx,
+                                         const std::vector<int>& ring)
+{
+    std::set<int> result;
+    std::set<int> visited;
+    std::queue<int> to_visit;
+
+    to_visit.push(start_idx);
+    for (auto monomer_idx : ring) {
+        visited.insert(monomer_idx);
+    }
+    visited.insert(start_idx);
+
+    std::set<int> ring_set(ring.begin(), ring.end());
+
+    while (!to_visit.empty()) {
+        int current_idx = to_visit.front();
+        to_visit.pop();
+
+        for (auto neighbor :
+             mol.atomNeighbors(mol.getAtomWithIdx(current_idx))) {
+            int neighbor_idx = neighbor->getIdx();
+            if (visited.contains(neighbor_idx)) {
+                continue;
+            }
+            result.insert(neighbor_idx);
+            visited.insert(neighbor_idx);
+            to_visit.push(neighbor_idx);
+        }
+    }
+    return result;
+}
+
+/**
+ * Compute per-monomer displacement vectors based on ring expansion data.
+ *
+ * Rings are expanded radially outwards from their centroid, so that the regular
+ * polygon shape is preserved.
+ *
+ * No atom positions are modified here.
+ */
+std::vector<RDGeom::Point3D> compute_ring_expansion_displacements(
+    const RDKit::ROMol& mol, const std::vector<RingResizeData>& resize_data,
+    const RingResizeInfo& ring_resize_info)
+{
+    auto& conformer = mol.getConformer();
+    const unsigned int num_atoms = conformer.getNumAtoms();
+
+    std::vector<RDGeom::Point3D> displacements(num_atoms,
+                                               RDGeom::Point3D(0, 0, 0));
+
+    if (resize_data.empty()) {
+        return displacements;
+    }
+
+    for (const auto& r : resize_data) {
+        const int ring_id = r.ring_id;
+        const double scale = r.scale_factor;
+
+        if (ring_id < 0 ||
+            static_cast<size_t>(ring_id) >= ring_resize_info.rings.size()) {
+            continue;
+        }
+
+        const auto& ring = ring_resize_info.rings[ring_id];
+
+        auto centroid = compute_centroid(mol, ring);
+
+        // --- scale ring ---
+        for (auto monomer_idx : ring) {
+            const RDGeom::Point3D pos = conformer.getAtomPos(monomer_idx);
+            const RDGeom::Point3D new_pos =
+                centroid + ((pos - centroid) * scale);
+            auto monomer_displacement = new_pos - pos;
+            // the displacement also applies to all monomers outside of the ring
+            // that are connected to this monomer
+            auto all_connected_monomers_outside_ring =
+                find_all_connected_monomers_outside_ring(mol, monomer_idx,
+                                                         ring);
+
+            displacements[monomer_idx] += monomer_displacement;
+            for (auto bound_monomer_idx : all_connected_monomers_outside_ring) {
+                displacements[bound_monomer_idx] += monomer_displacement;
+            }
+        }
+    }
+
+    return displacements;
+}
+
+/**
+ * Apply precomputed displacements to atom positions.
+ * Each atom is moved at most once.
+ */
+void apply_displacements(RDKit::ROMol& mol,
+                         const std::vector<RDGeom::Point3D>& displacements)
+{
+    auto& conformer = mol.getConformer();
+
+    for (unsigned int i = 0; i < displacements.size(); ++i) {
+        if (displacements[i].x == 0. && displacements[i].y == 0.) {
+            continue;
+        }
+        auto pos = conformer.getAtomPos(i);
+        pos += displacements[i];
+        conformer.setAtomPos(i, pos);
+    }
+}
+
+/**
+ * Persist new monomer sizes on atoms.
+ */
+void update_monomer_sizes(
+    RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
+{
+    for (const auto& r : monomer_sizes) {
+        mol.getAtomWithIdx(r.first)->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE,
+                                                              r.second);
+    }
+}
+
+bool is_geometrically_regular_ring_2d(const RDKit::ROMol& mol,
+                                      const std::vector<int>& ring_atoms,
+                                      double radius_tol, double angle_tol)
+{
+    const auto& conf = mol.getConformer();
+    const size_t N = ring_atoms.size();
+    if (N < 3) {
+        return false;
+    }
+
+    auto centroid = compute_centroid(mol, ring_atoms);
+
+    // --- radii + angles
+    std::vector<double> radii;
+    std::vector<double> angles;
+    radii.reserve(N);
+    angles.reserve(N);
+
+    for (auto idx : ring_atoms) {
+        const auto& p = conf.getAtomPos(idx);
+        double dx = p.x - centroid.x;
+        double dy = p.y - centroid.y;
+
+        radii.push_back(std::hypot(dx, dy));
+        angles.push_back(std::atan2(dy, dx));
+    }
+
+    // --- radius consistency
+    double mean_r = std::accumulate(radii.begin(), radii.end(), 0.0) / N;
+
+    double var = 0.0;
+    for (double r : radii) {
+        var += (r - mean_r) * (r - mean_r);
+    }
+
+    double stddev = std::sqrt(var / N);
+    if (mean_r < 1e-6 || stddev / mean_r > radius_tol) {
+        return false;
+    }
+
+    // --- angular uniformity
+    std::sort(angles.begin(), angles.end());
+
+    const double expected = 2.0 * M_PI / N;
+    double max_dev = 0.0;
+
+    for (size_t i = 0; i < N; ++i) {
+        double a0 = angles[i];
+        double a1 = angles[(i + 1) % N];
+
+        double delta = a1 - a0;
+        if (i + 1 == N) {
+            delta += 2.0 * M_PI; // wrap
+        }
+
+        max_dev = std::max(max_dev, std::abs(delta - expected));
+    }
+
+    return max_dev < angle_tol;
+}
+
+RingResizeInfo compute_ring_info_for_resize(RDKit::ROMol& mol)
+{
+    RingResizeInfo result;
+    const auto& all_rings = mol.getRingInfo()->atomRings();
+
+    std::vector<std::vector<int>> candidate_rings;
+
+    // Step 1: filter by geometric regularity
+    for (const auto& ring : all_rings) {
+        if (!is_geometrically_regular_ring_2d(mol, ring)) {
+            continue;
+        }
+        candidate_rings.push_back(ring);
+    }
+    for (const auto& ring : candidate_rings) {
+        int ring_idx = static_cast<int>(result.rings.size());
+        result.rings.push_back(ring);
+        for (int atom_idx : ring) {
+            result.atom_to_ring_map[atom_idx].insert(ring_idx);
+        }
+    }
+    return result;
+}
+
+/**
+ * Resize multiple monomers in a single, batched operation. The
+ * operations differ for monomers in rings and in chains:
+ *   - For monomers in rings, the ring is expanded radially outwards to
+ * maintain its regular polygon shape.
+ *   - For monomers in chains, the resize is batched to try and keep
+ * vertical and horizontal alignments, minimizing compound shifts.
+ *
+ * @param mol           The molecule containing the monomers to resize.
+ * @param monomer_sizes A map from atom indices to their new desired sizes.
+ */
+void resize_monomers(RDKit::ROMol& mol,
+                     std::unordered_map<int, RDGeom::Point3D> monomer_sizes)
+{
+    if (monomer_sizes.empty()) {
+        return;
+    }
+    // override ring info to ensure rings are fully perceived.
+    compute_full_ring_info(mol);
+
+    auto ring_resize_info = compute_ring_info_for_resize(mol);
+
+    auto linear_resize_data =
+        collect_linear_resize_data(mol, monomer_sizes, ring_resize_info);
+    auto ring_resize_data =
+        collect_ring_resize_data(mol, monomer_sizes, ring_resize_info);
+    if (linear_resize_data.empty() && ring_resize_data.empty()) {
         return;
     }
 
-    // move every atom position accordingly
-    auto& conformer = monomer_mol.getConformer();
-    auto reference_monomer_position = conformer.getAtomPos(index);
-    for (unsigned int i = 0u; i < conformer.getNumAtoms(); ++i) {
-        if (i == index) {
-            continue;
-        }
-        auto atom_pos = conformer.getAtomPos(i);
-        if (atom_pos.x > reference_monomer_position.x + MONOMER_MINIMUM_SIZE) {
-            atom_pos.x += difference.x / 2;
-        } else if (atom_pos.x <
-                   reference_monomer_position.x - MONOMER_MINIMUM_SIZE) {
-            atom_pos.x -= difference.x / 2;
-        }
-        if (atom_pos.y > reference_monomer_position.y + MONOMER_MINIMUM_SIZE) {
-            atom_pos.y += difference.y / 2;
-        } else if (atom_pos.y <
-                   reference_monomer_position.y - MONOMER_MINIMUM_SIZE) {
-            atom_pos.y -= difference.y / 2;
-        }
-        conformer.setAtomPos(i, atom_pos);
-    }
-    atom->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE, new_size);
+    // compute displacements caused by monomers in chains
+    auto linear_displacements =
+        compute_linear_displacements(mol, linear_resize_data, ring_resize_info);
+
+    // compute displacements caused by monomers in rings
+    auto ring_displacements = compute_ring_expansion_displacements(
+        mol, ring_resize_data, ring_resize_info);
+
+    // apply movement
+    apply_displacements(mol, linear_displacements);
+    apply_displacements(mol, ring_displacements);
+
+    // persist new sizes
+    update_monomer_sizes(mol, monomer_sizes);
+
+    // reset ring info to avoid leaking "internal" perception of rings
+    mol.getRingInfo()->reset();
 }
 
 unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)

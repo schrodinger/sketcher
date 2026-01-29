@@ -1,6 +1,7 @@
 #pragma once
 
 #include "schrodinger/rdkit_extensions/definitions.h"
+#include <set>
 
 namespace RDKit
 {
@@ -32,9 +33,9 @@ compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
  * Resize the monomer at the given index to the new size by moving other
  * monomers accordingly
  */
-void RDKIT_EXTENSIONS_API resize_monomer(RDKit::ROMol& monomer_mol,
-                                         unsigned int index,
-                                         const RDGeom::Point3D& new_size);
+void RDKIT_EXTENSIONS_API
+resize_monomers(RDKit::ROMol& monomer_mol,
+                std::unordered_map<int, RDGeom::Point3D> monomer_sizes);
 
 /**
  * Check whether any bonds in the given monomer mol cross each other or are
@@ -82,6 +83,29 @@ bool RDKIT_EXTENSIONS_API bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
 double RDKIT_EXTENSIONS_API compute_distance_between_segments(
     const RDGeom::Point3D& p1, const RDGeom::Point3D& p2,
     const RDGeom::Point3D& q1, const RDGeom::Point3D& q2);
+
+/**
+ * Initializes RingInfo for `polymer` with all possible rings including any
+ * rings that may have been formed with zero order bonds. We do this by
+ * converting all the zero order bonds into single order bonds and then looking
+ * for rings. (The bond types are restored to their original values by the end
+ * of this method)
+ */
+void RDKIT_EXTENSIONS_API compute_full_ring_info(const RDKit::ROMol& polymer);
+
+// helper function to determine if a ring is layed out as a regular polygon.
+// This is done by checking the consistency of the distances from the
+// centroid and the uniformity of the angles between consecutive atoms.
+bool RDKIT_EXTENSIONS_API is_geometrically_regular_ring_2d(
+    const RDKit::ROMol& mol, const std::vector<int>& ring_atoms,
+    double radius_tol = 0.1, double angle_tol = 0.25);
+
+/**
+ * Find all monomers connected to start_idx that are not part of the given
+ * ring. This is used to propagate displacements when resizing rings.
+ */
+std::set<int> RDKIT_EXTENSIONS_API find_all_connected_monomers_outside_ring(
+    const RDKit::ROMol& mol, int start_idx, const std::vector<int>& ring);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger
