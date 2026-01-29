@@ -8,7 +8,7 @@
 # - Downloads WASM build artifacts from the main build workflow
 # - Runs sketcher in a headless browser via Playwright to generate SVG images
 # - Creates an interactive HTML gallery with search functionality
-# - Deploys galleries to GitHub Pages (https://cdvonbargen.github.io/sketcher/)
+# - Deploys galleries to GitHub Pages (https://schrodinger.github.io/sketcher/)
 # - Posts a comment on the PR with a link to the gallery
 #
 # Manual triggers:
@@ -16,7 +16,7 @@
 # - If no SHA is provided, uses the latest successful build on the current branch
 #
 # Output:
-# - GitHub Pages: https://cdvonbargen.github.io/sketcher/galleries/<commit>.html
+# - GitHub Pages: https://schrodinger.github.io/sketcher/galleries/<commit>.html
 # - Downloadable artifact: helm-gallery-<commit>
 #
 name: Monomer Coordgen Gallery
@@ -26,9 +26,6 @@ on:
     workflows: ["Sketcher Build and Test"]
     types:
       - completed
-    branches:
-      - main
-      - '**'
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -55,7 +52,7 @@ jobs:
           PARENT_SHA=$(git rev-parse ${COMMIT_SHA}^)
 
           if git diff --name-only ${PARENT_SHA} ${COMMIT_SHA} | \
-             grep -qE "(monomer_coordgen\.(cpp|h)|test_monomer_coordgen\.cpp|test_data/.*\.csv)"; then
+             grep -qE "(monomer_coordgen\.(cpp|h)|test_monomer_coordgen\.cpp|test/testfiles/helm-gallery/.*\.csv)"; then
             echo "changed=true" >> $GITHUB_OUTPUT
             echo "✅ Monomer coordgen files changed - gallery will be generated"
           else
@@ -65,7 +62,7 @@ jobs:
 
   generate-helm-gallery:
     needs: check-changes
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     # Run if: files changed OR manual trigger
     # AND build succeeded
     # AND check-changes didn't fail
@@ -156,7 +153,7 @@ jobs:
       - name: Generate HELM gallery
         run: |
           node .github/scripts/generate_helm_gallery.mjs \
-            test_data/*.csv \
+            test/testfiles/helm-gallery/*.csv \
             --wasm-dir "${{ steps.find-wasm.outputs.path }}" \
             --output helm_gallery.html
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Generate HELM gallery using sketcher WASM module via Playwright.
- * Usage: node generate_helm_gallery.mjs test_data/*.csv --wasm-dir path/to/wasm/dir --output gallery.html
+ * Usage: node generate_helm_gallery.mjs test/testfiles/helm-gallery/*.csv --wasm-dir path/to/wasm/dir --output gallery.html
  */
 
 import { readFileSync, writeFileSync } from 'fs';
