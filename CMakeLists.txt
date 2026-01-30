@@ -238,7 +238,7 @@ set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=createSketcherModule
-      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString,getExceptionMessage,decrementExceptionRefcount]
       -sASYNCIFY
       -lembind
       -fexceptions
