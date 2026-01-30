@@ -180,23 +180,18 @@ test.describe('WASM Sketcher API', () => {
     const result = await page.evaluate(() => {
       try {
         Module.sketcher_import_text('foobar');
-        return { threw: false };
+        throw new Error('Expected exception to be thrown');
       } catch (e) {
         // Use emscripten's getExceptionMessage to extract C++ exception info
         const [type, message] = Module.getExceptionMessage(e);
-        // Clean up the exception
+        // Clean up the exception to avoid memory leak
         Module.decrementExceptionRefcount(e);
-        return {
-          threw: true,
-          exceptionType: type,
-          message: message,
-        };
+        return { type, message };
       }
     });
 
-    // Verify that C++ exceptions are thrown and we can extract the message
-    expect(result.threw).toBe(true);
+    // Verify that we can extract the C++ exception message
     expect(result.message).toBe('Unable to determine format');
-    expect(result.exceptionType).toBeTruthy();
+    expect(result.type).toBeTruthy();
   });
 });
