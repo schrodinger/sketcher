@@ -175,4 +175,21 @@ test.describe('WASM Sketcher API', () => {
 
     expect(exportedSmiles).toBe('C1=CC=CC=C1');
   });
+
+  test('Exception handling for invalid input', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      try {
+        Module.sketcher_import_text('foobar');
+        throw new Error('Expected exception to be thrown');
+      } catch (e) {
+        // Use emscripten's getExceptionMessage to extract C++ exception info
+        const [type, message] = Module.getExceptionMessage(e);
+        return { type, message };
+      }
+    });
+
+    // Verify that we can extract the C++ exception message and type
+    expect(result.message).toBe('Unable to determine format');
+    expect(result.type).toBeTruthy();
+  });
 });
