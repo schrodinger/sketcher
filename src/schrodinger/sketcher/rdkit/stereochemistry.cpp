@@ -21,7 +21,7 @@ template <typename T> bool has_non_CIP_neighbor(const T& obj)
     for (auto atom_idx : stereo_info.controllingAtoms) {
         // stereo bonds may have only 2 controlling atoms. The other 2
         // are NOATOM placeholders.
-        if (atom_idx == RDKit::Chirality::StereoInfo::NOATOM) {
+        if (atom_idx == RDKit::Atom::NOATOM) {
             continue;
         }
         auto controlling_atom = mol.getAtomWithIdx(atom_idx);
