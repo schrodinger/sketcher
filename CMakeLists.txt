@@ -242,7 +242,8 @@ if(EMSCRIPTEN)
       -sASYNCIFY
       -lembind
       -fexceptions
-      -sDISABLE_EXCEPTION_CATCHING=0)
+      -sDISABLE_EXCEPTION_CATCHING=0
+      -sEXPORT_EXCEPTION_HANDLING_HELPERS)
 endif()
 target_link_libraries(
   ${APP_TARGET}
