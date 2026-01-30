@@ -17,12 +17,15 @@
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/RDGeneral/Invariant.h>
 
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/test/fixtures.h" // silence_stdlog
 
 using namespace helm;
+using namespace schrodinger::rdkit_extensions;
 
 static auto get_atom_label = [](const auto& atom) {
     if (atom->hasProp(MONOMER_LIST)) {
@@ -703,4 +706,65 @@ BOOST_DATA_TEST_CASE(
         auto mol = helm_to_rdkit(test_helm, do_throw);
         BOOST_TEST(rdkit_to_helm(*mol) == test_helm);
     }
+}
+
+BOOST_AUTO_TEST_CASE(TestAttachmentPointIsUsed)
+{
+    auto mol = helm_to_rdkit("RNA1{R(C)P}$$$$V2.0");
+
+    BOOST_CHECK_THROW(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "?"),
+                      std::invalid_argument);
+    BOOST_CHECK_THROW(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "pair"),
+                      std::invalid_argument);
+    BOOST_CHECK_THROW(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "R"),
+                      std::invalid_argument);
+    BOOST_CHECK_THROW(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "bad"),
+                      std::invalid_argument);
+
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "R1") == false);
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "R2") == true);
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(0)), "R3") == true);
+
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(1)), "R1") == true);
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(1)), "R2") == false);
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(1)), "R3") == false);
+
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(2)), "R1") == true);
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(2)), "R2") == false);
+    BOOST_TEST(attachmentPointIsUsed(*(mol->getAtomWithIdx(2)), "R3") == false);
+}
+
+BOOST_DATA_TEST_CASE(
+    TestValidValencesWithoutMonomerDB,
+    bdata::make(std::vector<std::string>{
+        "RNA1{R(C)P}|RNA2{R(A)P}$RNA1,RNA2,2:R2-2:R1$$$V2.0",
+        "RNA1{R(C)P}|RNA2{R(A)P}$RNA1,RNA2,1:R2-2:R1$$$V2.0",
+        "PEPTIDE1{A.D(C)P.G}$PEPTIDE1,PEPTIDE1,2:R1-5:R3$$$V2.0",
+        "PEPTIDE1{A.D(C)P.[[*:2]C(=O)[C@H](C)N([*:1])C]}$PEPTIDE1,PEPTIDE1,1:"
+        "R1-5:R1$$$V2.0",
+    }),
+    test_helm)
+{
+    auto mol = helm_to_rdkit(test_helm);
+    BOOST_CHECK_THROW(validateAttachmentPoints(*mol), std::runtime_error);
+}
+
+BOOST_DATA_TEST_CASE(
+    TestValidValencesWithMonomerDB,
+    bdata::make(std::vector<std::string>{
+        "PEPTIDE1{A(C)P}|PEPTIDE2{R(A)P}$PEPTIDE1,PEPTIDE2,2:R3-2:R3$$$V2.0",
+        "PEPTIDE1{A(C)P}|PEPTIDE2{R(A)P}$PEPTIDE1,PEPTIDE2,2:R3-2:R3$$$V2.0",
+        "PEPTIDE1{A.D(C)P.G}$PEPTIDE1,PEPTIDE1,2:R1-5:R3$$$V2.0",
+        "PEPTIDE1{A.D(C)P.[[*:2]C(=O)[C@H](C)N([*:1])C]}$PEPTIDE1,PEPTIDE1,1:"
+        "R1-5:R1$$$V2.0",
+        "PEPTIDE1{A.D(C)P.[[*:2]C(=O)[C@H](C)N([*:1])C]}$PEPTIDE1,PEPTIDE1,1:"
+        "R1-5:R3$$$V2.0",
+    }),
+    test_helm)
+{
+    auto mol = helm_to_rdkit(test_helm);
+
+    auto& monomer_db = MonomerDatabase::instance();
+    BOOST_CHECK_THROW(validateAttachmentPoints(*mol, &monomer_db),
+                      std::runtime_error);
 }

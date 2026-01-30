@@ -52,7 +52,8 @@ bool is_dummy_bond(const ::RDKit::Bond* bond)
 }
 
 [[nodiscard]] std::vector<unsigned int>
-get_atoms_in_polymer_chain(const RDKit::ROMol& mol, std::string_view polymer_id)
+get_atoms_in_polymer_chain(const RDKit::ROMol& mol,
+                           const std::string& polymer_id)
 {
     check_if_input_is_atomistic(mol);
 
@@ -74,7 +75,7 @@ get_atoms_in_polymer_chain(const RDKit::ROMol& mol, std::string_view polymer_id)
 
 [[nodiscard]] std::vector<unsigned int>
 get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
-                            const std::vector<std::string_view>& polymer_ids)
+                            const std::vector<std::string>& polymer_ids)
 {
     check_if_input_is_atomistic(mol);
 
@@ -96,35 +97,11 @@ get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
     return {on_bits.begin(), on_bits.end()};
 }
 
-static void
-check_for_polymer_groups_and_extended_annotations(const ::RDKit::ROMol& mol)
-{
-    if (const auto sgroup = get_supplementary_info(mol); sgroup) {
-        std::vector<std::string> datafields;
-        static const std::string DATAFIELDS{"DATAFIELDS"};
-        if (!sgroup->getPropIfPresent(DATAFIELDS, datafields) ||
-            datafields.size() < 2u) {
-            return;
-        }
-
-        if (!datafields[0].empty()) {
-            throw std::invalid_argument(
-                "Polymer groups are currently unsupported");
-        }
-
-        if (!datafields[1].empty()) {
-            throw std::invalid_argument(
-                "Extended annotations are currently unsupported");
-        }
-    }
-}
-
 [[nodiscard]] boost::shared_ptr<RDKit::RWMol>
 extract_helm_polymers(const RDKit::ROMol& mol,
-                      const std::vector<std::string_view>& polymer_ids)
+                      const std::vector<std::string>& polymer_ids)
 {
     check_if_input_is_atomistic(mol);
-    check_for_polymer_groups_and_extended_annotations(mol);
 
     auto selected_atom_indices = get_atoms_in_polymer_chains(mol, polymer_ids);
     constexpr bool sanitize{false};
@@ -132,7 +109,21 @@ extract_helm_polymers(const RDKit::ROMol& mol,
     auto extracted_mol =
         ExtractMolFragment(mol, selected_atom_indices, sanitize);
     extracted_mol->setProp(HELM_MODEL, true);
+
+    // Remove supplementary information S-groups, which contain polymer groups
+    // and extended annotations that are not relevant to extracted polymers.
+    // Other S-groups (like polymer annotations) are preserved.
+    auto& sgroups = RDKit::getSubstanceGroups(*extracted_mol);
+    sgroups.erase(std::remove_if(sgroups.begin(), sgroups.end(),
+                                 is_supplementary_information_s_group),
+                  sgroups.end());
     return extracted_mol;
+}
+
+[[nodiscard]] boost::shared_ptr<RDKit::RWMol>
+extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id)
+{
+    return extract_helm_polymers(mol, {polymer_id});
 }
 
 [[nodiscard]] std::string get_polymer_id(const ::RDKit::Atom* atom)

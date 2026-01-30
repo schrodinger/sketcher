@@ -901,13 +901,12 @@ BOOST_AUTO_TEST_CASE(test_addTextToMolModel_monomeric_s_sroups)
     TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
 
-    // extended annotations are currently unsupported, but make sure that we
-    // throw an exception (which will be caught and put in an error dialog)
-    // instead of crashing
+    // extended annotations are dropped when loading HELM
     const std::string HELM_WITH_EXTENDED_ANNOTATION =
         R"(RNA1{R(A)P.R(C)P.R(G)}$$${"my chain":"my annotation"}$V2.0)";
-    BOOST_CHECK_THROW(sk.addTextToMolModel(HELM_WITH_EXTENDED_ANNOTATION),
-                      std::exception);
+    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(HELM_WITH_EXTENDED_ANNOTATION));
+    BOOST_TEST(sk.getRDKitMolecule()->getNumAtoms() == 8);
+    sk.clear();
 
     // basic annotations create a COP S-group
     const std::string HELM_WITH_ANNOTATION =

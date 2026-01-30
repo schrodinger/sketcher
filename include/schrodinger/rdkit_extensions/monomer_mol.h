@@ -35,6 +35,7 @@ class SubstanceGroup;
 
 namespace schrodinger::rdkit_extensions
 {
+class MonomerDatabase;
 
 using Monomer = RDKit::Atom;
 
@@ -121,5 +122,44 @@ RDKIT_EXTENSIONS_API void addConnection(RDKit::RWMol& mol, size_t monomer1,
 // Discards existing chains and reassigns monomers to sequential chains.
 // (in HELM world, "chains" are called "polymers")
 RDKIT_EXTENSIONS_API void assignChains(RDKit::RWMol& mol);
+
+// Helper api to get the chain type a monomer belongs to.
+RDKIT_EXTENSIONS_API ChainType getChainType(const RDKit::Atom& monomer);
+
+/*
+ * Checks whether an attachment point is used.
+ *
+ * @param monomer: the monomer to look at
+ * @param attachment_point: the attachment point to query
+ *
+ * @return Whether the attachment point is used
+ */
+RDKIT_EXTENSIONS_API bool
+attachmentPointIsUsed(const RDKit::Atom& monomer,
+                      const std::string& attachment_point);
+
+/*
+ * Checks monomer connections to make sure the following is true:
+ *      * attachment points are not used multiple times
+ *      * used attachment points are supported by the monomer database
+ *
+ * @param monomer: the monomer to look at
+ * @param monomer_db: the monomer database to get monomer information from
+ */
+RDKIT_EXTENSIONS_API void
+validateAttachmentPoints(const RDKit::Atom& monomer,
+                         const MonomerDatabase* monomer_db = nullptr);
+
+/*
+ * Checks all connections to make sure the following is true:
+ *      * attachment points are not used multiple times
+ *      * used attachment points are supported by the monomer database
+ *
+ * @param mol: the monomeristic mol to look at
+ * @param monomer_db: the monomer database to get monomer information from
+ */
+RDKIT_EXTENSIONS_API void
+validateAttachmentPoints(const RDKit::ROMol& mol,
+                         const MonomerDatabase* monomer_db = nullptr);
 
 } // namespace schrodinger::rdkit_extensions

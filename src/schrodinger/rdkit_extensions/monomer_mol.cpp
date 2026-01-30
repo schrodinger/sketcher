@@ -3,15 +3,22 @@
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include <algorithm>
 #include <boost/functional/hash.hpp>
 #include <fmt/format.h>
+#include <optional>
 
+#include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h" // for is_smiles_monomer
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+
+namespace schrodinger::rdkit_extensions
+{
 
 namespace
 {
@@ -28,10 +35,200 @@ std::pair<unsigned int, unsigned int> getAttchpts(const std::string& linkage)
             std::stoi(linkage.substr(dash + 2))};
 }
 
+// helper api to the specific R-group used by a monomer to form a bond
+std::optional<std::string> getAttachmentPoint(const RDKit::Bond* bond,
+                                              const RDKit::Atom* monomer)
+{
+    std::string linkage;
+    if (!bond->getPropIfPresent(LINKAGE, linkage) || linkage.empty()) {
+        return std::optional<std::string>{};
+    }
+
+    // hydrogen pairings are currently unsupported
+    if (linkage.starts_with("pair")) {
+        return std::optional<std::string>{};
+    }
+
+    // Assume linkage is valid
+    auto attachment_point = (bond->getBeginAtom() == monomer
+                                 ? linkage.substr(0, linkage.find('-'))
+                                 : linkage.substr(linkage.find('-') + 1));
+
+    return std::make_optional<std::string>(std::move(attachment_point));
+}
+
+// helper api to get how may times an R-group is used by a monomer
+unsigned int getAttachmentPointUseCount(const RDKit::Atom* monomer,
+                                        const std::string& attachment_point)
+{
+    auto& mol = monomer->getOwningMol();
+    auto count = 0u;
+    for (auto bond : mol.atomBonds(monomer)) {
+        if (auto used_attach_pt = getAttachmentPoint(bond, monomer);
+            used_attach_pt && used_attach_pt == attachment_point) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+
+// helper api to parse monomer SMILES to check is a given attachment point is
+// present.
+bool monomerSmilesHasAttachmentPoint(const std::string& monomer_smiles,
+                                     const std::string& attachment_point)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    // Parse the SMILES literally
+    static const SmilesParserParams smi_opts{
+        .sanitize = false, .removeHs = false, .replacements = {}};
+
+    [[maybe_unused]] CaptureRDErrorLog rdkit_log;
+    auto atomistic_mol = MolFromSmiles(monomer_smiles, smi_opts);
+
+    // it's unlikely we'll have invalid inline or database SMILES
+    if (!atomistic_mol) {
+        [[unlikely]] return false;
+    }
+
+    // assume this is a valid rgroup
+    unsigned int rgroup_num = std::stol(attachment_point.substr(1));
+
+    unsigned int map_num;
+    std::string rgroup_label;
+    for (auto atom : atomistic_mol->atoms()) {
+        if (atom->getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
+                                   map_num) &&
+            rgroup_num == map_num) {
+            return true;
+        }
+
+        if (atom->getPropIfPresent(RDKit::common_properties::atomLabel,
+                                   rgroup_label) &&
+            rgroup_label.starts_with("_R") &&
+            std::stol(rgroup_label.substr(2)) == rgroup_num) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void validateAttachmentPointWithDB(
+    const RDKit::Atom* monomer, const std::string& attachment_point,
+    fmt::memory_buffer& errors,
+    const schrodinger::rdkit_extensions::MonomerDatabase& monomer_db)
+{
+    std::string atom_label;
+    if (!monomer->getPropIfPresent(ATOM_LABEL, atom_label)) {
+        fmt::format_to(
+            std::back_inserter(errors),
+            "'{}' attachment point in residue='{}' within polymer='{}' is not "
+            "supported due to an invalid monomer id.\n",
+            attachment_point, get_residue_number(monomer),
+            get_polymer_id(monomer));
+        return;
+    }
+
+    bool is_smiles = false;
+    if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+        if (!monomerSmilesHasAttachmentPoint(atom_label, attachment_point)) {
+            fmt::format_to(
+                std::back_inserter(errors),
+                "'{}' attachment point in residue='{}' within "
+                "polymer='{}' is not supported by the monomer database \n",
+                attachment_point, get_residue_number(monomer),
+                get_polymer_id(monomer));
+        }
+        return;
+    }
+
+    // Validate individual monomers. The below procedure tries to account for
+    // monomer lists
+    auto chain_type = getChainType(*monomer);
+    size_t start = 0;
+    auto separator = monomer->hasProp(MONOMER_LIST)
+                         ? atom_label[atom_label.find_first_of(",+")]
+                         : '\n';
+    while (start < atom_label.size()) {
+        size_t end = atom_label.find(separator, start);
+        if (end == std::string_view::npos) {
+            end = atom_label.size();
+        }
+
+        auto item = atom_label.substr(start, end - start);
+        start = end + 1; // advance location of separator
+
+        std::string monomer_id{item.substr(0, item.find(':'))};
+
+        // strip surrounding brackets
+        if (monomer_id.front() == '[' && monomer_id.back() == ']') {
+            monomer_id = monomer_id.substr(1, monomer_id.size() - 2);
+        }
+
+        auto smiles = monomer_db.getMonomerSmiles(monomer_id, chain_type);
+        if (!smiles) {
+            fmt::format_to(
+                std::back_inserter(errors),
+                "Monomer id = '{}' was not found in the monomer database\n",
+                monomer_id);
+            continue;
+        }
+
+        if (!monomerSmilesHasAttachmentPoint(*smiles, attachment_point)) {
+            fmt::format_to(
+                std::back_inserter(errors),
+                "'{}' attachment point in residue='{}' within "
+                "polymer='{}' is not supported by the monomer database \n",
+                attachment_point, get_residue_number(monomer),
+                get_polymer_id(monomer));
+        }
+    }
+}
+
+void validateAtomAttachmentPoints(
+    const RDKit::Atom* monomer, fmt::memory_buffer& errors,
+    const schrodinger::rdkit_extensions::MonomerDatabase* monomer_db)
+{
+    auto& mol = monomer->getOwningMol();
+    for (auto bond : mol.atomBonds(monomer)) {
+        if (auto attach_pt = getAttachmentPoint(bond, monomer); attach_pt) {
+            if (getAttachmentPointUseCount(monomer, *attach_pt) > 1) {
+                fmt::format_to(std::back_inserter(errors),
+                               "'{}' attachment point in residue='{}' within "
+                               "polymer='{}' has been used multiple times\n",
+                               *attach_pt, get_residue_number(monomer),
+                               get_polymer_id(monomer));
+            }
+
+            if (monomer_db) {
+                validateAttachmentPointWithDB(monomer, *attach_pt, errors,
+                                              *monomer_db);
+            }
+        }
+    }
+}
+
 } // unnamed namespace
 
-namespace schrodinger::rdkit_extensions
+ChainType getChainType(const RDKit::Atom& monomer)
 {
+    auto polymer_id = get_polymer_id(&monomer);
+
+    if (polymer_id.find("PEPTIDE") == 0) {
+        return ChainType::PEPTIDE;
+    } else if (polymer_id.find("RNA") == 0) {
+        // HELM labels both DNA and RNA as RNA
+        return ChainType::RNA;
+    } else if (polymer_id.find("CHEM") == 0) {
+        return ChainType::CHEM;
+    } else {
+        throw std::out_of_range(fmt::format(
+            "Invalid polymer id: {}. Must be one of PEPTIDE, RNA, CHEM",
+            polymer_id));
+    }
+}
 
 ChainType toChainType(std::string_view chain_type)
 {
@@ -435,6 +632,44 @@ void assignChains(RDKit::RWMol& monomer_mol)
             std::string linkage = bond->getProp<std::string>(LINKAGE);
             bond->setProp(CUSTOM_BOND, linkage);
         }
+    }
+}
+
+bool attachmentPointIsUsed(const RDKit::Atom& monomer,
+                           const std::string& attachment_point)
+{
+    if (attachment_point.size() < 2 || attachment_point.front() != 'R') {
+        throw std::invalid_argument(fmt::format(
+            "Unsupported attachment point '{}'. Attachment points are defined "
+            "as R#, where # is an unsigned positive number",
+            attachment_point));
+    }
+
+    return getAttachmentPointUseCount(&monomer, attachment_point) > 0;
+}
+
+void validateAttachmentPoints(const RDKit::Atom& monomer,
+                              const MonomerDatabase* monomer_db)
+{
+    fmt::memory_buffer errors;
+    validateAtomAttachmentPoints(&monomer, errors, monomer_db);
+
+    if (errors.size() != 0) {
+        throw std::runtime_error(std::string{errors.data(), errors.size()});
+    }
+}
+
+void validateAttachmentPoints(const RDKit::ROMol& mol,
+                              const MonomerDatabase* monomer_db)
+{
+    fmt::memory_buffer errors;
+
+    for (auto monomer : mol.atoms()) {
+        validateAtomAttachmentPoints(monomer, errors, monomer_db);
+    }
+
+    if (errors.size() != 0) {
+        throw std::runtime_error(std::string{errors.data(), errors.size()});
     }
 }
 
