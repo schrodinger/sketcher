@@ -184,8 +184,6 @@ test.describe('WASM Sketcher API', () => {
       } catch (e) {
         // Use emscripten's getExceptionMessage to extract C++ exception info
         const [type, message] = Module.getExceptionMessage(e);
-        // Clean up the exception to avoid memory leak
-        Module.decrementExceptionRefcount(e);
         return { type, message };
       }
     });
