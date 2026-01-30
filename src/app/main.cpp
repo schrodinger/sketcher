@@ -70,6 +70,8 @@ bool sketcher_has_monomers()
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
 }
 
+// Note: allow_monomeric should not be set to false if the workspace
+// contains monomers.
 void sketcher_allow_monomeric(bool allow_monomeric)
 {
     auto& sk = get_sketcher_instance();
