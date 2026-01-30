@@ -6,7 +6,6 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "featureflags.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/test/scopedenv.h"
@@ -14,11 +13,8 @@
 
 using namespace schrodinger::rdkit_extensions;
 
-const auto FEATURE_FLAG_STATES =
-    boost::unit_test::data::make({FEATURE_DISABLED, FEATURE_ENABLED});
-
-BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical, FEATURE_FLAG_STATES,
-                     ff_state)
+BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical,
+                     boost::unit_test::data::make({0, 1}), ff_state)
 {
     // If this test fails, then we need to update
     // monomer_db_default_monomers.h with new
