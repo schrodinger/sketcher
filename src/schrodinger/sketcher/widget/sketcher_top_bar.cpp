@@ -218,8 +218,10 @@ void SketcherTopBar::generatePackets()
 
 void SketcherTopBar::onImportFromFileClicked()
 {
-    auto file_open_completed = [this](const auto& file_path,
-                                      const auto& content) {
+    qDebug() << "onImportFromFileClicked called";
+    auto file_open_completed = [this](QString file_path, QByteArray content) {
+        qDebug() << "file_open_completed callback called with path:"
+                 << file_path;
         if (file_path.isEmpty()) {
             /*
              * If the user cancels the file dialog, the file path will be empty.
@@ -227,6 +229,7 @@ void SketcherTopBar::onImportFromFileClicked()
              * behavior recommended in the QFileDialog::getOpenFileContent
              * documentation. SKETCH-2239
              */
+            qDebug() << "File path is empty, user likely cancelled";
             return;
         }
         try {
@@ -234,9 +237,33 @@ void SketcherTopBar::onImportFromFileClicked()
 
             auto path_string = file_path.toStdString();
             auto format = get_file_format(path_string);
-            auto text = get_decompressed_string(content.toStdString());
+            qDebug() << "File content size:" << content.size();
+            // Show first 50 bytes for debugging
+            if (content.size() > 0) {
+                QString preview;
+                for (int i = 0; i < std::min(50, content.size()); ++i) {
+                    preview += QString::number(
+                                   static_cast<unsigned char>(content[i]), 16)
+                                   .rightJustified(2, '0') +
+                               " ";
+                }
+                qDebug() << "First bytes (hex):" << preview;
+            }
+            // Convert QByteArray to std::string using constData() and size()
+            // to preserve binary content without character encoding conversion
+            std::string content_str(content.constData(), content.size());
+            qDebug() << "content_str size:" << content_str.size();
+            auto text = get_decompressed_string(content_str);
+            qDebug() << "Decompressed text size:" << text.size();
+            // Show first 100 chars of decompressed text
+            if (text.size() > 0) {
+                qDebug() << "Text preview:"
+                         << QString::fromStdString(
+                                text.substr(0, std::min(100UL, text.size())));
+            }
             emit importTextRequested(text, format);
         } catch (const std::exception& exc) {
+            qDebug() << "Exception during file import:" << exc.what();
             show_error_dialog("File Error", exc.what(), this);
         }
     };
@@ -247,9 +274,11 @@ void SketcherTopBar::onImportFromFileClicked()
     }
     auto name_filter = filters.join(";;");
 
-#if QT_6_5_5
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 5)
+    qDebug() << "Using Qt 6.5.5+ API (3 parameters)";
     QFileDialog::getOpenFileContent(name_filter, file_open_completed, this);
 #else
+    qDebug() << "Using Qt < 6.5.5 API (2 parameters)";
     QFileDialog::getOpenFileContent(name_filter, file_open_completed);
 #endif
 }
