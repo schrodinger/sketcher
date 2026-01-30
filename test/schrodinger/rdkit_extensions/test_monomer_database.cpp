@@ -13,8 +13,8 @@
 
 using namespace schrodinger::rdkit_extensions;
 
-BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical, boost::unit_test::data::make({0, 1}),
-                     ff_state)
+BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical,
+                     boost::unit_test::data::make({0, 1}), ff_state)
 {
     // If this test fails, then we need to update
     // monomer_db_default_monomers.h with new
