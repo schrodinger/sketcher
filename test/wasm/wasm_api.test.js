@@ -190,6 +190,7 @@ test.describe('WASM Sketcher API', () => {
 
     // Verify that we can extract the C++ exception message
     expect(result.message).toBe('Unable to determine format');
-    expect(result.type).toBeTruthy();
+    // Snapshot the type to see what it actually is
+    expect(result.type).toMatchSnapshot();
   });
 });
