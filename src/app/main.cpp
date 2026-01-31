@@ -33,22 +33,81 @@ SketcherWidget& get_sketcher_instance()
     return instance;
 }
 
+#ifdef __EMSCRIPTEN__
+// Global storage for the last error message (for WASM error reporting)
+static std::string g_last_error;
+
+void set_last_error(const std::string& error)
+{
+    g_last_error = error;
+}
+
+void clear_last_error()
+{
+    g_last_error.clear();
+}
+
+std::string get_last_error()
+{
+    return g_last_error;
+}
+#endif
+
 void sketcher_import_text(const std::string& text)
 {
-    auto& sk = get_sketcher_instance();
-    sk.addFromString(text);
+#ifdef __EMSCRIPTEN__
+    clear_last_error();
+    try {
+#endif
+        auto& sk = get_sketcher_instance();
+        sk.addFromString(text);
+#ifdef __EMSCRIPTEN__
+    } catch (const std::exception& e) {
+        set_last_error(std::string("Import failed: ") + e.what());
+        throw;
+    } catch (...) {
+        set_last_error("Import failed: Unknown error");
+        throw;
+    }
+#endif
 }
 
 std::string sketcher_export_text(Format format)
 {
-    auto& sk = get_sketcher_instance();
-    return sk.getString(format);
+#ifdef __EMSCRIPTEN__
+    clear_last_error();
+    try {
+#endif
+        auto& sk = get_sketcher_instance();
+        return sk.getString(format);
+#ifdef __EMSCRIPTEN__
+    } catch (const std::exception& e) {
+        set_last_error(std::string("Export text failed: ") + e.what());
+        throw;
+    } catch (...) {
+        set_last_error("Export text failed: Unknown error");
+        throw;
+    }
+#endif
 }
 
 std::string sketcher_export_image(ImageFormat format)
 {
-    auto& sk = get_sketcher_instance();
-    return sk.getImageBytes(format).toBase64().toStdString();
+#ifdef __EMSCRIPTEN__
+    clear_last_error();
+    try {
+#endif
+        auto& sk = get_sketcher_instance();
+        return sk.getImageBytes(format).toBase64().toStdString();
+#ifdef __EMSCRIPTEN__
+    } catch (const std::exception& e) {
+        set_last_error(std::string("Export image failed: ") + e.what());
+        throw;
+    } catch (...) {
+        set_last_error("Export image failed: Unknown error");
+        throw;
+    }
+#endif
 }
 
 void sketcher_clear()
@@ -135,6 +194,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function("get_last_error", &get_last_error);
     // see sketcher_changed_callback above
 }
 #endif
