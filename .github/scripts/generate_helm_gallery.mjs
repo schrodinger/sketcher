@@ -150,28 +150,29 @@ for (let i = 0; i < entries.length; i++) {
   const progressiveNumber = i + 1;
 
   try {
-    const svg = await page.evaluate((helmString) => {
+    const result = await page.evaluate((helmString) => {
       try {
         Module.sketcher_clear();
         Module.sketcher_allow_monomeric(true);
         Module.sketcher_import_text(helmString);
-        return Module.sketcher_export_image(Module.ImageFormat.SVG);
+        return { success: true, svg: Module.sketcher_export_image(Module.ImageFormat.SVG) };
       } catch (e) {
-        console.log('DEBUG: Caught exception, type:', typeof e, 'value:', e);
-        console.log('DEBUG: getExceptionMessage available?', typeof Module.getExceptionMessage);
-
         // If exception is a pointer (number), get the actual message
         if (typeof e === 'number' && Module.getExceptionMessage) {
-          const result = Module.getExceptionMessage(e);
-          console.log('DEBUG: getExceptionMessage result:', result);
-          const [type, message] = result;
-          throw new Error(`${type}: ${message}`);
+          const exceptionInfo = Module.getExceptionMessage(e);
+          // getExceptionMessage returns [type, message]
+          return { success: false, error: exceptionInfo[1] || exceptionInfo.toString() };
         }
-        // Otherwise re-throw as-is
-        console.log('DEBUG: Re-throwing exception as-is');
-        throw e;
+        // Otherwise return the error as-is
+        return { success: false, error: e.toString() };
       }
     }, entry.helm_string);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    const svg = result.svg;
 
     // Decode base64 SVG
     const svgContent = Buffer.from(svg, 'base64').toString();
