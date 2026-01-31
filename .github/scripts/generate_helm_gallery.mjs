@@ -153,7 +153,7 @@ for (let i = 0; i < entries.length; i++) {
     // Emscripten automatically converts C++ exceptions to JavaScript exceptions
     const svg = await page.evaluate((helmString) => {
       Module.sketcher_clear();
-      Module.sketcher_allow_monomeric();
+      Module.sketcher_allow_monomeric(true);
       Module.sketcher_import_text(helmString);
       return Module.sketcher_export_image(Module.ImageFormat.SVG);
     }, entry.helm_string);
