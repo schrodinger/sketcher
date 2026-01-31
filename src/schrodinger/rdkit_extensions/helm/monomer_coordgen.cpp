@@ -118,6 +118,32 @@ static void place_monomer_at(RDKit::Conformer& conformer,
     placed_monomers_idcs.insert(monomer_to_place->getProp<int>(ORIGINAL_INDEX));
 }
 
+/**
+ * Check if a bond contains a backbone linkage
+ * @return true if the bond is a backbone connection, or if it has more than one
+ * connection (i.e., the LINKAGE property contains more than just the
+ * CUSTOM_BOND linkage), in which case one is assumed to be a backbone
+ * connection.
+ */
+static bool has_backbone_linkage(const RDKit::Bond* bond)
+{
+    if (!bond->hasProp(CUSTOM_BOND)) {
+        // No custom bond property, this is a regular backbone bond
+        return true;
+    }
+
+    std::string custom_bond;
+    std::string linkage;
+
+    if (!bond->getPropIfPresent(CUSTOM_BOND, custom_bond) ||
+        !bond->getPropIfPresent(LINKAGE, linkage)) {
+        return false;
+    }
+    // If LINKAGE and CUSTOM_BOND are different, it means there are additional
+    // linkages beyond the custom one: assume that one is a backbone connection
+    return linkage != custom_bond;
+}
+
 namespace bg = boost::geometry;
 using point_t = bg::model::d2::point_xy<double>;
 using segment_t = bg::model::segment<point_t>;
@@ -226,11 +252,10 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
         for (auto neighbor : monomer_neighbors) {
             if (placed_monomers_idcs.contains(
                     neighbor->getProp<int>(ORIGINAL_INDEX)) ||
-                // This is a connection attachment point
-                polymer
-                    .getBondBetweenAtoms(neighbor->getIdx(),
-                                         monomer_to_place_idx)
-                    ->hasProp(CUSTOM_BOND)) {
+                // Skip if the bond to this neighbor is not a backbone
+                // connection)
+                !has_backbone_linkage(polymer.getBondBetweenAtoms(
+                    neighbor->getIdx(), monomer_to_place_idx))) {
                 continue;
             }
 
