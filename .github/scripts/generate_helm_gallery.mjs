@@ -157,10 +157,18 @@ for (let i = 0; i < entries.length; i++) {
         Module.sketcher_import_text(helmString);
         return Module.sketcher_export_image(Module.ImageFormat.SVG);
       } catch (e) {
+        console.log('DEBUG: Caught exception, type:', typeof e, 'value:', e);
+        console.log('DEBUG: getExceptionMessage available?', typeof Module.getExceptionMessage);
+
         // If exception is a pointer (number), get the actual message
-        if (typeof e === 'number') {
-          throw new Error(Module.getExceptionMessage(e));
+        if (typeof e === 'number' && Module.getExceptionMessage) {
+          const result = Module.getExceptionMessage(e);
+          console.log('DEBUG: getExceptionMessage result:', result);
+          const [type, message] = result;
+          throw new Error(`${type}: ${message}`);
         }
+        // Otherwise re-throw as-is
+        console.log('DEBUG: Re-throwing exception as-is');
         throw e;
       }
     }, entry.helm_string);
