@@ -150,38 +150,16 @@ for (let i = 0; i < entries.length; i++) {
   const progressiveNumber = i + 1;
 
   try {
-    const result = await page.evaluate((helmString) => {
-      try {
-        Module.sketcher_clear();
-        Module.sketcher_allow_monomeric();
-        Module.sketcher_import_text(helmString);
-        const svg = Module.sketcher_export_image(Module.ImageFormat.SVG);
-        return { success: true, svg };
-      } catch (e) {
-        let errorMsg = e.message || e.toString();
-
-        // Try to get the detailed error message from the C++ side
-        if (typeof Module.get_last_error === 'function') {
-          try {
-            const lastError = Module.get_last_error();
-            if (lastError && lastError.length > 0) {
-              errorMsg = lastError;
-            }
-          } catch (getErr) {
-            // If get_last_error fails, fall back to the exception message
-          }
-        }
-
-        return { success: false, error: errorMsg };
-      }
+    // Emscripten automatically converts C++ exceptions to JavaScript exceptions
+    const svg = await page.evaluate((helmString) => {
+      Module.sketcher_clear();
+      Module.sketcher_allow_monomeric();
+      Module.sketcher_import_text(helmString);
+      return Module.sketcher_export_image(Module.ImageFormat.SVG);
     }, entry.helm_string);
 
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-
     // Decode base64 SVG
-    const svgContent = Buffer.from(result.svg, 'base64').toString();
+    const svgContent = Buffer.from(svg, 'base64').toString();
 
     const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
     cards.push(`
