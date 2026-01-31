@@ -150,13 +150,29 @@ for (let i = 0; i < entries.length; i++) {
   const progressiveNumber = i + 1;
 
   try {
-    // Emscripten automatically converts C++ exceptions to JavaScript exceptions
-    const svg = await page.evaluate((helmString) => {
-      Module.sketcher_clear();
-      Module.sketcher_allow_monomeric();
-      Module.sketcher_import_text(helmString);
-      return Module.sketcher_export_image(Module.ImageFormat.SVG);
+    const result = await page.evaluate((helmString) => {
+      try {
+        Module.sketcher_clear();
+        Module.sketcher_allow_monomeric(true);
+        Module.sketcher_import_text(helmString);
+        return { success: true, svg: Module.sketcher_export_image(Module.ImageFormat.SVG) };
+      } catch (e) {
+        // If exception is a pointer (number), get the actual message
+        if (typeof e === 'number' && Module.getExceptionMessage) {
+          const exceptionInfo = Module.getExceptionMessage(e);
+          // getExceptionMessage returns [type, message]
+          return { success: false, error: exceptionInfo[1] || exceptionInfo.toString() };
+        }
+        // Otherwise return the error as-is
+        return { success: false, error: e.toString() };
+      }
     }, entry.helm_string);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    const svg = result.svg;
 
     // Decode base64 SVG
     const svgContent = Buffer.from(svg, 'base64').toString();
