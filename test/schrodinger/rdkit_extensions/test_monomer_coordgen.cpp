@@ -563,4 +563,75 @@ BOOST_AUTO_TEST_CASE(TouchingBondsNoCross)
     BOOST_CHECK(!schrodinger::rdkit_extensions::has_no_bond_crossings(mol));
 }
 
+BOOST_AUTO_TEST_CASE(IsGeometricallyRegularRing2D_RegularPolygon)
+{
+    // Create a regular hexagon (6-sided polygon), should be detected as
+    // geometrically regular
+    std::vector<std::pair<double, double>> hex_coords = {
+        {1.0, 0.0},  {0.5, std::sqrt(3) / 2},   {-0.5, std::sqrt(3) / 2},
+        {-1.0, 0.0}, {-0.5, -std::sqrt(3) / 2}, {0.5, -std::sqrt(3) / 2}};
+    RDKit::ROMol hex_mol = make_molecule_with_coords(
+        hex_coords, {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 5}, {5, 0}});
+    std::vector<int> ring_atoms = {0, 1, 2, 3, 4, 5};
+    BOOST_CHECK(schrodinger::rdkit_extensions::is_geometrically_regular_ring_2d(
+        hex_mol, ring_atoms));
+
+    // distort one vertex. The ring should no longer be considered regular
+    hex_coords[0] = {1.5, 0.0};
+    RDKit::ROMol distorted_hex_mol = make_molecule_with_coords(
+        hex_coords, {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 5}, {5, 0}});
+    BOOST_CHECK(
+        !schrodinger::rdkit_extensions::is_geometrically_regular_ring_2d(
+            distorted_hex_mol, ring_atoms));
+    // Equilateral triangle, should be regular
+    std::vector<std::pair<double, double>> tri_coords = {
+        {0.0, 1.0}, {-std::sqrt(3) / 2, -0.5}, {std::sqrt(3) / 2, -0.5}};
+    RDKit::ROMol tri_mol =
+        make_molecule_with_coords(tri_coords, {{0, 1}, {1, 2}, {2, 0}});
+    ring_atoms = {0, 1, 2};
+    BOOST_CHECK(schrodinger::rdkit_extensions::is_geometrically_regular_ring_2d(
+        tri_mol, ring_atoms));
+}
+
+BOOST_AUTO_TEST_CASE(FindAllConnectedMonomersOutsideRing)
+{
+    // check that we can count the number of monomers attached to each ring
+    // monomer of a structure with two large rings.
+    std::string helm =
+        "PEPTIDE1{F}|PEPTIDE2{[dI].[Trp_Ome].[Asp_OMe].[Cys_Bn].[meG].[Phe_3Cl]"
+        ".[dD].T.[dI].T.[dK].[aG].[3Pal].[xiIle].[meD].[Ala_tBu]}|PEPTIDE3{L.["
+        "Pro_4Me3OH].S.[NMe2Abz].Q.[3Pal].[xiIle].[D-Hyp].[Ala_tBu].[dI].[Trp_"
+        "Ome].[Asp_OMe].N.[meG].[Phe_34diCl].[Phe_34diCl]}$PEPTIDE2,PEPTIDE2,"
+        "16:R2-1:R1|PEPTIDE3,PEPTIDE3,16:R2-1:R1|PEPTIDE3,PEPTIDE2,10:R3-1:R3|"
+        "PEPTIDE1,PEPTIDE2,1:R2-9:R3$$$V2.0";
+    auto mol = helm::helm_to_rdkit(helm);
+
+    schrodinger::rdkit_extensions::compute_full_ring_info(*mol);
+    auto rings = mol->getRingInfo()->atomRings();
+    BOOST_REQUIRE(rings.size() == 2);
+
+    // number of monomers attached to each ring monomer. This counts all atoms
+    // that are encountered when walking the tree starting from each ring atom
+    // and avoiding other atoms in the same ring.
+    std::vector<std::vector<unsigned int>> ring_attachment_sizes = {
+        {0u, 0u, 0u, 0u, 0u, 0u, 0u, 1u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+         16u}, // first ring
+        {0u, 0u, 0u, 0u, 0u, 0u, 0u, 17u, 0u, 0u, 0u, 0u, 0u, 0u, 0u,
+         0u}}; // second ring
+
+    for (size_t ring_idx = 0; ring_idx < rings.size(); ++ring_idx) {
+        const std::vector<int>& ring = rings[ring_idx];
+        BOOST_REQUIRE(ring.size() == ring_attachment_sizes[ring_idx].size());
+        for (size_t pos = 0; pos < ring.size(); ++pos) {
+            int ring_atom_idx = ring[pos];
+            // Find all connected monomers outside the ring.
+            auto attached_monomers = schrodinger::rdkit_extensions::
+                find_all_connected_monomers_outside_ring(*mol, ring_atom_idx,
+                                                         ring);
+            BOOST_CHECK_EQUAL(attached_monomers.size(),
+                              ring_attachment_sizes[ring_idx][pos]);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

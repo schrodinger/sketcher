@@ -23,6 +23,13 @@ namespace rdkit_extensions
 {
 
 /**
+ * @return the centroid of a set of points
+ *
+ */
+RDKIT_EXTENSIONS_API RDGeom::Point3D
+compute_centroid(const std::vector<RDGeom::Point3D>& positions);
+
+/**
  * Generate 2D coordinates for the given molecule using RDDepict with ring
  * templating enabled; note this function forces RDKit coordinate generation
  * and will ignore SetPreferCoordGen if set.

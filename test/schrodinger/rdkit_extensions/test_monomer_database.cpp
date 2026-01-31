@@ -8,17 +8,29 @@
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/test/scopedenv.h"
 #include "test_common.h"
 
 using namespace schrodinger::rdkit_extensions;
 
-BOOST_AUTO_TEST_CASE(Check_Core_Monomers_Are_Canonical)
+BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical,
+                     boost::unit_test::data::make({0, 1}), ff_state)
 {
     // If this test fails, then we need to update
     // monomer_db_default_monomers.h with new
     // canonical SMILES/CORE_SMILES.
     // (this should only happen if RDKit's canonicalization
-    // code changes)
+    // code changes).
+
+    // We run this with both RDKit's stereo algorithms to check that
+    // the monomer DB is agnostic to the flag (we force it enabled).
+    // Using ScopedFeatureFlag here won't work, since when this is
+    // executed, the toplevel.py script has already set the env var,
+    // so just changing the feature flag here won't have any effect. We
+    // have to go for the env var directly.
+    schrodinger::test::ScopedEnvVar rdk_stereo_algo_env_var(
+        "RDK_USE_LEGACY_STEREO_PERCEPTION",
+        std::to_string(static_cast<int>(ff_state)));
 
     auto& mdb = MonomerDatabase::instance();
 

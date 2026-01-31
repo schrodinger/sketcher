@@ -55,7 +55,7 @@ test.describe('WASM Sketcher API', () => {
       if (!importUnsupported) {
         const importSuccessful = await page.evaluate((exportedText) => {
           Module.sketcher_clear();
-          Module.sketcher_allow_monomeric();
+          Module.sketcher_allow_monomeric(true);
           Module.sketcher_import_text(exportedText);
           return !Module.sketcher_is_empty();
         }, exportedText);
@@ -93,7 +93,7 @@ test.describe('WASM Sketcher API', () => {
 
     const hasMonomersAfterHelmImport = await page.evaluate(() => {
       Module.sketcher_clear();
-      Module.sketcher_allow_monomeric();
+      Module.sketcher_allow_monomeric(true);
       Module.sketcher_import_text('PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0');
       return Module.sketcher_has_monomers();
     });
@@ -174,5 +174,22 @@ test.describe('WASM Sketcher API', () => {
     }, cdxmlInput);
 
     expect(exportedSmiles).toBe('C1=CC=CC=C1');
+  });
+
+  test('Exception handling for invalid input', async ({ page }) => {
+    const result = await page.evaluate(() => {
+      try {
+        Module.sketcher_import_text('foobar');
+        throw new Error('Expected exception to be thrown');
+      } catch (e) {
+        // Use emscripten's getExceptionMessage to extract C++ exception info
+        const [type, message] = Module.getExceptionMessage(e);
+        return { type, message };
+      }
+    });
+
+    // Verify that we can extract the C++ exception message and type
+    expect(result.message).toBe('Unable to determine format');
+    expect(result.type).toBeTruthy();
   });
 });
