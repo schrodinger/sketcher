@@ -150,12 +150,19 @@ for (let i = 0; i < entries.length; i++) {
   const progressiveNumber = i + 1;
 
   try {
-    // Emscripten automatically converts C++ exceptions to JavaScript exceptions
     const svg = await page.evaluate((helmString) => {
-      Module.sketcher_clear();
-      Module.sketcher_allow_monomeric(true);
-      Module.sketcher_import_text(helmString);
-      return Module.sketcher_export_image(Module.ImageFormat.SVG);
+      try {
+        Module.sketcher_clear();
+        Module.sketcher_allow_monomeric(true);
+        Module.sketcher_import_text(helmString);
+        return Module.sketcher_export_image(Module.ImageFormat.SVG);
+      } catch (e) {
+        // If exception is a pointer (number), get the actual message
+        if (typeof e === 'number') {
+          throw new Error(Module.getExceptionMessage(e));
+        }
+        throw e;
+      }
     }, entry.helm_string);
 
     // Decode base64 SVG
