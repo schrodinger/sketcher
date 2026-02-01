@@ -1,0 +1,102 @@
+helm_string,smiles_string,description,origin
+"CHEM1{[*CCC(N1CN(C(CC*)=O)CN(C(CC*)=O)C1)=O |$_R1;;;;;;;;;;_R2;;;;;;;_R3;;;;$|]}|PEPTIDE1{A.R.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$PEPTIDE1,CHEM1,4:R3-1:R1|PEPTIDE1,CHEM1,11:R3-1:R2|CHEM1,PEPTIDE1,1:R3-18:R3$$$V2.0",,Validation Set,Validation Set
+PEPTIDE1{A.R.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$$$$V2.0,,Validation Set,Validation Set
+"PEPTIDE1{C}|PEPTIDE2{[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_3Cl].[Phe_34diCl].[meY].[dI].[Met_O].[NMe2Abz].[Tyr_Ph4OH].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu]}|PEPTIDE3{[meY].[Pro_4Me3OH].[Met_O].[NMe2Abz].[dI].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu].[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_34diCl].[Phe_34diCl]}$PEPTIDE2,PEPTIDE2,16:R2-1:R1|PEPTIDE3,PEPTIDE3,16:R2-1:R1|PEPTIDE3,PEPTIDE2,10:R3-1:R3|PEPTIDE2,PEPTIDE1,9:R3-1:R2$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE2{[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_3Cl].[Phe_34diCl].[meY].[dI].[Met_O].[NMe2Abz].[Tyr_Ph4OH].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu]}$PEPTIDE2,PEPTIDE2,16:R2-1:R1$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE3{L.[Pro_4Me3OH].S.[NMe2Abz].Q.[3Pal].[xiIle].[D-Hyp].[Ala_tBu].[dI].[Trp_Ome].[Asp_OMe].N.[meG].[Phe_34diCl].[Phe_34diCl]}$PEPTIDE3,PEPTIDE3,16:R2-1:R1$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE1{[Asp_OMe]}|PEPTIDE2{[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_3Cl].[Phe_34diCl].[meY].[dI].[Met_O].[NMe2Abz].[Tyr_Ph4OH].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu]}|PEPTIDE3{[meY].[Pro_4Me3OH].[Met_O].[NMe2Abz].[dI].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu].[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_34diCl].[Phe_34diCl]}$PEPTIDE2,PEPTIDE2,16:R2-1:R1|PEPTIDE3,PEPTIDE3,16:R2-1:R1|PEPTIDE3,PEPTIDE2,10:R3-1:R3|PEPTIDE2,PEPTIDE1,9:R3-1:R2$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE3{[meY].C.[Met_O].[meD].G.[3Pal].[xiIle].R.[Ala_tBu].[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_34diCl].K}$PEPTIDE3,PEPTIDE3,16:R2-1:R1$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE1{D}|PEPTIDE2{[dI].[Phg].[Asp_OMe].[dI].[meG].[Phe_3Cl].Q.C.[dI].[Ser_PO3H2].[NMe2Abz].[Tyr_Ph4OH].[3Pal].Q.D.[Ala_tBu]}|PEPTIDE3{[meY].[dN].[Met_O].[NMe2Abz].[D-Pen].[Pro_4Me3OH].[xiIle].[Pro_4Me3OH].[Ala_tBu].[dI].[Trp_Ome].[Asp_OMe].K.[meG].[Phe_34diCl].[Ser_PO3H2]}$PEPTIDE2,PEPTIDE2,16:R2-1:R1|PEPTIDE3,PEPTIDE3,16:R2-1:R1|PEPTIDE3,PEPTIDE2,10:R3-1:R3|PEPTIDE2,PEPTIDE1,9:R3-1:R2$$$V2.0",,Validation Set,Validation Set
+PEPTIDE1{M.T.L.I.G.A.A.H.N.G.A.A.Q.L.L.R.Q.L.R.G.Q.L.G.P.P.G.S.R.[am]}$$$$,,Validation Set,Validation Set
+PEPTIDE1{C.P.W.H.L.L.P.F.C}$$$$,,Validation Set,Validation Set
+PEPTIDE1{R.F.[Pen].T.G.[*N[C@H](C(=O)*)Cc1ccsc1 |$_R1;;;;;_R2;;;;;;$|].F.G.[Sar].[meL].Y.P.C}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{[dC].[dS].C.[dS].S.[dL].M.[dD].K.[dE].C.[dV].Y.[dF].[dC].H.A.D.I.I.W}$PEPTIDE1,PEPTIDE1,3:R3-11:R3|PEPTIDE1,PEPTIDE1,1:R3-15:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{S.Q.E.P.P.I.S.A.D.L.T.F.H.L.L.R.E.V.L.E.M.T.K.A.D.Q.L.A.Q.Q.A.H.S.N.R.K.L.L.D.I.A.[am]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{[dC].[dQ].I.[dD].S.[dP].[dC]}$PEPTIDE1,PEPTIDE1,1:R3-7:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{F.G.G.F.T.G.A.R.K.C.A.R.K.C.[am]}$PEPTIDE1,PEPTIDE1,10:R3-14:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].[*N[C@@H](C(=O)*)C(C)(C)S* |$_R1;;;;;_R2;;;;;_R3$|].[*N[C@@H](C(=O)*)[C@@H](C)CC |$_R1;;;;;_R2;;;;$|].P.[dR].G.[dD].[*N[C@H](C(=O)*)Cc1ccc(cc1)OC |$_R1;;;;;_R2;;;;;;;;;$|].[dR].[dC].[am]}$PEPTIDE1,PEPTIDE1,2:R3-10:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{S.S.[dC].G.[dF].G.G.[dR].I.[dD].R.[*N[C@@H](C(=O)*)[C@@H](C)CC |$_R1;;;;;_R2;;;;$|].[dC].[dF].G}$PEPTIDE1,PEPTIDE1,3:R3-13:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{A.Y.V.[Orn].L.[dF].P.F.[dF].N}$PEPTIDE1,PEPTIDE1,10:R2-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].W.E.R.W.L.M.D.C.R.[dS].D.[*N[C@@H](C(=O)*)[C@@H](C)O |$_R1;;;;;_R2;;;$|].L.C.G.E.S.H.Q.E.[am]}$PEPTIDE1,PEPTIDE1,9:R3-15:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].[Nal].[*N[C@H](C(=O)*)Cc1ccc(cc1)Cl |$_R1;;;;;_R2;;;;;;;;$|].[*N[C@H](C(=O)*)c1cccnc1 |$_R1;;;;;_R2;;;;;;$|].C.R.[*N[C@H](C(=O)*)c1cccnc1 |$_R1;;;;;_R2;;;;;;$|].L.R.P.C.[am]}$PEPTIDE1,PEPTIDE1,5:R3-11:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{T.T.W.E.E.W.D.R.E.I.N.E.Y.T.S.R.I.E.S.L.I.R.E.S.Q.E.Q.Q.E.K.N.E.Q.E.L.R.E.L}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{D.[*N[C@@H](C(=O)*)C(C)(C)S* |$_R1;;;;;_R2;;;;;_R3$|].F.[dW].[*N[C@@H](C(=O)*)CCCN |$_R1;;;;;_R2;;;;$|].Y.C.V}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{R.[dP].K.K.K}$PEPTIDE1,PEPTIDE1,5:R2-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{F.[dW].[*N[C@H](C(=O)*)Cc1ccc(cc1)OC |$_R1;;;;;_R2;;;;;;;;;$|].[dP]}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$",,Validation Set,Validation Set
+PEPTIDE1{[NC(C(=O)*)CCCCN |$;;;;_R2;;;;;$|].[*NC(C(=O)*)CC(C)C |$_R1;;;;;_R2;;;;$|].[*NC(C(=O)*)C |$_R1;;;;;_R2;$|].[*NC(C(=O)*)CCCCN |$_R1;;;;;_R2;;;;;$|].[*NC(C(=O)*)CC(C)C |$_R1;;;;;_R2;;;;$|].[*NC(C(=O)*)C |$_R1;;;;;_R2;$|].[*NC(C(=O)*)CCCCN |$_R1;;;;;_R2;;;;;$|].[*NC(C(=O)*)CCCCN |$_R1;;;;;_R2;;;;;$|].[*NC(C(=O)*)CC(C)C |$_R1;;;;;_R2;;;;$|].[*NC(C(=O)*)C |$_R1;;;;;_R2;$|].[*NC(C(=O)*)CCCCN |$_R1;;;;;_R2;;;;;$|].[*NC(C(=O)*)CC(C)C |$_R1;;;;;_R2;;;;$|].[*NC(C(=O)*)C |$_R1;;;;;_R2;$|].[*NC(C(=O)O)CCCCN |$_R1;;;;;;;;;;$|]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{R.G.G.R.L.C.Y.C.R.R.R.F.C.V.C.V.G.R}$PEPTIDE1,PEPTIDE1,8:R3-13:R3|PEPTIDE1,PEPTIDE1,6:R3-15:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.C.[dN].C.S.S.K.W.C.R.D.A.S.R.C.C.[am]}$PEPTIDE1,PEPTIDE1,1:R3-9:R3|PEPTIDE1,PEPTIDE1,2:R3-15:R3|PEPTIDE1,PEPTIDE1,4:R3-16:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{[ac].[*N(C)[C@H](C(=O)*)CC1CCCCC1 |$_R1;;;;;;_R2;;;;;;;$|].[meF].[meF].[meF].[am]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{A.C.D.T.A.T.C.V.T.H.R.L.A.G.L.L.S.R.S.G.G.V.V.K.N.N.F.V.P.T.N.V.G.S.K.A.F.[am]}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{A.[*N[C@H](C(=O)*)[C@H](C)O |$_R1;;;;;_R2;;;$|].V.[*N[C@H](C(=O)*)[C@H](C)O |$_R1;;;;;_R2;;;$|].C.P.I.F.V.C.S.E.G.C.P.I.S.N.K.Y.C.V.K.S.K.C.S.C.G.L.L}$PEPTIDE1,PEPTIDE1,31:R2-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{G.C.C.S.L.P.R.C.A.L.N.C}$PEPTIDE1,PEPTIDE1,2:R3-8:R3|PEPTIDE1,PEPTIDE1,3:R3-12:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].[*N[C@@H](C(=O)*)S* |$_R1;;;;;_R2;;_R3$|].F.F.[dW].K.T.F.C}$PEPTIDE1,PEPTIDE1,2:R3-9:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{G.C.C.S.L.P.P.C.A.L.N.N.P.C}$PEPTIDE1,PEPTIDE1,2:R3-8:R3|PEPTIDE1,PEPTIDE1,3:R3-14:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{I.P.Y.V.P.L.T.P}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{E.T.[dP].D.C.F.W.K.Y.C.V}$PEPTIDE1,PEPTIDE1,5:R3-10:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{N.G.V.C.C.G.Y.K.L.C.H.[Hyp].C}$PEPTIDE1,PEPTIDE1,5:R3-10:R3|PEPTIDE1,PEPTIDE1,4:R3-13:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{D.Y.[dW].V.[dW].[dW].K.[am]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{C.K.G.K.G.A.K.C.S.R.L.M.Y.D.C.C.T.G.S.C.R.S.G.K.C}$PEPTIDE1,PEPTIDE1,1:R3-16:R3|PEPTIDE1,PEPTIDE1,8:R3-20:R3|PEPTIDE1,PEPTIDE1,15:R3-25:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{H.S.E.G.I.F.T.D.S.Y.S.R.Y.R.K.Q.M.A.V.K.K.Y.L.A.A.V.L.G.K.R.Y.K.Q.R.V.K.N.K.[am]}$$$$,,Validation Set,Validation Set
+PEPTIDE1{[ac].[meI].[Sar].[meL].M.[meV].[Sar].[am]}$$$$,,Validation Set,Validation Set
+PEPTIDE1{D.L.D.L.E.A.L.A.[Hyp].Y.[*N[C@H](C(=O)*)[C@H](C)CC |$_R1;;;;;_R2;;;;$|].P.A.D.D.D.F.Q.L.R.[am]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{G.E.S.C.V.W.I.P.C.I.S.S.A.I.G.C.S.C.K.S.K.V.C.Y.R.N.G.I.P.C}$PEPTIDE1,PEPTIDE1,4:R3-18:R3|PEPTIDE1,PEPTIDE1,9:R3-23:R3|PEPTIDE1,PEPTIDE1,16:R3-30:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.C.[dN].C.S.S.K.L.C.R.D.H.S.R.C.C.[am]}$PEPTIDE1,PEPTIDE1,1:R3-9:R3|PEPTIDE1,PEPTIDE1,2:R3-15:R3|PEPTIDE1,PEPTIDE1,4:R3-16:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].C.F.F.[dW].K.T.F.[*N[C@H](C(=O)O)S* |$_R1;;;;;;;_R3$|]}$PEPTIDE1,PEPTIDE1,2:R3-9:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{N.E.E.L.G.K.K.Y.E.E.T.K.K.K.Q.E.E.F.Y.K.K.I.E.E.I.E.K.K.N.E.E.V.K.K.K.L.E.E.L.Q.K.K}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{L.F.[*N(C)[C@@H](C(=O)*)CC(C)C |$_R1;;;;;;_R2;;;;$|].L.[dV]}$PEPTIDE1,PEPTIDE1,5:R2-1:R1$$$",,Validation Set,Validation Set
+PEPTIDE1{G.R.[Abu].[*N[C@H](C(=O)*)[C@H](C)O |$_R1;;;;;_R2;;;$|].F.S.I.P.P.I.[Abu].F.P.D}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{[Cha].V.[*N(C)[C@@H](C(=O)*)Cc1ccccc1 |$_R1;;;;;;_R2;;;;;;;$|].F.[*N[C@H](C(=O)*)COCc1ccccc1 |$_R1;;;;;_R2;;;;;;;;;$|]}$PEPTIDE1,PEPTIDE1,5:R2-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.[*N[C@H](C(=O)*)C(c1ccccc1)c2ccccc2 |$_R1;;;;;_R2;;;;;;;;;;;;;$|].F.V.N.C.P.R.G.[am]}$PEPTIDE1,PEPTIDE1,1:R3-6:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[Cha].V.[*N(C)[C@@H](C(=O)*)Cc1ccccc1 |$_R1;;;;;;_R2;;;;;;;$|].F.L}$PEPTIDE1,PEPTIDE1,5:R2-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.V.F.R.V.F.G.C.G.[am]}$PEPTIDE1,PEPTIDE1,1:R3-8:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[Glp].G.V.C.C.G.Y.K.L.C.H.[dD].C}$PEPTIDE1,PEPTIDE1,5:R3-10:R3|PEPTIDE1,PEPTIDE1,4:R3-13:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{[[C@H](C(=O)*)S |$;;;_R2;$|].N.F.[am]}$$$$,,Validation Set,Validation Set
+PEPTIDE1{[[C@H](C(=O)*)c1ccccc1 |$;;;_R2;;;;;;$|].A.[dA]}$$$$,,Validation Set,Validation Set
+PEPTIDE1{G.D.Y.E.E.I.[dP].E.E.[*N[C@H](C(=O)*)Cc1ccc(cc1)OS(=O)(=O)O |$_R1;;;;;_R2;;;;;;;;;;;;$|].L.Q}$$$$,,Validation Set,Validation Set
+PEPTIDE1{D.F.E.E.I.[dP].E.E.[*N[C@H](C(=O)*)Cc1ccc(cc1)OS(=O)(=O)O |$_R1;;;;;_R2;;;;;;;;;;;;$|].L.[am]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{[ac].[dC].G.[*N(C)[C@@H](C(=O)*)CCCN=C(N)N |$_R1;;;;;;_R2;;;;;;;$|].G.[dD].[*N[C@@H](C(=O)N)C(C)(C)S* |$_R1;;;;;;;;;;_R3$|]}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].C.F.[dW].K.Y.C.[am]}$PEPTIDE1,PEPTIDE1,2:R3-7:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{P.[Hyp].G.P.[Hyp].G.P.[Hyp].G.P.Q.G.P.R.G.P.[Hyp].G.P.[Hyp].G.P.[Hyp].G.P.[Hyp].G.[am]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{[dC].S.C.K.D.M.T.D.K.E.C.L.Y.F.C.H.Q.D.V.I.W}$PEPTIDE1,PEPTIDE1,3:R3-11:R3|PEPTIDE1,PEPTIDE1,1:R3-15:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{[fmoc].W.[*N[C@@H](CO)Cc1ccccc1 |$_R1;;;;;;;;;;;$|]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{[dC].G.R.[dV].Y.[dR].P.C.[dW].[dE].[dV]}$PEPTIDE1,PEPTIDE1,1:R3-8:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{Y.V.[Nle].[dC].G.H.[dF].R.W.C.R.F.G.[am]}$PEPTIDE1,PEPTIDE1,4:R3-10:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].I.C.V.[dS].Q.[dD].W.G.H.[dH].R.C.T.[am]}$PEPTIDE1,PEPTIDE1,3:R3-13:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.C.[dN].C.S.A.K.W.C.R.D.H.S.R.C.C.[am]}$PEPTIDE1,PEPTIDE1,1:R3-9:R3|PEPTIDE1,PEPTIDE1,2:R3-15:R3|PEPTIDE1,PEPTIDE1,4:R3-16:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{R.S.S.[dC].F.G.G.R.I.D.R.I.G.A.[dC]}$PEPTIDE1,PEPTIDE1,4:R3-15:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[ac].[*N[C@@H](C(=O)*)[C@@H](C)CC |$_R1;;;;;_R2;;;;$|].C.V.W.Q.D.W.G.A.H.R.C.T}$PEPTIDE1,PEPTIDE1,3:R3-13:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[*N(C)[C@H](C(=O)*)CCC |$_R1;;;;;;_R2;;;$|].[*O[C@@H](C(=O)*)C |$_R1;;;;;_R2;$|].[*N(C)[C@H](C(=O)*)CCC |$_R1;;;;;;_R2;;;$|].[*O[C@@H](C(=O)*)Cc1ccccc1 |$_R1;;;;;_R2;;;;;;;$|].[*N(C)[C@H](C(=O)*)CCC |$_R1;;;;;;_R2;;;$|].[*O[C@H](C(=O)*)C |$_R1;;;;;_R2;$|].[*N(C)[C@H](C(=O)*)CCC |$_R1;;;;;;_R2;;;$|].[*O[C@@H](C(=O)*)Cc1ccccc1 |$_R1;;;;;_R2;;;;;;;$|]}$PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$",,Validation Set,Validation Set
+PEPTIDE1{[NC(C(=O)O)C(C)C]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{C.K.N.F.F.[dW].[*N[C@H](C(=O)*)Cc1ccc(cc1)F |$_R1;;;;;_R2;;;;;;;;$|].T.F.T.S.[dC]}$PEPTIDE1,PEPTIDE1,1:R3-12:R3$$$",,Validation Set,Validation Set
+PEPTIDE1{[Aib].[*N[C@@H](C(=O)*)Cc1c([nH]c2c1cccc2)C |$_R1;;;;;_R2;;;;;;;;;;;$|].[*N[C@@H](C(=O)N)Cc1c([nH]c2c1cccc2)C |$_R1;;;;;;;;;;;;;;;;$|]}$$$$,,Validation Set,Validation Set
+"PEPTIDE1{Y.[*N[C@@H](C(=O)*)C(C)(C)S* |$_R1;;;;;_R2;;;;;_R3$|].G.F.[*N[C@@H](C(=O)O)C(C)(C)S* |$_R1;;;;;;;;;;_R3$|]}$PEPTIDE1,PEPTIDE1,2:R3-5:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{Y.C.[*N[C@H](C(=O)*)Cc1ccccc1F |$_R1;;;;;_R2;;;;;;;;$|].[Pen]}$PEPTIDE1,PEPTIDE1,2:R3-4:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[[C@H](C(=O)*)CCCN |$;;;_R2;;;;$|].C.[dV]}|PEPTIDE2{[[C@H](C(=O)*)CCCN |$;;;_R2;;;;$|].C.[dV]}$PEPTIDE1,PEPTIDE2,2:R3-2:R3$$$",,Validation Set,Validation Set
+"PEPTIDE3{[meA].[Gly_cPr].[His_1Me].[Abu_23dehydro].[Val_3OH].[Dha].[aThr].[bAla].[meQ].C.[dN].[meL].[App].[seC].C.[Tza]}$PEPTIDE3,PEPTIDE3,16:R2-1:R1$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE1{[Thr_PO3H2].[Phe_3Cl].[NMebAla].[Tyr_tBu].[D-aThr].E.[meQ].[His_1Bn].[dN].P.[App].[seC].[D-nTyr].D.[Phe_3F].[Hyp].[D-His_1Bn].[Thr_PO3H2].[Pyl].[dF]}|PEPTIDE2{A.[meA].[dE].[Cya].[D-Phe_4ureido].[Phe_2Me]}|PEPTIDE3{[aIle].[dH].[Lys_iPr]}$PEPTIDE1,PEPTIDE2,14:R3-1:R1|PEPTIDE1,PEPTIDE3,6:R3-1:R1$$$V2.0",,Validation Set,Validation Set
+PEPTIDE1{[Thr_PO3H2].[Phe_3Cl].[NMebAla].[Tyr_tBu].[D-aThr].E.[meQ].[His_1Bn].[dN].P.[App].[seC].[D-nTyr].D.[Phe_3F].[Hyp].[D-His_1Bn].[Thr_PO3H2].[Pyl].[dF]}$$$$V2.0,,Validation Set,Validation Set
+PEPTIDE1{[Val_3OH].[D-nTyr].[D-Cha].[Hyp].[Phe_bbdiMe].[Thz].[dS].[Gly_cPr].[meM].[Tyr_3I].[Sta_3xi4xi].[meR].[D-Dip].P}$$$$V2.0,,Validation Set,Validation Set
+"PEPTIDE1{[Me-].[Oic_3aR-7aS].[pnG].[dD]}|PEPTIDE2{[Me-].T.[dS].[Gly_cPr].C.[D-Nva].[D-2Nal].[meR].[D-Dip].[-OMe]}|PEPTIDE3{[D-2Thi].[Cys_Me].[dE].[Phe_4Me].G.[Hsl]}$PEPTIDE1,PEPTIDE3,4:R3-1:R1|PEPTIDE2,PEPTIDE1,5:R3-4:R2$$$V2.0",,Validation Set,Validation Set
+PEPTIDE2{[Me-].T.[dS].[Gly_cPr].C.[D-Nva].[D-2Nal].[meR].[D-Dip].[-OMe]}$$$$V2.0,,Validation Set,Validation Set
+"PEPTIDE1{C.[Phe_2F].[meF].[Hse].[Ala_tBu].[Met_O].[Phe_4Sdihydroorotamido].[Gly_cPr].[meM].[meL].[Cys_Bn].[meR].[D-Dip].[hArg]}|PEPTIDE2{D.E.G}$PEPTIDE1,PEPTIDE1,14:R2-1:R1|PEPTIDE1,PEPTIDE2,1:R3-1:R1$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE1{[3Abz].[hHis].C.[Hyp].[Tyr_Ph4OH].T.[Sta_3xi4xi].[Gly_cPr].[meM].[Wil].[Gly_allyl].[meR].[D-Dip].[D-xiIle]}|PEPTIDE2{[dE].[D-Nle].[meL]}$PEPTIDE1,PEPTIDE2,3:R3-1:R1$$$V2.0",,Validation Set,Validation Set
+PEPTIDE1{[3Abz].[hHis].C.[Hyp].[Tyr_Ph4OH].T.[Sta_3xi4xi].[Gly_cPr].[meM].[Wil].[Gly_allyl].[meR].[D-Dip].[D-xiIle]}$$$$V2.0,,Validation Set,Validation Set
+PEPTIDE1{[Tyr_35diI].[Ac6c].[Aoda].[bAla].[Tic].[Met_O].[Phe_4Sdihydroorotamido].[dF].[meM].[Cit].[meI].[meR].[D-Dip].T}$$$$V2.0,,Validation Set,Validation Set
+"CHEM1{[PEG2]}|PEPTIDE1{W.N.D.[Pen].G.[Orn].D.A.D.G.S.G.[Cap]}$PEPTIDE1,PEPTIDE1,4:R3-13:R2|PEPTIDE1,CHEM1,1:R1-1:R1$$$V2.0",,Validation Set,Validation Set
+"PEPTIDE1{A.[Phe_3Cl].[NMebAla].[Tyr_tBu].[D-aThr].E.[meQ].[His_1Bn].[dN].P.[App].[seC].[D-nTyr].D.[Phe_3F].[Hyp].[D-His_1Bn].[Thr_PO3H2].[Pyl].[dF]}|PEPTIDE2{A.[meA].[dE].[Cya].[D-Phe_4ureido].[Phe_2Me]}|PEPTIDE3{[aIle].[dH].[Lys_iPr]}$PEPTIDE1,PEPTIDE2,14:R3-1:R1|PEPTIDE1,PEPTIDE3,6:R3-1:R1$$$V2.0",,Validation Set,Validation Set
+PEPTIDE1{A.[Phe_3Cl].[NMebAla].[Tyr_tBu].[D-aThr].E.[meQ].[His_1Bn].[dN].P.[App].[seC].[D-nTyr].D.[Phe_3F].[Hyp].[D-His_1Bn].[Thr_PO3H2].[Pyl].[dF]}$$$$V2.0,,Validation Set,Validation Set
+"PEPTIDE1{K.W.L.N.A.L.L.H.H.G.L.N.C.A.K.G.V.L.A}|PEPTIDE2{K.W.L.N.A.L.L.H.H.G.L.N.C.A.K.G.V.L.A}$PEPTIDE1,PEPTIDE2,13:R3-13:R3$$$V2.0",,Validation Set,Validation Set
+RNA1{R(U)P.R(T)P.R(G)P.R(C)P.R(A)}$$$$,,Validation Set,Validation Set
+RNA1{P.R(U)P.R(T)P.P.P}$$$$,,Validation Set,Validation Set
+"RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$RNA1,RNA2,2:pair-9:pair|RNA1,RNA2,5:pair-6:pair|RNA1,RNA2,8:pair-3:pair$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.W.R.[Nva].R.Y.[am]}|PEPTIDE2{C.W.R.[Nva].R.Y.[am]}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$",,Validation Set,Validation Set
+"PEPTIDE1{[Sar].[dR].[dC].[dY].[dC].[dH].[dP].[dF]}|PEPTIDE2{[Sar].[dR].[dC].[dY].[dC].[dH].[dP].[dF]}$PEPTIDE1,PEPTIDE2,5:R3-3:R3|PEPTIDE1,PEPTIDE2,3:R3-5:R3$$$",,Validation Set,Validation Set
+"RNA1{r(A)p.r(C)p.r(G)p.r(T)p.r(U)}|RNA2{r(A)p.r(A)p.r(C)p.r(G)p.r(T)}$RNA1,RNA2,5:pair-11:pair|RNA1,RNA2,8:pair-8:pair|RNA1,RNA2,11:pair-5:pair|RNA1,RNA2,14:pair-2:pair$$$V2.0",,Validation Set,Validation Set
+"RNA1{R(A)P.R(G)P.R(C)P.R(U)P.R(C)P.R(C)P.R(C)}|RNA2{R(U)P.R(G)P.R(G)P.R(G)P.R(G)P.R(A)P.R(G)}$RNA1,RNA2,17:pair-11:pair|RNA1,RNA2,20:pair-8:pair|RNA1,RNA2,14:pair-14:pair|RNA1,RNA2,11:pair-17:pair|RNA1,RNA2,8:pair-20:pair$$$",,Validation Set,Validation Set
+"PEPTIDE1{C.F.Y.S.W.G.N.Y.W.S.Y.Y.G.W.C.[am]}|PEPTIDE2{C.F.Y.S.W.G.N.Y.W.S.Y.Y.G.W.C.[am]}|PEPTIDE3{C.W.N.Y.Y.W.G.Y.S.F.S.G.W.Y.C.G.[am]}$PEPTIDE1,PEPTIDE1,1:R3-15:R3|PEPTIDE1,PEPTIDE1,1:R1-16:R2|PEPTIDE1,PEPTIDE2,3:R1-8:R2|PEPTIDE2,PEPTIDE2,1:R3-15:R3|PEPTIDE2,PEPTIDE2,1:R1-16:R2|PEPTIDE2,PEPTIDE3,11:R3-14:R3|PEPTIDE3,PEPTIDE3,1:R3-15:R3|PEPTIDE3,PEPTIDE3,1:R1-17:R2$$$",,Validation Set,Validation Set
+"CHEM1{[SMPEG2]}|CHEM2{[SMCC]}|CHEM3{[PEG2]}|CHEM4{[MCC]}$CHEM4,CHEM3,1:R1-1:R1|CHEM2,CHEM1,1:R1-1:R1$$$",,Validation Set,Validation Set
+CHEM1{[SMPEG2]}|PEPTIDE1{A}|RNA1{R(A)P}$$$$,,Validation Set,Validation Set
+"CHEM1{[SMCC]}|PEPTIDE1{L.M}|RNA1{R(C)P.R(A)P}$RNA1,PEPTIDE1,6:R2-1:R1|PEPTIDE1,CHEM1,2:R2-1:R1$$$",,Validation Set,Validation Set
+"CHEM1{[PEG2]}|PEPTIDE1{W.N.D.[Pen].G.[Orn].D.A.D.G.S.G.[Cap]}$PEPTIDE1,PEPTIDE1,13:R2-4:R3|PEPTIDE1,CHEM1,1:R1-1:R1$$$",,Validation Set,Validation Set
+"PEPTIDE1{K.[[R3]C[C@H](N[R1])C([R2])=O].W.[dF].R.H.[X73].M}|CHEM1{[14Triazole]}$PEPTIDE1,CHEM1,2:R3-1:R2|PEPTIDE1,CHEM1,7:R3-1:R1$$$V2.0",,Validation Set,Validation Set
