@@ -16,6 +16,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
@@ -81,6 +82,13 @@ void sketcher_allow_monomeric(bool allow_monomeric)
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
+bool sketcher_validate_coordinates()
+{
+    auto& sk = get_sketcher_instance();
+    auto mol = sk.getRDKitMolecule();
+    return schrodinger::rdkit_extensions::coordinates_are_valid(*mol);
+}
+
 void sketcher_changed()
 {
 #ifdef __EMSCRIPTEN__
@@ -135,6 +143,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function("sketcher_validate_coordinates", &sketcher_validate_coordinates);
     // see sketcher_changed_callback above
 }
 #endif

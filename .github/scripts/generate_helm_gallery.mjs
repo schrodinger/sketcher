@@ -160,7 +160,15 @@ for (let i = 0; i < entries.length; i++) {
         Module.sketcher_clear();
         Module.sketcher_allow_monomeric(true);
         Module.sketcher_import_text(helmString);
-        return { success: true, svg: Module.sketcher_export_image(Module.ImageFormat.SVG) };
+
+        // Validate coordinates after import
+        const coordsValid = Module.sketcher_validate_coordinates();
+
+        return {
+          success: true,
+          svg: Module.sketcher_export_image(Module.ImageFormat.SVG),
+          coordsValid: coordsValid
+        };
       } catch (e) {
         // If exception is a pointer (number), get the actual message
         if (typeof e === 'number' && Module.getExceptionMessage) {
@@ -183,8 +191,9 @@ for (let i = 0; i < entries.length; i++) {
     const svgContent = Buffer.from(svg, 'base64').toString();
 
     const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
+    const borderClass = result.coordsValid ? 'border-slate-200' : 'border-red-500 border-2';
     cards.push(`
-      <div class="card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}" data-validation-set="${entry._isValidationSet ? 'true' : 'false'}">
+      <div class="card bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}" data-validation-set="${entry._isValidationSet ? 'true' : 'false'}" data-coords-valid="${result.coordsValid}">
         <div class="absolute top-4 left-4 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded">#${progressiveNumber}</div>
         <div class="p-8 flex-grow flex items-center justify-center bg-white min-h-[250px]">${svgContent}</div>
         <div class="p-5 flex flex-col gap-3">

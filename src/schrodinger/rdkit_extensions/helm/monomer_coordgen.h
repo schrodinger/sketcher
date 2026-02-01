@@ -51,6 +51,12 @@ has_no_bond_crossings(const RDKit::ROMol& monomer_mol);
 bool RDKIT_EXTENSIONS_API has_no_clashes(const RDKit::ROMol& monomer_mol);
 
 /**
+ * Check whether the coordinates of the given monomer mol are valid
+ * (no clashes, no bond crossings, no stretched bonds)
+ */
+bool RDKIT_EXTENSIONS_API coordinates_are_valid(RDKit::ROMol& monomer_mol);
+
+/**
  * Check whether two line segments defined by points p1, p2 and q1, q2
  * intersect
  */
