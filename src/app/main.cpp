@@ -143,7 +143,8 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
-    emscripten::function("sketcher_validate_coordinates", &sketcher_validate_coordinates);
+    emscripten::function("sketcher_validate_coordinates",
+                         &sketcher_validate_coordinates);
     // see sketcher_changed_callback above
 }
 #endif
