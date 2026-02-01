@@ -293,9 +293,15 @@ const html = `<!DOCTYPE html>
         </button>
       </div>
 
-      <!-- Search input -->
-      <input type="text" id="search" placeholder="Filter by HELM, description, or origin..."
-        class="w-full px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+      <!-- Filters -->
+      <div class="flex gap-4 items-center">
+        <input type="text" id="search" placeholder="Filter by HELM, description, origin, or coordinates..."
+          class="flex-grow px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        <label class="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" id="filter-invalid-coords" class="w-4 h-4 text-red-600 border-slate-300 rounded focus:ring-red-500">
+          <span class="text-sm font-medium text-slate-700 whitespace-nowrap">Show only flagged structures</span>
+        </label>
+      </div>
     </div>
 
     <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -309,22 +315,26 @@ const html = `<!DOCTYPE html>
     // Mode state
     let currentMode = 'validation'; // Default to validation set
 
-    // Toggle buttons
+    // Toggle buttons and filters
     const toggleValidation = document.getElementById('toggle-validation');
     const toggleFull = document.getElementById('toggle-full');
     const search = document.getElementById('search');
+    const filterInvalidCoords = document.getElementById('filter-invalid-coords');
     const cards = document.querySelectorAll('.card');
 
-    // Apply filter based on current mode and search
+    // Apply filter based on current mode, search, and coordinate filter
     function applyFilter() {
       const searchQuery = search.value.toLowerCase();
+      const showOnlyInvalid = filterInvalidCoords.checked;
 
       cards.forEach(card => {
         const matchesSearch = card.getAttribute('data-search').includes(searchQuery);
         const isValidationSet = card.getAttribute('data-validation-set') === 'true';
         const matchesMode = currentMode === 'full' || isValidationSet;
+        const coordsValid = card.getAttribute('data-coords-valid') === 'true';
+        const matchesCoordFilter = !showOnlyInvalid || !coordsValid;
 
-        card.style.display = (matchesSearch && matchesMode) ? 'flex' : 'none';
+        card.style.display = (matchesSearch && matchesMode && matchesCoordFilter) ? 'flex' : 'none';
       });
 
       // Update button styles
@@ -348,8 +358,9 @@ const html = `<!DOCTYPE html>
       applyFilter();
     });
 
-    // Search event listener
+    // Search and filter event listeners
     search.addEventListener('input', applyFilter);
+    filterInvalidCoords.addEventListener('change', applyFilter);
 
     // Apply initial filter (validation set only)
     applyFilter();
