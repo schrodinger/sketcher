@@ -72,11 +72,16 @@ for (const file of positionals) {
   const lines = content.split(/\r?\n/);
   const headers = parseCSVLine(lines[0]);
 
+  // Track if this file is the validation set
+  const fileName = file.split('/').pop();
+  const isValidationSet = fileName === 'validation_set.csv';
+
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i].trim()) continue; // Skip empty lines
     const values = parseCSVLine(lines[i]);
     const entry = {};
     headers.forEach((h, idx) => entry[h] = values[idx] || '');
+    entry._isValidationSet = isValidationSet; // Track source
     entries.push(entry);
   }
 }
@@ -155,7 +160,15 @@ for (let i = 0; i < entries.length; i++) {
         Module.sketcher_clear();
         Module.sketcher_allow_monomeric(true);
         Module.sketcher_import_text(helmString);
-        return { success: true, svg: Module.sketcher_export_image(Module.ImageFormat.SVG) };
+
+        // Validate coordinates after import
+        const coordsValid = Module.sketcher_validate_coordinates();
+
+        return {
+          success: true,
+          svg: Module.sketcher_export_image(Module.ImageFormat.SVG),
+          coordsValid: coordsValid
+        };
       } catch (e) {
         // If exception is a pointer (number), get the actual message
         if (typeof e === 'number' && Module.getExceptionMessage) {
@@ -178,8 +191,9 @@ for (let i = 0; i < entries.length; i++) {
     const svgContent = Buffer.from(svg, 'base64').toString();
 
     const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
+    const borderClass = result.coordsValid ? 'border-slate-200' : 'border-red-500 border-2';
     cards.push(`
-      <div class="card bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}">
+      <div class="card bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}" data-validation-set="${entry._isValidationSet ? 'true' : 'false'}" data-coords-valid="${result.coordsValid}">
         <div class="absolute top-4 left-4 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded">#${progressiveNumber}</div>
         <div class="p-8 flex-grow flex items-center justify-center bg-white min-h-[250px]">${svgContent}</div>
         <div class="p-5 flex flex-col gap-3">
@@ -208,6 +222,9 @@ for (let i = 0; i < entries.length; i++) {
 // Cleanup
 await browser.close();
 server.close();
+
+// Calculate validation set count
+const validationCount = entries.filter(e => e._isValidationSet).length;
 
 // Build failures section HTML
 const failuresSection = failures.length > 0 ? `
@@ -247,8 +264,8 @@ const html = `<!DOCTYPE html>
       <h1 class="text-4xl font-extrabold text-slate-900">HELM Gallery</h1>
       <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p class="text-xs font-bold text-blue-600 uppercase mb-1">Total Input Structures</p>
-          <p class="text-3xl font-bold text-blue-900">${entries.length}</p>
+          <p class="text-xs font-bold text-blue-600 uppercase mb-1">Validation Set / Total</p>
+          <p class="text-3xl font-bold text-blue-900">${validationCount} / ${entries.length}</p>
         </div>
         <div class="bg-green-50 border border-green-200 rounded-lg p-4">
           <p class="text-xs font-bold text-green-600 uppercase mb-1">Successful</p>
@@ -263,9 +280,28 @@ const html = `<!DOCTYPE html>
 
     ${failuresSection}
 
-    <div class="mb-6">
-      <input type="text" id="search" placeholder="Filter by HELM, description, or origin..."
-        class="w-full px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+    <div class="mb-6 space-y-4">
+      <!-- Toggle buttons -->
+      <div class="flex gap-2">
+        <button id="toggle-validation"
+                class="px-4 py-2 rounded-lg font-semibold transition-all bg-blue-600 text-white">
+          Validation Set
+        </button>
+        <button id="toggle-full"
+                class="px-4 py-2 rounded-lg font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300">
+          Full Set
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex gap-4 items-center">
+        <input type="text" id="search" placeholder="Filter by HELM, description, origin, or coordinates..."
+          class="flex-grow px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        <label class="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" id="filter-invalid-coords" class="w-4 h-4 text-red-600 border-slate-300 rounded focus:ring-red-500">
+          <span class="text-sm font-medium text-slate-700 whitespace-nowrap">Show only flagged structures</span>
+        </label>
+      </div>
     </div>
 
     <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -276,14 +312,58 @@ const html = `<!DOCTYPE html>
     </footer>
   </div>
   <script>
+    // Mode state
+    let currentMode = 'validation'; // Default to validation set
+
+    // Toggle buttons and filters
+    const toggleValidation = document.getElementById('toggle-validation');
+    const toggleFull = document.getElementById('toggle-full');
     const search = document.getElementById('search');
+    const filterInvalidCoords = document.getElementById('filter-invalid-coords');
     const cards = document.querySelectorAll('.card');
-    search.addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase();
+
+    // Apply filter based on current mode, search, and coordinate filter
+    function applyFilter() {
+      const searchQuery = search.value.toLowerCase();
+      const showOnlyInvalid = filterInvalidCoords.checked;
+
       cards.forEach(card => {
-        card.style.display = card.getAttribute('data-search').includes(q) ? 'flex' : 'none';
+        const matchesSearch = card.getAttribute('data-search').includes(searchQuery);
+        const isValidationSet = card.getAttribute('data-validation-set') === 'true';
+        const matchesMode = currentMode === 'full' || isValidationSet;
+        const coordsValid = card.getAttribute('data-coords-valid') === 'true';
+        const matchesCoordFilter = !showOnlyInvalid || !coordsValid;
+
+        card.style.display = (matchesSearch && matchesMode && matchesCoordFilter) ? 'flex' : 'none';
       });
+
+      // Update button styles
+      if (currentMode === 'validation') {
+        toggleValidation.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-blue-600 text-white';
+        toggleFull.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300';
+      } else {
+        toggleValidation.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300';
+        toggleFull.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-blue-600 text-white';
+      }
+    }
+
+    // Toggle event listeners
+    toggleValidation.addEventListener('click', () => {
+      currentMode = 'validation';
+      applyFilter();
     });
+
+    toggleFull.addEventListener('click', () => {
+      currentMode = 'full';
+      applyFilter();
+    });
+
+    // Search and filter event listeners
+    search.addEventListener('input', applyFilter);
+    filterInvalidCoords.addEventListener('change', applyFilter);
+
+    // Apply initial filter (validation set only)
+    applyFilter();
   </script>
 </body>
 </html>`;
