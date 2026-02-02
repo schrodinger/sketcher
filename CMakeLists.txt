@@ -238,11 +238,12 @@ set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=createSketcherModule
-      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString]
+      -sEXPORTED_RUNTIME_METHODS=[callMain,JSEvents,specialHTMLTargets,stringToUTF16,UTF16ToString,getExceptionMessage]
       -sASYNCIFY
       -lembind
       -fexceptions
-      -sDISABLE_EXCEPTION_CATCHING=0)
+      -sDISABLE_EXCEPTION_CATCHING=0
+      -sEXPORT_EXCEPTION_HANDLING_HELPERS)
 endif()
 target_link_libraries(
   ${APP_TARGET}
