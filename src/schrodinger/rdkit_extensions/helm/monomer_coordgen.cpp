@@ -12,6 +12,8 @@
 #include <rdkit/GraphMol/ChemTransforms/MolFragmenter.h>
 #include <rdkit/Geometry/point.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/Depictor/DepictUtils.h>
+#include <rdkit/GraphMol/Depictor/RDDepictor.h>
 
 #ifdef _MSC_VER
 // In Boost 1.81, boost::geometry contains a Windows-only
@@ -321,66 +323,6 @@ void compute_full_ring_info(const RDKit::ROMol& polymer)
 }
 
 /**
- * Finds the largest ring in `polymer` that includes exactly one non-standard
- * connection (i.e. exactly one connection that's not a standard backbone
- * connection). This serves to exclude cycles that span multiple chains, such as
- * DNA base pairing. If no such ring exists, then return the largest ring
- * regardless of the number of non-standard connections.
- */
-static std::vector<int> find_largest_ring(const RDKit::ROMol& polymer)
-{
-    if (!polymer.getRingInfo()->isInitialized()) {
-        constexpr bool include_dative_bonds = true;
-        RDKit::MolOps::findSSSR(polymer, /*res=*/nullptr, include_dative_bonds);
-    }
-
-    std::vector<int> largest_ring_no_connections{};
-    std::vector<int> largest_ring{};
-    for (auto cycle : polymer.getRingInfo()->atomRings()) {
-        if (cycle.size() <= largest_ring_no_connections.size()) {
-            continue;
-        }
-        std::vector<unsigned int> connection_points{};
-        for (size_t i = 0; i < cycle.size(); i++) {
-            auto monomer = cycle[i];
-            auto next_monomer = i == cycle.size() - 1 ? cycle[0] : cycle[i + 1];
-            auto bond = polymer.getBondBetweenAtoms(monomer, next_monomer);
-
-            if (bond->hasProp(CUSTOM_BOND)) {
-                connection_points.push_back(i);
-                if (connection_points.size() > 1) {
-                    break;
-                }
-            }
-        }
-        if (connection_points.size() == 1) {
-            // We want to rotate the ring vector so that the first monomer in
-            // the connection bond is in the front. That way, the chains will
-            // lay out directly to the right of the ring.
-            largest_ring_no_connections = cycle;
-            std::rotate(largest_ring_no_connections.begin(),
-                        largest_ring_no_connections.begin() +
-                            connection_points[0],
-                        largest_ring_no_connections.end());
-        } else if (cycle.size() > largest_ring.size()) {
-            largest_ring = cycle;
-            std::rotate(largest_ring.begin(),
-                        largest_ring.begin() + connection_points[0],
-                        largest_ring.end());
-        }
-    }
-    if (largest_ring_no_connections.size() > 0) {
-        return largest_ring_no_connections;
-    }
-    if (largest_ring.size() > 0) {
-        return largest_ring;
-    }
-
-    throw std::runtime_error(
-        "No cycles found with exactly one connection bond");
-}
-
-/**
  * Generates co-ordinates for a regular n-sided polygon with sides of length
  * `MONOMER_BOND_LENGTH`. The polygon will be oriented so the first edge will be
  * parallel to the y-axis.
@@ -408,58 +350,76 @@ get_coords_for_ngon(size_t n,
 }
 
 static void
+generate_coordinates_for_cycles(RDKit::ROMol& polymer,
+                                std::unordered_set<int>& placed_monomers_idcs)
+{
+    // generate ring coordinates using RDKit's small-molecule built-in
+    // coordinate generation
+
+    RDDepict::Compute2DCoordParameters params;
+    params.forceRDKit = true;
+    params.useRingTemplates = false;
+    RDDepict::compute2DCoords(polymer, params);
+
+    for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
+        for (auto monomer_idx : ring_atoms) {
+            auto monomer = polymer.getAtomWithIdx(monomer_idx);
+            place_monomer_at(polymer.getConformer(), monomer,
+                             polymer.getConformer().getAtomPos(monomer_idx),
+                             placed_monomers_idcs);
+        }
+    }
+}
+
+static void
 lay_out_cyclic_polymer(RDKit::ROMol& polymer,
                        std::unordered_set<int>& placed_monomers_idcs)
 {
-    std::vector<int> largest_cycle = find_largest_ring(polymer);
-    auto cycle_coords = get_coords_for_ngon(largest_cycle.size());
-    auto& conformer = polymer.getConformer();
+    generate_coordinates_for_cycles(polymer, placed_monomers_idcs);
 
-    // lay out all the monomers in the ring
-    for (size_t i = 0; i < largest_cycle.size(); i++) {
-        auto monomer = polymer.getAtomWithIdx(largest_cycle[i]);
-        place_monomer_at(conformer, monomer, cycle_coords[i],
-                         placed_monomers_idcs);
-    }
+    return;
+    /*
+        // lay out all the monomers attached to monomers in the ring
+        for (auto monomer_idx : largest_cycle) {
+            auto monomer = polymer.getAtomWithIdx(monomer_idx);
+            for (auto neighbor : polymer.atomNeighbors(monomer)) {
+                if (placed_monomers_idcs.contains(
+                        neighbor->getProp<int>(ORIGINAL_INDEX))) {
+                    continue;
+                }
 
-    // lay out all the monomers attached to monomers in the ring
-    for (auto monomer_idx : largest_cycle) {
-        auto monomer = polymer.getAtomWithIdx(monomer_idx);
-        for (auto neighbor : polymer.atomNeighbors(monomer)) {
-            if (placed_monomers_idcs.contains(
-                    neighbor->getProp<int>(ORIGINAL_INDEX))) {
-                continue;
-            }
+                auto pos = conformer.getAtomPos(monomer_idx);
+                // chains attached to monomers in the first bond of the cycle
+       (which
+                // is parallel to the y-axis) will just be laid out horizontally
+       to
+                // the right of the cycle
+                if (monomer_idx == largest_cycle[0] ||
+                    monomer_idx == largest_cycle[1]) {
+                    pos.x = pos.x + MONOMER_BOND_LENGTH;
+                    // The other chains start at 1 MONOMER_BOND_LENGTH away
+       along
+                    // the radius and then lay out horizontally from there
+                } else {
+                    auto radius = pos.length();
+                    auto multiplier = (radius + MONOMER_BOND_LENGTH) / radius;
+                    pos = pos * multiplier;
+                }
 
-            auto pos = conformer.getAtomPos(monomer_idx);
-            // chains attached to monomers in the first bond of the cycle (which
-            // is parallel to the y-axis) will just be laid out horizontally to
-            // the right of the cycle
-            if (monomer_idx == largest_cycle[0] ||
-                monomer_idx == largest_cycle[1]) {
-                pos.x = pos.x + MONOMER_BOND_LENGTH;
-                // The other chains start at 1 MONOMER_BOND_LENGTH away along
-                // the radius and then lay out horizontally from there
-            } else {
-                auto radius = pos.length();
-                auto multiplier = (radius + MONOMER_BOND_LENGTH) / radius;
-                pos = pos * multiplier;
-            }
-
-            // branch monomer i.e. single monomer branched off the polymer
-            // backbone is just placed along the radius
-            if (neighbor->getProp<bool>(BRANCH_MONOMER)) {
-                place_monomer_at(conformer, neighbor, pos,
-                                 placed_monomers_idcs);
-            } else {
-                ChainDirection chain_dir =
-                    pos.x < 0 ? ChainDirection::RTL : ChainDirection::LTR;
-                lay_out_chain(polymer, neighbor, placed_monomers_idcs, pos,
-                              chain_dir);
+                // branch monomer i.e. single monomer branched off the polymer
+                // backbone is just placed along the radius
+                if (neighbor->getProp<bool>(BRANCH_MONOMER)) {
+                    place_monomer_at(conformer, neighbor, pos,
+                                     placed_monomers_idcs);
+                } else {
+                    ChainDirection chain_dir =
+                        pos.x < 0 ? ChainDirection::RTL : ChainDirection::LTR;
+                    lay_out_chain(polymer, neighbor, placed_monomers_idcs, pos,
+                                  chain_dir);
+                }
             }
         }
-    }
-    std::cerr << coordinates_are_valid(polymer) << " valid coords\n";
+            */
 }
 
 /**
