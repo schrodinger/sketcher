@@ -45,9 +45,9 @@ BOOST_DATA_TEST_CASE(TestGetAtomsInPolymerChainWithSingleId,
     BOOST_TEST(extracted_atoms == expected_atoms);
 }
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(std::vector<std::string_view>)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(std::vector<std::string>)
 BOOST_DATA_TEST_CASE(TestGetAtomsInPolymerChainWithMultipleIds,
-                     bdata::make(std::vector<std::vector<std::string_view>>{
+                     bdata::make(std::vector<std::vector<std::string>>{
                          {"PEPTIDE1"},
                          {"PEPTIDE1", "PEPTIDE1"},
                          {"PEPTIDE2"},
@@ -155,20 +155,23 @@ BOOST_DATA_TEST_CASE(
     BOOST_TEST(expected_helm == rdkit_to_helm(*extracted_polymers));
 }
 
-// NOTE: Currently unsupported
+// Polymer groups are dropped from the extracted polymers
 BOOST_DATA_TEST_CASE(TestExtractionOfPolymerGroups,
                      bdata::make(std::vector<std::string>{
                          "PEPTIDE1{K.C}|BLOB1{BEAD}$$G1(PEPTIDE1,BLOB1)$$V2.0",
                          "PEPTIDE1{K.C}|BLOB1{BEAD}$$G1(PEPTIDE1+BLOB1)$$V2.0",
-                     }),
-                     input_helm)
+                     }) ^ bdata::make(std::vector<std::string>{
+                              "PEPTIDE1{K.C}$$$$V2.0",
+                              "PEPTIDE1{K.C}$$$$V2.0",
+                          }),
+                     input_helm, expected_helm)
 {
     auto mol = helm_to_rdkit(input_helm);
-    BOOST_CHECK_THROW(std::ignore = extract_helm_polymers(*mol, {}),
-                      std::invalid_argument);
+    auto extracted_polymers = extract_helm_polymers(*mol, {"PEPTIDE1"});
+    BOOST_TEST(expected_helm == rdkit_to_helm(*extracted_polymers));
 }
 
-// NOTE: Currently unsupported
+// Extended annotations are dropped from the extracted polymers
 BOOST_DATA_TEST_CASE(
     TestExtractionOfExtendedAnnotations,
     // clang-format off
@@ -192,9 +195,9 @@ BOOST_DATA_TEST_CASE(
     input_helm, expected_helm)
 {
     auto mol = helm_to_rdkit(input_helm);
-    BOOST_CHECK_THROW(std::ignore = extract_helm_polymers(
-                          *mol, {"PEPTIDE1", "RNA1", "CHEM1", "BLOB1"}),
-                      std::invalid_argument);
+    auto extracted_polymers =
+        extract_helm_polymers(*mol, {"PEPTIDE1", "RNA1", "CHEM1", "BLOB1"});
+    BOOST_TEST(expected_helm == rdkit_to_helm(*extracted_polymers));
 }
 
 /**
