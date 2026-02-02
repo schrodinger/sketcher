@@ -635,8 +635,6 @@ static void lay_out_polymer(RDKit::ROMol& polymer,
     } else if (polymer.getNumAtoms() == polymer.getNumBonds() + 1) {
         lay_out_linear_polymer(polymer, placed_monomers_idcs, rotate);
     } else {
-        throw std::runtime_error("Disable hairpin code");
-
         layout_hairpin_polymer(polymer, placed_monomers_idcs);
     }
 }
