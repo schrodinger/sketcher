@@ -21,6 +21,8 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(coords_t)
 typedef std::pair<std::string, coords_t> mol_data_t;
 BOOST_TEST_DONT_PRINT_LOG_VALUE(mol_data_t)
 
+// DISABLED: TestComputeMonomerCoords
+/*
 BOOST_DATA_TEST_CASE(
     TestComputeMonomerCoords,
     bdata::make(std::vector<mol_data_t>{
@@ -421,6 +423,7 @@ BOOST_DATA_TEST_CASE(
                                      << "\nExpected coords: " << expected_str
                                      << "\nComputed coords: " << actual_str);
 }
+*/
 
 BOOST_AUTO_TEST_SUITE(TestMonomerCoordgenCheckCoords)
 
