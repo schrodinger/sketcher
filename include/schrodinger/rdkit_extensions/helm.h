@@ -55,20 +55,27 @@ struct Chain {
 // Helper apis to get atom indices belonging to the inputs polymers
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
 get_atoms_in_polymer_chain(const RDKit::ROMol& mol,
-                           std::string_view polymer_id);
+                           const std::string& polymer_id);
 
 // NOTE: Duplicate polymer ids will be ignored
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
 get_atoms_in_polymer_chains(const RDKit::ROMol& mol,
-                            const std::vector<std::string_view>& polymer_ids);
+                            const std::vector<std::string>& polymer_ids);
 
 // Extracts polymers with the provided ids from a monomer mol. Polymer
 // information that span across non-selected polymers will be deleted.
 //
-// NOTE: Polymer groups are unsupported
+// NOTE: Polymer groups and extended annotations are dropped from the extracted
+// polymers.
 [[nodiscard]] RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
 extract_helm_polymers(const RDKit::ROMol& mol,
-                      const std::vector<std::string_view>& polymer_ids);
+                      const std::vector<std::string>& polymer_ids);
+
+// Extract a single polymer by ID.
+// NOTE: Polymer groups and extended annotations are dropped from the extracted
+// polymer.
+[[nodiscard]] RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
+extract_helm_polymer(const RDKit::ROMol& mol, const std::string& polymer_id);
 
 [[nodiscard]] RDKIT_EXTENSIONS_API std::string
 get_polymer_id(const ::RDKit::Atom* atom);
