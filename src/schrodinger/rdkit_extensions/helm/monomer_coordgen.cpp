@@ -459,6 +459,7 @@ lay_out_cyclic_polymer(RDKit::ROMol& polymer,
             }
         }
     }
+    std::cerr << coordinates_are_valid(polymer) << " valid coords\n";
 }
 
 /**
@@ -634,6 +635,8 @@ static void lay_out_polymer(RDKit::ROMol& polymer,
     } else if (polymer.getNumAtoms() == polymer.getNumBonds() + 1) {
         lay_out_linear_polymer(polymer, placed_monomers_idcs, rotate);
     } else {
+        throw std::runtime_error("Disable hairpin code");
+
         layout_hairpin_polymer(polymer, placed_monomers_idcs);
     }
 }
@@ -1480,13 +1483,15 @@ static bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
         auto end_pos = conformer.getAtomPos(bond->getEndAtomIdx());
         auto bond_length = (end_pos - begin_pos).length();
         if (bond_length > MAX_BOND_STRETCH * MONOMER_BOND_LENGTH) {
+            std::cerr << "Found stretched bond of length " << bond_length
+                      << "\n";
             return false;
         }
     }
     return true;
 }
 
-static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
+bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
 {
     return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol) &&
            has_no_stretched_bonds(monomer_mol);
