@@ -1,7 +1,7 @@
 helm_string,smiles_string,description,origin
 "CHEM1{[*CCC(N1CN(C(CC*)=O)CN(C(CC*)=O)C1)=O |$_R1;;;;;;;;;;_R2;;;;;;;_R3;;;;$|]}|PEPTIDE1{A.R.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$PEPTIDE1,CHEM1,4:R3-1:R1|PEPTIDE1,CHEM1,11:R3-1:R2|CHEM1,PEPTIDE1,1:R3-18:R3$$$V2.0",,Bicyclic peptides,Bicyclic peptides test set
 CCC(=O)N1CN(C(=O)CC)CN(C(=O)CC)C1,,Bicyclic peptides,Bicyclic peptides test set
-PEPTIDE1{A.R.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$$$$V2.0,,Bicyclic peptides,Bicyclic peptides test set
+PEPTIDE1{A.N.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$$$$V2.0,,Bicyclic peptides,Bicyclic peptides test set
 "PEPTIDE1{C}|PEPTIDE2{[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_3Cl].[Phe_34diCl].[meY].[dI].[Met_O].[NMe2Abz].[Tyr_Ph4OH].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu]}|PEPTIDE3{[meY].[Pro_4Me3OH].[Met_O].[NMe2Abz].[dI].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu].[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_34diCl].[Phe_34diCl]}$PEPTIDE2,PEPTIDE2,16:R2-1:R1|PEPTIDE3,PEPTIDE3,16:R2-1:R1|PEPTIDE3,PEPTIDE2,10:R3-1:R3|PEPTIDE2,PEPTIDE1,9:R3-1:R2$$$V2.0",,Bicyclic peptides,Bicyclic peptides test set
 PEPTIDE1{C}$$$$V2.0,,Bicyclic peptides,Bicyclic peptides test set
 "PEPTIDE2{[dI].[Trp_Ome].[Asp_OMe].[dI].[meG].[Phe_3Cl].[Phe_34diCl].[meY].[dI].[Met_O].[NMe2Abz].[Tyr_Ph4OH].[3Pal].[xiIle].[Tyr_35diI].[Ala_tBu]}$PEPTIDE2,PEPTIDE2,16:R2-1:R1$$$V2.0",,Bicyclic peptides,Bicyclic peptides test set
