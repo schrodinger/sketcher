@@ -275,3 +275,24 @@ jobs:
       - name: Publish sketcher npm package
         if: matrix.build-name == 'wasm' && inputs.publish-npm-package
         uses: ./.github/actions/publish-npm-package
+
+  generate-helm-gallery:
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: !failure() && github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+      pull-requests: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: ./.github/actions/generate-helm-gallery
+        with:
+          artifact-name: sketcher-${{ inputs.ref || github.sha }}-wasm
+          gallery-name: ${{ github.sha }}
