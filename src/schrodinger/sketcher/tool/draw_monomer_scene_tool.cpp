@@ -8,7 +8,6 @@
 #include <QGraphicsSimpleTextItem>
 #include <QPen>
 
-
 #include <rdkit/Geometry/point.h>
 #include <rdkit/GraphMol/ROMol.h>
 
