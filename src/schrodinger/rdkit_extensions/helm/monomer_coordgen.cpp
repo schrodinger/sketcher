@@ -67,6 +67,8 @@ constexpr double BOND_CLASH_DISTANCE = MONOMER_CLASH_DISTANCE;
 constexpr double MIN_ANGLE_BETWEEN_ADJACENT_BONDS =
     boost::math::constants::pi<double>() / 18; // 10 degrees
 
+constexpr double EPSILON = 1e-6;
+
 // Props used in the fragmented polymer mols to store monomer graph info from
 // the monomersitc mol
 const std::string BOND_TO{"bondTo"};
@@ -349,6 +351,90 @@ get_coords_for_ngon(size_t n,
     return points;
 }
 
+static void orient_ring_system(RDKit::ROMol& polymer)
+{
+    // if the system is closed by CUSTOM BONDS, rotate it so that the
+    // first CUSTOM_BOND is vertical and flip it so that the rings are laid out
+    // to the left of that bond. Assuming that monomers are listed in chain
+    // order, using the first custom bond should DETECT the outer bond in the
+    // case of a hairpin turn with more than one bond
+
+    // Find the first CUSTOM_BOND in the molecule rings
+    const RDKit::Bond* first_custom_bond = nullptr;
+    for (const auto& bond : polymer.bonds()) {
+        if (bond->hasProp(CUSTOM_BOND)) {
+            // check that both atoms are in rings
+            if (polymer.getRingInfo()->numAtomRings(bond->getBeginAtomIdx()) >
+                    0 &&
+                polymer.getRingInfo()->numAtomRings(bond->getEndAtomIdx()) >
+                    0) {
+                first_custom_bond = bond;
+                break;
+            }
+        }
+    }
+
+    if (first_custom_bond != nullptr) {
+        auto& conformer = polymer.getConformer();
+
+        // Get positions of the two atoms in the custom bond
+        auto begin_idx = first_custom_bond->getBeginAtomIdx();
+        auto end_idx = first_custom_bond->getEndAtomIdx();
+        auto begin_pos = conformer.getAtomPos(begin_idx);
+        auto end_pos = conformer.getAtomPos(end_idx);
+
+        // Calculate the angle of the bond
+        double dx = end_pos.x - begin_pos.x;
+        double dy = end_pos.y - begin_pos.y;
+        double current_angle = std::atan2(dy, dx);
+
+        // Angle to rotate to make the bond vertical (pointing up)
+        // Vertical up is π/2 (90 degrees)
+        double target_angle = PI / 2.0;
+        double rotation_angle = target_angle - current_angle;
+
+        // Center the molecule on the bond midpoint. Rotate all atoms around the
+        // center.
+        RDGeom::Point3D center = (begin_pos + end_pos) * 0.5;
+        for (size_t i = 0; i < conformer.getNumAtoms(); ++i) {
+            auto pos = conformer.getAtomPos(i);
+            // Translate to origin
+            pos -= center;
+            // Rotate
+            double x_new = pos.x * std::cos(rotation_angle) -
+                           pos.y * std::sin(rotation_angle);
+            double y_new = pos.x * std::sin(rotation_angle) +
+                           pos.y * std::cos(rotation_angle);
+            pos.x = x_new;
+            pos.y = y_new;
+            conformer.setAtomPos(i, pos);
+        }
+
+        // Now check if we need to flip horizontally so rings are to the left.
+        // Coordinates are centered on the midpoint of the bond, so if a random
+        // ring atom has positive x, we flip.
+        auto bond_midpoint = (begin_pos + end_pos) * 0.5;
+        if (polymer.getRingInfo()->numRings() > 0) {
+            auto ring_atoms = polymer.getRingInfo()->atomRings()[0];
+            for (auto ring_atom_idx : ring_atoms) {
+                if (ring_atom_idx == begin_idx || ring_atom_idx == end_idx) {
+                    continue;
+                }
+                auto ring_atom_pos = conformer.getAtomPos(ring_atom_idx);
+                if (ring_atom_pos.x > EPSILON) {
+                    // flip horizontally
+                    for (size_t i = 0; i < conformer.getNumAtoms(); ++i) {
+                        auto pos = conformer.getAtomPos(i);
+                        pos.x = -pos.x;
+                        conformer.setAtomPos(i, pos);
+                    }
+                }
+                break;
+            }
+        }
+    }
+}
+
 static void
 generate_coordinates_for_cycles(RDKit::ROMol& polymer,
                                 std::unordered_set<int>& placed_monomers_idcs)
@@ -360,12 +446,29 @@ generate_coordinates_for_cycles(RDKit::ROMol& polymer,
     params.forceRDKit = true;
     params.useRingTemplates = false;
     RDDepict::compute2DCoords(polymer, params);
+    orient_ring_system(polymer);
+
+    // finalize coordinates of rings and of their immediate neighbors.
+    // Coordinates need to be scaled from RDKit's default bond length to
+    // MONOMER_BOND_LENGTH
+    auto scale_factor = MONOMER_BOND_LENGTH / RDDepict::BOND_LEN;
+    std::set<int> monomers_to_place;
+    for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
+        for (auto monomer_idx : ring_atoms) {
+            monomers_to_place.insert(monomer_idx);
+            auto monomer = polymer.getAtomWithIdx(monomer_idx);
+            for (auto neighbor : polymer.atomNeighbors(monomer)) {
+                monomers_to_place.insert(neighbor->getIdx());
+            }
+        }
+    }
 
     for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
         for (auto monomer_idx : ring_atoms) {
             auto monomer = polymer.getAtomWithIdx(monomer_idx);
             place_monomer_at(polymer.getConformer(), monomer,
-                             polymer.getConformer().getAtomPos(monomer_idx),
+                             polymer.getConformer().getAtomPos(monomer_idx) *
+                                 scale_factor,
                              placed_monomers_idcs);
         }
     }
@@ -377,7 +480,29 @@ lay_out_cyclic_polymer(RDKit::ROMol& polymer,
 {
     generate_coordinates_for_cycles(polymer, placed_monomers_idcs);
 
-    return;
+    for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
+        for (auto monomer_idx : ring_atoms) {
+            auto monomer = polymer.getAtomWithIdx(monomer_idx);
+            for (auto neighbor : polymer.atomNeighbors(monomer)) {
+                if (polymer.getRingInfo()->numAtomRings(neighbor->getIdx()) >
+                    0) {
+                    continue;
+                }
+
+                auto neighbor_pos =
+                    polymer.getConformer().getAtomPos(neighbor->getIdx());
+
+                auto dir = neighbor_pos -
+                           polymer.getConformer().getAtomPos(monomer_idx);
+
+                ChainDirection chain_dir =
+                    dir.x < 0 ? ChainDirection::RTL : ChainDirection::LTR;
+                lay_out_chain(polymer, neighbor, placed_monomers_idcs,
+                              neighbor_pos, chain_dir);
+            }
+        }
+    }
+
     /*
         // lay out all the monomers attached to monomers in the ring
         for (auto monomer_idx : largest_cycle) {
@@ -1441,8 +1566,6 @@ static bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
         auto end_pos = conformer.getAtomPos(bond->getEndAtomIdx());
         auto bond_length = (end_pos - begin_pos).length();
         if (bond_length > MAX_BOND_STRETCH * MONOMER_BOND_LENGTH) {
-            std::cerr << "Found stretched bond of length " << bond_length
-                      << "\n";
             return false;
         }
     }
@@ -1572,7 +1695,7 @@ std::vector<RingResizeData> collect_ring_resize_data(
             side_sum += (p1 - p0).length();
         }
         const double current_side = side_sum / ring.size();
-        if (current_side < 1e-6) {
+        if (current_side < EPSILON) {
             continue;
         }
 
@@ -1934,7 +2057,7 @@ bool is_geometrically_regular_ring_2d(const RDKit::ROMol& mol,
     }
 
     double stddev = std::sqrt(var / N);
-    if (mean_r < 1e-6 || stddev / mean_r > radius_tol) {
+    if (mean_r < EPSILON || stddev / mean_r > radius_tol) {
         return false;
     }
 
