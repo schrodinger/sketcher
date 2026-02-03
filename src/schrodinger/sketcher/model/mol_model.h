@@ -651,16 +651,21 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addMol(RDKit::RWMol mol,
                 const QString& description = "Import molecule",
                 const bool reposition_mol = true,
-                const bool new_mol_added = true);
+                const bool new_mol_added = true,
+                const bool enforce_size_limit = true);
 
     /**
      * Undoably add the given reaction to the model.  All reactants and products
      * from the reaction will be added, and plus signs and arrows will be added
      * between the molecules.  Note that reaction agents will *not* be added.
      *
+     * @param reaction The reaction to add
+     * @param enforce_size_limit If true (default), enforces the maximum atom
+     * count limit for reactions
      * @throw std::runtime_error if the model already contains a reaction arrow
      */
-    void addReaction(RDKit::ChemicalReaction reaction);
+    void addReaction(RDKit::ChemicalReaction reaction,
+                     const bool enforce_size_limit = true);
 
     /**
      * Undoably add a fragment and (optionally) bond it to the existing
