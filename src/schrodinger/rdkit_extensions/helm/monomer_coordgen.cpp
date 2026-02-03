@@ -417,7 +417,8 @@ static void orient_ring_system(RDKit::ROMol& polymer)
         if (polymer.getRingInfo()->numRings() > 0) {
             auto ring_atoms = polymer.getRingInfo()->atomRings()[0];
             for (auto ring_atom_idx : ring_atoms) {
-                if (ring_atom_idx == begin_idx || ring_atom_idx == end_idx) {
+                if (static_cast<unsigned int>(ring_atom_idx) == begin_idx ||
+                    static_cast<unsigned int>(ring_atom_idx) == end_idx) {
                     continue;
                 }
                 auto ring_atom_pos = conformer.getAtomPos(ring_atom_idx);
