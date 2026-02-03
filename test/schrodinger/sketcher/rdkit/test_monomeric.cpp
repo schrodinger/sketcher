@@ -251,6 +251,36 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         BOOST_TEST(get_available_attachment_point_names(atom1) ==
                    exp_available);
     }
+
+    // single stranded RNA
+    mol = rdkit_extensions::to_rdkit("RNA1{R(A)P.R(C)P.R(G)P}$$$$V2.0");
+    {
+        auto sugar = mol->getAtomWithIdx(0);
+        auto base = mol->getAtomWithIdx(1);
+
+        exp_bound = {{"N1/9", sugar, false}};
+        BOOST_TEST(get_bound_attachment_point_names_and_atoms(base) ==
+                   exp_bound);
+        exp_available = {"pair"};
+        BOOST_TEST(get_available_attachment_point_names(base) == exp_available);
+    }
+
+    // double stranded RNA
+    mol = rdkit_extensions::to_rdkit(
+        "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}"
+        "$RNA1,RNA2,2:pair-9:pair"
+        "|RNA1,RNA2,5:pair-6:pair"
+        "|RNA1,RNA2,8:pair-3:pair$$$V2.0");
+    {
+        auto sugar = mol->getAtomWithIdx(0);
+        auto base = mol->getAtomWithIdx(1);
+        auto paired_base = mol->getAtomWithIdx(17);
+
+        exp_bound = {{"N1/9", sugar, false}, {"pair", paired_base, false}};
+        BOOST_TEST(get_bound_attachment_point_names_and_atoms(base) ==
+                   exp_bound);
+        BOOST_TEST(get_available_attachment_point_names(base).empty());
+    }
 }
 
 } // namespace sketcher
