@@ -42,14 +42,7 @@
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
-#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
-
-namespace
-{
-const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
-// According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
-const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
-} // namespace
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 
 namespace schrodinger
 {
@@ -59,39 +52,6 @@ namespace sketcher
 static QPainterPath
 get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
                                           const RDKit::Conformer& conf);
-
-/**
- * Determine what type of monomer the given atom represents.
- */
-MonomerType get_monomer_type(const RDKit::Atom* atom)
-{
-    const auto* monomer_info = atom->getMonomerInfo();
-    if (monomer_info == nullptr) {
-        throw std::runtime_error("Atom has no monomer info");
-    }
-    const auto* res_info =
-        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info);
-    if (res_info == nullptr) {
-        return MonomerType::CHEM;
-    }
-    const auto& chain_id = res_info->getChainId();
-    if (chain_id.starts_with(PEPTIDE_POLYMER_PREFIX)) {
-        return MonomerType::PEPTIDE;
-    } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
-        const auto& res_name = res_info->getResidueName();
-        if (res_name.empty()) {
-            return MonomerType::NA_BASE;
-        }
-        auto last_char = std::tolower(res_name.back());
-        if (last_char == 'p') {
-            return MonomerType::NA_PHOSPHATE;
-        } else if (last_char == 'r') {
-            return MonomerType::NA_SUGAR;
-        }
-        return MonomerType::NA_BASE;
-    }
-    return MonomerType::CHEM;
-}
 
 /**
  * Construct and return a monomer graphics item for representing the given atom.
