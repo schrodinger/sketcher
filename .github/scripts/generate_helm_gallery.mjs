@@ -4,86 +4,84 @@
  * Usage: node generate_helm_gallery.mjs test/testfiles/helm-gallery/*.csv --wasm-dir path/to/wasm/dir --output gallery.html
  */
 
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { parseArgs } from 'util';
+import { createReadStream, readFileSync, statSync, writeFileSync } from 'fs';
+import { createServer } from 'http';
+import { dirname, extname, resolve } from 'path';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'url';
-import { createServer } from 'http';
-import { createReadStream, statSync } from 'fs';
-import { extname } from 'path';
+import { parseArgs } from 'util';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Parse CLI arguments
 const { values, positionals } = parseArgs({
-  options: {
-    'wasm-dir': { type: 'string', required: true },
-    'output': { type: 'string', default: 'helm_gallery.html' }
-  },
-  allowPositionals: true
+    options: {
+        'wasm-dir': { type: 'string', required: true },
+        'output': { type: 'string', default: 'helm_gallery.html' }
+    },
+    allowPositionals: true
 });
 
 if (positionals.length === 0) {
-  console.error('Usage: generate_helm_gallery.mjs <csv_files...> --wasm-dir <path> [--output <file>]');
-  process.exit(1);
+    console.error('Usage: generate_helm_gallery.mjs <csv_files...> --wasm-dir <path> [--output <file>]');
+    process.exit(1);
 }
 
 /**
  * Parse a CSV line respecting quoted fields (RFC 4180-compliant)
  */
 function parseCSVLine(line) {
-  const result = [];
-  let current = '';
-  let inQuotes = false;
+    const result = [];
+    let current = '';
+    let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    const nextChar = line[i + 1];
+    for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        const nextChar = line[i + 1];
 
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        // Escaped quote
-        current += '"';
-        i++; // Skip next quote
-      } else {
-        // Toggle quote mode
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      // End of field
-      result.push(current.trim());
-      current = '';
-    } else {
-      current += char;
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+                // Escaped quote
+                current += '"';
+                i++; // Skip next quote
+            } else {
+                // Toggle quote mode
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            // End of field
+            result.push(current.trim());
+            current = '';
+        } else {
+            current += char;
+        }
     }
-  }
 
-  // Push last field
-  result.push(current.trim());
-  return result;
+    // Push last field
+    result.push(current.trim());
+    return result;
 }
 
 // Parse CSV files
 const entries = [];
 for (const file of positionals) {
-  // Handle different line endings (CRLF, LF, CR)
-  const content = readFileSync(file, 'utf-8').trim();
-  const lines = content.split(/\r?\n/);
-  const headers = parseCSVLine(lines[0]);
+    // Handle different line endings (CRLF, LF, CR)
+    const content = readFileSync(file, 'utf-8').trim();
+    const lines = content.split(/\r?\n/);
+    const headers = parseCSVLine(lines[0]);
 
-  // Track if this file is the validation set
-  const fileName = file.split('/').pop();
-  const isValidationSet = fileName === 'validation_set.csv';
+    // Track if this file is the validation set
+    const fileName = file.split('/').pop();
+    const isValidationSet = fileName === 'validation_set.csv';
 
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue; // Skip empty lines
-    const values = parseCSVLine(lines[i]);
-    const entry = {};
-    headers.forEach((h, idx) => entry[h] = values[idx] || '');
-    entry._isValidationSet = isValidationSet; // Track source
-    entries.push(entry);
-  }
+    for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue; // Skip empty lines
+        const values = parseCSVLine(lines[i]);
+        const entry = {};
+        headers.forEach((h, idx) => entry[h] = values[idx] || '');
+        entry._isValidationSet = isValidationSet; // Track source
+        entries.push(entry);
+    }
 }
 
 console.log(`Processing ${entries.length} entries...`);
@@ -91,46 +89,46 @@ console.log(`Processing ${entries.length} entries...`);
 // Start HTTP server to serve WASM files
 const wasmDir = resolve(values['wasm-dir']);
 const server = createServer((req, res) => {
-  const filePath = resolve(wasmDir, req.url.slice(1).split('?')[0]); // Strip query params
+    const filePath = resolve(wasmDir, req.url.slice(1).split('?')[0]); // Strip query params
 
-  // Security: ensure we're serving from wasmDir
-  if (!filePath.startsWith(wasmDir)) {
-    res.writeHead(403);
-    res.end('Forbidden');
-    return;
-  }
-
-  try {
-    const stat = statSync(filePath);
-    if (!stat.isFile()) {
-      res.writeHead(404);
-      res.end('Not found');
-      return;
+    // Security: ensure we're serving from wasmDir
+    if (!filePath.startsWith(wasmDir)) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
     }
 
-    // Set content type
-    const ext = extname(filePath);
-    const contentTypes = {
-      '.html': 'text/html',
-      '.js': 'application/javascript',
-      '.wasm': 'application/wasm',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.svg': 'image/svg+xml'
-    };
-    res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'application/octet-stream' });
-    createReadStream(filePath).pipe(res);
-  } catch (err) {
-    res.writeHead(404);
-    res.end('Not found');
-  }
+    try {
+        const stat = statSync(filePath);
+        if (!stat.isFile()) {
+            res.writeHead(404);
+            res.end('Not found');
+            return;
+        }
+
+        // Set content type
+        const ext = extname(filePath);
+        const contentTypes = {
+            '.html': 'text/html',
+            '.js': 'application/javascript',
+            '.wasm': 'application/wasm',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.svg': 'image/svg+xml'
+        };
+        res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'application/octet-stream' });
+        createReadStream(filePath).pipe(res);
+    } catch (err) {
+        res.writeHead(404);
+        res.end('Not found');
+    }
 });
 
 await new Promise((resolve) => {
-  server.listen(0, 'localhost', () => {
-    console.log(`HTTP server started on http://localhost:${server.address().port}`);
-    resolve();
-  });
+    server.listen(0, 'localhost', () => {
+        console.log(`HTTP server started on http://localhost:${server.address().port}`);
+        resolve();
+    });
 });
 
 const baseUrl = `http://localhost:${server.address().port}`;
@@ -151,48 +149,48 @@ const failures = [];
 let success = 0, failed = 0;
 
 for (let i = 0; i < entries.length; i++) {
-  const entry = entries[i];
-  const progressiveNumber = i + 1;
+    const entry = entries[i];
+    const progressiveNumber = i + 1;
 
-  try {
-    const result = await page.evaluate((helmString) => {
-      try {
-        Module.sketcher_clear();
-        Module.sketcher_allow_monomeric(true);
-        Module.sketcher_import_text(helmString);
+    try {
+        const result = await page.evaluate((helmString) => {
+            try {
+                Module.sketcher_clear();
+                Module.sketcher_allow_monomeric(true);
+                Module.sketcher_import_text(helmString);
 
-        // Validate coordinates after import
-        const coordsValid = Module.sketcher_validate_coordinates();
+                // Validate coordinates after import
+                const coordsValid = Module.sketcher_validate_coordinates();
 
-        return {
-          success: true,
-          svg: Module.sketcher_export_image(Module.ImageFormat.SVG),
-          coordsValid: coordsValid
-        };
-      } catch (e) {
-        // If exception is a pointer (number), get the actual message
-        if (typeof e === 'number' && Module.getExceptionMessage) {
-          const exceptionInfo = Module.getExceptionMessage(e);
-          // getExceptionMessage returns [type, message]
-          return { success: false, error: exceptionInfo[1] || exceptionInfo.toString() };
+                return {
+                    success: true,
+                    svg: Module.sketcher_export_image(Module.ImageFormat.SVG),
+                    coordsValid: coordsValid
+                };
+            } catch (e) {
+                // If exception is a pointer (number), get the actual message
+                if (typeof e === 'number' && Module.getExceptionMessage) {
+                    const exceptionInfo = Module.getExceptionMessage(e);
+                    // getExceptionMessage returns [type, message]
+                    return { success: false, error: exceptionInfo[1] || exceptionInfo.toString() };
+                }
+                // Otherwise return the error as-is
+                return { success: false, error: e.toString() };
+            }
+        }, entry.helm_string);
+
+        if (!result.success) {
+            throw new Error(result.error);
         }
-        // Otherwise return the error as-is
-        return { success: false, error: e.toString() };
-      }
-    }, entry.helm_string);
 
-    if (!result.success) {
-      throw new Error(result.error);
-    }
+        const svg = result.svg;
 
-    const svg = result.svg;
+        // Decode base64 SVG
+        const svgContent = Buffer.from(svg, 'base64').toString();
 
-    // Decode base64 SVG
-    const svgContent = Buffer.from(svg, 'base64').toString();
-
-    const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
-    const borderClass = result.coordsValid ? 'border-slate-200' : 'border-red-500 border-2';
-    cards.push(`
+        const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
+        const borderClass = result.coordsValid ? 'border-slate-200' : 'border-red-500 border-2';
+        cards.push(`
       <div class="card bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}" data-validation-set="${entry._isValidationSet ? 'true' : 'false'}" data-coords-valid="${result.coordsValid}">
         <div class="absolute top-4 left-4 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded">#${progressiveNumber}</div>
         <div class="p-8 flex-grow flex items-center justify-center bg-white min-h-[250px]">${svgContent}</div>
@@ -205,18 +203,18 @@ for (let i = 0; i < entries.length; i++) {
           </div>
         </div>
       </div>`);
-    success++;
-  } catch (err) {
-    console.error(`Failed #${progressiveNumber}: ${entry.helm_string} - ${err.message}`);
-    failures.push({
-      number: progressiveNumber,
-      helmString: entry.helm_string,
-      description: entry.description,
-      origin: entry.origin,
-      error: err.message
-    });
-    failed++;
-  }
+        success++;
+    } catch (err) {
+        console.error(`Failed #${progressiveNumber}: ${entry.helm_string} - ${err.message}`);
+        failures.push({
+            number: progressiveNumber,
+            helmString: entry.helm_string,
+            description: entry.description,
+            origin: entry.origin,
+            error: err.message
+        });
+        failed++;
+    }
 }
 
 // Cleanup
