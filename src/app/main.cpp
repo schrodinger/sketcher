@@ -13,6 +13,7 @@
 
 #include <QApplication>
 #include <QFile>
+#include <QStyleHints>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -70,11 +71,15 @@ bool sketcher_has_monomers()
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
 }
 
-void sketcher_allow_monomeric()
+// Note: allow_monomeric should not be set to false if the workspace
+// contains monomers.
+void sketcher_allow_monomeric(bool allow_monomeric)
 {
     auto& sk = get_sketcher_instance();
     return sk.setInterfaceType(
-        schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
+        allow_monomeric
+            ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
+            : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
 void sketcher_changed()
@@ -137,6 +142,13 @@ EMSCRIPTEN_BINDINGS(sketcher)
 
 void apply_stylesheet(QApplication& app)
 {
+    // In Qt 6.8 and newer, Qt will try to automatically apply a dark mode color
+    // scheme if the system and/or browser is set to dark mode. The result looks
+    // terrible, so switch back to light mode.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    QApplication::styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
+
     QFile styleFile(":resources/schrodinger_livedesign.qss");
     bool success = styleFile.open(QFile::ReadOnly);
     if (!success) {

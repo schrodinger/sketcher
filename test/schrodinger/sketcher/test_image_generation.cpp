@@ -250,3 +250,48 @@ BOOST_AUTO_TEST_CASE(test_SVG_title_and_description)
     BOOST_TEST(!svg.contains("Qt SVG Document"));
     BOOST_TEST(!svg.contains("Generated with Qt"));
 }
+
+/*
+ * Test that image generation APIs can handle molecules with more than 200
+ * heavy atoms, even though the sketcher widget enforces a 200 atom limit for
+ * import.
+ */
+BOOST_AUTO_TEST_CASE(test_image_generation_with_large_molecules)
+{
+    // Create a molecule with more than 200 heavy atoms
+    // A simple polystyrene-like chain with 210 benzene rings
+    std::string large_smiles = "c1ccccc1";
+    for (int i = 0; i < 209; ++i) {
+        large_smiles += "c1ccccc1";
+    }
+    auto large_mol = rdkit_extensions::to_rdkit(large_smiles);
+    BOOST_REQUIRE(large_mol->getNumAtoms() > 200);
+
+    // Test that all image generation APIs work with this large molecule
+    RenderOptions opts;
+    opts.width_height = {800, 800};
+
+    // Test get_qpicture
+    auto qpict = get_qpicture(*large_mol, opts);
+    BOOST_TEST(qpict.size() > 0);
+    BOOST_TEST(qpict.boundingRect().size() == QSize(800, 800));
+
+    // Test get_qimage
+    auto image = get_qimage(*large_mol, opts);
+    BOOST_TEST(image.sizeInBytes() > 0);
+    BOOST_TEST(image.size() == QSize(800, 800));
+
+    // Test get_image_bytes for PNG
+    auto png_bytes = get_image_bytes(*large_mol, ImageFormat::PNG, opts);
+    BOOST_TEST(png_bytes.size() > 0);
+
+    // Test get_image_bytes for SVG
+    auto svg_bytes = get_image_bytes(*large_mol, ImageFormat::SVG, opts);
+    BOOST_TEST(svg_bytes.size() > 0);
+
+    // Test save_image_file
+    const auto tmp_file =
+        "tmp_large_mol_" + current_test_case().p_name.get() + ".png";
+    save_image_file(*large_mol, tmp_file, opts);
+    BOOST_TEST(boost::filesystem::exists(tmp_file));
+}

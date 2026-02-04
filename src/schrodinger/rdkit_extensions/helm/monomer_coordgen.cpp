@@ -118,6 +118,32 @@ static void place_monomer_at(RDKit::Conformer& conformer,
     placed_monomers_idcs.insert(monomer_to_place->getProp<int>(ORIGINAL_INDEX));
 }
 
+/**
+ * Check if a bond contains a backbone linkage
+ * @return true if the bond is a backbone connection, or if it has more than one
+ * connection (i.e., the LINKAGE property contains more than just the
+ * CUSTOM_BOND linkage), in which case one is assumed to be a backbone
+ * connection.
+ */
+static bool has_backbone_linkage(const RDKit::Bond* bond)
+{
+    if (!bond->hasProp(CUSTOM_BOND)) {
+        // No custom bond property, this is a regular backbone bond
+        return true;
+    }
+
+    std::string custom_bond;
+    std::string linkage;
+
+    if (!bond->getPropIfPresent(CUSTOM_BOND, custom_bond) ||
+        !bond->getPropIfPresent(LINKAGE, linkage)) {
+        return false;
+    }
+    // If LINKAGE and CUSTOM_BOND are different, it means there are additional
+    // linkages beyond the custom one: assume that one is a backbone connection
+    return linkage != custom_bond;
+}
+
 namespace bg = boost::geometry;
 using point_t = bg::model::d2::point_xy<double>;
 using segment_t = bg::model::segment<point_t>;
@@ -226,11 +252,10 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
         for (auto neighbor : monomer_neighbors) {
             if (placed_monomers_idcs.contains(
                     neighbor->getProp<int>(ORIGINAL_INDEX)) ||
-                // This is a connection attachment point
-                polymer
-                    .getBondBetweenAtoms(neighbor->getIdx(),
-                                         monomer_to_place_idx)
-                    ->hasProp(CUSTOM_BOND)) {
+                // Skip if the bond to this neighbor is not a backbone
+                // connection)
+                !has_backbone_linkage(polymer.getBondBetweenAtoms(
+                    neighbor->getIdx(), monomer_to_place_idx))) {
                 continue;
             }
 
@@ -614,7 +639,11 @@ static void lay_out_polymer(RDKit::ROMol& polymer,
 }
 
 /**
- * Lays out a simple long linear polymer (with no branches) in a snaking pattern
+ * Lays out a simple long linear polymer (with no branches) in a snaking
+ * pattern. Distributes monomers as evenly as possibleacross rows to avoid
+ * having a very short last row. For example, 21 monomers will be laid out as
+ * 7-7-7 (instead of 10-10-1) and 22 will be layed out as 8-8-6 (instead of
+ * 10-10-2).
  */
 static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
 {
@@ -623,9 +652,20 @@ static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
     ChainDirection chain_dir = ChainDirection::LTR;
     auto placed_monomers_idcs = std::unordered_set<int>{};
 
-    for (size_t i = 0; i < polymer.getNumAtoms(); i += MONOMERS_PER_SNAKE) {
+    auto total_monomers = polymer.getNumAtoms();
+    // Calculate number of rows needed
+    auto num_rows =
+        (total_monomers + MONOMERS_PER_SNAKE - 1) / MONOMERS_PER_SNAKE;
+    // Calculate monomers per row to distribute evenly
+    auto monomers_per_row = (total_monomers + num_rows - 1) / num_rows;
+
+    unsigned int i = 0u;
+    while (i < total_monomers) {
         auto start_idx = i;
-        auto end_idx = start_idx + MONOMERS_PER_SNAKE;
+        // For all rows except the last, use monomers_per_row
+        // Last row gets whatever remains
+        auto row_size = std::min(monomers_per_row, total_monomers - i);
+        auto end_idx = start_idx + row_size;
 
         lay_out_chain(polymer, polymer.getAtomWithIdx(start_idx),
                       placed_monomers_idcs, chain_start_pos, chain_dir,
@@ -634,13 +674,13 @@ static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
                           return monomer->getIdx() == end_idx;
                       });
 
-        if (end_idx < polymer.getNumAtoms()) {
-            // next chain will be under this one and in the opposite direction
-            chain_dir = chain_dir == ChainDirection::LTR ? ChainDirection::RTL
-                                                         : ChainDirection::LTR;
-            chain_start_pos = conformer.getAtomPos(end_idx - 1);
-            chain_start_pos.y -= MONOMER_BOND_LENGTH;
-        }
+        i = end_idx;
+
+        // next chain will be under this one and in the opposite direction
+        chain_dir = chain_dir == ChainDirection::LTR ? ChainDirection::RTL
+                                                     : ChainDirection::LTR;
+        chain_start_pos = conformer.getAtomPos(end_idx - 1);
+        chain_start_pos.y -= MONOMER_BOND_LENGTH;
     }
 }
 

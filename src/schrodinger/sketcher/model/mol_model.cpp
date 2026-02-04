@@ -37,7 +37,7 @@
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
-#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
@@ -929,7 +929,8 @@ void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
 }
 
 void MolModel::addMol(RDKit::RWMol mol, const QString& description,
-                      const bool reposition_mol, const bool new_molecule_added)
+                      const bool reposition_mol, const bool new_molecule_added,
+                      const bool enforce_size_limit)
 {
     if (mol.getNumAtoms() == 0) {
         return;
@@ -939,7 +940,7 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
             ? WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED
             : WhatChanged::MOLECULE;
 
-    if (mol.getNumAtoms() > MAX_NUM_ATOMS_FOR_IMPORT) {
+    if (enforce_size_limit && mol.getNumAtoms() > MAX_NUM_ATOMS_FOR_IMPORT) {
         throw std::runtime_error(
             fmt::format("Cannot import molecules containing more than {} atoms",
                         MAX_NUM_ATOMS_FOR_IMPORT));
@@ -993,7 +994,8 @@ num_atoms_in_reaction(const RDKit::ChemicalReaction& reaction)
                            sum_num_atoms);
 }
 
-void MolModel::addReaction(RDKit::ChemicalReaction reaction)
+void MolModel::addReaction(RDKit::ChemicalReaction reaction,
+                           const bool enforce_size_limit)
 {
     if (!reaction.getNumReactantTemplates() &&
         !reaction.getNumProductTemplates()) {
@@ -1004,7 +1006,8 @@ void MolModel::addReaction(RDKit::ChemicalReaction reaction)
         throw std::runtime_error(
             "Sketcher does not support more than one reaction.");
     }
-    if (num_atoms_in_reaction(reaction) > MAX_NUM_ATOMS_FOR_IMPORT) {
+    if (enforce_size_limit &&
+        num_atoms_in_reaction(reaction) > MAX_NUM_ATOMS_FOR_IMPORT) {
         throw std::runtime_error(
             fmt::format("Cannot import reactions containing more than {} atoms",
                         MAX_NUM_ATOMS_FOR_IMPORT));
