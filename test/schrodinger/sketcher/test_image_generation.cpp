@@ -251,7 +251,7 @@ BOOST_AUTO_TEST_CASE(test_SVG_title_and_description)
     BOOST_TEST(!svg.contains("Generated with Qt"));
 }
 
-/*
+/**
  * Test that image generation APIs can handle molecules with more than 200
  * heavy atoms, even though the sketcher widget enforces a 200 atom limit for
  * import.
