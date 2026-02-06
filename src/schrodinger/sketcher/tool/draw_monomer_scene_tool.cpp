@@ -242,8 +242,8 @@ attachment_point_is_drawn_with_arrowhead(const RDKit::Atom* const monomer,
 {
     const auto* bond = monomer->getOwningMol().getBondBetweenAtoms(
         monomer->getIdx(), bound_monomer->getIdx());
-    auto [begin_arrowhead, end_arrowhead, color, width, pen_style] =
-        get_connector_style(bond, is_secondary_connection);
+    auto [begin_arrowhead, end_arrowhead] =
+        does_connector_have_arrowheads(bond, is_secondary_connection);
     if (bond->getBeginAtom() == monomer) {
         return begin_arrowhead;
     } else {
