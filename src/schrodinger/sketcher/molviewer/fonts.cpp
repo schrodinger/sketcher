@@ -22,24 +22,28 @@ Fonts::Fonts() :
     m_other_amino_acid_font(QFont(FONT_NAME)),
     m_other_nucleic_acid_sugar_and_phosphate_font(QFont(FONT_NAME)),
     m_other_nucleic_acid_base_font(QFont(FONT_NAME)),
-    m_main_label_fm(QFontMetrics(m_main_label_font)),
-    m_subscript_fm(QFontMetrics(m_subscript_font)),
-    m_charge_fm(QFontMetrics(m_charge_font)),
-    m_mapping_fm(QFontMetrics(m_mapping_font)),
-    m_chirality_fm(QFontMetrics(m_chirality_font)),
-    m_sgroup_fm(QFontMetrics(m_sgroup_font)),
-    m_query_label_fm(QFontMetrics(m_query_label_font)),
-    m_d_amino_acid_fm(QFontMetrics(m_d_amino_acid_font)),
-    m_other_amino_acid_fm(QFontMetrics(m_other_amino_acid_font)),
+    m_monomeric_attachment_point_label_font(QFont(FONT_NAME)),
+    m_main_label_fm(QFontMetricsF(m_main_label_font)),
+    m_subscript_fm(QFontMetricsF(m_subscript_font)),
+    m_charge_fm(QFontMetricsF(m_charge_font)),
+    m_mapping_fm(QFontMetricsF(m_mapping_font)),
+    m_chirality_fm(QFontMetricsF(m_chirality_font)),
+    m_sgroup_fm(QFontMetricsF(m_sgroup_font)),
+    m_query_label_fm(QFontMetricsF(m_query_label_font)),
+    m_d_amino_acid_fm(QFontMetricsF(m_d_amino_acid_font)),
+    m_other_amino_acid_fm(QFontMetricsF(m_other_amino_acid_font)),
     m_other_nucleic_acid_sugar_and_phosphate_fm(
-        QFontMetrics(m_other_nucleic_acid_sugar_and_phosphate_font)),
-    m_other_nucleic_acid_base_fm(QFontMetrics(m_other_nucleic_acid_base_font))
+        QFontMetricsF(m_other_nucleic_acid_sugar_and_phosphate_font)),
+    m_other_nucleic_acid_base_fm(QFontMetricsF(m_other_nucleic_acid_base_font)),
+    m_monomeric_attachment_point_label_fm(
+        QFontMetricsF(m_monomeric_attachment_point_label_font))
 {
     m_d_amino_acid_font.setWeight(QFont::Weight::Bold);
     m_other_amino_acid_font.setWeight(QFont::Weight::Bold);
     m_other_nucleic_acid_sugar_and_phosphate_font.setWeight(
         QFont::Weight::Bold);
     m_other_nucleic_acid_base_font.setWeight(QFont::Weight::Bold);
+    m_monomeric_attachment_point_label_font.setWeight(QFont::Weight::Bold);
     setSize(DEFAULT_FONT_SIZE);
 }
 
@@ -67,6 +71,8 @@ void Fonts::setSize(int size)
         size * OTHER_NA_SUGAR_AND_PHOSPHATE_FONT_RATIO);
     m_other_nucleic_acid_base_font.setPixelSize(size *
                                                 OTHER_NA_BASE_FONT_RATIO);
+    m_monomeric_attachment_point_label_font.setPixelSize(
+        size * MONOMERIC_ATTACHMENT_POINT_LABEL_FONT_RATIO);
     m_radical_dot_size = size * RADICAL_DOT_RATIO;
     updateFontMetrics();
 }
@@ -75,19 +81,22 @@ void Fonts::updateFontMetrics()
 {
     // font metrics objects don't update themselves when their font changes, so
     // we need to create new ones
-    m_main_label_fm = QFontMetrics(m_main_label_font);
-    m_subscript_fm = QFontMetrics(m_subscript_font);
-    m_charge_fm = QFontMetrics(m_charge_font);
-    m_mapping_fm = QFontMetrics(m_mapping_font);
-    m_chirality_fm = QFontMetrics(m_chirality_font);
-    m_sgroup_fm = QFontMetrics(m_sgroup_font);
-    m_query_label_fm = QFontMetrics(m_query_label_font);
+    m_main_label_fm = QFontMetricsF(m_main_label_font);
+    m_subscript_fm = QFontMetricsF(m_subscript_font);
+    m_charge_fm = QFontMetricsF(m_charge_font);
+    m_mapping_fm = QFontMetricsF(m_mapping_font);
+    m_chirality_fm = QFontMetricsF(m_chirality_font);
+    m_sgroup_fm = QFontMetricsF(m_sgroup_font);
+    m_query_label_fm = QFontMetricsF(m_query_label_font);
 
-    m_d_amino_acid_fm = QFontMetrics(m_d_amino_acid_font);
-    m_other_amino_acid_fm = QFontMetrics(m_other_amino_acid_font);
+    m_d_amino_acid_fm = QFontMetricsF(m_d_amino_acid_font);
+    m_other_amino_acid_fm = QFontMetricsF(m_other_amino_acid_font);
     m_other_nucleic_acid_sugar_and_phosphate_fm =
-        QFontMetrics(m_other_nucleic_acid_sugar_and_phosphate_font);
-    m_other_nucleic_acid_base_fm = QFontMetrics(m_other_nucleic_acid_base_font);
+        QFontMetricsF(m_other_nucleic_acid_sugar_and_phosphate_font);
+    m_other_nucleic_acid_base_fm =
+        QFontMetricsF(m_other_nucleic_acid_base_font);
+    m_monomeric_attachment_point_label_fm =
+        QFontMetricsF(m_monomeric_attachment_point_label_font);
 }
 
 } // namespace sketcher
