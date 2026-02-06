@@ -19,6 +19,37 @@ namespace schrodinger
 namespace sketcher
 {
 
+namespace
+{
+
+std::unordered_map<ConnectorType, std::tuple<QColor, qreal, Qt::PenStyle>>
+    PEN_STYLE_FOR_CONNECTOR_TYPE = {
+        {ConnectorType::CHEM,
+         {CHEM_CONNECTOR_COLOR, CHEM_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_LINEAR,
+         {AA_LINEAR_CONNECTOR_COLOR, AA_LINEAR_CONNECTOR_WIDTH,
+          Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_BRANCHING,
+         {AA_BRANCHING_CONNECTOR_COLOR, AA_BRANCHING_CONNECTOR_WIDTH,
+          Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_DISULFIDE,
+         {DISULFIDE_CONNECTOR_COLOR, DISULFIDE_CONNECTOR_WIDTH,
+          Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_SIDE_CHAIN,
+         {AA_LINEAR_CONNECTOR_COLOR, AA_LINEAR_CONNECTOR_WIDTH,
+          Qt::PenStyle::SolidLine}},
+        {ConnectorType::NA_BASE,
+         {NA_BASE_CONNECTOR_COLOR, NA_BASE_CONNECTOR_WIDTH,
+          Qt::PenStyle::DotLine}},
+        {ConnectorType::NA_BACKBONE,
+         {NA_BACKBONE_CONNECTOR_COLOR, NA_BACKBONE_CONNECTOR_WIDTH,
+          Qt::PenStyle::SolidLine}},
+        {ConnectorType::NA_BACKBONE_TO_BASE,
+         {NA_BACKBONE_TO_BASE_CONNECTOR_COLOR,
+          NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine}}};
+
+} // namespace
+
 MonomerConnectorItem::MonomerConnectorItem(
     const RDKit::Bond* bond, const AbstractMonomerItem& start_monomer_item,
     const AbstractMonomerItem& end_monomer_item,
@@ -84,9 +115,11 @@ void MonomerConnectorItem::updateCachedData()
 {
     prepareGeometryChange();
     m_arrowhead_path.clear();
-    auto [start_has_arrowhead, end_has_arrowhead, connector_color,
-          connector_width, connector_pen_style] =
-        get_connector_style(m_bond, m_is_secondary_connection);
+    auto connector_type = get_connector_type(m_bond, m_is_secondary_connection);
+    auto [start_has_arrowhead, end_has_arrowhead] =
+        does_connector_have_arrowheads(m_bond, connector_type);
+    auto [connector_color, connector_width, connector_pen_style] =
+        PEN_STYLE_FOR_CONNECTOR_TYPE.at(connector_type);
     m_connector_pen =
         QPen(connector_color, connector_width, connector_pen_style);
     m_arrowhead_pen = QPen(connector_color, connector_width);

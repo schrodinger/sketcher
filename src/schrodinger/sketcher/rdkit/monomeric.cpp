@@ -2,7 +2,6 @@
 
 #include <functional>
 
-#include <QColor>
 #include <QGraphicsItem>
 #include <QPointF>
 
@@ -31,7 +30,7 @@ const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
 // Note that the primes use apostrophes instead of a Unicode prime to avoid
 // issues with C++′s handling of Unicode.
 const std::unordered_map<MonomerType, std::vector<std::string>>
-    NUMBERED_AP_NAMES = {
+    NUMBERED_AP_NAMES_BY_MONOMER_TYPE = {
         {MonomerType::PEPTIDE, {"N", "C", "X"}},
         {MonomerType::NA_BASE, {"N1/9"}},
         {MonomerType::NA_SUGAR, {"3'", "5'", "1'"}},
@@ -101,8 +100,8 @@ bool contains_two_monomer_linkages(const RDKit::Bond* bond)
     return custom_linkage_exists && custom_linkage != linkage;
 }
 
-std::tuple<bool, bool, QColor, qreal, Qt::PenStyle>
-get_connector_style(const RDKit::Bond* bond, const bool is_secondary_connection)
+ConnectorType get_connector_type(const RDKit::Bond* bond,
+                                 const bool is_secondary_connection)
 {
     const auto* start_atom = bond->getBeginAtom();
     auto start_res_name = get_monomer_res_name(start_atom);
@@ -114,46 +113,73 @@ get_connector_style(const RDKit::Bond* bond, const bool is_secondary_connection)
 
     if (start_monomer_type == MonomerType::CHEM ||
         end_monomer_type == MonomerType::CHEM) {
-        // chem connector
-        return {false, false, CHEM_CONNECTOR_COLOR, CHEM_CONNECTOR_WIDTH,
-                Qt::PenStyle::SolidLine};
+        return ConnectorType::CHEM;
     } else if (start_monomer_type == MonomerType::PEPTIDE ||
                end_monomer_type == MonomerType::PEPTIDE) {
         std::string attachment_points;
         std::string prop = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
         bond->getPropIfPresent(prop, attachment_points);
-        if (start_res_name.ends_with('C') && end_res_name.ends_with('C') &&
-            attachment_points == "R3-R3") {
-            return {true, true, DISULFIDE_CONNECTOR_COLOR,
-                    DISULFIDE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine};
+        if (attachment_points == "R3-R3") {
+            if (start_res_name.ends_with('C') && end_res_name.ends_with('C')) {
+                return ConnectorType::PEPTIDE_DISULFIDE;
+            } else {
+                return ConnectorType::PEPTIDE_SIDE_CHAIN;
+            }
         }
         bool start_is_branch = false;
         bool end_is_branch = false;
         start_atom->getPropIfPresent(BRANCH_MONOMER, start_is_branch);
         end_atom->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
         if (start_is_branch || end_is_branch) {
-            // branching connector
-            return {start_is_branch, end_is_branch,
-                    AA_BRANCHING_CONNECTOR_COLOR, AA_BRANCHING_CONNECTOR_WIDTH,
-                    Qt::PenStyle::SolidLine};
+            return ConnectorType::PEPTIDE_BRANCHING;
         }
-        // standard amino acid linear connector
-        return {false, false, AA_LINEAR_CONNECTOR_COLOR,
-                AA_LINEAR_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine};
+        return ConnectorType::PEPTIDE_LINEAR;
     } else if (start_monomer_type == MonomerType::NA_BASE &&
                end_monomer_type == MonomerType::NA_BASE) {
-        // nucleic acid base connector
-        return {false, false, NA_BASE_CONNECTOR_COLOR, NA_BASE_CONNECTOR_WIDTH,
-                Qt::PenStyle::DotLine};
+        return ConnectorType::NA_BASE;
     } else if (start_monomer_type != MonomerType::NA_BASE &&
                end_monomer_type != MonomerType::NA_BASE) {
-        // nucleic acid backbone connector
-        return {false, false, NA_BACKBONE_CONNECTOR_COLOR,
-                NA_BACKBONE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine};
+        return ConnectorType::NA_BACKBONE;
     } else {
-        // nucleic acid backbone to base connector
-        return {false, false, NA_BACKBONE_TO_BASE_CONNECTOR_COLOR,
-                NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine};
+        return ConnectorType::NA_BACKBONE_TO_BASE;
+    }
+}
+
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               const bool is_secondary_connection)
+{
+    auto connector_type = get_connector_type(bond, is_secondary_connection);
+    return does_connector_have_arrowheads(bond, connector_type);
+}
+
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               const ConnectorType connector_type)
+{
+    switch (connector_type) {
+        case ConnectorType::CHEM:
+        case ConnectorType::PEPTIDE_LINEAR:
+        case ConnectorType::NA_BASE:
+        case ConnectorType::NA_BACKBONE:
+        case ConnectorType::NA_BACKBONE_TO_BASE:
+            return {false, false};
+
+        case ConnectorType::PEPTIDE_DISULFIDE:
+        case ConnectorType::PEPTIDE_SIDE_CHAIN:
+            return {true, true};
+
+        case ConnectorType::PEPTIDE_BRANCHING: {
+            const auto* start_atom = bond->getBeginAtom();
+            const auto* end_atom = bond->getEndAtom();
+            bool start_is_branch = false;
+            bool end_is_branch = false;
+            start_atom->getPropIfPresent(BRANCH_MONOMER, start_is_branch);
+            end_atom->getPropIfPresent(BRANCH_MONOMER, end_is_branch);
+            return {start_is_branch, end_is_branch};
+        }
+        default:
+            return {false, false};
     }
 }
 
@@ -318,8 +344,9 @@ get_available_attachment_points(const RDKit::Atom* monomer)
         }
     }
     int num_numbered_aps = -1;
-    if (NUMBERED_AP_NAMES.contains(monomer_type)) {
-        num_numbered_aps = NUMBERED_AP_NAMES.at(monomer_type).size();
+    if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
+        num_numbered_aps =
+            NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(monomer_type).size();
     } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
         num_numbered_aps = 2;
     } else {
@@ -399,8 +426,9 @@ get_attachment_point_name_of_bound_sugar(const RDKit::Atom* phosphate)
         // the phosphate should be bound to either the 3' (R1) or 5' (R2). If
         // it's bound to something else, ignore it since something's gone wrong.
         if ((sugar_ap_num == 1 || sugar_ap_num == 2)) {
-            return ap_num_to_name(sugar_ap_num,
-                                  NUMBERED_AP_NAMES.at(MonomerType::NA_SUGAR));
+            return ap_num_to_name(
+                sugar_ap_num,
+                NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(MonomerType::NA_SUGAR));
         }
     }
     return "";
@@ -427,8 +455,8 @@ get_all_numbered_attachment_point_names(const RDKit::Atom* monomer)
 {
     auto monomer_type = get_monomer_type(monomer);
 
-    if (NUMBERED_AP_NAMES.contains(monomer_type)) {
-        return NUMBERED_AP_NAMES.at(monomer_type);
+    if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
+        return NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(monomer_type);
     } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
         std::vector<std::string> phos_ap_names = {"", ""};
         auto sugar_ap_name = get_attachment_point_name_of_bound_sugar(monomer);
