@@ -23,10 +23,18 @@ namespace schrodinger
 namespace sketcher
 {
 
-/**
- * Types of monomers
- */
 enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
+
+enum class ConnectorType {
+    CHEM,
+    PEPTIDE_LINEAR,
+    PEPTIDE_BRANCHING,
+    PEPTIDE_DISULFIDE,
+    PEPTIDE_SIDE_CHAIN,
+    NA_BASE,
+    NA_BACKBONE,
+    NA_BACKBONE_TO_BASE
+};
 
 /**
  * Determine what type of monomer the given atom represents.
@@ -49,25 +57,42 @@ SKETCHER_API std::string get_monomer_res_name(const RDKit::Atom* const monomer);
 SKETCHER_API bool contains_two_monomer_linkages(const RDKit::Bond* bond);
 
 /**
- * Determine how the given monomer connector should be drawn, which is based on
- * the types of monomers that it connects. Note that a connector between a CHEM
- * monomer and any other monomer will be styled as a CHEM connector, and a
- * connector between a PEPTIDE monomer and an RNA monomer will be styled as a
- * PEPTIDE connector.
+ * Determine what type of monomeric connection the given bond represents.
+ * Note that a connector between a CHEM monomer and any other monomer will be
+ * categorized as a CHEM connector, and a connector between a PEPTIDE monomer
+ * and an RNA monomer will be categorized as a PEPTIDE connector.
  *
  * @param bond the bond representing a monomer connector
- * @param secondary_connection whether we are drawing the primary or secondary
- * connection of this bond
- * @return A tuple of
- *   - whether the start of the connector should have a diamond arrowhead
- *   - whether the end of the connector should have a diamond arrowhead
- *   - the color for the connector
- *   - the width of the connector line
- *   - the pen style of the connector line
+ * @param secondary_connection whether to categorize the primary or secondary
+ * connection of this bond. This is only relevant for bonds that
+ * contains_two_monomer_linkages() returns true.
  */
-SKETCHER_API std::tuple<bool, bool, QColor, qreal, Qt::PenStyle>
-get_connector_style(const RDKit::Bond* bond,
-                    const bool is_secondary_connection);
+SKETCHER_API ConnectorType
+get_connector_type(const RDKit::Bond* bond, const bool is_secondary_connection);
+
+/**
+ * Determine whether diamond arrowheads should be drawn at the start and end of
+ * the given connector.
+ * @param bond the bond representing a monomer connector
+ * @param secondary_connection whether we are drawing the primary or secondary
+ * connection of this bond. This is only relevant for bonds where
+ * contains_two_monomer_linkages() returns true.
+ * @return A pair of
+ *   - should an arrowhead be drawn at the start of the bond
+ *   - should an arrowhead be drawn at the end of the bond
+ */
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               const bool is_secondary_connection);
+
+/**
+ * @overload
+ * @param bond the bond representing a monomer connector
+ * @param connector_type the type of monomer connection represented by bond
+ */
+std::pair<bool, bool>
+does_connector_have_arrowheads(const RDKit::Bond* bond,
+                               const ConnectorType connector_type);
 
 /**
  * For a monomer connector being drawn with a diamond arrowhead, determine the
