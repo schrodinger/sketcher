@@ -59,7 +59,7 @@ constexpr double MONOMER_BOND_LENGTH =
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
-constexpr unsigned int MONOMERS_PER_SNAKE = 10;
+constexpr unsigned int MAX_MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
 
 constexpr double MONOMER_CLASH_DISTANCE = MONOMER_BOND_LENGTH * 0.25;
@@ -436,6 +436,17 @@ static void orient_ring_system(RDKit::ROMol& polymer)
     }
 }
 
+/**
+ * Generate coordinates for the ring-systems in `polymer`. The coordinates are
+ * generated using RDKit's internal coordinate generation. This is used for
+ * cyclic polymers and also as a fallback when the snaking layout fails (e.g.
+ * due to incompatible turn constraints from multiple CUSTOM_BONDS). After
+ * generating the coordinates, the rings are oriented so that the first
+ * CUSTOM_BOND, if any are present, in the rings is vertical. Coordinates will
+ * be assigned to all monomers, but only the ones in rings and their immediate
+ * neighbors will be marked as placed in `placed_monomers_idcs`, so that the
+ * other coordinates can be overritten later (e.g. to draw straight chains)
+ */
 static void
 generate_coordinates_for_cycles(RDKit::ROMol& polymer,
                                 std::unordered_set<int>& placed_monomers_idcs)
@@ -450,9 +461,7 @@ generate_coordinates_for_cycles(RDKit::ROMol& polymer,
     orient_ring_system(polymer);
 
     // finalize coordinates of rings and of their immediate neighbors.
-    // Coordinates need to be scaled from RDKit's default bond length to
-    // MONOMER_BOND_LENGTH
-    auto scale_factor = MONOMER_BOND_LENGTH / RDDepict::BOND_LEN;
+
     std::set<int> monomers_to_place;
     for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
         for (auto monomer_idx : ring_atoms) {
@@ -463,7 +472,9 @@ generate_coordinates_for_cycles(RDKit::ROMol& polymer,
             }
         }
     }
-
+    // Coordinates need to be scaled from RDKit's default bond length to
+    // MONOMER_BOND_LENGTH
+    auto scale_factor = MONOMER_BOND_LENGTH / RDDepict::BOND_LEN;
     for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
         for (auto monomer_idx : ring_atoms) {
             auto monomer = polymer.getAtomWithIdx(monomer_idx);
@@ -487,8 +498,17 @@ struct TurnConstraint {
     unsigned int max_pos; // Turn must be before this position
 };
 
-// Analyzes CUSTOM_BONDS and checks if valid turn-based layout is possible
-std::vector<TurnConstraint> can_layout_with_turns(const RDKit::ROMol& polymer)
+/**
+ * Extracts turn constraints from the CUSTOM_BONDs in `polymer`. Each
+ * CUSTOM_BOND creates a constraint that there must be exactly one turn between
+ * the two monomers it connects, so they end up in consecutive rows in the
+ * snaking layout and can be connected by a single bond. If there are multiple
+ * bonds that create impossible layouts (e.g. the two bonds would cross), an
+ * empty vector is returned to indicate that the snaking layout is not possible
+ * and a fallback layout should be used instead.
+ */
+std::vector<TurnConstraint>
+compute_turn_positions_for_chain(const RDKit::ROMol& polymer)
 {
     // Extract all CUSTOM_BONDS
     std::vector<CustomBondInfo> custom_bonds;
@@ -543,10 +563,6 @@ std::vector<TurnConstraint> can_layout_with_turns(const RDKit::ROMol& polymer)
                 // bond2 is completely contained within bond1: i1 < i2 < j2 < j1
                 // This means they would cross - bond2 would have to go "inside"
                 // bond1
-                std::cerr << "CUSTOM_BONDs at positions (" << bond1.monomer_i
-                          << "," << bond1.monomer_j << ") and ("
-                          << bond2.monomer_i << "," << bond2.monomer_j
-                          << ") create incompatible turn constraints\n";
                 return {};
             }
             // Otherwise bonds don't overlap - they use different turns, no
@@ -631,7 +647,7 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
     // Calculate external angle for regular polygon with (turn_size + 1) * 2
     // vertices
     unsigned int n = 2 * (turn_size + 2);
-    double external_angle = 2.0 * M_PI / n;
+    double external_angle = -2.0 * M_PI / n;
 
     // For RTL, rotate in opposite direction (clockwise instead of
     // counterclockwise)
@@ -748,11 +764,73 @@ static void lay_out_snaking_chain(RDKit::ROMol& polymer,
         segment_start = segment_end + turn_size;
     }
 }
-
-bool layout_with_turns(RDKit::ROMol& polymer,
-                       std::unordered_set<int>& placed_monomers_idcs)
+/**
+ * Helper function to check if a polymer can be considered as a single chain. If
+ * there are any rings, they must be closed by non-backbone connections (e.g. a
+ * turn closed by a disulfide bond), so that the main backbone can still be
+ * layed out as a single chain with turns.
+ */
+static bool is_a_chain(const RDKit::ROMol& polymer)
 {
-    auto turns = can_layout_with_turns(polymer);
+    // Check that the polymer is a single chain (if there are rings they can be
+    // closed only by non-backbone connections). We check this by counting
+    // backbone bonds to monomers: exactly two monomers should have only one
+    // backbone bond (the two ends), and the rest should have exactly two.
+
+    // TODO use Kevin's logic from
+    // https://github.com/schrodinger/sketcher/pull/233/changes#diff-0c7dcb7c9a99f114e01b6b000ed280af1f5ad48bbd6b0c0b83b2eda515214b55R60-R71
+    auto is_backbone_bond = [](const RDKit::Bond* bond) {
+        if (!bond->hasProp(CUSTOM_BOND)) {
+            // No custom bond property, this is a regular backbone bond
+            return true;
+        }
+
+        std::string custom_bond;
+        bond->getPropIfPresent(CUSTOM_BOND, custom_bond);
+        return (custom_bond == "R2-R1");
+    };
+    int end_monomers = 0;
+    for (const auto& atom : polymer.atoms()) {
+        int num_backbone_bonds = 0;
+
+        for (const auto& neighbor : polymer.atomNeighbors(atom)) {
+            if (is_backbone_bond(polymer.getBondBetweenAtoms(
+                    atom->getIdx(), neighbor->getIdx()))) {
+                num_backbone_bonds++;
+            }
+        }
+        if (num_backbone_bonds > 2) {
+            return false;
+        }
+        if (num_backbone_bonds == 1) {
+            ++end_monomers;
+        }
+    }
+    if (end_monomers != 2) {
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Attempts to lay out a polymer with cycles as a snaking chain. This is only
+ * possible if the cycles are closed by non-backbone connections (e.g. a  turn
+ * closed by a disulfide bond), and if the turn constraints from multiple
+ * CUSTOM_BONDS are compatible. If successful, the polymer will be layed out in
+ * a snaking pattern, placed_monomers_idcs will be updated for every atom, and
+ * the function will return true. If not successful, the function will return
+ * false, coordinates will be changed and placed_monomers_idcs will not be
+ * updated
+ */
+bool maybe_lay_out_cyclic_polymer_as_snaking_chain(
+    RDKit::ROMol& polymer, std::unordered_set<int>& placed_monomers_idcs)
+{
+    // This approach only works for chain polymers,i.e. any rings must be closed
+    // by non-backbone connections.
+    if (!is_a_chain(polymer)) {
+        return false;
+    }
+    auto turns = compute_turn_positions_for_chain(polymer);
 
     if (turns.size() == 0) {
         return false;
@@ -787,8 +865,9 @@ lay_out_cyclic_polymer(RDKit::ROMol& polymer,
                        std::unordered_set<int>& placed_monomers_idcs)
 {
     // try first to lay out with a snaking layout
-    if (layout_with_turns(polymer, placed_monomers_idcs)) {
-        // laid out successfully with turns
+    if (maybe_lay_out_cyclic_polymer_as_snaking_chain(polymer,
+                                                      placed_monomers_idcs)) {
+        // laid out successfully, nothing else to do
         return;
     }
     // If the approach above fails, fall back to laying out the rings first
@@ -1002,30 +1081,48 @@ static void lay_out_polymer(RDKit::ROMol& polymer,
 /**
  * Lays out a simple long linear polymer (with no branches) in a snaking
  * pattern. Distributes monomers as evenly as possible across rows to avoid
- * having a very short last row. For example, 21 monomers will be laid out
- * as 7-7-7 (instead of 10-10-1) and 22 will be layed out as 8-8-6 (instead
- * of 10-10-2).
+ * having a very short last row.
+ *
+ * The algorithm uses both 1-residue and 2-residue turns to find the optimal
+ * layout that:
+ *   1. Keeps all straight segments <= MAX_MONOMERS_PER_SNAKE
+ *   2. Distributes monomers evenly across rows
  */
 static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
 {
     auto placed_monomers_idcs = std::unordered_set<int>{};
     auto total_monomers = polymer.getNumAtoms();
 
-    // Calculate number of rows needed
-    auto num_rows =
-        (total_monomers + MONOMERS_PER_SNAKE - 1) / MONOMERS_PER_SNAKE;
-    // Calculate monomers per row to distribute evenly
-    auto monomers_per_row = (total_monomers + num_rows - 1) / num_rows;
+    unsigned int num_rows =
+        (total_monomers + MAX_MONOMERS_PER_SNAKE - 1) / MAX_MONOMERS_PER_SNAKE;
+    unsigned int turn_size = 1;
 
-    // Build turn positions for evenly distributed rows
+    // Calculate  number of rows needed if all segments MAX_MONOMERS_PER_SNAKE
+    // With num_rows segments, we have (num_rows - 1) turns between
+    // them. Calculate how much space is left for straight segments after
+    // accounting for turns
+    int segment_space = total_monomers - (num_rows - 1) * turn_size;
+
+    // Distribute the segment space as evenly as possible across all segments.
+    // Monomers that are left will be accomodated by using increased turn sizes
+    // for as many rows as needed.
+    unsigned int segment_length = segment_space / num_rows;
+    unsigned int num_of_longer_turns = segment_space % num_rows;
+    unsigned int current_pos = 0;
+
     std::vector<TurnInfo> turn_positions;
-    for (unsigned int i = monomers_per_row; i < total_monomers;
-         i += monomers_per_row) {
-        turn_positions.push_back({i, 2});
-    }
+    for (unsigned int row = 0; row < num_rows; ++row) {
+        current_pos += segment_length;
+        unsigned int turn_size = (row < num_of_longer_turns) ? 2 : 1;
 
-    // Use the new lay_out_snaking_chain function with calculated turn
-    // positions
+        // Add a turn after this segment (except for the last segment)
+        if (row < num_rows - 1) {
+            turn_positions.push_back({current_pos, turn_size});
+            // Advance position past the turn residues
+            current_pos += turn_size;
+        }
+    }
+    // Use the calculated turn positions to lay out the snaking chain
     lay_out_snaking_chain(polymer, placed_monomers_idcs, turn_positions);
 }
 
