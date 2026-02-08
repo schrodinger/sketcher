@@ -58,6 +58,8 @@ constexpr double MONOMER_BOND_LENGTH =
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
+constexpr double NON_BACKBONE_BOND_FLEXIBILITY = 2.0;
+
 constexpr double DIST_BETWEEN_MULTIPLE_POLYMERS = 5;
 constexpr unsigned int MAX_MONOMERS_PER_SNAKE = 10;
 const double PI = boost::math::constants::pi<double>();
@@ -120,6 +122,23 @@ static void place_monomer_at(RDKit::Conformer& conformer,
     auto monomer_idx = monomer_to_place->getIdx();
     conformer.setAtomPos(monomer_idx, position);
     placed_monomers_idcs.insert(monomer_to_place->getProp<int>(ORIGINAL_INDEX));
+}
+
+/**
+ * Compute the centroid of a set of atom indices in a molecule.
+ */
+RDGeom::Point3D compute_centroid(const RDKit::ROMol& mol,
+                                 const std::vector<int>& atom_indices)
+{
+    if (atom_indices.empty()) {
+        return RDGeom::Point3D(0, 0, 0);
+    }
+    const auto& conformer = mol.getConformer();
+    std::vector<RDGeom::Point3D> positions(atom_indices.size());
+    std::transform(atom_indices.begin(), atom_indices.end(), positions.begin(),
+                   [&conformer](int idx) { return conformer.getAtomPos(idx); });
+
+    return compute_centroid(positions);
 }
 
 /**
@@ -351,89 +370,127 @@ get_coords_for_ngon(size_t n,
     return points;
 }
 
+RDGeom::Point3D rotate_point(const RDGeom::Point3D& point, float sin_angle,
+                             float cos_angle, const RDGeom::Point3D& center)
+{
+    RDGeom::Point3D rotated_pos = point;
+    // Translate to origin (rotation center)
+    rotated_pos -= center;
+    // Rotate
+    double x_new = rotated_pos.x * cos_angle - rotated_pos.y * sin_angle;
+    double y_new = rotated_pos.x * sin_angle + rotated_pos.y * cos_angle;
+    rotated_pos.x = x_new;
+    rotated_pos.y = y_new;
+    // Translate back
+    rotated_pos += center;
+    return rotated_pos;
+}
+
+/**
+ * Rotate all atoms in the conformer by the given angle around the given center.
+ * @param conformer The conformer to rotate
+ * @param angle Rotation angle in radians (positive = counterclockwise)
+ * @param center The center point for rotation
+ */
+static void rotate_conformer(RDKit::Conformer& conformer, double angle,
+                             const RDGeom::Point3D& center)
+{
+    double cos_angle = std::cos(angle);
+    double sin_angle = std::sin(angle);
+    for (size_t i = 0; i < conformer.getNumAtoms(); ++i) {
+        auto pos = conformer.getAtomPos(i);
+        pos = rotate_point(pos, sin_angle, cos_angle, center);
+        conformer.setAtomPos(i, pos);
+    }
+}
+
+/**
+ * Orient the ring system based on attachment points to non-ring atoms. This is
+ * important for ensuring that the chains come out of the rings in a consistent
+ * direction and extend horizontally as much as possible. If there is one
+ * attachment point, orient it to the right of the ring's centroid. If there's
+ * two attachment points, align them vertically with the rings to the left. If
+ * there are more than two attachment points, use the first two (this is
+ * somewhat arbitrary but cases with more than two attachment points are
+ * expected to be rare and it's not clear what a better strategy would be).
+ */
 static void orient_ring_system(RDKit::ROMol& polymer)
 {
-    // if the system is closed by CUSTOM BONDS, rotate it so that the
-    // first CUSTOM_BOND is vertical and flip it so that the rings are laid out
-    // to the left of that bond. Assuming that monomers are listed in chain
-    // order, using the first custom bond should DETECT the outer bond in the
-    // case of a hairpin turn with more than one bond
+    auto& conformer = polymer.getConformer();
 
-    // Find the first CUSTOM_BOND in the molecule rings
-    const RDKit::Bond* first_custom_bond = nullptr;
-    for (const auto& bond : polymer.bonds()) {
-        if (bond->hasProp(CUSTOM_BOND)) {
-            // check that both atoms are in rings
-            if (polymer.getRingInfo()->numAtomRings(bond->getBeginAtomIdx()) >
-                    0 &&
-                polymer.getRingInfo()->numAtomRings(bond->getEndAtomIdx()) >
+    // Find ring atoms that have bonds to non-ring atoms and store them along
+    // with the centroids of their rings
+    std::vector<std::pair<unsigned int, RDGeom::Point3D>>
+        attachment_atoms_and_centroids;
+
+    for (const auto& ring : polymer.getRingInfo()->atomRings()) {
+        // compute centroid of the ring
+        auto centroid = compute_centroid(polymer, ring);
+        for (auto atom_idx : ring) {
+            auto neighbors =
+                polymer.atomNeighbors(polymer.getAtomWithIdx(atom_idx));
+            for (auto neighbor : neighbors) {
+                if (polymer.getRingInfo()->numAtomRings(neighbor->getIdx()) ==
                     0) {
-                first_custom_bond = bond;
-                break;
+                    attachment_atoms_and_centroids.push_back(
+                        {atom_idx, centroid});
+                    break;
+                }
             }
         }
     }
+    // If no attachment atoms found, nothing to orient
+    if (attachment_atoms_and_centroids.empty()) {
+        return;
+    }
 
-    if (first_custom_bond != nullptr) {
-        auto& conformer = polymer.getConformer();
+    double rotation_angle = 0.0;
+    RDGeom::Point3D rotation_center(0, 0, 0);
 
-        // Get positions of the two atoms in the custom bond
-        auto begin_idx = first_custom_bond->getBeginAtomIdx();
-        auto end_idx = first_custom_bond->getEndAtomIdx();
-        auto begin_pos = conformer.getAtomPos(begin_idx);
-        auto end_pos = conformer.getAtomPos(end_idx);
+    if (attachment_atoms_and_centroids.size() == 1) {
+        // Single attachment point: rotate so it's to the right of its ring
+        // centroid
+        auto& [atom_idx, centroid] = attachment_atoms_and_centroids[0];
+        auto atom_pos = conformer.getAtomPos(atom_idx);
 
-        // Calculate the angle of the bond
-        double dx = end_pos.x - begin_pos.x;
-        double dy = end_pos.y - begin_pos.y;
+        // Calculate angle from centroid to attachment point
+        double dx = atom_pos.x - centroid.x;
+        double dy = atom_pos.y - centroid.y;
         double current_angle = std::atan2(dy, dx);
 
-        // Angle to rotate to make the bond vertical (pointing up)
-        // Vertical up is π/2 (90 degrees)
-        double target_angle = PI / 2.0;
-        double rotation_angle = target_angle - current_angle;
+        // Target angle is 0 (pointing right)
+        rotation_angle = -current_angle;
+        rotation_center = centroid;
 
-        // Center the molecule on the bond midpoint. Rotate all atoms around the
-        // center.
-        RDGeom::Point3D center = (begin_pos + end_pos) * 0.5;
-        for (size_t i = 0; i < conformer.getNumAtoms(); ++i) {
-            auto pos = conformer.getAtomPos(i);
-            // Translate to origin
-            pos -= center;
-            // Rotate
-            double x_new = pos.x * std::cos(rotation_angle) -
-                           pos.y * std::sin(rotation_angle);
-            double y_new = pos.x * std::sin(rotation_angle) +
-                           pos.y * std::cos(rotation_angle);
-            pos.x = x_new;
-            pos.y = y_new;
-            conformer.setAtomPos(i, pos);
-        }
+    } else { // at least two attachment points: orient the first two attachment
+             // points vertically
+        auto& [atom_idx1, centroid1] = attachment_atoms_and_centroids[0];
+        auto& [atom_idx2, centroid2] = attachment_atoms_and_centroids[1];
+        auto atom1_pos = conformer.getAtomPos(atom_idx1);
+        auto atom2_pos = conformer.getAtomPos(atom_idx2);
 
-        // Now check if we need to flip horizontally so rings are to the left.
-        // Coordinates are centered on the midpoint of the bond, so if a random
-        // ring atom has positive x, we flip.
-        auto bond_midpoint = (begin_pos + end_pos) * 0.5;
-        if (polymer.getRingInfo()->numRings() > 0) {
-            auto ring_atoms = polymer.getRingInfo()->atomRings()[0];
-            for (auto ring_atom_idx : ring_atoms) {
-                if (static_cast<unsigned int>(ring_atom_idx) == begin_idx ||
-                    static_cast<unsigned int>(ring_atom_idx) == end_idx) {
-                    continue;
-                }
-                auto ring_atom_pos = conformer.getAtomPos(ring_atom_idx);
-                if (ring_atom_pos.x > EPSILON) {
-                    // flip horizontally
-                    for (size_t i = 0; i < conformer.getNumAtoms(); ++i) {
-                        auto pos = conformer.getAtomPos(i);
-                        pos.x = -pos.x;
-                        conformer.setAtomPos(i, pos);
-                    }
-                }
-                break;
-            }
+        // Calculate angle of line between the two attachment points
+        double current_angle =
+            std::atan2(atom2_pos.y - atom1_pos.y, atom2_pos.x - atom1_pos.x);
+        double target_angle = PI / 2; // vertical
+        rotation_angle = target_angle - current_angle;
+
+        // Center on midpoint of the two attachment atoms
+        rotation_center = (atom1_pos + atom2_pos) * 0.5;
+
+        // If the midpoint of the two centroids would fall to the right, add
+        // 180° to the rotation
+        auto centroids_midpoint = (centroid1 + centroid2) * 0.5;
+        auto rotated_centroid_midpoint =
+            rotate_point(centroids_midpoint, std::sin(rotation_angle),
+                         std::cos(rotation_angle), rotation_center);
+        if (rotated_centroid_midpoint.x > rotation_center.x) {
+            rotation_angle += PI;
         }
     }
+
+    // Rotate the whole ring system using the helper function
+    rotate_conformer(conformer, rotation_angle, rotation_center);
 }
 
 /**
@@ -546,27 +603,20 @@ compute_turn_positions_for_chain(const RDKit::ROMol& polymer)
             auto& bond1 = custom_bonds[idx1];
             auto& bond2 = custom_bonds[idx2];
 
-            // Check if bonds overlap: i1 < i2 < j2 < j1
+            // check if bond2 is  contained within bond1: i1 < i2 < j2 < j1
             if (bond1.monomer_i < bond2.monomer_i &&
                 bond2.monomer_i < bond2.monomer_j &&
                 bond2.monomer_j < bond1.monomer_j) {
 
-                // Bonds overlap - they will connect the same pair of
-                // consecutive rows The turn must be between i2 and j1
+                //  bond2 is completely contained within bond1 - they will
+                //  connect the same pair of consecutive rows The turn must be
+                //  between i2 and j1
                 constraints.push_back({bond2.monomer_i, bond2.monomer_j});
-
-                // Since they connect the same row pair, check ordering
-                // We already know i1 < i2 (from sorting)
-                // We need j1 < j2 (already satisfied by the overlap condition)
-                // This is good - no crossing
             } else {
-                // bond2 is completely contained within bond1: i1 < i2 < j2 < j1
-                // This means they would cross - bond2 would have to go "inside"
-                // bond1
+                // bond regions overlap. This means that the two bonds would
+                // cross, and the layout is not possible
                 return {};
             }
-            // Otherwise bonds don't overlap - they use different turns, no
-            // interaction
         }
     }
 
@@ -698,10 +748,9 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
  * sizes. Each turn position marks the END of a segment. Turn size
  * specifies how many residues are consumed in the turn. For example, [{10, 0},
  * {20, 2}] means:
- *                       - monomers 0-9 in first row (instant turn at 10)
- *                       - monomers 10-19 in second row (turn consumes residues
- * 20-21)
- *                       - monomers 22-end in third row
+ *   - monomers 0-9 in first row (instant turn at 10)
+ *   - monomers 10-19 in second row (turn consumes residues 20-21)
+ *   - monomers 22-end in third row
  */
 static void lay_out_snaking_chain(RDKit::ROMol& polymer,
                                   std::unordered_set<int>& placed_monomers_idcs,
@@ -764,6 +813,21 @@ static void lay_out_snaking_chain(RDKit::ROMol& polymer,
         segment_start = segment_end + turn_size;
     }
 }
+
+// TODO use Kevin's logic from
+// https://github.com/schrodinger/sketcher/pull/233/changes#diff-0c7dcb7c9a99f114e01b6b000ed280af1f5ad48bbd6b0c0b83b2eda515214b55R60-R71
+static bool is_backbone_bond(const RDKit::Bond* bond)
+{
+    if (!bond->hasProp(CUSTOM_BOND)) {
+        // No custom bond property, this is a regular backbone bond
+        return true;
+    }
+
+    std::string custom_bond;
+    bond->getPropIfPresent(CUSTOM_BOND, custom_bond);
+    return (custom_bond == "R2-R1");
+}
+
 /**
  * Helper function to check if a polymer can be considered as a single chain. If
  * there are any rings, they must be closed by non-backbone connections (e.g. a
@@ -777,18 +841,6 @@ static bool is_a_chain(const RDKit::ROMol& polymer)
     // backbone bonds to monomers: exactly two monomers should have only one
     // backbone bond (the two ends), and the rest should have exactly two.
 
-    // TODO use Kevin's logic from
-    // https://github.com/schrodinger/sketcher/pull/233/changes#diff-0c7dcb7c9a99f114e01b6b000ed280af1f5ad48bbd6b0c0b83b2eda515214b55R60-R71
-    auto is_backbone_bond = [](const RDKit::Bond* bond) {
-        if (!bond->hasProp(CUSTOM_BOND)) {
-            // No custom bond property, this is a regular backbone bond
-            return true;
-        }
-
-        std::string custom_bond;
-        bond->getPropIfPresent(CUSTOM_BOND, custom_bond);
-        return (custom_bond == "R2-R1");
-    };
     int end_monomers = 0;
     for (const auto& atom : polymer.atoms()) {
         int num_backbone_bonds = 0;
@@ -864,6 +916,7 @@ static void
 lay_out_cyclic_polymer(RDKit::ROMol& polymer,
                        std::unordered_set<int>& placed_monomers_idcs)
 {
+
     // try first to lay out with a snaking layout
     if (maybe_lay_out_cyclic_polymer_as_snaking_chain(polymer,
                                                       placed_monomers_idcs)) {
@@ -872,7 +925,6 @@ lay_out_cyclic_polymer(RDKit::ROMol& polymer,
     }
     // If the approach above fails, fall back to laying out the rings first
     // and then extending chains from there
-
     generate_coordinates_for_cycles(polymer, placed_monomers_idcs);
 
     for (auto ring_atoms : polymer.getRingInfo()->atomRings()) {
@@ -1253,8 +1305,9 @@ static BOND_IDX_VEC get_bonds_between_polymers(const RDKit::ROMol& from,
     }
     return bonds;
 }
-// Assign unit IDs to rings. takes a map of atom idx to unit ID string to
-// fill it. Each atom in a ring gets the same unit ID.
+// Assign unit IDs to ring systems. Rings that share at least one atom get the
+// same unit ID. This ensures that fused ring systems are treated as a single
+// topological unit.
 static void assign_ring_unit_ids(const RDKit::ROMol& mol,
                                  std::unordered_map<int, std::string>& unit_ids)
 {
@@ -1263,10 +1316,65 @@ static void assign_ring_unit_ids(const RDKit::ROMol& mol,
         RDKit::MolOps::findSSSR(mol, /*res=*/nullptr, include_dative_bonds);
     }
 
+    // Assign each ring its own unique ID
+    // Each ring initially gets an ID based on its first atom index
     for (auto cycle : mol.getRingInfo()->atomRings()) {
         std::string ring_id = "ring_" + std::to_string(cycle[0]);
         for (auto atom_idx : cycle) {
             unit_ids[atom_idx] = ring_id;
+        }
+    }
+
+    // Step 2: Iteratively merge rings that share atoms
+    // We need to make sure that (if A shares with B and B shares with C, all
+    // three get the same ID)
+    auto rings = mol.getRingInfo()->atomRings();
+    bool changed = true;
+
+    while (changed) {
+        changed = false;
+
+        // Check each pair of rings
+        for (size_t i = 0; i < rings.size(); ++i) {
+            for (size_t j = i + 1; j < rings.size(); ++j) {
+                // Get current IDs for these rings (check the first atom of
+                // each)
+                std::string id_i = unit_ids[rings[i][0]];
+                std::string id_j = unit_ids[rings[j][0]];
+
+                // Skip if already merged
+                if (id_i == id_j) {
+                    continue;
+                }
+
+                // Check if rings share any atoms
+                bool share_atom = false;
+                for (auto atom_i : rings[i]) {
+                    for (auto atom_j : rings[j]) {
+                        if (atom_i == atom_j) {
+                            share_atom = true;
+                            break;
+                        }
+                    }
+                    if (share_atom)
+                        break;
+                }
+
+                if (share_atom) {
+                    // Merge: pick lexicographically smaller ID as canonical
+                    // This ensures a stable, deterministic choice
+                    std::string canonical = std::min(id_i, id_j);
+                    std::string to_replace = std::max(id_i, id_j);
+
+                    // Copy canonical tag to all atoms with to_replace tag
+                    for (auto& [atom_idx, ring_id] : unit_ids) {
+                        if (ring_id == to_replace) {
+                            ring_id = canonical;
+                            changed = true;
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1921,10 +2029,17 @@ static bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
 {
     const auto& conformer = monomer_mol.getConformer();
     for (auto bond : monomer_mol.bonds()) {
+        float flexibility = 1.0;
+        // non-backbone bonds can be more flexible so we allow them to stretch
+        // more without flagging a failure
+        if (!is_backbone_bond(bond)) {
+            flexibility = NON_BACKBONE_BOND_FLEXIBILITY;
+        }
         auto begin_pos = conformer.getAtomPos(bond->getBeginAtomIdx());
         auto end_pos = conformer.getAtomPos(bond->getEndAtomIdx());
         auto bond_length = (end_pos - begin_pos).length();
-        if (bond_length > MAX_BOND_STRETCH * MONOMER_BOND_LENGTH) {
+        if (bond_length >
+            MAX_BOND_STRETCH * MONOMER_BOND_LENGTH * flexibility) {
             return false;
         }
     }
@@ -1999,23 +2114,6 @@ inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
         MONOMER_ITEM_SIZE, size);
 
     return size;
-}
-
-/**
- * Compute the centroid of a set of atom indices in a molecule.
- */
-RDGeom::Point3D compute_centroid(const RDKit::ROMol& mol,
-                                 const std::vector<int>& atom_indices)
-{
-    if (atom_indices.empty()) {
-        return RDGeom::Point3D(0, 0, 0);
-    }
-    const auto& conformer = mol.getConformer();
-    std::vector<RDGeom::Point3D> positions(atom_indices.size());
-    std::transform(atom_indices.begin(), atom_indices.end(), positions.begin(),
-                   [&conformer](int idx) { return conformer.getAtomPos(idx); });
-
-    return compute_centroid(positions);
 }
 
 struct RingResizeInfo {
