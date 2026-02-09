@@ -63,7 +63,7 @@ SKETCHER_API bool contains_two_monomer_linkages(const RDKit::Bond* bond);
  * and an RNA monomer will be categorized as a PEPTIDE connector.
  *
  * @param bond the bond representing a monomer connector
- * @param secondary_connection whether to categorize the primary or secondary
+ * @param is_secondary_connection whether to categorize the primary or secondary
  * connection of this bond. This is only relevant for bonds that
  * contains_two_monomer_linkages() returns true.
  */
@@ -74,8 +74,8 @@ get_connector_type(const RDKit::Bond* bond, const bool is_secondary_connection);
  * Determine whether diamond arrowheads should be drawn at the start and end of
  * the given connector.
  * @param bond the bond representing a monomer connector
- * @param secondary_connection whether we are drawing the primary or secondary
- * connection of this bond. This is only relevant for bonds where
+ * @param is_secondary_connection whether we are drawing the primary or
+ * secondary connection of this bond. This is only relevant for bonds where
  * contains_two_monomer_linkages() returns true.
  * @return A pair of
  *   - should an arrowhead be drawn at the start of the bond

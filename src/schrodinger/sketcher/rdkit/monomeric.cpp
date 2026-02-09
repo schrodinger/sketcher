@@ -250,8 +250,6 @@ get_attachment_point_for_atom(std::string linkage, bool is_begin_atom)
  * @overload Return the number of the attachment point for the bond on the
  * specified monomer. Note that if the bond specifies two linkages, this
  * overload will only return the attachment point of the primary linkage.
- * @return the attachment point number, or -1 if the attachment point is not
- * properly specified
  */
 static std::pair<int, std::string>
 get_attachment_point_for_atom(const RDKit::Atom* monomer,
