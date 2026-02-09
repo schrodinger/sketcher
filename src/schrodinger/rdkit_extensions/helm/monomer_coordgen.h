@@ -51,12 +51,6 @@ has_no_bond_crossings(const RDKit::ROMol& monomer_mol);
 bool RDKIT_EXTENSIONS_API has_no_clashes(const RDKit::ROMol& monomer_mol);
 
 /**
- * Check whether the coordinates of the given monomer mol are valid
- * (no clashes, no bond crossings, no stretched bonds)
- */
-bool RDKIT_EXTENSIONS_API coordinates_are_valid(RDKit::ROMol& monomer_mol);
-
-/**
  * Check whether two line segments defined by points p1, p2 and q1, q2
  * intersect
  */
@@ -83,12 +77,6 @@ bool RDKIT_EXTENSIONS_API bonds_are_too_close(const RDGeom::Point3D& begin1_pos,
                                               const RDGeom::Point3D& end1_pos,
                                               const RDGeom::Point3D& begin2_pos,
                                               const RDGeom::Point3D& end2_pos);
-
-/**
- * @return true if the coordinates of the given monomer mol are valid, i.e. have
- * no clashes, no bond crossings, and no stretched bonds. Otherwise false.
- */
-bool coordinates_are_valid(RDKit::ROMol& monomer_mol);
 
 /* Compute the distance between two line segments defined by points p1, p2 and
  * q1, q2 */
