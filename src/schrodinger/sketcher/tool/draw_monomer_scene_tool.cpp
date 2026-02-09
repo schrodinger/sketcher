@@ -127,12 +127,10 @@ QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
 void DrawMonomerSceneTool::labelAttachmentPointsOnMonomer(
     const RDKit::Atom* const monomer)
 {
-    auto ap_names_and_atoms =
-        get_bound_attachment_point_names_and_atoms(monomer);
-    for (auto& [ap_name, bound_monomer, is_secondary_connection] :
-         ap_names_and_atoms) {
-        labelBoundAttachmentPoint(monomer, bound_monomer,
-                                  is_secondary_connection, ap_name);
+    auto [bound_aps, unbound_aps] = get_attachment_points_for_monomer(monomer);
+    for (auto& cur_ap : bound_aps) {
+        labelBoundAttachmentPoint(monomer, cur_ap.bound_monomer,
+                                  cur_ap.is_secondary_connection, cur_ap.name);
     }
     // TODO: add connector nubs for available attachment points
 }
@@ -142,9 +140,9 @@ void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
 {
     auto begin_monomer = connector->getBeginAtom();
     auto end_monomer = connector->getEndAtom();
-    auto begin_ap_name = get_attachment_point_name_for_atom(
+    auto begin_ap_name = get_attachment_point_name_for_connection(
         begin_monomer, connector, is_secondary_connection);
-    auto end_ap_name = get_attachment_point_name_for_atom(
+    auto end_ap_name = get_attachment_point_name_for_connection(
         end_monomer, connector, is_secondary_connection);
     // TODO: for nucleic acid base pairs, only have a single "pair" label since
     //       the bond is typically too short to fit two separate labels

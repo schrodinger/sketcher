@@ -8,7 +8,6 @@
 
 #include "schrodinger/sketcher/definitions.h"
 
-class QColor;
 class QGraphicsItem;
 class QPointF;
 
@@ -35,6 +34,34 @@ enum class ConnectorType {
     NA_BACKBONE,
     NA_BACKBONE_TO_BASE
 };
+
+enum class Direction { N, S, E, W, NW, NE, SW, SE };
+
+struct BoundAttachmentPoint {
+    std::string name;
+    int num;
+    const RDKit::Atom* bound_monomer;
+    bool is_secondary_connection;
+    Direction direction;
+
+    bool operator==(const BoundAttachmentPoint&) const = default;
+};
+
+struct UnboundAttachmentPoint {
+    std::string name;
+    int num;
+    Direction direction;
+
+    bool operator==(const UnboundAttachmentPoint&) const = default;
+};
+
+/**
+ * For both BoundAttachmentPoints and UnboundAttachmentPoints, num will be
+ * ATTACHMENT_POINT_WITH_CUSTOM_NAME if the attachment uses a name that doesn't
+ * follow the standard R# pattern (e.g. the "pair" attachment point on nucleic
+ * acid bases).
+ */
+const int ATTACHMENT_POINT_WITH_CUSTOM_NAME = -1;
 
 /**
  * Determine what type of monomer the given atom represents.
@@ -105,19 +132,24 @@ SKETCHER_API qreal get_monomer_arrowhead_offset(
     const QGraphicsItem& monomer_item, const QPointF& bound_coords);
 
 /**
- * @return a list of {attachment point name, bound atom, is this the secondary
- * connection of the RDKit::Bond} for all bound attachment points of the given
- * monomer using "pretty" names (e.g. "N" instead of "R1" for amino acids)
- */
-SKETCHER_API std::vector<std::tuple<std::string, const RDKit::Atom*, bool>>
-get_bound_attachment_point_names_and_atoms(const RDKit::Atom* monomer);
-
-/**
  * @return a list of all unbound attachment points names for the given monomer
  * using "pretty" names (e.g. "N" instead of "R1" for amino acids)
  */
-SKETCHER_API std::vector<std::string>
-get_available_attachment_point_names(const RDKit::Atom* monomer);
+
+/**
+ * Determine all bound and unbound monomeric attachment points for the given
+ * monomer
+ * @return A pair of
+ *   - A list of all bound attachment points containing "pretty" names (e.g. "N"
+ *     instead of "R1" for amino acids). The direction represents the direction
+ *     that the bond is drawn in.
+ *   - A list of all unbound attachment points containing "pretty" names (e.g.
+ *     "N" instead of "R1" for amino acids). The direction represents the
+ *     direction that the attachment point indicator should be drawn.
+ */
+SKETCHER_API std::pair<std::vector<BoundAttachmentPoint>,
+                       std::vector<UnboundAttachmentPoint>>
+get_attachment_points_for_monomer(const RDKit::Atom* monomer);
 
 /**
  * Return the attachment point name for the specified monomeric connection
@@ -129,9 +161,9 @@ get_available_attachment_point_names(const RDKit::Atom* monomer);
  * amino acids)
  */
 SKETCHER_API std::string
-get_attachment_point_name_for_atom(const RDKit::Atom* monomer,
-                                   const RDKit::Bond* connector,
-                                   const bool is_secondary_connection);
+get_attachment_point_name_for_connection(const RDKit::Atom* monomer,
+                                         const RDKit::Bond* connector,
+                                         const bool is_secondary_connection);
 
 } // namespace sketcher
 } // namespace schrodinger
