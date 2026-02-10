@@ -222,8 +222,14 @@ QColor get_color_for_monomer(
     }
 
     // Check Monomer DB for natural analog
-    auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
-    auto natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
+    std::optional<std::string> natural_analog = std::nullopt;
+    try {
+        auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
+        natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
+    } catch (const std::logic_error&) {
+        // Monomer DB isn't yet accessible on WASM builds, so just use tha
+        // default color for non-natural monomers
+    }
 
     // If a valid natural analog exists, try to get its color
     if (natural_analog.has_value() && *natural_analog != res_name) {
