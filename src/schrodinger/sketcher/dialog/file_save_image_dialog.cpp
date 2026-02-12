@@ -27,8 +27,13 @@ FileSaveImagePopup::FileSaveImagePopup(QWidget* parent, SketcherModel* model) :
             &FileSaveImagePopup::renderOptionsChanged);
     connect(m_ui->height_sb, &QSpinBox::valueChanged, this,
             &FileSaveImagePopup::renderOptionsChanged);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(m_ui->transparent_cb, &QCheckBox::checkStateChanged, this,
+            &FileSaveImagePopup::renderOptionsChanged);
+#else
     connect(m_ui->transparent_cb, &QCheckBox::stateChanged, this,
             &FileSaveImagePopup::renderOptionsChanged);
+#endif
     connect(model, &SketcherModel::backgroundColorChanged, this,
             [this](const QColor& color) {
                 m_background_color = color;

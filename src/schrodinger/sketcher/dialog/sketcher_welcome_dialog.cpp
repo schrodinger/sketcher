@@ -15,8 +15,13 @@ SketcherWelcomeDialog::SketcherWelcomeDialog(QWidget* parent) :
 
     connect(m_ui->ok_btn, &QPushButton::clicked, this,
             &SketcherWelcomeDialog::accept);
+#if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
+    connect(m_ui->do_not_show_cb, &QCheckBox::checkStateChanged, this,
+            &SketcherWelcomeDialog::doNotShowCheckboxStateChanged);
+#else
     connect(m_ui->do_not_show_cb, &QCheckBox::stateChanged, this,
             &SketcherWelcomeDialog::doNotShowCheckboxStateChanged);
+#endif
 }
 
 SketcherWelcomeDialog::~SketcherWelcomeDialog() = default;
