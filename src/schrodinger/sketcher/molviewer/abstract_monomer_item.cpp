@@ -59,22 +59,6 @@ QString elide_text(const std::string& text)
     }
 }
 
-std::string get_monomer_res_name(const RDKit::Atom* const monomer)
-{
-    bool is_smiles = false;
-    monomer->getPropIfPresent(SMILES_MONOMER, is_smiles);
-    if (is_smiles) {
-        return SMILES_PLACEHOLDER_TEXT;
-    }
-    const auto* monomer_info = monomer->getMonomerInfo();
-    const auto* res_info =
-        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info);
-    if (res_info == nullptr) {
-        return monomer_info->getName();
-    }
-    return res_info->getResidueName();
-}
-
 bool is_standard_nucleotide(const std::string& res_name)
 {
     return NUCLEIC_ACID_COLOR_BY_RES_NAME.contains(res_name);

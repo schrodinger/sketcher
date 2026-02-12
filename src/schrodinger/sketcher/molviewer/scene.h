@@ -189,6 +189,11 @@ class SKETCHER_API Scene : public QGraphicsScene
 
     void onBackgroundColorChanged();
 
+    /**
+     * @return the graphics item currently representing the specified atom
+     */
+    const QGraphicsItem* getGraphicsItemForAtom(const RDKit::Atom* atom) const;
+
   signals:
     /**
      * Request that the widget import the given text in the given format
