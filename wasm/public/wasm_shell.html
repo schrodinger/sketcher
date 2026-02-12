@@ -106,7 +106,7 @@
         try {
           const sketcherInstance = await qtLoad({
             qt: {
-              entryFunction: createSketcherModule,
+              entryFunction: schrodinger_sketcher_entry,
               containerElements: [container],
 
               onLoaded: () => {
