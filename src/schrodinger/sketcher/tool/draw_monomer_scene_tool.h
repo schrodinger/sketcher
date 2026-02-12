@@ -86,6 +86,19 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
                                    const std::string& label);
 
     /**
+     * Place an attachment point label at the center of the given monomeric
+     * connector.  This is used to label nucleic acid base pairs, as both
+     * attachment points have the same label ("pair") and the bond is typically
+     * too small to fit two labels.
+     */
+    void labelCenterOfConnector(const RDKit::Atom* const begin_monomer,
+                                const RDKit::Atom* const end_monomer,
+                                const QString& label);
+
+    void addAttachmentPointLabel(const QString& label,
+                                 const QRectF& label_rect);
+
+    /**
      * Clear all attachment point labels drawn by this scene tool
      */
     void clearAttachmentPointsLabels();
