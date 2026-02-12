@@ -203,12 +203,14 @@ QSize get_image_size(const RenderOptions& opts, const QRectF& scene_rect)
  */
 void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
 {
-    mol_model.addMol(rdmol);
+    mol_model.addMol(rdmol, "Import molecule", /* reposition_mol = */ true,
+                     /* new_molecule_added = */ true,
+                     /* enforce_size_limit = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
 {
-    mol_model.addReaction(rxn);
+    mol_model.addReaction(rxn, /* enforce_size_limit = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const std::string& text)
