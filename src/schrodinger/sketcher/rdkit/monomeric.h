@@ -37,6 +37,13 @@ enum class ConnectorType {
 
 enum class Direction { N, S, E, W, NW, NE, SW, SE };
 
+/**
+ * Information about an attachment point on a monomer that's bound to another
+ * monomer. The direction member variable represents the direction that the bond
+ * is drawn in. This is normally the direction of bound_monomer, but may be
+ * different if the bond uses an arrowhead (which are typically drawn above or
+ * below the monomer).
+ */
 struct BoundAttachmentPoint {
     std::string name;
     int num;
@@ -47,6 +54,12 @@ struct BoundAttachmentPoint {
     bool operator==(const BoundAttachmentPoint&) const = default;
 };
 
+/**
+ * Information about an attachment point on a monomer that's *not* bound to
+ * another monomer (i.e. available for bonding). The direction member variable
+ * represents the direction we should draw the connection "nubbin" when the user
+ * hovers over the monomer.
+ */
 struct UnboundAttachmentPoint {
     std::string name;
     int num;
