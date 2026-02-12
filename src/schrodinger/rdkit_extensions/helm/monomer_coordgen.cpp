@@ -1318,8 +1318,8 @@ static void assign_ring_unit_ids(const RDKit::ROMol& mol,
     }
 
     // Step 2: Iteratively merge rings that share atoms
-    // We need to make sure that (if A shares with B and B shares with C, all
-    // three get the same ID)
+    // We need to make sure that if A shares with B and B shares with C, all
+    // three get the same ID
     auto rings = mol.getRingInfo()->atomRings();
     bool changed = true;
 
