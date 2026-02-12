@@ -1,13 +1,21 @@
 import { expect, test } from '@playwright/test';
 
-test.describe('WASM Sketcher API', () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to the page that loads the WASM module and
-    // wait for the WASM module to be fully loaded and available
-    await page.goto('/wasm_shell.html');
-    await page.waitForFunction(() => typeof window.Module !== 'undefined');
+test.beforeEach(async ({ page }) => {
+  // Navigate to the page that loads the WASM module and
+  // wait for the WASM module to be fully loaded and available
+  await page.goto('/wasm_shell.html');
+  await page.waitForFunction(() => typeof window.Module !== 'undefined', {
+    timeout: 20000,
   });
+});
 
+test.describe('WASM Sketcher UI', () => {
+  test('sketcher UI loads correctly', async ({ page }) => {
+    expect(await page.screenshot()).toMatchSnapshot('sketcher-load.png');
+  });
+});
+
+test.describe('WASM Sketcher API', () => {
   // Test import and export for all formats
   const FORMATS = [
     { format: 'AUTO_DETECT', skip: [true, "Doesn't make sense to test here"] },
