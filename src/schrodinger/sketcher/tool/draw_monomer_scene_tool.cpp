@@ -330,10 +330,10 @@ void DrawMonomerSceneTool::labelCenterOfConnector(
         m_fonts.m_monomeric_attachment_point_label_fm.boundingRect(label);
     QPointF label_pos = perpendicular.p2();
     label_rect.moveCenter(label_pos);
-    
+
     // a connector within HORIZONTAL_THRESHOLD degrees of the X axis will be
     // treated as horizontal
-    const int HORIZONTAL_THRESHOLD  = 25;
+    const int HORIZONTAL_THRESHOLD = 25;
     bool is_horizontal = connector_angle <= HORIZONTAL_THRESHOLD ||
                          connector_angle >= (180 - HORIZONTAL_THRESHOLD);
     if (is_horizontal) {
