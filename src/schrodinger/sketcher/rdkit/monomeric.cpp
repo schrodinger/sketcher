@@ -1,6 +1,9 @@
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
 #include <functional>
+#include <optional>
+
+#include <boost/range/join.hpp>
 
 #include <QGraphicsItem>
 #include <QPointF>
@@ -14,6 +17,7 @@
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 
 namespace schrodinger
 {
@@ -40,8 +44,28 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
 const std::unordered_map<MonomerType, std::vector<std::string>>
     EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {"pair"}}};
 
-const int INVALID_ATTACHMENT_POINT_SPEC = -1;
-const int ATTACHMENT_POINT_WITH_CUSTOM_NAME = -2;
+const int INVALID_ATTACHMENT_POINT_SPEC = -2;
+
+const std::unordered_map<Direction, Direction> OPPOSITE_CARDINAL_DIRECTION = {
+    {Direction::N, Direction::S},
+    {Direction::S, Direction::N},
+    {Direction::E, Direction::W},
+    {Direction::W, Direction::E}};
+const std::unordered_map<Direction, Direction> CLOCKWISE_CARDINAL_DIRECTION = {
+    {Direction::N, Direction::E},
+    {Direction::S, Direction::W},
+    {Direction::E, Direction::S},
+    {Direction::W, Direction::N}};
+const std::unordered_map<Direction, std::vector<Direction>>
+    PERPENDICULAR_CARDINAL_DIRECTIONS = {
+        {Direction::N, {Direction::W, Direction::E}},
+        {Direction::S, {Direction::W, Direction::E}},
+        {Direction::E, {Direction::N, Direction::S}},
+        {Direction::W, {Direction::N, Direction::S}}};
+
+class NoAvailableDirectionsException : public std::exception
+{
+};
 
 } // namespace
 
@@ -263,28 +287,53 @@ get_attachment_point_for_atom(const RDKit::Atom* monomer,
     return {INVALID_ATTACHMENT_POINT_SPEC, ""};
 }
 
+static Direction cardinal_direction_for_point(const RDGeom::Point3D& point)
+{
+    if (std::fabs(point.x) >= std::fabs(point.y)) {
+        return point.x > 0 ? Direction::E : Direction::W;
+    } else {
+        return point.y > 0 ? Direction::N : Direction::S;
+    }
+}
+
+static Direction get_bound_attachment_point_cardinal_direction(
+    const RDKit::Atom* const monomer, const RDKit::Atom* const bound_monomer,
+    const bool is_secondary_connection)
+{
+    auto& mol = monomer->getOwningMol();
+    auto& conf = mol.getConformer();
+    auto monomer_coords = conf.getAtomPos(monomer->getIdx());
+    auto bound_monomer_coords = conf.getAtomPos(bound_monomer->getIdx());
+
+    auto* bond =
+        mol.getBondBetweenAtoms(monomer->getIdx(), bound_monomer->getIdx());
+    auto [is_arrowhead_at_bond_beginning, is_arrowhead_at_bond_end] =
+        does_connector_have_arrowheads(bond, is_secondary_connection);
+    bool is_start_atom = bond->getBeginAtom() == monomer;
+    bool is_arrowhead = is_start_atom ? is_arrowhead_at_bond_beginning
+                                      : is_arrowhead_at_bond_end;
+    if (is_arrowhead) {
+        bool is_above = is_coord_above_the_other(
+            to_scene_xy(monomer_coords), to_scene_xy(bound_monomer_coords));
+        return is_above ? Direction::S : Direction::N;
+    } else {
+        auto relative_pos = bound_monomer_coords - monomer_coords;
+        return cardinal_direction_for_point(relative_pos);
+    }
+}
+
 /**
  * @return a list of information about all bound attachment points of the
- * specified monomer. The following information is given for each attachment
- * points:
- *   - The number of the attachment point, e.g., 1 for "R1". Will be
- *     ATTACHMENT_POINT_WITH_CUSTOM_NAME if the attachment point uses a custom
- *     name (e.g. "pair")
- *   - The name of the attachment point, e.g. "R1"
- *   - The other monomer involved in the connection
- *   - Whether this attachment point is involved in the secondary connection of
- *     the bond. Secondary connections occur when a single RDKit::Bond
- *     represents multiple connections, e.g. two neighboring cysteines that are
- *     disulfide bonded to each other.
+ * specified monomer. Note that directions will be determined using cardinal
+ * directions only, not diagonals.
  */
-static std::vector<std::tuple<int, std::string, const RDKit::Atom*, bool>>
+static std::vector<BoundAttachmentPoint>
 get_bound_attachment_points(const RDKit::Atom* monomer)
 {
     const auto& mol = monomer->getOwningMol();
     std::unordered_set<int> bound_ap_nums;
     std::unordered_set<std::string> bound_ap_custom_names;
-    std::vector<std::tuple<int, std::string, const RDKit::Atom*, bool>>
-        bound_aps;
+    std::vector<BoundAttachmentPoint> bound_aps;
 
     auto record_linkage = [&bound_aps, &bound_ap_nums, &bound_ap_custom_names,
                            monomer](const RDKit::Bond* bond,
@@ -292,18 +341,22 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
                                     const std::string& prop_name) {
         std::string linkage;
         if (bond->getPropIfPresent(prop_name, linkage)) {
-            const auto& [ap_value, ap_name] =
+            const auto& [ap_num, ap_name] =
                 get_attachment_point_for_atom(linkage, is_start_atom);
-            if (ap_value > 0 && !bound_ap_nums.contains(ap_value)) {
-                bound_ap_nums.insert(ap_value);
-            } else if (ap_value == ATTACHMENT_POINT_WITH_CUSTOM_NAME &&
+            if (ap_num > 0 && !bound_ap_nums.contains(ap_num)) {
+                bound_ap_nums.insert(ap_num);
+            } else if (ap_num == ATTACHMENT_POINT_WITH_CUSTOM_NAME &&
                        !bound_ap_custom_names.contains(ap_name)) {
                 bound_ap_custom_names.insert(ap_name);
             } else {
                 return;
             }
-            bound_aps.push_back({ap_value, ap_name, bond->getOtherAtom(monomer),
-                                 prop_name == CUSTOM_BOND});
+            auto bound_monomer = bond->getOtherAtom(monomer);
+            bool is_secondary_connection = prop_name == CUSTOM_BOND;
+            auto dir = get_bound_attachment_point_cardinal_direction(
+                monomer, bound_monomer, is_secondary_connection);
+            bound_aps.push_back(BoundAttachmentPoint(
+                ap_name, ap_num, bound_monomer, is_secondary_connection, dir));
         }
     };
 
@@ -316,31 +369,164 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
 }
 
 /**
- * @return Sets of all attachment points on the specified monomer that are
- * currently unbound. Two sets are returned:
- *   - Numbered attachment points. Attachment points are specified using
- *     integers, e.g. 1 for "R1".
- *   - Attachment points with custom names (e.g. "pair")
- *
- * Note that we don't have a good way to determine how many attachment points a
- * CHEM monomer should have, so we assume that it has one additional attachment
- * point beyond the highest numbered bound attachment point.
+ * @return the direction associated with the specified numbered attachment point
  */
-static std::pair<std::vector<int>, std::vector<std::string>>
-get_available_attachment_points(const RDKit::Atom* monomer)
+static std::optional<Direction> fetch_assigned_direction_for_attachment_point(
+    const int ap_num, const std::vector<BoundAttachmentPoint>& bound_aps,
+    const std::vector<UnboundAttachmentPoint>& unbound_aps)
 {
-    auto bound_aps = get_bound_attachment_points(monomer);
-    auto monomer_type = get_monomer_type(monomer);
-    std::unordered_set<int> bound_ap_nums;
-    std::unordered_set<std::string> bound_aps_with_custom_names;
-    for (const auto& [ap_num, orig_ap_name, atom, is_secondary_connection] :
-         bound_aps) {
-        if (ap_num > 0) {
-            bound_ap_nums.insert(ap_num);
-        } else if (ap_num == ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
-            bound_aps_with_custom_names.insert(orig_ap_name);
+    for (auto cur_ap : bound_aps) {
+        if (cur_ap.num == ap_num) {
+            return cur_ap.direction;
         }
     }
+    for (auto cur_ap : unbound_aps) {
+        if (cur_ap.num == ap_num) {
+            return cur_ap.direction;
+        }
+    }
+    return std::nullopt;
+}
+
+/**
+ * Determine which direction the specified unbound attachment point should be
+ * drawn in
+ * @param ap_num The attachment point number of the attachment point to
+ * determine the direction of, e.g. 3 for "R3".  Should be
+ * ATTACHMENT_POINT_WITH_CUSTOM_NAME if the attachment point doesn't follow the
+ * "R#" naming scheme, such as the "pair" attachment point of nucleic acid
+ * bases.
+ * @param ap_name The name of the attachment point to determine the direction
+ * of, e.g. "R3" or "pair"
+ * @param monomer_type The type of monomer that this attachment point is on
+ * @param bound_aps A list of all bound attachment point for this monomer with
+ * their assigned directions
+ * @param unbound_aps A list of all unbound attachment points for this monomer
+ * that have already had their direction assigned. For a numbered attachment
+ * point, this function assumes this list includes all attachment points with
+ * lower numbers (i.e. directions should be assigned in numerical order). For an
+ * attachment point with a custom name (e.g. "pair"), this function assumes that
+ * this list includes all numbered attachment points.
+ * @param occupied_directions A set of all assigned directions found in
+ * bound_aps and unbound_aps.
+ * @return the direction to assign to the attachment point. The calling scope is
+ * responsible for adding this direction to occupied_directions.
+ * @throw NoAvailableDirectionsException if we run out of available directions.
+ * This is guaranteed to not occur for at least the first eight attachment
+ * points.
+ */
+static Direction calculate_direction_for_unbound_attachment_point(
+    const int ap_num, const std::string& ap_name,
+    const MonomerType monomer_type,
+    const std::vector<BoundAttachmentPoint>& bound_aps,
+    const std::vector<UnboundAttachmentPoint>& unbound_aps,
+    const std::unordered_set<Direction>& occupied_directions)
+{
+    static const std::vector<Direction> DIAGONALS = {
+        Direction::NW, Direction::NE, Direction::SE, Direction::SW};
+    /**
+     * @return the first available direction from the given list of cardinal
+     * directions. If none of those directions are available, try the diagonals
+     *
+     * @throw NoAvailableDirectionsException if all of the given directions and
+     * all of the diagonals are occupied
+     */
+    auto first_available = [&occupied_directions](
+                               const std::vector<Direction>& dirs_to_try) {
+        for (const auto cur_dir : boost::range::join(dirs_to_try, DIAGONALS)) {
+            if (!occupied_directions.contains(cur_dir)) {
+                return cur_dir;
+            }
+        }
+        throw NoAvailableDirectionsException();
+    };
+
+    std::vector<Direction> dirs_to_try;
+    if (ap_num <= 2 || ap_name == "pair") {
+        // the first two attachment points should be across from each other (and
+        // "pair" is the second attachment point for nucleic acid base monomers)
+        int opposite_ap_num = ap_num == 2 || ap_name == "pair" ? 1 : 2;
+        auto opposite_dir = fetch_assigned_direction_for_attachment_point(
+            opposite_ap_num, bound_aps, unbound_aps);
+        if (opposite_dir.has_value()) {
+            // the other attachment point has a direction, so try to place this
+            // attachment point on the opposite side
+            auto preferred_dir = OPPOSITE_CARDINAL_DIRECTION.at(*opposite_dir);
+            dirs_to_try.push_back(preferred_dir);
+            // if there's already something on the opposite side, then we'll
+            // have to put this somewhere else
+            auto perpendiculars =
+                PERPENDICULAR_CARDINAL_DIRECTIONS.at(*opposite_dir);
+            std::copy(perpendiculars.begin(), perpendiculars.end(),
+                      std::back_inserter(dirs_to_try));
+            return first_available(dirs_to_try);
+        } else if (monomer_type == MonomerType::NA_BASE) {
+            // the other attachment point hasn't been laid out yet, which means
+            // we must be laying out R1 in these next two conditions
+
+            // prefer vertical for bases
+            return first_available(
+                {Direction::S, Direction::E, Direction::W, Direction::N});
+        } else {
+            // prefer horizontal for everything else
+            return first_available(
+                {Direction::W, Direction::N, Direction::S, Direction::E});
+        }
+    } else if (ap_num == 3) {
+        // R3 (protein side chain interactions or the nucleic acid sugar to base
+        // bond) should be perpendicular to R1 and R2
+        auto r1_dir = fetch_assigned_direction_for_attachment_point(
+            1, bound_aps, unbound_aps);
+        if (!r1_dir.has_value()) {
+            throw std::runtime_error("Directions for unbound attachment points "
+                                     "must be calculated in order");
+        }
+        auto cw_dir = CLOCKWISE_CARDINAL_DIRECTION.at(*r1_dir);
+        return first_available({cw_dir, OPPOSITE_CARDINAL_DIRECTION.at(cw_dir),
+                                OPPOSITE_CARDINAL_DIRECTION.at(*r1_dir)});
+
+    } else {
+        // we should only get here with a CHEM monomer or a non-standard
+        // attachment point (e.g. an R4 attachment point on an amino acid, which
+        // normally only has three attachment points). Since we don't know what
+        // this attachment point is supposed to represent, just find any
+        // available direction.
+        return first_available(
+            {Direction::W, Direction::E, Direction::N, Direction::S});
+    }
+}
+
+/**
+ * @return A list of all attachment points on the specified monomer that are
+ * currently unbound, with assigned directions for drawing the attachment point
+ * "nubbin."
+ *
+ * Note that, if there are more attachment points than available directions, the
+ * returned list will omit some attachment points if no available direction can
+ * be assigned to them. This is guaranteed to only happen when there are more
+ * than 8 attachment points for the monomer.
+ *
+ * Also note that we don't have a good way to determine how many attachment
+ * points a CHEM monomer should have, so we assume that it has one additional
+ * attachment point beyond the highest numbered bound attachment point.
+ */
+static std::vector<UnboundAttachmentPoint>
+get_unbound_attachment_points(const RDKit::Atom* monomer,
+                              std::vector<BoundAttachmentPoint> bound_aps)
+{
+    // build sets of bound attachment point numbers and custom names
+    std::unordered_set<int> bound_ap_nums;
+    std::unordered_set<std::string> bound_aps_with_custom_names;
+    for (auto cur_ap : bound_aps) {
+        if (cur_ap.num > 0) {
+            bound_ap_nums.insert(cur_ap.num);
+        } else if (cur_ap.num == ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
+            bound_aps_with_custom_names.insert(cur_ap.name);
+        }
+    }
+
+    // figure out how many numbered attachment points we expect
+    auto monomer_type = get_monomer_type(monomer);
     int num_numbered_aps = -1;
     if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
         num_numbered_aps =
@@ -353,21 +539,46 @@ get_available_attachment_points(const RDKit::Atom* monomer)
             *std::max_element(bound_ap_nums.begin(), bound_ap_nums.end());
         num_numbered_aps += 1;
     }
-    std::vector<int> available_numbered_aps;
-    for (int ap = 1; ap <= num_numbered_aps; ++ap) {
-        if (!bound_ap_nums.contains(ap)) {
-            available_numbered_aps.push_back(ap);
-        }
+
+    std::unordered_set<Direction> occupied_directions;
+    for (auto ap : bound_aps) {
+        occupied_directions.insert(ap.direction);
     }
-    std::vector<std::string> available_aps_with_custom_names;
-    if (EXPECTED_AP_CUSTOM_NAMES.contains(monomer_type)) {
-        for (const auto& ap_name : EXPECTED_AP_CUSTOM_NAMES.at(monomer_type)) {
-            if (!bound_aps_with_custom_names.contains(ap_name)) {
-                available_aps_with_custom_names.push_back(ap_name);
+
+    std::vector<UnboundAttachmentPoint> available_aps;
+    try {
+        // figure out which numbered attachment points are unbound
+        for (int ap_num = 1; ap_num <= num_numbered_aps; ++ap_num) {
+            if (!bound_ap_nums.contains(ap_num)) {
+                auto dir = calculate_direction_for_unbound_attachment_point(
+                    ap_num, "", monomer_type, bound_aps, available_aps,
+                    occupied_directions);
+                occupied_directions.insert(dir);
+                available_aps.push_back(
+                    UnboundAttachmentPoint("", ap_num, dir));
             }
         }
+
+        // figure out which attachment points with custom names are unbound
+        if (EXPECTED_AP_CUSTOM_NAMES.contains(monomer_type)) {
+            for (const auto& ap_name :
+                 EXPECTED_AP_CUSTOM_NAMES.at(monomer_type)) {
+                if (!bound_aps_with_custom_names.contains(ap_name)) {
+                    auto dir = calculate_direction_for_unbound_attachment_point(
+                        ATTACHMENT_POINT_WITH_CUSTOM_NAME, ap_name,
+                        monomer_type, bound_aps, available_aps,
+                        occupied_directions);
+                    occupied_directions.insert(dir);
+                    available_aps.push_back(UnboundAttachmentPoint(
+                        ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir));
+                }
+            }
+        }
+    } catch (const NoAvailableDirectionsException&) {
+        // there are so many attachment points that we can't generate directions
+        // for all of them, so leave them out of the returned list
     }
-    return {available_numbered_aps, available_aps_with_custom_names};
+    return available_aps;
 }
 
 /**
@@ -479,47 +690,32 @@ get_all_numbered_attachment_point_names(const RDKit::Atom* monomer)
     }
 }
 
-std::vector<std::tuple<std::string, const RDKit::Atom*, bool>>
-get_bound_attachment_point_names_and_atoms(const RDKit::Atom* monomer)
+std::pair<std::vector<BoundAttachmentPoint>,
+          std::vector<UnboundAttachmentPoint>>
+get_attachment_points_for_monomer(const RDKit::Atom* monomer)
 {
     auto bound_aps = get_bound_attachment_points(monomer);
-    auto all_names = get_all_numbered_attachment_point_names(monomer);
-    std::vector<std::tuple<std::string, const RDKit::Atom*, bool>>
-        bound_ap_info;
-    std::transform(
-        bound_aps.begin(), bound_aps.end(), std::back_inserter(bound_ap_info),
-        [&all_names](auto ap_info) {
-            const auto& [ap_num, orig_ap_name, atom, is_secondary_connection] =
-                ap_info;
-            auto pretty_ap_name = ap_num == ATTACHMENT_POINT_WITH_CUSTOM_NAME
-                                      ? orig_ap_name
-                                      : ap_num_to_name(ap_num, all_names);
-            return std::make_tuple(pretty_ap_name, atom,
-                                   is_secondary_connection);
-        });
-    return bound_ap_info;
-}
+    auto unbound_aps = get_unbound_attachment_points(monomer, bound_aps);
 
-std::vector<std::string>
-get_available_attachment_point_names(const RDKit::Atom* monomer)
-{
-    auto [available_numbered_aps, available_custom_named_aps] =
-        get_available_attachment_points(monomer);
+    // add pretty names to all numbered attachment points
     auto all_names = get_all_numbered_attachment_point_names(monomer);
-    std::vector<std::string> available_names;
-    std::transform(available_numbered_aps.begin(), available_numbered_aps.end(),
-                   std::back_inserter(available_names),
-                   std::bind(ap_num_to_name, std::placeholders::_1, all_names));
-    std::copy(available_custom_named_aps.begin(),
-              available_custom_named_aps.end(),
-              std::back_inserter(available_names));
-    return available_names;
+    auto assign_ap_names = [&all_names](auto&& aps) {
+        for (auto& cur_ap : aps) {
+            if (cur_ap.num != ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
+                cur_ap.name = ap_num_to_name(cur_ap.num, all_names);
+            }
+        }
+    };
+    assign_ap_names(bound_aps);
+    assign_ap_names(unbound_aps);
+
+    return std::make_pair(bound_aps, unbound_aps);
 }
 
 std::string
-get_attachment_point_name_for_atom(const RDKit::Atom* monomer,
-                                   const RDKit::Bond* connector,
-                                   const bool is_secondary_connection)
+get_attachment_point_name_for_connection(const RDKit::Atom* monomer,
+                                         const RDKit::Bond* connector,
+                                         const bool is_secondary_connection)
 {
     auto all_names = get_all_numbered_attachment_point_names(monomer);
     std::string prop_name = is_secondary_connection ? CUSTOM_BOND : LINKAGE;

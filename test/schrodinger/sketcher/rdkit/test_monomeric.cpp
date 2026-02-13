@@ -6,7 +6,10 @@
 #include <rdkit/GraphMol/RWMol.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
+
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
 using namespace boost::unit_test;
@@ -50,118 +53,166 @@ BOOST_AUTO_TEST_CASE(test_contains_two_monomer_linkages)
  */
 BOOST_AUTO_TEST_CASE(test_get_attachment_points)
 {
-    std::vector<std::tuple<std::string, const RDKit::Atom*, bool>> exp_bound;
-    std::vector<std::string> exp_available;
+    std::vector<BoundAttachmentPoint> bound_aps, exp_bound;
+    std::vector<UnboundAttachmentPoint> unbound_aps, exp_available;
     const RDKit::Atom *atom0, *atom1, *atom2;
 
     // a lone alanine has no bound attachment points
     auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A}$$$$V2.0");
+    prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0).empty());
-        exp_available = {"N", "C", "X"};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_available = {{"N", 1, Direction::W},
+                         {"C", 2, Direction::E},
+                         {"X", 3, Direction::N}};
+        BOOST_TEST(bound_aps.empty());
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // two alanines next to each other
     mol = rdkit_extensions::to_rdkit("PEPTIDE1{A.A}$$$$V2.0");
+    prepare_mol(*mol);
     {
         const auto* atom0 = mol->getAtomWithIdx(0);
         const auto* atom1 = mol->getAtomWithIdx(1);
 
-        exp_bound = {{"C", atom1, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0) ==
-                   exp_bound);
-        exp_available = {"N", "X"};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_bound = {{"C", 2, atom1, false, Direction::E}};
+        exp_available = {{"N", 1, Direction::W}, {"X", 3, Direction::N}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"N", atom0, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom1) ==
-                   exp_bound);
-        exp_available = {"C", "X"};
-        BOOST_TEST(get_available_attachment_point_names(atom1) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom1);
+        exp_bound = {{"N", 1, atom0, false, Direction::W}};
+        exp_available = {{"C", 2, Direction::E}, {"X", 3, Direction::N}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // a side-chain interaction between two non-adjacent residues
     mol = rdkit_extensions::to_rdkit(
         "PEPTIDE1{C.A.C}$PEPTIDE1,PEPTIDE1,1:R3-3:R3$$$V2.0");
+    prepare_mol(*mol);
     {
+        // put the three residues in a horizontal line
+        auto& conf = mol->getConformer();
+        conf.setAtomPos(0, {-BOND_LENGTH, 0.0, 0.0});
+        conf.setAtomPos(1, {0.0, 0.0, 0.0});
+        conf.setAtomPos(2, {BOND_LENGTH, 0.0, 0.0});
+
         atom0 = mol->getAtomWithIdx(0);
         atom1 = mol->getAtomWithIdx(1);
         atom2 = mol->getAtomWithIdx(2);
 
-        exp_bound = {{"C", atom1, false}, {"X", atom2, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0) ==
-                   exp_bound);
-        exp_available = {"N"};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_bound = {{"C", 2, atom1, false, Direction::E},
+                     {"X", 3, atom2, false, Direction::N}};
+        exp_available = {{"N", 1, Direction::W}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"N", atom0, false}, {"C", atom2, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom1) ==
-                   exp_bound);
-        exp_available = {"X"};
-        BOOST_TEST(get_available_attachment_point_names(atom1) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom1);
+        exp_bound = {{"N", 1, atom0, false, Direction::W},
+                     {"C", 2, atom2, false, Direction::E}};
+        exp_available = {{"X", 3, Direction::N}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"N", atom1, false}, {"X", atom0, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom2) ==
-                   exp_bound);
-        exp_available = {"C"};
-        BOOST_TEST(get_available_attachment_point_names(atom2) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom2);
+        exp_bound = {{"N", 1, atom1, false, Direction::W},
+                     {"X", 3, atom0, false, Direction::N}};
+        exp_available = {{"C", 2, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // a side-chain interaction between two adjacent residues
     mol = rdkit_extensions::to_rdkit(
         "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+    prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
         atom1 = mol->getAtomWithIdx(1);
 
-        exp_bound = {{"C", atom1, false}, {"X", atom1, true}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0) ==
-                   exp_bound);
-        exp_available = {"N"};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_bound = {{"C", 2, atom1, false, Direction::E},
+                     {"X", 3, atom1, true, Direction::N}};
+        exp_available = {{"N", 1, Direction::W}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"N", atom0, false}, {"X", atom0, true}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom1) ==
-                   exp_bound);
-        exp_available = {"C"};
-        BOOST_TEST(get_available_attachment_point_names(atom1) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom1);
+        exp_bound = {{"N", 1, atom0, false, Direction::W},
+                     {"X", 3, atom0, true, Direction::N}};
+        exp_available = {{"C", 2, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // CHEM monomers
     mol = rdkit_extensions::to_rdkit(
         "CHEM1{[MONO1]}|CHEM2{[MONO2]}$CHEM1,CHEM2,1:R1-1:R3$$$V2.0");
+    prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
         atom1 = mol->getAtomWithIdx(1);
 
-        exp_bound = {{"R1", atom1, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0) ==
-                   exp_bound);
-        exp_available = {"R2"};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_bound = {{"R1", 1, atom1, false, Direction::S}};
+        exp_available = {{"R2", 2, Direction::N}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"R3", atom0, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom1) ==
-                   exp_bound);
-        exp_available = {"R1", "R2", "R4"};
-        BOOST_TEST(get_available_attachment_point_names(atom1) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom1);
+        exp_bound = {{"R3", 3, atom0, false, Direction::N}};
+        exp_available = {{"R1", 1, Direction::W},
+                         {"R2", 2, Direction::E},
+                         {"R4", 4, Direction::S}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
+    }
+
+    // CHEM monomers with too many attachment points - some will be omitted
+    mol = rdkit_extensions::to_rdkit(
+        "CHEM1{[MONO1]}|CHEM2{[MONO2]}$CHEM1,CHEM2,1:R1-1:R11$$$V2.0");
+    prepare_mol(*mol);
+    {
+        atom0 = mol->getAtomWithIdx(0);
+        atom1 = mol->getAtomWithIdx(1);
+
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_bound = {{"R1", 1, atom1, false, Direction::S}};
+        exp_available = {{"R2", 2, Direction::N}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
+
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom1);
+        exp_bound = {{"R11", 11, atom0, false, Direction::N}};
+        exp_available = {{"R1", 1, Direction::W},  {"R2", 2, Direction::E},
+                         {"R3", 3, Direction::S},  {"R4", 4, Direction::NW},
+                         {"R5", 5, Direction::NE}, {"R6", 6, Direction::SE},
+                         {"R7", 7, Direction::SW}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // NA_PHOSPHATE monomers name their unbound attachment points after the
     // attachment point of the bound sugar
     mol = rdkit_extensions::to_rdkit("RNA1{P.R(U)P.R(T)P}$$$$");
+    prepare_mol(*mol);
     {
         auto start_phos = mol->getAtomWithIdx(0);
         auto start_sugar = mol->getAtomWithIdx(1);
@@ -169,100 +220,112 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         auto term_sugar = mol->getAtomWithIdx(4);
         auto term_phosphate = mol->getAtomWithIdx(6);
 
-        exp_bound = {{"", start_sugar, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(start_phos) ==
-                   exp_bound);
-        exp_available = {"3'"};
-        BOOST_TEST(get_available_attachment_point_names(start_phos) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(start_phos);
+        exp_bound = {{"", 2, start_sugar, false, Direction::E}};
+        exp_available = {{"3'", 1, Direction::W}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"", start_sugar, false}, {"", term_sugar, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(middle_phos) ==
-                   exp_bound);
-        BOOST_TEST(get_available_attachment_point_names(middle_phos).empty());
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(middle_phos);
+        exp_bound = {{"", 1, start_sugar, false, Direction::W},
+                     {"", 2, term_sugar, false, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps.empty());
 
-        exp_bound = {{"", term_sugar, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(term_phosphate) ==
-                   exp_bound);
-        exp_available = {"5'"};
-        BOOST_TEST(get_available_attachment_point_names(term_phosphate) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(term_phosphate);
+        exp_bound = {{"", 1, term_sugar, false, Direction::W}};
+        exp_available = {{"5'", 2, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // NA_PHOSPHATE monomers still take their name from the bound sugar even if
     // they're at the end of a chain of phosphates
     mol = rdkit_extensions::to_rdkit("RNA1{P.R(U)P.R(T)P.P.P}$$$$");
+    prepare_mol(*mol);
     {
         auto term_sugar = mol->getAtomWithIdx(4);
         auto term_phos_chain_1 = mol->getAtomWithIdx(6);
         auto term_phos_chain_2 = mol->getAtomWithIdx(7);
         auto term_phos_chain_3 = mol->getAtomWithIdx(8);
 
-        exp_bound = {{"", term_sugar, false}, {"", term_phos_chain_2, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(
-                       term_phos_chain_1) == exp_bound);
-        BOOST_TEST(
-            get_available_attachment_point_names(term_phos_chain_1).empty());
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(term_phos_chain_1);
+        exp_bound = {{"", 1, term_sugar, false, Direction::W},
+                     {"", 2, term_phos_chain_2, false, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps.empty());
 
-        exp_bound = {{"", term_phos_chain_1, false},
-                     {"", term_phos_chain_3, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(
-                       term_phos_chain_2) == exp_bound);
-        BOOST_TEST(
-            get_available_attachment_point_names(term_phos_chain_2).empty());
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(term_phos_chain_2);
+        exp_bound = {{"", 1, term_phos_chain_1, false, Direction::W},
+                     {"", 2, term_phos_chain_3, false, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps.empty());
 
-        exp_bound = {{"", term_phos_chain_2, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(
-                       term_phos_chain_3) == exp_bound);
-        exp_available = {"5'"};
-        BOOST_TEST(get_available_attachment_point_names(term_phos_chain_3) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(term_phos_chain_3);
+        exp_bound = {{"", 1, term_phos_chain_2, false, Direction::W}};
+        exp_available = {{"5'", 2, Direction::E}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // attachment points on lone phosphates are unnamed since there's no bound
     // sugar
     mol = rdkit_extensions::to_rdkit("RNA1{P}$$$$");
+    prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0).empty());
-        exp_available = {"", ""};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_available = {{"", 1, Direction::W}, {"", 2, Direction::E}};
+        BOOST_TEST(bound_aps.empty());
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // an amino acid with an unrecognized attachment point (R4)
     mol = rdkit_extensions::to_rdkit(
         "PEPTIDE1{A.A}$PEPTIDE1,PEPTIDE1,1:R3-2:R4$$$V2.0");
+    prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
         atom1 = mol->getAtomWithIdx(1);
 
-        exp_bound = {{"C", atom1, false}, {"X", atom1, true}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom0) ==
-                   exp_bound);
-        exp_available = {"N"};
-        BOOST_TEST(get_available_attachment_point_names(atom0) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_bound = {{"C", 2, atom1, false, Direction::E},
+                     {"X", 3, atom1, true, Direction::E}};
+        exp_available = {{"N", 1, Direction::W}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
 
-        exp_bound = {{"N", atom0, false}, {"R4", atom0, true}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(atom1) ==
-                   exp_bound);
-        exp_available = {"C", "X"};
-        BOOST_TEST(get_available_attachment_point_names(atom1) ==
-                   exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom1);
+        exp_bound = {{"N", 1, atom0, false, Direction::W},
+                     {"R4", 4, atom0, true, Direction::W}};
+        exp_available = {{"C", 2, Direction::E}, {"X", 3, Direction::N}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // single stranded RNA
     mol = rdkit_extensions::to_rdkit("RNA1{R(A)P.R(C)P.R(G)P}$$$$V2.0");
+    prepare_mol(*mol);
     {
         auto sugar = mol->getAtomWithIdx(0);
         auto base = mol->getAtomWithIdx(1);
 
-        exp_bound = {{"N1/9", sugar, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(base) ==
-                   exp_bound);
-        exp_available = {"pair"};
-        BOOST_TEST(get_available_attachment_point_names(base) == exp_available);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(base);
+        exp_bound = {{"N1/9", 1, sugar, false, Direction::N}};
+        exp_available = {
+            {"pair", ATTACHMENT_POINT_WITH_CUSTOM_NAME, Direction::S}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
     }
 
     // double stranded RNA
@@ -271,15 +334,19 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         "$RNA1,RNA2,2:pair-9:pair"
         "|RNA1,RNA2,5:pair-6:pair"
         "|RNA1,RNA2,8:pair-3:pair$$$V2.0");
+    prepare_mol(*mol);
     {
         auto sugar = mol->getAtomWithIdx(0);
         auto base = mol->getAtomWithIdx(1);
         auto paired_base = mol->getAtomWithIdx(17);
 
-        exp_bound = {{"N1/9", sugar, false}, {"pair", paired_base, false}};
-        BOOST_TEST(get_bound_attachment_point_names_and_atoms(base) ==
-                   exp_bound);
-        BOOST_TEST(get_available_attachment_point_names(base).empty());
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(base);
+        exp_bound = {{"N1/9", 1, sugar, false, Direction::N},
+                     {"pair", ATTACHMENT_POINT_WITH_CUSTOM_NAME, paired_base,
+                      false, Direction::S}};
+        BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps.empty());
     }
 }
 
