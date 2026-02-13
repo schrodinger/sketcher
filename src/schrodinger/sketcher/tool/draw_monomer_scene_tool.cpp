@@ -146,12 +146,17 @@ void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
         begin_monomer, connector, is_secondary_connection);
     auto end_ap_name = get_attachment_point_name_for_atom(
         end_monomer, connector, is_secondary_connection);
-    // TODO: for nucleic acid base pairs, only have a single "pair" label since
-    //       the bond is typically too short to fit two separate labels
-    labelBoundAttachmentPoint(begin_monomer, end_monomer,
-                              is_secondary_connection, begin_ap_name);
-    labelBoundAttachmentPoint(end_monomer, begin_monomer,
-                              is_secondary_connection, end_ap_name);
+
+    if (begin_ap_name == "pair" && end_ap_name == "pair") {
+        // for nucleic acid base pairs, only have a single "pair" label since
+        // the bond is typically too short to fit two separate labels
+        labelCenterOfConnector(begin_monomer, end_monomer, "pair");
+    } else {
+        labelBoundAttachmentPoint(begin_monomer, end_monomer,
+                                  is_secondary_connection, begin_ap_name);
+        labelBoundAttachmentPoint(end_monomer, begin_monomer,
+                                  is_secondary_connection, end_ap_name);
+    }
 }
 
 /**
@@ -281,12 +286,69 @@ void DrawMonomerSceneTool::labelBoundAttachmentPoint(
             *monomer_item, to_scene_xy(bound_coords));
         ap_label_rect.translate(0, -arrowhead_offset);
     }
+    addAttachmentPointLabel(ap_qname, ap_label_rect);
+}
 
-    auto* label_item = new QGraphicsSimpleTextItem(ap_qname);
+void DrawMonomerSceneTool::addAttachmentPointLabel(const QString& label,
+                                                   const QRectF& label_rect)
+{
+    auto* label_item = new QGraphicsSimpleTextItem(label);
     label_item->setFont(m_fonts.m_monomeric_attachment_point_label_font);
     label_item->setBrush({Qt::black});
-    label_item->setPos(ap_label_rect.topLeft());
+    label_item->setPos(label_rect.topLeft());
     m_attachment_point_labels_group.addToGroup(label_item);
+}
+
+void DrawMonomerSceneTool::labelCenterOfConnector(
+    const RDKit::Atom* const begin_monomer,
+    const RDKit::Atom* const end_monomer, const QString& label)
+{
+    auto conf = begin_monomer->getOwningMol().getConformer();
+    auto begin_coords = conf.getAtomPos(begin_monomer->getIdx());
+    auto begin_scene_coords = to_scene_xy(begin_coords);
+    auto end_coords = conf.getAtomPos(end_monomer->getIdx());
+    auto end_scene_coords = to_scene_xy(end_coords);
+    auto connector_line = QLineF(begin_scene_coords, end_scene_coords);
+    auto connector_angle = connector_line.angle();
+    // ensure that the angle of the connector is 0-180, as this will simplify
+    // the logic for positioning the label
+    if (connector_angle >= 180) {
+        // reverse the line if the angle is 180-360
+        connector_line = QLineF(end_scene_coords, begin_scene_coords);
+        connector_angle = connector_line.angle();
+    }
+
+    // we'll place the label just off of the connector's midpoint
+    auto midpoint = connector_line.pointAt(0.5);
+    QLineF perpendicular = connector_line.normalVector();
+    perpendicular.translate(midpoint - perpendicular.p1());
+    // make sure that the perpendicular extends above the line, not below. For a
+    // vertical line, extend it to the right
+    perpendicular.setLength((connector_angle < 90 ? 1 : -1) *
+                            MONOMERIC_PAIR_CONNECTOR_LABEL_DIST);
+    auto label_rect =
+        m_fonts.m_monomeric_attachment_point_label_fm.boundingRect(label);
+    QPointF label_pos = perpendicular.p2();
+    label_rect.moveCenter(label_pos);
+
+    // a connector within HORIZONTAL_THRESHOLD degrees of the X axis will be
+    // treated as horizontal
+    const int HORIZONTAL_THRESHOLD = 25;
+    bool is_horizontal = connector_angle <= HORIZONTAL_THRESHOLD ||
+                         connector_angle >= (180 - HORIZONTAL_THRESHOLD);
+    if (is_horizontal) {
+        // center the bottom edge on label_pos
+        label_rect.moveBottom(label_pos.y());
+    } else if (connector_angle < 90) {
+        // the connector goes from the lower left to the upper right, so center
+        // the right edge on label_pos
+        label_rect.moveRight(label_pos.x());
+    } else {
+        // the connector goes from the lower right to the upper left, so center
+        // the left edge on label_pos
+        label_rect.moveLeft(label_pos.x());
+    }
+    addAttachmentPointLabel(label, label_rect);
 }
 
 void DrawMonomerSceneTool::clearAttachmentPointsLabels()
