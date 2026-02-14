@@ -204,12 +204,7 @@ QColor get_color_for_monomer(
     if (color_find != color_by_res_name.end()) {
         return color_find->second;
     }
-    try {
-        // Check Monomer DB for natural analog
-        auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
-        auto natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
 
-<<<<<<< HEAD
     // Check Monomer DB for natural analog
     std::optional<std::string> natural_analog = std::nullopt;
     try {
@@ -225,18 +220,9 @@ QColor get_color_for_monomer(
         auto analog_color_find = color_by_res_name.find(*natural_analog);
         if (analog_color_find != color_by_res_name.end()) {
             return analog_color_find->second;
-=======
-        // If a valid natural analog exists, try to get its color
-        if (natural_analog.has_value() && *natural_analog != res_name) {
-            auto analog_color_find = color_by_res_name.find(*natural_analog);
-            if (analog_color_find != color_by_res_name.end()) {
-                return analog_color_find->second;
-            }
->>>>>>> CRDGEN-400
         }
-    } catch (...) {
-        // Fall through to return default_color
     }
+
     return default_color;
 }
 

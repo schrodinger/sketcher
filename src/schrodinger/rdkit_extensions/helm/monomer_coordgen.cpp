@@ -1486,7 +1486,7 @@ static bool has_no_stretched_bonds(const RDKit::ROMol& monomer_mol)
     return true;
 }
 
-bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
+static bool coordinates_are_valid(RDKit::ROMol& monomer_mol)
 {
     return has_no_clashes(monomer_mol) && has_no_bond_crossings(monomer_mol) &&
            has_no_stretched_bonds(monomer_mol);
