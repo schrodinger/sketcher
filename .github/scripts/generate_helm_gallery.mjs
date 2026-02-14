@@ -1,0 +1,372 @@
+#!/usr/bin/env node
+/**
+ * Generate HELM gallery using sketcher WASM module via Playwright.
+ * Usage: node generate_helm_gallery.mjs test/testfiles/helm-gallery/*.csv --wasm-dir path/to/wasm/dir --output gallery.html
+ */
+
+import { readFileSync, writeFileSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { parseArgs } from 'util';
+import { chromium } from 'playwright';
+import { fileURLToPath } from 'url';
+import { createServer } from 'http';
+import { createReadStream, statSync } from 'fs';
+import { extname } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Parse CLI arguments
+const { values, positionals } = parseArgs({
+  options: {
+    'wasm-dir': { type: 'string', required: true },
+    'output': { type: 'string', default: 'helm_gallery.html' }
+  },
+  allowPositionals: true
+});
+
+if (positionals.length === 0) {
+  console.error('Usage: generate_helm_gallery.mjs <csv_files...> --wasm-dir <path> [--output <file>]');
+  process.exit(1);
+}
+
+/**
+ * Parse a CSV line respecting quoted fields (RFC 4180-compliant)
+ */
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++; // Skip next quote
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // End of field
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+
+  // Push last field
+  result.push(current.trim());
+  return result;
+}
+
+// Parse CSV files
+const entries = [];
+for (const file of positionals) {
+  // Handle different line endings (CRLF, LF, CR)
+  const content = readFileSync(file, 'utf-8').trim();
+  const lines = content.split(/\r?\n/);
+  const headers = parseCSVLine(lines[0]);
+
+  // Track if this file is the validation set
+  const fileName = file.split('/').pop();
+  const isValidationSet = fileName === 'validation_set.csv';
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue; // Skip empty lines
+    const values = parseCSVLine(lines[i]);
+    const entry = {};
+    headers.forEach((h, idx) => entry[h] = values[idx] || '');
+    entry._isValidationSet = isValidationSet; // Track source
+    entries.push(entry);
+  }
+}
+
+console.log(`Processing ${entries.length} entries...`);
+
+// Start HTTP server to serve WASM files
+const wasmDir = resolve(values['wasm-dir']);
+const server = createServer((req, res) => {
+  const filePath = resolve(wasmDir, req.url.slice(1).split('?')[0]); // Strip query params
+
+  // Security: ensure we're serving from wasmDir
+  if (!filePath.startsWith(wasmDir)) {
+    res.writeHead(403);
+    res.end('Forbidden');
+    return;
+  }
+
+  try {
+    const stat = statSync(filePath);
+    if (!stat.isFile()) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+
+    // Set content type
+    const ext = extname(filePath);
+    const contentTypes = {
+      '.html': 'text/html',
+      '.js': 'application/javascript',
+      '.wasm': 'application/wasm',
+      '.png': 'image/png',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml'
+    };
+    res.writeHead(200, { 'Content-Type': contentTypes[ext] || 'application/octet-stream' });
+    createReadStream(filePath).pipe(res);
+  } catch (err) {
+    res.writeHead(404);
+    res.end('Not found');
+  }
+});
+
+await new Promise((resolve) => {
+  server.listen(0, 'localhost', () => {
+    console.log(`HTTP server started on http://localhost:${server.address().port}`);
+    resolve();
+  });
+});
+
+const baseUrl = `http://localhost:${server.address().port}`;
+
+// Launch browser and load WASM
+const browser = await chromium.launch();
+const page = await browser.newPage();
+
+// Navigate to the WASM shell
+await page.goto(`${baseUrl}/wasm_shell.html`);
+await page.waitForFunction(() => typeof window.Module !== 'undefined', { timeout: 30000 });
+
+console.log('WASM module loaded in browser.');
+
+// Generate SVGs
+const cards = [];
+const failures = [];
+let success = 0, failed = 0;
+
+for (let i = 0; i < entries.length; i++) {
+  const entry = entries[i];
+  const progressiveNumber = i + 1;
+
+  try {
+    const result = await page.evaluate((helmString) => {
+      try {
+        Module.sketcher_clear();
+        Module.sketcher_allow_monomeric(true);
+        Module.sketcher_import_text(helmString);
+
+        // Validate coordinates after import
+        const coordsValid = Module.sketcher_validate_coordinates();
+
+        return {
+          success: true,
+          svg: Module.sketcher_export_image(Module.ImageFormat.SVG),
+          coordsValid: coordsValid
+        };
+      } catch (e) {
+        // If exception is a pointer (number), get the actual message
+        if (typeof e === 'number' && Module.getExceptionMessage) {
+          const exceptionInfo = Module.getExceptionMessage(e);
+          // getExceptionMessage returns [type, message]
+          return { success: false, error: exceptionInfo[1] || exceptionInfo.toString() };
+        }
+        // Otherwise return the error as-is
+        return { success: false, error: e.toString() };
+      }
+    }, entry.helm_string);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    const svg = result.svg;
+
+    // Decode base64 SVG
+    const svgContent = Buffer.from(svg, 'base64').toString();
+
+    const searchText = `${entry.helm_string} ${entry.description} ${entry.origin}`.toLowerCase();
+    const borderClass = result.coordsValid ? 'border-slate-200' : 'border-red-500 border-2';
+    cards.push(`
+      <div class="card bg-white rounded-2xl shadow-sm border ${borderClass} overflow-hidden hover:shadow-xl transition-all flex flex-col relative" data-search="${searchText}" data-validation-set="${entry._isValidationSet ? 'true' : 'false'}" data-coords-valid="${result.coordsValid}">
+        <div class="absolute top-4 left-4 bg-slate-900 text-white text-xs font-bold px-2 py-1 rounded">#${progressiveNumber}</div>
+        <div class="p-8 flex-grow flex items-center justify-center bg-white min-h-[250px]">${svgContent}</div>
+        <div class="p-5 flex flex-col gap-3">
+          <span class="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase rounded tracking-wider w-fit">${entry.origin}</span>
+          <h3 class="text-sm font-semibold text-slate-800 line-clamp-2">${entry.description}</h3>
+          <div class="mt-2 pt-3 border-t border-slate-100">
+            <p class="text-[10px] font-mono text-slate-400 uppercase font-bold mb-1">HELM String</p>
+            <p class="text-[11px] font-mono text-slate-600 break-all bg-slate-50 p-2 rounded border border-slate-100">${entry.helm_string}</p>
+          </div>
+        </div>
+      </div>`);
+    success++;
+  } catch (err) {
+    console.error(`Failed #${progressiveNumber}: ${entry.helm_string} - ${err.message}`);
+    failures.push({
+      number: progressiveNumber,
+      helmString: entry.helm_string,
+      description: entry.description,
+      origin: entry.origin,
+      error: err.message
+    });
+    failed++;
+  }
+}
+
+// Cleanup
+await browser.close();
+server.close();
+
+// Calculate validation set count
+const validationCount = entries.filter(e => e._isValidationSet).length;
+
+// Build failures section HTML
+const failuresSection = failures.length > 0 ? `
+  <div class="mb-12 bg-red-50 border-2 border-red-200 rounded-2xl p-8">
+    <h2 class="text-2xl font-bold text-red-900 mb-4">⚠️ Failed Structures</h2>
+    <p class="text-red-700 mb-6">The following ${failures.length} structure(s) failed to generate:</p>
+    <div class="space-y-4">
+      ${failures.map(f => `
+        <div class="bg-white border border-red-200 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <span class="bg-red-900 text-white text-xs font-bold px-2 py-1 rounded">#${f.number}</span>
+            <div class="flex-grow">
+              <p class="text-xs font-bold text-red-600 uppercase mb-1">${f.origin} - ${f.description}</p>
+              <p class="text-xs font-mono text-slate-600 break-all bg-slate-50 p-2 rounded border border-slate-200 mb-2">${f.helmString}</p>
+              <p class="text-xs text-red-700"><span class="font-bold">Error:</span> ${f.error}</p>
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  </div>
+` : '';
+
+// Write HTML
+const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HELM Gallery</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>.svg-container svg { max-width: 100%; height: auto; }</style>
+</head>
+<body class="bg-slate-50 min-h-screen p-6 md:p-12">
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-8 border-b border-slate-200 pb-8">
+      <h1 class="text-4xl font-extrabold text-slate-900">HELM Gallery</h1>
+      <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p class="text-xs font-bold text-blue-600 uppercase mb-1">Validation Set / Total</p>
+          <p class="text-3xl font-bold text-blue-900">${validationCount} / ${entries.length}</p>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <p class="text-xs font-bold text-green-600 uppercase mb-1">Successful</p>
+          <p class="text-3xl font-bold text-green-900">${success}</p>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p class="text-xs font-bold text-red-600 uppercase mb-1">Failed</p>
+          <p class="text-3xl font-bold text-red-900">${failed}</p>
+        </div>
+      </div>
+    </header>
+
+    ${failuresSection}
+
+    <div class="mb-6 space-y-4">
+      <!-- Toggle buttons -->
+      <div class="flex gap-2">
+        <button id="toggle-validation"
+                class="px-4 py-2 rounded-lg font-semibold transition-all bg-blue-600 text-white">
+          Validation Set
+        </button>
+        <button id="toggle-full"
+                class="px-4 py-2 rounded-lg font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300">
+          Full Set
+        </button>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex gap-4 items-center">
+        <input type="text" id="search" placeholder="Filter by HELM, description, origin, or coordinates..."
+          class="flex-grow px-4 py-3 rounded-xl border border-slate-200 shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
+        <label class="flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50">
+          <input type="checkbox" id="filter-invalid-coords" class="w-4 h-4 text-red-600 border-slate-300 rounded focus:ring-red-500">
+          <span class="text-sm font-medium text-slate-700 whitespace-nowrap">Show only flagged structures</span>
+        </label>
+      </div>
+    </div>
+
+    <div id="grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      ${cards.join('')}
+    </div>
+    <footer class="mt-20 py-8 border-t border-slate-200 text-center text-slate-400 text-sm">
+      HELM Gallery via Schrodinger Sketcher WASM
+    </footer>
+  </div>
+  <script>
+    // Mode state
+    let currentMode = 'validation'; // Default to validation set
+
+    // Toggle buttons and filters
+    const toggleValidation = document.getElementById('toggle-validation');
+    const toggleFull = document.getElementById('toggle-full');
+    const search = document.getElementById('search');
+    const filterInvalidCoords = document.getElementById('filter-invalid-coords');
+    const cards = document.querySelectorAll('.card');
+
+    // Apply filter based on current mode, search, and coordinate filter
+    function applyFilter() {
+      const searchQuery = search.value.toLowerCase();
+      const showOnlyInvalid = filterInvalidCoords.checked;
+
+      cards.forEach(card => {
+        const matchesSearch = card.getAttribute('data-search').includes(searchQuery);
+        const isValidationSet = card.getAttribute('data-validation-set') === 'true';
+        const matchesMode = currentMode === 'full' || isValidationSet;
+        const coordsValid = card.getAttribute('data-coords-valid') === 'true';
+        const matchesCoordFilter = !showOnlyInvalid || !coordsValid;
+
+        card.style.display = (matchesSearch && matchesMode && matchesCoordFilter) ? 'flex' : 'none';
+      });
+
+      // Update button styles
+      if (currentMode === 'validation') {
+        toggleValidation.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-blue-600 text-white';
+        toggleFull.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300';
+      } else {
+        toggleValidation.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-slate-200 text-slate-600 hover:bg-slate-300';
+        toggleFull.className = 'px-4 py-2 rounded-lg font-semibold transition-all bg-blue-600 text-white';
+      }
+    }
+
+    // Toggle event listeners
+    toggleValidation.addEventListener('click', () => {
+      currentMode = 'validation';
+      applyFilter();
+    });
+
+    toggleFull.addEventListener('click', () => {
+      currentMode = 'full';
+      applyFilter();
+    });
+
+    // Search and filter event listeners
+    search.addEventListener('input', applyFilter);
+    filterInvalidCoords.addEventListener('change', applyFilter);
+
+    // Apply initial filter (validation set only)
+    applyFilter();
+  </script>
+</body>
+</html>`;
+
+writeFileSync(values.output, html);
+console.log(`\nGallery: ${success} successful, ${failed} failed → ${values.output}`);
