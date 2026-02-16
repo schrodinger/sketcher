@@ -480,7 +480,8 @@ static void orient_ring_system(RDKit::ROMol& polymer)
         rotation_center = (atom1_pos + atom2_pos) * 0.5;
 
         // If the midpoint of the two centroids would fall to the right, add
-        // 180° to the rotation
+        // 180° to the rotation, since we want the rings to the left of the
+        // attachment points instead of the right
         auto centroids_midpoint = (centroid1 + centroid2) * 0.5;
         auto rotated_centroid_midpoint =
             rotate_point(centroids_midpoint, std::sin(rotation_angle),
