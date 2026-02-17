@@ -22,6 +22,7 @@
 #include <boost/bimap.hpp>
 #include <unordered_map>
 
+#include "schrodinger/sketcher/font_loader.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -278,6 +279,7 @@ template <typename T> std::shared_ptr<QPaintDevice>
 paint_scene(const T& input, const RenderOptions& opts,
             const PaintDeviceFunction& instantiate_paint_device_to_size)
 {
+    load_font_resources();
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
@@ -443,6 +445,7 @@ template <typename T>
 qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
 
 {
+    load_font_resources();
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
@@ -533,6 +536,7 @@ template <typename T>
 QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
                                       const RenderOptions& opts)
 {
+    load_font_resources();
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
@@ -582,6 +586,7 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
     if (all_rdmols.empty()) {
         return AUTOSCALE;
     }
+    load_font_resources();
     qreal best_scale = std::numeric_limits<qreal>::max();
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
