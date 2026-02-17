@@ -355,8 +355,8 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
             bool is_secondary_connection = prop_name == CUSTOM_BOND;
             auto dir = get_bound_attachment_point_cardinal_direction(
                 monomer, bound_monomer, is_secondary_connection);
-            bound_aps.push_back(BoundAttachmentPoint(
-                ap_name, ap_num, bound_monomer, is_secondary_connection, dir));
+            bound_aps.push_back(BoundAttachmentPoint{
+                ap_name, ap_num, bound_monomer, is_secondary_connection, dir});
         }
     };
 
@@ -555,7 +555,7 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
                     occupied_directions);
                 occupied_directions.insert(dir);
                 available_aps.push_back(
-                    UnboundAttachmentPoint("", ap_num, dir));
+                    UnboundAttachmentPoint{"", ap_num, dir});
             }
         }
 
@@ -569,8 +569,8 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
                         monomer_type, bound_aps, available_aps,
                         occupied_directions);
                     occupied_directions.insert(dir);
-                    available_aps.push_back(UnboundAttachmentPoint(
-                        ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir));
+                    available_aps.push_back(UnboundAttachmentPoint{
+                        ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir});
                 }
             }
         }
