@@ -464,7 +464,7 @@ static void orient_ring_system(RDKit::ROMol& polymer)
         rotation_center = centroid;
 
     } else { // at least two attachment points: orient the first two attachment
-             // points vertically
+        // points vertically
         auto& [atom_idx1, centroid1] = attachment_atoms_and_centroids[0];
         auto& [atom_idx2, centroid2] = attachment_atoms_and_centroids[1];
         auto atom1_pos = conformer.getAtomPos(atom_idx1);
@@ -486,7 +486,7 @@ static void orient_ring_system(RDKit::ROMol& polymer)
         auto rotated_centroid_midpoint =
             rotate_point(centroids_midpoint, std::sin(rotation_angle),
                          std::cos(rotation_angle), rotation_center);
-        if (rotated_centroid_midpoint.x > rotation_center.x) {
+        if (rotated_centroid_midpoint.x > rotation_center.x + EPSILON) {
             rotation_angle += PI;
         }
     }
