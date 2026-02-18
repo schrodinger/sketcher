@@ -22,6 +22,7 @@
 #include <boost/bimap.hpp>
 #include <unordered_map>
 
+#include "schrodinger/sketcher/font_loader.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -264,6 +265,16 @@ void init_molviewer_image(MolModel& mol_model, SketcherModel& sketcher_model,
 }
 
 /**
+ * Return a new Scene after ensuring that the font has been loaded.
+ */
+Scene get_scene(MolModel* mol_model, SketcherModel* sketcher_model,
+                QWidget* parent = nullptr)
+{
+    load_font_resources();
+    return Scene(mol_model, sketcher_model, parent);
+}
+
+/**
  * Construct a paint device and render the given input to it
  *
  * @param input What to render into the scene.  Can be an RDKit molecule, an
@@ -281,7 +292,7 @@ paint_scene(const T& input, const RenderOptions& opts,
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
+    auto scene = get_scene(&mol_model, &sketcher_model);
     init_molviewer_image(mol_model, sketcher_model, input, opts);
 
     return paint_scene(scene, opts, instantiate_paint_device_to_size);
@@ -446,7 +457,7 @@ qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
+    auto scene = get_scene(&mol_model, &sketcher_model);
     opts.scale = AUTOSCALE;
     init_molviewer_image(mol_model, sketcher_model, mol_or_rxn, opts);
     return get_scale(scene.getSceneItemsBoundingRect(), opts.width_height);
@@ -536,7 +547,7 @@ QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
+    auto scene = get_scene(&mol_model, &sketcher_model);
     init_molviewer_image(mol_model, sketcher_model, input, opts);
 
     return get_image_bytes<Scene>(scene, format, opts);
@@ -586,7 +597,7 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
+    auto scene = get_scene(&mol_model, &sketcher_model);
     for (auto rdmol : all_rdmols) {
         init_molviewer_image(mol_model, sketcher_model, *rdmol, opts);
         qreal cur_scale =
