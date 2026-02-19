@@ -450,19 +450,6 @@ template <typename T> void save_image_file(const T& input,
     file.write(data);
 }
 
-template <typename T>
-qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
-
-{
-    QUndoStack undo_stack;
-    MolModel mol_model(&undo_stack);
-    SketcherModel sketcher_model;
-    auto scene = get_scene(&mol_model, &sketcher_model);
-    opts.scale = AUTOSCALE;
-    init_molviewer_image(mol_model, sketcher_model, mol_or_rxn, opts);
-    return get_scale(scene.getSceneItemsBoundingRect(), opts.width_height);
-}
-
 } // unnamed namespace
 
 std::string get_image_extension(ImageFormat format)
@@ -537,38 +524,6 @@ QByteArray get_stock_image_bytes(const std::string& filepath,
     return get_image_bytes<QFileInfo>(file_info, format, opts);
 }
 
-namespace
-{
-
-template <typename T>
-QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
-                                      const RenderOptions& opts)
-{
-    QUndoStack undo_stack;
-    MolModel mol_model(&undo_stack);
-    SketcherModel sketcher_model;
-    auto scene = get_scene(&mol_model, &sketcher_model);
-    init_molviewer_image(mol_model, sketcher_model, input, opts);
-
-    return get_image_bytes<Scene>(scene, format, opts);
-}
-} // namespace
-
-QByteArray get_LiveDesign_image_bytes(const RDKit::ROMol& mol,
-                                      ImageFormat format,
-                                      const RenderOptions& opts)
-{
-    return get_LiveDesign_image_bytes<RDKit::ROMol>(mol, format, opts);
-}
-
-QByteArray get_LiveDesign_image_bytes(const RDKit::ChemicalReaction& rxn,
-                                      ImageFormat format,
-                                      const RenderOptions& opts)
-{
-    return get_LiveDesign_image_bytes<RDKit::ChemicalReaction>(rxn, format,
-                                                               opts);
-}
-
 void save_image_file(const RDKit::ROMol& mol, const std::string& filename,
                      const RenderOptions& opts)
 {
@@ -606,20 +561,6 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
         mol_model.clear();
     }
     return best_scale;
-}
-
-// SIP has issues wrapping these functions if they're defined using a template,
-// so these definitions just call the templated function that contains the
-// actual implementation
-qreal get_autoscale_value(const RDKit::ROMol& rdmol, const RenderOptions& opts)
-{
-    return get_image_scale_for_mol_or_rxn(rdmol, opts);
-}
-
-qreal get_autoscale_value(const RDKit::ChemicalReaction& rxn,
-                          const RenderOptions& opts)
-{
-    return get_image_scale_for_mol_or_rxn(rxn, opts);
 }
 
 } // namespace sketcher
