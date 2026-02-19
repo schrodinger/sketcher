@@ -35,8 +35,9 @@ void NucleicAcidSugarItem::updateCachedData()
     m_border_pen.setWidthF(border_pen_width);
     m_border_pen.setColor(border_color);
     auto [border_width, border_height] = get_rect_size_to_fit_label(
-        m_main_label_text, *main_label_fm, NA_SUGAR_BORDER_WIDTH,
-        NA_SUGAR_BORDER_HEIGHT);
+        m_main_label_text, *main_label_fm,
+        scaleBasedOnFontSize(NA_SUGAR_BORDER_WIDTH),
+        scaleBasedOnFontSize(NA_SUGAR_BORDER_HEIGHT));
 
     auto border_rect = QRectF(-border_width / 2, -border_height / 2,
                               border_width, border_height);
@@ -45,7 +46,8 @@ void NucleicAcidSugarItem::updateCachedData()
                      MONOMER_SELECTION_HIGHLIGHTING_THICKNESS);
     set_path_to_rect(m_predictive_highlighting_path, border_rect,
                      MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
-    m_main_label_rect = border_rect;
+    m_main_label_left_baseline =
+        center_text_in_rect(m_main_label_text, *main_label_fm, border_rect);
     m_bounding_rect =
         rect_expanded_by_half_pen_width(border_rect, border_pen_width);
     set_path_to_rect(m_shape, border_rect, border_pen_width / 2.0);

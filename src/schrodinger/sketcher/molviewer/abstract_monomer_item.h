@@ -59,7 +59,17 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     QPen m_main_label_pen =
         QPen(MONOMER_LABEL_TEXT_COLOR, MONOMER_LABEL_TEXT_WIDTH);
     QPainterPath m_border_path;
-    QRectF m_main_label_rect;
+    // The leftmost point of the baseline to use when painting the main label
+    // text (i.e. what we should pass to the QPainter in order to center the
+    // main label)
+    QPointF m_main_label_left_baseline;
+
+    /**
+     * @return the number scaled the same as the current font setting. For
+     * example, if the user has increased the font size by 50% (e.g. 27 pt
+     * instead of the default 18 pt), then return num * 1.5.
+     */
+    qreal scaleBasedOnFontSize(qreal num) const;
 };
 
 /**
@@ -166,6 +176,29 @@ SKETCHER_API QColor get_color_for_monomer(
     const std::string& res_name, rdkit_extensions::ChainType chain_type,
     const std::unordered_map<std::string, QColor>& color_by_res_name,
     const QColor& default_color);
+
+/**
+ * Determine the coordinates of the left end of the base line required to center
+ * the specified text in the given rectangle. In other words, figure out what
+ * point to pass to QPainter::drawText(QPointF, QString) in order to center the
+ * text.
+ * @param text The text to center
+ * @param fm The font metrics for the font that will be used to render the text
+ * @param rect The rectangle to center the text in
+ * @return The base line coordinate
+ * @note If we instead painted our text by calling QPainter::drawText(rect,
+ * Qt::AlignCenter, text), then the vertical centering would be based on the
+ * height of a "typical" letter (i.e. cap height / 2), *not* the height of the
+ * actual text to be rendered. This is particularly noticeable with the capital
+ * Q for a glutamine monomer, where the descender (i.e. the bottom bit of the
+ * letter that sits below the baseline) is completely ignored for centering
+ * purposes. With large font sizes, this leads to the descender sticking out of
+ * the monomer's shape even though there's a fair bit of empty space above the
+ * letter. This function avoids that problem by centering the text using the
+ * actual size of the letters.
+ */
+QPointF center_text_in_rect(const QString& text, const QFontMetricsF& fm,
+                            const QRectF& rect);
 
 } // namespace sketcher
 } // namespace schrodinger
