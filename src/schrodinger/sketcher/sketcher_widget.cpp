@@ -315,7 +315,7 @@ SketcherWidget::getRDKitReaction() const
 
 void SketcherWidget::addFromString(const std::string& text, Format format)
 {
-    addTextToMolModel(text, format);
+    addTextToMolModel(text, format, std::nullopt, /*recenter_view=*/true);
 }
 
 std::string SketcherWidget::getString(Format format) const
