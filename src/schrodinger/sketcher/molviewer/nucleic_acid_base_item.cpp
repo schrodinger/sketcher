@@ -83,8 +83,9 @@ void NucleicAcidBaseItem::updateCachedData()
     m_border_pen.setColor(border_color);
 
     auto [border_width, border_height] = get_diamond_size_to_fit_label(
-        m_main_label_text, *main_label_fm, NA_BASE_BORDER_WIDTH,
-        NA_BASE_BORDER_HEIGHT);
+        m_main_label_text, *main_label_fm,
+        scaleBasedOnFontSize(NA_BASE_BORDER_WIDTH),
+        scaleBasedOnFontSize(NA_BASE_BORDER_HEIGHT));
     set_path_to_diamond(m_border_path, border_width, border_height);
     set_path_to_diamond(m_selection_highlighting_path, border_width,
                         border_height,
@@ -92,7 +93,9 @@ void NucleicAcidBaseItem::updateCachedData()
     set_path_to_diamond(m_predictive_highlighting_path, border_width,
                         border_height,
                         MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
-    m_main_label_rect = m_border_path.boundingRect();
+    auto main_label_rect = m_border_path.boundingRect();
+    m_main_label_left_baseline =
+        center_text_in_rect(m_main_label_text, *main_label_fm, main_label_rect);
     set_path_to_diamond(m_shape, border_width, border_height,
                         border_pen_width / 2.0);
     m_bounding_rect = m_shape.boundingRect();
