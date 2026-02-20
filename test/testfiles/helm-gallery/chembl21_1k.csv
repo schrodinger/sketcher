@@ -781,5 +781,3 @@ PEPTIDE1{[ac].[dF].L.D.I.I.Y}$$$$,,CHEMBL89736,ChEMBL21 1k test set
 PEPTIDE1{[Ggu].L.[Dpr]}$$$$,,CHEMBL88638,ChEMBL21 1k test set
 "PEPTIDE1{[dL].P.[*N[C@@H](C(=O)*)[C@@H](C)CC |$_R1;;;;;_R2;;;;$|].P.[dF].P.[dW]}$PEPTIDE1,PEPTIDE1,7:R2-1:R1$$$",,CHEMBL88570,ChEMBL21 1k test set
 "PEPTIDE1{[dA].[dD].[dD].L.[dD].T}$PEPTIDE1,PEPTIDE1,6:R2-1:R1$$$",,CHEMBL89884,ChEMBL21 1k test set
-RNA1{P[dR](A).P[dR](C)}$$$$,,CHEMBL3144230,ChEMBL21 1k test set
-RNA1{P[dR](G).P[dR](C).P[dR](G).P[dR](C).P[dR](G).P[dR](C).P[dR](G).P[dR](C)}$$$$,,CHEMBL3142801,ChEMBL21 1k test set

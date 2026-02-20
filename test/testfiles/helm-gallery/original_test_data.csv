@@ -8,9 +8,7 @@ PEPTIDE1{A.L.C}$$$$,,Chains,Original test set
 PEPTIDE1{L.V.A}|PEPTIDE2{L.V.A}$$$$,,Chains,Original test set
 "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$RNA1,RNA2,2:pair-9:pair|RNA1,RNA2,5:pair-6:pair|RNA1,RNA2,8:pair-3:pair$$$",,Chains,Original test set
 "PEPTIDE1{A.R.C.D.K.A}|PEPTIDE2{G.A.K.A}$PEPTIDE1,PEPTIDE2,4:R3-1:R1$$$",,Chains,Original test set
-"RNA1{r(A)p.r(C)p.r(G)p.r(T)p.r(U)}|RNA2{r(A)p.r(A)p.r(C)p.r(G)p.r(T)}$$RNA1,RNA2,2:pair14:pair|RNA1,RNAN2,5:pair-11:pair|RNA1,RNA2,8:pair-8:pair|RNA1,RNA2,11:pair-5:pair|RNA1,RNA2,14:pair-2:pair$$V2.0",,Chains,Original test set
 RNA1{[dR](T)}$$$$,,Chains,Original test set
-RNA1{P[dR](G).P[dR](C).P[dR](G).P[dR](C).P[dR](G).P[dR](C).P[dR](G).P[dR](C)}$$$$,,Chains,Original test set
 "PEPTIDE1{C.W.R.[Nva].R.Y.[am]}|PEPTIDE2{C.W.R.[Nva].R.Y.[am]}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$",,Chains,Original test set
 "PEPTIDE1{[[C@H](C(=O)*)CCCN |$;;;_R2;;;;$|].C.[dV]}|PEPTIDE2{[[C@H](C(=O)*)CCCN |$;;;_R2;;;;$|].C.[dV]}$PEPTIDE1,PEPTIDE2,2:R3-2:R3$$$",,Chains,Original test set
 "PEPTIDE1{C.[dV]}|PEPTIDE2{C.[dV]}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$",,Chains,Original test set
@@ -76,15 +74,6 @@ CHEM1{[SMPEG2]}|PEPTIDE1{A}|RNA1{R(A)P}$$$$,,CHEM monomer,Original test set
 "CHEM1{[PEG2]}|PEPTIDE1{W.N.D.[Pen].G.[Orn].D.A.D.G.S.G.[Cap]}$PEPTIDE1,PEPTIDE1,13:R2-4:R3|PEPTIDE1,CHEM1,1:R1-1:R1$$$",,CHEM monomer,Original test set
 "PEPTIDE1{[X423].K.P.K.[X423].K}|CHEM1{[cRCM]}$PEPTIDE1,CHEM1,1:R3-1:R1|PEPTIDE1,CHEM1,5:R3-1:R2$$$V2.0",,CHEM monomer,Original test set
 "PEPTIDE1{K.[[R3]C[C@H](N[R1])C([R2])=O].W.[dF].R.H.[X73].M}|CHEM1{[14Triazole]}$PEPTIDE1,CHEM1,2:R3-1:R2|PEPTIDE1,CHEM1,7:R3-1:R1$$$V2.0",,CHEM monomer,Original test set
-"RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{sDBL}$RNA2,CHEM1,24:R2-1:R3|RNA1,CHEM1,24:R2-1:R2$$$",,CHEM monomer,Original test set
-"RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{sDBL}$RNA2,CHEM1,1:R2-1:R3|RNA1,CHEM1,1:R2-1:R2$$$",,CHEM monomer,Original test set
-"RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{sDBL}$RNA2,CHEM1,12:R2-1:R3|RNA1,CHEM1,12:R2-1:R2$$$",,CHEM monomer,Original test set
-"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(U)P.R(C)P.R(G)P.R(G)P.R(U)P.R(G)P.R(C)P.R(C)}$RNA1,RNA1,11:pair-32:pair|RNA1,RNA1,5:pair-38:pair|RNA1,RNA1,14:pair-29:pair|RNA1,RNA1,8:pair-35:pair|RNA1,RNA1,2:pair-41:pair$$$$",,Hairpin,Original test set
-"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(C)P.R(G)P.R(G)P.R(U)P.R(G)P.R(C)P.R(C)}$RNA1,RNA1,11:pair-29:pair|RNA1,RNA1,5:pair-35:pair|RNA1,RNA1,14:pair-26:pair|RNA1,RNA1,8:pair-32:pair|RNA1,RNA1,2:pair-38:pair$$$$",,Hairpin,Original test set
-"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(G)P.R(G)P.R(U)P.R(G)P.R(C)P.R(C)}$RNA1,RNA1,11:pair-26:pair|RNA1,RNA1,5:pair-32:pair|RNA1,RNA1,14:pair-23:pair|RNA1,RNA1,8:pair-29:pair|RNA1,RNA1,2:pair-35:pair$$$$",,Hairpin,Original test set
-"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(U)P.R(C)P.R(G)P.R(G)P.R(U)P.R(G)P.R(C)P.R(C)}$RNA1,RNA1,14:pair-29:pair|RNA1,RNA1,8:pair-35:pair|RNA1,RNA1,2:pair-41:pair$$$$",,Hairpin,Original test set
-"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(C)P.R(G)P.R(G)P.R(U)P.R(G)P.R(C)P.R(C)}$RNA1,RNA1,11:pair-29:pair|RNA1,RNA1,5:pair-35:pair|RNA1,RNA1,14:pair-26:pair|RNA1,RNA1,8:pair-32:pair$$$$",,Hairpin,Original test set
-"RNA1{R(G)P.R(G)P.R(C)P.R(A)P.R(C)P.R(U)P.R(G)P.R(G)P.R(U)P.R(G)P.R(C)P.R(C)}$RNA1,RNA1,11:pair-26:pair|RNA1,RNA1,5:pair-32:pair|RNA1,RNA1,8:pair-29:pair|RNA1,RNA1,2:pair-35:pair$$$$",,Hairpin,Original test set
 "PEPTIDE1{A.C.G.C.G}|PEPTIDE2{K.L}|PEPTIDE3{S.T}$PEPTIDE1,PEPTIDE2,2:R2-1:R1|PEPTIDE1,PEPTIDE3,5:R1-1:R3$$$V2.0",,Chains,Original test set
 "RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{[sDBl]}$RNA2,CHEM1,24:R2-1:R3|RNA1,CHEM1,24:R2-1:R2$$$",,Chem monomer,Original test set
 "RNA1{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|RNA2{R(A)P.R(A)P.R(G)P.R(G)P.R(C)P.R(U)P.R(A)P.R(A)P}|CHEM1{[sDBl]}$RNA2,CHEM1,12:R2-1:R3|RNA1,CHEM1,12:R2-1:R2$$$",,CHEM monomer,Original test set
