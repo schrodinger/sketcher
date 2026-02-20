@@ -864,7 +864,7 @@ static bool is_a_chain(const RDKit::ROMol& polymer)
  * CUSTOM_BONDS are compatible. If successful, the polymer will be laid out in
  * a snaking pattern, placed_monomers_idcs will be updated for every atom, and
  * the function will return true. If not successful, the function will return
- * false, coordinates will be changed and placed_monomers_idcs will not be
+ * false, coordinates will not be changed and placed_monomers_idcs will not be
  * updated
  */
 static bool maybe_lay_out_cyclic_polymer_as_snaking_chain(
