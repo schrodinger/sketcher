@@ -59,22 +59,6 @@ QString elide_text(const std::string& text)
     }
 }
 
-std::string get_monomer_res_name(const RDKit::Atom* const monomer)
-{
-    bool is_smiles = false;
-    monomer->getPropIfPresent(SMILES_MONOMER, is_smiles);
-    if (is_smiles) {
-        return SMILES_PLACEHOLDER_TEXT;
-    }
-    const auto* monomer_info = monomer->getMonomerInfo();
-    const auto* res_info =
-        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(monomer_info);
-    if (res_info == nullptr) {
-        return monomer_info->getName();
-    }
-    return res_info->getResidueName();
-}
-
 bool is_standard_nucleotide(const std::string& res_name)
 {
     return NUCLEIC_ACID_COLOR_BY_RES_NAME.contains(res_name);
@@ -222,8 +206,14 @@ QColor get_color_for_monomer(
     }
 
     // Check Monomer DB for natural analog
-    auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
-    auto natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
+    std::optional<std::string> natural_analog = std::nullopt;
+    try {
+        auto& monomer_db = rdkit_extensions::MonomerDatabase::instance();
+        natural_analog = monomer_db.getNaturalAnalog(res_name, chain_type);
+    } catch (const std::logic_error&) {
+        // Monomer DB isn't yet accessible on WASM builds, so just use tha
+        // default color for non-natural monomers
+    }
 
     // If a valid natural analog exists, try to get its color
     if (natural_analog.has_value() && *natural_analog != res_name) {

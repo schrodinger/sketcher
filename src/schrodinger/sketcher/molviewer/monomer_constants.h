@@ -184,6 +184,19 @@ const QColor CHEM_MONOMER_BORDER_COLOR =
 const QColor CHEM_MONOMER_RECT_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::CHEM);
 
+// the angle between a monomeric connector, the center of the bound monomer, and
+// the attachment point label. Raising this number will move the label further
+// from the bond line.
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ANGLE_OFFSET = 10;
+
+// the distance between the center of a monomer and its attachment point labels
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_DIST = 16;
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_FONT_RATIO = 0.7;
+
+// the distance between the "pair" label and the relevant connector, as measured
+// perpendicular to the connector
+const qreal MONOMERIC_PAIR_CONNECTOR_LABEL_DIST = 5.5;
+
 // the thickness of the "halo" around monomers for predictive and selection
 // highlighting
 const qreal MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS = 7.5;

@@ -1,11 +1,8 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
-#include <fmt/format.h>
-
 #include <QApplication>
 #include <QClipboard>
 #include <QCursor>
-#include <QFontDatabase>
 #include <QGraphicsPixmapItem>
 #include <QKeyEvent>
 #include <QMimeData>
@@ -30,6 +27,7 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/file_save_image_dialog.h"
 #include "schrodinger/sketcher/dialog/rendering_settings_dialog.h"
+#include "schrodinger/sketcher/font_loader.h"
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
@@ -112,15 +110,7 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     m_ui->setupUi(this);
 
     // Load fonts BEFORE creating objects that use them
-    for (const auto& font_path : {":/resources/fonts/Arimo-Regular.ttf",
-                                  ":/resources/fonts/Arimo-Bold.ttf",
-                                  ":/resources/fonts/Arimo-Italic.ttf",
-                                  ":/resources/fonts/Arimo-BoldItalic.ttf"}) {
-        if (QFontDatabase::addApplicationFont(font_path) == -1) {
-            throw std::runtime_error(
-                fmt::format("Failed to load font: {}", font_path));
-        }
-    }
+    load_font_resources();
 
     // Now create Scene and other objects that depend on fonts
     m_sketcher_model = new SketcherModel(this);

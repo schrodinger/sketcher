@@ -43,7 +43,7 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/fragment.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
-#include "schrodinger/sketcher/rdkit/monomer_connectors.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/rdkit/s_group_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
