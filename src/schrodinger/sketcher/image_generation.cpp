@@ -22,6 +22,7 @@
 #include <boost/bimap.hpp>
 #include <unordered_map>
 
+#include "schrodinger/sketcher/font_loader.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -203,12 +204,14 @@ QSize get_image_size(const RenderOptions& opts, const QRectF& scene_rect)
  */
 void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
 {
-    mol_model.addMol(rdmol);
+    mol_model.addMol(rdmol, "Import molecule", /* reposition_mol = */ true,
+                     /* new_molecule_added = */ true,
+                     /* enforce_size_limit = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
 {
-    mol_model.addReaction(rxn);
+    mol_model.addReaction(rxn, /* enforce_size_limit = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const std::string& text)
@@ -262,6 +265,16 @@ void init_molviewer_image(MolModel& mol_model, SketcherModel& sketcher_model,
 }
 
 /**
+ * Return a new Scene after ensuring that the font has been loaded.
+ */
+Scene get_scene(MolModel* mol_model, SketcherModel* sketcher_model,
+                QWidget* parent = nullptr)
+{
+    load_font_resources();
+    return Scene(mol_model, sketcher_model, parent);
+}
+
+/**
  * Construct a paint device and render the given input to it
  *
  * @param input What to render into the scene.  Can be an RDKit molecule, an
@@ -279,7 +292,7 @@ paint_scene(const T& input, const RenderOptions& opts,
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
+    auto scene = get_scene(&mol_model, &sketcher_model);
     init_molviewer_image(mol_model, sketcher_model, input, opts);
 
     return paint_scene(scene, opts, instantiate_paint_device_to_size);
@@ -437,19 +450,6 @@ template <typename T> void save_image_file(const T& input,
     file.write(data);
 }
 
-template <typename T>
-qreal get_image_scale_for_mol_or_rxn(const T& mol_or_rxn, RenderOptions opts)
-
-{
-    QUndoStack undo_stack;
-    MolModel mol_model(&undo_stack);
-    SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
-    opts.scale = AUTOSCALE;
-    init_molviewer_image(mol_model, sketcher_model, mol_or_rxn, opts);
-    return get_scale(scene.getSceneItemsBoundingRect(), opts.width_height);
-}
-
 } // unnamed namespace
 
 std::string get_image_extension(ImageFormat format)
@@ -524,38 +524,6 @@ QByteArray get_stock_image_bytes(const std::string& filepath,
     return get_image_bytes<QFileInfo>(file_info, format, opts);
 }
 
-namespace
-{
-
-template <typename T>
-QByteArray get_LiveDesign_image_bytes(const T& input, ImageFormat format,
-                                      const RenderOptions& opts)
-{
-    QUndoStack undo_stack;
-    MolModel mol_model(&undo_stack);
-    SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
-    init_molviewer_image(mol_model, sketcher_model, input, opts);
-
-    return get_image_bytes<Scene>(scene, format, opts);
-}
-} // namespace
-
-QByteArray get_LiveDesign_image_bytes(const RDKit::ROMol& mol,
-                                      ImageFormat format,
-                                      const RenderOptions& opts)
-{
-    return get_LiveDesign_image_bytes<RDKit::ROMol>(mol, format, opts);
-}
-
-QByteArray get_LiveDesign_image_bytes(const RDKit::ChemicalReaction& rxn,
-                                      ImageFormat format,
-                                      const RenderOptions& opts)
-{
-    return get_LiveDesign_image_bytes<RDKit::ChemicalReaction>(rxn, format,
-                                                               opts);
-}
-
 void save_image_file(const RDKit::ROMol& mol, const std::string& filename,
                      const RenderOptions& opts)
 {
@@ -584,7 +552,7 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
     QUndoStack undo_stack;
     MolModel mol_model(&undo_stack);
     SketcherModel sketcher_model;
-    Scene scene(&mol_model, &sketcher_model);
+    auto scene = get_scene(&mol_model, &sketcher_model);
     for (auto rdmol : all_rdmols) {
         init_molviewer_image(mol_model, sketcher_model, *rdmol, opts);
         qreal cur_scale =
@@ -593,20 +561,6 @@ qreal get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
         mol_model.clear();
     }
     return best_scale;
-}
-
-// SIP has issues wrapping these functions if they're defined using a template,
-// so these definitions just call the templated function that contains the
-// actual implementation
-qreal get_autoscale_value(const RDKit::ROMol& rdmol, const RenderOptions& opts)
-{
-    return get_image_scale_for_mol_or_rxn(rdmol, opts);
-}
-
-qreal get_autoscale_value(const RDKit::ChemicalReaction& rxn,
-                          const RenderOptions& opts)
-{
-    return get_image_scale_for_mol_or_rxn(rxn, opts);
 }
 
 } // namespace sketcher

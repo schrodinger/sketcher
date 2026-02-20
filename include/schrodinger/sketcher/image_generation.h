@@ -135,14 +135,6 @@ SKETCHER_API QByteArray
 get_image_bytes(const std::string& text, ImageFormat format,
                 const RenderOptions& opts = RenderOptions());
 
-// FIXME: Remove this once image_generation is fully switched over to molviewer
-SKETCHER_API QByteArray
-get_LiveDesign_image_bytes(const RDKit::ROMol& mol, ImageFormat format,
-                           const RenderOptions& opts = RenderOptions());
-SKETCHER_API QByteArray get_LiveDesign_image_bytes(
-    const RDKit::ChemicalReaction& rxn, ImageFormat format,
-    const RenderOptions& opts = RenderOptions());
-
 /**
  * @param filepath path to stock image to generate should it be known that the
  * 2D sketcher image either can't or shouldn't render the image. Used primarily
@@ -180,29 +172,6 @@ SKETCHER_API void save_image_file(const std::string& text,
 SKETCHER_API qreal
 get_best_image_scale(const QList<RDKit::ROMol*> all_rdmols,
                      const RenderOptions& opts = RenderOptions());
-
-/**
- * Get the scale that will be used for rendering the provided mol when
- * RenderOptions::scale is set to AUTOSCALE.
- * @param rdmol The molecule to be rendered
- * @param opts The image generation options to use.  Note that opts.scale will
- * be ignored.
- * @return The scaling value
- */
-SKETCHER_API qreal get_autoscale_value(
-    const RDKit::ROMol& rdmol, const RenderOptions& opts = RenderOptions());
-
-/**
- * Get the scale that will be used for rendering the provided reaction when
- * RenderOptions::scale is set to AUTOSCALE.
- * @param rxn The reaction to be rendered
- * @param opts The image generation options to use.  Note that opts.scale will
- * be ignored.
- * @return The scaling value
- */
-SKETCHER_API qreal
-get_autoscale_value(const RDKit::ChemicalReaction& rxn,
-                    const RenderOptions& opts = RenderOptions());
 
 } // namespace sketcher
 } // namespace schrodinger

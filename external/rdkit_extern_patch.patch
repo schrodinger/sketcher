@@ -1,8 +1,8 @@
 diff --git a/Code/RDGeneral/types.cpp b/Code/RDGeneral/types.cpp
-index f3118a10f..f47d22823 100644
+index 6596e5953..f47d22823 100644
 --- a/Code/RDGeneral/types.cpp
 +++ b/Code/RDGeneral/types.cpp
-@@ -12,145 +12,6 @@
+@@ -12,146 +12,6 @@
  #include "types.h"
  
  namespace RDKit {
@@ -27,6 +27,7 @@ index f3118a10f..f47d22823 100644
 -const std::string _CIPCode = "_CIPCode";
 -const std::string _CIPRank = "_CIPRank";
 -const std::string _CIPComputed = "_CIPComputed";
+-const std::string _CIPNeighborOrder = "_CIPNeighborOrder";
 -const std::string _CanonicalRankingNumber = "_CanonicalRankingNumber";
 -const std::string _ChiralityPossible = "_ChiralityPossible";
 -const std::string _CrippenLogP = "_CrippenLogP";
@@ -149,10 +150,10 @@ index f3118a10f..f47d22823 100644
  const double EPS_DOUBLE = std::numeric_limits<double>::epsilon();
  const double SMALL_DOUBLE = 1.0e-8;
 diff --git a/Code/RDGeneral/types.h b/Code/RDGeneral/types.h
-index f8d39e957..a264b66a3 100644
+index 3bc2912d3..7ebe3a32a 100644
 --- a/Code/RDGeneral/types.h
 +++ b/Code/RDGeneral/types.h
-@@ -46,234 +46,144 @@
+@@ -46,236 +46,145 @@
  namespace RDKit {
  
  namespace detail {
@@ -237,6 +238,8 @@ index f8d39e957..a264b66a3 100644
 -RDKIT_RDGENERAL_EXPORT extern const std::string _CIPRank;  // int COMPUTED
 -RDKIT_RDGENERAL_EXPORT extern const std::string
 -    _CIPComputed;  // int (bool) COMPUTED
+-RDKIT_RDGENERAL_EXPORT extern const std::string _CIPNeighborOrder;
+-
 -RDKIT_RDGENERAL_EXPORT extern const std::string
 -    _CanonicalRankingNumber;  // unsigned int
 -RDKIT_RDGENERAL_EXPORT extern const std::string _ChiralityPossible;  // int
@@ -378,6 +381,7 @@ index f8d39e957..a264b66a3 100644
 +inline const std::string _CIPCode = "_CIPCode";
 +inline const std::string _CIPRank = "_CIPRank";
 +inline const std::string _CIPComputed = "_CIPComputed";
++inline const std::string _CIPNeighborOrder = "_CIPNeighborOrder";
 +inline const std::string _CanonicalRankingNumber = "_CanonicalRankingNumber";
 +inline const std::string _ChiralityPossible = "_ChiralityPossible";
 +inline const std::string _CrippenLogP = "_CrippenLogP";

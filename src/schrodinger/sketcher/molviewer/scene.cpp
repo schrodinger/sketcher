@@ -874,6 +874,12 @@ void Scene::updateMonomerLabelSizeOnModel()
     m_mol_model->setMonomerSizes(sizes);
 }
 
+const QGraphicsItem*
+Scene::getGraphicsItemForAtom(const RDKit::Atom* atom) const
+{
+    return m_atom_to_atom_item.at(atom);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
 

@@ -45,18 +45,6 @@ class SGroupItem;
 class NonMolecularObject;
 
 /**
- * Types of monomers
- */
-enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
-
-/**
- * Determine what type of monomer the given atom represents.
- *
- * @throw std::runtime_error if the atom does not represent a monomer
- */
-MonomerType get_monomer_type(const RDKit::Atom* atom);
-
-/**
  * Create and return a graphics item for the given monomer
  * @param atom An atom that represents a monomer
  * @param fonts The fonts for the graphics item to use
