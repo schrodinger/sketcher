@@ -876,6 +876,31 @@ read_properties_from_atom(const RDKit::Atom* const atom)
         props.reset(query_props);
         query_props->query_type = QueryType::RGROUP;
         query_props->r_group = *r_group_num;
+
+        // SKETCH-2695: If the R-group has advanced query properties applied,
+        // read them back. When advanced properties are set on an R-group,
+        // update_atom_for_advanced_properties() converts it to a QueryAtom.
+        if (atom->hasQuery()) {
+            auto* query_atom = static_cast<const RDKit::QueryAtom*>(atom);
+            auto advanced_props = read_query(query_atom->getQuery());
+            // Copy over the advanced properties (but preserve the RGROUP type)
+            query_props->charge = advanced_props->charge;
+            query_props->unpaired_electrons =
+                advanced_props->unpaired_electrons;
+            query_props->total_h_type = advanced_props->total_h_type;
+            query_props->total_h_exact_val = advanced_props->total_h_exact_val;
+            query_props->num_connections = advanced_props->num_connections;
+            query_props->aromaticity = advanced_props->aromaticity;
+            query_props->ring_count_type = advanced_props->ring_count_type;
+            query_props->ring_count_exact_val =
+                advanced_props->ring_count_exact_val;
+            query_props->ring_bond_count_type =
+                advanced_props->ring_bond_count_type;
+            query_props->ring_bond_count_exact_val =
+                advanced_props->ring_bond_count_exact_val;
+            query_props->smallest_ring_size =
+                advanced_props->smallest_ring_size;
+        }
     } else if (!atom->hasQuery()) {
         auto* atom_props = new AtomProperties();
         props.reset(atom_props);
