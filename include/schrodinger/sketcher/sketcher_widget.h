@@ -550,7 +550,7 @@ class SKETCHER_API SketcherWidget : public QWidget
         const rdkit_extensions::Format format =
             rdkit_extensions::Format::AUTO_DETECT,
         const std::optional<RDGeom::Point3D> position = std::nullopt,
-        const bool recenter_view = true);
+        const bool recenter_view = false);
 };
 
 } // namespace sketcher

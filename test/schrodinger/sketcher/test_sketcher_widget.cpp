@@ -860,6 +860,62 @@ BOOST_AUTO_TEST_CASE(test_cleanup_selection_fits_only_selection)
 }
 
 /**
+ * SKETCH-2666: Verify that zoom is preserved when pasting molecules, but reset
+ * when explicitly importing. This test ensures that users can manually zoom in
+ * and paste molecules without having their zoom unexpectedly reset.
+ */
+BOOST_AUTO_TEST_CASE(test_paste_preserves_zoom_but_import_resets)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+
+    // Add a molecule
+    sk.addFromString("CCCC", Format::SMILES);
+    auto mol = sk.getRDKitMolecule();
+    BOOST_TEST(mol->getNumAtoms() == 4);
+
+    // Show the widget to ensure view geometry is initialized
+    sk.show();
+    QCoreApplication::processEvents();
+
+    auto view = sk.m_ui->view;
+
+    // Fit to screen initially
+    view->fitToScreen(false);
+    auto initial_transform = view->transform();
+
+    // Manually zoom in (simulate user zooming)
+    const qreal zoom_factor = 2.0;
+    view->scale(zoom_factor, zoom_factor);
+    auto zoomed_transform = view->transform();
+
+    // Verify we actually zoomed in
+    BOOST_TEST(zoomed_transform.m11() > initial_transform.m11(),
+               "Should have zoomed in");
+
+    // Paste a molecule at a specific position (this is what was broken)
+    // With the fix, this should NOT reset the zoom
+    RDGeom::Point3D position(5.0, 5.0, 0.0);
+    sk.addTextToMolModel("C", Format::SMILES, position,
+                         /*recenter_view=*/false);
+
+    auto transform_after_paste = view->transform();
+
+    // Zoom should be preserved after paste (not reset to initial)
+    // Allow for small floating point differences
+    BOOST_TEST(std::abs(transform_after_paste.m11() - zoomed_transform.m11()) <
+                   0.01,
+               "Paste should preserve zoom level");
+
+    // Now test that explicit import DOES reset zoom (expected behavior)
+    sk.addFromString("CC", Format::SMILES);
+    auto transform_after_import = view->transform();
+
+    // Zoom should be reset after import (different from zoomed state)
+    BOOST_TEST(transform_after_import.m11() != zoomed_transform.m11(),
+               "Import should reset zoom");
+}
+
+/**
  * Make sure that SketcherWidget::addTextToMolModel properly prevents the user
  * from adding atomistic or monomeric models when appropriate.
  */
