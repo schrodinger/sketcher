@@ -102,8 +102,9 @@ void AminoAcidItem::updateCachedData()
             break;
     }
     auto [border_width, border_height] = get_rect_size_to_fit_label(
-        m_main_label_text, *main_label_fm, standard_border_width,
-        standard_border_height);
+        m_main_label_text, *main_label_fm,
+        scaleBasedOnFontSize(standard_border_width),
+        scaleBasedOnFontSize(standard_border_height));
     m_border_pen.setWidthF(border_line_width);
     m_border_pen.setColor(border_color);
     auto border_rect = QRectF(-border_width / 2, -border_height / 2,
@@ -113,7 +114,9 @@ void AminoAcidItem::updateCachedData()
                              MONOMER_SELECTION_HIGHLIGHTING_THICKNESS);
     set_path_to_rounded_rect(m_predictive_highlighting_path, border_rect,
                              MONOMER_PREDICTIVE_HIGHLIGHTING_THICKNESS);
-    m_main_label_rect = border_rect;
+    m_main_label_left_baseline =
+        center_text_in_rect(m_main_label_text, *main_label_fm, border_rect);
+
     m_bounding_rect =
         rect_expanded_by_half_pen_width(border_rect, border_line_width);
     set_path_to_rounded_rect(m_shape, border_rect, border_line_width / 2.0);

@@ -1003,19 +1003,22 @@ lay_out_chain_with_turns(RDKit::ROMol& polymer,
                       });
 
         // Lay out turn monomers (if any) and prepare for next segment
+        if (segment_end + turn_size < total_monomers) {
 
-        RDGeom::Point3D turn_start = conformer.getAtomPos(segment_end - 1);
+            RDGeom::Point3D turn_start = conformer.getAtomPos(segment_end - 1);
 
-        // Lay out turn monomers following polygon arc
-        chain_start_pos =
-            lay_out_turn(polymer, conformer, placed_monomers_idcs, turn_start,
-                         segment_end, turn_size, total_monomers, chain_dir,
-                         turn_positions[turn_idx].downward,
-                         turn_positions[turn_idx].y_size_difference);
+            // Lay out turn monomers following polygon arc
+            chain_start_pos =
+                lay_out_turn(polymer, conformer, placed_monomers_idcs,
+                             turn_start, segment_end, turn_size, total_monomers,
+                             chain_dir, turn_positions[turn_idx].downward,
+                             turn_positions[turn_idx].y_size_difference);
 
-        // Reverse direction for next segment
-        chain_dir = (chain_dir == ChainDirection::LTR) ? ChainDirection::RTL
-                                                       : ChainDirection::LTR;
+            // Reverse direction for next segment
+            chain_dir = (chain_dir == ChainDirection::LTR)
+                            ? ChainDirection::RTL
+                            : ChainDirection::LTR;
+        }
 
         // Skip turn_size residues before starting the next segment
         segment_start = segment_end + turn_size;
@@ -1204,6 +1207,9 @@ lay_out_cyclic_polymer(RDKit::ROMol& polymer,
             return;
         }
     }
+    // If the approach above fails, fall back to laying out the rings first
+    // and then extending chains from there
+    generate_coordinates_for_cycles(polymer, placed_monomers_idcs);
 
     // If the approach above fails, fall back to laying out the rings first
     // and then extending chains from there

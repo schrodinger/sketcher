@@ -214,13 +214,13 @@ std::vector<std::string> get_table_fields(sqlite3* db)
                                   column_names_getter);
 }
 
-void insert_monomer_info(sqlite3* db, MonomerInfo& m)
+void bind_monomer_to_stmt(sqlite3* db, sqlite3_stmt* stmt, const MonomerInfo& m)
 {
-    // SMILES and NAME must me unique, so we require them to be specified.
+    // SMILES and NAME must be unique, so we require them to be specified.
     // We also require PolymerType and Symbol combinations to be unique,
     // but we don't require them to be non-empty. This restriction will be
     // enforced by the SQLite schema.
-    for (auto& field : {m.name, m.smiles}) {
+    for (const auto& field : {m.name, m.smiles}) {
         if (!field.has_value() || field->empty()) {
             throw std::runtime_error(
                 "Monomer definitions must include at least "
@@ -228,22 +228,25 @@ void insert_monomer_info(sqlite3* db, MonomerInfo& m)
         }
     }
 
-    auto insert_command = fmt::format(
-        "REPLACE INTO monomer_definitions ("
-        "{9}, {10}, {11}, {12}, {13}, {14}, {15}, {16}, {17}"
-        ") VALUES ("
-        "'{0}', '{1}', '{2}', '{3}', '{4}', '{5}', '{6}', '{7}', '{8}'"
-        ");",
-        // SMILES and NAME have no default, see the check above!
-        m.symbol.value_or(""), m.polymer_type.value_or(""),
-        m.natural_analog.value_or(""), m.smiles.value(),
-        m.core_smiles.value_or(""), m.name.value(), m.monomer_type.value_or(""),
-        m.author.value_or(""), m.pdbcode.value_or(""),
-        //
-        symbol_column, polymer_type_column, analog_column, smiles_column,
-        core_column, name_column, monomer_type_column, author_column,
-        pdb_code_column);
-    execute_sql_on(db, insert_command.data());
+    // Bind values to the prepared statement (1-indexed)
+    // clang-format off
+    sqlite3_bind_text(stmt, 1, m.symbol.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, m.polymer_type.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, m.natural_analog.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 4, m.smiles.value().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 5, m.core_smiles.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, m.name.value().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, m.monomer_type.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 8, m.author.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 9, m.pdbcode.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    // clang-format on
+
+    if (auto rc = sqlite3_step(stmt); rc != SQLITE_DONE) {
+        throw std::runtime_error(
+            fmt::format("Error inserting monomer: {}", sqlite3_errmsg(db)));
+    }
+
+    sqlite3_reset(stmt);
 }
 
 template <class T> std::string
@@ -385,7 +388,23 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
         }
     }
 
-    // parse the json and insert all rows in the same transaction
+    // Prepare the INSERT statement once for reuse
+    static constexpr std::string_view insert_sql =
+        "REPLACE INTO monomer_definitions ("
+        "SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, "
+        "NAME, MONOMER_TYPE, AUTHOR, PDBCODE) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    sqlite3_stmt* raw_stmt = nullptr;
+    if (auto rc =
+            sqlite3_prepare_v2(db, insert_sql.data(), -1, &raw_stmt, nullptr);
+        rc != SQLITE_OK) {
+        throw std::runtime_error(fmt::format(
+            "Error preparing insert statement: {}", sqlite3_errstr(rc)));
+    }
+    managed_stmt_t stmt(raw_stmt, &sqlite3_finalize);
+
+    // Insert all rows in the same transaction
     execute_sql_on(db, "BEGIN TRANSACTION;");
 
     try {
@@ -401,7 +420,7 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
                 m.pdbcode = "UNL";
             }
 
-            insert_monomer_info(db, m);
+            bind_monomer_to_stmt(db, stmt.get(), m);
         }
     } catch (const std::runtime_error& e) {
         execute_sql_on(db, "ROLLBACK;");

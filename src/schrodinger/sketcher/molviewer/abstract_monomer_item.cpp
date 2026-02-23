@@ -7,6 +7,7 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 
+#include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
@@ -34,7 +35,7 @@ void AbstractMonomerItem::paint(QPainter* painter,
     painter->drawPath(m_border_path);
     painter->setPen(m_main_label_pen);
     painter->setFont(m_main_label_font);
-    painter->drawText(m_main_label_rect, Qt::AlignCenter, m_main_label_text);
+    painter->drawText(m_main_label_left_baseline, m_main_label_text);
     painter->restore();
 }
 
@@ -45,6 +46,11 @@ void AbstractMonomerItem::setMonomerColors(const QColor& background_color,
     m_border_brush.setColor(background_color);
     m_border_pen.setColor(outline_color);
     m_main_label_pen.setColor(font_color);
+}
+
+qreal AbstractMonomerItem::scaleBasedOnFontSize(qreal num) const
+{
+    return num * m_fonts.size() / DEFAULT_FONT_SIZE;
 }
 
 QString elide_text(const std::string& text)
@@ -224,6 +230,15 @@ QColor get_color_for_monomer(
     }
 
     return default_color;
+}
+
+QPointF center_text_in_rect(const QString& text, const QFontMetricsF& fm,
+                            const QRectF& rect)
+{
+    auto text_rect = fm.tightBoundingRect(text);
+    auto text_rect_origin_loc = -text_rect.bottomLeft();
+    text_rect.moveCenter(rect.center());
+    return text_rect.bottomLeft() + text_rect_origin_loc;
 }
 
 } // namespace sketcher
