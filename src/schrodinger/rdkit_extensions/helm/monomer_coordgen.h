@@ -62,9 +62,9 @@ compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
  * @param custom_bonds Vector of custom bonds to score
  * @return Overall layout score. Lower is better, with 0 being a perfect score
  */
-float score_coiling_layout(const RDKit::ROMol& polymer,
-                           const std::vector<TurnInfo>& turns,
-                           const std::vector<CustomBondInfo>& custom_bonds);
+float RDKIT_EXTENSIONS_API score_coiling_layout(
+    const RDKit::ROMol& polymer, const std::vector<TurnInfo>& turns,
+    const std::vector<CustomBondInfo>& custom_bonds);
 
 /**
  * @return a numeric score representing the position of the monomer within the
@@ -74,9 +74,9 @@ float score_coiling_layout(const RDKit::ROMol& polymer,
  * part is the position within the segment/turn, normalized by the
  * segment/turn size.
  */
-float RDKIT_EXTENSIONS_API
-get_position_in_coils_score(int monomer_idx, const RDKit::ROMol& polymer,
-                            const std::vector<TurnInfo>& turns);
+float RDKIT_EXTENSIONS_API get_position_in_coils_score(
+    unsigned int monomer_idx, const RDKit::ROMol& polymer,
+    const std::vector<TurnInfo>& turns);
 
 /**
  * Resize the monomer at the given index to the new size by moving other

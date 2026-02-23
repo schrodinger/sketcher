@@ -812,7 +812,8 @@ static std::vector<TurnInfo> compute_coiling_turns_for_chain_with_params(
     return turns;
 }
 
-float get_position_in_coils_score(int monomer_idx, const RDKit::ROMol& polymer,
+float get_position_in_coils_score(unsigned int monomer_idx,
+                                  const RDKit::ROMol& polymer,
                                   const std::vector<TurnInfo>& turns)
 {
     int section_number = 0;
@@ -820,7 +821,7 @@ float get_position_in_coils_score(int monomer_idx, const RDKit::ROMol& polymer,
     int section_size = 0;
     int last_segment_size = 0;
 
-    for (int turn_idx = 0; turn_idx < turns.size(); ++turn_idx) {
+    for (unsigned int turn_idx = 0; turn_idx < turns.size(); ++turn_idx) {
         const auto& turn = turns[turn_idx];
         section_number = turn_idx * 2;
         last_segment_size = turn.position - begin_of_section;
@@ -946,13 +947,13 @@ compute_coiling_turns_for_chain(const RDKit::ROMol& polymer)
                     if (increment < 0) {
                         int placed_residues = first_chain_size;
                         int current_turn_size = first_turn_size;
-                        while (placed_residues < polymer.getNumAtoms()) {
+                        while (static_cast<unsigned int>(placed_residues) <
+                               polymer.getNumAtoms()) {
                             placed_residues += current_turn_size + chain_size;
                             current_turn_size += abs(increment);
                         }
                         first_turn_size = current_turn_size - abs(increment);
                     }
-
                     auto turns = compute_coiling_turns_for_chain_with_params(
                         polymer, increment, first_turn_size, chain_size,
                         first_chain_size);
@@ -1152,7 +1153,7 @@ std::vector<TurnInfo> change_turn_size(const std::vector<TurnInfo>& turns,
     new_turns[turn_i].size += size_change;
     new_turns[turn_i].y_size_difference -= size_change;
 
-    for (int i = turn_i + 1; i < new_turns.size(); ++i) {
+    for (unsigned int i = turn_i + 1; i < new_turns.size(); ++i) {
         new_turns[i].position += size_change;
     }
     return new_turns;
@@ -1183,11 +1184,13 @@ static bool optimize_coiling_layout(RDKit::ROMol& polymer,
     // Try optimizing by adjusting turn sizes (e.g. increasing or
     // decreasing turn sizes to better alignment)
 
-    for (auto turn_i = 0; turn_i < best_layout.size(); ++turn_i) {
+    for (unsigned int turn_i = 0; turn_i < best_layout.size(); ++turn_i) {
         for (auto change : {-1, 1}) {
-            if (turn_i > 0 && best_layout[turn_i].size + change < 2) {
+            if ((turn_i > 0 && best_layout[turn_i].size + change < 2) ||
+                (best_layout[turn_i].size == 0 && change < 0)) {
                 continue; // use very small turns only at the beginning of the
-                          // coil, to avoid clashes
+                          // coil, to avoid clashes and avoid negative turn
+                          // sizes
             }
             auto new_layout = change_turn_size(best_layout, turn_i, change);
             auto score =
@@ -1201,7 +1204,7 @@ static bool optimize_coiling_layout(RDKit::ROMol& polymer,
     }
     turns = best_layout;
     // Threshold for acceptable layout after optimization
-    const float ACCEPTABLE_SCORE = 2.0;
+    const float ACCEPTABLE_SCORE = 1.5;
     return best_score < ACCEPTABLE_SCORE;
 }
 
@@ -1224,12 +1227,10 @@ static bool maybe_lay_out_cyclic_polymer_as_coiling_chain(
     if (turns.empty()) {
         return false; // Pattern doesn't fit coiling layout
     }
-
     if (!optimize_coiling_layout(polymer, turns)) {
         return false; // Optimization failed, likely due to incompatible
                       // constraints
     }
-
     // Perform the layout
     lay_out_chain_with_turns(polymer, placed_monomers_idcs, turns);
     return true;
@@ -1254,9 +1255,6 @@ lay_out_cyclic_polymer(RDKit::ROMol& polymer,
             return;
         }
     }
-    // If the approach above fails, fall back to laying out the rings first
-    // and then extending chains from there
-    generate_coordinates_for_cycles(polymer, placed_monomers_idcs);
 
     // If the approach above fails, fall back to laying out the rings first
     // and then extending chains from there
