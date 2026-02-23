@@ -53,7 +53,9 @@ unsigned int RDKIT_EXTENSIONS_API
 compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
 
 /**
- * Scores the entire coiling layout based on all custom bonds.
+ * Scores the entire coiling layout based on all custom bonds. The lower the
+ * score, the better, with 0 being a perfect score where all custom bonds
+ * connect residues in corresponding positions at exactly 1 full coil distance.
  *
  * @param polymer The polymer molecule
  * @param turns Vector of turn information defining the layout
@@ -64,6 +66,14 @@ float score_coiling_layout(const RDKit::ROMol& polymer,
                            const std::vector<TurnInfo>& turns,
                            const std::vector<CustomBondInfo>& custom_bonds);
 
+/**
+ * @return a numeric score representing the position of the monomer within the
+ * coiling layout.
+ * The integer part is the section number (0 for first
+ * segment, 1 for first turn, 2 for second segment, etc.), the  fractional
+ * part is the position within the segment/turn, normalized by the
+ * segment/turn size.
+ */
 float RDKIT_EXTENSIONS_API
 get_position_in_coils_score(int monomer_idx, const RDKit::ROMol& polymer,
                             const std::vector<TurnInfo>& turns);
