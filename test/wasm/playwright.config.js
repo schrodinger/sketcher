@@ -9,7 +9,10 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:8000',
     screenshot: 'only-on-failure',
+    viewport: { width: 1280, height: 720 },
+    actionTimeout: 10000,
   },
+  retries: process.env.CI ? 1 : 0,
   snapshotPathTemplate: '{testDir}/{testFileDir}/__snapshots__/{testFileName}/{arg}{ext}',
   expect: {
     toMatchSnapshot: { maxDiffPixelRatio: 0.1 },
