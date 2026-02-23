@@ -11,8 +11,12 @@
 
 #include <cstring>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
+#include <QGraphicsView>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStyleHints>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -82,6 +86,57 @@ void sketcher_allow_monomeric(bool allow_monomeric)
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
+/**
+ * Return the center coordinates of all visible toolbar buttons as a JSON
+ * object keyed by Qt objectName. Each entry contains {x, y, text}.
+ * Coordinates are relative to the sketcher widget's top-left corner.
+ */
+std::string sketcher_get_button_positions()
+{
+    auto& sk = get_sketcher_instance();
+    QJsonObject result;
+    const auto buttons = sk.findChildren<QAbstractButton*>();
+    for (const auto* button : buttons) {
+        if (!button->isVisible()) {
+            continue;
+        }
+        const QString name = button->objectName();
+        if (name.isEmpty()) {
+            continue;
+        }
+        const int w = button->width();
+        const int h = button->height();
+        const QPoint center = button->mapTo(&sk, QPoint(w / 2, h / 2));
+        QJsonObject entry;
+        entry["x"] = center.x();
+        entry["y"] = center.y();
+        entry["text"] = button->text();
+        result[name] = entry;
+    }
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+}
+
+/**
+ * Return the position and size of the drawing area (QGraphicsView) as a JSON
+ * object with {x, y, width, height}. Coordinates are relative to the sketcher
+ * widget's top-left corner, excluding the toolbar and top bar.
+ */
+std::string sketcher_get_drawing_area_rect()
+{
+    auto& sk = get_sketcher_instance();
+    auto* view = sk.findChild<QGraphicsView*>("view");
+    if (!view) {
+        return "{}";
+    }
+    const QPoint topLeft = view->mapTo(&sk, QPoint(0, 0));
+    QJsonObject result;
+    result["x"] = topLeft.x();
+    result["y"] = topLeft.y();
+    result["width"] = view->width();
+    result["height"] = view->height();
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+}
+
 void sketcher_changed()
 {
 #ifdef __EMSCRIPTEN__
@@ -136,6 +191,10 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function("_sketcher_get_button_positions",
+                         &sketcher_get_button_positions);
+    emscripten::function("_sketcher_get_drawing_area_rect",
+                         &sketcher_get_drawing_area_rect);
     // see sketcher_changed_callback above
 }
 #endif
