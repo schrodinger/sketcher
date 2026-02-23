@@ -235,3 +235,22 @@ BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
     monomer_db.loadMonomersFromSQLiteFile(
         LocalMonomerDbFixture::test_custom_monomer_db);
 }
+
+BOOST_AUTO_TEST_CASE(TestNameEscaping)
+{
+    constexpr std::string_view json_for_12ddR = R"JSON(
+        [{
+        "symbol": "12ddR",
+        "polymer_type": "RNA",
+        "natural_analog": "R",
+        "smiles": "[H:1]OC[C@H]1OCC[C@@H]1O[H:2]",
+         "core_smiles": "OC[C@H]1OCC[C@@H]1O",
+         "name": "1',2'-Di-Deoxy-Ribose",
+         "monomer_type": "Backbone",
+         "author": "Pistoia Alliance",
+         "pdbcode": "UNK "
+         }]
+    )JSON";
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(json_for_12ddR);
+}
