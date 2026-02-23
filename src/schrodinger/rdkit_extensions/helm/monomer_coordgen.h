@@ -22,12 +22,51 @@ namespace rdkit_extensions
 const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
 /**
+ * Information about a turn in a snaking or coiling chain layout.
+ */
+struct TurnInfo {
+    unsigned int position; // Monomer index where the turn begins (exclusive end
+                           // of segment)
+    unsigned int
+        size; // Number of residues consumed in the turn (0 = instant turn)
+    bool downward =
+        true; // Whether the turn goes downward (true) or upward (false)
+    int y_size_difference =
+        0; // this turn will occupy space as if it had y_size_difference more
+           // monomers than it actually has. This is used to make sure that
+           // turns with different number of monomers still occupy the same
+           // vertical space and can be aligned with each other
+};
+
+// Structure to hold CUSTOM_BOND information
+struct CustomBondInfo {
+    unsigned int monomer_i; // First monomer position in chain
+    unsigned int monomer_j; // Second monomer position (j > i)
+};
+
+/**
  * @param monomer_mol monomeric molecule
  * @return The id of the conformer added to the molecule with the computed
  * coordinates
  */
 unsigned int RDKIT_EXTENSIONS_API
 compute_monomer_mol_coords(RDKit::ROMol& monomer_mol);
+
+/**
+ * Scores the entire coiling layout based on all custom bonds.
+ *
+ * @param polymer The polymer molecule
+ * @param turns Vector of turn information defining the layout
+ * @param custom_bonds Vector of custom bonds to score
+ * @return Overall layout score. Lower is better, with 0 being a perfect score
+ */
+float score_coiling_layout(const RDKit::ROMol& polymer,
+                           const std::vector<TurnInfo>& turns,
+                           const std::vector<CustomBondInfo>& custom_bonds);
+
+float RDKIT_EXTENSIONS_API
+get_position_in_coils_score(int monomer_idx, const RDKit::ROMol& polymer,
+                            const std::vector<TurnInfo>& turns);
 
 /**
  * Resize the monomer at the given index to the new size by moving other

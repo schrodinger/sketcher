@@ -543,12 +543,6 @@ generate_coordinates_for_cycles(RDKit::ROMol& polymer,
     }
 }
 
-// Structure to hold CUSTOM_BOND information
-struct CustomBondInfo {
-    unsigned int monomer_i; // First monomer position in chain
-    unsigned int monomer_j; // Second monomer position (j > i)
-};
-
 // Structure to hold turn constraint: turn must be in range (min_pos, max_pos)
 struct TurnConstraint {
     unsigned int min_pos; // Turn must be after this position
@@ -663,23 +657,6 @@ compute_turn_positions_for_chain(const RDKit::ROMol& polymer)
 
     return merged;
 }
-
-/**
- * Information about a turn in a snaking chain layout.
- */
-struct TurnInfo {
-    unsigned int position; // Monomer index where the turn begins (exclusive end
-                           // of segment)
-    unsigned int
-        size; // Number of residues consumed in the turn (0 = instant turn)
-    bool downward =
-        true; // Whether the turn goes downward (true) or upward (false)
-    int y_size_difference =
-        0; // this turn will occupy space as if it had y_size_difference more
-           // monomers than it actually has. This is used to make sure that
-           // turns with different number of monomers still occupy the same
-           // vertical space and can be aligned with each other
-};
 
 /**
  * Lays out turn monomers following a polygon arc.
@@ -809,60 +786,66 @@ static std::vector<TurnInfo> compute_coiling_turns_for_chain_with_params(
     return turns;
 }
 
-/**
- * Scores the entire coiling layout based on all custom bonds.
- *
- * @param polymer The polymer molecule
- * @param turns Vector of turn information defining the layout
- * @param custom_bonds Vector of custom bonds to score
- * @return Overall layout score. Lower is better, with 0 being a perfect score
- */
-static float
-score_coiling_layout(const RDKit::ROMol& polymer,
-                     const std::vector<TurnInfo>& turns,
-                     const std::vector<CustomBondInfo>& custom_bonds)
+float get_position_in_coils_score(int monomer_idx, const RDKit::ROMol& polymer,
+                                  const std::vector<TurnInfo>& turns)
+{
+    // position score integer part is the section number (0 for first
+    // segment, 1 for first turn, 2 for second segment, etc.) fractional
+    // part is the position within the segment/turn, normalized by the
+    // segment/turn size.
+
+    int section_number = 0;
+    int begin_of_section = 0;
+    int section_size = 0;
+    int last_segment_size = 0;
+    for (int turn_idx = 0; turn_idx < turns.size(); ++turn_idx) {
+        const auto& turn = turns[turn_idx];
+        section_number = turn_idx * 2;
+        if (monomer_idx < turn.position + turn.size) {
+            if (monomer_idx >= turn.position) {
+                // we're in the turn
+                section_number += 1;
+                begin_of_section = turn.position;
+                section_size = turn.size;
+            } else {
+                // we're in the segment before the turn
+                section_size = turn.position - begin_of_section;
+                last_segment_size = section_size;
+            }
+
+            return section_number +
+                   static_cast<double>(monomer_idx + 1 - begin_of_section) /
+                       (section_size + 1);
+            break;
+        }
+        begin_of_section = turn.position + turn.size;
+    }
+    // we are in the last segment after the last turn. This segment might not be
+    // complete, so the best way to approximate the position score is to assume
+    // that the segment has the same size as the last complete segment
+    section_size = last_segment_size;
+
+    section_number = turns.size() * 2;
+
+    return section_number +
+           static_cast<double>(monomer_idx - begin_of_section) /
+               (section_size + 1);
+}
+
+float score_coiling_layout(const RDKit::ROMol& polymer,
+                           const std::vector<TurnInfo>& turns,
+                           const std::vector<CustomBondInfo>& custom_bonds)
 {
     if (custom_bonds.empty()) {
         return 0.0;
     }
-    auto get_position_score = [&turns](unsigned int monomer_idx) {
-        // position score integer part is the section number (0 for first
-        // segment, 1 for first turn, 2 for second segment, etc.) fractional
-        // part is the position within the segment/turn, normalized by the
-        // segment/turn size.
 
-        int section_number = 0;
-        int begin_of_section = 0;
-        int section_size = 0;
-        for (int turn_idx = 0; turn_idx < turns.size(); ++turn_idx) {
-            const auto& turn = turns[turn_idx];
-            section_number = turn_idx * 2;
-            if (monomer_idx < turn.position + turn.size) {
-                if (monomer_idx >= turn.position) {
-                    // we're in the turn
-                    section_number += 1;
-                    begin_of_section = turn.position;
-                    section_size = turn.size;
-                } else {
-                    // we're in the segment before the turn
-                    section_size = turn.position - begin_of_section;
-                }
-                return section_number +
-                       static_cast<double>(monomer_idx - begin_of_section) /
-                           (section_size + 1);
-                break;
-            }
-            begin_of_section = turn.position + turn.size;
-        }
-        section_number += 2; // we're in the last segment after the last turn
-        return section_number +
-               static_cast<double>(monomer_idx - begin_of_section) /
-                   (section_size + 1);
-    };
     float return_score = 0.0;
     for (auto bond : custom_bonds) {
-        auto pos_i = get_position_score(bond.monomer_i);
-        auto pos_j = get_position_score(bond.monomer_j);
+        auto pos_i =
+            get_position_in_coils_score(bond.monomer_i, polymer, turns);
+        auto pos_j =
+            get_position_in_coils_score(bond.monomer_j, polymer, turns);
 
         // ideal distance between bonded monomers in the coiling layout is 4
         // (one full coil), so score is based on how close the actual distance
@@ -870,6 +853,7 @@ score_coiling_layout(const RDKit::ROMol& polymer,
         // more
         double distance = std::abs(pos_j - pos_i);
         double score = (distance - 4.0) * (distance - 4.0);
+
         return_score += score;
     }
     return return_score / custom_bonds.size();
@@ -1154,6 +1138,9 @@ static bool optimize_coiling_layout(RDKit::ROMol& polymer,
     auto best_layout = turns;
     float best_score = score;
 
+    std::cerr << "Initial coiling layout score: " << score
+              << ". Attempting optimization..." << std::endl;
+
     // Try optimizing by adjusting turn sizes (e.g. increasing or
     // decreasing turn sizes to better alignment)
 
@@ -1163,7 +1150,9 @@ static bool optimize_coiling_layout(RDKit::ROMol& polymer,
             auto score =
                 score_coiling_layout(polymer, new_layout, custom_bonds);
             if (score < best_score) {
-
+                std::cerr << "Found better coiling layout with score: " << score
+                          << " changing turn " << turn_i << " by " << change
+                          << std::endl;
                 best_score = score;
                 best_layout = new_layout;
                 break;

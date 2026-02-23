@@ -659,4 +659,27 @@ BOOST_AUTO_TEST_CASE(FindAllConnectedMonomersOutsideRing)
     }
 }
 
+BOOST_AUTO_TEST_CASE(TestPositionInCoilsScore)
+{
+    // Single-chain HELM, no branches/rings
+    std::string helm = "PEPTIDE1{A.C.D.E.F.G.H.I.A.B.C.D.E.F.G}$$$$";
+    auto mol = helm::helm_to_rdkit(helm);
+
+    // Create explicit turns to simulate coiling layout
+    std::vector<schrodinger::rdkit_extensions::TurnInfo> turns = {
+        {1, 1, true, 0}, {3, 3, false, 0}, {7, 6, true, 0}};
+
+    std::vector<double> scores = {0.5,     1.5,     2.5,     3.25,    3.5,
+                                  3.75,    4.5,     5.14286, 5.28571, 5.42857,
+                                  5.57143, 5.71429, 5.85714, 6,       7};
+
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        double score =
+            schrodinger::rdkit_extensions::get_position_in_coils_score(
+                static_cast<int>(i), *mol, turns);
+        scores.push_back(score);
+        BOOST_ASSERT(score == scores[i]);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
