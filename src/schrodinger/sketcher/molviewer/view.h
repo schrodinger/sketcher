@@ -50,11 +50,6 @@ class SKETCHER_API View : public QGraphicsView
     }
 
     /**
-     * If needed scale the view matrix to include objects that are off-screen.
-     */
-    void zoomOutToIncludeAll();
-
-    /**
      * Translate the viewport by delta. This is used to pan the view around the
      * scene when the user hits the arrow keys.
      */
