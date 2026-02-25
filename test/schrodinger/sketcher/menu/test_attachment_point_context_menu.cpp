@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(test_attachment_point_menu_actions)
 
 /**
  * SKETCH-2556: Verify that clicking Delete emits the deleteRequested signal
- * with attachment points.
+ * with the correct attachment point atoms and bonds.
  */
 BOOST_AUTO_TEST_CASE(test_attachment_point_menu_delete_signal)
 {
@@ -46,33 +46,32 @@ BOOST_AUTO_TEST_CASE(test_attachment_point_menu_delete_signal)
     const auto* ap_atom = mol_model.getMol()->getAtomWithIdx(1);
     const auto* ap_bond = mol_model.getMol()->getBondWithIdx(0);
 
-    std::unordered_set<const RDKit::Atom*> atoms = {ap_atom};
-    std::unordered_set<const RDKit::Bond*> bonds = {ap_bond};
-    menu.setContextItems(atoms, bonds, {}, {}, {});
+    // Scenario 1: atom + bond context (right-clicking the attachment point
+    // atom)
+    std::unordered_set<const RDKit::Atom*> emitted_atoms;
+    std::unordered_set<const RDKit::Bond*> emitted_bonds;
+    QObject::connect(&menu, &AttachmentPointContextMenu::deleteRequested,
+                     [&](const std::unordered_set<const RDKit::Atom*>& atoms,
+                         const std::unordered_set<const RDKit::Bond*>& bonds) {
+                         emitted_atoms = atoms;
+                         emitted_bonds = bonds;
+                     });
 
-    // Connect to the deleteRequested signal and verify it's emitted
-    bool signal_emitted = false;
-    size_t emitted_atom_count = 0;
-    size_t emitted_bond_count = 0;
+    menu.setContextItems({ap_atom}, {ap_bond}, {}, {}, {});
+    menu.actions()[0]->trigger();
+    BOOST_TEST(emitted_atoms ==
+               std::unordered_set<const RDKit::Atom*>{ap_atom});
+    BOOST_TEST(emitted_bonds ==
+               std::unordered_set<const RDKit::Bond*>{ap_bond});
 
-    QObject::connect(
-        &menu, &AttachmentPointContextMenu::deleteRequested,
-        [&](const std::unordered_set<const RDKit::Atom*>& emitted_atoms,
-            const std::unordered_set<const RDKit::Bond*>& emitted_bonds) {
-            signal_emitted = true;
-            emitted_atom_count = emitted_atoms.size();
-            emitted_bond_count = emitted_bonds.size();
-        });
-
-    // Trigger the Delete action
-    auto actions = menu.actions();
-    BOOST_REQUIRE(actions.size() == 1);
-    actions[0]->trigger();
-
-    // Verify the signal was emitted with the expected number of items
-    BOOST_TEST(signal_emitted);
-    BOOST_TEST(emitted_atom_count == 1);
-    BOOST_TEST(emitted_bond_count == 1);
+    // Scenario 2: bond-only context (right-clicking the attachment point bond)
+    emitted_atoms.clear();
+    emitted_bonds.clear();
+    menu.setContextItems({}, {ap_bond}, {}, {}, {});
+    menu.actions()[0]->trigger();
+    BOOST_TEST(emitted_atoms.empty());
+    BOOST_TEST(emitted_bonds ==
+               std::unordered_set<const RDKit::Bond*>{ap_bond});
 }
 
 } // namespace sketcher
