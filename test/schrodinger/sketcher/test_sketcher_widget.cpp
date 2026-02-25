@@ -860,6 +860,42 @@ BOOST_AUTO_TEST_CASE(test_cleanup_selection_fits_only_selection)
 }
 
 /**
+ * SKETCH-2666: Model modifications while the user is zoomed in must not reset
+ * the zoom level. Verified for both paste and direct edits that place content
+ * off-screen.
+ */
+BOOST_AUTO_TEST_CASE(test_zoom_preserved_when_modifying_structure)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.addFromString("CCCC", Format::SMILES);
+    sk.show();
+    QCoreApplication::processEvents();
+
+    auto view = sk.m_ui->view;
+    view->fitToScreen(false);
+
+    // Zoom in so that parts of CCCC are off-screen
+    view->scale(2.0, 2.0);
+    auto zoomed_transform = view->transform();
+
+    // Paste should not reset the zoom
+    sk.setClipboardContents("C\n");
+    sk.paste();
+    BOOST_TEST(std::abs(view->transform().m11() - zoomed_transform.m11()) <
+                   0.01,
+               "SKETCH-2666: paste must not reset the user's zoom");
+
+    // A direct model edit placing content far off-canvas should also not reset
+    // the zoom
+    RDGeom::Point3D off_canvas(500.0, 500.0, 0.0);
+    sk.addTextToMolModel("C", Format::SMILES, off_canvas,
+                         /*recenter_view=*/false);
+    BOOST_TEST(std::abs(view->transform().m11() - zoomed_transform.m11()) <
+                   0.01,
+               "SKETCH-2666: model edit must not reset the user's zoom");
+}
+
+/**
  * Make sure that SketcherWidget::addTextToMolModel properly prevents the user
  * from adding atomistic or monomeric models when appropriate.
  */

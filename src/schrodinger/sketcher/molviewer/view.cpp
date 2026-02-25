@@ -156,23 +156,6 @@ void View::wheelEvent(QWheelEvent* event)
     scaleSafely(scal);
 }
 
-void View::zoomOutToIncludeAll()
-{
-    Scene* cur_scene = dynamic_cast<Scene*>(scene());
-    if (!cur_scene) {
-        return;
-    }
-    auto visible_rect = mapToScene(rect()).boundingRect();
-    QRectF rec = cur_scene->getSceneItemsBoundingRect();
-    rec = rec.united(visible_rect);
-    if (rec == visible_rect) {
-        // If the bounding rect is the same as the visible rect, then we
-        // don't need to zoom out, so just return
-        return;
-    }
-    fitRecToScreen(rec);
-}
-
 void View::fitToScreen(bool selection_only)
 {
     if (!m_initial_geometry_set) {
@@ -221,8 +204,6 @@ void View::setMolModel(MolModel* mol_model)
     m_mol_model = mol_model;
     connect(mol_model, &MolModel::newMoleculeAdded, this,
             &View::fitAllToScreen);
-    connect(mol_model, &MolModel::modelChanged, this,
-            &View::zoomOutToIncludeAll);
 }
 
 void View::setSketcherModel(SketcherModel* sketcher_model)
