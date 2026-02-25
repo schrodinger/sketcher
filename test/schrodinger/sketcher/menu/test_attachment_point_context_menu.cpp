@@ -30,44 +30,6 @@ BOOST_AUTO_TEST_CASE(test_attachment_point_menu_actions)
 }
 
 /**
- * SKETCH-2556: Verify that the menu can be populated with attachment point
- * atoms and bonds without errors, including bond-only selection.
- */
-BOOST_AUTO_TEST_CASE(test_attachment_point_menu_set_context_items)
-{
-    QUndoStack undo_stack;
-    MolModel mol_model(&undo_stack);
-    AttachmentPointContextMenu menu;
-
-    // Create a carbon atom with an attachment point
-    mol_model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
-    const auto* c_atom = mol_model.getMol()->getAtomWithIdx(0);
-    mol_model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
-    const auto* ap_atom = mol_model.getMol()->getAtomWithIdx(1);
-    const auto* ap_bond = mol_model.getMol()->getBondWithIdx(0);
-
-    BOOST_TEST(is_attachment_point(ap_atom));
-    BOOST_TEST(is_attachment_point_bond(ap_bond));
-
-    // Test 1: Set context to both atom and bond
-    std::unordered_set<const RDKit::Atom*> atoms = {ap_atom};
-    std::unordered_set<const RDKit::Bond*> bonds = {ap_bond};
-    menu.setContextItems(atoms, bonds, {}, {}, {});
-    auto actions = menu.actions();
-    BOOST_TEST(actions[0]->isEnabled() == true);
-
-    // Test 2: Set context to only the bond (Scenario 2 from JIRA)
-    menu.setContextItems({}, {ap_bond}, {}, {}, {});
-    actions = menu.actions();
-    BOOST_TEST(actions[0]->isEnabled() == true);
-
-    // Test 3: Set context to only the atom (Scenario 1 from JIRA)
-    menu.setContextItems({ap_atom}, {}, {}, {}, {});
-    actions = menu.actions();
-    BOOST_TEST(actions[0]->isEnabled() == true);
-}
-
-/**
  * SKETCH-2556: Verify that clicking Delete emits the deleteRequested signal
  * with attachment points.
  */

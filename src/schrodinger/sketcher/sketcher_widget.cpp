@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
+#include <algorithm>
+
 #include <QApplication>
 #include <QClipboard>
 #include <QCursor>
@@ -861,28 +863,31 @@ void SketcherWidget::showContextMenu(
         return;
     }
 
-    // SKETCH-2556: Check if selection contains only attachment points/bonds
+    // Filter attachment points for chemical modification menus. Attachment
+    // point bonds can't be secondary connections, so secondary_connections
+    // needs no filtering (SKETCH-2556).
+    std::unordered_set<const RDKit::Atom*> filtered_atoms;
+    std::copy_if(atoms.begin(), atoms.end(),
+                 std::inserter(filtered_atoms, filtered_atoms.end()),
+                 [](const auto* atom) { return !is_attachment_point(atom); });
+    std::unordered_set<const RDKit::Bond*> filtered_bonds;
+    std::copy_if(
+        bonds.begin(), bonds.end(),
+        std::inserter(filtered_bonds, filtered_bonds.end()),
+        [](const auto* bond) { return !is_attachment_point_bond(bond); });
+
+    // Show the attachment point menu when only attachment points/bonds are
+    // selected. sgroups.empty() is checked explicitly since the sgroup menu
+    // takes priority but is not accounted for in filtered_atoms/filtered_bonds.
     bool only_attachment_points =
-        (!atoms.empty() || !bonds.empty() || !secondary_connections.empty()) &&
-        (atoms.empty() || std::all_of(atoms.begin(), atoms.end(),
-                                      [](const auto* atom) {
-                                          return is_attachment_point(atom);
-                                      })) &&
-        (bonds.empty() || std::all_of(bonds.begin(), bonds.end(),
-                                      [](const auto* bond) {
-                                          return is_attachment_point_bond(bond);
-                                      })) &&
-        (secondary_connections.empty() ||
-         std::all_of(
-             secondary_connections.begin(), secondary_connections.end(),
-             [](const auto* bond) { return is_attachment_point_bond(bond); }));
+        sgroups.empty() && (!atoms.empty() || !bonds.empty()) &&
+        filtered_atoms.empty() && filtered_bonds.empty();
 
     AbstractContextMenu* menu = nullptr;
     bool bond_selected = bonds.size() || secondary_connections.size();
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
     } else if (only_attachment_points) {
-        // Show attachment point menu if only attachment points are selected
         menu = m_attachment_point_context_menu;
     } else if (atoms.size() && bond_selected) {
         menu = m_selection_context_menu;
@@ -900,35 +905,16 @@ void SketcherWidget::showContextMenu(
         menu = m_background_context_menu;
     }
 
-    // SKETCH-2556: Filter out attachment points for chemical modification menus
-    // (but not for the attachment point menu itself)
-    auto filtered_atoms = atoms;
-    auto filtered_bonds = bonds;
-    auto filtered_secondary_connections = secondary_connections;
-    if (menu != m_attachment_point_context_menu) {
-        filtered_atoms.clear();
-        for (const auto* atom : atoms) {
-            if (!is_attachment_point(atom)) {
-                filtered_atoms.insert(atom);
-            }
-        }
-        filtered_bonds.clear();
-        for (const auto* bond : bonds) {
-            if (!is_attachment_point_bond(bond)) {
-                filtered_bonds.insert(bond);
-            }
-        }
-        filtered_secondary_connections.clear();
-        for (const auto* bond : secondary_connections) {
-            if (!is_attachment_point_bond(bond)) {
-                filtered_secondary_connections.insert(bond);
-            }
-        }
+    // Pass unfiltered sets to the attachment point menu; pass filtered sets
+    // (attachment points excluded) to all other chemical modification menus.
+    if (menu == m_attachment_point_context_menu) {
+        menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
+                              non_molecular_objects);
+    } else {
+        menu->setContextItems(filtered_atoms, filtered_bonds,
+                              secondary_connections, sgroups,
+                              non_molecular_objects);
     }
-
-    menu->setContextItems(filtered_atoms, filtered_bonds,
-                          filtered_secondary_connections, sgroups,
-                          non_molecular_objects);
 
     menu->move(event->screenPos());
     auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();

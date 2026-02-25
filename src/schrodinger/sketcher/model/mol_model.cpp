@@ -2514,8 +2514,7 @@ void MolModel::removeCommandFunc(
     std::vector<AtomTag> all_atom_tags_to_delete = atom_tags;
     for (auto atom_tag : atom_tags) {
         const auto* atom = getAtomFromTag(atom_tag);
-        for (const auto* bond : m_mol.atomBonds(atom)) {
-            const auto* other_atom = bond->getOtherAtom(atom);
+        for (const auto* other_atom : m_mol.atomNeighbors(atom)) {
             if (is_attachment_point(other_atom)) {
                 auto other_tag = getTagForAtom(other_atom);
                 if (std::find(all_atom_tags_to_delete.begin(),

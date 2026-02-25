@@ -2,8 +2,6 @@
 
 #include <unordered_set>
 
-#include <QMenu>
-
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/menu/abstract_context_menu.h"
 

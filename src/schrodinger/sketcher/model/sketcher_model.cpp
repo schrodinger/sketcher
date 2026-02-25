@@ -8,7 +8,7 @@
 #include <rdkit/GraphMol/Atom.h>
 
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
@@ -391,15 +391,15 @@ bool SketcherModel::hasActiveSelection() const
 
 namespace
 {
-// SKETCH-2556: Check if selection contains items of type T, filtering out
-// attachment points for atom/bond types
+// Check if selection contains items of type T, filtering out attachment points
+// for atom/bond types (SKETCH-2556)
 template <typename T> bool contains_item(const SketcherModel& model)
 {
     auto selection = model.getSelection();
     for (auto* item : selection) {
         auto* typed_item = dynamic_cast<T*>(item);
         if (typed_item) {
-            if constexpr (std::is_same_v<T, AbstractAtomOrMonomerItem>) {
+            if constexpr (std::is_same_v<T, AtomItem>) {
                 // For atoms, only count non-attachment-points
                 const auto* atom = typed_item->getAtom();
                 if (atom && !is_attachment_point(atom)) {
@@ -423,7 +423,7 @@ template <typename T> bool contains_item(const SketcherModel& model)
 
 bool SketcherModel::hasAtomSelection() const
 {
-    return contains_item<AbstractAtomOrMonomerItem>(*this);
+    return contains_item<AtomItem>(*this);
 }
 
 bool SketcherModel::hasBondSelection() const
