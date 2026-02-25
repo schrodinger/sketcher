@@ -1106,6 +1106,87 @@ static bool is_a_chain(const RDKit::ROMol& polymer)
 }
 
 /**
+ * Check the number of residues between begin_idx and end_idx, and if it exceeds
+ * MAX_MONOMERS_PER_SNAKE, compute turn positions to break the segment into
+ * smaller parts. The turns will be placed as evenly as possible, and if the
+ * number of residues cannot be perfectly divided, the remaining residues will
+ * be distributed by increasing the turn size for some of the turns, so that the
+ * turns are still aligned with each other.
+ */
+std::vector<TurnInfo> compute_turn_positions_for_linear_segment(int begin_idx,
+                                                                int end_idx)
+{
+    auto total_monomers = end_idx - begin_idx + 1;
+
+    unsigned int num_rows =
+        (total_monomers + MAX_MONOMERS_PER_SNAKE - 1) / MAX_MONOMERS_PER_SNAKE;
+    unsigned int turn_size = 1;
+
+    // Calculate  number of rows needed if all segments MAX_MONOMERS_PER_SNAKE
+    // With num_rows segments, we have (num_rows - 1) turns between
+    // them. Calculate how much space is left for straight segments after
+    // accounting for turns
+    int segment_space = total_monomers - (num_rows - 1) * turn_size;
+
+    // Distribute the segment space as evenly as possible across all segments.
+    // Monomers that are left will be accommodated by using increased turn sizes
+    // for as many rows as needed.
+    unsigned int segment_length = segment_space / num_rows;
+    unsigned int num_of_longer_turns = segment_space % num_rows;
+    unsigned int current_pos = begin_idx;
+
+    std::vector<TurnInfo> turn_positions;
+    for (unsigned int row = 0; row < num_rows; ++row) {
+        current_pos += segment_length;
+        unsigned int turn_size = (row < num_of_longer_turns) ? 2 : 1;
+        // turns always take space like a 1 residue turn, so they can be aligned
+        int y_size_difference =
+            1 - turn_size; // -1 for 2-residue turns, 0 for 1-residue turns
+
+        // Add a turn after this segment (except for the last segment)
+        if (row < num_rows - 1) {
+            turn_positions.push_back(
+                {current_pos, turn_size, true, y_size_difference});
+            // Advance position past the turn residues
+            current_pos += turn_size;
+        }
+    }
+    return turn_positions;
+}
+
+/**
+ * Analyze the input turns and add additional turns to break long linear
+ * segments into smaller parts, so that the layout can be more compact and
+ * better fit in the available space
+ */
+static std::vector<TurnInfo>
+addTurnsBreakLongLinearSegments(const std::vector<TurnInfo>& turns,
+                                int max_polymers)
+{
+    std::vector<TurnInfo> turns_to_return;
+    int start_of_segment = 0;
+    for (const auto& turn : turns) {
+        // compute the lenght of the linear segment before this turn, and if
+        // it's too long, add turns to break it
+        int end_of_segment = turn.position;
+        for (auto turn : compute_turn_positions_for_linear_segment(
+                 start_of_segment, end_of_segment - 1)) {
+            turns_to_return.push_back(turn);
+        }
+        start_of_segment = end_of_segment + turn.size;
+        turns_to_return.push_back(turn);
+    }
+    // compute the last segment after the last turn, and if it's too long, add
+    // turns to break it
+    int end_of_segment = max_polymers - 1;
+    for (auto turn : compute_turn_positions_for_linear_segment(
+             start_of_segment, end_of_segment)) {
+        turns_to_return.push_back(turn);
+    }
+    return turns_to_return;
+}
+
+/**
  * Attempts to lay out a polymer with cycles as a snaking chain. This is only
  * possible if the cycles are closed by non-backbone connections (e.g. a turn
  * closed by a disulfide bond), and if the turn constraints from multiple
@@ -1144,6 +1225,8 @@ static bool maybe_lay_out_cyclic_polymer_as_snaking_chain(
 
         turn_positions.push_back({turn_pos, turn_size});
     }
+    turn_positions =
+        addTurnsBreakLongLinearSegments(turn_positions, polymer.getNumAtoms());
     lay_out_chain_with_turns(polymer, placed_monomers_idcs, turn_positions);
     return true;
 }
@@ -1484,41 +1567,8 @@ static void lay_out_polymer(RDKit::ROMol& polymer,
 static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
 {
     auto placed_monomers_idcs = std::unordered_set<int>{};
-    auto total_monomers = polymer.getNumAtoms();
-
-    unsigned int num_rows =
-        (total_monomers + MAX_MONOMERS_PER_SNAKE - 1) / MAX_MONOMERS_PER_SNAKE;
-    unsigned int turn_size = 1;
-
-    // Calculate  number of rows needed if all segments MAX_MONOMERS_PER_SNAKE
-    // With num_rows segments, we have (num_rows - 1) turns between
-    // them. Calculate how much space is left for straight segments after
-    // accounting for turns
-    int segment_space = total_monomers - (num_rows - 1) * turn_size;
-
-    // Distribute the segment space as evenly as possible across all segments.
-    // Monomers that are left will be accommodated by using increased turn sizes
-    // for as many rows as needed.
-    unsigned int segment_length = segment_space / num_rows;
-    unsigned int num_of_longer_turns = segment_space % num_rows;
-    unsigned int current_pos = 0;
-
-    std::vector<TurnInfo> turn_positions;
-    for (unsigned int row = 0; row < num_rows; ++row) {
-        current_pos += segment_length;
-        unsigned int turn_size = (row < num_of_longer_turns) ? 2 : 1;
-        // turns always take space like a 1 residue turn, so they can be aligned
-        int y_size_difference =
-            1 - turn_size; // -1 for 2-residue turns, 0 for 1-residue turns
-
-        // Add a turn after this segment (except for the last segment)
-        if (row < num_rows - 1) {
-            turn_positions.push_back(
-                {current_pos, turn_size, true, y_size_difference});
-            // Advance position past the turn residues
-            current_pos += turn_size;
-        }
-    }
+    auto turn_positions =
+        compute_turn_positions_for_linear_segment(0, polymer.getNumAtoms() - 1);
     // Use the calculated turn positions to lay out the snaking chain
     lay_out_chain_with_turns(polymer, placed_monomers_idcs, turn_positions);
 }
