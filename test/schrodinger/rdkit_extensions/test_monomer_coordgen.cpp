@@ -687,7 +687,7 @@ BOOST_AUTO_TEST_CASE(TestPositionInCoilsScore)
 
     for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
         double score =
-            schrodinger::rdkit_extensions::get_position_in_coils_score(
+            schrodinger::rdkit_extensions::get_position_in_coils_float(
                 static_cast<int>(i), *mol, turns);
         scores.push_back(score);
         BOOST_ASSERT(score == scores[i]);

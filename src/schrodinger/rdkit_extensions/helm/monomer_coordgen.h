@@ -67,14 +67,14 @@ float RDKIT_EXTENSIONS_API score_coiling_layout(
     const std::vector<CustomBondInfo>& custom_bonds);
 
 /**
- * @return a numeric score representing the position of the monomer within the
+ * @return a float number representing the position of the monomer within the
  * coiling layout.
  * The integer part is the section number (0 for first
- * segment, 1 for first turn, 2 for second segment, etc.), the  fractional
+ * segment, 1 for first turn, 2 for second segment, etc.), the fractional
  * part is the position within the segment/turn, normalized by the
  * segment/turn size.
  */
-float RDKIT_EXTENSIONS_API get_position_in_coils_score(
+float RDKIT_EXTENSIONS_API get_position_in_coils_float(
     unsigned int monomer_idx, const RDKit::ROMol& polymer,
     const std::vector<TurnInfo>& turns);
 

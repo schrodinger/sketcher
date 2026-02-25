@@ -701,15 +701,15 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
     // vertices
     unsigned int n = 2 * (turn_size + 2);
 
-    float y_scale = 1.0;
+    float bond_scale = 1.0;
     if (y_size_difference != 0) {
         // scale y coordinates by a factor to make sure that the turn occupies
         // the same vertical space as if it had y_size_difference more monomers.
         // This is the ratio between the apothem of the regular polygon with
         // turn_size monomers and the apothem of the regular polygon with
         // turn_size + y_size_difference monomers
-        y_scale = (2 * std::tan(PI / n)) /
-                  (2 * std::tan(PI / (n + 2 * y_size_difference)));
+        bond_scale = (2 * std::tan(PI / n)) /
+                     (2 * std::tan(PI / (n + 2 * y_size_difference)));
     }
 
     double external_angle = -2.0 * M_PI / n;
@@ -740,8 +740,10 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
         current_angle += external_angle;
 
         // Calculate step using 2D rotation
-        double step_x = MONOMER_BOND_LENGTH * std::cos(current_angle) * y_scale;
-        double step_y = MONOMER_BOND_LENGTH * std::sin(current_angle) * y_scale;
+        double step_x =
+            MONOMER_BOND_LENGTH * std::cos(current_angle) * bond_scale;
+        double step_y =
+            MONOMER_BOND_LENGTH * std::sin(current_angle) * bond_scale;
 
         current_pos.x += step_x;
         current_pos.y += step_y;
@@ -753,9 +755,9 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
     // Calculate position for next segment: one more rotation and step
     current_angle += external_angle;
     double final_step_x =
-        MONOMER_BOND_LENGTH * std::cos(current_angle) * y_scale;
+        MONOMER_BOND_LENGTH * std::cos(current_angle) * bond_scale;
     double final_step_y =
-        MONOMER_BOND_LENGTH * std::sin(current_angle) * y_scale;
+        MONOMER_BOND_LENGTH * std::sin(current_angle) * bond_scale;
 
     return RDGeom::Point3D(current_pos.x + final_step_x,
                            current_pos.y + final_step_y, 0.0);
@@ -812,7 +814,7 @@ static std::vector<TurnInfo> compute_coiling_turns_for_chain_with_params(
     return turns;
 }
 
-float get_position_in_coils_score(unsigned int monomer_idx,
+float get_position_in_coils_float(unsigned int monomer_idx,
                                   const RDKit::ROMol& polymer,
                                   const std::vector<TurnInfo>& turns)
 {
@@ -872,9 +874,9 @@ float score_coiling_layout(const RDKit::ROMol& polymer,
     }
     for (auto bond : custom_bonds) {
         auto pos_i =
-            get_position_in_coils_score(bond.monomer_i, polymer, turns);
+            get_position_in_coils_float(bond.monomer_i, polymer, turns);
         auto pos_j =
-            get_position_in_coils_score(bond.monomer_j, polymer, turns);
+            get_position_in_coils_float(bond.monomer_j, polymer, turns);
 
         // ideal distance between bonded monomers in the coiling layout is 4
         // (one full coil), so score is based on how close the actual distance
@@ -910,9 +912,9 @@ compute_coiling_turns_for_chain(const RDKit::ROMol& polymer)
         return {};
     }
 
-    // custom bonds are ordered by monomer_i, unless monomer_j are also in
-    // order, this would create crossing bonds and the coiling layout would not
-    // be possible
+    // custom bonds are ordered by monomer_i. If monomer_j are not listed
+    // in ascending order, the bonds cross and the coiling layout is not
+    // possible
     for (size_t idx = 1; idx < custom_bonds.size(); ++idx) {
         if (custom_bonds[idx].monomer_j < custom_bonds[idx - 1].monomer_j) {
             return {};
@@ -969,14 +971,20 @@ compute_coiling_turns_for_chain(const RDKit::ROMol& polymer)
         return {};
     }
 
-    return *std::min_element(
-        possible_layouts.begin(), possible_layouts.end(),
-        [&polymer, &custom_bonds](const std::vector<TurnInfo>& layout1,
-                                  const std::vector<TurnInfo>& layout2) {
-            auto score1 = score_coiling_layout(polymer, layout1, custom_bonds);
-            auto score2 = score_coiling_layout(polymer, layout2, custom_bonds);
-            return score1 < score2;
-        });
+    std::vector<std::pair<std::vector<TurnInfo>, float>> layouts_with_scores;
+    std::transform(possible_layouts.begin(), possible_layouts.end(),
+                   std::back_inserter(layouts_with_scores),
+                   [&polymer, &custom_bonds](auto layout) {
+                       return std::make_pair(
+                           layout,
+                           score_coiling_layout(polymer, layout, custom_bonds));
+                   });
+    auto min_layout_and_score =
+        std::min_element(layouts_with_scores.begin(), layouts_with_scores.end(),
+                         [](auto layout1, auto layout2) {
+                             return layout1.second < layout2.second;
+                         });
+    return min_layout_and_score->first;
 }
 
 /**
