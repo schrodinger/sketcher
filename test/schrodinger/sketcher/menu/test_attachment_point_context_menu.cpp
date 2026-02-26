@@ -15,7 +15,7 @@ namespace sketcher
 {
 
 /**
- * SKETCH-2556: Verify that clicking Delete emits the deleteRequested signal
+ * Verify that clicking Delete emits the deleteRequested signal
  * with the correct attachment point atoms and bonds.
  */
 BOOST_AUTO_TEST_CASE(test_attachment_point_menu_delete_signal)

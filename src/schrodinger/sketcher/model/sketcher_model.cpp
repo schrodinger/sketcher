@@ -392,7 +392,7 @@ bool SketcherModel::hasActiveSelection() const
 namespace
 {
 // Check if selection contains items of type T, filtering out attachment points
-// for atom/bond types (SKETCH-2556)
+// for atom/bond types
 template <typename T> bool contains_item(const SketcherModel& model)
 {
     auto selection = model.getSelection();

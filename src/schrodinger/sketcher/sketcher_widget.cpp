@@ -865,7 +865,7 @@ void SketcherWidget::showContextMenu(
 
     // Filter attachment points for chemical modification menus. Attachment
     // point bonds can't be secondary connections, so secondary_connections
-    // needs no filtering (SKETCH-2556).
+    // needs no filtering.
     std::unordered_set<const RDKit::Atom*> filtered_atoms;
     std::copy_if(atoms.begin(), atoms.end(),
                  std::inserter(filtered_atoms, filtered_atoms.end()),

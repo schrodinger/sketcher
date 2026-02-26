@@ -303,7 +303,7 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     test_enabled(other_widgets, true);
     test_enabled(bond_widgets, true);
 
-    // SKETCH-2556: Attachment points only - atom and bond tools should be
+    // Attachment points only - atom and bond tools should be
     // disabled
     mol_model->clear();
     mol_model->addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));

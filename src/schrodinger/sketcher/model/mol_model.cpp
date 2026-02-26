@@ -2510,7 +2510,7 @@ void MolModel::removeCommandFunc(
 {
     Q_ASSERT(m_allow_edits);
 
-    // SKETCH-2556: Include attachment points bound to deleted atoms
+    // Include attachment points bound to deleted atoms
     std::vector<AtomTag> all_atom_tags_to_delete = atom_tags;
     for (auto atom_tag : atom_tags) {
         const auto* atom = getAtomFromTag(atom_tag);

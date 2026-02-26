@@ -4084,7 +4084,7 @@ BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
 }
 
 /**
- * SKETCH-2556: Test that attachment points are deleted when their parent atom
+ * Test that attachment points are deleted when their parent atom
  * is deleted
  */
 BOOST_AUTO_TEST_CASE(test_delete_atom_with_attachment_points)
