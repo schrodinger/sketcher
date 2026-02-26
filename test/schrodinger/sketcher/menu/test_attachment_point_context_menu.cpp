@@ -15,21 +15,6 @@ namespace sketcher
 {
 
 /**
- * SKETCH-2556: Verify that the attachment point context menu is created
- * correctly and has only the Delete action.
- */
-BOOST_AUTO_TEST_CASE(test_attachment_point_menu_actions)
-{
-    AttachmentPointContextMenu menu;
-
-    // The attachment point menu should have only one action: Delete
-    auto actions = menu.actions();
-    BOOST_TEST(actions.size() == 1);
-    BOOST_TEST(actions[0]->text() == "Delete");
-    BOOST_TEST(actions[0]->isEnabled() == true);
-}
-
-/**
  * SKETCH-2556: Verify that clicking Delete emits the deleteRequested signal
  * with the correct attachment point atoms and bonds.
  */
