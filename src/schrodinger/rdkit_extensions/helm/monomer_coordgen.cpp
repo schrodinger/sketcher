@@ -2156,6 +2156,12 @@ void assign_clusters(std::vector<MonomerResizeData>& resize_data,
         }
 
         resize_data[i].*cluster_member = next_cluster_id;
+        for (size_t j = i + 1; j < resize_data.size(); ++j) {
+            if (std::abs(resize_data[i].delta.*coord_member -
+                         resize_data[j].delta.*coord_member) < eps) {
+                resize_data[j].*cluster_member = next_cluster_id;
+            }
+        }
         ++next_cluster_id;
     }
 }
