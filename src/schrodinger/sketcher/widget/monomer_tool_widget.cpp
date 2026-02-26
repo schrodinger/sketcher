@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/widget/monomer_tool_widget.h"
 
+#include <array>
+
 #include <boost/assign.hpp>
 
 #include <QButtonGroup>
@@ -115,6 +117,46 @@ void MonomerToolWidget::setModel(SketcherModel* model)
     m_dna_popup->setModel(model);
     m_custom_nt_popup->setModel(model);
     updateCheckedButton();
+}
+
+void MonomerToolWidget::updateWidgetsEnabled()
+{
+    auto model = getModel();
+    if (model == nullptr) {
+        return;
+    }
+    auto has_peptide = model->hasPeptideSelection();
+    auto has_na_base = model->hasNABaseSelection();
+    auto has_na_sugar = model->hasNASugarSelection();
+    auto has_na_phosphate = model->hasNAPhosphateSelection();
+    bool has_any_na = has_na_base || has_na_sugar || has_na_phosphate;
+    bool has_monomer_selection = has_peptide || has_any_na;
+
+    // Apply selection active style to amino/nucleic pages
+    ui->amino_page->setStyleSheet(has_peptide ? SELECTION_ACTIVE_STYLE : "");
+    ui->nucleic_page->setStyleSheet(has_any_na ? SELECTION_ACTIVE_STYLE : "");
+
+    // Enable amino acid buttons only if no monomer selection or peptides
+    // are selected
+    for (auto* btn : ui->amino_monomer_group->buttons()) {
+        btn->setEnabled(!has_monomer_selection || has_peptide);
+    }
+
+    // Enable individual nucleic acid component buttons only if that
+    // component type is in the selection (or there's no monomer selection)
+    std::array base_btns{ui->na_a_btn, ui->na_c_btn, ui->na_g_btn,
+                         ui->na_u_btn, ui->na_t_btn, ui->na_n_btn};
+    for (auto* btn : base_btns) {
+        btn->setEnabled(!has_monomer_selection || has_na_base);
+    }
+    ui->na_r_btn->setEnabled(!has_monomer_selection || has_na_sugar);
+    ui->na_dr_btn->setEnabled(!has_monomer_selection || has_na_sugar);
+    ui->na_p_btn->setEnabled(!has_monomer_selection || has_na_phosphate);
+
+    // Full nucleotide buttons are never available for mutation
+    ui->na_rna_btn->setEnabled(!has_monomer_selection);
+    ui->na_dna_btn->setEnabled(!has_monomer_selection);
+    ui->na_custom_nt_btn->setEnabled(!has_monomer_selection);
 }
 
 std::unordered_set<QAbstractButton*> MonomerToolWidget::getCheckableButtons()
