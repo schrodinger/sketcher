@@ -5,6 +5,9 @@ import {
   getCanvasCenter,
   getDrawingAreaCenter,
   getExportedSmiles,
+  getExportedHelm,
+  enableMonomericMode,
+  selectAll,
   isSketcherEmpty,
   waitForMoleculeChange,
   waitForRender,
@@ -209,5 +212,139 @@ test.describe('E2E Interaction Tests', () => {
 
     const canvas = page.locator('#screen canvas');
     expect(await canvas.screenshot()).toMatchSnapshot('e2e-draw-bond.png');
+  });
+});
+
+test.describe('Monomer Mutation Tests', () => {
+  test('mutate selected peptide monomers to cysteine', async ({ page }) => {
+    // Enable monomeric mode and switch to monomer tool panel
+    await enableMonomericMode(page);
+    await waitForRender(page);
+    await clickToolbarButton(page, 'monomeric_btn');
+    await waitForRender(page);
+
+    // Switch to amino acid page
+    await clickToolbarButton(page, 'amino_monomer_btn');
+    await waitForRender(page);
+
+    // Import a peptide chain via HELM
+    await page.evaluate(() => {
+      Module.sketcher_import_text('PEPTIDE1{A.G.L}$$$$V2.0');
+    });
+    await clickToolbarButton(page, 'fit_btn');
+    await waitForRender(page);
+
+    // Select all monomers
+    await selectAll(page);
+    await waitForRender(page);
+
+    // Click Cysteine button to mutate all selected peptides
+    await waitForMoleculeChange(page, () => clickToolbarButton(page, 'cys_btn'));
+
+    // Verify all residues are now Cysteine (C)
+    const helm = await getExportedHelm(page);
+    expect(helm).toContain('PEPTIDE1{C.C.C}');
+  });
+
+  test('mutate selected nucleic acid bases only', async ({ page }) => {
+    // Enable monomeric mode and switch to monomer tool panel
+    await enableMonomericMode(page);
+    await waitForRender(page);
+    await clickToolbarButton(page, 'monomeric_btn');
+    await waitForRender(page);
+
+    // Switch to nucleic acid page
+    await clickToolbarButton(page, 'nucleic_monomer_btn');
+    await waitForRender(page);
+
+    // Import an RNA chain via HELM
+    await page.evaluate(() => {
+      Module.sketcher_import_text('RNA1{R(A)P.R(G)P.R(C)P}$$$$V2.0');
+    });
+    await clickToolbarButton(page, 'fit_btn');
+    await waitForRender(page);
+
+    // Select all monomers
+    await selectAll(page);
+    await waitForRender(page);
+
+    // Click Uracil button — should only mutate bases, not sugars/phosphates
+    await waitForMoleculeChange(page, () => clickToolbarButton(page, 'na_u_btn'));
+
+    // Verify bases changed to U while sugars (R) and phosphates (P) are unchanged
+    const helm = await getExportedHelm(page);
+    expect(helm).toContain('R(U)P');
+    expect(helm).not.toContain('R(A)');
+    expect(helm).not.toContain('R(G)');
+    expect(helm).not.toContain('R(C)');
+  });
+
+  test('clicking disabled incompatible monomer button does not mutate', async ({ page }) => {
+    // Enable monomeric mode and switch to monomer tool panel
+    await enableMonomericMode(page);
+    await waitForRender(page);
+    await clickToolbarButton(page, 'monomeric_btn');
+    await waitForRender(page);
+
+    // Switch to amino acid page and import a peptide chain
+    await clickToolbarButton(page, 'amino_monomer_btn');
+    await waitForRender(page);
+    await page.evaluate(() => {
+      Module.sketcher_import_text('PEPTIDE1{A.G.L}$$$$V2.0');
+    });
+    await clickToolbarButton(page, 'fit_btn');
+    await waitForRender(page);
+
+    // Select all monomers
+    await selectAll(page);
+    await waitForRender(page);
+
+    // Switch to nucleic acid page — selection should persist
+    await clickToolbarButton(page, 'nucleic_monomer_btn');
+    await waitForRender(page);
+
+    // Click a nucleic acid base button (should be disabled for peptide selection)
+    await clickToolbarButton(page, 'na_u_btn');
+    await waitForRender(page);
+
+    // Verify no mutation occurred — peptide chain is unchanged
+    const helm = await getExportedHelm(page);
+    expect(helm).toContain('PEPTIDE1{A.G.L}');
+  });
+
+  test('undo restores original monomers after mutation', async ({ page }) => {
+    // Enable monomeric mode and switch to monomer tool panel
+    await enableMonomericMode(page);
+    await waitForRender(page);
+    await clickToolbarButton(page, 'monomeric_btn');
+    await waitForRender(page);
+
+    // Switch to amino acid page
+    await clickToolbarButton(page, 'amino_monomer_btn');
+    await waitForRender(page);
+
+    // Import a peptide chain
+    await page.evaluate(() => {
+      Module.sketcher_import_text('PEPTIDE1{A.G.L}$$$$V2.0');
+    });
+    await clickToolbarButton(page, 'fit_btn');
+    await waitForRender(page);
+
+    // Select all and mutate to Cysteine
+    await selectAll(page);
+    await waitForRender(page);
+    await waitForMoleculeChange(page, () => clickToolbarButton(page, 'cys_btn'));
+
+    const helmAfterMutation = await getExportedHelm(page);
+    expect(helmAfterMutation).toContain('PEPTIDE1{C.C.C}');
+
+    // Undo the mutation
+    const mod = modifierKey();
+    await focusCanvas(page);
+    await waitForMoleculeChange(page, () => page.keyboard.press(`${mod}+z`));
+
+    // Verify original residues are restored
+    const helmAfterUndo = await getExportedHelm(page);
+    expect(helmAfterUndo).toContain('PEPTIDE1{A.G.L}');
   });
 });
