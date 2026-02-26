@@ -413,7 +413,12 @@ void mutateMonomer(RDKit::ROMol& monomer_mol, unsigned int monomer_idx,
 
     // Note: If the atom was a branch monomer before, it remains one after
     // mutation.
-    bool is_smiles = helm::is_smiles_monomer(helm_symbol_str);
+    // Check the monomer DB to determine if this is a known monomer or SMILES.
+    // Known monomers (e.g. "A", "dR") should not be marked as SMILES.
+    auto chain_type = getChainType(*atom);
+    auto& db = MonomerDatabase::instance();
+    bool in_db = db.getMonomerSmiles(helm_symbol_str, chain_type).has_value();
+    bool is_smiles = !in_db && helm::is_smiles_monomer(helm_symbol_str);
     atom->setProp(SMILES_MONOMER, is_smiles);
 
     // hack to get some level of canonicalization for monomer mols

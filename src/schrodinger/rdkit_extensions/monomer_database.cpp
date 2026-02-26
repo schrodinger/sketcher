@@ -450,7 +450,7 @@ static MonomerInfo tag_invoke(boost::json::value_to_tag<MonomerInfo>,
 std::optional<std::string> getMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
-    throw std::logic_error("Monomers are not yet supported in WASM Sketcher");
+    return std::nullopt;
 #else
     auto custom_db_path = getenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data());
     if (custom_db_path) {

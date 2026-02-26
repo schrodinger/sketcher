@@ -37,6 +37,7 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
 
     void setModel(SketcherModel* model) override;
     void updateCheckedButton() override;
+    void updateWidgetsEnabled() override;
     std::unordered_set<QAbstractButton*> getCheckableButtons() override;
 
   protected:

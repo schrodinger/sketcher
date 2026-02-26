@@ -38,6 +38,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -59,6 +60,31 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Map a NucleicAcidTool to the corresponding MonomerType.
+ * Only valid for individual component tools (bases, sugars, phosphate),
+ * not full nucleotide tools (RNA, DNA, CUSTOM).
+ */
+static MonomerType nucleic_acid_tool_to_monomer_type(NucleicAcidTool tool)
+{
+    switch (tool) {
+        case NucleicAcidTool::A:
+        case NucleicAcidTool::U:
+        case NucleicAcidTool::G:
+        case NucleicAcidTool::C:
+        case NucleicAcidTool::T:
+        case NucleicAcidTool::N:
+            return MonomerType::NA_BASE;
+        case NucleicAcidTool::R:
+        case NucleicAcidTool::dR:
+            return MonomerType::NA_SUGAR;
+        case NucleicAcidTool::P:
+            return MonomerType::NA_PHOSPHATE;
+        default:
+            Q_UNREACHABLE_RETURN(MonomerType::NA_BASE);
+    }
+}
 
 /**
  * A simple data class for storing all types of model objects
@@ -1287,6 +1313,23 @@ void SketcherWidget::applyModelValuePingToTargets(
             } else if (tool == DrawTool::EXPLICIT_H) {
                 m_mol_model->toggleExplicitHsOnAtoms(atoms);
             }
+            break;
+        }
+        case ModelKey::AMINO_ACID_TOOL: {
+            auto tool = value.value<AminoAcidTool>();
+            auto helm_symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(tool);
+            m_mol_model->mutateMonomers(atoms, helm_symbol,
+                                        MonomerType::PEPTIDE);
+            break;
+        }
+        case ModelKey::NUCLEIC_ACID_TOOL: {
+            auto tool = value.value<NucleicAcidTool>();
+            auto it = NUCLEIC_ACID_TOOL_TO_RES_NAME.find(tool);
+            if (it == NUCLEIC_ACID_TOOL_TO_RES_NAME.end()) {
+                break; // full nucleotide tools not supported for mutation
+            }
+            auto target_type = nucleic_acid_tool_to_monomer_type(tool);
+            m_mol_model->mutateMonomers(atoms, it->second, target_type);
             break;
         }
         default:
