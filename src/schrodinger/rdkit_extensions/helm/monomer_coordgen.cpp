@@ -2079,6 +2079,12 @@ void assign_clusters(std::vector<MonomerResizeData>& resize_data,
         }
 
         resize_data[i].*cluster_member = next_cluster_id;
+        for (size_t j = i + 1; j < resize_data.size(); ++j) {
+            if (std::abs(resize_data[i].ref_pos.*coord_member -
+                         resize_data[j].ref_pos.*coord_member) < eps) {
+                resize_data[j].*cluster_member = next_cluster_id;
+            }
+        }
         ++next_cluster_id;
     }
 }
@@ -2214,11 +2220,11 @@ std::vector<MonomerResizeData> collect_linear_resize_data(
 
     // group vertically stacked monomers to avoid compound horizontal shifts
     assign_clusters(result, &RDGeom::Point3D::x, &MonomerResizeData::x_cluster,
-                    MONOMER_MINIMUM_SIZE * 0.25);
+                    MONOMER_MINIMUM_SIZE);
 
     // group horizontally stacked monomers to avoid compound vertical shifts
     assign_clusters(result, &RDGeom::Point3D::y, &MonomerResizeData::y_cluster,
-                    MONOMER_MINIMUM_SIZE * 0.25);
+                    MONOMER_MINIMUM_SIZE);
 
     return result;
 }
@@ -2570,15 +2576,7 @@ void resize_monomers(RDKit::ROMol& mol,
 
     auto linear_resize_data =
         collect_linear_resize_data(mol, monomer_sizes, ring_resize_info);
-    std::cerr << "linear_resize_data size: " << linear_resize_data.size()
-              << std::endl;
-    for (const auto& r : linear_resize_data) {
-        std::cerr << "Monomer index: " << r.index << ", ref_pos: ("
-                  << r.ref_pos.x << ", " << r.ref_pos.y << "), delta: ("
-                  << r.delta.x << ", " << r.delta.y
-                  << "), x_cluster: " << r.x_cluster
-                  << ", y_cluster: " << r.y_cluster << std::endl;
-    }
+
     auto ring_resize_data =
         collect_ring_resize_data(mol, monomer_sizes, ring_resize_info);
     if (linear_resize_data.empty() && ring_resize_data.empty()) {
