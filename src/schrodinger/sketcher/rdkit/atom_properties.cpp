@@ -389,7 +389,7 @@ check_value_for_conflicts(T new_val, std::optional<T> existing_val,
  * `seen_descriptions`.
  * @param desc The description of the current query. This is typically the
  * return value from QUERYATOM_QUERY::getDescription(). However, if multiple
- * query types can affect the the same property (e.g. AtomIsAliphatic and
+ * query types can affect the same property (e.g. AtomIsAliphatic and
  * AtomIsAromatic both affect AtomQueryProperties::aromaticity), then use one of
  * the constants at the top of this file (e.g. ATOM_AROMATICITY) instead.
  * @param seen_descriptions The set of all `desc` values that we've already seen

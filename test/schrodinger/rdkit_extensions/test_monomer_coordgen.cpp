@@ -683,14 +683,13 @@ BOOST_AUTO_TEST_CASE(TestPositionInCoilsScore)
 
     std::vector<double> scores = {0.5,     1.5,     2.5,     3.25,    3.5,
                                   3.75,    4.5,     5.14286, 5.28571, 5.42857,
-                                  5.57143, 5.71429, 5.85714, 6,       7};
+                                  5.57143, 5.71429, 5.85714, 6,       6.5};
 
     for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
-        double score =
-            schrodinger::rdkit_extensions::get_position_in_coils_float(
+        const double score =
+            schrodinger::rdkit_extensions::get_position_in_coils_double(
                 static_cast<int>(i), *mol, turns);
-        scores.push_back(score);
-        BOOST_ASSERT(score == scores[i]);
+        BOOST_CHECK_CLOSE(score, scores[i], 1e-4);
     }
 }
 

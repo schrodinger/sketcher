@@ -764,7 +764,7 @@ lay_out_turn(RDKit::ROMol& polymer, RDKit::Conformer& conformer,
 }
 
 /**
- * Computes the turn positions and sizes for a coiling layout based on the the
+ * Computes the turn positions and sizes for a coiling layout based on the
  * following parameters:
  * @param polymer The polymer molecule
  * @param increment The amount by which the turn size should increase for each
@@ -814,9 +814,9 @@ static std::vector<TurnInfo> compute_coiling_turns_for_chain_with_params(
     return turns;
 }
 
-float get_position_in_coils_float(unsigned int monomer_idx,
-                                  const RDKit::ROMol& polymer,
-                                  const std::vector<TurnInfo>& turns)
+double get_position_in_coils_double(unsigned int monomer_idx,
+                                    const RDKit::ROMol& polymer,
+                                    const std::vector<TurnInfo>& turns)
 {
     int section_number = 0;
     int begin_of_section = 0;
@@ -857,26 +857,26 @@ float get_position_in_coils_float(unsigned int monomer_idx,
                (section_size + 1);
 }
 
-float score_coiling_layout(const RDKit::ROMol& polymer,
-                           const std::vector<TurnInfo>& turns,
-                           const std::vector<CustomBondInfo>& custom_bonds)
+double score_coiling_layout(const RDKit::ROMol& polymer,
+                            const std::vector<TurnInfo>& turns,
+                            const std::vector<CustomBondInfo>& custom_bonds)
 {
     if (custom_bonds.empty()) {
         return 0.0;
     }
 
-    float DEVIATION_PENALTY =
+    double DEVIATION_PENALTY =
         0.1; // penalty factor for deviation from ideal turn size
 
-    float return_score = 0.0;
-    for (auto turn : turns) {
+    double return_score = 0.0;
+    for (const auto& turn : turns) {
         return_score += DEVIATION_PENALTY * std::abs(turn.y_size_difference);
     }
-    for (auto bond : custom_bonds) {
+    for (const auto& bond : custom_bonds) {
         auto pos_i =
-            get_position_in_coils_float(bond.monomer_i, polymer, turns);
+            get_position_in_coils_double(bond.monomer_i, polymer, turns);
         auto pos_j =
-            get_position_in_coils_float(bond.monomer_j, polymer, turns);
+            get_position_in_coils_double(bond.monomer_j, polymer, turns);
 
         // ideal distance between bonded monomers in the coiling layout is 4
         // (one full coil), so score is based on how close the actual distance
@@ -925,7 +925,6 @@ compute_coiling_turns_for_chain(const RDKit::ROMol& polymer)
     // "corresponding" positions in the layers (i.e. bound monomers need to be
     // separated by exactly a full coil, or as close as possible to that
     // position). This way the bond will not cross with the coiling backbone
-
     // score different layouts to see if any of them would put the bonds in good
     // position. Variables are: chain_size, first_chain_size (which can be
     // smaller than the others, to allow for more flexibility in the layout),
@@ -974,14 +973,14 @@ compute_coiling_turns_for_chain(const RDKit::ROMol& polymer)
     std::vector<std::pair<std::vector<TurnInfo>, float>> layouts_with_scores;
     std::transform(possible_layouts.begin(), possible_layouts.end(),
                    std::back_inserter(layouts_with_scores),
-                   [&polymer, &custom_bonds](auto layout) {
+                   [&polymer, &custom_bonds](const auto& layout) {
                        return std::make_pair(
                            layout,
                            score_coiling_layout(polymer, layout, custom_bonds));
                    });
     auto min_layout_and_score =
         std::min_element(layouts_with_scores.begin(), layouts_with_scores.end(),
-                         [](auto layout1, auto layout2) {
+                         [](const auto& layout1, const auto& layout2) {
                              return layout1.second < layout2.second;
                          });
     return min_layout_and_score->first;
