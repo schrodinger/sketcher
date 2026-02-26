@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
+#include <algorithm>
+
 #include <QApplication>
 #include <QClipboard>
 #include <QCursor>
@@ -31,6 +33,7 @@
 #include "schrodinger/sketcher/image_constants.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
+#include "schrodinger/sketcher/menu/attachment_point_context_menu.h"
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
@@ -181,12 +184,14 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     // Create and connect the context menus
     m_atom_context_menu =
         new AtomContextMenu(m_sketcher_model, m_mol_model, this);
+    m_attachment_point_context_menu = new AttachmentPointContextMenu(this);
     m_bond_context_menu = new BondContextMenu(this);
     m_selection_context_menu =
         new SelectionContextMenu(m_sketcher_model, m_mol_model, this);
     m_sgroup_context_menu = new BracketSubgroupContextMenu(this);
     m_background_context_menu =
         new BackgroundContextMenu(m_sketcher_model, this);
+    connectContextMenu(*m_attachment_point_context_menu);
     connectContextMenu(*m_atom_context_menu);
     connectContextMenu(*m_bond_context_menu);
     connectContextMenu(*m_selection_context_menu);
@@ -697,6 +702,14 @@ void SketcherWidget::connectSideBarSlots()
             m_mol_model, &MolModel::invertSelection);
 }
 
+void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
+{
+    connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
+            [this](auto atoms, auto bonds) {
+                m_mol_model->remove(atoms, bonds, {}, {}, {});
+            });
+}
+
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
@@ -850,10 +863,32 @@ void SketcherWidget::showContextMenu(
         return;
     }
 
+    // Filter attachment points for chemical modification menus. Attachment
+    // point bonds can't be secondary connections, so secondary_connections
+    // needs no filtering.
+    std::unordered_set<const RDKit::Atom*> filtered_atoms;
+    std::copy_if(atoms.begin(), atoms.end(),
+                 std::inserter(filtered_atoms, filtered_atoms.end()),
+                 [](const auto* atom) { return !is_attachment_point(atom); });
+    std::unordered_set<const RDKit::Bond*> filtered_bonds;
+    std::copy_if(
+        bonds.begin(), bonds.end(),
+        std::inserter(filtered_bonds, filtered_bonds.end()),
+        [](const auto* bond) { return !is_attachment_point_bond(bond); });
+
+    // Show the attachment point menu when only attachment points/bonds are
+    // selected. sgroups.empty() is checked explicitly since the sgroup menu
+    // takes priority but is not accounted for in filtered_atoms/filtered_bonds.
+    bool only_attachment_points =
+        sgroups.empty() && (!atoms.empty() || !bonds.empty()) &&
+        filtered_atoms.empty() && filtered_bonds.empty();
+
     AbstractContextMenu* menu = nullptr;
     bool bond_selected = bonds.size() || secondary_connections.size();
     if (sgroups.size()) {
         menu = m_sgroup_context_menu;
+    } else if (only_attachment_points) {
+        menu = m_attachment_point_context_menu;
     } else if (atoms.size() && bond_selected) {
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
@@ -869,8 +904,17 @@ void SketcherWidget::showContextMenu(
         // show the background context menu
         menu = m_background_context_menu;
     }
-    menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
-                          non_molecular_objects);
+
+    // Pass unfiltered sets to the attachment point menu; pass filtered sets
+    // (attachment points excluded) to all other chemical modification menus.
+    if (menu == m_attachment_point_context_menu) {
+        menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
+                              non_molecular_objects);
+    } else {
+        menu->setContextItems(filtered_atoms, filtered_bonds,
+                              secondary_connections, sgroups,
+                              non_molecular_objects);
+    }
 
     menu->move(event->screenPos());
     auto screen_rect = QApplication::screenAt(QCursor::pos())->geometry();

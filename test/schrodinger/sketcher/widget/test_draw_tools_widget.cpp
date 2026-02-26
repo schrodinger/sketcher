@@ -6,6 +6,7 @@
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/rgroup.h"
 #include "schrodinger/sketcher/ui/ui_draw_tools_widget.h"
 #include "schrodinger/sketcher/widget/bond_order_popup.h"
 #include "schrodinger/sketcher/widget/bond_query_popup.h"
@@ -301,6 +302,42 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
     mol_model->selectAll();
     test_enabled(other_widgets, true);
     test_enabled(bond_widgets, true);
+
+    // Attachment points only - atom and bond tools should be
+    // disabled
+    mol_model->clear();
+    mol_model->addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    const auto* c_atom = mol_model->getMol()->getAtomWithIdx(0);
+    mol_model->addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
+    const auto* ap_atom = mol_model->getMol()->getAtomWithIdx(1);
+    const auto* ap_bond = mol_model->getMol()->getBondWithIdx(0);
+    BOOST_TEST(is_attachment_point(ap_atom));
+    BOOST_TEST(is_attachment_point_bond(ap_bond));
+
+    // Test selecting only the attachment point atom
+    mol_model->select({ap_atom}, {}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, false);
+    test_enabled(bond_widgets, false);
+
+    // Test selecting only the attachment point bond
+    mol_model->select({}, {ap_bond}, {}, {}, {}, SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, false);
+    test_enabled(bond_widgets, false);
+
+    // Test selecting both attachment point atom and bond
+    mol_model->select({ap_atom}, {ap_bond}, {}, {}, {},
+                      SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, false);
+    test_enabled(bond_widgets, false);
+
+    // Mixed selection: regular atom + attachment point - tools should still be
+    // enabled because a real chemical atom is present. Re-fetch c_atom since
+    // addAttachmentPoint may have invalidated the pointer.
+    c_atom = mol_model->getMol()->getAtomWithIdx(0);
+    mol_model->select({c_atom, ap_atom}, {}, {}, {}, {},
+                      SelectMode::SELECT_ONLY);
+    test_enabled(other_widgets, true);
+    test_enabled(bond_widgets, false);
 }
 
 /**
