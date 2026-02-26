@@ -161,7 +161,7 @@ SKETCHER_API void save_image_file(const std::string& text,
 
 /**
  * Get the correct scale for rendering all of the provided mols to identically
- * sized images.  To render the molecules using this scaling, set
+ * sized images.  To render the the molecules using this scaling, set
  * RenderOptions::scale to the return value.
  * @param all_rdmols All molecules to be rendered
  * @param opts The image generation options to use.  Note that opts.scale will

@@ -76,7 +76,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     ~SketcherWidget();
 
     /**
-     * @param mol/rxn molecule or reaction to add to the current scene
+     * @param mol/rxn molecule or reaction to add to the the current scene
      */
     void addRDKitMolecule(const RDKit::ROMol& mol);
     void addRDKitReaction(const RDKit::ChemicalReaction& rxn);
