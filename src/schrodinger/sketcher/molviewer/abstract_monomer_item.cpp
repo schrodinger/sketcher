@@ -48,6 +48,18 @@ void AbstractMonomerItem::setMonomerColors(const QColor& background_color,
     m_main_label_pen.setColor(font_color);
 }
 
+void AbstractMonomerItem::setDarkMode(bool is_dark)
+{
+    m_is_dark_mode = is_dark;
+    m_border_pen.setColor(getBorderColor());
+    update();
+}
+
+QColor AbstractMonomerItem::getBorderColor() const
+{
+    return m_is_dark_mode ? m_border_color_dark_bg : m_border_color;
+}
+
 qreal AbstractMonomerItem::scaleBasedOnFontSize(qreal num) const
 {
     return num * m_fonts.size() / DEFAULT_FONT_SIZE;
@@ -162,7 +174,7 @@ std::pair<qreal, qreal> get_ellipse_size_to_fit_label(
         main_label_text, fm, standard_width, standard_height, 2.0);
 }
 
-std::tuple<qreal, QColor, const QFont, const QFontMetricsF*>
+std::tuple<qreal, QColor, QColor, const QFont, const QFontMetricsF*>
 get_border_and_font_settings_for_nucleic_acid(const std::string& res_name,
                                               const Fonts& fonts,
                                               const bool use_base_font)
@@ -171,13 +183,16 @@ get_border_and_font_settings_for_nucleic_acid(const std::string& res_name,
         // for standard residues, we use the same font for both the base and the
         // backbone
         return {STANDARD_NA_BORDER_LINE_WIDTH, STANDARD_NA_BORDER_COLOR,
-                fonts.m_main_label_font, &fonts.m_main_label_fm};
+                STANDARD_NA_BORDER_COLOR_DARK_BG, fonts.m_main_label_font,
+                &fonts.m_main_label_fm};
     } else if (use_base_font) {
         return {OTHER_NA_BORDER_LINE_WIDTH, OTHER_NA_BORDER_COLOR,
+                OTHER_NA_BORDER_COLOR_DARK_BG,
                 fonts.m_other_nucleic_acid_base_font,
                 &fonts.m_other_nucleic_acid_base_fm};
     } else {
         return {OTHER_NA_BORDER_LINE_WIDTH, OTHER_NA_BORDER_COLOR,
+                OTHER_NA_BORDER_COLOR_DARK_BG,
                 fonts.m_other_nucleic_acid_sugar_and_phosphate_font,
                 &fonts.m_other_nucleic_acid_sugar_and_phosphate_fm};
     }

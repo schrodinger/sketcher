@@ -47,11 +47,14 @@ void NucleicAcidPhosphateItem::updateCachedData()
     auto res_name = get_monomer_res_name(m_atom);
     m_main_label_text = elide_text(res_name);
 
-    auto [border_pen_width, border_color, main_label_font, main_label_fm] =
+    auto [border_pen_width, border_color, border_color_dark_bg, main_label_font,
+          main_label_fm] =
         get_border_and_font_settings_for_nucleic_acid(res_name, m_fonts);
     m_main_label_font = main_label_font;
     m_border_pen.setWidthF(border_pen_width);
-    m_border_pen.setColor(border_color);
+    m_border_color = border_color;
+    m_border_color_dark_bg = border_color_dark_bg;
+    m_border_pen.setColor(getBorderColor());
 
     auto [border_width, border_height] = get_ellipse_size_to_fit_label(
         m_main_label_text, *main_label_fm,
