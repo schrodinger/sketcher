@@ -53,6 +53,7 @@ namespace sketcher
 
 class BondOrSecondaryConnection;
 
+enum class MonomerType;
 enum class SubgroupType;
 enum class RepeatPattern;
 enum class BondTopology;
@@ -854,6 +855,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms);
     void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms,
                        const unsigned int r_group_num);
+
+    /**
+     * Mutate selected monomers to the specified HELM symbol, filtering by
+     * monomer type so that only monomers matching target_type are mutated.
+     *
+     * @param atoms The atoms (monomers) to consider for mutation
+     * @param helm_symbol The HELM symbol to mutate matching monomers to
+     * @param target_type Only mutate monomers of this type
+     */
+    void mutateMonomers(const std::unordered_set<const RDKit::Atom*>& atoms,
+                        std::string_view helm_symbol,
+                        const MonomerType target_type);
 
     /**
      * Mutate all selected bonds

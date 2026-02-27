@@ -9,8 +9,12 @@
 
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/amino_acid_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_base_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_phosphate_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_sugar_item.h"
 
 using MonomericNucleotide = std::tuple<QString, QString, QString>;
 Q_DECLARE_METATYPE(MonomericNucleotide);
@@ -413,6 +417,26 @@ bool SketcherModel::hasBondSelection() const
 bool SketcherModel::hasNonMolecularObjectSelection() const
 {
     return contains_item<NonMolecularItem>(*this);
+}
+
+bool SketcherModel::hasPeptideSelection() const
+{
+    return contains_item<AminoAcidItem>(*this);
+}
+
+bool SketcherModel::hasNABaseSelection() const
+{
+    return contains_item<NucleicAcidBaseItem>(*this);
+}
+
+bool SketcherModel::hasNASugarSelection() const
+{
+    return contains_item<NucleicAcidSugarItem>(*this);
+}
+
+bool SketcherModel::hasNAPhosphateSelection() const
+{
+    return contains_item<NucleicAcidPhosphateItem>(*this);
 }
 
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const

@@ -47,6 +47,29 @@ export async function getExportedSmiles(page) {
 }
 
 /**
+ * Return the current molecule as a HELM string.
+ */
+export async function getExportedHelm(page) {
+  return page.evaluate(() => Module.sketcher_export_text(Module.Format.HELM));
+}
+
+/**
+ * Enable monomeric (peptide/nucleic acid) mode on the sketcher.
+ */
+export async function enableMonomericMode(page) {
+  await page.evaluate(() => Module.sketcher_allow_monomeric(true));
+}
+
+/**
+ * Select all items on the canvas via Cmd+A / Ctrl+A.
+ */
+export async function selectAll(page) {
+  await focusCanvas(page);
+  const mod = modifierKey();
+  await page.keyboard.press(`${mod}+a`);
+}
+
+/**
  * Return whether the sketcher is currently empty.
  */
 export async function isSketcherEmpty(page) {

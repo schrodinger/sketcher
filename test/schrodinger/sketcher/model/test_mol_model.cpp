@@ -3997,6 +3997,191 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     BOOST_TEST(!contains_monomeric_atom(*mol_for_export_3));
 }
 
+/**
+ * Verify that mutateMonomers changes the res name of all peptide monomers
+ * and that the mutation is undoable.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_peptide)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // Import a peptide chain: A, G, L
+    import_mol_text(&model, "PEPTIDE1{A.G.L}$$$$V2.0");
+    const auto* mol = model.getMol();
+    auto num_atoms = mol->getNumAtoms();
+    BOOST_TEST(num_atoms == 3);
+
+    // Collect all monomer atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Mutate all peptides to Cysteine ("C")
+    model.mutateMonomers(all_atoms, "C", MonomerType::PEPTIDE);
+
+    // Verify all monomer atoms now have res name "C"
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        BOOST_TEST(get_monomer_res_name(atom) == "C");
+    }
+
+    // Verify undo restores original res names
+    undo_stack.undo();
+    std::vector<std::string> expected_names = {"A", "G", "L"};
+    int monomer_idx = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        BOOST_TEST(get_monomer_res_name(atom) == expected_names[monomer_idx]);
+        ++monomer_idx;
+    }
+}
+
+/**
+ * Verify that mutateMonomers with NA_BASE type only mutates bases and leaves
+ * sugars and phosphates unchanged.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_nucleic_acid_base_only)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // Import a nucleic acid chain with sugar-base-phosphate pattern
+    import_mol_text(&model, "RNA1{R(A)P.R(G)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Collect all atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Mutate only bases to "C" (cytosine)
+    model.mutateMonomers(all_atoms, "C", MonomerType::NA_BASE);
+
+    // Verify bases changed but sugars and phosphates didn't
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "C");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    // R(A)P.R(G)P = 2 bases, 2 sugars, 2 phosphates
+    BOOST_TEST(base_count == 2);
+    BOOST_TEST(sugar_count == 2);
+    BOOST_TEST(phosphate_count == 2);
+}
+
+/**
+ * Verify that mutateMonomers with PEPTIDE type does nothing when applied to
+ * a nucleic acid chain (no matching monomer types).
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_type_mismatch)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "RNA1{R(A)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Collect all atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Try to mutate as PEPTIDE — should do nothing since these are NA monomers
+    model.mutateMonomers(all_atoms, "G", MonomerType::PEPTIDE);
+
+    // Verify nothing changed — check both res names and type counts
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "A");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    BOOST_TEST(base_count == 1);
+    BOOST_TEST(sugar_count == 1);
+    BOOST_TEST(phosphate_count == 1);
+}
+
+/**
+ * Verify that mutateMonomers with PEPTIDE type only mutates peptide monomers
+ * in a mixed peptide + nucleic acid molecule, leaving RNA components unchanged.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_mixed_molecule_peptide_only)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // Import a mixed molecule: peptide chain (A, G) and RNA chain
+    import_mol_text(&model, "PEPTIDE1{A.G}|RNA1{R(A)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Collect all atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Mutate with PEPTIDE type — should only affect peptide monomers
+    model.mutateMonomers(all_atoms, "C", MonomerType::PEPTIDE);
+
+    // Verify peptide monomers changed to "C"
+    // and RNA components remain unchanged
+    int peptide_count = 0;
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::PEPTIDE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "C");
+            ++peptide_count;
+        } else if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "A");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    // PEPTIDE1{A.G} = 2 peptides, RNA1{R(A)P} = 1 base, 1 sugar, 1 phosphate
+    BOOST_TEST(peptide_count == 2);
+    BOOST_TEST(base_count == 1);
+    BOOST_TEST(sugar_count == 1);
+    BOOST_TEST(phosphate_count == 1);
+}
+
 BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
 {
     // Test that assignChiralTypesFromBondDirs preserves explicit H counts

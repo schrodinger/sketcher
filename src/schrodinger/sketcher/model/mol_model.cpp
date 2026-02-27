@@ -1971,6 +1971,28 @@ void MolModel::mutateRGroups(
     doCommandUsingSnapshots(cmd_func, "Mutate atoms", WhatChanged::MOLECULE);
 }
 
+void MolModel::mutateMonomers(
+    const std::unordered_set<const RDKit::Atom*>& atoms,
+    std::string_view helm_symbol, const MonomerType target_type)
+{
+    // Filter atoms to only include monomers matching the target type
+    auto matches_target = [target_type](const RDKit::Atom* atom) {
+        return is_atom_monomeric(atom) && get_monomer_type(atom) == target_type;
+    };
+    std::vector<const RDKit::Atom*> matching_monomers;
+    std::ranges::copy_if(atoms, std::back_inserter(matching_monomers),
+                         matches_target);
+    if (matching_monomers.empty()) {
+        return;
+    }
+    auto cmd_func = [this, matching_monomers, helm_symbol]() {
+        for (auto* atom : matching_monomers) {
+            rdkit_extensions::mutateMonomer(m_mol, atom->getIdx(), helm_symbol);
+        }
+    };
+    doCommandUsingSnapshots(cmd_func, "Mutate monomers", WhatChanged::MOLECULE);
+}
+
 void MolModel::mutateBonds(const std::unordered_set<const RDKit::Bond*>& bonds,
                            BondTool bond_tool)
 {
