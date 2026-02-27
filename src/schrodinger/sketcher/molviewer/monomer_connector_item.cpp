@@ -48,6 +48,18 @@ std::unordered_map<ConnectorType, std::tuple<QColor, qreal, Qt::PenStyle>>
          {NA_BACKBONE_TO_BASE_CONNECTOR_COLOR,
           NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine}}};
 
+// clang-format off
+const std::unordered_map<ConnectorType, QColor> DARK_BG_COLOR_FOR_CONNECTOR_TYPE = {
+    {ConnectorType::CHEM,                CHEM_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::PEPTIDE_LINEAR,      AA_LINEAR_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::PEPTIDE_BRANCHING,   AA_BRANCHING_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::PEPTIDE_DISULFIDE,   DISULFIDE_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::PEPTIDE_SIDE_CHAIN,  AA_LINEAR_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::NA_BASE,             NA_BASE_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::NA_BACKBONE,         NA_BACKBONE_CONNECTOR_COLOR_DARK_BG},
+    {ConnectorType::NA_BACKBONE_TO_BASE, NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG}};
+// clang-format on
+
 } // namespace
 
 MonomerConnectorItem::MonomerConnectorItem(
@@ -120,11 +132,14 @@ void MonomerConnectorItem::updateCachedData()
         does_connector_have_arrowheads(m_bond, connector_type);
     auto [connector_color, connector_width, connector_pen_style] =
         PEN_STYLE_FOR_CONNECTOR_TYPE.at(connector_type);
-    m_connector_pen =
-        QPen(connector_color, connector_width, connector_pen_style);
-    m_arrowhead_pen = QPen(connector_color, connector_width);
+    m_connector_color = connector_color;
+    m_connector_color_dark_bg =
+        DARK_BG_COLOR_FOR_CONNECTOR_TYPE.at(connector_type);
+    auto color = getConnectorColor();
+    m_connector_pen = QPen(color, connector_width, connector_pen_style);
+    m_arrowhead_pen = QPen(color, connector_width);
     m_arrowhead_pen.setJoinStyle(Qt::PenJoinStyle::MiterJoin);
-    m_arrowhead_brush = QBrush(connector_color);
+    m_arrowhead_brush = QBrush(color);
 
     auto start_qcoords = m_start_item.pos();
     auto end_qcoords = m_end_item.pos();
@@ -187,6 +202,21 @@ void MonomerConnectorItem::paint(QPainter* painter,
     }
 
     painter->restore();
+}
+
+void MonomerConnectorItem::setDarkMode(bool is_dark)
+{
+    m_is_dark_mode = is_dark;
+    auto color = getConnectorColor();
+    m_connector_pen.setColor(color);
+    m_arrowhead_pen.setColor(color);
+    m_arrowhead_brush.setColor(color);
+    update();
+}
+
+QColor MonomerConnectorItem::getConnectorColor() const
+{
+    return m_is_dark_mode ? m_connector_color_dark_bg : m_connector_color;
 }
 
 } // namespace sketcher

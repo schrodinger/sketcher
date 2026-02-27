@@ -190,6 +190,12 @@ class SKETCHER_API Scene : public QGraphicsScene
     void onBackgroundColorChanged();
 
     /**
+     * Apply dark or light mode colors to all monomer shapes and connector
+     * (bond) items in the scene.
+     */
+    void updateMonomerAndConnectorColors(bool has_dark_color_scheme);
+
+    /**
      * @return the graphics item currently representing the specified atom
      */
     const QGraphicsItem* getGraphicsItemForAtom(const RDKit::Atom* atom) const;

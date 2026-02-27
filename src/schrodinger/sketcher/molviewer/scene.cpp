@@ -31,6 +31,7 @@
 #include "schrodinger/sketcher/molviewer/sgroup_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/atoms_and_bonds.h"
@@ -166,6 +167,9 @@ void Scene::updateItems(const WhatChangedType what_changed)
         for (auto* item : all_items) {
             addItem(item);
             m_interactive_items.insert(item);
+        }
+        if (m_sketcher_model->hasDarkColorScheme()) {
+            updateMonomerAndConnectorColors(true);
         }
         clearHovered();
     }
@@ -599,6 +603,26 @@ void Scene::onBackgroundColorChanged()
         has_dark_color_scheme ? SELECTION_BACKGROUND_COLOR_DARK_BG
                               : SELECTION_BACKGROUND_COLOR);
     m_scene_tool->updateColorsAfterBackgroundColorChange(has_dark_color_scheme);
+    updateMonomerAndConnectorColors(has_dark_color_scheme);
+}
+
+void Scene::updateMonomerAndConnectorColors(bool has_dark_color_scheme)
+{
+    for (auto& [atom, item] : m_atom_to_atom_item) {
+        if (auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item)) {
+            monomer_item->setDarkMode(has_dark_color_scheme);
+        }
+    }
+    for (auto& [bond, item] : m_bond_to_bond_item) {
+        if (auto* connector_item = dynamic_cast<MonomerConnectorItem*>(item)) {
+            connector_item->setDarkMode(has_dark_color_scheme);
+        }
+    }
+    for (auto& [bond, item] : m_bond_to_secondary_connection_item) {
+        if (auto* connector_item = dynamic_cast<MonomerConnectorItem*>(item)) {
+            connector_item->setDarkMode(has_dark_color_scheme);
+        }
+    }
 }
 
 void Scene::onMolModelSelectionChanged()
