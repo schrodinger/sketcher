@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 #include <unordered_set>
 
 #include <boost/bimap.hpp>
@@ -23,6 +24,7 @@ namespace sketcher
 
 enum class AminoAcidTool;
 enum class NucleicAcidTool;
+class AminoAcidSymbolPopup;
 class CustomNucleotidePopup;
 class NucleotidePopup;
 
@@ -47,6 +49,8 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     NucleotidePopup* m_rna_popup = nullptr;
     NucleotidePopup* m_dna_popup = nullptr;
     CustomNucleotidePopup* m_custom_nt_popup = nullptr;
+    std::unordered_map<QAbstractButton*, AminoAcidSymbolPopup*>
+        m_amino_acid_symbol_popups;
 
     /**
      * Respond to the AMINO or NUCLEIC buttons being clicked, which toggles the

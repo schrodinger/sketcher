@@ -130,6 +130,11 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] const std::unordered_map<std::string, std::string>&
     getEnumeratedCoreSmiles() const;
 
+    // Returns non-natural monomers grouped by their natural analog symbol.
+    // Only returns monomers where SYMBOL != NATURAL_ANALOG.
+    [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
+    getMonomersByNaturalAnalog(ChainType polymer_type) const;
+
   private:
     // this is private because we don't want to allow managing
     // just any db -- we require the proper schema!

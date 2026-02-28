@@ -628,6 +628,7 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::RGROUP_NUMBER:
             case ModelKey::MONOMER_TOOL_TYPE:
             case ModelKey::AMINO_ACID_TOOL:
+            case ModelKey::AMINO_ACID_SYMBOL:
             case ModelKey::NUCLEIC_ACID_TOOL:
                 updateSceneTool();
                 break;
@@ -716,8 +717,15 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
     } else if (draw_tool == DrawTool::MONOMER) {
         auto monomer_tool_type = m_sketcher_model->getMonomerToolType();
         if (monomer_tool_type == MonomerToolType::AMINO_ACID) {
-            auto tool = m_sketcher_model->getAminoAcidTool();
-            auto res_name = AMINO_ACID_TOOL_TO_RES_NAME.at(tool);
+            auto analog =
+                m_sketcher_model->getValueString(ModelKey::AMINO_ACID_SYMBOL);
+            std::string res_name;
+            if (!analog.isEmpty()) {
+                res_name = analog.toStdString();
+            } else {
+                auto tool = m_sketcher_model->getAminoAcidTool();
+                res_name = AMINO_ACID_TOOL_TO_RES_NAME.at(tool);
+            }
             return std::make_shared<DrawMonomerSceneTool>(
                 res_name, rdkit_extensions::ChainType::PEPTIDE, m_fonts, this,
                 m_mol_model);
