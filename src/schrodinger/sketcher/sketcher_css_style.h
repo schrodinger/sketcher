@@ -58,6 +58,14 @@ const QString ATOM_ELEMENT_OR_MONOMER_STYLE{
     "QToolButton { font: bold 14px; color: #333333; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
+/// Minimum label length that requires the compact style
+constexpr int COMPACT_STYLE_MIN_LENGTH = 3;
+
+/// style with reduced padding to fit longer labels (e.g. "meW")
+const QString ATOM_ELEMENT_OR_MONOMER_COMPACT_STYLE{
+    "QToolButton { font: bold 10px; color: #333333; padding: 1px; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
+
 /// style for an unknown monomer (e.g. amino acid X or nucleotide N)
 const QString UNKNOWN_MONOMER_STYLE{
     "QToolButton { font: bold italic 14px; color: #333333; }"

@@ -92,6 +92,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::MONOMER_TOOL_TYPE,
          QVariant::fromValue(MonomerToolType::NUCLEIC_ACID)},
         {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::UNK)},
+        {ModelKey::AMINO_ACID_SYMBOL, QString("dA")},
         {ModelKey::NUCLEIC_ACID_TOOL, QVariant::fromValue(NucleicAcidTool::dR)},
         {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::G)},
         {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::U_OR_T)},
@@ -109,6 +110,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
     std::vector<QSignalSpy*> spies = {&pinged_spy, &changed_spy};
     for (auto& key : get_model_keys()) {
         if (key == ModelKey::RESIDUE_TYPE ||
+            key == ModelKey::AMINO_ACID_SYMBOL ||
             key == ModelKey::CUSTOM_NUCLEOTIDE) {
             // These values are not stored as int-like objects
             continue;
