@@ -81,6 +81,7 @@ void AminoAcidItem::updateCachedData()
             standard_border_height = STANDARD_AA_BORDER_HEIGHT;
             border_line_width = STANDARD_AA_BORDER_LINE_WIDTH;
             border_color = STANDARD_AA_BORDER_COLOR;
+            m_border_color_dark_bg = STANDARD_AA_BORDER_COLOR_DARK_BG;
             m_main_label_font = m_fonts.m_main_label_font;
             main_label_fm = &m_fonts.m_main_label_fm;
             break;
@@ -89,6 +90,7 @@ void AminoAcidItem::updateCachedData()
             standard_border_height = D_AA_BORDER_HEIGHT;
             border_line_width = D_AA_BORDER_LINE_WIDTH;
             border_color = D_AA_BORDER_COLOR;
+            m_border_color_dark_bg = D_AA_BORDER_COLOR_DARK_BG;
             m_main_label_font = m_fonts.m_d_amino_acid_font;
             main_label_fm = &m_fonts.m_d_amino_acid_fm;
             break;
@@ -97,6 +99,7 @@ void AminoAcidItem::updateCachedData()
             standard_border_height = OTHER_AA_BORDER_HEIGHT;
             border_line_width = OTHER_AA_BORDER_LINE_WIDTH;
             border_color = OTHER_AA_BORDER_COLOR;
+            m_border_color_dark_bg = OTHER_AA_BORDER_COLOR_DARK_BG;
             m_main_label_font = m_fonts.m_other_amino_acid_font;
             main_label_fm = &m_fonts.m_other_amino_acid_fm;
             break;
@@ -106,7 +109,8 @@ void AminoAcidItem::updateCachedData()
         scaleBasedOnFontSize(standard_border_width),
         scaleBasedOnFontSize(standard_border_height));
     m_border_pen.setWidthF(border_line_width);
-    m_border_pen.setColor(border_color);
+    m_border_color = border_color;
+    m_border_pen.setColor(getBorderColor());
     auto border_rect = QRectF(-border_width / 2, -border_height / 2,
                               border_width, border_height);
     set_path_to_rounded_rect(m_border_path, border_rect);

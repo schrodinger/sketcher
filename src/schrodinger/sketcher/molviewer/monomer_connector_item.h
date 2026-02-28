@@ -78,10 +78,23 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
      */
     bool isSecondaryConnection() const;
 
+    /**
+     * Switch the connector colors between dark and light mode.
+     */
+    void setDarkMode(bool is_dark);
+
+    /**
+     * @return the connector color appropriate for the current color scheme
+     */
+    QColor getConnectorColor() const;
+
   protected:
     QPen m_connector_pen;
     QPen m_arrowhead_pen;
     QBrush m_arrowhead_brush;
+    QColor m_connector_color;
+    QColor m_connector_color_dark_bg;
+    bool m_is_dark_mode = false;
     QLineF m_connector_line;
     QPainterPath m_arrowhead_path;
     const AbstractMonomerItem& m_start_item;
