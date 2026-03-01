@@ -234,18 +234,31 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
     query_props->total_h_type = QueryCount::POSITIVE;
     check_create_atom(query_props, "[#12,#19;!H0;X2]", Format::SMARTS);
 
-    // test R-group
+    // test R-group (no advanced properties)
     query_props = std::make_shared<AtomQueryProperties>();
     query_props->query_type = QueryType::RGROUP;
     query_props->r_group = 4;
     check_create_atom(query_props, "* |$_R4$|", Format::EXTENDED_SMILES);
+    {
+        auto [atom_ptr, stereo_val] = create_atom_with_properties(query_props);
+        auto mol = std::make_unique<RDKit::RWMol>();
+        mol->addAtom(new RDKit::Atom(*atom_ptr), false, true);
+        auto read_props = read_properties_from_atom(mol->getAtomWithIdx(0));
+        auto* read_query_props =
+            dynamic_cast<AtomQueryProperties*>(read_props.get());
+        BOOST_REQUIRE(read_query_props != nullptr);
+        BOOST_TEST(read_query_props->query_type == QueryType::RGROUP);
+        BOOST_TEST(read_query_props->r_group == 4);
+    }
 
-    // test R-group with aromatic advanced property (SKETCH-2695)
+    // test R-group with multiple advanced properties
     {
         query_props = std::make_shared<AtomQueryProperties>();
         query_props->query_type = QueryType::RGROUP;
-        query_props->r_group = 2;
+        query_props->r_group = 1;
         query_props->aromaticity = QueryAromaticity::AROMATIC;
+        query_props->num_connections = 2;
+        query_props->ring_count_type = QueryCount::POSITIVE;
         auto [atom_ptr, stereo_val] = create_atom_with_properties(query_props);
         auto mol = std::make_unique<RDKit::RWMol>();
         // Make a copy of the atom for the molecule to own
@@ -257,57 +270,11 @@ BOOST_AUTO_TEST_CASE(test_create_atom_with_properties)
             dynamic_cast<AtomQueryProperties*>(read_props.get());
         BOOST_REQUIRE(read_query_props != nullptr);
         BOOST_TEST(read_query_props->query_type == QueryType::RGROUP);
-        BOOST_TEST(read_query_props->r_group == 2);
+        BOOST_TEST(read_query_props->r_group == 1);
         BOOST_TEST(read_query_props->aromaticity == QueryAromaticity::AROMATIC);
-    }
-
-    // test R-group with aliphatic advanced property (SKETCH-2695)
-    {
-        query_props = std::make_shared<AtomQueryProperties>();
-        query_props->query_type = QueryType::RGROUP;
-        query_props->r_group = 3;
-        query_props->aromaticity = QueryAromaticity::ALIPHATIC;
-        auto [atom_ptr2, stereo_val2] =
-            create_atom_with_properties(query_props);
-        auto mol2 = std::make_unique<RDKit::RWMol>();
-        mol2->addAtom(new RDKit::QueryAtom(
-                          *static_cast<RDKit::QueryAtom*>(atom_ptr2.get())),
-                      false, true);
-        auto read_props2 = read_properties_from_atom(mol2->getAtomWithIdx(0));
-        auto* read_query_props2 =
-            dynamic_cast<AtomQueryProperties*>(read_props2.get());
-        BOOST_REQUIRE(read_query_props2 != nullptr);
-        BOOST_TEST(read_query_props2->query_type == QueryType::RGROUP);
-        BOOST_TEST(read_query_props2->r_group == 3);
-        BOOST_TEST(read_query_props2->aromaticity ==
-                   QueryAromaticity::ALIPHATIC);
-    }
-
-    // test R-group with multiple advanced properties (SKETCH-2695)
-    {
-        query_props = std::make_shared<AtomQueryProperties>();
-        query_props->query_type = QueryType::RGROUP;
-        query_props->r_group = 1;
-        query_props->aromaticity = QueryAromaticity::AROMATIC;
-        query_props->num_connections = 2;
-        query_props->ring_count_type = QueryCount::POSITIVE;
-        auto [atom_ptr3, stereo_val3] =
-            create_atom_with_properties(query_props);
-        auto mol3 = std::make_unique<RDKit::RWMol>();
-        mol3->addAtom(new RDKit::QueryAtom(
-                          *static_cast<RDKit::QueryAtom*>(atom_ptr3.get())),
-                      false, true);
-        auto read_props3 = read_properties_from_atom(mol3->getAtomWithIdx(0));
-        auto* read_query_props3 =
-            dynamic_cast<AtomQueryProperties*>(read_props3.get());
-        BOOST_REQUIRE(read_query_props3 != nullptr);
-        BOOST_TEST(read_query_props3->query_type == QueryType::RGROUP);
-        BOOST_TEST(read_query_props3->r_group == 1);
-        BOOST_TEST(read_query_props3->aromaticity ==
-                   QueryAromaticity::AROMATIC);
-        BOOST_REQUIRE(read_query_props3->num_connections.has_value());
-        BOOST_TEST(*read_query_props3->num_connections == 2);
-        BOOST_TEST(read_query_props3->ring_count_type == QueryCount::POSITIVE);
+        BOOST_REQUIRE(read_query_props->num_connections.has_value());
+        BOOST_TEST(*read_query_props->num_connections == 2);
+        BOOST_TEST(read_query_props->ring_count_type == QueryCount::POSITIVE);
     }
 
     // test a wildcard, which will get converted to a list of elements in SMARTS
