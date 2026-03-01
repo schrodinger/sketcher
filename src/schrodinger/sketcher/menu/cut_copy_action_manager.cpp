@@ -72,8 +72,6 @@ void CutCopyActionManager::initCopyAsMenu()
             auto& fmt = std::get<0>(format);
             auto& label = std::get<1>(format);
             auto slot = [this, fmt]() { emit copyRequested(fmt, getSubset()); };
-            // addAction(label, receiver, slot) does not support specifying a
-            // connection type, so we connect explicitly.
             auto action =
                 m_copy_as_menu->addAction(QString::fromStdString(label));
             connect(action, &QAction::triggered, this, slot,
