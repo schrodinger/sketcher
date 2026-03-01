@@ -145,7 +145,21 @@ check_symbol_exists(isnan math.h HAVE_ISNAN)
 check_symbol_exists(log2 math.h HAVE_LOG2)
 check_symbol_exists(log10 math.h HAVE_LOG10)
 
-check_symbol_exists(strchrnul string.h HAVE_STRCHRNUL)
+# strchrnul may appear in SDK headers but not be available at runtime for
+# older deployment targets (e.g. macOS < 15.4). Use a compile check with
+# -Werror=unguarded-availability-new so the compiler rejects it when the
+# deployment target is too old.
+if(APPLE)
+  cmake_push_check_state(RESET)
+  set(CMAKE_REQUIRED_FLAGS "-Werror=unguarded-availability-new")
+  check_c_source_compiles("
+    #include <string.h>
+    int main() { strchrnul(\"test\", 'x'); return 0; }
+  " HAVE_STRCHRNUL)
+  cmake_pop_check_state()
+else()
+  check_symbol_exists(strchrnul string.h HAVE_STRCHRNUL)
+endif()
 check_symbol_exists(strerror_r string.h HAVE_STRERROR_R)
 
 check_symbol_exists(gmtime_r time.h HAVE_GMTIME_R)
