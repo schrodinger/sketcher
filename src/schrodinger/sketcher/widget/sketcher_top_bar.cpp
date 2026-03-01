@@ -65,14 +65,12 @@ void SketcherTopBar::initMenus()
     ui->import_btn->setMenu(m_import_menu);
     connect(m_import_menu->m_import_from_file_act, &QAction::triggered, this,
             &SketcherTopBar::onImportFromFileClicked, Qt::QueuedConnection);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_import_menu->m_paste_in_text_act, &QAction::triggered, this,
             &SketcherTopBar::onPasteInTextClicked, Qt::QueuedConnection);
 
     // Set up "Export" menu
     m_export_menu = new ExportMenu(this);
     ui->export_btn->setMenu(m_export_menu);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_export_menu->m_save_image_act, &QAction::triggered, this,
             &SketcherTopBar::saveImageRequested, Qt::QueuedConnection);
     connect(m_export_menu->m_export_to_file_act, &QAction::triggered, this,
@@ -98,19 +96,22 @@ void SketcherTopBar::initMenus()
     connect(m_more_actions_menu->m_paste_act, &QAction::triggered, this,
             &SketcherTopBar::pasteRequested);
     connect(m_more_actions_menu->m_flip_horizontal_act, &QAction::triggered,
-            this, &SketcherTopBar::flipHorizontalRequested);
+            this, &SketcherTopBar::flipHorizontalRequested,
+            Qt::QueuedConnection);
     connect(m_more_actions_menu->m_flip_vertical_act, &QAction::triggered, this,
-            &SketcherTopBar::flipVerticalRequested);
+            &SketcherTopBar::flipVerticalRequested, Qt::QueuedConnection);
     connect(m_more_actions_menu->m_add_explicit_hydrogens_act,
             &QAction::triggered, this,
-            &SketcherTopBar::addExplicitHydrogensRequested);
+            &SketcherTopBar::addExplicitHydrogensRequested,
+            Qt::QueuedConnection);
     connect(m_more_actions_menu->m_aromatize_act, &QAction::triggered, this,
-            &SketcherTopBar::aromatizeRequested);
+            &SketcherTopBar::aromatizeRequested, Qt::QueuedConnection);
     connect(m_more_actions_menu->m_kekulize_act, &QAction::triggered, this,
-            &SketcherTopBar::kekulizeRequested);
+            &SketcherTopBar::kekulizeRequested, Qt::QueuedConnection);
     connect(m_more_actions_menu->m_remove_explicit_hydrogens_act,
             &QAction::triggered, this,
-            &SketcherTopBar::removeExplicitHydrogensRequested);
+            &SketcherTopBar::removeExplicitHydrogensRequested,
+            Qt::QueuedConnection);
     connect(m_more_actions_menu->m_add_custom_fragment_act, &QAction::triggered,
             this, &SketcherTopBar::onAddCustomFragmentClicked);
     connect(m_more_actions_menu->m_fit_to_screen_act, &QAction::triggered, this,
@@ -119,7 +120,6 @@ void SketcherTopBar::initMenus()
     // Set up "Configure View" menu
     m_configure_view_menu = new ConfigureViewMenu(this);
     ui->configure_view_btn->setMenu(m_configure_view_menu);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_configure_view_menu->m_preferences_act, &QAction::triggered, this,
             &SketcherTopBar::adjustRenderingSettingsRequested,
             Qt::QueuedConnection);
