@@ -39,10 +39,14 @@ void CutCopyActionManager::setModel(SketcherModel* model)
 
     // Postpone connecting actions until the model is set since copy
     // queries the model to determine which subset value to emit
-    connect(m_cut_action, &QAction::triggered, this,
-            [this]() { emit cutRequested(DEFAULT_FORMAT); });
-    connect(m_copy_action, &QAction::triggered, this,
-            [this]() { emit copyRequested(DEFAULT_FORMAT, getSubset()); });
+    // QueuedConnection is required for WASM builds on Qt >= 6.8
+    connect(
+        m_cut_action, &QAction::triggered, this,
+        [this]() { emit cutRequested(DEFAULT_FORMAT); }, Qt::QueuedConnection);
+    connect(
+        m_copy_action, &QAction::triggered, this,
+        [this]() { emit copyRequested(DEFAULT_FORMAT, getSubset()); },
+        Qt::QueuedConnection);
     initCopyAsMenu();
 
     // Initialize
@@ -72,8 +76,13 @@ void CutCopyActionManager::initCopyAsMenu()
             auto& fmt = std::get<0>(format);
             auto& label = std::get<1>(format);
             auto slot = [this, fmt]() { emit copyRequested(fmt, getSubset()); };
-            auto action = m_copy_as_menu->addAction(
-                QString::fromStdString(label), this, slot);
+            // QueuedConnection is required for WASM builds on Qt >= 6.8.
+            // addAction(label, receiver, slot) does not support specifying a
+            // connection type, so we connect explicitly.
+            auto action =
+                m_copy_as_menu->addAction(QString::fromStdString(label));
+            connect(action, &QAction::triggered, this, slot,
+                    Qt::QueuedConnection);
             // set a flag on the action to determine its visibility later
             action->setData(QVariant(is_reaction_format));
         }
@@ -84,8 +93,10 @@ void CutCopyActionManager::initCopyAsMenu()
 
     // Add a separator and the option to export as an image
     auto separator = m_copy_as_menu->addSeparator();
-    auto action = m_copy_as_menu->addAction(
-        "Image", this, [this]() { emit copyAsImageRequested(); });
+    auto action = m_copy_as_menu->addAction("Image");
+    connect(
+        action, &QAction::triggered, this,
+        [this]() { emit copyAsImageRequested(); }, Qt::QueuedConnection);
     // export as image should only be allowed for full scene
     m_hide_for_selections.push_back(separator);
     m_hide_for_selections.push_back(action);

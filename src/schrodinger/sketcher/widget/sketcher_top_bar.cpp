@@ -95,10 +95,9 @@ void SketcherTopBar::initMenus()
     connect(m_more_actions_menu->m_cut_copy_manager,
             &CutCopyActionManager::copyRequested, this,
             &SketcherTopBar::copyRequested);
+    // QueuedConnection is required for WASM builds on Qt >= 6.8
     connect(m_more_actions_menu->m_paste_act, &QAction::triggered, this,
-            &SketcherTopBar::pasteRequested);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
-    // Without it, "Modify All" menu actions may not trigger (SKETCH-2694)
+            &SketcherTopBar::pasteRequested, Qt::QueuedConnection);
     connect(m_more_actions_menu->m_flip_horizontal_act, &QAction::triggered,
             this, &SketcherTopBar::flipHorizontalRequested,
             Qt::QueuedConnection);
