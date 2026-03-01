@@ -94,7 +94,7 @@ void SketcherTopBar::initMenus()
             &CutCopyActionManager::copyRequested, this,
             &SketcherTopBar::copyRequested);
     connect(m_more_actions_menu->m_paste_act, &QAction::triggered, this,
-            &SketcherTopBar::pasteRequested, Qt::QueuedConnection);
+            &SketcherTopBar::pasteRequested);
     connect(m_more_actions_menu->m_flip_horizontal_act, &QAction::triggered,
             this, &SketcherTopBar::flipHorizontalRequested,
             Qt::QueuedConnection);

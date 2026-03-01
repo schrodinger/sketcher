@@ -39,13 +39,10 @@ void CutCopyActionManager::setModel(SketcherModel* model)
 
     // Postpone connecting actions until the model is set since copy
     // queries the model to determine which subset value to emit
-    connect(
-        m_cut_action, &QAction::triggered, this,
-        [this]() { emit cutRequested(DEFAULT_FORMAT); }, Qt::QueuedConnection);
-    connect(
-        m_copy_action, &QAction::triggered, this,
-        [this]() { emit copyRequested(DEFAULT_FORMAT, getSubset()); },
-        Qt::QueuedConnection);
+    connect(m_cut_action, &QAction::triggered, this,
+            [this]() { emit cutRequested(DEFAULT_FORMAT); });
+    connect(m_copy_action, &QAction::triggered, this,
+            [this]() { emit copyRequested(DEFAULT_FORMAT, getSubset()); });
     initCopyAsMenu();
 
     // Initialize
