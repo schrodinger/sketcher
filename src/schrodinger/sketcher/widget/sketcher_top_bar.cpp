@@ -65,14 +65,12 @@ void SketcherTopBar::initMenus()
     ui->import_btn->setMenu(m_import_menu);
     connect(m_import_menu->m_import_from_file_act, &QAction::triggered, this,
             &SketcherTopBar::onImportFromFileClicked, Qt::QueuedConnection);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_import_menu->m_paste_in_text_act, &QAction::triggered, this,
             &SketcherTopBar::onPasteInTextClicked, Qt::QueuedConnection);
 
     // Set up "Export" menu
     m_export_menu = new ExportMenu(this);
     ui->export_btn->setMenu(m_export_menu);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_export_menu->m_save_image_act, &QAction::triggered, this,
             &SketcherTopBar::saveImageRequested, Qt::QueuedConnection);
     connect(m_export_menu->m_export_to_file_act, &QAction::triggered, this,
@@ -95,7 +93,6 @@ void SketcherTopBar::initMenus()
     connect(m_more_actions_menu->m_cut_copy_manager,
             &CutCopyActionManager::copyRequested, this,
             &SketcherTopBar::copyRequested);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8
     connect(m_more_actions_menu->m_paste_act, &QAction::triggered, this,
             &SketcherTopBar::pasteRequested, Qt::QueuedConnection);
     connect(m_more_actions_menu->m_flip_horizontal_act, &QAction::triggered,
@@ -123,7 +120,6 @@ void SketcherTopBar::initMenus()
     // Set up "Configure View" menu
     m_configure_view_menu = new ConfigureViewMenu(this);
     ui->configure_view_btn->setMenu(m_configure_view_menu);
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_configure_view_menu->m_preferences_act, &QAction::triggered, this,
             &SketcherTopBar::adjustRenderingSettingsRequested,
             Qt::QueuedConnection);

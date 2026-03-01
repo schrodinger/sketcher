@@ -130,7 +130,6 @@ ConfigureViewMenu::ConfigureViewMenu(QWidget* parent) : QMenu(parent)
 HelpMenu::HelpMenu(QWidget* parent) : QMenu(parent)
 {
     m_help_act = addAction("Help...");
-    // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     addAction("Getting Started...", this, &HelpMenu::showWelcomeDialog,
               Qt::QueuedConnection);
     addAction("About 2D Sketcher...", this,
