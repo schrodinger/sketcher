@@ -549,3 +549,18 @@
    fun:_ZN10QEventLoop4execE6QFlagsINS_17ProcessEventsFlagEE
    fun:_ZN7QThread4execEv
 }
+{
+   Qt XCB event thread TLS - false positive
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN14QXcbConnectionC1EP19QXcbNativeInterfacebjPKc
+   ...
+   fun:*QApplicationRequiredFixture*
+}
