@@ -1711,6 +1711,10 @@ static void flip_horizontally(RDKit::ROMol& polymer)
     }
 }
 
+/**
+ * Determine whether two monomers at `pos1` and `pos2` are closer than
+ * MONOMER_CLASH_DISTANCE, indicating a geometric clash.
+ */
 static bool positions_clash(const RDGeom::Point3D& pos1,
                             const RDGeom::Point3D& pos2)
 {
