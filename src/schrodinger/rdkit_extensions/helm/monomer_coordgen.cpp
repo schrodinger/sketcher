@@ -1511,14 +1511,15 @@ static double get_y_offset_for_polymer(const RDKit::ROMol& polymer_to_translate,
         invert ? reference_polymer : polymer_to_translate;
     auto above_coords = polymer_to_place_above.getConformer().getPositions();
     auto below_coords = polymer_to_place_below.getConformer().getPositions();
-    auto lowest_point = std::min_element(
-        above_coords.begin(), above_coords.end(),
-        [](RDGeom::Point3D a, RDGeom::Point3D b) { return a.y < b.y; });
+    auto lowest_point =
+        std::min_element(above_coords.begin(), above_coords.end(),
+                         [](const RDGeom::Point3D& a,
+                            const RDGeom::Point3D& b) { return a.y < b.y; });
 
-    auto highest_point = std::max_element(
-        below_coords.begin(), below_coords.end(),
-        [](RDGeom::Point3D a, RDGeom::Point3D b) { return a.y < b.y; });
-
+    auto highest_point =
+        std::max_element(below_coords.begin(), below_coords.end(),
+                         [](const RDGeom::Point3D& a,
+                            const RDGeom::Point3D& b) { return a.y < b.y; });
     auto offset = (*lowest_point).y - (*highest_point).y - MONOMER_BOND_LENGTH;
 
     // When inverted, negate the offset so it moves in the opposite direction
