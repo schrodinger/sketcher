@@ -805,7 +805,7 @@ static std::vector<TurnInfo> compute_coiling_turns_for_chain_with_params(
             break;
         }
         turns.push_back({turn_position, static_cast<unsigned int>(turn_size),
-                         turn_downward});
+                         turn_downward, 0});
         residues_accounted += current_chain_size + turn_size;
         current_chain_size = chain_size;
         turn_size += increment;
