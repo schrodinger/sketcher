@@ -42,6 +42,7 @@ namespace schrodinger
 namespace sketcher
 {
 
+class AttachmentPointContextMenu;
 class AtomContextMenu;
 class BackgroundContextMenu;
 class BondContextMenu;
@@ -349,6 +350,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     /**
      * Context menus
      */
+    AttachmentPointContextMenu* m_attachment_point_context_menu = nullptr;
     AtomContextMenu* m_atom_context_menu = nullptr;
     BondContextMenu* m_bond_context_menu = nullptr;
     SelectionContextMenu* m_selection_context_menu = nullptr;
@@ -387,6 +389,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     void connectTopBarSlots();
     void connectSideBarSlots();
+    void connectContextMenu(const AttachmentPointContextMenu& menu);
     void connectContextMenu(const ModifyAtomsMenu& menu);
     void connectContextMenu(const ModifyBondsMenu& menu);
     void connectContextMenu(const SelectionContextMenu& menu);

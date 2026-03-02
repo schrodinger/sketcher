@@ -2509,25 +2509,44 @@ void MolModel::removeCommandFunc(
     const std::vector<NonMolecularTag>& non_molecular_tags)
 {
     Q_ASSERT(m_allow_edits);
+
+    // Include attachment points bound to deleted atoms
+    std::vector<AtomTag> all_atom_tags_to_delete = atom_tags;
+    for (auto atom_tag : atom_tags) {
+        const auto* atom = getAtomFromTag(atom_tag);
+        for (const auto* other_atom : m_mol.atomNeighbors(atom)) {
+            if (is_attachment_point(other_atom)) {
+                auto other_tag = getTagForAtom(other_atom);
+                if (std::find(all_atom_tags_to_delete.begin(),
+                              all_atom_tags_to_delete.end(),
+                              other_tag) == all_atom_tags_to_delete.end()) {
+                    all_atom_tags_to_delete.push_back(other_tag);
+                }
+            }
+        }
+    }
+
     // we have to determine whether we're deleting an attachment point before we
     // delete any of the bonds, since is_attachment_point() will return false
     // for unbound atoms
     bool attachment_point_deleted =
-        std::any_of(atom_tags.begin(), atom_tags.end(), [this](AtomTag tag) {
-            return is_attachment_point(getAtomFromTag(tag));
-        });
+        std::any_of(all_atom_tags_to_delete.begin(),
+                    all_atom_tags_to_delete.end(), [this](AtomTag tag) {
+                        return is_attachment_point(getAtomFromTag(tag));
+                    });
 
     // handle the S-groups first so that they don't get implicitly deleted when
     // we remove an atom or a bond
     removeSGroupsCommandFunc(s_groups);
-    deselectSGroupsThatWillBeImplicitlyDeleted(atom_tags, bond_tags_with_atoms);
+    deselectSGroupsThatWillBeImplicitlyDeleted(all_atom_tags_to_delete,
+                                               bond_tags_with_atoms);
 
     // then remove the bonds so that they don't get implicitly deleted when we
     // remove an atom
     for (auto [bond_tag, start_atom_tag, end_atom_tag] : bond_tags_with_atoms) {
         removeBondCommandFunc(bond_tag, start_atom_tag, end_atom_tag);
     }
-    for (auto cur_atom_tag : atom_tags) {
+    for (auto cur_atom_tag : all_atom_tags_to_delete) {
         removeAtomCommandFunc(cur_atom_tag);
     }
     if (attachment_point_deleted) {

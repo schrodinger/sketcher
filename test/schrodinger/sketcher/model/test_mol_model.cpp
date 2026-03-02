@@ -4084,6 +4084,64 @@ BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
 }
 
 /**
+ * Test that attachment points are deleted when their parent atom
+ * is deleted
+ */
+BOOST_AUTO_TEST_CASE(test_delete_atom_with_attachment_points)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Create a carbon atom with two attachment points, plus a nitrogen
+    const RDKit::ROMol* mol = model.getMol();
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    const auto* c_atom = mol->getAtomWithIdx(0);
+    model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0), c_atom);
+    c_atom = mol->getAtomWithIdx(0);
+    model.addAttachmentPoint(RDGeom::Point3D(5.0, 6.0, 0.0), c_atom);
+    model.addAtom(Element::N, RDGeom::Point3D(7.0, 8.0, 0.0));
+
+    // Verify initial state
+    BOOST_TEST(mol->getNumAtoms() == 4); // C, AP1, AP2, N
+    BOOST_TEST(mol->getNumBonds() == 2); // C-AP1, C-AP2
+
+    // Verify attachment points exist and have correct numbers
+    BOOST_TEST(is_attachment_point(mol->getAtomWithIdx(1)));
+    BOOST_TEST(is_attachment_point(mol->getAtomWithIdx(2)));
+    BOOST_TEST(get_attachment_point_number(mol->getAtomWithIdx(1)) == 1);
+    BOOST_TEST(get_attachment_point_number(mol->getAtomWithIdx(2)) == 2);
+
+    // Delete the carbon atom - attachment points should be deleted too
+    // Re-fetch atom pointer before deletion to ensure it's valid
+    c_atom = mol->getAtomWithIdx(0);
+    model.remove({c_atom}, {}, {}, {}, {});
+
+    // Only nitrogen should remain
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    BOOST_TEST(mol->getAtomWithIdx(0)->getSymbol() == "N");
+
+    // Test undo - all atoms should be restored
+    undo_stack.undo();
+    BOOST_TEST(mol->getNumAtoms() == 4);
+    BOOST_TEST(mol->getNumBonds() == 2);
+
+    // Verify atoms are restored correctly
+    BOOST_TEST(mol->getAtomWithIdx(0)->getSymbol() == "C");
+    BOOST_TEST(is_attachment_point(mol->getAtomWithIdx(1)));
+    BOOST_TEST(is_attachment_point(mol->getAtomWithIdx(2)));
+    BOOST_TEST(mol->getAtomWithIdx(3)->getSymbol() == "N");
+    BOOST_TEST(get_attachment_point_number(mol->getAtomWithIdx(1)) == 1);
+    BOOST_TEST(get_attachment_point_number(mol->getAtomWithIdx(2)) == 2);
+
+    // Test redo - should delete carbon and attachment points again
+    undo_stack.redo();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    BOOST_TEST(mol->getAtomWithIdx(0)->getSymbol() == "N");
+}
+
+/**
  * Ensure that secondary connections can be selected and deleted independently
  * of the primary connection
  */
