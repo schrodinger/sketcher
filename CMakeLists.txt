@@ -296,8 +296,10 @@ if(ENABLE_TESTING)
 
   file(GLOB GLOBAL_SUPPRESSIONS "test/valgrind_*suppressions*")
   set(SUPPRESSION_FILE "test_valgrind.suppressions")
+  # Each memtest gets its own Xvfb display via xvfb-run -a (auto display
+  # selection) so parallel ctest runs don't share a single X server.
   set(MEMTEST_COMMAND
-      "valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
+      "xvfb-run -a valgrind --tool=memcheck --time-stamp=yes --num-callers=20 \
         --gen-suppressions=all --leak-check=full \
         --keep-debuginfo=no --error-exitcode=29")
   separate_arguments(MEMTEST_COMMAND)
