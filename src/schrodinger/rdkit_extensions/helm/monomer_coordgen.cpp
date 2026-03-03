@@ -986,49 +986,6 @@ compute_coiling_turns_for_chain(const RDKit::ROMol& polymer)
     return min_layout_and_score->first;
 }
 
-float get_position_in_coils_float(unsigned int monomer_idx,
-                                  const RDKit::ROMol& polymer,
-                                  const std::vector<TurnInfo>& turns)
-{
-    int section_number = 0;
-    int begin_of_section = 0;
-    int section_size = 0;
-    int last_segment_size = 0;
-
-    for (unsigned int turn_idx = 0; turn_idx < turns.size(); ++turn_idx) {
-        const auto& turn = turns[turn_idx];
-        section_number = turn_idx * 2;
-        last_segment_size = turn.position - begin_of_section;
-        if (monomer_idx < turn.position + turn.size) {
-            if (monomer_idx >= turn.position) {
-                // we're in the turn
-                section_number += 1;
-                begin_of_section = turn.position;
-                section_size = turn.size;
-            } else {
-                // we're in the segment before the turn
-                section_size = last_segment_size;
-            }
-
-            return section_number +
-                   static_cast<double>(monomer_idx + 1 - begin_of_section) /
-                       (section_size + 1);
-            break;
-        }
-        begin_of_section = turn.position + turn.size;
-    }
-    // we are in the last segment after the last turn. This segment might not be
-    // complete, so the best way to approximate the position score is to assume
-    // that the segment has the same size as the last complete segment
-    section_size = last_segment_size;
-
-    section_number = turns.size() * 2;
-
-    return section_number +
-           static_cast<double>(monomer_idx - begin_of_section) /
-               (section_size + 1);
-}
-
 /**
  * Lays out a chain with explicit turn positions. Used for both snaking and
  * coiling layouts
@@ -1442,7 +1399,7 @@ find_hairpin_turn(const RDKit::ROMol& polymer)
     for (size_t i = 0; i < bond_rings.size(); i++) {
         auto bond_ring = bond_rings[i];
         int zob_count = std::count_if(
-            bond_ring.begin(), bond_ring.end(), [polymer](int bond_idx) {
+            bond_ring.begin(), bond_ring.end(), [&polymer](int bond_idx) {
                 return polymer.getBondWithIdx(bond_idx)->getBondType() ==
                        RDKit::Bond::BondType::ZERO;
             });
@@ -1855,7 +1812,7 @@ find_chains(const RDKit::ROMol& mol, int start_atom_idx, int ring_atom_id,
     std::vector<std::pair<int, int>> sorted_distances(distance.begin(),
                                                       distance.end());
     std::sort(sorted_distances.begin(), sorted_distances.end(),
-              [](auto& a, auto& b) { return a.second > b.second; });
+              [](const auto& a, const auto& b) { return a.second > b.second; });
     return {sorted_distances, predecessor};
 }
 
