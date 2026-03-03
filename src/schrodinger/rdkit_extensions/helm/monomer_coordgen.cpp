@@ -1005,6 +1005,7 @@ lay_out_chain_with_turns(RDKit::ROMol& polymer,
                          std::unordered_set<int>& placed_monomers_idcs,
                          const std::vector<TurnInfo>& turn_positions)
 {
+    std::cerr << turn_positions.size() << " turns\n";
     auto& conformer = polymer.getConformer();
     RDGeom::Point3D chain_start_pos(0, 0, 0);
     ChainDirection chain_dir = ChainDirection::LTR;
@@ -1025,9 +1026,12 @@ lay_out_chain_with_turns(RDKit::ROMol& polymer,
                                      ? turn_positions[turn_idx].size
                                      : 0;
 
-        if (segment_start >= segment_end) {
-            continue; // Skip empty segments
+        if (segment_start >= segment_end || segment_start >= total_monomers) {
+            break; // No more monomers to place
         }
+
+        // Clamp segment_end to not exceed total monomers
+        segment_end = std::min(segment_end, total_monomers);
 
         // Lay out this segment
         lay_out_chain(polymer, polymer.getAtomWithIdx(segment_start),
@@ -1038,22 +1042,24 @@ lay_out_chain_with_turns(RDKit::ROMol& polymer,
                       });
 
         // Lay out turn monomers (if any) and prepare for next segment
+        if (turn_idx < turn_positions.size()) {
+            RDGeom::Point3D turn_start = conformer.getAtomPos(segment_end - 1);
 
-        RDGeom::Point3D turn_start = conformer.getAtomPos(segment_end - 1);
+            // Lay out turn monomers following polygon arc
+            chain_start_pos =
+                lay_out_turn(polymer, conformer, placed_monomers_idcs,
+                             turn_start, segment_end, turn_size, total_monomers,
+                             chain_dir, turn_positions[turn_idx].downward,
+                             turn_positions[turn_idx].y_size_difference);
 
-        // Lay out turn monomers following polygon arc
-        chain_start_pos =
-            lay_out_turn(polymer, conformer, placed_monomers_idcs, turn_start,
-                         segment_end, turn_size, total_monomers, chain_dir,
-                         turn_positions[turn_idx].downward,
-                         turn_positions[turn_idx].y_size_difference);
+            // Reverse direction for next segment
+            chain_dir = (chain_dir == ChainDirection::LTR)
+                            ? ChainDirection::RTL
+                            : ChainDirection::LTR;
 
-        // Reverse direction for next segment
-        chain_dir = (chain_dir == ChainDirection::LTR) ? ChainDirection::RTL
-                                                       : ChainDirection::LTR;
-
-        // Skip turn_size residues before starting the next segment
-        segment_start = segment_end + turn_size;
+            // Skip turn_size residues before starting the next segment
+            segment_start = segment_end + turn_size;
+        }
     }
 }
 
