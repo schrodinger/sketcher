@@ -77,8 +77,6 @@
           <iconset resource="../sketcher.qrc">
            <normaloff>icons/mode_compound.svg</normaloff>
            <normalon>icons/mode_compound.svg</normalon>
-           <disabledoff>icons/mode_compound_dis.svg</disabledoff>
-           <disabledon>icons/mode_compound_dis.svg</disabledon>
           </iconset>
          </property>
          <property name="iconSize">
@@ -113,8 +111,6 @@
           <iconset resource="../sketcher.qrc">
            <normaloff>icons/mode_monomer.svg</normaloff>
            <normalon>icons/mode_monomer.svg</normalon>
-           <disabledoff>icons/mode_monomer_dis.svg</disabledoff>
-           <disabledon>icons/mode_monomer_dis.svg</disabledon>
           </iconset>
          </property>
          <property name="iconSize">
