@@ -85,18 +85,23 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
         return MonomerType::PEPTIDE;
     } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
         const auto& res_name = res_info->getResidueName();
-        if (res_name.empty()) {
-            return MonomerType::NA_BASE;
-        }
-        auto last_char = std::tolower(res_name.back());
-        if (last_char == 'p') {
-            return MonomerType::NA_PHOSPHATE;
-        } else if (last_char == 'r') {
-            return MonomerType::NA_SUGAR;
-        }
-        return MonomerType::NA_BASE;
+        return get_na_monomer_type_from_res_name(res_name);
     }
     return MonomerType::CHEM;
+}
+
+MonomerType get_na_monomer_type_from_res_name(const std::string& res_name)
+{
+    if (res_name.empty()) {
+        return MonomerType::NA_BASE;
+    }
+    auto last_char = std::tolower(res_name.back());
+    if (last_char == 'p') {
+        return MonomerType::NA_PHOSPHATE;
+    } else if (last_char == 'r') {
+        return MonomerType::NA_SUGAR;
+    }
+    return MonomerType::NA_BASE;
 }
 
 std::string get_monomer_res_name(const RDKit::Atom* const monomer)

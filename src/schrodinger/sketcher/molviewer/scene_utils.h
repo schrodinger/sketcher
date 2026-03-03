@@ -176,7 +176,7 @@ SKETCHER_API QPainterPath path_around_line(const QLineF& line,
  * @return whether a graphics item is one of the types specified by the type
  * flag.
  */
-SKETCHER_API bool item_matches_type_flag(QGraphicsItem* item,
+SKETCHER_API bool item_matches_type_flag(const QGraphicsItem* const item,
                                          InteractiveItemFlagType type_flag);
 
 /**

@@ -84,6 +84,13 @@ const int ATTACHMENT_POINT_WITH_CUSTOM_NAME = -1;
 SKETCHER_API MonomerType get_monomer_type(const RDKit::Atom* atom);
 
 /**
+ * @return the type of nucleic acid monomer that the given residue name
+ * represents
+ */
+SKETCHER_API MonomerType
+get_na_monomer_type_from_res_name(const std::string& res_name);
+
+/**
  * Determine the text to use for the name of the given monomer
  */
 SKETCHER_API std::string get_monomer_res_name(const RDKit::Atom* const monomer);
