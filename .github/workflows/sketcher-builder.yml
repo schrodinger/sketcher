@@ -254,9 +254,11 @@ jobs:
       - name: Run memtests
         working-directory: build
         if: matrix.build-name == 'memtest'
-        # Using -j4 instead of -j because cmake 3.24 requires a specific number
+        # Using -j4 instead of -j because cmake 3.24 requires a specific number.
+        # xvfb-run is embedded in each memtest command in CMakeLists so each
+        # test gets its own isolated X display rather than sharing one.
         run: |
-          xvfb-run -a ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
+          ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
 
       - name: Publish Test Summary
         uses: test-summary/action@v2
