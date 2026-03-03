@@ -133,7 +133,9 @@ find_preferred_attachment_point_by_num(
     auto index_of = [&preferred_order](const auto* ap_item) {
         auto it = std::find(preferred_order.begin(), preferred_order.end(),
                             ap_item->getAttachmentPoint().num);
-        return std::distance(preferred_order.begin(), it);
+        auto dist = std::distance(preferred_order.begin(), it);
+        // we know that dist is positive
+        return static_cast<std::size_t>(dist);
     };
     auto min_it = std::min_element(
         unbound_ap_items.begin(), unbound_ap_items.end(),
