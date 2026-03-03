@@ -160,7 +160,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
 
     /**
      * Return the unbound attachment point graphics item that should be "active"
-     * (i.e. that we'd drawn a connection for if the user clicked) for the given
+     * (i.e. that we'd draw a connection for if the user clicked) for the given
      * coordinates. If the coordinates are over an unbound attachment point
      * item, that item will be returned. If the coordinates are over the
      * monomer, then the default unbound attachment point will be returned,
