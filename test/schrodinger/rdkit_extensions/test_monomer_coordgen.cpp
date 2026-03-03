@@ -82,6 +82,15 @@ BOOST_DATA_TEST_CASE(
           {0, -1.5},
           {-1.5, -1.5}}},
 
+        {"PEPTIDE1{[Me-].[Oic_3aR-7aS].[pnG].[dD]}|PEPTIDE2{[Me-].T.[dS].[Gly_"
+         "cPr].C.[D-Nva].[D-2Nal].[meR].[D-Dip].[-OMe]}|PEPTIDE3{[D-2Thi].[Cys_"
+         "Me].[dE].[Phe_4Me].G.[Hsl]}$PEPTIDE1,PEPTIDE3,4:R3-1:R1|PEPTIDE2,"
+         "PEPTIDE1,5:R3-4:R2$$$V2.0",
+         {{0, 0},     {1.5, 0},    {3, 0},      {4.5, 0},     {-1.5, 1.5},
+          {0, 1.5},   {1.5, 1.5},  {3, 1.5},    {4.5, 1.5},   {6, 1.5},
+          {7.5, 1.5}, {9, 1.5},    {10.5, 1.5}, {12, 1.5},    {4.5, -1.5},
+          {6, -1.5},  {7.5, -1.5}, {9, -1.5},   {10.5, -1.5}, {12, -1.5}}},
+
         // Snaking linear polymers
         {"PEPTIDE1{K.W.L.N.A.L.L.H.H.G.L}$$$$V2.0",
          {{0, 0},
