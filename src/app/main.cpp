@@ -7,6 +7,8 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/bind.h>
+#else
+#include "crash_handler.h"
 #endif
 
 #include <cstring>
@@ -160,6 +162,10 @@ void apply_stylesheet(QApplication& app)
 
 int main(int argc, char** argv)
 {
+#ifndef __EMSCRIPTEN__
+    schrodinger::install_crash_handlers();
+#endif
+
     QApplication application(argc, argv);
 #ifdef SKETCHER_STATIC_DEFINE
     Q_INIT_RESOURCE(sketcher);
