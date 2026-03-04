@@ -870,10 +870,10 @@ read_properties_from_atom(const RDKit::Atom* const atom)
     std::shared_ptr<AbstractAtomProperties> props = nullptr;
     auto r_group_num = rdkit_extensions::get_r_group_number(atom);
     if (r_group_num.has_value()) {
-        // this is an R-group, which is stored as a non-query Atom, but
-        // represented in the dialog as a query. If advanced query properties
-        // were applied, update_atom_for_advanced_properties() will have
-        // converted it to a QueryAtom with recognized query criteria; use
+        // this is an R-group, which is not necessarily stored as a QueryAtom,
+        // but is always represented in the dialog as a query. If advanced query
+        // properties were applied, update_atom_for_advanced_properties() will
+        // have converted it to a QueryAtom with recognized query criteria; use
         // read_query to recover those. A trivial wildcard query (e.g. from
         // SMARTS) is discarded since read_query returns WILDCARD for it.
         if (atom->hasQuery()) {
@@ -883,7 +883,7 @@ read_properties_from_atom(const RDKit::Atom* const atom)
                 props = advanced;
             }
         }
-        if (!props) {
+        if (props == nullptr) {
             props = std::make_shared<AtomQueryProperties>();
         }
         auto* query_props = static_cast<AtomQueryProperties*>(props.get());

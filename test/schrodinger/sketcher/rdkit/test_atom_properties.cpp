@@ -20,13 +20,13 @@ BOOST_TEST_DONT_PRINT_LOG_VALUE(
     std::optional<schrodinger::sketcher::EnhancedStereo>)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::nullopt_t)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryType)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryAromaticity)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::QueryCount)
-
 namespace schrodinger
 {
 namespace sketcher
 {
+
+MAKE_ENUM_LOGGABLE(QueryAromaticity)
+MAKE_ENUM_LOGGABLE(QueryCount)
 
 namespace bdata = boost::unit_test::data;
 
