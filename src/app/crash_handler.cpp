@@ -35,8 +35,8 @@ namespace
 /// Get the current local time as a std::tm.
 std::tm get_local_time()
 {
-    auto now = std::chrono::system_clock::to_time_t(
-        std::chrono::system_clock::now());
+    auto now =
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     return *std::localtime(&now);
 }
 
@@ -46,10 +46,10 @@ std::tm get_local_time()
  */
 std::filesystem::path get_crash_report_path(const std::tm& tm)
 {
-    auto filename = fmt::format(
-        "sketcher_crash_{:04d}{:02d}{:02d}_{:02d}{:02d}{:02d}.log",
-        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
-        tm.tm_min, tm.tm_sec);
+    auto filename =
+        fmt::format("sketcher_crash_{:04d}{:02d}{:02d}_{:02d}{:02d}{:02d}.log",
+                    tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
+                    tm.tm_min, tm.tm_sec);
 
     return std::filesystem::temp_directory_path() / filename;
 }
@@ -69,8 +69,8 @@ void write_crash_report(std::string_view reason,
         "Stack trace:\n"
         "{}\n",
         std::string(sketcher::SKETCHER_RELEASE), sketcher::SKETCHER_BUILD,
-        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
-        tm.tm_min, tm.tm_sec, reason, trace_str);
+        tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min,
+        tm.tm_sec, reason, trace_str);
 
     // Write to stderr (best-effort)
     std::cerr << report << std::flush;
@@ -97,12 +97,22 @@ void signal_handler(int signal_number)
 
     const char* signal_name = "Unknown signal";
     switch (signal_number) {
-    case SIGSEGV: signal_name = "SIGSEGV (Segmentation fault)"; break;
-    case SIGABRT: signal_name = "SIGABRT (Abort)"; break;
-    case SIGFPE: signal_name = "SIGFPE (Floating point exception)"; break;
-    case SIGILL: signal_name = "SIGILL (Illegal instruction)"; break;
+        case SIGSEGV:
+            signal_name = "SIGSEGV (Segmentation fault)";
+            break;
+        case SIGABRT:
+            signal_name = "SIGABRT (Abort)";
+            break;
+        case SIGFPE:
+            signal_name = "SIGFPE (Floating point exception)";
+            break;
+        case SIGILL:
+            signal_name = "SIGILL (Illegal instruction)";
+            break;
 #ifndef _WIN32
-    case SIGBUS: signal_name = "SIGBUS (Bus error)"; break;
+        case SIGBUS:
+            signal_name = "SIGBUS (Bus error)";
+            break;
 #endif
     }
 
@@ -142,8 +152,7 @@ void terminate_handler()
 LONG WINAPI unhandled_exception_filter(EXCEPTION_POINTERS* exception_info)
 {
     DWORD code = exception_info->ExceptionRecord->ExceptionCode;
-    auto reason =
-        fmt::format("Windows Structured Exception: 0x{:08X}", code);
+    auto reason = fmt::format("Windows Structured Exception: 0x{:08X}", code);
 
     write_crash_report(reason, boost::stacktrace::stacktrace());
 
