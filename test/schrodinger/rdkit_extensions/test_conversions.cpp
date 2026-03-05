@@ -671,3 +671,34 @@ BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomerFromSql)
     BOOST_REQUIRE(atomistic_mol != nullptr);
     BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
 }
+
+BOOST_AUTO_TEST_CASE(TestHelmAutodetectWithUnbracketedCustomMonomer)
+{
+    // Multi-character monomer IDs must be bracketed per HELM spec.
+    // Unbracketed should fail, bracketed should work.
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.resetMonomerDefinitions();
+
+    constexpr std::string_view custom_sql =
+        "INSERT INTO monomer_definitions "
+        "(SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, "
+        "NAME, MONOMER_TYPE, AUTHOR) VALUES "
+        "('SqlMon', 'PEPTIDE', 'A', 'CC(C)(N[H:1])C(=O)[OH:2]', "
+        "'CC(C)(N)C=O', 'SQL Monomer', 'Backbone', 'test');";
+
+    monomer_db.loadMonomersFromSql(custom_sql);
+
+    // Unbracketed multi-char monomer should fail autodetect
+    const std::string unbracketed = "PEPTIDE1{A.SqlMon.G}$$$$V2.0";
+    BOOST_CHECK_THROW(to_rdkit(unbracketed, Format::AUTO_DETECT),
+                      std::invalid_argument);
+
+    // Bracketed should work
+    const std::string bracketed = "PEPTIDE1{A.[SqlMon].G}$$$$V2.0";
+    auto monomer_mol = to_rdkit(bracketed, Format::AUTO_DETECT);
+    BOOST_REQUIRE(monomer_mol != nullptr);
+
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol != nullptr);
+    BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+}
