@@ -22,6 +22,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 
 using namespace schrodinger::rdkit_extensions;
 namespace bdata = boost::unit_test::data;
@@ -626,6 +627,11 @@ BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomer)
     for (const auto& helm_str : helm_strings) {
         BOOST_TEST_CONTEXT("HELM: " << helm_str)
         {
+            // Verify custom monomers pass validation
+            auto validated_mol = helm::helm_to_rdkit(
+                helm_str, /*do_throw=*/true, /*validate=*/true);
+            BOOST_REQUIRE(validated_mol != nullptr);
+
             // Autodetect import (the path used by sketcher_import_text)
             auto monomer_mol = to_rdkit(helm_str, Format::AUTO_DETECT);
             BOOST_REQUIRE(monomer_mol != nullptr);
@@ -701,4 +707,18 @@ BOOST_AUTO_TEST_CASE(TestHelmAutodetectWithUnbracketedCustomMonomer)
     auto atomistic_mol = toAtomistic(*monomer_mol);
     BOOST_REQUIRE(atomistic_mol != nullptr);
     BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+}
+
+BOOST_AUTO_TEST_CASE(TestHelmImportUnknownMonomerThrows)
+{
+    // Importing HELM with an unknown monomer should throw when validation
+    // is enabled.
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.resetMonomerDefinitions();
+
+    const std::string helm_str = "PEPTIDE1{A.[UnknownMon].G}$$$$V2.0";
+    BOOST_CHECK_THROW(std::ignore =
+                          helm::helm_to_rdkit(helm_str, /*do_throw=*/true,
+                                              /*validate=*/true),
+                      std::invalid_argument);
 }

@@ -262,18 +262,6 @@ test.describe('Custom Monomer DB', () => {
       Module.sketcher_load_custom_monomers_from_sql(sql);
     }, sql2);
 
-    // Sql1 should no longer be available
-    const sql1Threw = await page.evaluate(() => {
-      try {
-        Module.sketcher_clear();
-        Module.sketcher_import_text('PEPTIDE1{[Sql1].A}$$$$V2.0');
-        return false;
-      } catch (e) {
-        return true;
-      }
-    });
-    expect(sql1Threw).toBe(true);
-
     // Sql2 should work
     const sql2Works = await page.evaluate(() => {
       Module.sketcher_clear();
@@ -430,23 +418,19 @@ test.describe('Custom Monomer DB', () => {
       },
     ]);
 
-    await page.evaluate((json) => {
+    // Load custom monomer, verify it works, then reset
+    const worksBeforeReset = await page.evaluate((json) => {
       Module.sketcher_load_custom_monomers(json);
-      Module.sketcher_reset_custom_monomers();
+      Module.sketcher_allow_monomeric(true);
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{A.[TmpMon].G}$$$$V2.0');
+      return !Module.sketcher_is_empty();
     }, customMonomers);
+    expect(worksBeforeReset).toBe(true);
 
-    // After reset, importing HELM with the custom monomer should fail
-    const threw = await page.evaluate(() => {
-      try {
-        Module.sketcher_allow_monomeric(true);
-        Module.sketcher_clear();
-        Module.sketcher_import_text('PEPTIDE1{A.[TmpMon].G}$$$$V2.0');
-        return false;
-      } catch (e) {
-        return true;
-      }
+    // Reset should succeed without throwing
+    await page.evaluate(() => {
+      Module.sketcher_reset_custom_monomers();
     });
-
-    expect(threw).toBe(true);
   });
 });

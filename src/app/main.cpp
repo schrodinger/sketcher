@@ -205,11 +205,6 @@ EMSCRIPTEN_BINDINGS(sketcher)
                          &sketcher_reset_custom_monomers);
     emscripten::function("_sketcher_get_widget_rect",
                          &sketcher_get_widget_rect);
-    emscripten::function("_sketcher_get_button_positions",
-                         &sketcher_get_button_positions);
-    emscripten::function("_sketcher_get_drawing_area_rect",
-                         &sketcher_get_drawing_area_rect);
-    emscripten::function("_sketcher_click_button", &sketcher_click_button);
     // see sketcher_changed_callback above
 }
 #endif
