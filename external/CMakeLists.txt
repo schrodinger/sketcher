@@ -173,9 +173,11 @@ set_cmake_arg(
   # rdkit_extensions required libraries
   bimap
   filesystem
-  test
-  # crash handler for the standalone executable
-  stacktrace)
+  test)
+if(!EMSCRIPTEN)
+  # on desktop builds, we use stacktrace to print crash reports
+  list(APPEND BOOST_INCLUDE_LIBS stacktrace)
+endif()
 set_cmake_arg(
   BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
