@@ -6,10 +6,13 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <rdkit/Geometry/point.h>
+#include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 
@@ -99,6 +102,40 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBonds)
     // the outdated property should be removed after recalculating wedges
     BOOST_CHECK_EQUAL(b->hasProp(RDKit::common_properties::_MolFileBondCfg),
                       false);
+}
+
+BOOST_AUTO_TEST_CASE(test_assign_stereochemistry_no_false_chirality_from_3d)
+{
+    // SKETCH-2706: When a 3D molecule has a carbon with two topologically
+    // identical substituents (e.g. the two ring carbons of a cyclopropyl
+    // group), assign_stereochemistry must not mark it as a stereocenter
+    // even if the 3D geometry produces a non-zero chiral volume.
+    //
+    // methylcyclopropane (CC1CC1): atom 1 is the junction carbon with
+    // neighbors: atom 0 (CH3), atom 2 (ring CH2), atom 3 (ring CH2), and 1
+    // implicit H. Atoms 2 and 3 are topologically identical, so atom 1 is
+    // NOT a true stereocenter.
+    auto mol =
+        rdkit_extensions::to_rdkit("CC1CC1", rdkit_extensions::Format::SMILES);
+
+    // Set up a 3D conformer with coordinates that give a non-zero chiral
+    // volume at atom 1 (junction carbon). This would cause the legacy stereo
+    // perception to incorrectly retain the CHI_TETRAHEDRAL_CW tag.
+    auto* conf = new RDKit::Conformer(mol->getNumAtoms());
+    conf->set3D(true);
+    conf->setAtomPos(0, RDGeom::Point3D(-1.0, -1.0, 0.0)); // CH3
+    conf->setAtomPos(1, RDGeom::Point3D(0.0, 0.0, 0.0));   // junction C
+    conf->setAtomPos(2, RDGeom::Point3D(1.0, 0.5, 0.5));   // ring CH2 (a)
+    conf->setAtomPos(3, RDGeom::Point3D(1.0, -0.5, -0.5)); // ring CH2 (b)
+    mol->addConformer(conf, /*assignId=*/true);
+
+    rdkit_extensions::assign_stereochemistry(*mol);
+
+    // The junction carbon must not be marked as a stereocenter: its two
+    // cyclopropyl ring neighbors (atoms 2 and 3) have identical CIP ranks.
+    auto* junction = mol->getAtomWithIdx(1);
+    BOOST_TEST(junction->getChiralTag() ==
+               RDKit::Atom::ChiralType::CHI_UNSPECIFIED);
 }
 
 } // namespace sketcher

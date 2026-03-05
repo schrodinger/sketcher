@@ -37,7 +37,11 @@ void assign_stereochemistry(RDKit::ROMol& mol)
 
             if (conf.is3D()) {
                 // If we have 3D coordinates, calculate both chirality
-                // and stereo bonds from them.
+                // and stereo bonds from them. Use modern stereo perception
+                // so that atoms with identical substituents (e.g. symmetric
+                // cyclopropyl groups) are correctly identified as
+                // non-stereocenters and don't acquire false wedge bonds.
+                UseModernStereoPerception use_modern_stereo;
                 RDKit::MolOps::assignStereochemistryFrom3D(mol);
                 return;
 
