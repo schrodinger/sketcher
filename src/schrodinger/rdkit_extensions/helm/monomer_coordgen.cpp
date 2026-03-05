@@ -1321,7 +1321,7 @@ addTurnsBreakLongLinearSegments(const std::vector<TurnInfo>& turns,
     std::vector<TurnInfo> turns_to_return;
     int start_of_segment = 0;
     for (const auto& turn : turns) {
-        // compute the lenght of the linear segment before this turn, and if
+        // compute the length of the linear segment before this turn, and if
         // it's too long, add turns to break it
         int end_of_segment = turn.position;
         process_segment_with_protected_regions(start_of_segment,
