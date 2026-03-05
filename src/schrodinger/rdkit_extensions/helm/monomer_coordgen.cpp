@@ -33,6 +33,7 @@
 #include <cmath>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <queue>
 #include <set>
 #include <stdexcept>
@@ -104,6 +105,15 @@ static const std::map<Direction, RDGeom::Point3D> DIRECTION_TO_POINT_MAP = {
     {Direction::NW, RDGeom::Point3D(-1, 1, 0)},
     {Direction::SE, RDGeom::Point3D(1, -1, 0)},
     {Direction::SW, RDGeom::Point3D(-1, -1, 0)}};
+
+/**
+ * Represents a region in a polymer chain that should be protected from
+ * automatic turn insertion. Protected regions are defined by custom bonds.
+ */
+struct ProtectedRegion {
+    unsigned int start; // First monomer in protected region
+    unsigned int end;   // One past last monomer (exclusive, like segment_end)
+};
 
 static RDGeom::Point3D direction_to_point(Direction dir)
 {
@@ -576,6 +586,110 @@ extract_custom_bonds(const RDKit::ROMol& polymer)
 }
 
 /**
+ * Finds protected regions within a segment. Protected regions are defined by
+ * custom bonds - each bond from monomer_i to monomer_j creates a protected
+ * region [i, j] where automatic turn insertion should be avoided.
+ *
+ * @param segment_start Start of the segment being processed
+ * @param segment_end End of the segment being processed (exclusive)
+ * @param custom_bonds List of custom bonds in the polymer
+ * @return Vector of protected regions that overlap with the segment, merged
+ *         where they overlap
+ */
+static std::vector<ProtectedRegion>
+find_protected_regions(unsigned int segment_start, unsigned int segment_end,
+                       const std::vector<CustomBondInfo>& custom_bonds)
+{
+    std::vector<ProtectedRegion> regions;
+
+    // Each custom bond defines a protected region
+    for (const auto& bond : custom_bonds) {
+        // Check if this bond's region overlaps with the current segment
+        // region includes both monomer_i and monomer_j, so end is monomer_j + 1
+        unsigned int region_start = std::max(segment_start, bond.monomer_i);
+        unsigned int region_end = std::min(segment_end, bond.monomer_j + 1);
+
+        // Only add if there's actual overlap
+        if (region_start < region_end) {
+            regions.push_back({region_start, region_end});
+        }
+    }
+
+    // Sort regions by start position for easier processing
+    std::sort(regions.begin(), regions.end(),
+              [](const auto& a, const auto& b) { return a.start < b.start; });
+
+    // Merge overlapping regions
+    std::vector<ProtectedRegion> merged;
+    for (const auto& region : regions) {
+        if (merged.empty() || merged.back().end < region.start) {
+            // No overlap with previous region
+            merged.push_back(region);
+        } else {
+            // Overlap - merge by extending the end
+            merged.back().end = std::max(merged.back().end, region.end);
+        }
+    }
+
+    return merged;
+}
+
+/**
+ * Adjusts a turn position if it falls inside a protected region by moving it
+ * to the nearest boundary of the protected region.
+ *
+ * @param turn_position Original position of the turn
+ * @param segment_start Start of the segment being processed
+ * @param segment_end End of the segment being processed (exclusive)
+ * @param protected_regions List of protected regions in this segment
+ * @return Adjusted turn position (moved to boundary if inside protected
+ * region), or std::nullopt if the turn should be removed (no valid position
+ * found)
+ */
+static std::optional<unsigned int> adjust_turn_position_for_protected_regions(
+    unsigned int turn_position, unsigned int segment_start,
+    unsigned int segment_end,
+    const std::vector<ProtectedRegion>& protected_regions)
+{
+    // Check if turn falls inside any protected region
+    for (const auto& region : protected_regions) {
+        if (turn_position >= region.start && turn_position < region.end) {
+            // Turn is inside protected region - move to nearest boundary
+            unsigned int dist_to_start = turn_position - region.start;
+            unsigned int dist_to_end = region.end - turn_position;
+
+            // Try to move to the closer boundary first
+            if (dist_to_start <= dist_to_end) {
+                // Closer to start - try to move to just before protected region
+                if (region.start > segment_start &&
+                    region.start <= segment_end) {
+                    return region.start;
+                }
+                // Start boundary not valid, try end instead
+                if (region.end >= segment_start && region.end < segment_end) {
+                    return region.end;
+                }
+            } else {
+                // Closer to end - try to move to just after protected region
+                if (region.end >= segment_start && region.end < segment_end) {
+                    return region.end;
+                }
+                // End boundary not valid, try start instead
+                if (region.start > segment_start &&
+                    region.start <= segment_end) {
+                    return region.start;
+                }
+            }
+
+            // If neither boundary is valid, remove this turn
+            return std::nullopt;
+        }
+    }
+    // Turn is not in any protected region - keep original position
+    return turn_position;
+}
+
+/**
  * Extracts turn constraints from the CUSTOM_BONDs in `polymer`. Each
  * CUSTOM_BOND creates a constraint that there must be exactly one turn between
  * the two monomers it connects, so they end up in consecutive rows in the
@@ -1005,7 +1119,6 @@ lay_out_chain_with_turns(RDKit::ROMol& polymer,
                          std::unordered_set<int>& placed_monomers_idcs,
                          const std::vector<TurnInfo>& turn_positions)
 {
-    std::cerr << turn_positions.size() << " turns\n";
     auto& conformer = polymer.getConformer();
     RDGeom::Point3D chain_start_pos(0, 0, 0);
     ChainDirection chain_dir = ChainDirection::LTR;
@@ -1111,6 +1224,121 @@ static bool is_a_chain(const RDKit::ROMol& polymer)
 }
 
 /**
+ * Check the number of residues between begin_idx and end_idx, and if it exceeds
+ * MAX_MONOMERS_PER_SNAKE, compute turn positions to break the segment into
+ * smaller parts. The turns will be placed as evenly as possible, and if the
+ * number of residues cannot be perfectly divided, the remaining residues will
+ * be distributed by increasing the turn size for some of the turns, so that the
+ * turns are still aligned with each other.
+ */
+std::vector<TurnInfo> compute_turn_positions_for_linear_segment(int begin_idx,
+                                                                int end_idx)
+{
+    auto total_monomers = end_idx - begin_idx + 1;
+
+    unsigned int num_rows =
+        (total_monomers + MAX_MONOMERS_PER_SNAKE - 1) / MAX_MONOMERS_PER_SNAKE;
+    unsigned int turn_size = 1;
+
+    // Calculate  number of rows needed if all segments MAX_MONOMERS_PER_SNAKE
+    // With num_rows segments, we have (num_rows - 1) turns between
+    // them. Calculate how much space is left for straight segments after
+    // accounting for turns
+    int segment_space = total_monomers - (num_rows - 1) * turn_size;
+
+    // Distribute the segment space as evenly as possible across all segments.
+    // Monomers that are left will be accommodated by using increased turn sizes
+    // for as many rows as needed.
+    unsigned int segment_length = segment_space / num_rows;
+    unsigned int num_of_longer_turns = segment_space % num_rows;
+    unsigned int current_pos = begin_idx;
+
+    std::vector<TurnInfo> turn_positions;
+    for (unsigned int row = 0; row < num_rows; ++row) {
+        current_pos += segment_length;
+        unsigned int turn_size = (row < num_of_longer_turns) ? 2 : 1;
+        // turns always take space like a 1 residue turn, so they can be aligned
+        int y_size_difference =
+            1 - turn_size; // -1 for 2-residue turns, 0 for 1-residue turns
+
+        // Add a turn after this segment (except for the last segment)
+        if (row < num_rows - 1) {
+            turn_positions.push_back(
+                {current_pos, turn_size, true, y_size_difference});
+            // Advance position past the turn residues
+            current_pos += turn_size;
+        }
+    }
+    return turn_positions;
+}
+
+/**
+ * Processes a single segment by computing turn positions for long segments
+ * and adjusting them to avoid protected regions defined by custom bonds.
+ * Turns that cannot be validly placed are removed.
+ */
+static void process_segment_with_protected_regions(
+    int segment_start, int segment_end,
+    const std::vector<CustomBondInfo>& custom_bonds,
+    std::vector<TurnInfo>& turns_to_return)
+{
+    auto new_turns =
+        compute_turn_positions_for_linear_segment(segment_start, segment_end);
+
+    // Find protected regions and adjust turn positions
+    auto protected_regions =
+        find_protected_regions(segment_start, segment_end + 1, custom_bonds);
+
+    if (!protected_regions.empty()) {
+        for (auto& new_turn : new_turns) {
+            auto adjusted_pos = adjust_turn_position_for_protected_regions(
+                new_turn.position, segment_start, segment_end + 1,
+                protected_regions);
+            if (adjusted_pos.has_value()) {
+                new_turn.position = adjusted_pos.value();
+                turns_to_return.push_back(new_turn);
+            }
+            // If adjusted_pos is nullopt, skip this turn (remove it)
+        }
+    } else {
+        for (const auto& new_turn : new_turns) {
+            turns_to_return.push_back(new_turn);
+        }
+    }
+}
+
+/**
+ * Analyze the input turns and add additional turns to break long linear
+ * segments into smaller parts, so that the layout can be more compact and
+ * better fit in the available space. Respects protected regions defined by
+ * custom bonds by adjusting turn positions that would fall inside them.
+ */
+static std::vector<TurnInfo>
+addTurnsBreakLongLinearSegments(const std::vector<TurnInfo>& turns,
+                                int max_polymers,
+                                const std::vector<CustomBondInfo>& custom_bonds)
+{
+    std::vector<TurnInfo> turns_to_return;
+    int start_of_segment = 0;
+    for (const auto& turn : turns) {
+        // compute the length of the linear segment before this turn, and if
+        // it's too long, add turns to break it
+        int end_of_segment = turn.position;
+        process_segment_with_protected_regions(start_of_segment,
+                                               end_of_segment - 1, custom_bonds,
+                                               turns_to_return);
+        start_of_segment = end_of_segment + turn.size;
+        turns_to_return.push_back(turn);
+    }
+    // compute the last segment after the last turn, and if it's too long, add
+    // turns to break it
+    int end_of_segment = max_polymers - 1;
+    process_segment_with_protected_regions(start_of_segment, end_of_segment,
+                                           custom_bonds, turns_to_return);
+    return turns_to_return;
+}
+
+/**
  * Attempts to lay out a polymer with cycles as a snaking chain. This is only
  * possible if the cycles are closed by non-backbone connections (e.g. a turn
  * closed by a disulfide bond), and if the turn constraints from multiple
@@ -1149,6 +1377,11 @@ static bool maybe_lay_out_cyclic_polymer_as_snaking_chain(
 
         turn_positions.push_back({turn_pos, turn_size});
     }
+
+    // Extract custom bonds to identify protected regions
+    auto custom_bonds = extract_custom_bonds(polymer);
+    turn_positions = addTurnsBreakLongLinearSegments(
+        turn_positions, polymer.getNumAtoms(), custom_bonds);
     lay_out_chain_with_turns(polymer, placed_monomers_idcs, turn_positions);
     return true;
 }
@@ -1246,6 +1479,7 @@ static bool maybe_lay_out_cyclic_polymer_as_coiling_chain(
     }
     // Perform the layout
     lay_out_chain_with_turns(polymer, placed_monomers_idcs, turns);
+
     return true;
 }
 
@@ -1315,7 +1549,7 @@ find_hairpin_turn(const RDKit::ROMol& polymer)
     for (size_t i = 0; i < bond_rings.size(); i++) {
         auto bond_ring = bond_rings[i];
         int zob_count = std::count_if(
-            bond_ring.begin(), bond_ring.end(), [polymer](int bond_idx) {
+            bond_ring.begin(), bond_ring.end(), [&polymer](int bond_idx) {
                 return polymer.getBondWithIdx(bond_idx)->getBondType() ==
                        RDKit::Bond::BondType::ZERO;
             });
@@ -1489,41 +1723,8 @@ static void lay_out_polymer(RDKit::ROMol& polymer,
 static void lay_out_snaked_linear_polymer(RDKit::ROMol& polymer)
 {
     auto placed_monomers_idcs = std::unordered_set<int>{};
-    auto total_monomers = polymer.getNumAtoms();
-
-    unsigned int num_rows =
-        (total_monomers + MAX_MONOMERS_PER_SNAKE - 1) / MAX_MONOMERS_PER_SNAKE;
-    unsigned int turn_size = 1;
-
-    // Calculate  number of rows needed if all segments MAX_MONOMERS_PER_SNAKE
-    // With num_rows segments, we have (num_rows - 1) turns between
-    // them. Calculate how much space is left for straight segments after
-    // accounting for turns
-    int segment_space = total_monomers - (num_rows - 1) * turn_size;
-
-    // Distribute the segment space as evenly as possible across all segments.
-    // Monomers that are left will be accommodated by using increased turn sizes
-    // for as many rows as needed.
-    unsigned int segment_length = segment_space / num_rows;
-    unsigned int num_of_longer_turns = segment_space % num_rows;
-    unsigned int current_pos = 0;
-
-    std::vector<TurnInfo> turn_positions;
-    for (unsigned int row = 0; row < num_rows; ++row) {
-        current_pos += segment_length;
-        unsigned int turn_size = (row < num_of_longer_turns) ? 2 : 1;
-        // turns always take space like a 1 residue turn, so they can be aligned
-        int y_size_difference =
-            1 - turn_size; // -1 for 2-residue turns, 0 for 1-residue turns
-
-        // Add a turn after this segment (except for the last segment)
-        if (row < num_rows - 1) {
-            turn_positions.push_back(
-                {current_pos, turn_size, true, y_size_difference});
-            // Advance position past the turn residues
-            current_pos += turn_size;
-        }
-    }
+    auto turn_positions =
+        compute_turn_positions_for_linear_segment(0, polymer.getNumAtoms() - 1);
     // Use the calculated turn positions to lay out the snaking chain
     lay_out_chain_with_turns(polymer, placed_monomers_idcs, turn_positions);
 }
@@ -1761,7 +1962,7 @@ find_chains(const RDKit::ROMol& mol, int start_atom_idx, int ring_atom_id,
     std::vector<std::pair<int, int>> sorted_distances(distance.begin(),
                                                       distance.end());
     std::sort(sorted_distances.begin(), sorted_distances.end(),
-              [](auto& a, auto& b) { return a.second > b.second; });
+              [](const auto& a, const auto& b) { return a.second > b.second; });
     return {sorted_distances, predecessor};
 }
 
