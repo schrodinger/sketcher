@@ -230,7 +230,7 @@ test.describe('Custom Monomer DB', () => {
       Module.sketcher_load_custom_monomers_from_sql(sql);
       Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
-      Module.sketcher_import_text('PEPTIDE1{A.SqlMon.G}$$$$V2.0');
+      Module.sketcher_import_text('PEPTIDE1{A.[SqlMon].G}$$$$V2.0');
       return !Module.sketcher_is_empty();
     }, sql);
 
@@ -252,7 +252,7 @@ test.describe('Custom Monomer DB', () => {
     // Verify Sql1 works
     const sql1Works = await page.evaluate(() => {
       Module.sketcher_clear();
-      Module.sketcher_import_text('PEPTIDE1{Sql1.A}$$$$V2.0');
+      Module.sketcher_import_text('PEPTIDE1{[Sql1].A}$$$$V2.0');
       return !Module.sketcher_is_empty();
     });
     expect(sql1Works).toBe(true);
@@ -266,7 +266,7 @@ test.describe('Custom Monomer DB', () => {
     const sql1Threw = await page.evaluate(() => {
       try {
         Module.sketcher_clear();
-        Module.sketcher_import_text('PEPTIDE1{Sql1.A}$$$$V2.0');
+        Module.sketcher_import_text('PEPTIDE1{[Sql1].A}$$$$V2.0');
         return false;
       } catch (e) {
         return true;
@@ -277,7 +277,7 @@ test.describe('Custom Monomer DB', () => {
     // Sql2 should work
     const sql2Works = await page.evaluate(() => {
       Module.sketcher_clear();
-      Module.sketcher_import_text('PEPTIDE1{Sql2.A}$$$$V2.0');
+      Module.sketcher_import_text('PEPTIDE1{[Sql2].A}$$$$V2.0');
       return !Module.sketcher_is_empty();
     });
     expect(sql2Works).toBe(true);
@@ -318,7 +318,7 @@ test.describe('Custom Monomer DB', () => {
 
     const mon1Works = await page.evaluate(() => {
       Module.sketcher_clear();
-      Module.sketcher_import_text('PEPTIDE1{Mon1.A}$$$$V2.0');
+      Module.sketcher_import_text('PEPTIDE1{[Mon1].A}$$$$V2.0');
       return !Module.sketcher_is_empty();
     });
     expect(mon1Works).toBe(true);
@@ -332,7 +332,7 @@ test.describe('Custom Monomer DB', () => {
     const result = await page.evaluate(() => {
       Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
-      Module.sketcher_import_text('PEPTIDE1{Mon1.Mon2.A}$$$$V2.0');
+      Module.sketcher_import_text('PEPTIDE1{[Mon1].[Mon2].A}$$$$V2.0');
       return !Module.sketcher_is_empty();
     });
 
@@ -357,7 +357,7 @@ test.describe('Custom Monomer DB', () => {
       Module.sketcher_load_custom_monomers(json);
       Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
-      Module.sketcher_import_text('PEPTIDE1{A.Sar.G}$$$$V2.0');
+      Module.sketcher_import_text('PEPTIDE1{A.[Sar].G}$$$$V2.0');
       return !Module.sketcher_is_empty();
     }, customMonomers);
 
@@ -440,7 +440,7 @@ test.describe('Custom Monomer DB', () => {
       try {
         Module.sketcher_allow_monomeric(true);
         Module.sketcher_clear();
-        Module.sketcher_import_text('PEPTIDE1{A.TmpMon.G}$$$$V2.0');
+        Module.sketcher_import_text('PEPTIDE1{A.[TmpMon].G}$$$$V2.0');
         return false;
       } catch (e) {
         return true;
