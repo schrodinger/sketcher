@@ -76,6 +76,62 @@ BOOST_AUTO_TEST_CASE(test_best_placing_around_origin_similar_angles,
         line.setP2(best_placing_around_origin(points));
         BOOST_TEST(line.angle() == 60);
     }
+}
+
+/**
+ * test that when multiple angle intervals are tied (equal size), the one with
+ * positive y and positive x is preferred (score: +1 for y>0, +0.5 for x>0)
+ */
+BOOST_AUTO_TEST_CASE(test_best_placing_around_origin_prefers_positive_quadrant,
+                     *boost::unit_test::tolerance(0.001))
+{
+    QLineF line(QPointF(0, 0), QPointF(0, 1));
+
+    // Test configuration: points at 0°, 90°, 180°, 270°
+    // This creates four equal 90° gaps with midpoints at 45°, 135°, 225°, 315°
+    // Gap 1: 0° to 90° → midpoint 45° (x>0, y>0, score=1.5) ← should win
+    // Gap 2: 90° to 180° → midpoint 135° (x<0, y>0, score=1.0)
+    // Gap 3: 180° to 270° → midpoint 225° (x<0, y<0, score=0.0)
+    // Gap 4: 270° to 360° → midpoint 315° (x>0, y<0, score=0.5)
+    std::vector<float> angles = {0, 90, 180, 270};
+    std::vector<QPointF> points;
+    for (auto angle : angles) {
+        line.setAngle(angle);
+        points.push_back(line.p2());
+    }
+
+    line.setP2(best_placing_around_origin(points));
+    BOOST_TEST(line.angle() == 45.0);
+
+    // Test configuration where two gaps in positive y region are tied
+    // Points at 45°, 135°, 225°, 315° create four equal gaps
+    // Gap 1: 315° to 45° → midpoint 0° (x>0, y=0, score=0.5)
+    // Gap 2: 45° to 135° → midpoint 90° (x=0, y>0, score=1.0) ← should win
+    // Gap 3: 135° to 225° → midpoint 180° (x<0, y=0, score=0.0)
+    // Gap 4: 225° to 315° → midpoint 270° (x=0, y<0, score=0.0)
+    angles = {45, 135, 225, 315};
+    points.clear();
+    for (auto angle : angles) {
+        line.setAngle(angle);
+        points.push_back(line.p2());
+    }
+
+    line.setP2(best_placing_around_origin(points));
+    BOOST_TEST(line.angle() == 90.0);
+
+    // Test configuration where positive y quadrants are tied
+    // Points at 0°, 180° create two equal 180° gaps:
+    // Gap 1: 0° to 180° → midpoint 90° (x=0, y>0, score=1.0) ← should win
+    // Gap 2: 180° to 360° → midpoint 270° (x=0, y<0, score=0.0)
+    angles = {0, 180};
+    points.clear();
+    for (auto angle : angles) {
+        line.setAngle(angle);
+        points.push_back(line.p2());
+    }
+
+    line.setP2(best_placing_around_origin(points));
+    BOOST_TEST(line.angle() == 90.0);
 } // namespace sketcher
 
 } // namespace sketcher

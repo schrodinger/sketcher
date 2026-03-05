@@ -72,18 +72,65 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
     /**
      * find the biggest angle interval and return a point in the middle of it.
      * It is common that two or more intervals are nearly identical in size.
-     * In that case, return the first one to avoid numerical instability in the
-     * angle calculations.
+     * In that case, prefer the one in the positive x and y quadrant (0° to 90°)
+     * to provide consistent, predictable placement.
      */
     const float TOLERANCE = 1.01;
     int best_i = 0;
     auto best_angle = (angles[best_i + 1] - angles[best_i]) * 0.5;
+
+    // Collect all intervals that are within TOLERANCE of the best
+    std::vector<int> tied_indices;
+
     for (unsigned int i = 0; i < angles.size() - 1; ++i) {
         auto angle_i = (angles[i + 1] - angles[i]) * 0.5;
         if (angle_i > best_angle * TOLERANCE) {
+            // Found a strictly better interval
             best_i = i;
             best_angle = angle_i;
+            tied_indices.clear();
+            tied_indices.push_back(i);
+        } else if (angle_i > best_angle / TOLERANCE) {
+            // This interval is tied (within TOLERANCE)
+            tied_indices.push_back(i);
         }
+    }
+
+    // If we have ties, use a scoring system to prefer positive y and positive x
+    // Score: +1 if y > 0, +0.5 if x > 0
+    if (tied_indices.size() > 1) {
+        auto score_angle = [&angles](int idx) {
+            float midpoint_angle =
+                angles[idx] + (angles[idx + 1] - angles[idx]) * 0.5;
+            // Normalize to [0, 360) range
+            while (midpoint_angle >= 360.0f) {
+                midpoint_angle -= 360.0f;
+            }
+            while (midpoint_angle < 0.0f) {
+                midpoint_angle += 360.0f;
+            }
+
+            // Qt's angle system: 0° is at 3 o'clock, increases
+            // counter-clockwise y > 0 when angle is in (0, 180) x > 0 when
+            // angle is in [0, 90) or (270, 360)
+            float score = 0.0f;
+            float DELTA = 1e-3; // small tolerance to avoid floating point
+                                // issues at boundaries
+            if (midpoint_angle > 0.0f + DELTA &&
+                midpoint_angle < 180.0f - DELTA) {
+                score += 1.0f; // y > 0
+            }
+            if (midpoint_angle < 90.0f - DELTA ||
+                midpoint_angle > 270.0f + DELTA) {
+                score += 0.5f; // x > 0
+            }
+            return score;
+        };
+
+        best_i = *std::max_element(tied_indices.begin(), tied_indices.end(),
+                                   [&score_angle](int a, int b) {
+                                       return score_angle(a) < score_angle(b);
+                                   });
     }
     // For a single substituent, limit the angle to 120 (instead of 180)
     bool limit_to_120 =
