@@ -269,8 +269,10 @@ if(NOT EMSCRIPTEN)
       BOOST_STACKTRACE_USE_WINDBG)
     target_link_libraries(${APP_TARGET} PRIVATE dbghelp)
   else()
-    target_compile_definitions(${APP_TARGET} PRIVATE
-      BOOST_STACKTRACE_USE_ADDR2LINE)
+    target_compile_definitions(${APP_TARGET} PRIVATE BOOST_STACKTRACE_USE_ADDR2LINE)
+    if(APPLE)
+      target_compile_definitions(${APP_TARGET} PRIVATE _GNU_SOURCE)
+    endif()
   endif()
 endif()
 
