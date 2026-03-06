@@ -191,6 +191,11 @@ static void copy_selected_atoms_and_bonds(::RDKit::RWMol& extracted_mol,
             atom_mapping[ref_bond->getBeginAtomIdx()]);
         extracted_bond->setEndAtomIdx(atom_mapping[ref_bond->getEndAtomIdx()]);
 
+        auto& stereo_atoms = extracted_bond->getStereoAtoms();
+        for (auto& idx : stereo_atoms) {
+            idx = atom_mapping[idx];
+        }
+
         static constexpr bool takeOwnership = true;
         auto num_bonds =
             extracted_mol.addBond(extracted_bond.release(), takeOwnership);
