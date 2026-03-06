@@ -42,7 +42,7 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
 
 // standard attachment point names that don't follow the "R#" naming scheme
 const std::unordered_map<MonomerType, std::vector<std::string>>
-    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {"pair"}}};
+    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {NA_BASE_AP_PAIR}}};
 
 const int INVALID_ATTACHMENT_POINT_SPEC = -2;
 
@@ -85,18 +85,23 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
         return MonomerType::PEPTIDE;
     } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
         const auto& res_name = res_info->getResidueName();
-        if (res_name.empty()) {
-            return MonomerType::NA_BASE;
-        }
-        auto last_char = std::tolower(res_name.back());
-        if (last_char == 'p') {
-            return MonomerType::NA_PHOSPHATE;
-        } else if (last_char == 'r') {
-            return MonomerType::NA_SUGAR;
-        }
-        return MonomerType::NA_BASE;
+        return get_na_monomer_type_from_res_name(res_name);
     }
     return MonomerType::CHEM;
+}
+
+MonomerType get_na_monomer_type_from_res_name(const std::string& res_name)
+{
+    if (res_name.empty()) {
+        return MonomerType::NA_BASE;
+    }
+    auto last_char = std::tolower(res_name.back());
+    if (last_char == 'p') {
+        return MonomerType::NA_PHOSPHATE;
+    } else if (last_char == 'r') {
+        return MonomerType::NA_SUGAR;
+    }
+    return MonomerType::NA_BASE;
 }
 
 std::string get_monomer_res_name(const RDKit::Atom* const monomer)
@@ -442,10 +447,10 @@ static Direction calculate_direction_for_unbound_attachment_point(
     };
 
     std::vector<Direction> dirs_to_try;
-    if (ap_num <= 2 || ap_name == "pair") {
+    if (ap_num <= 2 || ap_name == NA_BASE_AP_PAIR) {
         // the first two attachment points should be across from each other (and
         // "pair" is the second attachment point for nucleic acid base monomers)
-        int opposite_ap_num = ap_num == 2 || ap_name == "pair" ? 1 : 2;
+        int opposite_ap_num = ap_num == 2 || ap_name == NA_BASE_AP_PAIR ? 1 : 2;
         auto opposite_dir = fetch_assigned_direction_for_attachment_point(
             opposite_ap_num, bound_aps, unbound_aps);
         if (opposite_dir.has_value()) {
