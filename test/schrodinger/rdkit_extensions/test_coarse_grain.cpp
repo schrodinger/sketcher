@@ -19,6 +19,7 @@
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "test_common.h"
 
 using namespace schrodinger::rdkit_extensions;
@@ -182,9 +183,9 @@ BOOST_AUTO_TEST_CASE(Test_toMonomeric)
             "O)O)C(=O)O)C(=O)N[C@@H](Cc1ccccc1)C(=O)NCC(=O)O");
     }
     {
-        // error condition -- invalid monomer
-        auto monomer_mol = to_rdkit("PEPTIDE1{F.Y.Z.G.R.L}$$$$V2.0");
-        BOOST_CHECK_THROW(toAtomistic(*monomer_mol), std::out_of_range);
+        // error condition -- invalid monomer (Z is not in the monomer DB)
+        BOOST_CHECK_THROW(to_rdkit("PEPTIDE1{F.Y.Z.G.R.L}$$$$V2.0"),
+                          std::invalid_argument);
     }
     {
         // error condition -- A does not have an R3 attachment point
@@ -268,10 +269,11 @@ BOOST_AUTO_TEST_CASE(Test_mutate_monomer)
     {
         // multichain mutation and CHEM/RNA works (but once again, no validation
         // on attachment point usage)
-        auto monomer_mol =
-            to_rdkit("PEPTIDE1{A.G.C}|RNA1{P.[dR](A)P.[dR](C)}|CHEM1{[XYZ]}$"
-                     "PEPTIDE1,RNA1,3:R3-1:R1$$$V2.0",
-                     Format::HELM);
+        // Use helm_to_rdkit directly since XYZ is a synthetic test monomer
+        // not in the DB
+        auto monomer_mol = helm::helm_to_rdkit(
+            "PEPTIDE1{A.G.C}|RNA1{P.[dR](A)P.[dR](C)}|CHEM1{[XYZ]}$"
+            "PEPTIDE1,RNA1,3:R3-1:R1$$$V2.0");
 
         mutateMonomer(*monomer_mol, 3, "Q"); // this is the phosphate linker
         BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM),
