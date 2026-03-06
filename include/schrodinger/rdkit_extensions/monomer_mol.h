@@ -123,6 +123,10 @@ RDKIT_EXTENSIONS_API void addConnection(RDKit::RWMol& mol, size_t monomer1,
 // (in HELM world, "chains" are called "polymers")
 RDKIT_EXTENSIONS_API void assignChains(RDKit::RWMol& mol);
 
+// Helper api to get the chain type from a polymer id (e.g. "PEPTIDE1" ->
+// PEPTIDE). Accepts ids with or without trailing numbers.
+RDKIT_EXTENSIONS_API ChainType getChainType(std::string_view polymer_id);
+
 // Helper api to get the chain type a monomer belongs to.
 RDKIT_EXTENSIONS_API ChainType getChainType(const RDKit::Atom& monomer);
 

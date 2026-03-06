@@ -8,6 +8,7 @@
 #include <boost/test/data/test_case.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
@@ -158,8 +159,9 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         BOOST_TEST(unbound_aps == exp_available);
     }
 
-    // CHEM monomers
-    mol = rdkit_extensions::to_rdkit(
+    // CHEM monomers (use helm_to_rdkit directly since MONO1/MONO2 are
+    // synthetic test monomers not in the DB)
+    mol = helm::helm_to_rdkit(
         "CHEM1{[MONO1]}|CHEM2{[MONO2]}$CHEM1,CHEM2,1:R1-1:R3$$$V2.0");
     prepare_mol(*mol);
     {
@@ -184,7 +186,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
     }
 
     // CHEM monomers with too many attachment points - some will be omitted
-    mol = rdkit_extensions::to_rdkit(
+    mol = helm::helm_to_rdkit(
         "CHEM1{[MONO1]}|CHEM2{[MONO2]}$CHEM1,CHEM2,1:R1-1:R11$$$V2.0");
     prepare_mol(*mol);
     {

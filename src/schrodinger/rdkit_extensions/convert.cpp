@@ -636,7 +636,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             }
             break;
         case Format::HELM:
-            mol = helm::helm_to_rdkit(text);
+            mol = helm::helm_to_rdkit(text, /*do_throw=*/true,
+                                      /*validate=*/true);
             break;
         case Format::FASTA_PEPTIDE:
             mol = fasta::peptide_fasta_to_rdkit(text);
