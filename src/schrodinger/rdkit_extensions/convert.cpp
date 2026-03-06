@@ -494,6 +494,19 @@ template <typename T> std::string mol_to_base64(
     return text;
 }
 
+// Check if text is single-line with trailing whitespace/newlines allowed.
+bool is_single_line(const std::string& text)
+{
+    auto first_newline = text.find_first_of("\n\r");
+    if (first_newline != std::string::npos) {
+        auto after_newline = text.find_first_not_of("\n\r\t ", first_newline);
+        if (after_newline != std::string::npos) {
+            return false;
+        }
+    }
+    return true;
+}
+
 // A very simple check to see if a string can be parsed as SMILES without
 // actually trying to parse it. We want this function because RDKit can
 // parse things containing (e.g.) "[#6]" or "~" as a valid SMILES (!!!)
@@ -543,7 +556,7 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
-            if (!can_be_smiles(text)) {
+            if (!is_single_line(text) || !can_be_smiles(text)) {
                 throw std::invalid_argument(text + " is not a valid SMILES");
             }
 
@@ -557,6 +570,9 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
         }
         case Format::SMARTS:
         case Format::EXTENDED_SMARTS:
+            if (!is_single_line(text)) {
+                throw std::invalid_argument(text + " is not a valid SMARTS");
+            }
             mol.reset(RDKit::SmartsToMol(text));
             if (mol != nullptr) {
                 fix_cxsmiles_rgroups(*mol);
@@ -714,6 +730,10 @@ to_rdkit_reaction(const std::string& text, const Format format)
         case Format::EXTENDED_SMILES:
         case Format::SMARTS:
         case Format::EXTENDED_SMARTS: {
+            if (!is_single_line(text)) {
+                throw std::invalid_argument(
+                    text + " is not a valid reaction SMILES/SMARTS");
+            }
             auto useSMILES = (format == Format::SMILES ||
                               format == Format::EXTENDED_SMILES) &&
                              can_be_smiles(text);
