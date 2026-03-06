@@ -18,10 +18,11 @@ namespace sketcher
 {
 
 AbstractMonomerItem::AbstractMonomerItem(const RDKit::Atom* monomer,
-                                         const Fonts& fonts,
+                                         const Fonts& fonts, bool is_dark_mode,
                                          QGraphicsItem* parent) :
     AbstractAtomOrMonomerItem(monomer, parent),
-    m_fonts(fonts)
+    m_fonts(fonts),
+    m_is_dark_mode(is_dark_mode)
 {
 }
 
@@ -46,13 +47,6 @@ void AbstractMonomerItem::setMonomerColors(const QColor& background_color,
     m_border_brush.setColor(background_color);
     m_border_pen.setColor(outline_color);
     m_main_label_pen.setColor(font_color);
-}
-
-void AbstractMonomerItem::setDarkMode(bool is_dark)
-{
-    m_is_dark_mode = is_dark;
-    m_border_pen.setColor(getBorderColor());
-    update();
 }
 
 QColor AbstractMonomerItem::getBorderColor() const

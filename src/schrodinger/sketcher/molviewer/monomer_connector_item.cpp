@@ -65,8 +65,10 @@ const std::unordered_map<ConnectorType, QColor> DARK_BG_COLOR_FOR_CONNECTOR_TYPE
 MonomerConnectorItem::MonomerConnectorItem(
     const RDKit::Bond* bond, const AbstractMonomerItem& start_monomer_item,
     const AbstractMonomerItem& end_monomer_item,
-    const bool is_secondary_connection, QGraphicsItem* parent) :
+    const bool is_secondary_connection, bool is_dark_mode,
+    QGraphicsItem* parent) :
     AbstractBondOrConnectorItem(bond, parent),
+    m_is_dark_mode(is_dark_mode),
     m_start_item(start_monomer_item),
     m_end_item(end_monomer_item),
     m_is_secondary_connection(is_secondary_connection)
@@ -202,16 +204,6 @@ void MonomerConnectorItem::paint(QPainter* painter,
     }
 
     painter->restore();
-}
-
-void MonomerConnectorItem::setDarkMode(bool is_dark)
-{
-    m_is_dark_mode = is_dark;
-    auto color = getConnectorColor();
-    m_connector_pen.setColor(color);
-    m_arrowhead_pen.setColor(color);
-    m_arrowhead_brush.setColor(color);
-    update();
 }
 
 QColor MonomerConnectorItem::getConnectorColor() const

@@ -20,9 +20,9 @@ namespace sketcher
 {
 
 NucleicAcidBaseItem::NucleicAcidBaseItem(const RDKit::Atom* monomer,
-                                         const Fonts& fonts,
+                                         const Fonts& fonts, bool is_dark_mode,
                                          QGraphicsItem* parent) :
-    AbstractMonomerItem(monomer, fonts, parent)
+    AbstractMonomerItem(monomer, fonts, is_dark_mode, parent)
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER));
 

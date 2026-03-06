@@ -37,6 +37,7 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
 {
   public:
     AbstractMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
+                        bool is_dark_mode = false,
                         QGraphicsItem* parent = nullptr);
 
     /**
@@ -45,12 +46,6 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     void setMonomerColors(const QColor& background_color,
                           const QColor& outline_color,
                           const QColor& font_color);
-
-    /**
-     * Switch the border color between dark and light mode.
-     * Subclasses must set m_border_color_dark_bg in their updateCachedData().
-     */
-    void setDarkMode(bool is_dark);
 
     /**
      * @return the border color appropriate for the current color scheme

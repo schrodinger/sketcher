@@ -8,8 +8,8 @@ namespace sketcher
 {
 
 ChemMonomerItem::ChemMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
-                                 QGraphicsItem* parent) :
-    AbstractMonomerItem(monomer, fonts, parent)
+                                 bool is_dark_mode, QGraphicsItem* parent) :
+    AbstractMonomerItem(monomer, fonts, is_dark_mode, parent)
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER));
     m_border_brush.setColor(CHEM_MONOMER_RECT_COLOR);

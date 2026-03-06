@@ -151,7 +151,7 @@ struct HelmItemsFixture {
     std::unordered_map<const RDKit::Bond*, QGraphicsItem*> secondary_items;
     std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*> sgroup_items;
 
-    HelmItemsFixture(const std::string& helm)
+    HelmItemsFixture(const std::string& helm, bool is_dark_mode = false)
     {
         mol = to_rdkit(helm);
         prepare_mol(*mol);
@@ -161,7 +161,8 @@ struct HelmItemsFixture {
         std::tie(all_items, atom_items, bond_items, secondary_items,
                  sgroup_items) =
             create_graphics_items_for_mol(
-                mol.get(), fonts, atom_display_settings, bond_display_settings);
+                mol.get(), fonts, atom_display_settings, bond_display_settings,
+                /* draw_attachment_points = */ true, is_dark_mode);
     }
 
     ~HelmItemsFixture()
@@ -182,7 +183,7 @@ struct HelmItemsFixture {
     }
 };
 
-BOOST_AUTO_TEST_CASE(TestDarkModeStandardAminoAcidBorderColors)
+BOOST_AUTO_TEST_CASE(TestLightModeStandardAminoAcidBorderColors)
 {
     // Atom 0 = "A" (Alanine), a standard amino acid
     HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0");
@@ -192,28 +193,29 @@ BOOST_AUTO_TEST_CASE(TestDarkModeStandardAminoAcidBorderColors)
 
     BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
                       STANDARD_AA_BORDER_COLOR.name().toStdString());
-
-    monomer_item->setDarkMode(true);
-    BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
-                      STANDARD_AA_BORDER_COLOR_DARK_BG.name().toStdString());
-
-    monomer_item->setDarkMode(false);
-    BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
-                      STANDARD_AA_BORDER_COLOR.name().toStdString());
 }
 
-BOOST_AUTO_TEST_CASE(TestDarkModeDAAminoAcidBorderColors)
+BOOST_AUTO_TEST_CASE(TestDarkModeStandardAminoAcidBorderColors)
 {
-    // "dA" starts with 'd', so it's classified as a D-amino acid
-    HelmItemsFixture f("PEPTIDE1{[dA].A}$$$$V2.0");
+    // Atom 0 = "A" (Alanine), a standard amino acid
+    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0", /* is_dark_mode = */ true);
 
     auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(f.atom_item(0));
     BOOST_REQUIRE(monomer_item != nullptr);
 
     BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
-                      D_AA_BORDER_COLOR.name().toStdString());
+                      STANDARD_AA_BORDER_COLOR_DARK_BG.name().toStdString());
+}
 
-    monomer_item->setDarkMode(true);
+BOOST_AUTO_TEST_CASE(TestDarkModeDAAminoAcidBorderColors)
+{
+    // "dA" starts with 'd', so it's classified as a D-amino acid
+    HelmItemsFixture f("PEPTIDE1{[dA].A}$$$$V2.0",
+                       /* is_dark_mode = */ true);
+
+    auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(f.atom_item(0));
+    BOOST_REQUIRE(monomer_item != nullptr);
+
     BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
                       D_AA_BORDER_COLOR_DARK_BG.name().toStdString());
 }
@@ -222,15 +224,12 @@ BOOST_AUTO_TEST_CASE(TestDarkModeOtherAminoAcidBorderColors)
 {
     // "meA" is not in the standard map and doesn't start with 'd', so it's
     // OTHER
-    HelmItemsFixture f("PEPTIDE1{[meA].A}$$$$V2.0");
+    HelmItemsFixture f("PEPTIDE1{[meA].A}$$$$V2.0",
+                       /* is_dark_mode = */ true);
 
     auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(f.atom_item(0));
     BOOST_REQUIRE(monomer_item != nullptr);
 
-    BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
-                      OTHER_AA_BORDER_COLOR.name().toStdString());
-
-    monomer_item->setDarkMode(true);
     BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
                       OTHER_AA_BORDER_COLOR_DARK_BG.name().toStdString());
 }
@@ -238,72 +237,48 @@ BOOST_AUTO_TEST_CASE(TestDarkModeOtherAminoAcidBorderColors)
 BOOST_AUTO_TEST_CASE(TestDarkModeNucleicAcidBaseBorderColors)
 {
     // RNA1{R(A)P}: atom 0 = sugar (R), atom 1 = base (A), atom 2 = phosphate
-    HelmItemsFixture f("RNA1{R(A)P.R(C)P.R(G)P}$$$$V2.0");
+    HelmItemsFixture f("RNA1{R(A)P.R(C)P.R(G)P}$$$$V2.0",
+                       /* is_dark_mode = */ true);
 
     auto* base_item = dynamic_cast<NucleicAcidBaseItem*>(f.atom_item(1));
     BOOST_REQUIRE(base_item != nullptr);
 
     BOOST_CHECK_EQUAL(base_item->getBorderColor().name().toStdString(),
-                      STANDARD_NA_BORDER_COLOR.name().toStdString());
-
-    base_item->setDarkMode(true);
-    BOOST_CHECK_EQUAL(base_item->getBorderColor().name().toStdString(),
                       STANDARD_NA_BORDER_COLOR_DARK_BG.name().toStdString());
-
-    base_item->setDarkMode(false);
-    BOOST_CHECK_EQUAL(base_item->getBorderColor().name().toStdString(),
-                      STANDARD_NA_BORDER_COLOR.name().toStdString());
 }
 
 BOOST_AUTO_TEST_CASE(TestDarkModeChemMonomerBorderColors)
 {
-    HelmItemsFixture f("CHEM1{*}$$$$V2.0");
+    HelmItemsFixture f("CHEM1{*}$$$$V2.0", /* is_dark_mode = */ true);
 
     auto* chem_item = dynamic_cast<ChemMonomerItem*>(f.atom_item(0));
     BOOST_REQUIRE(chem_item != nullptr);
 
     BOOST_CHECK_EQUAL(chem_item->getBorderColor().name().toStdString(),
-                      CHEM_MONOMER_BORDER_COLOR.name().toStdString());
-
-    chem_item->setDarkMode(true);
-    BOOST_CHECK_EQUAL(chem_item->getBorderColor().name().toStdString(),
                       CHEM_MONOMER_BORDER_COLOR_DARK_BG.name().toStdString());
-
-    chem_item->setDarkMode(false);
-    BOOST_CHECK_EQUAL(chem_item->getBorderColor().name().toStdString(),
-                      CHEM_MONOMER_BORDER_COLOR.name().toStdString());
 }
 
 BOOST_AUTO_TEST_CASE(TestDarkModeConnectorColors)
 {
     // Bond 0 connects atom 0 (A) to atom 1 (G)
-    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0");
+    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0", /* is_dark_mode = */ true);
 
     auto* connector_item = dynamic_cast<MonomerConnectorItem*>(f.bond_item(0));
     BOOST_REQUIRE(connector_item != nullptr);
 
     BOOST_CHECK_EQUAL(connector_item->getConnectorColor().name().toStdString(),
-                      AA_LINEAR_CONNECTOR_COLOR.name().toStdString());
-
-    connector_item->setDarkMode(true);
-    BOOST_CHECK_EQUAL(connector_item->getConnectorColor().name().toStdString(),
                       AA_LINEAR_CONNECTOR_COLOR_DARK_BG.name().toStdString());
-
-    connector_item->setDarkMode(false);
-    BOOST_CHECK_EQUAL(connector_item->getConnectorColor().name().toStdString(),
-                      AA_LINEAR_CONNECTOR_COLOR.name().toStdString());
 }
 
 BOOST_AUTO_TEST_CASE(TestDarkModeMonomerPersistsAfterUpdateCachedData)
 {
     // Verify that dark mode border colors survive updateCachedData() (e.g. on
     // zoom).
-    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0");
+    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0", /* is_dark_mode = */ true);
 
     auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(f.atom_item(0));
     BOOST_REQUIRE(monomer_item != nullptr);
 
-    monomer_item->setDarkMode(true);
     monomer_item->updateCachedData();
 
     BOOST_CHECK_EQUAL(monomer_item->getBorderColor().name().toStdString(),
@@ -313,12 +288,11 @@ BOOST_AUTO_TEST_CASE(TestDarkModeMonomerPersistsAfterUpdateCachedData)
 BOOST_AUTO_TEST_CASE(TestDarkModeConnectorPersistsAfterUpdateCachedData)
 {
     // Verify that dark mode connector colors survive updateCachedData()
-    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0");
+    HelmItemsFixture f("PEPTIDE1{A.G}$$$$V2.0", /* is_dark_mode = */ true);
 
     auto* connector_item = dynamic_cast<MonomerConnectorItem*>(f.bond_item(0));
     BOOST_REQUIRE(connector_item != nullptr);
 
-    connector_item->setDarkMode(true);
     connector_item->updateCachedData();
 
     BOOST_CHECK_EQUAL(connector_item->getConnectorColor().name().toStdString(),

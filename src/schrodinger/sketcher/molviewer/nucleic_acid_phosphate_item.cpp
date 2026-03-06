@@ -9,8 +9,9 @@ namespace sketcher
 
 NucleicAcidPhosphateItem::NucleicAcidPhosphateItem(const RDKit::Atom* monomer,
                                                    const Fonts& fonts,
+                                                   bool is_dark_mode,
                                                    QGraphicsItem* parent) :
-    AbstractMonomerItem(monomer, fonts, parent)
+    AbstractMonomerItem(monomer, fonts, is_dark_mode, parent)
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER));
     m_border_brush.setColor(NA_BACKBONE_COLOR);

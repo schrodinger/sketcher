@@ -60,6 +60,7 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
                          const AbstractMonomerItem& start_monomer_item,
                          const AbstractMonomerItem& end_monomer_item,
                          const bool is_secondary_connection = false,
+                         bool is_dark_mode = false,
                          QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::MONOMER_CONNECTOR) };
@@ -77,11 +78,6 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
      * the bond
      */
     bool isSecondaryConnection() const;
-
-    /**
-     * Switch the connector colors between dark and light mode.
-     */
-    void setDarkMode(bool is_dark);
 
     /**
      * @return the connector color appropriate for the current color scheme
