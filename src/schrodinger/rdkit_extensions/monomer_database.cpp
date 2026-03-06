@@ -620,7 +620,8 @@ void MonomerDatabase::dumpToFile(sqlite3* db,
     if (auto rc =
             sqlite3_open_v2(db_file.string().c_str(), &_db, db_flags, nullptr);
         rc != SQLITE_OK) {
-        throw std::runtime_error("Could not create an in-memory monomer DB.");
+        throw std::runtime_error("Could not create monomer DB file at " +
+                                 db_file.string());
     }
 
     managed_db_t file_db(_db, &sqlite3_close_v2);
