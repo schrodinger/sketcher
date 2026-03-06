@@ -47,7 +47,7 @@ class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
   protected:
     // Type integers for all AbstractGraphicsItem subclasses
     enum class ItemType {
-        ATOM = GraphicsItemType::ABSTRACT_GRAPHICS_ITEM_BASE,
+        ATOM = static_cast<int>(GraphicsItemType::ABSTRACT_GRAPHICS_ITEM_BASE),
         BOND,
         S_GROUP,
         NON_MOLECULAR,

@@ -49,7 +49,10 @@ class SKETCHER_API UnboundMonomericAttachmentPointItem : public QGraphicsItem
         const UnboundAttachmentPoint& attachment_point,
         AbstractMonomerItem* parent_monomer, const Fonts& fonts);
 
-    enum { Type = GraphicsItemType::UNBOUND_MONOMERIC_ATTACHMENT_POINT_ITEM };
+    enum {
+        Type = static_cast<int>(
+            GraphicsItemType::UNBOUND_MONOMERIC_ATTACHMENT_POINT_ITEM)
+    };
     int type() const override;
 
     // QGraphicsItem overrides
