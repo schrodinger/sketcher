@@ -18,6 +18,7 @@
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/helm_parser.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 using namespace schrodinger::rdkit_extensions;
@@ -86,11 +87,49 @@ void add_polymer_groups_and_extended_annotations(
 
 } // namespace
 
+/**
+ * Validate that all non-SMILES monomer labels in the parsed HELM polymers
+ * exist in the monomer database. Throws std::invalid_argument if any are
+ * missing. This catches unknown monomers at parse time rather than deferring
+ * to export or atomistic conversion.
+ */
+bool validate_helm_monomers(const std::vector<helm::polymer>& polymers,
+                            bool do_throw)
+{
+    auto& db = MonomerDatabase::instance();
+    for (const auto& polymer : polymers) {
+        // Derive the chain type from the polymer id (e.g. "PEPTIDE1" ->
+        // PEPTIDE)
+        auto chain_type = getChainType(polymer.id);
+        for (const auto& monomer : polymer.monomers) {
+            // Skip inline SMILES monomers — they don't need a DB lookup
+            if (monomer.is_smiles) {
+                continue;
+            }
+            auto label = std::string(monomer.id);
+            if (!db.getMonomerSmiles(label, chain_type).has_value()) {
+                if (do_throw) {
+                    throw std::invalid_argument(
+                        "Monomer '" + label +
+                        "' not found in monomer database");
+                }
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 [[nodiscard]] std::unique_ptr<::RDKit::RWMol>
-helm_to_rdkit(const std::string& helm_string, bool do_throw)
+helm_to_rdkit(const std::string& helm_string, bool do_throw, bool validate)
 {
     auto parsed_info = helm::parse_helm(helm_string, do_throw);
     if (!parsed_info) {
+        return nullptr;
+    }
+
+    // Validate monomer labels against the DB before building the mol
+    if (validate && !validate_helm_monomers(parsed_info->polymers, do_throw)) {
         return nullptr;
     }
 
