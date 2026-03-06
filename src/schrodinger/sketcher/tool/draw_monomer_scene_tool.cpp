@@ -180,7 +180,7 @@ find_min_attachment_point_by_num(
 [[nodiscard]] static UnboundMonomericAttachmentPointItem*
 find_attachment_point_with_name(
     const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items,
-    const std::string& name)
+    const std::string_view name)
 {
     auto it =
         std::ranges::find_if(unbound_ap_items, [&name](const auto* ap_item) {
@@ -222,29 +222,36 @@ UnboundMonomericAttachmentPointItem* get_default_attachment_point(
         return find_min_attachment_point_by_num(unbound_ap_items);
     } else if (hovered_type == MonomerType::PEPTIDE) {
         if (tool_type == MonomerType::PEPTIDE) {
-            return find_preferred_attachment_point_by_num(unbound_ap_items,
-                                                          {2, 1, 3});
+            return find_preferred_attachment_point_by_num(
+                unbound_ap_items,
+                {PeptideAP::C, PeptideAP::N, PeptideAP::SIDECHAIN});
         } else if (tool_type == MonomerType::CHEM) {
-            return find_attachment_point_with_num(unbound_ap_items, 3);
+            return find_attachment_point_with_num(unbound_ap_items,
+                                                  PeptideAP::SIDECHAIN);
         }
     } else if (hovered_type == MonomerType::NA_BASE) {
         if (tool_type == MonomerType::NA_BASE ||
             tool_type == MonomerType::CHEM) {
-            return find_attachment_point_with_name(unbound_ap_items, "pair");
+            return find_attachment_point_with_name(unbound_ap_items,
+                                                   NA_BASE_AP_PAIR);
         } else if (tool_type == MonomerType::NA_SUGAR) {
-            return find_attachment_point_with_num(unbound_ap_items, 1);
+            return find_attachment_point_with_num(unbound_ap_items,
+                                                  NA_BASE_AP_N1_9);
         }
     } else if (hovered_type == MonomerType::NA_SUGAR) {
         if (tool_type == MonomerType::NA_BASE) {
-            return find_attachment_point_with_num(unbound_ap_items, 3);
+            return find_attachment_point_with_num(unbound_ap_items,
+                                                  NASugarAP::ONE_PRIME);
         } else if (tool_type == MonomerType::NA_PHOSPHATE) {
-            return find_preferred_attachment_point_by_num(unbound_ap_items,
-                                                          {2, 1});
+            return find_preferred_attachment_point_by_num(
+                unbound_ap_items,
+                {NASugarAP::THREE_PRIME, NASugarAP::FIVE_PRIME});
         }
     } else if (hovered_type == MonomerType::NA_PHOSPHATE) {
         if (tool_type == MonomerType::NA_SUGAR) {
-            return find_preferred_attachment_point_by_num(unbound_ap_items,
-                                                          {2, 1});
+            return find_preferred_attachment_point_by_num(
+                unbound_ap_items,
+                {NAPhosphateAP::TO_NEXT_SUGAR, NAPhosphateAP::TO_PREV_SUGAR});
         }
     }
     return nullptr;
@@ -380,10 +387,11 @@ void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
     auto end_ap_name = get_attachment_point_name_for_connection(
         end_monomer, connector, is_secondary_connection);
 
-    if (begin_ap_name == "pair" && end_ap_name == "pair") {
+    if (begin_ap_name == NA_BASE_AP_PAIR && end_ap_name == NA_BASE_AP_PAIR) {
         // for nucleic acid base pairs, only have a single "pair" label since
         // the bond is typically too short to fit two separate labels
-        labelCenterOfConnector(begin_monomer, end_monomer, "pair");
+        labelCenterOfConnector(begin_monomer, end_monomer,
+                               QString::fromStdString(NA_BASE_AP_PAIR));
     } else {
         labelBoundAttachmentPoint(begin_monomer, end_monomer,
                                   is_secondary_connection, begin_ap_name);

@@ -42,7 +42,7 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
 
 // standard attachment point names that don't follow the "R#" naming scheme
 const std::unordered_map<MonomerType, std::vector<std::string>>
-    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {"pair"}}};
+    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {NA_BASE_AP_PAIR}}};
 
 const int INVALID_ATTACHMENT_POINT_SPEC = -2;
 
@@ -447,10 +447,10 @@ static Direction calculate_direction_for_unbound_attachment_point(
     };
 
     std::vector<Direction> dirs_to_try;
-    if (ap_num <= 2 || ap_name == "pair") {
+    if (ap_num <= 2 || ap_name == NA_BASE_AP_PAIR) {
         // the first two attachment points should be across from each other (and
         // "pair" is the second attachment point for nucleic acid base monomers)
-        int opposite_ap_num = ap_num == 2 || ap_name == "pair" ? 1 : 2;
+        int opposite_ap_num = ap_num == 2 || ap_name == NA_BASE_AP_PAIR ? 1 : 2;
         auto opposite_dir = fetch_assigned_direction_for_attachment_point(
             opposite_ap_num, bound_aps, unbound_aps);
         if (opposite_dir.has_value()) {
