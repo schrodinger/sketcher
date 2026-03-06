@@ -113,7 +113,13 @@ UnboundMonomericAttachmentPointItem::UnboundMonomericAttachmentPointItem(
     m_line_pen.setWidthF(UNBOUND_AP_LINE_THICKNESS);
     m_line_pen.setCapStyle(Qt::RoundCap);
 
-    calculateGeometry(parent_monomer);
+    std::tie(m_line_end, m_label_text, m_label_rect, m_bounding_rect) =
+        calculate_geometry(m_attachment_point, parent_monomer, *m_fonts);
+    m_hover_area.addRect(m_bounding_rect);
+    QPainterPath parent_bounds_path;
+    parent_bounds_path.addRect(parent_monomer->boundingRect());
+    m_hover_area -= mapFromParent(parent_bounds_path);
+    updateColors();
 }
 
 int UnboundMonomericAttachmentPointItem::type() const
@@ -155,18 +161,6 @@ void UnboundMonomericAttachmentPointItem::paint(
     painter->drawText(m_label_rect, Qt::AlignCenter, m_label_text);
 
     painter->restore();
-}
-
-void UnboundMonomericAttachmentPointItem::calculateGeometry(
-    const AbstractMonomerItem* parent_monomer)
-{
-    std::tie(m_line_end, m_label_text, m_label_rect, m_bounding_rect) =
-        calculate_geometry(m_attachment_point, parent_monomer, *m_fonts);
-    m_hover_area.addRect(m_bounding_rect);
-    QPainterPath parent_bounds_path;
-    parent_bounds_path.addRect(parent_monomer->boundingRect());
-    m_hover_area -= mapFromParent(parent_bounds_path);
-    updateColors();
 }
 
 void UnboundMonomericAttachmentPointItem::updateColors()

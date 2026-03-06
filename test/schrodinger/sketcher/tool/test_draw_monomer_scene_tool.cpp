@@ -89,6 +89,15 @@ BOOST_AUTO_TEST_CASE(test_chem_hovered_prefers_numbered_over_custom_name)
     auto* result = get_default_attachment_point(MonomerType::CHEM,
                                                 MonomerType::CHEM, items);
     BOOST_TEST(result == ap2);
+
+    // reverse the order of the attachment point list and make sure that we get
+    // the same answer
+    std::vector<UnboundMonomericAttachmentPointItem*> items_reversed{ap2,
+                                                                     ap_custom};
+
+    auto* result_reversed = get_default_attachment_point(
+        MonomerType::CHEM, MonomerType::CHEM, items_reversed);
+    BOOST_TEST(result_reversed == ap2);
 }
 
 /// CHEM hovered: returns custom-named attachment point when it's the only one
