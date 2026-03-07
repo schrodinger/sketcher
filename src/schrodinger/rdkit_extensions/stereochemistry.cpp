@@ -97,6 +97,18 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     RDKit::ClearSingleBondDirFlags(mol);
     RDKit::Chirality::clearMolBlockWedgingInfo(mol);
 
+    // Temporarily change wiggly bonds to OTHER type so WedgeMolBonds skips
+    // them. WedgeMolBonds only considers Bond::SINGLE bonds, so this prevents
+    // it from stealing a wiggly bond to express the stereo of an adjacent
+    // chiral atom — which would be overwritten when we restore UNKNOWN,
+    // losing that atom's stereo representation. This mirrors the same technique
+    // used above for attachment dummy bonds.
+    for (size_t bond_idx = 0; bond_idx < mol.getNumBonds(); ++bond_idx) {
+        if (had_wiggly_bond[bond_idx]) {
+            mol.getBondWithIdx(bond_idx)->setBondType(RDKit::Bond::OTHER);
+        }
+    }
+
     try {
         // Temporarily silence RDKit's loggers
         RDLog::LogStateSetter silence_rdkit_logging;
@@ -111,11 +123,13 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
         bond->setBondType(RDKit::Bond::SINGLE);
     }
 
-    // Restore wiggly bond directions that were cleared by
-    // ClearSingleBondDirFlags
+    // Restore wiggly bonds: return to SINGLE type and set UNKNOWN direction.
+    // WedgeMolBonds skipped them (OTHER type), so neighboring chiral atoms had
+    // their stereo assigned to other bonds.
     for (size_t bond_idx = 0; bond_idx < mol.getNumBonds(); ++bond_idx) {
         if (had_wiggly_bond[bond_idx]) {
             auto bond = mol.getBondWithIdx(bond_idx);
+            bond->setBondType(RDKit::Bond::SINGLE);
             bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
         }
     }

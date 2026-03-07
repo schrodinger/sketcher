@@ -110,11 +110,12 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBonds_preserves_wiggly_bonds)
 {
     // Create a molecule with a wiggly bond using CXSMILES
     const std::string cxsmiles = "CCC(C)N |w:2.3|";
-    auto mol = to_rdkit(cxsmiles, Format::EXTENDED_SMILES);
+    auto mol = rdkit_extensions::to_rdkit(
+        cxsmiles, rdkit_extensions::Format::EXTENDED_SMILES);
     BOOST_REQUIRE(mol != nullptr);
 
     // Generate 2D coordinates
-    compute2DCoords(*mol);
+    rdkit_extensions::compute2DCoords(*mol);
 
     // Set BondDir to UNKNOWN to simulate a wiggly bond
     auto* bond = mol->getBondWithIdx(2);
@@ -123,10 +124,64 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBonds_preserves_wiggly_bonds)
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
 
     // Call wedgeMolBonds - it should preserve the wiggly bond
-    wedgeMolBonds(*mol, &mol->getConformer());
+    rdkit_extensions::wedgeMolBonds(*mol, &mol->getConformer());
 
     // Verify that BondDir::UNKNOWN was preserved
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
+}
+
+/**
+ * Verify that wedgeMolBonds does not steal a wiggly bond to express the stereo
+ * of an adjacent chiral atom.
+ *
+ * WedgeMolBonds prefers terminal-neighbor bonds for wedging. If the wiggly bond
+ * connects to a terminal atom (N in this case), WedgeMolBonds would naively
+ * steal it to express the adjacent chiral atom's stereo. When we then restore
+ * it to UNKNOWN, the chiral atom loses its wedge — the stereo is no longer
+ * represented.
+ *
+ * The fix: before calling WedgeMolBonds, temporarily change wiggly bonds to
+ * Bond::OTHER type so WedgeMolBonds skips them entirely (it only considers
+ * Bond::SINGLE bonds), then restore them to SINGLE + UNKNOWN afterward.
+ */
+BOOST_AUTO_TEST_CASE(
+    test_wedgeMolBonds_does_not_steal_wiggly_bond_from_adjacent_chiral_atom)
+{
+    // CC[C@@H](CC)N: atom 2 (C@@H) has defined stereo;
+    // the bond to N (atom 5, degree-1 terminal) is the wiggly bond.
+    // WedgeMolBonds prefers terminal-neighbor bonds, so without the fix it
+    // picks this bond for atom 2's stereo — which we then overwrite with
+    // UNKNOWN.
+    auto mol = rdkit_extensions::to_rdkit("CC[C@@H](CC)N",
+                                          rdkit_extensions::Format::SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+    rdkit_extensions::compute2DCoords(*mol);
+
+    // Simulate wiggly bond state (as mol_model.cpp does when adding a molecule)
+    auto* wiggly_bond = mol->getBondBetweenAtoms(2, 5);
+    BOOST_REQUIRE(wiggly_bond != nullptr);
+    wiggly_bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
+
+    rdkit_extensions::wedgeMolBonds(*mol, &mol->getConformer());
+
+    // The wiggly bond must remain UNKNOWN
+    BOOST_TEST(wiggly_bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
+
+    // The chiral atom (C@@H, atom 2) must still have its stereo represented
+    // by at least one other bond with a wedge/dash direction.
+    auto* stereo_atom = mol->getAtomWithIdx(2);
+    bool has_stereo_bond = false;
+    for (auto* b : mol->atomBonds(stereo_atom)) {
+        if (b != wiggly_bond &&
+            (b->getBondDir() == RDKit::Bond::BondDir::BEGINWEDGE ||
+             b->getBondDir() == RDKit::Bond::BondDir::BEGINDASH)) {
+            has_stereo_bond = true;
+            break;
+        }
+    }
+    BOOST_TEST(has_stereo_bond,
+               "The chiral atom adjacent to the wiggly bond should still have "
+               "its stereo expressed by a wedge or dash on another bond");
 }
 
 } // namespace sketcher
