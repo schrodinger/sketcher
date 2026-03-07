@@ -21,7 +21,7 @@ class SKETCHER_API ChemMonomerItem : public AbstractMonomerItem
 {
   public:
     ChemMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
-                    QGraphicsItem* parent = nullptr);
+                    bool is_dark_mode = false, QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::CHEM_MONOMER) };
     int type() const override;
