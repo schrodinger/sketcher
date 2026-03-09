@@ -207,6 +207,13 @@ const qreal MONOMER_SELECTION_HIGHLIGHTING_THICKNESS = 8.5;
 // value can prevent, e.g., divide-by-zero errors.
 const qreal MONOMER_BORDER_MIN_SIZE = 0.01;
 
+// Unbound monomeric attachment point indicator constants
+const qreal UNBOUND_AP_LINE_LENGTH = 8.0;
+const qreal UNBOUND_AP_LINE_THICKNESS = 1.5;
+const qreal UNBOUND_AP_CIRCLE_DIAMETER = 5.0;
+const QColor UNBOUND_AP_ACTIVE_COLOR = QColor("#000000");
+const QColor UNBOUND_AP_INACTIVE_COLOR = QColor("#888888");
+
 const QColor AA_LINEAR_CONNECTOR_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
 const qreal AA_LINEAR_CONNECTOR_WIDTH = 5;

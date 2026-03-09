@@ -488,7 +488,7 @@ QPainterPath path_around_line(const QLineF& line, const qreal half_width)
     return path;
 }
 
-bool item_matches_type_flag(QGraphicsItem* item,
+bool item_matches_type_flag(const QGraphicsItem* const item,
                             InteractiveItemFlagType type_flag)
 {
     // a mapping of graphics items types to InteractiveItemFlag for graphics
@@ -518,7 +518,7 @@ bool item_matches_type_flag(QGraphicsItem* item,
             // attachment points
             return true;
         } else if (type_flag & InteractiveItemFlag::ATOM) {
-            auto* atom = static_cast<AtomItem*>(item)->getAtom();
+            const auto* atom = static_cast<const AtomItem*>(item)->getAtom();
             if (is_r_group(atom)) {
                 return type_flag & InteractiveItemFlag::R_GROUP;
             } else if (is_attachment_point(atom)) {
@@ -534,7 +534,7 @@ bool item_matches_type_flag(QGraphicsItem* item,
             // attachment point bonds
             return true;
         } else if (type_flag & InteractiveItemFlag::BOND) {
-            auto* bond = static_cast<BondItem*>(item)->getBond();
+            const auto* bond = static_cast<const BondItem*>(item)->getBond();
             return is_attachment_point_bond(bond) ==
                    static_cast<bool>(
                        type_flag & InteractiveItemFlag::ATTACHMENT_POINT_BOND);
