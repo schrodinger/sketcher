@@ -160,9 +160,9 @@ struct HelmItemsFixture {
         }
         std::tie(all_items, atom_items, bond_items, secondary_items,
                  sgroup_items) =
-            create_graphics_items_for_mol(
-                mol.get(), fonts, atom_display_settings, bond_display_settings,
-                /* draw_attachment_points = */ true, is_dark_mode);
+            create_graphics_items_for_mol(mol.get(), fonts,
+                                          atom_display_settings,
+                                          bond_display_settings, is_dark_mode);
     }
 
     ~HelmItemsFixture()

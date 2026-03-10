@@ -18,7 +18,8 @@ namespace sketcher
 {
 
 AbstractMonomerItem::AbstractMonomerItem(const RDKit::Atom* monomer,
-                                         const Fonts& fonts, bool is_dark_mode,
+                                         const Fonts& fonts,
+                                         const bool is_dark_mode,
                                          QGraphicsItem* parent) :
     AbstractAtomOrMonomerItem(monomer, parent),
     m_fonts(fonts),

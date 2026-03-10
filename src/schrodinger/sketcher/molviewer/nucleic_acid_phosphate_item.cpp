@@ -9,7 +9,7 @@ namespace sketcher
 
 NucleicAcidPhosphateItem::NucleicAcidPhosphateItem(const RDKit::Atom* monomer,
                                                    const Fonts& fonts,
-                                                   bool is_dark_mode,
+                                                   const bool is_dark_mode,
                                                    QGraphicsItem* parent) :
     AbstractMonomerItem(monomer, fonts, is_dark_mode, parent)
 {

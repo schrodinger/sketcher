@@ -22,42 +22,33 @@ namespace sketcher
 namespace
 {
 
-std::unordered_map<ConnectorType, std::tuple<QColor, qreal, Qt::PenStyle>>
-    PEN_STYLE_FOR_CONNECTOR_TYPE = {
-        {ConnectorType::CHEM,
-         {CHEM_CONNECTOR_COLOR, CHEM_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine}},
-        {ConnectorType::PEPTIDE_LINEAR,
-         {AA_LINEAR_CONNECTOR_COLOR, AA_LINEAR_CONNECTOR_WIDTH,
-          Qt::PenStyle::SolidLine}},
-        {ConnectorType::PEPTIDE_BRANCHING,
-         {AA_BRANCHING_CONNECTOR_COLOR, AA_BRANCHING_CONNECTOR_WIDTH,
-          Qt::PenStyle::SolidLine}},
-        {ConnectorType::PEPTIDE_DISULFIDE,
-         {DISULFIDE_CONNECTOR_COLOR, DISULFIDE_CONNECTOR_WIDTH,
-          Qt::PenStyle::SolidLine}},
-        {ConnectorType::PEPTIDE_SIDE_CHAIN,
-         {AA_LINEAR_CONNECTOR_COLOR, AA_LINEAR_CONNECTOR_WIDTH,
-          Qt::PenStyle::SolidLine}},
-        {ConnectorType::NA_BASE,
-         {NA_BASE_CONNECTOR_COLOR, NA_BASE_CONNECTOR_WIDTH,
-          Qt::PenStyle::DotLine}},
-        {ConnectorType::NA_BACKBONE,
-         {NA_BACKBONE_CONNECTOR_COLOR, NA_BACKBONE_CONNECTOR_WIDTH,
-          Qt::PenStyle::SolidLine}},
-        {ConnectorType::NA_BACKBONE_TO_BASE,
-         {NA_BACKBONE_TO_BASE_CONNECTOR_COLOR,
-          NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine}}};
-
 // clang-format off
-const std::unordered_map<ConnectorType, QColor> DARK_BG_COLOR_FOR_CONNECTOR_TYPE = {
-    {ConnectorType::CHEM,                CHEM_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::PEPTIDE_LINEAR,      AA_LINEAR_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::PEPTIDE_BRANCHING,   AA_BRANCHING_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::PEPTIDE_DISULFIDE,   DISULFIDE_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::PEPTIDE_SIDE_CHAIN,  AA_LINEAR_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::NA_BASE,             NA_BASE_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::NA_BACKBONE,         NA_BACKBONE_CONNECTOR_COLOR_DARK_BG},
-    {ConnectorType::NA_BACKBONE_TO_BASE, NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG}};
+std::unordered_map<ConnectorType, std::tuple<QColor, QColor, qreal, Qt::PenStyle>>
+    STYLE_FOR_CONNECTOR_TYPE = {
+        {ConnectorType::CHEM,
+         {CHEM_CONNECTOR_COLOR,                CHEM_CONNECTOR_COLOR_DARK_BG,
+          CHEM_CONNECTOR_WIDTH,                Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_LINEAR,
+         {AA_LINEAR_CONNECTOR_COLOR,           AA_LINEAR_CONNECTOR_COLOR_DARK_BG,
+          AA_LINEAR_CONNECTOR_WIDTH,           Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_BRANCHING,
+         {AA_BRANCHING_CONNECTOR_COLOR,        AA_BRANCHING_CONNECTOR_COLOR_DARK_BG,
+          AA_BRANCHING_CONNECTOR_WIDTH,        Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_DISULFIDE,
+         {DISULFIDE_CONNECTOR_COLOR,           DISULFIDE_CONNECTOR_COLOR_DARK_BG,
+          DISULFIDE_CONNECTOR_WIDTH,           Qt::PenStyle::SolidLine}},
+        {ConnectorType::PEPTIDE_SIDE_CHAIN,
+         {AA_LINEAR_CONNECTOR_COLOR,           AA_LINEAR_CONNECTOR_COLOR_DARK_BG,
+          AA_LINEAR_CONNECTOR_WIDTH,           Qt::PenStyle::SolidLine}},
+        {ConnectorType::NA_BASE,
+         {NA_BASE_CONNECTOR_COLOR,             NA_BASE_CONNECTOR_COLOR_DARK_BG,
+          NA_BASE_CONNECTOR_WIDTH,             Qt::PenStyle::DotLine}},
+        {ConnectorType::NA_BACKBONE,
+         {NA_BACKBONE_CONNECTOR_COLOR,         NA_BACKBONE_CONNECTOR_COLOR_DARK_BG,
+          NA_BACKBONE_CONNECTOR_WIDTH,         Qt::PenStyle::SolidLine}},
+        {ConnectorType::NA_BACKBONE_TO_BASE,
+         {NA_BACKBONE_TO_BASE_CONNECTOR_COLOR, NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG,
+          NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH, Qt::PenStyle::SolidLine}}};
 // clang-format on
 
 } // namespace
@@ -65,7 +56,7 @@ const std::unordered_map<ConnectorType, QColor> DARK_BG_COLOR_FOR_CONNECTOR_TYPE
 MonomerConnectorItem::MonomerConnectorItem(
     const RDKit::Bond* bond, const AbstractMonomerItem& start_monomer_item,
     const AbstractMonomerItem& end_monomer_item,
-    const bool is_secondary_connection, bool is_dark_mode,
+    const bool is_secondary_connection, const bool is_dark_mode,
     QGraphicsItem* parent) :
     AbstractBondOrConnectorItem(bond, parent),
     m_is_dark_mode(is_dark_mode),
@@ -132,11 +123,10 @@ void MonomerConnectorItem::updateCachedData()
     auto connector_type = get_connector_type(m_bond, m_is_secondary_connection);
     auto [start_has_arrowhead, end_has_arrowhead] =
         does_connector_have_arrowheads(m_bond, connector_type);
-    auto [connector_color, connector_width, connector_pen_style] =
-        PEN_STYLE_FOR_CONNECTOR_TYPE.at(connector_type);
+    auto [connector_color, connector_color_dark_bg, connector_width,
+          connector_pen_style] = STYLE_FOR_CONNECTOR_TYPE.at(connector_type);
     m_connector_color = connector_color;
-    m_connector_color_dark_bg =
-        DARK_BG_COLOR_FOR_CONNECTOR_TYPE.at(connector_type);
+    m_connector_color_dark_bg = connector_color_dark_bg;
     auto color = getConnectorColor();
     m_connector_pen = QPen(color, connector_width, connector_pen_style);
     m_arrowhead_pen = QPen(color, connector_width);

@@ -58,7 +58,7 @@ get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
  */
 AbstractMonomerItem* get_monomer_graphics_item(const RDKit::Atom* atom,
                                                const Fonts& fonts,
-                                               bool is_dark_mode)
+                                               const bool is_dark_mode)
 {
     switch (get_monomer_type(atom)) {
         case MonomerType::PEPTIDE:
@@ -84,8 +84,8 @@ std::tuple<std::vector<QGraphicsItem*>,
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
                               const BondDisplaySettings& bond_display_settings,
-                              const bool draw_attachment_points,
-                              bool is_dark_mode)
+                              const bool is_dark_mode,
+                              const bool draw_attachment_points)
 {
     unsigned int num_atoms = mol->getNumAtoms();
     if (num_atoms == 0) {

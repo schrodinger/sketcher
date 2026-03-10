@@ -162,7 +162,6 @@ void Scene::updateItems(const WhatChangedType what_changed)
             create_graphics_items_for_mol(
                 mol, m_fonts, *atom_display_settings_ptr,
                 *bond_display_settings_ptr,
-                /* draw_attachment_points = */ true,
                 m_sketcher_model->hasDarkColorScheme());
 
         for (auto* item : all_items) {

@@ -37,7 +37,7 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
 {
   public:
     AbstractMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
-                        bool is_dark_mode = false,
+                        const bool is_dark_mode = false,
                         QGraphicsItem* parent = nullptr);
 
     /**
