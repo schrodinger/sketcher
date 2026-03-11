@@ -19,6 +19,7 @@ class SKETCHER_API AminoAcidItem : public AbstractMonomerItem
 {
   public:
     AminoAcidItem(const RDKit::Atom* atom, const Fonts& fonts,
+                  const bool is_dark_mode = false,
                   QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::AMINO_ACID) };

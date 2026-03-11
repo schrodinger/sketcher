@@ -57,19 +57,20 @@ get_predictive_highlighting_path_for_bond(const RDKit::Bond* bond,
  * Construct and return a monomer graphics item for representing the given atom.
  */
 AbstractMonomerItem* get_monomer_graphics_item(const RDKit::Atom* atom,
-                                               const Fonts& fonts)
+                                               const Fonts& fonts,
+                                               const bool is_dark_mode)
 {
     switch (get_monomer_type(atom)) {
         case MonomerType::PEPTIDE:
-            return new AminoAcidItem(atom, fonts);
+            return new AminoAcidItem(atom, fonts, is_dark_mode);
         case MonomerType::CHEM:
-            return new ChemMonomerItem(atom, fonts);
+            return new ChemMonomerItem(atom, fonts, is_dark_mode);
         case MonomerType::NA_BASE:
-            return new NucleicAcidBaseItem(atom, fonts);
+            return new NucleicAcidBaseItem(atom, fonts, is_dark_mode);
         case MonomerType::NA_PHOSPHATE:
-            return new NucleicAcidPhosphateItem(atom, fonts);
+            return new NucleicAcidPhosphateItem(atom, fonts, is_dark_mode);
         case MonomerType::NA_SUGAR:
-            return new NucleicAcidSugarItem(atom, fonts);
+            return new NucleicAcidSugarItem(atom, fonts, is_dark_mode);
         default:
             throw std::runtime_error("Unrecognized monomer type");
     }
@@ -83,6 +84,7 @@ std::tuple<std::vector<QGraphicsItem*>,
 create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
                               const BondDisplaySettings& bond_display_settings,
+                              const bool is_dark_mode,
                               const bool draw_attachment_points)
 {
     unsigned int num_atoms = mol->getNumAtoms();
@@ -112,7 +114,7 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
         QGraphicsItem* atom_item =
             is_atom_monomeric(atom)
                 ? static_cast<QGraphicsItem*>(
-                      get_monomer_graphics_item(atom, fonts))
+                      get_monomer_graphics_item(atom, fonts, is_dark_mode))
                 : new AtomItem(atom, fonts, atom_display_settings);
         atom_item->setPos(to_scene_xy(pos));
         atom_to_atom_item[atom] = atom_item;
@@ -147,13 +149,14 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
             all_items.push_back(bond_item);
         } else if (from_monomer_item != nullptr && to_monomer_item != nullptr) {
             auto connector_item = new MonomerConnectorItem(
-                bond, *from_monomer_item, *to_monomer_item);
+                bond, *from_monomer_item, *to_monomer_item,
+                /* is_secondary_connection = */ false, is_dark_mode);
             bond_to_bond_item[bond] = connector_item;
             all_items.push_back(connector_item);
             if (contains_two_monomer_linkages(bond)) {
                 auto secondary_connector_item = new MonomerConnectorItem(
                     bond, *from_monomer_item, *to_monomer_item,
-                    /* is_secondary_connection = */ true);
+                    /* is_secondary_connection = */ true, is_dark_mode);
                 bond_to_secondary_connection_item[bond] =
                     secondary_connector_item;
                 all_items.push_back(secondary_connector_item);

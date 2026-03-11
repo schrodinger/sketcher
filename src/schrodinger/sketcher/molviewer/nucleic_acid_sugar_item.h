@@ -21,6 +21,7 @@ class SKETCHER_API NucleicAcidSugarItem : public AbstractMonomerItem
 {
   public:
     NucleicAcidSugarItem(const RDKit::Atom* atom, const Fonts& fonts,
+                         const bool is_dark_mode = false,
                          QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::NUCLEIC_ACID_SUGAR) };

@@ -8,14 +8,17 @@ namespace sketcher
 {
 
 ChemMonomerItem::ChemMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
+                                 const bool is_dark_mode,
                                  QGraphicsItem* parent) :
-    AbstractMonomerItem(monomer, fonts, parent)
+    AbstractMonomerItem(monomer, fonts, is_dark_mode, parent)
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER));
     m_border_brush.setColor(CHEM_MONOMER_RECT_COLOR);
     m_main_label_font = fonts.m_main_label_font;
     m_border_pen.setWidth(CHEM_MONOMER_BORDER_LINE_WIDTH);
-    m_border_pen.setColor(CHEM_MONOMER_BORDER_COLOR);
+    m_border_color = CHEM_MONOMER_BORDER_COLOR;
+    m_border_color_dark_bg = CHEM_MONOMER_BORDER_COLOR_DARK_BG;
+    m_border_pen.setColor(getBorderColor());
     updateCachedData();
 }
 
