@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       release-branches:
-        description: '[Optional] Comma-separated release branches to build (e.g. 26-1,26-2)'
+        description: '[Optional] Comma-separated release branches to build'
         required: false
         type: string
       dry-run:
