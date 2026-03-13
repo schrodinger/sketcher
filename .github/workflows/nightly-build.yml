@@ -3,7 +3,7 @@ name: Nightly Build
 on:
   workflow_dispatch:
     inputs:
-      release-branches:
+      branches-to-build:
         description: 'Comma-separated branches to build'
         required: false
         type: string
@@ -22,7 +22,7 @@ jobs:
     steps:
       - id: parse
         env:
-          RELEASE_BRANCHES: ${{ inputs.release-branches }}
+          RELEASE_BRANCHES: ${{ inputs.branches-to-build }}
         run: |
           branches=$(echo "$RELEASE_BRANCHES" | \
             python3 -c "import sys,json; s=sys.stdin.read().strip(); \
