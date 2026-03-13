@@ -1,11 +1,13 @@
 #include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
 
+#include <algorithm>
 #include <cmath>
 #include <memory>
 
 #include <QtMath>
 #include <QGraphicsItem>
 #include <QGraphicsSimpleTextItem>
+#include <QPainterPath>
 #include <QPen>
 
 #include <rdkit/Geometry/point.h>
@@ -17,6 +19,7 @@
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
+#include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
@@ -42,6 +45,23 @@ DrawMonomerSceneTool::DrawMonomerSceneTool(
     m_fonts.m_main_label_font.setBold(true);
     m_fonts.updateFontMetrics();
     m_attachment_point_labels_group.setZValue(static_cast<qreal>(ZOrder::HINT));
+    if (chain_type == rdkit_extensions::ChainType::PEPTIDE) {
+        m_monomer_type = MonomerType::PEPTIDE;
+    } else if (chain_type == rdkit_extensions::ChainType::CHEM) {
+        m_monomer_type = MonomerType::CHEM;
+    } else {
+        m_monomer_type = get_na_monomer_type_from_res_name(res_name);
+    }
+}
+
+DrawMonomerSceneTool::~DrawMonomerSceneTool()
+{
+    // explicitly erase any attachment point labels. Without this, the bound
+    // attachment point labels would be deleted regardless when
+    // m_attachment_point_labels_group is destroyed, but the unbound attachment
+    // point labels are parented to their monomer, so they would outlive the
+    // scene tool without this call.
+    clearAttachmentPointsLabels();
 }
 
 std::vector<QGraphicsItem*> DrawMonomerSceneTool::getGraphicsItems()
@@ -49,6 +69,215 @@ std::vector<QGraphicsItem*> DrawMonomerSceneTool::getGraphicsItems()
     auto items = StandardSceneToolBase::getGraphicsItems();
     items.push_back(&m_attachment_point_labels_group);
     return items;
+}
+
+QGraphicsItem*
+DrawMonomerSceneTool::getTopMonomericItemAt(const QPointF& scene_pos)
+{
+    // check to see if we're over a monomer, monomeric connector, or unbound
+    // attachment point item
+    for (auto* item : m_scene->items(scene_pos)) {
+        if (item_matches_type_flag(item, InteractiveItemFlag::MONOMERIC)) {
+            return item;
+        } else if (auto* ap_item =
+                       qgraphicsitem_cast<UnboundMonomericAttachmentPointItem*>(
+                           item)) {
+            if (ap_item->withinHoverArea(scene_pos)) {
+                return item->parentItem();
+            }
+        }
+    }
+
+    // if we're not over any of those, check to see if we're near a monomer. If
+    // we are, check to see whether we'd be over one of its attachment points
+    // once they're drawn
+    QPainterPath near_scene_pos;
+    // the attachment point label can stick out past the attachment point line,
+    // so make the circle a bit bigger than just the line length
+    near_scene_pos.addEllipse(scene_pos, 2 * UNBOUND_AP_LINE_LENGTH,
+                              2 * UNBOUND_AP_LINE_LENGTH);
+    for (auto* item : m_scene->items(near_scene_pos)) {
+        if (!item_matches_type_flag(item, InteractiveItemFlag::MONOMER)) {
+            continue;
+        }
+        const auto* monomer_item =
+            dynamic_cast<const AbstractMonomerItem*>(item);
+        auto local_pos = monomer_item->mapFromScene(scene_pos);
+        auto* monomer = monomer_item->getAtom();
+        auto [bound_aps, unbound_aps] =
+            get_attachment_points_for_monomer(monomer);
+        for (auto cur_unbound_ap : unbound_aps) {
+            auto unbound_ap_bounding_rect =
+                get_bounding_rect_for_unbound_monomer_attachment_point_item(
+                    cur_unbound_ap, monomer_item, m_fonts);
+            if (unbound_ap_bounding_rect.contains(local_pos)) {
+                return item;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
+/**
+ * @return the unbound attachment point graphics item representing the
+ * attachment point with the "best" number. "Best" is defined using the
+ * preferred_order list, with earlier numbers in the list preferred over later
+ * numbers. Will return nullptr if no attachment points on the preferred_order
+ * list are found.
+ */
+[[nodiscard]] static UnboundMonomericAttachmentPointItem*
+find_preferred_attachment_point_by_num(
+    const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items,
+    const std::vector<int>& preferred_order)
+{
+    auto index_of = [&preferred_order](const auto* ap_item) {
+        auto it = std::ranges::find(preferred_order,
+                                    ap_item->getAttachmentPoint().num);
+        auto dist = std::distance(preferred_order.begin(), it);
+        // we know that dist is positive
+        return static_cast<std::size_t>(dist);
+    };
+    auto min_it = std::ranges::min_element(
+        unbound_ap_items,
+        [&index_of](const auto* ap_item_left, const auto* ap_item_right) {
+            return index_of(ap_item_left) < index_of(ap_item_right);
+        });
+    // make sure that the attachment point we found is actually on the
+    // preferred_order list
+    if (index_of(*min_it) < preferred_order.size()) {
+        return *min_it;
+    }
+    return nullptr;
+}
+
+/**
+ * Return the unbound attachment point graphics item that represents the
+ * attachment point with the lowest number. An attachment points with a custom
+ * name will be returned only if there are no numbered attachment point.
+ * @param unbound_ap_items The non-empty list of unbound attachment point
+ * graphics item
+ */
+[[nodiscard]] static UnboundMonomericAttachmentPointItem*
+find_min_attachment_point_by_num(
+    const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items)
+{
+    auto min_it = std::ranges::min_element(
+        unbound_ap_items,
+        [](const auto* ap_item_left, const auto* ap_item_right) {
+            auto left_num = ap_item_left->getAttachmentPoint().num;
+            auto right_num = ap_item_right->getAttachmentPoint().num;
+            return right_num < 0 || (left_num >= 0 && left_num < right_num);
+        });
+    return *min_it;
+}
+
+/**
+ * @return the unbound attachment point graphics item representing an attachment
+ * point with the given name. Will return nullptr if no such attachment point is
+ * found.
+ */
+[[nodiscard]] static UnboundMonomericAttachmentPointItem*
+find_attachment_point_with_name(
+    const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items,
+    const std::string_view name)
+{
+    auto it =
+        std::ranges::find_if(unbound_ap_items, [&name](const auto* ap_item) {
+            return (ap_item->getAttachmentPoint().name == name);
+        });
+    if (it == unbound_ap_items.end()) {
+        return nullptr;
+    }
+    return *it;
+}
+
+/**
+ * @return the unbound attachment point graphics item representing an attachment
+ * point with the given number. Will return nullptr if no such attachment point
+ * is found.
+ */
+[[nodiscard]] static UnboundMonomericAttachmentPointItem*
+find_attachment_point_with_num(
+    const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items,
+    const int num)
+{
+    auto it =
+        std::ranges::find_if(unbound_ap_items, [&num](const auto* ap_item) {
+            return (ap_item->getAttachmentPoint().num == num);
+        });
+    if (it == unbound_ap_items.end()) {
+        return nullptr;
+    }
+    return *it;
+}
+
+UnboundMonomericAttachmentPointItem* get_default_attachment_point(
+    const MonomerType hovered_type, const MonomerType tool_type,
+    const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items)
+{
+    if (unbound_ap_items.empty()) {
+        return nullptr;
+    } else if (hovered_type == MonomerType::CHEM) {
+        return find_min_attachment_point_by_num(unbound_ap_items);
+    } else if (hovered_type == MonomerType::PEPTIDE) {
+        if (tool_type == MonomerType::PEPTIDE) {
+            return find_preferred_attachment_point_by_num(
+                unbound_ap_items,
+                {PeptideAP::C, PeptideAP::N, PeptideAP::SIDECHAIN});
+        } else if (tool_type == MonomerType::CHEM) {
+            return find_attachment_point_with_num(unbound_ap_items,
+                                                  PeptideAP::SIDECHAIN);
+        }
+    } else if (hovered_type == MonomerType::NA_BASE) {
+        if (tool_type == MonomerType::NA_BASE ||
+            tool_type == MonomerType::CHEM) {
+            return find_attachment_point_with_name(unbound_ap_items,
+                                                   NA_BASE_AP_PAIR);
+        } else if (tool_type == MonomerType::NA_SUGAR) {
+            return find_attachment_point_with_num(unbound_ap_items,
+                                                  NA_BASE_AP_N1_9);
+        }
+    } else if (hovered_type == MonomerType::NA_SUGAR) {
+        if (tool_type == MonomerType::NA_BASE) {
+            return find_attachment_point_with_num(unbound_ap_items,
+                                                  NASugarAP::ONE_PRIME);
+        } else if (tool_type == MonomerType::NA_PHOSPHATE) {
+            return find_preferred_attachment_point_by_num(
+                unbound_ap_items,
+                {NASugarAP::THREE_PRIME, NASugarAP::FIVE_PRIME});
+        }
+    } else if (hovered_type == MonomerType::NA_PHOSPHATE) {
+        if (tool_type == MonomerType::NA_SUGAR) {
+            return find_preferred_attachment_point_by_num(
+                unbound_ap_items,
+                {NAPhosphateAP::TO_NEXT_SUGAR, NAPhosphateAP::TO_PREV_SUGAR});
+        }
+    }
+    return nullptr;
+}
+
+UnboundMonomericAttachmentPointItem*
+DrawMonomerSceneTool::getUnboundAttachmentPointAt(const QPointF& scene_pos)
+{
+    for (auto* ap_item : m_unbound_ap_items) {
+        if (ap_item->withinHoverArea(scene_pos)) {
+            return ap_item;
+        }
+    }
+    const auto* monomer_item =
+        static_cast<const AbstractMonomerItem*>(m_hovered_item);
+    auto* monomer = monomer_item->getAtom();
+    auto monomer_type = get_monomer_type(monomer);
+    if (monomer_type == m_monomer_type &&
+        get_monomer_res_name(monomer) != m_res_name) {
+        // a click on this monomer should mutate the residue type of the
+        // monomer, not add a connection, so we don't select an attachment point
+        // when the monomer itself is hovered
+        return nullptr;
+    }
+    return get_default_attachment_point(monomer_type, m_monomer_type,
+                                        m_unbound_ap_items);
 }
 
 void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
@@ -59,25 +288,34 @@ void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
         return;
     }
     QPointF scene_pos = event->scenePos();
-    auto* item = m_scene->getTopInteractiveItemAt(
-        scene_pos, InteractiveItemFlag::MONOMERIC);
-    if (item == m_hovered_item) {
-        // we've already labeled the item under the cursor, so there's nothing
-        // to do
-        return;
-    }
-    clearAttachmentPointsLabels();
-    m_hovered_item = item;
-    if (item == nullptr) {
-        // nothing new to label
-        return;
+    auto* item = getTopMonomericItemAt(scene_pos);
+    if (item != m_hovered_item) {
+        m_hovered_item = item;
+        drawAttachmentPointLabelsFor(item);
     }
 
+    if (!m_unbound_ap_items.empty()) {
+        // if we're over a monomer with attachment points, update which
+        // attachment point is hovered
+        auto* active_ap_item = getUnboundAttachmentPointAt(scene_pos);
+        for (auto* ap_item : m_unbound_ap_items) {
+            ap_item->setActive(ap_item == active_ap_item);
+        }
+    }
+}
+
+void DrawMonomerSceneTool::drawAttachmentPointLabelsFor(
+    QGraphicsItem* const item)
+{
+    clearAttachmentPointsLabels();
+    if (item == nullptr) {
+        return;
+    }
     if (item_matches_type_flag(item, InteractiveItemFlag::MONOMER)) {
         // hovering over a monomer
-        auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item);
+        auto* monomer_item = static_cast<AbstractMonomerItem*>(item);
         const auto* monomer = monomer_item->getAtom();
-        labelAttachmentPointsOnMonomer(monomer);
+        labelAttachmentPointsOnMonomer(monomer, monomer_item);
     } else {
         // hovering over a monomeric connector
         auto* connector_item = qgraphicsitem_cast<MonomerConnectorItem*>(item);
@@ -99,7 +337,7 @@ void DrawMonomerSceneTool::onLeftButtonClick(
         auto mol_pos = to_mol_xy(scene_pos);
         m_mol_model->addMonomer(m_res_name, m_chain_type, mol_pos);
     } else if (item_matches_type_flag(item, InteractiveItemFlag::MONOMER)) {
-        // TODO: mutate monomer
+        // TODO: mutate monomer, or add a new monomer with a connection
         // auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item);
         // const auto* monomer = monomer_item->getAtom();
     }
@@ -125,14 +363,18 @@ QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
 }
 
 void DrawMonomerSceneTool::labelAttachmentPointsOnMonomer(
-    const RDKit::Atom* const monomer)
+    const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item)
 {
     auto [bound_aps, unbound_aps] = get_attachment_points_for_monomer(monomer);
     for (auto& cur_ap : bound_aps) {
         labelBoundAttachmentPoint(monomer, cur_ap.bound_monomer,
                                   cur_ap.is_secondary_connection, cur_ap.name);
     }
-    // TODO: add connector nubs for available attachment points
+    for (auto& cur_ap : unbound_aps) {
+        auto* item = new UnboundMonomericAttachmentPointItem(
+            cur_ap, monomer_item, m_fonts);
+        m_unbound_ap_items.push_back(item);
+    }
 }
 
 void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
@@ -145,10 +387,11 @@ void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
     auto end_ap_name = get_attachment_point_name_for_connection(
         end_monomer, connector, is_secondary_connection);
 
-    if (begin_ap_name == "pair" && end_ap_name == "pair") {
+    if (begin_ap_name == NA_BASE_AP_PAIR && end_ap_name == NA_BASE_AP_PAIR) {
         // for nucleic acid base pairs, only have a single "pair" label since
         // the bond is typically too short to fit two separate labels
-        labelCenterOfConnector(begin_monomer, end_monomer, "pair");
+        labelCenterOfConnector(begin_monomer, end_monomer,
+                               QString::fromStdString(NA_BASE_AP_PAIR));
     } else {
         labelBoundAttachmentPoint(begin_monomer, end_monomer,
                                   is_secondary_connection, begin_ap_name);
@@ -157,18 +400,11 @@ void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
     }
 }
 
-/**
- * Position the given rectangle to label a monomer's bound attachment point
- * @param ap_label_rect The rectangle to position. It should already be sized
- * correctly for the attachment point label.
- * @param monomer_coords The coordinates of the monomer being labeled
- * @param bound_coords The coordinates of the other monomer involved in the bond
- */
-static void position_ap_label_rect(QRectF& ap_label_rect,
-                                   const RDGeom::Point3D& monomer_coords,
-                                   const RDGeom::Point3D& bound_coords)
+void position_ap_label_rect(QRectF& ap_label_rect,
+                            const QPointF& monomer_coords,
+                            const QPointF& bound_coords)
 {
-    auto qline = QLineF(to_scene_xy(monomer_coords), to_scene_xy(bound_coords));
+    auto qline = QLineF(monomer_coords, bound_coords);
     auto angle = qline.angle();
 
     bool rotate_ccw;
@@ -234,6 +470,17 @@ static void position_ap_label_rect(QRectF& ap_label_rect,
 }
 
 /**
+ * @overload Accepts RDKit coordinates instead of Scene coordinates
+ */
+static void position_ap_label_rect(QRectF& ap_label_rect,
+                                   const RDGeom::Point3D& monomer_coords,
+                                   const RDGeom::Point3D& bound_coords)
+{
+    position_ap_label_rect(ap_label_rect, to_scene_xy(monomer_coords),
+                           to_scene_xy(bound_coords));
+}
+
+/**
  * For the bond between monomer and bound_monomer, return whether monomer's
  * attachment point has been drawn with an arrowhead (which happens for
  * disulfide bonds and branch monomers).
@@ -254,6 +501,15 @@ attachment_point_is_drawn_with_arrowhead(const RDKit::Atom* const monomer,
     }
 }
 
+QString prep_attachment_point_name(const std::string& name)
+{
+    auto qname = QString::fromStdString(name);
+    // convert apostrophes in nucleic acid attachment point names to Unicode
+    // primes
+    qname.replace('\'', "′");
+    return qname;
+}
+
 void DrawMonomerSceneTool::labelBoundAttachmentPoint(
     const RDKit::Atom* const monomer, const RDKit::Atom* const bound_monomer,
     const bool is_secondary_connection, const std::string& ap_name)
@@ -267,10 +523,7 @@ void DrawMonomerSceneTool::labelBoundAttachmentPoint(
     auto monomer_coords = conf.getAtomPos(monomer->getIdx());
     auto bound_coords = conf.getAtomPos(bound_monomer->getIdx());
 
-    auto ap_qname = QString::fromStdString(ap_name);
-    // convert apostrophes in nucleic acid attachment point names to Unicode
-    // primes
-    ap_qname.replace('\'', "′");
+    auto ap_qname = prep_attachment_point_name(ap_name);
     auto ap_label_rect =
         m_fonts.m_monomeric_attachment_point_label_fm.boundingRect(ap_qname);
     position_ap_label_rect(ap_label_rect, monomer_coords, bound_coords);
@@ -355,6 +608,10 @@ void DrawMonomerSceneTool::clearAttachmentPointsLabels()
         m_attachment_point_labels_group.removeFromGroup(item);
         delete item;
     }
+    for (auto* item : m_unbound_ap_items) {
+        delete item;
+    }
+    m_unbound_ap_items.clear();
 }
 
 } // namespace sketcher

@@ -4,6 +4,7 @@
 #include <QPainterPath>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 
 namespace schrodinger
 {
@@ -44,13 +45,9 @@ class SKETCHER_API AbstractGraphicsItem : public QGraphicsItem
     QPainterPath predictiveHighlightingPath() const;
 
   protected:
-    // Type integers for all QGraphicsItem subclasses.  This enum ensures that
-    // all graphics items have a different value.
+    // Type integers for all AbstractGraphicsItem subclasses
     enum class ItemType {
-        // sketcherGraphicalObject::ObjectType uses UserType + 1, so we use +
-        // 1000 here to make it more obvious if someone accidentally tries to
-        // mix and match old and new graphics items
-        ATOM = QGraphicsItem::UserType + 1000,
+        ATOM = static_cast<int>(GraphicsItemType::ABSTRACT_GRAPHICS_ITEM_BASE),
         BOND,
         S_GROUP,
         NON_MOLECULAR,

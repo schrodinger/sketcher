@@ -712,6 +712,9 @@ MonomerDatabase::getPdbCode(const std::string& monomer_id,
     auto sql = get_monomer_query_sql(monomer_id, polymer_type, pdb_code_column);
 
     auto pdb_code_getter = [](sqlite3_stmt* stmt) -> opt_string_t {
+        if (sqlite3_column_type(stmt, 0) == SQLITE_NULL) {
+            return std::nullopt;
+        }
         return std::make_optional(_sqlite3_column_cstring(stmt, 0));
     };
 
