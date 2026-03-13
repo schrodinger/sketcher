@@ -20,14 +20,17 @@ namespace sketcher
 class AbstractMonomerItem;
 
 /**
- * Return the bounding rect for the UnboundMonomericAttachmentPointItem that
- * corresponds to the given parameters. Note that this graphics item doesn't
- * necessarily need to exist (and will *not* be created by this function).
+ * Return the attachment point's hover area (i.e. the area that the cursor could
+ * click/hover on to draw/hint a connection to the attachment point) for an
+ * UnboundMonomericAttachmentPointItem that corresponds to the given parameters.
+ * Note that this graphics item doesn't necessarily need to exist (and will
+ * *not* be created by this function).
  *
  * Parameter are the same as the UnboundMonomericAttachmentPointItem
- * constructor.
+ * constructor, other than color, which is excluded.
  */
-SKETCHER_API QRectF get_bounding_rect_for_unbound_monomer_attachment_point_item(
+SKETCHER_API QPainterPath
+get_hover_area_for_unbound_monomer_attachment_point_item(
     const UnboundAttachmentPoint& attachment_point,
     const AbstractMonomerItem* const parent_monomer, const Fonts& fonts);
 
@@ -43,11 +46,13 @@ class SKETCHER_API UnboundMonomericAttachmentPointItem : public QGraphicsItem
      * @param attachment_point The attachment point to be represented by this
      * graphics item
      * @param parent_monomer The parent monomer graphics item
+     * @param color The color of the line and label
      * @param fonts The fonts to use for label rendering
      */
     UnboundMonomericAttachmentPointItem(
         const UnboundAttachmentPoint& attachment_point,
-        AbstractMonomerItem* parent_monomer, const Fonts& fonts);
+        AbstractMonomerItem* parent_monomer, const QColor& color,
+        const Fonts& fonts);
 
     enum {
         Type = static_cast<int>(
@@ -61,15 +66,12 @@ class SKETCHER_API UnboundMonomericAttachmentPointItem : public QGraphicsItem
                QWidget* widget = nullptr) override;
 
     /**
-     * Set whether this attachment point indicator is active (black) or
-     * inactive (gray).
-     * @param active true for black coloring, false for gray
-     */
-    void setActive(bool active);
-
-    /**
-     * @return whether the given scene coordinates are within the attachment
-     * point, but not within the parent monomer
+     * @return whether the given scene coordinates are within the hover area of
+     * this attachment point. The hover area is the area that the cursor can
+     * click/hover on to draw/hint a connection to the attachment point. It
+     * includes the line, a small amount of space on either side of the line,
+     * and the label, but excludes any coordinates within the bounding rect of
+     * the parent monomer.
      */
     bool withinHoverArea(const QPointF& scene_pos) const;
 
@@ -90,12 +92,6 @@ class SKETCHER_API UnboundMonomericAttachmentPointItem : public QGraphicsItem
     QPainterPath m_hover_area;
     QPen m_line_pen;
     QBrush m_circle_brush{Qt::SolidPattern};
-    bool m_is_active = false;
-
-    /**
-     * Update pen and brush colors based on active state.
-     */
-    void updateColors();
 };
 
 } // namespace sketcher

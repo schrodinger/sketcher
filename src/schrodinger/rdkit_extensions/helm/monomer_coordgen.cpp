@@ -3,6 +3,7 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/monomer_directions.h"
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/math/constants/constants.hpp>
@@ -44,6 +45,9 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
+
+using schrodinger::rdkit_extensions::Direction;
+
 // empty space gap between a monomer and the one following it in the chain. This
 // will be the length of the visibile bond line connecting the two.
 constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
@@ -91,20 +95,7 @@ enum class ChainDirection { LTR, RTL };
 // chain)
 enum class BranchDirection { UP, DOWN };
 
-// the direction in which to place branch monomers relative to their parent
-// monomer. This might be differtent from the general branch direction if there
-// are clashes.
-enum class Direction { N, S, E, W, NW, NE, SW, SE };
 enum class PolygonStartSide { LEFT, RIGHT };
-static const std::map<Direction, RDGeom::Point3D> DIRECTION_TO_POINT_MAP = {
-    {Direction::N, RDGeom::Point3D(0, 1, 0)},
-    {Direction::S, RDGeom::Point3D(0, -1, 0)},
-    {Direction::E, RDGeom::Point3D(1, 0, 0)},
-    {Direction::W, RDGeom::Point3D(-1, 0, 0)},
-    {Direction::NE, RDGeom::Point3D(1, 1, 0)},
-    {Direction::NW, RDGeom::Point3D(-1, 1, 0)},
-    {Direction::SE, RDGeom::Point3D(1, -1, 0)},
-    {Direction::SW, RDGeom::Point3D(-1, -1, 0)}};
 
 /**
  * Represents a region in a polymer chain that should be protected from
@@ -114,15 +105,6 @@ struct ProtectedRegion {
     unsigned int start; // First monomer in protected region
     unsigned int end;   // One past last monomer (exclusive, like segment_end)
 };
-
-static RDGeom::Point3D direction_to_point(Direction dir)
-{
-    auto it = DIRECTION_TO_POINT_MAP.find(dir);
-    if (it != DIRECTION_TO_POINT_MAP.end()) {
-        return it->second;
-    }
-    throw std::runtime_error("Invalid direction");
-}
 
 static void place_monomer_at(RDKit::Conformer& conformer,
                              const RDKit::Atom* monomer_to_place,
@@ -311,7 +293,7 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
 
         for (auto branch_monomer : branches) {
             RDGeom::Point3D pos(x_pos, start_pos.y, start_pos.z);
-            pos += direction_to_point(*next_available_direction++) *
+            pos += direction_to_unit_vector(*next_available_direction++) *
                    MONOMER_BOND_LENGTH;
             place_monomer_at(conformer, branch_monomer, pos,
                              placed_monomers_idcs);

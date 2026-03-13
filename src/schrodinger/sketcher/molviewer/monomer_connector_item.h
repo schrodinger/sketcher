@@ -80,6 +80,12 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
     bool isSecondaryConnection() const;
 
     /**
+     * Replace the connector color and width with the given settings.
+     */
+    void setConnectorStyle(const QColor& connector_color,
+                           const qreal connector_width);
+
+    /**
      * @return the connector color appropriate for the current color scheme
      */
     QColor getConnectorColor() const;

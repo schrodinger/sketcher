@@ -201,5 +201,15 @@ QColor MonomerConnectorItem::getConnectorColor() const
     return m_is_dark_mode ? m_connector_color_dark_bg : m_connector_color;
 }
 
+void MonomerConnectorItem::setConnectorStyle(const QColor& connector_color,
+                                             const qreal connector_width)
+{
+    m_connector_pen.setColor(connector_color);
+    m_connector_pen.setWidthF(connector_width);
+    m_arrowhead_pen.setColor(connector_color);
+    m_arrowhead_pen.setWidthF(connector_width);
+    m_arrowhead_brush.setColor(connector_color);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
