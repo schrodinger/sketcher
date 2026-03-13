@@ -4,9 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       release-branches:
-        description: '[Optional] Comma-separated release branches to build'
+        description: 'Comma-separated branches to build'
         required: false
         type: string
+        default: main
       dry-run:
         description: 'Skip npm publishing'
         required: false
@@ -28,7 +29,7 @@ jobs:
             print(json.dumps([b.strip() for b in s.split(',') if b.strip()]))")
           echo "branches=$branches" >> $GITHUB_OUTPUT
 
-  build-release-branch:
+  build-branch:
     needs: parse-inputs
     if: ${{ needs.parse-inputs.outputs.branches != '[]' }}
     strategy:
@@ -37,10 +38,4 @@ jobs:
     uses: ./.github/workflows/sketcher-builder.yml
     with:
       ref: ${{ matrix.branch }}
-      publish-npm-package: ${{ !inputs.dry-run }}
-
-  build-main-branch:
-    uses: ./.github/workflows/sketcher-builder.yml
-    with:
-      ref: main
       publish-npm-package: ${{ !inputs.dry-run }}
