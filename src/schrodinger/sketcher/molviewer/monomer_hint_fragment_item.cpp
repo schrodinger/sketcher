@@ -47,7 +47,7 @@ void MonomerHintFragmentItem::createGraphicsItems()
         }
         // hide the monomer where this fragment connects to the existing
         // structure
-        if (kv.first->getIdx() == m_atom_index_to_hide) {
+        if (static_cast<int>(kv.first->getIdx()) == m_atom_index_to_hide) {
             kv.second->setVisible(false);
         }
         m_atom_items.append(kv.second);
