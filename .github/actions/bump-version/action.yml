@@ -5,7 +5,7 @@ inputs:
     description: 'Branch to bump sketcher version'
     required: true
   dry-run:
-    description: 'If true, bump and commit but do not push'
+    description: 'If true, perform a dry-run push (no remote changes)'
     required: false
     default: 'false'
 
@@ -26,8 +26,8 @@ runs:
         mv version.json.tmp version.json
         git add version.json
         git commit -m "Bump version for $new_version"
-        if [[ "${{ inputs.dry-run }}" != "true" ]]; then
-          git push origin ${{ inputs.branch }}
-        else
-          echo "Dry run: skipping push"
+        DRY_RUN_FLAG=""
+        if [[ "${{ inputs.dry-run }}" == "true" ]]; then
+          DRY_RUN_FLAG="--dry-run"
         fi
+        git push $DRY_RUN_FLAG origin ${{ inputs.branch }}
