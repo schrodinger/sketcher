@@ -5,7 +5,7 @@ inputs:
     description: 'Branch to bump sketcher version'
     required: true
   dry-run:
-    description: 'If true, perform a dry-run push (no remote changes)'
+    description: 'Log version bump without remote changes'
     required: false
     default: 'false'
 
