@@ -64,14 +64,11 @@ void MonomerHintFragmentItem::createGraphicsItems()
     // label the attachment points
     if (m_bond_index_to_label >= 0) {
         auto* bond = m_frag.getBondWithIdx(m_bond_index_to_label);
-        // TODO: If frag contains connections with arrowheads, this function
-        //       needs the monomer items so it can figure out the arrowhead
-        //       offset. These would normally be retrieved using the Scene, but
-        //       that won't work for hint structures since they're not included
-        //       in the Scene's bookkeeping. For now, we just pass nullptr for
-        //       Scene and avoid fragments with arrowheads.
+        auto* begin_monomer_item = atom_to_atom_item.at(bond->getBeginAtom());
+        auto* end_monomer_item = atom_to_atom_item.at(bond->getEndAtom());
         auto items = create_attachment_point_labels_for_connector(
-            bond, false, STRUCTURE_HINT_COLOR, *m_fonts, nullptr);
+            bond, false, STRUCTURE_HINT_COLOR, *m_fonts, begin_monomer_item,
+            end_monomer_item);
         for (auto* item : items) {
             addToGroup(item);
         }
