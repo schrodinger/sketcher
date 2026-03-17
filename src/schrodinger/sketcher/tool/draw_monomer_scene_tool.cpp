@@ -425,7 +425,7 @@ void DrawMonomerSceneTool::drawBoundMonomerHintFor(
     // Compute the new monomer's position: BOND_LENGTH away in the given
     // direction
     auto direction = ap_item->getAttachmentPoint().direction;
-    auto offset = rdkit_extensions::direction_to_unit_vector(direction);
+    auto offset = rdkit_extensions::direction_to_vector(direction);
     offset *= BOND_LENGTH;
     auto new_pos = monomer_pos + offset;
 

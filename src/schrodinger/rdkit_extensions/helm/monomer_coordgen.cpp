@@ -293,7 +293,7 @@ lay_out_chain(RDKit::ROMol& polymer, const RDKit::Atom* start_monomer,
 
         for (auto branch_monomer : branches) {
             RDGeom::Point3D pos(x_pos, start_pos.y, start_pos.z);
-            pos += direction_to_unit_vector(*next_available_direction++) *
+            pos += direction_to_vector(*next_available_direction++) *
                    MONOMER_BOND_LENGTH;
             place_monomer_at(conformer, branch_monomer, pos,
                              placed_monomers_idcs);

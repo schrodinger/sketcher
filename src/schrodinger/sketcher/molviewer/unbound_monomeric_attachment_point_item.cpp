@@ -64,14 +64,14 @@ static QPainterPath calculate_hover_area(QRectF ap_bounding_rect,
 }
 
 /**
- * Convert a Direction enum value to a unit vector in scene coordinates.
+ * Convert a Direction enum value to a vector in scene coordinates.
  * Note: Y-axis is inverted in Qt (positive Y goes down), so N is (0, -1).
  * @param dir The direction
- * @return Unit vector pointing in that direction
+ * @return vector pointing in that direction
  */
-static QPointF direction_to_qt_unit_vector(Direction dir)
+static QPointF direction_to_qt_vector(Direction dir)
 {
-    auto mol_vec = rdkit_extensions::direction_to_unit_vector(dir);
+    auto mol_vec = rdkit_extensions::direction_to_vector(dir);
     return QPointF(mol_vec.x, -mol_vec.y);
 }
 
@@ -91,7 +91,7 @@ calculate_geometry(const UnboundAttachmentPoint& attachment_point,
                    const AbstractMonomerItem* const parent_monomer,
                    const Fonts& fonts)
 {
-    QPointF dir = direction_to_qt_unit_vector(attachment_point.direction);
+    QPointF dir = direction_to_qt_vector(attachment_point.direction);
     QRectF parent_bounds = parent_monomer->boundingRect();
     qreal half_width = parent_bounds.width() / 2.0;
     qreal half_height = parent_bounds.height() / 2.0;
