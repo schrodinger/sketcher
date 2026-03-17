@@ -398,9 +398,6 @@ void DrawMonomerSceneTool::drawAttachmentPointLabelsFor(
         const auto* connector = connector_item->getBond();
         labelAttachmentPointsOnConnector(
             connector, connector_item->isSecondaryConnection());
-    } else {
-        std::cout << "drawAttachmentPointLabelsFor called with incorrect item "
-                  << item->type() << "\n";
     }
 }
 
