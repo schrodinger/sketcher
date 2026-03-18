@@ -127,10 +127,7 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
             return score;
         };
 
-        best_i = *std::max_element(tied_indices.begin(), tied_indices.end(),
-                                   [&score_angle](int a, int b) {
-                                       return score_angle(a) < score_angle(b);
-                                   });
+        best_i = *std::ranges::max_element(tied_indices, {}, score_angle);
     }
     // For a single substituent, limit the angle to 120 (instead of 180)
     bool limit_to_120 =
