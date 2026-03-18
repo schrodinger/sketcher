@@ -471,8 +471,10 @@ static RDGeom::Point3D get_coords_for_monomer(const RDKit::Atom* const monomer)
 }
 
 /**
- * @return coordinates that are BOND_LENGTH units away from the given monomer in
- * the specified direction
+ * @return coordinates that are roughly BOND_LENGTH units away from the given
+ * monomer in the specified direction. (Monomers are laid out in a grid-like
+ * pattern, so diagonal directions will lead to bonds that are slightly longer
+ * than BOND_LENGTH.)
  */
 static RDGeom::Point3D
 get_default_coords_for_bound_monomer(const RDKit::Atom* const monomer,
