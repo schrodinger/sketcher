@@ -2,6 +2,7 @@
 
 #include <rdkit/DataStructs/ExplicitBitVect.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/Atom.h>
@@ -122,6 +123,88 @@ std::string get_bond_key(const RDKit::Bond* bond)
     return fmt::format("bond:{}:{}:{}:{}", get_atom_key(atom1),
                        get_atom_key(atom2), static_cast<int>(bond_type),
                        attachment_point);
+}
+
+/// Finds the canonical rotation of a cyclic sequence using Booth's
+/// algorithm.
+int find_canonical_cycle_rotation(const std::vector<std::string>& atom_names)
+{
+    const auto n = static_cast<int>(atom_names.size());
+
+    // Helper to access atom names with wraparound (treats sequence as circular)
+    auto get_atom = [&](int idx) -> const std::string& {
+        return atom_names[idx % n];
+    };
+
+    // Failure function for KMP-style matching
+    std::vector<int> failure(n * 2, -1);
+
+    // Candidate position for lexicographically minimal rotation
+    int candidate_start = 0;
+
+    // Compare positions in doubled sequence to find minimal rotation
+    for (int pos = 1; pos < n * 2; ++pos) {
+        int matched_len = failure[pos - candidate_start - 1];
+
+        // Find longest prefix match using failure function
+        while (matched_len != -1 &&
+               get_atom(pos) != get_atom(candidate_start + matched_len + 1)) {
+            if (get_atom(pos) < get_atom(candidate_start + matched_len + 1)) {
+                candidate_start = pos - matched_len - 1;
+            }
+            matched_len = failure[matched_len];
+        }
+
+        // Update based on comparison result
+        if (get_atom(pos) != get_atom(candidate_start + matched_len + 1)) {
+            // matched_len must be -1 here (fell through from while loop)
+            if (get_atom(pos) < get_atom(candidate_start + matched_len + 1)) {
+                candidate_start = pos;
+            }
+            failure[pos - candidate_start] = -1;
+        } else {
+            // We have a match (atoms are equal)
+            failure[pos - candidate_start] = matched_len + 1;
+        }
+
+        // Early termination once we've checked a full cycle
+        if (pos - candidate_start >= n) {
+            break;
+        }
+    }
+
+    return candidate_start % n;
+}
+
+/// Generates unique key for a cycle
+std::string get_cycle_key(const RDKit::ROMol& mol,
+                          const std::vector<int>& cycle)
+{
+    // Extract atom labels from the cycle
+    std::vector<std::string> atom_names;
+    atom_names.reserve(cycle.size());
+    for (auto atom_idx : cycle) {
+        auto atom = mol.getAtomWithIdx(atom_idx);
+        atom_names.push_back(atom->getProp<std::string>(ATOM_LABEL));
+    }
+
+    // Build canonical key starting with cycle size
+    fmt::memory_buffer cycle_key;
+    fmt::format_to(std::back_inserter(cycle_key), "cycle:{}", cycle.size());
+
+    // Find canonical starting position (lexicographically minimal rotation)
+    auto start_idx = find_canonical_cycle_rotation(atom_names);
+
+    // Append bond keys in canonical order
+    for (auto i = 0u; i < cycle.size(); ++i) {
+        auto idx1 = cycle[(i + start_idx) % cycle.size()];
+        auto idx2 = cycle[(i + start_idx + 1) % cycle.size()];
+        auto bond = mol.getBondBetweenAtoms(idx1, idx2);
+        fmt::format_to(std::back_inserter(cycle_key), ":{}",
+                       get_bond_key(bond));
+    }
+
+    return std::string{cycle_key.data(), cycle_key.size()};
 }
 
 /// Creates unique identifier for a bond path
@@ -270,7 +353,14 @@ generate_biologics_fingerprint(const RDKit::ROMol& mol,
         });
     }
 
-    // TODO: Add cycle features
+    // Add cycle features
+    constexpr bool includeDativeBonds = true;
+    std::vector<std::vector<int>> rings;
+    if (RDKit::MolOps::findSSSR(mol, rings, includeDativeBonds)) {
+        std::ranges::for_each(rings, [&](auto& cycle) {
+            bloom_filter.update(get_cycle_key(mol, cycle));
+        });
+    }
 
     return bloom_filter.get_bitset();
 }
