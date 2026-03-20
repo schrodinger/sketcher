@@ -69,6 +69,11 @@ class NoAvailableDirectionsException : public std::exception
 
 } // namespace
 
+std::string ap_model_name_for(int ap_num)
+{
+    return fmt::format("R{}", ap_num);
+}
+
 MonomerType get_monomer_type(const RDKit::Atom* atom)
 {
     const auto* monomer_info = atom->getMonomerInfo();
