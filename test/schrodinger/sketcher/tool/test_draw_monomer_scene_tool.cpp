@@ -42,16 +42,21 @@ struct TestMonomer {
     /// Create an attachment point item with a numbered name (e.g. R1, R2)
     UnboundMonomericAttachmentPointItem* makeAP(int num)
     {
-        UnboundAttachmentPoint ap{"R" + std::to_string(num), num, Direction::N};
-        return new UnboundMonomericAttachmentPointItem(ap, item.get(), fonts);
+        // we don't care about the display name in these tests, so we just use
+        // the model name for that
+        auto name = "R" + std::to_string(num);
+        UnboundAttachmentPoint ap{name, name, num, Direction::N};
+        return new UnboundMonomericAttachmentPointItem(
+            ap, item.get(), UNBOUND_AP_LABEL_COLOR, fonts);
     }
 
     /// Create an attachment point item with a custom name (num = -1)
     UnboundMonomericAttachmentPointItem* makeNamedAP(const std::string& name)
     {
-        UnboundAttachmentPoint ap{name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
+        UnboundAttachmentPoint ap{name, name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
                                   Direction::N};
-        return new UnboundMonomericAttachmentPointItem(ap, item.get(), fonts);
+        return new UnboundMonomericAttachmentPointItem(
+            ap, item.get(), UNBOUND_AP_LABEL_COLOR, fonts);
     }
 };
 

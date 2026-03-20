@@ -6,7 +6,9 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
 
 namespace RDKit
@@ -32,24 +34,8 @@ namespace sketcher
 {
 
 enum class MonomerType;
+class MonomerHintFragmentItem;
 class UnboundMonomericAttachmentPointItem;
-
-/**
- * @return the attachment point name to a QString after converting apostrophes
- * to Unicode primes.
- */
-SKETCHER_API QString prep_attachment_point_name(const std::string& name);
-
-/**
- * Position the given rectangle to label a monomer's attachment point
- * @param ap_label_rect The rectangle to position. It should already be sized
- * correctly for the attachment point label.
- * @param monomer_coords The coordinates of the monomer being labeled
- * @param bound_coords The coordinates of the other monomer involved in the bond
- */
-SKETCHER_API void position_ap_label_rect(QRectF& ap_label_rect,
-                                         const QPointF& monomer_coords,
-                                         const QPointF& bound_coords);
 
 /**
  * Return the default unbound attachment point; that is, the attachment point
@@ -79,6 +65,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
     std::vector<QGraphicsItem*> getGraphicsItems() override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
+    void updateColorsAfterBackgroundColorChange(bool is_dark_mode) override;
 
   protected:
     std::string m_res_name;
@@ -87,7 +74,13 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
     MonomerType m_monomer_type;
     QGraphicsItemGroup m_attachment_point_labels_group;
     const QGraphicsItem* m_hovered_item = nullptr;
+    const UnboundMonomericAttachmentPointItem* m_hovered_ap_item = nullptr;
     std::vector<UnboundMonomericAttachmentPointItem*> m_unbound_ap_items;
+    MonomerHintFragmentItem* m_hint_fragment_item = nullptr;
+    std::shared_ptr<RDKit::RWMol> m_frag = nullptr;
+    QColor m_monomer_background_color = LIGHT_BACKGROUND_COLOR;
+    QColor m_unbound_ap_label_color = UNBOUND_AP_LABEL_COLOR;
+    QColor m_bound_ap_label_color = BOUND_AP_LABEL_COLOR;
 
     QPixmap createDefaultCursorPixmap() const override;
 
@@ -123,16 +116,6 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
                                    const bool is_secondary_connection,
                                    const std::string& label);
 
-    /**
-     * Place an attachment point label at the center of the given monomeric
-     * connector.  This is used to label nucleic acid base pairs, as both
-     * attachment points have the same label ("pair") and the bond is typically
-     * too small to fit two labels.
-     */
-    void labelCenterOfConnector(const RDKit::Atom* const begin_monomer,
-                                const RDKit::Atom* const end_monomer,
-                                const QString& label);
-
     void addAttachmentPointLabel(const QString& label,
                                  const QRectF& label_rect);
 
@@ -149,7 +132,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
      * over an unbound attachment point once it's drawn.
      * @param scene_pos The position in Scene coordinates
      */
-    QGraphicsItem* getTopMonomericItemAt(const QPointF& scene_pos);
+    QGraphicsItem* getTopMonomericItemAt(const QPointF& scene_pos) const;
 
     /**
      * Clear any existing attachment point labels and draw new ones for the
@@ -174,7 +157,43 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
      * have already been drawn for this monomer.
      */
     UnboundMonomericAttachmentPointItem*
-    getUnboundAttachmentPointAt(const QPointF& scene_pos);
+    getUnboundAttachmentPointAt(const QPointF& scene_pos) const;
+
+    /**
+     * @return the unbound attachment point that should be active when the user
+     * is hovering over the monomer itself
+     */
+    UnboundMonomericAttachmentPointItem*
+    getDefaultUnboundAttachmentPointForHoveredMonomer() const;
+
+    /**
+     * Draw a hint structure showing a monomer bound to the specified attachment
+     * point
+     */
+    void
+    drawBoundMonomerHintFor(UnboundMonomericAttachmentPointItem* const ap_item);
+
+    std::tuple<const RDKit::Atom*, MonomerType>
+    getHoveredMonomerAndType() const;
+
+    /**
+     * @return whether this tool should show the predictive highlighting outline
+     * for the currently hovered monomer.  The highlighting is shown if the
+     * hovered monomer can be mutated (i.e. its the same monomer type as this
+     * tool but a different residue name) or if there is a reasonable way to
+     * connect this tool's monomer to the hovered monomer (an unreasonable
+     * connection would be, e.g., connecting a nucleic acid base directly to a
+     * phosphate with no intervening sugar.)
+     */
+    bool shouldShowPredictiveHighlighting() const;
+
+    /**
+     * Whether clicking on the specified monomer should mutate that monomer. We
+     * only mutate monomers that are the same monomer type as this tool but have
+     * a different residue name.
+     */
+    bool clickShouldMutate(const RDKit::Atom* monomer,
+                           const MonomerType monomer_type) const;
 };
 
 } // namespace sketcher
