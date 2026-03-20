@@ -2,6 +2,7 @@
 
 #include <rdkit/DataStructs/ExplicitBitVect.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/Atom.h>
@@ -40,9 +41,6 @@ class BloomFilter
     const size_t m_num_bits;
     uint32_t k_hashes;
 
-    // 64-bit Golden Ratio constant for bit distribution.
-    static constexpr uint64_t GOLDEN_RATIO_64 = 0x9e3779b97f4a7c15ULL;
-
   public:
     /**
      * @brief Constructor
@@ -60,19 +58,18 @@ class BloomFilter
      * @brief High-throughput insertion.
      * Hashes the object once, then perturbs the seed k times.
      */
-    void update(const std::string& item)
+    void update(std::string_view item)
     {
-        const size_t primary_hash = std::hash<std::string>{}(item);
-
+        size_t h1 = std::hash<std::string_view>{}(item);
+        size_t h2 = boost::hash_value(item); // Or a different seed
         for (uint32_t i = 0; i < k_hashes; ++i) {
-            size_t seed = primary_hash;
-
-            // Salted perturbation using the iteration index and Golden Ratio.
-            size_t salt = i * GOLDEN_RATIO_64;
-            boost::hash_combine(seed, salt);
-
-            m_bitset.setBit(seed % m_num_bits);
+            // Kirsch-Mitzenmacher Optimization: h(i) = h1 + i * h2
+            m_bitset.setBit((h1 + i * h2) % m_num_bits);
         }
+    }
+    void update(const fmt::memory_buffer& item)
+    {
+        update(std::string_view(item.data(), item.size()));
     }
 
     /**
@@ -93,8 +90,13 @@ std::string get_polymer_type(const RDKit::Atom* atom)
     return polymer_id.substr(0, polymer_id.find_first_of("0123456789"));
 }
 
-/// Generates unique key for an atom
-std::string get_atom_key(const RDKit::Atom* atom)
+/**
+ * @brief Appends unique atom key to buffer.
+ *
+ * Format: "monomer:{monomer_id}:{polymer_type}"
+ * Does NOT clear the buffer - appends to existing content.
+ */
+void append_atom_key(const RDKit::Atom* atom, fmt::memory_buffer& buffer)
 {
     std::string monomer_id;
     if (!atom->getPropIfPresent(ATOM_LABEL, monomer_id)) {
@@ -103,7 +105,130 @@ std::string get_atom_key(const RDKit::Atom* atom)
     }
 
     const auto polymer_type = get_polymer_type(atom);
-    return fmt::format("monomer:{}:{}", monomer_id, polymer_type);
+    fmt::format_to(std::back_inserter(buffer), "monomer:{}:{}", monomer_id,
+                   polymer_type);
+}
+
+/**
+ * @brief Appends unique bond key to buffer.
+ *
+ * Format: "bond:{atom1_key}:{atom2_key}:{bond_type}:{attachment}"
+ * Does NOT clear the buffer - appends to existing content.
+ */
+void append_bond_key(const RDKit::Bond* bond, fmt::memory_buffer& buffer)
+{
+    std::string attachment_point;
+    if (!bond->getPropIfPresent(LINKAGE, attachment_point)) {
+        throw std::invalid_argument(fmt::format("Bond {} missing '{}' property",
+                                                bond->getIdx(), LINKAGE));
+    }
+
+    const auto& mol = bond->getOwningMol();
+    const auto* atom1 = mol.getAtomWithIdx(bond->getBeginAtomIdx());
+    const auto* atom2 = mol.getAtomWithIdx(bond->getEndAtomIdx());
+
+    fmt::format_to(std::back_inserter(buffer), "bond:");
+    append_atom_key(atom1, buffer);
+    fmt::format_to(std::back_inserter(buffer), ":");
+    append_atom_key(atom2, buffer);
+    fmt::format_to(std::back_inserter(buffer), ":{}:{}",
+                   static_cast<int>(bond->getBondType()), attachment_point);
+}
+
+/// Finds the canonical rotation of a cyclic sequence using Booth's
+/// algorithm.
+int find_canonical_cycle_rotation(const std::vector<std::string>& atom_names)
+{
+    const auto n = static_cast<int>(atom_names.size());
+
+    // Helper to access atom names with wraparound (treats sequence as circular)
+    auto get_atom = [&](int idx) -> const std::string& {
+        return atom_names[idx % n];
+    };
+
+    // Failure function for KMP-style matching
+    std::vector<int> failure(n * 2, -1);
+
+    // Candidate position for lexicographically minimal rotation
+    int candidate_start = 0;
+
+    // Compare positions in doubled sequence to find minimal rotation
+    for (int pos = 1; pos < n * 2; ++pos) {
+        int matched_len = failure[pos - candidate_start - 1];
+
+        // Find longest prefix match using failure function
+        while (matched_len != -1 &&
+               get_atom(pos) != get_atom(candidate_start + matched_len + 1)) {
+            if (get_atom(pos) < get_atom(candidate_start + matched_len + 1)) {
+                candidate_start = pos - matched_len - 1;
+            }
+            matched_len = failure[matched_len];
+        }
+
+        // Update based on comparison result
+        if (get_atom(pos) != get_atom(candidate_start + matched_len + 1)) {
+            // matched_len must be -1 here (fell through from while loop)
+            if (get_atom(pos) < get_atom(candidate_start + matched_len + 1)) {
+                candidate_start = pos;
+            }
+            failure[pos - candidate_start] = -1;
+        } else {
+            // We have a match (atoms are equal)
+            failure[pos - candidate_start] = matched_len + 1;
+        }
+
+        // Early termination once we've checked a full cycle
+        if (pos - candidate_start >= n) {
+            break;
+        }
+    }
+
+    return candidate_start % n;
+}
+
+/**
+ * @brief Appends unique cycle key to buffer.
+ *
+ * Format: "cycle:{size}:{bond1}:{bond2}:..."
+ * Does NOT clear the buffer - appends to existing content.
+ */
+void append_cycle_key(const RDKit::ROMol& mol, const std::vector<int>& cycle,
+                      fmt::memory_buffer& buffer)
+{
+    // Extract atom labels from the cycle
+    std::vector<std::string> atom_names;
+    atom_names.reserve(cycle.size());
+    for (auto atom_idx : cycle) {
+        auto atom = mol.getAtomWithIdx(atom_idx);
+        atom_names.push_back(atom->getProp<std::string>(ATOM_LABEL));
+    }
+
+    // Build canonical key starting with cycle size
+    fmt::format_to(std::back_inserter(buffer), "cycle:{}", cycle.size());
+
+    // Find canonical starting position (lexicographically minimal rotation)
+    auto start_idx = find_canonical_cycle_rotation(atom_names);
+
+    // Append bond keys in canonical order
+    for (auto i = 0u; i < cycle.size(); ++i) {
+        fmt::format_to(std::back_inserter(buffer), ":");
+
+        auto idx1 = cycle[(i + start_idx) % cycle.size()];
+        auto idx2 = cycle[(i + start_idx + 1) % cycle.size()];
+        auto bond = mol.getBondBetweenAtoms(idx1, idx2);
+        append_bond_key(bond, buffer);
+    }
+}
+
+/// Creates unique identifier for a bond path
+size_t hash_path(const KmerPath& path)
+{
+    size_t seed = 0;
+    for (const auto* bond : path) {
+        // Combine bond indices using simple hash combine
+        boost::hash_combine(seed, bond->getIdx());
+    }
+    return seed;
 }
 
 void check_unsupported_features(const RDKit::ROMol& mol)
@@ -141,7 +266,73 @@ void check_unsupported_features(const RDKit::ROMol& mol)
     }
 }
 
+/// Checks if bond is a valid biologics bond
+bool is_interesting_bond(const RDKit::Bond* bond)
+{
+    std::string attachment_point;
+    // Exclude hydrogen bonds
+    return bond->getPropIfPresent(LINKAGE, attachment_point) &&
+           !attachment_point.starts_with("pair");
+}
+
 } // anonymous namespace
+
+void process_kmers(const RDKit::ROMol& mol, unsigned int k,
+                   const std::function<void(const KmerPath&)>& callback)
+{
+    if (k < 2) {
+        throw std::invalid_argument(
+            fmt::format("k must be at least 2, got {}", k));
+    }
+
+    std::unordered_set<size_t> seen_paths; // Track unique paths
+    KmerPath current_path;                 // Reused path vector
+    current_path.reserve(k - 1);
+
+    // Recursive DFS helper
+    std::function<void(const RDKit::Atom*, const RDKit::Atom*)> dfs =
+        [&](const RDKit::Atom* atom, const RDKit::Atom* parent) {
+            // If we've reached target length, process the k-mer
+            if (current_path.size() == k - 1) {
+                const auto path_hash = hash_path(current_path);
+                if (!seen_paths.contains(path_hash)) {
+                    seen_paths.insert(path_hash);
+                    callback(current_path);
+                }
+                return;
+            }
+
+            // Explore neighbors via biologics bonds
+            for (const auto* bond : mol.atomBonds(atom)) {
+                if (!is_interesting_bond(bond)) {
+                    continue;
+                }
+
+                // Only traverse bonds in the forward direction
+                if (bond->getBeginAtomIdx() != atom->getIdx()) {
+                    continue;
+                }
+
+                const auto* neighbor =
+                    mol.getAtomWithIdx(bond->getEndAtomIdx());
+
+                // Don't go backwards
+                if (neighbor == parent) {
+                    continue;
+                }
+
+                // Extend the path
+                current_path.push_back(bond);
+                dfs(neighbor, atom);
+                current_path.pop_back(); // Backtrack
+            }
+        };
+
+    // Start DFS from every monomer atom
+    for (auto start_atom : mol.atoms()) {
+        dfs(start_atom, nullptr);
+    }
+}
 
 std::unique_ptr<ExplicitBitVect>
 generate_biologics_fingerprint(const RDKit::ROMol& mol,
@@ -153,15 +344,40 @@ generate_biologics_fingerprint(const RDKit::ROMol& mol,
     // this interface will be used to do the hashing
     BloomFilter bloom_filter{config.fp_size, config.num_hashes};
 
+    // Reusable buffer for building keys
+    fmt::memory_buffer key_buffer;
+
     // Add atom features
     for (auto atom : mol.atoms()) {
-        const auto atom_key = get_atom_key(atom);
-        bloom_filter.update(atom_key);
+        key_buffer.clear();
+        append_atom_key(atom, key_buffer);
+        bloom_filter.update(key_buffer);
     }
 
-    // TODO: Add k-mer features
+    // Add k-mer features
+    for (unsigned int k = 2; k <= config.max_k; ++k) {
+        process_kmers(mol, k, [&](const KmerPath& kmer) {
+            // Build composite key from all bonds in the k-mer
+            key_buffer.clear();
+            fmt::format_to(std::back_inserter(key_buffer), "sequence");
+            for (auto bond : kmer) {
+                fmt::format_to(std::back_inserter(key_buffer), ":");
+                append_bond_key(bond, key_buffer);
+            }
+            bloom_filter.update(key_buffer);
+        });
+    }
 
-    // TODO: Add cycle features
+    // Add cycle features
+    constexpr bool includeDativeBonds = true;
+    std::vector<std::vector<int>> rings;
+    if (RDKit::MolOps::findSSSR(mol, rings, includeDativeBonds)) {
+        for (const auto& cycle : rings) {
+            key_buffer.clear();
+            append_cycle_key(mol, cycle, key_buffer);
+            bloom_filter.update(key_buffer);
+        }
+    }
 
     return bloom_filter.get_bitset();
 }

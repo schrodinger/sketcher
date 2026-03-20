@@ -254,3 +254,23 @@ BOOST_AUTO_TEST_CASE(TestNameEscaping)
     auto& monomer_db = MonomerDatabase::instance();
     monomer_db.loadMonomersFromJson(json_for_12ddR);
 }
+
+BOOST_AUTO_TEST_CASE(TestSmilesEscaping)
+{
+    constexpr std::string_view json_for_boc_ser_bzl = R"JSON(
+        [{
+        "symbol": "Boc_Ser(Bzl)",
+        "polymer_type": "PEPTIDE",
+        "natural_analog": "S",
+        "smiles": "CC(C)(C)OC(=O)N[C@@H](COCc1ccccc1)C(=O)[OH:2] |atomProp:7.pdbName. N  :8.pdbName. CA :9.pdbName. CB :10.pdbName. OG :11.pdbName. C' :12.pdbName. C1':13.pdbName. C2':14.pdbName. C3':15.pdbName. C4':16.pdbName. C5':17.pdbName. C6':18.pdbName. C  :19.pdbName. O  |",
+         "core_smiles": "CC(C)(C)OC(=O)N[C@H](C=O)COCc1ccccc1",
+         "name": "N-alpha-t.-Boc-O-benzyl-L-serine",
+         "monomer_type": "Backbone",
+         "author": "ChEMBL",
+         "pdbcode": "UNK "
+         }]
+    )JSON";
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(json_for_boc_ser_bzl);
+    monomer_db.canonicalizeSmilesFields();
+}

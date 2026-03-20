@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
@@ -124,6 +125,11 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] std::vector<std::pair<std::string, std::string>>
     getAllSMILES() const;
 
+    // Returns a cached map from enumerated core SMILES to monomer symbols.
+    // The cache is invalidated whenever the database is modified.
+    [[nodiscard]] const std::unordered_map<std::string, std::string>&
+    getEnumeratedCoreSmiles() const;
+
   private:
     // this is private because we don't want to allow managing
     // just any db -- we require the proper schema!
@@ -141,8 +147,15 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
 
     void dumpToFile(sqlite3* db, boost::filesystem::path db_file) const;
 
+    // Invalidates the enumerated core SMILES cache
+    void invalidateCache();
+
     sqlite3* m_core_monomers_db = nullptr;
     sqlite3* m_custom_monomers_db = nullptr;
+
+    // Cache for enumerated core SMILES to monomer symbol mapping
+    mutable std::optional<std::unordered_map<std::string, std::string>>
+        m_enumerated_core_smiles_cache;
 };
 } // namespace rdkit_extensions
 } // namespace schrodinger
