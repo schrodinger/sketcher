@@ -57,6 +57,9 @@ constexpr std::string_view legacy_polymer_type_column{"POLYMERTYPE"};
 inline const char* _sqlite3_column_cstring(sqlite3_stmt* stmt, int idx)
 {
     auto result = sqlite3_column_text(stmt, idx);
+    if (result == nullptr) {
+        return "";
+    }
     return reinterpret_cast<const char*>(result);
 }
 
