@@ -347,6 +347,11 @@ ExtractMolFragment(const RDKit::ROMol& mol,
         ::RDKit::MolOps::sanitizeMol(*extracted_mol);
     }
 
+    if (mol.hasProp(HELM_MODEL)) {
+        auto helm_model_prop = mol.getProp<bool>(HELM_MODEL);
+        extracted_mol->setProp(HELM_MODEL, helm_model_prop);
+    }
+
     // NOTE: Bookmarks are currently not copied
     return extracted_mol;
 }

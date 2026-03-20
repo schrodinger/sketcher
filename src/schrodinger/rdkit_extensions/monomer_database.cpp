@@ -15,10 +15,13 @@
 #include <boost/json.hpp>
 #include <boost/noncopyable.hpp>
 
+#include <queue>
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
 #include <rdkit/GraphMol/RDKitBase.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 
@@ -323,16 +326,15 @@ void canonicalize_db(sqlite3* db)
 {
     constexpr std::string_view sql_select =
         "SELECT id, smiles FROM monomer_definitions ORDER BY id ASC;";
-    constexpr std::string_view sql_replace_tpl =
-        "UPDATE monomer_definitions SET smiles='{1}', core_smiles='{2}' "
-        "WHERE id={0};";
+    constexpr std::string_view sql_update =
+        "UPDATE monomer_definitions SET smiles=?, core_smiles=? WHERE id=?;";
 
     execute_sql_on(db, "BEGIN TRANSACTION;");
 
     try {
-        sqlite3_stmt* stmt = nullptr;
-        if (auto rc =
-                sqlite3_prepare_v2(db, sql_select.data(), -1, &stmt, NULL);
+        sqlite3_stmt* select_stmt = nullptr;
+        if (auto rc = sqlite3_prepare_v2(db, sql_select.data(), -1,
+                                         &select_stmt, NULL);
             rc != SQLITE_OK) {
             auto msg =
                 fmt::format("Error preparing SMILES canonicalization: {}",
@@ -340,19 +342,42 @@ void canonicalize_db(sqlite3* db)
             throw std::runtime_error(msg);
         }
 
-        managed_stmt_t statement(stmt, &sqlite3_finalize);
+        managed_stmt_t select_statement(select_stmt, &sqlite3_finalize);
 
-        for (auto rc = sqlite3_step(stmt); rc == SQLITE_ROW;
-             rc = sqlite3_step(stmt)) {
+        // Prepare the UPDATE statement with placeholders
+        sqlite3_stmt* update_stmt = nullptr;
+        if (auto rc = sqlite3_prepare_v2(db, sql_update.data(), -1,
+                                         &update_stmt, NULL);
+            rc != SQLITE_OK) {
+            auto msg = fmt::format("Error preparing UPDATE statement: {}",
+                                   sqlite3_errstr(rc));
+            throw std::runtime_error(msg);
+        }
+
+        managed_stmt_t update_statement(update_stmt, &sqlite3_finalize);
+
+        for (auto rc = sqlite3_step(select_stmt); rc == SQLITE_ROW;
+             rc = sqlite3_step(select_stmt)) {
 
             // column numbers used here are dictated by sql_select
-            auto id = sqlite3_column_int(stmt, 0);
-            auto smiles = _sqlite3_column_cstring(stmt, 1);
+            auto id = sqlite3_column_int(select_stmt, 0);
+            auto smiles = _sqlite3_column_cstring(select_stmt, 1);
             auto [new_smiles, new_core_smiles] =
                 canonicalize_monomer_smiles(smiles);
-            auto sql_replace =
-                fmt::format(sql_replace_tpl, id, new_smiles, new_core_smiles);
-            execute_sql_on(db, sql_replace.c_str());
+
+            // Bind parameters to the UPDATE statement
+            sqlite3_bind_text(update_stmt, 1, new_smiles.c_str(), -1,
+                              SQLITE_TRANSIENT);
+            sqlite3_bind_text(update_stmt, 2, new_core_smiles.c_str(), -1,
+                              SQLITE_TRANSIENT);
+            sqlite3_bind_int(update_stmt, 3, id);
+
+            if (auto rc = sqlite3_step(update_stmt); rc != SQLITE_DONE) {
+                throw std::runtime_error(fmt::format(
+                    "Error updating monomer: {}", sqlite3_errmsg(db)));
+            }
+
+            sqlite3_reset(update_stmt);
         }
 
     } catch (const std::runtime_error& e) {
@@ -429,6 +454,59 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
 
     execute_sql_on(db, "COMMIT;");
 }
+
+// Enumerates all possible SMILES variations by replacing atom map numbers
+// with either the mapped atom or a dummy atom (element 0)
+std::vector<std::string> enumerate_smiles(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
+
+    static RDKit::Atom dummy_atom(0);
+
+    std::vector<std::string> enumerated_smiles;
+
+    std::queue<std::unique_ptr<RDKit::RWMol>> q;
+
+    q.emplace(MolFromSmiles(smiles, p));
+
+    while (!q.empty()) {
+        auto mol = std::move(q.front());
+        q.pop();
+
+        bool found_mapnum = false;
+        for (const auto& atom : mol->atoms()) {
+            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                found_mapnum = true;
+
+                // Clear the map number: We don't want them to be
+                // in the final SMILES, and pushing a copy of the
+                // modified molecule back onto the queue.
+                atom->clearProp(RDKit::common_properties::molAtomMapNumber);
+                q.emplace(new RDKit::RWMol(*mol));
+
+                // Now, replace the atom with a dummy, and push
+                // the mol back onto the queue.
+                mol->replaceAtom(atom->getIdx(), &dummy_atom);
+                q.push(std::move(mol));
+
+                // Only handle one map number at a time
+                break;
+            }
+        }
+
+        // This mol has been fully enumerated, so push the SMILES
+        // to the output vector.
+        if (!found_mapnum) {
+            // The mols we check against have all Hs removed.
+            RDKit::MolOps::removeAllHs(*mol);
+            enumerated_smiles.push_back(RDKit::MolToSmiles(*mol));
+        }
+    }
+
+    return enumerated_smiles;
+}
 } // namespace
 
 namespace schrodinger
@@ -450,7 +528,7 @@ static MonomerInfo tag_invoke(boost::json::value_to_tag<MonomerInfo>,
 std::optional<std::string> getMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
-    throw std::logic_error("Monomers are not yet supported in WASM Sketcher");
+    return std::nullopt;
 #else
     auto custom_db_path = getenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data());
     if (custom_db_path) {
@@ -503,6 +581,7 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 void MonomerDatabase::loadMonomersFromJson(std::string_view json)
@@ -517,6 +596,7 @@ void MonomerDatabase::loadMonomersFromJson(std::string_view json)
     }
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 void MonomerDatabase::insertMonomersFromJson(std::string_view json)
@@ -525,6 +605,7 @@ void MonomerDatabase::insertMonomersFromJson(std::string_view json)
         loadMonomersFromJson(json);
     } else {
         insert_monomers_from_json(m_custom_monomers_db, json);
+        invalidateCache();
     }
 }
 
@@ -555,6 +636,7 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 MonomerDatabase& MonomerDatabase::instance()
@@ -647,6 +729,7 @@ void MonomerDatabase::dumpToFile(sqlite3* db,
 void MonomerDatabase::resetMonomerDefinitions()
 {
     swap_custom_monomers_db(nullptr);
+    invalidateCache();
 }
 
 std::vector<std::string> MonomerDatabase::getDbFields() const
@@ -801,6 +884,7 @@ void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
             canonicalize_db(db);
         }
     }
+    invalidateCache();
 }
 
 [[nodiscard]] std::vector<std::pair<std::string, std::string>>
@@ -832,6 +916,31 @@ MonomerDatabase::getAllSMILES() const
     }
 
     return ret;
+}
+
+const std::unordered_map<std::string, std::string>&
+MonomerDatabase::getEnumeratedCoreSmiles() const
+{
+    if (!m_enumerated_core_smiles_cache.has_value()) {
+        std::unordered_map<std::string, std::string> core_smiles_to_monomer;
+
+        for (auto& [smiles, symbol] : getAllSMILES()) {
+            for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
+                // Note: If there are duplicates, the later entry will overwrite
+                core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
+                                               symbol);
+            }
+        }
+
+        m_enumerated_core_smiles_cache = std::move(core_smiles_to_monomer);
+    }
+
+    return *m_enumerated_core_smiles_cache;
+}
+
+void MonomerDatabase::invalidateCache()
+{
+    m_enumerated_core_smiles_cache.reset();
 }
 
 } // namespace rdkit_extensions
