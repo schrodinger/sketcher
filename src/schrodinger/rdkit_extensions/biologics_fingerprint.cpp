@@ -29,13 +29,6 @@ namespace schrodinger::rdkit_extensions::fingerprint
 namespace
 {
 
-/// DFS state: (current_atom, parent_atom, bond_path)
-struct DFSState {
-    const RDKit::Atom* atom;
-    const RDKit::Atom* parent;
-    KmerPath path;
-};
-
 /**
  * @brief Bloom Filter interface for hashing fingerprint features.
  * * PERFORMANCE NOTES:
@@ -65,14 +58,18 @@ class BloomFilter
      * @brief High-throughput insertion.
      * Hashes the object once, then perturbs the seed k times.
      */
-    void update(const std::string& item)
+    void update(std::string_view item)
     {
-        size_t h1 = std::hash<std::string>{}(item);
+        size_t h1 = std::hash<std::string_view>{}(item);
         size_t h2 = boost::hash_value(item); // Or a different seed
         for (uint32_t i = 0; i < k_hashes; ++i) {
             // Kirsch-Mitzenmacher Optimization: h(i) = h1 + i * h2
             m_bitset.setBit((h1 + i * h2) % m_num_bits);
         }
+    }
+    void update(const fmt::memory_buffer& item)
+    {
+        update(std::string_view(item.data(), item.size()));
     }
 
     /**
@@ -93,8 +90,13 @@ std::string get_polymer_type(const RDKit::Atom* atom)
     return polymer_id.substr(0, polymer_id.find_first_of("0123456789"));
 }
 
-/// Generates unique key for an atom
-std::string get_atom_key(const RDKit::Atom* atom)
+/**
+ * @brief Appends unique atom key to buffer.
+ *
+ * Format: "monomer:{monomer_id}:{polymer_type}"
+ * Does NOT clear the buffer - appends to existing content.
+ */
+void append_atom_key(const RDKit::Atom* atom, fmt::memory_buffer& buffer)
 {
     std::string monomer_id;
     if (!atom->getPropIfPresent(ATOM_LABEL, monomer_id)) {
@@ -103,11 +105,17 @@ std::string get_atom_key(const RDKit::Atom* atom)
     }
 
     const auto polymer_type = get_polymer_type(atom);
-    return fmt::format("monomer:{}:{}", monomer_id, polymer_type);
+    fmt::format_to(std::back_inserter(buffer), "monomer:{}:{}", monomer_id,
+                   polymer_type);
 }
 
-/// Generates unique key for a bond
-std::string get_bond_key(const RDKit::Bond* bond)
+/**
+ * @brief Appends unique bond key to buffer.
+ *
+ * Format: "bond:{atom1_key}:{atom2_key}:{bond_type}:{attachment}"
+ * Does NOT clear the buffer - appends to existing content.
+ */
+void append_bond_key(const RDKit::Bond* bond, fmt::memory_buffer& buffer)
 {
     std::string attachment_point;
     if (!bond->getPropIfPresent(LINKAGE, attachment_point)) {
@@ -119,10 +127,12 @@ std::string get_bond_key(const RDKit::Bond* bond)
     const auto* atom1 = mol.getAtomWithIdx(bond->getBeginAtomIdx());
     const auto* atom2 = mol.getAtomWithIdx(bond->getEndAtomIdx());
 
-    const auto bond_type = bond->getBondType();
-    return fmt::format("bond:{}:{}:{}:{}", get_atom_key(atom1),
-                       get_atom_key(atom2), static_cast<int>(bond_type),
-                       attachment_point);
+    fmt::format_to(std::back_inserter(buffer), "bond:");
+    append_atom_key(atom1, buffer);
+    fmt::format_to(std::back_inserter(buffer), ":");
+    append_atom_key(atom2, buffer);
+    fmt::format_to(std::back_inserter(buffer), ":{}:{}",
+                   static_cast<int>(bond->getBondType()), attachment_point);
 }
 
 /// Finds the canonical rotation of a cyclic sequence using Booth's
@@ -176,9 +186,14 @@ int find_canonical_cycle_rotation(const std::vector<std::string>& atom_names)
     return candidate_start % n;
 }
 
-/// Generates unique key for a cycle
-std::string get_cycle_key(const RDKit::ROMol& mol,
-                          const std::vector<int>& cycle)
+/**
+ * @brief Appends unique cycle key to buffer.
+ *
+ * Format: "cycle:{size}:{bond1}:{bond2}:..."
+ * Does NOT clear the buffer - appends to existing content.
+ */
+void append_cycle_key(const RDKit::ROMol& mol, const std::vector<int>& cycle,
+                      fmt::memory_buffer& buffer)
 {
     // Extract atom labels from the cycle
     std::vector<std::string> atom_names;
@@ -189,22 +204,20 @@ std::string get_cycle_key(const RDKit::ROMol& mol,
     }
 
     // Build canonical key starting with cycle size
-    fmt::memory_buffer cycle_key;
-    fmt::format_to(std::back_inserter(cycle_key), "cycle:{}", cycle.size());
+    fmt::format_to(std::back_inserter(buffer), "cycle:{}", cycle.size());
 
     // Find canonical starting position (lexicographically minimal rotation)
     auto start_idx = find_canonical_cycle_rotation(atom_names);
 
     // Append bond keys in canonical order
     for (auto i = 0u; i < cycle.size(); ++i) {
+        fmt::format_to(std::back_inserter(buffer), ":");
+
         auto idx1 = cycle[(i + start_idx) % cycle.size()];
         auto idx2 = cycle[(i + start_idx + 1) % cycle.size()];
         auto bond = mol.getBondBetweenAtoms(idx1, idx2);
-        fmt::format_to(std::back_inserter(cycle_key), ":{}",
-                       get_bond_key(bond));
+        append_bond_key(bond, buffer);
     }
-
-    return std::string{cycle_key.data(), cycle_key.size()};
 }
 
 /// Creates unique identifier for a bond path
@@ -263,25 +276,31 @@ bool is_interesting_bond(const RDKit::Bond* bond)
 }
 
 } // anonymous namespace
-  //
-std::vector<KmerPath> extract_kmers(const RDKit::ROMol& mol, unsigned int k)
+
+void process_kmers(const RDKit::ROMol& mol, unsigned int k,
+                   const std::function<void(const KmerPath&)>& callback)
 {
     if (k < 2) {
         throw std::invalid_argument(
             fmt::format("k must be at least 2, got {}", k));
     }
 
-    std::vector<KmerPath> paths;
     std::unordered_set<size_t> seen_paths; // Track unique paths
+    KmerPath current_path;                 // Reused path vector
+    current_path.reserve(k - 1);
 
-    // Start DFS from every monomer atom
-    for (auto start_atom : mol.atoms()) {
-        std::vector<DFSState> stack;
-        stack.push_back({start_atom, nullptr, {}});
-
-        while (!stack.empty()) {
-            auto [atom, parent, path] = std::move(stack.back());
-            stack.pop_back();
+    // Recursive DFS helper
+    std::function<void(const RDKit::Atom*, const RDKit::Atom*)> dfs =
+        [&](const RDKit::Atom* atom, const RDKit::Atom* parent) {
+            // If we've reached target length, process the k-mer
+            if (current_path.size() == k - 1) {
+                const auto path_hash = hash_path(current_path);
+                if (!seen_paths.contains(path_hash)) {
+                    seen_paths.insert(path_hash);
+                    callback(current_path);
+                }
+                return;
+            }
 
             // Explore neighbors via biologics bonds
             for (const auto* bond : mol.atomBonds(atom)) {
@@ -303,24 +322,16 @@ std::vector<KmerPath> extract_kmers(const RDKit::ROMol& mol, unsigned int k)
                 }
 
                 // Extend the path
-                KmerPath new_path = path;
-                new_path.push_back(bond);
-
-                // If we've reached the target k-mer length, record it
-                if (new_path.size() == k - 1) {
-                    const auto path_hash = hash_path(new_path);
-                    if (!seen_paths.contains(path_hash)) {
-                        seen_paths.insert(path_hash);
-                        paths.push_back(std::move(new_path));
-                    }
-                } else {
-                    stack.push_back({neighbor, atom, std::move(new_path)});
-                }
+                current_path.push_back(bond);
+                dfs(neighbor, atom);
+                current_path.pop_back(); // Backtrack
             }
-        }
-    }
+        };
 
-    return paths;
+    // Start DFS from every monomer atom
+    for (auto start_atom : mol.atoms()) {
+        dfs(start_atom, nullptr);
+    }
 }
 
 std::unique_ptr<ExplicitBitVect>
@@ -333,23 +344,27 @@ generate_biologics_fingerprint(const RDKit::ROMol& mol,
     // this interface will be used to do the hashing
     BloomFilter bloom_filter{config.fp_size, config.num_hashes};
 
+    // Reusable buffer for building keys
+    fmt::memory_buffer key_buffer;
+
     // Add atom features
     for (auto atom : mol.atoms()) {
-        const auto atom_key = get_atom_key(atom);
-        bloom_filter.update(atom_key);
+        key_buffer.clear();
+        append_atom_key(atom, key_buffer);
+        bloom_filter.update(key_buffer);
     }
 
     // Add k-mer features
     for (unsigned int k = 2; k <= config.max_k; ++k) {
-        std::ranges::for_each(extract_kmers(mol, k), [&](auto& kmer) {
+        process_kmers(mol, k, [&](const KmerPath& kmer) {
             // Build composite key from all bonds in the k-mer
-            std::string kmer_key = "sequence";
+            key_buffer.clear();
+            fmt::format_to(std::back_inserter(key_buffer), "sequence");
             for (auto bond : kmer) {
-                kmer_key += ":";
-                kmer_key += get_bond_key(bond);
+                fmt::format_to(std::back_inserter(key_buffer), ":");
+                append_bond_key(bond, key_buffer);
             }
-
-            bloom_filter.update(kmer_key);
+            bloom_filter.update(key_buffer);
         });
     }
 
@@ -357,9 +372,11 @@ generate_biologics_fingerprint(const RDKit::ROMol& mol,
     constexpr bool includeDativeBonds = true;
     std::vector<std::vector<int>> rings;
     if (RDKit::MolOps::findSSSR(mol, rings, includeDativeBonds)) {
-        std::ranges::for_each(rings, [&](auto& cycle) {
-            bloom_filter.update(get_cycle_key(mol, cycle));
-        });
+        for (const auto& cycle : rings) {
+            key_buffer.clear();
+            append_cycle_key(mol, cycle, key_buffer);
+            bloom_filter.update(key_buffer);
+        }
     }
 
     return bloom_filter.get_bitset();
