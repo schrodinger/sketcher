@@ -15,10 +15,13 @@
 #include <boost/json.hpp>
 #include <boost/noncopyable.hpp>
 
+#include <queue>
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
 #include <rdkit/GraphMol/RDKitBase.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 
@@ -451,6 +454,59 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
 
     execute_sql_on(db, "COMMIT;");
 }
+
+// Enumerates all possible SMILES variations by replacing atom map numbers
+// with either the mapped atom or a dummy atom (element 0)
+std::vector<std::string> enumerate_smiles(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
+
+    static RDKit::Atom dummy_atom(0);
+
+    std::vector<std::string> enumerated_smiles;
+
+    std::queue<std::unique_ptr<RDKit::RWMol>> q;
+
+    q.emplace(MolFromSmiles(smiles, p));
+
+    while (!q.empty()) {
+        auto mol = std::move(q.front());
+        q.pop();
+
+        bool found_mapnum = false;
+        for (const auto& atom : mol->atoms()) {
+            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                found_mapnum = true;
+
+                // Clear the map number: We don't want them to be
+                // in the final SMILES, and pushing a copy of the
+                // modified molecule back onto the queue.
+                atom->clearProp(RDKit::common_properties::molAtomMapNumber);
+                q.emplace(new RDKit::RWMol(*mol));
+
+                // Now, replace the atom with a dummy, and push
+                // the mol back onto the queue.
+                mol->replaceAtom(atom->getIdx(), &dummy_atom);
+                q.push(std::move(mol));
+
+                // Only handle one map number at a time
+                break;
+            }
+        }
+
+        // This mol has been fully enumerated, so push the SMILES
+        // to the output vector.
+        if (!found_mapnum) {
+            // The mols we check against have all Hs removed.
+            RDKit::MolOps::removeAllHs(*mol);
+            enumerated_smiles.push_back(RDKit::MolToSmiles(*mol));
+        }
+    }
+
+    return enumerated_smiles;
+}
 } // namespace
 
 namespace schrodinger
@@ -525,6 +581,7 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 void MonomerDatabase::loadMonomersFromJson(std::string_view json)
@@ -539,6 +596,7 @@ void MonomerDatabase::loadMonomersFromJson(std::string_view json)
     }
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 void MonomerDatabase::insertMonomersFromJson(std::string_view json)
@@ -547,6 +605,7 @@ void MonomerDatabase::insertMonomersFromJson(std::string_view json)
         loadMonomersFromJson(json);
     } else {
         insert_monomers_from_json(m_custom_monomers_db, json);
+        invalidateCache();
     }
 }
 
@@ -577,6 +636,7 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 MonomerDatabase& MonomerDatabase::instance()
@@ -669,6 +729,7 @@ void MonomerDatabase::dumpToFile(sqlite3* db,
 void MonomerDatabase::resetMonomerDefinitions()
 {
     swap_custom_monomers_db(nullptr);
+    invalidateCache();
 }
 
 std::vector<std::string> MonomerDatabase::getDbFields() const
@@ -823,6 +884,7 @@ void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
             canonicalize_db(db);
         }
     }
+    invalidateCache();
 }
 
 [[nodiscard]] std::vector<std::pair<std::string, std::string>>
@@ -854,6 +916,31 @@ MonomerDatabase::getAllSMILES() const
     }
 
     return ret;
+}
+
+const std::unordered_map<std::string, std::string>&
+MonomerDatabase::getEnumeratedCoreSmiles() const
+{
+    if (!m_enumerated_core_smiles_cache.has_value()) {
+        std::unordered_map<std::string, std::string> core_smiles_to_monomer;
+
+        for (auto& [smiles, symbol] : getAllSMILES()) {
+            for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
+                // Note: If there are duplicates, the later entry will overwrite
+                core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
+                                               symbol);
+            }
+        }
+
+        m_enumerated_core_smiles_cache = std::move(core_smiles_to_monomer);
+    }
+
+    return *m_enumerated_core_smiles_cache;
+}
+
+void MonomerDatabase::invalidateCache()
+{
+    m_enumerated_core_smiles_cache.reset();
 }
 
 } // namespace rdkit_extensions
