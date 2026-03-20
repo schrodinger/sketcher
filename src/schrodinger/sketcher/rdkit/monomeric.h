@@ -19,6 +19,7 @@ namespace RDKit
 {
 class Atom;
 class Bond;
+class ROMol;
 } // namespace RDKit
 
 namespace schrodinger
@@ -129,7 +130,7 @@ SKETCHER_API MonomerType get_monomer_type(const RDKit::Atom* atom);
  * represents
  */
 SKETCHER_API MonomerType
-get_na_monomer_type_from_res_name(const std::string& res_name);
+get_na_monomer_type_from_res_name(const std::string_view res_name);
 
 /**
  * Determine the text to use for the name of the given monomer
@@ -225,6 +226,21 @@ SKETCHER_API std::string
 get_attachment_point_name_for_connection(const RDKit::Atom* monomer,
                                          const RDKit::Bond* connector,
                                          const bool is_secondary_connection);
+
+/**
+ * @return the attachment point number represented by the given name, e.g. 3 for
+ * "R3". If the attachment point name doesn't follow the standard "R" followed
+ * by a number format, then ATTACHMENT_POINT_WITH_CUSTOM_NAME will be returned.
+ */
+SKETCHER_API int ap_name_to_num(const std::string_view attachment_point_name);
+
+/**
+ * Take all monomers in the merge_from chain/polymer, and add them to the
+ * merge_to chain/polymer.
+ */
+SKETCHER_API void merge_chains(RDKit::ROMol& mol,
+                               const std::string_view merge_from,
+                               const std::string& merge_to);
 
 } // namespace sketcher
 } // namespace schrodinger

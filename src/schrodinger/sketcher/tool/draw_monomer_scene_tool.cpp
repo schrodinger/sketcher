@@ -577,18 +577,19 @@ void DrawMonomerSceneTool::onLeftButtonClick(
                 monomer_type, clicked_ap->model_name, m_monomer_type);
             auto new_pos = get_default_coords_for_bound_monomer(
                 monomer, clicked_ap->direction);
-            // TODO: implement this in MolModel
-            // m_mol_model->addBoundMonomer(m_res_name, m_chain_type, new_pos,
-            //                              new_monomer_ap_name, monomer,
-            //                              clicked_ap->model_name);
+            // the attachment point labels won't be valid once the new monomer
+            // is added, so clear them now (otherwise we risk a crash)
+            clearAttachmentPointsLabels();
+            m_mol_model->addBoundMonomer(m_res_name, m_chain_type, new_pos,
+                                         new_monomer_ap_name, monomer,
+                                         clicked_ap->model_name);
 
         } else if (clickShouldMutate(monomer, monomer_type)) {
             // the user clicked directly on the monomer and the clicked
             // monomer's residue name is different than the tool's, so we mutate
             // the clicked monomer
-            // TODO: uncomment after SKETCH-2631 is pushed
-            // m_mol_model->mutateMonomers({monomer}, m_res_name,
-            // m_monomer_type);
+            clearAttachmentPointsLabels();
+            m_mol_model->mutateMonomers({monomer}, m_res_name, m_monomer_type);
         }
     }
 }
