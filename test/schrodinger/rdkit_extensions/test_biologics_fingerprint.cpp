@@ -714,3 +714,165 @@ BOOST_AUTO_TEST_CASE(cage_structure)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(cycle_features)
+
+BOOST_AUTO_TEST_CASE(linear_vs_cyclic_fingerprints)
+{
+    const auto linear = "PEPTIDE1{A.C.G.T}$$$$V2.0";
+    const auto cyclic = "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+
+    auto fp_linear = generate_fp(linear);
+    auto fp_cyclic = generate_fp(cyclic);
+
+    // Cyclic and linear fingerprints should be different
+    BOOST_CHECK(*fp_linear != *fp_cyclic);
+
+    // Linear should be subset of cyclic (all linear k-mers are present)
+    BOOST_CHECK(is_substructure_fingerprint_match(linear, cyclic));
+
+    // Cyclic should NOT be subset of linear (has unique cycle features)
+    BOOST_CHECK(!is_substructure_fingerprint_match(cyclic, linear));
+}
+
+BOOST_AUTO_TEST_CASE(different_cycle_sizes)
+{
+    // Verify cycles of different sizes produce distinct fingerprints
+    const auto cycle4 = "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle6 =
+        "PEPTIDE1{A.C.G.T.E.F}$PEPTIDE1,PEPTIDE1,6:R2-1:R1$$$V2.0";
+    const auto cycle8 = "PEPTIDE1{A.C.G.T.E.F.H.I}$"
+                        "PEPTIDE1,PEPTIDE1,8:R2-1:R1$$$V2.0";
+
+    auto fp_cycle4 = generate_fp(cycle4);
+    auto fp_cycle6 = generate_fp(cycle6);
+    auto fp_cycle8 = generate_fp(cycle8);
+
+    // Different cycle sizes should have different fingerprints
+    BOOST_CHECK(*fp_cycle4 != *fp_cycle6);
+    BOOST_CHECK(*fp_cycle4 != *fp_cycle8);
+    BOOST_CHECK(*fp_cycle6 != *fp_cycle8);
+}
+
+BOOST_AUTO_TEST_CASE(cycle_composition_matters)
+{
+    // Cycles with different residue composition should produce different
+    // fingerprints
+    const auto cycle_acgt =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_aagg =
+        "PEPTIDE1{A.A.G.G}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_eeee =
+        "PEPTIDE1{E.E.E.E}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+
+    auto fp_acgt = generate_fp(cycle_acgt);
+    auto fp_aagg = generate_fp(cycle_aagg);
+    auto fp_eeee = generate_fp(cycle_eeee);
+
+    // Different compositions should produce different fingerprints
+    BOOST_CHECK(*fp_acgt != *fp_aagg);
+    BOOST_CHECK(*fp_acgt != *fp_eeee);
+    BOOST_CHECK(*fp_aagg != *fp_eeee);
+}
+
+BOOST_AUTO_TEST_CASE(rotation_invariance)
+{
+    // Rotated representations of the same cycle should have identical
+    // fingerprints
+    const auto cycle_acgt =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_cgta =
+        "PEPTIDE1{C.G.T.A}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_gtac =
+        "PEPTIDE1{G.T.A.C}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_tacg =
+        "PEPTIDE1{T.A.C.G}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+
+    auto fp_acgt = generate_fp(cycle_acgt);
+    auto fp_cgta = generate_fp(cycle_cgta);
+    auto fp_gtac = generate_fp(cycle_gtac);
+    auto fp_tacg = generate_fp(cycle_tacg);
+
+    // All rotations should have identical fingerprints
+    BOOST_CHECK(*fp_acgt == *fp_cgta);
+    BOOST_CHECK(*fp_acgt == *fp_gtac);
+    BOOST_CHECK(*fp_acgt == *fp_tacg);
+}
+
+BOOST_AUTO_TEST_CASE(multiple_cycles)
+{
+    // Structure with two separate cycles should capture both
+    const auto two_cycles =
+        "PEPTIDE1{A.C.G}|PEPTIDE2{T.E.F}$"
+        "PEPTIDE1,PEPTIDE1,3:R2-1:R1|PEPTIDE2,PEPTIDE2,3:R2-1:R1$$$V2.0";
+
+    const auto single_cycle1 =
+        "PEPTIDE1{A.C.G}$PEPTIDE1,PEPTIDE1,3:R2-1:R1$$$V2.0";
+    const auto single_cycle2 =
+        "PEPTIDE1{T.E.F}$PEPTIDE1,PEPTIDE1,3:R2-1:R1$$$V2.0";
+
+    // Both individual cycles should be substructures of the dual-cycle
+    // structure
+    BOOST_CHECK(is_substructure_fingerprint_match(single_cycle1, two_cycles));
+    BOOST_CHECK(is_substructure_fingerprint_match(single_cycle2, two_cycles));
+}
+
+BOOST_AUTO_TEST_CASE(different_linkage_types)
+{
+    // Same residues, same cycle size, but different attachment points
+    const auto cycle_r2_r1 =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_r3_r1 =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R3-1:R1$$$V2.0";
+    const auto cycle_r3_r3 =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R3-1:R3$$$V2.0";
+
+    auto fp_r2_r1 = generate_fp(cycle_r2_r1);
+    auto fp_r3_r1 = generate_fp(cycle_r3_r1);
+    auto fp_r3_r3 = generate_fp(cycle_r3_r3);
+
+    // Different linkage types should NOT match as substructures
+    BOOST_CHECK(!is_substructure_fingerprint_match(cycle_r2_r1, cycle_r3_r1));
+    BOOST_CHECK(!is_substructure_fingerprint_match(cycle_r3_r1, cycle_r2_r1));
+    BOOST_CHECK(!is_substructure_fingerprint_match(cycle_r2_r1, cycle_r3_r3));
+}
+
+BOOST_AUTO_TEST_CASE(linkage_with_same_linear_sequence)
+{
+    // Verify that cycles with different linkages don't match even if their
+    // linear sequence is identical
+    const auto linear = "PEPTIDE1{A.C.G.T}$$$$V2.0";
+    const auto cycle_r2_r1 =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    const auto cycle_r3_r1 =
+        "PEPTIDE1{A.C.G.T}$PEPTIDE1,PEPTIDE1,4:R3-1:R1$$$V2.0";
+
+    // Linear should be subset of both cycles (same k-mers)
+    BOOST_CHECK(is_substructure_fingerprint_match(linear, cycle_r2_r1));
+    BOOST_CHECK(is_substructure_fingerprint_match(linear, cycle_r3_r1));
+
+    // But the two cycles should NOT match each other (different cyclization)
+    BOOST_CHECK(!is_substructure_fingerprint_match(cycle_r2_r1, cycle_r3_r1));
+    BOOST_CHECK(!is_substructure_fingerprint_match(cycle_r3_r1, cycle_r2_r1));
+}
+
+BOOST_AUTO_TEST_CASE(canonical_rotation_with_repeats)
+{
+    // Test edge case with repeated elements
+    auto cyclic_aabc = "PEPTIDE1{A.A.B.C}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    auto cyclic_abca = "PEPTIDE1{A.B.C.A}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    auto cyclic_bcaa = "PEPTIDE1{B.C.A.A}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+    auto cyclic_caab = "PEPTIDE1{C.A.A.B}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0";
+
+    auto fp1 = generate_fp(cyclic_aabc);
+    auto fp2 = generate_fp(cyclic_abca);
+    auto fp3 = generate_fp(cyclic_bcaa);
+    auto fp4 = generate_fp(cyclic_caab);
+
+    // All should be equivalent
+    BOOST_CHECK(*fp1 == *fp2);
+    BOOST_CHECK(*fp2 == *fp3);
+    BOOST_CHECK(*fp3 == *fp4);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
