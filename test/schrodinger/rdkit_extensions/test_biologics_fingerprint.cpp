@@ -36,19 +36,27 @@ BOOST_AUTO_TEST_CASE(linear_peptide_kmer_counts)
     auto mol = helm::helm_to_rdkit("PEPTIDE1{A.C.G.T}$$$$V2.0");
 
     // k=2: A-C, C-G, G-T (3 k-mers)
-    const auto kmers_k2 = extract_kmers(*mol, 2);
+    std::vector<KmerPath> kmers_k2;
+    process_kmers(*mol, 2,
+                  [&](const KmerPath& kmer) { kmers_k2.push_back(kmer); });
     BOOST_CHECK_EQUAL(kmers_k2.size(), 3);
 
     // k=3: A-C-G, C-G-T (2 k-mers)
-    const auto kmers_k3 = extract_kmers(*mol, 3);
+    std::vector<KmerPath> kmers_k3;
+    process_kmers(*mol, 3,
+                  [&](const KmerPath& kmer) { kmers_k3.push_back(kmer); });
     BOOST_CHECK_EQUAL(kmers_k3.size(), 2);
 
     // k=4: A-C-G-T (1 k-mer)
-    const auto kmers_k4 = extract_kmers(*mol, 4);
+    std::vector<KmerPath> kmers_k4;
+    process_kmers(*mol, 4,
+                  [&](const KmerPath& kmer) { kmers_k4.push_back(kmer); });
     BOOST_CHECK_EQUAL(kmers_k4.size(), 1);
 
     // k=5: (0 k-mers)
-    const auto kmers_k5 = extract_kmers(*mol, 5);
+    std::vector<KmerPath> kmers_k5;
+    process_kmers(*mol, 5,
+                  [&](const KmerPath& kmer) { kmers_k5.push_back(kmer); });
     BOOST_CHECK_EQUAL(kmers_k5.size(), 0);
 }
 
@@ -58,26 +66,40 @@ BOOST_AUTO_TEST_CASE(longer_sequence_kmer_counts)
     auto mol = helm::helm_to_rdkit("PEPTIDE1{A.C.G.T.E.F}$$$$V2.0");
 
     // k=2: 5 k-mers
-    BOOST_CHECK_EQUAL(extract_kmers(*mol, 2).size(), 5);
+    std::vector<KmerPath> kmers_k2;
+    process_kmers(*mol, 2,
+                  [&](const KmerPath& kmer) { kmers_k2.push_back(kmer); });
+    BOOST_CHECK_EQUAL(kmers_k2.size(), 5);
 
     // k=3: 4 k-mers
-    BOOST_CHECK_EQUAL(extract_kmers(*mol, 3).size(), 4);
+    std::vector<KmerPath> kmers_k3;
+    process_kmers(*mol, 3,
+                  [&](const KmerPath& kmer) { kmers_k3.push_back(kmer); });
+    BOOST_CHECK_EQUAL(kmers_k3.size(), 4);
 
     // k=4: 3 k-mers
-    BOOST_CHECK_EQUAL(extract_kmers(*mol, 4).size(), 3);
+    std::vector<KmerPath> kmers_k4;
+    process_kmers(*mol, 4,
+                  [&](const KmerPath& kmer) { kmers_k4.push_back(kmer); });
+    BOOST_CHECK_EQUAL(kmers_k4.size(), 3);
 }
 
 BOOST_AUTO_TEST_CASE(kmer_path_correctness)
 {
     auto mol = helm::helm_to_rdkit("PEPTIDE1{A.C.G}$$$$V2.0");
-    const auto kmers = extract_kmers(*mol, 2);
+
+    std::vector<KmerPath> kmers;
+    process_kmers(*mol, 2,
+                  [&](const KmerPath& kmer) { kmers.push_back(kmer); });
 
     // Each k=2 path should have exactly 1 bond (k-1)
     for (const auto& kmer : kmers) {
         BOOST_CHECK_EQUAL(kmer.size(), 1);
     }
 
-    const auto kmers_k3 = extract_kmers(*mol, 3);
+    std::vector<KmerPath> kmers_k3;
+    process_kmers(*mol, 3,
+                  [&](const KmerPath& kmer) { kmers_k3.push_back(kmer); });
     // Each k=3 path should have exactly 2 bonds
     for (const auto& kmer : kmers_k3) {
         BOOST_CHECK_EQUAL(kmer.size(), 2);
@@ -88,8 +110,10 @@ BOOST_AUTO_TEST_CASE(invalid_k_value)
 {
     auto mol = helm::helm_to_rdkit("PEPTIDE1{A.C.G}$$$$V2.0");
 
-    BOOST_CHECK_THROW(extract_kmers(*mol, 0), std::invalid_argument);
-    BOOST_CHECK_THROW(extract_kmers(*mol, 1), std::invalid_argument);
+    BOOST_CHECK_THROW(process_kmers(*mol, 0, [](const KmerPath&) {}),
+                      std::invalid_argument);
+    BOOST_CHECK_THROW(process_kmers(*mol, 1, [](const KmerPath&) {}),
+                      std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -101,7 +125,7 @@ BOOST_AUTO_TEST_CASE(simple_generation)
     auto fp = generate_fp("PEPTIDE1{A.C.G}$$$$V2.0");
 
     BOOST_CHECK(fp != nullptr);
-    BOOST_CHECK_EQUAL(fp->getNumBits(), 2048); // Default size
+    BOOST_CHECK_EQUAL(fp->getNumBits(), 8192); // Default size
     BOOST_CHECK_GT(fp->getNumOnBits(), 0);     // Some bits should be set
 }
 
