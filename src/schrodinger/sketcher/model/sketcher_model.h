@@ -286,6 +286,7 @@ enum class ModelKey {
     MONOMER_TOOL_TYPE, /// whether the MONOMER tool should activate an
                        ///   AMINO_ACID_TOOL or a NUCLEIC_ACID_TOOL
     AMINO_ACID_TOOL,   /// the amino acid monomer to draw
+    AMINO_ACID_SYMBOL, /// the specific analog symbol (e.g. "dA") to draw
     NUCLEIC_ACID_TOOL, /// the nucleic acid monomer or full nucleotide to draw
     RNA_NUCLEOBASE,    /// the base to use for the RNA_NUCLEOTIDE tool
     DNA_NUCLEOBASE,    /// the base to use for the DNA_NUCLEOTIDE tool

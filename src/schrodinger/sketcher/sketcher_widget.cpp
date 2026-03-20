@@ -1359,11 +1359,14 @@ void SketcherWidget::applyModelValuePingToTargets(
             }
             break;
         }
-        case ModelKey::AMINO_ACID_TOOL: {
-            auto tool = value.value<AminoAcidTool>();
-            auto helm_symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(tool);
-            m_mol_model->mutateMonomers(atoms, helm_symbol,
-                                        MonomerType::PEPTIDE);
+        case ModelKey::AMINO_ACID_TOOL:
+            // Mutation is handled by AMINO_ACID_SYMBOL (which is always
+            // pinged alongside AMINO_ACID_TOOL) to avoid creating two
+            // separate undo commands for a single click.
+            break;
+        case ModelKey::AMINO_ACID_SYMBOL: {
+            auto symbol = value.toString().toStdString();
+            m_mol_model->mutateMonomers(atoms, symbol, MonomerType::PEPTIDE);
             break;
         }
         case ModelKey::NUCLEIC_ACID_TOOL: {
