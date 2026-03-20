@@ -323,16 +323,15 @@ void canonicalize_db(sqlite3* db)
 {
     constexpr std::string_view sql_select =
         "SELECT id, smiles FROM monomer_definitions ORDER BY id ASC;";
-    constexpr std::string_view sql_replace_tpl =
-        "UPDATE monomer_definitions SET smiles='{1}', core_smiles='{2}' "
-        "WHERE id={0};";
+    constexpr std::string_view sql_update =
+        "UPDATE monomer_definitions SET smiles=?, core_smiles=? WHERE id=?;";
 
     execute_sql_on(db, "BEGIN TRANSACTION;");
 
     try {
-        sqlite3_stmt* stmt = nullptr;
-        if (auto rc =
-                sqlite3_prepare_v2(db, sql_select.data(), -1, &stmt, NULL);
+        sqlite3_stmt* select_stmt = nullptr;
+        if (auto rc = sqlite3_prepare_v2(db, sql_select.data(), -1,
+                                         &select_stmt, NULL);
             rc != SQLITE_OK) {
             auto msg =
                 fmt::format("Error preparing SMILES canonicalization: {}",
@@ -340,19 +339,42 @@ void canonicalize_db(sqlite3* db)
             throw std::runtime_error(msg);
         }
 
-        managed_stmt_t statement(stmt, &sqlite3_finalize);
+        managed_stmt_t select_statement(select_stmt, &sqlite3_finalize);
 
-        for (auto rc = sqlite3_step(stmt); rc == SQLITE_ROW;
-             rc = sqlite3_step(stmt)) {
+        // Prepare the UPDATE statement with placeholders
+        sqlite3_stmt* update_stmt = nullptr;
+        if (auto rc = sqlite3_prepare_v2(db, sql_update.data(), -1,
+                                         &update_stmt, NULL);
+            rc != SQLITE_OK) {
+            auto msg = fmt::format("Error preparing UPDATE statement: {}",
+                                   sqlite3_errstr(rc));
+            throw std::runtime_error(msg);
+        }
+
+        managed_stmt_t update_statement(update_stmt, &sqlite3_finalize);
+
+        for (auto rc = sqlite3_step(select_stmt); rc == SQLITE_ROW;
+             rc = sqlite3_step(select_stmt)) {
 
             // column numbers used here are dictated by sql_select
-            auto id = sqlite3_column_int(stmt, 0);
-            auto smiles = _sqlite3_column_cstring(stmt, 1);
+            auto id = sqlite3_column_int(select_stmt, 0);
+            auto smiles = _sqlite3_column_cstring(select_stmt, 1);
             auto [new_smiles, new_core_smiles] =
                 canonicalize_monomer_smiles(smiles);
-            auto sql_replace =
-                fmt::format(sql_replace_tpl, id, new_smiles, new_core_smiles);
-            execute_sql_on(db, sql_replace.c_str());
+
+            // Bind parameters to the UPDATE statement
+            sqlite3_bind_text(update_stmt, 1, new_smiles.c_str(), -1,
+                              SQLITE_TRANSIENT);
+            sqlite3_bind_text(update_stmt, 2, new_core_smiles.c_str(), -1,
+                              SQLITE_TRANSIENT);
+            sqlite3_bind_int(update_stmt, 3, id);
+
+            if (auto rc = sqlite3_step(update_stmt); rc != SQLITE_DONE) {
+                throw std::runtime_error(fmt::format(
+                    "Error updating monomer: {}", sqlite3_errmsg(db)));
+            }
+
+            sqlite3_reset(update_stmt);
         }
 
     } catch (const std::runtime_error& e) {
