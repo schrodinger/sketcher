@@ -141,6 +141,18 @@ QGraphicsItem* create_label_for_bound_attachment_point(
     const bool is_secondary_connection, const std::string& ap_name,
     const QColor& color, const Fonts& fonts, const Scene* const scene)
 {
+    const auto* monomer_item = scene->getGraphicsItemForAtom(monomer);
+    return create_label_for_bound_attachment_point(
+        monomer, bound_monomer, is_secondary_connection, ap_name, color, fonts,
+        monomer_item);
+}
+
+QGraphicsItem* create_label_for_bound_attachment_point(
+    const RDKit::Atom* const monomer, const RDKit::Atom* const bound_monomer,
+    const bool is_secondary_connection, const std::string& ap_name,
+    const QColor& color, const Fonts& fonts,
+    const QGraphicsItem* const monomer_item)
+{
     // nothing to do if there's no label (e.g. phosphate attachment points)
     if (ap_name.empty()) {
         return nullptr;
@@ -158,13 +170,7 @@ QGraphicsItem* create_label_for_bound_attachment_point(
     // disulfide bonds or branching monomers), offset the label to account for
     // the arrowhead
     if (attachment_point_is_drawn_with_arrowhead(monomer, bound_monomer,
-                                                 is_secondary_connection) &&
-        scene != nullptr) {
-        // TODO: update this so we don't need the scene, since we can't use it
-        //       for hint structures (since it doesn't have the hint's atoms in
-        //       its bookkeeping, which is why the hint passes a nullptr for
-        //       scene)
-        const auto* monomer_item = scene->getGraphicsItemForAtom(monomer);
+                                                 is_secondary_connection)) {
         auto arrowhead_offset = get_monomer_arrowhead_offset(
             *monomer_item, to_scene_xy(bound_coords));
         ap_label_rect.translate(0, -arrowhead_offset);
@@ -230,6 +236,21 @@ std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
     const RDKit::Bond* const connector, const bool is_secondary_connection,
     const QColor& color, const Fonts& fonts, const Scene* const scene)
 {
+    const auto* begin_monomer_item =
+        scene->getGraphicsItemForAtom(connector->getBeginAtom());
+    const auto* end_monomer_item =
+        scene->getGraphicsItemForAtom(connector->getEndAtom());
+    return create_attachment_point_labels_for_connector(
+        connector, is_secondary_connection, color, fonts, begin_monomer_item,
+        end_monomer_item);
+}
+
+std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
+    const RDKit::Bond* const connector, const bool is_secondary_connection,
+    const QColor& color, const Fonts& fonts,
+    const QGraphicsItem* const begin_monomer_item,
+    const QGraphicsItem* const end_monomer_item)
+{
     auto begin_monomer = connector->getBeginAtom();
     auto end_monomer = connector->getEndAtom();
     auto begin_ap_name = get_attachment_point_name_for_connection(
@@ -248,10 +269,10 @@ std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
     } else {
         auto* item1 = create_label_for_bound_attachment_point(
             begin_monomer, end_monomer, is_secondary_connection, begin_ap_name,
-            color, fonts, scene);
+            color, fonts, begin_monomer_item);
         auto* item2 = create_label_for_bound_attachment_point(
             end_monomer, begin_monomer, is_secondary_connection, end_ap_name,
-            color, fonts, scene);
+            color, fonts, end_monomer_item);
         for (auto* item : {item1, item2}) {
             if (item != nullptr) {
                 ap_label_items.push_back(item);

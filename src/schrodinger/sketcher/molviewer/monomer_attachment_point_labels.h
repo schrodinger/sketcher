@@ -53,6 +53,15 @@ SKETCHER_API QGraphicsItem* create_label_for_bound_attachment_point(
     const QColor& color, const Fonts& fonts, const Scene* const scene);
 
 /**
+ * @overload accepts the graphics item for monomer in place of the scene
+ */
+SKETCHER_API QGraphicsItem* create_label_for_bound_attachment_point(
+    const RDKit::Atom* const monomer, const RDKit::Atom* const bound_monomer,
+    const bool is_secondary_connection, const std::string& ap_name,
+    const QColor& color, const Fonts& fonts,
+    const QGraphicsItem* const monomer_item);
+
+/**
  * Create and return labels for the attachment points on both ends of the
  * specified connector. The calling scope takes ownership of all returned
  * graphics items. Note that only a single (centered) graphics item will be
@@ -64,6 +73,17 @@ create_attachment_point_labels_for_connector(const RDKit::Bond* const connector,
                                              const QColor& color,
                                              const Fonts& fonts,
                                              const Scene* const scene);
+
+/**
+ * @overload accepts the graphics items for the monomers involved in the
+ * connection in place of the scene
+ */
+SKETCHER_API std::vector<QGraphicsItem*>
+create_attachment_point_labels_for_connector(
+    const RDKit::Bond* const connector, const bool is_secondary_connection,
+    const QColor& color, const Fonts& fonts,
+    const QGraphicsItem* const begin_monomer_item,
+    const QGraphicsItem* const end_monomer_item);
 
 } // namespace sketcher
 } // namespace schrodinger

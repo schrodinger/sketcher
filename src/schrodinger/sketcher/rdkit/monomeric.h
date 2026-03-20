@@ -1,9 +1,12 @@
 #pragma once
 
+#include <concepts>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
+#include <fmt/format.h>
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
@@ -55,6 +58,13 @@ enum { TO_PREV_SUGAR = 1, TO_NEXT_SUGAR = 2 };
 
 constexpr int NA_BASE_AP_N1_9 = 1;
 const std::string NA_BASE_AP_PAIR = "pair";
+
+/**
+ * Convert any of the above attachment point enums (or NA_BASE_AP_N1_9) to the
+ * equivalent model name, which is simply "R" followed by the attachment point
+ * number.
+ */
+SKETCHER_API std::string ap_model_name_for(int ap_num);
 
 /**
  * Information about an attachment point on a monomer that's bound to another
