@@ -118,6 +118,7 @@ struct MonomerMatch {
     // second attachment point 2; this is used in rare cases where a candidate
     // monomer has two atoms that are connected to r1 in another monomer.
     unsigned int r2prime = NO_ATTACHMENT;
+    int chain_idx = 1;
 };
 
 struct Linkage {
@@ -819,15 +820,22 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
         }
     }
 
-    static constexpr const char* CHAIN_ID = "PEPTIDE1";
-
     int residue_num = 1;
+    int prev_chain_idx = -1;
     for (const auto& monomer : monomers) {
+        if (monomer.chain_idx != prev_chain_idx) {
+            // Start a new chain.
+            residue_num = 1;
+            prev_chain_idx = monomer.chain_idx;
+        }
+        auto chain_id = fmt::format("PEPTIDE{}", monomer.chain_idx);
         auto helm_symbol = findHelmSymbol(atomistic_mol, monomer);
 
         // If the monomer is a known amino acid, use the 1-letter code
         if (helm_symbol) {
-            addMonomer(*monomer_mol, *helm_symbol, residue_num, CHAIN_ID);
+            PRINT("addMonomer({}, {}:{})\n", *helm_symbol, monomer.chain_idx,
+                  residue_num);
+            addMonomer(*monomer_mol, *helm_symbol, residue_num, chain_id);
         } else {
             // We need to add R1/R2 attachment points to the monomer
             RDKit::RWMol atomistic_copy(atomistic_mol);
@@ -881,7 +889,7 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
             }
             auto monomer_smiles = RDKit::MolToSmiles(*mol_fragment);
 
-            addMonomer(*monomer_mol, monomer_smiles, residue_num, CHAIN_ID,
+            addMonomer(*monomer_mol, monomer_smiles, residue_num, chain_id,
                        MonomerType::SMILES);
         }
         ++residue_num;
@@ -895,14 +903,17 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
               link.monomer_idx2, link.to_string(), is_custom_bond);
         addConnection(*monomer_mol, link.monomer_idx1, link.monomer_idx2,
                       link.to_string(), is_custom_bond);
+        if (!is_custom_bond && link.to_string() == "R3-R3") {
+            addConnection(*monomer_mol, link.monomer_idx2, link.monomer_idx1,
+                          link.to_string(), true);
+        }
     }
 }
 
-size_t findStartMonomer(const std::vector<int>& parents)
+size_t findStartMonomer(const std::vector<int>& parents, size_t current_monomer)
 {
     // Find the start monomer by picking arbitrary monomer then following
     // edges until a cycle is detected or the source is reached.
-    auto current_monomer = 0;
     std::vector<bool> visited(parents.size(), false);
     while (parents[current_monomer] != -1 &&
            !visited[parents[current_monomer]]) {
@@ -923,7 +934,8 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
         monomers.size());
     std::vector<int> parents(monomers.size(), -1);
     for (auto& link : linkages) {
-        if (link.attach_from != link.attach_to) {
+        if (link.attach_to == 1 &&
+            (link.attach_from == 2 || link.attach_from == 3)) {
             // This skips disulfide (or other R3-R3 bonds) because that would
             // indicate the need for multiple chains, see SHARED-10787 Ensure we
             // go R2->R1 and R3->R1 for directionality
@@ -935,15 +947,16 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
             parents[link.monomer_idx2] = link.monomer_idx1;
         }
     }
-    auto start_monomer = findStartMonomer(parents);
-    auto start_monomer_atom_idx = monomers[start_monomer].atom_indices.front();
 
     // Build ordered list starting from the best candidate
     std::vector<size_t> new_monomer_order;
     std::vector<bool> visited(monomers.size(), false);
+    int chain_idx = 0;
 
     // Helper function for DFS traversal that follows R2->R1 directionality
+    // Updates new_monomer_order and monomers[].chain_idx as a side effect.
     std::function<void(size_t)> dfs = [&](size_t current) {
+        monomers[current].chain_idx = chain_idx;
         visited[current] = true;
         new_monomer_order.push_back(current);
 
@@ -983,18 +996,25 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
         }
     };
 
-    dfs(start_monomer);
-
-    // If not all monomers were visited (disjoint chains), we have a
-    // disconnected graph -- for now, throw an error.
-    for (size_t i = 0; i < monomers.size(); ++i) {
-        if (!visited[i]) {
-            auto this_at_idx = monomers[i].atom_indices.front();
-            throw std::runtime_error(fmt::format(
-                "Could not traverse bonds from atom {} to atom {} - chains "
-                "with disconnections or missing residues are not supported",
-                start_monomer_atom_idx, this_at_idx));
+    auto find_unvisited_monomer_idx = [&]() -> std::optional<size_t> {
+        for (size_t i = 0; i < monomers.size(); ++i) {
+            if (!visited[i]) {
+                return i;
+            }
         }
+        return {};
+    };
+
+    while (auto unvisited_monomer = find_unvisited_monomer_idx()) {
+        auto start_monomer = findStartMonomer(parents, *unvisited_monomer);
+        chain_idx++;
+        if (chain_idx > 1000) {
+            // "Should never happen", but I've seen weird situations that
+            // caused this; they are all fixed but I worry I might have missed
+            // and unseen one.
+            throw std::runtime_error("infinite loop in orderMonomers!");
+        }
+        dfs(start_monomer);
     }
 
     // Determine index mapping from old to new order

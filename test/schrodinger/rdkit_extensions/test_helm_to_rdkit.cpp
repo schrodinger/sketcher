@@ -397,8 +397,7 @@ BOOST_DATA_TEST_CASE(TestPolymerGroups,
                    "DATAFIELDS")[0]);
 };
 
-BOOST_FIXTURE_TEST_CASE(TestExtendedAnnotations,
-                        schrodinger::test::silence_stdlog)
+BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
 {
     // check invalid json
     std::string annotations = "{some invalid json here}";
@@ -496,16 +495,14 @@ BOOST_DATA_TEST_CASE(TestNeighboringMonomerCustomBonds,
     }
 }
 
-BOOST_DATA_TEST_CASE_F(
-    schrodinger::test::silence_stdlog,
-    TestNeighboringMonomerUnsupportedCustomBonds,
-    bdata::make(std::vector<std::string>{
-        "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:pair-2:pair$$$V2.0",
-        "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R2-2:R1$$$V2.0",
-        "PEPTIDE1{A.C}|PEPTIDE2{C.P}$PEPTIDE1,PEPTIDE2,1:R2-1:"
-        "R1|PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
-    }),
-    test_helm)
+BOOST_DATA_TEST_CASE(TestNeighboringMonomerUnsupportedCustomBonds,
+                     bdata::make(std::vector<std::string>{
+                         "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:pair-2:pair$$$V2.0",
+                         "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R2-2:R1$$$V2.0",
+                         "PEPTIDE1{A.C}|PEPTIDE2{C.P}$PEPTIDE1,PEPTIDE2,1:R2-1:"
+                         "R1|PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
+                     }),
+                     test_helm)
 {
     BOOST_CHECK_THROW(std::ignore = helm_to_rdkit(test_helm),
                       std::runtime_error);
