@@ -459,86 +459,17 @@ void neutralizeAtoms(RDKit::ROMol& mol)
     }
 }
 
-std::vector<std::string> enumerate_smiles(const std::string& smiles)
-{
-    using namespace RDKit::v2::SmilesParse;
-
-    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
-
-    static RDKit::Atom dummy_atom(0);
-
-    std::vector<std::string> enumerated_smiles;
-
-    std::queue<std::unique_ptr<RDKit::RWMol>> q;
-
-    q.emplace(MolFromSmiles(smiles, p));
-
-    while (!q.empty()) {
-        auto mol = std::move(q.front());
-        q.pop();
-
-        bool found_mapnum = false;
-        for (const auto& atom : mol->atoms()) {
-            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
-                found_mapnum = true;
-
-                // Clear the map number: We don't want them to be
-                // in the final SMILES, and pushing a copy of the
-                // modified molecule back onto the queue.
-                atom->clearProp(RDKit::common_properties::molAtomMapNumber);
-                q.emplace(new RDKit::RWMol(*mol));
-
-                // Now, replace the atom with a dummy, and push
-                // the mol back onto the queue.
-                mol->replaceAtom(atom->getIdx(), &dummy_atom);
-                q.push(std::move(mol));
-
-                // Only handle one map number at a time
-                break;
-            }
-        }
-
-        // This mol has been fully enumerated, so push the SMILES
-        // to the output vector.
-        if (!found_mapnum) {
-            // The mols we check against have all Hs removed.
-            RDKit::MolOps::removeAllHs(*mol);
-            enumerated_smiles.push_back(RDKit::MolToSmiles(*mol));
-        }
-    }
-
-    return enumerated_smiles;
-}
-
-std::unordered_map<std::string, std::string> enumerate_all_core_smiles()
-{
-    std::unordered_map<std::string, std::string> core_smiles_to_monomer;
-
-    const auto& db = MonomerDatabase::instance();
-
-    for (auto& [smiles, symbol] : db.getAllSMILES()) {
-        for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
-            // TO DO: should we check for duplicates ? how do we handle them?
-            core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
-                                           symbol);
-        }
-    }
-
-    return core_smiles_to_monomer;
-}
-
 std::optional<std::string>
 findHelmSymbol(const RDKit::ROMol& atomistic_mol,
                const std::vector<unsigned int>& atom_indices)
 {
     static RDKit::Atom dummy_atom(0);
 
-    // This may get big and slow. Currently, enumeration of the 62 default
-    // monomer definitions in default_monomer_definitions.json into 292
-    // possible substitution states takes about 20 ms on my linux desktop.
-    // But it may get untractable if we need to handle thousands of monomer
-    // definitions or more.
-    static auto amino_acids = enumerate_all_core_smiles();
+    // Get the cached enumerated core SMILES from the database.
+    // The cache is maintained by MonomerDatabase and invalidated when the
+    // database is modified.
+    const auto& amino_acids =
+        MonomerDatabase::instance().getEnumeratedCoreSmiles();
 
     auto mol_fragment = ExtractMolFragment(atomistic_mol, atom_indices, false);
 
