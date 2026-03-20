@@ -718,9 +718,9 @@ get_residue_number_for_new_monomer(const std::string_view res_name,
             new_monomer_ap_name == ap_model_name_for(NASugarAP::THREE_PRIME)) {
             // sugars can link to the previous residue
             res_num_offset = -1;
-        } else if (!(monomer_type == MonomerType::NA_PHOSPHATE &&
-                         new_monomer_ap_name ==
-                             ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR) ||
+        } else if (!((monomer_type == MonomerType::NA_PHOSPHATE &&
+                      new_monomer_ap_name ==
+                          ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)) ||
                      (monomer_type == MonomerType::NA_BASE &&
                       new_monomer_ap_name == NA_BASE_AP_PAIR))) {
             // phosphates and bases can link to the next residue, but all other
