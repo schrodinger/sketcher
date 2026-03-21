@@ -158,6 +158,15 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
  */
 static void assign_CIP_labels(RDKit::RWMol& mol)
 {
+    // The CIPLabeler cannot handle non-integer bond orders (e.g. query bonds
+    // with UNSPECIFIED type). CIP labels are also undefined for query
+    // structures, so skip assignment entirely when any query bond is present.
+    for (const auto* bond : mol.bonds()) {
+        if (bond->hasQuery()) {
+            return;
+        }
+    }
+
     try {
         // Set in SHARED-11140
         unsigned max_cycles = 2000000;
