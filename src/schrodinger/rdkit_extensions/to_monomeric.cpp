@@ -118,6 +118,7 @@ struct MonomerMatch {
     // second attachment point 2; this is used in rare cases where a candidate
     // monomer has two atoms that are connected to r1 in another monomer.
     unsigned int r2prime = NO_ATTACHMENT;
+    int chain_idx = 1;
 };
 
 struct Linkage {
@@ -141,9 +142,6 @@ struct Linkage {
     }
 };
 
-std::optional<std::string> findHelmSymbol(const RDKit::ROMol& atomistic_mol,
-                                          const MonomerMatch& monomer);
-
 bool alreadyMatched(const RDKit::ROMol& mol, std::span<const unsigned int> ids)
 {
     // Make sure this match hasn't already been accounted for by a previous
@@ -157,6 +155,77 @@ bool alreadyMatched(const RDKit::ROMol& mol, std::span<const unsigned int> ids)
         }
     }
     return true;
+}
+
+// Add a dummy atom connected to atom_idxs via single bond.
+void addDummyAtom(RDKit::RWMol& mol_fragment, unsigned int atom_idx)
+{
+    static RDKit::Atom dummy_atom(0);
+
+    constexpr bool update_label = false;
+    constexpr bool take_ownership = false; // make a copy
+    auto new_atom_idx =
+        mol_fragment.addAtom(&dummy_atom, update_label, take_ownership);
+    mol_fragment.addBond(new_atom_idx, atom_idx, RDKit::Bond::SINGLE);
+}
+
+// Add dummy atoms next to the attachment points and remove the terminal
+// atom to make a fragment representation of a monomer suitable for search
+// in the database.
+void decorateFragment(RDKit::RWMol& mol_fragment, const MonomerMatch& monomer)
+{
+    mol_fragment.beginBatchEdit();
+    for (auto* at : mol_fragment.atoms()) {
+        auto at_idx = at->getIdx();
+        auto ref_idx = at->getProp<unsigned int>(REFERENCE_IDX);
+        if (ref_idx == monomer.terminal_atom) {
+            // This is a chain terminating O/N. We need to remove it, since
+            // in the enumeration we replace these with dummy atoms
+            mol_fragment.removeAtom(at_idx);
+        } else if (ref_idx == monomer.r1 || ref_idx == monomer.r2 ||
+                   ref_idx == monomer.r3) {
+            addDummyAtom(mol_fragment, at_idx);
+        }
+    }
+    mol_fragment.commitBatchEdit();
+    // we only replaced attachment points with dummy atoms, I think
+    // we shouldn't require a ring finding or a sanitization,
+    // just updating the valence (RDKit now resets them when adding bonds).
+    mol_fragment.updatePropertyCache(false);
+}
+
+// Search for the mol_fragment in the database. The fragment should have
+// dummy atoms next to the attachment points and not have a terminal atom.
+std::optional<std::string> findHelmSymbol(const RDKit::ROMol& mol_fragment)
+{
+    const auto& amino_acids =
+        MonomerDatabase::instance().getEnumeratedCoreSmiles();
+
+    auto monomer_smiles = RDKit::MolToSmiles(mol_fragment, true);
+    PRINT("  monomer_smiles: {}\n", monomer_smiles);
+
+    if (auto result = amino_acids.find(monomer_smiles);
+        result != amino_acids.end()) {
+        auto& monomer_symbol = result->second;
+        PRINT("  matched symbol: {}\n", monomer_symbol);
+        return monomer_symbol;
+    }
+
+    PRINT("  no match\n");
+    return std::nullopt;
+}
+
+std::optional<std::string> findHelmSymbol(const RDKit::ROMol& atomistic_mol,
+                                          const MonomerMatch& monomer)
+{
+    PRINT("findHelmSymbol {}\n", fmt::join(monomer.atom_indices, " "));
+    PRINT("  rs: {} {} {} {}\n", monomer.r1, monomer.r2, monomer.r3,
+          monomer.terminal_atom);
+
+    auto mol_fragment =
+        ExtractMolFragment(atomistic_mol, monomer.atom_indices, false);
+    decorateFragment(*mol_fragment, monomer);
+    return findHelmSymbol(*mol_fragment);
 }
 
 /*
@@ -225,26 +294,330 @@ void addMatchesToMonomers(
     }
 }
 
-void addSidechainToMonomer(const RDKit::ROMol& atomistic_mol,
-                           std::vector<unsigned int>& monomer,
-                           unsigned int monomer_idx, unsigned int attch_at_idx)
+// Delete the atoms on the far side of the non-ring bond between near_atom_idx
+// and far_atom_idx.
+void deleteFarAtoms(RDKit::RWMol& mol, int near_atom_idx, int far_atom_idx)
 {
-    // BFS but use MONOMER_IDX as visited marker
+    std::vector<bool> visited(mol.getNumAtoms(), false);
+    visited[near_atom_idx] = true;
+
+    std::function<void(size_t)> dfs = [&](size_t atom_idx) {
+        visited[atom_idx] = true;
+        auto atom = mol.getAtomWithIdx(atom_idx);
+        for (const auto& nbr : mol.atomNeighbors(atom)) {
+            auto nbr_idx = nbr->getIdx();
+            if (!visited[nbr_idx]) {
+                dfs(nbr->getIdx());
+            }
+        }
+        mol.removeAtom(atom);
+    };
+
+    mol.beginBatchEdit();
+    dfs(far_atom_idx);
+    mol.commitBatchEdit();
+};
+
+// Return a bitset of bonds where the bonds matching the query are on.
+// The query must match two atoms.
+std::vector<bool> getBondMatches(RDKit::ROMol& mol, RDKit::ROMol& bond_query)
+{
+    assert(bond_query.getNumAtoms() == 2);
+    std::vector<bool> bond_matches(mol.getNumBonds());
+    for (const auto& match : RDKit::SubstructMatch(mol, bond_query)) {
+        auto* bond = mol.getBondBetweenAtoms(match[0].second, match[1].second);
+        bond_matches[bond->getIdx()] = true;
+    }
+    return bond_matches;
+}
+
+// Take the atoms in candidate atoms, which constitute the linked sidechains
+// between two monomers, and determine which atoms belong to each monomer.
+// The ideal partition  results in at least one of the resulting monomers being
+// found in the monomer database; if none are found, heuristics will be used
+// such as preferring bonds between heteroatoms.
+void partitionLinkingSidechain(const RDKit::ROMol& atomistic_mol,
+                               std::vector<MonomerMatch>& monomers,
+                               const std::vector<unsigned int>& candidate_atoms,
+                               unsigned int attch_at_idx1,
+                               unsigned int attch_at_idx2)
+{
+    // This represents a possible cut point to use when we don't find any
+    // matches in the monomer database.
+    struct CutCandidate {
+        // "Test mols" contain _only_ the atoms belonging to a monomer if we go
+        // with this cut (plus dummies at attachment points)
+        std::shared_ptr<RDKit::ROMol> test_mol1;
+        std::shared_ptr<RDKit::ROMol> test_mol2;
+
+        // These atoms indices are used with the "fragment mols" which include
+        // the corresponding monomer plus _all_ atoms in the path between the
+        // two monomers. We used this because the path was determined using
+        // these fragments and using yet another atom mapping would be even
+        // more confusing. :-)
+        int near_atom_idx1;
+        int near_atom_idx2;
+
+        // The lower the better.
+        int score;
+    };
+
+    // Extract a fragment containing the monomer backbone plus the entire
+    // linker leading to the other monomer. The fragment is decorated
+    // to be suitable for querying findHelmSymbol.
+    auto make_fragment = [&](MonomerMatch& monomer) {
+        auto atom_indices = monomer.atom_indices; // copy
+        atom_indices.insert(atom_indices.end(), candidate_atoms.begin(),
+                            candidate_atoms.end());
+        atom_indices.push_back(attch_at_idx1);
+        atom_indices.push_back(attch_at_idx2);
+        auto mol_fragment =
+            ExtractMolFragment(atomistic_mol, atom_indices, false);
+        decorateFragment(*mol_fragment, monomer);
+        RDKit::MolOps::findSSSR(*mol_fragment);
+        std::unordered_map<unsigned int, unsigned int> atom_map;
+        for (auto* frag_atom : mol_fragment->atoms()) {
+            unsigned int ref_idx = 0;
+            if (frag_atom->getPropIfPresent(REFERENCE_IDX, ref_idx)) {
+                atom_map[ref_idx] = frag_atom->getIdx();
+                PRINT(" {} -> {}\n", ref_idx, frag_atom->getIdx());
+            }
+        }
+        std::list<int> path_list = RDKit::MolOps::getShortestPath(
+            *mol_fragment, atom_map[attch_at_idx1], atom_map[attch_at_idx2]);
+        std::vector<int> path(path_list.begin(), path_list.end());
+        PRINT("path({}, {}): {}\n", atom_map[attch_at_idx1],
+              atom_map[attch_at_idx2], fmt::join(path, " "));
+        return std::make_pair(mol_fragment, path);
+    };
+
+    // A "test mol" is a copy of the given fragment where all the atoms on the
+    // far side of the specified bond have been deleted and replaced with one
+    // dummy atom. Used for querying findHelmSymbol().
+    auto make_test_mol = [&](const RDKit::RWMol& mol_fragment,
+                             auto near_atom_idx, auto far_atom_idx) {
+        auto test_mol = std::make_shared<RDKit::RWMol>(mol_fragment); // copy
+        addDummyAtom(*test_mol, near_atom_idx);
+        deleteFarAtoms(*test_mol, near_atom_idx, far_atom_idx);
+        return test_mol;
+    };
+
+    // Update the R3 attachment point in monomers[monomer_idx] as well as the
+    // necessary atom properties in atomistic_mol.
+    auto update_monomer = [&](unsigned int monomer_idx,
+                              const RDKit::ROMol& mol_fragment,
+                              const RDKit::ROMol& test_mol,
+                              unsigned int r3_atom_idx) {
+        auto* r3_atom = mol_fragment.getAtomWithIdx(r3_atom_idx);
+        auto ref_r3_atom_idx = r3_atom->getProp<unsigned int>(REFERENCE_IDX);
+        auto* ref_r3_atom = atomistic_mol.getAtomWithIdx(ref_r3_atom_idx);
+        ref_r3_atom->setProp<unsigned int>(ATTACH_NUM, 3);
+        auto& monomer = monomers[monomer_idx];
+        monomer.r3 = ref_r3_atom_idx;
+        monomer.atom_indices.clear();
+        if (monomer.terminal_atom != NO_ATTACHMENT) {
+            monomer.atom_indices.push_back(monomer.terminal_atom);
+        }
+        for (auto* atom : test_mol.atoms()) {
+            if (unsigned int ref_idx = 0;
+                atom->getPropIfPresent(REFERENCE_IDX, ref_idx)) {
+                auto* ref_atom = atomistic_mol.getAtomWithIdx(ref_idx);
+                ref_atom->setProp<unsigned int>(MONOMER_IDX, monomer_idx);
+                monomer.atom_indices.push_back(ref_idx);
+            }
+        }
+        PRINT("update_monomer {}: {}\n", monomer_idx,
+              fmt::join(monomer.atom_indices, " "));
+    };
+
+    // Compute a score for cutting the bond between the specified atoms.
+    // Zero means "no"; the lower, the better.
+    auto score_cut = [&](const RDKit::ROMol& mol_fragment, int at_idx1,
+                         int at_idx2, const std::vector<bool>& disulfide_bonds,
+                         const std::vector<bool>& amide_or_ester_bonds) {
+        auto* bond = mol_fragment.getBondBetweenAtoms(at_idx1, at_idx2);
+        auto bond_idx = bond->getIdx();
+        if (disulfide_bonds[bond_idx]) {
+            return -2;
+        } else if (amide_or_ester_bonds[bond_idx]) {
+            return -1;
+        } else {
+            return 0;
+        }
+    };
+
+    // ---- Main body of function ----
+
+    PRINT("\npartitionLinkingSidechain\n");
+
+    auto monomer_idx1 = atomistic_mol.getAtomWithIdx(attch_at_idx1)
+                            ->getProp<unsigned int>(MONOMER_IDX);
+    auto monomer_idx2 = atomistic_mol.getAtomWithIdx(attch_at_idx2)
+                            ->getProp<unsigned int>(MONOMER_IDX);
+    PRINT("monomer before {}: {}\n", monomer_idx1,
+          fmt::join(monomers[monomer_idx1].atom_indices, " "));
+    PRINT("monomer before {}: {}\n", monomer_idx2,
+          fmt::join(monomers[monomer_idx2].atom_indices, " "));
+    auto [fragment1, path1] = make_fragment(monomers[monomer_idx1]);
+    auto [fragment2, path2] = make_fragment(monomers[monomer_idx2]);
+    auto* ring_info = fragment1->getRingInfo();
+
+    static const std::unique_ptr<RDKit::ROMol> amide_or_ester_query(
+        RDKit::SmartsToMol("[$(C=O)][N,O]"));
+    static const std::unique_ptr<RDKit::ROMol> disulfide_query(
+        RDKit::SmartsToMol("SS"));
+    auto amide_or_ester_bonds =
+        getBondMatches(*fragment1, *amide_or_ester_query);
+    auto disulfide_bonds = getBondMatches(*fragment1, *disulfide_query);
+
+    std::vector<CutCandidate> cut_candidates;
+
+    // Loop back through the paths, searching for the cut point.
+    for (size_t i = 0; i < path1.size() - 1; i++) {
+        auto near_atom_idx1 = path1[i];
+        auto far_atom_idx1 = path1[i + 1];
+        auto near_atom_idx2 = path2[i + 1];
+        auto far_atom_idx2 = path2[i];
+        auto* bond =
+            fragment1->getBondBetweenAtoms(near_atom_idx1, far_atom_idx1);
+        if (ring_info->numBondRings(bond->getIdx()) != 0) {
+            // A ring bond wouldn't cut the link between monomers, so skip it.
+            continue;
+        }
+
+        auto test_mol1 =
+            make_test_mol(*fragment1, near_atom_idx1, far_atom_idx1);
+        auto test_mol2 =
+            make_test_mol(*fragment2, near_atom_idx2, far_atom_idx2);
+
+        if (findHelmSymbol(*test_mol1) || findHelmSymbol(*test_mol2)) {
+            // Found a cut!
+            PRINT("found a cut1 {}-{}\n", near_atom_idx1, far_atom_idx1);
+
+            update_monomer(monomer_idx1, *fragment1, *test_mol1,
+                           near_atom_idx1);
+            update_monomer(monomer_idx2, *fragment2, *test_mol2,
+                           near_atom_idx2);
+            PRINT("done with partition\n");
+            return;
+        } else {
+            auto score = score_cut(*fragment1, near_atom_idx1, far_atom_idx1,
+                                   disulfide_bonds, amide_or_ester_bonds);
+            PRINT("Candidate {}-{} score {}\n", near_atom_idx1, far_atom_idx1,
+                  score);
+            if (score != 0) {
+                cut_candidates.push_back({test_mol1, test_mol2, near_atom_idx1,
+                                          near_atom_idx2, score});
+            }
+        }
+    }
+
+    // No cuts matched any known monomers; see if we have a good fallback
+    // candidate from the bond SMARTS searches.
+    std::ranges::sort(cut_candidates, {}, &CutCandidate::score);
+    if (cut_candidates.empty() ||
+        (cut_candidates.size() > 1 &&
+         cut_candidates[0].score == cut_candidates[1].score)) {
+        throw std::runtime_error("Couldn't find partition");
+    }
+    auto& cut = cut_candidates.front();
+    update_monomer(monomer_idx1, *fragment1, *cut.test_mol1,
+                   cut.near_atom_idx1);
+    update_monomer(monomer_idx2, *fragment2, *cut.test_mol2,
+                   cut.near_atom_idx2);
+}
+
+// Return the list of side chain atoms reachable from attch_at_idx. If the
+// sidechain reaches another monomer via a non-attachment atom, the other
+// monomer's attachment value is returned in the second value. In that case the
+// list will presumably contain atoms from both monomers, which need to be
+// partitioned.
+std::pair<std::vector<unsigned int>, std::optional<unsigned int>>
+getSidechainAtoms(const RDKit::ROMol& atomistic_mol, unsigned int monomer_idx,
+                  unsigned int attch_at_idx)
+{
+    std::vector<bool> is_visited(atomistic_mol.getNumAtoms(), false);
+    std::vector<unsigned int> visited_atoms;
+    std::optional<unsigned int> other_attach_at_idx;
+
     std::queue<unsigned int> q;
     q.push(attch_at_idx);
+    is_visited[attch_at_idx] = true;
+
+    // BFS search for reachable atoms that are assiged to any monomer yet.
     while (!q.empty()) {
         auto at_idx = q.front();
         q.pop();
         auto at = atomistic_mol.getAtomWithIdx(at_idx);
-        if (!at->hasProp(MONOMER_IDX)) {
-            at->setProp<unsigned int>(MONOMER_IDX, monomer_idx);
-            monomer.push_back(at_idx);
+
+        // Track atoms without MONOMER_IDX that we visited
+        if (!at->hasProp(MONOMER_IDX) && at_idx != attch_at_idx) {
+            visited_atoms.push_back(at_idx);
         }
+
+        // Continue BFS to neighbors
         for (const auto& nbr : atomistic_mol.atomNeighbors(at)) {
-            if (!nbr->hasProp(MONOMER_IDX)) {
-                q.push(nbr->getIdx());
+            auto nbr_idx = nbr->getIdx();
+
+            if (is_visited[nbr_idx]) {
+                continue;
             }
+
+            if (unsigned int nbr_monomer_idx = 0;
+                nbr->getPropIfPresent(MONOMER_IDX, nbr_monomer_idx)) {
+                if (nbr_monomer_idx != monomer_idx &&
+                    !nbr->hasProp(ATTACH_NUM)) {
+                    if (other_attach_at_idx) {
+                        throw std::runtime_error(
+                            // Technically it could be the same atom twice if
+                            // the attachment atom is in a ring, but I haven't
+                            // seen cases like that.
+                            fmt::format(
+                                "Side chain starting from {} reaches "
+                                "more than one atom in a different monomer",
+                                attch_at_idx));
+                    }
+                    other_attach_at_idx = nbr_idx;
+                } else {
+                    // Don't traverse atoms that already have MONOMER_IDX
+                    // unless it's the attachment atom (beta carbon), because
+                    // there could be branching there and we still want to
+                    // capture that branch.
+                    continue;
+                }
+            }
+
+            is_visited[nbr_idx] = true;
+            q.push(nbr_idx);
         }
+    }
+    return std::make_pair(std::move(visited_atoms), other_attach_at_idx);
+}
+
+void addSidechainToMonomer(const RDKit::ROMol& atomistic_mol,
+                           std::vector<MonomerMatch>& monomers,
+                           unsigned int monomer_idx, unsigned int attch_at_idx)
+{
+    auto [visited_atoms, attch_at_idx2] =
+        getSidechainAtoms(atomistic_mol, monomer_idx, attch_at_idx);
+
+    PRINT("addSidechainToMonomer visited_atoms: {}\n",
+          fmt::join(visited_atoms, " "));
+
+    if (!attch_at_idx2) {
+        // Non-linking side chain; assign atoms to monomer.
+        auto& monomer = monomers[monomer_idx];
+        for (auto at_idx : visited_atoms) {
+            auto at = atomistic_mol.getAtomWithIdx(at_idx);
+            at->setProp<unsigned int>(MONOMER_IDX, monomer_idx);
+            monomer.atom_indices.push_back(at_idx);
+        }
+    } else {
+        // We reached another monomer, so we need to figure out where our
+        // sidechain actually ends and the other one begins. This call sets the
+        // atom properties for both monomers' sidechains.
+        partitionLinkingSidechain(atomistic_mol, monomers, visited_atoms,
+                                  attch_at_idx, *attch_at_idx2);
     }
 }
 
@@ -708,8 +1081,8 @@ void identifyMonomers(RDKit::RWMol& atomistic_mol,
 
     // Add sidechains to monomers (if not specified in the above queries)
     for (const auto& [monomer_idx, sidechain_attach] : sidechain_attch_pts) {
-        addSidechainToMonomer(atomistic_mol, monomers[monomer_idx].atom_indices,
-                              monomer_idx, sidechain_attach);
+        addSidechainToMonomer(atomistic_mol, monomers, monomer_idx,
+                              sidechain_attach);
     }
     groupRemainingAtoms(atomistic_mol, monomers);
 
@@ -742,62 +1115,6 @@ void neutralizeAtoms(RDKit::ROMol& mol)
     }
 }
 
-std::optional<std::string> findHelmSymbol(const RDKit::ROMol& atomistic_mol,
-                                          const MonomerMatch& monomer)
-{
-    static RDKit::Atom dummy_atom(0);
-
-    PRINT("findHelmSymbol {}\n", fmt::join(monomer.atom_indices, " "));
-    PRINT("  rs: {} {} {} {}\n", monomer.r1, monomer.r2, monomer.r3,
-          monomer.terminal_atom);
-
-    // Get the cached enumerated core SMILES from the database.
-    // The cache is maintained by MonomerDatabase and invalidated when the
-    // database is modified.
-    const auto& amino_acids =
-        MonomerDatabase::instance().getEnumeratedCoreSmiles();
-
-    auto mol_fragment =
-        ExtractMolFragment(atomistic_mol, monomer.atom_indices, false);
-
-    constexpr bool update_label = false;
-    constexpr bool take_ownership = false; // make a copy
-    mol_fragment->beginBatchEdit();
-    for (auto* at : mol_fragment->atoms()) {
-        auto at_idx = at->getIdx();
-        auto ref_idx = at->getProp<unsigned int>(REFERENCE_IDX);
-        if (ref_idx == monomer.terminal_atom) {
-            // This is a chain terminating O/N. We need to remove it, since
-            // in the enumeration we replace these with dummy atoms
-            mol_fragment->removeAtom(at_idx);
-        } else if (ref_idx == monomer.r1 || ref_idx == monomer.r2 ||
-                   ref_idx == monomer.r3) {
-            auto new_atom_idx = mol_fragment->addAtom(&dummy_atom, update_label,
-                                                      take_ownership);
-            mol_fragment->addBond(new_atom_idx, at_idx, RDKit::Bond::SINGLE);
-        }
-    }
-    mol_fragment->commitBatchEdit();
-    // we only replaced attachment points with dummy atoms, I think
-    // we shouldn't require a ring finding or a sanitization,
-    // just updating the valence (RDKit now resets them when adding bonds).
-    mol_fragment->updatePropertyCache(false);
-
-    auto monomer_smiles = RDKit::MolToSmiles(*mol_fragment, true);
-    PRINT("  monomer_smiles: {}\n", monomer_smiles);
-
-    // Using the enumerated amino acids
-    std::string monomer_symbol;
-    if (amino_acids.find(monomer_smiles) != amino_acids.end()) {
-        monomer_symbol = amino_acids.at(monomer_smiles);
-        PRINT("  matched symbol: {}\n", monomer_symbol);
-        return monomer_symbol;
-    }
-
-    PRINT("  no match\n");
-    return std::nullopt;
-}
-
 void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                      std::vector<MonomerMatch>& monomers,
                      boost::shared_ptr<RDKit::RWMol> monomer_mol,
@@ -819,15 +1136,22 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
         }
     }
 
-    static constexpr const char* CHAIN_ID = "PEPTIDE1";
-
     int residue_num = 1;
+    int prev_chain_idx = -1;
     for (const auto& monomer : monomers) {
+        if (monomer.chain_idx != prev_chain_idx) {
+            // Start a new chain.
+            residue_num = 1;
+            prev_chain_idx = monomer.chain_idx;
+        }
+        auto chain_id = fmt::format("PEPTIDE{}", monomer.chain_idx);
         auto helm_symbol = findHelmSymbol(atomistic_mol, monomer);
 
         // If the monomer is a known amino acid, use the 1-letter code
         if (helm_symbol) {
-            addMonomer(*monomer_mol, *helm_symbol, residue_num, CHAIN_ID);
+            PRINT("addMonomer({}, {}:{})\n", *helm_symbol, monomer.chain_idx,
+                  residue_num);
+            addMonomer(*monomer_mol, *helm_symbol, residue_num, chain_id);
         } else {
             // We need to add R1/R2 attachment points to the monomer
             RDKit::RWMol atomistic_copy(atomistic_mol);
@@ -881,7 +1205,7 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
             }
             auto monomer_smiles = RDKit::MolToSmiles(*mol_fragment);
 
-            addMonomer(*monomer_mol, monomer_smiles, residue_num, CHAIN_ID,
+            addMonomer(*monomer_mol, monomer_smiles, residue_num, chain_id,
                        MonomerType::SMILES);
         }
         ++residue_num;
@@ -895,14 +1219,17 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
               link.monomer_idx2, link.to_string(), is_custom_bond);
         addConnection(*monomer_mol, link.monomer_idx1, link.monomer_idx2,
                       link.to_string(), is_custom_bond);
+        if (!is_custom_bond && link.to_string() == "R3-R3") {
+            addConnection(*monomer_mol, link.monomer_idx2, link.monomer_idx1,
+                          link.to_string(), true);
+        }
     }
 }
 
-size_t findStartMonomer(const std::vector<int>& parents)
+size_t findStartMonomer(const std::vector<int>& parents, size_t current_monomer)
 {
     // Find the start monomer by picking arbitrary monomer then following
     // edges until a cycle is detected or the source is reached.
-    auto current_monomer = 0;
     std::vector<bool> visited(parents.size(), false);
     while (parents[current_monomer] != -1 &&
            !visited[parents[current_monomer]]) {
@@ -923,7 +1250,8 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
         monomers.size());
     std::vector<int> parents(monomers.size(), -1);
     for (auto& link : linkages) {
-        if (link.attach_from != link.attach_to) {
+        if (link.attach_to == 1 &&
+            (link.attach_from == 2 || link.attach_from == 3)) {
             // This skips disulfide (or other R3-R3 bonds) because that would
             // indicate the need for multiple chains, see SHARED-10787 Ensure we
             // go R2->R1 and R3->R1 for directionality
@@ -935,15 +1263,16 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
             parents[link.monomer_idx2] = link.monomer_idx1;
         }
     }
-    auto start_monomer = findStartMonomer(parents);
-    auto start_monomer_atom_idx = monomers[start_monomer].atom_indices.front();
 
     // Build ordered list starting from the best candidate
     std::vector<size_t> new_monomer_order;
     std::vector<bool> visited(monomers.size(), false);
+    int chain_idx = 0;
 
     // Helper function for DFS traversal that follows R2->R1 directionality
+    // Updates new_monomer_order and monomers[].chain_idx as a side effect.
     std::function<void(size_t)> dfs = [&](size_t current) {
+        monomers[current].chain_idx = chain_idx;
         visited[current] = true;
         new_monomer_order.push_back(current);
 
@@ -983,18 +1312,25 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
         }
     };
 
-    dfs(start_monomer);
-
-    // If not all monomers were visited (disjoint chains), we have a
-    // disconnected graph -- for now, throw an error.
-    for (size_t i = 0; i < monomers.size(); ++i) {
-        if (!visited[i]) {
-            auto this_at_idx = monomers[i].atom_indices.front();
-            throw std::runtime_error(fmt::format(
-                "Could not traverse bonds from atom {} to atom {} - chains "
-                "with disconnections or missing residues are not supported",
-                start_monomer_atom_idx, this_at_idx));
+    auto find_unvisited_monomer_idx = [&]() -> std::optional<size_t> {
+        for (size_t i = 0; i < monomers.size(); ++i) {
+            if (!visited[i]) {
+                return i;
+            }
         }
+        return {};
+    };
+
+    while (auto unvisited_monomer = find_unvisited_monomer_idx()) {
+        auto start_monomer = findStartMonomer(parents, *unvisited_monomer);
+        chain_idx++;
+        if (chain_idx > 1000) {
+            // "Should never happen", but I've seen weird situations that
+            // caused this; they are all fixed but I worry I might have missed
+            // and unseen one.
+            throw std::runtime_error("infinite loop in orderMonomers!");
+        }
+        dfs(start_monomer);
     }
 
     // Determine index mapping from old to new order
