@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 
+#include <QtAssert>
 #include <QtMath>
 #include <QGraphicsItem>
 #include <QGraphicsSimpleTextItem>
@@ -286,6 +287,54 @@ UnboundMonomericAttachmentPointItem* get_default_attachment_point(
     return nullptr;
 }
 
+std::string
+get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
+                                     const std::string& existing_monomer_ap,
+                                     const MonomerType new_monomer_type)
+{
+    switch (new_monomer_type) {
+        case MonomerType::CHEM:
+            return "R1";
+        case MonomerType::PEPTIDE:
+            if (existing_monomer_type == MonomerType::PEPTIDE) {
+                if (existing_monomer_ap == ap_model_name_for(PeptideAP::N)) {
+                    return ap_model_name_for(PeptideAP::C);
+                } else if (existing_monomer_ap ==
+                           ap_model_name_for(PeptideAP::C)) {
+                    return ap_model_name_for(PeptideAP::N);
+                }
+            }
+            return ap_model_name_for(PeptideAP::SIDECHAIN);
+        case MonomerType::NA_BASE:
+            if (existing_monomer_type == MonomerType::NA_SUGAR &&
+                existing_monomer_ap ==
+                    ap_model_name_for(NASugarAP::ONE_PRIME)) {
+                return ap_model_name_for(NA_BASE_AP_N1_9);
+            }
+            return NA_BASE_AP_PAIR;
+        case MonomerType::NA_SUGAR:
+            if (existing_monomer_type == MonomerType::NA_PHOSPHATE) {
+                if (existing_monomer_ap ==
+                    ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR)) {
+                    return ap_model_name_for(NASugarAP::THREE_PRIME);
+                } else if (existing_monomer_ap ==
+                           ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)) {
+                    return ap_model_name_for(NASugarAP::FIVE_PRIME);
+                }
+            }
+            return ap_model_name_for(NASugarAP::ONE_PRIME);
+        case MonomerType::NA_PHOSPHATE:
+            if (existing_monomer_type == MonomerType::NA_SUGAR &&
+                existing_monomer_ap ==
+                    ap_model_name_for(NASugarAP::THREE_PRIME)) {
+                return ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR);
+            }
+            return ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR);
+        default:
+            Q_UNREACHABLE_RETURN("");
+    }
+}
+
 UnboundMonomericAttachmentPointItem*
 DrawMonomerSceneTool::getUnboundAttachmentPointAt(
     const QPointF& scene_pos) const
@@ -301,6 +350,14 @@ DrawMonomerSceneTool::getUnboundAttachmentPointAt(
     return getDefaultUnboundAttachmentPointForHoveredMonomer();
 }
 
+static std::tuple<const RDKit::Atom*, MonomerType>
+get_monomer_and_type(const AbstractMonomerItem* const monomer_item)
+{
+    auto* monomer = monomer_item->getAtom();
+    auto monomer_type = get_monomer_type(monomer);
+    return {monomer, monomer_type};
+}
+
 std::tuple<const RDKit::Atom*, MonomerType>
 DrawMonomerSceneTool::getHoveredMonomerAndType() const
 {
@@ -309,9 +366,7 @@ DrawMonomerSceneTool::getHoveredMonomerAndType() const
     }
     const auto* monomer_item =
         static_cast<const AbstractMonomerItem*>(m_hovered_item);
-    auto* monomer = monomer_item->getAtom();
-    auto monomer_type = get_monomer_type(monomer);
-    return {monomer, monomer_type};
+    return get_monomer_and_type(monomer_item);
 }
 
 UnboundMonomericAttachmentPointItem*
@@ -377,6 +432,14 @@ void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
         }
         drawBoundMonomerHintFor(hovered_ap_item);
     }
+
+    // we want to show either the hint fragment or the cursor hint, but not both
+    bool drew_hint_fragment = hovered_ap_item != nullptr;
+    if (drew_hint_fragment == m_cursor_hint_shown) {
+        emit newCursorHintRequested(
+            drew_hint_fragment ? QPixmap() : getDefaultCursorPixmap());
+        m_cursor_hint_shown = !drew_hint_fragment;
+    }
 }
 
 void DrawMonomerSceneTool::drawAttachmentPointLabelsFor(
@@ -401,6 +464,28 @@ void DrawMonomerSceneTool::drawAttachmentPointLabelsFor(
     }
 }
 
+static RDGeom::Point3D get_coords_for_monomer(const RDKit::Atom* const monomer)
+{
+    auto& conf = monomer->getOwningMol().getConformer();
+    return conf.getAtomPos(monomer->getIdx());
+}
+
+/**
+ * @return coordinates that are roughly BOND_LENGTH units away from the given
+ * monomer in the specified direction. (Monomers are laid out in a grid-like
+ * pattern, so diagonal directions will lead to bonds that are slightly longer
+ * than BOND_LENGTH.)
+ */
+static RDGeom::Point3D
+get_default_coords_for_bound_monomer(const RDKit::Atom* const monomer,
+                                     const Direction dir)
+{
+    auto monomer_pos = get_coords_for_monomer(monomer);
+    auto offset = rdkit_extensions::direction_to_vector(dir);
+    offset *= BOND_LENGTH;
+    return monomer_pos + offset;
+}
+
 // should only be called when hovering over a monomer
 void DrawMonomerSceneTool::drawBoundMonomerHintFor(
     UnboundMonomericAttachmentPointItem* const ap_item)
@@ -412,19 +497,10 @@ void DrawMonomerSceneTool::drawBoundMonomerHintFor(
         return;
     }
 
-    const auto* monomer =
-        static_cast<const AbstractMonomerItem*>(m_hovered_item)->getAtom();
-
-    // Get the existing monomer's position from its molecule's conformer
-    auto& conf = monomer->getOwningMol().getConformer();
-    auto monomer_pos = conf.getAtomPos(monomer->getIdx());
-
-    // Compute the new monomer's position: BOND_LENGTH away in the given
-    // direction
+    auto [monomer, monomer_type] = getHoveredMonomerAndType();
     auto direction = ap_item->getAttachmentPoint().direction;
-    auto offset = rdkit_extensions::direction_to_vector(direction);
-    offset *= BOND_LENGTH;
-    auto new_pos = monomer_pos + offset;
+    auto monomer_pos = get_coords_for_monomer(monomer);
+    auto new_pos = get_default_coords_for_bound_monomer(monomer, direction);
 
     // Create an RWMol fragment with two monomers and a connection between them
     m_frag = std::make_shared<RDKit::RWMol>();
@@ -445,8 +521,10 @@ void DrawMonomerSceneTool::drawBoundMonomerHintFor(
             rdkit_extensions::addMonomer(*m_frag, m_res_name, 1, chain_id);
     }
 
-    // TODO: figure out the correct second attachment point
-    auto linkage = ap_item->getAttachmentPoint().model_name + "-R2";
+    auto linkage_start = ap_item->getAttachmentPoint().model_name;
+    auto linkage_end = get_attachment_point_for_new_monomer(
+        monomer_type, linkage_start, m_monomer_type);
+    auto linkage = linkage_start + "-" + linkage_end;
     rdkit_extensions::addConnection(*m_frag, first_idx, second_idx, linkage);
     auto bond_index_to_label =
         m_frag->getBondBetweenAtoms(first_idx, second_idx)->getIdx();
@@ -476,16 +554,42 @@ void DrawMonomerSceneTool::onLeftButtonClick(
 {
     StandardSceneToolBase::onLeftButtonClick(event);
     QPointF scene_pos = event->scenePos();
-    auto* item = m_scene->getTopInteractiveItemAt(
-        scene_pos, InteractiveItemFlag::MONOMERIC);
+    auto* item = getTopMonomericItemAt(scene_pos);
+
     if (item == nullptr) {
         // the click was on empty space, so create a new monomer here
         auto mol_pos = to_mol_xy(scene_pos);
         m_mol_model->addMonomer(m_res_name, m_chain_type, mol_pos);
-    } else if (item_matches_type_flag(item, InteractiveItemFlag::MONOMER)) {
-        // TODO: mutate monomer, or add a new monomer with a connection
-        // auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item);
-        // const auto* monomer = monomer_item->getAtom();
+    } else {
+        auto [monomer, monomer_type] =
+            get_monomer_and_type(static_cast<AbstractMonomerItem*>(item));
+        std::optional<UnboundAttachmentPoint> clicked_ap;
+        auto ap_item = getUnboundAttachmentPointAt(scene_pos);
+        if (ap_item != nullptr) {
+            clicked_ap = ap_item->getAttachmentPoint();
+        }
+
+        if (clicked_ap.has_value()) {
+            // the user clicked on an attachment point or this monomer has a
+            // default attachment point for this tool, so add a new monomer
+            // bound to that attachment point
+            auto new_monomer_ap_name = get_attachment_point_for_new_monomer(
+                monomer_type, clicked_ap->model_name, m_monomer_type);
+            auto new_pos = get_default_coords_for_bound_monomer(
+                monomer, clicked_ap->direction);
+            // TODO: implement this in MolModel
+            // m_mol_model->addBoundMonomer(m_res_name, m_chain_type, new_pos,
+            //                              new_monomer_ap_name, monomer,
+            //                              clicked_ap->model_name);
+
+        } else if (clickShouldMutate(monomer, monomer_type)) {
+            // the user clicked directly on the monomer and the clicked
+            // monomer's residue name is different than the tool's, so we mutate
+            // the clicked monomer
+            // TODO: uncomment after SKETCH-2631 is pushed
+            // m_mol_model->mutateMonomers({monomer}, m_res_name,
+            // m_monomer_type);
+        }
     }
 }
 
