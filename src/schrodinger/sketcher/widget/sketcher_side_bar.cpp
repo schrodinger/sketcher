@@ -1,15 +1,55 @@
 #include "schrodinger/sketcher/widget/sketcher_side_bar.h"
 
 #include <QButtonGroup>
+#include <QIcon>
+#include <QPixmap>
 #include <QToolButton>
 
 #include "schrodinger/sketcher/sketcher_css_style.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_side_bar.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Style the buttons used to toggle between atomistic and monomeric mode. This
+ * function configures icon colors for the pressed and disabled button states,
+ * as well as the background color when the button is pressed.
+ */
+static void configure_atomistic_and_monomeric_buttons(QToolButton* btn)
+{
+    // retrieve the icon (specified in the UI file) from the button
+    auto icon_size = btn->iconSize();
+    auto orig_icon = btn->icon();
+    auto orig_pixmap =
+        orig_icon.pixmap(icon_size, QIcon::Mode::Normal, QIcon::State::Off);
+    QIcon new_icon;
+    // use the UI version of the icon for the unpressed state
+    new_icon.addPixmap(orig_pixmap, QIcon::Mode::Normal, QIcon::State::Off);
+
+    // create new versions of the button's image with our desired colors and add
+    // them to the QIcon
+    auto set_color_for_mode_and_state =
+        [&new_icon, &orig_pixmap](const QColor& color, const QIcon::Mode mode,
+                                  const QIcon::State state) {
+            QPixmap new_pixmap = orig_pixmap.copy();
+            recolor_pixmap(new_pixmap,
+                           ATOMISTIC_OR_MONOMERIC_BTN_UNPRESSED_COLOR, color);
+            new_icon.addPixmap(new_pixmap, mode, state);
+        };
+    set_color_for_mode_and_state(ATOMISTIC_OR_MONOMERIC_BTN_PRESSED_COLOR,
+                                 QIcon::Mode::Normal, QIcon::State::On);
+    set_color_for_mode_and_state(ATOMISTIC_OR_MONOMERIC_BTN_DISABLED_COLOR,
+                                 QIcon::Mode::Disabled, QIcon::State::Off);
+
+    btn->setIcon(new_icon);
+    // specify the background color when the button is pressed via a style sheet
+    btn->setStyleSheet(ATOMISTIC_OR_MONOMERIC_BUTTON_STYLE);
+}
 
 SketcherSideBar::SketcherSideBar(QWidget* parent) : SketcherView(parent)
 {
@@ -20,6 +60,8 @@ SketcherSideBar::SketcherSideBar(QWidget* parent) : SketcherView(parent)
     setMaximumWidth(100);
 
     ui->title_lbl->setStyleSheet(PALETTE_TITLE_STYLE);
+    configure_atomistic_and_monomeric_buttons(ui->atomistic_btn);
+    configure_atomistic_and_monomeric_buttons(ui->monomeric_btn);
 
     // Forward required slots
     connect(ui->select_options_wdg, &SelectOptionsWidget::selectAllRequested,
@@ -65,8 +107,7 @@ void SketcherSideBar::updateWidgetsEnabled()
     auto interface_type = model->getInterfaceType();
     bool show_atom_mono_buttons =
         interface_type == InterfaceType::ATOMISTIC_OR_MONOMERIC;
-    ui->atomistic_btn->setVisible(show_atom_mono_buttons);
-    ui->monomeric_btn->setVisible(show_atom_mono_buttons);
+    ui->atomistic_or_monomeric_widget->setVisible(show_atom_mono_buttons);
     if (!show_atom_mono_buttons) {
         // only one type of interface is allowed, so switch to that one
         if (interface_type == InterfaceType::ATOMISTIC) {

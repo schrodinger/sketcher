@@ -103,5 +103,10 @@ const QString CUSTOM_NUCLEOTIDE_STYLE{
     "#CustomNucleotidePopup { background-color:white }"
     "QLabel { font: 9px; color: #666666; }"};
 
+// when the atomistic/monomeric toggle buttons are pressed, we want the
+// background to be a darker blue than the default coloring
+const QString ATOMISTIC_OR_MONOMERIC_BUTTON_STYLE{
+    "QToolButton:checked { background-color: #aac7d8; }"};
+
 } // namespace sketcher
 } // namespace schrodinger
