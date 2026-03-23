@@ -278,8 +278,10 @@ addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                 monomer1, monomer2));
         }
 
-        // Make sure we're not recreating this same bond.
-        if (old_linkage.find(linkage) != std::string::npos) {
+        // Make sure we're not recreating this same bond, except R3-R3 which is
+        // duplicated when the only link between two monomers is via R3-R3.
+        if (old_linkage.find(linkage) != std::string::npos &&
+            linkage != "R3-R3") {
             throw std::runtime_error(fmt::format(
                 "Can't duplicate {} bond between atom={} and atom={}", linkage,
                 monomer1, monomer2));
@@ -607,7 +609,7 @@ void assignChains(RDKit::RWMol& monomer_mol)
 {
     monomer_mol.setProp("HELM_MODEL", true);
 
-    // Currently, order_residues only works when there is a single chain
+    // Currently, orderResidues only works when there is a single chain
     auto chain_ids = get_polymer_ids(monomer_mol);
     if (chain_ids.size() == 1 && !isValidChain(monomer_mol, chain_ids[0])) {
         orderResidues(monomer_mol);

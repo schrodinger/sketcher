@@ -59,6 +59,8 @@ static const std::vector<std::string> ROUNDTRIP_HELM_TEST_SET = {
     "PEPTIDE1{[ac].P.A.D(A)K.[am]}$$$$V2.0",
     // Example with a branch and a disulfide bond
     "PEPTIDE1{C.A.A.A.C.G.D(K)L.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
+    // Disulfide bond between two chains
+    "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
 };
 
 static boost::shared_ptr<RDKit::RWMol>
