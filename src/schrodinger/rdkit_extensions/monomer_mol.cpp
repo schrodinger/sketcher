@@ -261,6 +261,62 @@ std::string toString(ChainType chain_type)
     }
 }
 
+/**
+ * Ensure that we can add a new connection to the given bond, and throw an
+ * exception if we can't.
+ */
+static void sanityCheckBeforeAddingConnectionToExistingBond(
+    const RDKit::Bond* const bond, size_t monomer1, size_t monomer2,
+    const std::string& linkage, const bool is_custom_bond)
+{
+    std::string old_linkage;
+
+    // If the linkage property isn't set, something went wrong
+    if (!bond->getPropIfPresent(LINKAGE, old_linkage)) {
+        throw std::runtime_error(fmt::format(
+            "No linkage property on bond between atom={} and atom={}", monomer1,
+            monomer2));
+    }
+
+    // Make sure we're not recreating this same bond, except R3-R3 which is
+    // duplicated when the only link between two monomers is via R3-R3.
+    if (old_linkage.find(linkage) != std::string::npos &&
+        linkage != "R3-R3") {
+        throw std::runtime_error(fmt::format(
+            "Can't duplicate {} bond between atom={} and atom={}", linkage,
+            monomer1, monomer2));
+    }
+
+    // Since hydrogen bonding and covalent bonds are different types of bond
+    // serializing them with the same bond type doesn't make too much sense.
+    if (linkage.find("pair") == 0 ||
+        old_linkage.find("pair") != std::string::npos) {
+        throw std::runtime_error(
+            fmt::format("Multiple bonds can't include hydrogen bond for "
+                        "bond between atom={} and atom={}",
+                        monomer1, monomer2));
+    }
+
+    if (is_custom_bond) {
+        // FIXME: For now, don't allow multiple custom bonds between the
+        // same two atoms
+        if (bond->hasProp(CUSTOM_BOND)) {
+            throw std::runtime_error(
+                fmt::format("Multiple custom bonds not supported for "
+                            "bond between atom={} and atom={}",
+                            monomer1, monomer2));
+        }
+    } else {
+        if (!bond->hasProp(CUSTOM_BOND) ||
+            bond->getProp<std::string>(CUSTOM_BOND) != old_linkage) {
+            throw std::runtime_error(
+                fmt::format("More than two connections not supported for "
+                            "bond between atom={} and atom={}",
+                            monomer1, monomer2));
+        }
+    }
+}
+
 std::pair<RDKit::Bond*, ConnectionAdded>
 addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
               const std::string& linkage, const bool is_custom_bond)
@@ -269,57 +325,13 @@ addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
     RDKit::Bond* bond = monomer_mol.getBondBetweenAtoms(monomer1, monomer2);
     // if bond already exists, extend linkage information
     if (bond) {
-        std::string old_linkage;
-
-        // If the linkage property isn't set, something went wrong
-        if (!bond->getPropIfPresent(LINKAGE, old_linkage)) {
-            throw std::runtime_error(fmt::format(
-                "No linkage property on bond between atom={} and atom={}",
-                monomer1, monomer2));
-        }
-
-        // Make sure we're not recreating this same bond, except R3-R3 which is
-        // duplicated when the only link between two monomers is via R3-R3.
-        if (old_linkage.find(linkage) != std::string::npos &&
-            linkage != "R3-R3") {
-            throw std::runtime_error(fmt::format(
-                "Can't duplicate {} bond between atom={} and atom={}", linkage,
-                monomer1, monomer2));
-        }
-
-        // Since hydrogen bonding and covalent bonds are different types of bond
-        // serializing them with the same bond type doesn't make too much sense.
-        if (linkage.find("pair") == 0 ||
-            old_linkage.find("pair") != std::string::npos) {
-            throw std::runtime_error(
-                fmt::format("Multiple bonds can't include hydrogen bond for "
-                            "bond between atom={} and atom={}",
-                            monomer1, monomer2));
-        }
-
+        sanityCheckBeforeAddingConnectionToExistingBond(
+            bond, monomer1, monomer2, linkage, is_custom_bond);
         if (is_custom_bond) {
-            // FIXME: For now, don't allow multiple custom bonds between the
-            // same two atoms
-            if (bond->hasProp(CUSTOM_BOND)) {
-                throw std::runtime_error(
-                    fmt::format("Multiple custom bonds not supported for "
-                                "bond between atom={} and atom={}",
-                                monomer1, monomer2));
-            }
-
-            // Update the linkage property
             bond->setProp(CUSTOM_BOND, linkage);
             bond_creation =
                 ConnectionAdded::CUSTOM_CONNECTION_ADDED_TO_EXISTING_BOND;
         } else {
-            if (!bond->hasProp(CUSTOM_BOND) ||
-                bond->getProp<std::string>(CUSTOM_BOND) != old_linkage) {
-                throw std::runtime_error(
-                    fmt::format("More than two connections not supported for "
-                                "bond between atom={} and atom={}",
-                                monomer1, monomer2));
-            }
-            // Update the linkage property
             bond->setProp(LINKAGE, linkage);
             bond_creation =
                 ConnectionAdded::STANDARD_CONNECTION_ADDED_TO_EXISTING_BOND;

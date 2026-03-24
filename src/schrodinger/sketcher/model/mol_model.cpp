@@ -746,10 +746,8 @@ static bool get_is_custom_bond(const std::string_view res_name,
     auto bound_to_monomer_chain_type =
         rdkit_extensions::getChainType(*bound_to_monomer);
     if (chain_type == ChainType::PEPTIDE &&
-        bound_to_monomer_chain_type == ChainType::PEPTIDE &&
-        linkage == BACKBONE_LINKAGE) {
-        // peptide backbone linkage
-        return false;
+        bound_to_monomer_chain_type == ChainType::PEPTIDE) {
+        return linkage != BACKBONE_LINKAGE;
     } else if (chain_type == ChainType::RNA &&
                bound_to_monomer_chain_type == ChainType::RNA) {
         auto new_monomer_type = get_na_monomer_type_from_res_name(res_name);
