@@ -143,22 +143,6 @@ void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
     }
 }
 
-ChainType getChainType(std::string_view polymer_id)
-{
-    if (polymer_id.find("PEPTIDE") == 0) {
-        return ChainType::PEPTIDE;
-    } else if (polymer_id.find("RNA") == 0) {
-        // HELM labels both DNA and RNA as RNA
-        return ChainType::RNA;
-    } else if (polymer_id.find("CHEM") == 0) {
-        return ChainType::CHEM;
-    } else {
-        throw std::out_of_range(fmt::format(
-            "Invalid polymer id: {}. Must be one of PEPTIDE, RNA, CHEM",
-            polymer_id));
-    }
-}
-
 AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
                          const RDKit::RWMol& monomer_mol,
                          const std::string& polymer_id,

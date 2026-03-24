@@ -212,10 +212,8 @@ void validateAtomAttachmentPoints(
 
 } // unnamed namespace
 
-ChainType getChainType(const RDKit::Atom& monomer)
+ChainType getChainType(std::string_view polymer_id)
 {
-    auto polymer_id = get_polymer_id(&monomer);
-
     if (polymer_id.find("PEPTIDE") == 0) {
         return ChainType::PEPTIDE;
     } else if (polymer_id.find("RNA") == 0) {
@@ -228,6 +226,11 @@ ChainType getChainType(const RDKit::Atom& monomer)
             "Invalid polymer id: {}. Must be one of PEPTIDE, RNA, CHEM",
             polymer_id));
     }
+}
+
+ChainType getChainType(const RDKit::Atom& monomer)
+{
+    return getChainType(get_polymer_id(&monomer));
 }
 
 ChainType toChainType(std::string_view chain_type)
