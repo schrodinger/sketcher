@@ -280,11 +280,10 @@ static void sanityCheckBeforeAddingConnectionToExistingBond(
 
     // Make sure we're not recreating this same bond, except R3-R3 which is
     // duplicated when the only link between two monomers is via R3-R3.
-    if (old_linkage.find(linkage) != std::string::npos &&
-        linkage != "R3-R3") {
-        throw std::runtime_error(fmt::format(
-            "Can't duplicate {} bond between atom={} and atom={}", linkage,
-            monomer1, monomer2));
+    if (old_linkage.find(linkage) != std::string::npos && linkage != "R3-R3") {
+        throw std::runtime_error(
+            fmt::format("Can't duplicate {} bond between atom={} and atom={}",
+                        linkage, monomer1, monomer2));
     }
 
     // Since hydrogen bonding and covalent bonds are different types of bond
