@@ -1,11 +1,15 @@
 #pragma once
 
+#include <concepts>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
+#include <fmt/format.h>
 #include <Qt>
 
+#include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/sketcher/definitions.h"
 
 class QGraphicsItem;
@@ -22,6 +26,8 @@ namespace schrodinger
 namespace sketcher
 {
 
+using rdkit_extensions::Direction;
+
 enum class MonomerType { PEPTIDE, NA_BASE, NA_PHOSPHATE, NA_SUGAR, CHEM };
 
 enum class ConnectorType {
@@ -34,8 +40,6 @@ enum class ConnectorType {
     NA_BACKBONE,
     NA_BACKBONE_TO_BASE
 };
-
-enum class Direction { N, S, E, W, NW, NE, SW, SE };
 
 namespace PeptideAP
 {
@@ -56,6 +60,13 @@ constexpr int NA_BASE_AP_N1_9 = 1;
 const std::string NA_BASE_AP_PAIR = "pair";
 
 /**
+ * Convert any of the above attachment point enums (or NA_BASE_AP_N1_9) to the
+ * equivalent model name, which is simply "R" followed by the attachment point
+ * number.
+ */
+SKETCHER_API std::string ap_model_name_for(int ap_num);
+
+/**
  * Information about an attachment point on a monomer that's bound to another
  * monomer. The direction member variable represents the direction that the bond
  * is drawn in. This is normally the direction of bound_monomer, but may be
@@ -63,8 +74,18 @@ const std::string NA_BASE_AP_PAIR = "pair";
  * below the monomer).
  */
 struct BoundAttachmentPoint {
-    std::string name;
-    int num; // e.g. 3 for "R3"
+    /// The attachment point name stored in the model. Typically "R" followed by
+    /// a positive, non-zero integer
+    std::string model_name;
+    /// The attachment point name that is displayed in the Sketcher. E.g. "C"
+    /// instead of "R2" for a peptide monomer.  Note that, for an attachment
+    /// point with a custom name, this will be identical to model_name.
+    std::string display_name;
+    /// The attachment point number. For attachment points with model names of
+    /// an "R" followed by a number, this will be the number that appears after
+    /// the "R" (e.g. 3 for "R3"). For attachment points with a custom name,
+    /// this will be ATTACHMENT_POINT_WITH_CUSTOM_NAME.
+    int num;
     const RDKit::Atom* bound_monomer;
     bool is_secondary_connection;
     Direction direction;
@@ -76,11 +97,13 @@ struct BoundAttachmentPoint {
  * Information about an attachment point on a monomer that's *not* bound to
  * another monomer (i.e. available for bonding). The direction member variable
  * represents the direction we should draw the connection "nubbin" when the user
- * hovers over the monomer.
+ * hovers over the monomer. See BoundAttachmentPoint for documentation of member
+ * variables.
  */
 struct UnboundAttachmentPoint {
-    std::string name;
-    int num; // e.g. 3 for "R3"
+    std::string model_name;
+    std::string display_name;
+    int num;
     Direction direction;
 
     bool operator==(const UnboundAttachmentPoint&) const = default;
