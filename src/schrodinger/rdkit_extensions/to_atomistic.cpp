@@ -251,34 +251,44 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
             // TODO: Handle hydrogen bonds
             continue;
         }
-        auto [from_rgroup, to_rgroup] = getAttchpts(linkage);
-        auto from_res = get_residue_number(bond->getBeginAtom());
-        auto to_res = get_residue_number(bond->getEndAtom());
-
-        if (attachment_point_map.find({from_res, from_rgroup}) ==
-                attachment_point_map.end() ||
-            attachment_point_map.find({to_res, to_rgroup}) ==
-                attachment_point_map.end()) {
-            // One of these attachment points is not present
-            throw std::runtime_error(fmt::format(
-                "Invalid linkage {} between monomers {} and {}",
-                bond->getProp<std::string>(LINKAGE), from_res, to_res));
+        // Add custom bonds to linkages to add in the atomisic rep
+        std::vector<std::string> linkages = {linkage};
+        std::string custom_bond;
+        if (bond->getPropIfPresent<std::string>(CUSTOM_BOND, custom_bond)) {
+            if (linkage != custom_bond) {
+                linkages.push_back(custom_bond);
+            }
         }
+        for (auto& link : linkages) {
+            auto [from_rgroup, to_rgroup] = getAttchpts(link);
+            auto from_res = get_residue_number(bond->getBeginAtom());
+            auto to_res = get_residue_number(bond->getEndAtom());
 
-        auto [core_aid1, attachment_point1] =
-            attachment_point_map.at({from_res, from_rgroup});
-        auto [core_aid2, attachment_point2] =
-            attachment_point_map.at({to_res, to_rgroup});
+            if (attachment_point_map.find({from_res, from_rgroup}) ==
+                    attachment_point_map.end() ||
+                attachment_point_map.find({to_res, to_rgroup}) ==
+                    attachment_point_map.end()) {
+                // One of these attachment points is not present
+                throw std::runtime_error(fmt::format(
+                    "Invalid linkage {} between monomers {} and {}",
+                    bond->getProp<std::string>(LINKAGE), from_res, to_res));
+            }
 
-        auto bond_type = bond->getBondType();
-        if (bond_type == RDKit::Bond::DATIVE) {
-            // Only relevant at the monomer mol level, this is just
-            // a single bond at the atomistic level
-            bond_type = RDKit::Bond::SINGLE;
+            auto [core_aid1, attachment_point1] =
+                attachment_point_map.at({from_res, from_rgroup});
+            auto [core_aid2, attachment_point2] =
+                attachment_point_map.at({to_res, to_rgroup});
+
+            auto bond_type = bond->getBondType();
+            if (bond_type == RDKit::Bond::DATIVE) {
+                // Only relevant at the monomer mol level, this is just
+                // a single bond at the atomistic level
+                bond_type = RDKit::Bond::SINGLE;
+            }
+            atomistic_mol.addBond(core_aid1, core_aid2, bond_type);
+            remove_atoms.push_back(attachment_point1);
+            remove_atoms.push_back(attachment_point2);
         }
-        atomistic_mol.addBond(core_aid1, core_aid2, bond_type);
-        remove_atoms.push_back(attachment_point1);
-        remove_atoms.push_back(attachment_point2);
     }
 
     return attachment_point_map;
