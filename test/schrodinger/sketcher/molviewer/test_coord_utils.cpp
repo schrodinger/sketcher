@@ -61,8 +61,8 @@ BOOST_AUTO_TEST_CASE(test_best_placing_around_origin_similar_angles,
 {
     QLineF line(QPointF(0, 0), QPointF(0, 1));
     /* test small variations approximating 120 degrees intervals.
-     * With points at ~0°, ~120°, ~240°, the gaps have midpoints at ~60°, ~180°, ~300°
-     * 180° is horizontal (distance 0), so it should always be returned
+     * With points at ~0°, ~120°, ~240°, the gaps have midpoints at ~60°, ~180°,
+     * ~300° 180° is horizontal (distance 0), so it should always be returned
      */
     std::vector<std::vector<float>> all_angles = {{0, 120, 240},
                                                   {0, 120.1, 240.1},
