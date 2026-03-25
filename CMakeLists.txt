@@ -231,7 +231,7 @@ enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET schrodinger_sketcher)
-add_executable(${APP_TARGET} src/app/main.cpp)
+add_executable(${APP_TARGET} src/app/main.cpp src/app/crash_handler.cpp)
 setup_target(${APP_TARGET})
 set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                                ${CMAKE_BINARY_DIR}/sketcher_app)
@@ -259,6 +259,22 @@ if(MSVC AND NOT ${BUILD_SHARED_LIBS})
   # schrodinger_sketcher_bin.lib.
   set_target_properties(
     ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
+endif()
+
+# Crash handler: configure Boost.Stacktrace backend per platform
+if(NOT EMSCRIPTEN)
+  target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
+  if(MSVC)
+    target_compile_definitions(${APP_TARGET} PRIVATE
+      BOOST_STACKTRACE_USE_WINDBG)
+    target_link_libraries(${APP_TARGET} PRIVATE dbghelp)
+  else()
+    target_compile_definitions(${APP_TARGET} PRIVATE BOOST_STACKTRACE_USE_ADDR2LINE)
+    target_link_libraries(${APP_TARGET} PRIVATE dl)
+    if(APPLE)
+      target_compile_definitions(${APP_TARGET} PRIVATE _GNU_SOURCE)
+    endif()
+  endif()
 endif()
 
 # Copy over the necessary wasm files into the application directory
@@ -386,6 +402,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
-install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET}
+# Use FILES/PROGRAMS instead of TARGETS to preserve rpaths on Mac
+install(PROGRAMS $<TARGET_FILE:${APP_TARGET}> DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES $<TARGET_FILE:${SKETCHER_TARGET}> $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})

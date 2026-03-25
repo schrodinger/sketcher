@@ -276,8 +276,10 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                 monomer1, monomer2));
         }
 
-        // Make sure we're not recreating this same bond.
-        if (old_linkage.find(linkage) != std::string::npos) {
+        // Make sure we're not recreating this same bond, except R3-R3 which is
+        // duplicated when the only link between two monomers is via R3-R3.
+        if (old_linkage.find(linkage) != std::string::npos &&
+            linkage != "R3-R3") {
             throw std::runtime_error(fmt::format(
                 "Can't duplicate {} bond between atom={} and atom={}", linkage,
                 monomer1, monomer2));
@@ -413,7 +415,12 @@ void mutateMonomer(RDKit::ROMol& monomer_mol, unsigned int monomer_idx,
 
     // Note: If the atom was a branch monomer before, it remains one after
     // mutation.
-    bool is_smiles = helm::is_smiles_monomer(helm_symbol_str);
+    // Check the monomer DB to determine if this is a known monomer or SMILES.
+    // Known monomers (e.g. "A", "dR") should not be marked as SMILES.
+    auto chain_type = getChainType(*atom);
+    auto& db = MonomerDatabase::instance();
+    bool in_db = db.getMonomerSmiles(helm_symbol_str, chain_type).has_value();
+    bool is_smiles = !in_db && helm::is_smiles_monomer(helm_symbol_str);
     atom->setProp(SMILES_MONOMER, is_smiles);
 
     // hack to get some level of canonicalization for monomer mols
@@ -579,7 +586,7 @@ void assignChains(RDKit::RWMol& monomer_mol)
 {
     monomer_mol.setProp("HELM_MODEL", true);
 
-    // Currently, order_residues only works when there is a single chain
+    // Currently, orderResidues only works when there is a single chain
     auto chain_ids = get_polymer_ids(monomer_mol);
     if (chain_ids.size() == 1 && !isValidChain(monomer_mol, chain_ids[0])) {
         orderResidues(monomer_mol);

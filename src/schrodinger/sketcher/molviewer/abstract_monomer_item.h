@@ -37,6 +37,7 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
 {
   public:
     AbstractMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
+                        const bool is_dark_mode = false,
                         QGraphicsItem* parent = nullptr);
 
     /**
@@ -45,6 +46,11 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     void setMonomerColors(const QColor& background_color,
                           const QColor& outline_color,
                           const QColor& font_color);
+
+    /**
+     * @return the border color appropriate for the current color scheme
+     */
+    QColor getBorderColor() const;
 
     // Overridden QGraphicsItem methods
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
@@ -58,6 +64,9 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     QFont m_main_label_font;
     QPen m_main_label_pen =
         QPen(MONOMER_LABEL_TEXT_COLOR, MONOMER_LABEL_TEXT_WIDTH);
+    QColor m_border_color;
+    QColor m_border_color_dark_bg;
+    bool m_is_dark_mode = false;
     QPainterPath m_border_path;
     // The leftmost point of the baseline to use when painting the main label
     // text (i.e. what we should pass to the QPainter in order to center the
@@ -127,18 +136,20 @@ SKETCHER_API std::pair<qreal, qreal> get_ellipse_size_to_fit_label(
     const qreal standard_width, const qreal standard_height);
 
 /**
- * Get the border pen thickness, border color, and font to use (along with a
- * font metrics object) for drawing a nucleic acid monomer of the given
- * residue name.
+ * Get the border pen thickness, border color (light and dark mode), and font
+ * to use (along with a font metrics object) for drawing a nucleic acid monomer
+ * of the given residue name.
  * @param res_name the name of the residue being drawn
  * @param fonts the fonts object to pull fonts and font metrics objects from
  * @param use_base_font if true, return a font for nucleobases.  Otherwise,
  * return a font for sugars and phosphates
  */
-SKETCHER_API std::tuple<qreal, QColor, const QFont, const QFontMetricsF*>
+// clang-format off
+SKETCHER_API std::tuple<qreal, QColor, QColor, const QFont, const QFontMetricsF*>
 get_border_and_font_settings_for_nucleic_acid(const std::string& res_name,
                                               const Fonts& fonts,
                                               const bool use_base_font = false);
+// clang-format on
 
 /**
  * Update the given path so it contains only a rectangle of the specified size

@@ -24,6 +24,8 @@
 #include "schrodinger/rdkit_extensions/helm/to_string.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 
+using boost::test_tools::per_element;
+
 using schrodinger::rdkit_extensions::ExtractMolFragment;
 using schrodinger::rdkit_extensions::removeHs;
 
@@ -131,6 +133,20 @@ BOOST_AUTO_TEST_CASE(test_extract_bonds)
         BOOST_TEST(extracted_mol->getAtomWithIdx(1)->getProp<int>("orig_idx") ==
                    end_idx);
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_extract_bonds_with_stereo)
+{
+    // This test extracts atoms 4-7, which become atoms 0-3 in the fragment. It
+    // then checks that bond 1-2 (fka 5-6) refers to the correctly renumbered
+    // stereo atoms 0, 3, not the original 4, 7.
+    std::unique_ptr<RDKit::RWMol> mol{RDKit::SmilesToMol("CCCCC/C=C/C")};
+    //                                                    01234 5 6 7
+    auto extracted_mol = ExtractMolFragment(*mol, {4, 5, 6, 7});
+    auto bond = extracted_mol->getBondBetweenAtoms(1, 2);
+    auto stereo_atoms = bond->getStereoAtoms();
+    std::vector<unsigned int> expected_stereo_atoms{0, 3};
+    BOOST_TEST(stereo_atoms == expected_stereo_atoms, per_element());
 }
 
 struct selected_components {

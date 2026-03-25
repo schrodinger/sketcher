@@ -7,12 +7,16 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/bind.h>
+#else
+#include "crash_handler.h"
 #endif
 
 #include <cstring>
 
 #include <QApplication>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QStyleHints>
 
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -82,6 +86,36 @@ void sketcher_allow_monomeric(bool allow_monomeric)
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
+/**
+ * Return the position and size of any child widget found by its Qt
+ * objectName. Returns a JSON object with {x, y, width, height}.
+ * Coordinates are relative to the sketcher widget's top-left corner.
+ * Returns "{}" if no widget with the given name is found.
+ */
+std::string sketcher_get_widget_rect(const std::string& object_name)
+{
+    auto& sk = get_sketcher_instance();
+    const QString name = QString::fromStdString(object_name);
+    QWidget* widget = nullptr;
+    const auto candidates = sk.findChildren<QWidget*>(name);
+    for (auto* w : candidates) {
+        if (w->isVisible()) {
+            widget = w;
+            break;
+        }
+    }
+    if (!widget) {
+        return "{}";
+    }
+    const QPoint topLeft = widget->mapTo(&sk, QPoint(0, 0));
+    QJsonObject result;
+    result["x"] = topLeft.x();
+    result["y"] = topLeft.y();
+    result["width"] = widget->width();
+    result["height"] = widget->height();
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+}
+
 void sketcher_changed()
 {
 #ifdef __EMSCRIPTEN__
@@ -136,6 +170,8 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function("_sketcher_get_widget_rect",
+                         &sketcher_get_widget_rect);
     // see sketcher_changed_callback above
 }
 #endif
@@ -160,6 +196,10 @@ void apply_stylesheet(QApplication& app)
 
 int main(int argc, char** argv)
 {
+#ifndef __EMSCRIPTEN__
+    schrodinger::install_crash_handlers();
+#endif
+
     QApplication application(argc, argv);
 #ifdef SKETCHER_STATIC_DEFINE
     Q_INIT_RESOURCE(sketcher);

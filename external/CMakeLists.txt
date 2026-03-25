@@ -153,8 +153,7 @@ ExternalProject_Add(
     -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION})
 
 # Build Boost library
-set_cmake_arg(
-  BOOST_INCLUDE_LIBS
+set(BOOST_LIBS_TO_INCLUDE
   # RDKit required libraries
   assign
   crc
@@ -174,6 +173,11 @@ set_cmake_arg(
   bimap
   filesystem
   test)
+if(NOT EMSCRIPTEN)
+  # on desktop builds, we use stacktrace to print crash reports
+  list(APPEND BOOST_LIBS_TO_INCLUDE stacktrace)
+endif()
+set_cmake_arg(BOOST_INCLUDE_LIBS ${BOOST_LIBS_TO_INCLUDE})
 set_cmake_arg(
   BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
@@ -231,6 +235,8 @@ list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
+list(APPEND RDKIT_PATCH_COMMAND && git apply --ignore-whitespace
+     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_revert_pr_9082.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()

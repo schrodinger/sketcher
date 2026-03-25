@@ -67,19 +67,32 @@
       <layout class="QHBoxLayout" name="atomistic_or_monomer_layout">
        <item>
         <widget class="QToolButton" name="atomistic_btn">
-         <property name="font">
-          <font>
-           <bold>true</bold>
-          </font>
+         <property name="toolTip">
+          <string>Atomistic</string>
          </property>
          <property name="text">
-          <string>ATOM</string>
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="../sketcher.qrc">
+           <normaloff>:/icons/mode_compound.svg</normaloff>
+           <normalon>:/icons/mode_compound.svg</normalon>
+          </iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
          </property>
          <property name="checkable">
           <bool>true</bool>
          </property>
          <property name="checked">
           <bool>true</bool>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonIconOnly</enum>
          </property>
          <attribute name="buttonGroup">
           <string notr="true">atomistic_or_monomeric_group</string>
@@ -88,16 +101,29 @@
        </item>
        <item>
         <widget class="QToolButton" name="monomeric_btn">
-         <property name="font">
-          <font>
-           <bold>true</bold>
-          </font>
+         <property name="toolTip">
+          <string>Monomeric</string>
          </property>
          <property name="text">
-          <string>MONO</string>
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="../sketcher.qrc">
+           <normaloff>:/icons/mode_monomer.svg</normaloff>
+           <normalon>:/icons/mode_monomer.svg</normalon>
+          </iconset>
+         </property>
+         <property name="iconSize">
+          <size>
+           <width>24</width>
+           <height>24</height>
+          </size>
          </property>
          <property name="checkable">
           <bool>true</bool>
+         </property>
+         <property name="toolButtonStyle">
+          <enum>Qt::ToolButtonIconOnly</enum>
          </property>
          <attribute name="buttonGroup">
           <string notr="true">atomistic_or_monomeric_group</string>

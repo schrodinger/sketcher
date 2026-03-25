@@ -866,6 +866,89 @@ BOOST_DATA_TEST_CASE(test_cannot_be_smiles,
                to_string(*smarts_mol, Format::SMARTS));
 }
 
+BOOST_DATA_TEST_CASE(test_multiline_cannot_be_smiles,
+                     boost::unit_test::data::make({
+                         "CCCC\nmore lines",
+                         "CCCC\r\nmore lines",
+                         "C1=CC=CC=C1\nsecond line",
+                         "CCCC |atomLabel:1,R1|\nmore content here",
+                     }),
+                     multiline_text)
+{
+    // SHARED-12035: Multi-line content should not be parsed as SMILES/SMARTS
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit(multiline_text, Format::SMILES),
+                                    std::invalid_argument,
+                                    "is not a valid SMILES");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_rdkit(multiline_text, Format::SMARTS),
+                                    std::invalid_argument,
+                                    "is not a valid SMARTS");
+}
+
+BOOST_AUTO_TEST_CASE(test_sdf_with_smiles_title_not_parsed)
+{
+    // SHARED-12035: Malformed SDF with valid SMILES as title should not be
+    // parsed as SMILES/SMARTS. The first line "CCCC my smiles" looks like valid
+    // SMILES.
+    auto malformed_sdf = R"SDF(CCCC my smiles
+     RDKit          2D
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 10 10 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -6.804118 0.833250 0.000000 0
+M  V30 2 C -5.497039 0.097353 0.000000 0
+M  V30 3 C -5.480799 -1.402560 0.000000 0
+M  V30 4 C -6.771640 -2.166580 0.000000 0
+M  V30 5 C -8.078719 -1.430690 0.000000 0
+M  V30 6 C -8.094959 0.069226 0.000000 0
+M  V30 7 C -4.206195 0.861371 0.000000 0
+M  V30 8 C -2.899115 0.125477 0.000000 0
+M  V30 9 C -2.882877 -1.374435 0.000000 0
+M  V30 10 O -4.222433 2.361283 0.000000 0
+M  V30 END ATOM
+M  V30 1 2 1 2
+M  V30 2 1 2 3
+M  V30 3 2 3 4
+M  V30 4 1 4 5
+M  V30 5 2 5 6
+M  V30 6 1 6 1
+M  V30 7 1 2 7
+M  V30 8 1 7 8
+M  V30 9 1 8 9
+M  V30 10 2 7 10
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+$$
+)SDF";
+
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        to_rdkit(malformed_sdf, Format::AUTO_DETECT), std::invalid_argument,
+        "Unable to determine format");
+}
+
+BOOST_AUTO_TEST_CASE(test_single_line_smiles_still_work)
+{
+    // SHARED-12035: Ensure single-line SMILES and trailing newlines still work
+    // Basic SMILES
+    auto mol = to_rdkit("CCCC", Format::SMILES);
+    BOOST_TEST(mol != nullptr);
+
+    // CX extension (requires EXTENDED_SMILES format)
+    mol = to_rdkit("[*]C1CC([*])CC([*])O1 |$R1;;;;R2;;;R3;$|",
+                   Format::EXTENDED_SMILES);
+    BOOST_TEST(mol != nullptr);
+
+    // Trailing newlines (common from copy/paste)
+    mol = to_rdkit("CCCC\n", Format::SMILES);
+    BOOST_TEST(mol != nullptr);
+    mol = to_rdkit("CCCC\r\n", Format::SMILES);
+    BOOST_TEST(mol != nullptr);
+    mol = to_rdkit("[*]C1CC([*])CC([*])O1 |$R1;;;;R2;;;R3;$|\n",
+                   Format::EXTENDED_SMILES);
+    BOOST_TEST(mol != nullptr);
+}
+
 BOOST_AUTO_TEST_CASE(test_smarts_no_radicals)
 {
     // SKETCH-2190

@@ -20,6 +20,7 @@ class SKETCHER_API NucleicAcidBaseItem : public AbstractMonomerItem
 {
   public:
     NucleicAcidBaseItem(const RDKit::Atom* atom, const Fonts& fonts,
+                        const bool is_dark_mode = false,
                         QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::NUCLEIC_ACID_BASE) };

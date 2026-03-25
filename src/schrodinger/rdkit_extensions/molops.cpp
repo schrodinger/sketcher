@@ -191,6 +191,11 @@ static void copy_selected_atoms_and_bonds(::RDKit::RWMol& extracted_mol,
             atom_mapping[ref_bond->getBeginAtomIdx()]);
         extracted_bond->setEndAtomIdx(atom_mapping[ref_bond->getEndAtomIdx()]);
 
+        auto& stereo_atoms = extracted_bond->getStereoAtoms();
+        for (auto& idx : stereo_atoms) {
+            idx = atom_mapping[idx];
+        }
+
         static constexpr bool takeOwnership = true;
         auto num_bonds =
             extracted_mol.addBond(extracted_bond.release(), takeOwnership);
@@ -340,6 +345,11 @@ ExtractMolFragment(const RDKit::ROMol& mol,
     copy_selected_stereo_groups(*extracted_mol, mol, selection_info);
     if (sanitize) {
         ::RDKit::MolOps::sanitizeMol(*extracted_mol);
+    }
+
+    if (mol.hasProp(HELM_MODEL)) {
+        auto helm_model_prop = mol.getProp<bool>(HELM_MODEL);
+        extracted_mol->setProp(HELM_MODEL, helm_model_prop);
     }
 
     // NOTE: Bookmarks are currently not copied

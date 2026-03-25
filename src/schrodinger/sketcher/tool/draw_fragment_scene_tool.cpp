@@ -137,7 +137,8 @@ void AbstractHintFragmentItem::createGraphicsItems()
           bond_to_secondary_connection_item, s_group_to_s_group_item] =
         create_graphics_items_for_mol(
             &m_frag, *m_fonts, m_atom_display_settings, m_bond_display_settings,
-            /*draw_attachment_points = */ false);
+            /* is_dark_mode = */ false,
+            /* draw_attachment_points = */ false);
     for (auto* item : all_items) {
         addToGroup(item);
     }

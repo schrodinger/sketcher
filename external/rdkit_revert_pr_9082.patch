@@ -1,0 +1,63 @@
+diff --git a/Code/GraphMol/Canon.cpp b/Code/GraphMol/Canon.cpp
+index 3b719fcf7..901d77b3c 100644
+--- a/Code/GraphMol/Canon.cpp
++++ b/Code/GraphMol/Canon.cpp
+@@ -1020,9 +1020,11 @@ void canonicalizeFragment(ROMol &mol, int atomIdx,
+           continue;
+         }
+ 
++        // Check if the atom can be chiral, and if chirality needs inversion
++        const INT_LIST &trueOrder = atomTraversalBondOrder[atom->getIdx()];
++
+         // Extra check needed if/when @AL1/@AL2 supported
+-        if (Chirality::detail::isAtomPotentialTetrahedralCenter(atom) ||
+-            Chirality::hasNonTetrahedralStereo(atom)) {
++        if (trueOrder.size() >= 3 || Chirality::hasNonTetrahedralStereo(atom)) {
+           int nSwaps = 0;
+           int perm = 0;
+           if (Chirality::hasNonTetrahedralStereo(atom)) {
+@@ -1032,9 +1034,6 @@ void canonicalizeFragment(ROMol &mol, int atomIdx,
+           const unsigned int firstIdx = molStack.begin()->obj.atom->getIdx();
+           const bool firstInPart = atom->getIdx() == firstIdx;
+ 
+-          // Check if the atom can be chiral, and if chirality needs inversion
+-          const INT_LIST &trueOrder = atomTraversalBondOrder[atom->getIdx()];
+-
+           // We have to make sure that trueOrder contains all the
+           // bonds, even if they won't be written to the SMILES
+           if (trueOrder.size() < atom->getDegree()) {
+diff --git a/Code/GraphMol/Chirality.h b/Code/GraphMol/Chirality.h
+index c81ccc890..2a0c197a3 100644
+--- a/Code/GraphMol/Chirality.h
++++ b/Code/GraphMol/Chirality.h
+@@ -33,7 +33,7 @@ constexpr unsigned int minRingSizeForDoubleBondStereo = 8;
+ constexpr auto nonTetrahedralStereoEnvVar = "RDK_ENABLE_NONTETRAHEDRAL_STEREO";
+ constexpr auto useLegacyStereoEnvVar = "RDK_USE_LEGACY_STEREO_PERCEPTION";
+ constexpr bool nonTetrahedralStereoDefaultVal =
+-    true;  //!< whether or not nontetrahedral stereo is perceived by default
++    false;  //!< whether or not nontetrahedral stereo is perceived by default
+ constexpr bool useLegacyStereoDefaultVal =
+     true;  //!< whether or not the legacy stereo perception code is used by
+            //!< default
+diff --git a/Code/GraphMol/catch_canon.cpp b/Code/GraphMol/catch_canon.cpp
+index 2631d33fc..133b5af41 100644
+--- a/Code/GraphMol/catch_canon.cpp
++++ b/Code/GraphMol/catch_canon.cpp
+@@ -1212,8 +1212,8 @@ TEST_CASE("Canonicalization issues watch (see GitHub Issue #8775)") {
+       {R"smi(CC1=C/[C@@H](C)C[C@]2(C)CC[C@H](O2)[C@]23CC[C@](CO)(C[C@H](O2)[C@@H]2O[C@@](C)(CC2=O)[C@@H](O)[C@H]2CC[C@@]4(CCC[C@@H](O4)[C@H](C)C(=O)O[C@H]4C[C@H]([C@]5(O)OCC[C@H](C)[C@@H]5O)O[C@H]4\C=C/1)O2)O3)smi",
+        false, false},  // #8089
+       {R"smi(COC(=O)C1=C/c2cc3c(cc2-c2c(cc(OC)c(OC)c2OC)\C=C/1C(=O)OC)OCO3)smi",
+-       false, false},                                         // #8089
+-      {R"smi(N#C[P@@H]/C=C(/P=O)[P@@H]C#N)smi", true, true},  // #8089
++       false, false},                                           // #8089
++      {R"smi(N#C[P@@H]/C=C(/P=O)[P@@H]C#N)smi", false, false},  // #8089
+       {R"smi(C1=C\C/C=C(\C)CC[C@H]2C(C)(C)[C@@H](\C=C/1)CC[C@]2(C)O)smi", true,
+        true},                                                     // #8089
+       {R"smi([H]/N=C(C=C)\C(/N=C\[O-])=N\[H])smi", false, true},  // #7759
+@@ -1395,4 +1395,4 @@ TEST_CASE("Canonicalization issues watch (see GitHub Issue #8775)") {
+   } else {
+     CHECK(firstRoundtrip != secondRoundtrip);
+   }
+-}
+\ No newline at end of file
++}

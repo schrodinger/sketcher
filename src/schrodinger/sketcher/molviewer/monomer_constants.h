@@ -207,6 +207,17 @@ const qreal MONOMER_SELECTION_HIGHLIGHTING_THICKNESS = 8.5;
 // value can prevent, e.g., divide-by-zero errors.
 const qreal MONOMER_BORDER_MIN_SIZE = 0.01;
 
+// Unbound monomeric attachment point indicator constants
+const qreal UNBOUND_AP_LINE_LENGTH = 8.0;
+const qreal UNBOUND_AP_LINE_THICKNESS = 1.5;
+const qreal UNBOUND_AP_CIRCLE_DIAMETER = 5.0;
+const qreal UNBOUND_AP_MIN_HOVER_HALF_WIDTH = 12;
+const QColor UNBOUND_AP_LABEL_COLOR = QColor("#AAAAAA");
+const QColor UNBOUND_AP_LABEL_COLOR_DARK_BG = QColor("#999999");
+const QColor BOUND_AP_LABEL_COLOR = QColor("#000000");
+const QColor BOUND_AP_LABEL_COLOR_DARK_BG = QColor("#AAAAAA");
+const qreal MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH = 3;
+
 const QColor AA_LINEAR_CONNECTOR_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
 const qreal AA_LINEAR_CONNECTOR_WIDTH = 5;
@@ -234,6 +245,23 @@ const qreal NA_BACKBONE_TO_BASE_CONNECTOR_WIDTH = 2;
 const QColor CHEM_CONNECTOR_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::GRAY6);
 const qreal CHEM_CONNECTOR_WIDTH = 2;
+
+// Dark mode border colors
+const QColor STANDARD_AA_BORDER_COLOR_DARK_BG = QColor("#BBBBBB");
+const QColor D_AA_BORDER_COLOR_DARK_BG = QColor("#CC6666");
+const QColor OTHER_AA_BORDER_COLOR_DARK_BG = QColor("#CC6666");
+const QColor STANDARD_NA_BORDER_COLOR_DARK_BG = QColor("#BBBBBB");
+const QColor OTHER_NA_BORDER_COLOR_DARK_BG = QColor("#CC6666");
+const QColor CHEM_MONOMER_BORDER_COLOR_DARK_BG = QColor("#BBBBBB");
+
+// Dark mode connector colors
+const QColor AA_LINEAR_CONNECTOR_COLOR_DARK_BG = QColor("#BBBBBB");
+const QColor AA_BRANCHING_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
+const QColor DISULFIDE_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
+const QColor NA_BACKBONE_CONNECTOR_COLOR_DARK_BG = QColor("#BBBBBB");
+const QColor NA_BASE_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
+const QColor NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
+const QColor CHEM_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 
 const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
 

@@ -42,7 +42,7 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
 
 // standard attachment point names that don't follow the "R#" naming scheme
 const std::unordered_map<MonomerType, std::vector<std::string>>
-    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {"pair"}}};
+    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {NA_BASE_AP_PAIR}}};
 
 const int INVALID_ATTACHMENT_POINT_SPEC = -2;
 
@@ -69,6 +69,11 @@ class NoAvailableDirectionsException : public std::exception
 
 } // namespace
 
+std::string ap_model_name_for(int ap_num)
+{
+    return fmt::format("R{}", ap_num);
+}
+
 MonomerType get_monomer_type(const RDKit::Atom* atom)
 {
     const auto* monomer_info = atom->getMonomerInfo();
@@ -85,18 +90,23 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
         return MonomerType::PEPTIDE;
     } else if (chain_id.starts_with(NUCLEOTIDE_POLYMER_PREFIX)) {
         const auto& res_name = res_info->getResidueName();
-        if (res_name.empty()) {
-            return MonomerType::NA_BASE;
-        }
-        auto last_char = std::tolower(res_name.back());
-        if (last_char == 'p') {
-            return MonomerType::NA_PHOSPHATE;
-        } else if (last_char == 'r') {
-            return MonomerType::NA_SUGAR;
-        }
-        return MonomerType::NA_BASE;
+        return get_na_monomer_type_from_res_name(res_name);
     }
     return MonomerType::CHEM;
+}
+
+MonomerType get_na_monomer_type_from_res_name(const std::string& res_name)
+{
+    if (res_name.empty()) {
+        return MonomerType::NA_BASE;
+    }
+    auto last_char = std::tolower(res_name.back());
+    if (last_char == 'p') {
+        return MonomerType::NA_PHOSPHATE;
+    } else if (last_char == 'r') {
+        return MonomerType::NA_SUGAR;
+    }
+    return MonomerType::NA_BASE;
 }
 
 std::string get_monomer_res_name(const RDKit::Atom* const monomer)
@@ -259,10 +269,10 @@ get_attachment_point_for_atom(std::string linkage, bool is_begin_atom)
         return {ATTACHMENT_POINT_WITH_CUSTOM_NAME, attachment_point_name};
     }
     // remove the leading 'R' now that we've confirmed it exists
-    attachment_point_name.erase(0, 1);
+    auto num_part_of_name = attachment_point_name.substr(1);
     int ap_num;
     try {
-        ap_num = std::stoi(attachment_point_name);
+        ap_num = std::stoi(num_part_of_name);
     } catch (const std::logic_error&) {
         // it's not an integer
         ap_num = ATTACHMENT_POINT_WITH_CUSTOM_NAME;
@@ -343,11 +353,16 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
         if (bond->getPropIfPresent(prop_name, linkage)) {
             const auto& [ap_num, ap_name] =
                 get_attachment_point_for_atom(linkage, is_start_atom);
+            std::string display_name;
             if (ap_num > 0 && !bound_ap_nums.contains(ap_num)) {
                 bound_ap_nums.insert(ap_num);
+                // we don't know the display name yet, so use an empty string
+                // for now
+                display_name = "";
             } else if (ap_num == ATTACHMENT_POINT_WITH_CUSTOM_NAME &&
                        !bound_ap_custom_names.contains(ap_name)) {
                 bound_ap_custom_names.insert(ap_name);
+                display_name = ap_name;
             } else {
                 return;
             }
@@ -355,8 +370,8 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
             bool is_secondary_connection = prop_name == CUSTOM_BOND;
             auto dir = get_bound_attachment_point_cardinal_direction(
                 monomer, bound_monomer, is_secondary_connection);
-            bound_aps.push_back(BoundAttachmentPoint{
-                ap_name, ap_num, bound_monomer, is_secondary_connection, dir});
+            bound_aps.emplace_back(ap_name, display_name, ap_num, bound_monomer,
+                                   is_secondary_connection, dir);
         }
     };
 
@@ -442,10 +457,10 @@ static Direction calculate_direction_for_unbound_attachment_point(
     };
 
     std::vector<Direction> dirs_to_try;
-    if (ap_num <= 2 || ap_name == "pair") {
+    if (ap_num <= 2 || ap_name == NA_BASE_AP_PAIR) {
         // the first two attachment points should be across from each other (and
         // "pair" is the second attachment point for nucleic acid base monomers)
-        int opposite_ap_num = ap_num == 2 || ap_name == "pair" ? 1 : 2;
+        int opposite_ap_num = ap_num == 2 || ap_name == NA_BASE_AP_PAIR ? 1 : 2;
         auto opposite_dir = fetch_assigned_direction_for_attachment_point(
             opposite_ap_num, bound_aps, unbound_aps);
         if (opposite_dir.has_value()) {
@@ -521,7 +536,7 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
         if (cur_ap.num > 0) {
             bound_ap_nums.insert(cur_ap.num);
         } else if (cur_ap.num == ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
-            bound_aps_with_custom_names.insert(cur_ap.name);
+            bound_aps_with_custom_names.insert(cur_ap.model_name);
         }
     }
 
@@ -554,8 +569,8 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
                     ap_num, "", monomer_type, bound_aps, available_aps,
                     occupied_directions);
                 occupied_directions.insert(dir);
-                available_aps.push_back(
-                    UnboundAttachmentPoint{"", ap_num, dir});
+                available_aps.emplace_back("R" + std::to_string(ap_num), "",
+                                           ap_num, dir);
             }
         }
 
@@ -569,8 +584,9 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
                         monomer_type, bound_aps, available_aps,
                         occupied_directions);
                     occupied_directions.insert(dir);
-                    available_aps.push_back(UnboundAttachmentPoint{
-                        ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir});
+                    available_aps.emplace_back(
+                        ap_name, ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
+                        dir);
                 }
             }
         }
@@ -702,7 +718,7 @@ get_attachment_points_for_monomer(const RDKit::Atom* monomer)
     auto assign_ap_names = [&all_names](auto&& aps) {
         for (auto& cur_ap : aps) {
             if (cur_ap.num != ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
-                cur_ap.name = ap_num_to_name(cur_ap.num, all_names);
+                cur_ap.display_name = ap_num_to_name(cur_ap.num, all_names);
             }
         }
     };

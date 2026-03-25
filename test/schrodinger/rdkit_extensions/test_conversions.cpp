@@ -59,6 +59,8 @@ static const std::vector<std::string> ROUNDTRIP_HELM_TEST_SET = {
     "PEPTIDE1{[ac].P.A.D(A)K.[am]}$$$$V2.0",
     // Example with a branch and a disulfide bond
     "PEPTIDE1{C.A.A.A.C.G.D(K)L.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
+    // Disulfide bond between two chains
+    "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
 };
 
 static boost::shared_ptr<RDKit::RWMol>
@@ -582,4 +584,31 @@ BOOST_AUTO_TEST_CASE(TestShared11819)
 
     auto atomistic_mol = toAtomistic(*monomer_mol);
     BOOST_TEST(RDKit::MolToSmiles(*atomistic_mol) == "c1ccccc1");
+}
+
+BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomerFromSql)
+{
+    // Test the SQL loading path without PDBCODE (optional field).
+    // This previously crashed because _sqlite3_column_cstring returned
+    // nullptr for NULL columns, causing std::string construction from
+    // a null pointer.
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.resetMonomerDefinitions();
+
+    constexpr std::string_view custom_sql =
+        "INSERT INTO monomer_definitions "
+        "(SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, "
+        "NAME, MONOMER_TYPE, AUTHOR) VALUES "
+        "('SqlMon', 'PEPTIDE', 'A', 'CC(C)(N[H:1])C(=O)[OH:2]', "
+        "'CC(C)(N)C=O', 'SQL Monomer', 'Backbone', 'test');";
+
+    monomer_db.loadMonomersFromSql(custom_sql);
+
+    const std::string helm_str = "PEPTIDE1{A.[SqlMon].G}$$$$V2.0";
+    auto monomer_mol = to_rdkit(helm_str, Format::HELM);
+    BOOST_REQUIRE(monomer_mol != nullptr);
+
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol != nullptr);
+    BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
 }

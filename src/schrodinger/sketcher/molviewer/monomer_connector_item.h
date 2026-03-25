@@ -60,6 +60,7 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
                          const AbstractMonomerItem& start_monomer_item,
                          const AbstractMonomerItem& end_monomer_item,
                          const bool is_secondary_connection = false,
+                         const bool is_dark_mode = false,
                          QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::MONOMER_CONNECTOR) };
@@ -78,10 +79,24 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
      */
     bool isSecondaryConnection() const;
 
+    /**
+     * Replace the connector color and width with the given settings.
+     */
+    void setConnectorStyle(const QColor& connector_color,
+                           const qreal connector_width);
+
+    /**
+     * @return the connector color appropriate for the current color scheme
+     */
+    QColor getConnectorColor() const;
+
   protected:
     QPen m_connector_pen;
     QPen m_arrowhead_pen;
     QBrush m_arrowhead_brush;
+    QColor m_connector_color;
+    QColor m_connector_color_dark_bg;
+    bool m_is_dark_mode = false;
     QLineF m_connector_line;
     QPainterPath m_arrowhead_path;
     const AbstractMonomerItem& m_start_item;

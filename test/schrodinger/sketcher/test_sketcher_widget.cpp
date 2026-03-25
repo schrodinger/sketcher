@@ -13,6 +13,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
@@ -491,6 +493,77 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
     for (auto bond : model->getSelectedBonds()) {
         BOOST_TEST(bond->getBondType() == RDKit::Bond::DOUBLE);
     }
+}
+
+/**
+ * Verify that pinging AMINO_ACID_TOOL with a selection mutates the selected
+ * peptide monomers.
+ */
+BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("PEPTIDE1{A.G.L}$$$$V2.0");
+    auto model = sk.m_mol_model;
+
+    // select all monomers
+    model->selectAll();
+    BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
+
+    // ping AMINO_ACID_TOOL with CYS to mutate all selected peptides
+    sk.m_sketcher_model->pingValue(ModelKey::AMINO_ACID_TOOL,
+                                   QVariant::fromValue(AminoAcidTool::CYS));
+
+    // verify all monomers are now "C" (cysteine)
+    const auto* mol = model->getMol();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        BOOST_TEST(get_monomer_res_name(atom) == "C");
+    }
+}
+
+/**
+ * Verify that pinging NUCLEIC_ACID_TOOL with a base tool only mutates bases,
+ * leaving sugars and phosphates unchanged.
+ */
+BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidBase)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("RNA1{R(A)P.R(G)P}$$$$V2.0");
+    auto model = sk.m_mol_model;
+
+    model->selectAll();
+    BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
+
+    // ping with base "U" — only bases should change
+    sk.m_sketcher_model->pingValue(ModelKey::NUCLEIC_ACID_TOOL,
+                                   QVariant::fromValue(NucleicAcidTool::U));
+
+    const auto* mol = model->getMol();
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "U");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    // R(A)P.R(G)P = 2 bases, 2 sugars, 2 phosphates
+    BOOST_TEST(base_count == 2);
+    BOOST_TEST(sugar_count == 2);
+    BOOST_TEST(phosphate_count == 2);
 }
 
 /**
