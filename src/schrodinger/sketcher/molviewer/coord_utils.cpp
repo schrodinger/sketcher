@@ -72,7 +72,7 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
     /**
      * find the biggest angle interval and return a point in the middle of it.
      * It is common that two or more intervals are nearly identical in size.
-     * In that case, prefer the one in the positive x and y quadrant (0° to 90°)
+     * In that case, prefer the one closest to horizontal (0° or 180°)
      * to provide consistent, predictable placement.
      */
     const float TOLERANCE = 1.01;
@@ -96,8 +96,7 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
         }
     }
 
-    // If we have ties, use a scoring system to prefer positive y and positive x
-    // Score: +1 if y > 0, +0.5 if x > 0
+    // If we have ties, prefer the position closest to horizontal (0° or 180°)
     if (tied_indices.size() > 1) {
         auto score_angle = [&angles](int idx) {
             float midpoint_angle =
@@ -110,21 +109,16 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
                 midpoint_angle += 360.0f;
             }
 
-            // Qt's angle system: 0° is at 3 o'clock, increases
-            // counter-clockwise y > 0 when angle is in (0, 180) x > 0 when
-            // angle is in [0, 90) or (270, 360)
-            float score = 0.0f;
-            float DELTA = 1e-3; // small tolerance to avoid floating point
-                                // issues at boundaries
-            if (midpoint_angle > 0.0f + DELTA &&
-                midpoint_angle < 180.0f - DELTA) {
-                score += 1.0f; // y > 0
-            }
-            if (midpoint_angle < 90.0f - DELTA ||
-                midpoint_angle > 270.0f + DELTA) {
-                score += 0.5f; // x > 0
-            }
-            return score;
+            // Qt's angle system: 0° is at 3 o'clock (horizontal right),
+            // 180° is at 9 o'clock (horizontal left)
+            // Calculate distance to nearest horizontal direction
+            float dist_to_0 = std::min(std::abs(midpoint_angle),
+                                       std::abs(midpoint_angle - 360.0f));
+            float dist_to_180 = std::abs(midpoint_angle - 180.0f);
+            float dist_to_horizontal = std::min(dist_to_0, dist_to_180);
+
+            // Return negative distance so closer to horizontal = higher score
+            return -dist_to_horizontal;
         };
 
         best_i = *std::ranges::max_element(tied_indices, {}, score_angle);
