@@ -12,6 +12,7 @@
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 #include <rdkit/RDGeneral/RDLog.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
@@ -383,4 +384,18 @@ BOOST_AUTO_TEST_CASE(Test_mutate_monomer)
         BOOST_CHECK_THROW(mutateMonomer(*monomer_mol, 1, "G"),
                           std::runtime_error);
     }
+}
+
+BOOST_AUTO_TEST_CASE(Test_sequentialDisulfideBonds)
+{
+    // Sequential cysteines with a disulfide bond between
+    // them should exist in atomistic rep.
+    auto monomer_mol = to_rdkit("PEPTIDE1{[dF].C.C.F.G.L.[am]}$"
+                                "PEPTIDE1,PEPTIDE1,2:R3-3:R3$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+
+    std::unique_ptr<RDKit::ROMol> disulfide_substruct(RDKit::SmilesToMol("SS"));
+    auto matches = RDKit::SubstructMatch(*atomistic_mol, *disulfide_substruct);
+    BOOST_REQUIRE(matches.size() == 1);
 }
