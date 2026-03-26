@@ -405,7 +405,7 @@ const QString LINE_EDIT_CLEAR_ICON_PATH = ":icons/clear_line_edit.png";
 
 // colors for the buttons that toggle between atomistic and monomeric mode
 const QColor ATOMISTIC_OR_MONOMERIC_BTN_PRESSED_COLOR = QColor("#000000");
-const QColor ATOMISTIC_OR_MONOMERIC_BTN_DISABLED_COLOR = QColor("#BBBBBB");
+const QColor ATOMISTIC_OR_MONOMERIC_BTN_DISABLED_COLOR = QColor("#E4E4E4");
 // this color must match what is used in the SVG files
 const QRgb ATOMISTIC_OR_MONOMERIC_BTN_UNPRESSED_COLOR = qRgb(85, 85, 85);
 
