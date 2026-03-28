@@ -109,6 +109,15 @@ SKETCHER_API QPixmap render_text_to_pixmap(const QString& text,
                                            const QColor& color);
 
 /**
+ * Change a color in a pixmap
+ * @param pixmap the pixmap to modify in place
+ * @param from_color the color to replace
+ * @param to_color the color to replace from_color with
+ */
+SKETCHER_API void recolor_pixmap(QPixmap& pixmap, const QRgb& from_color,
+                                 const QColor& to_color);
+
+/**
  * Create a pixmap for use as a cursor hint from the given tool button icon.
  * The returned pixmap will be sized correctly and (optionally) recolored to the
  * appropriate shade of blue.
