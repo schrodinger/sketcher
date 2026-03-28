@@ -13,6 +13,7 @@
 
 #include <cstring>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
 #include <QJsonDocument>
@@ -84,6 +85,22 @@ void sketcher_allow_monomeric(bool allow_monomeric)
         allow_monomeric
             ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
+}
+
+/**
+ * Programmatically click a button by its Qt objectName.
+ * Used by e2e tests to interact with popup buttons that can't be targeted
+ * via browser events in the WASM environment.
+ */
+bool sketcher_click_button(const std::string& name)
+{
+    auto& sk = get_sketcher_instance();
+    auto* button = sk.findChild<QAbstractButton*>(QString::fromStdString(name));
+    if (!button) {
+        return false;
+    }
+    button->click();
+    return true;
 }
 
 /**
@@ -172,6 +189,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
     emscripten::function("_sketcher_get_widget_rect",
                          &sketcher_get_widget_rect);
+    emscripten::function("_sketcher_click_button", &sketcher_click_button);
     // see sketcher_changed_callback above
 }
 #endif

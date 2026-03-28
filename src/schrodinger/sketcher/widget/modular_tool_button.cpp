@@ -55,8 +55,13 @@ void ModularToolButton::updateButton()
     }
     auto popup = dynamic_cast<ModularPopup*>(m_popup_wdg);
     setIcon(popup->getIcon(m_enum_int));
-    setText(popup->getText(m_enum_int));
+    auto text = popup->getText(m_enum_int);
+    setText(text);
     setToolTip(popup->getToolTip(m_enum_int));
+
+    setStyleSheet(text.size() >= COMPACT_STYLE_MIN_LENGTH
+                      ? ATOM_ELEMENT_OR_MONOMER_COMPACT_STYLE
+                      : ATOM_ELEMENT_OR_MONOMER_STYLE);
 }
 
 } // namespace sketcher
