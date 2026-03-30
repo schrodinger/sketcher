@@ -261,51 +261,80 @@ std::string toString(ChainType chain_type)
     }
 }
 
-void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
-                   const std::string& linkage, const bool is_custom_bond)
+/**
+ * Ensure that we can add a new connection to the given bond, and throw an
+ * exception if we can't.
+ */
+static void sanityCheckBeforeAddingConnectionToExistingBond(
+    const RDKit::Bond* const bond, size_t monomer1, size_t monomer2,
+    const std::string& linkage, const bool is_custom_bond)
 {
-    // if bond already exists, extend linkage information
-    if (auto bond = monomer_mol.getBondBetweenAtoms(monomer1, monomer2);
-        bond && is_custom_bond) {
-        std::string old_linkage;
+    std::string old_linkage;
 
-        // If the linkage property isn't set, something went wrong
-        if (!bond->getPropIfPresent(LINKAGE, old_linkage)) {
-            throw std::runtime_error(fmt::format(
-                "No linkage property on bond between atom={} and atom={}",
-                monomer1, monomer2));
-        }
+    // If the linkage property isn't set, something went wrong
+    if (!bond->getPropIfPresent(LINKAGE, old_linkage)) {
+        throw std::runtime_error(fmt::format(
+            "No linkage property on bond between atom={} and atom={}", monomer1,
+            monomer2));
+    }
 
-        // Make sure we're not recreating this same bond, except R3-R3 which is
-        // duplicated when the only link between two monomers is via R3-R3.
-        if (old_linkage.find(linkage) != std::string::npos &&
-            linkage != "R3-R3") {
-            throw std::runtime_error(fmt::format(
-                "Can't duplicate {} bond between atom={} and atom={}", linkage,
-                monomer1, monomer2));
-        }
+    // Make sure we're not recreating this same bond, except R3-R3 which is
+    // duplicated when the only link between two monomers is via R3-R3.
+    if (old_linkage.find(linkage) != std::string::npos && linkage != "R3-R3") {
+        throw std::runtime_error(
+            fmt::format("Can't duplicate {} bond between atom={} and atom={}",
+                        linkage, monomer1, monomer2));
+    }
 
-        // Since hydrogen bonding and covalent bonds are different types of bond
-        // serializing them with the same bond type doesn't make too much sense.
-        if (linkage.find("pair") == 0 ||
-            old_linkage.find("pair") != std::string::npos) {
-            throw std::runtime_error(
-                fmt::format("Multiple bonds can't include hydrogen bond for "
-                            "bond between atom={} and atom={}",
-                            monomer1, monomer2));
-        }
+    // Since hydrogen bonding and covalent bonds are different types of bond
+    // serializing them with the same bond type doesn't make too much sense.
+    if (linkage.find("pair") == 0 ||
+        old_linkage.find("pair") != std::string::npos) {
+        throw std::runtime_error(
+            fmt::format("Multiple bonds can't include hydrogen bond for "
+                        "bond between atom={} and atom={}",
+                        monomer1, monomer2));
+    }
 
-        // FIXME: For now, don't allow multiple custom bonds between the same
-        // two atoms
+    if (is_custom_bond) {
+        // FIXME: For now, don't allow multiple custom bonds between the
+        // same two atoms
         if (bond->hasProp(CUSTOM_BOND)) {
             throw std::runtime_error(
                 fmt::format("Multiple custom bonds not supported for "
                             "bond between atom={} and atom={}",
                             monomer1, monomer2));
         }
+    } else {
+        if (!bond->hasProp(CUSTOM_BOND) ||
+            bond->getProp<std::string>(CUSTOM_BOND) != old_linkage) {
+            throw std::runtime_error(
+                fmt::format("More than two connections not supported for "
+                            "bond between atom={} and atom={}",
+                            monomer1, monomer2));
+        }
+    }
+}
 
-        // Update the linkage property
-        bond->setProp(CUSTOM_BOND, linkage);
+std::pair<RDKit::Bond*, ConnectionAdded>
+addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
+              const std::string& linkage, const bool is_custom_bond)
+{
+    auto bond_creation = ConnectionAdded::NEW_BOND_ADDED;
+    RDKit::Bond* bond = monomer_mol.getBondBetweenAtoms(monomer1, monomer2);
+    // if bond already exists, extend linkage information
+    if (bond) {
+        sanityCheckBeforeAddingConnectionToExistingBond(
+            bond, monomer1, monomer2, linkage, is_custom_bond);
+        if (is_custom_bond) {
+            bond->setProp(CUSTOM_BOND, linkage);
+            bond_creation =
+                ConnectionAdded::CUSTOM_CONNECTION_ADDED_TO_EXISTING_BOND;
+        } else {
+            bond->setProp(LINKAGE, linkage);
+            bond_creation =
+                ConnectionAdded::STANDARD_CONNECTION_ADDED_TO_EXISTING_BOND;
+        }
     } else {
         auto create_bond = [&](unsigned int first_monomer,
                                unsigned int second_monomer,
@@ -318,6 +347,7 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
             if (is_custom_bond) {
                 bond->setProp(CUSTOM_BOND, linkage_prop);
             }
+            return bond;
         };
 
         // Connections that use specific and different attachment points (such
@@ -330,13 +360,14 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         if (linkage.front() != 'p' && linkage.find('?') == std::string::npos) {
             auto [begin_attchpt, end_attchpt] = getAttchpts(linkage);
             if (begin_attchpt > end_attchpt) {
-                create_bond(monomer1, monomer2, ::RDKit::Bond::DATIVE, linkage);
+                bond = create_bond(monomer1, monomer2, ::RDKit::Bond::DATIVE,
+                                   linkage);
                 set_directional_bond = true;
             } else if (begin_attchpt < end_attchpt) {
                 auto new_linkage =
                     fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
-                create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
-                            new_linkage);
+                bond = create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
+                                   new_linkage);
                 set_directional_bond = true;
             }
         }
@@ -344,7 +375,7 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         if (!set_directional_bond) {
             auto bond_type = (linkage.front() == 'p' ? ::RDKit::Bond::ZERO
                                                      : ::RDKit::Bond::SINGLE);
-            create_bond(monomer1, monomer2, bond_type, linkage);
+            bond = create_bond(monomer1, monomer2, bond_type, linkage);
         }
     }
 
@@ -352,19 +383,22 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         // monomer2 is a branch monomer
         monomer_mol.getAtomWithIdx(monomer2)->setProp(BRANCH_MONOMER, true);
     }
+    return {bond, bond_creation};
 }
 
-void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
-                   ConnectionType connection_type)
+std::pair<RDKit::Bond*, ConnectionAdded>
+addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
+              ConnectionType connection_type)
 {
     switch (connection_type) {
         case ConnectionType::FORWARD:
-            addConnection(monomer_mol, monomer1, monomer2, BACKBONE_LINKAGE);
-            break;
+            return addConnection(monomer_mol, monomer1, monomer2,
+                                 BACKBONE_LINKAGE);
         case ConnectionType::SIDECHAIN:
-            addConnection(monomer_mol, monomer1, monomer2, BRANCH_LINKAGE);
-            break;
+            return addConnection(monomer_mol, monomer1, monomer2,
+                                 BRANCH_LINKAGE);
     }
+    throw std::runtime_error("Invalid connection type");
 }
 
 std::unique_ptr<Monomer> makeMonomer(const std::string_view name,

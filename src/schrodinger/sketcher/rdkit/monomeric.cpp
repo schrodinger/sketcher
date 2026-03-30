@@ -1,6 +1,8 @@
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
+#include <algorithm>
 #include <functional>
+#include <numeric>
 #include <optional>
 
 #include <boost/range/join.hpp>
@@ -95,7 +97,7 @@ MonomerType get_monomer_type(const RDKit::Atom* atom)
     return MonomerType::CHEM;
 }
 
-MonomerType get_na_monomer_type_from_res_name(const std::string& res_name)
+MonomerType get_na_monomer_type_from_res_name(const std::string_view res_name)
 {
     if (res_name.empty()) {
         return MonomerType::NA_BASE;
@@ -237,6 +239,21 @@ qreal get_monomer_arrowhead_offset(const QGraphicsItem& monomer_item,
     return offset;
 }
 
+int ap_name_to_num(const std::string_view attachment_point_name)
+{
+    if (attachment_point_name[0] != 'R') {
+        return ATTACHMENT_POINT_WITH_CUSTOM_NAME;
+    }
+    // remove the leading 'R' now that we've confirmed it exists
+    auto num_part_of_name = attachment_point_name.substr(1);
+    try {
+        return std::stoi(std::string(num_part_of_name));
+    } catch (const std::logic_error&) {
+        // it's not an integer
+        return ATTACHMENT_POINT_WITH_CUSTOM_NAME;
+    }
+}
+
 /**
  * Return the name and number of the attachment point specified in the given
  * linkage string.
@@ -265,18 +282,7 @@ get_attachment_point_for_atom(std::string linkage, bool is_begin_atom)
     std::string attachment_point_name = is_begin_atom
                                             ? linkage.substr(0, dash_pos)
                                             : linkage.substr(dash_pos + 1);
-    if (attachment_point_name[0] != 'R') {
-        return {ATTACHMENT_POINT_WITH_CUSTOM_NAME, attachment_point_name};
-    }
-    // remove the leading 'R' now that we've confirmed it exists
-    auto num_part_of_name = attachment_point_name.substr(1);
-    int ap_num;
-    try {
-        ap_num = std::stoi(num_part_of_name);
-    } catch (const std::logic_error&) {
-        // it's not an integer
-        ap_num = ATTACHMENT_POINT_WITH_CUSTOM_NAME;
-    }
+    auto ap_num = ap_name_to_num(attachment_point_name);
     return {ap_num, attachment_point_name};
 }
 
@@ -747,6 +753,29 @@ get_attachment_point_name_for_connection(const RDKit::Atom* monomer,
         }
     }
     return "";
+}
+
+void merge_chains(RDKit::ROMol& mol, const std::string_view merge_from,
+                  const std::string& merge_to)
+{
+    auto to_polymer = rdkit_extensions::get_polymer(mol, merge_to);
+    auto max_res_num_in_to_polymer = std::transform_reduce(
+        to_polymer.atoms.begin(), to_polymer.atoms.end(), 0u,
+        static_cast<const unsigned int& (*)(const unsigned int&,
+                                            const unsigned int&)>(&std::max),
+        [&mol](size_t atom_idx) {
+            return rdkit_extensions::get_residue_number(
+                mol.getAtomWithIdx(atom_idx));
+        });
+    auto from_polymer = rdkit_extensions::get_polymer(mol, merge_from);
+    int new_res_num = max_res_num_in_to_polymer;
+    for (auto atom_idx : from_polymer.atoms) {
+        auto* monomer = mol.getAtomWithIdx(atom_idx);
+        auto monomer_info = monomer->getMonomerInfo();
+        auto* res_info = static_cast<RDKit::AtomPDBResidueInfo*>(monomer_info);
+        res_info->setChainId(merge_to);
+        res_info->setResidueNumber(++new_res_num);
+    }
 }
 
 } // namespace sketcher
