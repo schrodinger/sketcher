@@ -645,11 +645,15 @@ unsigned int findNeighbor(const RDKit::ROMol& atomistic_mol,
 unsigned int findNeighbor(const RDKit::ROMol& atomistic_mol,
                           const MonomerMatch& monomer)
 {
-    assert(countAttachments(monomer) == 1);
     auto at_idx = monomer.r1 != NO_ATTACHMENT   ? monomer.r1
                   : monomer.r2 != NO_ATTACHMENT ? monomer.r2
                   : monomer.r3 != NO_ATTACHMENT ? monomer.r3
                                                 : NO_ATTACHMENT;
+    if (at_idx == NO_ATTACHMENT) {
+        auto msg = fmt::format("Monomer has no neighbor: ",
+                               fmt::join(monomer.atom_indices, " "));
+        throw std::runtime_error(msg);
+    }
     return findNeighbor(atomistic_mol, at_idx);
 }
 
