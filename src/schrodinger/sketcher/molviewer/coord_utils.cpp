@@ -23,6 +23,37 @@ namespace schrodinger
 namespace sketcher
 {
 
+namespace
+{
+/**
+ * Compute a score for how close an angle is to horizontal (0° or 180°).
+ * Higher scores indicate angles closer to horizontal.
+ *
+ * @param angle The angle to score, in degrees
+ * @return A score where higher values mean closer to horizontal
+ */
+float compute_horizontal_preference_score(float angle)
+{
+    // Normalize to [0, 360) range
+    while (angle >= 360.0f) {
+        angle -= 360.0f;
+    }
+    while (angle < 0.0f) {
+        angle += 360.0f;
+    }
+
+    // Qt's angle system: 0° is at 3 o'clock (horizontal right),
+    // 180° is at 9 o'clock (horizontal left)
+    // Calculate distance to nearest horizontal direction
+    float dist_to_0 = std::min(std::abs(angle), std::abs(angle - 360.0f));
+    float dist_to_180 = std::abs(angle - 180.0f);
+    float dist_to_horizontal = std::min(dist_to_0, dist_to_180);
+
+    // Return negative distance so closer to horizontal = higher score
+    return -dist_to_horizontal;
+}
+} // anonymous namespace
+
 QPointF to_scene_xy(const RDGeom::Point3D& mol_xy)
 {
     return QPointF(mol_xy.x * VIEW_SCALE, -mol_xy.y * VIEW_SCALE);
@@ -101,24 +132,7 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
         auto score_angle = [&angles](int idx) {
             float midpoint_angle =
                 angles[idx] + (angles[idx + 1] - angles[idx]) * 0.5;
-            // Normalize to [0, 360) range
-            while (midpoint_angle >= 360.0f) {
-                midpoint_angle -= 360.0f;
-            }
-            while (midpoint_angle < 0.0f) {
-                midpoint_angle += 360.0f;
-            }
-
-            // Qt's angle system: 0° is at 3 o'clock (horizontal right),
-            // 180° is at 9 o'clock (horizontal left)
-            // Calculate distance to nearest horizontal direction
-            float dist_to_0 = std::min(std::abs(midpoint_angle),
-                                       std::abs(midpoint_angle - 360.0f));
-            float dist_to_180 = std::abs(midpoint_angle - 180.0f);
-            float dist_to_horizontal = std::min(dist_to_0, dist_to_180);
-
-            // Return negative distance so closer to horizontal = higher score
-            return -dist_to_horizontal;
+            return compute_horizontal_preference_score(midpoint_angle);
         };
 
         best_i = *std::ranges::max_element(tied_indices, {}, score_angle);
