@@ -403,6 +403,12 @@ const unsigned int MAX_QUERY_SMALLEST_RING_SIZE = 999;
 // the icon to use for the clear button on line edits and BlankableSpinBoxes
 const QString LINE_EDIT_CLEAR_ICON_PATH = ":icons/clear_line_edit.png";
 
+// colors for the buttons that toggle between atomistic and monomeric mode
+const QColor ATOMISTIC_OR_MONOMERIC_BTN_PRESSED_COLOR = QColor("#000000");
+const QColor ATOMISTIC_OR_MONOMERIC_BTN_DISABLED_COLOR = QColor("#E4E4E4");
+// this color must match what is used in the SVG files
+const QRgb ATOMISTIC_OR_MONOMERIC_BTN_UNPRESSED_COLOR = qRgb(85, 85, 85);
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
