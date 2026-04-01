@@ -376,8 +376,11 @@ get_bound_attachment_points(const RDKit::Atom* monomer)
             bool is_secondary_connection = prop_name == CUSTOM_BOND;
             auto dir = get_bound_attachment_point_cardinal_direction(
                 monomer, bound_monomer, is_secondary_connection);
-            bound_aps.emplace_back(ap_name, display_name, ap_num, bound_monomer,
-                                   is_secondary_connection, dir);
+            // XCode 14 requires push_back instead of emplace_back and curly
+            // brackets instead of parenthesis here
+            bound_aps.push_back(BoundAttachmentPoint{
+                ap_name, display_name, ap_num, bound_monomer,
+                is_secondary_connection, dir});
         }
     };
 
@@ -575,8 +578,10 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
                     ap_num, "", monomer_type, bound_aps, available_aps,
                     occupied_directions);
                 occupied_directions.insert(dir);
-                available_aps.emplace_back("R" + std::to_string(ap_num), "",
-                                           ap_num, dir);
+                // XCode 14 requires push_back instead of emplace_back and curly
+                // brackets instead of parenthesis here
+                available_aps.push_back(UnboundAttachmentPoint{
+                    "R" + std::to_string(ap_num), "", ap_num, dir});
             }
         }
 
@@ -590,9 +595,11 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
                         monomer_type, bound_aps, available_aps,
                         occupied_directions);
                     occupied_directions.insert(dir);
-                    available_aps.emplace_back(
+                    // XCode 14 requires push_back instead of emplace_back and
+                    // curly brackets instead of parenthesis here
+                    available_aps.push_back(UnboundAttachmentPoint{
                         ap_name, ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
-                        dir);
+                        dir});
                 }
             }
         }
