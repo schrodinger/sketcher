@@ -3,7 +3,7 @@
 CurseMol - Molecular sketcher for the terminally committed
 
 Controls:
-  h, j, k, l       - Move cursor left, down, up, right
+  h, j, k, l       - Move cursor left/down/up/right (arrow keys supported too)
   H, J, K, L       - Move cursor faster (10 cells horizontal, 4 cells vertical)
   Space            - Snap cursor to nearest atom
   m                - Enter move mode (hjkl moves molecule, Esc to exit)
@@ -16,10 +16,10 @@ Controls:
   c, n, o          - Insert/modify carbon/nitrogen/oxygen atom
   x                - Delete atom or bond
   D                - Delete fragment (all atoms connected to cursor atom)
-  X                - Area delete (select rectangle, Enter to delete, Esc to cancel)
+  X                - Area delete (select rectangle)
   +, -             - Increase/decrease formal charge on atom
   <, >             - Zoom out/in
-  b                - Add bond mode (add atom and move it, Enter to accept, Esc to cancel)
+  b                - Add bond mode (add atom and move it, Enter to accept)
   1, 2, 3          - Add bond or change bond (order 1/2/3) between nearest atoms
   w, d             - Add/change to wedge or dash bond (press again to reverse)
   @                - Clear canvas (reset to blank slate)
@@ -108,6 +108,14 @@ INSTRUCTIONS = {
 
 # Number of instruction lines to reserve at the bottom of the screen.
 INSTRUCTION_LINES = max(len(v) for v in INSTRUCTIONS.values())
+
+# Training wheels for those who haven't converted to vi. :-)
+ARROW_KEY_MAP = {
+    curses.KEY_LEFT: 'h',
+    curses.KEY_DOWN: 'j',
+    curses.KEY_UP: 'k',
+    curses.KEY_RIGHT: 'l',
+}
 
 
 @dataclass
@@ -1407,7 +1415,7 @@ def main_loop(stdscr, initial_smiles=None):
 
         # Convert to character (will skip non-char keys)
         try:
-            key = chr(key_code)
+            key = ARROW_KEY_MAP.get(key_code) or chr(key_code)
         except (ValueError, OverflowError):
             # Ignore other special keys we don't handle
             continue
