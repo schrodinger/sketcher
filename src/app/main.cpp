@@ -12,7 +12,9 @@
 #endif
 
 #include <cstring>
+#include <stdexcept>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
 #include <QJsonDocument>
@@ -112,6 +114,26 @@ void sketcher_reset_custom_monomers()
 }
 
 /**
+ * Programmatically click a button by its Qt objectName.
+ * Used by e2e tests to interact with popup buttons that can't be targeted
+ * via browser events in the WASM environment.
+ *
+ * Throws std::runtime_error if no button with the given name is found,
+ * which typically indicates the test needs to be updated.
+ */
+void sketcher_click_button(const std::string& name)
+{
+    auto& sk = get_sketcher_instance();
+    auto* button = sk.findChild<QAbstractButton*>(QString::fromStdString(name));
+    if (!button) {
+        throw std::runtime_error(
+            "sketcher_click_button: no button found with objectName '" + name +
+            "'");
+    }
+    button->click();
+}
+
+/**
  * Return the position and size of any child widget found by its Qt
  * objectName. Returns a JSON object with {x, y, width, height}.
  * Coordinates are relative to the sketcher widget's top-left corner.
@@ -205,6 +227,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
                          &sketcher_reset_custom_monomers);
     emscripten::function("_sketcher_get_widget_rect",
                          &sketcher_get_widget_rect);
+    emscripten::function("_sketcher_click_button", &sketcher_click_button);
     // see sketcher_changed_callback above
 }
 #endif

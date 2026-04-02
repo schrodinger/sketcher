@@ -496,7 +496,7 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 }
 
 /**
- * Verify that pinging AMINO_ACID_TOOL with a selection mutates the selected
+ * Verify that pinging AMINO_ACID_SYMBOL with a selection mutates the selected
  * peptide monomers.
  */
 BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
@@ -510,9 +510,9 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
     model->selectAll();
     BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
 
-    // ping AMINO_ACID_TOOL with CYS to mutate all selected peptides
-    sk.m_sketcher_model->pingValue(ModelKey::AMINO_ACID_TOOL,
-                                   QVariant::fromValue(AminoAcidTool::CYS));
+    // ping AMINO_ACID_SYMBOL with "C" to mutate all selected peptides
+    sk.m_sketcher_model->pingValue(ModelKey::AMINO_ACID_SYMBOL,
+                                   QVariant::fromValue(QString("C")));
 
     // verify all monomers are now "C" (cysteine)
     const auto* mol = model->getMol();

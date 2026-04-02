@@ -103,3 +103,16 @@ export async function clickWidget(page, name) {
   const rect = await getWidgetRect(page, name);
   await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
+
+/**
+ * Programmatically click a popup button by its Qt objectName.
+ * Qt::Popup windows in WASM create a separate canvas whose event listeners
+ * can't be targeted by Playwright, so we call into C++ directly.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name - Qt objectName of the popup button
+ * @throws if no button with the given name is found
+ */
+export async function clickPopupButton(page, name) {
+  await page.evaluate((n) => Module._sketcher_click_button(n), name);
+}

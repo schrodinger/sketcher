@@ -274,3 +274,39 @@ BOOST_AUTO_TEST_CASE(TestSmilesEscaping)
     monomer_db.loadMonomersFromJson(json_for_boc_ser_bzl);
     monomer_db.canonicalizeSmilesFields();
 }
+
+BOOST_AUTO_TEST_CASE(TestGetNonNaturalAnalogs)
+{
+    auto& mdb = MonomerDatabase::instance();
+    mdb.resetMonomerDefinitions();
+
+    auto analogs = mdb.getMonomersByNaturalAnalog(ChainType::PEPTIDE);
+
+    // The core DB should contain non-natural peptide analogs
+    BOOST_REQUIRE(!analogs.empty());
+
+    // D-Alanine ("dA") should be listed under natural analog "A"
+    auto it = analogs.find("A");
+    BOOST_REQUIRE(it != analogs.end());
+    BOOST_REQUIRE(!it->second.empty());
+
+    bool found_dA = false;
+    for (const auto& info : it->second) {
+        BOOST_REQUIRE(info.symbol.has_value());
+        BOOST_REQUIRE(info.natural_analog.has_value());
+        // Every entry must have SYMBOL != NATURAL_ANALOG
+        BOOST_CHECK_NE(*info.symbol, *info.natural_analog);
+        if (*info.symbol == "dA") {
+            found_dA = true;
+            BOOST_CHECK_EQUAL(*info.natural_analog, "A");
+        }
+    }
+    BOOST_CHECK(found_dA);
+
+    // Verify that standard amino acids (SYMBOL == NATURAL_ANALOG) are excluded
+    for (const auto& [natural_analog, entries] : analogs) {
+        for (const auto& info : entries) {
+            BOOST_CHECK_NE(info.symbol.value_or(""), natural_analog);
+        }
+    }
+}
