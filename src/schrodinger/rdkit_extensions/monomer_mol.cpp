@@ -276,15 +276,6 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                 monomer1, monomer2));
         }
 
-        // Make sure we're not recreating this same bond, except R3-R3 which is
-        // duplicated when the only link between two monomers is via R3-R3.
-        if (old_linkage.find(linkage) != std::string::npos &&
-            linkage != "R3-R3") {
-            throw std::runtime_error(fmt::format(
-                "Can't duplicate {} bond between atom={} and atom={}", linkage,
-                monomer1, monomer2));
-        }
-
         // Since hydrogen bonding and covalent bonds are different types of bond
         // serializing them with the same bond type doesn't make too much sense.
         if (linkage.find("pair") == 0 ||
@@ -304,8 +295,20 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                             monomer1, monomer2));
         }
 
-        // Update the linkage property
-        bond->setProp(CUSTOM_BOND, linkage);
+        // We allow adding a "duplicate" backbone connection, but only if it
+        // goes in reverse, which means we are dealing with a cyclic dipeptide.
+        // We'll signal this by storing the linkage backwards.
+        if (old_linkage.find(linkage) != std::string::npos &&
+            linkage == "R2-R1") {
+            if (bond->getBeginAtomIdx() == monomer1) {
+                throw std::runtime_error(fmt::format(
+                    "Can't duplicate {} bond between atom={} and atom={}",
+                    linkage, monomer1, monomer2));
+            }
+            bond->setProp(CUSTOM_BOND, "R1-R2");
+        } else {
+            bond->setProp(CUSTOM_BOND, linkage);
+        }
     } else {
         auto create_bond = [&](unsigned int first_monomer,
                                unsigned int second_monomer,
