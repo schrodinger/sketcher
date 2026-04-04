@@ -16,6 +16,7 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/SmilesParse/SmartsWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 
@@ -47,18 +48,11 @@ static constexpr const char* ATTACH_NUM{
 static constexpr int MIN_ATTCHPTS = 2;
 static constexpr int SIDECHAIN_ATTCHPT = 8;
 static constexpr int TERMINAL_ATTCHPT = 9;
-static constexpr auto NO_ATTACHMENT = std::numeric_limits<unsigned int>::max();
 
 // std::map to allow sequential/ordered iteration
 using ChainsAndResidues =
     std::map<std::string,
              std::map<std::pair<int, std::string>, std::vector<unsigned int>>>;
-
-struct ResidueQuery {
-    std::unique_ptr<RDKit::RWMol> mol;
-    std::vector<unsigned int> attch_map;
-    std::string name;
-};
 
 bool get_debug()
 {
@@ -77,6 +71,7 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query,
     ResidueQuery query;
     query.mol.reset(RDKit::SmartsToMol(smarts_query));
     query.name = std::move(name);
+    query.use_chirality = false;
 
     // Maps SMARTS query index to attachment point # to avoid checking the
     // property for every match
@@ -124,8 +119,8 @@ struct MonomerMatch {
 struct Linkage {
     unsigned int monomer_idx1;
     unsigned int monomer_idx2;
-    unsigned int attach_from;
-    unsigned int attach_to;
+    unsigned int attach_from; // 1..3, typically
+    unsigned int attach_to;   // 1..3, typically
 
     Linkage(unsigned int idx1, unsigned int idx2, unsigned int from,
             unsigned int to) :
@@ -142,19 +137,19 @@ struct Linkage {
     }
 };
 
-bool alreadyMatched(const RDKit::ROMol& mol, std::span<const unsigned int> ids)
+bool alreadyMatched(const RDKit::ROMol& mol, const RDKit::MatchVectType& match)
 {
     // Make sure this match hasn't already been accounted for by a previous
     // match
-    for (auto id : ids) {
+    for (auto [_, id] : match) {
         auto at = mol.getAtomWithIdx(id);
         unsigned int attch;
         if (at->hasProp(MONOMER_IDX) &&
             at->getPropIfPresent(ATTACH_NUM, attch) && attch == NO_ATTACHMENT) {
-            return false;
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
 // Add a dummy atom connected to atom_idxs via single bond.
@@ -241,11 +236,13 @@ void addMatchesToMonomers(
     // Set a final function check that ensures the entire match has not
     // already been accounted for by a previous SMARTS search.
     RDKit::SubstructMatchParameters params;
-    params.useChirality = false;
-    params.extraFinalCheck = &alreadyMatched;
+    params.useChirality = query.use_chirality;
     auto matches = RDKit::SubstructMatch(atomistic_mol, *query.mol, params);
 
     for (const auto& match : matches) {
+        if (alreadyMatched(atomistic_mol, match)) {
+            continue;
+        }
         PRINT("match {}: {}\n", query.name, fmt::join(match, " "));
         MonomerMatch monomer;
         auto monomer_idx = monomers.size();
@@ -1056,7 +1053,7 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
  * monomer.
  */
 void identifyMonomers(RDKit::RWMol& atomistic_mol,
-                      std::vector<MonomerMatch>& monomers)
+                      std::vector<MonomerMatch>& monomers, bool complex_mode)
 {
     // Approach for identifying monomers:
     // 1. Find all matches with SMARTS queries for amino acids
@@ -1076,6 +1073,13 @@ void identifyMonomers(RDKit::RWMol& atomistic_mol,
     // before GLYCINE_AMINO_ACID_QUERY because the glycine is a substructure of
     // the generic query and would result in incorrect matches. Start with
     // queries that may include R3 attachments (i.e. CYS)
+    if (complex_mode) {
+        auto& db = MonomerDatabase::instance();
+        for (auto& query : db.getComplexMonomerQueries()) {
+            addMatchesToMonomers(query, atomistic_mol, monomers,
+                                 sidechain_attch_pts);
+        }
+    }
     addMatchesToMonomers(CYSTEINE_QUERY, atomistic_mol, monomers,
                          sidechain_attch_pts);
     addMatchesToMonomers(GENERIC_AMINO_ACID_QUERY, atomistic_mol, monomers,
@@ -1119,11 +1123,13 @@ void neutralizeAtoms(RDKit::ROMol& mol)
     }
 }
 
-void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
-                     std::vector<MonomerMatch>& monomers,
-                     boost::shared_ptr<RDKit::RWMol> monomer_mol,
-                     std::vector<Linkage>& linkages)
+boost::shared_ptr<RDKit::RWMol>
+buildMonomerMol(const RDKit::ROMol& atomistic_mol,
+                std::vector<MonomerMatch>& monomers,
+                std::vector<Linkage>& linkages, bool allow_smiles)
 {
+    auto monomer_mol = boost::make_shared<RDKit::RWMol>();
+
     // Start with all atoms in a single peptide chain
     monomer_mol->setProp<bool>(HELM_MODEL, true);
 
@@ -1136,7 +1142,7 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
         if (!helm_symbol) {
             addMonomer(*monomer_mol, RDKit::MolToSmiles(atomistic_mol), 1,
                        "CHEM1", MonomerType::SMILES);
-            return;
+            return monomer_mol;
         }
     }
 
@@ -1156,7 +1162,7 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
             PRINT("addMonomer({}, {}:{})\n", *helm_symbol, monomer.chain_idx,
                   residue_num);
             addMonomer(*monomer_mol, *helm_symbol, residue_num, chain_id);
-        } else {
+        } else if (allow_smiles) {
             // We need to add R1/R2 attachment points to the monomer
             RDKit::RWMol atomistic_copy(atomistic_mol);
 
@@ -1211,6 +1217,10 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
 
             addMonomer(*monomer_mol, monomer_smiles, residue_num, chain_id,
                        MonomerType::SMILES);
+        } else {
+            auto msg = fmt::format("Unidentified monomer: {}",
+                                   fmt::join(monomer.atom_indices, ", "));
+            throw std::runtime_error(msg);
         }
         ++residue_num;
     }
@@ -1228,6 +1238,7 @@ void buildMonomerMol(const RDKit::ROMol& atomistic_mol,
                           link.to_string(), true);
         }
     }
+    return monomer_mol;
 }
 
 size_t findStartMonomer(const std::vector<int>& parents, size_t current_monomer)
@@ -1828,6 +1839,24 @@ bool hasPdbResidueInfo(const RDKit::ROMol& mol)
                                       RDKit::AtomMonomerInfo::PDBRESIDUE;
                        });
 }
+
+boost::shared_ptr<RDKit::RWMol>
+smartsBasedToMonomeric(RDKit::RWMol& atomistic_mol, bool complex_mode)
+{
+    std::vector<MonomerMatch> monomers;
+    identifyMonomers(atomistic_mol, monomers, complex_mode);
+
+    std::vector<Linkage> linkages;
+    detectLinkages(atomistic_mol, monomers, linkages);
+    orderMonomers(atomistic_mol, monomers, linkages);
+
+    auto allow_smiles = complex_mode;
+    auto monomer_mol =
+        buildMonomerMol(atomistic_mol, monomers, linkages, allow_smiles);
+    assignChains(*monomer_mol);
+    return monomer_mol;
+}
+
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
@@ -1838,16 +1867,22 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
             "Input molecule has no atoms, cannot convert to "
             "monomeric representation.");
     }
+
+    auto make_atomistic_mol = [](auto& input_mol) {
+        RDKit::RWMol new_atomistic_mol(input_mol);
+        // Set reference index for SMILES fragments
+        for (auto at : new_atomistic_mol.atoms()) {
+            at->setProp(REFERENCE_IDX, at->getIdx());
+        }
+
+        neutralizeAtoms(new_atomistic_mol);
+        return new_atomistic_mol;
+    };
+
+    auto atomistic_mol = make_atomistic_mol(mol);
+
     // First attempt to use residue information to build the monomeric molecule,
     // if the information isn't present fall back to SMARTS-based method
-    RDKit::RWMol atomistic_mol(mol);
-
-    // Set reference index for SMILES fragments
-    for (auto at : atomistic_mol.atoms()) {
-        at->setProp(REFERENCE_IDX, at->getIdx());
-    }
-
-    neutralizeAtoms(atomistic_mol);
     if (try_residue_info) {
         if (hasPdbResidueInfo(atomistic_mol)) {
             auto monomer_mol = pdbInfoAtomisticToMM(atomistic_mol, true);
@@ -1860,18 +1895,15 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
         }
     }
 
-    std::vector<MonomerMatch> monomers;
-    identifyMonomers(atomistic_mol, monomers);
-
-    std::vector<Linkage> linkages;
-    detectLinkages(atomistic_mol, monomers, linkages);
-    orderMonomers(atomistic_mol, monomers, linkages);
-
-    boost::shared_ptr<RDKit::RWMol> monomer_mol =
-        boost::make_shared<RDKit::RWMol>();
-    buildMonomerMol(atomistic_mol, monomers, monomer_mol, linkages);
-    assignChains(*monomer_mol);
-    return monomer_mol;
+    try {
+        return smartsBasedToMonomeric(atomistic_mol, /*complex_mode=*/false);
+    } catch (std::runtime_error& e) {
+        PRINT("Error: {}\n", e.what());
+        PRINT("Retry with complex mode...\n");
+        // Use new atomistic_mol; old one may be littered with properties.
+        auto atomistic_mol2 = make_atomistic_mol(mol);
+        return smartsBasedToMonomeric(atomistic_mol2, /*complex_mode=*/true);
+    }
 }
 
 std::vector<std::vector<unsigned int>> getMonomers(const RDKit::ROMol& mol)
@@ -1882,7 +1914,7 @@ std::vector<std::vector<unsigned int>> getMonomers(const RDKit::ROMol& mol)
         at->setProp(REFERENCE_IDX, at->getIdx());
     }
     std::vector<MonomerMatch> monomers;
-    identifyMonomers(atomistic_mol, monomers);
+    identifyMonomers(atomistic_mol, monomers, /*complex_mode=*/false);
 
     std::vector<std::vector<unsigned int>> monomers_indices;
     for (auto& monomer : monomers) {

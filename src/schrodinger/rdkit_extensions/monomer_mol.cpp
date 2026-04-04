@@ -281,9 +281,10 @@ static void sanityCheckBeforeAddingConnectionToExistingBond(
             monomer2));
     }
 
-    // Make sure we're not recreating this same bond, except R3-R3 which is
-    // duplicated when the only link between two monomers is via R3-R3.
-    if (old_linkage.find(linkage) != std::string::npos && linkage != "R3-R3") {
+    // We allow adding a "duplicate" backbone connection, but only if it
+    // goes in reverse, which means we are dealing with a cyclic dipeptide.
+    if (old_linkage.find(linkage) != std::string::npos && linkage == "R2-R1" &&
+        bond->getBeginAtomIdx() == monomer1) {
         throw std::runtime_error(
             fmt::format("Can't duplicate {} bond between atom={} and atom={}",
                         linkage, monomer1, monomer2));
@@ -319,6 +320,25 @@ static void sanityCheckBeforeAddingConnectionToExistingBond(
     }
 }
 
+/**
+ * Check whether this bond is a "backwards duplicate" backbone linkage, which
+ * is found in e.g. cyclic dipeptides.
+ */
+bool isCyclicDimerClosure(const RDKit::Bond& bond, size_t monomer1,
+                          const std::string& linkage)
+{
+    std::string old_linkage;
+
+    // If the linkage property isn't set, something went wrong
+    if (!bond.getPropIfPresent(LINKAGE, old_linkage)) {
+        throw std::runtime_error(fmt::format(
+            "No linkage property on bond between atom={} and atom={}",
+            bond.getBeginAtomIdx(), bond.getEndAtomIdx()));
+    }
+    return old_linkage.find(linkage) != std::string::npos &&
+           linkage == "R2-R1" && bond.getEndAtomIdx() == monomer1;
+}
+
 std::pair<RDKit::Bond*, ConnectionAdded>
 addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
               const std::string& linkage, const bool is_custom_bond)
@@ -330,7 +350,12 @@ addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         sanityCheckBeforeAddingConnectionToExistingBond(
             bond, monomer1, monomer2, linkage, is_custom_bond);
         if (is_custom_bond) {
-            bond->setProp(CUSTOM_BOND, linkage);
+            if (isCyclicDimerClosure(*bond, monomer1, linkage)) {
+                // We'll signal this by storing the linkage backwards.
+                bond->setProp(CUSTOM_BOND, "R1-R2");
+            } else {
+                bond->setProp(CUSTOM_BOND, linkage);
+            }
             bond_creation =
                 ConnectionAdded::CUSTOM_CONNECTION_ADDED_TO_EXISTING_BOND;
         } else {

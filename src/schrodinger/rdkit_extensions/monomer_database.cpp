@@ -22,8 +22,11 @@
 
 #include <rdkit/GraphMol/RDKitBase.h>
 #include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryOps.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 
 #include "sqlite3.h"
 
@@ -941,9 +944,123 @@ MonomerDatabase::getEnumeratedCoreSmiles() const
     return *m_enumerated_core_smiles_cache;
 }
 
+/// Given the atomistic representation of a monomer, as well as its SMILES
+/// representation, create a query molecule suitable for searching for the
+/// monomer in a polymer. This entails deleting some of the attachment points
+/// or using wildcards for them, and adding explicit hydrogens to prevent
+/// matching bigger structures that have further substituents in non-designated
+/// attachment points.
+boost::shared_ptr<RDKit::RWMol> make_query(const RDKit::ROMol& mol,
+                                           const std::string& smiles)
+{
+    auto rwmol = boost::shared_ptr<RDKit::RWMol>(RDKit::SmartsToMol(smiles));
+
+    // Helper function to get the first neighbor of an atom
+    auto get_neighbor = [&rwmol](RDKit::Atom* atom) -> RDKit::Atom* {
+        for (const auto nbr : rwmol->atomNeighbors(atom)) {
+            return nbr;
+        }
+        return nullptr;
+    };
+
+    // Create a query for oxygen or nitrogen atoms
+    static auto o_n_query_mol =
+        std::unique_ptr<RDKit::ROMol>(RDKit::SmartsToMol("[O,N]"));
+    auto o_n_query = o_n_query_mol->getAtomWithIdx(0);
+
+    rwmol->beginBatchEdit();
+    for (auto atom : rwmol->atoms()) {
+        auto idx = atom->getIdx();
+        auto map_num = atom->getAtomMapNum();
+        if (map_num == 2) {
+            // In the conventions used by to_monomeric.cpp, the atom originally
+            // labeled 2 is the terminal atom, which we label as 9. The 2 gets
+            // reassigned to its neighbor.
+            auto query_atom = static_cast<RDKit::QueryAtom*>(atom);
+            query_atom->setQuery(
+                static_cast<RDKit::QueryAtom*>(o_n_query)->getQuery()->copy());
+            atom->setAtomMapNum(9);
+            auto neighbor = get_neighbor(atom);
+            if (neighbor) {
+                neighbor->setAtomMapNum(2);
+            }
+        } else if (map_num == 1 || map_num == 3) {
+            // Attachment points 1 and 3 simply get deleted, because they graph
+            // are hydrogens that get replaced in the polymer, or are implicit
+            // in the free monomer.
+            auto neighbor = get_neighbor(atom);
+            if (neighbor) {
+                neighbor->setAtomMapNum(map_num);
+            }
+            rwmol->removeAtom(idx);
+        }
+    }
+
+    /// Add hydrogen queries to non-mapped atoms to prevent unwanted matches.
+    for (auto atom : rwmol->atoms()) {
+        if (atom->getAtomMapNum() != 0) {
+            continue;
+        }
+        auto idx = atom->getIdx();
+        auto num_h = mol.getAtomWithIdx(idx)->getTotalNumHs();
+        auto query_atom = static_cast<RDKit::QueryAtom*>(atom);
+        query_atom->expandQuery(RDKit::makeAtomHCountQuery(num_h));
+    }
+
+    rwmol->commitBatchEdit();
+
+    return rwmol;
+}
+
+/// Return a map from atom index to attachment point number.
+std::vector<unsigned int> make_attch_map(const RDKit::ROMol& mol)
+{
+    // TODO: this duplicates parts of
+    // to_monomeric.cpp:prepare_static_mol_query() but it's not clear where to
+    // put such a utility function so that it can be called across translation
+    // units. It seemed out of place on monomer_database.h.
+    std::vector<unsigned int> attch_map(mol.getNumAtoms(), NO_ATTACHMENT);
+    for (const auto atom : mol.atoms()) {
+        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+            attch_map[atom->getIdx()] = atom->getProp<unsigned int>(
+                RDKit::common_properties::molAtomMapNumber);
+        }
+    }
+    return attch_map;
+}
+
+[[nodiscard]] const std::vector<ResidueQuery>&
+MonomerDatabase::getComplexMonomerQueries() const
+{
+    using namespace RDKit::v2::SmilesParse;
+    static auto residue_query = MolFromSmarts("NCC(=O)[O,N]");
+    if (!m_complex_monomer_queries.has_value()) {
+        auto queries = std::vector<ResidueQuery>();
+        RDKit::MatchVectType res;
+        for (auto& [smiles, symbol] : getAllSMILES()) {
+            constexpr int debug = 0;
+            constexpr bool sanitize = false;
+            std::unique_ptr<RDKit::RWMol> mol(
+                RDKit::SmilesToMol(smiles, debug, sanitize));
+            RDKit::MolOps::sanitizeMol(*mol);
+            if (SubstructMatch(*mol, *residue_query).size() > 1) {
+                auto query = ResidueQuery{};
+                query.mol = make_query(*mol, smiles);
+                query.attch_map = make_attch_map(*query.mol);
+                query.name = symbol;
+                query.use_chirality = true;
+                queries.push_back(query);
+            }
+        }
+        m_complex_monomer_queries = std::move(queries);
+    }
+    return *m_complex_monomer_queries;
+}
+
 void MonomerDatabase::invalidateCache()
 {
     m_enumerated_core_smiles_cache.reset();
+    m_complex_monomer_queries.reset();
 }
 
 [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
