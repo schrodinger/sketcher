@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -10,6 +11,7 @@
 
 #include <boost/noncopyable.hpp>
 #include <boost/filesystem/path.hpp>
+#include <rdkit/GraphMol/ROMol.h>
 
 struct sqlite3;
 
@@ -40,6 +42,24 @@ struct RDKIT_EXTENSIONS_API MonomerInfo {
 
     size_t getHash() const;
     bool areRequiredFieldsPopulated() const;
+};
+
+inline constexpr unsigned int NO_ATTACHMENT =
+    std::numeric_limits<unsigned int>::max();
+
+struct RDKIT_EXTENSIONS_API ResidueQuery {
+    /// Query molecule
+    boost::shared_ptr<RDKit::RWMol> mol;
+
+    /// Map from atom index to attachment point number
+    std::vector<unsigned int> attch_map;
+
+    /// Query name used for logging
+    std::string name;
+
+    /// Whether to consider chirality while doing the substructure search.
+    /// Usually false for generic queries but true for specific monomers.
+    bool use_chirality;
 };
 
 class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
@@ -125,7 +145,7 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] std::vector<std::pair<std::string, std::string>>
     getAllSMILES() const;
 
-    // Returns a cached map from enumerated core SMILES to monomer symbols.
+    // Return a cached map from enumerated core SMILES to monomer symbols.
     // The cache is invalidated whenever the database is modified.
     [[nodiscard]] const std::unordered_map<std::string, std::string>&
     getEnumeratedCoreSmiles() const;
@@ -134,6 +154,12 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // Only returns monomers where SYMBOL != NATURAL_ANALOG.
     [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
     getMonomersByNaturalAnalog(ChainType polymer_type) const;
+
+    // Return the cached list of complex monomer queries. (A "complex
+    // monomer" is one that can't be matched correctly using a generic SMARTS
+    // pattern.) The cache is invalidated whenever the database is modified.
+    [[nodiscard]] const std::vector<ResidueQuery>&
+    getComplexMonomerQueries() const;
 
   private:
     // this is private because we don't want to allow managing
@@ -161,6 +187,9 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // Cache for enumerated core SMILES to monomer symbol mapping
     mutable std::optional<std::unordered_map<std::string, std::string>>
         m_enumerated_core_smiles_cache;
+
+    // Cache for complex monomer queries
+    mutable std::optional<std::vector<ResidueQuery>> m_complex_monomer_queries;
 };
 } // namespace rdkit_extensions
 } // namespace schrodinger
