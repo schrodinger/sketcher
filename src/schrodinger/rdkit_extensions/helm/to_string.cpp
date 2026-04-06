@@ -60,7 +60,6 @@ template <class PropType, class RDKitObject> PropType get_property
             return get_polymer_helm(mol, polymer.atoms, polymer.bonds,
                                     polymer.annotation);
         });
-
     std::stringstream ss;
     ss << boost::join(polymers_helm, "|");
 
