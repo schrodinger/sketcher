@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <memory>
 
+#include <boost/algorithm/string/trim.hpp>
 #include <boost/filesystem/path.hpp>
 
 #include <fmt/format.h>
@@ -65,6 +66,31 @@ static const std::map<unsigned int, std::string> BIOVIA_ATTCHPT_MAP = {
     {2, "Br"}, // Backbone attachment point
     {3, "Cx"}, // Sidechain attachment point
 };
+
+struct MonomerKey {
+    std::string chain_id;
+    unsigned int residue_num;
+
+    bool operator<(const MonomerKey& other) const
+    {
+        return std::tie(chain_id, residue_num) <
+               std::tie(other.chain_id, other.residue_num);
+    }
+};
+
+const std::map<std::string, std::vector<std::pair<std::string, std::string>>>
+    BASE_PAIRWISE_HBONDS = {
+        // Adenine - Thymine (2 bonds)
+        {"AT", {{"N1", "N3"}, {"N6", "O4"}}},
+        {"TA", {{"N3", "N1"}, {"O4", "N6"}}},
+
+        // Adenine - Uracil (2 bonds)
+        {"AU", {{"N1", "N3"}, {"N6", "O4"}}},
+        {"UA", {{"N3", "N1"}, {"O4", "N6"}}},
+
+        // Guanine - Cytosine (3 bonds)
+        {"GC", {{"O6", "N4"}, {"N1", "N3"}, {"N2", "O2"}}},
+        {"CG", {{"N4", "O6"}, {"N3", "N1"}, {"O2", "N2"}}}};
 
 std::pair<unsigned int, unsigned int> getAttchpts(const std::string& linkage)
 {
@@ -143,20 +169,47 @@ void setResidueInfo(RDKit::RWMol& new_monomer, const std::string& monomer_label,
     }
 }
 
-ChainType getChainType(std::string_view polymer_id)
+std::vector<std::pair<unsigned int, unsigned int>> getHBondAtomIndices(
+    const std::vector<std::pair<std::string, std::string>>& hbonds,
+    const std::vector<RDKit::Atom*>& begin_base_atoms,
+    const std::vector<RDKit::Atom*>& end_base_atoms)
 {
-    if (polymer_id.find("PEPTIDE") == 0) {
-        return ChainType::PEPTIDE;
-    } else if (polymer_id.find("RNA") == 0) {
-        // HELM labels both DNA and RNA as RNA
-        return ChainType::RNA;
-    } else if (polymer_id.find("CHEM") == 0) {
-        return ChainType::CHEM;
-    } else {
-        throw std::out_of_range(fmt::format(
-            "Invalid polymer id: {}. Must be one of PEPTIDE, RNA, CHEM",
-            polymer_id));
+    std::vector<std::pair<unsigned int, unsigned int>> hbond_pair_indices;
+    for (auto& hbond : hbonds) {
+        int first_idx = -1;
+        int second_idx = -1;
+
+        for (auto* atom : begin_base_atoms) {
+            auto* pdb_info = dynamic_cast<RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            std::string atom_name = pdb_info->getName();
+            boost::trim(atom_name);
+            if (atom_name == hbond.first) {
+                first_idx = atom->getIdx();
+                break;
+            }
+        }
+        for (auto* atom : end_base_atoms) {
+            auto* pdb_info = dynamic_cast<RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            std::string atom_name = pdb_info->getName();
+            boost::trim(atom_name);
+            if (atom_name == hbond.second) {
+                second_idx = atom->getIdx();
+                break;
+            }
+        }
+
+        // Validate that both atom indices were found
+        if (first_idx == -1 || second_idx == -1) {
+            throw std::runtime_error(
+                fmt::format("Could not find hydrogen bond atoms: {} - {}",
+                            hbond.first, hbond.second));
+        }
+        hbond_pair_indices.push_back({static_cast<unsigned int>(first_idx),
+                                      static_cast<unsigned int>(second_idx)});
     }
+    return hbond_pair_indices;
 }
 
 AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
@@ -169,7 +222,6 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
     // atomistic_mol that should be attached to and the atom index of the rgroup
     // that should later be removed
     AttachmentMap attachment_point_map;
-
     auto chain = get_polymer(monomer_mol, polymer_id);
     auto chain_type = getChainType(polymer_id);
     bool sanitize = false;
@@ -242,13 +294,46 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
         atomistic_mol.insertMol(*new_monomer);
     }
 
+    std::map<unsigned int, std::vector<RDKit::Atom*>> atoms_by_monomer;
+    for (auto atom : atomistic_mol.atoms()) {
+        auto chain = get_polymer_id(atom);
+        // Only get the residues for this polymer
+        if (chain == std::string(1, chain_id)) {
+            auto res_num = get_residue_number(atom);
+            atoms_by_monomer[res_num].push_back(atom);
+        }
+    }
     // Add the bonds between monomers and mark the replaced rgroups to be
     // removed
     for (const auto bond_idx : chain.bonds) {
         auto bond = monomer_mol.getBondWithIdx(bond_idx);
         auto linkage = bond->getProp<std::string>(LINKAGE);
+        auto begin_atom = bond->getBeginAtom();
+        auto end_atom = bond->getEndAtom();
+        auto from_res = get_residue_number(begin_atom);
+        auto to_res = get_residue_number(end_atom);
         if (linkage == HYDROGEN_BOND_LINKAGE) {
-            // TODO: Handle hydrogen bonds
+            auto from_base = begin_atom->getProp<std::string>(ATOM_LABEL);
+            auto begin_base_atoms = atoms_by_monomer[from_res];
+
+            auto end_base = end_atom->getProp<std::string>(ATOM_LABEL);
+            auto end_base_atoms = atoms_by_monomer[to_res];
+
+            auto pair = from_base + end_base;
+            auto it = BASE_PAIRWISE_HBONDS.find(pair);
+            if (it == BASE_PAIRWISE_HBONDS.end()) {
+                throw std::runtime_error(
+                    fmt::format("Hydrogen Bonds between the pair of bases "
+                                "{}-{} is not supported.",
+                                from_base, end_base));
+            }
+            auto hbond_pair_indices = getHBondAtomIndices(
+                it->second, begin_base_atoms, end_base_atoms);
+            for (auto& hbond : hbond_pair_indices) {
+                // The bond-type is ZERO
+                atomistic_mol.addBond(hbond.first, hbond.second,
+                                      bond->getBondType());
+            }
             continue;
         }
         // Add custom bonds to linkages to add in the atomisic rep
@@ -304,11 +389,22 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
     std::vector<unsigned int> remove_atoms;
     unsigned int total_residue_count = 1; // 1-based index to label SUP groups
     char chain_id = 'A';
+    std::map<std::string, std::string> polymer_to_chain;
     for (const auto& polymer_id : get_polymer_ids(monomer_mol)) {
         polymer_attachment_points[polymer_id] =
             addPolymer(*atomistic_mol, monomer_mol, polymer_id, remove_atoms,
                        chain_id, total_residue_count);
+        polymer_to_chain[polymer_id] = chain_id;
         ++chain_id;
+    }
+
+    std::map<MonomerKey, std::vector<RDKit::Atom*>> atoms_by_monomer;
+    for (auto atom : atomistic_mol->atoms()) {
+        // In atomistic mol polymer id is chain
+        auto chain = get_polymer_id(atom);
+        auto res_num = get_residue_number(atom);
+        MonomerKey mono_key{chain, res_num};
+        atoms_by_monomer[mono_key].push_back(atom);
     }
 
     // Add bonds from interpolymer connections
@@ -322,7 +418,31 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
         auto end_res = get_residue_number(end_atom);
         auto linkage = bnd->getProp<std::string>(LINKAGE);
         if (linkage == HYDROGEN_BOND_LINKAGE) {
-            // TODO: Handle hydrogen bonds
+            auto from_base = begin_atom->getProp<std::string>(ATOM_LABEL);
+            MonomerKey begin_base_key{
+                polymer_to_chain[get_polymer_id(begin_atom)], begin_res};
+            auto begin_base_atoms = atoms_by_monomer[begin_base_key];
+
+            auto end_base = end_atom->getProp<std::string>(ATOM_LABEL);
+            MonomerKey end_base_key{polymer_to_chain[get_polymer_id(end_atom)],
+                                    end_res};
+            auto end_base_atoms = atoms_by_monomer[end_base_key];
+
+            auto pair = from_base + end_base;
+            auto it = BASE_PAIRWISE_HBONDS.find(pair);
+            if (it == BASE_PAIRWISE_HBONDS.end()) {
+                throw std::runtime_error(
+                    fmt::format("Hydrogen Bonds between the pair of bases "
+                                "{}-{} is not supported.",
+                                from_base, end_base));
+            }
+            auto hbond_pair_indices = getHBondAtomIndices(
+                it->second, begin_base_atoms, end_base_atoms);
+            for (auto& hbond : hbond_pair_indices) {
+                // The bond-type is ZERO
+                atomistic_mol->addBond(hbond.first, hbond.second,
+                                       bnd->getBondType());
+            }
             continue;
         }
         auto [from_rgroup, to_rgroup] = getAttchpts(linkage);

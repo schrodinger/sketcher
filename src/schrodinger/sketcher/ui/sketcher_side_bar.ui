@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>117</width>
-    <height>139</height>
+    <height>140</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -64,73 +64,128 @@
       </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="atomistic_or_monomer_layout">
-       <item>
-        <widget class="QToolButton" name="atomistic_btn">
-         <property name="toolTip">
-          <string>Atomistic</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="icon">
-          <iconset resource="../sketcher.qrc">
-           <normaloff>:/icons/mode_compound.svg</normaloff>
-           <normalon>:/icons/mode_compound.svg</normalon>
-          </iconset>
-         </property>
-         <property name="iconSize">
-          <size>
-           <width>24</width>
-           <height>24</height>
-          </size>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-         <property name="toolButtonStyle">
-          <enum>Qt::ToolButtonIconOnly</enum>
-         </property>
-         <attribute name="buttonGroup">
-          <string notr="true">atomistic_or_monomeric_group</string>
-         </attribute>
-        </widget>
-       </item>
-       <item>
-        <widget class="QToolButton" name="monomeric_btn">
-         <property name="toolTip">
-          <string>Monomeric</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="icon">
-          <iconset resource="../sketcher.qrc">
-           <normaloff>:/icons/mode_monomer.svg</normaloff>
-           <normalon>:/icons/mode_monomer.svg</normalon>
-          </iconset>
-         </property>
-         <property name="iconSize">
-          <size>
-           <width>24</width>
-           <height>24</height>
-          </size>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="toolButtonStyle">
-          <enum>Qt::ToolButtonIconOnly</enum>
-         </property>
-         <attribute name="buttonGroup">
-          <string notr="true">atomistic_or_monomeric_group</string>
-         </attribute>
-        </widget>
-       </item>
-      </layout>
+      <widget class="QWidget" name="atomistic_or_monomeric_widget" native="true">
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="Line" name="line_6">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_3">
+          <property name="spacing">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QToolButton" name="atomistic_btn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>Atomistic</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../sketcher.qrc">
+              <normaloff>:/icons/mode_compound.svg</normaloff>
+              <normalon>:/icons/mode_compound.svg</normalon>:/icons/mode_compound.svg</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>24</width>
+              <height>24</height>
+             </size>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonIconOnly</enum>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">atomistic_or_monomeric_group</string>
+            </attribute>
+           </widget>
+          </item>
+          <item>
+           <widget class="Line" name="line_5">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="monomeric_btn">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="toolTip">
+             <string>Monomeric</string>
+            </property>
+            <property name="text">
+             <string/>
+            </property>
+            <property name="icon">
+             <iconset resource="../sketcher.qrc">
+              <normaloff>:/icons/mode_monomer.svg</normaloff>
+              <normalon>:/icons/mode_monomer.svg</normalon>:/icons/mode_monomer.svg</iconset>
+            </property>
+            <property name="iconSize">
+             <size>
+              <width>24</width>
+              <height>24</height>
+             </size>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonIconOnly</enum>
+            </property>
+            <attribute name="buttonGroup">
+             <string notr="true">atomistic_or_monomeric_group</string>
+            </attribute>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="Line" name="line_7">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
      </item>
      <item>
       <widget class="QStackedWidget" name="atomistic_or_monomeric_stack">

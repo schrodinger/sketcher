@@ -22,6 +22,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 
 using namespace schrodinger::rdkit_extensions;
 namespace bdata = boost::unit_test::data;
@@ -586,6 +587,72 @@ BOOST_AUTO_TEST_CASE(TestShared11819)
     BOOST_TEST(RDKit::MolToSmiles(*atomistic_mol) == "c1ccccc1");
 }
 
+BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomer)
+{
+    // Register custom monomers matching the pattern used in the wasm tests:
+    // multi-character symbols, realistic SMILES with attachment points.
+    constexpr std::string_view custom_json = R"JSON([
+        {
+            "symbol": "Sar",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "G",
+            "smiles": "[H:3]N(C)C([H:1])C(=O)[OH:2]",
+            "core_smiles": "CN(CC(O)=O)[H]",
+            "name": "Sarcosine",
+            "monomer_type": "Backbone",
+            "author": "test"
+        },
+        {
+            "symbol": "TestMon",
+            "polymer_type": "PEPTIDE",
+            "natural_analog": "A",
+            "smiles": "CC(C)(N[H:1])C(=O)[OH:2]",
+            "core_smiles": "CC(C)(N)C=O",
+            "name": "Test Monomer",
+            "monomer_type": "Backbone",
+            "author": "test"
+        }
+    ])JSON";
+
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(custom_json);
+
+    // Test importing HELM strings that reference custom monomers.
+    // These mirror the wasm tests that use sketcher_import_text with
+    // autodetect format.
+    const std::vector<std::string> helm_strings = {
+        "PEPTIDE1{A.[Sar].G}$$$$V2.0",
+        "PEPTIDE1{[TestMon].A}$$$$V2.0",
+        "PEPTIDE1{A.[Sar].[TestMon].G}$$$$V2.0",
+    };
+
+    for (const auto& helm_str : helm_strings) {
+        BOOST_TEST_CONTEXT("HELM: " << helm_str)
+        {
+            // Verify custom monomers pass validation
+            auto validated_mol = helm::helm_to_rdkit(
+                helm_str, /*do_throw=*/true, /*validate=*/true);
+            BOOST_REQUIRE(validated_mol != nullptr);
+
+            // Autodetect import (the path used by sketcher_import_text)
+            auto monomer_mol = to_rdkit(helm_str, Format::AUTO_DETECT);
+            BOOST_REQUIRE(monomer_mol != nullptr);
+
+            // Convert to atomistic — requires DB lookup of custom monomer
+            auto atomistic_mol = toAtomistic(*monomer_mol);
+            BOOST_REQUIRE(atomistic_mol != nullptr);
+            BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+
+            // Roundtrip back to HELM
+            auto roundtrip_monomer = toMonomeric(*atomistic_mol);
+            BOOST_REQUIRE(roundtrip_monomer != nullptr);
+
+            auto helm_result = to_string(*roundtrip_monomer, Format::HELM);
+            BOOST_TEST(!helm_result.empty());
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomerFromSql)
 {
     // Test the SQL loading path without PDBCODE (optional field).
@@ -611,4 +678,49 @@ BOOST_AUTO_TEST_CASE(TestHelmImportWithCustomMonomerFromSql)
     auto atomistic_mol = toAtomistic(*monomer_mol);
     BOOST_REQUIRE(atomistic_mol != nullptr);
     BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+}
+
+BOOST_AUTO_TEST_CASE(TestHelmAutodetectWithUnbracketedCustomMonomer)
+{
+    // Multi-character monomer IDs must be bracketed per HELM spec.
+    // Unbracketed should fail, bracketed should work.
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.resetMonomerDefinitions();
+
+    constexpr std::string_view custom_sql =
+        "INSERT INTO monomer_definitions "
+        "(SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, "
+        "NAME, MONOMER_TYPE, AUTHOR) VALUES "
+        "('SqlMon', 'PEPTIDE', 'A', 'CC(C)(N[H:1])C(=O)[OH:2]', "
+        "'CC(C)(N)C=O', 'SQL Monomer', 'Backbone', 'test');";
+
+    monomer_db.loadMonomersFromSql(custom_sql);
+
+    // Unbracketed multi-char monomer should fail autodetect
+    const std::string unbracketed = "PEPTIDE1{A.SqlMon.G}$$$$V2.0";
+    BOOST_CHECK_THROW(to_rdkit(unbracketed, Format::AUTO_DETECT),
+                      std::invalid_argument);
+
+    // Bracketed should work
+    const std::string bracketed = "PEPTIDE1{A.[SqlMon].G}$$$$V2.0";
+    auto monomer_mol = to_rdkit(bracketed, Format::AUTO_DETECT);
+    BOOST_REQUIRE(monomer_mol != nullptr);
+
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol != nullptr);
+    BOOST_TEST(atomistic_mol->getNumAtoms() > 0);
+}
+
+BOOST_AUTO_TEST_CASE(TestHelmImportUnknownMonomerThrows)
+{
+    // Importing HELM with an unknown monomer should throw when validation
+    // is enabled.
+    auto& monomer_db = MonomerDatabase::instance();
+    monomer_db.resetMonomerDefinitions();
+
+    const std::string helm_str = "PEPTIDE1{A.[UnknownMon].G}$$$$V2.0";
+    BOOST_CHECK_THROW(std::ignore =
+                          helm::helm_to_rdkit(helm_str, /*do_throw=*/true,
+                                              /*validate=*/true),
+                      std::invalid_argument);
 }

@@ -63,6 +63,9 @@ constexpr std::string_view legacy_polymer_type_column{"POLYMERTYPE"};
 inline const char* _sqlite3_column_cstring(sqlite3_stmt* stmt, int idx)
 {
     auto result = sqlite3_column_text(stmt, idx);
+    if (result == nullptr) {
+        return "";
+    }
     return reinterpret_cast<const char*>(result);
 }
 
@@ -1058,6 +1061,43 @@ void MonomerDatabase::invalidateCache()
 {
     m_enumerated_core_smiles_cache.reset();
     m_complex_monomer_queries.reset();
+}
+
+[[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
+MonomerDatabase::getMonomersByNaturalAnalog(ChainType polymer_type) const
+{
+    auto type_value = toString(polymer_type);
+    auto sql = fmt::format("SELECT {} FROM {} WHERE {}=? AND {} != {};",
+                           fmt::join(getDbFields(), ", "), monomer_defs_table,
+                           polymer_type_column, symbol_column, analog_column);
+
+    std::unordered_map<std::string, std::vector<MonomerInfo>> result;
+
+    sqlite3_stmt* stmt = nullptr;
+    for (sqlite3* db : {m_core_monomers_db, m_custom_monomers_db}) {
+        if (db == nullptr ||
+            sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
+            continue;
+        }
+        sqlite3_bind_text(stmt, 1, type_value.c_str(), -1, SQLITE_TRANSIENT);
+        managed_stmt_t statement(stmt, &sqlite3_finalize);
+
+        for (auto rc = sqlite3_step(stmt); rc == SQLITE_ROW;
+             rc = sqlite3_step(stmt)) {
+
+            MonomerInfo m;
+            for (int i = 0; i < sqlite3_column_count(stmt); ++i) {
+                auto key = sqlite3_column_name(stmt, i);
+                auto value = _sqlite3_column_cstring(stmt, i);
+                assign_monomer_info(m, key, value);
+            }
+            if (m.natural_analog.has_value()) {
+                result[*m.natural_analog].push_back(std::move(m));
+            }
+        }
+    }
+
+    return result;
 }
 
 } // namespace rdkit_extensions

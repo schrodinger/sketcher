@@ -12,7 +12,9 @@
 #endif
 
 #include <cstring>
+#include <stdexcept>
 
+#include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
 #include <QJsonDocument>
@@ -21,6 +23,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
@@ -84,6 +87,50 @@ void sketcher_allow_monomeric(bool allow_monomeric)
         allow_monomeric
             ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
+}
+
+void sketcher_load_custom_monomers(const std::string& json)
+{
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    db.loadMonomersFromJson(json);
+}
+
+void sketcher_load_custom_monomers_from_sql(const std::string& sql)
+{
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    db.loadMonomersFromSql(sql);
+}
+
+void sketcher_insert_custom_monomers(const std::string& json)
+{
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    db.insertMonomersFromJson(json);
+}
+
+void sketcher_reset_custom_monomers()
+{
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    db.resetMonomerDefinitions();
+}
+
+/**
+ * Programmatically click a button by its Qt objectName.
+ * Used by e2e tests to interact with popup buttons that can't be targeted
+ * via browser events in the WASM environment.
+ *
+ * Throws std::runtime_error if no button with the given name is found,
+ * which typically indicates the test needs to be updated.
+ */
+void sketcher_click_button(const std::string& name)
+{
+    auto& sk = get_sketcher_instance();
+    auto* button = sk.findChild<QAbstractButton*>(QString::fromStdString(name));
+    if (!button) {
+        throw std::runtime_error(
+            "sketcher_click_button: no button found with objectName '" + name +
+            "'");
+    }
+    button->click();
 }
 
 /**
@@ -170,8 +217,17 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
     emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function("sketcher_load_custom_monomers",
+                         &sketcher_load_custom_monomers);
+    emscripten::function("sketcher_load_custom_monomers_from_sql",
+                         &sketcher_load_custom_monomers_from_sql);
+    emscripten::function("sketcher_insert_custom_monomers",
+                         &sketcher_insert_custom_monomers);
+    emscripten::function("sketcher_reset_custom_monomers",
+                         &sketcher_reset_custom_monomers);
     emscripten::function("_sketcher_get_widget_rect",
                          &sketcher_get_widget_rect);
+    emscripten::function("_sketcher_click_button", &sketcher_click_button);
     // see sketcher_changed_callback above
 }
 #endif

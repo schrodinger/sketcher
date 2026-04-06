@@ -21,12 +21,17 @@ namespace helm
  * @param helm_string  Input HELM string (e.g. "BLOB1{Bead}$$$$V2.0").
  * @param do_throw  If true, throw on parse errors; otherwise log and return
  *        nullptr (default: true).
+ * @param validate  If true, validate that all non-SMILES monomer labels exist
+ *        in the monomer database after parsing (default: false).
  *
  * @return Parsed RDKit molecule, or nullptr on failure when
  *         `do_throw == false`.
- * @throws std::invalid_argument on invalid HELM input when `do_throw == true`.
+ * @throws std::invalid_argument on invalid HELM input when `do_throw == true`,
+ *         or when `validate == true` and a monomer is not found in the
+ * database.
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::unique_ptr<::RDKit::RWMol>
-helm_to_rdkit(const std::string& helm_string, bool do_throw = true);
+helm_to_rdkit(const std::string& helm_string, bool do_throw = true,
+              bool validate = false);
 
 } // namespace helm

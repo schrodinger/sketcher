@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
 
@@ -42,6 +43,11 @@ using Monomer = RDKit::Atom;
 enum class ChainType { PEPTIDE, RNA, DNA, CHEM };
 enum class ConnectionType { FORWARD, SIDECHAIN };
 enum class MonomerType { REGULAR, /* LIST, WILDCARD, */ SMILES };
+enum class ConnectionAdded {
+    NEW_BOND_ADDED,
+    CUSTOM_CONNECTION_ADDED_TO_EXISTING_BOND,
+    STANDARD_CONNECTION_ADDED_TO_EXISTING_BOND
+};
 
 RDKIT_EXTENSIONS_API ChainType toChainType(std::string_view chain_type);
 
@@ -108,20 +114,28 @@ RDKIT_EXTENSIONS_API void mutateMonomer(RDKit::ROMol& monomer_mol,
  * @param monomer1 The index of the first monomer
  * @param monomer2 The index of the second monomer
  * @param connection_type The type of connection to add
+ *
+ * @return A pair of
+ *   - the bond representing the new monomeric connection
+ *   - a flag indicated whether the bond was newly created, or whether a new
+ *     connection was added to an existing bond
  */
-RDKIT_EXTENSIONS_API void
+RDKIT_EXTENSIONS_API std::pair<RDKit::Bond*, ConnectionAdded>
 addConnection(RDKit::RWMol& mol, size_t monomer1, size_t monomer2,
               ConnectionType connection_type = ConnectionType::FORWARD);
 
 // overload for helm writer
-RDKIT_EXTENSIONS_API void addConnection(RDKit::RWMol& mol, size_t monomer1,
-                                        size_t monomer2,
-                                        const std::string& linkage,
-                                        const bool is_custom_bond = false);
+RDKIT_EXTENSIONS_API std::pair<RDKit::Bond*, ConnectionAdded>
+addConnection(RDKit::RWMol& mol, size_t monomer1, size_t monomer2,
+              const std::string& linkage, const bool is_custom_bond = false);
 
 // Discards existing chains and reassigns monomers to sequential chains.
 // (in HELM world, "chains" are called "polymers")
 RDKIT_EXTENSIONS_API void assignChains(RDKit::RWMol& mol);
+
+// Helper api to get the chain type from a polymer id (e.g. "PEPTIDE1" ->
+// PEPTIDE). Accepts ids with or without trailing numbers.
+RDKIT_EXTENSIONS_API ChainType getChainType(std::string_view polymer_id);
 
 // Helper api to get the chain type a monomer belongs to.
 RDKIT_EXTENSIONS_API ChainType getChainType(const RDKit::Atom& monomer);
