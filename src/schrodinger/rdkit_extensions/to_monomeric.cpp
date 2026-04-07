@@ -22,6 +22,7 @@
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/rdkit_extensions/monomer_utils.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/sup_utils.h"
@@ -72,17 +73,7 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query,
     query.mol.reset(RDKit::SmartsToMol(smarts_query));
     query.name = std::move(name);
     query.use_chirality = false;
-
-    // Maps SMARTS query index to attachment point # to avoid checking the
-    // property for every match
-    query.attch_map.resize(query.mol->getNumAtoms(), NO_ATTACHMENT);
-
-    for (const auto atom : query.mol->atoms()) {
-        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
-            query.attch_map[atom->getIdx()] = atom->getProp<unsigned int>(
-                RDKit::common_properties::molAtomMapNumber);
-        }
-    }
+    query.attch_map = make_attch_map(*query.mol);
     return query;
 };
 
@@ -90,13 +81,13 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query,
 // attachment points 1 and 2 are backbone attachment points,
 // 8 is the side chain attachment point, 3 is cysteine's sulfur
 static const ResidueQuery CYSTEINE_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+;!$(NC(=O)N):1][CX4H]([CX4H2][S:3])[CX3:2](=[OX1])[O,N:9]",
+    "[NX3,NX4+:1][CX4H]([CX4H2][S:3])[CX3:2](=[OX1])[O,N:9]",
     "CYSTEINE")}; // matches C, dC, meC
 static const ResidueQuery GENERIC_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+;!$(NC(=O)N):1][CX4H]([*:8])[CX3:2](=[OX1])[O,N:9]",
+    "[NX3,NX4+:1][CX4H]([*:8])[CX3:2](=[OX1])[O,N:9]",
     "GENERIC")};
 static const ResidueQuery GLYCINE_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+;!$(NC(=O)N):1][CX4H2][CX3:2](=[OX1])[O,N:9]",
+    "[NX3,NX4+:1][CX4H2][CX3:2](=[OX1])[O,N:9]",
     "GLYCINE")}; // no side chain
 // clang-format on
 
@@ -167,17 +158,19 @@ void addDummyAtom(RDKit::RWMol& mol_fragment, unsigned int atom_idx)
 // Add dummy atoms next to the attachment points and remove the terminal
 // atom to make a fragment representation of a monomer suitable for search
 // in the database.
-void decorateFragment(RDKit::RWMol& mol_fragment, const MonomerMatch& monomer)
+void decorateFragment(RDKit::RWMol& mol_fragment, const MonomerMatch& monomer,
+                      bool with_r1 = true, bool remove_terminal = true)
 {
     mol_fragment.beginBatchEdit();
     for (auto* at : mol_fragment.atoms()) {
         auto at_idx = at->getIdx();
         auto ref_idx = at->getProp<unsigned int>(REFERENCE_IDX);
-        if (ref_idx == monomer.terminal_atom) {
+        if (remove_terminal && ref_idx == monomer.terminal_atom) {
             // This is a chain terminating O/N. We need to remove it, since
             // in the enumeration we replace these with dummy atoms
             mol_fragment.removeAtom(at_idx);
-        } else if (ref_idx == monomer.r1 || ref_idx == monomer.r2 ||
+        } else if ((with_r1 && ref_idx == monomer.r1) ||
+                   (remove_terminal && ref_idx == monomer.r2) ||
                    ref_idx == monomer.r3) {
             addDummyAtom(mol_fragment, at_idx);
         }
@@ -217,10 +210,17 @@ std::optional<std::string> findHelmSymbol(const RDKit::ROMol& atomistic_mol,
     PRINT("  rs: {} {} {} {}\n", monomer.r1, monomer.r2, monomer.r3,
           monomer.terminal_atom);
 
-    auto mol_fragment =
-        ExtractMolFragment(atomistic_mol, monomer.atom_indices, false);
-    decorateFragment(*mol_fragment, monomer);
-    return findHelmSymbol(*mol_fragment);
+    for (bool with_r1 : {true, false}) {
+        for (bool remove_terminal : {true, false}) {
+            auto mol_fragment =
+                ExtractMolFragment(atomistic_mol, monomer.atom_indices, false);
+            decorateFragment(*mol_fragment, monomer, with_r1, remove_terminal);
+            if (auto symbol = findHelmSymbol(*mol_fragment); symbol) {
+                return symbol;
+            }
+        }
+    }
+    return {};
 }
 
 /*
@@ -1100,26 +1100,6 @@ void identifyMonomers(RDKit::RWMol& atomistic_mol,
             throw std::runtime_error(fmt::format(
                 "Atom {} does not belong to any monomer", atom->getIdx()));
         }
-    }
-}
-
-void neutralizeAtoms(RDKit::ROMol& mol)
-{
-    // Algorithm for neutralizing molecules from
-    // https://www.rdkit.org/docs/Cookbook.html#neutralizing-molecules by Noel
-    // O’Boyle Will neutralize the molecule by adding or removing hydrogens as
-    // needed. This will ensure SMILES can be used to match atomistic structures
-    // to the correct monomer.
-    static const std::unique_ptr<RDKit::RWMol> neutralize_query(
-        RDKit::SmartsToMol(
-            "[+1!h0!$([*]~[-1,-2,-3,-4]),-1!$([*]~[+1,+2,+3,+4])]"));
-    for (const auto& match : RDKit::SubstructMatch(mol, *neutralize_query)) {
-        auto atom = mol.getAtomWithIdx(match[0].second);
-        auto chg = atom->getFormalCharge();
-        auto hcount = atom->getTotalNumHs();
-        atom->setFormalCharge(0);
-        atom->setNumExplicitHs(hcount - chg);
-        atom->updatePropertyCache();
     }
 }
 
