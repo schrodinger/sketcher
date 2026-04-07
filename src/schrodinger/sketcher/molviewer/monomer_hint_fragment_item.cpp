@@ -13,13 +13,14 @@ namespace schrodinger::sketcher
 {
 
 MonomerHintFragmentItem::MonomerHintFragmentItem(
-    const RDKit::ROMol& fragment, const Fonts& fonts,
-    const int atom_index_to_hide, const int bond_index_to_label,
-    const QColor monomer_background_color, QGraphicsItem* parent) :
+    const std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
+    const std::vector<size_t>& atom_indices_to_hide,
+    const int bond_index_to_label, const QColor monomer_background_color,
+    QGraphicsItem* parent) :
     QGraphicsItemGroup(parent),
     m_frag(fragment),
     m_fonts(&fonts),
-    m_atom_index_to_hide(atom_index_to_hide),
+    m_atom_indices_to_hide(atom_indices_to_hide),
     m_bond_index_to_label(bond_index_to_label),
     m_monomer_background_color(monomer_background_color)
 {
@@ -31,7 +32,7 @@ void MonomerHintFragmentItem::createGraphicsItems()
 {
     auto [all_items, atom_to_atom_item, bond_to_bond_item,
           bond_to_secondary_connection_item, s_group_to_s_group_item] =
-        create_graphics_items_for_mol(&m_frag, *m_fonts);
+        create_graphics_items_for_mol(m_frag.get(), *m_fonts);
     for (auto* item : all_items) {
         addToGroup(item);
     }
@@ -47,7 +48,9 @@ void MonomerHintFragmentItem::createGraphicsItems()
         }
         // hide the monomer where this fragment connects to the existing
         // structure
-        if (static_cast<int>(kv.first->getIdx()) == m_atom_index_to_hide) {
+        auto atom_idx = kv.first->getIdx();
+        if (std::ranges::find(m_atom_indices_to_hide, atom_idx) !=
+            m_atom_indices_to_hide.end()) {
             kv.second->setVisible(false);
         }
         m_atom_items.append(kv.second);
@@ -63,7 +66,7 @@ void MonomerHintFragmentItem::createGraphicsItems()
 
     // label the attachment points
     if (m_bond_index_to_label >= 0) {
-        auto* bond = m_frag.getBondWithIdx(m_bond_index_to_label);
+        auto* bond = m_frag->getBondWithIdx(m_bond_index_to_label);
         auto* begin_monomer_item = atom_to_atom_item.at(bond->getBeginAtom());
         auto* end_monomer_item = atom_to_atom_item.at(bond->getEndAtom());
         auto items = create_attachment_point_labels_for_connector(

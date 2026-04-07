@@ -265,6 +265,11 @@ const QColor CHEM_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 
 const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
 
+// colors for the non-hovered attachment points of the hovered monomer when
+// doing a click-and-drag with the monomer scene tools
+const QColor DRAG_END_INACTIVE_AP = QColor("#EEEEEE");
+const QColor DRAG_END_INACTIVE_AP_DARK_BG = QColor("#555555");
+
 /**
  * A scaling factor for generating the cursor hints for monomers. If this value
  * is greater than one, then the cursor hint for smaller monomers (as measured

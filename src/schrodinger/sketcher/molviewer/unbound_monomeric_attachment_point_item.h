@@ -80,6 +80,8 @@ class SKETCHER_API UnboundMonomericAttachmentPointItem : public QGraphicsItem
      */
     const UnboundAttachmentPoint& getAttachmentPoint() const;
 
+    void setColor(const QColor& color);
+
   private:
     UnboundAttachmentPoint m_attachment_point;
     // this graphics item will never outlive the scene tool that created it, so
