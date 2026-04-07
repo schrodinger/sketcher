@@ -38,7 +38,7 @@ namespace sketcher
 
 class MonomerHintFragmentItem;
 class UnboundMonomericAttachmentPointItem;
-class HintFragmentMonomerInfo;
+struct HintFragmentMonomerInfo;
 
 using MonomerAndAPItems =
     std::pair<AbstractMonomerItem*, UnboundMonomericAttachmentPointItem*>;
