@@ -49,9 +49,6 @@ struct RDKIT_EXTENSIONS_API MonomerInfo {
     bool areRequiredFieldsPopulated() const;
 };
 
-inline constexpr unsigned int NO_ATTACHMENT =
-    std::numeric_limits<unsigned int>::max();
-
 struct RDKIT_EXTENSIONS_API ResidueQuery {
     /// Query molecule
     boost::shared_ptr<RDKit::RWMol> mol;

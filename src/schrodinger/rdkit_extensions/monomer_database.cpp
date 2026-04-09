@@ -24,6 +24,8 @@
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/QueryOps.h>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
@@ -33,6 +35,7 @@
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
 #include "schrodinger/rdkit_extensions/monomer_db_schema.h"
 #include "schrodinger/rdkit_extensions/monomer_db_default_monomers.h"
+#include "schrodinger/rdkit_extensions/monomer_utils.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 using managed_db_t = std::unique_ptr<sqlite3, decltype(&sqlite3_close_v2)>;
@@ -461,21 +464,57 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
     execute_sql_on(db, "COMMIT;");
 }
 
+/// Generate a few common tautomers from a SMILES
+std::queue<boost::shared_ptr<RDKit::RWMol>>
+enumerate_tautomers(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+    using namespace RDKit::v2::ReactionParser;
+    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
+
+    static auto rxns = []() {
+        std::vector<std::unique_ptr<RDKit::ChemicalReaction>> rxns;
+        // Just a few patterns cover most of the observed tautomer
+        // inconsistencies in ChEMBL, and applying them this way is much
+        // faster than using the RDKit tautomer canonicalizer. But this
+        // approach is still imperfect and incomplete.
+        for (auto smarts :
+             {"[nH:1]:[c;!$(*=*):2]:[n0:3]>>[nH0:1]:[c:2]:[nH:3]",
+              "[NH:1]-[C:2]=[NH:3]>>[NH0:1]=[C:2]-[NH2:3]",
+              "[NH2:1]-[C:2]=[NH0:3]>>[NH1:1]=[C:2]-[NH1:3]",
+              "[NH1:1]-[C:2]=[CH2:3]>>[NH0:1]=[C:2]-[CH3:3]",
+              "[NH0:1]=[C:2]-[CH3:3]>>[NH1:1]-[C:2]=[CH2:3]",
+              "[NH1:1]-[C:2]=[CH1:3]>>[NH0:1]=[C:2]-[CH2:3]",
+              "[NH0:1]=[C:2]-[CH2:3]-[*:4]>>[NH1:1]/[C:2]=[CH1:3]/[*:4]",
+              "[NH0:1]=[C:2]-[CH2:3]-[*:4]>>[NH1:1]/[C:2]=[CH1:3]\\[*:4]"}) {
+            rxns.push_back(ReactionFromSmarts(smarts));
+            rxns.back()->initReactantMatchers();
+        }
+        return rxns;
+    }();
+
+    std::queue<boost::shared_ptr<RDKit::RWMol>> q;
+    q.emplace(MolFromSmiles(smiles, p));
+    schrodinger::rdkit_extensions::neutralizeAtoms(*q.front());
+    for (auto& rxn : rxns) {
+        for (auto& prods : rxn->runReactants({q.front()})) {
+            q.push(boost::make_shared<RDKit::RWMol>(*prods[0]));
+        }
+    }
+    return q;
+}
+
 // Enumerates all possible SMILES variations by replacing atom map numbers
 // with either the mapped atom or a dummy atom (element 0)
 std::vector<std::string> enumerate_smiles(const std::string& smiles)
 {
     using namespace RDKit::v2::SmilesParse;
 
-    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
-
     static RDKit::Atom dummy_atom(0);
 
     std::vector<std::string> enumerated_smiles;
 
-    std::queue<std::unique_ptr<RDKit::RWMol>> q;
-
-    q.emplace(MolFromSmiles(smiles, p));
+    auto q = enumerate_tautomers(smiles);
 
     while (!q.empty()) {
         auto mol = std::move(q.front());
@@ -1012,28 +1051,51 @@ boost::shared_ptr<RDKit::RWMol> make_query(const RDKit::ROMol& mol,
     return rwmol;
 }
 
-/// Return a map from atom index to attachment point number.
-std::vector<unsigned int> make_attch_map(const RDKit::ROMol& mol)
-{
-    // TODO: this duplicates parts of
-    // to_monomeric.cpp:prepare_static_mol_query() but it's not clear where to
-    // put such a utility function so that it can be called across translation
-    // units. It seemed out of place on monomer_database.h.
-    std::vector<unsigned int> attch_map(mol.getNumAtoms(), NO_ATTACHMENT);
-    for (const auto atom : mol.atoms()) {
-        if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
-            attch_map[atom->getIdx()] = atom->getProp<unsigned int>(
-                RDKit::common_properties::molAtomMapNumber);
-        }
-    }
-    return attch_map;
-}
-
 [[nodiscard]] const std::vector<ResidueQuery>&
 MonomerDatabase::getComplexMonomerQueries() const
 {
     using namespace RDKit::v2::SmilesParse;
-    static auto residue_query = MolFromSmarts("NCC(=O)[O,N]");
+    static auto residue_query = MolFromSmarts("N[C;H,H2]C(=O)[O,N]");
+
+    // Return the atom indices for the R1 and R2 attachment points (either
+    // one may be missing).
+    auto find_r1r2 = [](auto& mol) {
+        std::optional<unsigned int> r1;
+        std::optional<unsigned int> r2;
+        for (auto atom : mol.atoms()) {
+            switch (atom->getAtomMapNum()) {
+                case 1:
+                    r1 = atom->getIdx();
+                    break;
+                case 2:
+                    r2 = atom->getIdx();
+                    break;
+            }
+        }
+        return std::make_pair(r1, r2);
+    };
+
+    // Roughly: a monomer is complex unless it matches the residue_query
+    // pattern once and has r1 and r2 four bonds apart, or is tiny.
+    auto is_complex = [&](auto& mol) {
+        auto matches = SubstructMatch(mol, *residue_query);
+        if (matches.size() == 1) {
+            // Look at distance between mapping numbers
+            auto [r1, r2] = find_r1r2(mol);
+            if (r1 && r2) {
+                auto* dmat = RDKit::MolOps::getDistanceMat(mol);
+                auto d = dmat[*r1 * mol.getNumAtoms() + *r2];
+                // 4 is the number of bonds between attachment points in a
+                // standard aminoacid, i.e. [H:1]-N-C-C(-[O:2])=O
+                return d != 4;
+            }
+            return false;
+        } else {
+            // This is to to prevent treating things like [am] as complex.
+            return mol.getNumAtoms() > 4;
+        }
+    };
+
     if (!m_complex_monomer_queries.has_value()) {
         auto queries = std::vector<ResidueQuery>();
         RDKit::MatchVectType res;
@@ -1043,13 +1105,21 @@ MonomerDatabase::getComplexMonomerQueries() const
             std::unique_ptr<RDKit::RWMol> mol(
                 RDKit::SmilesToMol(smiles, debug, sanitize));
             RDKit::MolOps::sanitizeMol(*mol);
-            if (SubstructMatch(*mol, *residue_query).size() > 1) {
-                auto query = ResidueQuery{};
-                query.mol = make_query(*mol, smiles);
-                query.attch_map = make_attch_map(*query.mol);
-                query.name = symbol;
-                query.use_chirality = true;
-                queries.push_back(query);
+            if (is_complex(*mol)) {
+                for (auto q = enumerate_tautomers(smiles); !q.empty();
+                     q.pop()) {
+                    auto& tautomer = *q.front();
+                    auto query = ResidueQuery{};
+                    auto can_smiles = RDKit::MolToSmiles(tautomer);
+                    std::unique_ptr<RDKit::RWMol> can_tautomer(
+                        RDKit::SmilesToMol(can_smiles, debug, sanitize));
+                    RDKit::MolOps::sanitizeMol(*can_tautomer);
+                    query.mol = make_query(*can_tautomer, can_smiles);
+                    query.attch_map = make_attch_map(*query.mol);
+                    query.name = symbol;
+                    query.use_chirality = true;
+                    queries.push_back(query);
+                }
             }
         }
         m_complex_monomer_queries = std::move(queries);
