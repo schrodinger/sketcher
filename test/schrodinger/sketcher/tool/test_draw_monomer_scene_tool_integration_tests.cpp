@@ -116,7 +116,6 @@ struct MonomerToolTestFixture {
     QPointF getAttachmentPointPos(unsigned int monomer_idx,
                                   const std::string& ap_display_name)
     {
-        auto mol = m_mol_model->getMol();
         auto monomer_pos = getMonomerPos(monomer_idx);
         auto* monomer_item = m_scene->getTopInteractiveItemAt(
             monomer_pos, InteractiveItemFlag::MONOMER);
