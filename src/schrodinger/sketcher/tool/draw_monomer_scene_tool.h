@@ -358,7 +358,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
 
     /**
      * Determine whether the end of current click-and-drag operation is over an
-     * existing monomer or not.  If not, return the direction of the drag.
+     * existing monomer or not. If not, return the direction of the drag.
      * @param scene_pos The scene coordinates representing the end of the
      * click-and-drag.
      * @return If scene_pos is over an existing monomer, returns a pair of
@@ -380,10 +380,11 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
         const HintFragmentMonomerInfo& hint_end_monomer_info);
 
     /**
-     * If the user starting a "valid" click-and-drag, create and return the
-     * HintFragmentMonomerInfo object describing the start of the drag.
-     * Otherwise, return std::nullopt. See the createDragHintIfDragStartValid
-     * docstring for an explanation of valid versus invalid click-and-drags.
+     * If the user has began a "valid" click-and-drag, create and return the
+     * HintFragmentMonomerInfo object describing the starting location/monomer
+     * of the drag. Otherwise, return std::nullopt. See the
+     * createDragHintIfDragStartValid docstring for an explanation of valid
+     * versus invalid click-and-drags.
      */
     std::optional<HintFragmentMonomerInfo>
     getHintFragmentMonomerInfoForDragStart();
