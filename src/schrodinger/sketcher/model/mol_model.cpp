@@ -658,10 +658,10 @@ void MolModel::addAttachmentPoint(const RDGeom::Point3D& coords,
  */
 static std::shared_ptr<RDKit::Atom>
 create_monomer(const std::string_view res_name, const std::string_view chain_id,
-               const int residue_number)
+               const int res_num)
 {
     auto monomer_unique_ptr =
-        rdkit_extensions::makeMonomer(res_name, chain_id, 1, false);
+        rdkit_extensions::makeMonomer(res_name, chain_id, res_num, false);
     std::shared_ptr<RDKit::Atom> monomer;
     monomer.reset(monomer_unique_ptr.release());
     set_atom_monomeric(monomer.get());
@@ -672,9 +672,7 @@ void MolModel::addMonomer(const std::string_view res_name,
                           const rdkit_extensions::ChainType chain_type,
                           const RDGeom::Point3D& coords)
 {
-    // we'll renumber the chains in assignChains, so for now we just need
-    // something with the correct prefix and a unique number
-    auto chain_id = rdkit_extensions::toString(chain_type) + "999999";
+    auto chain_id = get_first_available_chain_name(m_mol, chain_type);
     auto create_atom = std::bind(create_monomer, res_name, chain_id, 1);
     auto cmd_func = [this, create_atom, coords]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
@@ -815,13 +813,12 @@ void MolModel::addBoundMonomer(const std::string_view res_name,
                                const RDKit::Atom* const bound_to_monomer,
                                const std::string_view bound_to_monomer_ap_name)
 {
-    auto chain_id = rdkit_extensions::get_polymer_id(bound_to_monomer);
-    auto res_num = get_residue_number_for_new_monomer(
-        res_name, chain_type, new_monomer_ap_name, bound_to_monomer);
-    auto create_atom = std::bind(create_monomer, res_name, chain_id, res_num);
-
     auto [linkage, flip_monomer_order] =
         build_linkage_string(bound_to_monomer_ap_name, new_monomer_ap_name);
+    // To standardize the linkage string, make sure that the higher numbered
+    // attachment point is first. rdkit_extensions::addConnection will do this
+    // flip for us, but we do it here anyway since it allows us to simplify
+    // get_is_custom_bond
     size_t bond_start_idx = bound_to_monomer->getIdx();
     size_t bond_end_idx = m_mol.getNumAtoms();
     if (flip_monomer_order) {
@@ -829,6 +826,22 @@ void MolModel::addBoundMonomer(const std::string_view res_name,
     }
     bool is_custom_bond =
         get_is_custom_bond(res_name, chain_type, bound_to_monomer, linkage);
+
+    std::string chain_id;
+    int res_num;
+    if (!is_custom_bond) {
+        // if this is a standard backbone connection, put the new monomer in the
+        // same chain as bound_to_monomer
+        chain_id = rdkit_extensions::get_polymer_id(bound_to_monomer);
+        res_num = get_residue_number_for_new_monomer(
+            res_name, chain_type, new_monomer_ap_name, bound_to_monomer);
+    } else {
+        // otherwise, put the new monomer in its own chain
+        chain_id = get_first_available_chain_name(m_mol, chain_type);
+        res_num = 1;
+    }
+
+    auto create_atom = std::bind(create_monomer, res_name, chain_id, res_num);
 
     auto cmd_func = [this, create_atom, coords, bond_start_idx, bond_end_idx,
                      linkage, is_custom_bond]() {
@@ -890,11 +903,8 @@ determine_if_merge_needed(const RDKit::Atom* const monomer_one,
     if (polymer_id_one == polymer_id_two) {
         return std::nullopt;
     }
-    auto chain_type_name = rdkit_extensions::toString(chain_type_one);
-    auto polymer_num_one =
-        std::stoi(polymer_id_one.substr(chain_type_name.size()));
-    auto polymer_num_two =
-        std::stoi(polymer_id_two.substr(chain_type_name.size()));
+    auto polymer_num_one = get_chain_num(polymer_id_one, chain_type_one);
+    auto polymer_num_two = get_chain_num(polymer_id_two, chain_type_two);
     auto merge_from = polymer_id_two;
     auto merge_to = polymer_id_one;
     if (polymer_num_two < polymer_num_one) {

@@ -355,5 +355,44 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
     }
 }
 
+/**
+ * Make sure that get_attachment_points returns the correct number for parseable
+ * chain name, and returns -1 when the chain name can't be parsed.
+ */
+BOOST_AUTO_TEST_CASE(test_get_chain_num)
+{
+    using rdkit_extensions::ChainType;
+    BOOST_TEST(get_chain_num("PEPTIDE1", ChainType::PEPTIDE) == 1);
+    BOOST_TEST(get_chain_num("PEPTIDE3", ChainType::PEPTIDE) == 3);
+    BOOST_TEST(get_chain_num("PEPTIDE", ChainType::PEPTIDE) == -1);
+    BOOST_TEST(get_chain_num("ABCDEFG", ChainType::PEPTIDE) == -1);
+    BOOST_TEST(get_chain_num("ABCDEFG2", ChainType::PEPTIDE) == -1);
+    BOOST_TEST(get_chain_num("PEPTIDE1", ChainType::RNA) == -1);
+    BOOST_TEST(get_chain_num("RNA2", ChainType::RNA) == 2);
+}
+
+/**
+ * Make sure that get_first_available_chain_name returns the expected chain name
+ * of the appropriate chain type.
+ */
+BOOST_AUTO_TEST_CASE(test_get_first_available_chain_name)
+{
+    using rdkit_extensions::ChainType;
+    
+    
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A}|PEPTIDE2{A}$$$$V2.0");
+    BOOST_TEST(get_first_available_chain_name(*mol, ChainType::PEPTIDE) == "PEPTIDE3");
+    BOOST_TEST(get_first_available_chain_name(*mol, ChainType::RNA) == "RNA1");
+
+    mol = rdkit_extensions::to_rdkit("PEPTIDE1{A}|PEPTIDE3{A}$$$$V2.0");
+    BOOST_TEST(get_first_available_chain_name(*mol, ChainType::PEPTIDE) == "PEPTIDE2");
+    BOOST_TEST(get_first_available_chain_name(*mol, ChainType::RNA) == "RNA1");
+
+    mol = rdkit_extensions::to_rdkit(
+        "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0");
+    BOOST_TEST(get_first_available_chain_name(*mol, ChainType::RNA) == "RNA3");
+    BOOST_TEST(get_first_available_chain_name(*mol, ChainType::PEPTIDE) == "PEPTIDE1");
+}
+
 } // namespace sketcher
 } // namespace schrodinger

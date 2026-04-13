@@ -109,6 +109,7 @@ class TestScene : public Scene
     using Scene::m_mol_model;
     using Scene::m_selection_highlighting_item;
     using Scene::m_sketcher_model;
+    using Scene::mouseMoveEvent;
     using Scene::mousePressEvent;
     using Scene::mouseReleaseEvent;
 
