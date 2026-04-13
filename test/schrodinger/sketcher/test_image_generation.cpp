@@ -230,9 +230,10 @@ BOOST_AUTO_TEST_CASE(test_trim_image)
 }
 
 /**
- * Verify that Qt's default title and description elements are removed from SVG
+ * Verify that Qt's default title and description elements are removed from SVG,
+ * and that the font specifications are updated to include fallback fonts
  */
-BOOST_AUTO_TEST_CASE(test_SVG_title_and_description)
+BOOST_AUTO_TEST_CASE(test_SVG_post_processing)
 {
     auto rdmol = rdkit_extensions::to_rdkit("c1nccc2n1ccc2");
     RenderOptions opts;
@@ -249,6 +250,10 @@ BOOST_AUTO_TEST_CASE(test_SVG_title_and_description)
     BOOST_TEST(!svg.contains("</desc>"));
     BOOST_TEST(!svg.contains("Qt SVG Document"));
     BOOST_TEST(!svg.contains("Generated with Qt"));
+
+    // make sure that we specify fallback fonts
+    BOOST_TEST(
+        svg.contains(R"(font-family="Arimo, Helvetica, Arial, sans-serif")"));
 }
 
 /**

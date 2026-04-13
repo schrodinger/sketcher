@@ -383,6 +383,43 @@ QImage get_qimage(const T& input, const RenderOptions& opts)
     return *dynamic_cast<QImage*>(paint_device.get());
 }
 
+/**
+ * Post-process the contents of the SVG file after Qt has generated it
+ * @param svg_data The contents of the SVG file
+ * @param opts The options used to render the SVG
+ */
+void post_process_svg(QByteArray& svg_data, const RenderOptions& opts)
+{
+    // Qt defines svg size in mm, but our code needs it specified in pixels.
+    // This is a hack to make sure we get the right size definition.
+    auto start_of_size = svg_data.indexOf("svg width");
+    auto end_of_size = svg_data.indexOf(" viewBox", start_of_size);
+    if (start_of_size == -1 || end_of_size == -1) {
+        throw std::runtime_error("Failed to find svg size definition");
+    }
+    svg_data.remove(start_of_size, end_of_size - start_of_size);
+    auto height_in_pxls = QString("svg width=\"%1px\" height=\"%2px\"\n")
+                              .arg(opts.width_height.width())
+                              .arg(opts.width_height.height());
+
+    svg_data.insert(start_of_size, height_in_pxls.toUtf8());
+
+    // Remove Qt's default title and description elements for cleaner SVG
+    QString svg_string = QString::fromUtf8(svg_data);
+    svg_string.remove("<title>Qt SVG Document</title>\n");
+    svg_string.remove("<desc>Generated with Qt</desc>\n");
+
+    // make sure that the SVG specifies a list of fonts, since most people won't
+    // have Arimo installed system-wide
+    const QString svg_font_spec = R"(font-family="%1")";
+    auto font_spec_before = svg_font_spec.arg(FONT_NAME);
+    auto font_spec_after = svg_font_spec.arg(SVG_FONT_LIST.join(", "));
+    svg_string.replace(font_spec_before, font_spec_after, Qt::CaseInsensitive);
+
+    // put our edited data back into the byte array
+    svg_data = svg_string.toUtf8();
+}
+
 template <typename T> QByteArray
 get_image_bytes(const T& input, ImageFormat format, const RenderOptions& opts)
 {
@@ -405,27 +442,7 @@ get_image_bytes(const T& input, ImageFormat format, const RenderOptions& opts)
         std::shared_ptr<QBuffer> svg_buffer;
         svg_buffer.reset(dynamic_cast<QBuffer*>(svg_gen->outputDevice()));
         auto svg_data = svg_buffer->data();
-
-        // Qt defines svg size in mm, but our code needs it specified in pixels.
-        // This is a hack to make sure we get the right size definition.
-        auto start_of_size = svg_data.indexOf("svg width");
-        auto end_of_size = svg_data.indexOf(" viewBox", start_of_size);
-        if (start_of_size == -1 || end_of_size == -1) {
-            throw std::runtime_error("Failed to find svg size definition");
-        }
-        svg_data.remove(start_of_size, end_of_size - start_of_size);
-        auto height_in_pxls = QString("svg width=\"%1px\" height=\"%2px\"\n")
-                                  .arg(opts.width_height.width())
-                                  .arg(opts.width_height.height());
-
-        svg_data.insert(start_of_size, height_in_pxls.toUtf8());
-
-        // Remove Qt's default title and description elements for cleaner SVG
-        QString svg_string = QString::fromUtf8(svg_data);
-        svg_string.remove("<title>Qt SVG Document</title>\n");
-        svg_string.remove("<desc>Generated with Qt</desc>\n");
-        svg_data = svg_string.toUtf8();
-
+        post_process_svg(svg_data, opts);
         buffer.setData(svg_data);
         svg_buffer->close();
 

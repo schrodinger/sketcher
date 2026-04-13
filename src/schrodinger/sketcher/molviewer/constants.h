@@ -66,7 +66,14 @@ const qreal CURSOR_SCALE = 0.8;
 const qreal CURSOR_SCALE = 1.0;
 #endif
 
+// The name of the font used in Sketcher. This should match the font loaded in
+// font_loader.
 const QString FONT_NAME = "Arimo";
+// The list of font names to reference in any generated SVG files. This list
+// should include fallback fonts in case the user doesn't have FONT_NAME
+// installed on their system.
+const QStringList SVG_FONT_LIST = {"Arimo", "Helvetica", "Arial", "sans-serif"};
+
 // Ratios for the size of specified font to the size of the atom label font.
 // Note that the atom label font size is declared in the public image_constants
 // header (mmshare/include/schrodinger/sketcher/image_constants.h) because it
