@@ -154,8 +154,7 @@ UnboundMonomericAttachmentPointItem::UnboundMonomericAttachmentPointItem(
 
     m_line_pen.setWidthF(UNBOUND_AP_LINE_THICKNESS);
     m_line_pen.setCapStyle(Qt::RoundCap);
-    m_line_pen.setColor(color);
-    m_circle_brush.setColor(color);
+    setColor(color);
 
     std::tie(m_line_end, m_label_text, m_label_rect, m_bounding_rect,
              m_hover_area) =
@@ -205,6 +204,12 @@ const UnboundAttachmentPoint&
 UnboundMonomericAttachmentPointItem::getAttachmentPoint() const
 {
     return m_attachment_point;
+}
+
+void UnboundMonomericAttachmentPointItem::setColor(const QColor& color)
+{
+    m_line_pen.setColor(color);
+    m_circle_brush.setColor(color);
 }
 
 } // namespace sketcher
