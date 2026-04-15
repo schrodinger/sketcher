@@ -2782,6 +2782,9 @@ bool MolModel::removeNonMolecularObjectCommandFunc(
                              return &cur_plus == obj;
                          });
         m_pluses.erase(iter_to_erase);
+        // Rebuild the tag→pointer map: erasing from a vector invalidates
+        // pointers to all subsequent elements.
+        updateNonMolecularMetadata();
     }
     return selected;
 }
