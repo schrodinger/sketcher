@@ -8,7 +8,6 @@
 #include <QEvent>
 #include <QGraphicsSceneMouseEvent>
 #include <QPointF>
-#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
@@ -20,10 +19,6 @@
 #include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
-
-#include <QtDebug>
-
-namespace bdata = boost::unit_test::data;
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
