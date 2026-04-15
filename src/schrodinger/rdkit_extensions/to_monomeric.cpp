@@ -1267,7 +1267,6 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
         new_monomer_order.push_back(current);
 
         // Only consider R2->R1 connection
-        std::optional<size_t> r2_r1_neighbor;
         for (auto& [neighbor, link] : adj_list[current]) {
             if (!visited[neighbor] && link->attach_from == 2 &&
                 link->attach_to == 1) {
