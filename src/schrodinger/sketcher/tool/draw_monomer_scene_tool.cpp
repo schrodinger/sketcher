@@ -914,8 +914,9 @@ DrawMonomerSceneTool::getDragEndInfo(const QPointF& scene_pos)
                 // this would be a custom connection (i.e. not a standard
                 // backbone connection) and this monomer pair already has one
                 drag_end_ap_item = nullptr;
-            } else if (!is_custom_bond && !connection->hasProp(CUSTOM_BOND) ||
-                       contains_two_monomer_linkages(connection)) {
+            } else if (!is_custom_bond &&
+                       (!connection->hasProp(CUSTOM_BOND) ||
+                        contains_two_monomer_linkages(connection))) {
                 // this would be a standard backbone connection and this monomer
                 // pair already has one (presumably in the opposite direction,
                 // since otherwise the attachment points would have already been
