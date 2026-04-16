@@ -94,9 +94,11 @@ class TestMolModel : public MolModel
     using MolModel::getBondFromTag;
     using MolModel::getTagForAtom;
     using MolModel::getTagForBond;
+    using MolModel::m_allow_edits;
     using MolModel::m_arrow;
     using MolModel::m_pluses;
     using MolModel::m_tag_to_non_molecular_object;
+    using MolModel::removeCommandFunc;
 };
 
 const std::string STRUC_WITH_RINGS = R"(
@@ -916,6 +918,39 @@ BOOST_AUTO_TEST_CASE(test_removeNonMolecularObject)
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 3);
     BOOST_TEST(model.hasReactionArrow());
+}
+
+/**
+ * Ensure that removing two RXN_PLUS objects in a single remove() call works
+ * regardless of the order in which their tags are processed.
+ *
+ * This is a regression test for a bug in removeCommandFunc: after erasing the
+ * first plus from m_pluses (a std::vector), the stored pointer for the second
+ * plus in m_tag_to_non_molecular_object becomes dangling. Processing the lower-
+ * indexed plus first (tag0 before tag1) triggers the UB. We force that order
+ * by calling removeCommandFunc directly with a std::vector<NonMolecularTag>
+ * rather than going through remove(), which uses an unordered_set and gives
+ * non-deterministic iteration order.
+ */
+BOOST_AUTO_TEST_CASE(test_removeMultiplePlusesAtOnce)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS,
+                                RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS,
+                                RDGeom::Point3D(3.0, 4.0, 0.0));
+    BOOST_TEST(model.getNonMolecularObjects().size() == 2);
+
+    // Force the order that triggers the bug: remove tag 0 (m_pluses[0]) first,
+    // then tag 1 (now a dangling pointer after the first erase).
+    model.m_allow_edits = true;
+    model.removeCommandFunc({}, {}, {},
+                            {NonMolecularTag(0), NonMolecularTag(1)});
+    model.m_allow_edits = false;
+
+    BOOST_TEST(model.getNonMolecularObjects().empty());
 }
 
 /**
