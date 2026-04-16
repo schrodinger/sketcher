@@ -4371,7 +4371,6 @@ BOOST_AUTO_TEST_CASE(test_secondary_connections)
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
 
-    // Load cyclohexane from SMILES
     add_text_to_mol_model(model,
                           "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
     const RDKit::ROMol* mol = model.getMol();
