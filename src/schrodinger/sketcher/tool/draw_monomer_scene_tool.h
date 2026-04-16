@@ -98,7 +98,6 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
     const UnboundMonomericAttachmentPointItem* m_hovered_ap_item = nullptr;
     std::vector<UnboundMonomericAttachmentPointItem*> m_unbound_ap_items;
     MonomerHintFragmentItem* m_hint_fragment_item = nullptr;
-    std::shared_ptr<RDKit::RWMol> m_frag = nullptr;
     QColor m_monomer_background_color = LIGHT_BACKGROUND_COLOR;
     QColor m_unbound_ap_label_color = UNBOUND_AP_LABEL_COLOR;
     QColor m_bound_ap_label_color = BOUND_AP_LABEL_COLOR;
@@ -292,10 +291,12 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
 
     /**
      * Create a hint fragment containing the two specified monomers and the
-     * connection between them, then add this hint fragment to the scene.
+     * connection between them, then add this hint fragment to the scene. Note
+     * that this function will transfer ownership of the monomers themselves to
+     * RDKit.
      */
-    void createHintFragmentItem(const HintFragmentMonomerInfo& monomer_one,
-                                const HintFragmentMonomerInfo& monomer_two);
+    void createHintFragmentItem(HintFragmentMonomerInfo& monomer_one,
+                                HintFragmentMonomerInfo& monomer_two);
 
     /**
      * If the user has started a "valid" click-and-drag operation, create the

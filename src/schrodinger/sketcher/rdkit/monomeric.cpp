@@ -4,6 +4,7 @@
 #include <functional>
 #include <numeric>
 #include <optional>
+#include <string>
 
 #include <boost/range/join.hpp>
 
@@ -783,6 +784,44 @@ void merge_chains(RDKit::ROMol& mol, const std::string_view merge_from,
         res_info->setChainId(merge_to);
         res_info->setResidueNumber(++new_res_num);
     }
+}
+
+int get_chain_num(const std::string_view chain_name,
+                  const rdkit_extensions::ChainType chain_type)
+{
+    auto prefix = rdkit_extensions::toString(chain_type);
+    auto first_num_char = prefix.size();
+    if (chain_name.substr(0, first_num_char) != prefix) {
+        return -1;
+    }
+    auto chain_num_text = chain_name.substr(first_num_char);
+    try {
+        return std::stoi(std::string(chain_num_text));
+    } catch (const std::invalid_argument&) {
+        return -1;
+    } catch (const std::out_of_range&) {
+        return -1;
+    }
+}
+
+std::string
+get_first_available_chain_name(const RDKit::ROMol& mol,
+                               const rdkit_extensions::ChainType chain_type)
+{
+    auto prefix = rdkit_extensions::toString(chain_type);
+    std::unordered_set<int> chain_nums;
+    for (auto chain_name : rdkit_extensions::get_polymer_ids(mol)) {
+        if (!chain_name.starts_with(prefix)) {
+            continue;
+        }
+        int cur_chain_num = get_chain_num(chain_name, chain_type);
+        chain_nums.insert(cur_chain_num);
+    }
+    int missing_num = 1;
+    while (chain_nums.contains(missing_num)) {
+        ++missing_num;
+    }
+    return fmt::format("{}{}", prefix, missing_num);
 }
 
 } // namespace sketcher
