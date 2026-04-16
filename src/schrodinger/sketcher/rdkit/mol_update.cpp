@@ -147,6 +147,11 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
             bond_dir == RDKit::Bond::BondDir::EITHERDOUBLE ||
             bond_dir == RDKit::Bond::BondDir::UNKNOWN) {
             bond->setBondDir(bond_dir);
+            // Crossed double bonds must remain STEREOANY so they are not
+            // resolved to E or Z by coordinate-based stereo assignment.
+            if (bond_dir == RDKit::Bond::BondDir::EITHERDOUBLE) {
+                bond->setStereo(RDKit::Bond::BondStereo::STEREOANY);
+            }
         }
     }
 }

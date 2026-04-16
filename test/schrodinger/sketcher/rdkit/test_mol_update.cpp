@@ -6,6 +6,7 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/constants.h"
+#include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/RWMol.h>
 
 namespace schrodinger
@@ -102,6 +103,71 @@ BOOST_AUTO_TEST_CASE(test_prepare_mol_list_query)
     // the second atom is a list query, check that it's a dummy atom
     BOOST_TEST(mol->getAtomWithIdx(1)->getAtomicNum() ==
                rdkit_extensions::DUMMY_ATOMIC_NUMBER);
+}
+
+/**
+ * SKETCH-2722: Pasting a SMILES with unspecified double bond stereo (no /
+ * or \ markers) should preserve the double bond as unspecified (STEREOANY,
+ * drawn as a crossed bond), rather than resolving it to E or Z based on the
+ * generated 2D coordinates.
+ */
+BOOST_AUTO_TEST_CASE(test_smiles_unspecified_double_bond_stereo_preserved)
+{
+    // CC=CCC has a stereogenic double bond but no stereo specification.
+    auto mol =
+        rdkit_extensions::to_rdkit("CC=CCC", rdkit_extensions::Format::SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+
+    prepare_mol(*mol);
+    update_molecule_on_change(*mol);
+
+    const RDKit::Bond* double_bond = nullptr;
+    for (auto bond : mol->bonds()) {
+        if (bond->getBondType() == RDKit::Bond::DOUBLE) {
+            double_bond = bond;
+            break;
+        }
+    }
+    BOOST_REQUIRE(double_bond != nullptr);
+
+    // Double bond should be marked as crossed (EITHERDOUBLE) and unspecified
+    BOOST_TEST(double_bond->getBondDir() == RDKit::Bond::BondDir::EITHERDOUBLE);
+    BOOST_TEST(double_bond->getStereo() == RDKit::Bond::BondStereo::STEREOANY);
+
+    // Exporting to SMILES should not introduce stereo indicators (/ or \)
+    mol->clearConformers();
+    auto smiles =
+        rdkit_extensions::to_string(*mol, rdkit_extensions::Format::SMILES);
+    BOOST_TEST(smiles.find('/') == std::string::npos);
+    BOOST_TEST(smiles.find('\\') == std::string::npos);
+}
+
+/**
+ * SKETCH-2722: Pasting a SMILES with explicit E/Z double bond stereo (C/C=C/CC)
+ * should still resolve to the correct E or Z configuration.
+ */
+BOOST_AUTO_TEST_CASE(test_smiles_specified_double_bond_stereo_preserved)
+{
+    auto mol = rdkit_extensions::to_rdkit("C/C=C/CC",
+                                          rdkit_extensions::Format::SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+
+    prepare_mol(*mol);
+    update_molecule_on_change(*mol);
+
+    const RDKit::Bond* double_bond = nullptr;
+    for (auto bond : mol->bonds()) {
+        if (bond->getBondType() == RDKit::Bond::DOUBLE) {
+            double_bond = bond;
+            break;
+        }
+    }
+    BOOST_REQUIRE(double_bond != nullptr);
+
+    // The double bond should have a defined E or Z stereo
+    BOOST_TEST(double_bond->getBondDir() != RDKit::Bond::BondDir::EITHERDOUBLE);
+    BOOST_TEST(double_bond->getStereo() != RDKit::Bond::BondStereo::STEREOANY);
+    BOOST_TEST(double_bond->getStereo() != RDKit::Bond::BondStereo::STEREONONE);
 }
 
 } // namespace sketcher
