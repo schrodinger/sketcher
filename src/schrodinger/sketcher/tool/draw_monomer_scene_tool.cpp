@@ -625,18 +625,30 @@ void DrawMonomerSceneTool::createHintFragmentItem(
     auto frag = std::make_shared<RDKit::RWMol>();
     frag->setProp(HELM_MODEL, true);
 
+    // figure out whether we need to flip the monomers to get the bond
+    // directionality correct
+    auto* start_monomer = &monomer_one_info;
+    auto* end_monomer = &monomer_two_info;
+    auto [linkage, flipped] = build_linkage_string(start_monomer->ap_model_name,
+                                                   end_monomer->ap_model_name);
+    bool is_custom_bond = get_is_custom_bond(
+        start_monomer->monomer.get(), end_monomer->monomer.get(), linkage);
+    if (flipped) {
+        // we swap pointers instead of monomer_one_info and monomer_two_info so
+        // that we don't affect those variables in the calling scope
+        std::swap(start_monomer, end_monomer);
+    }
+
     // create the two monomers
-    auto first_idx =
-        frag->addAtom(monomer_one_info.monomer.release(), true, true);
-    auto second_idx =
-        frag->addAtom(monomer_two_info.monomer.release(), true, true);
+    auto start_idx =
+        frag->addAtom(start_monomer->monomer.release(), true, true);
+    auto end_idx = frag->addAtom(end_monomer->monomer.release(), true, true);
 
     // create the connection between them
-    auto linkage = fmt::format("{}-{}", monomer_one_info.ap_model_name,
-                               monomer_two_info.ap_model_name);
-    rdkit_extensions::addConnection(*frag, first_idx, second_idx, linkage);
+    rdkit_extensions::addConnection(*frag, start_idx, end_idx, linkage,
+                                    is_custom_bond);
     auto bond_index_to_label =
-        frag->getBondBetweenAtoms(first_idx, second_idx)->getIdx();
+        frag->getBondBetweenAtoms(start_idx, end_idx)->getIdx();
 
     // flag the atoms as monomeric
     for (auto* atom : frag->atoms()) {
@@ -646,17 +658,17 @@ void DrawMonomerSceneTool::createHintFragmentItem(
     // Add a conformer with the atom coordinates
     auto* frag_conf = new RDKit::Conformer(frag->getNumAtoms());
     frag_conf->set3D(false);
-    frag_conf->setAtomPos(first_idx, monomer_one_info.pos);
-    frag_conf->setAtomPos(second_idx, monomer_two_info.pos);
+    frag_conf->setAtomPos(start_idx, start_monomer->pos);
+    frag_conf->setAtomPos(end_idx, end_monomer->pos);
     frag->addConformer(frag_conf, true);
 
     // hide the monomers that already exist in the Scene
     std::vector<size_t> atom_indices_to_hide;
-    if (monomer_one_info.atom_idx >= 0) {
-        atom_indices_to_hide.push_back(first_idx);
+    if (start_monomer->atom_idx >= 0) {
+        atom_indices_to_hide.push_back(start_idx);
     }
-    if (monomer_two_info.atom_idx >= 0) {
-        atom_indices_to_hide.push_back(second_idx);
+    if (end_monomer->atom_idx >= 0) {
+        atom_indices_to_hide.push_back(end_idx);
     }
 
     m_hint_fragment_item = new MonomerHintFragmentItem(

@@ -571,5 +571,46 @@ BOOST_AUTO_TEST_CASE(test_drag_third_connection)
     fix.verifyHELM("PEPTIDE1{C.C.C}$PEPTIDE1,PEPTIDE1,2:R3-3:R3$$$V2.0");
 }
 
+/**
+ * Make sure that dragging from a nucleic acid base's "pair" attachment point to
+ * a peptide monomer doesn't cause a crash.
+ */
+BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
+    fix.setNucleicAcidTool(NucleicAcidTool::A);
+    auto start_monomer_pos = fix.getMonomerPos(1);
+    auto end_monomer_pos = fix.getMonomerPos(0);
+    fix.mouseMove(start_monomer_pos);
+    auto start_ap_pos = fix.getAttachmentPointPos(1, "pair");
+    fix.mouseMove(start_ap_pos);
+    fix.mousePress(start_ap_pos);
+    fix.mouseMove(end_monomer_pos);
+    fix.mouseRelease(end_monomer_pos);
+    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:R3-1:pair$$$V2.0");
+}
+
+/**
+ * Make sure that dragging to a nucleic acid base's "pair" attachment point from
+ * a peptide monomer doesn't cause a crash (i.e. dragging in the opposite
+ * direction relative to the last test).
+ */
+BOOST_AUTO_TEST_CASE(test_drag_to_na_base_from_peptide)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
+    fix.setNucleicAcidTool(NucleicAcidTool::A);
+    auto start_monomer_pos = fix.getMonomerPos(0);
+    auto end_monomer_pos = fix.getMonomerPos(1);
+    fix.mouseMove(start_monomer_pos);
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "X");
+    fix.mouseMove(start_ap_pos);
+    fix.mousePress(start_ap_pos);
+    fix.mouseMove(end_monomer_pos);
+    fix.mouseRelease(end_monomer_pos);
+    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:R3-1:pair$$$V2.0");
+}
+
 } // namespace sketcher
 } // namespace schrodinger
