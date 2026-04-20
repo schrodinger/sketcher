@@ -682,18 +682,60 @@ void MolModel::addMonomer(const std::string_view res_name,
     doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
 }
 
+static MonomerType
+get_monomer_type_from_chain_type(const rdkit_extensions::ChainType chain_type,
+                                 const std::string_view res_name)
+{
+    using rdkit_extensions::ChainType;
+    switch (chain_type) {
+        case (ChainType::PEPTIDE):
+            return MonomerType::PEPTIDE;
+        case (ChainType::CHEM):
+            return MonomerType::CHEM;
+        default:
+            return get_na_monomer_type_from_res_name(res_name);
+    }
+}
+
+/**
+ * @return a set of all residue numbers for monomers of the specified type that
+ * are in the same polymer as the given atom.
+ */
+static std::unordered_set<int>
+get_all_residue_numbers_of_monomer_type_in_polymer(
+    const MonomerType monomer_type, const RDKit::Atom* const atom_in_polymer)
+{
+    // we make a copy of the molecule so we can flag it as monomeric
+    auto mol = atom_in_polymer->getOwningMol();
+    mol.setProp(HELM_MODEL, true);
+    auto polymer_id = rdkit_extensions::get_polymer_id(atom_in_polymer);
+    auto atom_idxs =
+        rdkit_extensions::get_atoms_in_polymer_chains(mol, {polymer_id});
+    std::unordered_set<int> residue_numbers;
+    for (auto atom_idx : atom_idxs) {
+        auto* atom = mol.getAtomWithIdx(atom_idx);
+        if (get_monomer_type(atom) == monomer_type) {
+            auto res_num = rdkit_extensions::get_residue_number(atom);
+            residue_numbers.insert(res_num);
+        }
+    }
+    return residue_numbers;
+}
+
 /**
  * Determine the appropriate residue number to use for a new monomer that will
- * be connected to an existing monomer.  Note that this function does *not*
- * check for duplicate residue numbers; the new residue number is based entirely
- * off of the residue number from bound_to_monomer (and possibly incremented or
- * decremented).
+ * be connected to an existing monomer.
  * @param res_name The residue name of the monomer to be added
  * @param chain_type The type of the monomer to be added
  * @param new_monomer_ap_name The new monomer's attachment point that will be
  * used to connect it to bound_to_monomer
  * @param bound_to_monomer The existing monomer that the new monomer will be
  * bound to
+ * @return the residue number, which is guaranteed to be:
+ *   - non-negative (since get_residue_number returns unsigned ints)
+ *   - unique amongst all residues with the same monomer type (This allows,
+ *     e.g., an RNA base and sugar to have the same residue number, but ensures
+ *     that peptide monomers are uniquely numbered.)
  */
 static int
 get_residue_number_for_new_monomer(const std::string_view res_name,
@@ -702,6 +744,11 @@ get_residue_number_for_new_monomer(const std::string_view res_name,
                                    const RDKit::Atom* const bound_to_monomer)
 {
     using rdkit_extensions::ChainType;
+
+    auto monomer_type = get_monomer_type_from_chain_type(chain_type, res_name);
+    auto existing_res_nums = get_all_residue_numbers_of_monomer_type_in_polymer(
+        monomer_type, bound_to_monomer);
+
     int res_num_offset = 1;
     auto bound_to_monomer_chain_type =
         rdkit_extensions::getChainType(*bound_to_monomer);
@@ -711,7 +758,6 @@ get_residue_number_for_new_monomer(const std::string_view res_name,
         res_num_offset = -1;
     } else if (chain_type == ChainType::RNA &&
                bound_to_monomer_chain_type == ChainType::RNA) {
-        auto monomer_type = get_na_monomer_type_from_res_name(res_name);
         if (monomer_type == MonomerType::NA_SUGAR &&
             new_monomer_ap_name == ap_model_name_for(NASugarAP::THREE_PRIME)) {
             // sugars can link to the previous residue
@@ -726,84 +772,13 @@ get_residue_number_for_new_monomer(const std::string_view res_name,
             res_num_offset = 0;
         }
     }
-    return rdkit_extensions::get_residue_number(bound_to_monomer) +
-           res_num_offset;
-}
-
-/**
- * Determine whether the described linkage is a standard bond (i.e. does not
- * need the CUSTOM_BOND property) or a custom bond (which requires the
- * CUSTOM_BOND) property
- */
-static bool get_is_custom_bond(const std::string_view res_name,
-                               const rdkit_extensions::ChainType chain_type,
-                               const RDKit::Atom* const bound_to_monomer,
-                               const std::string_view linkage)
-{
-    using rdkit_extensions::ChainType;
-    auto bound_to_monomer_chain_type =
-        rdkit_extensions::getChainType(*bound_to_monomer);
-    if (chain_type == ChainType::PEPTIDE &&
-        bound_to_monomer_chain_type == ChainType::PEPTIDE) {
-        return linkage != BACKBONE_LINKAGE;
-    } else if (chain_type == ChainType::RNA &&
-               bound_to_monomer_chain_type == ChainType::RNA) {
-        auto new_monomer_type = get_na_monomer_type_from_res_name(res_name);
-        auto bound_to_monomer_type = get_monomer_type(bound_to_monomer);
-        std::unordered_set<MonomerType> monomer_types = {new_monomer_type,
-                                                         bound_to_monomer_type};
-        if (monomer_types ==
-                std::unordered_set<MonomerType>{MonomerType::NA_SUGAR,
-                                                MonomerType::NA_BASE} &&
-            linkage == ap_model_name_for(NASugarAP::ONE_PRIME) + "-" +
-                           ap_model_name_for(NA_BASE_AP_N1_9)) {
-            // standard sugar to base linkage
-            return false;
-        } else if (monomer_types ==
-                       std::unordered_set<MonomerType>{
-                           MonomerType::NA_SUGAR, MonomerType::NA_PHOSPHATE} &&
-                   linkage == "R2-R1") {
-            // sugar to next or previous phosphate linkage
-            return false;
-        }
+    auto bound_to_res_num =
+        rdkit_extensions::get_residue_number(bound_to_monomer);
+    int new_res_num = bound_to_res_num + res_num_offset;
+    if (new_res_num < 0 || existing_res_nums.contains(new_res_num)) {
+        new_res_num = *std::ranges::max_element(existing_res_nums) + 1;
     }
-    return true;
-}
-
-/**
- * @overload
- */
-static bool get_is_custom_bond(const RDKit::Atom* const monomer_one,
-                               const RDKit::Atom* const monomer_two,
-                               const std::string_view linkage)
-{
-    auto monomer_one_res_name = get_monomer_res_name(monomer_one);
-    auto monomer_one_chain_type = rdkit_extensions::getChainType(*monomer_one);
-    return get_is_custom_bond(monomer_one_res_name, monomer_one_chain_type,
-                              monomer_two, linkage);
-}
-
-/**
- * Combine the two attachment point names to form a standardized linkage string.
- * For example, attachment points "R2" and "R1" would form the linkage string
- * "R2-R1". Note that, in a standardized linkage string, higher numbered
- * attachment points are listed before lower numbered one, and numbered
- * attachment points are listed before attachment points with custom names.
- */
-std::tuple<std::string, bool>
-build_linkage_string(const std::string_view ap_name_one,
-                     const std::string_view ap_name_two)
-{
-    auto ap_num_one = ap_name_to_num(ap_name_one);
-    auto ap_num_two = ap_name_to_num(ap_name_two);
-    bool flip = ap_num_one < ap_num_two;
-    std::string_view start_ap_name = ap_name_one;
-    std::string_view end_ap_name = ap_name_two;
-    if (flip) {
-        std::swap(start_ap_name, end_ap_name);
-    }
-    std::string linkage = fmt::format("{}-{}", start_ap_name, end_ap_name);
-    return {linkage, flip};
+    return new_res_num;
 }
 
 void MolModel::addBoundMonomer(const std::string_view res_name,

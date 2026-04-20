@@ -263,5 +263,49 @@ SKETCHER_API std::string
 get_first_available_chain_name(const RDKit::ROMol& mol,
                                const rdkit_extensions::ChainType chain_type);
 
+/**
+ * Combine the two attachment point names to form a standardized linkage string.
+ * For example, attachment points "R2" and "R1" would form the linkage string
+ * "R2-R1". Note that, in a standardized linkage string, higher numbered
+ * attachment points are listed before lower numbered one, and numbered
+ * attachment points are listed before attachment points with custom names.
+ * @return a pair of
+ *   - the standardized linkage string
+ *   - whether the attachment point order was flipped in order to standardize
+ *     the linkage string
+ */
+SKETCHER_API std::pair<std::string, bool>
+build_linkage_string(const std::string_view ap_name_one,
+                     const std::string_view ap_name_two);
+
+/**
+ * Determine whether the described linkage is a standard bond (i.e. does not
+ * need the CUSTOM_BOND property) or a custom bond (which requires the
+ * CUSTOM_BOND) property
+ * @note the linkage string must be standardized, but the order of the monomers
+ * does not need to match the order of the linkage string. In a standardized
+ * linkage string, higher numbered attachment points are listed before lower
+ * numbered one, and numbered attachment points are listed before attachment
+ * points with custom names.
+ */
+SKETCHER_API bool
+get_is_custom_bond(const std::string_view res_name_one,
+                   const rdkit_extensions::ChainType chain_type_one,
+                   const std::string_view res_name_two,
+                   const rdkit_extensions::ChainType chain_type_two,
+                   const std::string_view linkage);
+
+/// @overload
+SKETCHER_API bool get_is_custom_bond(const RDKit::Atom* const monomer_one,
+                                     const RDKit::Atom* const monomer_two,
+                                     const std::string_view linkage);
+
+/// @overload
+SKETCHER_API bool
+get_is_custom_bond(const std::string_view res_name_one,
+                   const rdkit_extensions::ChainType chain_type_one,
+                   const RDKit::Atom* const monomer_two,
+                   const std::string_view linkage);
+
 } // namespace sketcher
 } // namespace schrodinger
