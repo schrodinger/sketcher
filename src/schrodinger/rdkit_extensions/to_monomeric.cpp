@@ -28,9 +28,13 @@
 #include "schrodinger/rdkit_extensions/sup_utils.h"
 
 // Macro for debug prints; enabled by setting SCHRODINGER_DEBUG_TO_MONOMERIC.
-#define PRINT(...)   \
-    if (get_debug()) \
-        fmt::print(__VA_ARGS__);
+#define PRINT(...)                   \
+    do {                             \
+        if (get_debug()) {           \
+            fmt::print(__VA_ARGS__); \
+            std::fflush(stdout);     \
+        }                            \
+    } while (0)
 
 namespace schrodinger
 {
@@ -1019,11 +1023,6 @@ void detectLinkages(const RDKit::ROMol& atomistic_mol,
                 linkages.emplace_back(monomer_idx2, monomer_idx1, attach_num2,
                                       attach_num1);
             } else {
-                if (attach_num1 == 1 && attach_num2 == 1) {
-                    // Special case of having a monomer at the beginning of
-                    // a chain, attach_num1 should be 2
-                    attach_num1 = 2;
-                }
                 if (attach_num1 == attach_num2 && attach_num1 != 3) {
                     throw std::runtime_error(fmt::format(
                         "Monomers {} and {} are connected with "
@@ -1239,17 +1238,13 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
                    std::vector<Linkage>& linkages)
 {
     // Create adjacency list representation of the monomer connectivity graph
-    // that is partially directed; R2->R1 and R3->R1 connections are directed,
-    // while R3-R3 connections are undirected.
+    // that is directed by R2->R1 connections. Other types of connections
+    // require inter-chain linkages which are added later in buildMonomerMol().
     std::vector<std::vector<std::pair<size_t, Linkage*>>> adj_list(
         monomers.size());
     std::vector<int> parents(monomers.size(), -1);
     for (auto& link : linkages) {
-        if (link.attach_to == 1 &&
-            (link.attach_from == 2 || link.attach_from == 3)) {
-            // This skips disulfide (or other R3-R3 bonds) because that would
-            // indicate the need for multiple chains, see SHARED-10787 Ensure we
-            // go R2->R1 and R3->R1 for directionality
+        if (link.attach_to == 1 && link.attach_from == 2) {
             adj_list[link.monomer_idx1].push_back({link.monomer_idx2, &link});
 
             // Since the directed bonds always go into R1, each monomer can have
@@ -1271,38 +1266,12 @@ void orderMonomers(RDKit::ROMol& atomistic_mol,
         visited[current] = true;
         new_monomer_order.push_back(current);
 
-        // Sort neighbors to prioritize R2->R1 connections
-        std::vector<std::pair<int, size_t>> sorted_neighbors;
+        // Only consider R2->R1 connection
         for (auto& [neighbor, link] : adj_list[current]) {
-            if (!visited[neighbor]) {
-                // Determine priority:
-                // * R3->R1 gets highest priority as it denotes a branched
-                // connection
-                //       i.e., A.B(C)D.E should be ordered as A-B-C-D-E not
-                //       A-B-D-E-C
-                // * R2->R1 gets next priority as it denotes a backbone
-                // connection
-                // * R3-R3 connections are ignored, see SHARED-10787
-                int priority = 0;
-                if (link->attach_from == 3 && link->attach_to == 1) {
-                    priority = 2;
-                } else if (link->attach_from == 2 && link->attach_to == 1) {
-                    priority = 1;
-                } else {
-                    // Go N -> C direction only, no R1->R3 or R2->R3
-                    continue;
-                }
-                sorted_neighbors.push_back({priority, neighbor});
-            }
-        }
-
-        // Visit neighbors in priority order
-        std::sort(
-            sorted_neighbors.begin(), sorted_neighbors.end(),
-            [](const auto& a, const auto& b) { return a.first > b.first; });
-        for (auto& [_priority, neighbor] : sorted_neighbors) {
-            if (!visited[neighbor]) {
+            if (!visited[neighbor] && link->attach_from == 2 &&
+                link->attach_to == 1) {
                 dfs(neighbor);
+                break; // "There can be only one." --Connor MacLeod
             }
         }
     };

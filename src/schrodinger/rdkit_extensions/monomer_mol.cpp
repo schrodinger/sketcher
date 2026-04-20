@@ -261,6 +261,13 @@ std::string toString(ChainType chain_type)
     }
 }
 
+// E.g., turn "R3-R1" into "R1-R3"
+std::string reverse_linkage(const std::string& linkage)
+{
+    auto [begin_attchpt, end_attchpt] = getAttchpts(linkage);
+    return fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
+}
+
 void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                    const std::string& linkage, const bool is_custom_bond)
 {
@@ -299,13 +306,13 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         // goes in reverse, which means we are dealing with a cyclic dipeptide.
         // We'll signal this by storing the linkage backwards.
         if (old_linkage.find(linkage) != std::string::npos &&
-            linkage == "R2-R1") {
-            if (bond->getBeginAtomIdx() == monomer1) {
-                throw std::runtime_error(fmt::format(
-                    "Can't duplicate {} bond between atom={} and atom={}",
-                    linkage, monomer1, monomer2));
-            }
-            bond->setProp(CUSTOM_BOND, "R1-R2");
+            bond->getBeginAtomIdx() == monomer1) {
+            throw std::runtime_error(fmt::format(
+                "Can't duplicate {} bond between atom={} and atom={}", linkage,
+                monomer1, monomer2));
+        }
+        if (bond->getBeginAtomIdx() == monomer2) {
+            bond->setProp(CUSTOM_BOND, reverse_linkage(linkage));
         } else {
             bond->setProp(CUSTOM_BOND, linkage);
         }
@@ -336,10 +343,8 @@ void addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                 create_bond(monomer1, monomer2, ::RDKit::Bond::DATIVE, linkage);
                 set_directional_bond = true;
             } else if (begin_attchpt < end_attchpt) {
-                auto new_linkage =
-                    fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
                 create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
-                            new_linkage);
+                            reverse_linkage(linkage));
                 set_directional_bond = true;
             }
         }

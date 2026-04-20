@@ -38,7 +38,7 @@
       <widget class="schrodinger::sketcher::SelectOptionsWidget" name="select_options_wdg" native="true"/>
      </item>
      <item>
-      <widget class="Line" name="line_2">
+      <widget class="Line" name="draw_tools_separator">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
        </property>
