@@ -39,6 +39,7 @@ namespace sketcher
 class MonomerHintFragmentItem;
 class UnboundMonomericAttachmentPointItem;
 struct HintFragmentMonomerInfo;
+class MonomerConnectorItem;
 
 using MonomerAndAPItems =
     std::pair<AbstractMonomerItem*, UnboundMonomericAttachmentPointItem*>;
@@ -198,6 +199,14 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
      * @param scene_pos The position in Scene coordinates
      */
     AbstractMonomerItem* getTopMonomerItemAt(const QPointF& scene_pos) const;
+
+    /**
+     * Return the top graphics item representing a monomeric connector at the
+     * given coordinates. If there's no such graphics item, return nullptr.
+     * @param scene_pos The position in Scene coordinates
+     */
+    MonomerConnectorItem*
+    getTopMonomerConnectorItemAt(const QPointF& scene_pos) const;
 
     /**
      * Clear any existing attachment point labels and draw new ones for the
@@ -404,6 +413,17 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
      */
     rdkit_extensions::Direction
     getDragDirection(const QPointF& cur_scene_pos) const;
+
+    /**
+     * Show or hide the cursor hint
+     */
+    void setCursorHintShown(bool show);
+
+    /**
+     * Determine whether the specified graphics item is part of this scene
+     * tool's hint fragment
+     */
+    bool isItemPartOfHintFragment(QGraphicsItem* item) const;
 };
 
 } // namespace sketcher

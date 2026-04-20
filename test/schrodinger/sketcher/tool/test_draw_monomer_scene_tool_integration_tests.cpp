@@ -493,5 +493,83 @@ BOOST_AUTO_TEST_CASE(test_drag_empty_to_ap_adds_connected_correct_aps)
         "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R3-1:R2$$$V2.0");
 }
 
+/**
+ * Make sure that dragging between two existing monomer won't create a second
+ * standard backbone connection between them (since monomer_mol can't store more
+ * than one standard backbone connection between the same pair of monomers)
+ */
+BOOST_AUTO_TEST_CASE(test_drag_second_backbone_connection)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{A.A}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    auto start_monomer_pos = fix.getMonomerPos(0);
+    auto end_monomer_pos = fix.getMonomerPos(1);
+    fix.mouseMove(start_monomer_pos);
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "N");
+    fix.mouseMove(start_ap_pos);
+    fix.mousePress(start_ap_pos);
+    fix.mouseMove(end_monomer_pos);
+    auto end_ap_pos = fix.getAttachmentPointPos(1, "C");
+    fix.mouseMove(end_ap_pos);
+    fix.mouseRelease(end_ap_pos);
+    // the drag should have added a new monomer to the N terminus of the start
+    // monomer since we released over an invalid attachment point
+    fix.verifyHELM("PEPTIDE1{C.A.A}$$$$V2.0");
+}
+
+/**
+ * Make sure that dragging between two existing monomer won't create a second
+ * custom connection (i.e. not a standard backbone connection) between them
+ * (since monomer_mol can't store more than one custom connection between the
+ * same pair of monomers)
+ */
+BOOST_AUTO_TEST_CASE(test_drag_second_custom_connection)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText(
+        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::PHE);
+    auto start_monomer_pos = fix.getMonomerPos(0);
+    auto end_monomer_pos = fix.getMonomerPos(1);
+    fix.mouseMove(start_monomer_pos);
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "X");
+    fix.mouseMove(start_ap_pos);
+    fix.mousePress(start_ap_pos);
+    fix.mouseMove(end_monomer_pos);
+    auto end_ap_pos = fix.getAttachmentPointPos(1, "X");
+    fix.mouseMove(end_ap_pos);
+    fix.mouseRelease(end_ap_pos);
+    // the drag should have added a new monomer with a side chain interaction
+    // since we released over an invalid attachment point
+    fix.verifyHELM("PEPTIDE1{C}|PEPTIDE2{A}|PEPTIDE3{F}$PEPTIDE1,PEPTIDE2,1:R2-"
+                   "1:R2|PEPTIDE1,PEPTIDE3,1:R3-1:R3$$$V2.0");
+}
+
+/**
+ * Make sure that dragging between two existing monomer won't create a third
+ * connection between them (since monomer_mol can't store more than two
+ * connections between the same pair of monomers)
+ */
+BOOST_AUTO_TEST_CASE(test_drag_third_connection)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    auto start_monomer_pos = fix.getMonomerPos(0);
+    auto end_monomer_pos = fix.getMonomerPos(1);
+    fix.mouseMove(start_monomer_pos);
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "N");
+    fix.mouseMove(start_ap_pos);
+    fix.mousePress(start_ap_pos);
+    fix.mouseMove(end_monomer_pos);
+    auto end_ap_pos = fix.getAttachmentPointPos(1, "C");
+    fix.mouseMove(end_ap_pos);
+    fix.mouseRelease(end_ap_pos);
+    // the drag should have added a new monomer with a side chain interaction
+    // since we released over an invalid attachment point
+    fix.verifyHELM("PEPTIDE1{C.C.C}$PEPTIDE1,PEPTIDE1,2:R3-3:R3$$$V2.0");
+}
+
 } // namespace sketcher
 } // namespace schrodinger
