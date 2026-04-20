@@ -765,3 +765,45 @@ BOOST_DATA_TEST_CASE(
     BOOST_CHECK_THROW(validateAttachmentPoints(*mol, &monomer_db),
                       std::runtime_error);
 }
+
+BOOST_AUTO_TEST_CASE(TestInlineSmilesParsing)
+{
+    {
+        auto mol = helm_to_rdkit("PEPTIDE1{F.E.W.[NIB].D.W.E.F}$$$$V2.0");
+        auto test_atom = mol->getAtomWithIdx(3);
+        auto is_smiles = false;
+        BOOST_TEST(test_atom->getPropIfPresent(SMILES_MONOMER, is_smiles));
+        BOOST_TEST(is_smiles == false);
+    }
+
+    {
+        auto mol = helm_to_rdkit("PEPTIDE1{[NIB].D.W.E.F}$$$$V2.0");
+        auto test_atom = mol->getAtomWithIdx(0);
+        auto is_smiles = false;
+        BOOST_TEST(test_atom->getPropIfPresent(SMILES_MONOMER, is_smiles));
+        BOOST_TEST(is_smiles == false);
+    }
+    {
+        auto mol = helm_to_rdkit("PEPTIDE1{F.E.W.[NIB]}$$$$V2.0");
+        auto test_atom = mol->getAtomWithIdx(3);
+        auto is_smiles = false;
+        BOOST_TEST(test_atom->getPropIfPresent(SMILES_MONOMER, is_smiles));
+        BOOST_TEST(is_smiles == false);
+    }
+
+    {
+        auto mol = helm_to_rdkit("PEPTIDE1{[NIB]}$$$$V2.0");
+        auto test_atom = mol->getAtomWithIdx(0);
+        auto is_smiles = false;
+        BOOST_TEST(test_atom->getPropIfPresent(SMILES_MONOMER, is_smiles));
+        BOOST_TEST(is_smiles == true);
+    }
+    {
+        auto mol =
+            helm_to_rdkit("PEPTIDE1{[[*:2]C(=O)[C@H](C)N([*:1])C]}$$$$V2.0");
+        auto test_atom = mol->getAtomWithIdx(0);
+        auto is_smiles = false;
+        BOOST_TEST(test_atom->getPropIfPresent(SMILES_MONOMER, is_smiles));
+        BOOST_TEST(is_smiles == true);
+    }
+}

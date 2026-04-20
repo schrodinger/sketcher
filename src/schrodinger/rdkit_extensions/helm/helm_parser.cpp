@@ -656,6 +656,9 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         // and wildcard monomer info
         add_ambiguous_monomer_information_to_polymer(result);
 
+        // mark smiles monomers
+        assign_smiles_monomers(result);
+
         polymers.push_back(std::move(result));
         return true;
     }
@@ -714,6 +717,43 @@ template <class error_handler_t> class [[nodiscard]] parser_t
                 result.residue_names.insert(monomer_id);
 
                 start = end + 1; // advance location of separator
+            }
+        }
+    }
+
+    /** @brief Identifies and marks which monomers in a polymer are SMILES
+     *         monomers. SMILES monomers are bracket-enclosed monomers that
+     *         contain valid SMILES notation. Purely alphanumeric monomers in
+     *         multi-monomer polymers are not considered SMILES since they have
+     *         no attachment points.
+     *  @param result The polymer whose monomers will be analyzed and marked.
+     */
+    void assign_smiles_monomers(polymer& result)
+    {
+        const auto num_monomers = result.monomers.size();
+        for (auto& monomer : result.monomers) {
+            if (monomer.id.size() == 1 || monomer.is_list) {
+                continue;
+            }
+
+            // NOTE: Most SMILES monomer recognition logic lives in
+            // helm::is_smiles_monomer. However, that API cannot determine
+            // whether a monomer appears within a multimeric polymer (e.g.,
+            // PEPTIDE1{A.[NIB].P}$$$$V2.0).
+            //
+            // Although "NIB" is technically a valid SMILES string, it is
+            // unlikely to be the correct designation in this context because it
+            // lacks the attachment points required to bond with neighboring
+            // residues.
+            //
+            // This additional check helps reduce false positives in such
+            // scenarios.
+            if (num_monomers != 1 &&
+                std::ranges::all_of(monomer.id,
+                                    [](auto c) { return std::isalnum(c); })) {
+                monomer.is_smiles = false;
+            } else {
+                monomer.is_smiles = is_smiles_monomer(monomer.id);
             }
         }
     }
@@ -934,11 +974,6 @@ template <class error_handler_t> class [[nodiscard]] parser_t
         if (result.id.front() == '(' &&
             !is_valid_monomer_list(result.id, lexer.input())) {
             return std::optional<monomer>{};
-        }
-
-        // mark smiles monomers
-        if (result.id.front() == '[' && helm::is_smiles_monomer(result.id)) {
-            result.is_smiles = true;
         }
 
         // mark monomer lists
@@ -1880,16 +1915,14 @@ std::optional<helm_info> parse_helm(std::string_view input, bool do_throw)
                     : (parser_t<log_error_handler_t>{}).parse(input);
 }
 
-[[nodiscard]] bool is_smiles_monomer(const std::string_view& token)
+[[nodiscard]] bool is_smiles_monomer(const std::string_view& monomer)
 {
     // Assume it's SMILES if it has whitespace
-    if (token.find_first_of(" \t\n\f\r\v") != std::string_view::npos) {
+    if (monomer.find_first_of(" \t\n\f\r\v") != std::string_view::npos) {
         return true;
     }
 
-    auto monomer = token.substr(1, token.size() - 2);
     // Assume it's SMILES if it has these rgroup chars
-    // NOTE: token is still surrounded by [] tokens
     if (monomer.find_first_of("*:[]=+") != std::string_view::npos) {
         return true;
     }
