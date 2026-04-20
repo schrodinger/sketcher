@@ -683,8 +683,8 @@ void MolModel::addMonomer(const std::string_view res_name,
 }
 
 static MonomerType
-monomer_type_from_chain_type(const rdkit_extensions::ChainType chain_type,
-                             const std::string_view res_name)
+get_monomer_type_from_chain_type(const rdkit_extensions::ChainType chain_type,
+                                 const std::string_view res_name)
 {
     using rdkit_extensions::ChainType;
     switch (chain_type) {
@@ -745,7 +745,7 @@ get_residue_number_for_new_monomer(const std::string_view res_name,
 {
     using rdkit_extensions::ChainType;
 
-    auto monomer_type = monomer_type_from_chain_type(chain_type, res_name);
+    auto monomer_type = get_monomer_type_from_chain_type(chain_type, res_name);
     auto existing_res_nums = get_all_residue_numbers_of_monomer_type_in_polymer(
         monomer_type, bound_to_monomer);
 
