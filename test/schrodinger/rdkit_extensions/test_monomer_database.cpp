@@ -19,7 +19,6 @@
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/test/scopedenv.h"
 #include "test_common.h"
-#include "schrodinger/adapter/adapter.h"
 
 using namespace schrodinger::rdkit_extensions;
 
