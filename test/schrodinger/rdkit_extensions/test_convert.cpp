@@ -346,7 +346,7 @@ BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedMdlChiralAtoms1)
 {
     // SKETCH-1453
 
-    using RDKit::operator"" _ctab;
+    using RDKit::operator""_ctab;
 
     for (auto chiral_flag : {1, 0}) {
         auto mol = R"MDL(
@@ -398,7 +398,7 @@ M  END)MDL"_ctab;
 BOOST_AUTO_TEST_CASE(testAddEnhancedStereoToUngroupedMdlChiralAtoms2)
 {
     // SKETCH-1453
-    using RDKit::operator"" _ctab;
+    using RDKit::operator""_ctab;
 
     struct test_ref {
         int chiral_flag;

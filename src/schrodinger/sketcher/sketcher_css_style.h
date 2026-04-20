@@ -37,11 +37,12 @@ const QString TOOL_BUTTON_CORNER_ARROW_STYLE{
     "QToolButton::menu-indicator:disabled { color: #E4E4E4; "
     " image: url(\":icons/menu_corner_arrow_dis.svg\"); }"};
 
-const QString PALETTE_TITLE_STYLE{"QLabel { font: bold 9px; color: #666666; }"
-                                  "QLabel:disabled { color: #E4E4E4; }"};
+const QString PALETTE_TITLE_STYLE{
+    "QLabel { font-size: 9px; font-weight: bold; color: #666666; }"
+    "QLabel:disabled { color: #E4E4E4; }"};
 
 const QString TEXT_LINK_STYLE{
-    "QToolButton { font: bold 10px; color: #3d5d71; }"
+    "QToolButton { font-size: 10px; font-weight: bold; color: #3d5d71; }"
     "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:hover { color: #5b8aa8; background-color: transparent; }"};
 
@@ -50,12 +51,12 @@ const QString TEXT_LINK_STYLE{
  * blue
  */
 const QString BRIGHTER_TEXT_LINK_STYLE{
-    "QToolButton { font: bold 12px; color: #009ec3; }"
+    "QToolButton { font-size: 12px; font-weight: bold; color: #009ec3; }"
     "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:hover { color: #00b6e0; background-color: transparent; }"};
 
 const QString ATOM_ELEMENT_OR_MONOMER_STYLE{
-    "QToolButton { font: bold 14px; color: #333333; }"
+    "QToolButton { font-size: 14px; font-weight: bold; color: #333333; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 /// Minimum label length that requires the compact style
@@ -63,22 +64,25 @@ constexpr int COMPACT_STYLE_MIN_LENGTH = 3;
 
 /// style with reduced padding to fit longer labels (e.g. "meW")
 const QString ATOM_ELEMENT_OR_MONOMER_COMPACT_STYLE{
-    "QToolButton { font: bold 10px; color: #333333; padding: 1px; }"
+    "QToolButton { font-size: 10px; font-weight: bold; color: #333333; "
+    "padding: 1px; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 /// style for an unknown monomer (e.g. amino acid X or nucleotide N)
 const QString UNKNOWN_MONOMER_STYLE{
-    "QToolButton { font: bold italic 14px; color: #333333; }"
+    "QToolButton { font-size: 14px; font-weight: bold; font-style: italic; "
+    "color: #333333; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 const QString ATOM_QUERY_STYLE{
-    "QLabel { font: italic 7px; color: #666666; }"
-    "QToolButton { font: bold italic 14px; color: #606060; }"
+    "QLabel { font-size: 7px; font-style: italic; color: #666666; }"
+    "QToolButton { font-size: 14px; font-weight: bold; font-style: italic; "
+    "color: #606060; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 const QString PERIODIC_TABLE_STYLE{
     "#PeriodicTableForm { background-color:white }"
-    "QToolButton { font: 10px; color: black; border-style: none; "
+    "QToolButton { font-size: 10px; color: black; border-style: none; "
     "    min-width: 21px; max-width:21px; min-height:21px; max-height:21px; }"
     "QToolButton[class='hydrogen'] { background-color: #b2bcc2; }"
     "QToolButton[class='alkali_metals'] { background-color: #b7d9ec; }"
@@ -91,25 +95,26 @@ const QString PERIODIC_TABLE_STYLE{
     "QToolButton[class='noble_gases'] { background-color: #eccc75; }"
     "QToolButton[class='lanthanides'] { background-color: #cce5c3; }"
     "QToolButton[class='actinides'] { background-color: #afd1a2; }"
-    "QLabel { font: 10px; color: black; border-style: none; padding: 0; }"};
+    "QLabel { font-size: 10px; color: black; border-style: none; padding: 0; "
+    "}"};
 
 const QString RENDER_OPTIONS_STYLE{
-    "QLabel { font: italic 11px; color: #666666; }"};
+    "QLabel { font-size: 11px; font-style: italic; color: #666666; }"};
 
 const QString RENDER_OPTIONS_POPUP_STYLE{
     "#FileSaveImagePopup { background-color:white }"};
 
 const QString BOND_QUERY_STYLE{
-    "QToolButton { font: bold 12px; color: #333333; }"};
+    "QToolButton { font-size: 12px; font-weight: bold; color: #333333; }"};
 
 const QString ENUMERATION_STYLE{
-    "QToolButton { font: bold 14px; color: #444444; }"
+    "QToolButton { font-size: 14px; font-weight: bold; color: #444444; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 /// style for the popup that allows the user to specify a custom nucleotide
 const QString CUSTOM_NUCLEOTIDE_STYLE{
     "#CustomNucleotidePopup { background-color:white }"
-    "QLabel { font: 9px; color: #666666; }"};
+    "QLabel { font-size: 9px; color: #666666; }"};
 
 // when the atomistic/monomeric toggle buttons are pressed, we want the
 // background to be a darker blue than the default coloring

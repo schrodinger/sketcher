@@ -283,7 +283,7 @@ static void sanityCheckBeforeAddingConnectionToExistingBond(
 
     // We allow adding a "duplicate" backbone connection, but only if it
     // goes in reverse, which means we are dealing with a cyclic dipeptide.
-    if (old_linkage.find(linkage) != std::string::npos && linkage == "R2-R1" &&
+    if (old_linkage.find(linkage) != std::string::npos &&
         bond->getBeginAtomIdx() == monomer1) {
         throw std::runtime_error(
             fmt::format("Can't duplicate {} bond between atom={} and atom={}",
@@ -320,23 +320,11 @@ static void sanityCheckBeforeAddingConnectionToExistingBond(
     }
 }
 
-/**
- * Check whether this bond is a "backwards duplicate" backbone linkage, which
- * is found in e.g. cyclic dipeptides.
- */
-bool isCyclicDimerClosure(const RDKit::Bond& bond, size_t monomer1,
-                          const std::string& linkage)
+// E.g., turn "R3-R1" into "R1-R3"
+std::string reverse_linkage(const std::string& linkage)
 {
-    std::string old_linkage;
-
-    // If the linkage property isn't set, something went wrong
-    if (!bond.getPropIfPresent(LINKAGE, old_linkage)) {
-        throw std::runtime_error(fmt::format(
-            "No linkage property on bond between atom={} and atom={}",
-            bond.getBeginAtomIdx(), bond.getEndAtomIdx()));
-    }
-    return old_linkage.find(linkage) != std::string::npos &&
-           linkage == "R2-R1" && bond.getEndAtomIdx() == monomer1;
+    auto [begin_attchpt, end_attchpt] = getAttchpts(linkage);
+    return fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
 }
 
 std::pair<RDKit::Bond*, ConnectionAdded>
@@ -350,9 +338,10 @@ addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         sanityCheckBeforeAddingConnectionToExistingBond(
             bond, monomer1, monomer2, linkage, is_custom_bond);
         if (is_custom_bond) {
-            if (isCyclicDimerClosure(*bond, monomer1, linkage)) {
-                // We'll signal this by storing the linkage backwards.
-                bond->setProp(CUSTOM_BOND, "R1-R2");
+            if (bond->getBeginAtomIdx() == monomer2) {
+                // The bond already exists, but its direction is backwards, so
+                // we need to reverse the linkage string.
+                bond->setProp(CUSTOM_BOND, reverse_linkage(linkage));
             } else {
                 bond->setProp(CUSTOM_BOND, linkage);
             }
@@ -392,10 +381,8 @@ addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
                                    linkage);
                 set_directional_bond = true;
             } else if (begin_attchpt < end_attchpt) {
-                auto new_linkage =
-                    fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
                 bond = create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
-                                   new_linkage);
+                                   reverse_linkage(linkage));
                 set_directional_bond = true;
             }
         }
