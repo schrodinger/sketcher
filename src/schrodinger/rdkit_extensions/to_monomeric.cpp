@@ -4,7 +4,6 @@
 #include <chrono>
 #include <queue>
 #include <span>
-#include <unordered_map>
 #include <memory>
 
 #include <fmt/format.h>
@@ -1679,6 +1678,20 @@ void detectLinkages(RDKit::RWMol& monomer_mol,
     }
 }
 
+std::string processResidueName(const std::string& res_name)
+{
+    std::string processed_name = res_name;
+    processed_name.erase(
+        std::remove_if(processed_name.begin(), processed_name.end(), ::isspace),
+        processed_name.end());
+    if (processed_name == "HID" || processed_name == "HIE" ||
+        processed_name == "HIP") {
+        // Normalize histidine protonation states to HIS
+        return "HIS";
+    }
+    return processed_name;
+}
+
 std::optional<std::tuple<std::string, std::string, ChainType>>
 getHelmInfo(const MonomerDatabase& db, const RDKit::Atom* atom,
             bool has_pdb_codes)
@@ -1688,10 +1701,8 @@ getHelmInfo(const MonomerDatabase& db, const RDKit::Atom* atom,
         auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
             atom->getMonomerInfo());
         auto res_name = res_info->getResidueName();
-        res_name.erase(
-            std::remove_if(res_name.begin(), res_name.end(), ::isspace),
-            res_name.end());
-        return db.getHelmInfo(res_name);
+        auto processed_res_name = processResidueName(res_name);
+        return db.getHelmInfo(processed_res_name);
     } else {
         // This comes from a SD file with SUP groups
         auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(

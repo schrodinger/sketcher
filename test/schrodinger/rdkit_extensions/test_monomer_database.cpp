@@ -2,14 +2,24 @@
 
 #include <memory>
 #include <string_view>
+#include <unordered_map>
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/rdkit_extensions/atomistic_conversions.h"
+#include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/test/scopedenv.h"
 #include "test_common.h"
+#include "schrodinger/adapter/adapter.h"
 
 using namespace schrodinger::rdkit_extensions;
 
@@ -273,6 +283,45 @@ BOOST_AUTO_TEST_CASE(TestSmilesEscaping)
     auto& monomer_db = MonomerDatabase::instance();
     monomer_db.loadMonomersFromJson(json_for_boc_ser_bzl);
     monomer_db.canonicalizeSmilesFields();
+}
+
+BOOST_AUTO_TEST_CASE(TestHistidineProtonationStates)
+{
+    const std::string helm_str =
+        "PEPTIDE1{A."
+        "[O=C([C@H](Cc1c[nH]cn1)N[*:1])[*:2]]."     // HID
+        "[O=C([C@H](Cc1cnc[nH]1)N[*:1])[*:2]]."     // HIE
+        "[O=C([C@H](Cc1c[nH+]c[nH]1)N[*:1])[*:2]]." // HIP
+        "[O=C([C@H](Cc1cnc[nH]1)N[*:1])[*:2]]."     // HIS
+        "A}$$$$V2.0";
+    auto monomer_mol = to_rdkit(helm_str);
+
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol != nullptr);
+
+    auto map_resnum_to_resname = std::unordered_map<int, std::string>{
+        {2, "HID"}, {3, "HIE"}, {4, "HIP"}, {5, "HIS"}};
+
+    for (auto atom : atomistic_mol->atoms()) {
+        auto res_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
+            atom->getMonomerInfo());
+        if (res_info) {
+            auto resnum = res_info->getResidueNumber();
+            auto it = map_resnum_to_resname.find(resnum);
+            if (it != map_resnum_to_resname.end()) {
+                const_cast<RDKit::AtomPDBResidueInfo*>(res_info)
+                    ->setResidueName(it->second);
+            }
+        }
+    }
+
+    auto new_monomer_mol = toMonomeric(*atomistic_mol, true);
+    BOOST_REQUIRE(new_monomer_mol != nullptr);
+
+    const std::string expected_helm_str = "PEPTIDE1{A.H.H.H.H.A}$$$$V2.0";
+    auto helm_result = to_string(*new_monomer_mol, Format::HELM);
+
+    BOOST_TEST(helm_result == expected_helm_str);
 }
 
 BOOST_AUTO_TEST_CASE(TestGetNonNaturalAnalogs)
