@@ -44,6 +44,7 @@ struct RDKIT_EXTENSIONS_API MonomerInfo {
     opt_string_t monomer_type = std::nullopt;
     opt_string_t author = std::nullopt;
     opt_string_t pdbcode = std::nullopt;
+    opt_string_t rgroups = std::nullopt;
 
     size_t getHash() const;
     bool areRequiredFieldsPopulated() const;

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS "monomer_definitions" (
     "MONOMER_TYPE"    TEXT,
     "AUTHOR"          TEXT,
     "PDBCODE"         TEXT,
+    "RGROUPS"         TEXT,
     PRIMARY KEY("ID" AUTOINCREMENT)
 );
 CREATE UNIQUE INDEX "monomertype_symbol_idx" ON "monomer_definitions" (
