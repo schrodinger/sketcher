@@ -81,6 +81,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
 
     // Reimplemented AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;
+    void onStructureUpdated() override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event) override;
