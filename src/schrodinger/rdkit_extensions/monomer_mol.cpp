@@ -384,23 +384,20 @@ addConnection(RDKit::RWMol& monomer_mol, size_t monomer1, size_t monomer2,
         // direction into account. To ensure consistent bond directionality, we
         // always set the direction from the higher attachment point to the
         // lower attachment point.
-        unsigned int begin_attchpt = 0;
-        unsigned int end_attchpt = 0;
-        try {
-            std::tie(begin_attchpt, end_attchpt) = getAttchpts(linkage);
-        } catch (...) {
-            // if we can't parse the linkage (e.g. "pair-pair"), assume it's
-            // non-directional
-        }
-        bool set_directional_bond = begin_attchpt != end_attchpt;
-        if (begin_attchpt > end_attchpt) {
-            bond =
-                create_bond(monomer1, monomer2, ::RDKit::Bond::DATIVE, linkage);
-        } else if (begin_attchpt < end_attchpt) {
-            auto new_linkage =
-                fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
-            bond = create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
-                               new_linkage);
+        bool set_directional_bond = false;
+        if (linkage.front() != 'p' && linkage.find('?') == std::string::npos) {
+            auto [begin_attchpt, end_attchpt] = getAttchpts(linkage);
+            if (begin_attchpt > end_attchpt) {
+                bond = create_bond(monomer1, monomer2, ::RDKit::Bond::DATIVE,
+                                   linkage);
+                set_directional_bond = true;
+            } else if (begin_attchpt < end_attchpt) {
+                auto new_linkage =
+                    fmt::format("R{}-R{}", end_attchpt, begin_attchpt);
+                bond = create_bond(monomer2, monomer1, ::RDKit::Bond::DATIVE,
+                                   new_linkage);
+                set_directional_bond = true;
+            }
         }
 
         if (!set_directional_bond) {

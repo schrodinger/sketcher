@@ -588,7 +588,7 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
     fix.mouseRelease(end_monomer_pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:R3-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$RNA1,PEPTIDE1,1:pair-1:pair$$$V2.0");
 }
 
 /**
@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_CASE(test_drag_to_na_base_from_peptide)
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
     fix.mouseRelease(end_monomer_pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:R3-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
 }
 
 } // namespace sketcher

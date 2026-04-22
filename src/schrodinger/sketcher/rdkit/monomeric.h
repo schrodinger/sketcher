@@ -267,8 +267,13 @@ get_first_available_chain_name(const RDKit::ROMol& mol,
  * Combine the two attachment point names to form a standardized linkage string.
  * For example, attachment points "R2" and "R1" would form the linkage string
  * "R2-R1". Note that, in a standardized linkage string, higher numbered
- * attachment points are listed before lower numbered one, and numbered
- * attachment points are listed before attachment points with custom names.
+ * attachment points are listed before lower numbered one.
+ *
+ * Also note that the "pair" attachment point implies hydrogen bonding, while
+ * the "R<#>" attachment points imply covalent or disulfide bonding, so a "pair"
+ * attachment point can't be connected to a numbered attachment point.  As a
+ * result, a linkage of "pair-pair" will be returned if either attachment point
+ * is "pair".
  * @return a pair of
  *   - the standardized linkage string
  *   - whether the attachment point order was flipped in order to standardize
@@ -306,6 +311,23 @@ get_is_custom_bond(const std::string_view res_name_one,
                    const rdkit_extensions::ChainType chain_type_one,
                    const RDKit::Atom* const monomer_two,
                    const std::string_view linkage);
+/**
+ * Add a connection between the two given monomers and their respective
+ * attachment points.
+ * @return The index of the bond containing the newly added connection.
+ */
+SKETCHER_API unsigned int
+add_monomer_connection(RDKit::RWMol& mol, const unsigned int monomer_one_idx,
+                       const std::string_view ap_one,
+                       const unsigned int monomer_two_idx,
+                       const std::string_view ap_two);
+
+/// @overload
+SKETCHER_API unsigned int add_monomer_connection(RDKit::RWMol& mol,
+                                                 RDKit::Atom* const monomer_one,
+                                                 const std::string_view ap_one,
+                                                 RDKit::Atom* const monomer_two,
+                                                 const std::string_view ap_two);
 
 } // namespace sketcher
 } // namespace schrodinger

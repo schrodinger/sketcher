@@ -21,6 +21,13 @@ void set_atom_monomeric(RDKit::Atom* const atom)
     atom->setProp(MONOMERIC_PROPERTY, true);
 }
 
+void set_all_atoms_monomeric(RDKit::ROMol& mol)
+{
+    for (auto* atom : mol.atoms()) {
+        set_atom_monomeric(atom);
+    }
+}
+
 void clear_monomeric_property(RDKit::Atom* const atom)
 {
     atom->clearProp(MONOMERIC_PROPERTY);

@@ -17,6 +17,7 @@
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
@@ -828,6 +829,9 @@ std::pair<std::string, bool>
 build_linkage_string(const std::string_view ap_name_one,
                      const std::string_view ap_name_two)
 {
+    if (ap_name_one == "pair" || ap_name_two == "pair") {
+        return {"pair-pair", false};
+    }
     auto ap_num_one = ap_name_to_num(ap_name_one);
     auto ap_num_two = ap_name_to_num(ap_name_two);
     bool flip = ap_num_one < ap_num_two;
@@ -897,6 +901,34 @@ bool get_is_custom_bond(const std::string_view res_name_one,
     return get_is_custom_bond(res_name_one, chain_type_one,
                               monomer_two_res_name, monomer_two_chain_type,
                               linkage);
+}
+
+unsigned int add_monomer_connection(RDKit::RWMol& mol,
+                                    const unsigned int monomer_one_idx,
+                                    const std::string_view ap_one,
+                                    const unsigned int monomer_two_idx,
+                                    const std::string_view ap_two)
+{
+    auto* monomer_one = mol.getAtomWithIdx(monomer_one_idx);
+    auto* monomer_two = mol.getAtomWithIdx(monomer_two_idx);
+    return add_monomer_connection(mol, monomer_one, ap_one, monomer_two,
+                                  ap_two);
+}
+
+unsigned int add_monomer_connection(RDKit::RWMol& mol, RDKit::Atom* monomer_one,
+                                    const std::string_view ap_one,
+                                    RDKit::Atom* monomer_two,
+                                    const std::string_view ap_two)
+{
+    auto [linkage, flipped] = build_linkage_string(ap_one, ap_two);
+    if (flipped) {
+        std::swap(monomer_one, monomer_two);
+    }
+    bool is_custom_bond = get_is_custom_bond(monomer_one, monomer_two, linkage);
+    auto [bond, connection_added] = rdkit_extensions::addConnection(
+        mol, monomer_one->getIdx(), monomer_two->getIdx(), linkage,
+        is_custom_bond);
+    return bond->getIdx();
 }
 
 } // namespace sketcher
