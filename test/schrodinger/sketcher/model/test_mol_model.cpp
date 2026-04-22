@@ -71,6 +71,7 @@ static auto no_r_group_num = std::nullopt;
 BOOST_TEST_DONT_PRINT_LOG_VALUE(r_group_num_t);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(decltype(no_r_group_num));
 
+using schrodinger::rdkit_extensions::ChainType;
 using schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
@@ -4370,7 +4371,6 @@ BOOST_AUTO_TEST_CASE(test_secondary_connections)
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
 
-    // Load cyclohexane from SMILES
     add_text_to_mol_model(model,
                           "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
     const RDKit::ROMol* mol = model.getMol();
@@ -4560,6 +4560,42 @@ BOOST_AUTO_TEST_CASE(test_addBoundMonomer)
     BOOST_TEST(mol->getNumBonds() == 1);
     helm = get_mol_text(&model, Format::HELM);
     BOOST_TEST(helm == "PEPTIDE1{A.G}$$$$V2.0");
+}
+
+/**
+ * Use addBoundMonomer to extend a peptide chain in the opposite direction,
+ * building from C terminus to N terminus. We also add a side chain interaction
+ * to a new chain and confirm that the new chain remains separate
+ */
+BOOST_AUTO_TEST_CASE(test_addBoundMonomer_N_terminus)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    model.addMonomer("A", ChainType::PEPTIDE, {0.0, 0.0, 0.0});
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A}$$$$V2.0");
+
+    auto ala_monomer = model.getMol()->getAtomWithIdx(0);
+    model.addBoundMonomer("C", ChainType::PEPTIDE, {-50.0, 0.0, 0.0}, "R2",
+                          ala_monomer, "R1");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{C.A}$$$$V2.0");
+
+    auto cys_monomer = model.getMol()->getAtomWithIdx(1);
+    model.addBoundMonomer("F", ChainType::PEPTIDE, {-100.0, 0.0, 0.0}, "R2",
+                          cys_monomer, "R1");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{F.C.A}$$$$V2.0");
+
+    // now add the side chain interaction
+    ala_monomer = model.getMol()->getAtomWithIdx(0);
+    model.addBoundMonomer("W", ChainType::PEPTIDE, {-100.0, 0.0, 0.0}, "R3",
+                          ala_monomer, "R3");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(
+        helm ==
+        "PEPTIDE1{F.C.A}|PEPTIDE2{W}$PEPTIDE1,PEPTIDE2,3:R3-1:R3$$$V2.0");
 }
 
 /**
@@ -4815,6 +4851,29 @@ BOOST_AUTO_TEST_CASE(test_addMonomericConnection_pairing_two_nucleotides)
     auto helm = get_mol_text(&model, Format::HELM);
     BOOST_TEST(helm ==
                "RNA1{R(A)P}|RNA2{R(C)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
+}
+
+/**
+ * Make sure that adding disconnected monomers via addMonomer results in the
+ * expected HELM strings, which should contain properly numbered chains without
+ * any connection between the monomers.
+ */
+BOOST_AUTO_TEST_CASE(test_addMonomer_disconnected)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    model.addMonomer("A", ChainType::PEPTIDE, {0.0, 0.0, 0.0});
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A}$$$$V2.0");
+
+    model.addMonomer("C", ChainType::PEPTIDE, {50.0, 0.0, 0.0});
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0");
+
+    model.addMonomer("F", ChainType::PEPTIDE, {100.0, 0.0, 0.0});
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A}|PEPTIDE2{C}|PEPTIDE3{F}$$$$V2.0");
 }
 
 } // namespace sketcher

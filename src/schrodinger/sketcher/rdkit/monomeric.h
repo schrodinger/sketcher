@@ -10,6 +10,7 @@
 #include <Qt>
 
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/definitions.h"
 
 class QGraphicsItem;
@@ -241,6 +242,70 @@ SKETCHER_API int ap_name_to_num(const std::string_view attachment_point_name);
 SKETCHER_API void merge_chains(RDKit::ROMol& mol,
                                const std::string_view merge_from,
                                const std::string& merge_to);
+
+/**
+ * Return the numeric component of the chain name as an integer, e.g. 3 for
+ * "PEPTIDE3". If the chain name cannot be parsed, -1 will be returned.
+ * @param chain_name the chain name to parse
+ * @param chain_type the type of chain_name
+ */
+SKETCHER_API int get_chain_num(const std::string_view chain_name,
+                               const rdkit_extensions::ChainType chain_type);
+
+/**
+ * @return the lowest numbered chain name (of the specified type) that doesn't
+ * already exist in the molecule. For example, if a molecule already has
+ * "PEPTIDE1" and "PEPTIDE2" chains, "PEPTIDE3" will be returned when
+ * ChainType::PEPTIDE is passed in. Alternatively, "RNA1" would be returned if
+ * ChainType::RNA was passed in.
+ */
+SKETCHER_API std::string
+get_first_available_chain_name(const RDKit::ROMol& mol,
+                               const rdkit_extensions::ChainType chain_type);
+
+/**
+ * Combine the two attachment point names to form a standardized linkage string.
+ * For example, attachment points "R2" and "R1" would form the linkage string
+ * "R2-R1". Note that, in a standardized linkage string, higher numbered
+ * attachment points are listed before lower numbered one, and numbered
+ * attachment points are listed before attachment points with custom names.
+ * @return a pair of
+ *   - the standardized linkage string
+ *   - whether the attachment point order was flipped in order to standardize
+ *     the linkage string
+ */
+SKETCHER_API std::pair<std::string, bool>
+build_linkage_string(const std::string_view ap_name_one,
+                     const std::string_view ap_name_two);
+
+/**
+ * Determine whether the described linkage is a standard bond (i.e. does not
+ * need the CUSTOM_BOND property) or a custom bond (which requires the
+ * CUSTOM_BOND) property
+ * @note the linkage string must be standardized, but the order of the monomers
+ * does not need to match the order of the linkage string. In a standardized
+ * linkage string, higher numbered attachment points are listed before lower
+ * numbered one, and numbered attachment points are listed before attachment
+ * points with custom names.
+ */
+SKETCHER_API bool
+get_is_custom_bond(const std::string_view res_name_one,
+                   const rdkit_extensions::ChainType chain_type_one,
+                   const std::string_view res_name_two,
+                   const rdkit_extensions::ChainType chain_type_two,
+                   const std::string_view linkage);
+
+/// @overload
+SKETCHER_API bool get_is_custom_bond(const RDKit::Atom* const monomer_one,
+                                     const RDKit::Atom* const monomer_two,
+                                     const std::string_view linkage);
+
+/// @overload
+SKETCHER_API bool
+get_is_custom_bond(const std::string_view res_name_one,
+                   const rdkit_extensions::ChainType chain_type_one,
+                   const RDKit::Atom* const monomer_two,
+                   const std::string_view linkage);
 
 } // namespace sketcher
 } // namespace schrodinger

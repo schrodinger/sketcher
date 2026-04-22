@@ -4,6 +4,7 @@
 #include <functional>
 #include <numeric>
 #include <optional>
+#include <string>
 
 #include <boost/range/join.hpp>
 
@@ -783,6 +784,119 @@ void merge_chains(RDKit::ROMol& mol, const std::string_view merge_from,
         res_info->setChainId(merge_to);
         res_info->setResidueNumber(++new_res_num);
     }
+}
+
+int get_chain_num(const std::string_view chain_name,
+                  const rdkit_extensions::ChainType chain_type)
+{
+    auto prefix = rdkit_extensions::toString(chain_type);
+    auto first_num_char = prefix.size();
+    if (chain_name.substr(0, first_num_char) != prefix) {
+        return -1;
+    }
+    auto chain_num_text = chain_name.substr(first_num_char);
+    try {
+        return std::stoi(std::string(chain_num_text));
+    } catch (const std::invalid_argument&) {
+        return -1;
+    } catch (const std::out_of_range&) {
+        return -1;
+    }
+}
+
+std::string
+get_first_available_chain_name(const RDKit::ROMol& mol,
+                               const rdkit_extensions::ChainType chain_type)
+{
+    auto prefix = rdkit_extensions::toString(chain_type);
+    std::unordered_set<int> chain_nums;
+    for (auto chain_name : rdkit_extensions::get_polymer_ids(mol)) {
+        if (!chain_name.starts_with(prefix)) {
+            continue;
+        }
+        int cur_chain_num = get_chain_num(chain_name, chain_type);
+        chain_nums.insert(cur_chain_num);
+    }
+    int missing_num = 1;
+    while (chain_nums.contains(missing_num)) {
+        ++missing_num;
+    }
+    return fmt::format("{}{}", prefix, missing_num);
+}
+
+std::pair<std::string, bool>
+build_linkage_string(const std::string_view ap_name_one,
+                     const std::string_view ap_name_two)
+{
+    auto ap_num_one = ap_name_to_num(ap_name_one);
+    auto ap_num_two = ap_name_to_num(ap_name_two);
+    bool flip = ap_num_one < ap_num_two;
+    std::string_view start_ap_name = ap_name_one;
+    std::string_view end_ap_name = ap_name_two;
+    if (flip) {
+        std::swap(start_ap_name, end_ap_name);
+    }
+    std::string linkage = fmt::format("{}-{}", start_ap_name, end_ap_name);
+    return {linkage, flip};
+}
+
+bool get_is_custom_bond(const std::string_view res_name_one,
+                        const rdkit_extensions::ChainType chain_type_one,
+                        const std::string_view res_name_two,
+                        const rdkit_extensions::ChainType chain_type_two,
+                        const std::string_view linkage)
+{
+    using rdkit_extensions::ChainType;
+    if (chain_type_one == ChainType::PEPTIDE &&
+        chain_type_two == ChainType::PEPTIDE) {
+        return linkage != BACKBONE_LINKAGE;
+    } else if (chain_type_one == ChainType::RNA &&
+               chain_type_two == ChainType::RNA) {
+        auto monomer_type_one = get_na_monomer_type_from_res_name(res_name_one);
+        auto monomer_type_two = get_na_monomer_type_from_res_name(res_name_two);
+        std::unordered_set<MonomerType> monomer_types = {monomer_type_one,
+                                                         monomer_type_two};
+        if (monomer_types ==
+                std::unordered_set<MonomerType>{MonomerType::NA_SUGAR,
+                                                MonomerType::NA_BASE} &&
+            linkage == ap_model_name_for(NASugarAP::ONE_PRIME) + "-" +
+                           ap_model_name_for(NA_BASE_AP_N1_9)) {
+            // standard sugar to base linkage
+            return false;
+        } else if (monomer_types ==
+                       std::unordered_set<MonomerType>{
+                           MonomerType::NA_SUGAR, MonomerType::NA_PHOSPHATE} &&
+                   linkage == "R2-R1") {
+            // sugar to next or previous phosphate linkage
+            return false;
+        }
+    }
+    return true;
+}
+
+bool get_is_custom_bond(const RDKit::Atom* const monomer_one,
+                        const RDKit::Atom* const monomer_two,
+                        const std::string_view linkage)
+{
+    auto monomer_one_res_name = get_monomer_res_name(monomer_one);
+    auto monomer_one_chain_type = rdkit_extensions::getChainType(*monomer_one);
+    auto monomer_two_res_name = get_monomer_res_name(monomer_two);
+    auto monomer_two_chain_type = rdkit_extensions::getChainType(*monomer_two);
+    return get_is_custom_bond(monomer_one_res_name, monomer_one_chain_type,
+                              monomer_two_res_name, monomer_two_chain_type,
+                              linkage);
+}
+
+bool get_is_custom_bond(const std::string_view res_name_one,
+                        const rdkit_extensions::ChainType chain_type_one,
+                        const RDKit::Atom* const monomer_two,
+                        const std::string_view linkage)
+{
+    auto monomer_two_res_name = get_monomer_res_name(monomer_two);
+    auto monomer_two_chain_type = rdkit_extensions::getChainType(*monomer_two);
+    return get_is_custom_bond(res_name_one, chain_type_one,
+                              monomer_two_res_name, monomer_two_chain_type,
+                              linkage);
 }
 
 } // namespace sketcher

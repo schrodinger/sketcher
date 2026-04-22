@@ -35,6 +35,15 @@ get_hover_area_for_unbound_monomer_attachment_point_item(
     const AbstractMonomerItem* const parent_monomer, const Fonts& fonts);
 
 /**
+ * Convert a Direction to a vector in Qt coordinates. Vectors in cardinal
+ * directions will be 1 unit long, and vectors in diagonal directions will have
+ * positive or negative 1 for their X and Y coordinates. (I.e. they'll be
+ * slightly longer that the cardinal vectors.) Note that in Qt coordinates, +X
+ * is right and +Y is down (unlike RDKit coordinates).
+ */
+SKETCHER_API QPointF direction_to_qt_vector(Direction dir);
+
+/**
  * A graphics item for representing an unbound (available) attachment point
  * on a monomer. Draws a short line extending from the monomer with a text
  * label indicating the attachment point name.

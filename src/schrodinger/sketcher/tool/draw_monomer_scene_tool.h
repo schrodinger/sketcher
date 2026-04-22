@@ -39,6 +39,7 @@ namespace sketcher
 class MonomerHintFragmentItem;
 class UnboundMonomericAttachmentPointItem;
 struct HintFragmentMonomerInfo;
+class MonomerConnectorItem;
 
 using MonomerAndAPItems =
     std::pair<AbstractMonomerItem*, UnboundMonomericAttachmentPointItem*>;
@@ -98,7 +99,6 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
     const UnboundMonomericAttachmentPointItem* m_hovered_ap_item = nullptr;
     std::vector<UnboundMonomericAttachmentPointItem*> m_unbound_ap_items;
     MonomerHintFragmentItem* m_hint_fragment_item = nullptr;
-    std::shared_ptr<RDKit::RWMol> m_frag = nullptr;
     QColor m_monomer_background_color = LIGHT_BACKGROUND_COLOR;
     QColor m_unbound_ap_label_color = UNBOUND_AP_LABEL_COLOR;
     QColor m_bound_ap_label_color = BOUND_AP_LABEL_COLOR;
@@ -201,6 +201,14 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
     AbstractMonomerItem* getTopMonomerItemAt(const QPointF& scene_pos) const;
 
     /**
+     * Return the top graphics item representing a monomeric connector at the
+     * given coordinates. If there's no such graphics item, return nullptr.
+     * @param scene_pos The position in Scene coordinates
+     */
+    MonomerConnectorItem*
+    getTopMonomerConnectorItemAt(const QPointF& scene_pos) const;
+
+    /**
      * Clear any existing attachment point labels and draw new ones for the
      * specified monomeric graphics item. If item is nullptr, then all labels
      * will be cleared and no new ones will be drawn.
@@ -292,10 +300,12 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
 
     /**
      * Create a hint fragment containing the two specified monomers and the
-     * connection between them, then add this hint fragment to the scene.
+     * connection between them, then add this hint fragment to the scene. Note
+     * that this function will transfer ownership of the monomers themselves to
+     * RDKit.
      */
-    void createHintFragmentItem(const HintFragmentMonomerInfo& monomer_one,
-                                const HintFragmentMonomerInfo& monomer_two);
+    void createHintFragmentItem(HintFragmentMonomerInfo& monomer_one,
+                                HintFragmentMonomerInfo& monomer_two);
 
     /**
      * If the user has started a "valid" click-and-drag operation, create the
@@ -403,6 +413,17 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
      */
     rdkit_extensions::Direction
     getDragDirection(const QPointF& cur_scene_pos) const;
+
+    /**
+     * Show or hide the cursor hint
+     */
+    void setCursorHintShown(bool show);
+
+    /**
+     * Determine whether the specified graphics item is part of this scene
+     * tool's hint fragment
+     */
+    bool isItemPartOfHintFragment(QGraphicsItem* item) const;
 };
 
 } // namespace sketcher

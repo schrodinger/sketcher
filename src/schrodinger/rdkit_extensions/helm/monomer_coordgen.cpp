@@ -2719,10 +2719,14 @@ inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
                                         unsigned int index)
 {
     RDGeom::Point3D size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
-
-    mol.getAtomWithIdx(index)->getPropIfPresent<RDGeom::Point3D>(
-        MONOMER_ITEM_SIZE, size);
-
+    auto* atom = mol.getAtomWithIdx(index);
+    try {
+        atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, size);
+    } catch (const std::bad_any_cast&) {
+        // getPropIfPresent sometimes leaks an exception to the caller, so use
+        // the default size when that happens
+        return {MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0};
+    }
     return size;
 }
 

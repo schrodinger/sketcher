@@ -69,7 +69,7 @@ static QPainterPath calculate_hover_area(QRectF ap_bounding_rect,
  * @param dir The direction
  * @return vector pointing in that direction
  */
-static QPointF direction_to_qt_vector(Direction dir)
+QPointF direction_to_qt_vector(Direction dir)
 {
     auto mol_vec = rdkit_extensions::direction_to_vector(dir);
     return QPointF(mol_vec.x, -mol_vec.y);

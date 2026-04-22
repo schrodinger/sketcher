@@ -44,7 +44,7 @@ using rdkit_extensions::Direction;
  * click-and-drags from a monomer)
  */
 struct HintFragmentMonomerInfo {
-    RDKit::Atom* monomer;
+    std::unique_ptr<RDKit::Atom> monomer;
     MonomerType monomer_type;
     RDGeom::Point3D pos;
     // the model name of this monomer's attachment point that's connected to the
@@ -117,22 +117,19 @@ void DrawMonomerSceneTool::updateColorsAfterBackgroundColorChange(
         is_dark_mode ? DRAG_END_INACTIVE_AP_DARK_BG : DRAG_END_INACTIVE_AP;
 }
 
+bool DrawMonomerSceneTool::isItemPartOfHintFragment(QGraphicsItem* item) const
+{
+    return m_hint_fragment_item != nullptr &&
+           (item == m_hint_fragment_item ||
+            item->group() == m_hint_fragment_item);
+}
+
 AbstractMonomerItem*
 DrawMonomerSceneTool::getTopMonomerItemAt(const QPointF& scene_pos) const
 {
-    // we're only interested in monomers that are part of the actual Sketcher
-    // structure, so we need to ignore any graphics items that belong to our
-    // hint structure
-    auto is_item_part_of_hint_fragment = [this](QGraphicsItem* item) {
-        return m_hint_fragment_item != nullptr &&
-               (item == m_hint_fragment_item ||
-                item->group() == m_hint_fragment_item);
-    };
-
-    // check to see if we're over a monomer, monomeric connector, or unbound
-    // attachment point item
+    // check to see if we're over a monomer or unbound attachment point item
     for (auto* item : m_scene->items(scene_pos)) {
-        if (is_item_part_of_hint_fragment(item)) {
+        if (isItemPartOfHintFragment(item)) {
             // ignore the fragment hint that was drawn by this class
             continue;
         }
@@ -160,7 +157,7 @@ DrawMonomerSceneTool::getTopMonomerItemAt(const QPointF& scene_pos) const
     near_scene_pos.addEllipse(scene_pos, radius, radius);
     for (auto* item : m_scene->items(near_scene_pos)) {
         if (!item_matches_type_flag(item, InteractiveItemFlag::MONOMER) ||
-            is_item_part_of_hint_fragment(item)) {
+            isItemPartOfHintFragment(item)) {
             continue;
         }
         auto* monomer_item = static_cast<AbstractMonomerItem*>(item);
@@ -175,6 +172,19 @@ DrawMonomerSceneTool::getTopMonomerItemAt(const QPointF& scene_pos) const
             if (unbound_ap_hover_area.contains(local_pos)) {
                 return monomer_item;
             }
+        }
+    }
+    return nullptr;
+}
+
+MonomerConnectorItem* DrawMonomerSceneTool::getTopMonomerConnectorItemAt(
+    const QPointF& scene_pos) const
+{
+    for (auto* item : m_scene->items(scene_pos)) {
+        if (!isItemPartOfHintFragment(item) &&
+            item_matches_type_flag(item,
+                                   InteractiveItemFlag::MONOMER_CONNECTOR)) {
+            return static_cast<MonomerConnectorItem*>(item);
         }
     }
     return nullptr;
@@ -491,12 +501,19 @@ void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
         return;
     }
     QPointF scene_pos = event->scenePos();
-    auto* item = getTopMonomerItemAt(scene_pos);
-    if (item != m_hovered_item) {
-        m_hovered_item = item;
-        drawAttachmentPointLabelsFor(item);
+    QGraphicsItem* hovered_item;
+    hovered_item = getTopMonomerItemAt(scene_pos);
+    bool found_monomer = hovered_item != nullptr;
+    if (!found_monomer) {
+        // if we're not over a monomer, check to see if we're over a connector
+        hovered_item = getTopMonomerConnectorItemAt(scene_pos);
+    }
+
+    if (hovered_item != m_hovered_item) {
+        m_hovered_item = hovered_item;
+        drawAttachmentPointLabelsFor(hovered_item);
         if (shouldShowPredictiveHighlighting()) {
-            m_predictive_highlighting_item.highlightItem(item);
+            m_predictive_highlighting_item.highlightItem(hovered_item);
         } else {
             m_predictive_highlighting_item.clearHighlightingPath();
         }
@@ -516,10 +533,15 @@ void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 
     // we want to show either the hint fragment or the cursor hint, but not both
     bool drew_hint_fragment = hovered_ap_item != nullptr;
-    if (drew_hint_fragment == m_cursor_hint_shown) {
-        emit newCursorHintRequested(
-            drew_hint_fragment ? QPixmap() : getDefaultCursorPixmap());
-        m_cursor_hint_shown = !drew_hint_fragment;
+    setCursorHintShown(!drew_hint_fragment);
+}
+
+void DrawMonomerSceneTool::setCursorHintShown(bool show)
+{
+    if (show != m_cursor_hint_shown) {
+        emit newCursorHintRequested(show ? getDefaultCursorPixmap()
+                                         : QPixmap());
+        m_cursor_hint_shown = show;
     }
 }
 
@@ -597,34 +619,36 @@ void DrawMonomerSceneTool::drawBoundMonomerHintFor(
 }
 
 void DrawMonomerSceneTool::createHintFragmentItem(
-    const HintFragmentMonomerInfo& monomer_one_info,
-    const HintFragmentMonomerInfo& monomer_two_info)
+    HintFragmentMonomerInfo& monomer_one_info,
+    HintFragmentMonomerInfo& monomer_two_info)
 {
-    m_frag = std::make_shared<RDKit::RWMol>();
-    m_frag->setProp(HELM_MODEL, true);
+    auto frag = std::make_shared<RDKit::RWMol>();
+    frag->setProp(HELM_MODEL, true);
 
     // create the two monomers
-    auto first_idx = m_frag->addAtom(monomer_one_info.monomer, true, true);
-    auto second_idx = m_frag->addAtom(monomer_two_info.monomer, true, true);
+    auto first_idx =
+        frag->addAtom(monomer_one_info.monomer.release(), true, true);
+    auto second_idx =
+        frag->addAtom(monomer_two_info.monomer.release(), true, true);
 
     // create the connection between them
     auto linkage = fmt::format("{}-{}", monomer_one_info.ap_model_name,
                                monomer_two_info.ap_model_name);
-    rdkit_extensions::addConnection(*m_frag, first_idx, second_idx, linkage);
+    rdkit_extensions::addConnection(*frag, first_idx, second_idx, linkage);
     auto bond_index_to_label =
-        m_frag->getBondBetweenAtoms(first_idx, second_idx)->getIdx();
+        frag->getBondBetweenAtoms(first_idx, second_idx)->getIdx();
 
     // flag the atoms as monomeric
-    for (auto* atom : m_frag->atoms()) {
+    for (auto* atom : frag->atoms()) {
         set_atom_monomeric(atom);
     }
 
     // Add a conformer with the atom coordinates
-    auto* frag_conf = new RDKit::Conformer(m_frag->getNumAtoms());
+    auto* frag_conf = new RDKit::Conformer(frag->getNumAtoms());
     frag_conf->set3D(false);
     frag_conf->setAtomPos(first_idx, monomer_one_info.pos);
     frag_conf->setAtomPos(second_idx, monomer_two_info.pos);
-    m_frag->addConformer(frag_conf, true);
+    frag->addConformer(frag_conf, true);
 
     // hide the monomers that already exist in the Scene
     std::vector<size_t> atom_indices_to_hide;
@@ -636,7 +660,7 @@ void DrawMonomerSceneTool::createHintFragmentItem(
     }
 
     m_hint_fragment_item = new MonomerHintFragmentItem(
-        m_frag, m_fonts, atom_indices_to_hide, bond_index_to_label,
+        frag, m_fonts, atom_indices_to_hide, bond_index_to_label,
         m_monomer_background_color);
     m_scene->addItem(m_hint_fragment_item);
 }
@@ -658,9 +682,9 @@ DrawMonomerSceneTool::createHintFragmentMonomerInfoForHintFromEmptySpace(
     auto monomer_pos = to_mol_xy(scene_pos);
     auto linkage_start = getDefaultDragStartAPModelName();
     // returned monomer is owned by the calling scope
-    return HintFragmentMonomerInfo(monomer.release(), m_monomer_type,
+    return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type,
                                    monomer_pos, linkage_start,
-                                   NEW_MONOMER_FROM_DRAG);
+                                   NEW_MONOMER_FROM_DRAG};
 }
 
 HintFragmentMonomerInfo DrawMonomerSceneTool::
@@ -670,10 +694,11 @@ HintFragmentMonomerInfo DrawMonomerSceneTool::
 {
     auto [monomer, monomer_type] = get_monomer_and_type(monomer_item);
     // returned monomer is owned by the calling scope
-    auto copy_of_monomer = new RDKit::Atom(*monomer);
+    auto copy_of_monomer = std::make_unique<RDKit::Atom>(*monomer);
     auto monomer_pos = get_coords_for_monomer(monomer);
-    return HintFragmentMonomerInfo(copy_of_monomer, monomer_type, monomer_pos,
-                                   ap_model_name, monomer->getIdx());
+    auto monomer_idx = static_cast<int>(monomer->getIdx());
+    return HintFragmentMonomerInfo{std::move(copy_of_monomer), monomer_type,
+                                   monomer_pos, ap_model_name, monomer_idx};
 }
 
 HintFragmentMonomerInfo DrawMonomerSceneTool::
@@ -704,8 +729,8 @@ DrawMonomerSceneTool::createHintFragmentMonomerInfoForHintToDirection(
     auto ap_model_name = get_attachment_point_for_new_monomer(
         start_monomer_info.monomer_type, start_monomer_info.ap_model_name,
         m_monomer_type);
-    return HintFragmentMonomerInfo(monomer.release(), m_monomer_type, pos,
-                                   ap_model_name, NEW_MONOMER_FROM_DRAG);
+    return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type, pos,
+                                   ap_model_name, NEW_MONOMER_FROM_DRAG};
 }
 
 void DrawMonomerSceneTool::onLeftButtonClick(
@@ -782,7 +807,14 @@ void DrawMonomerSceneTool::onLeftButtonDragStart(
     // drag to direction, not to another's monomer attachment point
     auto dir = getDragDirection(event->scenePos());
     auto handled = createDragHintIfDragStartValid(dir);
-    if (!handled) {
+    if (handled) {
+        // hide the cursor hint while the hint structure is shown. Note that the
+        // cursor hint will have already been hidden if we started this drag
+        // from a monomer, since hovering over a monomer hides the cursor hint
+        // (since it shows the hint structure).  If this drag started from empty
+        // space, though, then this call is necessary to hide the cursor hint.
+        setCursorHintShown(false);
+    } else {
         m_drag_start_monomer_item = nullptr;
     }
     m_drag_ignored = !handled;
@@ -861,10 +893,44 @@ DrawMonomerSceneTool::getDragEndInfo(const QPointF& scene_pos)
             ? nullptr
             : getUnboundDragEndAttachmentPointAt(scene_pos);
 
+    // if we're dragging between two existing monomers, make sure that we'd be
+    // able to actually add a connection between them. Any pair of monomers can
+    // have at most one standard backbone connection and one custom connection
+    // (i.e. not a standard backbone connection) between them, since our RDKit
+    // monomer format currently doesn't support more than that
+    if (m_drag_start_monomer_item != nullptr && drag_end_ap_item != nullptr) {
+        auto* monomer_start = m_drag_start_monomer_item->getAtom();
+        auto* monomer_end = hovered_monomer_item->getAtom();
+        auto* connection = m_mol_model->getMol()->getBondBetweenAtoms(
+            monomer_start->getIdx(), monomer_end->getIdx());
+        if (connection != nullptr) {
+            auto ap_name_end =
+                drag_end_ap_item->getAttachmentPoint().model_name;
+            auto [linkage, flipped] =
+                build_linkage_string(m_drag_start_ap_model_name, ap_name_end);
+            bool is_custom_bond =
+                get_is_custom_bond(monomer_start, monomer_end, linkage);
+            if (is_custom_bond && connection->hasProp(CUSTOM_BOND)) {
+                // this would be a custom connection (i.e. not a standard
+                // backbone connection) and this monomer pair already has one
+                drag_end_ap_item = nullptr;
+            } else if (!is_custom_bond &&
+                       (!connection->hasProp(CUSTOM_BOND) ||
+                        contains_two_monomer_linkages(connection))) {
+                // this would be a standard backbone connection and this monomer
+                // pair already has one (presumably in the opposite direction,
+                // since otherwise the attachment points would have already been
+                // bound)
+                drag_end_ap_item = nullptr;
+            }
+        }
+    }
+
     DragEndInfo direction_or_attachment_point;
     if (drag_end_ap_item == nullptr) {
-        // there's no available attachment point at the cursor, so we drag the
-        // drag hint in a direction
+        // there's no available attachment point at the cursor (or there is one
+        // but we can't use it because this pair of monomers already has that
+        // type of connection), so we display the drag hint in a direction
         direction_or_attachment_point = getDragDirection(scene_pos);
     } else {
         direction_or_attachment_point =
@@ -1093,7 +1159,6 @@ void DrawMonomerSceneTool::clearHintFragmentItem()
 {
     delete m_hint_fragment_item;
     m_hint_fragment_item = nullptr;
-    m_frag.reset();
 }
 
 void DrawMonomerSceneTool::clearDragEndAttachmentPointsLabels()
