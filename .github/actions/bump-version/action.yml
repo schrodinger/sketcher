@@ -4,6 +4,10 @@ inputs:
   branch:
     description: 'Branch to bump sketcher version'
     required: true
+  dry-run:
+    description: 'Log version bump without remote changes'
+    required: false
+    default: 'false'
 
 runs:
   using: 'composite'
@@ -22,4 +26,9 @@ runs:
         mv version.json.tmp version.json
         git add version.json
         git commit -m "Bump version for $new_version"
+        git --no-pager show
+    - name: Push changes to remote
+      if: ${{ inputs.dry-run != 'true' }}
+      shell: bash
+      run:
         git push origin ${{ inputs.branch }}

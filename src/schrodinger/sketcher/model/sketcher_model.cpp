@@ -8,9 +8,14 @@
 #include <rdkit/GraphMol/Atom.h>
 
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/amino_acid_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_base_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_phosphate_item.h"
+#include "schrodinger/sketcher/molviewer/nucleic_acid_sugar_item.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
 
 using MonomericNucleotide = std::tuple<QString, QString, QString>;
@@ -62,6 +67,7 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::RESIDUE_TYPE,
         ModelKey::MONOMER_TOOL_TYPE,
         ModelKey::AMINO_ACID_TOOL,
+        ModelKey::AMINO_ACID_SYMBOL,
         ModelKey::NUCLEIC_ACID_TOOL,
         ModelKey::RNA_NUCLEOBASE,
         ModelKey::DNA_NUCLEOBASE,
@@ -239,6 +245,7 @@ void SketcherModel::reset()
         {ModelKey::MONOMER_TOOL_TYPE,
          QVariant::fromValue(MonomerToolType::AMINO_ACID)},
         {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::ALA)},
+        {ModelKey::AMINO_ACID_SYMBOL, QString("A")},
         {ModelKey::NUCLEIC_ACID_TOOL,
          QVariant::fromValue(NucleicAcidTool::RNA_NUCLEOTIDE)},
         {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
@@ -434,6 +441,26 @@ bool SketcherModel::hasBondSelection() const
 bool SketcherModel::hasNonMolecularObjectSelection() const
 {
     return contains_item<NonMolecularItem>(*this);
+}
+
+bool SketcherModel::hasPeptideSelection() const
+{
+    return contains_item<AminoAcidItem>(*this);
+}
+
+bool SketcherModel::hasNABaseSelection() const
+{
+    return contains_item<NucleicAcidBaseItem>(*this);
+}
+
+bool SketcherModel::hasNASugarSelection() const
+{
+    return contains_item<NucleicAcidSugarItem>(*this);
+}
+
+bool SketcherModel::hasNAPhosphateSelection() const
+{
+    return contains_item<NucleicAcidPhosphateItem>(*this);
 }
 
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const

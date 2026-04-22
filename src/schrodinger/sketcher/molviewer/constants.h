@@ -66,7 +66,14 @@ const qreal CURSOR_SCALE = 0.8;
 const qreal CURSOR_SCALE = 1.0;
 #endif
 
+// The name of the font used in Sketcher. This should match the font loaded in
+// font_loader.
 const QString FONT_NAME = "Arimo";
+// The list of font names to reference in any generated SVG files. This list
+// should include fallback fonts in case the user doesn't have FONT_NAME
+// installed on their system.
+const QStringList SVG_FONT_LIST = {"Arimo", "Helvetica", "Arial", "sans-serif"};
+
 // Ratios for the size of specified font to the size of the atom label font.
 // Note that the atom label font size is declared in the public image_constants
 // header (mmshare/include/schrodinger/sketcher/image_constants.h) because it
@@ -403,6 +410,12 @@ const unsigned int MAX_QUERY_SMALLEST_RING_SIZE = 999;
 // the icon to use for the clear button on line edits and BlankableSpinBoxes
 const QString LINE_EDIT_CLEAR_ICON_PATH = ":icons/clear_line_edit.png";
 
+// colors for the buttons that toggle between atomistic and monomeric mode
+const QColor ATOMISTIC_OR_MONOMERIC_BTN_PRESSED_COLOR = QColor("#000000");
+const QColor ATOMISTIC_OR_MONOMERIC_BTN_DISABLED_COLOR = QColor("#E4E4E4");
+// this color must match what is used in the SVG files
+const QRgb ATOMISTIC_OR_MONOMERIC_BTN_UNPRESSED_COLOR = qRgb(85, 85, 85);
+
 // The Z ordering for graphics items.  Items listed later in this enum (i.e. a
 // higher value) will be drawn on top of items listed earlier in this enum (i.e.
 // a lower value)
@@ -411,6 +424,7 @@ enum class ZOrder {
     ATOM_HIGHLIGHTING,
     SELECTION_HIGHLIGHTING,
     PREDICTIVE_HIGHLIGHTING,
+    MONOMER_FRAGMENT_HINT,
     MONOMER_CONNECTOR,
     BOND,
     MONOMER,

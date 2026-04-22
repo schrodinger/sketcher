@@ -270,6 +270,7 @@ if(NOT EMSCRIPTEN)
     target_link_libraries(${APP_TARGET} PRIVATE dbghelp)
   else()
     target_compile_definitions(${APP_TARGET} PRIVATE BOOST_STACKTRACE_USE_ADDR2LINE)
+    target_link_libraries(${APP_TARGET} PRIVATE dl)
     if(APPLE)
       target_compile_definitions(${APP_TARGET} PRIVATE _GNU_SOURCE)
     endif()
@@ -401,6 +402,7 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
-install(TARGETS ${APP_TARGET} DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(TARGETS ${SKETCHER_TARGET} ${RDKIT_EXTENSIONS_TARGET}
+# Use FILES/PROGRAMS instead of TARGETS to preserve rpaths on Mac
+install(PROGRAMS $<TARGET_FILE:${APP_TARGET}> DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES $<TARGET_FILE:${SKETCHER_TARGET}> $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})

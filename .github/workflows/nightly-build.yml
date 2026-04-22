@@ -3,10 +3,11 @@ name: Nightly Build
 on:
   workflow_dispatch:
     inputs:
-      release-branch:
-        description: '[Optional] Release branch to build'
+      branches-to-build:
+        description: 'Comma-separated branches to build'
         required: false
         type: string
+        default: main
       dry-run:
         description: 'Skip npm publishing'
         required: false
@@ -14,15 +15,27 @@ on:
         default: false
 
 jobs:
-  build-release-branch:
-    if: (!cancelled() && inputs.release-branch != '')
-    uses: ./.github/workflows/sketcher-builder.yml
-    with:
-      ref: ${{ inputs.release-branch }}
-      publish-npm-package: ${{ !inputs.dry-run }}
+  parse-inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      branches: ${{ steps.parse.outputs.branches }}
+    steps:
+      - id: parse
+        env:
+          RELEASE_BRANCHES: ${{ inputs.branches-to-build }}
+        run: |
+          branches=$(echo "$RELEASE_BRANCHES" | \
+            python3 -c "import sys,json; s=sys.stdin.read().strip(); \
+            print(json.dumps([b.strip() for b in s.split(',') if b.strip()]))")
+          echo "branches=$branches" >> $GITHUB_OUTPUT
 
-  build-main-branch:
+  build-branch:
+    needs: parse-inputs
+    if: ${{ needs.parse-inputs.outputs.branches != '[]' }}
+    strategy:
+      matrix:
+        branch: ${{ fromJson(needs.parse-inputs.outputs.branches) }}
     uses: ./.github/workflows/sketcher-builder.yml
     with:
-      ref: main
+      ref: ${{ matrix.branch }}
       publish-npm-package: ${{ !inputs.dry-run }}

@@ -206,7 +206,7 @@ get_polymer_helm(const ::RDKit::ROMol& mol,
             std::move(polymer_id), process_linkage_info(polymer_id, resnum));
     };
 
-    const auto [from_rgroup, to_rgroup] = [&]() {
+    auto [from_rgroup, to_rgroup] = [&]() {
         auto linkage = get_property<std::string>(bond, CUSTOM_BOND);
         // NOTE: linkages can be of the forms RX-RX, RX-?, ?-RX, ?-?,pair-pair
         // etc
@@ -217,6 +217,15 @@ get_polymer_helm(const ::RDKit::ROMol& mol,
 
     auto [from_id, from_res] = get_linkage_residue(bond->getBeginAtom());
     auto [to_id, to_res] = get_linkage_residue(bond->getEndAtom());
+
+    // It is more conventional to list backbone linkages in the R2-R1 order,
+    // so if we have it backwards, swap them. This happens for example for
+    // cyclic dipeptides.
+    if (from_rgroup == "R1" && to_rgroup == "R2") {
+        std::swap(from_rgroup, to_rgroup);
+        std::swap(from_id, to_id);
+        std::swap(from_res, to_res);
+    }
 
     auto connection =
         fmt::format("{},{},{}:{}-{}:{}", from_id, to_id, from_res,

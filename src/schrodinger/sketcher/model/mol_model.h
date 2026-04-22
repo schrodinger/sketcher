@@ -53,6 +53,7 @@ namespace sketcher
 
 class BondOrSecondaryConnection;
 
+enum class MonomerType;
 enum class SubgroupType;
 enum class RepeatPattern;
 enum class BondTopology;
@@ -410,6 +411,43 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void addMonomer(const std::string_view res_name,
                     const rdkit_extensions::ChainType chain_type,
                     const RDGeom::Point3D& coords);
+
+    /**
+     * Undoably add an atom that represents a monomer, and add a connection
+     * between this new monomer and an existing monomer
+     *
+     * @param res_name The residue name of the monomer
+     * @param chain_type The chain type of the monomer. Note that this should be
+     * ChainType::RNA for any form of nucleic acid (since HELM considers DNA to
+     * be a type of RNA)
+     * @param coords The coordinates for the new monomer
+     * @param new_monomer_ap_name The name of the new monomer's attachment point
+     * used for the connection
+     * @param bound_to_monomer The existing monomer to add a connection to
+     * @param bound_to_monomer_ap_name The name of the existing monomer's
+     * attachment point used for the connection
+     */
+    void addBoundMonomer(const std::string_view res_name,
+                         const rdkit_extensions::ChainType chain_type,
+                         const RDGeom::Point3D& coords,
+                         const std::string_view new_monomer_ap_name,
+                         const RDKit::Atom* const bound_to_monomer,
+                         const std::string_view bound_to_monomer_ap_name);
+
+    /**
+     * Undoably add a connection between two existing monomers
+     *
+     * @param monomer_one The first monomer to connect
+     * @param ap_name_one The name of monomer one's attachment point used for
+     * the connection
+     * @param monomer_two The second monomer to connect
+     * @param ap_name_two The name of monomer two's attachment point used for
+     * the connection
+     */
+    void addMonomericConnection(const RDKit::Atom* const monomer_one,
+                                const std::string& ap_name_one,
+                                const RDKit::Atom* const monomer_two,
+                                const std::string& ap_name_two);
 
     /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
@@ -854,6 +892,18 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms);
     void mutateRGroups(const std::unordered_set<const RDKit::Atom*>& atoms,
                        const unsigned int r_group_num);
+
+    /**
+     * Mutate selected monomers to the specified HELM symbol, filtering by
+     * monomer type so that only monomers matching target_type are mutated.
+     *
+     * @param atoms The atoms (monomers) to consider for mutation
+     * @param helm_symbol The HELM symbol to mutate matching monomers to
+     * @param target_type Only mutate monomers of this type
+     */
+    void mutateMonomers(const std::unordered_set<const RDKit::Atom*>& atoms,
+                        std::string_view helm_symbol,
+                        const MonomerType target_type);
 
     /**
      * Mutate all selected bonds
@@ -1311,6 +1361,22 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                  const std::vector<RDGeom::Point3D>& coords,
                                  const BondFunc create_bond,
                                  const AtomTag bound_to_atom_tag);
+
+    /**
+     * Add a connection between two existing monomers. This method must only be
+     * called as part of an undo command.
+     *
+     * @param bond_start_idx The atom index for the monomer at the start of the
+     * bond
+     * @param bond_end_idx The atom index for the monomer at the end of the bond
+     * @param linkage The description of the monomeric linkage (e.g. "R2-R1")
+     * @param is_custom_bond Whether the linkage is a custom connection (i.e.
+     * not a standard backbone connection)
+     */
+    void addMonomericConnectionCommandFunc(const size_t bond_start_idx,
+                                           const size_t bond_end_idx,
+                                           const std::string& linkage,
+                                           const bool is_custom_bond);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This

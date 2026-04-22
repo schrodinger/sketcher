@@ -226,6 +226,25 @@ QPixmap render_text_to_pixmap(const QString& text, const QFont& font,
     return pixmap;
 }
 
+void recolor_pixmap(QPixmap& pixmap, const QRgb& from_color,
+                    const QColor& to_color)
+{
+    // Create a mask denoting the pixels that match from_color.
+    // createMaskFromColor requires that colors match exactly, so we first
+    // convert the image to 8-bit color depth so that the mask won't miss
+    // pixels that are imperceptibly different shades.
+    auto image = pixmap.toImage();
+    image.convertTo(QImage::Format_Indexed8);
+    auto image_mask = image.createMaskFromColor(from_color, Qt::MaskInColor);
+    auto mask = QBitmap::fromImage(image_mask);
+
+    // Fill to_color over the matching pixels, preserving the original alpha
+    QPainter painter(&pixmap);
+    painter.setClipRegion(QRegion(mask));
+    painter.setCompositionMode(QPainter::CompositionMode_SourceAtop);
+    painter.fillRect(pixmap.rect(), to_color);
+}
+
 QPixmap cursor_hint_from_svg(const QString& path, const bool recolor)
 {
     QSvgRenderer renderer(path);
@@ -243,25 +262,8 @@ QPixmap cursor_hint_from_svg(const QString& path, const bool recolor)
         renderer.render(&painter, pixmap.rect());
     } // end the painter
     if (recolor) {
-        // Create a mask denoting the dark gray pixels.  createMaskFromColor
-        // requires that colors match exactly, so we first convert the image to
-        // 8-bit color depth so that the mask won't miss pixels that are
-        // imperceptibly different shades of gray.
-        auto image = pixmap.toImage();
-        image.convertTo(QImage::Format_Indexed8);
-        auto image_mask =
-            image.createMaskFromColor(TOOL_BUTTON_DARK_GRAY, Qt::MaskOutColor);
-        auto mask = QBitmap::fromImage(image_mask);
-
-        // Use the mask to paint CURSOR_HINT_COLOR over all gray pixels, but
-        // keep the existing alpha channel data
-        QPainter painter(&pixmap);
-        painter.setPen(QColor(CURSOR_HINT_COLOR));
-        painter.setRenderHints(QPainter::Antialiasing |
-                               QPainter::SmoothPixmapTransform);
-        painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-        painter.drawPixmap(pixmap.rect(), mask);
-    } // end the painter
+        recolor_pixmap(pixmap, TOOL_BUTTON_DARK_GRAY, CURSOR_HINT_COLOR);
+    }
 
     // Crop off the empty border of the image.  Otherwise the hint will wind up
     // too far away from the cursor

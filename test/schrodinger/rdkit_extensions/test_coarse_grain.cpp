@@ -12,6 +12,7 @@
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 #include <rdkit/RDGeneral/RDLog.h>
 
 #include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
@@ -200,11 +201,82 @@ BOOST_AUTO_TEST_CASE(Test_toMonomeric)
     }
 }
 
+BOOST_AUTO_TEST_CASE(Test_toMonomericRNA_AU)
+{
+    // Test Adenine-Uracil Hydrogen bonds
+    auto monomer_mol =
+        to_rdkit("RNA1{R(A)P}|RNA2{R(U)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+    BOOST_CHECK(atomistic_mol->getNumAtoms() == 44);
+
+    std::vector<std::pair<unsigned int, unsigned int>> hbonds{{11, 39},
+                                                              {9, 32}};
+    for (auto& hbond : hbonds) {
+        auto bond =
+            atomistic_mol->getBondBetweenAtoms(hbond.first, hbond.second);
+        BOOST_CHECK(bond->getBondType() == RDKit::Bond::ZERO);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(Test_toMonomericRNA_UA_intrapolymer)
+{
+    // Test Uracil-Adenine Hydrogen bonds intrapolymer
+    auto monomer_mol =
+        to_rdkit("RNA1{R(U)P.R(A)P}$RNA1,RNA1,2:pair-5:pair$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+    BOOST_CHECK(atomistic_mol->getNumAtoms() == 43);
+
+    std::vector<std::pair<unsigned int, unsigned int>> hbonds{{9, 29},
+                                                              {16, 31}};
+    for (auto& hbond : hbonds) {
+        auto bond =
+            atomistic_mol->getBondBetweenAtoms(hbond.first, hbond.second);
+        BOOST_CHECK(bond->getBondType() == RDKit::Bond::ZERO);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(Test_toMonomericRNA_GC)
+{
+    // Test Guanine-Cytosine Hydrogen bonds
+    auto monomer_mol =
+        to_rdkit("RNA1{R(G)P}|RNA2{R(C)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+    BOOST_CHECK(atomistic_mol->getNumAtoms() == 45);
+
+    std::vector<std::pair<unsigned int, unsigned int>> hbonds{
+        {18, 33}, {19, 40}, {9, 39}};
+    for (auto& hbond : hbonds) {
+        auto bond =
+            atomistic_mol->getBondBetweenAtoms(hbond.first, hbond.second);
+        BOOST_CHECK(bond->getBondType() == RDKit::Bond::ZERO);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(Test_toMonomericRNA_CG_intrapolymer)
+{
+    // Test Cytosine-Guanine Hydrogen bonds intrapolymer
+    auto monomer_mol =
+        to_rdkit("RNA1{R(C)P.R(G)P}$RNA1,RNA1,2:pair-5:pair$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+    BOOST_CHECK(atomistic_mol->getNumAtoms() == 44);
+
+    std::vector<std::pair<unsigned int, unsigned int>> hbonds{
+        {9, 38}, {16, 39}, {15, 29}};
+    for (auto& hbond : hbonds) {
+        auto bond =
+            atomistic_mol->getBondBetweenAtoms(hbond.first, hbond.second);
+        BOOST_CHECK(bond->getBondType() == RDKit::Bond::ZERO);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(Test_toMonomericRNA)
 {
-    // SHARED-11862: Ensure RNA with pair-pair linkages don't throw in
-    // toAtomistic
-    // TODO: Actually add hbonds in toAtomistic
+    // SHARED-11862: Ensure RNA with interpolymer pair-pair linkages don't throw
+    // in toAtomistic
     auto monomer_mol =
         to_rdkit("RNA1{R(A)P.R(G)P.R(C)P.R(U)P.R(C)P.R(C)P.R(C)}|RNA2{R(U)P.R("
                  "G)P.R(G)P.R(G)P.R(G)P.R(A)P.R(G)}$RNA1,RNA2,17:pair-11:pair|"
@@ -213,6 +285,16 @@ BOOST_AUTO_TEST_CASE(Test_toMonomericRNA)
     auto atomistic_mol = toAtomistic(*monomer_mol);
     BOOST_REQUIRE(atomistic_mol);
     BOOST_CHECK(atomistic_mol->getNumAtoms() == 296);
+
+    std::vector<std::pair<unsigned int, unsigned int>> hbonds{
+        {114, 226}, {121, 227}, {120, 217}, {134, 203}, {141, 204},
+        {140, 194}, {94, 249},  {101, 250}, {100, 240}, {81, 265},
+        {74, 263},  {54, 294},  {61, 295},  {60, 285}};
+    for (auto& hbond : hbonds) {
+        auto bond =
+            atomistic_mol->getBondBetweenAtoms(hbond.first, hbond.second);
+        BOOST_CHECK(bond->getBondType() == RDKit::Bond::ZERO);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(Test_reordering_residues)
@@ -302,4 +384,18 @@ BOOST_AUTO_TEST_CASE(Test_mutate_monomer)
         BOOST_CHECK_THROW(mutateMonomer(*monomer_mol, 1, "G"),
                           std::runtime_error);
     }
+}
+
+BOOST_AUTO_TEST_CASE(Test_sequentialDisulfideBonds)
+{
+    // Sequential cysteines with a disulfide bond between
+    // them should exist in atomistic rep.
+    auto monomer_mol = to_rdkit("PEPTIDE1{[dF].C.C.F.G.L.[am]}$"
+                                "PEPTIDE1,PEPTIDE1,2:R3-3:R3$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    BOOST_REQUIRE(atomistic_mol);
+
+    std::unique_ptr<RDKit::ROMol> disulfide_substruct(RDKit::SmilesToMol("SS"));
+    auto matches = RDKit::SubstructMatch(*atomistic_mol, *disulfide_substruct);
+    BOOST_REQUIRE(matches.size() == 1);
 }

@@ -2,7 +2,10 @@
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
+
+#include <boost/test/data/test_case.hpp>
 
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
@@ -13,12 +16,16 @@
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
 
+namespace bdata = boost::unit_test::data;
+
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
 namespace schrodinger
 {
 namespace sketcher
 {
+
+MAKE_ENUM_LOGGABLE(MonomerType);
 
 /**
  * Helper that owns a monomer atom and its graphics item, and creates
@@ -42,16 +49,21 @@ struct TestMonomer {
     /// Create an attachment point item with a numbered name (e.g. R1, R2)
     UnboundMonomericAttachmentPointItem* makeAP(int num)
     {
-        UnboundAttachmentPoint ap{"R" + std::to_string(num), num, Direction::N};
-        return new UnboundMonomericAttachmentPointItem(ap, item.get(), fonts);
+        // we don't care about the display name in these tests, so we just use
+        // the model name for that
+        auto name = "R" + std::to_string(num);
+        UnboundAttachmentPoint ap{name, name, num, Direction::N};
+        return new UnboundMonomericAttachmentPointItem(
+            ap, item.get(), UNBOUND_AP_LABEL_COLOR, fonts);
     }
 
     /// Create an attachment point item with a custom name (num = -1)
     UnboundMonomericAttachmentPointItem* makeNamedAP(const std::string& name)
     {
-        UnboundAttachmentPoint ap{name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
+        UnboundAttachmentPoint ap{name, name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
                                   Direction::N};
-        return new UnboundMonomericAttachmentPointItem(ap, item.get(), fonts);
+        return new UnboundMonomericAttachmentPointItem(
+            ap, item.get(), UNBOUND_AP_LABEL_COLOR, fonts);
     }
 };
 
@@ -351,6 +363,71 @@ BOOST_AUTO_TEST_CASE(test_na_phosphate_unmatched_tool_returns_nullptr)
     auto* result = get_default_attachment_point(MonomerType::NA_PHOSPHATE,
                                                 MonomerType::PEPTIDE, items);
     BOOST_TEST(result == nullptr);
+}
+
+// clang-format off
+// Test data: (existing_monomer_type, existing_monomer_ap, new_monomer_type, expected_ap, description)
+const std::vector<std::tuple<MonomerType, std::string, MonomerType, std::string,
+                             std::string>>
+    new_monomer_ap_test_data = {
+        // CHEM always returns R1
+        {MonomerType::PEPTIDE, "R1", MonomerType::CHEM, "R1",
+         "CHEM new monomer always returns R1"},
+
+        // PEPTIDE onto PEPTIDE: R1 (N) -> R2 (C), R2 (C) -> R1 (N)
+        {MonomerType::PEPTIDE, "R1", MonomerType::PEPTIDE, "R2",
+         "PEPTIDE from PEPTIDE R1 returns R2"},
+        {MonomerType::PEPTIDE, "R2", MonomerType::PEPTIDE, "R1",
+         "PEPTIDE from PEPTIDE R2 returns R1"},
+        // PEPTIDE onto PEPTIDE: non-backbone AP falls through to sidechain
+        {MonomerType::PEPTIDE, "R3", MonomerType::PEPTIDE, "R3",
+         "PEPTIDE from PEPTIDE R3 returns R3 (sidechain)"},
+        // PEPTIDE onto non-PEPTIDE: falls through to sidechain
+        {MonomerType::CHEM, "R1", MonomerType::PEPTIDE, "R3",
+         "PEPTIDE from CHEM returns R3 (sidechain)"},
+
+        // NA_BASE onto NA_SUGAR R3 (1') -> R1 (N1/9)
+        {MonomerType::NA_SUGAR, "R3", MonomerType::NA_BASE, "R1",
+         "NA_BASE from NA_SUGAR R3 returns R1"},
+        // NA_BASE onto NA_SUGAR with non-matching AP -> pair
+        {MonomerType::NA_SUGAR, "R1", MonomerType::NA_BASE, "pair",
+         "NA_BASE from NA_SUGAR R1 returns pair"},
+        // NA_BASE onto non-NA_SUGAR -> pair
+        {MonomerType::PEPTIDE, "R1", MonomerType::NA_BASE, "pair",
+         "NA_BASE from PEPTIDE returns pair"},
+
+        // NA_SUGAR onto NA_PHOSPHATE R1 (to_prev) -> R2 (3')
+        {MonomerType::NA_PHOSPHATE, "R1", MonomerType::NA_SUGAR, "R2",
+         "NA_SUGAR from NA_PHOSPHATE R1 returns R2"},
+        // NA_SUGAR onto NA_PHOSPHATE R2 (to_next) -> R1 (5')
+        {MonomerType::NA_PHOSPHATE, "R2", MonomerType::NA_SUGAR, "R1",
+         "NA_SUGAR from NA_PHOSPHATE R2 returns R1"},
+        // NA_SUGAR onto non-NA_PHOSPHATE -> R3 (1')
+        {MonomerType::NA_BASE, "R1", MonomerType::NA_SUGAR, "R3",
+         "NA_SUGAR from NA_BASE returns R3 (1')"},
+
+        // NA_PHOSPHATE onto NA_SUGAR R2 (3') -> R1 (to_prev)
+        {MonomerType::NA_SUGAR, "R2", MonomerType::NA_PHOSPHATE, "R1",
+         "NA_PHOSPHATE from NA_SUGAR R2 returns R1"},
+        // NA_PHOSPHATE onto NA_SUGAR with non-matching AP -> R2 (to_next)
+        {MonomerType::NA_SUGAR, "R1", MonomerType::NA_PHOSPHATE, "R2",
+         "NA_PHOSPHATE from NA_SUGAR R1 returns R2"},
+        // NA_PHOSPHATE onto non-NA_SUGAR -> R2 (to_next)
+        {MonomerType::PEPTIDE, "R1", MonomerType::NA_PHOSPHATE, "R2",
+         "NA_PHOSPHATE from PEPTIDE returns R2"},
+};
+// clang-format on
+
+BOOST_DATA_TEST_CASE(test_get_attachment_point_for_new_monomer,
+                     bdata::make(new_monomer_ap_test_data),
+                     existing_monomer_type, existing_monomer_ap,
+                     new_monomer_type, expected_ap, description)
+{
+    auto result = get_attachment_point_for_new_monomer(
+        existing_monomer_type, existing_monomer_ap, new_monomer_type);
+    BOOST_CHECK_MESSAGE(result == expected_ap,
+                        description << ": expected " << expected_ap << ", got "
+                                    << result);
 }
 
 } // namespace sketcher

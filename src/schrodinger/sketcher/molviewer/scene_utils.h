@@ -9,6 +9,8 @@
 #include <QList>
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
 class QColor;
@@ -37,9 +39,7 @@ class AbstractAtomOrMonomerItem;
 class AbstractGraphicsItem;
 class AbstractMonomerItem;
 class AtomItem;
-class AtomDisplaySettings;
 class BondItem;
-class BondDisplaySettings;
 class Fonts;
 class SGroupItem;
 class NonMolecularObject;
@@ -78,11 +78,11 @@ std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
-create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
-                              const AtomDisplaySettings& atom_display_settings,
-                              const BondDisplaySettings& bond_display_settings,
-                              const bool is_dark_mode = false,
-                              const bool draw_attachment_points = true);
+create_graphics_items_for_mol(
+    const RDKit::ROMol* mol, const Fonts& fonts,
+    const AtomDisplaySettings& atom_display_settings = AtomDisplaySettings(),
+    const BondDisplaySettings& bond_display_settings = BondDisplaySettings(),
+    const bool is_dark_mode = false, const bool draw_attachment_points = true);
 
 /**
  * Update all graphics items to represent an updated conformer
@@ -107,6 +107,15 @@ update_conf_for_mol_graphics_items(const QList<QGraphicsItem*>& atom_items,
 SKETCHER_API QPixmap render_text_to_pixmap(const QString& text,
                                            const QFont& font,
                                            const QColor& color);
+
+/**
+ * Change a color in a pixmap
+ * @param pixmap the pixmap to modify in place
+ * @param from_color the color to replace
+ * @param to_color the color to replace from_color with
+ */
+SKETCHER_API void recolor_pixmap(QPixmap& pixmap, const QRgb& from_color,
+                                 const QColor& to_color);
 
 /**
  * Create a pixmap for use as a cursor hint from the given tool button icon.

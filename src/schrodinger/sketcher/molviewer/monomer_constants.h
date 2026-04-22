@@ -211,8 +211,12 @@ const qreal MONOMER_BORDER_MIN_SIZE = 0.01;
 const qreal UNBOUND_AP_LINE_LENGTH = 8.0;
 const qreal UNBOUND_AP_LINE_THICKNESS = 1.5;
 const qreal UNBOUND_AP_CIRCLE_DIAMETER = 5.0;
-const QColor UNBOUND_AP_ACTIVE_COLOR = QColor("#000000");
-const QColor UNBOUND_AP_INACTIVE_COLOR = QColor("#888888");
+const qreal UNBOUND_AP_MIN_HOVER_HALF_WIDTH = 12;
+const QColor UNBOUND_AP_LABEL_COLOR = QColor("#AAAAAA");
+const QColor UNBOUND_AP_LABEL_COLOR_DARK_BG = QColor("#999999");
+const QColor BOUND_AP_LABEL_COLOR = QColor("#000000");
+const QColor BOUND_AP_LABEL_COLOR_DARK_BG = QColor("#AAAAAA");
+const qreal MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH = 3;
 
 const QColor AA_LINEAR_CONNECTOR_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::GRAY4);
@@ -260,6 +264,11 @@ const QColor NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 const QColor CHEM_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 
 const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
+
+// colors for the non-hovered attachment points of the hovered monomer when
+// doing a click-and-drag with the monomer scene tools
+const QColor DRAG_END_INACTIVE_AP = QColor("#EEEEEE");
+const QColor DRAG_END_INACTIVE_AP_DARK_BG = QColor("#555555");
 
 /**
  * A scaling factor for generating the cursor hints for monomers. If this value

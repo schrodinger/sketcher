@@ -23,6 +23,37 @@ namespace schrodinger
 namespace sketcher
 {
 
+namespace
+{
+/**
+ * Compute a score for how close an angle is to horizontal (0° or 180°).
+ * Higher scores indicate angles closer to horizontal.
+ *
+ * @param angle The angle to score, in degrees
+ * @return A score where higher values mean closer to horizontal
+ */
+float compute_horizontal_preference_score(float angle)
+{
+    // Normalize to [0, 360) range
+    while (angle >= 360.0f) {
+        angle -= 360.0f;
+    }
+    while (angle < 0.0f) {
+        angle += 360.0f;
+    }
+
+    // Qt's angle system: 0° is at 3 o'clock (horizontal right),
+    // 180° is at 9 o'clock (horizontal left)
+    // Calculate distance to nearest horizontal direction
+    float dist_to_0 = std::min(std::abs(angle), std::abs(angle - 360.0f));
+    float dist_to_180 = std::abs(angle - 180.0f);
+    float dist_to_horizontal = std::min(dist_to_0, dist_to_180);
+
+    // Return negative distance so closer to horizontal = higher score
+    return -dist_to_horizontal;
+}
+} // anonymous namespace
+
 QPointF to_scene_xy(const RDGeom::Point3D& mol_xy)
 {
     return QPointF(mol_xy.x * VIEW_SCALE, -mol_xy.y * VIEW_SCALE);
@@ -72,18 +103,39 @@ QPointF best_placing_around_origin(const std::vector<QPointF>& points,
     /**
      * find the biggest angle interval and return a point in the middle of it.
      * It is common that two or more intervals are nearly identical in size.
-     * In that case, return the first one to avoid numerical instability in the
-     * angle calculations.
+     * In that case, prefer the one closest to horizontal (0° or 180°)
+     * to provide consistent, predictable placement.
      */
     const float TOLERANCE = 1.01;
     int best_i = 0;
     auto best_angle = (angles[best_i + 1] - angles[best_i]) * 0.5;
+
+    // Collect all intervals that are within TOLERANCE of the best
+    std::vector<int> tied_indices;
+
     for (unsigned int i = 0; i < angles.size() - 1; ++i) {
         auto angle_i = (angles[i + 1] - angles[i]) * 0.5;
         if (angle_i > best_angle * TOLERANCE) {
+            // Found a strictly better interval
             best_i = i;
             best_angle = angle_i;
+            tied_indices.clear();
+            tied_indices.push_back(i);
+        } else if (angle_i > best_angle / TOLERANCE) {
+            // This interval is tied (within TOLERANCE)
+            tied_indices.push_back(i);
         }
+    }
+
+    // If we have ties, prefer the position closest to horizontal (0° or 180°)
+    if (tied_indices.size() > 1) {
+        auto score_angle = [&angles](int idx) {
+            float midpoint_angle =
+                angles[idx] + (angles[idx + 1] - angles[idx]) * 0.5;
+            return compute_horizontal_preference_score(midpoint_angle);
+        };
+
+        best_i = *std::ranges::max_element(tied_indices, {}, score_angle);
     }
     // For a single substituent, limit the angle to 120 (instead of 180)
     bool limit_to_120 =

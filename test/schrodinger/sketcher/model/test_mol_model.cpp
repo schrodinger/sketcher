@@ -94,9 +94,11 @@ class TestMolModel : public MolModel
     using MolModel::getBondFromTag;
     using MolModel::getTagForAtom;
     using MolModel::getTagForBond;
+    using MolModel::m_allow_edits;
     using MolModel::m_arrow;
     using MolModel::m_pluses;
     using MolModel::m_tag_to_non_molecular_object;
+    using MolModel::removeCommandFunc;
 };
 
 const std::string STRUC_WITH_RINGS = R"(
@@ -916,6 +918,39 @@ BOOST_AUTO_TEST_CASE(test_removeNonMolecularObject)
     BOOST_TEST(mol->getNumAtoms() == 1);
     BOOST_TEST(model.getNonMolecularObjects().size() == 3);
     BOOST_TEST(model.hasReactionArrow());
+}
+
+/**
+ * Ensure that removing two RXN_PLUS objects in a single remove() call works
+ * regardless of the order in which their tags are processed.
+ *
+ * This is a regression test for a bug in removeCommandFunc: after erasing the
+ * first plus from m_pluses (a std::vector), the stored pointer for the second
+ * plus in m_tag_to_non_molecular_object becomes dangling. Processing the lower-
+ * indexed plus first (tag0 before tag1) triggers the UB. We force that order
+ * by calling removeCommandFunc directly with a std::vector<NonMolecularTag>
+ * rather than going through remove(), which uses an unordered_set and gives
+ * non-deterministic iteration order.
+ */
+BOOST_AUTO_TEST_CASE(test_removeMultiplePlusesAtOnce)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS,
+                                RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addNonMolecularObject(NonMolecularType::RXN_PLUS,
+                                RDGeom::Point3D(3.0, 4.0, 0.0));
+    BOOST_TEST(model.getNonMolecularObjects().size() == 2);
+
+    // Force the order that triggers the bug: remove tag 0 (m_pluses[0]) first,
+    // then tag 1 (now a dangling pointer after the first erase).
+    model.m_allow_edits = true;
+    model.removeCommandFunc({}, {}, {},
+                            {NonMolecularTag(0), NonMolecularTag(1)});
+    model.m_allow_edits = false;
+
+    BOOST_TEST(model.getNonMolecularObjects().empty());
 }
 
 /**
@@ -3997,6 +4032,191 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
     BOOST_TEST(!contains_monomeric_atom(*mol_for_export_3));
 }
 
+/**
+ * Verify that mutateMonomers changes the res name of all peptide monomers
+ * and that the mutation is undoable.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_peptide)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // Import a peptide chain: A, G, L
+    import_mol_text(&model, "PEPTIDE1{A.G.L}$$$$V2.0");
+    const auto* mol = model.getMol();
+    auto num_atoms = mol->getNumAtoms();
+    BOOST_TEST(num_atoms == 3);
+
+    // Collect all monomer atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Mutate all peptides to Cysteine ("C")
+    model.mutateMonomers(all_atoms, "C", MonomerType::PEPTIDE);
+
+    // Verify all monomer atoms now have res name "C"
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        BOOST_TEST(get_monomer_res_name(atom) == "C");
+    }
+
+    // Verify undo restores original res names
+    undo_stack.undo();
+    std::vector<std::string> expected_names = {"A", "G", "L"};
+    int monomer_idx = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        BOOST_TEST(get_monomer_res_name(atom) == expected_names[monomer_idx]);
+        ++monomer_idx;
+    }
+}
+
+/**
+ * Verify that mutateMonomers with NA_BASE type only mutates bases and leaves
+ * sugars and phosphates unchanged.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_nucleic_acid_base_only)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // Import a nucleic acid chain with sugar-base-phosphate pattern
+    import_mol_text(&model, "RNA1{R(A)P.R(G)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Collect all atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Mutate only bases to "C" (cytosine)
+    model.mutateMonomers(all_atoms, "C", MonomerType::NA_BASE);
+
+    // Verify bases changed but sugars and phosphates didn't
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "C");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    // R(A)P.R(G)P = 2 bases, 2 sugars, 2 phosphates
+    BOOST_TEST(base_count == 2);
+    BOOST_TEST(sugar_count == 2);
+    BOOST_TEST(phosphate_count == 2);
+}
+
+/**
+ * Verify that mutateMonomers with PEPTIDE type does nothing when applied to
+ * a nucleic acid chain (no matching monomer types).
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_type_mismatch)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "RNA1{R(A)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Collect all atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Try to mutate as PEPTIDE — should do nothing since these are NA monomers
+    model.mutateMonomers(all_atoms, "G", MonomerType::PEPTIDE);
+
+    // Verify nothing changed — check both res names and type counts
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "A");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    BOOST_TEST(base_count == 1);
+    BOOST_TEST(sugar_count == 1);
+    BOOST_TEST(phosphate_count == 1);
+}
+
+/**
+ * Verify that mutateMonomers with PEPTIDE type only mutates peptide monomers
+ * in a mixed peptide + nucleic acid molecule, leaving RNA components unchanged.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateMonomers_mixed_molecule_peptide_only)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // Import a mixed molecule: peptide chain (A, G) and RNA chain
+    import_mol_text(&model, "PEPTIDE1{A.G}|RNA1{R(A)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Collect all atoms
+    std::unordered_set<const RDKit::Atom*> all_atoms;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        all_atoms.insert(mol->getAtomWithIdx(i));
+    }
+
+    // Mutate with PEPTIDE type — should only affect peptide monomers
+    model.mutateMonomers(all_atoms, "C", MonomerType::PEPTIDE);
+
+    // Verify peptide monomers changed to "C"
+    // and RNA components remain unchanged
+    int peptide_count = 0;
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::PEPTIDE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "C");
+            ++peptide_count;
+        } else if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "A");
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    // PEPTIDE1{A.G} = 2 peptides, RNA1{R(A)P} = 1 base, 1 sugar, 1 phosphate
+    BOOST_TEST(peptide_count == 2);
+    BOOST_TEST(base_count == 1);
+    BOOST_TEST(sugar_count == 1);
+    BOOST_TEST(phosphate_count == 1);
+}
+
 BOOST_AUTO_TEST_CASE(test_assignChiralTypesFromBondDirs_explicitHs)
 {
     // Test that assignChiralTypesFromBondDirs preserves explicit H counts
@@ -4287,6 +4507,314 @@ BOOST_AUTO_TEST_CASE(test_stereo_labels_update_on_atom_movement)
                "Chirality label should update when atom positions change, "
                "but it remained: "
                    << initial_label);
+}
+
+/**
+ * Use addBoundMonomer to extend a peptide chain
+ */
+BOOST_AUTO_TEST_CASE(test_addBoundMonomer)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with a single peptide monomer
+    add_text_to_mol_model(model, "PEPTIDE1{A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+    BOOST_TEST(is_atom_monomeric(mol->getAtomWithIdx(0)));
+
+    // Add a bound monomer "G" connected via R2 (C-terminus) of A -> R1
+    // (N-terminus) of G
+    auto* existing_monomer = mol->getAtomWithIdx(0);
+    RDGeom::Point3D coords(3.0, 0.0, 0.0);
+    model.addBoundMonomer("G", rdkit_extensions::ChainType::PEPTIDE, coords,
+                          "R1", existing_monomer, "R2");
+
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    BOOST_TEST(is_atom_monomeric(mol->getAtomWithIdx(1)));
+
+    // Verify the bond has a linkage property
+    auto* bond = mol->getBondWithIdx(0);
+    BOOST_TEST(bond->hasProp(LINKAGE));
+    std::string linkage;
+    bond->getProp(LINKAGE, linkage);
+    BOOST_TEST(linkage == BACKBONE_LINKAGE);
+
+    // Verify HELM export contains the two monomers and connection
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A.G}$$$$V2.0");
+
+    // Verify undo restores original state
+    undo_stack.undo();
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    // Verify redo re-applies the change
+    undo_stack.redo();
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A.G}$$$$V2.0");
+}
+
+/**
+ * Use addBoundMonomer to build two full nucleotides: one 3' to an existing
+ * nucleotide and one 5' to the same existing nucleotide.
+ */
+BOOST_AUTO_TEST_CASE(test_addBoundMonomer_RNA)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Build the next nucleotide. Start by adding the sugar to the phosphate
+    auto* existing_phosphate = mol->getAtomWithIdx(2);
+    RDGeom::Point3D coords(3.0, 0.0, 0.0);
+    model.addBoundMonomer("R", rdkit_extensions::ChainType::RNA, coords, "R1",
+                          existing_phosphate, "R2");
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P.R}$$$$V2.0");
+
+    // add a base onto the sugar
+    auto* newly_added_sugar = mol->getAtomWithIdx(3);
+    coords = {3.0, 3.0, 0.0};
+    model.addBoundMonomer("G", rdkit_extensions::ChainType::RNA, coords, "R1",
+                          newly_added_sugar, "R3");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P.R(G)}$$$$V2.0");
+
+    // add a phosphate onto the sugar
+    newly_added_sugar = mol->getAtomWithIdx(3);
+    coords = {6.0, 3.0, 0.0};
+    model.addBoundMonomer("P", rdkit_extensions::ChainType::RNA, coords, "R1",
+                          newly_added_sugar, "R2");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P.R(G)P}$$$$V2.0");
+
+    // Build the previous nucleotide. Start by adding the phosphate
+    auto* original_sugar = mol->getAtomWithIdx(0);
+    coords = {-3.0, 0.0, 0.0};
+    model.addBoundMonomer("P", rdkit_extensions::ChainType::RNA, coords, "R2",
+                          original_sugar, "R1");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{P.R(A)P.R(G)P}$$$$V2.0");
+
+    // add the sugar
+    auto* prev_res_phosphate = mol->getAtomWithIdx(6);
+    coords = {-6.0, 0.0, 0.0};
+    model.addBoundMonomer("R", rdkit_extensions::ChainType::RNA, coords, "R2",
+                          prev_res_phosphate, "R1");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R.P.R(A)P.R(G)P}$$$$V2.0");
+
+    // add the base
+    auto* prev_res_sugar = mol->getAtomWithIdx(7);
+    coords = {-6.0, 3.0, 0.0};
+    model.addBoundMonomer("C", rdkit_extensions::ChainType::RNA, coords, "R1",
+                          prev_res_sugar, "R3");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(C)P.R(A)P.R(G)P}$$$$V2.0");
+}
+
+/**
+ * Confirm that combining two peptide chains via a standard backbone connection
+ * produces HELM output with only a single chain
+ */
+BOOST_AUTO_TEST_CASE(test_addMonomericConnection_combining_two_chains)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with two unconnected peptide monomers on separate chains
+    add_text_to_mol_model(model, "PEPTIDE1{A}|PEPTIDE2{A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    // Add a sidechain connection between the two monomers via R3
+    auto* monomer1 = mol->getAtomWithIdx(0);
+    auto* monomer2 = mol->getAtomWithIdx(1);
+    model.addMonomericConnection(monomer1, "R2", monomer2, "R1");
+
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 2);
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    // Verify the new bond has the expected linkage and isn't flagged as custom
+    auto* new_bond = mol->getBondWithIdx(0);
+    BOOST_TEST(new_bond->hasProp(LINKAGE));
+    std::string linkage;
+    new_bond->getProp(LINKAGE, linkage);
+    BOOST_TEST(linkage == "R2-R1");
+    BOOST_TEST(!new_bond->hasProp(CUSTOM_BOND));
+
+    // Verify HELM export shows a single chain
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{A.A}$$$$V2.0");
+
+    // Verify undo removes the connection
+    undo_stack.undo();
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 0);
+
+    // Verify redo re-applies
+    undo_stack.redo();
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 1);
+}
+
+/**
+ * Confirm that linking two peptide chains via a sidechain interaction produces
+ * HELM output that shows a custom bond between two chains
+ */
+BOOST_AUTO_TEST_CASE(
+    test_addMonomericConnection_sidechain_interaction_between_chains)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with two peptide chains, each with one monomer
+    add_text_to_mol_model(model, "PEPTIDE1{C.C}|PEPTIDE2{C}$$$$V2.0");
+    const auto* mol = model.getMol();
+    BOOST_TEST(mol->getNumAtoms() == 3);
+    // backbone bond between first two monomers on PEPTIDE1
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    // Add a cross-chain connection between monomer 0 and monomer 2
+    auto* monomer1 = mol->getAtomWithIdx(0);
+    auto* monomer3 = mol->getAtomWithIdx(2);
+    model.addMonomericConnection(monomer1, "R3", monomer3, "R3");
+
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 2);
+
+    // Verify the cross-chain bond has linkage property
+    auto* cross_bond = mol->getBondBetweenAtoms(0, 2);
+    BOOST_REQUIRE(cross_bond != nullptr);
+    BOOST_TEST(cross_bond->hasProp(LINKAGE));
+
+    // Verify HELM export shows the cross-chain connection
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm ==
+               "PEPTIDE1{C.C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+
+    // Verify undo removes the cross-chain connection
+    undo_stack.undo();
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    // Verify redo re-applies
+    undo_stack.redo();
+    mol = model.getMol();
+    BOOST_TEST(mol->getNumBonds() == 2);
+}
+
+/**
+ * Make sure that we can add a custom connection to a bond that already contains
+ * a standard connection. In other words, take two cysteines with a backbone
+ * bond and add a disulfide bond.
+ */
+BOOST_AUTO_TEST_CASE(
+    test_addMonomericConnection_adding_sidechain_interaction_to_backbone_connection)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    add_text_to_mol_model(model, "PEPTIDE1{C.C}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Add a side-chain interaction
+    auto* monomer1 = mol->getAtomWithIdx(0);
+    auto* monomer2 = mol->getAtomWithIdx(1);
+    model.addMonomericConnection(monomer1, "R3", monomer2, "R3");
+
+    mol = model.getMol();
+    // we should still only have one bond, but it now represents two connections
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+}
+
+/**
+ * Make sure that we can add a standard connection to a bond that already
+ * contains a custom connection. In other words, take two cysteines with a
+ * disulfide bond and add a backbone bond.
+ */
+BOOST_AUTO_TEST_CASE(
+    test_addMonomericConnection_adding_backbone_connection_to_sidechain_interaction)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with two peptide chains, each with one monomer
+    add_text_to_mol_model(
+        model, "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Add a side-chain interaction
+    auto* monomer1 = mol->getAtomWithIdx(0);
+    auto* monomer2 = mol->getAtomWithIdx(1);
+    model.addMonomericConnection(monomer1, "R2", monomer2, "R1");
+
+    mol = model.getMol();
+    // we should still only have one bond, but it now represents two connections
+    BOOST_TEST(mol->getNumBonds() == 1);
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+}
+
+/**
+ * Join two nucleotides with a backbone connection and confirm that the HELM
+ * output contains a single chain.
+ */
+BOOST_AUTO_TEST_CASE(test_addMonomericConnection_joining_two_nucleotides)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with two peptide chains, each with one monomer
+    add_text_to_mol_model(model, "RNA1{R(A)P}|RNA2{R(C)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Add a side-chain interaction
+    auto* phosphate = mol->getAtomWithIdx(2);
+    auto* ribose = mol->getAtomWithIdx(3);
+    model.addMonomericConnection(phosphate, "R2", ribose, "R1");
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P.R(C)P}$$$$V2.0");
+}
+
+/**
+ * Add a base pair between two nucleotides from different chains and confirm
+ * that the HELM output still contains two separate chain.
+ */
+BOOST_AUTO_TEST_CASE(test_addMonomericConnection_pairing_two_nucleotides)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // Start with two peptide chains, each with one monomer
+    add_text_to_mol_model(model, "RNA1{R(A)P}|RNA2{R(C)P}$$$$V2.0");
+    const auto* mol = model.getMol();
+
+    // Add a side-chain interaction
+    auto* base_one = mol->getAtomWithIdx(1);
+    auto* base_two = mol->getAtomWithIdx(4);
+    model.addMonomericConnection(base_one, "pair", base_two, "pair");
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm ==
+               "RNA1{R(A)P}|RNA2{R(C)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
 }
 
 } // namespace sketcher

@@ -15,18 +15,27 @@
 #include <boost/json.hpp>
 #include <boost/noncopyable.hpp>
 
+#include <queue>
+
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
 #include <rdkit/GraphMol/RDKitBase.h>
+#include <rdkit/GraphMol/MolOps.h>
+#include <rdkit/GraphMol/QueryAtom.h>
+#include <rdkit/GraphMol/QueryOps.h>
+#include <rdkit/GraphMol/ChemReactions/Reaction.h>
+#include <rdkit/GraphMol/ChemReactions/ReactionParser.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
+#include <rdkit/GraphMol/Substruct/SubstructMatch.h>
 
 #include "sqlite3.h"
 
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
 #include "schrodinger/rdkit_extensions/monomer_db_schema.h"
 #include "schrodinger/rdkit_extensions/monomer_db_default_monomers.h"
+#include "schrodinger/rdkit_extensions/monomer_utils.h"
 #include "schrodinger/rdkit_extensions/stereochemistry.h"
 
 using managed_db_t = std::unique_ptr<sqlite3, decltype(&sqlite3_close_v2)>;
@@ -57,6 +66,9 @@ constexpr std::string_view legacy_polymer_type_column{"POLYMERTYPE"};
 inline const char* _sqlite3_column_cstring(sqlite3_stmt* stmt, int idx)
 {
     auto result = sqlite3_column_text(stmt, idx);
+    if (result == nullptr) {
+        return "";
+    }
     return reinterpret_cast<const char*>(result);
 }
 
@@ -323,16 +335,15 @@ void canonicalize_db(sqlite3* db)
 {
     constexpr std::string_view sql_select =
         "SELECT id, smiles FROM monomer_definitions ORDER BY id ASC;";
-    constexpr std::string_view sql_replace_tpl =
-        "UPDATE monomer_definitions SET smiles='{1}', core_smiles='{2}' "
-        "WHERE id={0};";
+    constexpr std::string_view sql_update =
+        "UPDATE monomer_definitions SET smiles=?, core_smiles=? WHERE id=?;";
 
     execute_sql_on(db, "BEGIN TRANSACTION;");
 
     try {
-        sqlite3_stmt* stmt = nullptr;
-        if (auto rc =
-                sqlite3_prepare_v2(db, sql_select.data(), -1, &stmt, NULL);
+        sqlite3_stmt* select_stmt = nullptr;
+        if (auto rc = sqlite3_prepare_v2(db, sql_select.data(), -1,
+                                         &select_stmt, NULL);
             rc != SQLITE_OK) {
             auto msg =
                 fmt::format("Error preparing SMILES canonicalization: {}",
@@ -340,19 +351,42 @@ void canonicalize_db(sqlite3* db)
             throw std::runtime_error(msg);
         }
 
-        managed_stmt_t statement(stmt, &sqlite3_finalize);
+        managed_stmt_t select_statement(select_stmt, &sqlite3_finalize);
 
-        for (auto rc = sqlite3_step(stmt); rc == SQLITE_ROW;
-             rc = sqlite3_step(stmt)) {
+        // Prepare the UPDATE statement with placeholders
+        sqlite3_stmt* update_stmt = nullptr;
+        if (auto rc = sqlite3_prepare_v2(db, sql_update.data(), -1,
+                                         &update_stmt, NULL);
+            rc != SQLITE_OK) {
+            auto msg = fmt::format("Error preparing UPDATE statement: {}",
+                                   sqlite3_errstr(rc));
+            throw std::runtime_error(msg);
+        }
+
+        managed_stmt_t update_statement(update_stmt, &sqlite3_finalize);
+
+        for (auto rc = sqlite3_step(select_stmt); rc == SQLITE_ROW;
+             rc = sqlite3_step(select_stmt)) {
 
             // column numbers used here are dictated by sql_select
-            auto id = sqlite3_column_int(stmt, 0);
-            auto smiles = _sqlite3_column_cstring(stmt, 1);
+            auto id = sqlite3_column_int(select_stmt, 0);
+            auto smiles = _sqlite3_column_cstring(select_stmt, 1);
             auto [new_smiles, new_core_smiles] =
                 canonicalize_monomer_smiles(smiles);
-            auto sql_replace =
-                fmt::format(sql_replace_tpl, id, new_smiles, new_core_smiles);
-            execute_sql_on(db, sql_replace.c_str());
+
+            // Bind parameters to the UPDATE statement
+            sqlite3_bind_text(update_stmt, 1, new_smiles.c_str(), -1,
+                              SQLITE_TRANSIENT);
+            sqlite3_bind_text(update_stmt, 2, new_core_smiles.c_str(), -1,
+                              SQLITE_TRANSIENT);
+            sqlite3_bind_int(update_stmt, 3, id);
+
+            if (auto rc = sqlite3_step(update_stmt); rc != SQLITE_DONE) {
+                throw std::runtime_error(fmt::format(
+                    "Error updating monomer: {}", sqlite3_errmsg(db)));
+            }
+
+            sqlite3_reset(update_stmt);
         }
 
     } catch (const std::runtime_error& e) {
@@ -429,6 +463,95 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
 
     execute_sql_on(db, "COMMIT;");
 }
+
+/// Generate a few common tautomers from a SMILES
+std::queue<boost::shared_ptr<RDKit::RWMol>>
+enumerate_tautomers(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+    using namespace RDKit::v2::ReactionParser;
+    const static SmilesParserParams p{.removeHs = false, .replacements = {}};
+
+    static auto rxns = []() {
+        std::vector<std::unique_ptr<RDKit::ChemicalReaction>> rxns;
+        // Just a few patterns cover most of the observed tautomer
+        // inconsistencies in ChEMBL, and applying them this way is much
+        // faster than using the RDKit tautomer canonicalizer. But this
+        // approach is still imperfect and incomplete.
+        for (auto smarts :
+             {"[nH:1]:[c;!$(*=*):2]:[n0:3]>>[nH0:1]:[c:2]:[nH:3]",
+              "[NH:1]-[C:2]=[NH:3]>>[NH0:1]=[C:2]-[NH2:3]",
+              "[NH2:1]-[C:2]=[NH0:3]>>[NH1:1]=[C:2]-[NH1:3]",
+              "[NH1:1]-[C:2]=[CH2:3]>>[NH0:1]=[C:2]-[CH3:3]",
+              "[NH0:1]=[C:2]-[CH3:3]>>[NH1:1]-[C:2]=[CH2:3]",
+              "[NH1:1]-[C:2]=[CH1:3]>>[NH0:1]=[C:2]-[CH2:3]",
+              "[NH0:1]=[C:2]-[CH2:3]-[*:4]>>[NH1:1]/[C:2]=[CH1:3]/[*:4]",
+              "[NH0:1]=[C:2]-[CH2:3]-[*:4]>>[NH1:1]/[C:2]=[CH1:3]\\[*:4]"}) {
+            rxns.push_back(ReactionFromSmarts(smarts));
+            rxns.back()->initReactantMatchers();
+        }
+        return rxns;
+    }();
+
+    std::queue<boost::shared_ptr<RDKit::RWMol>> q;
+    q.emplace(MolFromSmiles(smiles, p));
+    schrodinger::rdkit_extensions::neutralizeAtoms(*q.front());
+    for (auto& rxn : rxns) {
+        for (auto& prods : rxn->runReactants({q.front()})) {
+            q.push(boost::make_shared<RDKit::RWMol>(*prods[0]));
+        }
+    }
+    return q;
+}
+
+// Enumerates all possible SMILES variations by replacing atom map numbers
+// with either the mapped atom or a dummy atom (element 0)
+std::vector<std::string> enumerate_smiles(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    static RDKit::Atom dummy_atom(0);
+
+    std::vector<std::string> enumerated_smiles;
+
+    auto q = enumerate_tautomers(smiles);
+
+    while (!q.empty()) {
+        auto mol = std::move(q.front());
+        q.pop();
+
+        bool found_mapnum = false;
+        for (const auto& atom : mol->atoms()) {
+            if (atom->hasProp(RDKit::common_properties::molAtomMapNumber)) {
+                found_mapnum = true;
+
+                // Clear the map number: We don't want them to be
+                // in the final SMILES, and pushing a copy of the
+                // modified molecule back onto the queue.
+                atom->clearProp(RDKit::common_properties::molAtomMapNumber);
+                q.emplace(new RDKit::RWMol(*mol));
+
+                // Now, replace the atom with a dummy, and push
+                // the mol back onto the queue.
+                mol->replaceAtom(atom->getIdx(), &dummy_atom);
+                q.push(std::move(mol));
+
+                // Only handle one map number at a time
+                break;
+            }
+        }
+
+        // This mol has been fully enumerated, so push the SMILES
+        // to the output vector.
+        if (!found_mapnum) {
+            // The mols we check against have all Hs removed.
+            RDKit::MolOps::removeAllHs(*mol);
+            enumerated_smiles.push_back(RDKit::MolToSmiles(*mol));
+        }
+    }
+
+    return enumerated_smiles;
+}
 } // namespace
 
 namespace schrodinger
@@ -450,7 +573,7 @@ static MonomerInfo tag_invoke(boost::json::value_to_tag<MonomerInfo>,
 std::optional<std::string> getMonomerDbPath()
 {
 #ifdef __EMSCRIPTEN__
-    throw std::logic_error("Monomers are not yet supported in WASM Sketcher");
+    return std::nullopt;
 #else
     auto custom_db_path = getenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data());
     if (custom_db_path) {
@@ -503,6 +626,7 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 void MonomerDatabase::loadMonomersFromJson(std::string_view json)
@@ -517,6 +641,7 @@ void MonomerDatabase::loadMonomersFromJson(std::string_view json)
     }
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 void MonomerDatabase::insertMonomersFromJson(std::string_view json)
@@ -525,6 +650,7 @@ void MonomerDatabase::insertMonomersFromJson(std::string_view json)
         loadMonomersFromJson(json);
     } else {
         insert_monomers_from_json(m_custom_monomers_db, json);
+        invalidateCache();
     }
 }
 
@@ -555,6 +681,7 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
+    invalidateCache();
 }
 
 MonomerDatabase& MonomerDatabase::instance()
@@ -647,6 +774,7 @@ void MonomerDatabase::dumpToFile(sqlite3* db,
 void MonomerDatabase::resetMonomerDefinitions()
 {
     swap_custom_monomers_db(nullptr);
+    invalidateCache();
 }
 
 std::vector<std::string> MonomerDatabase::getDbFields() const
@@ -801,6 +929,7 @@ void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
             canonicalize_db(db);
         }
     }
+    invalidateCache();
 }
 
 [[nodiscard]] std::vector<std::pair<std::string, std::string>>
@@ -832,6 +961,213 @@ MonomerDatabase::getAllSMILES() const
     }
 
     return ret;
+}
+
+const std::unordered_map<std::string, std::string>&
+MonomerDatabase::getEnumeratedCoreSmiles() const
+{
+    if (!m_enumerated_core_smiles_cache.has_value()) {
+        std::unordered_map<std::string, std::string> core_smiles_to_monomer;
+
+        for (auto& [smiles, symbol] : getAllSMILES()) {
+            for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
+                // Note: If there are duplicates, the later entry will overwrite
+                core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
+                                               symbol);
+            }
+        }
+
+        m_enumerated_core_smiles_cache = std::move(core_smiles_to_monomer);
+    }
+
+    return *m_enumerated_core_smiles_cache;
+}
+
+/// Given the atomistic representation of a monomer, as well as its SMILES
+/// representation, create a query molecule suitable for searching for the
+/// monomer in a polymer. This entails deleting some of the attachment points
+/// or using wildcards for them, and adding explicit hydrogens to prevent
+/// matching bigger structures that have further substituents in non-designated
+/// attachment points.
+boost::shared_ptr<RDKit::RWMol> make_query(const RDKit::ROMol& mol,
+                                           const std::string& smiles)
+{
+    auto rwmol = boost::shared_ptr<RDKit::RWMol>(RDKit::SmartsToMol(smiles));
+
+    // Helper function to get the first neighbor of an atom
+    auto get_neighbor = [&rwmol](RDKit::Atom* atom) -> RDKit::Atom* {
+        for (const auto nbr : rwmol->atomNeighbors(atom)) {
+            return nbr;
+        }
+        return nullptr;
+    };
+
+    // Create a query for oxygen or nitrogen atoms
+    static auto o_n_query_mol =
+        std::unique_ptr<RDKit::ROMol>(RDKit::SmartsToMol("[O,N]"));
+    auto o_n_query = o_n_query_mol->getAtomWithIdx(0);
+
+    rwmol->beginBatchEdit();
+    for (auto atom : rwmol->atoms()) {
+        auto idx = atom->getIdx();
+        auto map_num = atom->getAtomMapNum();
+        if (map_num == 2) {
+            // In the conventions used by to_monomeric.cpp, the atom originally
+            // labeled 2 is the terminal atom, which we label as 9. The 2 gets
+            // reassigned to its neighbor.
+            auto query_atom = static_cast<RDKit::QueryAtom*>(atom);
+            query_atom->setQuery(
+                static_cast<RDKit::QueryAtom*>(o_n_query)->getQuery()->copy());
+            atom->setAtomMapNum(9);
+            auto neighbor = get_neighbor(atom);
+            if (neighbor) {
+                neighbor->setAtomMapNum(2);
+            }
+        } else if (map_num == 1 || map_num == 3) {
+            // Attachment points 1 and 3 simply get deleted, because they graph
+            // are hydrogens that get replaced in the polymer, or are implicit
+            // in the free monomer.
+            auto neighbor = get_neighbor(atom);
+            if (neighbor) {
+                neighbor->setAtomMapNum(map_num);
+            }
+            rwmol->removeAtom(idx);
+        }
+    }
+
+    /// Add hydrogen queries to non-mapped atoms to prevent unwanted matches.
+    for (auto atom : rwmol->atoms()) {
+        if (atom->getAtomMapNum() != 0) {
+            continue;
+        }
+        auto idx = atom->getIdx();
+        auto num_h = mol.getAtomWithIdx(idx)->getTotalNumHs();
+        auto query_atom = static_cast<RDKit::QueryAtom*>(atom);
+        query_atom->expandQuery(RDKit::makeAtomHCountQuery(num_h));
+    }
+
+    rwmol->commitBatchEdit();
+
+    return rwmol;
+}
+
+[[nodiscard]] const std::vector<ResidueQuery>&
+MonomerDatabase::getComplexMonomerQueries() const
+{
+    using namespace RDKit::v2::SmilesParse;
+    static auto residue_query = MolFromSmarts("N[C;H,H2]C(=O)[O,N]");
+
+    // Return the atom indices for the R1 and R2 attachment points (either
+    // one may be missing).
+    auto find_r1r2 = [](auto& mol) {
+        std::optional<unsigned int> r1;
+        std::optional<unsigned int> r2;
+        for (auto atom : mol.atoms()) {
+            switch (atom->getAtomMapNum()) {
+                case 1:
+                    r1 = atom->getIdx();
+                    break;
+                case 2:
+                    r2 = atom->getIdx();
+                    break;
+            }
+        }
+        return std::make_pair(r1, r2);
+    };
+
+    // Roughly: a monomer is complex unless it matches the residue_query
+    // pattern once and has r1 and r2 four bonds apart, or is tiny.
+    auto is_complex = [&](auto& mol) {
+        auto matches = SubstructMatch(mol, *residue_query);
+        if (matches.size() == 1) {
+            // Look at distance between mapping numbers
+            auto [r1, r2] = find_r1r2(mol);
+            if (r1 && r2) {
+                auto* dmat = RDKit::MolOps::getDistanceMat(mol);
+                auto d = dmat[*r1 * mol.getNumAtoms() + *r2];
+                // 4 is the number of bonds between attachment points in a
+                // standard aminoacid, i.e. [H:1]-N-C-C(-[O:2])=O
+                return d != 4;
+            }
+            return false;
+        } else {
+            // This is to to prevent treating things like [am] as complex.
+            return mol.getNumAtoms() > 4;
+        }
+    };
+
+    if (!m_complex_monomer_queries.has_value()) {
+        auto queries = std::vector<ResidueQuery>();
+        RDKit::MatchVectType res;
+        for (auto& [smiles, symbol] : getAllSMILES()) {
+            constexpr int debug = 0;
+            constexpr bool sanitize = false;
+            std::unique_ptr<RDKit::RWMol> mol(
+                RDKit::SmilesToMol(smiles, debug, sanitize));
+            RDKit::MolOps::sanitizeMol(*mol);
+            if (is_complex(*mol)) {
+                for (auto q = enumerate_tautomers(smiles); !q.empty();
+                     q.pop()) {
+                    auto& tautomer = *q.front();
+                    auto query = ResidueQuery{};
+                    auto can_smiles = RDKit::MolToSmiles(tautomer);
+                    std::unique_ptr<RDKit::RWMol> can_tautomer(
+                        RDKit::SmilesToMol(can_smiles, debug, sanitize));
+                    RDKit::MolOps::sanitizeMol(*can_tautomer);
+                    query.mol = make_query(*can_tautomer, can_smiles);
+                    query.attch_map = make_attch_map(*query.mol);
+                    query.name = symbol;
+                    query.use_chirality = true;
+                    queries.push_back(query);
+                }
+            }
+        }
+        m_complex_monomer_queries = std::move(queries);
+    }
+    return *m_complex_monomer_queries;
+}
+
+void MonomerDatabase::invalidateCache()
+{
+    m_enumerated_core_smiles_cache.reset();
+    m_complex_monomer_queries.reset();
+}
+
+[[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>
+MonomerDatabase::getMonomersByNaturalAnalog(ChainType polymer_type) const
+{
+    auto type_value = toString(polymer_type);
+    auto sql = fmt::format("SELECT {} FROM {} WHERE {}=? AND {} != {};",
+                           fmt::join(getDbFields(), ", "), monomer_defs_table,
+                           polymer_type_column, symbol_column, analog_column);
+
+    std::unordered_map<std::string, std::vector<MonomerInfo>> result;
+
+    sqlite3_stmt* stmt = nullptr;
+    for (sqlite3* db : {m_core_monomers_db, m_custom_monomers_db}) {
+        if (db == nullptr ||
+            sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, NULL) != SQLITE_OK) {
+            continue;
+        }
+        sqlite3_bind_text(stmt, 1, type_value.c_str(), -1, SQLITE_TRANSIENT);
+        managed_stmt_t statement(stmt, &sqlite3_finalize);
+
+        for (auto rc = sqlite3_step(stmt); rc == SQLITE_ROW;
+             rc = sqlite3_step(stmt)) {
+
+            MonomerInfo m;
+            for (int i = 0; i < sqlite3_column_count(stmt); ++i) {
+                auto key = sqlite3_column_name(stmt, i);
+                auto value = _sqlite3_column_cstring(stmt, i);
+                assign_monomer_info(m, key, value);
+            }
+            if (m.natural_analog.has_value()) {
+                result[*m.natural_analog].push_back(std::move(m));
+            }
+        }
+    }
+
+    return result;
 }
 
 } // namespace rdkit_extensions

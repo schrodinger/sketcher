@@ -1,0 +1,81 @@
+#include "schrodinger/sketcher/molviewer/monomer_hint_fragment_item.h"
+
+#include <boost/range/join.hpp>
+
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
+#include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
+#include "schrodinger/sketcher/molviewer/scene_utils.h"
+#include "schrodinger/sketcher/molviewer/monomer_attachment_point_labels.h"
+
+namespace schrodinger::sketcher
+{
+
+MonomerHintFragmentItem::MonomerHintFragmentItem(
+    const std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
+    const std::vector<size_t>& atom_indices_to_hide,
+    const int bond_index_to_label, const QColor monomer_background_color,
+    QGraphicsItem* parent) :
+    QGraphicsItemGroup(parent),
+    m_frag(fragment),
+    m_fonts(&fonts),
+    m_atom_indices_to_hide(atom_indices_to_hide),
+    m_bond_index_to_label(bond_index_to_label),
+    m_monomer_background_color(monomer_background_color)
+{
+    setZValue(static_cast<qreal>(ZOrder::MONOMER_FRAGMENT_HINT));
+    createGraphicsItems();
+}
+
+void MonomerHintFragmentItem::createGraphicsItems()
+{
+    auto [all_items, atom_to_atom_item, bond_to_bond_item,
+          bond_to_secondary_connection_item, s_group_to_s_group_item] =
+        create_graphics_items_for_mol(m_frag.get(), *m_fonts);
+    for (auto* item : all_items) {
+        addToGroup(item);
+    }
+    for (auto& kv : atom_to_atom_item) {
+        if (auto* monomer_item =
+                dynamic_cast<AbstractMonomerItem*>(kv.second)) {
+            // if we used a transparent monomer background color, then we'd be
+            // able to see the bond behind the letter.  To avoid that, we use
+            // the same color as the Scene's background.
+            monomer_item->setMonomerColors(m_monomer_background_color,
+                                           CURSOR_HINT_COLOR,
+                                           CURSOR_HINT_COLOR);
+        }
+        // hide the monomer where this fragment connects to the existing
+        // structure
+        auto atom_idx = kv.first->getIdx();
+        if (std::ranges::find(m_atom_indices_to_hide, atom_idx) !=
+            m_atom_indices_to_hide.end()) {
+            kv.second->setVisible(false);
+        }
+        m_atom_items.append(kv.second);
+    }
+    for (auto& kv : boost::range::join(bond_to_bond_item,
+                                       bond_to_secondary_connection_item)) {
+        if (auto* connector_item =
+                qgraphicsitem_cast<MonomerConnectorItem*>(kv.second)) {
+            connector_item->setConnectorStyle(
+                CURSOR_HINT_COLOR, MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH);
+        }
+    }
+
+    // label the attachment points
+    if (m_bond_index_to_label >= 0) {
+        auto* bond = m_frag->getBondWithIdx(m_bond_index_to_label);
+        auto* begin_monomer_item = atom_to_atom_item.at(bond->getBeginAtom());
+        auto* end_monomer_item = atom_to_atom_item.at(bond->getEndAtom());
+        auto items = create_attachment_point_labels_for_connector(
+            bond, false, STRUCTURE_HINT_COLOR, *m_fonts, begin_monomer_item,
+            end_monomer_item);
+        for (auto* item : items) {
+            addToGroup(item);
+        }
+    }
+}
+
+} // namespace schrodinger::sketcher

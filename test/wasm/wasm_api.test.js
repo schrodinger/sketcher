@@ -201,3 +201,236 @@ test.describe('WASM Sketcher API', () => {
     expect(result.type).toBeTruthy();
   });
 });
+
+test.describe('Custom Monomer DB', () => {
+  test('load custom monomers from JSON', async ({ page }) => {
+    const customMonomers = JSON.stringify([
+      {
+        SYMBOL: 'TestMon',
+        POLYMER_TYPE: 'PEPTIDE',
+        NATURAL_ANALOG: 'A',
+        SMILES: 'CC(C)(N[H:1])C(=O)[OH:2]',
+        CORE_SMILES: 'CC(C)(N)C=O',
+        NAME: 'Test Monomer',
+        MONOMER_TYPE: 'Backbone',
+        AUTHOR: 'test',
+      },
+    ]);
+
+    await page.evaluate((json) => {
+      Module.sketcher_load_custom_monomers(json);
+    }, customMonomers);
+  });
+
+  test('load custom monomers from SQL', async ({ page }) => {
+    const sql = `INSERT INTO monomer_definitions (SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, NAME, MONOMER_TYPE, AUTHOR)
+      VALUES ('SqlMon', 'PEPTIDE', 'A', 'CC(C)(N[H:1])C(=O)[OH:2]', 'CC(C)(N)C=O', 'SQL Monomer', 'Backbone', 'test');`;
+
+    const result = await page.evaluate((sql) => {
+      Module.sketcher_load_custom_monomers_from_sql(sql);
+      Module.sketcher_allow_monomeric(true);
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{A.[SqlMon].G}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    }, sql);
+
+    expect(result).toBe(true);
+  });
+
+  test('loading SQL twice replaces previous definitions', async ({ page }) => {
+    const sql1 = `INSERT INTO monomer_definitions (SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, NAME, MONOMER_TYPE, AUTHOR)
+      VALUES ('Sql1', 'PEPTIDE', 'G', 'NCC(N[H:1])C(=O)[OH:2]', 'NCC(N)C=O', 'SQL One', 'Backbone', 'test');`;
+
+    const sql2 = `INSERT INTO monomer_definitions (SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, NAME, MONOMER_TYPE, AUTHOR)
+      VALUES ('Sql2', 'PEPTIDE', 'A', 'CCC(N[H:1])C(=O)[OH:2]', 'CCC(N)C=O', 'SQL Two', 'Backbone', 'test');`;
+
+    await page.evaluate((sql) => {
+      Module.sketcher_load_custom_monomers_from_sql(sql);
+      Module.sketcher_allow_monomeric(true);
+    }, sql1);
+
+    // Verify Sql1 works
+    const sql1Works = await page.evaluate(() => {
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{[Sql1].A}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    });
+    expect(sql1Works).toBe(true);
+
+    // Load second SQL — should replace, not append
+    await page.evaluate((sql) => {
+      Module.sketcher_load_custom_monomers_from_sql(sql);
+    }, sql2);
+
+    // Sql2 should work
+    const sql2Works = await page.evaluate(() => {
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{[Sql2].A}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    });
+    expect(sql2Works).toBe(true);
+  });
+
+  test('insert custom monomers preserves existing definitions', async ({ page }) => {
+    const monomer1 = JSON.stringify([
+      {
+        SYMBOL: 'Mon1',
+        POLYMER_TYPE: 'PEPTIDE',
+        NATURAL_ANALOG: 'G',
+        SMILES: 'NCC(N[H:1])C(=O)[OH:2]',
+        CORE_SMILES: 'NCC(N)C=O',
+        NAME: 'Monomer One',
+        MONOMER_TYPE: 'Backbone',
+        AUTHOR: 'test',
+      },
+    ]);
+
+    const monomer2 = JSON.stringify([
+      {
+        SYMBOL: 'Mon2',
+        POLYMER_TYPE: 'PEPTIDE',
+        NATURAL_ANALOG: 'A',
+        SMILES: 'CC(C)(N[H:1])C(=O)[OH:2]',
+        CORE_SMILES: 'CC(C)(N)C=O',
+        NAME: 'Monomer Two',
+        MONOMER_TYPE: 'Backbone',
+        AUTHOR: 'test',
+      },
+    ]);
+
+    // Load first and verify Mon1 works
+    await page.evaluate((json) => {
+      Module.sketcher_load_custom_monomers(json);
+      Module.sketcher_allow_monomeric(true);
+    }, monomer1);
+
+    const mon1Works = await page.evaluate(() => {
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{[Mon1].A}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    });
+    expect(mon1Works).toBe(true);
+
+    // Insert second — both should still be available
+    await page.evaluate((json) => {
+      Module.sketcher_insert_custom_monomers(json);
+    }, monomer2);
+
+    // Both custom monomers should be usable in a HELM import
+    const result = await page.evaluate(() => {
+      Module.sketcher_allow_monomeric(true);
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{[Mon1].[Mon2].A}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    });
+
+    expect(result).toBe(true);
+  });
+
+  test('custom monomer is usable in HELM import', async ({ page }) => {
+    const customMonomers = JSON.stringify([
+      {
+        SYMBOL: 'Sar',
+        POLYMER_TYPE: 'PEPTIDE',
+        NATURAL_ANALOG: 'G',
+        SMILES: '[H:3]N(C)C([H:1])C(=O)[OH:2]',
+        CORE_SMILES: 'CN(CC(O)=O)[H]',
+        NAME: 'Sarcosine',
+        MONOMER_TYPE: 'Backbone',
+        AUTHOR: 'test',
+      },
+    ]);
+
+    const result = await page.evaluate((json) => {
+      Module.sketcher_load_custom_monomers(json);
+      Module.sketcher_allow_monomeric(true);
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{A.[Sar].G}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    }, customMonomers);
+
+    expect(result).toBe(true);
+  });
+
+  test('loading monomer with missing required fields throws', async ({ page }) => {
+    const incomplete = JSON.stringify([
+      {
+        SYMBOL: 'Bad',
+        POLYMER_TYPE: 'PEPTIDE',
+        // missing required NATURAL_ANALOG, SMILES, NAME, MONOMER_TYPE, AUTHOR
+      },
+    ]);
+
+    const result = await page.evaluate((json) => {
+      try {
+        Module.sketcher_load_custom_monomers(json);
+        return { threw: false };
+      } catch (e) {
+        const [type, message] = Module.getExceptionMessage(e);
+        return { threw: true, type, message };
+      }
+    }, incomplete);
+
+    expect(result.threw).toBe(true);
+    expect(result.message).toContain('missing');
+  });
+
+  test('loading monomer with unknown fields throws', async ({ page }) => {
+    const extraFields = JSON.stringify([
+      {
+        SYMBOL: 'Extra',
+        POLYMER_TYPE: 'PEPTIDE',
+        NATURAL_ANALOG: 'A',
+        SMILES: 'CC(N)C(=O)O',
+        CORE_SMILES: 'CC(N)C(=O)O',
+        NAME: 'Extra Field Monomer',
+        MONOMER_TYPE: 'Backbone',
+        AUTHOR: 'test',
+        BOGUS_FIELD: 'should not be here',
+      },
+    ]);
+
+    const result = await page.evaluate((json) => {
+      try {
+        Module.sketcher_load_custom_monomers(json);
+        return { threw: false };
+      } catch (e) {
+        const [type, message] = Module.getExceptionMessage(e);
+        return { threw: true, type, message };
+      }
+    }, extraFields);
+
+    expect(result.threw).toBe(true);
+    expect(result.message).toContain('exception');
+  });
+
+  test('reset custom monomer definitions', async ({ page }) => {
+    const customMonomers = JSON.stringify([
+      {
+        SYMBOL: 'TmpMon',
+        POLYMER_TYPE: 'PEPTIDE',
+        NATURAL_ANALOG: 'A',
+        SMILES: 'CCC(N[H:1])C(=O)[OH:2]',
+        CORE_SMILES: 'CCC(N)C=O',
+        NAME: 'Temporary Monomer',
+        MONOMER_TYPE: 'Backbone',
+        AUTHOR: 'test',
+      },
+    ]);
+
+    // Load custom monomer, verify it works, then reset
+    const worksBeforeReset = await page.evaluate((json) => {
+      Module.sketcher_load_custom_monomers(json);
+      Module.sketcher_allow_monomeric(true);
+      Module.sketcher_clear();
+      Module.sketcher_import_text('PEPTIDE1{A.[TmpMon].G}$$$$V2.0');
+      return !Module.sketcher_is_empty();
+    }, customMonomers);
+    expect(worksBeforeReset).toBe(true);
+
+    // Reset should succeed without throwing
+    await page.evaluate(() => {
+      Module.sketcher_reset_custom_monomers();
+    });
+  });
+});

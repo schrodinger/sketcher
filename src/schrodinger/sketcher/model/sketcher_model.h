@@ -286,6 +286,7 @@ enum class ModelKey {
     MONOMER_TOOL_TYPE, /// whether the MONOMER tool should activate an
                        ///   AMINO_ACID_TOOL or a NUCLEIC_ACID_TOOL
     AMINO_ACID_TOOL,   /// the amino acid monomer to draw
+    AMINO_ACID_SYMBOL, /// the specific analog symbol (e.g. "dA") to draw
     NUCLEIC_ACID_TOOL, /// the nucleic acid monomer or full nucleotide to draw
     RNA_NUCLEOBASE,    /// the base to use for the RNA_NUCLEOTIDE tool
     DNA_NUCLEOBASE,    /// the base to use for the DNA_NUCLEOTIDE tool
@@ -545,6 +546,10 @@ class SKETCHER_API SketcherModel : public QObject
     virtual bool hasAtomSelection() const;
     virtual bool hasBondSelection() const;
     virtual bool hasNonMolecularObjectSelection() const;
+    virtual bool hasPeptideSelection() const;
+    virtual bool hasNABaseSelection() const;
+    virtual bool hasNASugarSelection() const;
+    virtual bool hasNAPhosphateSelection() const;
 
     /**
      * getter and setter for select-only mode.
