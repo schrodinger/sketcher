@@ -502,7 +502,6 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
-    // monomeric support is enabled by default
     sk.addFromString("PEPTIDE1{A.G.L}$$$$V2.0");
     auto model = sk.m_mol_model;
 
@@ -529,7 +528,6 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
 BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidBase)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
-    // monomeric support is enabled by default
     sk.addFromString("RNA1{R(A)P.R(G)P}$$$$V2.0");
     auto model = sk.m_mol_model;
 
@@ -998,7 +996,6 @@ BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
 BOOST_AUTO_TEST_CASE(test_addTextToMolModel_monomeric_s_sroups)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
-    // monomeric support is enabled by default
 
     // extended annotations are dropped when loading HELM
     const std::string HELM_WITH_EXTENDED_ANNOTATION =

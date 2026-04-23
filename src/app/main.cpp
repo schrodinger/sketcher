@@ -11,7 +11,6 @@
 #include "crash_handler.h"
 #endif
 
-#include <cstring>
 #include <stdexcept>
 
 #include <QAbstractButton>
@@ -76,14 +75,6 @@ bool sketcher_has_monomers()
     auto& sk = get_sketcher_instance();
     auto mol = sk.getRDKitMolecule();
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
-}
-
-// When enabled, sidebar draw tools are disabled and context menus are
-// hidden whenever monomers are present in the scene.
-void sketcher_set_monomer_view_only(bool view_only)
-{
-    auto& sk = get_sketcher_instance();
-    sk.setMonomerViewOnly(view_only);
 }
 
 void sketcher_load_custom_monomers(const std::string& json)
@@ -213,8 +204,6 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
-    emscripten::function("sketcher_set_monomer_view_only",
-                         &sketcher_set_monomer_view_only);
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
     emscripten::function("sketcher_load_custom_monomers_from_sql",
@@ -275,9 +264,5 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
-    // check for the command line option to enable monomer-view-only mode
-    if (argc >= 2 && strcmp(argv[1], "--monomer-view-only") == 0) {
-        sk.setMonomerViewOnly(true);
-    }
     return application.exec();
 }
