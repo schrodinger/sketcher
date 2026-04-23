@@ -992,8 +992,7 @@ MonomerDatabase::getEnumeratedCoreSmiles() const
         for (auto& [smiles, symbol] : getAllSMILES()) {
             for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
                 // Note: If there are duplicates, the later entry will overwrite
-                core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
-                                               symbol);
+                core_smiles_to_monomer[enumerated_smiles] = symbol;
             }
         }
 
