@@ -292,8 +292,6 @@ enum class ModelKey {
     DNA_NUCLEOBASE,    /// the base to use for the DNA_NUCLEOTIDE tool
     CUSTOM_NUCLEOTIDE, /// a tuple of (sugar, base, phosphate) to use for the
                        ///   CUSTOM_NUCLEOTIDE tool
-    INTERFACE_TYPE,    /// whether the Sketcher is intended for use with
-                       ///   atomistic models, monomeric models, or both
     TOOL_SET,          /// whether the side bar shows the atomistic tools or
                        ///   monomeric tools, which (along with
                        ///   MONOMER_TOOL_TYPE) controls the keyboard shortcuts
@@ -462,7 +460,6 @@ class SKETCHER_API SketcherModel : public QObject
     StdNucleobase getRNANucleobase() const;
     StdNucleobase getDNANucleobase() const;
     std::tuple<QString, QString, QString> getCustomNucleotide() const;
-    InterfaceTypeType getInterfaceType() const;
     ToolSet getToolSet() const;
     MoleculeType getMoleculeType() const;
 
@@ -558,6 +555,14 @@ class SKETCHER_API SketcherModel : public QObject
      */
     void setSelectOnlyModeActive(const bool select_only_mode);
     bool isSelectOnlyModeActive() const;
+
+    /**
+     * getter and setter for monomer-view-only mode. When enabled, sidebar
+     * draw tools are disabled and context menus are hidden whenever
+     * monomers are present in the scene.
+     */
+    void setMonomerViewOnly(const bool view_only);
+    bool isMonomerViewOnly() const;
 
     /**
      * @return Whether all items in the scene are selected.
@@ -759,6 +764,7 @@ class SKETCHER_API SketcherModel : public QObject
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
     bool m_allow_select_tool_when_scene_empty = false;
     bool m_select_only_mode_active = false;
+    bool m_monomer_view_only = false;
 
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
 };

@@ -78,15 +78,12 @@ bool sketcher_has_monomers()
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
 }
 
-// Note: allow_monomeric should not be set to false if the workspace
-// contains monomers.
-void sketcher_allow_monomeric(bool allow_monomeric)
+// When enabled, sidebar draw tools are disabled and context menus are
+// hidden whenever monomers are present in the scene.
+void sketcher_set_monomer_view_only(bool view_only)
 {
     auto& sk = get_sketcher_instance();
-    return sk.setInterfaceType(
-        allow_monomeric
-            ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
-            : schrodinger::sketcher::InterfaceType::ATOMISTIC);
+    sk.setMonomerViewOnly(view_only);
 }
 
 void sketcher_load_custom_monomers(const std::string& json)
@@ -216,7 +213,8 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
-    emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
+    emscripten::function("sketcher_set_monomer_view_only",
+                         &sketcher_set_monomer_view_only);
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
     emscripten::function("sketcher_load_custom_monomers_from_sql",
@@ -277,10 +275,9 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
-    // check for the command line option to enable the monomeric tools
-    if (argc >= 2 && strcmp(argv[1], "--allow-monomeric") == 0) {
-        sk.setInterfaceType(
-            schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    // check for the command line option to enable monomer-view-only mode
+    if (argc >= 2 && strcmp(argv[1], "--monomer-view-only") == 0) {
+        sk.setMonomerViewOnly(true);
     }
     return application.exec();
 }

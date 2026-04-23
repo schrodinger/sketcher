@@ -72,7 +72,6 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::RNA_NUCLEOBASE,
         ModelKey::DNA_NUCLEOBASE,
         ModelKey::CUSTOM_NUCLEOTIDE,
-        ModelKey::INTERFACE_TYPE,
         ModelKey::TOOL_SET,
         ModelKey::MOLECULE_TYPE,
     };
@@ -188,11 +187,6 @@ SketcherModel::getNucleotide() const
     }
 }
 
-InterfaceTypeType SketcherModel::getInterfaceType() const
-{
-    return m_model_map.at(ModelKey::INTERFACE_TYPE).value<InterfaceTypeType>();
-}
-
 ToolSet SketcherModel::getToolSet() const
 {
     return m_model_map.at(ModelKey::TOOL_SET).value<ToolSet>();
@@ -252,7 +246,6 @@ void SketcherModel::reset()
         {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
         {ModelKey::CUSTOM_NUCLEOTIDE,
          QVariant::fromValue(MonomericNucleotide("R", "N", "P"))},
-        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::ATOMISTIC)},
         {ModelKey::MOLECULE_TYPE, QVariant::fromValue(MoleculeType::EMPTY)},
     };
@@ -661,6 +654,16 @@ void SketcherModel::setSelectOnlyModeActive(const bool select_only_mode)
 bool SketcherModel::isSelectOnlyModeActive() const
 {
     return m_select_only_mode_active;
+}
+
+void SketcherModel::setMonomerViewOnly(const bool view_only)
+{
+    m_monomer_view_only = view_only;
+}
+
+bool SketcherModel::isMonomerViewOnly() const
+{
+    return m_monomer_view_only && getMoleculeType() == MoleculeType::MONOMERIC;
 }
 
 const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const

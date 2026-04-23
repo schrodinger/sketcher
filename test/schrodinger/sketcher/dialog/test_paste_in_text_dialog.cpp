@@ -90,45 +90,25 @@ BOOST_AUTO_TEST_CASE(label)
 
 /**
  * Make sure that the format combo box gets loaded with the correct number of
- * formats for atomistic vs monomeric vs both. Also make sure that autodetect
- * only detects acceptable formats.
+ * formats based on workspace content and replace setting. Also make sure that
+ * autodetect only detects acceptable formats.
  */
 BOOST_DATA_TEST_CASE(
     test_format_combo_contents,
-    bdata::make(std::vector<std::tuple<InterfaceTypeType, MoleculeType, bool,
-                                       int, bool, bool>>{
-        {InterfaceType::ATOMISTIC, MoleculeType::EMPTY, false, 13, true, false},
-        {InterfaceType::ATOMISTIC, MoleculeType::ATOMISTIC, false, 13, true,
-         false},
-        {InterfaceType::ATOMISTIC, MoleculeType::EMPTY, true, 13, true, false},
-        {InterfaceType::ATOMISTIC, MoleculeType::ATOMISTIC, true, 13, true,
-         false},
-        {InterfaceType::MONOMERIC, MoleculeType::EMPTY, false, 5, false, true},
-        {InterfaceType::MONOMERIC, MoleculeType::MONOMERIC, false, 5, false,
-         true},
-        {InterfaceType::MONOMERIC, MoleculeType::EMPTY, true, 5, false, true},
-        {InterfaceType::MONOMERIC, MoleculeType::MONOMERIC, true, 5, false,
-         true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::EMPTY, false, 17,
-         true, true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::ATOMISTIC, false,
-         13, true, false},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::MONOMERIC, false,
-         5, false, true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::EMPTY, true, 17,
-         true, true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::ATOMISTIC, true,
-         17, true, true},
-        {InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::MONOMERIC, true,
-         17, true, true},
+    bdata::make(std::vector<std::tuple<MoleculeType, bool, int, bool, bool>>{
+        {MoleculeType::EMPTY, false, 17, true, true},
+        {MoleculeType::ATOMISTIC, false, 13, true, false},
+        {MoleculeType::MONOMERIC, false, 5, false, true},
+        {MoleculeType::EMPTY, true, 17, true, true},
+        {MoleculeType::ATOMISTIC, true, 17, true, true},
+        {MoleculeType::MONOMERIC, true, 17, true, true},
     }),
-    interface_type, molecule_type, replace_contents, num_formats,
-    accepts_atomistic, accepts_monomeric)
+    molecule_type, replace_contents, num_formats, accepts_atomistic,
+    accepts_monomeric)
 {
     SketcherModel model;
     model.setValues(
-        {{ModelKey::INTERFACE_TYPE, interface_type},
-         {ModelKey::MOLECULE_TYPE, QVariant::fromValue(molecule_type)},
+        {{ModelKey::MOLECULE_TYPE, QVariant::fromValue(molecule_type)},
          {ModelKey::NEW_STRUCTURES_REPLACE_CONTENT, replace_contents}});
     TestPasteInTextDialog dlg(&model);
     BOOST_TEST(dlg.ui->format_combo->count() == num_formats);
@@ -168,8 +148,6 @@ BOOST_DATA_TEST_CASE(
 BOOST_AUTO_TEST_CASE(test_reaction_formats)
 {
     SketcherModel model;
-    model.setValues(
-        {{ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC}});
     TestPasteInTextDialog dlg(&model);
     for (auto& [rxn_format, format_name] : get_reaction_import_formats()) {
         auto found_idx =

@@ -101,36 +101,28 @@ void SketcherSideBar::updateWidgetsEnabled()
 {
     auto model = getModel();
     auto has_selection = model->hasActiveSelection();
+    auto monomer_view_only = model->isMonomerViewOnly();
+
     std::string title = has_selection ? "EDIT ACTIONS" : "DRAW";
     ui->title_lbl->setText(QString::fromStdString(title));
 
-    auto interface_type = model->getInterfaceType();
-    bool show_atom_mono_buttons =
-        interface_type == InterfaceType::ATOMISTIC_OR_MONOMERIC;
-    ui->atomistic_or_monomeric_widget->setVisible(show_atom_mono_buttons);
-    if (!show_atom_mono_buttons) {
-        // only one type of interface is allowed, so switch to that one
-        if (interface_type == InterfaceType::ATOMISTIC) {
-            ui->atomistic_or_monomeric_stack->setCurrentWidget(
-                ui->atomistic_page);
-        } else {
-            ui->atomistic_or_monomeric_stack->setCurrentWidget(
-                ui->monomeric_page);
-        }
-    } else {
-        // both types of interface are allowed, but we can't have both in the
-        // workspace at the same time, so disable the atomistic or monomer
-        // buttons if there's already a molecule of the other type
-        auto mol_type = model->getMoleculeType();
-        ui->atomistic_btn->setEnabled(mol_type != MoleculeType::MONOMERIC);
-        ui->monomeric_btn->setEnabled(mol_type != MoleculeType::ATOMISTIC);
-        // make sure that the correct button is checked if the molecule type is
-        // not EMPTY
-        if (mol_type == MoleculeType::ATOMISTIC) {
-            ui->atomistic_btn->setChecked(true);
-        } else if (mol_type == MoleculeType::MONOMERIC) {
-            ui->monomeric_btn->setChecked(true);
-        }
+    // hide the toggle buttons when monomer-view-only is active
+    ui->atomistic_or_monomeric_widget->setVisible(!monomer_view_only);
+
+    // disable the draw tools stacked widget when monomer-view-only is active
+    ui->atomistic_or_monomeric_stack->setEnabled(!monomer_view_only);
+
+    // we can't have both atomistic and monomeric models in the workspace at
+    // the same time, so disable the toggle button for the other type
+    auto mol_type = model->getMoleculeType();
+    ui->atomistic_btn->setEnabled(mol_type != MoleculeType::MONOMERIC);
+    ui->monomeric_btn->setEnabled(mol_type != MoleculeType::ATOMISTIC);
+    // make sure that the correct button is checked if the molecule type is
+    // not EMPTY
+    if (mol_type == MoleculeType::ATOMISTIC) {
+        ui->atomistic_btn->setChecked(true);
+    } else if (mol_type == MoleculeType::MONOMERIC) {
+        ui->monomeric_btn->setChecked(true);
     }
 }
 

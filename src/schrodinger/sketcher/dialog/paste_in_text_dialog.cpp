@@ -22,35 +22,43 @@ namespace
 {
 
 /**
+ * Whether a format produces atomistic models, monomeric models, or either
+ */
+enum FormatMolType : int {
+    FMT_ATOMISTIC = 1 << 0,
+    FMT_MONOMERIC = 1 << 1,
+    FMT_BOTH = FMT_ATOMISTIC | FMT_MONOMERIC,
+};
+
+/**
  * @return a list of tuples of
  *   - format name
  *   - format enum
  *   - whether the format applies to atomistic models, monomeric models, or both
  * for all formats to load into the format combo box
  */
-static std::vector<std::tuple<QString, Format, InterfaceTypeType>>
+static std::vector<std::tuple<QString, Format, FormatMolType>>
 build_format_list()
 {
-    std::vector<std::tuple<QString, Format, InterfaceTypeType>> formats = {
-        {"Autodetect", Format::AUTO_DETECT,
-         InterfaceType::ATOMISTIC_OR_MONOMERIC},
+    std::vector<std::tuple<QString, Format, FormatMolType>> formats = {
+        {"Autodetect", Format::AUTO_DETECT, FMT_BOTH},
     };
     auto append_to_formats =
         [&formats](std::vector<std::tuple<Format, std::string>> to_append,
-                   InterfaceTypeType fmt_mol_type) {
-            std::transform(
-                to_append.begin(), to_append.end(), std::back_inserter(formats),
-                [fmt_mol_type](auto cur_format)
-                    -> std::tuple<QString, Format, InterfaceTypeType> {
-                    auto [fmt_val, fmt_name] = cur_format;
-                    return {QString::fromStdString(fmt_name), fmt_val,
-                            fmt_mol_type};
-                });
+                   FormatMolType fmt_mol_type) {
+            std::transform(to_append.begin(), to_append.end(),
+                           std::back_inserter(formats),
+                           [fmt_mol_type](auto cur_format)
+                               -> std::tuple<QString, Format, FormatMolType> {
+                               auto [fmt_val, fmt_name] = cur_format;
+                               return {QString::fromStdString(fmt_name),
+                                       fmt_val, fmt_mol_type};
+                           });
         };
     auto mol_import_formats = get_mol_import_formats();
     auto monomeric_import_formats = get_monomoric_import_formats();
-    append_to_formats(mol_import_formats, InterfaceType::ATOMISTIC);
-    append_to_formats(monomeric_import_formats, InterfaceType::MONOMERIC);
+    append_to_formats(mol_import_formats, FMT_ATOMISTIC);
+    append_to_formats(monomeric_import_formats, FMT_MONOMERIC);
     return formats;
 }
 
@@ -96,19 +104,17 @@ void PasteInTextDialog::onModelValuesChanged()
     ui->status_lbl->setStyleSheet(style);
 
     // load data into the format combo box
-    auto interface_type = m_sketcher_model->getInterfaceType();
     auto cur_mol_type = m_sketcher_model->getMoleculeType();
-    // first figure out whether we want atomistic formats, monomeric formats, or
-    // both
-    auto allowed_mol_type = InterfaceType::ATOMISTIC_OR_MONOMERIC;
-    if (interface_type == InterfaceType::ATOMISTIC ||
-        (!replace && cur_mol_type == MoleculeType::ATOMISTIC)) {
-        allowed_mol_type = InterfaceType::ATOMISTIC;
-    } else if (interface_type == InterfaceType::MONOMERIC ||
-               (!replace && cur_mol_type == MoleculeType::MONOMERIC)) {
-        allowed_mol_type = InterfaceType::MONOMERIC;
+    // figure out whether we want atomistic formats, monomeric formats, or both.
+    // when replacing or when the workspace is empty, show all formats.
+    // otherwise, only show formats that match the current workspace content.
+    auto allowed_mol_type = FMT_BOTH;
+    if (!replace && cur_mol_type == MoleculeType::ATOMISTIC) {
+        allowed_mol_type = FMT_ATOMISTIC;
+    } else if (!replace && cur_mol_type == MoleculeType::MONOMERIC) {
+        allowed_mol_type = FMT_MONOMERIC;
     }
-    // then iterate through the available formats and load tha applicable ones
+    // then iterate through the available formats and load the applicable ones
     // into the combo box
     ui->format_combo->clear();
     for (const auto& [format_name, format, format_mol_type] :
