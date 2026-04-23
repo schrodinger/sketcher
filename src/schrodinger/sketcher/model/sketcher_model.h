@@ -764,7 +764,7 @@ class SKETCHER_API SketcherModel : public QObject
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
     bool m_allow_select_tool_when_scene_empty = false;
     bool m_select_only_mode_active = false;
-    bool m_monomer_view_only = false;
+    bool m_monomer_view_only = true;
 
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
 };

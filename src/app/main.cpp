@@ -11,6 +11,7 @@
 #include "crash_handler.h"
 #endif
 
+#include <cstring>
 #include <stdexcept>
 
 #include <QAbstractButton>
@@ -75,6 +76,12 @@ bool sketcher_has_monomers()
     auto& sk = get_sketcher_instance();
     auto mol = sk.getRDKitMolecule();
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
+}
+
+void sketcher_enable_monomer_edits()
+{
+    auto& sk = get_sketcher_instance();
+    sk.setMonomerViewOnly(false);
 }
 
 void sketcher_load_custom_monomers(const std::string& json)
@@ -204,6 +211,8 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
+    emscripten::function("sketcher_enable_monomer_edits",
+                         &sketcher_enable_monomer_edits);
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
     emscripten::function("sketcher_load_custom_monomers_from_sql",
@@ -264,5 +273,8 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
+    if (argc >= 2 && strcmp(argv[1], "--enable-monomer-edits") == 0) {
+        sk.setMonomerViewOnly(false);
+    }
     return application.exec();
 }
