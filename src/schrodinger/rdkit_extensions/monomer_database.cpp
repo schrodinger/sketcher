@@ -1078,9 +1078,10 @@ MonomerDatabase::getComplexMonomerQueries() const
 
     // Return the atom indices for the R1 and R2 attachment points (either
     // one may be missing).
-    auto find_r1r2 = [](auto& mol) {
+    auto find_attchpts = [](auto& mol) {
         std::optional<unsigned int> r1;
         std::optional<unsigned int> r2;
+        std::optional<unsigned int> r3;
         for (auto atom : mol.atoms()) {
             switch (atom->getAtomMapNum()) {
                 case 1:
@@ -1089,9 +1090,12 @@ MonomerDatabase::getComplexMonomerQueries() const
                 case 2:
                     r2 = atom->getIdx();
                     break;
+                case 3:
+                    r3 = atom->getIdx();
+                    break;
             }
         }
-        return std::make_pair(r1, r2);
+        return std::make_tuple(r1, r2, r3);
     };
 
     // Roughly: a monomer is complex unless it matches the residue_query
@@ -1100,7 +1104,18 @@ MonomerDatabase::getComplexMonomerQueries() const
         auto matches = SubstructMatch(mol, *residue_query);
         if (matches.size() == 1) {
             // Look at distance between mapping numbers
-            auto [r1, r2] = find_r1r2(mol);
+            auto [r1, r2, r3] = find_attchpts(mol);
+            if (r3) {
+                auto ca_idx = matches[0][1].second;
+                auto n_idx = matches[0][0].second;
+                std::list<int> path =
+                    RDKit::MolOps::getShortestPath(mol, *r3, ca_idx);
+                if (std::ranges::find(path, n_idx) != path.end()) {
+                    // The sidechain is on the nitrogen, which isn't handled
+                    // by our generic sidechain handling functions.
+                    return true;
+                }
+            }
             if (r1 && r2) {
                 auto* dmat = RDKit::MolOps::getDistanceMat(mol);
                 auto d = dmat[*r1 * mol.getNumAtoms() + *r2];
