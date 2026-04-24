@@ -261,6 +261,14 @@ if(MSVC AND NOT ${BUILD_SHARED_LIBS})
     ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
 endif()
 
+# Utility: smiles_to_helm
+set(SMILES_TO_HELM_TARGET smiles_to_helm)
+add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
+setup_target(${SMILES_TO_HELM_TARGET})
+set_target_properties(${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                              ${CMAKE_BINARY_DIR}/bin)
+target_link_libraries(${SMILES_TO_HELM_TARGET} PRIVATE Boost::boost Boost::filesystem RDKit::SmilesParse ${RDKIT_EXTENSIONS_TARGET})
+
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
   target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
@@ -295,6 +303,13 @@ endif()
 # Tests
 if(ENABLE_TESTING)
   enable_testing()
+
+  # Copy Python test directory to build directory so pytest can discover them
+  file(GLOB_RECURSE PYTHON_TEST_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/test/python/*)
+  foreach(PYTHON_TEST ${PYTHON_TEST_FILES})
+    cmake_path(RELATIVE_PATH PYTHON_TEST BASE_DIRECTORY ${PROJECT_SOURCE_DIR}/test OUTPUT_VARIABLE REL_TEST_PATH)
+    configure_file(${PYTHON_TEST} ${CMAKE_BINARY_DIR}/test/${REL_TEST_PATH} COPYONLY)
+  endforeach()
 
   set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
   file(GLOB_RECURSE TEST_SOURCE_LIST CONFIGURE_DEPENDS ${SKETCHER_TEST}/*.cpp)
@@ -403,7 +418,8 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
 # Use FILES/PROGRAMS instead of TARGETS to preserve rpaths on Mac
-install(PROGRAMS $<TARGET_FILE:${APP_TARGET}> DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(PROGRAMS $<TARGET_FILE:${APP_TARGET}> $<TARGET_FILE:${SMILES_TO_HELM_TARGET}>
+        DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES $<TARGET_FILE:${SKETCHER_TARGET}> $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
               $<TARGET_LINKER_FILE:${SKETCHER_TARGET}> $<TARGET_LINKER_FILE:${RDKIT_EXTENSIONS_TARGET}>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -1,0 +1,13 @@
+[
+  {
+      "symbol": "X1",
+      "polymer_Type": "PEPTIDE",
+      "natural_Analog": "X",
+      "smiles": "O=C(C1(N[H:1])CCCCC1)[OH:2]",
+      "core_smiles": "NC1(C=O)CCCCC1",
+      "pdbcode": "02K",
+      "name": "X1",
+      "monomer_Type": "Backbone",
+      "author": "ChEMBL"
+  }
+]
