@@ -571,5 +571,89 @@ BOOST_AUTO_TEST_CASE(test_drag_third_connection)
     fix.verifyHELM("PEPTIDE1{C.C.C}$PEPTIDE1,PEPTIDE1,2:R3-3:R3$$$V2.0");
 }
 
+/**
+ * Place a monomer, hover next to it so the tool caches unbound attachment-
+ * point items and a hint fragment, then undo the placement and move the
+ * mouse. The monomer's child AP items get destroyed when the monomer is
+ * removed; without onStructureUpdated() the tool's stale raw pointers cause
+ * a double-free / use-after-free on the next mouse move.
+ */
+BOOST_AUTO_TEST_CASE(test_undo_monomer_after_hint_fragment_no_crash)
+{
+    MonomerToolTestFixture fix;
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+
+    // place a monomer
+    auto monomer_pos = QPointF(100, 100);
+    fix.mouseClick(monomer_pos);
+    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+
+    // hover over the monomer so the tool creates unbound AP items
+    fix.mouseMove(monomer_pos);
+
+    // hover over an attachment point so the tool also draws a hint fragment
+    auto c_ap_pos = fix.getAttachmentPointPos(0, "C");
+    fix.mouseMove(c_ap_pos);
+
+    // undo the placement (simulates Ctrl+Z). This destroys the monomer
+    // graphics item and, transitively, its child AP items.
+    auto* undo_stack = fix.m_mol_model->findChild<QUndoStack*>();
+    BOOST_REQUIRE(undo_stack != nullptr);
+    undo_stack->undo();
+    process_qt_events();
+    fix.confirmIsEmpty();
+
+    // moving the mouse a little crashes pre-fix because the tool's cached
+    // m_unbound_ap_items / m_hovered_item are dangling
+    fix.mouseMove(c_ap_pos + QPointF(5, 5));
+}
+
+/**
+ * Start a drag from one monomer toward another so the tool caches drag-end AP
+ * items parented to the second monomer, then undo (which destroys the second
+ * monomer) before releasing. The tool's onStructureUpdated() must drop its
+ * stale drag-end pointers without trying to delete them - the items were
+ * already destroyed as Qt children of the now-gone monomer.
+ *
+ * NOTE: catches the bug reliably only under ASan; a plain debug build may
+ * pass even with the bug present if the freed memory hasn't been reused.
+ */
+BOOST_AUTO_TEST_CASE(test_undo_drag_end_monomer_no_crash)
+{
+    MonomerToolTestFixture fix;
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+
+    // place two monomers far enough apart that they don't overlap
+    fix.mouseClick(QPointF(100, 100));
+    auto pos_a = fix.getMonomerPos(0);
+    fix.mouseClick(pos_a + QPointF(200, 0));
+    BOOST_REQUIRE(fix.m_mol_model->getMol()->getNumAtoms() == 2);
+    auto pos_b = fix.getMonomerPos(1);
+
+    // start a drag from A's C attachment point
+    fix.mouseMove(pos_a);
+    auto a_c_ap = fix.getAttachmentPointPos(0, "C");
+    fix.mouseMove(a_c_ap);
+    fix.mousePress(a_c_ap);
+
+    // drag over B - this populates m_drag_end_unbound_ap_items, parented to B
+    fix.mouseMove(pos_b, Qt::LeftButton);
+    auto b_n_ap = fix.getAttachmentPointPos(1, "N");
+    fix.mouseMove(b_n_ap, Qt::LeftButton);
+
+    // undo the second click - destroys monomer B and (transitively) the
+    // drag-end AP items parented to it. The structure-update callback runs
+    // synchronously here; pre-fix-extension this hits a double-free inside
+    // clearDragEndAttachmentPointsLabels().
+    auto* undo_stack = fix.m_mol_model->findChild<QUndoStack*>();
+    BOOST_REQUIRE(undo_stack != nullptr);
+    undo_stack->undo();
+    process_qt_events();
+    BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 1);
+
+    // releasing the drag must not crash either
+    fix.mouseRelease(b_n_ap);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
