@@ -83,6 +83,27 @@ DrawMonomerSceneTool::DrawMonomerSceneTool(
     }
 }
 
+/**
+ * Release the tool's references to attachment-point label items after the
+ * parent monomer has just been destroyed by a structure update. Bound AP
+ * labels in `group` were reparented to the group by addToGroup, so they
+ * survive the monomer's destruction and must still be deleted normally.
+ * Items in `unbound_ap_items` were Qt children of the now-gone monomer and
+ * have already been destroyed by Qt — drop the dangling pointers without
+ * deleting. Compare to clear_graphics_item_group_and_list (defined later),
+ * which deletes both and is only safe while the parent monomer is alive.
+ */
+template <typename T>
+static void release_after_parent_destroyed(QGraphicsItemGroup& group,
+                                           std::vector<T*>& unbound_ap_items)
+{
+    for (auto* item : group.childItems()) {
+        group.removeFromGroup(item);
+        delete item;
+    }
+    unbound_ap_items.clear();
+}
+
 DrawMonomerSceneTool::~DrawMonomerSceneTool()
 {
     // explicitly erase any attachment point labels. Without this, the bound
@@ -93,6 +114,20 @@ DrawMonomerSceneTool::~DrawMonomerSceneTool()
     // outlive the scene tool without this call.
     clearAttachmentPointsLabelsAndHintFragmentItem();
     clearDragEndAttachmentPointsLabels();
+}
+
+void DrawMonomerSceneTool::onStructureUpdated()
+{
+    release_after_parent_destroyed(m_attachment_point_labels_group,
+                                   m_unbound_ap_items);
+    release_after_parent_destroyed(m_drag_end_attachment_point_labels_group,
+                                   m_drag_end_unbound_ap_items);
+    m_hovered_item = nullptr;
+    m_hovered_ap_item = nullptr;
+    m_drag_start_monomer_item = nullptr;
+    m_drag_end_monomer_item = nullptr;
+    clearHintFragmentItem();
+    m_predictive_highlighting_item.clearHighlightingPath();
 }
 
 std::vector<QGraphicsItem*> DrawMonomerSceneTool::getGraphicsItems()

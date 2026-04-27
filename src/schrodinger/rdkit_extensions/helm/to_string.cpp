@@ -83,9 +83,17 @@ template <class PropType, class RDKitObject> PropType get_property
     if (sgroup != sgroups.end() &&
         sgroup->getPropIfPresent("DATAFIELDS", supplementary_info)) {
         ss << '$' << supplementary_info[0];
+    } else {
+        ss << '$';
+    }
+
+    std::string extended_annotations;
+    if (mol.getPropIfPresent(EXTENDED_ANNOTATIONS, extended_annotations)) {
+        ss << '$' << extended_annotations;
+    } else if (supplementary_info.size() >= 2) {
         ss << '$' << supplementary_info[1];
     } else {
-        ss << "$$";
+        ss << '$';
     }
 
     ss << "$V2.0";

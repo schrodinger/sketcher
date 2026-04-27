@@ -117,3 +117,11 @@ BOOST_DATA_TEST_CASE(
     std::string expected_helm{"PEPTIDE1{A.A}$$$$V2.0"};
     BOOST_TEST(get_roundtripped_helm(input_helm) == expected_helm);
 }
+
+BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
+{
+    std::string input_helm =
+        R"(PEPTIDE1{Q}|PEPTIDE2{Q}|PEPTIDE3{D}|PEPTIDE4{D}$$${"Antibody arms":
+         [["PEPTIDE1", "PEPTIDE3"], ["PEPTIDE2", "PEPTIDE4"]]}$V2.0)";
+    BOOST_TEST(get_roundtripped_helm(input_helm) == input_helm);
+}

@@ -54,12 +54,15 @@ static const std::vector<std::string> ROUNDTRIP_HELM_TEST_SET = {
     // Cyclic peptide using disulfide R3 - R3 bond
     "PEPTIDE1{C.A.A.A.C}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
     // Branches using R3 connections
-    "PEPTIDE1{A.D(C)P}$$$$V2.0",
-    "PEPTIDE1{A.C(A)G.C.D(K)A.D}$$$$V2.0",
+    "PEPTIDE1{C}|PEPTIDE2{A.D.P}$PEPTIDE2,PEPTIDE1,2:R3-1:R1$$$V2.0",
+    "PEPTIDE1{A.C.G.C.D.A.D}|PEPTIDE2{A}|PEPTIDE3{K}$PEPTIDE1,PEPTIDE2,2:R3-1:"
+    "R1|PEPTIDE1,PEPTIDE3,5:R3-1:R1$$$V2.0",
     // Example with endcaps
-    "PEPTIDE1{[ac].P.A.D(A)K.[am]}$$$$V2.0",
+    "PEPTIDE1{[ac].P.A.D.K.[am]}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,4:R3-1:R1$$$V2."
+    "0",
     // Example with a branch and a disulfide bond
-    "PEPTIDE1{C.A.A.A.C.G.D(K)L.A}$PEPTIDE1,PEPTIDE1,1:R3-5:R3$$$V2.0",
+    "PEPTIDE1{C.A.A.A.C.G.D.L.A}|PEPTIDE2{K}$PEPTIDE1,PEPTIDE1,1:R3-5:R3|"
+    "PEPTIDE1,PEPTIDE2,7:R3-1:R1$$$V2.0",
     // Disulfide bond between two chains
     "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0",
 };
