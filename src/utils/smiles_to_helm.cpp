@@ -8,6 +8,7 @@
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -25,6 +26,18 @@
 
 using namespace schrodinger::rdkit_extensions;
 
+namespace
+{
+// Global variable to track temporary database file for cleanup
+boost::filesystem::path g_temp_db_path;
+
+void cleanup_temp_db()
+{
+    if (!g_temp_db_path.empty() && boost::filesystem::exists(g_temp_db_path)) {
+        boost::filesystem::remove(g_temp_db_path);
+    }
+}
+
 struct Options {
     std::string db_path;
 };
@@ -38,10 +51,6 @@ format to stdout (with optional name).
 
 Options:
   --db FILE     Load custom monomer database from FILE (.sqlite/.db or .json)
-                WARNING: using a JSON file will store the monomers permanently
-                in the user's database, by default at
-                ~/.schrodinger/custom_monomerlib.db, or at the path defined by
-                the SCHRODINGER_CUSTOM_MONOMER_DB_PATH environment varable.
   -h, --help    Show this help message and exit\n";
 )";
 
@@ -94,18 +103,35 @@ void load_custom_database(const std::string& db_path)
     if (ext == ".sqlite" || ext == ".db") {
         db.loadMonomersFromSQLiteFile(path);
     } else if (ext == ".json") {
+        // For JSON files, set environment variable to a temporary .db file
+        // before loading, so the database gets written there instead of the
+        // default location
+        g_temp_db_path =
+            fs::temp_directory_path() /
+            fs::unique_path("smiles_to_helm_%%%%-%%%%-%%%%-%%%%.db");
+
+        // Register cleanup handler
+        std::atexit(cleanup_temp_db);
+
+        setenv(std::string(CUSTOM_MONOMER_DB_PATH_ENV_VAR).c_str(),
+               g_temp_db_path.string().c_str(), 1);
+
+        // Read JSON file
         std::ifstream file(db_path);
         if (!file.is_open()) {
             throw std::runtime_error("Failed to open file: " + db_path);
         }
         std::stringstream buffer;
         buffer << file.rdbuf();
+
+        // Load JSON into database (this will write to g_temp_db_path)
         db.loadMonomersFromJson(buffer.str());
     } else {
         throw std::runtime_error("Unsupported file extension: " + ext +
                                  " (expected .sqlite or .json)");
     }
 }
+} // namespace
 
 int main(int argc, char* argv[])
 {
