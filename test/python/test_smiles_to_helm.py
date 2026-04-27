@@ -33,7 +33,7 @@ def smiles_to_helm(smiles: str, db: str | None = None) -> str:
     Helper function to run smiles_to_helm with the given input and optional
     monomer database file.
 
-    :param smiles: stding to feed into smiles_to_helm
+    :param smiles: stdin to feed into smiles_to_helm
     :param db: custom monomer databases relative to this test module
     :return: stdout from smiles_to_helm
     """
@@ -50,7 +50,6 @@ def smiles_to_helm(smiles: str, db: str | None = None) -> str:
     )
     helm_out, err = p.communicate(smiles)
     if p.returncode != 0:
-        print(os.getcwd())
         raise Exception(f'smiles_to_helm returned {p.returncode}:\n{err}')
     return helm_out
 
