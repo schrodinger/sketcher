@@ -658,40 +658,32 @@ void DrawMonomerSceneTool::createHintFragmentItem(
     HintFragmentMonomerInfo& monomer_two_info)
 {
     auto frag = std::make_shared<RDKit::RWMol>();
-    frag->setProp(HELM_MODEL, true);
 
     // create the two monomers
-    auto first_idx =
+    auto monomer_one_idx =
         frag->addAtom(monomer_one_info.monomer.release(), true, true);
-    auto second_idx =
+    auto monomer_two_idx =
         frag->addAtom(monomer_two_info.monomer.release(), true, true);
-
+    set_all_atoms_monomeric(*frag);
     // create the connection between them
-    auto linkage = fmt::format("{}-{}", monomer_one_info.ap_model_name,
-                               monomer_two_info.ap_model_name);
-    rdkit_extensions::addConnection(*frag, first_idx, second_idx, linkage);
-    auto bond_index_to_label =
-        frag->getBondBetweenAtoms(first_idx, second_idx)->getIdx();
-
-    // flag the atoms as monomeric
-    for (auto* atom : frag->atoms()) {
-        set_atom_monomeric(atom);
-    }
+    auto bond_index_to_label = add_monomer_connection(
+        *frag, monomer_one_idx, monomer_one_info.ap_model_name, monomer_two_idx,
+        monomer_two_info.ap_model_name);
 
     // Add a conformer with the atom coordinates
     auto* frag_conf = new RDKit::Conformer(frag->getNumAtoms());
     frag_conf->set3D(false);
-    frag_conf->setAtomPos(first_idx, monomer_one_info.pos);
-    frag_conf->setAtomPos(second_idx, monomer_two_info.pos);
+    frag_conf->setAtomPos(monomer_one_idx, monomer_one_info.pos);
+    frag_conf->setAtomPos(monomer_two_idx, monomer_two_info.pos);
     frag->addConformer(frag_conf, true);
 
     // hide the monomers that already exist in the Scene
     std::vector<size_t> atom_indices_to_hide;
     if (monomer_one_info.atom_idx >= 0) {
-        atom_indices_to_hide.push_back(first_idx);
+        atom_indices_to_hide.push_back(monomer_one_idx);
     }
     if (monomer_two_info.atom_idx >= 0) {
-        atom_indices_to_hide.push_back(second_idx);
+        atom_indices_to_hide.push_back(monomer_two_idx);
     }
 
     m_hint_fragment_item = new MonomerHintFragmentItem(
