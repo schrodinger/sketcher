@@ -16,6 +16,9 @@
 
 #include <boost/filesystem.hpp>
 
+#include <QByteArray>
+#include <QtEnvironmentVariables> // qputenv
+
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 
@@ -113,8 +116,9 @@ void load_custom_database(const std::string& db_path)
         // Register cleanup handler
         std::atexit(cleanup_temp_db);
 
-        setenv(std::string(CUSTOM_MONOMER_DB_PATH_ENV_VAR).c_str(),
-               g_temp_db_path.string().c_str(), 1);
+        // Use Qt for env vars because putenv/setenv are not portable
+        qputenv(CUSTOM_MONOMER_DB_PATH_ENV_VAR.data(),
+                g_temp_db_path.string().c_str());
 
         // Read JSON file
         std::ifstream file(db_path);

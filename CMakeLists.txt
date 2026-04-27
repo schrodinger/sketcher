@@ -267,7 +267,7 @@ add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
 setup_target(${SMILES_TO_HELM_TARGET})
 set_target_properties(${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
                                               ${CMAKE_BINARY_DIR}/bin)
-target_link_libraries(${SMILES_TO_HELM_TARGET} PRIVATE Boost::boost Boost::filesystem RDKit::SmilesParse ${RDKIT_EXTENSIONS_TARGET})
+target_link_libraries(${SMILES_TO_HELM_TARGET} PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse ${RDKIT_EXTENSIONS_TARGET})
 
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
