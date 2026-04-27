@@ -67,6 +67,41 @@ namespace sketcher
 {
 
 /**
+ * Index-keyed counterpart to MonomerMutation: the same `(atoms,
+ * helm_symbol)` pair, but with atom identity captured by index so it
+ * survives a `MolModel::mutateMonomers` call (which may invalidate
+ * raw `RDKit::Atom*` pointers via its snapshot mechanism).
+ */
+struct IndexedMonomerMutation {
+    std::vector<unsigned int> atom_indices;
+    std::string helm_symbol;
+};
+
+/**
+ * Capture atom identity by index before a sequence of
+ * `MolModel::mutateMonomers` calls. Indices are stable since the
+ * underlying `mutateMonomer` only edits properties (no atom
+ * add/remove/reorder). The caller resolves each batch's indices back
+ * to live atoms via `getMol()->getAtomWithIdx(...)` immediately
+ * before each mutation.
+ */
+static std::vector<IndexedMonomerMutation>
+capture_atom_indices(std::vector<MonomerMutation> mutations)
+{
+    std::vector<IndexedMonomerMutation> indexed;
+    indexed.reserve(mutations.size());
+    for (auto& [atoms, sym] : mutations) {
+        std::vector<unsigned int> idxs;
+        idxs.reserve(atoms.size());
+        for (const auto* a : atoms) {
+            idxs.push_back(a->getIdx());
+        }
+        indexed.push_back({std::move(idxs), std::move(sym)});
+    }
+    return indexed;
+}
+
+/**
  * Map a NucleicAcidTool to the corresponding MonomerType.
  * Only valid for individual component tools (bases, sugars, phosphate),
  * not full nucleotide tools (RNA, DNA, CUSTOM).
@@ -745,6 +780,38 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
 {
     connect(&menu, &MonomerContextMenu::deleteRequested, this,
             [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
+
+    connect(&menu, &MonomerContextMenu::mutateResidueRequested, this,
+            [this](auto mutations, const QString& description) {
+                if (mutations.empty()) {
+                    return;
+                }
+                auto indexed = capture_atom_indices(std::move(mutations));
+
+                // Multi-pair batches (the D-/L-Form toggle when residues map to
+                // multiple target symbols) get wrapped in a single QUndoStack
+                // macro so the user sees one undo entry.
+                const bool batch = indexed.size() > 1;
+                if (batch) {
+                    m_undo_stack->beginMacro(
+                        description.isEmpty()
+                            ? QStringLiteral("Mutate Monomers")
+                            : description);
+                }
+                for (auto& [idxs, sym] : indexed) {
+                    std::unordered_set<const RDKit::Atom*> resolved;
+                    resolved.reserve(idxs.size());
+                    const auto* mol = m_mol_model->getMol();
+                    for (auto i : idxs) {
+                        resolved.insert(mol->getAtomWithIdx(i));
+                    }
+                    m_mol_model->mutateMonomers(resolved, sym,
+                                                MonomerType::PEPTIDE);
+                }
+                if (batch) {
+                    m_undo_stack->endMacro();
+                }
+            });
 }
 
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
