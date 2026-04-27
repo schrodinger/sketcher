@@ -658,19 +658,17 @@ void DrawMonomerSceneTool::createHintFragmentItem(
     HintFragmentMonomerInfo& monomer_two_info)
 {
     auto frag = std::make_shared<RDKit::RWMol>();
-    frag->setProp(HELM_MODEL, true);
 
     // create the two monomers
     auto monomer_one_idx =
         frag->addAtom(monomer_one_info.monomer.release(), true, true);
     auto monomer_two_idx =
         frag->addAtom(monomer_two_info.monomer.release(), true, true);
+    set_all_atoms_monomeric(*frag);
     // create the connection between them
     auto bond_index_to_label = add_monomer_connection(
         *frag, monomer_one_idx, monomer_one_info.ap_model_name, monomer_two_idx,
         monomer_two_info.ap_model_name);
-
-    set_all_atoms_monomeric(*frag);
 
     // Add a conformer with the atom coordinates
     auto* frag_conf = new RDKit::Conformer(frag->getNumAtoms());

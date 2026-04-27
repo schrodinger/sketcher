@@ -28,9 +28,9 @@ namespace sketcher
 SKETCHER_API void set_atom_monomeric(RDKit::Atom* const atom);
 
 /**
- * Flag all atoms in the structure as monomeric
+ * Flag the structure and all atoms in it as monomeric
  */
-void set_all_atoms_monomeric(RDKit::ROMol& mol);
+SKETCHER_API void set_all_atoms_monomeric(RDKit::ROMol& mol);
 
 /**
  * Remove the monomeric Flag from the atom if one is present. This should be

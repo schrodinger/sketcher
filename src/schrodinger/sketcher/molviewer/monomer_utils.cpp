@@ -6,6 +6,8 @@
 #include <rdkit/GraphMol/AtomIterators.h>
 #include <rdkit/GraphMol/ROMol.h>
 
+#include "schrodinger/rdkit_extensions/helm.h"
+
 namespace
 {
 const std::string MONOMERIC_PROPERTY = "SKETCHER_ATOM_IS_MONOMERIC";
@@ -23,6 +25,7 @@ void set_atom_monomeric(RDKit::Atom* const atom)
 
 void set_all_atoms_monomeric(RDKit::ROMol& mol)
 {
+    mol.setProp(HELM_MODEL, true);
     for (auto* atom : mol.atoms()) {
         set_atom_monomeric(atom);
     }
