@@ -111,17 +111,6 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     ui->na_custom_nt_btn->setPopupWidget(m_custom_nt_popup);
 
     // Set up amino acid analog popups from the monomer database
-    static const std::unordered_map<std::string, std::string>
-        STANDARD_AA_NAMES = {
-            {"A", "Alanine"},    {"R", "Arginine"},      {"N", "Asparagine"},
-            {"D", "Aspartate"},  {"C", "Cysteine"},      {"Q", "Glutamine"},
-            {"E", "Glutamate"},  {"G", "Glycine"},       {"H", "Histidine"},
-            {"I", "Isoleucine"}, {"L", "Leucine"},       {"K", "Lysine"},
-            {"M", "Methionine"}, {"F", "Phenylalanine"}, {"P", "Proline"},
-            {"S", "Serine"},     {"T", "Threonine"},     {"W", "Tryptophan"},
-            {"Y", "Tyrosine"},   {"V", "Valine"},        {"X", "Unknown"},
-        };
-
     auto analogs_by_aa =
         rdkit_extensions::MonomerDatabase::instance()
             .getMonomersByNaturalAnalog(rdkit_extensions::ChainType::PEPTIDE);
@@ -134,8 +123,7 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
         if (it == analogs_by_aa.end() || it->second.empty()) {
             continue;
         }
-        auto name_it = STANDARD_AA_NAMES.find(symbol);
-        auto name = name_it != STANDARD_AA_NAMES.end() ? name_it->second : "";
+        const auto& name = AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
         auto* popup = new AminoAcidSymbolPopup(symbol, name, it->second, this);
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
         Q_ASSERT_X(modular_btn, "MonomerToolWidget",
