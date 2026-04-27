@@ -101,16 +101,19 @@ void SketcherSideBar::updateWidgetsEnabled()
 {
     auto model = getModel();
     auto has_selection = model->hasActiveSelection();
-    auto monomer_view_only = model->isMonomerViewOnly();
+    auto monomer_view_only_enabled = model->isMonomerViewOnlyEnabled();
+    auto monomer_view_only_active = model->isMonomerViewOnly();
 
     std::string title = has_selection ? "EDIT ACTIONS" : "DRAW";
     ui->title_lbl->setText(QString::fromStdString(title));
+    ui->title_lbl->setVisible(!monomer_view_only_active);
 
-    // hide the toggle buttons when monomer-view-only is active
-    ui->atomistic_or_monomeric_widget->setVisible(!monomer_view_only);
+    // always hide the atomistic/monomeric toggle when monomer-view-only is
+    // enabled, regardless of scene content
+    ui->atomistic_or_monomeric_widget->setVisible(!monomer_view_only_enabled);
 
-    // disable the draw tools stacked widget when monomer-view-only is active
-    ui->atomistic_or_monomeric_stack->setEnabled(!monomer_view_only);
+    // hide the draw palette entirely when monomeric content is present
+    ui->atomistic_or_monomeric_stack->setVisible(!monomer_view_only_active);
 
     // we can't have both atomistic and monomeric models in the workspace at
     // the same time, so disable the toggle button for the other type
@@ -159,7 +162,8 @@ void SketcherSideBar::updateCheckState()
         page = ui->monomeric_page;
         // if there's an atomistic tool selected, switch to a monomeric tool
         if (ATOMISTIC_TOOLS.contains(cur_draw_tool)) {
-            new_draw_tool = DrawTool::MONOMER;
+            new_draw_tool = model->isMonomerViewOnly() ? DrawTool::SELECT
+                                                       : DrawTool::MONOMER;
         }
     }
     ui->atomistic_or_monomeric_stack->setCurrentWidget(page);

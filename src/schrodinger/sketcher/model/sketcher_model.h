@@ -558,11 +558,17 @@ class SKETCHER_API SketcherModel : public QObject
 
     /**
      * getter and setter for monomer-view-only mode. When enabled, sidebar
-     * draw tools are disabled and context menus are hidden whenever
+     * draw tools are hidden and context menus are disabled whenever
      * monomers are present in the scene.
+     *
+     * isMonomerViewOnly() returns true only when the flag is set AND
+     * monomers are present in the scene.
+     * isMonomerViewOnlyEnabled() returns the raw flag value regardless
+     * of scene content.
      */
     void setMonomerViewOnly(const bool view_only);
     bool isMonomerViewOnly() const;
+    bool isMonomerViewOnlyEnabled() const;
 
     /**
      * @return Whether all items in the scene are selected.

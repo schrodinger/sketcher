@@ -666,6 +666,11 @@ bool SketcherModel::isMonomerViewOnly() const
     return m_monomer_view_only && getMoleculeType() == MoleculeType::MONOMERIC;
 }
 
+bool SketcherModel::isMonomerViewOnlyEnabled() const
+{
+    return m_monomer_view_only;
+}
+
 const AtomDisplaySettings* SketcherModel::getAtomDisplaySettingsPtr() const
 {
     return &m_atom_display_settings;
