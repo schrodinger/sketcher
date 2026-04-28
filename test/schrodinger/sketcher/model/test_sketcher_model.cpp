@@ -94,6 +94,8 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::UNK)},
         {ModelKey::AMINO_ACID_SYMBOL, QString("dA")},
         {ModelKey::NUCLEIC_ACID_TOOL, QVariant::fromValue(NucleicAcidTool::dR)},
+        {ModelKey::NUCLEIC_ACID_SYMBOL,
+         QVariant::fromValue(NucleicAcidMutation{NucleicAcidTool::C, "5mC"})},
         {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::G)},
         {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::U_OR_T)},
         {ModelKey::CUSTOM_NUCLEOTIDE,
@@ -111,6 +113,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
     for (auto& key : get_model_keys()) {
         if (key == ModelKey::RESIDUE_TYPE ||
             key == ModelKey::AMINO_ACID_SYMBOL ||
+            key == ModelKey::NUCLEIC_ACID_SYMBOL ||
             key == ModelKey::CUSTOM_NUCLEOTIDE) {
             // These values are not stored as int-like objects
             continue;

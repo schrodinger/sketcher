@@ -26,6 +26,7 @@ enum class AminoAcidTool;
 enum class NucleicAcidTool;
 class AminoAcidSymbolPopup;
 class CustomNucleotidePopup;
+class NucleicAcidSymbolPopup;
 class NucleotidePopup;
 
 /**
@@ -51,6 +52,8 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     CustomNucleotidePopup* m_custom_nt_popup = nullptr;
     std::unordered_map<QAbstractButton*, AminoAcidSymbolPopup*>
         m_amino_acid_symbol_popups;
+    std::unordered_map<QAbstractButton*, NucleicAcidSymbolPopup*>
+        m_nucleic_acid_symbol_popups;
 
     /**
      * Respond to the AMINO or NUCLEIC buttons being clicked, which toggles the
