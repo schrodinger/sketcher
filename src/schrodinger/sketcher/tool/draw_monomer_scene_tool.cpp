@@ -82,27 +82,6 @@ DrawMonomerSceneTool::DrawMonomerSceneTool(
     }
 }
 
-/**
- * Release the tool's references to attachment-point label items after the
- * parent monomer has just been destroyed by a structure update. Bound AP
- * labels in `group` were reparented to the group by addToGroup, so they
- * survive the monomer's destruction and must still be deleted normally.
- * Items in `unbound_ap_items` were Qt children of the now-gone monomer and
- * have already been destroyed by Qt — drop the dangling pointers without
- * deleting. Compare to clear_graphics_item_group_and_list (defined later),
- * which deletes both and is only safe while the parent monomer is alive.
- */
-template <typename T>
-static void release_after_parent_destroyed(QGraphicsItemGroup& group,
-                                           std::vector<T*>& unbound_ap_items)
-{
-    for (auto* item : group.childItems()) {
-        group.removeFromGroup(item);
-        delete item;
-    }
-    unbound_ap_items.clear();
-}
-
 DrawMonomerSceneTool::~DrawMonomerSceneTool()
 {
     // explicitly erase any drag end attachment point labels. Without this, the
