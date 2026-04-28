@@ -1197,6 +1197,14 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
     // Ensure the newly added mol has coords and necessary stereo information
     prepare_mol(mol);
 
+    // if this is a monomeric molecule, make sure that the chain names are
+    // different than the chains that are currently in MolModel
+    if (rdkit_extensions::isMonomeric(mol) && isMonomeric()) {
+        // we use getMolForExport() here to ensure that the HELM_MODEL property
+        // is set
+        ensure_distinct_chain_names(mol, *getMolForExport());
+    }
+
     if (reposition_mol) {
         if (!m_mol.getNumAtoms()) {
             // if we don't have any existing structure, center the new molecule
