@@ -63,6 +63,11 @@ class MonomerHintFragmentItem : public QGraphicsItemGroup
      * Create all graphics items required to represent the fragment
      */
     void createGraphicsItems();
+
+    /**
+     * Style all of the graphics items used to represent the fragment
+     */
+    void styleGraphicsItems();
 };
 
 } // namespace schrodinger::sketcher

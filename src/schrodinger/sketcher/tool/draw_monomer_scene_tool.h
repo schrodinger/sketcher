@@ -10,7 +10,7 @@
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
-#include "schrodinger/sketcher/tool/standard_scene_tool_base.h"
+#include "schrodinger/sketcher/tool/abstract_monomer_scene_tool.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
 namespace RDKit
@@ -71,7 +71,7 @@ get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
 /**
  * A scene tools that draws a monomer
  */
-class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
+class SKETCHER_API DrawMonomerSceneTool : public AbstractMonomerSceneTool
 {
   public:
     DrawMonomerSceneTool(const std::string& res_name,
@@ -93,17 +93,7 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
   protected:
     std::string m_res_name;
     rdkit_extensions::ChainType m_chain_type;
-    Fonts m_fonts;
     MonomerType m_monomer_type;
-    QGraphicsItemGroup m_attachment_point_labels_group;
-    const QGraphicsItem* m_hovered_item = nullptr;
-    const UnboundMonomericAttachmentPointItem* m_hovered_ap_item = nullptr;
-    std::vector<UnboundMonomericAttachmentPointItem*> m_unbound_ap_items;
-    MonomerHintFragmentItem* m_hint_fragment_item = nullptr;
-    QColor m_monomer_background_color = LIGHT_BACKGROUND_COLOR;
-    QColor m_unbound_ap_label_color = UNBOUND_AP_LABEL_COLOR;
-    QColor m_bound_ap_label_color = BOUND_AP_LABEL_COLOR;
-    bool m_cursor_hint_shown = true;
 
     bool m_drag_ignored;
     AbstractMonomerItem* m_drag_start_monomer_item;
@@ -118,13 +108,6 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
     QPixmap createDefaultCursorPixmap() const override;
 
     /**
-     * Label all attachment points on the given hovered monomer
-     */
-    void labelAttachmentPointsOnHoveredMonomer(
-        const RDKit::Atom* const monomer,
-        AbstractMonomerItem* const monomer_item);
-
-    /**
      * Label all attachment points on the given monomer at the end of the
      * current click-and-drag operation
      */
@@ -133,88 +116,11 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
         AbstractMonomerItem* const monomer_item);
 
     /**
-     * Label all attachment points on the given monomer, placing all newly
-     * created graphics items into the specified group and list. (You probably
-     * want to call either labelAttachmentPointsOnHoveredMonomer or
-     * labelAttachmentPointsOnDragEndMonomer instead of this.)
-     */
-    void labelAttachmentPointsOnMonomer(
-        const RDKit::Atom* const monomer,
-        AbstractMonomerItem* const monomer_item,
-        QGraphicsItemGroup& attachment_point_labels_group,
-        std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items);
-
-    /**
-     * Label both attachment points for the given monomeric connector
-     * @param connector The monomeric connector to label
-     * @param is_secondary_connection Whether this method should label the
-     * secondary connection of the bond instead of the primary connection.
-     * Secondary connections occur when a single RDKit::Bond* represents
-     * multiple connections, e.g. two neighboring cysteines that are disulfide
-     * bonded to each other.
-     */
-    void labelAttachmentPointsOnConnector(const RDKit::Bond* const connector,
-                                          const bool is_secondary_connection);
-
-    /**
-     * Label the specified attachment point
-     * @param monomer The monomer containing the attachment point to label
-     * @param bound_monomer The other monomer involved in the connection
-     * @param is_secondary_connection Whether we should label the secondary
-     * connection of the bond instead of the primary connection.
-     * @param label The text to display in the attachment point label
-     */
-    void labelBoundAttachmentPoint(const RDKit::Atom* const monomer,
-                                   const RDKit::Atom* const bound_monomer,
-                                   const bool is_secondary_connection,
-                                   const std::string& label);
-
-    void addAttachmentPointLabel(const QString& label,
-                                 const QRectF& label_rect);
-
-    /**
-     * Clear all attachment point labels drawn on the hovered monomer. Also
-     * clear the hint fragment item and the associated structure.
-     */
-    void clearAttachmentPointsLabelsAndHintFragmentItem();
-
-    /**
-     * Remove the hint fragment item from the scene, then destroy it as well as
-     * the RDKit structure object it represents.
-     */
-    void clearHintFragmentItem();
-
-    /**
      * Clear all attachment point labels drawn on the existing monomer at the
      * end of the current click-and-drag operation. Note that this method *does
      * not* clear the hint fragment item.
      */
     void clearDragEndAttachmentPointsLabels();
-
-    /**
-     * Return the top graphics item representing a monomer at the given
-     * coordinates. If there's no such graphics item, return nullptr.  Note that
-     * this method will consider the cursor to be over a monomer if the cursor
-     * is over an unbound attachment point belonging to that monomer, or if the
-     * cursor *would be* over an unbound attachment point once it's drawn.
-     * @param scene_pos The position in Scene coordinates
-     */
-    AbstractMonomerItem* getTopMonomerItemAt(const QPointF& scene_pos) const;
-
-    /**
-     * Return the top graphics item representing a monomeric connector at the
-     * given coordinates. If there's no such graphics item, return nullptr.
-     * @param scene_pos The position in Scene coordinates
-     */
-    MonomerConnectorItem*
-    getTopMonomerConnectorItemAt(const QPointF& scene_pos) const;
-
-    /**
-     * Clear any existing attachment point labels and draw new ones for the
-     * specified monomeric graphics item. If item is nullptr, then all labels
-     * will be cleared and no new ones will be drawn.
-     */
-    void drawAttachmentPointLabelsFor(QGraphicsItem* const item);
 
     /**
      * Return the unbound attachment point graphics item that should be "active"
@@ -414,17 +320,6 @@ class SKETCHER_API DrawMonomerSceneTool : public StandardSceneToolBase
      */
     rdkit_extensions::Direction
     getDragDirection(const QPointF& cur_scene_pos) const;
-
-    /**
-     * Show or hide the cursor hint
-     */
-    void setCursorHintShown(bool show);
-
-    /**
-     * Determine whether the specified graphics item is part of this scene
-     * tool's hint fragment
-     */
-    bool isItemPartOfHintFragment(QGraphicsItem* item) const;
 };
 
 } // namespace sketcher

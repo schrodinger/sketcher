@@ -60,10 +60,9 @@ constexpr int NEW_MONOMER_FROM_DRAG = -1;
 DrawMonomerSceneTool::DrawMonomerSceneTool(
     const std::string& res_name, const rdkit_extensions::ChainType chain_type,
     const Fonts& fonts, Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model),
+    AbstractMonomerSceneTool(fonts, scene, mol_model),
     m_res_name(res_name),
-    m_chain_type(chain_type),
-    m_fonts(fonts)
+    m_chain_type(chain_type)
 {
     // we handle predictive highlighting manually in onMouseMove, so we disable
     // StandardSceneToolsBase's predictive highlighting
@@ -106,34 +105,26 @@ static void release_after_parent_destroyed(QGraphicsItemGroup& group,
 
 DrawMonomerSceneTool::~DrawMonomerSceneTool()
 {
-    // explicitly erase any attachment point labels. Without this, the bound
-    // attachment point labels would be deleted regardless when
-    // m_attachment_point_labels_group and
-    // m_drag_end_attachment_point_labels_group are destroyed, but the unbound
+    // explicitly erase any drag end attachment point labels. Without this, the
+    // bound attachment point labels would be deleted regardless when
+    // m_drag_end_attachment_point_labels_group is destroyed, but the unbound
     // attachment point labels are parented to their monomer, so they would
     // outlive the scene tool without this call.
-    clearAttachmentPointsLabelsAndHintFragmentItem();
     clearDragEndAttachmentPointsLabels();
 }
 
 void DrawMonomerSceneTool::onStructureUpdated()
 {
-    release_after_parent_destroyed(m_attachment_point_labels_group,
-                                   m_unbound_ap_items);
+    AbstractMonomerSceneTool::onStructureUpdated();
     release_after_parent_destroyed(m_drag_end_attachment_point_labels_group,
                                    m_drag_end_unbound_ap_items);
-    m_hovered_item = nullptr;
-    m_hovered_ap_item = nullptr;
     m_drag_start_monomer_item = nullptr;
     m_drag_end_monomer_item = nullptr;
-    clearHintFragmentItem();
-    m_predictive_highlighting_item.clearHighlightingPath();
 }
 
 std::vector<QGraphicsItem*> DrawMonomerSceneTool::getGraphicsItems()
 {
-    auto items = StandardSceneToolBase::getGraphicsItems();
-    items.push_back(&m_attachment_point_labels_group);
+    auto items = AbstractMonomerSceneTool::getGraphicsItems();
     items.push_back(&m_drag_end_attachment_point_labels_group);
     return items;
 }
@@ -141,88 +132,12 @@ std::vector<QGraphicsItem*> DrawMonomerSceneTool::getGraphicsItems()
 void DrawMonomerSceneTool::updateColorsAfterBackgroundColorChange(
     bool is_dark_mode)
 {
-    StandardSceneToolBase::updateColorsAfterBackgroundColorChange(is_dark_mode);
+    AbstractMonomerSceneTool::updateColorsAfterBackgroundColorChange(
+        is_dark_mode);
     m_monomer_background_color =
         is_dark_mode ? DARK_BACKGROUND_COLOR : LIGHT_BACKGROUND_COLOR;
-    m_unbound_ap_label_color =
-        is_dark_mode ? UNBOUND_AP_LABEL_COLOR_DARK_BG : UNBOUND_AP_LABEL_COLOR;
-    m_bound_ap_label_color =
-        is_dark_mode ? BOUND_AP_LABEL_COLOR_DARK_BG : BOUND_AP_LABEL_COLOR;
     m_drag_end_inactive_ap_color =
         is_dark_mode ? DRAG_END_INACTIVE_AP_DARK_BG : DRAG_END_INACTIVE_AP;
-}
-
-bool DrawMonomerSceneTool::isItemPartOfHintFragment(QGraphicsItem* item) const
-{
-    return m_hint_fragment_item != nullptr &&
-           (item == m_hint_fragment_item ||
-            item->group() == m_hint_fragment_item);
-}
-
-AbstractMonomerItem*
-DrawMonomerSceneTool::getTopMonomerItemAt(const QPointF& scene_pos) const
-{
-    // check to see if we're over a monomer or unbound attachment point item
-    for (auto* item : m_scene->items(scene_pos)) {
-        if (isItemPartOfHintFragment(item)) {
-            // ignore the fragment hint that was drawn by this class
-            continue;
-        }
-        if (item_matches_type_flag(item, InteractiveItemFlag::MONOMER)) {
-            return static_cast<AbstractMonomerItem*>(item);
-        }
-        auto* ap_item =
-            qgraphicsitem_cast<UnboundMonomericAttachmentPointItem*>(item);
-        if (ap_item && ap_item->withinHoverArea(scene_pos)) {
-            return static_cast<AbstractMonomerItem*>(item->parentItem());
-        }
-    }
-
-    // if we're not over any of those, check to see if we're near a monomer. If
-    // we are, check to see whether we'd be over one of its attachment points
-    // once they're drawn
-    QPainterPath near_scene_pos;
-    // We want a circle radius that will definitely include the relevant monomer
-    // if we're over an attachment point hover area, but we don't care if it's
-    // too large since we'll do further filtering below.  Instead of trying to
-    // take the font size, etc. into account, we just pick a number that's close
-    // to correct and then double it.
-    auto radius =
-        2 * std::max(UNBOUND_AP_LINE_LENGTH, UNBOUND_AP_MIN_HOVER_HALF_WIDTH);
-    near_scene_pos.addEllipse(scene_pos, radius, radius);
-    for (auto* item : m_scene->items(near_scene_pos)) {
-        if (!item_matches_type_flag(item, InteractiveItemFlag::MONOMER) ||
-            isItemPartOfHintFragment(item)) {
-            continue;
-        }
-        auto* monomer_item = static_cast<AbstractMonomerItem*>(item);
-        auto local_pos = monomer_item->mapFromScene(scene_pos);
-        auto* monomer = monomer_item->getAtom();
-        auto [bound_aps, unbound_aps] =
-            get_attachment_points_for_monomer(monomer);
-        for (auto cur_unbound_ap : unbound_aps) {
-            auto unbound_ap_hover_area =
-                get_hover_area_for_unbound_monomer_attachment_point_item(
-                    cur_unbound_ap, monomer_item, m_fonts);
-            if (unbound_ap_hover_area.contains(local_pos)) {
-                return monomer_item;
-            }
-        }
-    }
-    return nullptr;
-}
-
-MonomerConnectorItem* DrawMonomerSceneTool::getTopMonomerConnectorItemAt(
-    const QPointF& scene_pos) const
-{
-    for (auto* item : m_scene->items(scene_pos)) {
-        if (!isItemPartOfHintFragment(item) &&
-            item_matches_type_flag(item,
-                                   InteractiveItemFlag::MONOMER_CONNECTOR)) {
-            return static_cast<MonomerConnectorItem*>(item);
-        }
-    }
-    return nullptr;
 }
 
 /**
@@ -530,7 +445,7 @@ bool DrawMonomerSceneTool::shouldShowPredictiveHighlighting() const
 
 void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
 {
-    StandardSceneToolBase::onMouseMove(event);
+    AbstractMonomerSceneTool::onMouseMove(event);
     if (m_mouse_pressed) {
         // drag logic is handled in onDragMove
         return;
@@ -571,56 +486,10 @@ void DrawMonomerSceneTool::onMouseMove(QGraphicsSceneMouseEvent* const event)
     setCursorHintShown(!drew_hint_fragment);
 }
 
-void DrawMonomerSceneTool::setCursorHintShown(bool show)
-{
-    if (show != m_cursor_hint_shown) {
-        emit newCursorHintRequested(show ? getDefaultCursorPixmap()
-                                         : QPixmap());
-        m_cursor_hint_shown = show;
-    }
-}
-
-void DrawMonomerSceneTool::drawAttachmentPointLabelsFor(
-    QGraphicsItem* const item)
-{
-    clearAttachmentPointsLabelsAndHintFragmentItem();
-    if (item == nullptr) {
-        return;
-    }
-    if (item_matches_type_flag(item, InteractiveItemFlag::MONOMER)) {
-        // hovering over a monomer
-        auto* monomer_item = static_cast<AbstractMonomerItem*>(item);
-        const auto* monomer = monomer_item->getAtom();
-        labelAttachmentPointsOnHoveredMonomer(monomer, monomer_item);
-    } else if (item_matches_type_flag(item,
-                                      InteractiveItemFlag::MONOMER_CONNECTOR)) {
-        // hovering over a monomeric connector
-        auto* connector_item = qgraphicsitem_cast<MonomerConnectorItem*>(item);
-        const auto* connector = connector_item->getBond();
-        labelAttachmentPointsOnConnector(
-            connector, connector_item->isSecondaryConnection());
-    }
-}
-
 static RDGeom::Point3D get_coords_for_monomer(const RDKit::Atom* const monomer)
 {
     auto& conf = monomer->getOwningMol().getConformer();
     return conf.getAtomPos(monomer->getIdx());
-}
-
-/**
- * @return coordinates that are roughly BOND_LENGTH units away from the given
- * monomer in the specified direction. (Monomers are laid out in a grid-like
- * pattern, so diagonal directions will lead to bonds that are slightly longer
- * than BOND_LENGTH.)
- */
-static RDGeom::Point3D
-get_default_coords_for_bound_monomer(const RDGeom::Point3D monomer_pos,
-                                     const Direction dir)
-{
-    auto offset = rdkit_extensions::direction_to_vector(dir);
-    offset *= BOND_LENGTH;
-    return monomer_pos + offset;
 }
 
 /**
@@ -763,7 +632,7 @@ DrawMonomerSceneTool::createHintFragmentMonomerInfoForHintToDirection(
 void DrawMonomerSceneTool::onLeftButtonClick(
     QGraphicsSceneMouseEvent* const event)
 {
-    StandardSceneToolBase::onLeftButtonClick(event);
+    AbstractMonomerSceneTool::onLeftButtonClick(event);
     QPointF scene_pos = event->scenePos();
     auto* item = getTopMonomerItemAt(scene_pos);
 
@@ -807,7 +676,7 @@ void DrawMonomerSceneTool::onLeftButtonClick(
 void DrawMonomerSceneTool::onLeftButtonDragStart(
     QGraphicsSceneMouseEvent* const event)
 {
-    StandardSceneToolBase::onLeftButtonDragStart(event);
+    AbstractMonomerSceneTool::onLeftButtonDragStart(event);
     m_drag_start_monomer_item = getTopMonomerItemAt(m_mouse_press_scene_pos);
     if (m_drag_start_monomer_item == nullptr) {
         m_drag_start_ap_model_name = getDefaultDragStartAPModelName();
@@ -994,7 +863,7 @@ DrawMonomerSceneTool::getDragDirection(const QPointF& cur_scene_pos) const
 void DrawMonomerSceneTool::onLeftButtonDragMove(
     QGraphicsSceneMouseEvent* const event)
 {
-    StandardSceneToolBase::onLeftButtonDragMove(event);
+    AbstractMonomerSceneTool::onLeftButtonDragMove(event);
     if (m_drag_ignored) {
         return;
     }
@@ -1035,7 +904,7 @@ void DrawMonomerSceneTool::onLeftButtonDragMove(
 void DrawMonomerSceneTool::onLeftButtonDragRelease(
     QGraphicsSceneMouseEvent* const event)
 {
-    StandardSceneToolBase::onLeftButtonDragRelease(event);
+    AbstractMonomerSceneTool::onLeftButtonDragRelease(event);
     if (m_drag_ignored) {
         return;
     }
@@ -1113,51 +982,12 @@ QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
     return cursor_hint_from_graphics_item(monomer_item.get(), min_scene_size);
 }
 
-void DrawMonomerSceneTool::labelAttachmentPointsOnHoveredMonomer(
-    const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item)
-{
-    labelAttachmentPointsOnMonomer(monomer, monomer_item,
-                                   m_attachment_point_labels_group,
-                                   m_unbound_ap_items);
-}
 void DrawMonomerSceneTool::labelAttachmentPointsOnDragEndMonomer(
     const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item)
 {
     labelAttachmentPointsOnMonomer(monomer, monomer_item,
                                    m_drag_end_attachment_point_labels_group,
                                    m_drag_end_unbound_ap_items);
-}
-
-void DrawMonomerSceneTool::labelAttachmentPointsOnMonomer(
-    const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item,
-    QGraphicsItemGroup& attachment_point_labels_group,
-    std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items)
-{
-    auto [bound_aps, unbound_aps] = get_attachment_points_for_monomer(monomer);
-    for (auto& cur_ap : bound_aps) {
-        auto* item = create_label_for_bound_attachment_point(
-            monomer, cur_ap.bound_monomer, cur_ap.is_secondary_connection,
-            cur_ap.display_name, m_bound_ap_label_color, m_fonts, m_scene);
-        if (item != nullptr) {
-            attachment_point_labels_group.addToGroup(item);
-        }
-    }
-    for (auto& cur_ap : unbound_aps) {
-        auto* item = new UnboundMonomericAttachmentPointItem(
-            cur_ap, monomer_item, m_unbound_ap_label_color, m_fonts);
-        unbound_ap_items.push_back(item);
-    }
-}
-
-void DrawMonomerSceneTool::labelAttachmentPointsOnConnector(
-    const RDKit::Bond* const connector, const bool is_secondary_connection)
-{
-    auto ap_label_items = create_attachment_point_labels_for_connector(
-        connector, is_secondary_connection, m_bound_ap_label_color, m_fonts,
-        m_scene);
-    for (auto* item : ap_label_items) {
-        m_attachment_point_labels_group.addToGroup(item);
-    }
 }
 
 template <typename T>
@@ -1172,20 +1002,6 @@ static void clear_graphics_item_group_and_list(QGraphicsItemGroup& group,
         delete item;
     }
     items_list.clear();
-}
-
-void DrawMonomerSceneTool::clearAttachmentPointsLabelsAndHintFragmentItem()
-{
-    clear_graphics_item_group_and_list(m_attachment_point_labels_group,
-                                       m_unbound_ap_items);
-    m_hovered_ap_item = nullptr;
-    clearHintFragmentItem();
-}
-
-void DrawMonomerSceneTool::clearHintFragmentItem()
-{
-    delete m_hint_fragment_item;
-    m_hint_fragment_item = nullptr;
 }
 
 void DrawMonomerSceneTool::clearDragEndAttachmentPointsLabels()

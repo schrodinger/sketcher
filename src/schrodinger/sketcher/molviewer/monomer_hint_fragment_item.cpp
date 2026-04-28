@@ -37,15 +37,6 @@ void MonomerHintFragmentItem::createGraphicsItems()
         addToGroup(item);
     }
     for (auto& kv : atom_to_atom_item) {
-        if (auto* monomer_item =
-                dynamic_cast<AbstractMonomerItem*>(kv.second)) {
-            // if we used a transparent monomer background color, then we'd be
-            // able to see the bond behind the letter.  To avoid that, we use
-            // the same color as the Scene's background.
-            monomer_item->setMonomerColors(m_monomer_background_color,
-                                           CURSOR_HINT_COLOR,
-                                           CURSOR_HINT_COLOR);
-        }
         // hide the monomer where this fragment connects to the existing
         // structure
         auto atom_idx = kv.first->getIdx();
@@ -57,11 +48,7 @@ void MonomerHintFragmentItem::createGraphicsItems()
     }
     for (auto& kv : boost::range::join(bond_to_bond_item,
                                        bond_to_secondary_connection_item)) {
-        if (auto* connector_item =
-                qgraphicsitem_cast<MonomerConnectorItem*>(kv.second)) {
-            connector_item->setConnectorStyle(
-                CURSOR_HINT_COLOR, MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH);
-        }
+        m_bond_items.append(kv.second);
     }
 
     // label the attachment points
@@ -74,6 +61,31 @@ void MonomerHintFragmentItem::createGraphicsItems()
             end_monomer_item);
         for (auto* item : items) {
             addToGroup(item);
+        }
+    }
+    styleGraphicsItems();
+}
+
+void MonomerHintFragmentItem::styleGraphicsItems()
+{
+    // style the monomer items
+    for (auto item : m_atom_items) {
+        if (auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item)) {
+            // if we used a transparent monomer background color, then we'd be
+            // able to see the bond behind the letter.  To avoid that, we use
+            // the same color as the Scene's background.
+            monomer_item->setMonomerColors(m_monomer_background_color,
+                                           CURSOR_HINT_COLOR,
+                                           CURSOR_HINT_COLOR);
+        }
+    }
+
+    // style the connector items
+    for (auto item : m_bond_items) {
+        if (auto* connector_item =
+                qgraphicsitem_cast<MonomerConnectorItem*>(item)) {
+            connector_item->setConnectorStyle(
+                CURSOR_HINT_COLOR, MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH);
         }
     }
 }
