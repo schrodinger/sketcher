@@ -3,6 +3,7 @@
 #include <boost/range/join.hpp>
 
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -13,7 +14,7 @@ namespace schrodinger::sketcher
 {
 
 MonomerHintFragmentItem::MonomerHintFragmentItem(
-    const std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
+    std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
     const std::vector<size_t>& atom_indices_to_hide,
     const int bond_index_to_label, const QColor monomer_background_color,
     QGraphicsItem* parent) :
@@ -22,7 +23,8 @@ MonomerHintFragmentItem::MonomerHintFragmentItem(
     m_fonts(&fonts),
     m_atom_indices_to_hide(atom_indices_to_hide),
     m_bond_index_to_label(bond_index_to_label),
-    m_monomer_background_color(monomer_background_color)
+    m_monomer_background_color(monomer_background_color),
+    m_orig_conf(fragment->getConformer())
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER_FRAGMENT_HINT));
     createGraphicsItems();
@@ -88,6 +90,20 @@ void MonomerHintFragmentItem::styleGraphicsItems()
                 CURSOR_HINT_COLOR, MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH);
         }
     }
+}
+
+void MonomerHintFragmentItem::setRotation(const double angle_radians,
+                                          const int monomer_idx_to_rotate_about)
+{
+    auto rotation_center = m_orig_conf.getAtomPos(monomer_idx_to_rotate_about);
+    auto rotated_conf = new RDKit::Conformer(m_orig_conf);
+    rotate_conformer_radians(angle_radians, rotation_center, *rotated_conf);
+    m_frag->clearConformers();
+    m_frag->addConformer(rotated_conf);
+    update_conf_for_mol_graphics_items(m_atom_items, m_bond_items, {}, *m_frag);
+    // update_conf_for_mol_graphics_items will overwriting our style
+    // customizations, so we reapply them
+    styleGraphicsItems();
 }
 
 } // namespace schrodinger::sketcher

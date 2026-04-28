@@ -216,10 +216,12 @@ SKETCHER_API bool are_points_on_same_side_of_line(const QPointF& point1,
 
 /**
  * @return the angle in radians of a line from start to end, rounded to the
- * nearest pi/6 (30 degree) increment.
+ * nearest pi/num_increments increment. The default num_increments value
+ * corresponds to 30 degree increments.
  */
 SKETCHER_API qreal get_rounded_angle_radians(const QPointF& start,
-                                             const QPointF& end);
+                                             const QPointF& end,
+                                             const int num_increments = 12);
 
 /**
  * Trim a line so that it ends at least 4 pixels outside of the given

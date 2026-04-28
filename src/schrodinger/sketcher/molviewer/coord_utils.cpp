@@ -336,12 +336,14 @@ bool are_points_on_same_side_of_line(const QPointF& point1,
     return std::signbit(d1) == std::signbit(d2);
 }
 
-qreal get_rounded_angle_radians(const QPointF& start, const QPointF& end)
+qreal get_rounded_angle_radians(const QPointF& start, const QPointF& end,
+                                const int num_increments)
 {
     qreal angle = QLineF(start, end).angle();
     angle = qDegreesToRadians(angle);
-    int rounded = std::round(angle * 6.0 / M_PI);
-    return rounded / 6.0 * M_PI;
+    auto half_num_incr = static_cast<double>(num_increments) / 2.0;
+    int rounded = std::round(angle * half_num_incr / M_PI);
+    return rounded / half_num_incr * M_PI;
 }
 
 void trim_line_to_rect(QLineF& line, const QRectF& rect, qreal min_length)
