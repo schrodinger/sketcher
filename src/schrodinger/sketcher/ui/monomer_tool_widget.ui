@@ -149,7 +149,7 @@
         </widget>
        </item>
        <item row="4" column="0">
-        <widget class="QToolButton" name="na_a_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_a_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -196,7 +196,7 @@
         </spacer>
        </item>
        <item row="8" column="2">
-        <widget class="QToolButton" name="na_p_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_p_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -227,7 +227,7 @@
         </widget>
        </item>
        <item row="4" column="1">
-        <widget class="QToolButton" name="na_c_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_c_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -274,7 +274,7 @@
         </spacer>
        </item>
        <item row="5" column="0">
-        <widget class="QToolButton" name="na_g_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_g_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -333,7 +333,7 @@
         </widget>
        </item>
        <item row="5" column="1">
-        <widget class="QToolButton" name="na_u_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_u_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -364,7 +364,7 @@
         </widget>
        </item>
        <item row="4" column="2">
-        <widget class="QToolButton" name="na_n_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_n_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -395,7 +395,7 @@
         </widget>
        </item>
        <item row="5" column="2">
-        <widget class="QToolButton" name="na_t_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_t_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -439,7 +439,7 @@
         </spacer>
        </item>
        <item row="8" column="1">
-        <widget class="QToolButton" name="na_dr_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_dr_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -470,7 +470,7 @@
         </widget>
        </item>
        <item row="8" column="0">
-        <widget class="QToolButton" name="na_r_btn">
+        <widget class="schrodinger::sketcher::ModularToolButton" name="na_r_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>

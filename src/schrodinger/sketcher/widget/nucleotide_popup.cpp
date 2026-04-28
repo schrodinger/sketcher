@@ -32,6 +32,16 @@ NucleotidePopup::NucleotidePopup(const NucleicAcidTool tool,
     ui->g_btn->setText(btn_name_fmt.arg(sugar, "G"));
     ui->u_or_t_btn->setText(btn_name_fmt.arg(sugar, u_or_t));
     ui->n_btn->setText(btn_name_fmt.arg(sugar, "N"));
+
+    // tooltips: human base name + polymer type, e.g. "Adenine (RNA)"
+    const QString polymer = sugar == "dR" ? "DNA" : "RNA";
+    const QString u_or_t_name = u_or_t == "T" ? "Thymine" : "Uracil";
+    QString tt_fmt("%1 (%2)");
+    ui->a_btn->setToolTip(tt_fmt.arg("Adenine", polymer));
+    ui->c_btn->setToolTip(tt_fmt.arg("Cytosine", polymer));
+    ui->g_btn->setToolTip(tt_fmt.arg("Guanine", polymer));
+    ui->u_or_t_btn->setToolTip(tt_fmt.arg(u_or_t_name, polymer));
+    ui->n_btn->setToolTip(tt_fmt.arg("Unknown", polymer));
 }
 
 NucleotidePopup::~NucleotidePopup() = default;

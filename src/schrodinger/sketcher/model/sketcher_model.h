@@ -283,24 +283,25 @@ enum class ModelKey {
     ATOM_QUERY,
     RGROUP_NUMBER,
     RESIDUE_TYPE,
-    MONOMER_TOOL_TYPE, /// whether the MONOMER tool should activate an
-                       ///   AMINO_ACID_TOOL or a NUCLEIC_ACID_TOOL
-    AMINO_ACID_TOOL,   /// the amino acid monomer to draw
-    AMINO_ACID_SYMBOL, /// the specific analog symbol (e.g. "dA") to draw
-    NUCLEIC_ACID_TOOL, /// the nucleic acid monomer or full nucleotide to draw
-    RNA_NUCLEOBASE,    /// the base to use for the RNA_NUCLEOTIDE tool
-    DNA_NUCLEOBASE,    /// the base to use for the DNA_NUCLEOTIDE tool
-    CUSTOM_NUCLEOTIDE, /// a tuple of (sugar, base, phosphate) to use for the
-                       ///   CUSTOM_NUCLEOTIDE tool
-    INTERFACE_TYPE,    /// whether the Sketcher is intended for use with
-                       ///   atomistic models, monomeric models, or both
-    TOOL_SET,          /// whether the side bar shows the atomistic tools or
-                       ///   monomeric tools, which (along with
-                       ///   MONOMER_TOOL_TYPE) controls the keyboard shortcuts
-                       ///   (i.e. should "C" activate carbon, cysteine, or
-                       ///   cytosine)
-    MOLECULE_TYPE,     /// whether the Sketcher workspace contains an atomistic
-                       ///   model, a monomeric model, or is empty
+    MONOMER_TOOL_TYPE,   /// whether the MONOMER tool should activate an
+                         ///   AMINO_ACID_TOOL or a NUCLEIC_ACID_TOOL
+    AMINO_ACID_TOOL,     /// the amino acid monomer to draw
+    AMINO_ACID_SYMBOL,   /// the specific analog symbol (e.g. "dA") to draw
+    NUCLEIC_ACID_TOOL,   /// the nucleic acid monomer or full nucleotide to draw
+    NUCLEIC_ACID_SYMBOL, /// the specific analog symbol (e.g. "5mC") to draw
+    RNA_NUCLEOBASE,      /// the base to use for the RNA_NUCLEOTIDE tool
+    DNA_NUCLEOBASE,      /// the base to use for the DNA_NUCLEOTIDE tool
+    CUSTOM_NUCLEOTIDE,   /// a tuple of (sugar, base, phosphate) to use for the
+                         ///   CUSTOM_NUCLEOTIDE tool
+    INTERFACE_TYPE,      /// whether the Sketcher is intended for use with
+                         ///   atomistic models, monomeric models, or both
+    TOOL_SET,            /// whether the side bar shows the atomistic tools or
+                         ///   monomeric tools, which (along with
+                         ///   MONOMER_TOOL_TYPE) controls the keyboard
+                         ///   shortcuts (i.e. should "C" activate carbon,
+                         ///   cysteine, or cytosine)
+    MOLECULE_TYPE,       /// whether the Sketcher workspace contains an
+                         ///   atomistic model, a monomeric model, or is empty
 };
 
 enum class MoleculeType {
@@ -395,6 +396,17 @@ const std::unordered_map<NucleicAcidTool, std::string>
         {NucleicAcidTool::P, "P"},
         {NucleicAcidTool::dR, "dR"},
     }; // clang-format on
+
+/**
+ * Carries a nucleic acid mutation request: the tool (which slot type to
+ * mutate — base/sugar/phosphate) plus the symbol to substitute. Both
+ * pieces are needed because pingValue does not update the stored model
+ * value, so the SYMBOL handler can't read the just-pinged TOOL.
+ */
+struct NucleicAcidMutation {
+    NucleicAcidTool tool;
+    QString symbol;
+};
 
 enum class StdNucleobase {
     A,

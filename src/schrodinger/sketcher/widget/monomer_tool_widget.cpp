@@ -15,6 +15,7 @@
 #include "schrodinger/sketcher/widget/custom_nucleotide_popup.h"
 #include "schrodinger/sketcher/widget/tool_button_with_popup.h"
 #include "schrodinger/sketcher/widget/modular_tool_button.h"
+#include "schrodinger/sketcher/widget/nucleic_acid_symbol_popup.h"
 #include "schrodinger/sketcher/widget/nucleotide_popup.h"
 #include "schrodinger/sketcher/widget/widget_utils.h"
 
@@ -22,6 +23,34 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+using AnalogMap =
+    std::unordered_map<std::string, std::vector<rdkit_extensions::MonomerInfo>>;
+
+/**
+ * Return analogs for nucleic acid bases keyed by their natural analog symbol,
+ * pulled from both RNA and DNA chain types and deduped by analog symbol.
+ */
+static AnalogMap get_merged_na_analogs()
+{
+    auto& db = rdkit_extensions::MonomerDatabase::instance();
+    auto base = db.getMonomersByNaturalAnalog(rdkit_extensions::ChainType::RNA);
+    auto other =
+        db.getMonomersByNaturalAnalog(rdkit_extensions::ChainType::DNA);
+    for (const auto& [key, other_list] : other) {
+        auto& merged = base[key];
+        std::unordered_set<std::string> seen;
+        for (const auto& m : merged) {
+            seen.insert(m.symbol.value_or(""));
+        }
+        for (const auto& m : other_list) {
+            if (seen.insert(m.symbol.value_or("")).second) {
+                merged.push_back(m);
+            }
+        }
+    }
+    return base;
+}
 
 MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     AbstractDrawToolWidget(parent)
@@ -145,6 +174,53 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
         modular_btn->showPopupIndicator(false);
         m_amino_acid_symbol_popups[button] = popup;
     }
+
+    // Set up nucleic acid analog popups from the monomer database. Unlike
+    // the AA loop above, we always attach a popup (even when the analog
+    // list is empty) so that the standard-base tooltip is available on
+    // every per-base button.
+    static const std::unordered_map<std::string, std::string>
+        STANDARD_NA_NAMES = {
+            {"A", "Adenine"}, {"C", "Cytosine"},     {"G", "Guanine"},
+            {"U", "Uracil"},  {"T", "Thymine"},      {"N", "Unknown"},
+            {"R", "Ribose"},  {"dR", "Deoxyribose"}, {"P", "Phosphate"},
+        };
+
+    auto na_tool_to_std_name = [](NucleicAcidTool na_tool)
+        -> std::optional<std::pair<std::string, std::string>> {
+        auto res_it = NUCLEIC_ACID_TOOL_TO_RES_NAME.find(na_tool);
+        if (res_it == NUCLEIC_ACID_TOOL_TO_RES_NAME.end()) {
+            return std::nullopt;
+        }
+        auto name_it = STANDARD_NA_NAMES.find(res_it->second);
+        if (name_it == STANDARD_NA_NAMES.end()) {
+            return std::nullopt;
+        }
+        return *name_it;
+    };
+
+    auto analogs_by_na = get_merged_na_analogs();
+
+    static const std::vector<rdkit_extensions::MonomerInfo> empty_analogs;
+    for (auto& [button, na_tool] : m_button_nucleic_acid_bimap.left) {
+        auto std_name = na_tool_to_std_name(na_tool);
+        if (!std_name) {
+            continue; // sugar/phosphate/full-nucleotide buttons
+        }
+        const auto& [symbol, name] = *std_name;
+        auto analog_it = analogs_by_na.find(symbol);
+        const auto& analogs = analog_it != analogs_by_na.end()
+                                  ? analog_it->second
+                                  : empty_analogs;
+        auto* popup = new NucleicAcidSymbolPopup(symbol, name, analogs, this);
+        auto* modular_btn = qobject_cast<ModularToolButton*>(button);
+        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
+                   "Expected ModularToolButton");
+        modular_btn->setPopupWidget(popup);
+        modular_btn->setEnumItem(0); // default to standard base
+        modular_btn->showPopupIndicator(false);
+        m_nucleic_acid_symbol_popups[button] = popup;
+    }
 }
 
 MonomerToolWidget::~MonomerToolWidget() = default;
@@ -156,6 +232,9 @@ void MonomerToolWidget::setModel(SketcherModel* model)
     m_dna_popup->setModel(model);
     m_custom_nt_popup->setModel(model);
     for (auto& [button, popup] : m_amino_acid_symbol_popups) {
+        popup->setModel(model);
+    }
+    for (auto& [button, popup] : m_nucleic_acid_symbol_popups) {
         popup->setModel(model);
     }
     updateCheckedButton();
@@ -265,6 +344,46 @@ void MonomerToolWidget::updateCheckedButton()
         }
     }
 
+    // Show the popup indicator only on the currently checked NA button
+    for (auto& [btn, popup] : m_nucleic_acid_symbol_popups) {
+        auto* modular_btn = qobject_cast<ModularToolButton*>(btn);
+        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
+                   "Expected ModularToolButton");
+        modular_btn->showPopupIndicator(btn == nucleic_button);
+    }
+
+    // Sync only the active button's popup, and skip analog matches whose
+    // symbol owns its own toolbar slot (e.g. dR appears in R's popup but
+    // belongs on the dR button).
+    auto na_analog = model->getValue(ModelKey::NUCLEIC_ACID_SYMBOL)
+                         .value<NucleicAcidMutation>()
+                         .symbol;
+    auto active_it = m_nucleic_acid_symbol_popups.find(nucleic_button);
+    if (active_it != m_nucleic_acid_symbol_popups.end()) {
+        std::unordered_set<QString> other_standards;
+        for (auto& [other_btn, other_popup] : m_nucleic_acid_symbol_popups) {
+            if (other_btn != nucleic_button) {
+                other_standards.insert(other_popup->getSymbolForId(0));
+            }
+        }
+        auto* modular_btn = qobject_cast<ModularToolButton*>(nucleic_button);
+        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
+                   "Expected ModularToolButton");
+        for (auto& packet : active_it->second->getButtonPackets()) {
+            auto packet_symbol =
+                active_it->second->getSymbolForId(packet.enum_int);
+            if (packet_symbol != na_analog) {
+                continue;
+            }
+            if (packet.enum_int != 0 &&
+                other_standards.contains(packet_symbol)) {
+                continue;
+            }
+            modular_btn->setEnumItem(packet.enum_int);
+            break;
+        }
+    }
+
     ui->na_rna_btn->setEnumItem(static_cast<int>(model->getRNANucleobase()));
     ui->na_dna_btn->setEnumItem(static_cast<int>(model->getDNANucleobase()));
 
@@ -273,6 +392,8 @@ void MonomerToolWidget::updateCheckedButton()
     const QString custom_nt_name_fmt("%1(%2)%3");
     auto custom_nt_name = custom_nt_name_fmt.arg(sugar, base, phosphate);
     ui->na_custom_nt_btn->setText(custom_nt_name);
+    ui->na_custom_nt_btn->setToolTip(
+        QString("Custom nucleotide: %1").arg(custom_nt_name));
 }
 
 void MonomerToolWidget::onAminoOrNucleicBtnClicked(QAbstractButton* button)
@@ -357,6 +478,20 @@ void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)
         auto key = button == ui->na_rna_btn ? ModelKey::RNA_NUCLEOBASE
                                             : ModelKey::DNA_NUCLEOBASE;
         ping_or_set_model_value(getModel(), key, base);
+    }
+
+    // Set which specific analog is selected; falls back to the standard
+    // base symbol when the button has no analog popup or the
+    // popup is on its default item.
+    auto it = m_nucleic_acid_symbol_popups.find(button);
+    if (it != m_nucleic_acid_symbol_popups.end()) {
+        auto* modular_btn = qobject_cast<ModularToolButton*>(button);
+        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
+                   "Expected ModularToolButton");
+        auto symbol = it->second->getSymbolForId(modular_btn->getEnumItem());
+        auto na_tool = m_button_nucleic_acid_bimap.left.at(button);
+        ping_or_set_model_value(getModel(), ModelKey::NUCLEIC_ACID_SYMBOL,
+                                NucleicAcidMutation{na_tool, symbol});
     }
 }
 

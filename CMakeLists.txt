@@ -326,6 +326,7 @@ if(ENABLE_TESTING)
       test_atom_query_popup
       test_bond_order_popup
       test_bond_query_popup
+      test_nucleic_acid_symbol_popup
       test_bracket_subgroup_dialog
       test_draw_tools_widget
       test_edit_atom_properties

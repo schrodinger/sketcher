@@ -631,6 +631,7 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::AMINO_ACID_TOOL:
             case ModelKey::AMINO_ACID_SYMBOL:
             case ModelKey::NUCLEIC_ACID_TOOL:
+            case ModelKey::NUCLEIC_ACID_SYMBOL:
             case ModelKey::RNA_NUCLEOBASE:
             case ModelKey::DNA_NUCLEOBASE:
             case ModelKey::CUSTOM_NUCLEOTIDE:
@@ -736,8 +737,13 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         } else {
             auto tool = m_sketcher_model->getNucleicAcidTool();
             if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool)) {
-                // the tool is for a single monomer
-                auto res_name = NUCLEIC_ACID_TOOL_TO_RES_NAME.at(tool);
+                auto mutation =
+                    m_sketcher_model->getValue(ModelKey::NUCLEIC_ACID_SYMBOL)
+                        .value<NucleicAcidMutation>();
+                std::string res_name =
+                    mutation.symbol.isEmpty()
+                        ? NUCLEIC_ACID_TOOL_TO_RES_NAME.at(tool)
+                        : mutation.symbol.toStdString();
                 // HELM considers DNA to be a type of RNA, so we want an RNA
                 // chain type regardless of which nucleic acid we're drawing
                 return std::make_shared<DrawMonomerSceneTool>(
