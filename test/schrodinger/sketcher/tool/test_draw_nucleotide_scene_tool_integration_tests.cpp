@@ -64,6 +64,13 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomers)
 
     // clicking on the same spots again shouldn't have any effect since those
     // monomers no longer have attachment points available
+
+    // recalculate the coordinates first in case anything has been adjusted to
+    // fit the labels
+    sugar_pos = fix.getMonomerPos(1);
+    phos_pos = fix.getMonomerPos(0);
+    base_pos = fix.getMonomerPos(2);
+
     fix.mouseMove(sugar_pos);
     fix.mouseClick(sugar_pos);
     fix.verifyHELM(
