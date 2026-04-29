@@ -6,6 +6,7 @@
 #include <span>
 #include <memory>
 
+#include <boost/json.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
@@ -48,6 +49,7 @@ static constexpr const char* MONOMER_MAP_NUM{"monomerMapNumber"};
 static constexpr const char* REFERENCE_IDX{"referenceIndex"};
 static constexpr const char* ATTACH_NUM{
     "attachNumber"}; // Whether an atom corresponds to R1, R2, or R3
+static constexpr const char* PDB_TO_HELM{"pdbToHelmChainMap"};
 
 static constexpr int MIN_ATTCHPTS = 2;
 static constexpr int SIDECHAIN_ATTCHPT = 8;
@@ -1741,6 +1743,56 @@ getHelmInfo(const MonomerDatabase& db, const RDKit::Atom* atom,
     }
 }
 
+enum class SeqresMatchType {
+    COMPLETE,         // PDB matches SEQRES, complete atoms
+    INCOMPLETE,       // PDB matches SEQRES, missing atoms
+    UNKNOWN_MUTATION, // SEQRES has X, use PDB atoms as SMILES
+    MISSING,          // SEQRES residue not in structure
+    NO_MORE_STRUCTURE // SEQRES continues but PDB ended
+};
+
+struct SeqresMatchResult {
+    SeqresMatchType type;
+    std::string pdb_symbol;
+    bool is_complete;
+};
+
+// Determine what type of match exists between SEQRES and PDB residue
+SeqresMatchResult
+determineSeqresMatch(const std::string& seqres_symbol, RDKit::RWMol& mol,
+                     const std::vector<unsigned int>& atom_idxs,
+                     const MonomerDatabase& db, bool has_pdb_codes,
+                     bool has_more_structure)
+{
+    if (!has_more_structure) {
+        return {SeqresMatchType::NO_MORE_STRUCTURE, "", false};
+    }
+
+    // Try to get HELM info for PDB residue
+    auto helm_info =
+        getHelmInfo(db, mol.getAtomWithIdx(atom_idxs[0]), has_pdb_codes);
+
+    std::string pdb_symbol = "";
+    bool is_complete = false;
+
+    if (helm_info) {
+        pdb_symbol = std::get<0>(*helm_info);
+        is_complete = sameMonomer(mol, atom_idxs, std::get<1>(*helm_info));
+    }
+
+    // Determine match type
+    if (pdb_symbol == seqres_symbol && is_complete) {
+        return {SeqresMatchType::COMPLETE, pdb_symbol, is_complete};
+    } else if (pdb_symbol == seqres_symbol && !is_complete) {
+        return {SeqresMatchType::INCOMPLETE, pdb_symbol, is_complete};
+        // TODO: SHARED-12312 Mutations or Non-standard residues known in DB.
+    } else if (!helm_info && seqres_symbol == "X") {
+        return {SeqresMatchType::UNKNOWN_MUTATION, pdb_symbol, is_complete};
+    } else {
+        return {SeqresMatchType::MISSING, pdb_symbol, is_complete};
+    }
+}
+
 boost::shared_ptr<RDKit::RWMol>
 pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
 {
@@ -1752,6 +1804,15 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
     ChainsAndResidues chains_and_residues;
     findChainsAndResidues(mol, chains_and_residues);
 
+    // SEQRES INFORMATION, ground truth
+    std::string seqres;
+    std::map<std::string, std::vector<std::string>> chain_to_seqres;
+    if (mol.getPropIfPresent("SEQRES", seqres)) {
+        boost::json::value parsed = boost::json::parse(seqres);
+        chain_to_seqres = boost::json::value_to<
+            std::map<std::string, std::vector<std::string>>>(parsed);
+    }
+
     auto& db = MonomerDatabase::instance();
 
     std::map<ChainType, unsigned int> chain_counts = {{ChainType::PEPTIDE, 0},
@@ -1759,6 +1820,9 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                                                       {ChainType::DNA, 0},
                                                       {ChainType::CHEM, 0}};
     auto monomer_mol = boost::make_shared<RDKit::RWMol>();
+    std::map<std::tuple<std::string, int, std::string>,
+             std::tuple<std::string, int>>
+        pdb_chain_to_helm_chain;
     for (const auto& [chain_id, residues] : chains_and_residues) {
         // Use first residue to determine chain type. We assume that PDB data
         // is correct and there aren't multiple chain types in a single chain.
@@ -1769,35 +1833,223 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
             helm_info ? std::get<2>(*helm_info) : ChainType::PEPTIDE;
         std::string helm_chain_id = fmt::format("{}{}", toString(chain_type),
                                                 ++chain_counts[chain_type]);
-        // Assuming residues are ordered correctly
-        size_t res_num = 1;
-        for (const auto& [key, atom_idxs] : residues) {
-            helm_info = getHelmInfo(db, mol.getAtomWithIdx(atom_idxs[0]),
-                                    has_pdb_codes);
-            bool end_of_chain = res_num == residues.size();
-            size_t this_monomer;
-            if (helm_info &&
-                sameMonomer(mol, atom_idxs, std::get<1>(*helm_info))) {
-                // Standard residue in monomer DB, Verify that the fragment
-                // labeled as the residue matches what is in the monomer
-                // database
-                this_monomer = addMonomer(*monomer_mol, std::get<0>(*helm_info),
-                                          res_num, helm_chain_id);
-            } else {
-                auto smiles = getMonomerSmiles(mol, atom_idxs, chain_id, key,
-                                               res_num, end_of_chain);
-                this_monomer = addMonomer(*monomer_mol, smiles, res_num,
-                                          helm_chain_id, MonomerType::SMILES);
+        // No SEQRES for the chain
+        if (chain_to_seqres.find(chain_id) == chain_to_seqres.end()) {
+            // Assuming residues are ordered correctly
+            size_t res_num = 1;
+            for (const auto& [key, atom_idxs] : residues) {
+                helm_info = getHelmInfo(db, mol.getAtomWithIdx(atom_idxs[0]),
+                                        has_pdb_codes);
+                bool end_of_chain = res_num == residues.size();
+                size_t this_monomer = 1; // default for compiler
+                if (helm_info &&
+                    sameMonomer(mol, atom_idxs, std::get<1>(*helm_info))) {
+                    // Standard residue in monomer DB, Verify that the fragment
+                    // labeled as the residue matches what is in the monomer
+                    // database
+                    this_monomer =
+                        addMonomer(*monomer_mol, std::get<0>(*helm_info),
+                                   res_num, helm_chain_id);
+                } else {
+                    auto smiles = getMonomerSmiles(mol, atom_idxs, chain_id,
+                                                   key, res_num, end_of_chain);
+                    this_monomer =
+                        addMonomer(*monomer_mol, smiles, res_num, helm_chain_id,
+                                   MonomerType::SMILES);
+                }
+
+                // Track which atoms are in which monomer
+                for (auto idx : atom_idxs) {
+                    mol.getAtomWithIdx(idx)->setProp<unsigned int>(
+                        MONOMER_IDX, this_monomer);
+                }
+                pdb_chain_to_helm_chain[{chain_id, key.first, key.second}] = {
+                    helm_chain_id, res_num};
+                ++res_num;
+            }
+        } else {
+            auto seqres_residues = chain_to_seqres[chain_id];
+            size_t prev_monomer_in_chain = std::numeric_limits<size_t>::max();
+
+            // Convert PDB residues to ordered vector for sequential access
+            std::vector<std::pair<std::pair<int, std::string>,
+                                  std::vector<unsigned int>>>
+                ordered_pdb_residues;
+            for (const auto& [key, atom_idxs] : residues) {
+                ordered_pdb_residues.push_back({key, atom_idxs});
             }
 
-            // Track which atoms are in which monomer
-            for (auto idx : atom_idxs) {
-                mol.getAtomWithIdx(idx)->setProp<unsigned int>(MONOMER_IDX,
-                                                               this_monomer);
+            size_t seqres_idx = 0;    // Pointer into SEQRES
+            size_t structure_idx = 0; // Pointer into ordered_pdb_residues
+            while (seqres_idx < seqres_residues.size()) {
+                std::string seqres_symbol = seqres_residues[seqres_idx];
+                int seqres_position = seqres_idx + 1; // 1-indexed for HELM
+                size_t this_monomer = 1;              // default for compiler
+
+                bool has_more_structure =
+                    (structure_idx < ordered_pdb_residues.size());
+
+                // Get PDB residue info if available
+                std::pair<int, std::string> pdb_key;
+                std::vector<unsigned int> atom_idxs;
+                if (has_more_structure) {
+                    auto pdb_residue = ordered_pdb_residues[structure_idx];
+                    pdb_key = pdb_residue.first;
+                    atom_idxs = pdb_residue.second;
+                }
+
+                // Determine match type
+                auto match =
+                    determineSeqresMatch(seqres_symbol, mol, atom_idxs, db,
+                                         has_pdb_codes, has_more_structure);
+
+                // Process based on match type
+                switch (match.type) {
+                    case SeqresMatchType::COMPLETE: {
+                        PRINT("SEQRES[{}] {} matches PDB res {}:{} - using "
+                              "atomistic\n",
+                              seqres_idx, seqres_symbol, pdb_key.first,
+                              pdb_key.second);
+                        this_monomer =
+                            addMonomer(*monomer_mol, match.pdb_symbol,
+                                       seqres_position, helm_chain_id);
+                        // Set MONOMER_IDX for detectLinkages
+                        for (auto idx : atom_idxs) {
+                            mol.getAtomWithIdx(idx)->setProp<unsigned int>(
+                                MONOMER_IDX, this_monomer);
+                        }
+                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
+                                                 pdb_key.second}] = {
+                            helm_chain_id, seqres_position};
+                        structure_idx++;
+                        seqres_idx++;
+                        break;
+                    }
+                    case SeqresMatchType::INCOMPLETE: {
+                        PRINT("SEQRES[{}] {} matches PDB res {}:{} but "
+                              "incomplete - using SEQRES\n",
+                              seqres_idx, seqres_symbol, pdb_key.first,
+                              pdb_key.second);
+                        this_monomer =
+                            addMonomer(*monomer_mol, seqres_symbol,
+                                       seqres_position, helm_chain_id);
+                        auto* monomer_atom =
+                            monomer_mol->getAtomWithIdx(this_monomer);
+                        monomer_atom->setProp("INCOMPLETE_IN_STRUCTURE", true);
+                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
+                                                 pdb_key.second}] = {
+                            helm_chain_id, seqres_position};
+                        structure_idx++;
+                        seqres_idx++;
+                        break;
+                    }
+                    case SeqresMatchType::UNKNOWN_MUTATION: {
+                        PRINT("SEQRES[{}] {} MUTATION or UNK (PDB has {} at "
+                              "{}:{}) - using smiles from PDB atoms\n",
+                              seqres_idx, seqres_symbol, match.pdb_symbol,
+                              pdb_key.first, pdb_key.second);
+                        bool end_of_chain =
+                            static_cast<size_t>(seqres_position) ==
+                            seqres_residues.size();
+                        auto smiles =
+                            getMonomerSmiles(mol, atom_idxs, chain_id, pdb_key,
+                                             seqres_position, end_of_chain);
+                        this_monomer =
+                            addMonomer(*monomer_mol, smiles, seqres_position,
+                                       helm_chain_id, MonomerType::SMILES);
+                        // Set MONOMER_IDX for detectLinkages
+                        for (auto idx : atom_idxs) {
+                            mol.getAtomWithIdx(idx)->setProp<unsigned int>(
+                                MONOMER_IDX, this_monomer);
+                        }
+                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
+                                                 pdb_key.second}] = {
+                            helm_chain_id, seqres_position};
+                        structure_idx++;
+                        seqres_idx++;
+                        break;
+                    }
+                    case SeqresMatchType::MISSING: {
+                        PRINT("SEQRES[{}] {} NOT in structure (PDB has {} at "
+                              "{}:{}) - marking missing\n",
+                              seqres_idx, seqres_symbol, match.pdb_symbol,
+                              pdb_key.first, pdb_key.second);
+                        this_monomer =
+                            addMonomer(*monomer_mol, seqres_symbol,
+                                       seqres_position, helm_chain_id);
+                        auto* monomer_atom =
+                            monomer_mol->getAtomWithIdx(this_monomer);
+                        monomer_atom->setProp("MISSING_IN_STRUCTURE", true);
+                        seqres_idx++; // Only advance SEQRES
+                        break;
+                    }
+                    case SeqresMatchType::NO_MORE_STRUCTURE: {
+                        PRINT("SEQRES[{}] {} - no more PDB residues - marking "
+                              "missing\n",
+                              seqres_idx, seqres_symbol);
+                        std::vector<unsigned int> empty_atom_idxs;
+                        this_monomer =
+                            addMonomer(*monomer_mol, seqres_symbol,
+                                       seqres_position, helm_chain_id);
+
+                        auto* monomer_atom =
+                            monomer_mol->getAtomWithIdx(this_monomer);
+                        monomer_atom->setProp("MISSING_IN_STRUCTURE", true);
+                        seqres_idx++; // Only advance SEQRES
+                        break;
+                    }
+                }
+
+                // Add backbone connection
+                if (prev_monomer_in_chain !=
+                    std::numeric_limits<size_t>::max()) {
+                    addConnection(*monomer_mol, prev_monomer_in_chain,
+                                  this_monomer, "R2-R1");
+                }
+                prev_monomer_in_chain = this_monomer;
             }
-            ++res_num;
+
+            // ===== Check for extra PDB residues not in SEQRES =====
+            // This can include ligands, RNA, PEPTIDES etc.
+            size_t ligand_num = 1;
+            while (structure_idx < ordered_pdb_residues.size()) {
+                auto [key, atom_idxs] = ordered_pdb_residues[structure_idx];
+                PRINT("WARNING: PDB residue {}:{} found after SEQRES ended - "
+                      "treating as ligands\n",
+                      key.first, key.second);
+
+                helm_info = getHelmInfo(db, mol.getAtomWithIdx(atom_idxs[0]),
+                                        has_pdb_codes);
+                auto chain_type =
+                    helm_info ? std::get<2>(*helm_info) : ChainType::CHEM;
+                auto ligand_helm_chain_id = fmt::format(
+                    "{}{}", toString(chain_type), ++chain_counts[chain_type]);
+                size_t this_monomer;
+                if (helm_info &&
+                    sameMonomer(mol, atom_idxs, std::get<1>(*helm_info))) {
+                    this_monomer =
+                        addMonomer(*monomer_mol, std::get<0>(*helm_info),
+                                   ligand_num, ligand_helm_chain_id);
+                } else {
+                    auto smiles = getMonomerSmiles(mol, atom_idxs, chain_id,
+                                                   key, ligand_num, true);
+                    this_monomer =
+                        addMonomer(*monomer_mol, smiles, ligand_num,
+                                   ligand_helm_chain_id, MonomerType::SMILES);
+                }
+                // TODO: Do we need to worry about missing atoms?
+                for (auto idx : atom_idxs) {
+                    mol.getAtomWithIdx(idx)->setProp<unsigned int>(
+                        MONOMER_IDX, this_monomer);
+                }
+                structure_idx++;
+            }
         }
     }
+    boost::json::value jv = boost::json::value_from(pdb_chain_to_helm_chain);
+    std::string stringified_mapping = boost::json::serialize(jv);
+    monomer_mol->setProp(PDB_TO_HELM, stringified_mapping);
+
     detectLinkages(*monomer_mol, mol);
     return monomer_mol;
 }
