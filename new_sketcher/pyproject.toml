@@ -1,0 +1,8 @@
+[project]
+name = "new_sketcher"
+version = "2026.04.01"
+description = "Molecular sketcher for the terminally committed"
+requires-python = ">= 3.11"
+dependencies = [
+    "rdkit",
+]
