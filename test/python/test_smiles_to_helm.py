@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-SMILES_TO_HELM = 'bin/smiles_to_helm'
+SMILES_TO_HELM = 'sketcher_app/smiles_to_helm'
 
 DB_ENV_VAR = 'SCHRODINGER_CUSTOM_MONOMER_DB_PATH'
 
