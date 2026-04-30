@@ -502,7 +502,6 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
-    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
     sk.addFromString("PEPTIDE1{A.G.L}$$$$V2.0");
     auto model = sk.m_mol_model;
 
@@ -529,7 +528,6 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
 BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidBase)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
-    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
     sk.addFromString("RNA1{R(A)P.R(G)P}$$$$V2.0");
     auto model = sk.m_mol_model;
 
@@ -970,7 +968,7 @@ BOOST_AUTO_TEST_CASE(test_zoom_preserved_when_modifying_structure)
 
 /**
  * Make sure that SketcherWidget::addTextToMolModel properly prevents the user
- * from adding atomistic or monomeric models when appropriate.
+ * from mixing atomistic and monomeric models.
  */
 BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
 {
@@ -978,17 +976,7 @@ BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
     const std::string MONOMERIC_STRING = "PEPTIDE1{D.E.F.G}$$$$V2.0";
     const std::string ATOMISTIC_STRING = "CCC";
 
-    sk.setInterfaceType(InterfaceType::ATOMISTIC);
-    BOOST_CHECK_THROW(sk.addTextToMolModel(MONOMERIC_STRING), std::exception);
-    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(ATOMISTIC_STRING));
-    sk.clear();
-
-    sk.setInterfaceType(InterfaceType::MONOMERIC);
-    BOOST_CHECK_THROW(sk.addTextToMolModel(ATOMISTIC_STRING), std::exception);
-    BOOST_CHECK_NO_THROW(sk.addTextToMolModel(MONOMERIC_STRING));
-    sk.clear();
-
-    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    // both atomistic and monomeric models are allowed
     BOOST_CHECK_NO_THROW(sk.addTextToMolModel(ATOMISTIC_STRING));
     BOOST_CHECK_NO_THROW(sk.addTextToMolModel(ATOMISTIC_STRING));
     // we can't add monomers if there are already atoms
@@ -1008,7 +996,6 @@ BOOST_AUTO_TEST_CASE(test_addTextToMolModel)
 BOOST_AUTO_TEST_CASE(test_addTextToMolModel_monomeric_s_sroups)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
-    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
 
     // extended annotations are dropped when loading HELM
     const std::string HELM_WITH_EXTENDED_ANNOTATION =

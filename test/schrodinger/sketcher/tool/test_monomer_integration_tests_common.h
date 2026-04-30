@@ -65,9 +65,7 @@ struct MonomerToolTestFixture {
         m_scene = TestScene::getScene();
         m_mol_model = m_scene->m_mol_model;
         m_sketcher_model = m_scene->m_sketcher_model;
-        m_sketcher_model->setValue(
-            ModelKey::INTERFACE_TYPE,
-            static_cast<int>(InterfaceType::ATOMISTIC_OR_MONOMERIC));
+        // monomeric support is enabled by default
         process_qt_events();
     }
 

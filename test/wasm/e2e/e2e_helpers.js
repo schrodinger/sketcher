@@ -71,10 +71,10 @@ export async function getExportedHelm(page) {
 }
 
 /**
- * Enable monomeric (peptide/nucleic acid) mode on the sketcher.
+ * Opt out of monomer-view-only mode so the test can edit monomers.
  */
 export async function enableMonomericMode(page) {
-  await page.evaluate(() => Module.sketcher_allow_monomeric(true));
+  await page.evaluate(() => Module.sketcher_enable_monomer_edits());
 }
 
 /**

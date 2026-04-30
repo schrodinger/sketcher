@@ -125,8 +125,7 @@ ModelObjsByType::ModelObjsByType(
 {
 }
 
-SketcherWidget::SketcherWidget(QWidget* parent,
-                               const InterfaceTypeType interface_type) :
+SketcherWidget::SketcherWidget(QWidget* parent) :
     QWidget(parent),
     m_undo_stack(new QUndoStack(this)),
     m_mol_model(new MolModel(m_undo_stack))
@@ -267,8 +266,6 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
-
-    setInterfaceType(interface_type);
 }
 
 SketcherWidget::~SketcherWidget() = default;
@@ -488,9 +485,9 @@ void SketcherWidget::fitToScreen(bool selection_only)
     m_ui->view->fitToScreen(selection_only);
 }
 
-void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
+void SketcherWidget::setMonomerViewOnly(const bool view_only)
 {
-    m_sketcher_model->setValue(ModelKey::INTERFACE_TYPE, interface_type);
+    m_sketcher_model->setMonomerViewOnly(view_only);
 }
 
 std::string SketcherWidget::getClipboardContents() const
@@ -900,6 +897,12 @@ void SketcherWidget::showContextMenu(
         return;
     }
 
+    if (m_sketcher_model && m_sketcher_model->isMonomerViewOnly()) {
+        // context menus are disabled in monomer-view-only mode when
+        // monomers are present in the scene
+        return;
+    }
+
     // Filter attachment points for chemical modification menus. Attachment
     // point bonds can't be secondary connections, so secondary_connections
     // needs no filtering.
@@ -1000,9 +1003,11 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
     QWidget::keyPressEvent(event);
 
-    if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
-        // keyboard shortcuts are disabled when select-only mode is active to
-        // prevent the user from switching tools
+    if (m_sketcher_model && (m_sketcher_model->isSelectOnlyModeActive() ||
+                             m_sketcher_model->isMonomerViewOnly())) {
+        // keyboard shortcuts are disabled when select-only mode is active or
+        // monomer-view-only mode is restricting the scene to prevent the user
+        // from switching to an editing tool
         return;
     }
 
@@ -1434,24 +1439,19 @@ void SketcherWidget::onMolModelChanged(const bool molecule_changed)
         // allow the workspace to contain both atomistic and monomeric models at
         // the same time; it must be one or the other (or empty).
         std::unordered_map<ModelKey, QVariant> kv_pairs;
-        auto interface = m_sketcher_model->getInterfaceType();
         if (!m_mol_model->hasMolecularObjects()) {
             kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
                              QVariant::fromValue(MoleculeType::EMPTY));
         } else if (m_mol_model->isMonomeric()) {
             kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
                              QVariant::fromValue(MoleculeType::MONOMERIC));
-            if (interface & InterfaceType::MONOMERIC) {
-                kv_pairs.emplace(ModelKey::TOOL_SET,
-                                 QVariant::fromValue(ToolSet::MONOMERIC));
-            }
+            kv_pairs.emplace(ModelKey::TOOL_SET,
+                             QVariant::fromValue(ToolSet::MONOMERIC));
         } else {
             kv_pairs.emplace(ModelKey::MOLECULE_TYPE,
                              QVariant::fromValue(MoleculeType::ATOMISTIC));
-            if (interface & InterfaceType::ATOMISTIC) {
-                kv_pairs.emplace(ModelKey::TOOL_SET,
-                                 QVariant::fromValue(ToolSet::ATOMISTIC));
-            }
+            kv_pairs.emplace(ModelKey::TOOL_SET,
+                             QVariant::fromValue(ToolSet::ATOMISTIC));
         }
         m_sketcher_model->setValues(kv_pairs);
     }
@@ -1484,16 +1484,9 @@ void SketcherWidget::addTextToMolModel(
     bool mol_to_add_is_monomeric =
         (mol_ptr_ptr && rdkit_extensions::isMonomeric(**mol_ptr_ptr));
 
-    auto interface_type = m_sketcher_model->getInterfaceType();
     auto cur_molecule_type = m_sketcher_model->getMoleculeType();
-    if (mol_to_add_is_monomeric &&
-        !(interface_type & InterfaceType::MONOMERIC)) {
-        throw std::runtime_error("Monomeric models not allowed");
-    } else if (!mol_to_add_is_monomeric &&
-               !(interface_type & InterfaceType::ATOMISTIC)) {
-        throw std::runtime_error("Atomistic models not allowed");
-    } else if (cur_molecule_type == MoleculeType::ATOMISTIC &&
-               mol_to_add_is_monomeric) {
+    if (cur_molecule_type == MoleculeType::ATOMISTIC &&
+        mol_to_add_is_monomeric) {
         throw std::runtime_error(
             "Cannot add a monomeric model when the Sketcher already contains "
             "an atomistic model");

@@ -72,9 +72,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     Q_OBJECT
 
   public:
-    SketcherWidget(
-        QWidget* parent = nullptr,
-        const InterfaceTypeType interface_type = InterfaceType::ATOMISTIC);
+    SketcherWidget(QWidget* parent = nullptr);
     ~SketcherWidget();
 
     /**
@@ -118,10 +116,11 @@ class SKETCHER_API SketcherWidget : public QWidget
     bool isEmpty() const;
 
     /**
-     * Set whether this Sketcher can be used to draw atomistic models (i.e.
-     * small molecules), monomeric models, or both
+     * Enable monomer-view-only mode. When enabled, sidebar draw tools are
+     * disabled and context menus are hidden whenever monomers are present
+     * in the scene.
      */
-    void setInterfaceType(const InterfaceTypeType interface_type);
+    void setMonomerViewOnly(const bool view_only);
 
     /**
      * Enable select-only mode, which removes the toolbars and limits user
