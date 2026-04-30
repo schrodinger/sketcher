@@ -37,6 +37,7 @@
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
+#include "schrodinger/sketcher/menu/monomer_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -46,6 +47,7 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/view.h"
@@ -223,6 +225,9 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     connectContextMenu(*m_selection_context_menu);
     connectContextMenu(*m_sgroup_context_menu);
     connectContextMenu(*m_background_context_menu);
+
+    m_monomer_context_menu = new MonomerContextMenu(this);
+    connectContextMenu(*m_monomer_context_menu);
 
     // create the file and image export dialogs
     m_file_export_dialog = new FileExportDialog(m_sketcher_model, window());
@@ -736,6 +741,12 @@ void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
             });
 }
 
+void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
+{
+    connect(&menu, &MonomerContextMenu::deleteRequested, this,
+            [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
+}
+
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
 {
     using RDKitAtoms = std::unordered_set<const RDKit::Atom*>;
@@ -918,7 +929,16 @@ void SketcherWidget::showContextMenu(
     } else if (atoms.size() && bond_selected) {
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
-        menu = m_atom_context_menu;
+        bool all_monomeric =
+            !filtered_atoms.empty() &&
+            std::ranges::all_of(filtered_atoms, [](const auto* atom) {
+                return is_atom_monomeric(atom);
+            });
+        if (all_monomeric) {
+            menu = m_monomer_context_menu;
+        } else {
+            menu = m_atom_context_menu;
+        }
     } else if (bond_selected) {
         menu = m_bond_context_menu;
     } else if (non_molecular_objects.size()) {
