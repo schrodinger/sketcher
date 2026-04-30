@@ -320,6 +320,12 @@ class SKETCHER_API SketcherWidget : public QWidget
     void updateWatermark();
 
     /**
+     * Swap the watermark pixmap to match the current color scheme so it remains
+     * legible against both light and dark backgrounds.
+     */
+    void updateWatermarkPixmap();
+
+    /**
      * Show the substance group bracket dialog.  If the dialog is accepted, a
      * new S-group will be created for the specified atoms.
      */

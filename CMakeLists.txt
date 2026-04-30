@@ -231,9 +231,35 @@ enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET schrodinger_sketcher)
-add_executable(${APP_TARGET} src/app/main.cpp src/app/crash_handler.cpp)
+set(APP_SOURCES src/app/main.cpp src/app/crash_handler.cpp)
+if(WIN32)
+  # Embed application icon into the .exe (shown in Explorer, taskbar, etc.)
+  list(APPEND APP_SOURCES src/app/sketcher.rc)
+endif()
+if(APPLE)
+  # Build a .app bundle so the icon shows in Finder/Dock and the app is
+  # double-clickable. The .icns is copied into Contents/Resources/ via the
+  # MACOSX_PACKAGE_LOCATION source-file property below.
+  set(SKETCHER_ICNS ${CMAKE_CURRENT_SOURCE_DIR}/src/app/sketcher.icns)
+  list(APPEND APP_SOURCES ${SKETCHER_ICNS})
+  set_source_files_properties(${SKETCHER_ICNS}
+                              PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+endif()
+add_executable(${APP_TARGET} ${APP_SOURCES})
+if(APPLE)
+  set_target_properties(
+    ${APP_TARGET}
+    PROPERTIES MACOSX_BUNDLE TRUE
+               MACOSX_BUNDLE_BUNDLE_NAME "Sketcher"
+               MACOSX_BUNDLE_GUI_IDENTIFIER "com.schrodinger.sketcher"
+               MACOSX_BUNDLE_ICON_FILE "sketcher.icns"
+               MACOSX_BUNDLE_BUNDLE_VERSION "${SKETCHER_VERSION}"
+               MACOSX_BUNDLE_SHORT_VERSION_STRING "${SKETCHER_VERSION}"
+               BUNDLE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sketcher_app)
+endif()
 setup_target(${APP_TARGET})
-set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+set_target_properties(${APP_TARGET} PROPERTIES OUTPUT_NAME "Sketcher"
+                                               RUNTIME_OUTPUT_DIRECTORY
                                                ${CMAKE_BINARY_DIR}/sketcher_app)
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
@@ -288,6 +314,10 @@ if(EMSCRIPTEN)
       ${CMAKE_BINARY_DIR}/sketcher_app/qtloader.js
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/wasm/public/
             ${CMAKE_BINARY_DIR}/sketcher_app/
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/src/schrodinger/sketcher/icons/sketcher-logo.svg
+      ${CMAKE_BINARY_DIR}/sketcher_app/sketcher-logo.svg
     COMMAND python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
             ${CMAKE_BINARY_DIR}/sketcher_app --app-target ${APP_TARGET})
 endif()
@@ -403,6 +433,13 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
 # Use FILES/PROGRAMS instead of TARGETS to preserve rpaths on Mac
-install(PROGRAMS $<TARGET_FILE:${APP_TARGET}> DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(APPLE)
+  # Install the .app bundle directory so the icon and Info.plist are preserved
+  install(DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
+          DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS)
+else()
+  install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
+          DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 install(FILES $<TARGET_FILE:${SKETCHER_TARGET}> $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})

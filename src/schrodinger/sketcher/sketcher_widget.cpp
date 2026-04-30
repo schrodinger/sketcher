@@ -8,7 +8,10 @@
 #include <QGraphicsPixmapItem>
 #include <QKeyEvent>
 #include <QMimeData>
+#include <QPainter>
+#include <QPixmap>
 #include <QScreen>
+#include <QSvgRenderer>
 #include <QWidget>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/Conformer.h>
@@ -257,8 +260,8 @@ SketcherWidget::SketcherWidget(QWidget* parent,
 
     // Set up the watermark after loading fonts because the SVG uses them
     m_watermark_item = new QGraphicsPixmapItem();
-    m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    updateWatermarkPixmap();
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
     connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
@@ -636,6 +639,22 @@ void SketcherWidget::updateWatermark()
     }
 
     m_watermark_item->setVisible(is_empty);
+}
+
+void SketcherWidget::updateWatermarkPixmap()
+{
+    const QString path = m_sketcher_model->hasDarkColorScheme()
+                             ? ":icons/sketcher-watermark-dark.svg"
+                             : ":icons/sketcher-watermark.svg";
+    constexpr int WATERMARK_WIDTH_PX = 140;
+    QSvgRenderer renderer(path);
+    QSize size = renderer.defaultSize();
+    size.scale(WATERMARK_WIDTH_PX, WATERMARK_WIDTH_PX, Qt::KeepAspectRatio);
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    renderer.render(&painter);
+    m_watermark_item->setPixmap(pixmap);
 }
 
 void SketcherWidget::showBracketSubgroupDialogForAtoms(
@@ -1304,6 +1323,8 @@ void SketcherWidget::onBackgroundColorChanged(const QColor& color)
         return;
     }
     view->setBackgroundBrush(QBrush(color));
+    updateWatermarkPixmap();
+    updateWatermark();
 }
 
 void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
