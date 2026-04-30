@@ -419,10 +419,11 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
 if(APPLE)
+  # Install the full .app bundle
   install(DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS)
 else()
-  # Use PROGRAMS/FILES instead of TARGETS to preserve rpaths
+  # Install the application file preserving the build-time rpath
   install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
