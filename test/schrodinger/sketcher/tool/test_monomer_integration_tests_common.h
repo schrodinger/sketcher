@@ -90,7 +90,9 @@ struct MonomerToolTestFixture {
              {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
              {ModelKey::MONOMER_TOOL_TYPE,
               QVariant::fromValue(MonomerToolType::NUCLEIC_ACID)},
-             {ModelKey::NUCLEIC_ACID_TOOL, QVariant::fromValue(tool)}});
+             {ModelKey::NUCLEIC_ACID_TOOL, QVariant::fromValue(tool)},
+             {ModelKey::NUCLEIC_ACID_SYMBOL,
+              QVariant::fromValue(NucleicAcidMutation{tool, ""})}});
         process_qt_events();
     }
 

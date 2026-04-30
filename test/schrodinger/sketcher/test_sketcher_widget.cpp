@@ -13,6 +13,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
@@ -536,9 +537,11 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidBase)
     model->selectAll();
     BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
 
-    // ping with base "U" — only bases should change
-    sk.m_sketcher_model->pingValue(ModelKey::NUCLEIC_ACID_TOOL,
-                                   QVariant::fromValue(NucleicAcidTool::U));
+    // Ping NUCLEIC_ACID_SYMBOL with a NucleicAcidMutation carrying both the
+    // tool (target slot type) and the symbol — only bases should change.
+    sk.m_sketcher_model->pingValue(
+        ModelKey::NUCLEIC_ACID_SYMBOL,
+        NucleicAcidMutation{NucleicAcidTool::U, "U"});
 
     const auto* mol = model->getMol();
     int base_count = 0;
@@ -564,6 +567,58 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidBase)
     BOOST_TEST(base_count == 2);
     BOOST_TEST(sugar_count == 2);
     BOOST_TEST(phosphate_count == 2);
+}
+
+/**
+ * Verify that pinging NUCLEIC_ACID_SYMBOL with a custom analog symbol
+ * (registered in the monomer database with NATURAL_ANALOG = "A") mutates
+ * the selected base monomers to that analog. This exercises the end-to-end
+ * popup-analog-selection pipeline at the model level.
+ */
+BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog)
+{
+    constexpr std::string_view custom_monomer_json =
+        ("[{"
+         "\"symbol\": \"ModA\","
+         "\"polymer_type\": \"RNA\","
+         "\"natural_analog\": \"A\","
+         "\"smiles\": \"NNNN\","
+         "\"core_smiles\": \"NNNN\","
+         "\"name\": \"Modified Adenine\","
+         "\"monomer_type\": \"Backbone\","
+         "\"author\": \"test\","
+         "\"pdbcode\": \"MODA\""
+         "}]");
+    auto& monomer_db =
+        schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    monomer_db.loadMonomersFromJson(std::string(custom_monomer_json));
+
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("RNA1{R(A)P.R(G)P}$$$$V2.0");
+    auto model = sk.m_mol_model;
+
+    model->selectAll();
+    BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
+
+    // Ping with tool=A (the natural analog) and symbol="ModA" — only the
+    // bases should change to "ModA".
+    sk.m_sketcher_model->pingValue(
+        ModelKey::NUCLEIC_ACID_SYMBOL,
+        NucleicAcidMutation{NucleicAcidTool::A, "ModA"});
+
+    const auto* mol = model->getMol();
+    int base_count = 0;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        auto* atom = mol->getAtomWithIdx(i);
+        if (get_monomer_type(atom) == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "ModA");
+            ++base_count;
+        }
+    }
+    BOOST_TEST(base_count == 2);
+
+    monomer_db.resetMonomerDefinitions();
 }
 
 /**

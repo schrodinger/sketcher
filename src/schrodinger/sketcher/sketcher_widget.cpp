@@ -1389,14 +1389,14 @@ void SketcherWidget::applyModelValuePingToTargets(
             m_mol_model->mutateMonomers(atoms, symbol, MonomerType::PEPTIDE);
             break;
         }
-        case ModelKey::NUCLEIC_ACID_TOOL: {
-            auto tool = value.value<NucleicAcidTool>();
-            auto it = NUCLEIC_ACID_TOOL_TO_RES_NAME.find(tool);
-            if (it == NUCLEIC_ACID_TOOL_TO_RES_NAME.end()) {
+        case ModelKey::NUCLEIC_ACID_SYMBOL: {
+            auto mutation = value.value<NucleicAcidMutation>();
+            if (!NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(mutation.tool)) {
                 break; // full nucleotide tools not supported for mutation
             }
-            auto target_type = nucleic_acid_tool_to_monomer_type(tool);
-            m_mol_model->mutateMonomers(atoms, it->second, target_type);
+            auto target_type = nucleic_acid_tool_to_monomer_type(mutation.tool);
+            m_mol_model->mutateMonomers(atoms, mutation.symbol.toStdString(),
+                                        target_type);
             break;
         }
         default:

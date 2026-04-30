@@ -264,6 +264,22 @@ BOOST_AUTO_TEST_CASE(test_nucleic_acid_base_drag_empty_to_empty_uses_pair_ap)
 }
 
 /**
+ * Confirm that NUCLEIC_ACID_SYMBOL overrides the standard tool symbol when
+ * drawing a base. Sets the tool to A but the symbol to C -- the inserted
+ * base should be C, proving the scene tool prefers the analog symbol.
+ */
+BOOST_AUTO_TEST_CASE(test_nucleic_acid_symbol_overrides_tool)
+{
+    MonomerToolTestFixture fix;
+    fix.setNucleicAcidTool(NucleicAcidTool::A);
+    fix.m_sketcher_model->setValue(
+        ModelKey::NUCLEIC_ACID_SYMBOL,
+        QVariant::fromValue(NucleicAcidMutation{NucleicAcidTool::A, "C"}));
+    fix.mouseClick({0, 0});
+    fix.verifyHELM("RNA1{C}$$$$V2.0");
+}
+
+/**
  * Confirm that dragging from empty space to empty space with a nucleic acid
  * phosphate monomer is ignored and doesn't create any monomers
  */
