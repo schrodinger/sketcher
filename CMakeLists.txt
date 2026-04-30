@@ -305,7 +305,8 @@ if(EMSCRIPTEN)
       ${CMAKE_SOURCE_DIR}/src/schrodinger/sketcher/icons/sketcher-logo.svg
       ${CMAKE_BINARY_DIR}/sketcher_app/sketcher-logo.svg
     COMMAND python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
-            ${CMAKE_BINARY_DIR}/sketcher_app --app-target ${APP_TARGET})
+            ${CMAKE_BINARY_DIR}/sketcher_app --app-target
+            $<TARGET_FILE_BASE_NAME:${APP_TARGET}>)
 endif()
 
 # Tests
