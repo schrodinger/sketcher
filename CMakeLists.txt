@@ -233,13 +233,9 @@ enable_qt_moc(${SKETCHER_TARGET})
 set(APP_TARGET schrodinger_sketcher)
 set(APP_SOURCES src/app/main.cpp src/app/crash_handler.cpp)
 if(WIN32)
-  # Embed application icon into the .exe (shown in Explorer, taskbar, etc.)
   list(APPEND APP_SOURCES src/app/sketcher.rc)
 endif()
 if(APPLE)
-  # Build a .app bundle so the icon shows in Finder/Dock and the app is
-  # double-clickable. The .icns is copied into Contents/Resources/ via the
-  # MACOSX_PACKAGE_LOCATION source-file property below.
   set(SKETCHER_ICNS ${CMAKE_CURRENT_SOURCE_DIR}/src/app/sketcher.icns)
   list(APPEND APP_SOURCES ${SKETCHER_ICNS})
   set_source_files_properties(${SKETCHER_ICNS}
@@ -277,16 +273,6 @@ target_link_libraries(
   PRIVATE Boost::boost Boost::filesystem Qt6::Widgets
           ${RDKIT_EXTENSIONS_TARGET} ${SKETCHER_TARGET}
           ${EXTRA_SKETCHER_APP_LINK_FLAGS})
-if(MSVC AND NOT ${BUILD_SHARED_LIBS})
-  # When using MSVC and building static libs, this target generates a file named
-  # schrodinger_sketcher.lib, which conflicts with an identically named file
-  # from the SKETCHER_TARGET, leading to an error from the linker. By setting
-  # IMPORT_SUFFIX, we change the filename for this target to
-  # schrodinger_sketcher_bin.lib.
-  set_target_properties(
-    ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
-endif()
-
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
   target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
@@ -432,12 +418,11 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
-# Use FILES/PROGRAMS instead of TARGETS to preserve rpaths on Mac
 if(APPLE)
-  # Install the .app bundle directory so the icon and Info.plist are preserved
   install(DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS)
 else()
+  # Use PROGRAMS/FILES instead of TARGETS to preserve rpaths
   install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
