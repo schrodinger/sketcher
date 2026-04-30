@@ -1,12 +1,14 @@
 import os
+import shutil
 import subprocess
-from pathlib import Path
 
 import pytest
 
 SMILES_TO_HELM = 'sketcher_app/smiles_to_helm'
 
 DB_ENV_VAR = 'SCHRODINGER_CUSTOM_MONOMER_DB_PATH'
+
+SKETCHER_SOURCE_DIR = os.environ['SKETCHER_SOURCE_DIR']
 
 
 @pytest.fixture(autouse=True)
@@ -28,6 +30,23 @@ def tmp_db(tmp_path):
             os.environ[DB_ENV_VAR] = old_db
 
 
+@pytest.fixture()
+def sqlite_db(tmp_path):
+    """
+    Make a copy of the sqlite test db and return its path. This is to prevent
+    modifications to the original.
+    """
+    src = f'{SKETCHER_SOURCE_DIR}/test/testfiles/X1.db'
+    dest = tmp_path / 'X1.db'
+    shutil.copy(src, dest)
+    return str(dest)
+
+
+@pytest.fixture()
+def json_db():
+    return f'{SKETCHER_SOURCE_DIR}/test/testfiles/X1.json'
+
+
 def smiles_to_helm(smiles: str, db: str | None = None) -> str:
     """
     Helper function to run smiles_to_helm with the given input and optional
@@ -39,8 +58,7 @@ def smiles_to_helm(smiles: str, db: str | None = None) -> str:
     """
     cmd = [SMILES_TO_HELM]
     if db:
-        db_path = str(Path(__file__).parent / db)
-        cmd += ['--db', db_path]
+        cmd += ['--db', db]
     p = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
@@ -74,15 +92,15 @@ def test_X1_no_db():
     assert helm == 'CHEM1{[NC1(C(=O)O)CCCCC1]}$$$$V2.0\n'
 
 
-def test_X1_json_db():
+def test_X1_json_db(json_db):
     smiles = 'O=C(C1(N)CCCCC1)O\n'
-    helm = smiles_to_helm(smiles, db='X1.json')
+    helm = smiles_to_helm(smiles, db=json_db)
     assert helm == 'PEPTIDE1{[X1]}$$$$V2.0\n'
 
 
-def test_X1_sqlite_db():
+def test_X1_sqlite_db(sqlite_db):
     smiles = 'O=C(C1(N)CCCCC1)O\n'
-    helm = smiles_to_helm(smiles, db='X1.db')
+    helm = smiles_to_helm(smiles, db=sqlite_db)
     assert helm == 'PEPTIDE1{[X1]}$$$$V2.0\n'
 
 
