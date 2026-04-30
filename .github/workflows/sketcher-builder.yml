@@ -267,6 +267,7 @@ jobs:
         if: always() && steps.sketcher-build.outcome == 'success'
 
       - name: Upload artifact
+        if: always() && steps.sketcher-build.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
