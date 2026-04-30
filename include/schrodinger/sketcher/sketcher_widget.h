@@ -317,7 +317,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      * Updates the watermark on user drawing atoms or deleting all
      * atoms from the scene
      */
-    void updateWatermark();
+    void updateWatermarkVisibilityAndPos();
 
     /**
      * Swap the watermark pixmap to match the current color scheme so it remains

@@ -40,7 +40,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Welcome to the new Schrödinger Sketcher! Here are some tips to help you get started:</string>
+        <string>Welcome to the Schrödinger Sketcher! Here are some tips to help you get started:</string>
        </property>
       </widget>
      </item>

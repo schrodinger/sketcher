@@ -263,8 +263,8 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
     updateWatermarkPixmap();
     m_scene->addItem(m_watermark_item);
-    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
-    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
+    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermarkVisibilityAndPos);
+    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermarkVisibilityAndPos);
 
     setInterfaceType(interface_type);
 }
@@ -626,7 +626,7 @@ void SketcherWidget::showEditAtomPropertiesDialog(
     dialog->show();
 }
 
-void SketcherWidget::updateWatermark()
+void SketcherWidget::updateWatermarkVisibilityAndPos()
 {
     bool is_empty = m_sketcher_model->sceneIsEmpty();
     if (is_empty) {
@@ -1324,7 +1324,7 @@ void SketcherWidget::onBackgroundColorChanged(const QColor& color)
     }
     view->setBackgroundBrush(QBrush(color));
     updateWatermarkPixmap();
-    updateWatermark();
+    updateWatermarkVisibilityAndPos();
 }
 
 void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)
