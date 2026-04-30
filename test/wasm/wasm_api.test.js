@@ -63,7 +63,6 @@ test.describe('WASM Sketcher API', () => {
       if (!importUnsupported) {
         const importSuccessful = await page.evaluate((exportedText) => {
           Module.sketcher_clear();
-          Module.sketcher_allow_monomeric(true);
           Module.sketcher_import_text(exportedText);
           return !Module.sketcher_is_empty();
         }, exportedText);
@@ -101,7 +100,6 @@ test.describe('WASM Sketcher API', () => {
 
     const hasMonomersAfterHelmImport = await page.evaluate(() => {
       Module.sketcher_clear();
-      Module.sketcher_allow_monomeric(true);
       Module.sketcher_import_text('PEPTIDE1{A.S.D.F.G.H.W}$$$$V2.0');
       return Module.sketcher_has_monomers();
     });
@@ -228,7 +226,6 @@ test.describe('Custom Monomer DB', () => {
 
     const result = await page.evaluate((sql) => {
       Module.sketcher_load_custom_monomers_from_sql(sql);
-      Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
       Module.sketcher_import_text('PEPTIDE1{A.[SqlMon].G}$$$$V2.0');
       return !Module.sketcher_is_empty();
@@ -246,7 +243,6 @@ test.describe('Custom Monomer DB', () => {
 
     await page.evaluate((sql) => {
       Module.sketcher_load_custom_monomers_from_sql(sql);
-      Module.sketcher_allow_monomeric(true);
     }, sql1);
 
     // Verify Sql1 works
@@ -301,7 +297,6 @@ test.describe('Custom Monomer DB', () => {
     // Load first and verify Mon1 works
     await page.evaluate((json) => {
       Module.sketcher_load_custom_monomers(json);
-      Module.sketcher_allow_monomeric(true);
     }, monomer1);
 
     const mon1Works = await page.evaluate(() => {
@@ -318,7 +313,6 @@ test.describe('Custom Monomer DB', () => {
 
     // Both custom monomers should be usable in a HELM import
     const result = await page.evaluate(() => {
-      Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
       Module.sketcher_import_text('PEPTIDE1{[Mon1].[Mon2].A}$$$$V2.0');
       return !Module.sketcher_is_empty();
@@ -343,7 +337,6 @@ test.describe('Custom Monomer DB', () => {
 
     const result = await page.evaluate((json) => {
       Module.sketcher_load_custom_monomers(json);
-      Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
       Module.sketcher_import_text('PEPTIDE1{A.[Sar].G}$$$$V2.0');
       return !Module.sketcher_is_empty();
@@ -421,7 +414,6 @@ test.describe('Custom Monomer DB', () => {
     // Load custom monomer, verify it works, then reset
     const worksBeforeReset = await page.evaluate((json) => {
       Module.sketcher_load_custom_monomers(json);
-      Module.sketcher_allow_monomeric(true);
       Module.sketcher_clear();
       Module.sketcher_import_text('PEPTIDE1{A.[TmpMon].G}$$$$V2.0');
       return !Module.sketcher_is_empty();

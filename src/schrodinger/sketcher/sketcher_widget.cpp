@@ -1003,9 +1003,11 @@ void SketcherWidget::keyPressEvent(QKeyEvent* event)
 {
     QWidget::keyPressEvent(event);
 
-    if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
-        // keyboard shortcuts are disabled when select-only mode is active to
-        // prevent the user from switching tools
+    if (m_sketcher_model && (m_sketcher_model->isSelectOnlyModeActive() ||
+                             m_sketcher_model->isMonomerViewOnly())) {
+        // keyboard shortcuts are disabled when select-only mode is active or
+        // monomer-view-only mode is restricting the scene to prevent the user
+        // from switching to an editing tool
         return;
     }
 
