@@ -34,3 +34,5 @@ TAGS
 # compilation database
 compile_commands.json
 .vscode/
+.venv
+ext_bld
