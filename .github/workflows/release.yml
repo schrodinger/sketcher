@@ -32,8 +32,8 @@ jobs:
 
       - name: Package release assets
         run: |
-          shopt -s extglob
-          for dir in artifacts/sketcher-*-!(memtest); do
+          for dir in artifacts/sketcher-*; do
+            [[ "$dir" == *-memtest ]] && continue
             (cd "$dir" && zip -r "../../$(basename "$dir").zip" .)
           done
 
@@ -44,10 +44,7 @@ jobs:
           tag="v${{ inputs.version }}"
           git tag -f "$tag"
           git push -f origin "$tag"
-          if gh release view "$tag" &>/dev/null; then
-            gh release upload "$tag" sketcher-${{ inputs.version }}-*.zip --clobber
-          else
-            gh release create "$tag" sketcher-${{ inputs.version }}-*.zip \
-              --title "Schrödinger Sketcher ${{ inputs.version }} release" \
-              --target "${{ inputs.version }}"
-          fi
+          gh release delete "$tag" --yes 2>/dev/null || true
+          gh release create "$tag" sketcher-${{ inputs.version }}-*.zip \
+            --title "Schrödinger Sketcher ${{ inputs.version }} release" \
+            --target "${{ inputs.version }}"
