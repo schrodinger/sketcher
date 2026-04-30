@@ -107,13 +107,11 @@ BOOST_AUTO_TEST_CASE(synchronize)
         }
     }
     BOOST_TEST(checked_rectangles == 1);
-    ui->select_tool_btn_2->click();
-    BOOST_TEST(view_synchronized_to_model(wdg));
     ui->move_rotate_btn->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
     ui->erase_btn->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
-    ui->select_tool_btn_1->click();
+    ui->select_tool_btn->click();
     BOOST_TEST(view_synchronized_to_model(wdg));
 
     // Try changing the state of the model. The view should update the state of
