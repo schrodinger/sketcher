@@ -329,5 +329,13 @@ SKETCHER_API unsigned int add_monomer_connection(RDKit::RWMol& mol,
                                                  RDKit::Atom* const monomer_two,
                                                  const std::string_view ap_two);
 
+/**
+ * Change chain names in mol_to_change to ensure that all of the names are
+ * different from those in reference_mol
+ */
+SKETCHER_API void
+ensure_distinct_chain_names(RDKit::ROMol& mol_to_change,
+                            const RDKit::ROMol& reference_mol);
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include <boost/range/combine.hpp>
 #include <boost/range/join.hpp>
 
 #include <QGraphicsItem>
@@ -805,9 +806,14 @@ int get_chain_num(const std::string_view chain_name,
     }
 }
 
-std::string
-get_first_available_chain_name(const RDKit::ROMol& mol,
-                               const rdkit_extensions::ChainType chain_type)
+/**
+ * @return a list containing the num_names lowest numbered chain names (of the
+ * specified type) that don't already exist in the molecule.
+ */
+static std::vector<std::string>
+get_first_available_chain_names(const RDKit::ROMol& mol,
+                                const rdkit_extensions::ChainType chain_type,
+                                const unsigned int num_names)
 {
     auto prefix = rdkit_extensions::toString(chain_type);
     std::unordered_set<int> chain_nums;
@@ -818,11 +824,27 @@ get_first_available_chain_name(const RDKit::ROMol& mol,
         int cur_chain_num = get_chain_num(chain_name, chain_type);
         chain_nums.insert(cur_chain_num);
     }
-    int missing_num = 1;
-    while (chain_nums.contains(missing_num)) {
-        ++missing_num;
+    std::vector<int> missing_nums;
+    missing_nums.reserve(num_names);
+    int num_to_check = 1;
+    while (missing_nums.size() < num_names) {
+        if (!chain_nums.contains(num_to_check)) {
+            missing_nums.push_back(num_to_check);
+        }
+        ++num_to_check;
     }
-    return fmt::format("{}{}", prefix, missing_num);
+    std::vector<std::string> new_names;
+    std::ranges::transform(
+        missing_nums, std::back_inserter(new_names),
+        [&prefix](auto num) { return fmt::format("{}{}", prefix, num); });
+    return new_names;
+}
+
+std::string
+get_first_available_chain_name(const RDKit::ROMol& mol,
+                               const rdkit_extensions::ChainType chain_type)
+{
+    return get_first_available_chain_names(mol, chain_type, 1).front();
 }
 
 std::pair<std::string, bool>
@@ -929,6 +951,44 @@ unsigned int add_monomer_connection(RDKit::RWMol& mol, RDKit::Atom* monomer_one,
         mol, monomer_one->getIdx(), monomer_two->getIdx(), linkage,
         is_custom_bond);
     return bond->getIdx();
+}
+
+void ensure_distinct_chain_names(RDKit::ROMol& mol_to_change,
+                                 const RDKit::ROMol& reference_mol)
+{
+    using rdkit_extensions::ChainType;
+    auto ref_polymer_ids = rdkit_extensions::get_polymer_ids(reference_mol);
+    auto polymer_ids_to_change =
+        rdkit_extensions::get_polymer_ids(mol_to_change);
+    // build a list of all chain names to change, divided up by chain type
+    std::unordered_map<ChainType, std::vector<std::string>> chain_names_by_type;
+    for (const auto& cur_polymer_id : polymer_ids_to_change) {
+        auto cur_chain_type = rdkit_extensions::getChainType(cur_polymer_id);
+        chain_names_by_type[cur_chain_type].push_back(cur_polymer_id);
+    }
+    // create a map of old chain name to new chain name
+    std::unordered_map<std::string, std::string> chain_name_map;
+    for (auto [chain_type, orig_chain_names] : chain_names_by_type) {
+        auto new_chain_names = get_first_available_chain_names(
+            reference_mol, chain_type, orig_chain_names.size());
+        for (const auto& [cur_orig_chain, cur_new_chain] :
+             boost::combine(orig_chain_names, new_chain_names)) {
+            chain_name_map[cur_orig_chain] = cur_new_chain;
+        }
+    }
+    // change the chain names for each atom
+    for (auto atom : mol_to_change.atoms()) {
+        auto* monomer_info = atom->getMonomerInfo();
+        if (monomer_info == nullptr) {
+            continue;
+        }
+        auto* pdb_res_info =
+            static_cast<RDKit::AtomPDBResidueInfo*>(monomer_info);
+        auto chain_id = pdb_res_info->getChainId();
+        if (chain_name_map.contains(chain_id)) {
+            pdb_res_info->setChainId(chain_name_map.at(chain_id));
+        }
+    }
 }
 
 } // namespace sketcher
