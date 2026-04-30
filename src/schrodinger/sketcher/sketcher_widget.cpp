@@ -263,8 +263,10 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
     updateWatermarkPixmap();
     m_scene->addItem(m_watermark_item);
-    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermarkVisibilityAndPos);
-    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermarkVisibilityAndPos);
+    connect(m_scene, &Scene::changed, this,
+            &SketcherWidget::updateWatermarkVisibilityAndPos);
+    connect(m_ui->view, &View::resized, this,
+            &SketcherWidget::updateWatermarkVisibilityAndPos);
 
     setInterfaceType(interface_type);
 }
