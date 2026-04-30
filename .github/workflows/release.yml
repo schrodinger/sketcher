@@ -1,0 +1,53 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version corresponding to the branch to use'
+        required: true
+        type: string
+
+jobs:
+  build:
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: ${{ inputs.version }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+
+      - name: Download release assets
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: sketcher-${{ inputs.version }}-*
+
+      - name: Package release assets
+        run: |
+          shopt -s extglob
+          for dir in artifacts/sketcher-*-!(memtest); do
+            (cd "$dir" && zip -r "../../$(basename "$dir").zip" .)
+          done
+
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="v${{ inputs.version }}"
+          git tag -f "$tag"
+          git push -f origin "$tag"
+          if gh release view "$tag" &>/dev/null; then
+            gh release upload "$tag" sketcher-${{ inputs.version }}-*.zip --clobber
+          else
+            gh release create "$tag" sketcher-${{ inputs.version }}-*.zip \
+              --title "Schrödinger Sketcher ${{ inputs.version }} release" \
+              --target "${{ inputs.version }}"
+          fi
