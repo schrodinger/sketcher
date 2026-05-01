@@ -1,6 +1,7 @@
 #pragma once
 
 #include "schrodinger/rdkit_extensions/definitions.h"
+#include "schrodinger/rdkit_extensions/polymer_group.h"
 
 #include <boost/shared_ptr.hpp>
 #include <string>
@@ -128,6 +129,15 @@ is_supplementary_information_s_group(const RDKit::SubstanceGroup& sgroup);
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API bool
 is_polymer_annotation_s_group(const RDKit::SubstanceGroup& sgroup);
+
+/**
+ * Get the HELMV2.0 string of the extended annotations
+ *
+ * @param mol coarse grain molecule
+ * @return the extended annotations json string
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API std::string
+get_extended_annotations(const ::RDKit::ROMol& mol);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

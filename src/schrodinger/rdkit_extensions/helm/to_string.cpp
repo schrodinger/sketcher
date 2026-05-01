@@ -19,7 +19,9 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 
 using schrodinger::rdkit_extensions::get_connections;
+using schrodinger::rdkit_extensions::get_extended_annotations;
 using schrodinger::rdkit_extensions::get_polymer;
+using schrodinger::rdkit_extensions::get_polymer_groups_helm_string;
 using schrodinger::rdkit_extensions::get_polymer_id;
 using schrodinger::rdkit_extensions::get_polymer_ids;
 using schrodinger::rdkit_extensions::get_residue_number;
@@ -41,6 +43,7 @@ template <class PropType, class RDKitObject> PropType get_property
 {
     return obj->template getProp<PropType>(propname);
 }
+
 } // namespace
 
 [[nodiscard]] std::string rdkit_to_helm(const ::RDKit::ROMol& mol)
@@ -70,33 +73,11 @@ template <class PropType, class RDKitObject> PropType get_property
             get_connection_helm(mol.getBondWithIdx(idx)));
     }
 
-    ss << "$" << boost::join(connections_helm, "|");
-    const auto& sgroups = ::RDKit::getSubstanceGroups(mol);
-    const auto& sgroup =
-        std::find_if(sgroups.begin(), sgroups.end(), [](const auto& sgroup) {
-            return get_property<std::string>(&sgroup, "TYPE") == "DAT" &&
-                   get_property<std::string>(&sgroup, "FIELDNAME") ==
-                       SUPPLEMENTARY_INFORMATION;
-        });
+    ss << "$" << boost::join(connections_helm, "|")  //
+       << '$' << get_polymer_groups_helm_string(mol) //
+       << '$' << get_extended_annotations(mol)       //
+       << "$V2.0";
 
-    std::vector<std::string> supplementary_info;
-    if (sgroup != sgroups.end() &&
-        sgroup->getPropIfPresent("DATAFIELDS", supplementary_info)) {
-        ss << '$' << supplementary_info[0];
-    } else {
-        ss << '$';
-    }
-
-    std::string extended_annotations;
-    if (mol.getPropIfPresent(EXTENDED_ANNOTATIONS, extended_annotations)) {
-        ss << '$' << extended_annotations;
-    } else if (supplementary_info.size() >= 2) {
-        ss << '$' << supplementary_info[1];
-    } else {
-        ss << '$';
-    }
-
-    ss << "$V2.0";
     return ss.str();
 }
 

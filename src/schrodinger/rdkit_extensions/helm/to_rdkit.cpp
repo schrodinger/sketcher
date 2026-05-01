@@ -7,7 +7,9 @@
 #include <fmt/format.h>
 #include <iterator>
 #include <memory>
+#include <ranges>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <rdkit/GraphMol/RWMol.h>
@@ -418,27 +420,42 @@ void add_polymer_groups_and_extended_annotations(
         return;
     }
 
-    ::RDKit::SubstanceGroup sgroup(&mol, "DAT");
-    sgroup.setProp("FIELDNAME", SUPPLEMENTARY_INFORMATION);
-
     // convert polymer groups to HELMV2.0-style strings
-    std::vector<std::string> polymer_group_strings;
-    std::transform(polymer_groups.begin(), polymer_groups.end(),
-                   std::back_inserter(polymer_group_strings),
-                   [](const auto& polymer_group) {
-                       return fmt::format("{}({})", polymer_group.id,
-                                          polymer_group.items);
-                   });
+    for (const auto& polymer_group : polymer_groups) {
+        // Parse entities and ratios from polymer group items string
+        // NOTE: std::views::split isn't fully supported on gcc 11.3
+        std::vector<std::string> items;
+        boost::split(items, std::string{polymer_group.items},
+                     boost::is_any_of("+,"));
 
-    std::vector<std::string> datafields{
-        boost::algorithm::join(polymer_group_strings, "|"),
-        std::string{extended_annotations}};
-    sgroup.setProp("DATAFIELDS", datafields);
-    ::RDKit::addSubstanceGroup(mol, sgroup);
+        // Separate entities and ratios (items may be "ENTITY:RATIO" or just
+        // "ENTITY")
+        std::vector<std::string> entities;
+        std::vector<std::string> ratios;
+        entities.reserve(items.size());
+        ratios.reserve(items.size());
 
-    // NOTE: For python apis
+        for (const auto& item : items) {
+            auto colon_pos = item.find(':');
+            if (colon_pos == std::string::npos) {
+                entities.push_back(item);
+                ratios.push_back("");
+            } else {
+                entities.push_back(item.substr(0, colon_pos));
+                ratios.push_back(item.substr(colon_pos + 1));
+            }
+        }
+
+        // Create substance group representation of the polymer group
+        auto group_type = polymer_group.is_polymer_union
+                              ? PolymerGroupType::UNION
+                              : PolymerGroupType::EXCLUSIVE_LIST;
+        add_polymer_group(mol, std::string{polymer_group.id}, group_type,
+                          entities, ratios);
+    }
+
     if (!extended_annotations.empty()) {
-        mol.setProp(EXTENDED_ANNOTATIONS, std::string(extended_annotations));
+        mol.setProp(EXTENDED_ANNOTATIONS, std::string{extended_annotations});
     }
 }
 } // namespace

@@ -391,10 +391,7 @@ BOOST_DATA_TEST_CASE(TestPolymerGroups,
     // CHEM1{*}|CHEM2{*}$$G1(CHEM1:0.5,CHEM2:0.1-1.3)$$V2.0
     const auto mol =
         helm_to_rdkit("CHEM1{*}|CHEM2{*}$$" + polymer_groups + "$$V2.0");
-    auto polymer_group_sgroup = get_sgroups_from_rwmol(*mol).back();
-    BOOST_TEST(polymer_groups ==
-               polymer_group_sgroup.template getProp<std::vector<std::string>>(
-                   "DATAFIELDS")[0]);
+    BOOST_TEST(polymer_groups == get_polymer_groups_helm_string(*mol));
 };
 
 BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
@@ -410,10 +407,7 @@ BOOST_AUTO_TEST_CASE(TestExtendedAnnotations)
     const auto mol =
         helm_to_rdkit("PEPTIDE1{L.V.A}$$$" + annotations + "$V2.0");
 
-    auto annotation_sgroup = get_sgroups_from_rwmol(*mol).back();
-    BOOST_TEST(annotations ==
-               annotation_sgroup.template getProp<std::vector<std::string>>(
-                   "DATAFIELDS")[1]);
+    BOOST_TEST(annotations == get_extended_annotations(*mol));
 };
 
 BOOST_DATA_TEST_CASE_F(
