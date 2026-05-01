@@ -137,7 +137,13 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
 bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 {
     std::unordered_set<int> new_attachment_dummies;
-    for (auto& atom : rdk_mol.atoms()) {
+    // We can't use rdk_mol.atoms() because adding new atoms below
+    // will invalidate the iterators. Using num_atoms in the loop
+    // prevents us from checking rdk_mol.size() in each iteration
+    // and potentially checking atoms we just added.
+    const auto num_atoms = rdk_mol.getNumAtoms();
+    for (auto i = 0u; i < num_atoms; ++i) {
+        auto atom = rdk_mol.getAtomWithIdx(i);
         int attach_point_type{0};
         if (atom->getPropIfPresent(RDKit::common_properties::molAttachPoint,
                                    attach_point_type)) {
@@ -551,8 +557,9 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             mol = base64_to_mol<RDKit::RWMol, RDKit::ROMol>(
-                text, (void (*)(const std::string&, RDKit::ROMol*)) &
-                          RDKit::MolPickler::molFromPickle);
+                text,
+                (void (*)(const std::string&,
+                          RDKit::ROMol*))&RDKit::MolPickler::molFromPickle);
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
@@ -722,9 +729,9 @@ to_rdkit_reaction(const std::string& text, const Format format)
         case Format::RDMOL_BINARY_BASE64:
             rxn =
                 base64_to_mol<RDKit::ChemicalReaction, RDKit::ChemicalReaction>(
-                    text,
-                    (void (*)(const std::string&, RDKit::ChemicalReaction*)) &
-                        RDKit::ReactionPickler::reactionFromPickle);
+                    text, (void (*)(const std::string&,
+                                    RDKit::ChemicalReaction*))&RDKit::
+                              ReactionPickler::reactionFromPickle);
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES:
@@ -807,8 +814,8 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ROMol>(
                 mol.get(),
-                (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
-                    RDKit::MolPickler::pickleMol);
+                (void (*)(const RDKit::ROMol*, std::string&,
+                          unsigned int))&RDKit::MolPickler::pickleMol);
         case Format::SMILES:
             return RDKit::MolToSmiles(*mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
@@ -873,9 +880,10 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ChemicalReaction>(
-                &rxn, (void (*)(const RDKit::ChemicalReaction*, std::string&,
-                                unsigned int)) &
-                          RDKit::ReactionPickler::pickleReaction);
+                &rxn,
+                (void (*)(
+                    const RDKit::ChemicalReaction*, std::string&,
+                    unsigned int))&RDKit::ReactionPickler::pickleReaction);
         case Format::SMILES:
             return RDKit::ChemicalReactionToRxnSmiles(rxn);
         case Format::EXTENDED_SMILES:
