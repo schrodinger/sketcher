@@ -2932,6 +2932,9 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
         add_empty_3d_conformer(mol);
     }
     m_mol.insertMol(mol);
+    if (is_monomeric) {
+        m_mol.setProp(HELM_MODEL, true);
+    }
 
     for (auto& sgroup : getSubstanceGroups(m_mol)) {
         setTagForSGroup(sgroup, m_next_s_group_tag++);

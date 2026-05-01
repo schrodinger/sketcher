@@ -4034,6 +4034,38 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
 }
 
 /**
+ * Clean Up should not distort coordinates of a monomeric structure.
+ */
+BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_monomeric_SKETCH_2716,
+                     *utf::tolerance(0.01))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    auto mol = model.getMol();
+
+    import_mol_text(&model,
+                    "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0");
+    BOOST_REQUIRE(model.isMonomeric());
+
+    auto& orig_conf = mol->getConformer();
+    std::vector<RDGeom::Point3D> original_coords;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        original_coords.push_back(orig_conf.getAtomPos(i));
+    }
+
+    model.regenerateCoordinates();
+
+    BOOST_REQUIRE(mol->getNumAtoms() == original_coords.size());
+    auto& new_conf = mol->getConformer();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        const auto& orig = original_coords[i];
+        const auto& curr = new_conf.getAtomPos(i);
+        BOOST_TEST(orig.x == curr.x);
+        BOOST_TEST(orig.y == curr.y);
+    }
+}
+
+/**
  * Verify that mutateMonomers changes the res name of all peptide monomers
  * and that the mutation is undoable.
  */
