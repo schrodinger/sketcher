@@ -22,10 +22,10 @@ namespace sketcher
 
 // The HELM string we use to generate the nucleotide fragments and the
 // associated atom indices of the monomers.
-constexpr std::string_view NT_HELM_FMT = "RNA1{{{}.{}({})}}$$$$V2.0";
-constexpr unsigned int PHOS_IDX = 0;
-constexpr unsigned int SUGAR_IDX = 1;
-constexpr unsigned int BASE_IDX = 2;
+constexpr std::string_view NT_HELM_FMT = "RNA1{{{}({}){}}}$$$$V2.0";
+constexpr unsigned int SUGAR_IDX = 0;
+constexpr unsigned int BASE_IDX = 1;
+constexpr unsigned int PHOS_IDX = 2;
 
 /**
  * We round the drag angle to 8 increments, i.e., 45 degree increments, instead
@@ -39,10 +39,10 @@ constexpr int DRAG_ANGLE_ROUNDING = 8;
  * with a base.
  */
 const std::vector<MonomerFragmentAttachmentInfo> NUCLEOTIDE_ATTACHMENT_INFO = {
-    {MonomerType::NA_PHOSPHATE, ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
-     SUGAR_IDX, ap_model_name_for(NASugarAP::THREE_PRIME)},
-    {MonomerType::NA_SUGAR, ap_model_name_for(NASugarAP::THREE_PRIME), PHOS_IDX,
-     ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR)},
+    {MonomerType::NA_PHOSPHATE, ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR),
+     SUGAR_IDX, ap_model_name_for(NASugarAP::FIVE_PRIME)},
+    {MonomerType::NA_SUGAR, ap_model_name_for(NASugarAP::FIVE_PRIME), PHOS_IDX,
+     ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)},
     {MonomerType::NA_BASE, NA_BASE_AP_PAIR, BASE_IDX, NA_BASE_AP_PAIR}};
 
 /**
@@ -65,8 +65,8 @@ get_nucleotide_fragment_scene_tool(const std::string& sugar,
         }
     };
 
-    auto nt_helm = fmt::format(NT_HELM_FMT, to_helm_monomer(phos),
-                               to_helm_monomer(sugar), to_helm_monomer(base));
+    auto nt_helm = fmt::format(NT_HELM_FMT, to_helm_monomer(sugar),
+                               to_helm_monomer(base), to_helm_monomer(phos));
     auto mol =
         rdkit_extensions::to_rdkit(nt_helm, rdkit_extensions::Format::HELM);
     prepare_mol(*mol);
