@@ -557,9 +557,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             mol = base64_to_mol<RDKit::RWMol, RDKit::ROMol>(
-                text,
-                (void (*)(const std::string&,
-                          RDKit::ROMol*))&RDKit::MolPickler::molFromPickle);
+                text, (void (*)(const std::string&, RDKit::ROMol*)) &
+                          RDKit::MolPickler::molFromPickle);
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
@@ -729,9 +728,9 @@ to_rdkit_reaction(const std::string& text, const Format format)
         case Format::RDMOL_BINARY_BASE64:
             rxn =
                 base64_to_mol<RDKit::ChemicalReaction, RDKit::ChemicalReaction>(
-                    text, (void (*)(const std::string&,
-                                    RDKit::ChemicalReaction*))&RDKit::
-                              ReactionPickler::reactionFromPickle);
+                    text,
+                    (void (*)(const std::string&, RDKit::ChemicalReaction*)) &
+                        RDKit::ReactionPickler::reactionFromPickle);
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES:
@@ -814,8 +813,8 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ROMol>(
                 mol.get(),
-                (void (*)(const RDKit::ROMol*, std::string&,
-                          unsigned int))&RDKit::MolPickler::pickleMol);
+                (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
+                    RDKit::MolPickler::pickleMol);
         case Format::SMILES:
             return RDKit::MolToSmiles(*mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
@@ -880,10 +879,9 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ChemicalReaction>(
-                &rxn,
-                (void (*)(
-                    const RDKit::ChemicalReaction*, std::string&,
-                    unsigned int))&RDKit::ReactionPickler::pickleReaction);
+                &rxn, (void (*)(const RDKit::ChemicalReaction*, std::string&,
+                                unsigned int)) &
+                          RDKit::ReactionPickler::pickleReaction);
         case Format::SMILES:
             return RDKit::ChemicalReactionToRxnSmiles(rxn);
         case Format::EXTENDED_SMILES:
