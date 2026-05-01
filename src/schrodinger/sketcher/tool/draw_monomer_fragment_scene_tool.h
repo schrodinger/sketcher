@@ -90,6 +90,7 @@ class SKETCHER_API DrawMonomerFragmentSceneTool
         const Fonts& fonts, Scene* scene, MolModel* mol_model);
 
     // Reimplemented AbstractSceneTool methods
+    QPixmap createDefaultCursorPixmap() const override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
     void onLeftButtonPress(QGraphicsSceneMouseEvent* const event) override;
