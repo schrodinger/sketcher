@@ -46,5 +46,6 @@ jobs:
           git push -f origin "$tag"
           gh release delete "$tag" --yes 2>/dev/null || true
           gh release create "$tag" sketcher-${{ inputs.version }}-*.zip \
-            --title "Schrödinger Sketcher ${{ inputs.version }} release" \
+            --title "${{ inputs.version }}" \
+            --notes "Schrödinger Sketcher ${{ inputs.version }} release" \
             --target "${{ inputs.version }}"
