@@ -137,7 +137,13 @@ void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
 bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 {
     std::unordered_set<int> new_attachment_dummies;
-    for (auto& atom : rdk_mol.atoms()) {
+    // We can't use rdk_mol.atoms() because adding new atoms below
+    // will invalidate the iterators. Using num_atoms in the loop
+    // prevents us from checking rdk_mol.size() in each iteration
+    // and potentially checking atoms we just added.
+    const auto num_atoms = rdk_mol.getNumAtoms();
+    for (auto j = 0u; j < num_atoms; ++j) {
+        auto atom = rdk_mol.getAtomWithIdx(j);
         int attach_point_type{0};
         if (atom->getPropIfPresent(RDKit::common_properties::molAttachPoint,
                                    attach_point_type)) {

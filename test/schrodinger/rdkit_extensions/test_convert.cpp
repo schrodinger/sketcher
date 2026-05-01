@@ -287,17 +287,16 @@ M  V30 6 4 6 1
             // PDB is always kekulized
             {Format::PDB,
              R"PDB(
-CONECT    1    2    2    6
-CONECT    2    3
-CONECT    3    4    4
-CONECT    4    5
-CONECT    5    6    6
+CONECT    1    2    6    6
+CONECT    2    3    3
+CONECT    3    4
+CONECT    4    5    5
+CONECT    5    6
 )PDB"},
         };
 
-        auto molblock_out = to_string(*mol, sample);
-        BOOST_REQUIRE_NE(molblock_out.find(references[sample]),
-                         std::string::npos);
+        auto out = to_string(*mol, sample);
+        BOOST_REQUIRE_NE(out.find(references[sample]), std::string::npos);
     }
 
     // Kekulized mol
@@ -306,39 +305,38 @@ CONECT    5    6    6
         std::map<Format, std::string> references{
             {Format::SMILES, "C1=CC=CC=C1"},
             {Format::EXTENDED_SMILES, "C1=CC=CC=C1"},
-            {Format::SMARTS, "[#6]1=[#6]-[#6]=[#6]-[#6]=[#6]-1"},
+            {Format::SMARTS, "[#6]1-[#6]=[#6]-[#6]=[#6]-[#6]=1"},
             {Format::MDL_MOLV2000, R"CTAB(
-  1  2  2  0
-  2  3  1  0
-  3  4  2  0
-  4  5  1  0
-  5  6  2  0
-  6  1  1  0
+  1  2  1  0
+  2  3  2  0
+  3  4  1  0
+  4  5  2  0
+  5  6  1  0
+  6  1  2  0
 )CTAB"},
             {Format::MDL_MOLV3000, R"CTAB(
-M  V30 1 2 1 2
-M  V30 2 1 2 3
-M  V30 3 2 3 4
-M  V30 4 1 4 5
-M  V30 5 2 5 6
-M  V30 6 1 6 1
+M  V30 1 1 1 2
+M  V30 2 2 2 3
+M  V30 3 1 3 4
+M  V30 4 2 4 5
+M  V30 5 1 5 6
+M  V30 6 2 6 1
 )CTAB"},
             // INCHI is always kekulized
             {Format::INCHI, "InChI=1S/C6H6/c1-2-4-6-5-3-1/h1-6H"},
             // PDB is always kekulized
             {Format::PDB,
              R"PDB(
-CONECT    1    2    2    6
-CONECT    2    3
-CONECT    3    4    4
-CONECT    4    5
-CONECT    5    6    6
+CONECT    1    2    6    6
+CONECT    2    3    3
+CONECT    3    4
+CONECT    4    5    5
+CONECT    5    6
 )PDB"},
         };
 
-        auto molblock_out = to_string(*mol, sample);
-        BOOST_REQUIRE_NE(molblock_out.find(references[sample]),
-                         std::string::npos);
+        auto out = to_string(*mol, sample);
+        BOOST_REQUIRE_NE(out.find(references[sample]), std::string::npos);
     }
 }
 
