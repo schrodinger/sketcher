@@ -142,8 +142,8 @@ bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
     // prevents us from checking rdk_mol.size() in each iteration
     // and potentially checking atoms we just added.
     const auto num_atoms = rdk_mol.getNumAtoms();
-    for (auto i = 0u; i < num_atoms; ++i) {
-        auto atom = rdk_mol.getAtomWithIdx(i);
+    for (auto j = 0u; j < num_atoms; ++j) {
+        auto atom = rdk_mol.getAtomWithIdx(j);
         int attach_point_type{0};
         if (atom->getPropIfPresent(RDKit::common_properties::molAttachPoint,
                                    attach_point_type)) {
