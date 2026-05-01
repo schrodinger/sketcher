@@ -42,7 +42,7 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
     NUMBERED_AP_NAMES_BY_MONOMER_TYPE = {
         {MonomerType::PEPTIDE, {"N", "C", "X"}},
         {MonomerType::NA_BASE, {"N1/9"}},
-        {MonomerType::NA_SUGAR, {"3'", "5'", "1'"}},
+        {MonomerType::NA_SUGAR, {"5'", "3'", "1'"}},
 };
 
 // standard attachment point names that don't follow the "R#" naming scheme
