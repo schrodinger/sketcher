@@ -20,10 +20,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-namespace
-{
-
-bool all_peptide(const std::unordered_set<const RDKit::Atom*>& atoms)
+static bool all_peptide(const std::unordered_set<const RDKit::Atom*>& atoms)
 {
     if (atoms.empty()) {
         return false;
@@ -33,7 +30,8 @@ bool all_peptide(const std::unordered_set<const RDKit::Atom*>& atoms)
     });
 }
 
-rdkit_extensions::opt_string_t peptide_natural_analog(std::string_view sym)
+static rdkit_extensions::opt_string_t
+get_peptide_natural_analog(std::string_view sym)
 {
     return rdkit_extensions::MonomerDatabase::instance().getNaturalAnalog(
         std::string(sym), rdkit_extensions::ChainType::PEPTIDE);
@@ -42,18 +40,18 @@ rdkit_extensions::opt_string_t peptide_natural_analog(std::string_view sym)
 // `dFoo` is the D-form of `Foo` iff both exist as PEPTIDEs and share
 // the same NATURAL_ANALOG. Prefix alone is unsafe — a custom DB could
 // name an entry `dXyz` with no semantic link to `Xyz`.
-bool is_d_form(std::string_view sym)
+static bool is_d_form(std::string_view sym)
 {
     if (sym.size() < 2 || sym.front() != 'd') {
         return false;
     }
-    auto sym_analog = peptide_natural_analog(sym);
-    auto stripped_analog = peptide_natural_analog(sym.substr(1));
+    auto sym_analog = get_peptide_natural_analog(sym);
+    auto stripped_analog = get_peptide_natural_analog(sym.substr(1));
     return sym_analog && stripped_analog && !sym_analog->empty() &&
            *sym_analog == *stripped_analog;
 }
 
-std::optional<std::string> toggle_d_form_symbol(std::string_view sym)
+static std::optional<std::string> toggle_d_form_symbol(std::string_view sym)
 {
     if (is_d_form(sym)) {
         // Stripping the prefix is safe: is_d_form only succeeds when
@@ -63,8 +61,8 @@ std::optional<std::string> toggle_d_form_symbol(std::string_view sym)
     // L → D: candidate "d" + sym is a true D-form when both sides
     // exist in the DB AND share the same NATURAL_ANALOG.
     auto candidate = std::string("d") + std::string(sym);
-    auto candidate_analog = peptide_natural_analog(candidate);
-    auto sym_analog = peptide_natural_analog(sym);
+    auto candidate_analog = get_peptide_natural_analog(candidate);
+    auto sym_analog = get_peptide_natural_analog(sym);
     if (candidate_analog && sym_analog && !candidate_analog->empty() &&
         *candidate_analog == *sym_analog) {
         return candidate;
@@ -72,10 +70,14 @@ std::optional<std::string> toggle_d_form_symbol(std::string_view sym)
     return std::nullopt;
 }
 
-// Target D-Form unless every atom is already D-form.
-bool should_target_d_form(const std::unordered_set<const RDKit::Atom*>& atoms)
+// True only when every atom in `atoms` is already a D-form residue.
+// Used to drive the Set D-/L-Form action label and target: when this
+// returns true, the action reads "Set L-Form" and clicking it flips
+// the residues back to L; otherwise it reads "Set D-Form".
+static bool
+all_residues_are_d_form(const std::unordered_set<const RDKit::Atom*>& atoms)
 {
-    return !std::ranges::all_of(atoms, [](const auto* a) {
+    return std::ranges::all_of(atoms, [](const auto* a) {
         return is_d_form(get_monomer_res_name(a));
     });
 }
@@ -85,7 +87,7 @@ bool should_target_d_form(const std::unordered_set<const RDKit::Atom*>& atoms)
 // no DB counterpart are dropped. Returns one MonomerMutation per
 // distinct target symbol so the receiver can coalesce them under one
 // undo entry.
-std::vector<MonomerMutation>
+static std::vector<MonomerMutation>
 build_d_form_batch(const std::unordered_set<const RDKit::Atom*>& atoms,
                    bool target_d_form)
 {
@@ -111,7 +113,7 @@ build_d_form_batch(const std::unordered_set<const RDKit::Atom*>& atoms,
 // Filter to the atoms whose current symbol differs from `target` —
 // avoids pushing a no-op mutation (and a useless undo entry) when the
 // user picks a target that the residue is already at.
-std::unordered_set<const RDKit::Atom*>
+static std::unordered_set<const RDKit::Atom*>
 atoms_needing_mutation(const std::unordered_set<const RDKit::Atom*>& atoms,
                        std::string_view target)
 {
@@ -123,8 +125,6 @@ atoms_needing_mutation(const std::unordered_set<const RDKit::Atom*>& atoms,
     }
     return out;
 }
-
-} // namespace
 
 MonomerContextMenu::MonomerContextMenu(QWidget* parent) :
     AbstractContextMenu(parent)
@@ -193,7 +193,7 @@ void MonomerContextMenu::createMutateResidueSubMenu()
 void MonomerContextMenu::createSetDFormAction()
 {
     m_set_d_form_action = addAction("Set D-Form", this, [this]() {
-        const bool target_d_form = should_target_d_form(m_atoms);
+        const bool target_d_form = !all_residues_are_d_form(m_atoms);
         auto batch = build_d_form_batch(m_atoms, target_d_form);
         if (batch.empty()) {
             return;
@@ -236,7 +236,7 @@ void MonomerContextMenu::updateActions()
             break;
         }
     }
-    const bool target_d_form = should_target_d_form(m_atoms);
+    const bool target_d_form = !all_residues_are_d_form(m_atoms);
     m_set_d_form_action->setText(target_d_form ? "Set D-Form" : "Set L-Form");
     m_set_d_form_action->setEnabled(any_d_form_toggleable);
 }

@@ -84,6 +84,9 @@ struct IndexedMonomerMutation {
  * add/remove/reorder). The caller resolves each batch's indices back
  * to live atoms via `getMol()->getAtomWithIdx(...)` immediately
  * before each mutation.
+ *
+ * Consumes its input — `mutations` is moved-from on return, so
+ * callers should not reference it afterwards.
  */
 static std::vector<IndexedMonomerMutation>
 capture_atom_indices(std::vector<MonomerMutation> mutations)
@@ -788,16 +791,9 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
                 }
                 auto indexed = capture_atom_indices(std::move(mutations));
 
-                // Multi-pair batches (the D-/L-Form toggle when residues map to
-                // multiple target symbols) get wrapped in a single QUndoStack
-                // macro so the user sees one undo entry.
-                const bool batch = indexed.size() > 1;
-                if (batch) {
-                    m_undo_stack->beginMacro(
-                        description.isEmpty()
-                            ? QStringLiteral("Mutate Monomers")
-                            : description);
-                }
+                auto undo_raii = m_mol_model->createUndoMacro(
+                    description.isEmpty() ? QStringLiteral("Mutate Monomers")
+                                          : description);
                 for (auto& [idxs, sym] : indexed) {
                     std::unordered_set<const RDKit::Atom*> resolved;
                     resolved.reserve(idxs.size());
@@ -807,9 +803,6 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
                     }
                     m_mol_model->mutateMonomers(resolved, sym,
                                                 MonomerType::PEPTIDE);
-                }
-                if (batch) {
-                    m_undo_stack->endMacro();
                 }
             });
 }
