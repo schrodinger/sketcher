@@ -1478,6 +1478,24 @@ static void update_post_compute2DCoords(RDKit::RWMol& mol)
     fix_variable_attachment_bond_coordinates(mol);
 }
 
+/**
+ * Sync the mol-level HELM_MODEL property on m_mol to match its current
+ * monomeric state before a coord regeneration. MolModel tracks monomeric
+ * state per-atom (SKETCHER_ATOM_IS_MONOMERIC);
+ * rdkit_extensions::compute2DCoords keys off the mol-level HELM_MODEL property
+ * to choose between the monomer and atomistic layout, so we sync them here so
+ * the correct algorithm runs regardless of how the model was built up or torn
+ * down (SKETCH-2716).
+ */
+static void sync_helm_model_property(bool is_monomeric, RDKit::RWMol& mol)
+{
+    if (is_monomeric) {
+        mol.setProp(HELM_MODEL, true);
+    } else if (mol.hasProp(HELM_MODEL)) {
+        mol.clearProp(HELM_MODEL);
+    }
+}
+
 void MolModel::cleanUpSelection()
 {
     if (!hasSelectedAtoms()) {
@@ -1495,6 +1513,7 @@ void MolModel::cleanUpSelection()
                 frozen_ids.push_back(atom->getIdx());
             }
         }
+        sync_helm_model_property(isMonomeric(), m_mol);
         rdkit_extensions::compute2DCoords(m_mol, frozen_ids);
         update_post_compute2DCoords(m_mol);
     };
@@ -1508,6 +1527,7 @@ void MolModel::regenerateCoordinates()
         m_pluses.clear();
         m_selected_non_molecular_tags.clear();
         if (!hasReactionArrow()) {
+            sync_helm_model_property(isMonomeric(), m_mol);
             rdkit_extensions::compute2DCoords(m_mol);
         } else {
             regenerateReactionCoordinatesCommandFunc();
