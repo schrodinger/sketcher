@@ -231,9 +231,30 @@ enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET schrodinger_sketcher)
-add_executable(${APP_TARGET} src/app/main.cpp src/app/crash_handler.cpp)
+set(APP_SOURCES src/app/main.cpp src/app/crash_handler.cpp)
+if(WIN32)
+  list(APPEND APP_SOURCES src/app/sketcher.rc)
+elseif(APPLE)
+  set(SKETCHER_ICNS ${CMAKE_CURRENT_SOURCE_DIR}/src/app/sketcher.icns)
+  list(APPEND APP_SOURCES ${SKETCHER_ICNS})
+  set_source_files_properties(${SKETCHER_ICNS}
+                              PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+endif()
+add_executable(${APP_TARGET} ${APP_SOURCES})
+if(APPLE)
+  set_target_properties(
+    ${APP_TARGET}
+    PROPERTIES MACOSX_BUNDLE TRUE
+               MACOSX_BUNDLE_BUNDLE_NAME "Sketcher"
+               MACOSX_BUNDLE_GUI_IDENTIFIER "com.schrodinger.sketcher"
+               MACOSX_BUNDLE_ICON_FILE "sketcher.icns"
+               MACOSX_BUNDLE_BUNDLE_VERSION "${SKETCHER_VERSION}"
+               MACOSX_BUNDLE_SHORT_VERSION_STRING "${SKETCHER_VERSION}"
+               BUNDLE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sketcher_app)
+endif()
 setup_target(${APP_TARGET})
-set_target_properties(${APP_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+set_target_properties(${APP_TARGET} PROPERTIES OUTPUT_NAME "Sketcher"
+                                               RUNTIME_OUTPUT_DIRECTORY
                                                ${CMAKE_BINARY_DIR}/sketcher_app)
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
@@ -251,16 +272,6 @@ target_link_libraries(
   PRIVATE Boost::boost Boost::filesystem Qt6::Widgets
           ${RDKIT_EXTENSIONS_TARGET} ${SKETCHER_TARGET}
           ${EXTRA_SKETCHER_APP_LINK_FLAGS})
-if(MSVC AND NOT ${BUILD_SHARED_LIBS})
-  # When using MSVC and building static libs, this target generates a file named
-  # schrodinger_sketcher.lib, which conflicts with an identically named file
-  # from the SKETCHER_TARGET, leading to an error from the linker. By setting
-  # IMPORT_SUFFIX, we change the filename for this target to
-  # schrodinger_sketcher_bin.lib.
-  set_target_properties(
-    ${APP_TARGET} PROPERTIES IMPORT_SUFFIX _bin${CMAKE_IMPORT_LIBRARY_SUFFIX})
-endif()
-
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
   target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
@@ -288,8 +299,13 @@ if(EMSCRIPTEN)
       ${CMAKE_BINARY_DIR}/sketcher_app/qtloader.js
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/wasm/public/
             ${CMAKE_BINARY_DIR}/sketcher_app/
+    COMMAND
+      ${CMAKE_COMMAND} -E copy_if_different
+      ${CMAKE_SOURCE_DIR}/src/schrodinger/sketcher/icons/sketcher-logo.svg
+      ${CMAKE_BINARY_DIR}/sketcher_app/sketcher-logo.svg
     COMMAND python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
-            ${CMAKE_BINARY_DIR}/sketcher_app --app-target ${APP_TARGET})
+            ${CMAKE_BINARY_DIR}/sketcher_app --app-target
+            $<TARGET_FILE_BASE_NAME:${APP_TARGET}>)
 endif()
 
 # Tests
@@ -402,8 +418,15 @@ install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/schrodinger
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
-# Use FILES/PROGRAMS instead of TARGETS to preserve rpaths on Mac
-install(PROGRAMS $<TARGET_FILE:${APP_TARGET}> DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(APPLE)
+  # Install the full .app bundle
+  install(DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
+          DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS)
+else()
+  # Install the application file preserving the build-time rpath
+  install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
+          DESTINATION ${CMAKE_INSTALL_BINDIR})
+endif()
 install(FILES $<TARGET_FILE:${SKETCHER_TARGET}> $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
               $<TARGET_LINKER_FILE:${SKETCHER_TARGET}> $<TARGET_LINKER_FILE:${RDKIT_EXTENSIONS_TARGET}>
         DESTINATION ${CMAKE_INSTALL_LIBDIR})

@@ -1,11 +1,11 @@
-## Schrödinger 2D Sketcher
+## Schrödinger Sketcher
 
 ![build-status](https://github.com/schrodinger/sketcher/actions/workflows/nightly-build.yml/badge.svg?branch=main)
 [![latest release](https://img.shields.io/github/v/release/schrodinger/sketcher)](https://github.com/schrodinger/sketcher/releases)
 
 [![sketcher](https://github.com/schrodinger/sketcher/blob/main/.github/schrodinger-sketcher-screenshot.png)](https://www.schrodinger.com/2dsketcher)
 
-The Schrödinger 2D Sketcher is an open-source application for drawing and editing chemical structures. The entire sketcher is built on top of the RDKit open source toolkit, which serves as its underlying chemical model. It provides a user-friendly interface for creating molecules, reactions, and other chemical diagrams, which can be used independently or integrated into other cheminformatics workflows.
+The Schrödinger Sketcher is an open-source application for drawing and editing chemical structures. Sketcher is entirely built on the RDKit open source toolkit, which serves as its underlying chemical model. It provides a user-friendly interface for creating molecules, reactions, and other chemical diagrams, which can be used independently or integrated into other cheminformatics workflows.
 
 This project is released by Schrödinger, Inc. and is available under an open-source license to foster collaboration and development within the scientific community.
 
@@ -19,9 +19,9 @@ This project is released by Schrödinger, Inc. and is available under an open-so
 
 ## Access and Training
 
-**[Open Access Online Version](https://www.schrodinger.com/2dsketcher)** -- Explore the sketcher directly in your web browser.
+**[Open Access Online Version](https://www.schrodinger.com/2dsketcher)** -- Explore Sketcher directly in your web browser.
 
-**[Training and Video Walkthrough](https://www.schrodinger.com/sites/default/files/s3/public/2D-Sketcher/2023-2/Content/Resources/Videos/2D_Sketcher.mp4)** -- Learn how to use the sketcher with this guided video.
+**[Training and Video Walkthrough](https://www.schrodinger.com/sites/default/files/s3/public/2D-Sketcher/2023-2/Content/Resources/Videos/2D_Sketcher.mp4)** -- Learn how to use Sketcher with this guided video.
 
 ## Build Prerequisites
 
@@ -31,7 +31,7 @@ This project is released by Schrödinger, Inc. and is available under an open-so
 
 ## Support and Community
 
-For questions, support, or discussions related to the Schrödinger 2D Sketcher, please use the [GitHub issue tracker](https://github.com/schrodinger/sketcher/issues).
+For questions, support, or discussions related to the Schrödinger Sketcher, please use the [GitHub issue tracker](https://github.com/schrodinger/sketcher/issues).
 
 To contribute code, please follow these steps:
 

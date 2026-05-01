@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------
- * Crash handler for the standalone schrodinger_sketcher application.
+ * Crash handler for the standalone Sketcher application.
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */

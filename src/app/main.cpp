@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------
- * Schrodinger 2D Sketcher Application
+ * Schrodinger Sketcher Application
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
@@ -17,6 +17,7 @@
 #include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
+#include <QIcon>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStyleHints>
@@ -260,6 +261,7 @@ int main(int argc, char** argv)
 #ifdef SKETCHER_STATIC_DEFINE
     Q_INIT_RESOURCE(sketcher);
 #endif
+    QApplication::setWindowIcon(QIcon(":icons/sketcher-logo.svg"));
 
 #ifdef __EMSCRIPTEN__
     // Only apply this stylesheet for the WASM build
