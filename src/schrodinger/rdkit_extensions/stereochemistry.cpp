@@ -56,6 +56,22 @@ void assign_stereochemistry(RDKit::ROMol& mol)
     bool flagPossibleStereoCenters = true;
     RDKit::MolOps::assignStereochemistry(mol, cleanIt, force,
                                          flagPossibleStereoCenters);
+
+    // After resolution, any double bond that is stereogenic but still
+    // unspecified (e.g., a SMILES with no / or \ markers) is explicitly
+    // marked as a crossed bond, so downstream code does not invent an E/Z
+    // assignment from later coordinate generation. Run after assignment for
+    // inputs whose coords resolve the stereo (MDL, 2D molblocks),
+    // findPotentialStereo would otherwise return Unspecified and we'd
+    // incorrectly tag a bond that the layout already disambiguates.
+    for (const auto& si :
+         RDKit::Chirality::findPotentialStereo(mol, /*cleanIt=*/false)) {
+        if (si.type == RDKit::Chirality::StereoType::Bond_Double &&
+            si.specified == RDKit::Chirality::StereoSpecified::Unspecified) {
+            mol.getBondWithIdx(si.centeredOn)
+                ->setBondDir(RDKit::Bond::BondDir::EITHERDOUBLE);
+        }
+    }
 }
 
 void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)

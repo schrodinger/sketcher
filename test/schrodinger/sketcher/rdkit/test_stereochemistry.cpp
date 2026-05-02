@@ -6,10 +6,13 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/coord_utils.h"
+#include "schrodinger/rdkit_extensions/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 
@@ -99,6 +102,27 @@ BOOST_AUTO_TEST_CASE(test_wedgeMolBonds)
     // the outdated property should be removed after recalculating wedges
     BOOST_CHECK_EQUAL(b->hasProp(RDKit::common_properties::_MolFileBondCfg),
                       false);
+}
+
+/**
+ * SKETCH-2722: assign_stereochemistry tags any stereogenic double bond that
+ * remains Unspecified (e.g., a SMILES with no / or \ markers and no coords)
+ * with BondDir::EITHERDOUBLE, so the bond reads as an explicit crossed bond
+ * rather than "no info" downstream.
+ */
+BOOST_AUTO_TEST_CASE(test_assign_stereochemistry_marks_unspecified_double_bond)
+{
+    // RDKit::SmilesToMol bypasses to_rdkit, so the only stereo handling is
+    // what assign_stereochemistry itself does.
+    std::unique_ptr<RDKit::RWMol> mol(RDKit::SmilesToMol("CC=CCC"));
+    BOOST_REQUIRE(mol != nullptr);
+    BOOST_REQUIRE(mol->getBondBetweenAtoms(1, 2)->getBondDir() ==
+                  RDKit::Bond::BondDir::NONE);
+
+    rdkit_extensions::assign_stereochemistry(*mol);
+
+    BOOST_TEST(mol->getBondBetweenAtoms(1, 2)->getBondDir() ==
+               RDKit::Bond::BondDir::EITHERDOUBLE);
 }
 
 } // namespace sketcher

@@ -2706,6 +2706,22 @@ BOOST_AUTO_TEST_CASE(test_getMolForExport)
     BOOST_TEST(!mol->getBondWithIdx(0)->hasProp("SKETCHER_TAG"));
 }
 
+/**
+ * SKETCH-2722: Pasting a SMILES with an unspecified stereogenic double bond
+ * (CC=CCC) must not introduce an E/Z assignment from the generated 2D
+ * layout. Exporting back to SMILES should not contain / or \ markers.
+ */
+BOOST_AUTO_TEST_CASE(test_smiles_paste_preserves_unspecified_double_bond_stereo)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(&model, "CC=CCC", Format::SMILES);
+
+    auto exported = get_mol_text(&model, Format::SMILES);
+    BOOST_TEST(exported.find('/') == std::string::npos);
+    BOOST_TEST(exported.find('\\') == std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(test_getSelectedMolForExport)
 {
     QUndoStack undo_stack;
