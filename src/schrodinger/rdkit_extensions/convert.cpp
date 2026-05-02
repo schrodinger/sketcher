@@ -693,21 +693,6 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
 
     assign_stereochemistry(*mol);
 
-    // For SMILES input, unspecified double bond stereo centers (no / or \
-    // markers) should be preserved as crossed bonds rather than being resolved
-    // to E or Z by 2D coordinate-based assignment in update_molecule_on_change.
-    if (format == Format::SMILES || format == Format::EXTENDED_SMILES) {
-        for (const auto& si :
-             RDKit::Chirality::findPotentialStereo(*mol, /*cleanIt=*/false)) {
-            if (si.type == RDKit::Chirality::StereoType::Bond_Double &&
-                si.specified ==
-                    RDKit::Chirality::StereoSpecified::Unspecified) {
-                mol->getBondWithIdx(si.centeredOn)
-                    ->setBondDir(RDKit::Bond::BondDir::EITHERDOUBLE);
-            }
-        }
-    }
-
     return mol;
 }
 

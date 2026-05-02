@@ -1092,6 +1092,55 @@ BOOST_DATA_TEST_CASE(test_converting_structures_with_wiggly_bonds,
     BOOST_TEST(test_bond->getBondDir() == RDKit::Bond::UNKNOWN);
 }
 
+/**
+ * SKETCH-2722: A stereogenic double bond left unspecified by the input
+ * (e.g., a SMILES with no / or \ markers) is tagged with
+ * BondDir::EITHERDOUBLE by assign_stereochemistry, so downstream
+ * coordinate-based stereo perception doesn't invent an E/Z assignment.
+ * Inputs that resolve the stereo (explicit / \ markers, or MDL coords)
+ * leave the bond Specified and are not affected.
+ */
+BOOST_AUTO_TEST_CASE(test_unspecified_double_bond_marked_either)
+{
+    // SMILES without / or \: bond gets tagged EITHERDOUBLE.
+    auto unspec = to_rdkit("CC=CCC", Format::SMILES);
+    BOOST_TEST(unspec->getBondBetweenAtoms(1, 2)->getBondDir() ==
+               RDKit::Bond::BondDir::EITHERDOUBLE);
+
+    // SMILES with explicit E/Z markers: user expressed a definite stereo.
+    auto specified = to_rdkit("C/C=C/CC", Format::SMILES);
+    BOOST_TEST(specified->getBondBetweenAtoms(1, 2)->getBondDir() !=
+               RDKit::Bond::BondDir::EITHERDOUBLE);
+
+    // MDL with no CFG but real coords: assign_stereochemistry resolves the
+    // bond from the layout, so it is Specified and not tagged EITHERDOUBLE.
+    auto molblock = R"MDL(
+     RDKit          2D
+
+  5  4  0  0  0  0  0  0  0  0999 V2000
+   -2.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+   -1.0000    0.5000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    0.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    1.0000    0.5000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+    2.0000    0.0000    0.0000 C   0  0  0  0  0  0  0  0  0  0  0  0
+  1  2  1  0
+  2  3  2  0
+  3  4  1  0
+  4  5  1  0
+M  END
+)MDL";
+    auto mdl = to_rdkit(molblock, Format::MDL_MOLV2000);
+    BOOST_TEST(mdl->getBondBetweenAtoms(1, 2)->getBondDir() !=
+               RDKit::Bond::BondDir::EITHERDOUBLE);
+
+    // SMARTS without an explicit / or \ on a stereogenic double bond means
+    // "match any stereo", which is what EITHERDOUBLE expresses. The query
+    // pattern gets the same treatment as SMILES.
+    auto smarts = to_rdkit("CC=CCC", Format::SMARTS);
+    BOOST_TEST(smarts->getBondBetweenAtoms(1, 2)->getBondDir() ==
+               RDKit::Bond::BondDir::EITHERDOUBLE);
+}
+
 BOOST_DATA_TEST_CASE(TestCombiningAbsoluteEnhancedStereoGroups,
                      (bdata::make(std::vector<std::string>{
                           "STEABS",
