@@ -60,12 +60,10 @@ void assign_stereochemistry(RDKit::ROMol& mol)
     // After resolution, any double bond that is stereogenic but still
     // unspecified (e.g., a SMILES with no / or \ markers) is explicitly
     // marked as a crossed bond, so downstream code does not invent an E/Z
-    // assignment from later coordinate generation.
-    //
-    // This must run AFTER assignment, not before: for inputs whose coords
-    // resolve the stereo (MDL, 2D molblocks), findPotentialStereo would
-    // otherwise return Unspecified and we'd incorrectly tag a bond that
-    // the layout already disambiguates.
+    // assignment from later coordinate generation. Run after assignment for
+    // inputs whose coords resolve the stereo (MDL, 2D molblocks),
+    // findPotentialStereo would otherwise return Unspecified and we'd
+    // incorrectly tag a bond that the layout already disambiguates.
     for (const auto& si :
          RDKit::Chirality::findPotentialStereo(mol, /*cleanIt=*/false)) {
         if (si.type == RDKit::Chirality::StereoType::Bond_Double &&
