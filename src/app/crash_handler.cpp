@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------
- * Crash handler for the standalone schrodinger_sketcher application.
+ * Crash handler for the standalone Sketcher application.
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
@@ -61,7 +61,7 @@ void write_crash_report(std::string_view reason,
     auto tm = get_local_time();
     auto trace_str = boost::stacktrace::to_string(trace);
     auto report = fmt::format(
-        "=== Schrodinger 2D Sketcher Crash Report ===\n"
+        "=== Schrödinger Sketcher Crash Report ===\n"
         "Version: {} (build {})\n"
         "Time: {:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}\n"
         "Reason: {}\n"
