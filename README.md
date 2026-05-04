@@ -11,11 +11,11 @@ This project is released by Schrödinger, Inc. and is available under an open-so
 
 ## Features
 
-* Intuitive drawing tools for atoms, bonds, rings, and functional groups.
-* Support for many chemical file formats.
-* Cleanup and layout algorithms for generating clear 2D representations.
-* Support for stereochemistry representation.
-* Integration capabilities for use in other applications, including as a web component.
+- Intuitive drawing tools for atoms, bonds, rings, and functional groups.
+- Support for many chemical file formats.
+- Cleanup and layout algorithms for generating clear 2D representations.
+- Support for stereochemistry representation.
+- Integration capabilities for use in other applications, including as a web component.
 
 ## Access and Training
 
@@ -25,9 +25,9 @@ This project is released by Schrödinger, Inc. and is available under an open-so
 
 ## Build Prerequisites
 
-* A C++ compiler supporting C++20 or later
-* CMake (version 3.24 or later)
-* All [required dependencies](https://github.com/schrodinger/sketcher/blob/main/external/versions.json) installed and accessible to CMake
+- A C++ compiler supporting C++20 or later
+- CMake (version 3.24 or later)
+- All [required dependencies](https://github.com/schrodinger/sketcher/blob/main/external/versions.json) installed and accessible to CMake
 
 ## Support and Community
 
@@ -35,11 +35,11 @@ For questions, support, or discussions related to the Schrödinger Sketcher, ple
 
 To contribute code, please follow these steps:
 
-* **Fork the repository:** Fork the `schrodinger/sketcher` repository to your own GitHub account.
-* **Create a branch:** Create a new branch in your forked repository for your changes.
-* **Implement your changes:** Make your code changes or additions.
-* **Test your changes:** Ensure your changes build correctly and pass any existing tests. Add new tests for new features if applicable.
-* **Submit a Pull Request:** Open a pull request from your branch to the `main` branch of the `schrodinger/sketcher` repository. Please provide a clear description of your changes.
+- **Fork the repository:** Fork the `schrodinger/sketcher` repository to your own GitHub account.
+- **Create a branch:** Create a new branch in your forked repository for your changes.
+- **Implement your changes:** Make your code changes or additions.
+- **Test your changes:** Ensure your changes build correctly and pass any existing tests. Add new tests for new features if applicable.
+- **Submit a Pull Request:** Open a pull request from your branch to the `main` branch of the `schrodinger/sketcher` repository. Please provide a clear description of your changes.
 
 All contributions are subject to the terms of the BSD license.
 

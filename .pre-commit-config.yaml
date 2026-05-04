@@ -1,3 +1,6 @@
+# All hooks are `language: system` — they invoke binaries that must already be
+# installed on the developer's machine (the CI workflow installs them via pip).
+
 repos:
   - repo: local
     hooks:
@@ -7,9 +10,32 @@ repos:
         language: system
         files: \.(cpp|h)$
         args: [--dry-run, --Werror]
+
       - id: prettier
         name: prettier
         entry: npx prettier
         language: system
-        files: \.js$
+        files: \.(js|json|yml|yaml|md|html)$
         args: [--check]
+
+      - id: yapf
+        name: yapf
+        entry: yapf
+        language: system
+        files: \.py$
+        args: [--diff, --parallel]
+
+      - id: cmake-format
+        name: cmake-format
+        entry: cmake-format
+        language: system
+        files: (^|/)CMakeLists\.txt$|\.cmake$
+        args: [--check]
+
+      - id: forbid-non-canonical-cpp-extensions
+        name: Forbid .c/.hpp/.cc/.cxx/.hxx (use .h or .cpp)
+        entry: |
+          C/C++ files in this repo must use .h (headers) or .cpp (sources).
+          Rename the file before committing.
+        language: fail
+        files: \.(c|hpp|cc|cxx|hxx)$
