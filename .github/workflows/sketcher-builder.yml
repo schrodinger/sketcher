@@ -24,10 +24,13 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Install pre-commit
-        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6 yapf==0.40.2 cmake-format==0.6.13
+        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6 yapf==0.40.2 cmake-format==0.6.13 pytest
 
       - name: Code formatting check
         run: pre-commit run --all-files
+
+      - name: Test GitHub Actions helpers
+        run: pytest test/github_actions/
 
   build-test:
     needs: pre-commit
