@@ -1178,7 +1178,13 @@ buildMonomerMol(const RDKit::ROMol& atomistic_mol,
 
             static constexpr bool update_label = true;
             static constexpr bool take_ownership = true;
-            for (auto at : mol_fragment->atoms()) {
+            // We can't use mol_fragment->atoms() because
+            // mol_fragment->addAtom() may invalidate iterators.
+            // We want to use num_atoms in the loop to not look
+            // at the newly added atoms.
+            const auto num_atoms = mol_fragment->getNumAtoms();
+            for (auto i = 0u; i < num_atoms; ++i) {
+                auto at = mol_fragment->getAtomWithIdx(i);
                 unsigned int map_no;
                 if (at->getPropIfPresent(ATTCH_PROP, map_no)) {
                     // add dummy atom with this attachment point
@@ -1432,7 +1438,13 @@ std::string getMonomerSmiles(RDKit::ROMol& mol,
     static constexpr bool update_label = true;
     static constexpr bool take_ownership = true;
     for (const auto& [_, ref_idx] : attch_idxs) {
-        for (auto at : mol_fragment->atoms()) {
+        // We can't use mol_fragment->atoms() because
+        // mol_fragment->addAtom() may invalidate iterators.
+        // We want to use num_atoms in the loop to not look
+        // at the newly added atoms.
+        const auto num_atoms = mol_fragment->getNumAtoms();
+        for (auto i = 0u; i < num_atoms; ++i) {
+            auto at = mol_fragment->getAtomWithIdx(i);
             int orig_idx;
             if (at->getPropIfPresent(REFERENCE_IDX, orig_idx) &&
                 orig_idx == ref_idx) {
