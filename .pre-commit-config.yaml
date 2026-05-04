@@ -32,10 +32,11 @@ repos:
         files: (^|/)CMakeLists\.txt$|\.cmake$
         args: [--check]
 
+      # `language: fail` would be cleaner here but isn't available in
+      # pre-commit < 2.0; `entry: false` always exits 1, so the hook fails
+      # for any file matching the regex. The hook name is the error message.
       - id: forbid-non-canonical-cpp-extensions
-        name: Forbid .c/.hpp/.cc/.cxx/.hxx (use .h or .cpp)
-        entry: |
-          C/C++ files in this repo must use .h (headers) or .cpp (sources).
-          Rename the file before committing.
-        language: fail
+        name: C/C++ files must use .h or .cpp (no .c/.hpp/.cc/.cxx/.hxx)
+        entry: "false"
+        language: system
         files: \.(c|hpp|cc|cxx|hxx)$
