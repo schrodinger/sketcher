@@ -29,7 +29,7 @@ runs:
         echo "lib-dir=${BUILD_DIR}/${{ inputs.library }}-${{ inputs.version }}" >> $GITHUB_OUTPUT
         echo "cache-key=${{ inputs.library }}-${{ inputs.version }}-${{ matrix.runner }}-${{ matrix.build-name }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt', 'external/versions.json', 'external/sqlite_cmake/*') }}" >> $GITHUB_OUTPUT
 
-    - uses: actions/cache@v4
+    - uses: actions/cache@v5
       id: cache-check
       with:
         path: ${{ steps.vars.outputs.lib-dir }}
@@ -54,7 +54,7 @@ runs:
     # save the dependency build even if the rest of the build fails
     - name: Save dependency to cache
       if: steps.cache-check.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v5
       with:
         path: ${{ steps.vars.outputs.lib-dir }}
         key: ${{ steps.vars.outputs.cache-key }}

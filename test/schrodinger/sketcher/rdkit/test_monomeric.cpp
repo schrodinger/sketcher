@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(start_phos);
         exp_bound = {{"R2", "", 2, start_sugar, false, Direction::E}};
-        exp_available = {{"R1", "3'", 1, Direction::W}};
+        exp_available = {{"R1", "5'", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
 
@@ -240,7 +240,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(term_phosphate);
         exp_bound = {{"R1", "", 1, term_sugar, false, Direction::W}};
-        exp_available = {{"R2", "5'", 2, Direction::E}};
+        exp_available = {{"R2", "3'", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
     }
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(term_phos_chain_3);
         exp_bound = {{"R1", "", 1, term_phos_chain_2, false, Direction::W}};
-        exp_available = {{"R2", "5'", 2, Direction::E}};
+        exp_available = {{"R2", "3'", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
     }

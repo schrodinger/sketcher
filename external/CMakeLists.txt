@@ -154,25 +154,25 @@ ExternalProject_Add(
 
 # Build Boost library
 set(BOOST_LIBS_TO_INCLUDE
-  # RDKit required libraries
-  assign
-  crc
-  format
-  flyweight
-  graph
-  geometry
-  iostreams
-  json
-  locale
-  multi_array
-  multiprecision
-  program_options
-  rational
-  serialization
-  # rdkit_extensions required libraries
-  bimap
-  filesystem
-  test)
+    # RDKit required libraries
+    assign
+    crc
+    format
+    flyweight
+    graph
+    geometry
+    iostreams
+    json
+    locale
+    multi_array
+    multiprecision
+    program_options
+    rational
+    serialization
+    # rdkit_extensions required libraries
+    bimap
+    filesystem
+    test)
 if(NOT EMSCRIPTEN)
   # on desktop builds, we use stacktrace to print crash reports
   list(APPEND BOOST_LIBS_TO_INCLUDE stacktrace)

@@ -4,6 +4,8 @@
 
 #include <fmt/core.h>
 
+#include <QBitmap>
+
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
@@ -22,10 +24,10 @@ namespace sketcher
 
 // The HELM string we use to generate the nucleotide fragments and the
 // associated atom indices of the monomers.
-constexpr std::string_view NT_HELM_FMT = "RNA1{{{}.{}({})}}$$$$V2.0";
-constexpr unsigned int PHOS_IDX = 0;
-constexpr unsigned int SUGAR_IDX = 1;
-constexpr unsigned int BASE_IDX = 2;
+constexpr std::string_view NT_HELM_FMT = "RNA1{{{}({}){}}}$$$$V2.0";
+constexpr unsigned int SUGAR_IDX = 0;
+constexpr unsigned int BASE_IDX = 1;
+constexpr unsigned int PHOS_IDX = 2;
 
 /**
  * We round the drag angle to 8 increments, i.e., 45 degree increments, instead
@@ -39,10 +41,10 @@ constexpr int DRAG_ANGLE_ROUNDING = 8;
  * with a base.
  */
 const std::vector<MonomerFragmentAttachmentInfo> NUCLEOTIDE_ATTACHMENT_INFO = {
-    {MonomerType::NA_PHOSPHATE, ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
-     SUGAR_IDX, ap_model_name_for(NASugarAP::THREE_PRIME)},
-    {MonomerType::NA_SUGAR, ap_model_name_for(NASugarAP::THREE_PRIME), PHOS_IDX,
-     ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR)},
+    {MonomerType::NA_PHOSPHATE, ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR),
+     SUGAR_IDX, ap_model_name_for(NASugarAP::FIVE_PRIME)},
+    {MonomerType::NA_SUGAR, ap_model_name_for(NASugarAP::FIVE_PRIME), PHOS_IDX,
+     ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)},
     {MonomerType::NA_BASE, NA_BASE_AP_PAIR, BASE_IDX, NA_BASE_AP_PAIR}};
 
 /**
@@ -65,8 +67,8 @@ get_nucleotide_fragment_scene_tool(const std::string& sugar,
         }
     };
 
-    auto nt_helm = fmt::format(NT_HELM_FMT, to_helm_monomer(phos),
-                               to_helm_monomer(sugar), to_helm_monomer(base));
+    auto nt_helm = fmt::format(NT_HELM_FMT, to_helm_monomer(sugar),
+                               to_helm_monomer(base), to_helm_monomer(phos));
     auto mol =
         rdkit_extensions::to_rdkit(nt_helm, rdkit_extensions::Format::HELM);
     prepare_mol(*mol);
@@ -108,6 +110,55 @@ DrawMonomerFragmentSceneTool::DrawMonomerFragmentSceneTool(
 {
     set_all_atoms_monomeric(m_frag);
     m_frag.getConformer().set3D(false);
+}
+
+QPixmap DrawMonomerFragmentSceneTool::createDefaultCursorPixmap() const
+{
+    // make the coordinates 25% smaller to shrink the connection size, which
+    // gives us more room for monomers
+    static const double COORD_ADJUSTMENT = 0.75;
+    // make the cursor hint 25% larger than a typical cursor hint so that the
+    // labels are at least potentially readable
+    static const double CURSOR_HINT_SCALE = 1.25;
+    // use a standard font size so that the cursor hints don't shift based on
+    // the user's font settings (since a larger font will just make the whole
+    // molecule larger, meaning it will be scaled down more to fit in the cursor
+    // hint, meaning that the actual size of the letters in the image won't
+    // change)
+    static const int FONT_SIZE = 18;
+
+    auto frag_copy = std::make_shared<RDKit::RWMol>(m_frag);
+    auto& conf = frag_copy->getConformer();
+    for (unsigned int i = 0; i < frag_copy->getNumAtoms(); ++i) {
+        auto pos = conf.getAtomPos(i);
+        RDGeom::Point3D scaled_pos(COORD_ADJUSTMENT * pos.x,
+                                   COORD_ADJUSTMENT * pos.y,
+                                   COORD_ADJUSTMENT * pos.z);
+        conf.setAtomPos(i, scaled_pos);
+    }
+    // use the standard font size and bold it, since the text is going to be
+    // tiny. (Enlarging the font size would just make the outlines larger, which
+    // means we'd need to scale the coordinates less, which means we'd wind up
+    // with the same problem, so that won't help us here.)
+    Fonts fonts_copy(m_fonts);
+    fonts_copy.setSize(FONT_SIZE);
+    fonts_copy.m_main_label_font.setBold(true);
+    fonts_copy.updateFontMetrics();
+    MonomerHintFragmentItem graphics_item(frag_copy, fonts_copy, {}, -1,
+                                          m_monomer_background_color);
+    auto cursor_hint =
+        cursor_hint_from_graphics_item(&graphics_item, -1, CURSOR_HINT_SCALE);
+
+    // When generating the cursor hint, we used a solid background color for
+    // monomers so that we won't see the connection lines behind the monomers.
+    // However, we don't want the cursor hint to hide the workspace, so we
+    // replace the background color with transparent. This won't be perfect
+    // because anti-aliasing will blend the colors a bit, but it's good enough
+    // for a small cursor hint.
+    auto mask = cursor_hint.createMaskFromColor(m_monomer_background_color,
+                                                Qt::MaskMode::MaskInColor);
+    cursor_hint.setMask(mask);
+    return cursor_hint;
 }
 
 void DrawMonomerFragmentSceneTool::onMouseMove(
