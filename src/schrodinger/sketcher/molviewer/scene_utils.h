@@ -138,7 +138,7 @@ SKETCHER_API QPixmap cursor_hint_from_svg(const QString& path,
  * graphics_item is small, this will effectively zoom out when generating the
  * cursor hint. If the bounding rect of graphics_item is larger than
  * min_scene_size, then this setting will have no effect.
- * @param cursor_hint_scale_size A scale to apply to the size of the cursor hint
+ * @param cursor_hint_size_scale A scale to apply to the size of the cursor hint
  * pixmap when generating. Values greater than 1 will result in a pixmap that's
  * larger than a typical cursor hint.
  */
