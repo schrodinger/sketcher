@@ -242,7 +242,7 @@ jobs:
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.build-name == 'ubuntu' && 'xvfb-run -a' || ''}} \
-          pytest -n auto --ignore=external --junitxml=junit-report.xml
+          pytest -n auto --ignore=external
 
       - name: Run wasm tests
         if: matrix.build-name == 'wasm'
@@ -258,13 +258,7 @@ jobs:
         # xvfb-run is embedded in each memtest command in CMakeLists so each
         # test gets its own isolated X display rather than sharing one.
         run: |
-          ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
-
-      - name: Publish Test Summary
-        uses: test-summary/action@v2
-        with:
-          paths: "build/junit-report.xml"
-        if: always() && steps.sketcher-build.outcome == 'success'
+          ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
