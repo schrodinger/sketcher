@@ -272,10 +272,12 @@ QPixmap cursor_hint_from_svg(const QString& path, const bool recolor)
 }
 
 QPixmap cursor_hint_from_graphics_item(QGraphicsItem* graphics_item,
-                                       const qreal min_scene_size)
+                                       const qreal min_scene_size,
+                                       const qreal cursor_hint_size_scale)
 {
     QGraphicsScene scene;
-    QPixmap pixmap(CURSOR_HINT_IMAGE_SIZE, CURSOR_HINT_IMAGE_SIZE);
+    QPixmap pixmap(cursor_hint_size_scale * CURSOR_HINT_IMAGE_SIZE,
+                   cursor_hint_size_scale * CURSOR_HINT_IMAGE_SIZE);
     scene.addItem(graphics_item);
     QRectF render_source = scene.sceneRect();
     render_source.setWidth(std::max(render_source.width(), min_scene_size));
