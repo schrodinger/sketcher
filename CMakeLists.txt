@@ -58,15 +58,18 @@ find_package(
                                              serialization unit_test_framework)
 find_package(Qt6 ${QT_VERSION} REQUIRED COMPONENTS Widgets Svg SvgWidgets Test)
 
-# Workaround for Qt 6.5.8 AGL framework issue on modern macOS
-# AGL (Apple Graphics Layer) was deprecated and removed from modern macOS SDKs
-# This workaround can be removed after BLDMGR-10714
+# Workaround for Qt 6.5.8 AGL framework issue on modern macOS AGL (Apple
+# Graphics Layer) was deprecated and removed from modern macOS SDKs This
+# workaround can be removed after BLDMGR-10714
 if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
-    get_target_property(_qt_opengl_libs WrapOpenGL::WrapOpenGL INTERFACE_LINK_LIBRARIES)
-    if(_qt_opengl_libs)
-        list(FILTER _qt_opengl_libs EXCLUDE REGEX "AGL")
-        set_target_properties(WrapOpenGL::WrapOpenGL PROPERTIES INTERFACE_LINK_LIBRARIES "${_qt_opengl_libs}")
-    endif()
+  get_target_property(_qt_opengl_libs WrapOpenGL::WrapOpenGL
+                      INTERFACE_LINK_LIBRARIES)
+  if(_qt_opengl_libs)
+    list(FILTER _qt_opengl_libs EXCLUDE REGEX "AGL")
+    set_target_properties(
+      WrapOpenGL::WrapOpenGL PROPERTIES INTERFACE_LINK_LIBRARIES
+                                        "${_qt_opengl_libs}")
+  endif()
 endif()
 
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
@@ -253,9 +256,10 @@ if(APPLE)
                BUNDLE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/sketcher_app)
 endif()
 setup_target(${APP_TARGET})
-set_target_properties(${APP_TARGET} PROPERTIES OUTPUT_NAME "Sketcher"
-                                               RUNTIME_OUTPUT_DIRECTORY
-                                               ${CMAKE_BINARY_DIR}/sketcher_app)
+set_target_properties(
+  ${APP_TARGET}
+  PROPERTIES OUTPUT_NAME "Sketcher" RUNTIME_OUTPUT_DIRECTORY
+                                    ${CMAKE_BINARY_DIR}/sketcher_app)
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=schrodinger_sketcher_entry
@@ -276,11 +280,12 @@ target_link_libraries(
 if(NOT EMSCRIPTEN)
   target_link_libraries(${APP_TARGET} PRIVATE fmt::fmt)
   if(MSVC)
-    target_compile_definitions(${APP_TARGET} PRIVATE
-      BOOST_STACKTRACE_USE_WINDBG)
+    target_compile_definitions(${APP_TARGET}
+                               PRIVATE BOOST_STACKTRACE_USE_WINDBG)
     target_link_libraries(${APP_TARGET} PRIVATE dbghelp)
   else()
-    target_compile_definitions(${APP_TARGET} PRIVATE BOOST_STACKTRACE_USE_ADDR2LINE)
+    target_compile_definitions(${APP_TARGET}
+                               PRIVATE BOOST_STACKTRACE_USE_ADDR2LINE)
     target_link_libraries(${APP_TARGET} PRIVATE dl)
     if(APPLE)
       target_compile_definitions(${APP_TARGET} PRIVATE _GNU_SOURCE)
@@ -303,9 +308,10 @@ if(EMSCRIPTEN)
       ${CMAKE_COMMAND} -E copy_if_different
       ${CMAKE_SOURCE_DIR}/src/schrodinger/sketcher/icons/sketcher-logo.svg
       ${CMAKE_BINARY_DIR}/sketcher_app/sketcher-logo.svg
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
-            ${CMAKE_BINARY_DIR}/sketcher_app --app-target
-            $<TARGET_FILE_BASE_NAME:${APP_TARGET}>)
+    COMMAND
+      python3 ${CMAKE_SOURCE_DIR}/wasm/update_cache_bust.py --wasm-dir
+      ${CMAKE_BINARY_DIR}/sketcher_app --app-target
+      $<TARGET_FILE_BASE_NAME:${APP_TARGET}>)
 endif()
 
 # Tests
@@ -420,13 +426,18 @@ install(FILES ${PROJECT_BINARY_DIR}/include/schrodinger/sketcher/version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/schrodinger/sketcher)
 if(APPLE)
   # Install the full .app bundle
-  install(DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
-          DESTINATION ${CMAKE_INSTALL_BINDIR} USE_SOURCE_PERMISSIONS)
+  install(
+    DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
+    DESTINATION ${CMAKE_INSTALL_BINDIR}
+    USE_SOURCE_PERMISSIONS)
 else()
   # Install the application file preserving the build-time rpath
   install(PROGRAMS $<TARGET_FILE:${APP_TARGET}>
           DESTINATION ${CMAKE_INSTALL_BINDIR})
 endif()
-install(FILES $<TARGET_FILE:${SKETCHER_TARGET}> $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
-              $<TARGET_LINKER_FILE:${SKETCHER_TARGET}> $<TARGET_LINKER_FILE:${RDKIT_EXTENSIONS_TARGET}>
-        DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(
+  FILES $<TARGET_FILE:${SKETCHER_TARGET}>
+        $<TARGET_FILE:${RDKIT_EXTENSIONS_TARGET}>
+        $<TARGET_LINKER_FILE:${SKETCHER_TARGET}>
+        $<TARGET_LINKER_FILE:${RDKIT_EXTENSIONS_TARGET}>
+  DESTINATION ${CMAKE_INSTALL_LIBDIR})
