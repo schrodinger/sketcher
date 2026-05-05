@@ -8,7 +8,10 @@ SKETCHER_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 BUMP_VERSION_DIR = (SKETCHER_REPO_ROOT / ".github" / "actions" /
                     "bump-version")
 sys.path.insert(0, str(BUMP_VERSION_DIR))
-import bump_version  # noqa: E402
+try:
+    import bump_version  # noqa: E402
+finally:
+    sys.path.pop(0)
 
 
 @pytest.mark.parametrize("current,expected", [
