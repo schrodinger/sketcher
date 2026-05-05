@@ -17,8 +17,7 @@ def next_version(current: str, bump_quarter: bool = False) -> str:
     """
     parts = current.split(".")
     if len(parts) != 3:
-        raise ValueError(
-            f"expected version in YYYY.Q.B form, got {current!r}")
+        raise ValueError(f"expected version in YYYY.Q.B form, got {current!r}")
     try:
         year, quarter, build = (int(p) for p in parts)
     except ValueError as err:
@@ -41,10 +40,9 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Compute the next sketcher version.")
     parser.add_argument("version", help="current version string (YYYY.Q.B)")
-    parser.add_argument(
-        "--bump-quarter",
-        action="store_true",
-        help="roll year/quarter forward and reset build to 0")
+    parser.add_argument("--bump-quarter",
+                        action="store_true",
+                        help="roll year/quarter forward and reset build to 0")
     args = parser.parse_args(argv)
     try:
         print(next_version(args.version, bump_quarter=args.bump_quarter))

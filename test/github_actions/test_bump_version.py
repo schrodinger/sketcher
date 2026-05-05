@@ -5,8 +5,7 @@ import sys
 import pytest
 
 SKETCHER_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-BUMP_VERSION_DIR = (SKETCHER_REPO_ROOT / ".github" / "actions" /
-                    "bump-version")
+BUMP_VERSION_DIR = (SKETCHER_REPO_ROOT / ".github" / "actions" / "bump-version")
 sys.path.insert(0, str(BUMP_VERSION_DIR))
 try:
     import bump_version  # noqa: E402
