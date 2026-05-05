@@ -1,8 +1,9 @@
 name: Update Wasm Snapshots
 
 # Downloads the wasm artifact from a previous "Sketcher Build and Test" run,
-# regenerates the playwright snapshots against it, and uploads the new
-# snapshots as a downloadable artifact.
+# regenerates the playwright snapshots (i.e. screen shots) against it, and
+# uploads the new snapshots as a downloadable artifact. This action is needed
+# when a commit is expected to change the appearance of the Sketcher.
 #
 # Trigger this from the Actions tab. Provide the run ID of a sketcher-builder
 # run that contains the wasm artifact (the numeric ID at the end of the run
