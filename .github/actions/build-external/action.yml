@@ -1,24 +1,24 @@
-name: "build-external"
-description: "Either builds an external dependency or fetches it from cache"
+name: 'build-external'
+description: 'Either builds an external dependency or fetches it from cache'
 
 inputs:
   library:
-    description: "Name of the dependency to build"
+    description: 'Name of the dependency to build'
     required: true
   version:
-    description: "Version of the dependency to build"
+    description: 'Version of the dependency to build'
     required: true
   host-build:
-    description: "Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)"
+    description: 'Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)'
     default: false
 
 outputs:
   path:
-    description: "Absolute path to the installed dependency"
+    description: 'Absolute path to the installed dependency'
     value: ${{ github.workspace }}/${{ steps.vars.outputs.lib-dir }}
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
     - name: Determine the build directories and cache key
       id: vars

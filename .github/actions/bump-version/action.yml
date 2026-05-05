@@ -30,5 +30,4 @@ runs:
     - name: Push changes to remote
       if: ${{ inputs.dry-run != 'true' }}
       shell: bash
-      run:
-        git push origin ${{ inputs.branch }}
+      run: git push origin ${{ inputs.branch }}
