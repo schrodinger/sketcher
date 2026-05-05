@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-#include "schrodinger/rdkit_extensions/helm/dynamic_bitset_on_bits_wrapper.hpp"
+#include "schrodinger/rdkit_extensions/helm/dynamic_bitset_on_bits_wrapper.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 
 using ::RDKit::RWMol;

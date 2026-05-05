@@ -1,13 +1,13 @@
-name: "setup-emscripten"
-description: "Builds emscripten library"
+name: 'setup-emscripten'
+description: 'Builds emscripten library'
 
 inputs:
   version:
-    description: "Version emscripten to download and activate"
+    description: 'Version emscripten to download and activate'
     required: true
 
 runs:
-  using: "composite"
+  using: 'composite'
   steps:
     - uses: actions/checkout@v6
       if: ${{ steps.cache-check.outputs.cache-hit != 'true' }}

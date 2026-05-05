@@ -24,7 +24,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Install pre-commit
-        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6
+        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6 yapf==0.40.2 cmake-format==0.6.13
 
       - name: Code formatting check
         run: pre-commit run --all-files
@@ -99,8 +99,8 @@ jobs:
         env:
           VERSION: ${{ fromJson(env.VERSIONS_JSON).emscripten }}
         run: |
-            echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
-            echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+          echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/" >> $GITHUB_PATH && \
+          echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Activate MSVC
         if: matrix.build-name == 'windows'
@@ -108,15 +108,15 @@ jobs:
 
       - name: Configure Dependency CMake
         run: |
-            ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
-                cmake -B build/external/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
+              cmake -B build/external/ -S external/ -G Ninja \
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Configure host Qt CMake
         if: matrix.build-name == 'wasm'
         run: |
-            cmake -B build/external/host/ -S external/ -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
+          cmake -B build/external/host/ -S external/ -G Ninja \
+              -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DQT_HOST_BUILD=ON
 
       - name: Fetch fmt
         id: fetch-fmt
@@ -215,13 +215,13 @@ jobs:
       - name: Configure CMake
         env:
           CMAKE_PREFIX_PATH: "${{ steps.fetch-fmt.outputs.path }};\
-                              ${{ steps.fetch-zlib.outputs.path }};\
-                              ${{ steps.fetch-zstd.outputs.path }};\
-                              ${{ steps.fetch-boost.outputs.path }};\
-                              ${{ steps.fetch-eigen.outputs.path }};\
-                              ${{ steps.fetch-rdkit.outputs.path }};\
-                              ${{ steps.fetch-sqlite.outputs.path }};\
-                              ${{ steps.fetch-qt.outputs.path }}"
+            ${{ steps.fetch-zlib.outputs.path }};\
+            ${{ steps.fetch-zstd.outputs.path }};\
+            ${{ steps.fetch-boost.outputs.path }};\
+            ${{ steps.fetch-eigen.outputs.path }};\
+            ${{ steps.fetch-rdkit.outputs.path }};\
+            ${{ steps.fetch-sqlite.outputs.path }};\
+            ${{ steps.fetch-qt.outputs.path }}"
         run: |
           ${{ matrix.build-name == 'wasm' && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
@@ -242,7 +242,7 @@ jobs:
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
           ${{ matrix.build-name == 'ubuntu' && 'xvfb-run -a' || ''}} \
-          pytest -n auto --ignore=external --junitxml=junit-report.xml
+          pytest -n auto --ignore=external
 
       - name: Run wasm tests
         if: matrix.build-name == 'wasm'
@@ -258,13 +258,7 @@ jobs:
         # xvfb-run is embedded in each memtest command in CMakeLists so each
         # test gets its own isolated X display rather than sharing one.
         run: |
-          ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure --output-junit junit-report.xml
-
-      - name: Publish Test Summary
-        uses: test-summary/action@v2
-        with:
-          paths: "build/junit-report.xml"
-        if: always() && steps.sketcher-build.outcome == 'success'
+          ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure
 
       - name: Upload artifact
         if: always() && steps.sketcher-build.outcome == 'success'
