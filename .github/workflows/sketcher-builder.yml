@@ -10,10 +10,15 @@ on:
         description: 'Git ref to checkout'
         type: string
         default: ${{ github.ref }}
+      build-names:
+        description: 'JSON array of matrix build-name values to run; empty runs all.'
+        type: string
+        default: ''
       publish-npm-package:
         description: Whether an npm package should be published with the wasm build artifacts
         type: boolean
         default: false
+
 
 jobs:
   pre-commit:
@@ -31,6 +36,7 @@ jobs:
 
   build-test:
     needs: pre-commit
+    if: ${{ inputs.build-names == '' || contains(fromJson(inputs.build-names), matrix.build-name) }}
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
@@ -267,6 +273,7 @@ jobs:
         if: always() && steps.sketcher-build.outcome == 'success'
 
       - name: Upload artifact
+        if: always() && steps.sketcher-build.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}

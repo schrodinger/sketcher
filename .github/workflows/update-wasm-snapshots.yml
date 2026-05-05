@@ -1,0 +1,60 @@
+name: Update Wasm Snapshots
+
+# Builds the wasm sketcher (via sketcher-builder.yml) and runs the playwright
+# tests with --update-snapshots, then uploads the regenerated snapshots as an
+# artifact so they can be downloaded and committed.
+#
+# Trigger this from the Actions tab. The artifact "wasm-snapshots-<run_id>"
+# contains test/wasm/__snapshots__/ and test/wasm/e2e/__snapshots__/.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit SHA to build wasm from (defaults to the workflow ref)'
+        type: string
+        required: false
+
+jobs:
+  build:
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+      build-names: '["wasm"]'
+
+  update-snapshots:
+    needs: build
+    # Run as long as the build job wasn't cancelled — the wasm test inside
+    # build is expected to fail when snapshots are stale, but the wasm
+    # artifact is still uploaded.
+    if: ${{ always() && needs.build.result != 'cancelled' }}
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Download wasm artifact
+        uses: actions/download-artifact@v6
+        with:
+          name: sketcher-${{ inputs.ref || github.sha }}-wasm
+          path: build/sketcher_app/
+
+      - name: Run playwright with --update-snapshots
+        run: |
+          cd test/wasm
+          npm install
+          npm run test -- --update-snapshots
+
+      - name: Upload regenerated snapshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wasm-snapshots-${{ github.run_id }}
+          path: |
+            test/wasm/__snapshots__/
+            test/wasm/e2e/__snapshots__/
+          if-no-files-found: error
