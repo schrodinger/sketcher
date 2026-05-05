@@ -1255,3 +1255,70 @@ $$$$)MDL";
         BOOST_TEST(cxsmiles == "CC[C@H](C)[C@H](C)C[C@H](C)N |a:4,7,o1:2|");
     }
 }
+
+BOOST_AUTO_TEST_CASE(test_wiggly_bond_cxsmiles_roundtrip)
+{
+    // Test that wiggly bonds are preserved when round-tripping through
+    // to_rdkit and to_string with EXTENDED_SMILES format
+    const std::string input_smiles = "CCC(C)N |w:2.3|";
+    auto mol = to_rdkit(input_smiles, Format::EXTENDED_SMILES);
+    BOOST_REQUIRE(mol != nullptr);
+
+    std::string output_smiles = to_string(*mol, Format::EXTENDED_SMILES);
+    BOOST_TEST(output_smiles == input_smiles);
+}
+
+/**
+ * Document where wigglyness lives on the bond after to_rdkit() for both MDL
+ * and CXSMILES inputs. This is the contract the sketcher's wedgeMolBonds()
+ * relies on for restoring BondDir::UNKNOWN.
+ *
+ * MDL: preserve_wiggly_bonds() converts the _MolFileBond{Stereo,Cfg} property
+ * into BondDir::UNKNOWN before mol_model sees the bond.
+ *
+ * CXSMILES: RDKit stores wigglyness via the chiral atom's UNSPECIFIED tag —
+ * no bond-level property or BondDir is set. MolToCXSmiles infers |w:| on
+ * output from the atom state, which is why no sketcher-side intervention is
+ * needed for the CXSMILES roundtrip case.
+ */
+BOOST_AUTO_TEST_CASE(test_to_rdkit_wiggly_bond_state)
+{
+    // MDL V3000 wiggly bond (CFG=2)
+    const std::string mdl_v3000 = R"(
+     RDKit          2D
+
+  0  0  0  0  0  0  0  0  0  0999 V3000
+M  V30 BEGIN CTAB
+M  V30 COUNTS 5 4 0 0 0
+M  V30 BEGIN ATOM
+M  V30 1 C -2.078434 0.000000 0.000000 0
+M  V30 2 C -0.779413 -0.750012 0.000000 0
+M  V30 3 C 0.519609 0.000000 0.000000 0
+M  V30 4 C 1.818630 -0.750012 0.000000 0
+M  V30 5 N 0.519609 1.500025 0.000000 0
+M  V30 END ATOM
+M  V30 BEGIN BOND
+M  V30 1 1 1 2
+M  V30 2 1 2 3
+M  V30 3 1 3 4
+M  V30 4 1 3 5 CFG=2
+M  V30 END BOND
+M  V30 END CTAB
+M  END
+$$$$
+)";
+    auto mdl_mol = to_rdkit(mdl_v3000);
+    BOOST_REQUIRE(mdl_mol != nullptr);
+    auto* mdl_bond = mdl_mol->getBondBetweenAtoms(2, 4);
+    BOOST_REQUIRE(mdl_bond != nullptr);
+    BOOST_TEST(mdl_bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN);
+
+    // CXSMILES |w:2.3| does NOT set BondDir::UNKNOWN — wigglyness is kept on
+    // the chiral atom state. MolToCXSmiles re-derives |w:| on output.
+    const std::string cxsmiles = "CCC(C)N |w:2.3|";
+    auto cx_mol = to_rdkit(cxsmiles, Format::EXTENDED_SMILES);
+    BOOST_REQUIRE(cx_mol != nullptr);
+    auto* cx_bond = cx_mol->getBondBetweenAtoms(2, 3);
+    BOOST_REQUIRE(cx_bond != nullptr);
+    BOOST_TEST(cx_bond->getBondDir() == RDKit::Bond::BondDir::NONE);
+}
