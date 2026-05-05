@@ -1,47 +1,54 @@
 name: Update Wasm Snapshots
 
-# Builds the wasm sketcher (via sketcher-builder.yml) and runs the playwright
-# tests with --update-snapshots, then uploads the regenerated snapshots as an
-# artifact so they can be downloaded and committed.
+# Downloads the wasm artifact from a previous "Sketcher Build and Test" run,
+# regenerates the playwright snapshots against it, and uploads the new
+# snapshots as a downloadable artifact.
 #
-# Trigger this from the Actions tab. The artifact "wasm-snapshots-<run_id>"
-# contains test/wasm/__snapshots__/ and test/wasm/e2e/__snapshots__/.
+# Trigger this from the Actions tab. Provide the run ID of a sketcher-builder
+# run that contains the wasm artifact (the numeric ID at the end of the run
+# URL). The wasm artifact is uploaded whenever the C++ build succeeds, even
+# if the wasm playwright tests fail — which is exactly when snapshots need
+# regenerating.
 
 on:
   workflow_dispatch:
     inputs:
-      ref:
-        description: 'Commit SHA to build wasm from (defaults to the workflow ref)'
+      run-id:
+        description: 'Sketcher Build and Test run ID containing the wasm artifact'
         type: string
-        required: false
+        required: true
+
+permissions:
+  actions: read
+  contents: read
 
 jobs:
-  build:
-    uses: ./.github/workflows/sketcher-builder.yml
-    with:
-      ref: ${{ inputs.ref || github.sha }}
-      build-names: '["wasm"]'
-
   update-snapshots:
-    needs: build
-    # Run as long as the build job wasn't cancelled — the wasm test inside
-    # build is expected to fail when snapshots are stale, but the wasm
-    # artifact is still uploaded.
-    if: ${{ always() && needs.build.result != 'cancelled' }}
     runs-on: ubuntu-22.04
     defaults:
       run:
         shell: bash
     steps:
+      - name: Look up commit SHA for build run
+        id: lookup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(gh api repos/${{ github.repository }}/actions/runs/${{ inputs.run-id }} --jq '.head_sha')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.ref || github.sha }}
+          ref: ${{ steps.lookup.outputs.sha }}
 
-      - name: Download wasm artifact
+      - name: Download wasm artifact from build run
         uses: actions/download-artifact@v6
         with:
-          name: sketcher-${{ inputs.ref || github.sha }}-wasm
+          pattern: 'sketcher-*-wasm'
           path: build/sketcher_app/
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run-id }}
 
       - name: Run playwright with --update-snapshots
         run: |
