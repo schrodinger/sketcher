@@ -45,6 +45,15 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
     void showPopupIndicator(bool show);
 
     /**
+     * If enabled, the popup indicator is also shown while the mouse hovers
+     * over the button, in addition to the conditions set via
+     * showPopupIndicator(). Off by default.
+     *
+     * @param show Whether to reveal the indicator on hover
+     */
+    void showPopupIndicatorOnHover(bool show);
+
+    /**
      * Apply additional style sheet parameters to the default style used for
      * this widget.
      *
@@ -116,7 +125,8 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
   private:
     QTimer* m_popup_timer = nullptr;
     float m_popup_delay = 250;
-    bool m_show_corner_arrow = true;
+    bool m_show_popup_indicator = true;
+    bool m_show_popup_indicator_on_hover = false;
 };
 
 } // namespace sketcher

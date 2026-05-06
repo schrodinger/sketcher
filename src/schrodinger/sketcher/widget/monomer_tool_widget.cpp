@@ -186,27 +186,31 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
 
     for (auto& entry : m_button_amino_acid_bimap.left) {
         auto* button = entry.first;
-        auto aa_tool = entry.second;
-        auto symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(aa_tool);
-        auto it = analogs_by_aa.find(symbol);
-        if (it == analogs_by_aa.end() || it->second.empty()) {
-            continue;
-        }
-        const auto& name = AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
-        auto* popup = new AminoAcidSymbolPopup(symbol, name, it->second, this);
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
         Q_ASSERT_X(modular_btn, "MonomerToolWidget",
                    "Expected ModularToolButton");
+        // Hide the wedge by default for every AA button; only enable hover
+        // reveal on buttons that actually get an analog popup attached.
+        modular_btn->showPopupIndicator(false);
+
+        auto aa_tool = entry.second;
+        auto symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(aa_tool);
+        const auto& name = AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
+        auto it = analogs_by_aa.find(symbol);
+        if (it == analogs_by_aa.end() || it->second.empty()) {
+            button->setToolTip(QString::fromStdString(name));
+            continue;
+        }
+        auto* popup = new AminoAcidSymbolPopup(symbol, name, it->second, this);
         modular_btn->setPopupWidget(popup);
         modular_btn->setEnumItem(0); // default to standard AA
-        modular_btn->showPopupIndicator(false);
+        modular_btn->showPopupIndicatorOnHover(true);
         m_amino_acid_symbol_popups[button] = popup;
     }
 
-    // Set up nucleic acid analog popups from the monomer database. Unlike
-    // the AA loop above, we always attach a popup (even when the analog
-    // list is empty) so that the standard-base tooltip is available on
-    // every per-base button.
+    // Set up nucleic acid analog popups from the monomer database. Buttons
+    // without any analogs get the standard-base name as a plain tooltip and
+    // no popup is attached.
     static const std::unordered_map<std::string, std::string>
         STANDARD_NA_NAMES = {
             {"A", "Adenine"}, {"C", "Cytosine"},     {"G", "Guanine"},
@@ -235,13 +239,22 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
             continue; // sugar/phosphate/full-nucleotide buttons
         }
         const auto& [symbol, name] = *std_name;
+        auto* modular_btn = qobject_cast<ModularToolButton*>(button);
+        // Hide the wedge by default for every per-base NA button; only
+        // enable hover reveal on buttons that actually get an analog popup
+        // attached.
+        modular_btn->showPopupIndicator(false);
+
         auto analogs =
             get_analogs_for_na_button(symbol, analogs_by_na, STANDARD_NA_NAMES);
+        if (analogs.empty()) {
+            button->setToolTip(QString::fromStdString(name));
+            continue;
+        }
         auto* popup = new NucleicAcidSymbolPopup(symbol, name, analogs, this);
-        auto* modular_btn = qobject_cast<ModularToolButton*>(button);
         modular_btn->setPopupWidget(popup);
         modular_btn->setEnumItem(0); // default to standard base
-        modular_btn->showPopupIndicator(false);
+        modular_btn->showPopupIndicatorOnHover(true);
         m_nucleic_acid_symbol_popups[button] = popup;
     }
 }
@@ -500,16 +513,24 @@ void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)
     }
 
     // Set which specific analog is selected; falls back to the standard
-    // base symbol when the button has no analog popup or the
-    // popup is on its default item.
+    // base symbol when the button has no analog popup attached.
+    auto na_tool = m_button_nucleic_acid_bimap.left.at(button);
+    QString symbol;
     auto it = m_nucleic_acid_symbol_popups.find(button);
     if (it != m_nucleic_acid_symbol_popups.end()) {
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
-        auto symbol = it->second->getSymbolForId(modular_btn->getEnumItem());
-        auto na_tool = m_button_nucleic_acid_bimap.left.at(button);
-        ping_or_set_model_value(getModel(), ModelKey::NUCLEIC_ACID_SYMBOL,
-                                NucleicAcidMutation{na_tool, symbol});
+        symbol = it->second->getSymbolForId(modular_btn->getEnumItem());
+    } else {
+        // Full-nucleotide tools (RNA/DNA/CUSTOM_NUCLEOTIDE) have no
+        // single-residue mapping; skip the symbol ping for those.
+        auto res_it = NUCLEIC_ACID_TOOL_TO_RES_NAME.find(na_tool);
+        if (res_it == NUCLEIC_ACID_TOOL_TO_RES_NAME.end()) {
+            return;
+        }
+        symbol = QString::fromStdString(res_it->second);
     }
+    ping_or_set_model_value(getModel(), ModelKey::NUCLEIC_ACID_SYMBOL,
+                            NucleicAcidMutation{na_tool, symbol});
 }
 
 } // namespace sketcher
