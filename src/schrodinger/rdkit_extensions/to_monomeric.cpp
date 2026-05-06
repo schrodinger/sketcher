@@ -1793,6 +1793,18 @@ determineSeqresMatch(const std::string& seqres_symbol, RDKit::RWMol& mol,
     }
 }
 
+std::string getStandaloneSmiles(RDKit::ROMol& mol,
+                                const std::vector<unsigned int>& atom_idxs)
+{
+    // Just smiles without attachment points
+    static constexpr bool sanitize = false;
+    auto mol_fragment = ExtractMolFragment(mol, atom_idxs, sanitize);
+
+    // Remove hydrogens to keep HELM string readable
+    removeHs(*mol_fragment);
+    return RDKit::MolToSmiles(*mol_fragment);
+}
+
 boost::shared_ptr<RDKit::RWMol>
 pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
 {
@@ -2031,8 +2043,8 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                         addMonomer(*monomer_mol, std::get<0>(*helm_info),
                                    ligand_num, ligand_helm_chain_id);
                 } else {
-                    auto smiles = getMonomerSmiles(mol, atom_idxs, chain_id,
-                                                   key, ligand_num, true);
+                    // No attachment points on the SMILES
+                    auto smiles = getStandaloneSmiles(mol, atom_idxs);
                     this_monomer =
                         addMonomer(*monomer_mol, smiles, ligand_num,
                                    ligand_helm_chain_id, MonomerType::SMILES);
