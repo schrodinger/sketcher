@@ -14,7 +14,7 @@ runs:
   steps:
     - name: Install Fortran
       id: install-fortran
-      uses: fortran-lang/setup-fortran@v1.8.0
+      uses: fortran-lang/setup-fortran@v1.9.0
       with:
         compiler: 'intel'
         version: '2025.2'
