@@ -107,7 +107,7 @@ void SketcherSideBar::updateWidgetsEnabled()
     auto interface_type = model->getInterfaceType();
     bool show_atom_mono_buttons =
         interface_type == InterfaceType::ATOMISTIC_OR_MONOMERIC;
-    ui->atomistic_or_monomeric_widget->setVisible(show_atom_mono_buttons);
+    ui->atomistic_or_monomeric_widget->setEnabled(show_atom_mono_buttons);
     if (!show_atom_mono_buttons) {
         // only one type of interface is allowed, so switch to that one
         if (interface_type == InterfaceType::ATOMISTIC) {

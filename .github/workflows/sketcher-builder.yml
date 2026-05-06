@@ -27,10 +27,13 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Install pre-commit
-        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6 yapf==0.40.2 cmake-format==0.6.13
+        run: python3 -m pip install pre-commit==1.7.0 clang-format==14.0.6 yapf==0.40.2 cmake-format==0.6.13 pytest==9.0.2
 
       - name: Code formatting check
         run: pre-commit run --all-files
+
+      - name: Test GitHub Actions helpers
+        run: pytest test/github_actions/
 
   build-test:
     needs: pre-commit
@@ -264,6 +267,7 @@ jobs:
           ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure
 
       - name: Upload artifact
+        if: always() && steps.sketcher-build.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}

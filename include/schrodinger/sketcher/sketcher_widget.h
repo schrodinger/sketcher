@@ -72,9 +72,9 @@ class SKETCHER_API SketcherWidget : public QWidget
     Q_OBJECT
 
   public:
-    SketcherWidget(
-        QWidget* parent = nullptr,
-        const InterfaceTypeType interface_type = InterfaceType::ATOMISTIC);
+    SketcherWidget(QWidget* parent = nullptr,
+                   const InterfaceTypeType interface_type =
+                       InterfaceType::ATOMISTIC_OR_MONOMERIC);
     ~SketcherWidget();
 
     /**
