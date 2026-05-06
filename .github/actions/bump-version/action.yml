@@ -4,6 +4,10 @@ inputs:
   branch:
     description: 'Branch to bump sketcher version'
     required: true
+  bump-quarter:
+    description: 'Roll year.quarter forward and reset build to 0 (must be used with branch=main)'
+    required: false
+    default: 'false'
   dry-run:
     description: 'Log version bump without remote changes'
     required: false
@@ -15,13 +19,21 @@ runs:
     - name: Bump sketcher version
       shell: bash
       run: |
+        if [[ "${{ inputs.bump-quarter }}" = "true" && "${{ inputs.branch }}" != "main" ]]; then
+          echo "Error: bump-quarter=true requires branch=main (got '${{ inputs.branch }}')"
+          exit 1
+        fi
         git checkout ${{ inputs.branch }}
         current_version=$(jq -r '.sketcher' version.json)
         if [[ "$current_version" = "null" || -z "$current_version" ]]; then
           echo "Error: 'sketcher' field not found in version.json"
           exit 1
         fi
-        new_version=$(awk -F. '{print $1"."$2"."($3+1)}' <<< "$current_version")
+        bump_args=("$current_version")
+        if [[ "${{ inputs.bump-quarter }}" = "true" ]]; then
+          bump_args+=("--bump-quarter")
+        fi
+        new_version=$(python3 "${{ github.action_path }}/bump_version.py" "${bump_args[@]}")
         jq --indent 4 --arg version "$new_version" '.sketcher = $version' version.json > version.json.tmp
         mv version.json.tmp version.json
         git add version.json
