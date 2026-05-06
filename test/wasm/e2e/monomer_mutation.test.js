@@ -3,7 +3,6 @@ import {
   waitForSketcherReady,
   focusCanvas,
   getExportedHelm,
-  enableMonomericMode,
   selectAll,
   clickWidget,
 } from './e2e_helpers.js';
@@ -14,7 +13,6 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Monomer Mutation', () => {
   test('mutate selected peptide monomers to cysteine', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'amino_monomer_btn');
 
@@ -30,7 +28,6 @@ test.describe('Monomer Mutation', () => {
   });
 
   test('mutate selected nucleic acid bases only', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'nucleic_monomer_btn');
 
@@ -51,7 +48,6 @@ test.describe('Monomer Mutation', () => {
   });
 
   test('clicking disabled incompatible monomer button does not mutate', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'amino_monomer_btn');
 
@@ -74,7 +70,6 @@ test.describe('Monomer Mutation', () => {
   });
 
   test('undo restores original monomers after mutation', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'amino_monomer_btn');
 

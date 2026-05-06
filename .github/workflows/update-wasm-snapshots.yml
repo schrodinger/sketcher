@@ -1,0 +1,68 @@
+name: Update Wasm Snapshots
+
+# Downloads the wasm artifact from a previous "Sketcher Build and Test" run,
+# regenerates the playwright snapshots (i.e. screen shots) against it, and
+# uploads the new snapshots as a downloadable artifact. This action is needed
+# when a commit is expected to change the appearance of the Sketcher.
+#
+# Trigger this from the Actions tab. Provide the run ID of a sketcher-builder
+# run that contains the wasm artifact (the numeric ID at the end of the run
+# URL). The wasm artifact is uploaded whenever the C++ build succeeds, even
+# if the wasm playwright tests fail — which is exactly when snapshots need
+# regenerating.
+
+on:
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: 'Sketcher Build and Test run ID containing the wasm artifact'
+        type: string
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  update-snapshots:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Look up commit SHA for build run
+        id: lookup
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(gh api repos/${{ github.repository }}/actions/runs/${{ inputs.run-id }} --jq '.head_sha')
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.lookup.outputs.sha }}
+
+      - name: Download wasm artifact from build run
+        uses: actions/download-artifact@v6
+        with:
+          pattern: 'sketcher-*-wasm'
+          path: build/sketcher_app/
+          merge-multiple: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ inputs.run-id }}
+
+      - name: Run playwright with --update-snapshots
+        run: |
+          cd test/wasm
+          npm install
+          npm run test -- --update-snapshots
+
+      - name: Upload regenerated snapshots
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: wasm-snapshots-${{ github.run_id }}
+          path: |
+            test/wasm/__snapshots__/
+            test/wasm/e2e/__snapshots__/
+          if-no-files-found: error
