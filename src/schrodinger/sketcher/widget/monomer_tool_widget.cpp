@@ -27,6 +27,48 @@ namespace sketcher
 using AnalogMap =
     std::unordered_map<std::string, std::vector<rdkit_extensions::MonomerInfo>>;
 
+// dR has NATURAL_ANALOG=R, so it's not a key in the analog map. Pull
+// R's analogs (and R itself) into dR's popup for symmetry with R, which
+// already shows dR.
+static const std::unordered_map<std::string, std::string>
+    NA_ANALOG_LOOKUP_OVERRIDES = {{"dR", "R"}};
+
+/**
+ * Build the analog list for an NA button: optionally prepend a parent
+ * standard (e.g. R for the dR button) sourced from `standard_names`,
+ * then append the natural-analog list keyed by the override target (or
+ * `symbol` itself if no override applies), filtering out entries whose
+ * symbol matches `symbol` (the button's own standard).
+ */
+static std::vector<rdkit_extensions::MonomerInfo> get_analogs_for_na_button(
+    const std::string& symbol, const AnalogMap& analogs_by_na,
+    const std::unordered_map<std::string, std::string>& standard_names)
+{
+    std::vector<rdkit_extensions::MonomerInfo> analogs;
+    auto override_it = NA_ANALOG_LOOKUP_OVERRIDES.find(symbol);
+    const auto& lookup_key = override_it != NA_ANALOG_LOOKUP_OVERRIDES.end()
+                                 ? override_it->second
+                                 : symbol;
+    if (override_it != NA_ANALOG_LOOKUP_OVERRIDES.end()) {
+        auto parent_name_it = standard_names.find(lookup_key);
+        rdkit_extensions::MonomerInfo parent_entry;
+        parent_entry.symbol = lookup_key;
+        parent_entry.name = parent_name_it != standard_names.end()
+                                ? parent_name_it->second
+                                : lookup_key;
+        analogs.push_back(std::move(parent_entry));
+    }
+    auto analog_it = analogs_by_na.find(lookup_key);
+    if (analog_it != analogs_by_na.end()) {
+        for (const auto& m : analog_it->second) {
+            if (m.symbol.value_or("") != symbol) {
+                analogs.push_back(m);
+            }
+        }
+    }
+    return analogs;
+}
+
 /**
  * Return analogs for nucleic acid bases keyed by their natural analog symbol,
  * pulled from both RNA and DNA chain types and deduped by analog symbol.
@@ -187,21 +229,16 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
 
     auto analogs_by_na = get_merged_na_analogs();
 
-    static const std::vector<rdkit_extensions::MonomerInfo> empty_analogs;
     for (auto& [button, na_tool] : m_button_nucleic_acid_bimap.left) {
         auto std_name = na_tool_to_std_name(na_tool);
         if (!std_name) {
             continue; // sugar/phosphate/full-nucleotide buttons
         }
         const auto& [symbol, name] = *std_name;
-        auto analog_it = analogs_by_na.find(symbol);
-        const auto& analogs = analog_it != analogs_by_na.end()
-                                  ? analog_it->second
-                                  : empty_analogs;
+        auto analogs =
+            get_analogs_for_na_button(symbol, analogs_by_na, STANDARD_NA_NAMES);
         auto* popup = new NucleicAcidSymbolPopup(symbol, name, analogs, this);
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
-        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
-                   "Expected ModularToolButton");
         modular_btn->setPopupWidget(popup);
         modular_btn->setEnumItem(0); // default to standard base
         modular_btn->showPopupIndicator(false);
@@ -351,8 +388,6 @@ void MonomerToolWidget::updateCheckedButton()
             }
         }
         auto* modular_btn = qobject_cast<ModularToolButton*>(nucleic_button);
-        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
-                   "Expected ModularToolButton");
         for (auto& packet : active_it->second->getButtonPackets()) {
             auto packet_symbol =
                 active_it->second->getSymbolForId(packet.enum_int);
@@ -470,8 +505,6 @@ void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)
     auto it = m_nucleic_acid_symbol_popups.find(button);
     if (it != m_nucleic_acid_symbol_popups.end()) {
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
-        Q_ASSERT_X(modular_btn, "MonomerToolWidget",
-                   "Expected ModularToolButton");
         auto symbol = it->second->getSymbolForId(modular_btn->getEnumItem());
         auto na_tool = m_button_nucleic_acid_bimap.left.at(button);
         ping_or_set_model_value(getModel(), ModelKey::NUCLEIC_ACID_SYMBOL,
