@@ -40,9 +40,9 @@ void CutCopyActionManager::setModel(SketcherModel* model)
     // Postpone connecting actions until the model is set since copy
     // queries the model to determine which subset value to emit
     connect(m_cut_action, &QAction::triggered, this,
-            [this]() { emit cutRequested(DEFAULT_FORMAT); });
+            [this]() { emit cutRequested(getCutCopyFormat()); });
     connect(m_copy_action, &QAction::triggered, this,
-            [this]() { emit copyRequested(DEFAULT_FORMAT, getSubset()); });
+            [this]() { emit copyRequested(getCutCopyFormat(), getSubset()); });
     initCopyAsMenu();
 
     // Initialize
@@ -61,6 +61,17 @@ SceneSubset CutCopyActionManager::getSubset()
     } else {
         return SceneSubset::SELECTION;
     }
+}
+
+Format CutCopyActionManager::getCutCopyFormat() const
+{
+    if (m_sketcher_model->getMoleculeType() == MoleculeType::MONOMERIC) {
+        // Pickle round-trip preserves the monomeric structure and the 2D
+        // conformer, so pasted monomers land at the same positions instead
+        // of being re-laid-out by the chain layout engine.
+        return Format::RDMOL_BINARY_BASE64;
+    }
+    return DEFAULT_FORMAT;
 }
 
 void CutCopyActionManager::initCopyAsMenu()

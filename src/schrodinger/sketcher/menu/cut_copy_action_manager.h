@@ -48,6 +48,14 @@ class SKETCHER_API CutCopyActionManager : public QWidget
     SceneSubset getSubset();
 
     /**
+     * @return the format to use for the basic cut/copy actions (not "Copy
+     * As"); a lossless pickle is used for monomeric content so that a paste
+     * round-trips back to monomers (with their coordinates) instead of being
+     * downgraded to atomistic by the convert layer.
+     */
+    rdkit_extensions::Format getCutCopyFormat() const;
+
+    /**
      * Initializes the Copy As menu with both standard and reaction formats
      */
     void initCopyAsMenu();
