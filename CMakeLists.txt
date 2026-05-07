@@ -451,7 +451,6 @@ if(APPLE)
   # Install the full .app bundle
   install(
     DIRECTORY $<TARGET_BUNDLE_DIR:${APP_TARGET}>
-              $<TARGET_BUNDLE_DIR:${SMILES_TO_HELM_TARGET}>
     DESTINATION ${CMAKE_INSTALL_BINDIR}
     USE_SOURCE_PERMISSIONS)
 else()
