@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
@@ -367,6 +368,45 @@ const std::unordered_map<AminoAcidTool, std::string>
         {AminoAcidTool::VAL, "V"},
         {AminoAcidTool::UNK, "X"},
     }; // clang-format on
+
+const std::unordered_map<AminoAcidTool, std::string>
+    AMINO_ACID_TOOL_TO_FULL_NAME{
+        {AminoAcidTool::ALA, "Alanine"}, // clang-format off
+        {AminoAcidTool::ARG, "Arginine"},
+        {AminoAcidTool::ASN, "Asparagine"},
+        {AminoAcidTool::ASP, "Aspartate"},
+        {AminoAcidTool::CYS, "Cysteine"},
+        {AminoAcidTool::GLN, "Glutamine"},
+        {AminoAcidTool::GLU, "Glutamate"},
+        {AminoAcidTool::GLY, "Glycine"},
+        {AminoAcidTool::HIS, "Histidine"},
+        {AminoAcidTool::ILE, "Isoleucine"},
+        {AminoAcidTool::LEU, "Leucine"},
+        {AminoAcidTool::LYS, "Lysine"},
+        {AminoAcidTool::MET, "Methionine"},
+        {AminoAcidTool::PHE, "Phenylalanine"},
+        {AminoAcidTool::PRO, "Proline"},
+        {AminoAcidTool::SER, "Serine"},
+        {AminoAcidTool::THR, "Threonine"},
+        {AminoAcidTool::TRP, "Tryptophan"},
+        {AminoAcidTool::TYR, "Tyrosine"},
+        {AminoAcidTool::VAL, "Valine"},
+        {AminoAcidTool::UNK, "Unknown"},
+    }; // clang-format on
+
+// Display order for the 21 natural amino acids — mirrored by the toolbar
+// button layout (`monomer_tool_widget.cpp`) and by the Mutate Residue
+// submenu in `MonomerContextMenu`. Both call sites iterate this array so
+// they cannot drift apart.
+constexpr std::array<AminoAcidTool, 21> AMINO_ACID_TOOL_DISPLAY_ORDER{
+    AminoAcidTool::ALA, AminoAcidTool::ARG, AminoAcidTool::ASN,
+    AminoAcidTool::ASP, AminoAcidTool::CYS, AminoAcidTool::GLN,
+    AminoAcidTool::GLU, AminoAcidTool::GLY, AminoAcidTool::HIS,
+    AminoAcidTool::ILE, AminoAcidTool::LEU, AminoAcidTool::LYS,
+    AminoAcidTool::MET, AminoAcidTool::PHE, AminoAcidTool::PRO,
+    AminoAcidTool::SER, AminoAcidTool::THR, AminoAcidTool::TRP,
+    AminoAcidTool::TYR, AminoAcidTool::VAL, AminoAcidTool::UNK,
+};
 
 enum class NucleicAcidTool {
     A,
