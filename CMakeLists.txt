@@ -281,9 +281,13 @@ target_link_libraries(
 set(SMILES_TO_HELM_TARGET smiles_to_helm)
 add_executable(${SMILES_TO_HELM_TARGET} src/utils/smiles_to_helm.cpp)
 setup_target(${SMILES_TO_HELM_TARGET})
-set_target_properties(${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
-                                              ${CMAKE_BINARY_DIR}/sketcher_app)
-target_link_libraries(${SMILES_TO_HELM_TARGET} PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse ${RDKIT_EXTENSIONS_TARGET})
+set_target_properties(
+  ${SMILES_TO_HELM_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY
+                                      ${CMAKE_BINARY_DIR}/sketcher_app)
+target_link_libraries(
+  ${SMILES_TO_HELM_TARGET}
+  PRIVATE Boost::boost Boost::filesystem Qt6::Core RDKit::SmilesParse
+          ${RDKIT_EXTENSIONS_TARGET})
 
 # Crash handler: configure Boost.Stacktrace backend per platform
 if(NOT EMSCRIPTEN)
@@ -328,10 +332,13 @@ if(ENABLE_TESTING)
   enable_testing()
 
   # Copy Python test directory to build directory so pytest can discover them
-  file(GLOB_RECURSE PYTHON_TEST_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/test/python/*)
+  file(GLOB_RECURSE PYTHON_TEST_FILES CONFIGURE_DEPENDS
+       ${PROJECT_SOURCE_DIR}/test/python/*)
   foreach(PYTHON_TEST ${PYTHON_TEST_FILES})
-    cmake_path(RELATIVE_PATH PYTHON_TEST BASE_DIRECTORY ${PROJECT_SOURCE_DIR}/test OUTPUT_VARIABLE REL_TEST_PATH)
-    configure_file(${PYTHON_TEST} ${CMAKE_BINARY_DIR}/test/${REL_TEST_PATH} COPYONLY)
+    cmake_path(RELATIVE_PATH PYTHON_TEST BASE_DIRECTORY
+               ${PROJECT_SOURCE_DIR}/test OUTPUT_VARIABLE REL_TEST_PATH)
+    configure_file(${PYTHON_TEST} ${CMAKE_BINARY_DIR}/test/${REL_TEST_PATH}
+                   COPYONLY)
   endforeach()
 
   set(SKETCHER_TEST ${PROJECT_SOURCE_DIR}/test/schrodinger)
