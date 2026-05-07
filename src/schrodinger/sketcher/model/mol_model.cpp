@@ -161,6 +161,7 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
         bond->clearProp(RDKit::common_properties::bondNote);
     }
     mol.clearProp(RDKit::common_properties::molNote);
+    mol.clearProp(HELM_MODEL);
     mol.clearAllAtomBookmarks();
     mol.clearAllBondBookmarks();
 
@@ -225,11 +226,14 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getMolForExport() const
 {
     // TODO: add API to export selection as atom/bond properties
     auto mol_copy = boost::make_shared<RDKit::ROMol>(m_mol);
-    if (contains_monomeric_atom(m_mol)) {
+    // Determine HELM-ness from the selection's atom content before stripping,
+    // since stripping also clears the per-atom monomeric flags.
+    const bool is_monomeric = contains_monomeric_atom(*mol_copy);
+    strip_notes_and_mol_model_tags(*mol_copy);
+    if (is_monomeric) {
         // RDKit uses a mol-level property to indicate HELM mols
         mol_copy->setProp(HELM_MODEL, true);
     }
-    strip_notes_and_mol_model_tags(*mol_copy);
     return mol_copy;
 }
 
@@ -256,7 +260,13 @@ boost::shared_ptr<RDKit::ROMol> MolModel::getSelectedMolForExport()
         mol_copy.removeAtom(getAtomFromTag(atom_tag)->getIdx());
     }
     mol_copy.commitBatchEdit();
+    // Determine HELM-ness from the selection's atom content before stripping,
+    // since stripping also clears the per-atom monomeric flags.
+    const bool is_monomeric = contains_monomeric_atom(mol_copy);
     strip_notes_and_mol_model_tags(mol_copy);
+    if (is_monomeric) {
+        mol_copy.setProp(HELM_MODEL, true);
+    }
     return boost::make_shared<RDKit::ROMol>(mol_copy);
 }
 
@@ -678,6 +688,10 @@ void MolModel::addMonomer(const std::string_view res_name,
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
         rdkit_extensions::assignChains(m_mol);
+        // assignChains sets HELM_MODEL on the mol, but per-atom flags are the
+        // source of truth inside MolModel; clearing it here keeps it from
+        // leaking into export copies after monomers are removed.
+        m_mol.clearProp(HELM_MODEL);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomer", WhatChanged::MOLECULE);
 }
@@ -854,6 +868,8 @@ void MolModel::addMonomericConnectionCommandFunc(const size_t bond_start_idx,
         }
     }
     rdkit_extensions::assignChains(m_mol);
+    // see note in addMonomer about why we clear this here
+    m_mol.clearProp(HELM_MODEL);
 }
 
 /**
