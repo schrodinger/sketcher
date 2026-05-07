@@ -50,6 +50,7 @@ class BracketSubgroupContextMenu;
 class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class MolModel;
+class MonomerContextMenu;
 class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
@@ -71,9 +72,9 @@ class SKETCHER_API SketcherWidget : public QWidget
     Q_OBJECT
 
   public:
-    SketcherWidget(
-        QWidget* parent = nullptr,
-        const InterfaceTypeType interface_type = InterfaceType::ATOMISTIC);
+    SketcherWidget(QWidget* parent = nullptr,
+                   const InterfaceTypeType interface_type =
+                       InterfaceType::ATOMISTIC_OR_MONOMERIC);
     ~SketcherWidget();
 
     /**
@@ -317,7 +318,13 @@ class SKETCHER_API SketcherWidget : public QWidget
      * Updates the watermark on user drawing atoms or deleting all
      * atoms from the scene
      */
-    void updateWatermark();
+    void updateWatermarkVisibilityAndPos();
+
+    /**
+     * Swap the watermark pixmap to match the current color scheme so it remains
+     * legible against both light and dark backgrounds.
+     */
+    void updateWatermarkPixmap();
 
     /**
      * Show the substance group bracket dialog.  If the dialog is accepted, a
@@ -356,6 +363,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     SelectionContextMenu* m_selection_context_menu = nullptr;
     BracketSubgroupContextMenu* m_sgroup_context_menu = nullptr;
     BackgroundContextMenu* m_background_context_menu = nullptr;
+    MonomerContextMenu* m_monomer_context_menu = nullptr;
 
     /**
      * Dialogs
@@ -395,6 +403,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     void connectContextMenu(const SelectionContextMenu& menu);
     void connectContextMenu(const BracketSubgroupContextMenu& menu);
     void connectContextMenu(const BackgroundContextMenu& menu);
+    void connectContextMenu(const MonomerContextMenu& menu);
 
     /**
      * Show the relevant context menu given some combination of atoms, bonds,

@@ -121,5 +121,12 @@ const QString CUSTOM_NUCLEOTIDE_STYLE{
 const QString ATOMISTIC_OR_MONOMERIC_BUTTON_STYLE{
     "QToolButton:checked { background-color: #aac7d8; }"};
 
+const QString AMINO_OR_NUCLEIC_TOGGLE_STYLE{
+    "QToolButton { font-size: 10px; font-weight: bold; color: #3d5d71; "
+    "    background-color: transparent; border: none; }"
+    "QToolButton:disabled { color: #E4E4E4; }"
+    "QToolButton:!checked:hover { color: #5b8aa8;}"
+    "QToolButton:checked { border-bottom: 2px solid #3d5d71; }"};
+
 } // namespace sketcher
 } // namespace schrodinger

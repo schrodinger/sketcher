@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Schrödinger 2D Sketcher - Welcome</string>
+   <string>Schrödinger Sketcher - Welcome</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
@@ -40,7 +40,7 @@
         </font>
        </property>
        <property name="text">
-        <string>Welcome to the new Schrödinger 2D Sketcher! Here are some tips to help you get started:</string>
+        <string>Welcome to the Schrödinger Sketcher! Here are some tips to help you get started:</string>
        </property>
       </widget>
      </item>

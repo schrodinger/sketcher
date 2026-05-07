@@ -45,6 +45,7 @@
 #include "schrodinger/sketcher/tool/draw_chain_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_monomer_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
@@ -630,6 +631,9 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::AMINO_ACID_TOOL:
             case ModelKey::AMINO_ACID_SYMBOL:
             case ModelKey::NUCLEIC_ACID_TOOL:
+            case ModelKey::RNA_NUCLEOBASE:
+            case ModelKey::DNA_NUCLEOBASE:
+            case ModelKey::CUSTOM_NUCLEOTIDE:
                 updateSceneTool();
                 break;
             default:
@@ -740,7 +744,11 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                     res_name, rdkit_extensions::ChainType::RNA, m_fonts, this,
                     m_mol_model);
             } else {
-                // TODO: the tool is for a full nucleotide
+                // the tool is for a full nucleotide
+                auto [sugar, base, phos] = *m_sketcher_model->getNucleotide();
+                return get_nucleotide_fragment_scene_tool(
+                    sugar.toStdString(), base.toStdString(), phos.toStdString(),
+                    m_fonts, this, m_mol_model);
             }
         }
     }

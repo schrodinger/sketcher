@@ -3825,7 +3825,7 @@ $$$$
     import_mol_text(&model, molblock);
     BOOST_TEST(
         get_mol_text(&model, Format::SMILES) ==
-        R"SMI([Cl][Sn]1([Cl])[N]2C3=CC=C2/C=C2/C=CC(=N2)/C=C2/C=C/C(=C/C4=N/C(=C\3)C=C4)[N]21)SMI");
+        R"SMI([Cl][Sn]1([Cl])[N]2C3=CC=C2/C=C2/C=CC(=N2)/C=C2C=C/C(=C/C4=NC(=C\3)/C=C4)[N]/21)SMI");
 
     auto mol = model.getMol();
 
@@ -4874,6 +4874,36 @@ BOOST_AUTO_TEST_CASE(test_addMonomer_disconnected)
     model.addMonomer("F", ChainType::PEPTIDE, {100.0, 0.0, 0.0});
     helm = get_mol_text(&model, Format::HELM);
     BOOST_TEST(helm == "PEPTIDE1{A}|PEPTIDE2{C}|PEPTIDE3{F}$$$$V2.0");
+}
+
+/**
+ * Make sure that adding a HELM string renames any chains if they have the same
+ * name as chains that already exist in MolModel.
+ */
+BOOST_AUTO_TEST_CASE(test_helm_string_chain_renaming)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    add_text_to_mol_model(model, "RNA1{R(A)P}|RNA2{R(C)P}$$$$V2.0");
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P}|RNA2{R(C)P}$$$$V2.0");
+
+    add_text_to_mol_model(model, "RNA1{R(G)P}|RNA2{R(T)P}$$$$V2.0");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm ==
+               "RNA1{R(A)P}|RNA2{R(C)P}|RNA3{R(G)P}|RNA4{R(T)P}$$$$V2.0");
+
+    add_text_to_mol_model(model, "RNA1{[dR](A)P}|RNA2{[dR](C)P}$$$$V2.0");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P}|RNA2{R(C)P}|RNA3{R(G)P}|RNA4{R(T)P}|RNA5{["
+                       "dR](A)P}|RNA6{[dR](C)P}$$$$V2.0");
+
+    // this PEPTIDE chain shouldn't get renumbered since it's not RNA
+    add_text_to_mol_model(model, "PEPTIDE1{W}$$$$V2.0");
+    helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P}|RNA2{R(C)P}|RNA3{R(G)P}|RNA4{R(T)P}|RNA5{["
+                       "dR](A)P}|RNA6{[dR](C)P}|PEPTIDE1{W}$$$$V2.0");
 }
 
 } // namespace sketcher

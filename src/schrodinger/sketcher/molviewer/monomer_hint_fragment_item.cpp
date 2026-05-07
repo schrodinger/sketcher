@@ -3,6 +3,7 @@
 #include <boost/range/join.hpp>
 
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -13,7 +14,7 @@ namespace schrodinger::sketcher
 {
 
 MonomerHintFragmentItem::MonomerHintFragmentItem(
-    const std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
+    std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
     const std::vector<size_t>& atom_indices_to_hide,
     const int bond_index_to_label, const QColor monomer_background_color,
     QGraphicsItem* parent) :
@@ -22,7 +23,8 @@ MonomerHintFragmentItem::MonomerHintFragmentItem(
     m_fonts(&fonts),
     m_atom_indices_to_hide(atom_indices_to_hide),
     m_bond_index_to_label(bond_index_to_label),
-    m_monomer_background_color(monomer_background_color)
+    m_monomer_background_color(monomer_background_color),
+    m_orig_conf(fragment->getConformer())
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER_FRAGMENT_HINT));
     createGraphicsItems();
@@ -37,15 +39,6 @@ void MonomerHintFragmentItem::createGraphicsItems()
         addToGroup(item);
     }
     for (auto& kv : atom_to_atom_item) {
-        if (auto* monomer_item =
-                dynamic_cast<AbstractMonomerItem*>(kv.second)) {
-            // if we used a transparent monomer background color, then we'd be
-            // able to see the bond behind the letter.  To avoid that, we use
-            // the same color as the Scene's background.
-            monomer_item->setMonomerColors(m_monomer_background_color,
-                                           CURSOR_HINT_COLOR,
-                                           CURSOR_HINT_COLOR);
-        }
         // hide the monomer where this fragment connects to the existing
         // structure
         auto atom_idx = kv.first->getIdx();
@@ -57,11 +50,7 @@ void MonomerHintFragmentItem::createGraphicsItems()
     }
     for (auto& kv : boost::range::join(bond_to_bond_item,
                                        bond_to_secondary_connection_item)) {
-        if (auto* connector_item =
-                qgraphicsitem_cast<MonomerConnectorItem*>(kv.second)) {
-            connector_item->setConnectorStyle(
-                CURSOR_HINT_COLOR, MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH);
-        }
+        m_bond_items.append(kv.second);
     }
 
     // label the attachment points
@@ -76,6 +65,45 @@ void MonomerHintFragmentItem::createGraphicsItems()
             addToGroup(item);
         }
     }
+    styleGraphicsItems();
+}
+
+void MonomerHintFragmentItem::styleGraphicsItems()
+{
+    // style the monomer items
+    for (auto item : m_atom_items) {
+        if (auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(item)) {
+            // if we used a transparent monomer background color, then we'd be
+            // able to see the bond behind the letter.  To avoid that, we use
+            // the same color as the Scene's background.
+            monomer_item->setMonomerColors(m_monomer_background_color,
+                                           CURSOR_HINT_COLOR,
+                                           CURSOR_HINT_COLOR);
+        }
+    }
+
+    // style the connector items
+    for (auto item : m_bond_items) {
+        if (auto* connector_item =
+                qgraphicsitem_cast<MonomerConnectorItem*>(item)) {
+            connector_item->setConnectorStyle(
+                CURSOR_HINT_COLOR, MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH);
+        }
+    }
+}
+
+void MonomerHintFragmentItem::setRotation(const double angle_radians,
+                                          const int monomer_idx_to_rotate_about)
+{
+    auto rotation_center = m_orig_conf.getAtomPos(monomer_idx_to_rotate_about);
+    auto rotated_conf = new RDKit::Conformer(m_orig_conf);
+    rotate_conformer_radians(angle_radians, rotation_center, *rotated_conf);
+    m_frag->clearConformers();
+    m_frag->addConformer(rotated_conf);
+    update_conf_for_mol_graphics_items(m_atom_items, m_bond_items, {}, *m_frag);
+    // update_conf_for_mol_graphics_items will overwriting our style
+    // customizations, so we reapply them
+    styleGraphicsItems();
 }
 
 } // namespace schrodinger::sketcher

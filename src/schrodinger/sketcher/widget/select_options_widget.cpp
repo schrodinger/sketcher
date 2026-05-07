@@ -1,7 +1,5 @@
 #include "schrodinger/sketcher/widget/select_options_widget.h"
 
-#include <functional>
-
 #include "schrodinger/sketcher/widget/widget_utils.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_select_options_widget.h"
@@ -22,15 +20,12 @@ SelectOptionsWidget::SelectOptionsWidget(QWidget* parent) : SketcherView(parent)
                      ui->invert_selection_btn}) {
         btn->setStyleSheet(TEXT_LINK_STYLE);
     }
-    m_selection_tool1_widget = new SelectionToolPopup(this);
-    m_selection_tool2_widget = new SelectionToolPopup(this);
+    m_selection_tool_widget = new SelectionToolPopup(this);
 
-    ui->select_tool_btn_1->setPopupWidget(m_selection_tool1_widget);
-    ui->select_tool_btn_2->setPopupWidget(m_selection_tool2_widget);
+    ui->select_tool_btn->setPopupWidget(m_selection_tool_widget);
 
-    ui->select_tool_btn_1->setEnumItem(
+    ui->select_tool_btn->setEnumItem(
         static_cast<int>(SelectionTool::RECTANGLE));
-    ui->select_tool_btn_2->setEnumItem(static_cast<int>(SelectionTool::LASSO));
 
     connect(ui->select_tool_group,
             static_cast<void (QButtonGroup::*)(QAbstractButton*)>(
@@ -51,14 +46,12 @@ SelectOptionsWidget::SelectOptionsWidget(QWidget* parent) : SketcherView(parent)
 void SelectOptionsWidget::setModel(SketcherModel* model)
 {
     SketcherView::setModel(model);
-    m_selection_tool1_widget->setModel(model);
-    m_selection_tool2_widget->setModel(model);
+    m_selection_tool_widget->setModel(model);
 }
 
 SelectOptionsWidget::~SelectOptionsWidget()
 {
-    delete m_selection_tool1_widget;
-    delete m_selection_tool2_widget;
+    delete m_selection_tool_widget;
 }
 
 void SelectOptionsWidget::updateWidgetsEnabled()
@@ -68,8 +61,7 @@ void SelectOptionsWidget::updateWidgetsEnabled()
     auto has_selection = model->hasActiveSelection();
 
     // Something must be drawn for these buttons to do anything
-    ui->select_tool_btn_1->setEnabled(has_contents);
-    ui->select_tool_btn_2->setEnabled(has_contents);
+    ui->select_tool_btn->setEnabled(has_contents);
     ui->erase_btn->setEnabled(has_contents);
 
     // Move tool should only be enabled if there are atoms or non-molecular

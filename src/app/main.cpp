@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------
- * Schrodinger 2D Sketcher Application
+ * Schrodinger Sketcher Application
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
@@ -11,12 +11,12 @@
 #include "crash_handler.h"
 #endif
 
-#include <cstring>
 #include <stdexcept>
 
 #include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
+#include <QIcon>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QStyleHints>
@@ -76,17 +76,6 @@ bool sketcher_has_monomers()
     auto& sk = get_sketcher_instance();
     auto mol = sk.getRDKitMolecule();
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
-}
-
-// Note: allow_monomeric should not be set to false if the workspace
-// contains monomers.
-void sketcher_allow_monomeric(bool allow_monomeric)
-{
-    auto& sk = get_sketcher_instance();
-    return sk.setInterfaceType(
-        allow_monomeric
-            ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
-            : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
 void sketcher_load_custom_monomers(const std::string& json)
@@ -216,7 +205,6 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
-    emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
     emscripten::function("sketcher_load_custom_monomers_from_sql",
@@ -260,6 +248,7 @@ int main(int argc, char** argv)
 #ifdef SKETCHER_STATIC_DEFINE
     Q_INIT_RESOURCE(sketcher);
 #endif
+    QApplication::setWindowIcon(QIcon(":icons/sketcher-logo.svg"));
 
 #ifdef __EMSCRIPTEN__
     // Only apply this stylesheet for the WASM build
@@ -277,10 +266,5 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
-    // check for the command line option to enable the monomeric tools
-    if (argc >= 2 && strcmp(argv[1], "--allow-monomeric") == 0) {
-        sk.setInterfaceType(
-            schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
-    }
     return application.exec();
 }

@@ -154,25 +154,25 @@ ExternalProject_Add(
 
 # Build Boost library
 set(BOOST_LIBS_TO_INCLUDE
-  # RDKit required libraries
-  assign
-  crc
-  format
-  flyweight
-  graph
-  geometry
-  iostreams
-  json
-  locale
-  multi_array
-  multiprecision
-  program_options
-  rational
-  serialization
-  # rdkit_extensions required libraries
-  bimap
-  filesystem
-  test)
+    # RDKit required libraries
+    assign
+    crc
+    format
+    flyweight
+    graph
+    geometry
+    iostreams
+    json
+    locale
+    multi_array
+    multiprecision
+    program_options
+    rational
+    serialization
+    # rdkit_extensions required libraries
+    bimap
+    filesystem
+    test)
 if(NOT EMSCRIPTEN)
   # on desktop builds, we use stacktrace to print crash reports
   list(APPEND BOOST_LIBS_TO_INCLUDE stacktrace)
@@ -233,10 +233,6 @@ set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
 # Prevent RDKit from trying to build shared libs
 list(APPEND RDKIT_PATCH_COMMAND && git apply
      ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
-list(APPEND RDKIT_PATCH_COMMAND && git apply
-     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_extern_patch.patch)
-list(APPEND RDKIT_PATCH_COMMAND && git apply --ignore-whitespace
-     ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_revert_pr_9082.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()

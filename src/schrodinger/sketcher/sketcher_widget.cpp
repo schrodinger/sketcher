@@ -8,7 +8,10 @@
 #include <QGraphicsPixmapItem>
 #include <QKeyEvent>
 #include <QMimeData>
+#include <QPainter>
+#include <QPixmap>
 #include <QScreen>
+#include <QSvgRenderer>
 #include <QWidget>
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
 #include <rdkit/GraphMol/Conformer.h>
@@ -37,6 +40,7 @@
 #include "schrodinger/sketcher/menu/background_context_menu.h"
 #include "schrodinger/sketcher/menu/bond_context_menu.h"
 #include "schrodinger/sketcher/menu/bracket_subgroup_context_menu.h"
+#include "schrodinger/sketcher/menu/monomer_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -46,6 +50,7 @@
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/non_molecular_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/view.h"
@@ -63,6 +68,44 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Index-keyed counterpart to MonomerMutation: the same `(atoms,
+ * helm_symbol)` pair, but with atom identity captured by index so it
+ * survives a `MolModel::mutateMonomers` call (which may invalidate
+ * raw `RDKit::Atom*` pointers via its snapshot mechanism).
+ */
+struct IndexedMonomerMutation {
+    std::vector<unsigned int> atom_indices;
+    std::string helm_symbol;
+};
+
+/**
+ * Capture atom identity by index before a sequence of
+ * `MolModel::mutateMonomers` calls. Indices are stable since the
+ * underlying `mutateMonomer` only edits properties (no atom
+ * add/remove/reorder). The caller resolves each batch's indices back
+ * to live atoms via `getMol()->getAtomWithIdx(...)` immediately
+ * before each mutation.
+ *
+ * Consumes its input — `mutations` is moved-from on return, so
+ * callers should not reference it afterwards.
+ */
+static std::vector<IndexedMonomerMutation>
+capture_atom_indices(std::vector<MonomerMutation> mutations)
+{
+    std::vector<IndexedMonomerMutation> indexed;
+    indexed.reserve(mutations.size());
+    for (auto& [atoms, sym] : mutations) {
+        std::vector<unsigned int> idxs;
+        idxs.reserve(atoms.size());
+        for (const auto* a : atoms) {
+            idxs.push_back(a->getIdx());
+        }
+        indexed.push_back({std::move(idxs), std::move(sym)});
+    }
+    return indexed;
+}
 
 /**
  * Map a NucleicAcidTool to the corresponding MonomerType.
@@ -224,6 +267,9 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     connectContextMenu(*m_sgroup_context_menu);
     connectContextMenu(*m_background_context_menu);
 
+    m_monomer_context_menu = new MonomerContextMenu(this);
+    connectContextMenu(*m_monomer_context_menu);
+
     // create the file and image export dialogs
     m_file_export_dialog = new FileExportDialog(m_sketcher_model, window());
     connect(m_file_export_dialog, &FileExportDialog::exportTextRequested, this,
@@ -257,11 +303,13 @@ SketcherWidget::SketcherWidget(QWidget* parent,
 
     // Set up the watermark after loading fonts because the SVG uses them
     m_watermark_item = new QGraphicsPixmapItem();
-    m_watermark_item->setPixmap(QPixmap(":icons/2D-Sketcher-watermark.svg"));
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    updateWatermarkPixmap();
     m_scene->addItem(m_watermark_item);
-    connect(m_scene, &Scene::changed, this, &SketcherWidget::updateWatermark);
-    connect(m_ui->view, &View::resized, this, &SketcherWidget::updateWatermark);
+    connect(m_scene, &Scene::changed, this,
+            &SketcherWidget::updateWatermarkVisibilityAndPos);
+    connect(m_ui->view, &View::resized, this,
+            &SketcherWidget::updateWatermarkVisibilityAndPos);
 
     setInterfaceType(interface_type);
 }
@@ -623,7 +671,7 @@ void SketcherWidget::showEditAtomPropertiesDialog(
     dialog->show();
 }
 
-void SketcherWidget::updateWatermark()
+void SketcherWidget::updateWatermarkVisibilityAndPos()
 {
     bool is_empty = m_sketcher_model->sceneIsEmpty();
     if (is_empty) {
@@ -636,6 +684,22 @@ void SketcherWidget::updateWatermark()
     }
 
     m_watermark_item->setVisible(is_empty);
+}
+
+void SketcherWidget::updateWatermarkPixmap()
+{
+    const QString path = m_sketcher_model->hasDarkColorScheme()
+                             ? ":icons/sketcher-watermark-dark.svg"
+                             : ":icons/sketcher-watermark.svg";
+    constexpr int WATERMARK_WIDTH_PX = 140;
+    QSvgRenderer renderer(path);
+    QSize size = renderer.defaultSize();
+    size.scale(WATERMARK_WIDTH_PX, WATERMARK_WIDTH_PX, Qt::KeepAspectRatio);
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    renderer.render(&painter);
+    m_watermark_item->setPixmap(pixmap);
 }
 
 void SketcherWidget::showBracketSubgroupDialogForAtoms(
@@ -733,6 +797,34 @@ void SketcherWidget::connectContextMenu(const AttachmentPointContextMenu& menu)
     connect(&menu, &AttachmentPointContextMenu::deleteRequested, this,
             [this](auto atoms, auto bonds) {
                 m_mol_model->remove(atoms, bonds, {}, {}, {});
+            });
+}
+
+void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
+{
+    connect(&menu, &MonomerContextMenu::deleteRequested, this,
+            [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
+
+    connect(&menu, &MonomerContextMenu::mutateResidueRequested, this,
+            [this](auto mutations, const QString& description) {
+                if (mutations.empty()) {
+                    return;
+                }
+                auto indexed = capture_atom_indices(std::move(mutations));
+
+                auto undo_raii = m_mol_model->createUndoMacro(
+                    description.isEmpty() ? QStringLiteral("Mutate Monomers")
+                                          : description);
+                for (auto& [idxs, sym] : indexed) {
+                    std::unordered_set<const RDKit::Atom*> resolved;
+                    resolved.reserve(idxs.size());
+                    const auto* mol = m_mol_model->getMol();
+                    for (auto i : idxs) {
+                        resolved.insert(mol->getAtomWithIdx(i));
+                    }
+                    m_mol_model->mutateMonomers(resolved, sym,
+                                                MonomerType::PEPTIDE);
+                }
             });
 }
 
@@ -918,7 +1010,16 @@ void SketcherWidget::showContextMenu(
     } else if (atoms.size() && bond_selected) {
         menu = m_selection_context_menu;
     } else if (atoms.size()) {
-        menu = m_atom_context_menu;
+        bool all_monomeric =
+            !filtered_atoms.empty() &&
+            std::ranges::all_of(filtered_atoms, [](const auto* atom) {
+                return is_atom_monomeric(atom);
+            });
+        if (all_monomeric) {
+            menu = m_monomer_context_menu;
+        } else {
+            menu = m_atom_context_menu;
+        }
     } else if (bond_selected) {
         menu = m_bond_context_menu;
     } else if (non_molecular_objects.size()) {
@@ -1304,6 +1405,8 @@ void SketcherWidget::onBackgroundColorChanged(const QColor& color)
         return;
     }
     view->setBackgroundBrush(QBrush(color));
+    updateWatermarkPixmap();
+    updateWatermarkVisibilityAndPos();
 }
 
 void SketcherWidget::onModelValuePinged(ModelKey key, QVariant value)

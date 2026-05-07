@@ -22,15 +22,15 @@ runs:
         commit_timestamp=$(git show --no-patch --pretty=format:%ct)
         commit_datetime=$(TZ=UTC0 date --date @$commit_timestamp +%Y%m%d%H%M%S)
         short_sha=$(git rev-parse --short HEAD)
-        
+
         full_version="$sketcher_version-$tag_name.$commit_datetime.$short_sha"
         sed -i -e "s/<SKETCHER_VERSION>/$full_version/" wasm/package/package.json
         echo "VERSION=$full_version" >> $GITHUB_OUTPUT
         echo "TAG_NAME=$tag_name" >> $GITHUB_OUTPUT
-        
+
         # Add authentication config to .npmrc
         echo "//npm.pkg.github.com:_authToken=\${NODE_AUTH_TOKEN}" >> wasm/package/.npmrc
-    
+
     - id: publish
       shell: bash
       env:

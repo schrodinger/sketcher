@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 
+#include <boost/range/combine.hpp>
 #include <boost/range/join.hpp>
 
 #include <QGraphicsItem>
@@ -17,6 +18,7 @@
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/ROMol.h>
+#include <rdkit/GraphMol/RWMol.h>
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
@@ -40,7 +42,7 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
     NUMBERED_AP_NAMES_BY_MONOMER_TYPE = {
         {MonomerType::PEPTIDE, {"N", "C", "X"}},
         {MonomerType::NA_BASE, {"N1/9"}},
-        {MonomerType::NA_SUGAR, {"3'", "5'", "1'"}},
+        {MonomerType::NA_SUGAR, {"5'", "3'", "1'"}},
 };
 
 // standard attachment point names that don't follow the "R#" naming scheme
@@ -804,9 +806,14 @@ int get_chain_num(const std::string_view chain_name,
     }
 }
 
-std::string
-get_first_available_chain_name(const RDKit::ROMol& mol,
-                               const rdkit_extensions::ChainType chain_type)
+/**
+ * @return a list containing the num_names lowest numbered chain names (of the
+ * specified type) that don't already exist in the molecule.
+ */
+static std::vector<std::string>
+get_first_available_chain_names(const RDKit::ROMol& mol,
+                                const rdkit_extensions::ChainType chain_type,
+                                const unsigned int num_names)
 {
     auto prefix = rdkit_extensions::toString(chain_type);
     std::unordered_set<int> chain_nums;
@@ -817,17 +824,36 @@ get_first_available_chain_name(const RDKit::ROMol& mol,
         int cur_chain_num = get_chain_num(chain_name, chain_type);
         chain_nums.insert(cur_chain_num);
     }
-    int missing_num = 1;
-    while (chain_nums.contains(missing_num)) {
-        ++missing_num;
+    std::vector<int> missing_nums;
+    missing_nums.reserve(num_names);
+    int num_to_check = 1;
+    while (missing_nums.size() < num_names) {
+        if (!chain_nums.contains(num_to_check)) {
+            missing_nums.push_back(num_to_check);
+        }
+        ++num_to_check;
     }
-    return fmt::format("{}{}", prefix, missing_num);
+    std::vector<std::string> new_names;
+    std::ranges::transform(
+        missing_nums, std::back_inserter(new_names),
+        [&prefix](auto num) { return fmt::format("{}{}", prefix, num); });
+    return new_names;
+}
+
+std::string
+get_first_available_chain_name(const RDKit::ROMol& mol,
+                               const rdkit_extensions::ChainType chain_type)
+{
+    return get_first_available_chain_names(mol, chain_type, 1).front();
 }
 
 std::pair<std::string, bool>
 build_linkage_string(const std::string_view ap_name_one,
                      const std::string_view ap_name_two)
 {
+    if (ap_name_one == "pair" || ap_name_two == "pair") {
+        return {"pair-pair", false};
+    }
     auto ap_num_one = ap_name_to_num(ap_name_one);
     auto ap_num_two = ap_name_to_num(ap_name_two);
     bool flip = ap_num_one < ap_num_two;
@@ -897,6 +923,72 @@ bool get_is_custom_bond(const std::string_view res_name_one,
     return get_is_custom_bond(res_name_one, chain_type_one,
                               monomer_two_res_name, monomer_two_chain_type,
                               linkage);
+}
+
+unsigned int add_monomer_connection(RDKit::RWMol& mol,
+                                    const unsigned int monomer_one_idx,
+                                    const std::string_view ap_one,
+                                    const unsigned int monomer_two_idx,
+                                    const std::string_view ap_two)
+{
+    auto* monomer_one = mol.getAtomWithIdx(monomer_one_idx);
+    auto* monomer_two = mol.getAtomWithIdx(monomer_two_idx);
+    return add_monomer_connection(mol, monomer_one, ap_one, monomer_two,
+                                  ap_two);
+}
+
+unsigned int add_monomer_connection(RDKit::RWMol& mol, RDKit::Atom* monomer_one,
+                                    const std::string_view ap_one,
+                                    RDKit::Atom* monomer_two,
+                                    const std::string_view ap_two)
+{
+    auto [linkage, flipped] = build_linkage_string(ap_one, ap_two);
+    if (flipped) {
+        std::swap(monomer_one, monomer_two);
+    }
+    bool is_custom_bond = get_is_custom_bond(monomer_one, monomer_two, linkage);
+    auto [bond, connection_added] = rdkit_extensions::addConnection(
+        mol, monomer_one->getIdx(), monomer_two->getIdx(), linkage,
+        is_custom_bond);
+    return bond->getIdx();
+}
+
+void ensure_distinct_chain_names(RDKit::ROMol& mol_to_change,
+                                 const RDKit::ROMol& reference_mol)
+{
+    using rdkit_extensions::ChainType;
+    auto ref_polymer_ids = rdkit_extensions::get_polymer_ids(reference_mol);
+    auto polymer_ids_to_change =
+        rdkit_extensions::get_polymer_ids(mol_to_change);
+    // build a list of all chain names to change, divided up by chain type
+    std::unordered_map<ChainType, std::vector<std::string>> chain_names_by_type;
+    for (const auto& cur_polymer_id : polymer_ids_to_change) {
+        auto cur_chain_type = rdkit_extensions::getChainType(cur_polymer_id);
+        chain_names_by_type[cur_chain_type].push_back(cur_polymer_id);
+    }
+    // create a map of old chain name to new chain name
+    std::unordered_map<std::string, std::string> chain_name_map;
+    for (auto [chain_type, orig_chain_names] : chain_names_by_type) {
+        auto new_chain_names = get_first_available_chain_names(
+            reference_mol, chain_type, orig_chain_names.size());
+        for (const auto& [cur_orig_chain, cur_new_chain] :
+             boost::combine(orig_chain_names, new_chain_names)) {
+            chain_name_map[cur_orig_chain] = cur_new_chain;
+        }
+    }
+    // change the chain names for each atom
+    for (auto atom : mol_to_change.atoms()) {
+        auto* monomer_info = atom->getMonomerInfo();
+        if (monomer_info == nullptr) {
+            continue;
+        }
+        auto* pdb_res_info =
+            static_cast<RDKit::AtomPDBResidueInfo*>(monomer_info);
+        auto chain_id = pdb_res_info->getChainId();
+        if (chain_name_map.contains(chain_id)) {
+            pdb_res_info->setChainId(chain_name_map.at(chain_id));
+        }
+    }
 }
 
 } // namespace sketcher

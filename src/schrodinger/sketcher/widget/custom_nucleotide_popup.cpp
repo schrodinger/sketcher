@@ -28,6 +28,8 @@ CustomNucleotidePopup::CustomNucleotidePopup(QWidget* parent) :
         le->setValidator(alphanumeric_validator);
         connect(le, &QLineEdit::textEdited, this,
                 &CustomNucleotidePopup::onTextEdited);
+        connect(le, &QLineEdit::returnPressed, this,
+                &CustomNucleotidePopup::close);
     }
 }
 

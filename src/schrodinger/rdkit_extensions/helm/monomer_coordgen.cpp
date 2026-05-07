@@ -31,6 +31,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <iterator>
 #include <map>
@@ -2714,20 +2715,17 @@ void assign_clusters(std::vector<MonomerResizeData>& resize_data,
 /**
  * Read the stored monomer size for an atom.
  * Falls back to MONOMER_MINIMUM_SIZE when not present.
+ * Stored as std::array<double, 3> rather than RDGeom::Point3D: on macOS arm64
+ * with hidden visibility, std::any_cast<Point3D> spuriously throws (libc++
+ * non-unique RTTI bit, SHARED-12285); std::array's typeinfo is immune.
  */
 inline RDGeom::Point3D get_monomer_size(const RDKit::ROMol& mol,
                                         unsigned int index)
 {
-    RDGeom::Point3D size(MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0);
     auto* atom = mol.getAtomWithIdx(index);
-    try {
-        atom->getPropIfPresent<RDGeom::Point3D>(MONOMER_ITEM_SIZE, size);
-    } catch (const std::bad_any_cast&) {
-        // getPropIfPresent sometimes leaks an exception to the caller, so use
-        // the default size when that happens
-        return {MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0};
-    }
-    return size;
+    std::array<double, 3> stored{MONOMER_MINIMUM_SIZE, MONOMER_MINIMUM_SIZE, 0};
+    atom->getPropIfPresent<std::array<double, 3>>(MONOMER_ITEM_SIZE, stored);
+    return {stored[0], stored[1], stored[2]};
 }
 
 struct RingResizeInfo {
@@ -3087,8 +3085,8 @@ void update_monomer_sizes(
     const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
     for (const auto& r : monomer_sizes) {
-        mol.getAtomWithIdx(r.first)->setProp<RDGeom::Point3D>(MONOMER_ITEM_SIZE,
-                                                              r.second);
+        mol.getAtomWithIdx(r.first)->setProp<std::array<double, 3>>(
+            MONOMER_ITEM_SIZE, {r.second.x, r.second.y, r.second.z});
     }
 }
 

@@ -133,8 +133,8 @@ HelpMenu::HelpMenu(QWidget* parent) : QMenu(parent)
     // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     addAction("Getting Started...", this, &HelpMenu::showWelcomeDialog,
               Qt::QueuedConnection);
-    addAction("About 2D Sketcher...", this,
-              &HelpMenu::showAbout2DSketcherDialog, Qt::QueuedConnection);
+    addAction("About Sketcher...", this, &HelpMenu::showAbout2DSketcherDialog,
+              Qt::QueuedConnection);
 }
 
 void HelpMenu::showWelcomeDialog()
