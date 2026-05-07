@@ -16,7 +16,6 @@ namespace sketcher
  */
 class SKETCHER_API AminoOrNucleicToggleButton : public QToolButton
 {
-    Q_OBJECT
   public:
     AminoOrNucleicToggleButton(QWidget* parent = nullptr);
 };
