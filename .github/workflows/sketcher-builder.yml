@@ -35,8 +35,6 @@ jobs:
   build-test:
     needs: pre-commit
     runs-on: ${{ matrix.runner }}
-    env:
-      CACHE_TAG: ${{ matrix.runner }}-${{ matrix.build-name }}
     defaults:
       run:
         shell: bash
@@ -150,8 +148,6 @@ jobs:
         with:
           library: fmt
           version: ${{ fromJson(env.VERSIONS_JSON).fmt }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch zlib
         id: fetch-zlib
@@ -159,8 +155,6 @@ jobs:
         with:
           library: zlib
           version: ${{ fromJson(env.VERSIONS_JSON).zlib }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch zstd
         id: fetch-zstd
@@ -168,8 +162,6 @@ jobs:
         with:
           library: zstd
           version: ${{ fromJson(env.VERSIONS_JSON).zstd }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch Boost
         id: fetch-boost
@@ -177,8 +169,6 @@ jobs:
         with:
           library: boost
           version: ${{ fromJson(env.VERSIONS_JSON).boost }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch Eigen
         id: fetch-eigen
@@ -186,8 +176,6 @@ jobs:
         with:
           library: eigen
           version: ${{ fromJson(env.VERSIONS_JSON).eigen }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch SQLite3
         id: fetch-sqlite
@@ -195,8 +183,6 @@ jobs:
         with:
           library: sqlite
           version: ${{ fromJson(env.VERSIONS_JSON).sqlite }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch RDKit
         id: fetch-rdkit
@@ -204,8 +190,6 @@ jobs:
         with:
           library: rdkit
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Install Qt's required packages
         if: matrix.linux-qt-deps
@@ -244,8 +228,6 @@ jobs:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
           host-build: true
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Fetch Qt
         id: fetch-qt
@@ -253,8 +235,6 @@ jobs:
         with:
           library: qt
           version: ${{ fromJson(env.VERSIONS_JSON).qt }}
-          cache-tag: ${{ env.CACHE_TAG }}
-          use-emsdk: ${{ matrix.needs-emscripten }}
 
       - name: Configure CMake
         env:
