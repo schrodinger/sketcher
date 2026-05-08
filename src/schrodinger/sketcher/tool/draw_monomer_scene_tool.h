@@ -96,9 +96,9 @@ class SKETCHER_API DrawMonomerSceneTool : public AbstractMonomerSceneTool
     MonomerType m_monomer_type;
 
     bool m_drag_ignored;
-    AbstractMonomerItem* m_drag_start_monomer_item;
+    AbstractMonomerItem* m_drag_start_monomer_item = nullptr;
     std::string m_drag_start_ap_model_name;
-    AbstractMonomerItem* m_drag_end_monomer_item;
+    AbstractMonomerItem* m_drag_end_monomer_item = nullptr;
     DragEndInfo m_drag_end_info;
     QGraphicsItemGroup m_drag_end_attachment_point_labels_group;
     std::vector<UnboundMonomericAttachmentPointItem*>
