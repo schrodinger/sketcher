@@ -46,33 +46,32 @@ jobs:
             runner: macos-15
             build-type: Release
             needs-venv: true
-            runs-pytest: true
+            tests: cpp
           - build-name: windows-x64
             runner: windows-2022
             build-type: Release
             needs-msvc: true
-            runs-pytest: true
+            tests: cpp
           - build-name: linux-x64
             runner: ubuntu-22.04
             build-type: Release
             linux-qt-deps: true
             test-prefix: 'xvfb-run -a'
-            runs-pytest: true
+            tests: cpp
           - build-name: wasm
             runner: ubuntu-22.04
             build-type: Release
             linux-qt-deps: true
             needs-emscripten: true
-            cmake-wrapper: 'emcmake '
             cmake-extra-flags: '-DENABLE_TESTING=OFF'
-            runs-wasm-tests: true
+            tests: wasm
           - build-name: debug
             runner: ubuntu-22.04
             build-type: Debug
             linux-qt-deps: true
             free-space: true
             needs-valgrind: true
-            runs-memtest: true
+            tests: memtest
     steps:
       # the debug runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
@@ -132,7 +131,7 @@ jobs:
 
       - name: Configure Dependency CMake
         run: |
-          ${{ matrix.cmake-wrapper }}\
+          ${{ matrix.needs-emscripten && 'emcmake ' || '' }}\
               cmake -B build/external/ -S external/ -G Ninja \
               -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
@@ -247,7 +246,7 @@ jobs:
             ${{ steps.fetch-sqlite.outputs.path }};\
             ${{ steps.fetch-qt.outputs.path }}"
         run: |
-          ${{ matrix.cmake-wrapper }}\
+          ${{ matrix.needs-emscripten && 'emcmake ' || '' }}\
           cmake -B build -S . -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON \
@@ -260,7 +259,7 @@ jobs:
 
       - name: Run tests
         working-directory: build
-        if: matrix.runs-pytest
+        if: matrix.tests == 'cpp'
         env:
           SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # `xvfb-run -a` is required for Linux runners (set via test-prefix)
@@ -269,7 +268,7 @@ jobs:
           pytest -n auto --ignore=external
 
       - name: Run wasm tests
-        if: matrix.runs-wasm-tests
+        if: matrix.tests == 'wasm'
         run: |
           cd test/wasm
           npm install
@@ -277,7 +276,7 @@ jobs:
 
       - name: Run memtests
         working-directory: build
-        if: matrix.runs-memtest
+        if: matrix.tests == 'memtest'
         # Using -j4 instead of -j because cmake 3.24 requires a specific number.
         # xvfb-run is embedded in each memtest command in CMakeLists so each
         # test gets its own isolated X display rather than sharing one.
@@ -294,5 +293,5 @@ jobs:
             !build/sketcher_app/*.manifest
 
       - name: Publish sketcher npm package
-        if: matrix.runs-wasm-tests && inputs.publish-npm-package
+        if: matrix.tests == 'wasm' && inputs.publish-npm-package
         uses: ./.github/actions/publish-npm-package
