@@ -11,6 +11,12 @@ inputs:
   host-build:
     description: 'Whether to build a host library for use in cross-compiling (e.g. a Linux build of Qt that gets used during the WASM build process)'
     default: false
+  use-emsdk:
+    description: 'Source emsdk_env.sh before building (for wasm cross-compilation). Ignored when host-build is true.'
+    default: false
+  cache-tag:
+    description: 'Caller-supplied differentiator for the cache key (e.g. runner + build-name). Builds that should not share a cache must produce distinct tags.'
+    required: true
 
 outputs:
   path:
@@ -27,7 +33,7 @@ runs:
         BUILD_DIR="build/external${{ inputs.host-build == 'true' && '/host' || '' }}"
         echo "build-dir=${BUILD_DIR}" >> $GITHUB_OUTPUT
         echo "lib-dir=${BUILD_DIR}/${{ inputs.library }}-${{ inputs.version }}" >> $GITHUB_OUTPUT
-        echo "cache-key=${{ inputs.library }}-${{ inputs.version }}-${{ matrix.runner }}-${{ matrix.build-name }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt', 'external/versions.json', 'external/sqlite_cmake/*') }}" >> $GITHUB_OUTPUT
+        echo "cache-key=${{ inputs.library }}-${{ inputs.version }}-${{ inputs.cache-tag }}${{ inputs.host-build == 'true' && '-host' || '' }}-${{ hashFiles('external/CMakeLists.txt', 'external/versions.json', 'external/sqlite_cmake/*') }}" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v5
       id: cache-check
@@ -42,7 +48,7 @@ runs:
       # cmd and doesn't protect the path backslashes from bash
       shell: ${{ runner.os == 'windows' && 'cmd' || 'bash' }}
       env:
-        use-emsdk: ${{ matrix.build-name == 'wasm' && inputs.host-build == 'false' && 'true' }}
+        use-emsdk: ${{ inputs.use-emsdk == 'true' && inputs.host-build == 'false' && 'true' }}
         # cmd uses ^ for escaping newlines instead of
         endl: ${{ runner.os == 'windows' && '^' || '\' }}
       run: |

@@ -34,8 +34,12 @@ jobs:
       - name: Package release assets
         run: |
           for dir in artifacts/sketcher-*; do
-            [[ "$dir" == *-memtest ]] && continue
-            (cd "$dir" && zip -r "../../$(basename "$dir").zip" .)
+            name=$(basename "$dir")
+            case "$name" in
+              *-debug)     continue ;;
+              *-linux-x64) tar -czf "${name}.tar.gz" -C "$dir" . ;;
+              *)           (cd "$dir" && zip -r "../../${name}.zip" .) ;;
+            esac
           done
 
       - name: Create or update release
@@ -46,7 +50,9 @@ jobs:
           git tag -f "$tag"
           git push -f origin "$tag"
           gh release delete "$tag" --yes 2>/dev/null || true
-          gh release create "$tag" sketcher-${{ inputs.version }}-*.zip \
+          gh release create "$tag" \
+            sketcher-${{ inputs.version }}-*.zip \
+            sketcher-${{ inputs.version }}-*.tar.gz \
             --title "${{ inputs.version }}" \
             --notes "Schrödinger Sketcher ${{ inputs.version }} release" \
             --target "${{ inputs.version }}"
