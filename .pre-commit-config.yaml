@@ -21,7 +21,7 @@ repos:
         name: prettier
         entry: npx prettier@3.8.3
         language: system
-        files: \.(js|json|yml|yaml|md|html)$
+        files: \.(js|yml|yaml|md|html)$
         args: [--check]
 
       - id: yapf
