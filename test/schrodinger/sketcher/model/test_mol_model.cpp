@@ -4127,6 +4127,54 @@ BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_addMonomer_SKETCH_2716,
 }
 
 /**
+ * Reproduce the bug where placing a monomer, deleting it, then placing an
+ * atomistic atom and copy/cutting it throws "Atom does not have monomer info".
+ *
+ * The molecule-level HELM_MODEL property gets set when a monomer is added but
+ * is never cleared when the monomer is deleted. A subsequent
+ * getSelectedMolForExport then returns an atomistic mol still tagged
+ * HELM_MODEL=true, which routes downstream serialization through the
+ * monomeric code path and explodes.
+ */
+BOOST_AUTO_TEST_CASE(test_getSelectedMolForExport_after_monomer_deleted)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const auto* mol = model.getMol();
+
+    // Place a monomer; assignChains sets HELM_MODEL transiently but addMonomer
+    // clears it before returning so the property doesn't leak.
+    model.addMonomer("A", rdkit_extensions::ChainType::PEPTIDE,
+                     RDGeom::Point3D(0.0, 0.0, 0.0));
+    BOOST_TEST(!mol->hasProp(HELM_MODEL));
+    BOOST_TEST(contains_monomeric_atom(*mol));
+
+    // Delete the monomer.
+    model.selectAll();
+    model.removeSelected();
+    BOOST_TEST(mol->getNumAtoms() == 0);
+
+    // Place an atomistic atom and select it.
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    BOOST_TEST(mol->getNumAtoms() == 1);
+    auto* c_atom = mol->getAtomWithIdx(0);
+    BOOST_TEST(!is_atom_monomeric(c_atom));
+    model.select({c_atom}, {}, {}, {}, {}, SelectMode::SELECT);
+
+    // The exported selection must not claim to be monomeric.
+    auto exported = model.getSelectedMolForExport();
+    BOOST_TEST(exported->getNumAtoms() == 1);
+    BOOST_TEST(!contains_monomeric_atom(*exported));
+    BOOST_TEST(!rdkit_extensions::isMonomeric(*exported));
+    BOOST_TEST(!exported->hasProp(HELM_MODEL));
+
+    // Round-tripping the exported mol through to_string (what cut/copy does)
+    // must not throw "Atom does not have monomer info".
+    BOOST_CHECK_NO_THROW(rdkit_extensions::to_string(
+        *exported, rdkit_extensions::Format::SMILES));
+}
+
+/**
  * Verify that mutateMonomers changes the res name of all peptide monomers
  * and that the mutation is undoable.
  */
