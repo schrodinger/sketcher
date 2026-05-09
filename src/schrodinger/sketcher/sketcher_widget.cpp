@@ -304,6 +304,7 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     // Set up the watermark after loading fonts because the SVG uses them
     m_watermark_item = new QGraphicsPixmapItem();
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    m_watermark_item->setOpacity(0.4);
     updateWatermarkPixmap();
     m_scene->addItem(m_watermark_item);
     connect(m_scene, &Scene::changed, this,
