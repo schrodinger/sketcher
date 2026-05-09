@@ -4034,6 +4034,99 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
 }
 
 /**
+ * Clean Up should not distort coordinates of a monomeric structure.
+ */
+BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_monomeric_SKETCH_2716,
+                     *utf::tolerance(0.01))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    auto mol = model.getMol();
+
+    import_mol_text(&model,
+                    "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{P.R(C)P.R(G)P.R(T)}$$$$V2.0");
+    BOOST_REQUIRE(model.isMonomeric());
+
+    auto& orig_conf = mol->getConformer();
+    std::vector<RDGeom::Point3D> original_coords;
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        original_coords.push_back(orig_conf.getAtomPos(i));
+    }
+
+    model.regenerateCoordinates();
+
+    BOOST_REQUIRE(mol->getNumAtoms() == original_coords.size());
+    auto& new_conf = mol->getConformer();
+    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
+        const auto& orig = original_coords[i];
+        const auto& curr = new_conf.getAtomPos(i);
+        BOOST_TEST(orig.x == curr.x);
+        BOOST_TEST(orig.y == curr.y);
+    }
+}
+
+/**
+ * SKETCH-2716: Clean Up must use the monomer layout regardless of how the
+ * monomers got into the model. addMonomer/addBoundMonomer routes through
+ * addAtomChainCommandFunc rather than addMolCommandFunc, so the cleanup
+ * path must detect the monomeric content from the per-atom flag.
+ *
+ * To assert the cleanup ran the monomer layout (and not the atomistic
+ * fallback), we build a branched R(A)P nucleotide via the addMonomer path
+ * and another via HELM import, run cleanup on both, and check that the
+ * resulting layouts match. (For a simple linear chain, MONOMER_BOND_LENGTH
+ * happens to equal RDKit's atomistic bond length, so the two paths would be
+ * indistinguishable; the side branch off the ribose breaks the symmetry.)
+ */
+BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_addMonomer_SKETCH_2716,
+                     *utf::tolerance(0.01))
+{
+    QUndoStack imported_undo_stack;
+    TestMolModel imported_model(&imported_undo_stack);
+    import_mol_text(&imported_model, "RNA1{R(A)P}$$$$V2.0");
+    imported_model.regenerateCoordinates();
+    auto imported_mol = imported_model.getMol();
+    BOOST_REQUIRE(imported_mol->getNumAtoms() == 3);
+    auto& imported_conf = imported_mol->getConformer();
+    std::vector<RDGeom::Point3D> baseline_coords;
+    for (unsigned int i = 0; i < imported_mol->getNumAtoms(); ++i) {
+        baseline_coords.push_back(imported_conf.getAtomPos(i));
+    }
+
+    // Build the same R(A)P structure one monomer at a time at arbitrary
+    // (intentionally far-apart) positions, then Clean Up.
+    QUndoStack built_undo_stack;
+    TestMolModel built_model(&built_undo_stack);
+    auto built_mol = built_model.getMol();
+    built_model.addMonomer("R", ChainType::RNA, {0.0, 0.0, 0.0});
+    // Side base: R3 of the sugar -> R1 of the base
+    built_model.addBoundMonomer("A", ChainType::RNA, {50.0, 50.0, 0.0}, "R1",
+                                built_mol->getAtomWithIdx(0), "R3");
+    // Backbone phosphate: R2 of the sugar -> R1 of the phosphate
+    built_model.addBoundMonomer("P", ChainType::RNA, {100.0, 0.0, 0.0}, "R1",
+                                built_mol->getAtomWithIdx(0), "R2");
+    BOOST_REQUIRE(built_model.isMonomeric());
+    BOOST_REQUIRE(built_mol->getNumAtoms() == 3);
+    BOOST_REQUIRE(built_mol->getNumBonds() == 2);
+
+    built_model.regenerateCoordinates();
+
+    // Compare bond vectors rather than absolute positions: the monomer
+    // layout algorithm centers each conformer based on its input, so a
+    // valid layout for the same connectivity can be translated. The shape
+    // (relative atom positions) must match.
+    auto& built_conf = built_mol->getConformer();
+    auto baseline_vec = baseline_coords[1] - baseline_coords[0];
+    auto built_vec = built_conf.getAtomPos(1) - built_conf.getAtomPos(0);
+    BOOST_TEST(baseline_vec.x == built_vec.x);
+    BOOST_TEST(baseline_vec.y == built_vec.y);
+    baseline_vec = baseline_coords[2] - baseline_coords[0];
+    built_vec = built_conf.getAtomPos(2) - built_conf.getAtomPos(0);
+    BOOST_TEST(baseline_vec.x == built_vec.x);
+    BOOST_TEST(baseline_vec.y == built_vec.y);
+}
+
+/**
  * Verify that mutateMonomers changes the res name of all peptide monomers
  * and that the mutation is undoable.
  */
