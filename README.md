@@ -1,4 +1,4 @@
-[![sketcher](https://github.com/schrodinger/sketcher/blob/main/.github/schrodinger-sketcher-screenshot.png)](https://www.schrodinger.com/2dsketcher)
+[![sketcher](https://github.com/schrodinger/sketcher/blob/main/.github/schrodinger-sketcher-logo.png)](https://www.schrodinger.com/2dsketcher)<br />
 
 ![build-status](https://github.com/schrodinger/sketcher/actions/workflows/nightly-build.yml/badge.svg?branch=main)
 [![latest release](https://img.shields.io/github/v/release/schrodinger/sketcher)](https://github.com/schrodinger/sketcher/releases)
