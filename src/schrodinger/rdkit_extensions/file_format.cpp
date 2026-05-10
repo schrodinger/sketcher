@@ -106,6 +106,16 @@ std::vector<std::string> get_seq_extensions(const Format format)
     return SEQ_FORMAT_EXTS.at(format);
 }
 
+std::vector<std::string> get_mol_and_seq_extensions(const Format format)
+{
+    // A non-reaction format lives in exactly one of these maps, so try the
+    // molecule map first and fall back to the sequence map.
+    if (auto it = MOL_FORMAT_EXTS.find(format); it != MOL_FORMAT_EXTS.end()) {
+        return it->second;
+    }
+    return SEQ_FORMAT_EXTS.at(format);
+}
+
 Format get_file_format(const boost::filesystem::path& filename)
 {
     auto extension = filename.extension().string();

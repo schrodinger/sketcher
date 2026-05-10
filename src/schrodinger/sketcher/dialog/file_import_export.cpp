@@ -74,7 +74,7 @@ FormatList<Format> get_import_formats()
 
 FormatList<Format> get_standard_export_formats()
 {
-    std::vector<std::tuple<Format, std::string>> mol_export_formats = {
+    std::vector<std::tuple<Format, std::string>> mol_and_seq_export_formats = {
         // Forbid MDL_MOLV2000 on export; potential stereo ambiguities
         {Format::MDL_MOLV3000, "MDL SD V3000"},
         {Format::MAESTRO, "Maestro"},
@@ -87,11 +87,16 @@ FormatList<Format> get_standard_export_formats()
         {Format::PDB, "PDB"},
         {Format::XYZ, "XYZ"},
         {Format::MRV, "Marvin Document"},
+        // Sequence formats are always offered; rdkit_extensions::to_string
+        // handles atomistic <-> monomeric conversion on the fly, and conversion
+        // failures surface through the dialog's existing error path.
+        {Format::HELM, "HELM"},
+        {Format::FASTA, "FASTA"},
     };
 
     FormatList<Format> export_formats;
-    for (const auto& [format, label] : mol_export_formats) {
-        auto extensions = rdkit_extensions::get_mol_extensions(format);
+    for (const auto& [format, label] : mol_and_seq_export_formats) {
+        auto extensions = rdkit_extensions::get_mol_and_seq_extensions(format);
         export_formats.push_back({format, label, extensions});
     }
     return export_formats;
