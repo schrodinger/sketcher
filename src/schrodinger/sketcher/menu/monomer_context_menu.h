@@ -33,12 +33,11 @@ struct MonomerMutation {
 };
 
 /**
- * Context menu for monomer beads.
- *
- * For amino-acid (PEPTIDE) selections this exposes "Mutate Residue >"
- * with the natural AAs and their non-natural analogs, a dynamic
- * "Set D-Form / Set L-Form" toggle, a disabled "Protonate" stub, and
- * Delete. Other monomer types only see Delete.
+ * Context menu for monomer beads. Dispatches by monomer type:
+ *   - PEPTIDE: Mutate Residue, Set D/L-Form, Protonate (stub), Delete
+ *   - NA_BASE: Mutate Base (A/C/G/U/T + DB analogs), Delete
+ *   - NA_SUGAR: Change R↔dR (direction from m_primary_atom), Delete
+ *   - NA_PHOSPHATE / CHEM: Delete only
  */
 class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
 {
@@ -65,11 +64,15 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
     void createMutateResidueSubMenu();
     void createSetDFormAction();
     void createProtonateAction();
+    void createMutateBaseSubMenu();
+    void createSugarToggleAction();
     void createDeleteAction();
 
     QMenu* m_mutate_residue_menu = nullptr;
     QAction* m_set_d_form_action = nullptr;
     QAction* m_protonate_action = nullptr;
+    QMenu* m_mutate_base_menu = nullptr;
+    QAction* m_sugar_toggle_action = nullptr;
 };
 
 } // namespace sketcher

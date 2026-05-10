@@ -15,13 +15,15 @@ void AbstractContextMenu::setContextItems(
     const std::unordered_set<const RDKit::Bond*>& bonds,
     const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
+    const RDKit::Atom* primary_atom)
 {
     m_atoms = atoms;
     m_bonds = bonds;
     m_secondary_connections = secondary_connections;
     m_sgroups = sgroups;
     m_non_molecular_objects = non_molecular_objects;
+    m_primary_atom = primary_atom;
 }
 
 void AbstractContextMenu::showEvent(QShowEvent* event)

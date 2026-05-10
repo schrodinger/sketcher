@@ -22,6 +22,7 @@
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/menu/monomer_context_menu.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 
@@ -539,6 +540,361 @@ BOOST_AUTO_TEST_CASE(test_custom_paired_with_different_analogs_is_not_d_form)
     auto* d_form = find_action(menu, "Set D-Form");
     BOOST_REQUIRE(d_form != nullptr);
     BOOST_TEST(!d_form->isEnabled());
+}
+
+/**
+ * Base selection shows Mutate Base; AA and sugar actions hide. Sanity
+ * check on the dispatcher in updateActions().
+ */
+BOOST_AUTO_TEST_CASE(test_na_base_selection_shows_mutate_base_only)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    // R = atom 0, A (base) = atom 1, P = atom 2 in this molecule.
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {1}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(1));
+    menu.updateActions();
+
+    BOOST_TEST(find_action(menu, "Mutate Base")->isVisible());
+    BOOST_TEST(!find_action(menu, "Mutate Residue")->isVisible());
+    BOOST_TEST(!find_action(menu, "Set D-Form")->isVisible());
+    auto* sugar = find_action(menu, "Change R to dR");
+    BOOST_REQUIRE(sugar != nullptr);
+    BOOST_TEST(!sugar->isVisible());
+    BOOST_TEST(find_action(menu, "Delete")->isVisible());
+}
+
+/**
+ * Sugar (R) selection: the toggle reads "Change R to dR" and is enabled
+ * when the right-clicked atom is the only sugar in the selection.
+ */
+BOOST_AUTO_TEST_CASE(test_sugar_toggle_label_R_to_dR)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(0));
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change R to dR");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isVisible());
+    BOOST_TEST(toggle->isEnabled());
+    BOOST_TEST(find_action(menu, "Mutate Base") != nullptr);
+    BOOST_TEST(!find_action(menu, "Mutate Base")->isVisible());
+}
+
+/**
+ * Sugar (dR) selection: the toggle reads "Change dR to R".
+ */
+BOOST_AUTO_TEST_CASE(test_sugar_toggle_label_dR_to_R)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{[dR](T)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(0));
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change dR to R");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isVisible());
+    BOOST_TEST(toggle->isEnabled());
+}
+
+/**
+ * Mixed {R, dR} selection: direction comes from m_primary_atom. With
+ * primary = R, all sugars become dR. The atom already at dR is excluded
+ * from the emitted batch (no no-op).
+ */
+BOOST_AUTO_TEST_CASE(test_sugar_toggle_mixed_selection_primary_R)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P.[dR](T)P}$$$$V2.0");
+    // R = atom 0, A = atom 1, P = atom 2, dR = atom 3, T = atom 4, P = atom 5.
+    TestMonomerContextMenu menu;
+    MutateRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {0, 3}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(0));
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change R to dR");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isEnabled());
+    toggle->trigger();
+
+    BOOST_TEST(capture.call_count == 1);
+    BOOST_TEST(capture.last_description == "Change R to dR");
+    BOOST_REQUIRE(capture.last_mutations.size() == 1u);
+    BOOST_TEST(capture.last_mutations[0].helm_symbol == "dR");
+    BOOST_REQUIRE(capture.last_mutations[0].atoms.size() == 1u);
+    BOOST_TEST(*capture.last_mutations[0].atoms.begin() ==
+               mol->getAtomWithIdx(0));
+}
+
+/**
+ * Same selection but primary = dR: direction reverses, all sugars become R.
+ */
+BOOST_AUTO_TEST_CASE(test_sugar_toggle_mixed_selection_primary_dR)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P.[dR](T)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    MutateRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {0, 3}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(3));
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change dR to R");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isEnabled());
+    toggle->trigger();
+
+    BOOST_TEST(capture.call_count == 1);
+    BOOST_TEST(capture.last_description == "Change dR to R");
+    BOOST_REQUIRE(capture.last_mutations.size() == 1u);
+    BOOST_TEST(capture.last_mutations[0].helm_symbol == "R");
+    BOOST_REQUIRE(capture.last_mutations[0].atoms.size() == 1u);
+    BOOST_TEST(*capture.last_mutations[0].atoms.begin() ==
+               mol->getAtomWithIdx(3));
+}
+
+/**
+ * No primary atom (e.g. menu shown via API outside the right-click flow):
+ * direction is ambiguous, action disabled.
+ */
+BOOST_AUTO_TEST_CASE(test_sugar_toggle_disabled_when_no_primary_atom)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {});
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change R to dR");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isVisible());
+    BOOST_TEST(!toggle->isEnabled());
+}
+
+/**
+ * The Mutate Base submenu has one top-level entry per natural base
+ * (A/C/G/U/T) in display order; each contains at least the natural
+ * symbol leaf.
+ */
+BOOST_AUTO_TEST_CASE(test_mutate_base_submenu_structure)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {1}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(1));
+    menu.updateActions();
+
+    auto* mutate = find_action(menu, "Mutate Base");
+    BOOST_REQUIRE(mutate != nullptr);
+    BOOST_REQUIRE(mutate->menu() != nullptr);
+    BOOST_TEST(mutate->menu()->actions().size() == 5u);
+
+    for (auto* expected : {"Adenine (A)", "Cytosine (C)", "Guanine (G)",
+                           "Uracil (U)", "Thymine (T)"}) {
+        auto* sub = find_action(*mutate->menu(), expected);
+        BOOST_REQUIRE(sub != nullptr);
+        BOOST_REQUIRE(sub->menu() != nullptr);
+        BOOST_TEST(sub->menu()->actions().size() >= 1u);
+    }
+}
+
+/**
+ * Picking a different base emits a single-pair batch with empty
+ * description (per the same convention as Mutate Residue leaves).
+ */
+BOOST_AUTO_TEST_CASE(test_mutate_base_emits_single_pair_batch)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    MutateRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {1}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(1));
+    menu.updateActions();
+
+    auto* mutate = find_action(menu, "Mutate Base");
+    auto* thy = find_action(*mutate->menu(), "Thymine (T)");
+    BOOST_REQUIRE(thy != nullptr);
+    auto* t_leaf = find_action(*thy->menu(), "T");
+    BOOST_REQUIRE(t_leaf != nullptr);
+    t_leaf->trigger();
+
+    BOOST_TEST(capture.call_count == 1);
+    BOOST_TEST(capture.last_description.isEmpty());
+    BOOST_REQUIRE(capture.last_mutations.size() == 1u);
+    BOOST_TEST(capture.last_mutations[0].helm_symbol == "T");
+    BOOST_REQUIRE(capture.last_mutations[0].atoms.size() == 1u);
+    BOOST_TEST(*capture.last_mutations[0].atoms.begin() ==
+               mol->getAtomWithIdx(1));
+}
+
+/**
+ * Mutate Base → X on a base already at X must NOT emit, mirroring the
+ * Mutate Residue no-op guard.
+ */
+BOOST_AUTO_TEST_CASE(test_mutate_base_to_current_symbol_is_noop)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    MutateRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {1}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(1));
+    menu.updateActions();
+
+    auto* mutate = find_action(menu, "Mutate Base");
+    auto* ade = find_action(*mutate->menu(), "Adenine (A)");
+    BOOST_REQUIRE(ade != nullptr);
+    auto* a_leaf = find_action(*ade->menu(), "A");
+    BOOST_REQUIRE(a_leaf != nullptr);
+    a_leaf->trigger();
+
+    BOOST_TEST(capture.call_count == 0);
+}
+
+/**
+ * Custom sugar with mismatched NATURAL_ANALOG must not be classified as
+ * the deoxy form — toggle stays disabled. Parallel of the AA case.
+ */
+BOOST_AUTO_TEST_CASE(
+    test_custom_d_prefix_sugar_with_mismatched_analog_is_not_deoxy)
+{
+    constexpr std::string_view json = R"([{
+        "symbol": "dXur",
+        "polymer_type": "RNA",
+        "natural_analog": "K",
+        "smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+        "core_smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+        "name": "Custom dXur",
+        "monomer_type": "Backbone",
+        "author": "test",
+        "pdbcode": "DXR"
+    }])";
+    CustomDbScope scope(json);
+
+    auto mol = rdkit_extensions::to_rdkit("RNA1{[dXur]}$$$$V2.0");
+    // Classifier precondition — name must end in 'r' to be NA_SUGAR.
+    BOOST_REQUIRE(get_monomer_type(mol->getAtomWithIdx(0)) ==
+                  MonomerType::NA_SUGAR);
+
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(0));
+    menu.updateActions();
+
+    // No DB counterpart → falls back to default label, disabled.
+    auto* toggle = find_action(menu, "Change R to dR");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(!toggle->isEnabled());
+}
+
+/**
+ * Custom sugar pair "Xur"/"dXur" with matching NATURAL_ANALOG: toggle
+ * enables and emits the deoxy symbol on click.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_well_formed_sugar_pair_enables_toggle)
+{
+    constexpr std::string_view json = R"([
+        {
+            "symbol": "Xur",
+            "polymer_type": "RNA",
+            "natural_analog": "Xur",
+            "smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+            "core_smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+            "name": "Custom Xur",
+            "monomer_type": "Backbone",
+            "author": "test",
+            "pdbcode": "XUR"
+        },
+        {
+            "symbol": "dXur",
+            "polymer_type": "RNA",
+            "natural_analog": "Xur",
+            "smiles": "OC[C@H]1O[C@H]([H:1])C[C@@H]1[OH:2]",
+            "core_smiles": "OC[C@H]1O[C@H]([H:1])C[C@@H]1[OH:2]",
+            "name": "Custom dXur",
+            "monomer_type": "Backbone",
+            "author": "test",
+            "pdbcode": "DXR"
+        }
+    ])";
+    CustomDbScope scope(json);
+
+    auto mol = rdkit_extensions::to_rdkit("RNA1{[Xur]}$$$$V2.0");
+    // Classifier precondition — name must end in 'r' to be NA_SUGAR.
+    BOOST_REQUIRE(get_monomer_type(mol->getAtomWithIdx(0)) ==
+                  MonomerType::NA_SUGAR);
+
+    TestMonomerContextMenu menu;
+    MutateRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(0));
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change Xur to dXur");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isEnabled());
+    toggle->trigger();
+
+    BOOST_REQUIRE(capture.last_mutations.size() == 1u);
+    BOOST_TEST(capture.last_mutations[0].helm_symbol == "dXur");
+}
+
+/**
+ * Sugar pair registered under POLYMER_TYPE: "DNA" must be recognised
+ * via the DNA fallback in `get_na_natural_analog`.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_dna_registered_sugar_pair_enables_toggle)
+{
+    constexpr std::string_view json = R"([
+        {
+            "symbol": "Yur",
+            "polymer_type": "DNA",
+            "natural_analog": "Yur",
+            "smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+            "core_smiles": "OC[C@H]1O[C@H]([H:1])[C@@H]([OH:2])[C@@H]1O",
+            "name": "Custom Yur",
+            "monomer_type": "Backbone",
+            "author": "test",
+            "pdbcode": "YUR"
+        },
+        {
+            "symbol": "dYur",
+            "polymer_type": "DNA",
+            "natural_analog": "Yur",
+            "smiles": "OC[C@H]1O[C@H]([H:1])C[C@@H]1[OH:2]",
+            "core_smiles": "OC[C@H]1O[C@H]([H:1])C[C@@H]1[OH:2]",
+            "name": "Custom dYur",
+            "monomer_type": "Backbone",
+            "author": "test",
+            "pdbcode": "DYR"
+        }
+    ])";
+    CustomDbScope scope(json);
+
+    auto mol = rdkit_extensions::to_rdkit("RNA1{[Yur]}$$$$V2.0");
+    BOOST_REQUIRE(get_monomer_type(mol->getAtomWithIdx(0)) ==
+                  MonomerType::NA_SUGAR);
+
+    TestMonomerContextMenu menu;
+    MutateRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {},
+                         mol->getAtomWithIdx(0));
+    menu.updateActions();
+
+    auto* toggle = find_action(menu, "Change Yur to dYur");
+    BOOST_REQUIRE(toggle != nullptr);
+    BOOST_TEST(toggle->isEnabled());
+    toggle->trigger();
+
+    BOOST_REQUIRE(capture.last_mutations.size() == 1u);
+    BOOST_TEST(capture.last_mutations[0].helm_symbol == "dYur");
 }
 
 } // namespace sketcher

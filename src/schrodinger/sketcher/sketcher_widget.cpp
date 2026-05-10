@@ -882,14 +882,22 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
                     description.isEmpty() ? QStringLiteral("Mutate Monomers")
                                           : description);
                 for (auto& [idxs, sym] : indexed) {
+                    if (idxs.empty()) {
+                        continue;
+                    }
                     std::unordered_set<const RDKit::Atom*> resolved;
                     resolved.reserve(idxs.size());
                     const auto* mol = m_mol_model->getMol();
                     for (auto i : idxs) {
                         resolved.insert(mol->getAtomWithIdx(i));
                     }
-                    m_mol_model->mutateMonomers(resolved, sym,
-                                                MonomerType::PEPTIDE);
+                    // Menu only emits uniform-type batches (peptide / NA
+                    // base / NA sugar); sampling the first atom is enough.
+                    // A wrong guess silently no-ops via mutateMonomers'
+                    // type filter — which was the original PEPTIDE bug.
+                    const auto target_type =
+                        get_monomer_type(*resolved.begin());
+                    m_mol_model->mutateMonomers(resolved, sym, target_type);
                 }
             });
 }
@@ -1033,13 +1041,55 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::clear);
 }
 
+AbstractContextMenu* SketcherWidget::chooseContextMenu(
+    const std::unordered_set<const RDKit::Atom*>& filtered_atoms,
+    const std::unordered_set<const RDKit::Bond*>& filtered_bonds,
+    const std::unordered_set<const RDKit::Bond*>& secondary_connections,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
+    bool only_attachment_points)
+{
+    if (!sgroups.empty()) {
+        return m_sgroup_context_menu;
+    }
+    if (only_attachment_points) {
+        return m_attachment_point_context_menu;
+    }
+    const bool bond_selected =
+        !filtered_bonds.empty() || !secondary_connections.empty();
+    if (!filtered_atoms.empty()) {
+        // All-monomeric short-circuits any atom+bond routing — selecting
+        // R and A together in R(A)P (which auto-includes the R-A bond)
+        // belongs to the monomer menu, not the atomistic selection menu.
+        const bool all_monomeric =
+            std::ranges::all_of(filtered_atoms, [](const auto* atom) {
+                return is_atom_monomeric(atom);
+            });
+        if (all_monomeric) {
+            return m_monomer_context_menu;
+        }
+        if (bond_selected) {
+            return m_selection_context_menu;
+        }
+        return m_atom_context_menu;
+    }
+    if (bond_selected) {
+        return m_bond_context_menu;
+    }
+    if (!non_molecular_objects.empty()) {
+        return nullptr;
+    }
+    return m_background_context_menu;
+}
+
 void SketcherWidget::showContextMenu(
     QGraphicsSceneMouseEvent* event,
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
     const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
+    const RDKit::Atom* primary_atom)
 {
     if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
         // context menus are disabled when select-only mode is active to prevent
@@ -1067,46 +1117,23 @@ void SketcherWidget::showContextMenu(
         sgroups.empty() && (!atoms.empty() || !bonds.empty()) &&
         filtered_atoms.empty() && filtered_bonds.empty();
 
-    AbstractContextMenu* menu = nullptr;
-    bool bond_selected = bonds.size() || secondary_connections.size();
-    if (sgroups.size()) {
-        menu = m_sgroup_context_menu;
-    } else if (only_attachment_points) {
-        menu = m_attachment_point_context_menu;
-    } else if (atoms.size() && bond_selected) {
-        menu = m_selection_context_menu;
-    } else if (atoms.size()) {
-        bool all_monomeric =
-            !filtered_atoms.empty() &&
-            std::ranges::all_of(filtered_atoms, [](const auto* atom) {
-                return is_atom_monomeric(atom);
-            });
-        if (all_monomeric) {
-            menu = m_monomer_context_menu;
-        } else {
-            menu = m_atom_context_menu;
-        }
-    } else if (bond_selected) {
-        menu = m_bond_context_menu;
-    } else if (non_molecular_objects.size()) {
-        /** a non molecular object is clicked, do nothing as there's no context
-         * menu for it.
-         * */
+    AbstractContextMenu* menu = chooseContextMenu(
+        filtered_atoms, filtered_bonds, secondary_connections, sgroups,
+        non_molecular_objects, only_attachment_points);
+    if (menu == nullptr) {
+        // Non-molecular object clicked — no menu to show.
         return;
-    } else {
-        // show the background context menu
-        menu = m_background_context_menu;
     }
 
     // Pass unfiltered sets to the attachment point menu; pass filtered sets
     // (attachment points excluded) to all other chemical modification menus.
     if (menu == m_attachment_point_context_menu) {
         menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
-                              non_molecular_objects);
+                              non_molecular_objects, primary_atom);
     } else {
         menu->setContextItems(filtered_atoms, filtered_bonds,
                               secondary_connections, sgroups,
-                              non_molecular_objects);
+                              non_molecular_objects, primary_atom);
     }
 
     menu->move(event->screenPos());

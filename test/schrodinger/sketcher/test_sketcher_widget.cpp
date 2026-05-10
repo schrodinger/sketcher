@@ -15,6 +15,9 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/sketcher/menu/monomer_context_menu.h"
+#include "schrodinger/sketcher/menu/selection_context_menu.h"
+#include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
@@ -620,6 +623,136 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog)
     BOOST_TEST(base_count == 2);
 
     monomer_db.resetMonomerDefinitions();
+}
+
+static const RDKit::Atom* find_atom_by_res_name(const RDKit::ROMol& mol,
+                                                std::string_view res_name)
+{
+    for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
+        const auto* atom = mol.getAtomWithIdx(i);
+        if (get_monomer_res_name(atom) == res_name) {
+            return atom;
+        }
+    }
+    return nullptr;
+}
+
+/**
+ * `mutateResidueRequested` from the menu must reach `mutateMonomers`
+ * with the right MonomerType — else the type filter silently no-ops.
+ * AA path covered here; NA paths in the next two cases.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_peptide)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("PEPTIDE1{A}$$$$V2.0");
+
+    const auto* mol = sk.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 1u);
+    const auto* a_atom = mol->getAtomWithIdx(0);
+    BOOST_REQUIRE(get_monomer_res_name(a_atom) == "A");
+
+    emit sk.m_monomer_context_menu->mutateResidueRequested({{{a_atom}, "C"}},
+                                                           QString());
+
+    const auto* mol_after = sk.m_mol_model->getMol();
+    BOOST_TEST(get_monomer_res_name(mol_after->getAtomWithIdx(0)) == "C");
+}
+
+/**
+ * NA base mutation — regression guard against the handler hard-coding
+ * MonomerType::PEPTIDE.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_base)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = sk.m_mol_model->getMol();
+    const auto* base_atom = find_atom_by_res_name(*mol, "A");
+    BOOST_REQUIRE(base_atom != nullptr);
+    BOOST_REQUIRE(get_monomer_type(base_atom) == MonomerType::NA_BASE);
+
+    emit sk.m_monomer_context_menu->mutateResidueRequested({{{base_atom}, "T"}},
+                                                           QString());
+
+    const auto* mol_after = sk.m_mol_model->getMol();
+    // Base must now be T; sugar and phosphate untouched.
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "T") != nullptr);
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "A") == nullptr);
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "R") != nullptr);
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "P") != nullptr);
+}
+
+/**
+ * NA sugar R→dR mutation — third branch of the dispatch matrix.
+ */
+BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_sugar)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = sk.m_mol_model->getMol();
+    const auto* sugar_atom = find_atom_by_res_name(*mol, "R");
+    BOOST_REQUIRE(sugar_atom != nullptr);
+    BOOST_REQUIRE(get_monomer_type(sugar_atom) == MonomerType::NA_SUGAR);
+
+    emit sk.m_monomer_context_menu->mutateResidueRequested(
+        {{{sugar_atom}, "dR"}}, "Change R to dR");
+
+    const auto* mol_after = sk.m_mol_model->getMol();
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "dR") != nullptr);
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "R") == nullptr);
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "A") != nullptr);
+    BOOST_TEST(find_atom_by_res_name(*mol_after, "P") != nullptr);
+}
+
+/**
+ * Selecting two monomers and the bond between them (e.g. R + A + R-A bond
+ * in R(A)P) must route to the monomer menu, not the atomistic selection
+ * menu. Regression for the atoms+bonds short-circuit bug.
+ */
+BOOST_AUTO_TEST_CASE(test_chooseContextMenu_monomer_atoms_with_bond)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = sk.m_mol_model->getMol();
+    const auto* r_atom = find_atom_by_res_name(*mol, "R");
+    const auto* a_atom = find_atom_by_res_name(*mol, "A");
+    BOOST_REQUIRE(r_atom != nullptr);
+    BOOST_REQUIRE(a_atom != nullptr);
+    const auto* r_a_bond =
+        mol->getBondBetweenAtoms(r_atom->getIdx(), a_atom->getIdx());
+    BOOST_REQUIRE(r_a_bond != nullptr);
+
+    auto* menu = sk.chooseContextMenu({r_atom, a_atom}, {r_a_bond}, {}, {}, {},
+                                      /*only_attachment_points=*/false);
+    BOOST_TEST(menu == sk.m_monomer_context_menu);
+}
+
+/**
+ * Atomistic atoms+bond stays on the selection menu (no regression).
+ */
+BOOST_AUTO_TEST_CASE(test_chooseContextMenu_atomistic_atoms_with_bond)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("CCO");
+
+    const auto* mol = sk.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() >= 2u);
+    const auto* a0 = mol->getAtomWithIdx(0);
+    const auto* a1 = mol->getAtomWithIdx(1);
+    const auto* bond = mol->getBondBetweenAtoms(0, 1);
+    BOOST_REQUIRE(bond != nullptr);
+
+    auto* menu = sk.chooseContextMenu({a0, a1}, {bond}, {}, {}, {}, false);
+    BOOST_TEST(menu == sk.m_selection_context_menu);
 }
 
 /**
