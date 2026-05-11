@@ -363,6 +363,9 @@ BOOST_AUTO_TEST_CASE(test_cut_copy_paste_monomeric)
     sk.m_mol_model->selectAll();
     mgr.m_cut_action->trigger();
     BOOST_TEST_REQUIRE(sk.getRDKitMolecule()->getNumAtoms() == 0u);
+    // Other apps see HELM; the pickle stays on the sketcher-private MIME.
+    BOOST_TEST(sk.m_clipboard_text.find("PEPTIDE1") != std::string::npos);
+    BOOST_TEST(!sk.m_clipboard_binary.empty());
     sk.paste();
     BOOST_TEST(sk.m_mol_model->isMonomeric());
     BOOST_TEST_REQUIRE(sk.getRDKitMolecule()->getNumAtoms() == 3u);

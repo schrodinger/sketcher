@@ -396,10 +396,12 @@ class SKETCHER_API SketcherWidget : public QWidget
     /**
      * Methods for getting and setting the system clipboard. These methods are
      * overriden in the unit test since using the real clipboard can lead to
-     * intermittent failures on buildbot.
+     * intermittent failures on buildbot. The optional `binary` payload is
+     * stashed under a sketcher-private MIME type and preferred on paste.
      */
     virtual std::string getClipboardContents() const;
-    virtual void setClipboardContents(std::string text) const;
+    virtual void setClipboardContents(std::string text,
+                                      std::string binary = "") const;
 
     /**
      * Perform the actual paste of clipboard text into the scene at the given

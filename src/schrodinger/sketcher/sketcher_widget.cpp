@@ -531,6 +531,11 @@ void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
     m_sketcher_model->setValue(ModelKey::INTERFACE_TYPE, interface_type);
 }
 
+// Sketcher-private MIME for a lossless RDKit pickle stashed alongside the
+// text payload; intra-sketcher pastes prefer it, other apps don't see it.
+const QString SKETCHER_MIME_TYPE =
+    QStringLiteral("application/x-schrodinger-sketcher");
+
 std::string SketcherWidget::getClipboardContents() const
 {
     auto data = QApplication::clipboard()->mimeData();
@@ -538,16 +543,23 @@ std::string SketcherWidget::getClipboardContents() const
         // mimeData can return a nullptr in WASM builds
         return "";
     }
+    if (data->hasFormat(SKETCHER_MIME_TYPE)) {
+        return data->data(SKETCHER_MIME_TYPE).toStdString();
+    }
     if (data->hasText()) {
         return data->text().toStdString();
     }
     return "";
 }
 
-void SketcherWidget::setClipboardContents(std::string text) const
+void SketcherWidget::setClipboardContents(std::string text,
+                                          std::string binary) const
 {
     auto data = new QMimeData;
     data->setText(QString::fromStdString(text));
+    if (!binary.empty()) {
+        data->setData(SKETCHER_MIME_TYPE, QByteArray::fromStdString(binary));
+    }
     QApplication::clipboard()->setMimeData(data);
 
 #ifdef __EMSCRIPTEN__
@@ -573,13 +585,20 @@ void SketcherWidget::cut(Format format)
 void SketcherWidget::copy(Format format, SceneSubset subset)
 {
     std::string text;
+    std::string binary;
     try {
         text = extract_string(m_mol_model, m_sketcher_model, format, subset);
+        // For monomers also stash a pickle so intra-sketcher pastes preserve
+        // structure and 2D coords (chain layout otherwise regenerates them).
+        if (m_mol_model->isMonomeric()) {
+            binary = extract_string(m_mol_model, m_sketcher_model,
+                                    Format::RDMOL_BINARY_BASE64, subset);
+        }
     } catch (const std::exception& exc) {
         show_error_dialog("Copy Error", exc.what(), window());
         return;
     }
-    setClipboardContents(text);
+    setClipboardContents(text, binary);
     // SKETCH-2091: Add image content to the clipboard; blocked by SKETCH-1975
 }
 
