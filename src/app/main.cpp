@@ -78,6 +78,12 @@ bool sketcher_has_monomers()
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
 }
 
+// Retained as a no-op for backwards compatibility with external callers;
+// ATOMISTIC_OR_MONOMERIC is now the default interface type (SKETCH-2735).
+void sketcher_allow_monomeric(bool /* allow_monomeric */)
+{
+}
+
 void sketcher_load_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
@@ -205,6 +211,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
+    emscripten::function("sketcher_allow_monomeric", &sketcher_allow_monomeric);
     emscripten::function("sketcher_load_custom_monomers",
                          &sketcher_load_custom_monomers);
     emscripten::function("sketcher_load_custom_monomers_from_sql",
