@@ -24,7 +24,8 @@ DELETE FROM monomer_definitions;
 SQL_INSERT_TEMPLATE = (
     "INSERT INTO monomer_definitions VALUES("
     "{idx},'{symbol}','{polymer_type}','{natural_analog}','{smiles}',"
-    "'{core_smiles}','{name}','{monomer_type}','{author}','{pdbcode}');\n")
+    "'{core_smiles}','{name}','{monomer_type}','{author}','{pdbcode}',"
+    "'{rgroups}');\n")
 
 SQL_COMMIT = "COMMIT;\n"
 
@@ -38,6 +39,8 @@ FILE_FOOTER = """)SQL"};
 
 def format_monomer(idx, monomer):
     monomer = {k.lower(): v for k, v in monomer.items()}
+    # we expect rgroup to be a json formatted string.
+    monomer["rgroups"] = json.dumps(monomer.get("rgroups", ""))
     return SQL_INSERT_TEMPLATE.format(idx=idx, **monomer)
 
 

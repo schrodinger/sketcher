@@ -8,6 +8,8 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include <algorithm>
+#include <ranges>
+#include <unordered_map>
 #include <boost/functional/hash.hpp>
 #include <fmt/format.h>
 #include <optional>

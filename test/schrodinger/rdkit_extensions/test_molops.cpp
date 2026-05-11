@@ -456,3 +456,55 @@ BOOST_DATA_TEST_CASE(TestRemoveHsPreservesHydrides,
 
     BOOST_TEST(RDKit::MolToSmiles(*mol) == test_smiles);
 }
+
+BOOST_DATA_TEST_CASE(TestExtractMolFragmentWithPolymerGroups,
+                     bdata::make(std::vector<std::string>{
+                         "G1(CHEM1,CHEM2)",              // exclusive list
+                         "G1(CHEM1+CHEM2)",              // union
+                         "G1(CHEM1+CHEM2)|G2(G1,CHEM2)", // nested
+                         "G1(CHEM1:0.5,CHEM2:0.1-1.3)",  // ratios
+                     }),
+                     polymer_groups)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    const auto mol = helm::helm_to_rdkit("CHEM1{*}|CHEM2{*}|CHEM3{*}$$" +
+                                         polymer_groups + "$$V2.0");
+
+    // only extract CHEM1
+    {
+        auto extracted_mol = ExtractMolFragment(*mol, {0});
+        BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) == "CHEM1{*}$$$$V2.0");
+    }
+
+    // only extract CHEM2
+    {
+        auto extracted_mol = ExtractMolFragment(*mol, {1});
+        BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) == "CHEM2{*}$$$$V2.0");
+    }
+
+    // only extract CHEM3
+    {
+        auto extracted_mol = ExtractMolFragment(*mol, {2});
+        BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) == "CHEM3{*}$$$$V2.0");
+    }
+
+    // only extract CHEM1 + CHEM3
+    {
+        auto extracted_mol = ExtractMolFragment(*mol, {0, 2});
+        BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) ==
+                   "CHEM1{*}|CHEM3{*}$$$$V2.0");
+    }
+
+    // only extract CHEM2 + CHEM3
+    {
+        auto extracted_mol = ExtractMolFragment(*mol, {1, 2});
+        BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) ==
+                   "CHEM2{*}|CHEM3{*}$$$$V2.0");
+    }
+
+    // only extract CHEM1 + CHEM2
+    auto extracted_mol = ExtractMolFragment(*mol, {0, 1});
+    BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) ==
+               "CHEM1{*}|CHEM2{*}$$" + polymer_groups + "$$V2.0");
+};

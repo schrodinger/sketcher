@@ -347,7 +347,7 @@ ExtractMolFragment(const RDKit::ROMol& mol,
         ::RDKit::MolOps::sanitizeMol(*extracted_mol);
     }
 
-    if (mol.hasProp(HELM_MODEL)) {
+    if (isMonomeric(mol)) {
         auto helm_model_prop = mol.getProp<bool>(HELM_MODEL);
         extracted_mol->setProp(HELM_MODEL, helm_model_prop);
     }
@@ -423,29 +423,18 @@ static void validate_monomeric_mol_input(const RDKit::ROMol& mol,
         throw std::invalid_argument(msg);
     }
 
-    if (mol.hasProp(EXTENDED_ANNOTATIONS)) {
-        auto msg = fmt::format(
-            "'{}' has unsupported feature: EXTENDED_ANNOTATIONS", name);
+    if (auto polymer_group_string = get_polymer_groups_helm_string(mol);
+        !polymer_group_string.empty()) {
+        auto msg =
+            fmt::format("'{}' has unsupported feature: POLYMER_GROUPS", name);
         throw std::invalid_argument(msg);
     }
 
-    if (const auto sgroup = get_supplementary_info(mol); sgroup) {
-        std::vector<std::string> datafields;
-        if (!sgroup->getPropIfPresent("DATAFIELDS", datafields)) {
-            return;
-        }
-
-        if (!datafields[0].empty()) {
-            auto msg = fmt::format(
-                "'{}' has unsupported feature: POLYMER_GROUPS", name);
-            throw std::invalid_argument(msg);
-        }
-
-        if (!datafields[1].empty()) {
-            auto msg = fmt::format(
-                "'{}' has unsupported feature: EXTENDED_ANNOTATIONS", name);
-            throw std::invalid_argument(msg);
-        }
+    if (auto extended_annotations = get_extended_annotations(mol);
+        !extended_annotations.empty()) {
+        auto msg = fmt::format(
+            "'{}' has unsupported feature: EXTENDED_ANNOTATIONS", name);
+        throw std::invalid_argument(msg);
     }
 }
 

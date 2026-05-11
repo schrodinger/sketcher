@@ -262,5 +262,23 @@ is_polymer_annotation_s_group(const RDKit::SubstanceGroup& sgroup)
            sgroup.hasProp(ANNOTATION) && sgroup.hasProp("ID");
 }
 
+std::string get_extended_annotations(const ::RDKit::ROMol& mol)
+{
+    std::string extended_annotations;
+    if (mol.getPropIfPresent(EXTENDED_ANNOTATIONS, extended_annotations)) {
+        return extended_annotations;
+    }
+
+    if (auto sgroup = get_supplementary_info(mol); sgroup) {
+        std::vector<std::string> supplementary_info;
+        if (sgroup->getPropIfPresent("DATAFIELDS", supplementary_info) &&
+            supplementary_info.size() > 1) {
+            return supplementary_info[1];
+        }
+    }
+
+    return {};
+}
+
 } // namespace rdkit_extensions
 } // namespace schrodinger

@@ -55,6 +55,7 @@ constexpr std::string_view name_column{"NAME"};
 constexpr std::string_view pdb_code_column{"PDBCODE"};
 constexpr std::string_view polymer_type_column{"POLYMER_TYPE"};
 constexpr std::string_view smiles_column{"SMILES"};
+constexpr std::string_view rgroups_column{"RGROUPS"};
 constexpr std::string_view symbol_column{"SYMBOL"};
 
 // Legacy column names that we need to temporarily support for backwards
@@ -170,6 +171,8 @@ inline void assign_monomer_info(MonomerInfo& m, std::string key, const T& value)
         m.author = convert(value);
     } else if (key == pdb_code_column) {
         m.pdbcode = convert(value);
+    } else if (key == rgroups_column) {
+        m.rgroups = convert(value);
     } else {
         auto msg = fmt::format("unknown field: '{}'", key);
         throw std::runtime_error(msg);
@@ -251,6 +254,7 @@ void bind_monomer_to_stmt(sqlite3* db, sqlite3_stmt* stmt, const MonomerInfo& m)
     sqlite3_bind_text(stmt, 7, m.monomer_type.value_or("").c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 8, m.author.value_or("").c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 9, m.pdbcode.value_or("").c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 10, m.rgroups.value_or("").c_str(), -1, SQLITE_TRANSIENT);
     // clang-format on
 
     if (auto rc = sqlite3_step(stmt); rc != SQLITE_DONE) {
@@ -404,19 +408,19 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
         if (!m.areRequiredFieldsPopulated()) {
             auto msg = fmt::format(
                 "Error: Cannot store monomer definition with missing "
-                "fields: {{ {0}='{9}', {1}='{10}', {2}='{11}', {3}='{12}', "
-                "{4}='{13}', {5}='{14}', {6}='{15}', {7}='{16}', "
-                "{8}='{17}' }}",
+                "fields: {{ {0}='{10}', {1}='{11}', {2}='{12}', {3}='{13}', "
+                "{4}='{14}', {5}='{15}', {6}='{16}', {7}='{17}', "
+                "{8}='{18}', {9}='{19}' }}",
                 //
                 symbol_column, polymer_type_column, analog_column,
                 smiles_column, core_column, name_column, monomer_type_column,
-                author_column, pdb_code_column,
+                author_column, pdb_code_column, rgroups_column,
                 //
                 m.symbol.value_or(""), m.polymer_type.value_or(""),
                 m.natural_analog.value_or(""), m.smiles.value_or(""),
                 m.core_smiles.value_or(""), m.name.value_or(""),
                 m.monomer_type.value_or(""), m.author.value_or(""),
-                m.pdbcode.value_or(""));
+                m.pdbcode.value_or(""), m.rgroups.value_or(""));
 
             throw std::runtime_error(msg);
         }
@@ -426,8 +430,8 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
     static constexpr std::string_view insert_sql =
         "REPLACE INTO monomer_definitions ("
         "SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, "
-        "NAME, MONOMER_TYPE, AUTHOR, PDBCODE) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+        "NAME, MONOMER_TYPE, AUTHOR, PDBCODE, RGROUPS) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
     sqlite3_stmt* raw_stmt = nullptr;
     if (auto rc =
@@ -593,6 +597,19 @@ size_t MonomerInfo::getHash() const
     return hasher(p);
 }
 
+/// Add any columns that are missing from the custom DB but present in
+/// the current schema. This allows old databases to be loaded without
+/// failing validation. ALTER TABLE ADD COLUMN only updates the schema
+/// metadata and does not rewrite any data rows.
+void migrate_db(sqlite3* db)
+{
+    auto columns = get_table_fields(db);
+    if (std::ranges::find(columns, "RGROUPS") == columns.end()) {
+        execute_sql_on(db, "ALTER TABLE monomer_definitions ADD COLUMN RGROUPS "
+                           "TEXT DEFAULT '';");
+    }
+}
+
 bool MonomerInfo::areRequiredFieldsPopulated() const
 {
     return symbol.has_value() &&         //
@@ -667,6 +684,9 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
             fmt::format(err_msg_template, db_file.string()));
     }
     managed_db_t db(_db, &sqlite3_close_v2);
+
+    // Migrate old databases that may be missing newer columns.
+    migrate_db(db.get());
 
     if (auto missing_fields = check_db(db.get()); !missing_fields.empty()) {
         auto msg =
@@ -972,8 +992,7 @@ MonomerDatabase::getEnumeratedCoreSmiles() const
         for (auto& [smiles, symbol] : getAllSMILES()) {
             for (auto&& enumerated_smiles : enumerate_smiles(smiles)) {
                 // Note: If there are duplicates, the later entry will overwrite
-                core_smiles_to_monomer.emplace(std::move(enumerated_smiles),
-                                               symbol);
+                core_smiles_to_monomer[enumerated_smiles] = symbol;
             }
         }
 
@@ -1059,9 +1078,10 @@ MonomerDatabase::getComplexMonomerQueries() const
 
     // Return the atom indices for the R1 and R2 attachment points (either
     // one may be missing).
-    auto find_r1r2 = [](auto& mol) {
+    auto find_attchpts = [](auto& mol) {
         std::optional<unsigned int> r1;
         std::optional<unsigned int> r2;
+        std::optional<unsigned int> r3;
         for (auto atom : mol.atoms()) {
             switch (atom->getAtomMapNum()) {
                 case 1:
@@ -1070,9 +1090,12 @@ MonomerDatabase::getComplexMonomerQueries() const
                 case 2:
                     r2 = atom->getIdx();
                     break;
+                case 3:
+                    r3 = atom->getIdx();
+                    break;
             }
         }
-        return std::make_pair(r1, r2);
+        return std::make_tuple(r1, r2, r3);
     };
 
     // Roughly: a monomer is complex unless it matches the residue_query
@@ -1081,7 +1104,18 @@ MonomerDatabase::getComplexMonomerQueries() const
         auto matches = SubstructMatch(mol, *residue_query);
         if (matches.size() == 1) {
             // Look at distance between mapping numbers
-            auto [r1, r2] = find_r1r2(mol);
+            auto [r1, r2, r3] = find_attchpts(mol);
+            if (r3) {
+                auto ca_idx = matches[0][1].second;
+                auto n_idx = matches[0][0].second;
+                std::list<int> path =
+                    RDKit::MolOps::getShortestPath(mol, *r3, ca_idx);
+                if (std::ranges::find(path, n_idx) != path.end()) {
+                    // The sidechain is on the nitrogen, which isn't handled
+                    // by our generic sidechain handling functions.
+                    return true;
+                }
+            }
             if (r1 && r2) {
                 auto* dmat = RDKit::MolOps::getDistanceMat(mol);
                 auto d = dmat[*r1 * mol.getNumAtoms() + *r2];
