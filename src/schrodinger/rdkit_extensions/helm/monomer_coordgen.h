@@ -84,7 +84,16 @@ double RDKIT_EXTENSIONS_API get_position_in_coils_double(
  */
 void RDKIT_EXTENSIONS_API
 resize_monomers(RDKit::ROMol& monomer_mol,
-                std::unordered_map<int, RDGeom::Point3D> monomer_sizes);
+                const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
+
+/**
+ * Persist sizes on monomer atoms without computing displacement. Use this for
+ * first-time sizing of new monomers; resize_monomers would otherwise treat
+ * the default-vs-actual size gap as a resize event.
+ */
+void RDKIT_EXTENSIONS_API store_initial_monomer_sizes(
+    RDKit::ROMol& monomer_mol,
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes);
 
 /**
  * Check whether any bonds in the given monomer mol cross each other or are
