@@ -127,7 +127,7 @@ const QString AMINO_OR_NUCLEIC_TOGGLE_STYLE{
     "QToolButton:disabled { color: #E4E4E4; }"
     "QToolButton:!checked:hover { color: #5b8aa8;}"
     "QToolButton:checked { color: #000000;"
-    "     border-bottom: 2px solid #000000; }"};
+    "     border-bottom: 2px solid #333333; }"};
 
 } // namespace sketcher
 } // namespace schrodinger
