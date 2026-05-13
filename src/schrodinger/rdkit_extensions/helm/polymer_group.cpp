@@ -122,11 +122,11 @@ std::string get_polymer_groups_helm_string(const ::RDKit::ROMol& mol)
 
     if (auto sgroups = get_polymer_group_substance_groups(mol);
         !sgroups.empty()) {
-        return fmt::format(
-            "{}", fmt::join(sgroups | std::views::transform([&](auto& sgroup) {
-                                return get_polymer_group_helm_string(sgroup);
-                            }),
-                            "|"));
+        std::vector<std::string> helm_strings;
+        helm_strings.reserve(sgroups.size());
+        std::ranges::transform(sgroups, std::back_inserter(helm_strings),
+                               get_polymer_group_helm_string);
+        return fmt::format("{}", fmt::join(helm_strings, "|"));
     }
 
     return {};
