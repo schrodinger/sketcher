@@ -1,7 +1,9 @@
 #pragma once
 
 #include <concepts>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -137,6 +139,38 @@ get_na_monomer_type_from_res_name(const std::string_view res_name);
  * Determine the text to use for the name of the given monomer
  */
 SKETCHER_API std::string get_monomer_res_name(const RDKit::Atom* const monomer);
+
+/**
+ * @return true if the given NA base atom is part of a DNA strand, i.e. its
+ * bound sugar's residue name is "dR". Returns false for RNA bases (sugar "R")
+ * and for bases with no bound sugar or a non-standard sugar.
+ *
+ * @throw std::runtime_error if the atom does not represent an NA_BASE monomer.
+ */
+SKETCHER_API bool is_dna_base(const RDKit::Atom* const base);
+
+/**
+ * @return the Watson-Crick DNA complement symbol for the given nucleic acid
+ * base residue name, or std::nullopt if the symbol has no standard complement.
+ * @param base_symbol the residue name of the base (e.g. "A", "G")
+ */
+SKETCHER_API std::optional<std::string>
+get_dna_complement_base_symbol(const std::string_view base_symbol);
+
+/**
+ * @return the Watson-Crick RNA complement symbol for the given nucleic acid
+ * base residue name, or std::nullopt if the symbol has no standard complement.
+ * @param base_symbol the residue name of the base (e.g. "A", "G")
+ */
+SKETCHER_API std::optional<std::string>
+get_rna_complement_base_symbol(const std::string_view base_symbol);
+
+/**
+ * @return true if the given nucleic acid base residue name has a standard
+ * Watson-Crick complement. Existence is independent of the DNA/RNA target, so
+ * this is suitable for gating UI before the target strand type is known.
+ */
+SKETCHER_API bool na_base_has_complement(const std::string_view base_symbol);
 
 /**
  * @return whether the given bond represents two connections between the same

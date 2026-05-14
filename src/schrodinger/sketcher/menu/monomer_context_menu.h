@@ -47,6 +47,11 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
     void mutateMonomerRequested(std::vector<MonomerMutation> mutations,
                                 QString description);
 
+    // `bases` holds raw atom pointers into the live molecule, so the receiver
+    // must consume them before it starts mutating the molecule.
+    void addComplementaryStrandRequested(
+        const std::unordered_set<const RDKit::Atom*>& bases);
+
   protected:
     void updateActions() override;
 
@@ -56,6 +61,7 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
     void createProtonateAction();
     void createMutateBaseSubMenu();
     void createSugarToggleAction();
+    void createAddComplementaryStrandAction();
     void createDeleteAction();
 
     QMenu* m_mutate_residue_menu = nullptr;
@@ -63,6 +69,12 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
     QAction* m_protonate_action = nullptr;
     QMenu* m_mutate_base_menu = nullptr;
     QAction* m_sugar_toggle_action = nullptr;
+    QAction* m_add_complement_action = nullptr;
+
+    // Bases from the current selection that have a Watson-Crick complement.
+    // Computed once per updateActions() and reused both to set the action's
+    // enabled state and as the payload when the action is triggered.
+    std::unordered_set<const RDKit::Atom*> m_complement_bases;
 };
 
 } // namespace sketcher

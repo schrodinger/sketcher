@@ -450,6 +450,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                 const std::string& ap_name_two);
 
     /**
+     * Undoably add antiparallel Watson-Crick complement chain(s) for the
+     * given NA bases (grouped per polymer), linked back via "pair"
+     * connections. Bases without a DB complement are silently skipped.
+     */
+    void addComplementaryStrand(
+        const std::unordered_set<const RDKit::Atom*>& selected_bases);
+
+    /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
      * and next atoms in the chain.
      *
@@ -1385,6 +1393,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                            const size_t bond_end_idx,
                                            const std::string& linkage,
                                            const bool is_custom_bond);
+
+    /**
+     * Build and add one antiparallel complement chain for the given original
+     * NA base atom indices (a single source polymer), linking each new base
+     * back to its original via a "pair" connection. A no-op if no base has a
+     * usable DB complement. Must be called within an open undo macro.
+     */
+    void addComplementChainForPolymer(const std::vector<size_t>& base_idxs);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This
