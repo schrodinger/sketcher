@@ -5,11 +5,9 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QCursor>
-#include <QGraphicsPixmapItem>
+#include <QGraphicsSvgItem>
 #include <QKeyEvent>
 #include <QMimeData>
-#include <QPainter>
-#include <QPixmap>
 #include <QScreen>
 #include <QSvgRenderer>
 #include <QWidget>
@@ -302,10 +300,7 @@ SketcherWidget::SketcherWidget(QWidget* parent,
     setStyleSheet(schrodinger::sketcher::SKETCHER_WIDGET_STYLE);
 
     // Set up the watermark after loading fonts because the SVG uses them
-    m_watermark_item = new QGraphicsPixmapItem();
-    m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
-    updateWatermarkPixmap();
-    m_scene->addItem(m_watermark_item);
+    updateWatermarkArtwork();
     connect(m_scene, &Scene::changed, this,
             &SketcherWidget::updateWatermarkVisibilityAndPos);
     connect(m_ui->view, &View::resized, this,
@@ -677,29 +672,39 @@ void SketcherWidget::updateWatermarkVisibilityAndPos()
     if (is_empty) {
         auto center =
             m_ui->view->mapToScene(m_ui->view->viewport()->rect().center());
-        // Center Watermark on view
-        m_watermark_item->setPos(
-            center.x() - (m_watermark_item->boundingRect().width()) / 2,
-            center.y() - (m_watermark_item->boundingRect().height()) / 2);
+        // Center watermark on view; with ItemIgnoresTransformations the item
+        // renders at boundingRect().size() * scale() pixels at view zoom 1.
+        const QSizeF rendered =
+            m_watermark_item->boundingRect().size() * m_watermark_item->scale();
+        m_watermark_item->setPos(center.x() - rendered.width() / 2,
+                                 center.y() - rendered.height() / 2);
     }
 
     m_watermark_item->setVisible(is_empty);
 }
 
-void SketcherWidget::updateWatermarkPixmap()
+void SketcherWidget::updateWatermarkArtwork()
 {
     const QString path = m_sketcher_model->hasDarkColorScheme()
                              ? ":icons/sketcher-watermark-dark.svg"
                              : ":icons/sketcher-watermark.svg";
     constexpr int WATERMARK_WIDTH_PX = 140;
-    QSvgRenderer renderer(path);
-    QSize size = renderer.defaultSize();
-    size.scale(WATERMARK_WIDTH_PX, WATERMARK_WIDTH_PX, Qt::KeepAspectRatio);
-    QPixmap pixmap(size);
-    pixmap.fill(Qt::transparent);
-    QPainter painter(&pixmap);
-    renderer.render(&painter);
-    m_watermark_item->setPixmap(pixmap);
+
+    // QGraphicsSvgItem caches its bounding rect from the renderer's default
+    // size, so swapping the SVG requires re-creating the item.
+    delete m_watermark_item;
+    m_watermark_item = new QGraphicsSvgItem(path);
+    m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
+    m_watermark_item->setOpacity(0.30);
+
+    const QSize default_size = m_watermark_item->renderer()->defaultSize();
+    QSize target_size = default_size;
+    target_size.scale(WATERMARK_WIDTH_PX, WATERMARK_WIDTH_PX,
+                      Qt::KeepAspectRatio);
+    m_watermark_item->setScale(qreal(target_size.width()) /
+                               qreal(default_size.width()));
+
+    m_scene->addItem(m_watermark_item);
 }
 
 void SketcherWidget::showBracketSubgroupDialogForAtoms(
@@ -1405,7 +1410,7 @@ void SketcherWidget::onBackgroundColorChanged(const QColor& color)
         return;
     }
     view->setBackgroundBrush(QBrush(color));
-    updateWatermarkPixmap();
+    updateWatermarkArtwork();
     updateWatermarkVisibilityAndPos();
 }
 

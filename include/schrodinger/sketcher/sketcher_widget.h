@@ -13,7 +13,7 @@
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 
-class QGraphicsPixmapItem;
+class QGraphicsSvgItem;
 class QGraphicsSceneMouseEvent;
 class QUndoStack;
 
@@ -321,10 +321,10 @@ class SKETCHER_API SketcherWidget : public QWidget
     void updateWatermarkVisibilityAndPos();
 
     /**
-     * Swap the watermark pixmap to match the current color scheme so it remains
+     * Swap the watermark SVG to match the current color scheme so it remains
      * legible against both light and dark backgrounds.
      */
-    void updateWatermarkPixmap();
+    void updateWatermarkArtwork();
 
     /**
      * Show the substance group bracket dialog.  If the dialog is accepted, a
@@ -375,7 +375,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     /**
      * Watermark centered in the Scene; only shown when no atoms are present
      */
-    QGraphicsPixmapItem* m_watermark_item = nullptr;
+    QGraphicsSvgItem* m_watermark_item = nullptr;
 
     /**
      * We cache a copy of the MolModel molecule so that the atoms/bonds returned

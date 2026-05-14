@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include <QGraphicsSvgItem>
 #include <QString>
 
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>

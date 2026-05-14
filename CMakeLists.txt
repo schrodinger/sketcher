@@ -348,6 +348,7 @@ if(ENABLE_TESTING)
       Boost::unit_test_framework
       Eigen3::Eigen
       fmt::fmt
+      Qt6::SvgWidgets
       Qt6::Test
       Qt6::Widgets
       RDKit::ChemReactions
