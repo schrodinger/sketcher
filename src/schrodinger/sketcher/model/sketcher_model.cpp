@@ -20,6 +20,7 @@
 
 using MonomericNucleotide = std::tuple<QString, QString, QString>;
 Q_DECLARE_METATYPE(MonomericNucleotide);
+Q_DECLARE_METATYPE(schrodinger::sketcher::NucleicAcidMutation);
 
 namespace schrodinger
 {
@@ -69,6 +70,7 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::AMINO_ACID_TOOL,
         ModelKey::AMINO_ACID_SYMBOL,
         ModelKey::NUCLEIC_ACID_TOOL,
+        ModelKey::NUCLEIC_ACID_SYMBOL,
         ModelKey::RNA_NUCLEOBASE,
         ModelKey::DNA_NUCLEOBASE,
         ModelKey::CUSTOM_NUCLEOTIDE,
@@ -248,6 +250,8 @@ void SketcherModel::reset()
         {ModelKey::AMINO_ACID_SYMBOL, QString("A")},
         {ModelKey::NUCLEIC_ACID_TOOL,
          QVariant::fromValue(NucleicAcidTool::RNA_NUCLEOTIDE)},
+        {ModelKey::NUCLEIC_ACID_SYMBOL,
+         QVariant::fromValue(NucleicAcidMutation{NucleicAcidTool::A, "A"})},
         {ModelKey::RNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
         {ModelKey::DNA_NUCLEOBASE, QVariant::fromValue(StdNucleobase::A)},
         {ModelKey::CUSTOM_NUCLEOTIDE,
