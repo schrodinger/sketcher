@@ -1674,6 +1674,20 @@ void detectLinkages(RDKit::RWMol& monomer_mol,
             continue;
         }
 
+        bool sequential = ((begin_monomer_idx + 1) == end_monomer_idx) ||
+                          ((end_monomer_idx + 1) == begin_monomer_idx);
+        bool backbone = ((begin_attchpt == 2 && end_attchpt == 1) ||
+                         (begin_attchpt == 1 && end_attchpt == 2));
+        unsigned int num_monomers = monomer_mol.getNumAtoms();
+        bool cyclic_connection =
+            (num_monomers > 2) &&
+            ((begin_monomer_idx == 0 && end_monomer_idx == num_monomers - 1) ||
+             (end_monomer_idx == 0 && begin_monomer_idx == num_monomers - 1));
+        if (backbone && !sequential && !cyclic_connection) {
+            // R1-R2 for non sequential monomer residues that is not a cycle.
+            // Indicates there were missing residues added between them.
+            continue;
+        }
         // Backbone connections (R2-R1) should be added in that order when
         // possible.
         if (begin_attchpt == 2 && end_attchpt == 1) {
@@ -1746,7 +1760,8 @@ getHelmInfo(const MonomerDatabase& db, const RDKit::Atom* atom,
 enum class SeqresMatchType {
     COMPLETE,         // PDB matches SEQRES, complete atoms
     INCOMPLETE,       // PDB matches SEQRES, missing atoms
-    UNKNOWN_MUTATION, // SEQRES has X, use PDB atoms as SMILES
+    UNKNOWN_RESIDUE,  // No HELM info, use PDB atoms as SMILES
+    NONSTANDARD,      // HELM info present but non standard res
     MISSING,          // SEQRES residue not in structure
     NO_MORE_STRUCTURE // SEQRES continues but PDB ended
 };
@@ -1779,16 +1794,18 @@ determineSeqresMatch(const std::string& seqres_symbol, RDKit::RWMol& mol,
         pdb_symbol = std::get<0>(*helm_info);
         is_complete = sameMonomer(mol, atom_idxs, std::get<1>(*helm_info));
     }
-
     // Determine match type
     if (pdb_symbol == seqres_symbol && is_complete) {
         return {SeqresMatchType::COMPLETE, pdb_symbol, is_complete};
     } else if (pdb_symbol == seqres_symbol && !is_complete) {
         return {SeqresMatchType::INCOMPLETE, pdb_symbol, is_complete};
-        // TODO: SHARED-12312 Mutations or Non-standard residues known in DB.
     } else if (!helm_info && seqres_symbol == "X") {
-        return {SeqresMatchType::UNKNOWN_MUTATION, pdb_symbol, is_complete};
+        return {SeqresMatchType::UNKNOWN_RESIDUE, pdb_symbol, is_complete};
+    } else if (helm_info && seqres_symbol == "X") {
+        // Its a known mutation / non standard in the monomerDB
+        return {SeqresMatchType::NONSTANDARD, pdb_symbol, is_complete};
     } else {
+        // Catches PDB symbol != SEQRES Symbol
         return {SeqresMatchType::MISSING, pdb_symbol, is_complete};
     }
 }
@@ -1891,9 +1908,9 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                 ordered_pdb_residues.push_back({key, atom_idxs});
             }
 
-            size_t seqres_idx = 0;    // Pointer into SEQRES
             size_t structure_idx = 0; // Pointer into ordered_pdb_residues
-            while (seqres_idx < seqres_residues.size()) {
+            for (size_t seqres_idx = 0; seqres_idx < seqres_residues.size();
+                 seqres_idx++) {
                 std::string seqres_symbol = seqres_residues[seqres_idx];
                 int seqres_position = seqres_idx + 1; // 1-indexed for HELM
                 size_t this_monomer = 1;              // default for compiler
@@ -1934,7 +1951,6 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                                                  pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
-                        seqres_idx++;
                         break;
                     }
                     case SeqresMatchType::INCOMPLETE: {
@@ -1952,10 +1968,9 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                                                  pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
-                        seqres_idx++;
                         break;
                     }
-                    case SeqresMatchType::UNKNOWN_MUTATION: {
+                    case SeqresMatchType::UNKNOWN_RESIDUE: {
                         PRINT("SEQRES[{}] {} MUTATION or UNK (PDB has {} at "
                               "{}:{}) - using smiles from PDB atoms\n",
                               seqres_idx, seqres_symbol, match.pdb_symbol,
@@ -1978,7 +1993,24 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                                                  pdb_key.second}] = {
                             helm_chain_id, seqres_position};
                         structure_idx++;
-                        seqres_idx++;
+                        break;
+                    }
+                    case SeqresMatchType::NONSTANDARD: {
+                        PRINT("SEQRES[{}] {} is a known mutation/non-standard "
+                              "- using atomistic\n",
+                              seqres_idx, match.pdb_symbol);
+                        this_monomer =
+                            addMonomer(*monomer_mol, match.pdb_symbol,
+                                       seqres_position, helm_chain_id);
+                        // Set MONOMER_IDX for detectLinkages
+                        for (auto idx : atom_idxs) {
+                            mol.getAtomWithIdx(idx)->setProp<unsigned int>(
+                                MONOMER_IDX, this_monomer);
+                        }
+                        pdb_chain_to_helm_chain[{chain_id, pdb_key.first,
+                                                 pdb_key.second}] = {
+                            helm_chain_id, seqres_position};
+                        structure_idx++;
                         break;
                     }
                     case SeqresMatchType::MISSING: {
@@ -1992,7 +2024,6 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                         auto* monomer_atom =
                             monomer_mol->getAtomWithIdx(this_monomer);
                         monomer_atom->setProp("MISSING_IN_STRUCTURE", true);
-                        seqres_idx++; // Only advance SEQRES
                         break;
                     }
                     case SeqresMatchType::NO_MORE_STRUCTURE: {
@@ -2007,7 +2038,6 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                         auto* monomer_atom =
                             monomer_mol->getAtomWithIdx(this_monomer);
                         monomer_atom->setProp("MISSING_IN_STRUCTURE", true);
-                        seqres_idx++; // Only advance SEQRES
                         break;
                     }
                 }
