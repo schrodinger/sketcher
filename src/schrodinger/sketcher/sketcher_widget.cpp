@@ -695,7 +695,7 @@ void SketcherWidget::updateWatermarkArtwork()
     delete m_watermark_item;
     m_watermark_item = new QGraphicsSvgItem(path);
     m_watermark_item->setFlag(QGraphicsItem::ItemIgnoresTransformations, true);
-    m_watermark_item->setOpacity(0.35);
+    m_watermark_item->setOpacity(0.30);
 
     const QSize default_size = m_watermark_item->renderer()->defaultSize();
     QSize target_size = default_size;
