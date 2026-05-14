@@ -16,6 +16,50 @@ namespace schrodinger
 namespace sketcher
 {
 
+// True when every selected monomer is part of a nucleic acid chain (no
+// peptides, no CHEM) AND at least one is an NA base — the gate for the
+// "Add Complementary Sequence" action visibility.
+static bool na_selection_with_at_least_one_base(
+    const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    // Any non-NA monomer type (peptide, CHEM, or an unknown future variant)
+    // disqualifies the whole selection.
+    auto is_na_monomer = [](const RDKit::Atom* a) {
+        switch (get_monomer_type(a)) {
+            case MonomerType::NA_BASE:
+            case MonomerType::NA_SUGAR:
+            case MonomerType::NA_PHOSPHATE:
+                return true;
+            default:
+                return false;
+        }
+    };
+    auto is_na_base = [](const RDKit::Atom* a) {
+        return get_monomer_type(a) == MonomerType::NA_BASE;
+    };
+    // any_of is false for an empty selection, so no explicit empty guard.
+    return std::ranges::all_of(atoms, is_na_monomer) &&
+           std::ranges::any_of(atoms, is_na_base);
+}
+
+// Filter the menu's selection down to NA bases whose symbol has a
+// Watson-Crick complement. Used to drive both the "enabled" state of
+// the action and the payload of the emitted signal.
+static std::unordered_set<const RDKit::Atom*>
+complementable_bases(const std::unordered_set<const RDKit::Atom*>& atoms)
+{
+    std::unordered_set<const RDKit::Atom*> out;
+    for (const auto* a : atoms) {
+        if (get_monomer_type(a) != MonomerType::NA_BASE) {
+            continue;
+        }
+        if (na_base_has_complement(get_monomer_res_name(a))) {
+            out.insert(a);
+        }
+    }
+    return out;
+}
+
 MonomerContextMenu::MonomerContextMenu(QWidget* parent) :
     AbstractContextMenu(parent)
 {
@@ -25,6 +69,7 @@ MonomerContextMenu::MonomerContextMenu(QWidget* parent) :
     createProtonateAction();
     createMutateBaseSubMenu();
     createSugarToggleAction();
+    createAddComplementaryStrandAction();
     createDeleteAction();
 }
 
@@ -174,6 +219,19 @@ void MonomerContextMenu::createSugarToggleAction()
     });
 }
 
+void MonomerContextMenu::createAddComplementaryStrandAction()
+{
+    m_add_complement_action =
+        addAction("Add Complementary Sequence", this, [this]() {
+            // Reuse the set computed in updateActions() rather than walking
+            // the selection a third time.
+            if (m_complement_bases.empty()) {
+                return;
+            }
+            emit addComplementaryStrandRequested(m_complement_bases);
+        });
+}
+
 void MonomerContextMenu::createDeleteAction()
 {
     addAction("Delete", this, [this]() { emit deleteRequested(m_atoms); });
@@ -193,6 +251,14 @@ void MonomerContextMenu::updateActions()
     m_protonate_action->setVisible(all_peptide);
     m_mutate_base_menu->menuAction()->setVisible(all_na_base);
     m_sugar_toggle_action->setVisible(all_na_sugar);
+
+    m_complement_bases = complementable_bases(m_atoms);
+    const bool na_with_base = na_selection_with_at_least_one_base(m_atoms);
+    m_add_complement_action->setVisible(na_with_base);
+    // Enabled iff at least one selected base has a Watson-Crick complement
+    // symbol; DB-level validation happens model-side.
+    m_add_complement_action->setEnabled(na_with_base &&
+                                        !m_complement_bases.empty());
 
     if (all_peptide) {
         bool any_d_form_toggleable = false;
