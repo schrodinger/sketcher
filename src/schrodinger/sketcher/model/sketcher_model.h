@@ -602,6 +602,7 @@ class SKETCHER_API SketcherModel : public QObject
     virtual bool hasNABaseSelection() const;
     virtual bool hasNASugarSelection() const;
     virtual bool hasNAPhosphateSelection() const;
+    virtual bool hasMonomerSelection() const;
 
     /**
      * getter and setter for select-only mode.

@@ -67,6 +67,7 @@ void SelectOptionsWidget::updateWidgetsEnabled()
     // Move tool should only be enabled if there are atoms or non-molecular
     // objects selected
     bool movable_selection = !has_selection || model->hasAtomSelection() ||
+                             model->hasMonomerSelection() ||
                              model->hasNonMolecularObjectSelection();
     ui->move_rotate_btn->setEnabled(has_contents && movable_selection);
 
