@@ -63,7 +63,7 @@ atoms_from(const RDKit::ROMol& mol, std::initializer_list<unsigned int> idxs)
     return out;
 }
 
-// Captures the most recent `mutateResidueRequested` emission.
+// Captures the most recent `mutateMonomerRequested` emission.
 struct MutateRequestCapture {
     std::vector<MonomerMutation> last_mutations;
     QString last_description;
@@ -71,7 +71,7 @@ struct MutateRequestCapture {
 
     void connectTo(MonomerContextMenu& menu)
     {
-        QObject::connect(&menu, &MonomerContextMenu::mutateResidueRequested,
+        QObject::connect(&menu, &MonomerContextMenu::mutateMonomerRequested,
                          &menu,
                          [this](auto mutations, const QString& description) {
                              last_mutations = std::move(mutations);

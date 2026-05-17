@@ -871,7 +871,7 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
     connect(&menu, &MonomerContextMenu::deleteRequested, this,
             [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
 
-    connect(&menu, &MonomerContextMenu::mutateResidueRequested, this,
+    connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
             [this](auto mutations, const QString& description) {
                 if (mutations.empty()) {
                     return;
@@ -891,10 +891,8 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
                     for (auto i : idxs) {
                         resolved.insert(mol->getAtomWithIdx(i));
                     }
-                    // Menu only emits uniform-type batches (peptide / NA
-                    // base / NA sugar); sampling the first atom is enough.
-                    // A wrong guess silently no-ops via mutateMonomers'
-                    // type filter — which was the original PEPTIDE bug.
+                    // Menu emits uniform-type batches; first-atom sample
+                    // gives the right type.
                     const auto target_type =
                         get_monomer_type(*resolved.begin());
                     m_mol_model->mutateMonomers(resolved, sym, target_type);

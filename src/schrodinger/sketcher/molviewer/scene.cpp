@@ -466,16 +466,14 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
     auto pos = event->scenePos();
     auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         getModelObjects(SceneSubset::HOVERED, &pos);
-    // The atom under the cursor at right-click time, for menus that act
-    // on the clicked atom rather than the whole selection (e.g. NA sugar
-    // toggle). Null when the cursor isn't on an atom/monomer item.
+    // The monomer atom under the cursor at right-click time, for menus
+    // that act on the clicked monomer (e.g. NA sugar toggle). Null when
+    // the cursor isn't on a monomer item.
     const RDKit::Atom* primary_atom = nullptr;
     if (auto* top_item =
-            getTopInteractiveItemAt(pos, InteractiveItemFlag::ALL)) {
-        if (auto* atom_item =
-                dynamic_cast<AbstractAtomOrMonomerItem*>(top_item)) {
-            primary_atom = atom_item->getAtom();
-        }
+            getTopInteractiveItemAt(pos, InteractiveItemFlag::MONOMER)) {
+        primary_atom =
+            static_cast<AbstractAtomOrMonomerItem*>(top_item)->getAtom();
     }
     emit showContextMenuRequested(event, atoms, bonds, secondary_connections,
                                   sgroups, non_molecular_objects, primary_atom);

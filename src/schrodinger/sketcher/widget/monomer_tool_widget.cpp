@@ -9,6 +9,7 @@
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/monomer_analog.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_monomer_tool_widget.h"
 #include "schrodinger/sketcher/widget/amino_acid_symbol_popup.h"
@@ -23,76 +24,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-using AnalogMap =
-    std::unordered_map<std::string, std::vector<rdkit_extensions::MonomerInfo>>;
-
-// dR has NATURAL_ANALOG=R, so it's not a key in the analog map. Pull
-// R's analogs (and R itself) into dR's popup for symmetry with R, which
-// already shows dR.
-static const std::unordered_map<std::string, std::string>
-    NA_ANALOG_LOOKUP_OVERRIDES = {{"dR", "R"}};
-
-/**
- * Build the analog list for an NA button: optionally prepend a parent
- * standard (e.g. R for the dR button) sourced from `standard_names`,
- * then append the natural-analog list keyed by the override target (or
- * `symbol` itself if no override applies), filtering out entries whose
- * symbol matches `symbol` (the button's own standard).
- */
-static std::vector<rdkit_extensions::MonomerInfo> get_analogs_for_na_button(
-    const std::string& symbol, const AnalogMap& analogs_by_na,
-    const std::unordered_map<std::string, std::string>& standard_names)
-{
-    std::vector<rdkit_extensions::MonomerInfo> analogs;
-    auto override_it = NA_ANALOG_LOOKUP_OVERRIDES.find(symbol);
-    const auto& lookup_key = override_it != NA_ANALOG_LOOKUP_OVERRIDES.end()
-                                 ? override_it->second
-                                 : symbol;
-    if (override_it != NA_ANALOG_LOOKUP_OVERRIDES.end()) {
-        auto parent_name_it = standard_names.find(lookup_key);
-        rdkit_extensions::MonomerInfo parent_entry;
-        parent_entry.symbol = lookup_key;
-        parent_entry.name = parent_name_it != standard_names.end()
-                                ? parent_name_it->second
-                                : lookup_key;
-        analogs.push_back(std::move(parent_entry));
-    }
-    auto analog_it = analogs_by_na.find(lookup_key);
-    if (analog_it != analogs_by_na.end()) {
-        for (const auto& m : analog_it->second) {
-            if (m.symbol.value_or("") != symbol) {
-                analogs.push_back(m);
-            }
-        }
-    }
-    return analogs;
-}
-
-/**
- * Return analogs for nucleic acid bases keyed by their natural analog symbol,
- * pulled from both RNA and DNA chain types and deduped by analog symbol.
- */
-static AnalogMap get_merged_na_analogs()
-{
-    auto& db = rdkit_extensions::MonomerDatabase::instance();
-    auto base = db.getMonomersByNaturalAnalog(rdkit_extensions::ChainType::RNA);
-    auto other =
-        db.getMonomersByNaturalAnalog(rdkit_extensions::ChainType::DNA);
-    for (const auto& [key, other_list] : other) {
-        auto& merged = base[key];
-        std::unordered_set<std::string> seen;
-        for (const auto& m : merged) {
-            seen.insert(m.symbol.value_or(""));
-        }
-        for (const auto& m : other_list) {
-            if (seen.insert(m.symbol.value_or("")).second) {
-                merged.push_back(m);
-            }
-        }
-    }
-    return base;
-}
 
 MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     AbstractDrawToolWidget(parent)

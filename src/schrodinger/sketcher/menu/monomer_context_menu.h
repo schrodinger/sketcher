@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -8,6 +7,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/menu/abstract_context_menu.h"
+#include "schrodinger/sketcher/rdkit/monomer_analog.h"
 
 class QAction;
 class QMenu;
@@ -21,16 +21,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-/**
- * One unit of work for `MolModel::mutateMonomers`: a set of atoms that
- * should all be mutated to the same target HELM symbol. Used as the
- * batch element in `MonomerContextMenu::mutateResidueRequested`.
- */
-struct MonomerMutation {
-    std::unordered_set<const RDKit::Atom*> atoms;
-    std::string helm_symbol;
-};
 
 /**
  * Context menu for monomer beads. Dispatches by monomer type:
@@ -54,7 +44,7 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
      * @param description is the undo-stack label the receiver should use
      * when coalescing a multi-pair batch into one undo entry.
      */
-    void mutateResidueRequested(std::vector<MonomerMutation> mutations,
+    void mutateMonomerRequested(std::vector<MonomerMutation> mutations,
                                 QString description);
 
   protected:

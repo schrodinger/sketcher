@@ -638,11 +638,11 @@ static const RDKit::Atom* find_atom_by_res_name(const RDKit::ROMol& mol,
 }
 
 /**
- * `mutateResidueRequested` from the menu must reach `mutateMonomers`
+ * `mutateMonomerRequested` from the menu must reach `mutateMonomers`
  * with the right MonomerType — else the type filter silently no-ops.
  * AA path covered here; NA paths in the next two cases.
  */
-BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_peptide)
+BOOST_AUTO_TEST_CASE(test_mutateMonomerRequested_signal_mutates_peptide)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
@@ -653,7 +653,7 @@ BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_peptide)
     const auto* a_atom = mol->getAtomWithIdx(0);
     BOOST_REQUIRE(get_monomer_res_name(a_atom) == "A");
 
-    emit sk.m_monomer_context_menu->mutateResidueRequested({{{a_atom}, "C"}},
+    emit sk.m_monomer_context_menu->mutateMonomerRequested({{{a_atom}, "C"}},
                                                            QString());
 
     const auto* mol_after = sk.m_mol_model->getMol();
@@ -664,7 +664,7 @@ BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_peptide)
  * NA base mutation — regression guard against the handler hard-coding
  * MonomerType::PEPTIDE.
  */
-BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_base)
+BOOST_AUTO_TEST_CASE(test_mutateMonomerRequested_signal_mutates_na_base)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
@@ -675,7 +675,7 @@ BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_base)
     BOOST_REQUIRE(base_atom != nullptr);
     BOOST_REQUIRE(get_monomer_type(base_atom) == MonomerType::NA_BASE);
 
-    emit sk.m_monomer_context_menu->mutateResidueRequested({{{base_atom}, "T"}},
+    emit sk.m_monomer_context_menu->mutateMonomerRequested({{{base_atom}, "T"}},
                                                            QString());
 
     const auto* mol_after = sk.m_mol_model->getMol();
@@ -689,7 +689,7 @@ BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_base)
 /**
  * NA sugar R→dR mutation — third branch of the dispatch matrix.
  */
-BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_sugar)
+BOOST_AUTO_TEST_CASE(test_mutateMonomerRequested_signal_mutates_na_sugar)
 {
     TestSketcherWidget& sk = *TestWidgetFixture::get();
     sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
@@ -700,7 +700,7 @@ BOOST_AUTO_TEST_CASE(test_mutateResidueRequested_signal_mutates_na_sugar)
     BOOST_REQUIRE(sugar_atom != nullptr);
     BOOST_REQUIRE(get_monomer_type(sugar_atom) == MonomerType::NA_SUGAR);
 
-    emit sk.m_monomer_context_menu->mutateResidueRequested(
+    emit sk.m_monomer_context_menu->mutateMonomerRequested(
         {{{sugar_atom}, "dR"}}, "Change R to dR");
 
     const auto* mol_after = sk.m_mol_model->getMol();
