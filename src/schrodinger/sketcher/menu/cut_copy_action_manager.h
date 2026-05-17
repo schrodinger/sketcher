@@ -51,7 +51,7 @@ class SKETCHER_API CutCopyActionManager : public QWidget
      * @return the human-readable format for basic cut/copy (not "Copy As");
      * HELM for monomers so the clipboard text stays meaningful to other apps.
      */
-    rdkit_extensions::Format getCutCopyFormat() const;
+    rdkit_extensions::Format getDefaultCutCopyFormat() const;
 
     /**
      * Initializes the Copy As menu with both standard and reaction formats

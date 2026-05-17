@@ -401,7 +401,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      */
     virtual std::string getClipboardContents() const;
     virtual void setClipboardContents(std::string text,
-                                      std::string binary = "") const;
+                                      std::string binary) const;
 
     /**
      * Perform the actual paste of clipboard text into the scene at the given

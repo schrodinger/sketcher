@@ -12,9 +12,6 @@ namespace schrodinger
 namespace sketcher
 {
 
-// Controls the default cut/copy format when not specified
-const Format DEFAULT_FORMAT = Format::MDL_MOLV3000;
-
 CutCopyActionManager::CutCopyActionManager(QWidget* parent) : QWidget(parent)
 {
     m_cut_action = new QAction("Cut", this);
@@ -40,9 +37,10 @@ void CutCopyActionManager::setModel(SketcherModel* model)
     // Postpone connecting actions until the model is set since copy
     // queries the model to determine which subset value to emit
     connect(m_cut_action, &QAction::triggered, this,
-            [this]() { emit cutRequested(getCutCopyFormat()); });
-    connect(m_copy_action, &QAction::triggered, this,
-            [this]() { emit copyRequested(getCutCopyFormat(), getSubset()); });
+            [this]() { emit cutRequested(getDefaultCutCopyFormat()); });
+    connect(m_copy_action, &QAction::triggered, this, [this]() {
+        emit copyRequested(getDefaultCutCopyFormat(), getSubset());
+    });
     initCopyAsMenu();
 
     // Initialize
@@ -63,14 +61,14 @@ SceneSubset CutCopyActionManager::getSubset()
     }
 }
 
-Format CutCopyActionManager::getCutCopyFormat() const
+Format CutCopyActionManager::getDefaultCutCopyFormat() const
 {
     if (m_sketcher_model->getMoleculeType() == MoleculeType::MONOMERIC) {
         // HELM is the user-visible payload; SketcherWidget::copy also stashes
         // a lossless pickle for intra-sketcher pastes (see its comment).
         return Format::HELM;
     }
-    return DEFAULT_FORMAT;
+    return Format::MDL_MOLV3000;
 }
 
 void CutCopyActionManager::initCopyAsMenu()

@@ -588,12 +588,10 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
     std::string binary;
     try {
         text = extract_string(m_mol_model, m_sketcher_model, format, subset);
-        // For monomers also stash a pickle so intra-sketcher pastes preserve
-        // structure and 2D coords (chain layout otherwise regenerates them).
-        if (m_mol_model->isMonomeric()) {
-            binary = extract_string(m_mol_model, m_sketcher_model,
-                                    Format::RDMOL_BINARY_BASE64, subset);
-        }
+        // Always stash a lossless pickle so intra-sketcher pastes round-trip
+        // with full fidelity regardless of what the text format preserves.
+        binary = extract_string(m_mol_model, m_sketcher_model,
+                                Format::RDMOL_BINARY_BASE64, subset);
     } catch (const std::exception& exc) {
         show_error_dialog("Copy Error", exc.what(), window());
         return;

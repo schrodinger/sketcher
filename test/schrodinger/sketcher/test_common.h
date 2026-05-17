@@ -94,7 +94,7 @@ class TestSketcherWidget : public SketcherWidget
                                           : m_clipboard_binary;
     }
     void setClipboardContents(std::string text,
-                              std::string binary = "") const override
+                              std::string binary) const override
     {
         m_clipboard_text = text;
         m_clipboard_binary = binary;
