@@ -256,7 +256,7 @@ void DrawMonomerFragmentSceneTool::onLeftButtonRelease(
 {
     AbstractMonomerSceneTool::onLeftButtonRelease(event);
     setCursorHintShown(true);
-    delete m_hint_fragment_item;
+    clearHintFragmentItem();
 }
 
 void DrawMonomerFragmentSceneTool::onLeftButtonDragMove(

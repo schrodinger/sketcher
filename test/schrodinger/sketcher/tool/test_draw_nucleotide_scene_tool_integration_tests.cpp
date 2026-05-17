@@ -115,5 +115,35 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_attachment_points)
     fix.verifyHELM("RNA1{R(A)P.R}$$$$V2.0");
 }
 
+// Regression test: dragging from an existing nucleotide bead into empty space
+// and then moving the mouse used to crash because onLeftButtonRelease deleted
+// m_hint_fragment_item without nulling it, leaving a dangling pointer that the
+// next mouse-move's clearHintFragmentItem() would double-free.
+BOOST_AUTO_TEST_CASE(test_drag_from_bead_to_empty_then_move_does_not_crash)
+{
+    MonomerToolTestFixture fix;
+    fix.setRNANucleotideTool(StdNucleobase::A);
+    fix.mouseClick({0, 0});
+    fix.verifyHELM("RNA1{R(A)P}$$$$V2.0");
+
+    // Re-arm the nucleotide tool so the scene tool is the fragment tool again
+    fix.setRNANucleotideTool(StdNucleobase::C);
+
+    // Hover over the sugar bead so the fragment hint is created
+    auto sugar_pos = fix.getMonomerPos(0);
+    fix.mouseMove(sugar_pos);
+
+    // Press on the bead, drag to empty space, release
+    QPointF empty_pos{500, 500};
+    fix.mousePress(sugar_pos);
+    fix.mouseMove(empty_pos, Qt::LeftButton);
+    fix.mouseRelease(empty_pos);
+
+    // Moving the mouse after the release used to dereference the freed
+    // m_hint_fragment_item and crash. The structure must be unchanged.
+    fix.mouseMove(empty_pos + QPointF(1, 1));
+    fix.verifyHELM("RNA1{R(A)P}$$$$V2.0");
+}
+
 } // namespace sketcher
 } // namespace schrodinger
