@@ -147,22 +147,32 @@ BOOST_AUTO_TEST_CASE(updateWidgetsEnabled)
         BOOST_TEST(!btn->isEnabled());
     }
 
+    auto test_widget_state = [&mol_model, &ui, &requires_contents_btns,
+                              &requires_selection_btns]() {
+        for (bool has_selection : {true, false}) {
+            if (has_selection) {
+                mol_model->selectAll();
+            } else {
+                mol_model->clearSelection();
+            }
+            // select all is disabled when everything is selected
+            BOOST_TEST(ui->select_all_btn->isEnabled() == !has_selection);
+            for (auto btn : requires_contents_btns) {
+                BOOST_TEST(btn->isEnabled());
+            }
+            for (auto btn : requires_selection_btns) {
+                BOOST_TEST(btn->isEnabled() == has_selection);
+            }
+        }
+    };
+
+    // test with an atomistic model
     import_mol_text(mol_model, "CC");
-    for (bool has_selection : {true, false}) {
-        if (has_selection) {
-            mol_model->selectAll();
-        } else {
-            mol_model->clearSelection();
-        }
-        // select all is disabled when everything is selected
-        BOOST_TEST(ui->select_all_btn->isEnabled() == !has_selection);
-        for (auto btn : requires_contents_btns) {
-            BOOST_TEST(btn->isEnabled());
-        }
-        for (auto btn : requires_selection_btns) {
-            BOOST_TEST(btn->isEnabled() == has_selection);
-        }
-    }
+    test_widget_state();
+    // test with a monomeric model
+    mol_model->clear();
+    import_mol_text(mol_model, "PEPTIDE1{A.G.L}$$$$V2.0");
+    test_widget_state();
 
     // SKETCH-2219: Ensure that clicking any of these mutually exclusive buttons
     // twice doesn't deselect it
