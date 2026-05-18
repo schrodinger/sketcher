@@ -782,10 +782,10 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
 {
     CaptureRDErrorLog rd_error_log;
 
+    auto is_monomeric = isMonomeric(input_mol);
     auto mol = [&]() -> boost::shared_ptr<RDKit::RWMol> {
         // Since SHARED-11054, we want to start allowing conversion between
         // atomistic and monomeric mols
-        auto is_monomeric = isMonomeric(input_mol);
         auto is_seq_format =
             std::ranges::find(SEQ_FORMATS, format) != SEQ_FORMATS.end();
         if (is_monomeric && !is_seq_format) {
@@ -827,6 +827,10 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             return RDKit::MolToCXSmarts(*mol);
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
+            // For monomeric inputs, we need to kekulize because we prefer
+            // single/double bonds to avoid sanitization errors, but for
+            // atomistic inputs we'll keep whatever the caller gave us.
+            kekulize = is_monomeric;
             attachment_point_dummies_to_molattachpt_property(*mol);
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(*mol);
