@@ -1,0 +1,313 @@
+diff --git a/Code/GraphMol/FileParsers/molfile_stereo_catch.cpp b/Code/GraphMol/FileParsers/molfile_stereo_catch.cpp
+index 5e323cc81..e51393a3c 100644
+--- a/Code/GraphMol/FileParsers/molfile_stereo_catch.cpp
++++ b/Code/GraphMol/FileParsers/molfile_stereo_catch.cpp
+@@ -17,8 +17,10 @@
+ #include <GraphMol/Subgraphs/Subgraphs.h>
+ #include <GraphMol/Subgraphs/SubgraphUtils.h>
+ #include <GraphMol/SmilesParse/SmilesParse.h>
++#include <GraphMol/SmilesParse/SmilesWrite.h>
+ #include <GraphMol/FileParsers/MolWriters.h>
+ #include <GraphMol/CIPLabeler/CIPLabeler.h>
++#include <GraphMol/test_fixtures.h>
+ 
+ using namespace RDKit;
+ 
+@@ -787,4 +789,32 @@ M  END)CTAB";
+       CHECK(mol3->getAtomWithIdx(0)->getNumImplicitHs() == 1);
+     }
+   }
++}
++
++TEST_CASE("GitHub #9270: Segfault when calling MolToSmiles on submol") {
++  SECTION("as reported") {
++    UseLegacyStereoPerceptionFixture useLegacyFixture(false);
++
++    auto mol =
++        "CC1/C=C(/C)[O][Ir]23(<-[O]=1)([c]1ccccc1c1cncc[n]->21)[c]1ccccc1c1cncc[n]->31"_smiles;
++    REQUIRE(mol);
++
++    auto dblBond = mol->getBondWithIdx(2);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{1, 4});
++
++    constexpr unsigned int radius = 3;
++    constexpr unsigned int atomId = 7;
++    auto env = findAtomEnvironmentOfRadiusN(*mol, radius, atomId);
++    std::unique_ptr<ROMol> frag(Subgraphs::pathToSubmol(*mol, env));
++    REQUIRE(frag);
++
++    REQUIRE_NOTHROW(MolToSmiles(*frag));
++
++    dblBond = frag->getBondWithIdx(2);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOCIS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{1, 4});
++  }
+ }
+\ No newline at end of file
+diff --git a/Code/GraphMol/Subset.cpp b/Code/GraphMol/Subset.cpp
+index fb0b30c71..2cf759a47 100644
+--- a/Code/GraphMol/Subset.cpp
++++ b/Code/GraphMol/Subset.cpp
+@@ -25,6 +25,108 @@ inline void copyComputedProps(const ROMol &src, ROMol &dst) {
+   }
+ }
+ 
++atomindex_t getOtherAtomIdx(const ROMol &ref_mol, const Bond &ref_bond,
++                            atomindex_t dblBndAtomIdx,
++                            atomindex_t stereoAtomIdx) {
++  auto ref_atom = ref_bond.getBeginAtom();
++  auto other_atom = ref_bond.getEndAtom();
++  if (other_atom->getIdx() == dblBndAtomIdx) {
++    std::swap(ref_atom, other_atom);
++  }
++  CHECK_INVARIANT(ref_atom->getIdx() == dblBndAtomIdx,
++                "dblBndAtomIdx should be one of the bond's atoms");
++
++  for (auto nbr : ref_mol.atomNeighbors(ref_atom)) {
++    auto nbrIdx = nbr->getIdx();
++    if (nbrIdx != stereoAtomIdx && nbr != other_atom) {
++      return nbrIdx;
++    }
++  }
++
++  return RDKit::Atom::NOATOM;
++}
++
++void handleBondStereo(Bond &extracted_bond, const Bond &ref_bond,
++                      const ROMol &ref_mol,
++                      const std::map<unsigned int, unsigned int> &atomMapping) {
++  auto &atoms = extracted_bond.getStereoAtoms();
++  if (atoms.size() != 2) {
++    return;
++  }
++
++  bool needsSwap = false;
++  auto map1 = atomMapping.find(atoms[0]);
++  auto map2 = atomMapping.find(atoms[1]);
++
++  if (map1 == atomMapping.end()) {
++    auto begin_atom = ref_bond.getBeginAtom();
++    if (begin_atom->getDegree() < 3) {
++      // No alternative atom on this side; clear stereo from the bond
++      atoms.clear();
++      extracted_bond.setStereo(Bond::STEREONONE);
++      return;
++    }
++
++    auto otherNeighborIdx =
++        getOtherAtomIdx(ref_mol, ref_bond, begin_atom->getIdx(), atoms[0]);
++    map1 = atomMapping.find(otherNeighborIdx);
++    if (map1 == atomMapping.end()) {
++      // The alternative atom wasn't extracted either; clear stereo
++      atoms.clear();
++      extracted_bond.setStereo(Bond::STEREONONE);
++      return;
++    }
++
++    // Ok, we can swap the stereo atom to the other neighbor on this side
++    needsSwap = !needsSwap;
++  }
++
++  if (map2 == atomMapping.end()) {
++    auto end_atom = ref_bond.getEndAtom();
++    if (end_atom->getDegree() < 3) {
++      // No alternative atom on this side; clear stereo from the bond
++      atoms.clear();
++      extracted_bond.setStereo(Bond::STEREONONE);
++      return;
++    }
++
++    auto otherNeighborIdx =
++        getOtherAtomIdx(ref_mol, ref_bond, end_atom->getIdx(), atoms[1]);
++    map2 = atomMapping.find(otherNeighborIdx);
++    if (map2 == atomMapping.end()) {
++      // The alternative atom wasn't extracted either; clear stereo
++      atoms.clear();
++      extracted_bond.setStereo(Bond::STEREONONE);
++      return;
++    }
++
++    // Ok, we can swap the stereo atom to the other neighbor on this side
++    needsSwap = !needsSwap;
++  }
++
++  atoms[0] = map1->second;
++  atoms[1] = map2->second;
++
++  // Finally, update the label. Since CIP ranges may have changed,
++  // convert E/Z to CIS/TRANS to keep the right stereo.
++
++  if (!needsSwap) {
++    if (ref_bond.getStereo() == Bond::STEREOZ) {
++      extracted_bond.setStereo(Bond::STEREOCIS);
++    } else if (ref_bond.getStereo() == Bond::STEREOE) {
++      extracted_bond.setStereo(Bond::STEREOTRANS);
++    }
++  } else {
++    if (ref_bond.getStereo() == Bond::STEREOZ ||
++        ref_bond.getStereo() == Bond::STEREOCIS) {
++      extracted_bond.setStereo(Bond::STEREOTRANS);
++    } else if (ref_bond.getStereo() == Bond::STEREOE ||
++               ref_bond.getStereo() == Bond::STEREOTRANS) {
++      extracted_bond.setStereo(Bond::STEREOCIS);
++    }
++  }
++}
++
+ static void copySelectedAtomsAndBonds(RWMol &extracted_mol,
+                                       const RDKit::ROMol &reference_mol,
+                                       SubsetInfo &selection_info,
+@@ -51,32 +153,15 @@ static void copySelectedAtomsAndBonds(RWMol &extracted_mol,
+       continue;
+     }
+     if (atomMapping.find(ref_bond->getBeginAtomIdx()) == atomMapping.end() ||
+-	atomMapping.find(ref_bond->getEndAtomIdx()) == atomMapping.end()) {
+-      throw ValueErrorException("copyMolSubset: subset bonds contain atoms not contained in subset atoms");
++        atomMapping.find(ref_bond->getEndAtomIdx()) == atomMapping.end()) {
++      throw ValueErrorException(
++          "copyMolSubset: subset bonds contain atoms not contained in subset atoms");
+     }
+-	
++
+     std::unique_ptr<Bond> extracted_bond{
+         options.copyAsQuery ? new QueryBond(*ref_bond) : ref_bond->copy()};
+ 
+-    // Check the stereo atoms
+-    auto &atoms = extracted_bond->getStereoAtoms();
+-    if (atoms.size() == 2) {
+-      auto map1 = atomMapping.find(atoms[0]);
+-      auto map2 = atomMapping.find(atoms[1]);
+-      if (map1 != atomMapping.end() && map2 != atomMapping.end()) {
+-        atoms[0] = map1->second;
+-        atoms[1] = map2->second;
+-      } else {
+-        atoms.clear();  // We couldn't map the stereo atoms
+-      }
+-    }
+-
+-    for (auto &atomidx : atoms) {
+-      auto map = atomMapping.find(atomidx);
+-      if (map != atomMapping.end()) {
+-        atomidx = map->second;
+-      }
+-    }
++    handleBondStereo(*extracted_bond, *ref_bond, reference_mol, atomMapping);
+ 
+     extracted_bond->setBeginAtomIdx(atomMapping[ref_bond->getBeginAtomIdx()]);
+     extracted_bond->setEndAtomIdx(atomMapping[ref_bond->getEndAtomIdx()]);
+diff --git a/Code/GraphMol/catch_molops.cpp b/Code/GraphMol/catch_molops.cpp
+index 605097620..dd5747a12 100644
+--- a/Code/GraphMol/catch_molops.cpp
++++ b/Code/GraphMol/catch_molops.cpp
+@@ -771,3 +771,108 @@ TEST_CASE("Test findRingFamilies") {
+   }
+ }
+ #endif
++
++TEST_CASE("GitHub #9270: Segfault when calling MolToSmiles on submol") {
++  SECTION("both atoms mapped") {
++    // Legacy Stereo perceives double bond stereo as E/Z,
++    // modern stereo as CIS/TRANS, but both should result
++    // in the same output
++    auto useLegacy = GENERATE(true, false);
++    CAPTURE(useLegacy);
++    UseLegacyStereoPerceptionFixture useLegacyFixture(useLegacy);
++
++    auto mol = "C/C=C/CC"_smiles;
++    REQUIRE(mol);
++
++    auto dblBond = mol->getBondWithIdx(1);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++
++    if (useLegacy) {
++      REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOE);
++    } else {
++      REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    }
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{0, 3});
++
++    // Extract all atoms and bond except the last atom;
++    // both stereo atoms should be mapped
++    std::vector<unsigned int> atoms{0, 1, 2, 3};
++    std::vector<unsigned int> bonds{0, 1, 2};
++    auto subset = copyMolSubset(*mol, atoms, bonds);
++    REQUIRE(subset);
++
++    dblBond = subset->getBondWithIdx(1);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{0, 3});
++  }
++
++  SECTION("one stereo atom replaced with alternative") {
++    UseLegacyStereoPerceptionFixture useLegacyFixture(false);
++
++    auto mol = "OC(/C)=C/C"_smiles;
++    REQUIRE(mol);
++
++    auto dblBond = mol->getBondWithIdx(2);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{0, 4});
++
++    // Extract all atoms and bonds except the first stereo atom (atom 0)
++    std::vector<unsigned int> atoms{1, 2, 3, 4};
++    std::vector<unsigned int> bonds{1, 2, 3};
++    auto subset = copyMolSubset(*mol, atoms, bonds);
++    REQUIRE(subset);
++
++    dblBond = subset->getBondWithIdx(1);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOCIS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{1, 3});
++  }
++
++  SECTION("both atoms on one side removed") {
++    UseLegacyStereoPerceptionFixture useLegacyFixture(false);
++
++    auto mol = "OC(/C)=C/C"_smiles;
++    REQUIRE(mol);
++
++    auto dblBond = mol->getBondWithIdx(2);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{0, 4});
++
++    // Extract double bond and second stereo atom
++    std::vector<unsigned int> atoms{1, 3, 4};
++    std::vector<unsigned int> bonds{2, 3};
++    auto subset = copyMolSubset(*mol, atoms, bonds);
++    REQUIRE(subset);
++
++    dblBond = subset->getBondWithIdx(0);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREONONE);
++    REQUIRE(dblBond->getStereoAtoms().empty());
++  }
++
++  SECTION("both atoms replaced - double swap") {
++    UseLegacyStereoPerceptionFixture useLegacyFixture(false);
++
++    auto mol = "OC(/C)=C(/C)N"_smiles;
++    REQUIRE(mol);
++
++    auto dblBond = mol->getBondWithIdx(2);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{0, 4});
++
++    // Extract all atoms and bonds except the first stereo atom (atom 0)
++    std::vector<unsigned int> atoms{1, 2, 3, 5};
++    std::vector<unsigned int> bonds{1, 2, 4};
++    auto subset = copyMolSubset(*mol, atoms, bonds);
++    REQUIRE(subset);
++
++    dblBond = subset->getBondWithIdx(1);
++    REQUIRE(dblBond->getBondType() == Bond::BondType::DOUBLE);
++    REQUIRE(dblBond->getStereo() == Bond::BondStereo::STEREOTRANS);
++    REQUIRE(dblBond->getStereoAtoms() == std::vector<int>{1, 3});
++  }
++}
