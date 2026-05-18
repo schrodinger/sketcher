@@ -467,6 +467,11 @@ bool SketcherModel::hasNAPhosphateSelection() const
     return contains_item<NucleicAcidPhosphateItem>(*this);
 }
 
+bool SketcherModel::hasMonomerSelection() const
+{
+    return contains_item<AbstractMonomerItem>(*this);
+}
+
 QList<QGraphicsItem*> SketcherModel::getInteractiveItems() const
 {
     return emit interactiveItemsRequested();
