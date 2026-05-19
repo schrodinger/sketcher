@@ -534,6 +534,10 @@ void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
 std::string SketcherWidget::getClipboardContents() const
 {
     auto data = QApplication::clipboard()->mimeData();
+    if (data == nullptr) {
+        // mimeData can return a nullptr in WASM builds
+        return "";
+    }
     if (data->hasText()) {
         return data->text().toStdString();
     }
@@ -545,6 +549,13 @@ void SketcherWidget::setClipboardContents(std::string text) const
     auto data = new QMimeData;
     data->setText(QString::fromStdString(text));
     QApplication::clipboard()->setMimeData(data);
+
+#ifdef __EMSCRIPTEN__
+    // Use the browser's aync clipboard api to enable copy for the wasm build
+    emscripten::val navigator = emscripten::val::global("navigator");
+    navigator["clipboard"].call<emscripten::val>("writeText",
+                                                 emscripten::val(text));
+#endif
 }
 
 void SketcherWidget::cut(Format format)
@@ -570,13 +581,6 @@ void SketcherWidget::copy(Format format, SceneSubset subset)
     }
     setClipboardContents(text);
     // SKETCH-2091: Add image content to the clipboard; blocked by SKETCH-1975
-
-#ifdef __EMSCRIPTEN__
-    // Use the browser's aync clipboard api to enable copy for the wasm build
-    emscripten::val navigator = emscripten::val::global("navigator");
-    navigator["clipboard"].call<emscripten::val>("writeText",
-                                                 emscripten::val(text));
-#endif
 }
 
 void SketcherWidget::copyAsImage()
@@ -589,6 +593,48 @@ void SketcherWidget::copyAsImage()
     QApplication::clipboard()->setImage(image);
 }
 
+#ifdef __EMSCRIPTEN__
+namespace
+{
+// State for the in-flight browser clipboard read kicked off by pasteAt(). The
+// .then() callback in sketcher_start_browser_clipboard_read re-enters via
+// sketcher_finish_browser_paste(), which uses these to complete the paste.
+SketcherWidget* g_pending_paste_widget = nullptr;
+std::optional<QPointF> g_pending_paste_position;
+} // namespace
+
+// Non-suspending: starts readText() and attaches a .then() that calls back
+// into C++. We must NOT await here -- ASYNCIFY cannot suspend through the JS
+// trampoline Qt uses for slot dispatch, so the read has to complete on a
+// fresh wasm stack (see sketcher_finish_browser_paste below).
+EM_JS(void, sketcher_start_browser_clipboard_read, (), {
+    navigator.clipboard.readText()
+        .then(function(text) {
+            const byteLength = lengthBytesUTF8(text) + 1;
+            const ptr = _malloc(byteLength);
+            stringToUTF8(text, ptr, byteLength);
+            _sketcher_finish_browser_paste(ptr);
+            _free(ptr);
+        })
+        .catch(function(err) {
+            // No text, permission denied, document not focused, etc.
+            _sketcher_finish_browser_paste(0);
+        });
+});
+
+extern "C" EMSCRIPTEN_KEEPALIVE void
+sketcher_finish_browser_paste(const char* text)
+{
+    auto* widget = g_pending_paste_widget;
+    auto position = g_pending_paste_position;
+    g_pending_paste_widget = nullptr;
+    g_pending_paste_position.reset();
+    if (widget && text && *text) {
+        widget->completePaste(text, position);
+    }
+}
+#endif
+
 /**
  * @internal
  * paste is agnostic of NEW_STRUCTURES_REPLACE_CONTENT
@@ -596,9 +642,24 @@ void SketcherWidget::copyAsImage()
 void SketcherWidget::pasteAt(std::optional<QPointF> position)
 {
     auto text = getClipboardContents();
-    if (text.empty()) {
+    if (!text.empty()) {
+        completePaste(std::move(text), position);
         return;
     }
+#ifdef __EMSCRIPTEN__
+    // The browser may not not allow us to access the clipboard via Qt. In that
+    // case, use the JavaScript readText API to request permission from the
+    // user. JavaScript will automatically call completePaste once the user has
+    // granted permission.
+    g_pending_paste_widget = this;
+    g_pending_paste_position = position;
+    sketcher_start_browser_clipboard_read();
+#endif
+}
+
+void SketcherWidget::completePaste(std::string text,
+                                   std::optional<QPointF> position)
+{
     // On WASM builds, RDKit doesn't like Windows newline characters, so we
     // explicitly remove the /r's, which converts Windows-style newlines to
     // Unix-style
