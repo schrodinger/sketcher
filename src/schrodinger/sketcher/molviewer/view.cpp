@@ -153,7 +153,22 @@ void View::wheelEvent(QWheelEvent* event)
     // K * 2^x, where K is an empirical constant to make the zooming feel
     // natural
     qreal scal = pow(2.0, event->angleDelta().y() / 2400.0);
+    // Capture the scene point under the cursor before the scale, then shift
+    // the viewport after so the same scene point is back under the cursor.
+    // Qt's setTransformationAnchor(AnchorUnderMouse) compensates via scroll
+    // bars, which this view has disabled, so do it via sceneRect (the
+    // mechanism this view already uses for panning) instead. Iterate so any
+    // sub-pixel residual from setSceneRect's snapping converges to zero.
+    auto cursor = event->position().toPoint();
+    auto cursor_scene_before = mapToScene(cursor);
     scaleSafely(scal);
+    for (int i = 0; i < 4; ++i) {
+        auto delta = cursor_scene_before - mapToScene(cursor);
+        if (delta.manhattanLength() < 0.001) {
+            break;
+        }
+        translateViewport(delta);
+    }
 }
 
 void View::fitToScreen(bool selection_only)
