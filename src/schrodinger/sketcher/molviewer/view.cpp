@@ -168,11 +168,12 @@ void View::scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor)
     // do it manually via sceneRect (the mechanism this view uses for
     // panning). Iterate so any sub-pixel residual from setSceneRect's
     // snapping converges to zero.
+    constexpr qreal SCENE_COORD_EPSILON = 0.001;
     auto scene_pos_before = mapToScene(anchor);
     scaleSafely(scale_factor);
     for (int i = 0; i < 4; ++i) {
         auto delta = scene_pos_before - mapToScene(anchor);
-        if (delta.manhattanLength() < 0.001) {
+        if (delta.manhattanLength() < SCENE_COORD_EPSILON) {
             break;
         }
         translateViewport(delta);
