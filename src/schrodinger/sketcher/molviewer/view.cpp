@@ -117,8 +117,7 @@ void View::pinchTriggered(QPinchGesture* gesture)
         // trackpad pinch). Anchoring at the view center would push the
         // structure away from where the user is pinching.
         auto scale_factor = gesture->scaleFactor();
-        auto pinch_anchor =
-            viewport()->mapFromGlobal(QCursor::pos());
+        auto pinch_anchor = viewport()->mapFromGlobal(QCursor::pos());
         scaleAnchoredAtCursor(scale_factor, pinch_anchor);
 
         auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();
