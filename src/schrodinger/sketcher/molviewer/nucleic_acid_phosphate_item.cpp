@@ -1,6 +1,11 @@
 #include "schrodinger/sketcher/molviewer/nucleic_acid_phosphate_item.h"
 
+#include <cmath>
+
+#include <QLineF>
+
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 
 namespace schrodinger
 {
@@ -74,6 +79,25 @@ void NucleicAcidPhosphateItem::updateCachedData()
     m_bounding_rect =
         rect_expanded_by_half_pen_width(border_rect, border_pen_width);
     set_path_to_rect(m_shape, border_rect, border_pen_width / 2.0);
+}
+
+QPointF NucleicAcidPhosphateItem::getLabelOffsetPastShape(qreal angle) const
+{
+    // For an ellipse centered at the origin with semi-axes half_w and
+    // half_h, points on the border satisfy (x/half_w)^2 + (y/half_h)^2 = 1.
+    // So for a unit-length direction (dx, dy) from the origin, the ray
+    // exits the ellipse at distance
+    // t = 1 / sqrt((dx/half_w)^2 + (dy/half_h)^2).
+    QLineF line({0.0, 0.0}, {1.0, 0.0});
+    line.setAngle(angle);
+    auto rect = m_border_path.boundingRect();
+    auto half_width = rect.width() / 2.0;
+    auto half_height = rect.height() / 2.0;
+    auto dx_term = line.dx() / half_width;
+    auto dy_term = line.dy() / half_height;
+    auto t = 1.0 / std::sqrt(dx_term * dx_term + dy_term * dy_term);
+    line.setLength(t + MONOMERIC_ATTACHMENT_POINT_LABEL_MONOMER_SPACING);
+    return line.p2();
 }
 
 } // namespace sketcher
