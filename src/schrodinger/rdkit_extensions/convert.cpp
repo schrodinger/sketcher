@@ -140,20 +140,33 @@ bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol)
     const auto num_atoms = rdk_mol.getNumAtoms();
     for (auto j = 0u; j < num_atoms; ++j) {
         auto atom = rdk_mol.getAtomWithIdx(j);
-        int from_ap{0};
-        if (!atom->getPropIfPresent(RDKit::common_properties::_fromAttachPoint,
-                                    from_ap)) {
+        if (atom->getAtomicNum() != 0 || atom->getDegree() != 1) {
             continue;
         }
-        found_any = true;
-        atom->setProp(RDKit::common_properties::atomLabel,
-                      ATTACHMENT_POINT_LABEL_PREFIX + std::to_string(ap_num++));
 
-        for (auto parent : rdk_mol.atomNeighbors(atom)) {
-            auto explicit_h_count = parent->getNumExplicitHs();
-            if (explicit_h_count != 0) {
-                parent->setNumExplicitHs(explicit_h_count - 1);
+        int from_ap{0};
+        if (atom->getPropIfPresent(RDKit::common_properties::_fromAttachPoint,
+                                   from_ap)) {
+            found_any = true;
+            atom->setProp(RDKit::common_properties::atomLabel,
+                          ATTACHMENT_POINT_LABEL_PREFIX +
+                              std::to_string(ap_num++));
+
+            for (auto parent : rdk_mol.atomNeighbors(atom)) {
+                auto explicit_h_count = parent->getNumExplicitHs();
+                if (explicit_h_count != 0) {
+                    parent->setNumExplicitHs(explicit_h_count - 1);
+                }
             }
+            continue;
+        }
+
+        std::string label;
+        if (atom->getPropIfPresent(RDKit::common_properties::atomLabel,
+                                   label) &&
+            label.find(ATTACHMENT_POINT_LABEL_PREFIX) == 0) {
+            found_any = true;
+            atom->setProp(RDKit::common_properties::_fromAttachPoint, 1);
         }
     }
 
@@ -537,8 +550,9 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             mol = base64_to_mol<RDKit::RWMol, RDKit::ROMol>(
-                text, (void (*)(const std::string&, RDKit::ROMol*)) &
-                          RDKit::MolPickler::molFromPickle);
+                text,
+                (void (*)(const std::string&,
+                          RDKit::ROMol*))&RDKit::MolPickler::molFromPickle);
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES: {
@@ -708,9 +722,9 @@ to_rdkit_reaction(const std::string& text, const Format format)
         case Format::RDMOL_BINARY_BASE64:
             rxn =
                 base64_to_mol<RDKit::ChemicalReaction, RDKit::ChemicalReaction>(
-                    text,
-                    (void (*)(const std::string&, RDKit::ChemicalReaction*)) &
-                        RDKit::ReactionPickler::reactionFromPickle);
+                    text, (void (*)(const std::string&,
+                                    RDKit::ChemicalReaction*))&RDKit::
+                              ReactionPickler::reactionFromPickle);
             break;
         case Format::SMILES:
         case Format::EXTENDED_SMILES:
@@ -793,8 +807,8 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ROMol>(
                 mol.get(),
-                (void (*)(const RDKit::ROMol*, std::string&, unsigned int)) &
-                    RDKit::MolPickler::pickleMol);
+                (void (*)(const RDKit::ROMol*, std::string&,
+                          unsigned int))&RDKit::MolPickler::pickleMol);
         case Format::SMILES:
             return RDKit::MolToSmiles(*mol, include_stereo, kekulize);
         case Format::EXTENDED_SMILES:
@@ -863,9 +877,10 @@ std::string to_string(const RDKit::ChemicalReaction& rxn, const Format format)
     switch (format) {
         case Format::RDMOL_BINARY_BASE64:
             return mol_to_base64<RDKit::ChemicalReaction>(
-                &rxn, (void (*)(const RDKit::ChemicalReaction*, std::string&,
-                                unsigned int)) &
-                          RDKit::ReactionPickler::pickleReaction);
+                &rxn,
+                (void (*)(
+                    const RDKit::ChemicalReaction*, std::string&,
+                    unsigned int))&RDKit::ReactionPickler::pickleReaction);
         case Format::SMILES:
             return RDKit::ChemicalReactionToRxnSmiles(rxn);
         case Format::EXTENDED_SMILES:

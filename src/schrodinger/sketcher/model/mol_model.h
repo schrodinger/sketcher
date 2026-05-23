@@ -95,7 +95,7 @@ struct HighlightingInfo {
                      const QColor& color) :
         atom_tags(atom_tags),
         bond_tags(bond_tags),
-        color(color){};
+        color(color) {};
     std::unordered_set<AtomTag> atom_tags;
     std::unordered_set<BondTag> bond_tags;
     QColor color;
@@ -1341,6 +1341,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     addDummyAtomsFromInvalidatedVariableAttachmentBonds(
         const std::unordered_set<const RDKit::Atom*>& atoms_to_be_deleted,
         const std::unordered_set<const RDKit::Bond*>& bonds_to_be_deleted);
+
+    void addAttachmentPointCommandFunc(const RDGeom::Point3D& coords,
+                                       const AtomTag bound_to_atom_tag,
+                                       const unsigned int ap_num);
 
     /**
      * Add a chain of atoms, where each atom is bound to the previous and next
