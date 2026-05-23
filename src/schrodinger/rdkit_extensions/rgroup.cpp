@@ -23,9 +23,16 @@ namespace rdkit_extensions
 
 bool is_attachment_point_dummy(const RDKit::Atom& atom)
 {
+    if (atom.getAtomicNum() != 0 || atom.getTotalDegree() != 1) {
+        return false;
+    }
+    int from_ap{0};
+    if (atom.getPropIfPresent(RDKit::common_properties::_fromAttachPoint,
+                              from_ap)) {
+        return from_ap == 1 || from_ap == 2;
+    }
     std::string label;
-    return atom.getAtomicNum() == 0 && atom.getTotalDegree() == 1 &&
-           atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
+    return atom.getPropIfPresent(RDKit::common_properties::atomLabel, label) &&
            label.find(ATTACHMENT_POINT_LABEL_PREFIX) == 0;
 }
 
