@@ -5,14 +5,11 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
-#include <rdkit/GraphMol/MolOps.h>
-#include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/RDGeneral/types.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/dummy_atom.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -48,16 +45,6 @@ unsigned int get_numerical_suffix(const std::string& label,
     }
 }
 } // namespace
-
-std::shared_ptr<RDKit::Atom>
-make_new_attachment_point(const unsigned int ap_num)
-{
-    auto atom = rdkit_extensions::create_dummy_atom();
-    atom->setProp(RDKit::common_properties::atomLabel,
-                  ATTACHMENT_POINT_LABEL_PREFIX + std::to_string(ap_num));
-    atom->setProp(RDKit::common_properties::_fromAttachPoint, 1);
-    return atom;
-}
 
 bool is_attachment_point(const RDKit::Atom* const atom)
 {
