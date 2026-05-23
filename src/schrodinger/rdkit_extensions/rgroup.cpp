@@ -11,7 +11,6 @@
 #include <stdexcept>
 
 #include <rdkit/GraphMol/Atom.h>
-#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
@@ -21,11 +20,6 @@ namespace schrodinger
 {
 namespace rdkit_extensions
 {
-
-bool is_attachment_point_dummy(const RDKit::Atom& atom)
-{
-    return RDKit::MolOps::details::isAttachmentPoint(&atom);
-}
 
 [[nodiscard]] std::shared_ptr<RDKit::Atom>
 make_new_r_group(const unsigned int r_group_num)
