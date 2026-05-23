@@ -105,13 +105,6 @@ template <typename T> boost::shared_ptr<T> auto_detect(
     throw std::invalid_argument("Unable to determine format");
 }
 
-void collapse_attachment_point_dummies(RDKit::RWMol& rdk_mol)
-{
-    rdk_mol.updatePropertyCache(false);
-    RDKit::MolOps::collapseAttachmentPoints(rdk_mol, true);
-    rdk_mol.updatePropertyCache(false);
-}
-
 bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol)
 {
     bool found_any = false;
@@ -805,7 +798,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             // single/double bonds to avoid sanitization errors, but for
             // atomistic inputs we'll keep whatever the caller gave us.
             kekulize = is_monomeric;
-            collapse_attachment_point_dummies(*mol);
+            RDKit::MolOps::collapseAttachmentPoints(*mol, true);
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(*mol);
             }
