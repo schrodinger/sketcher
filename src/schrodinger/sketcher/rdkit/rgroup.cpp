@@ -5,12 +5,12 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/RDGeneral/types.h>
 
 #include "schrodinger/rdkit_extensions/constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
-#include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 
@@ -48,19 +48,19 @@ unsigned int get_numerical_suffix(const std::string& label,
 
 bool is_attachment_point(const RDKit::Atom* const atom)
 {
-    // rdkit_extensions::is_attachment_point_dummy doesn't require digits after
-    // "_AP", but we do since we need to use those numbers when we renumber the
-    // attachment points after an atom deletion
+    // RDKit's isAttachmentPoint doesn't require digits after "_AP", but we do
+    // since we need to use those numbers when we renumber the attachment points
+    // after an atom deletion
     return get_attachment_point_number(atom);
 }
 
 unsigned int get_attachment_point_number(const RDKit::Atom* const atom)
 {
-    if (!rdkit_extensions::is_attachment_point_dummy(*atom)) {
+    if (!RDKit::MolOps::details::isAttachmentPoint(atom)) {
         return 0;
     }
     // We know that the atomLabel property must be present, because
-    // is_attachment_point_dummy will return false without it
+    // isAttachmentPoint will return false without it
     std::string label =
         atom->getProp<std::string>(RDKit::common_properties::atomLabel);
     return get_numerical_suffix(label, ATTACHMENT_POINT_LABEL_PREFIX);

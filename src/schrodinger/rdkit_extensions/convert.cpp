@@ -7,7 +7,6 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 
 #include <functional>
-#include <map>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/beast/core/detail/base64.hpp>
@@ -109,25 +108,6 @@ template <typename T> boost::shared_ptr<T> auto_detect(
 void collapse_attachment_point_dummies(RDKit::RWMol& rdk_mol)
 {
     rdk_mol.updatePropertyCache(false);
-
-    std::map<unsigned int, std::vector<RDKit::Atom*>> parent_to_aps;
-    for (auto atom : rdk_mol.atoms()) {
-        if (!is_attachment_point_dummy(*atom)) {
-            continue;
-        }
-        for (auto parent : rdk_mol.atomNeighbors(atom)) {
-            parent_to_aps[parent->getIdx()].push_back(atom);
-            parent->setNoImplicit(false);
-        }
-    }
-
-    for (auto& [parent_idx, aps] : parent_to_aps) {
-        for (size_t i = 0; i < aps.size(); ++i) {
-            aps[i]->setProp(RDKit::common_properties::_fromAttachPoint,
-                            static_cast<int>(i + 1));
-        }
-    }
-
     RDKit::MolOps::collapseAttachmentPoints(rdk_mol, true);
     rdk_mol.updatePropertyCache(false);
 }

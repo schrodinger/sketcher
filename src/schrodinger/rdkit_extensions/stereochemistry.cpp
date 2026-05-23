@@ -2,11 +2,11 @@
 
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/StereoGroup.h>
 #include <rdkit/GraphMol/FileParsers/MolFileStereochem.h>
 
 #include "schrodinger/rdkit_extensions/molops.h"
-#include "schrodinger/rdkit_extensions/rgroup.h"
 
 namespace schrodinger
 {
@@ -62,7 +62,7 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
 {
     std::vector<RDKit::Bond*> attachment_dummy_bonds;
     for (auto atom : mol.atoms()) {
-        if (is_attachment_point_dummy(*atom)) {
+        if (RDKit::MolOps::details::isAttachmentPoint(atom)) {
             auto bonds = mol.atomBonds(atom);
             auto bond = *bonds.begin();
             if (bond->getBondType() == RDKit::Bond::SINGLE) {

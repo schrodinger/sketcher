@@ -2,9 +2,8 @@
 
 #include <rdkit/GraphMol/GraphMol.h>
 #include <rdkit/GraphMol/Chirality.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/StereoGroup.h>
-
-#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/atom_properties.h"
 
 namespace schrodinger
@@ -26,7 +25,7 @@ template <typename T> bool has_non_CIP_neighbor(const T& obj)
         }
         auto controlling_atom = mol.getAtomWithIdx(atom_idx);
         if (RDKit::getAtomRLabel(controlling_atom) != 0 ||
-            rdkit_extensions::is_attachment_point_dummy(*controlling_atom)) {
+            RDKit::MolOps::details::isAttachmentPoint(controlling_atom)) {
             return true;
         }
     }
