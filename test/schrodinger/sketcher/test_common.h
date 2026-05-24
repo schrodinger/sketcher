@@ -73,11 +73,15 @@ class TestSketcherWidget : public SketcherWidget
     TestSketcherWidget() : SketcherWidget(){};
     using SketcherWidget::addFromString;
     using SketcherWidget::addTextToMolModel;
+    using SketcherWidget::chooseContextMenu;
     using SketcherWidget::copy;
     using SketcherWidget::cut;
     using SketcherWidget::importText;
+    using SketcherWidget::m_atom_context_menu;
     using SketcherWidget::m_mol_model;
+    using SketcherWidget::m_monomer_context_menu;
     using SketcherWidget::m_scene;
+    using SketcherWidget::m_selection_context_menu;
     using SketcherWidget::m_sketcher_model;
     using SketcherWidget::m_ui;
     using SketcherWidget::m_undo_stack;

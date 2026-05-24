@@ -24,6 +24,7 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
@@ -465,8 +466,17 @@ void Scene::showContextMenu(QGraphicsSceneMouseEvent* event)
     auto pos = event->scenePos();
     auto [atoms, bonds, secondary_connections, sgroups, non_molecular_objects] =
         getModelObjects(SceneSubset::HOVERED, &pos);
+    // The monomer atom under the cursor at right-click time, for menus
+    // that act on the clicked monomer (e.g. NA sugar toggle). Null when
+    // the cursor isn't on a monomer item.
+    const RDKit::Atom* primary_atom = nullptr;
+    if (auto* top_item =
+            getTopInteractiveItemAt(pos, InteractiveItemFlag::MONOMER)) {
+        primary_atom =
+            static_cast<AbstractAtomOrMonomerItem*>(top_item)->getAtom();
+    }
     emit showContextMenuRequested(event, atoms, bonds, secondary_connections,
-                                  sgroups, non_molecular_objects);
+                                  sgroups, non_molecular_objects, primary_atom);
 }
 
 std::unordered_set<QGraphicsItem*> Scene::getSelectedInteractiveItems() const

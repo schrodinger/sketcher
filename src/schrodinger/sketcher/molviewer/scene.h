@@ -212,7 +212,8 @@ class SKETCHER_API Scene : public QGraphicsScene
         const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
-            non_molecular_objects);
+            non_molecular_objects,
+        const RDKit::Atom* primary_atom);
 
     void viewportTranslationRequested(const QPointF& start_screen_position,
                                       const QPointF& end_screen_position);
