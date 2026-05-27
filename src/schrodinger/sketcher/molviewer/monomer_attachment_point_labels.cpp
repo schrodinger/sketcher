@@ -1,7 +1,5 @@
 #include "schrodinger/sketcher/molviewer/monomer_attachment_point_labels.h"
 
-// #include <cmath>
-
 #include <QGraphicsItem>
 #include <QGraphicsSimpleTextItem>
 
