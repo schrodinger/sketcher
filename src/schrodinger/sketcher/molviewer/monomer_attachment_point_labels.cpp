@@ -1,7 +1,11 @@
 #include "schrodinger/sketcher/molviewer/monomer_attachment_point_labels.h"
 
+// #include <cmath>
+
+#include <QGraphicsItem>
 #include <QGraphicsSimpleTextItem>
 
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
@@ -15,6 +19,7 @@ namespace sketcher
 {
 
 void position_ap_label_rect(QRectF& ap_label_rect,
+                            const AbstractMonomerItem* const monomer_item,
                             const QPointF& monomer_coords,
                             const QPointF& bound_coords)
 {
@@ -27,11 +32,7 @@ void position_ap_label_rect(QRectF& ap_label_rect,
 
     // Qt measures angles in [0, 360) degrees, counter-clockwise from a point on
     // the x-axis to the right of the origin.
-    if (angle == 0 || angle >= 315) {
-        rotate_ccw = true;
-        left_aligned = true;
-        bottom_aligned = true;
-    } else if (angle < 45) {
+    if (angle < 45) {
         rotate_ccw = false;
         left_aligned = true;
         bottom_aligned = false;
@@ -39,7 +40,7 @@ void position_ap_label_rect(QRectF& ap_label_rect,
         rotate_ccw = true;
         left_aligned = false;
         bottom_aligned = true;
-    } else if (angle <= 135) {
+    } else if (angle < 135) {
         rotate_ccw = false;
         left_aligned = true;
         bottom_aligned = true;
@@ -47,18 +48,22 @@ void position_ap_label_rect(QRectF& ap_label_rect,
         rotate_ccw = true;
         left_aligned = false;
         bottom_aligned = false;
-    } else if (angle <= 225) {
+    } else if (angle < 225) {
         rotate_ccw = false;
         left_aligned = false;
         bottom_aligned = true;
-    } else if (angle <= 270) {
+    } else if (angle < 270) {
         rotate_ccw = true;
         left_aligned = true;
         bottom_aligned = false;
-    } else {
+    } else if (angle < 315) {
         rotate_ccw = false;
         left_aligned = false;
         bottom_aligned = false;
+    } else {
+        rotate_ccw = true;
+        left_aligned = true;
+        bottom_aligned = true;
     }
 
     if (rotate_ccw) {
@@ -77,21 +82,57 @@ void position_ap_label_rect(QRectF& ap_label_rect,
         ap_label_rect.moveTop(0.0);
     }
 
-    qline.setAngle(angle);
-    // TODO: explicitly account for monomer size
-    qline.setLength(MONOMERIC_ATTACHMENT_POINT_LABEL_DIST);
-    ap_label_rect.translate(qline.p2());
+    auto label_offset = monomer_item->getLabelOffsetPastShape(angle);
+    ap_label_rect.translate(monomer_item->mapToScene(label_offset));
 }
 
 /**
  * @overload Accepts RDKit coordinates instead of Scene coordinates
  */
-static void position_ap_label_rect(QRectF& ap_label_rect,
-                                   const RDGeom::Point3D& monomer_coords,
-                                   const RDGeom::Point3D& bound_coords)
+static void position_ap_label_rect(
+    QRectF& ap_label_rect, const AbstractMonomerItem* const monomer_item,
+    const RDGeom::Point3D& monomer_coords, const RDGeom::Point3D& bound_coords)
 {
-    position_ap_label_rect(ap_label_rect, to_scene_xy(monomer_coords),
+    position_ap_label_rect(ap_label_rect, monomer_item,
+                           to_scene_xy(monomer_coords),
                            to_scene_xy(bound_coords));
+}
+
+/**
+ * Position the given rectangle to label a monomer's attachment point, assuming
+ * that the attachment point connection is drawn either above or below the
+ * monomer using an arrowhead. See `prep_attachment_point_name` for parameter
+ * documentation.
+ */
+static void position_ap_label_rect_next_to_arrowhead(
+    QRectF& ap_label_rect, const QGraphicsItem* monomer_item,
+    const RDGeom::Point3D& monomer_coords, const RDGeom::Point3D& bound_coords)
+{
+    auto monomer_qcoords = to_scene_xy(monomer_coords);
+    auto bound_qcoords = to_scene_xy(bound_coords);
+
+    auto arrowhead_offset =
+        get_monomer_arrowhead_offset(*monomer_item, bound_qcoords);
+    auto label_vertical_offset =
+        monomer_item->boundingRect().height() / 2 +
+        MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_VERTICAL;
+    if (arrowhead_offset > 0) {
+        ap_label_rect.moveBottom(-label_vertical_offset);
+    } else {
+        ap_label_rect.moveTop(label_vertical_offset);
+    }
+
+    auto label_horizontal_offset =
+        MONOMER_CONNECTOR_ARROWHEAD_RADIUS +
+        MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL;
+    auto angle = QLineF(monomer_qcoords, bound_qcoords).angle();
+    if (angle < 90 || angle >= 270) {
+        ap_label_rect.moveRight(-label_horizontal_offset);
+    } else {
+        ap_label_rect.moveLeft(label_horizontal_offset);
+    }
+
+    ap_label_rect.translate(monomer_item->pos());
 }
 
 /**
@@ -136,12 +177,24 @@ static QGraphicsItem* create_attachment_point_label(const QString& label,
     return label_item;
 }
 
+static const AbstractMonomerItem*
+get_monomer_item(const RDKit::Atom* const monomer, const Scene* const scene)
+{
+    const auto* graphics_item = scene->getGraphicsItemForAtom(monomer);
+    const auto* monomer_item =
+        dynamic_cast<const AbstractMonomerItem*>(graphics_item);
+    if (monomer_item == nullptr) {
+        throw std::runtime_error("Atom is not a monomer");
+    }
+    return monomer_item;
+}
+
 QGraphicsItem* create_label_for_bound_attachment_point(
     const RDKit::Atom* const monomer, const RDKit::Atom* const bound_monomer,
     const bool is_secondary_connection, const std::string& ap_name,
     const QColor& color, const Fonts& fonts, const Scene* const scene)
 {
-    const auto* monomer_item = scene->getGraphicsItemForAtom(monomer);
+    const auto* monomer_item = get_monomer_item(monomer, scene);
     return create_label_for_bound_attachment_point(
         monomer, bound_monomer, is_secondary_connection, ap_name, color, fonts,
         monomer_item);
@@ -151,7 +204,7 @@ QGraphicsItem* create_label_for_bound_attachment_point(
     const RDKit::Atom* const monomer, const RDKit::Atom* const bound_monomer,
     const bool is_secondary_connection, const std::string& ap_name,
     const QColor& color, const Fonts& fonts,
-    const QGraphicsItem* const monomer_item)
+    const AbstractMonomerItem* const monomer_item)
 {
     // nothing to do if there's no label (e.g. phosphate attachment points)
     if (ap_name.empty()) {
@@ -165,15 +218,15 @@ QGraphicsItem* create_label_for_bound_attachment_point(
     auto ap_qname = prep_attachment_point_name(ap_name);
     auto ap_label_rect =
         fonts.m_monomeric_attachment_point_label_fm.boundingRect(ap_qname);
-    position_ap_label_rect(ap_label_rect, monomer_coords, bound_coords);
-    // if the bond is drawn with an arrowhead at this attachment point (e.g.
-    // disulfide bonds or branching monomers), offset the label to account for
-    // the arrowhead
-    if (attachment_point_is_drawn_with_arrowhead(monomer, bound_monomer,
-                                                 is_secondary_connection)) {
-        auto arrowhead_offset = get_monomer_arrowhead_offset(
-            *monomer_item, to_scene_xy(bound_coords));
-        ap_label_rect.translate(0, -arrowhead_offset);
+    if (!attachment_point_is_drawn_with_arrowhead(monomer, bound_monomer,
+                                                  is_secondary_connection)) {
+        position_ap_label_rect(ap_label_rect, monomer_item, monomer_coords,
+                               bound_coords);
+    } else {
+        // this connection is drawn with an arrowhead, so position the label
+        // next to the arrowhead
+        position_ap_label_rect_next_to_arrowhead(ap_label_rect, monomer_item,
+                                                 monomer_coords, bound_coords);
     }
     return create_attachment_point_label(ap_qname, ap_label_rect, fonts, color);
 }
@@ -237,9 +290,9 @@ std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
     const QColor& color, const Fonts& fonts, const Scene* const scene)
 {
     const auto* begin_monomer_item =
-        scene->getGraphicsItemForAtom(connector->getBeginAtom());
+        get_monomer_item(connector->getBeginAtom(), scene);
     const auto* end_monomer_item =
-        scene->getGraphicsItemForAtom(connector->getEndAtom());
+        get_monomer_item(connector->getEndAtom(), scene);
     return create_attachment_point_labels_for_connector(
         connector, is_secondary_connection, color, fonts, begin_monomer_item,
         end_monomer_item);
@@ -248,8 +301,8 @@ std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
 std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
     const RDKit::Bond* const connector, const bool is_secondary_connection,
     const QColor& color, const Fonts& fonts,
-    const QGraphicsItem* const begin_monomer_item,
-    const QGraphicsItem* const end_monomer_item)
+    const AbstractMonomerItem* const begin_monomer_item,
+    const AbstractMonomerItem* const end_monomer_item)
 {
     auto begin_monomer = connector->getBeginAtom();
     auto end_monomer = connector->getEndAtom();

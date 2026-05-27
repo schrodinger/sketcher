@@ -116,7 +116,10 @@ calculate_geometry(const UnboundAttachmentPoint& attachment_point,
     auto label_text = prep_attachment_point_name(attachment_point.display_name);
     auto label_rect =
         fonts.m_monomeric_attachment_point_label_fm.boundingRect(label_text);
-    position_ap_label_rect(label_rect, {0.0, 0.0}, dir);
+    position_ap_label_rect(label_rect, parent_monomer, {0.0, 0.0}, dir);
+    // position_ap_label_rect returns the rect in scene coords, but we want it
+    // in parent_monomer's local coords so paint() can draw it directly
+    label_rect.moveTopLeft(parent_monomer->mapFromScene(label_rect.topLeft()));
 
     qreal half_line_width = UNBOUND_AP_LINE_THICKNESS / 2.0;
     QRectF line_bounds = QRectF(QPointF(0, 0), line_end).normalized();
