@@ -187,15 +187,15 @@ const QColor CHEM_MONOMER_RECT_COLOR =
 // the angle between a monomeric connector, the center of the bound monomer, and
 // the attachment point label. Raising this number will move the label further
 // from the bond line.
-const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ANGLE_OFFSET = 7.5;
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ANGLE_OFFSET = 12.5;
 
 const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_FONT_RATIO = 0.7;
 
 // the distance between the edge of the monomer and its attachment point labels
-const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_MONOMER_SPACING = 2.5;
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_MONOMER_SPACING = 2.0;
 
 // positioning for attachment point labels relative to connector arrowheads
-const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_VERTICAL = -2;
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_VERTICAL = 1;
 const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL = 4.5;
 
 // the distance between the "pair" label and the relevant connector, as measured
