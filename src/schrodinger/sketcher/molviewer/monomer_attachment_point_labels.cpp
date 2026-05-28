@@ -171,7 +171,13 @@ static QGraphicsItem* create_attachment_point_label(const QString& label,
     auto* label_item = new QGraphicsSimpleTextItem(label);
     label_item->setFont(fonts.m_monomeric_attachment_point_label_font);
     label_item->setBrush({color});
-    label_item->setPos(label_rect.topLeft());
+    auto pos = label_rect.bottomLeft();
+    // label_rect.top() would give us the top of the pixels actually covered by
+    // the label text. However, QGraphicsSimpleTextItem::setPos wants the top of
+    // a "typical" line of text (i.e. the top of the font's ascent). As such, we
+    // use label_rect.bottom() + fm.ascent() for the vertical positioning here.
+    pos.ry() -= fonts.m_monomeric_attachment_point_label_fm.ascent();
+    label_item->setPos(pos);
     return label_item;
 }
 
@@ -215,7 +221,7 @@ QGraphicsItem* create_label_for_bound_attachment_point(
 
     auto ap_qname = prep_attachment_point_name(ap_name);
     auto ap_label_rect =
-        fonts.m_monomeric_attachment_point_label_fm.boundingRect(ap_qname);
+        fonts.m_monomeric_attachment_point_label_fm.tightBoundingRect(ap_qname);
     if (!attachment_point_is_drawn_with_arrowhead(monomer, bound_monomer,
                                                   is_secondary_connection)) {
         position_ap_label_rect(ap_label_rect, monomer_item, monomer_coords,

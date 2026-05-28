@@ -115,7 +115,8 @@ calculate_geometry(const UnboundAttachmentPoint& attachment_point,
 
     auto label_text = prep_attachment_point_name(attachment_point.display_name);
     auto label_rect =
-        fonts.m_monomeric_attachment_point_label_fm.boundingRect(label_text);
+        fonts.m_monomeric_attachment_point_label_fm.tightBoundingRect(
+            label_text);
     position_ap_label_rect(label_rect, parent_monomer, {0.0, 0.0}, dir);
     // position_ap_label_rect returns the rect in scene coords, but we want it
     // in parent_monomer's local coords so paint() can draw it directly
