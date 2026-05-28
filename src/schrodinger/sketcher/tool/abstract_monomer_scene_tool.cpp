@@ -178,7 +178,7 @@ void AbstractMonomerSceneTool::drawAttachmentPointLabelsFor(
         // hovering over a monomer
         auto* monomer_item = static_cast<AbstractMonomerItem*>(item);
         const auto* monomer = monomer_item->getAtom();
-        labelAttachmentPointsOnHoveredMonomer(monomer, monomer_item);
+        labelUnboundAttachmentPointsOnHoveredMonomer(monomer, monomer_item);
     } else if (item_matches_type_flag(item,
                                       InteractiveItemFlag::MONOMER_CONNECTOR)) {
         // hovering over a monomeric connector
@@ -211,28 +211,20 @@ void AbstractMonomerSceneTool::clearAttachmentPointsLabelsAndHintFragmentItem()
     clearHintFragmentItem();
 }
 
-void AbstractMonomerSceneTool::labelAttachmentPointsOnHoveredMonomer(
+void AbstractMonomerSceneTool::labelUnboundAttachmentPointsOnHoveredMonomer(
     const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item)
 {
-    labelAttachmentPointsOnMonomer(monomer, monomer_item,
-                                   m_attachment_point_labels_group,
-                                   m_unbound_ap_items);
+    labelUnboundAttachmentPointsOnMonomer(monomer, monomer_item,
+                                          m_attachment_point_labels_group,
+                                          m_unbound_ap_items);
 }
 
-void AbstractMonomerSceneTool::labelAttachmentPointsOnMonomer(
+void AbstractMonomerSceneTool::labelUnboundAttachmentPointsOnMonomer(
     const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item,
     QGraphicsItemGroup& attachment_point_labels_group,
     std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items)
 {
     auto [bound_aps, unbound_aps] = get_attachment_points_for_monomer(monomer);
-    for (auto& cur_ap : bound_aps) {
-        auto* item = create_label_for_bound_attachment_point(
-            monomer, cur_ap.bound_monomer, cur_ap.is_secondary_connection,
-            cur_ap.display_name, m_bound_ap_label_color, m_fonts, m_scene);
-        if (item != nullptr) {
-            attachment_point_labels_group.addToGroup(item);
-        }
-    }
     for (auto& cur_ap : unbound_aps) {
         auto* item = new UnboundMonomericAttachmentPointItem(
             cur_ap, monomer_item, m_unbound_ap_label_color, m_fonts);
