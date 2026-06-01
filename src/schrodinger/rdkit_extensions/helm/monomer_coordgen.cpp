@@ -32,6 +32,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
 #include <iterator>
 #include <map>
@@ -3090,6 +3091,13 @@ void update_monomer_sizes(
     }
 }
 
+void store_initial_monomer_sizes(
+    RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
+{
+    update_monomer_sizes(mol, monomer_sizes);
+}
+
 bool is_geometrically_regular_ring_2d(const RDKit::ROMol& mol,
                                       const std::vector<int>& ring_atoms,
                                       double radius_tol, double angle_tol)
@@ -3186,12 +3194,24 @@ RingResizeInfo compute_ring_info_for_resize(RDKit::ROMol& mol)
  * @param mol           The molecule containing the monomers to resize.
  * @param monomer_sizes A map from atom indices to their new desired sizes.
  */
-void resize_monomers(RDKit::ROMol& mol,
-                     std::unordered_map<int, RDGeom::Point3D> monomer_sizes)
+void resize_monomers(
+    RDKit::ROMol& mol,
+    const std::unordered_map<int, RDGeom::Point3D>& monomer_sizes)
 {
     if (monomer_sizes.empty()) {
         return;
     }
+
+    // callers must call store_initial_monomer_sizes first on any
+    // monomer that's never been sized. Otherwise the default-vs-actual size
+    // gap shows up here as a phantom resize and shifts neighbors.
+#ifndef NDEBUG
+    for (const auto& [idx, _] : monomer_sizes) {
+        assert(mol.getAtomWithIdx(idx)->hasProp(MONOMER_ITEM_SIZE) &&
+               "resize_monomers called on monomer without prior "
+               "store_initial_monomer_sizes");
+    }
+#endif
 
     // override ring info to ensure rings are fully perceived.
     compute_full_ring_info(mol);

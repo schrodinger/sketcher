@@ -20,6 +20,7 @@
 #include <QWidget>
 
 #include "schrodinger/rdkit_extensions/file_format.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
@@ -891,7 +892,11 @@ void Scene::updateMonomerLabelSizeOnModel()
     if (!m_mol_model->isMonomeric()) {
         return;
     }
-    std::unordered_map<int, RDGeom::Point3D> sizes;
+    // split into "first-time sizing" vs "resize". First-time must
+    // skip resize_monomers' displacement, else every new monomer's default-vs-
+    // actual size gap pushes existing monomers outward on every add.
+    std::unordered_map<int, RDGeom::Point3D> initial_sizes;
+    std::unordered_map<int, RDGeom::Point3D> resize_sizes;
     for (auto atom : m_mol_model->getMol()->atoms()) {
         if (!is_atom_monomeric(atom)) {
             continue;
@@ -899,12 +904,22 @@ void Scene::updateMonomerLabelSizeOnModel()
         // create a temporary graphics item to figure out the label size
         auto* item = get_monomer_graphics_item(atom, m_fonts);
         const auto bounding_rect = item->boundingRect();
-        sizes[atom->getIdx()] =
-            RDGeom::Point3D(bounding_rect.width() / VIEW_SCALE,
-                            bounding_rect.height() / VIEW_SCALE, 0);
+        RDGeom::Point3D size(bounding_rect.width() / VIEW_SCALE,
+                             bounding_rect.height() / VIEW_SCALE, 0);
         delete item;
+
+        if (atom->hasProp(rdkit_extensions::MONOMER_ITEM_SIZE)) {
+            resize_sizes[atom->getIdx()] = size;
+        } else {
+            initial_sizes[atom->getIdx()] = size;
+        }
     }
-    m_mol_model->setMonomerSizes(sizes);
+    if (!initial_sizes.empty()) {
+        m_mol_model->storeInitialMonomerSizes(initial_sizes);
+    }
+    if (!resize_sizes.empty()) {
+        m_mol_model->resizeMonomers(resize_sizes);
+    }
 }
 
 const QGraphicsItem*
