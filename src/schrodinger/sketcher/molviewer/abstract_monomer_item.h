@@ -56,6 +56,17 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
                QWidget* widget = nullptr) override;
 
+    /**
+     * Return a point at the specified angle that's just outside of this
+     * monomer's shape. This is normally used for placing an attachment point
+     * label.
+     * @note The default implementation assumes that the bounding rect is an
+     * acceptable estimate for the monomer's shape, which is only true for
+     * monomers that use a rectangle or rounded rectangle. Monomers that use
+     * other shapes should reimplement this method.
+     */
+    virtual QPointF getLabelOffsetPastShape(qreal angle) const;
+
   protected:
     const Fonts& m_fonts;
     QPen m_border_pen;

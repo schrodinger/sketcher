@@ -964,9 +964,9 @@ QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
 void DrawMonomerSceneTool::labelAttachmentPointsOnDragEndMonomer(
     const RDKit::Atom* const monomer, AbstractMonomerItem* const monomer_item)
 {
-    labelAttachmentPointsOnMonomer(monomer, monomer_item,
-                                   m_drag_end_attachment_point_labels_group,
-                                   m_drag_end_unbound_ap_items);
+    labelUnboundAttachmentPointsOnMonomer(
+        monomer, monomer_item, m_drag_end_attachment_point_labels_group,
+        m_drag_end_unbound_ap_items);
 }
 
 template <typename T>

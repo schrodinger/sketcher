@@ -1,6 +1,5 @@
 #pragma once
 
-#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -8,6 +7,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/menu/abstract_context_menu.h"
+#include "schrodinger/sketcher/rdkit/monomer_analog.h"
 
 class QAction;
 class QMenu;
@@ -23,22 +23,11 @@ namespace sketcher
 {
 
 /**
- * One unit of work for `MolModel::mutateMonomers`: a set of atoms that
- * should all be mutated to the same target HELM symbol. Used as the
- * batch element in `MonomerContextMenu::mutateResidueRequested`.
- */
-struct MonomerMutation {
-    std::unordered_set<const RDKit::Atom*> atoms;
-    std::string helm_symbol;
-};
-
-/**
- * Context menu for monomer beads.
- *
- * For amino-acid (PEPTIDE) selections this exposes "Mutate Residue >"
- * with the natural AAs and their non-natural analogs, a dynamic
- * "Set D-Form / Set L-Form" toggle, a disabled "Protonate" stub, and
- * Delete. Other monomer types only see Delete.
+ * Context menu for monomer beads. Dispatches by monomer type:
+ *   - PEPTIDE: Mutate Residue, Set D/L-Form, Protonate (stub), Delete
+ *   - NA_BASE: Mutate Base (A/C/G/U/T + DB analogs), Delete
+ *   - NA_SUGAR: Change R↔dR (direction from m_primary_atom), Delete
+ *   - NA_PHOSPHATE / CHEM: Delete only
  */
 class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
 {
@@ -55,7 +44,7 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
      * @param description is the undo-stack label the receiver should use
      * when coalescing a multi-pair batch into one undo entry.
      */
-    void mutateResidueRequested(std::vector<MonomerMutation> mutations,
+    void mutateMonomerRequested(std::vector<MonomerMutation> mutations,
                                 QString description);
 
   protected:
@@ -65,11 +54,15 @@ class SKETCHER_API MonomerContextMenu : public AbstractContextMenu
     void createMutateResidueSubMenu();
     void createSetDFormAction();
     void createProtonateAction();
+    void createMutateBaseSubMenu();
+    void createSugarToggleAction();
     void createDeleteAction();
 
     QMenu* m_mutate_residue_menu = nullptr;
     QAction* m_set_d_form_action = nullptr;
     QAction* m_protonate_action = nullptr;
+    QMenu* m_mutate_base_menu = nullptr;
+    QAction* m_sugar_toggle_action = nullptr;
 };
 
 } // namespace sketcher

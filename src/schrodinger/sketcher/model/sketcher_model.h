@@ -437,6 +437,19 @@ const std::unordered_map<NucleicAcidTool, std::string>
         {NucleicAcidTool::dR, "dR"},
     }; // clang-format on
 
+const std::unordered_map<NucleicAcidTool, std::string> NA_BASE_TO_FULL_NAME{
+    {NucleicAcidTool::A, "Adenine"}, {NucleicAcidTool::C, "Cytosine"},
+    {NucleicAcidTool::G, "Guanine"}, {NucleicAcidTool::U, "Uracil"},
+    {NucleicAcidTool::T, "Thymine"},
+};
+
+// Display order for the 5 natural NA bases — used by the Mutate Base submenu
+// in `MonomerContextMenu`.
+constexpr std::array<NucleicAcidTool, 5> NA_BASE_DISPLAY_ORDER{
+    NucleicAcidTool::A, NucleicAcidTool::C, NucleicAcidTool::G,
+    NucleicAcidTool::U, NucleicAcidTool::T,
+};
+
 /**
  * Carries a nucleic acid mutation request: the tool (which slot type to
  * mutate — base/sugar/phosphate) plus the symbol to substitute. Both

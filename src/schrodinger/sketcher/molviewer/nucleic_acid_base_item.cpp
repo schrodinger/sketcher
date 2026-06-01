@@ -111,5 +111,23 @@ void NucleicAcidBaseItem::updateCachedData()
     m_border_brush.setColor(rect_color);
 }
 
+QPointF NucleicAcidBaseItem::getLabelOffsetPastShape(qreal angle) const
+{
+    // For a diamond centered at the origin with vertices (+/- half_w, 0) and
+    // (0, +/- half_h), points on the border satisfy
+    // |x|/half_w + |y|/half_h = 1. So for a unit-length direction (dx, dy)
+    // from the origin, the ray exits the diamond at distance
+    // t = 1 / (|dx|/half_w + |dy|/half_h).
+    QLineF line({0.0, 0.0}, {1.0, 0.0});
+    line.setAngle(angle);
+    auto rect = m_border_path.boundingRect();
+    auto half_width = rect.width() / 2.0;
+    auto half_height = rect.height() / 2.0;
+    auto t = 1.0 / (std::abs(line.dx()) / half_width +
+                    std::abs(line.dy()) / half_height);
+    line.setLength(t + MONOMERIC_ATTACHMENT_POINT_LABEL_MONOMER_SPACING);
+    return line.p2();
+}
+
 } // namespace sketcher
 } // namespace schrodinger

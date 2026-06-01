@@ -53,11 +53,20 @@ void MonomerHintFragmentItem::createGraphicsItems()
         m_bond_items.append(kv.second);
     }
 
+    auto get_monomer_item = [&atom_to_atom_item](RDKit::Atom* monomer) {
+        auto* graphics_item = atom_to_atom_item.at(monomer);
+        auto* monomer_item = dynamic_cast<AbstractMonomerItem*>(graphics_item);
+        if (monomer_item == nullptr) {
+            throw std::runtime_error("Atom is not a monomer");
+        }
+        return monomer_item;
+    };
+
     // label the attachment points
     if (m_bond_index_to_label >= 0) {
         auto* bond = m_frag->getBondWithIdx(m_bond_index_to_label);
-        auto* begin_monomer_item = atom_to_atom_item.at(bond->getBeginAtom());
-        auto* end_monomer_item = atom_to_atom_item.at(bond->getEndAtom());
+        auto* begin_monomer_item = get_monomer_item(bond->getBeginAtom());
+        auto* end_monomer_item = get_monomer_item(bond->getEndAtom());
         auto items = create_attachment_point_labels_for_connector(
             bond, false, STRUCTURE_HINT_COLOR, *m_fonts, begin_monomer_item,
             end_monomer_item);

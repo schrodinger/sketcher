@@ -36,6 +36,9 @@ class SKETCHER_API AbstractContextMenu : public QMenu
      * 3. immediately hidden when an action is clicked
      * In other words, we expect that the model will not change for the
      * duration of the context menu being shown.
+     *
+     * `primary_atom` is the atom under the cursor at right-click (or null);
+     * see `m_primary_atom` for how it relates to `atoms`.
      */
     virtual void setContextItems(
         const std::unordered_set<const RDKit::Atom*>& atoms,
@@ -43,7 +46,8 @@ class SKETCHER_API AbstractContextMenu : public QMenu
         const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
-            non_molecular_objects);
+            non_molecular_objects,
+        const RDKit::Atom* primary_atom = nullptr);
 
   protected:
     /**
@@ -61,6 +65,10 @@ class SKETCHER_API AbstractContextMenu : public QMenu
     std::unordered_set<const RDKit::Bond*> m_secondary_connections;
     std::unordered_set<const RDKit::SubstanceGroup*> m_sgroups;
     std::unordered_set<const NonMolecularObject*> m_non_molecular_objects;
+    // Atom under the cursor at right-click time, or null. Sourced from
+    // `getTopInteractiveItemAt(pos)` independently of `m_atoms`, so it
+    // is not guaranteed to be a member of `m_atoms`.
+    const RDKit::Atom* m_primary_atom = nullptr;
 };
 
 } // namespace sketcher

@@ -48,6 +48,7 @@ namespace schrodinger
 namespace sketcher
 {
 
+class AbstractContextMenu;
 class AttachmentPointContextMenu;
 class AtomContextMenu;
 class BackgroundContextMenu;
@@ -445,7 +446,22 @@ class SKETCHER_API SketcherWidget : public QWidget
         const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
-            non_molecular_objects);
+            non_molecular_objects,
+        const RDKit::Atom* primary_atom = nullptr);
+
+    /**
+     * Pick the appropriate context menu for a given selection. Pure routing —
+     * no side effects. Returns nullptr when the selection has no menu (e.g.
+     * a non-molecular object). Exposed for unit testing the routing logic.
+     */
+    AbstractContextMenu* chooseContextMenu(
+        const std::unordered_set<const RDKit::Atom*>& filtered_atoms,
+        const std::unordered_set<const RDKit::Bond*>& filtered_bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+        const std::unordered_set<const NonMolecularObject*>&
+            non_molecular_objects,
+        bool only_attachment_points);
 
     /**
      * Show or hide the toolbars

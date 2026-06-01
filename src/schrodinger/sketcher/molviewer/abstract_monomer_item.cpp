@@ -8,6 +8,7 @@
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include "schrodinger/sketcher/image_constants.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
@@ -39,6 +40,24 @@ void AbstractMonomerItem::paint(QPainter* painter,
     painter->setFont(m_main_label_font);
     painter->drawText(m_main_label_left_baseline, m_main_label_text);
     painter->restore();
+}
+
+QPointF AbstractMonomerItem::getLabelOffsetPastShape(qreal angle) const
+{
+    auto rect = boundingRect();
+    // start with a non-null unit line
+    QLineF line({0.0, 0.0}, {1.0, 0.0});
+    line.setAngle(angle);
+    // make the line clearly longer than any side of the rect so the bounded
+    // intersection test will find an exit point
+    line.setLength(2 * (rect.width() + rect.height()));
+
+    QPointF intersection;
+    intersection_of_line_and_rect(line, rect, intersection);
+
+    line.setLength(QLineF({0.0, 0.0}, intersection).length() +
+                   MONOMERIC_ATTACHMENT_POINT_LABEL_MONOMER_SPACING);
+    return line.p2();
 }
 
 void AbstractMonomerItem::setMonomerColors(const QColor& background_color,
