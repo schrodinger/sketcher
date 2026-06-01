@@ -104,8 +104,10 @@ void FileExportDialog::showEvent(QShowEvent* event)
 std::vector<std::string> FileExportDialog::getValidExtensions() const
 {
     auto combo_format = m_ui->format_combo->currentData().value<Format>();
-    return m_model_has_reaction ? get_rxn_extensions(combo_format)
-                                : get_mol_extensions(combo_format);
+    if (m_model_has_reaction) {
+        return get_rxn_extensions(combo_format);
+    }
+    return get_mol_and_seq_extensions(combo_format);
 }
 
 void FileExportDialog::exportFile()

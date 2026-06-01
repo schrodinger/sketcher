@@ -78,6 +78,17 @@ RDKIT_EXTENSIONS_API std::vector<std::string>
 get_seq_extensions(const Format format);
 
 /**
+ * @param format file format to consider
+ * @return molecule extensions if the format is a molecule format, otherwise its
+ * sequence extensions. Convenient for non-reaction contexts (e.g. file dialogs)
+ * where a format is either atomistic or sequence but never both; do not use for
+ * reactions, where a format (e.g. SMILES) maps to different extensions.
+ * @throw std::out_of_range if format is neither a molecule nor sequence format
+ */
+RDKIT_EXTENSIONS_API std::vector<std::string>
+get_mol_and_seq_extensions(const Format format);
+
+/**
  * @param filename file path
  * @return corresponding file format enum
  * @throw std::invalid_argument if file extension is unrecognized

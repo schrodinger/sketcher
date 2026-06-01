@@ -4,6 +4,10 @@
 
 #define BOOST_TEST_MODULE test_file_format
 
+#include <algorithm>
+#include <ranges>
+#include <stdexcept>
+
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 #include <fmt/format.h>
@@ -44,6 +48,33 @@ BOOST_DATA_TEST_CASE(test_get_seq_extensions,
     for (const auto& file_extension : get_seq_extensions(sample)) {
         BOOST_TEST(get_file_format(file_extension) == sample);
     }
+}
+
+BOOST_DATA_TEST_CASE(test_get_mol_and_seq_extensions_for_mol_formats,
+                     boost::unit_test::data::make(MOL_FORMATS))
+{
+    // For molecule formats the combined helper matches get_mol_extensions
+    BOOST_TEST(get_mol_and_seq_extensions(sample) ==
+               get_mol_extensions(sample));
+}
+
+BOOST_DATA_TEST_CASE(test_get_mol_and_seq_extensions_for_seq_formats,
+                     boost::unit_test::data::make(SEQ_FORMATS))
+{
+    // Sequence-only formats fall back to get_seq_extensions; formats present in
+    // both maps (e.g. RDMOL_BINARY_BASE64) resolve to the molecule entry.
+    const auto& expected =
+        std::ranges::find(MOL_FORMATS, sample) != MOL_FORMATS.end()
+            ? get_mol_extensions(sample)
+            : get_seq_extensions(sample);
+    BOOST_TEST(get_mol_and_seq_extensions(sample) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_mol_and_seq_extensions_unsupported)
+{
+    // A format in neither the molecule nor sequence map throws
+    BOOST_CHECK_THROW(get_mol_and_seq_extensions(Format::AUTO_DETECT),
+                      std::out_of_range);
 }
 
 BOOST_AUTO_TEST_CASE(test_unsupported_extensions)
