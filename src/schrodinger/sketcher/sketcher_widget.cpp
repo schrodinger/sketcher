@@ -19,7 +19,6 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#include <emscripten/val.h>
 #endif
 
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -533,40 +532,98 @@ void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
 
 // Sketcher-private MIME for a lossless RDKit pickle stashed alongside the
 // text payload; intra-sketcher pastes prefer it, other apps don't see it.
+const std::string SKETCHER_MIME_APP_NAME = "x-schrodinger-sketcher";
 const QString SKETCHER_MIME_TYPE =
-    QStringLiteral("application/x-schrodinger-sketcher");
+    QStringLiteral("application/") +
+    QString::fromStdString(SKETCHER_MIME_APP_NAME);
+
+#ifdef __EMSCRIPTEN__
+const std::string SKETCHER_WEB_MIME_TYPE =
+    "web " + SKETCHER_MIME_TYPE.toStdString();
+
+// prevent clang from breaking JavaScript by trying to reformat it
+// clang-format off
+
+// Returns whether the browser supports the given MIME type.  Supporting
+// SKETCHER_WEB_MIME_TYPE requires that the browser support the Web Custom
+// Formats extension to the async clipboard API (which is currently only recent
+// versions of Chromium-based browsers).
+EM_JS(int, sketcher_browser_supports_web_mime, (const char* web_mime_ptr), {
+    if (typeof ClipboardItem == 'undefined')
+        return 0;
+    if (typeof ClipboardItem.supports != 'function')
+        return 0;
+    return ClipboardItem.supports(UTF8ToString(web_mime_ptr)) ? 1 : 0;
+});
+
+// Write `text` and the lossless `binary` pickle to the system clipboard in a
+// single ClipboardItem. The binary is stored in the text/html MIME type using a
+// data property of an empty <div> block. The binary is additionally written to
+// the SKETCHER_WEB_MIME_TYPE if the source browser supports web custom MIMEs,
+// which allows intra-Chromium pastes to skip the HTML round-trip (and the
+// reformatting and security checks that text/html data is subjected to).
+EM_JS(void, sketcher_write_clipboard,
+      (const char* text_ptr, const char* binary_ptr,
+       const char* web_mime_ptr, const char* app_name_ptr), {
+    const text = UTF8ToString(text_ptr);
+    const binary = UTF8ToString(binary_ptr);
+    const webMime = UTF8ToString(web_mime_ptr);
+    const appName = UTF8ToString(app_name_ptr);
+    const items = {
+        'text/plain': new Blob([text], {type: 'text/plain'}),
+    };
+    if (binary.length > 0) {
+        const escapeHtml = (s) => s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        const html = '<div style="display: none;" data-' + appName + '="' +
+                    binary + '"></div>' + escapeHtml(text);
+        items['text/html'] = new Blob([html], {type: 'text/html'});
+        if (sketcher_browser_supports_web_mime(web_mime_ptr)) {
+            items[webMime] = new Blob([binary], {type: webMime});
+        }
+    }
+    navigator.clipboard.write([new ClipboardItem(items)]).catch((err) => {
+        // Best-effort; user may have denied clipboard permission.
+    });
+});
+// clang-format on
+#endif
 
 std::string SketcherWidget::getClipboardContents() const
 {
+#ifndef __EMSCRIPTEN__
     auto data = QApplication::clipboard()->mimeData();
-    if (data == nullptr) {
-        // mimeData can return a nullptr in WASM builds
-        return "";
-    }
     if (data->hasFormat(SKETCHER_MIME_TYPE)) {
         return data->data(SKETCHER_MIME_TYPE).toStdString();
     }
     if (data->hasText()) {
         return data->text().toStdString();
     }
+#endif
     return "";
 }
 
 void SketcherWidget::setClipboardContents(std::string text,
                                           std::string binary) const
 {
+#ifdef __EMSCRIPTEN__
+    // QClipboard doesn't interact with the system clipboard on WASM builds, so
+    // we write everything directly to the system clipboard instead. The writer
+    // always embeds the binary in a text/html sidecar (so Chrome -> Firefox
+    // round-trips through HTML) and additionally adds a custom web MIME when
+    // the browser supports the Web Custom Formats extension.
+    sketcher_write_clipboard(text.c_str(), binary.c_str(),
+                             SKETCHER_WEB_MIME_TYPE.c_str(),
+                             SKETCHER_MIME_APP_NAME.c_str());
+#else
     auto data = new QMimeData;
     data->setText(QString::fromStdString(text));
     if (!binary.empty()) {
         data->setData(SKETCHER_MIME_TYPE, QByteArray::fromStdString(binary));
     }
     QApplication::clipboard()->setMimeData(data);
-
-#ifdef __EMSCRIPTEN__
-    // Use the browser's aync clipboard api to enable copy for the wasm build
-    emscripten::val navigator = emscripten::val::global("navigator");
-    navigator["clipboard"].call<emscripten::val>("writeText",
-                                                 emscripten::val(text));
 #endif
 }
 
@@ -620,24 +677,71 @@ SketcherWidget* g_pending_paste_widget = nullptr;
 std::optional<QPointF> g_pending_paste_position;
 } // namespace
 
-// Non-suspending: starts readText() and attaches a .then() that calls back
-// into C++. We must NOT await here -- ASYNCIFY cannot suspend through the JS
-// trampoline Qt uses for slot dispatch, so the read has to complete on a
-// fresh wasm stack (see sketcher_finish_browser_paste below).
-EM_JS(void, sketcher_start_browser_clipboard_read, (), {
-    navigator.clipboard.readText()
-        .then(function(text) {
-            const byteLength = lengthBytesUTF8(text) + 1;
-            const ptr = _malloc(byteLength);
-            stringToUTF8(text, ptr, byteLength);
-            _sketcher_finish_browser_paste(ptr);
-            _free(ptr);
-        })
-        .catch(function(err) {
-            // No text, permission denied, document not focused, etc.
-            _sketcher_finish_browser_paste(0);
-        });
-});
+// Reads the system clipboard via the async API and re-enters C++ with whatever
+// payload should be pasted. Priority: the SKETCHER_WEB_MIME_TYPE custom MIME
+// (only present when the writer browser supported it), then the text/html
+// sidecar (a `<div data-${app}="${binary}">` written by the fallback path --
+// found via DOMParser since browsers may wrap clipboard HTML on read-back),
+// then plain text.
+//
+// Non-suspending: we must NOT await in the EM_JS body itself -- ASYNCIFY
+// cannot suspend through the JS trampoline Qt uses for slot dispatch, so the
+// read has to complete on a fresh wasm stack inside the .then() callback (see
+// sketcher_finish_browser_paste below).
+EM_JS(void, sketcher_start_browser_clipboard_read,
+      (const char* web_mime_ptr, const char* app_name_ptr), {
+          const webMime = UTF8ToString(web_mime_ptr);
+          const appName = UTF8ToString(app_name_ptr);
+
+          const sendString = function(s)
+          {
+              const byteLength = lengthBytesUTF8(s) + 1;
+              const ptr = _malloc(byteLength);
+              stringToUTF8(s, ptr, byteLength);
+              _sketcher_finish_browser_paste(ptr);
+              _free(ptr);
+          };
+
+          const findItem = function(items, mime)
+          {
+              for (const it of items) {
+                  if (it.types.includes(mime))
+                      return it;
+              }
+              return null;
+          };
+
+          navigator.clipboard.read()
+              .then(async function(items) {
+                  const webItem = findItem(items, webMime);
+                  if (webItem) {
+                      const blob = await webItem.getType(webMime);
+                      sendString(await blob.text());
+                      return;
+                  }
+                  const htmlItem = findItem(items, 'text/html');
+                  if (htmlItem) {
+                      const blob = await htmlItem.getType('text/html');
+                      const html = await blob.text();
+                      const doc =
+                          new DOMParser().parseFromString(html, 'text/html');
+                      const div =
+                          doc.querySelector('div[data-' + appName + ']');
+                      if (div) {
+                          sendString(div.getAttribute('data-' + appName));
+                          return;
+                      }
+                  }
+                  const textItem = findItem(items, 'text/plain');
+                  if (textItem) {
+                      const blob = await textItem.getType('text/plain');
+                      sendString(await blob.text());
+                      return;
+                  }
+                  _sketcher_finish_browser_paste(0);
+              })
+              .catch(function(err) { _sketcher_finish_browser_paste(0); });
+      });
 
 extern "C" EMSCRIPTEN_KEEPALIVE void
 sketcher_finish_browser_paste(const char* text)
@@ -658,19 +762,22 @@ sketcher_finish_browser_paste(const char* text)
  */
 void SketcherWidget::pasteAt(std::optional<QPointF> position)
 {
+#ifdef __EMSCRIPTEN__
+    // QClipboard doesn't interact with  the system clipboard on WASM, so always
+    // read the system clipboard via the async API and let the .then() callback
+    // re-enter through sketcher_finish_browser_paste(). The read function
+    // checks all three possible payload locations (web custom MIME, text/html
+    // sidecar, plain text) so the caller doesn't need to branch on browser
+    // support.
+    g_pending_paste_widget = this;
+    g_pending_paste_position = position;
+    sketcher_start_browser_clipboard_read(SKETCHER_WEB_MIME_TYPE.c_str(),
+                                          SKETCHER_MIME_APP_NAME.c_str());
+#else
     auto text = getClipboardContents();
     if (!text.empty()) {
         completePaste(std::move(text), position);
-        return;
     }
-#ifdef __EMSCRIPTEN__
-    // The browser may not not allow us to access the clipboard via Qt. In that
-    // case, use the JavaScript readText API to request permission from the
-    // user. JavaScript will automatically call completePaste once the user has
-    // granted permission.
-    g_pending_paste_widget = this;
-    g_pending_paste_position = position;
-    sketcher_start_browser_clipboard_read();
 #endif
 }
 
