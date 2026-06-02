@@ -577,8 +577,8 @@ EM_JS(void, sketcher_write_clipboard,
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
-        const html = '<div data-' + appName + '="' + binary + '"></div>' +
-                     escapeHtml(text);
+        const html = '<div style="display: none;" data-' + appName + '="' +
+                    binary + '"></div>' + escapeHtml(text);
         items['text/html'] = new Blob([html], {type: 'text/html'});
         if (sketcher_browser_supports_web_mime(web_mime_ptr)) {
             items[webMime] = new Blob([binary], {type: webMime});
