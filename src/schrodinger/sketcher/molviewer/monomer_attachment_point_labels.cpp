@@ -175,7 +175,7 @@ static QGraphicsItem* create_attachment_point_label(const QString& label,
     // label_rect.top() would give us the top of the pixels actually covered by
     // the label text. However, QGraphicsSimpleTextItem::setPos wants the top of
     // a "typical" line of text (i.e. the top of the font's ascent). As such, we
-    // use label_rect.bottom() + fm.ascent() for the vertical positioning here.
+    // use label_rect.bottom() - fm.ascent() for the vertical positioning here.
     pos.ry() -= fonts.m_monomeric_attachment_point_label_fm.ascent();
     label_item->setPos(pos);
     return label_item;
@@ -265,7 +265,7 @@ create_label_for_center_of_connector(const RDKit::Atom* const begin_monomer,
     perpendicular.setLength((connector_angle < 90 ? 1 : -1) *
                             MONOMERIC_PAIR_CONNECTOR_LABEL_DIST);
     auto label_rect =
-        fonts.m_monomeric_attachment_point_label_fm.boundingRect(label);
+        fonts.m_monomeric_attachment_point_label_fm.tightBoundingRect(label);
     QPointF label_pos = perpendicular.p2();
     label_rect.moveCenter(label_pos);
 
