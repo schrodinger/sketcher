@@ -110,8 +110,8 @@ class SKETCHER_API AbstractMonomerSceneTool : public StandardSceneToolBase
      */
     void clearAttachmentPointsLabelsAndHintFragmentItem();
     /**
-     * Label all unbound attachment points on the given monomer, placing all newly
-     * created graphics items into the specified group and list.
+     * Label all unbound attachment points on the given monomer, placing all
+     * newly created graphics items into the specified group and list.
      */
     void labelUnboundAttachmentPointsOnMonomer(
         const RDKit::Atom* const monomer,
