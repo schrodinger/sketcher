@@ -26,11 +26,16 @@ class AbstractHighlightingItem : public QGraphicsPathItem
      * Clear any existing highlighting and highlight only the specified graphics
      * item.
      */
-    void highlightItem(QGraphicsItem* const item);
+    void highlightItem(const QGraphicsItem* const item);
 
     /**
      * Clear any existing highlighting and highlight all specified graphics
      * items.
+     */
+    void highlightItems(const QList<const QGraphicsItem*>& items);
+
+    /**
+     * @overload for non-const QGraphicsItem pointers
      */
     void highlightItems(const QList<QGraphicsItem*>& items);
 
@@ -51,7 +56,7 @@ class AbstractHighlightingItem : public QGraphicsPathItem
      * Get the painter path to use for highlighting the specified graphics item.
      */
     virtual QPainterPath
-    getPathForItem(AbstractGraphicsItem* const item) const = 0;
+    getPathForItem(const AbstractGraphicsItem* const item) const = 0;
 
     /**
      * Modify the list of items to highlight immediately prior to highlighting.
@@ -59,14 +64,14 @@ class AbstractHighlightingItem : public QGraphicsPathItem
      * but subclasses may override this method to change which items get
      * highlighted.
      */
-    virtual QList<QGraphicsItem*>
-    updateItemsToHighlight(const QList<QGraphicsItem*>& items) const;
+    virtual QList<const QGraphicsItem*>
+    updateItemsToHighlight(const QList<const QGraphicsItem*>& items) const;
 
     /**
      * Create a painter path highlighting all specified graphics items.
      */
-    QPainterPath
-    buildHighlightingPathForItems(const QList<QGraphicsItem*>& items) const;
+    QPainterPath buildHighlightingPathForItems(
+        const QList<const QGraphicsItem*>& items) const;
 };
 
 } // namespace sketcher

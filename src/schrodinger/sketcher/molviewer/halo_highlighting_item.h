@@ -17,7 +17,7 @@ class HaloHighlightingItem : public AbstractHighlightingItem
     HaloHighlightingItem(qreal z_value);
 
     QPainterPath
-    getPathForItem(AbstractGraphicsItem* const item) const override;
+    getPathForItem(const AbstractGraphicsItem* const item) const override;
 };
 
 } // namespace sketcher

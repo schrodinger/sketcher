@@ -29,7 +29,8 @@ class HintSquiggleItem : public QGraphicsPathItem
 class SKETCHER_API DrawAttachmentPointSceneTool : public AbstractDrawSceneTool
 {
   public:
-    DrawAttachmentPointSceneTool(Scene* scene, MolModel* mol_model);
+    DrawAttachmentPointSceneTool(const Fonts& fonts, Scene* scene,
+                                 MolModel* mol_model);
 
   protected:
     HintSquiggleItem m_hint_squiggle_item = HintSquiggleItem();

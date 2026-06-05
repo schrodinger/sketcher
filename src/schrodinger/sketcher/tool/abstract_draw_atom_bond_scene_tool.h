@@ -42,7 +42,8 @@ class HintBondItem : public QGraphicsLineItem
 class SKETCHER_API AbstractDrawSceneTool : public StandardSceneToolBase
 {
   public:
-    AbstractDrawSceneTool(Scene* scene, MolModel* mol_model);
+    AbstractDrawSceneTool(const Fonts& fonts, Scene* scene,
+                          MolModel* mol_model);
 
     // Reimplemented AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;

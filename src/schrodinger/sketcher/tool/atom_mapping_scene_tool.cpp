@@ -31,8 +31,9 @@ ArrowLineItem::ArrowLineItem()
 }
 
 AtomMappingSceneTool::AtomMappingSceneTool(const MappingAction& action,
-                                           Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model),
+                                           const Fonts& fonts, Scene* scene,
+                                           MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model),
     m_action(action)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_R_NOT_AP;

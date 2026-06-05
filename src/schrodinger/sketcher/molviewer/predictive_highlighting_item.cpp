@@ -21,13 +21,13 @@ PredictiveHighlightingItem::PredictiveHighlightingItem() :
 }
 
 QPainterPath PredictiveHighlightingItem::getPathForItem(
-    AbstractGraphicsItem* const item) const
+    const AbstractGraphicsItem* const item) const
 {
     return item->predictiveHighlightingPath();
 }
 
-QList<QGraphicsItem*> PredictiveHighlightingItem::updateItemsToHighlight(
-    const QList<QGraphicsItem*>& items) const
+QList<const QGraphicsItem*> PredictiveHighlightingItem::updateItemsToHighlight(
+    const QList<const QGraphicsItem*>& items) const
 {
     if (auto molviewer_scene = dynamic_cast<Scene*>(scene())) {
         return molviewer_scene->ensureCompleteAttachmentPoints(items);

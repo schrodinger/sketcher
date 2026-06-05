@@ -20,7 +20,7 @@ SelectionHighlightingItem::SelectionHighlightingItem() :
 }
 
 QPainterPath SelectionHighlightingItem::getPathForItem(
-    AbstractGraphicsItem* const item) const
+    const AbstractGraphicsItem* const item) const
 {
     return item->selectionHighlightingPath();
 }

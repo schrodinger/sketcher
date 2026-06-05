@@ -153,8 +153,8 @@ class SKETCHER_API Scene : public QGraphicsScene
      * attachment point dummy atom *and* the associated bond if either the atom
      * *or* the bond are included in the input list.
      */
-    QList<QGraphicsItem*>
-    ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const;
+    QList<const QGraphicsItem*> ensureCompleteAttachmentPoints(
+        const QList<const QGraphicsItem*>& items) const;
 
     /**
      * display the appropriate context menu at the given position

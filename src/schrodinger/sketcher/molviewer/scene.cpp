@@ -570,14 +570,15 @@ Scene::getCollidingItemsUsingBondMidpoints(QGraphicsItem* item) const
     return filtered_items;
 }
 
-QList<QGraphicsItem*>
-Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
+QList<const QGraphicsItem*> Scene::ensureCompleteAttachmentPoints(
+    const QList<const QGraphicsItem*>& items) const
 {
     // make sure that .find() calls are O(1) instead of O(N)
-    std::unordered_set<QGraphicsItem*> items_set(items.begin(), items.end());
-    QList<QGraphicsItem*> new_items;
+    std::unordered_set<const QGraphicsItem*> items_set(items.begin(),
+                                                       items.end());
+    QList<const QGraphicsItem*> new_items;
     for (auto* item : items) {
-        if (const auto* atom_item = qgraphicsitem_cast<AtomItem*>(item)) {
+        if (const auto* atom_item = qgraphicsitem_cast<const AtomItem*>(item)) {
             const auto* atom = atom_item->getAtom();
             if (const RDKit::Bond* ap_bond = get_attachment_point_bond(atom)) {
                 auto* bond_item = m_bond_to_bond_item.at(ap_bond);
@@ -585,7 +586,8 @@ Scene::ensureCompleteAttachmentPoints(const QList<QGraphicsItem*>& items) const
                     new_items.push_back(bond_item);
                 }
             }
-        } else if (auto* bond_item = qgraphicsitem_cast<BondItem*>(item)) {
+        } else if (const auto* bond_item =
+                       qgraphicsitem_cast<const BondItem*>(item)) {
             const auto* bond = bond_item->getBond();
             if (const RDKit::Atom* ap_atom = get_attachment_point_atom(bond)) {
                 auto* atom_item = m_atom_to_atom_item.at(ap_atom);
@@ -665,9 +667,9 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
     auto draw_tool = m_sketcher_model->getDrawTool();
     if (draw_tool == DrawTool::SELECT) {
         auto select_tool = m_sketcher_model->getSelectionTool();
-        return get_select_scene_tool(select_tool, this, m_mol_model);
+        return get_select_scene_tool(select_tool, m_fonts, this, m_mol_model);
     } else if (draw_tool == DrawTool::ERASE) {
-        return std::make_shared<EraseSceneTool>(this, m_mol_model);
+        return std::make_shared<EraseSceneTool>(m_fonts, this, m_mol_model);
     } else if (draw_tool == DrawTool::ATOM) {
         auto atom_tool = m_sketcher_model->getAtomTool();
         if (atom_tool == AtomTool::ELEMENT) {
@@ -683,14 +685,15 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         auto bond_tool = m_sketcher_model->getBondTool();
         if (BOND_TOOL_BOND_MAP.count(bond_tool)) {
             // a non-query bond
-            return std::make_shared<DrawBondSceneTool>(bond_tool, this,
+            return std::make_shared<DrawBondSceneTool>(bond_tool, m_fonts, this,
                                                        m_mol_model);
         } else if (BOND_TOOL_QUERY_MAP.count(bond_tool)) {
             // a query bond
             return std::make_shared<DrawBondQuerySceneTool>(bond_tool, m_fonts,
                                                             this, m_mol_model);
         } else if (bond_tool == BondTool::ATOM_CHAIN) {
-            return std::make_shared<DrawChainSceneTool>(this, m_mol_model);
+            return std::make_shared<DrawChainSceneTool>(m_fonts, this,
+                                                        m_mol_model);
         }
     } else if (draw_tool == DrawTool::ENUMERATION) {
         switch (m_sketcher_model->getEnumerationTool()) {
@@ -703,33 +706,35 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                     m_fonts, this, m_mol_model);
             case EnumerationTool::ATTACHMENT_POINT:
                 return std::make_shared<DrawAttachmentPointSceneTool>(
-                    this, m_mol_model);
+                    m_fonts, this, m_mol_model);
             case EnumerationTool::RXN_ARROW:
                 return std::make_shared<ArrowPlusSceneTool>(
-                    NonMolecularType::RXN_ARROW, this, m_mol_model);
+                    NonMolecularType::RXN_ARROW, m_fonts, this, m_mol_model);
             case EnumerationTool::RXN_PLUS:
                 return std::make_shared<ArrowPlusSceneTool>(
-                    NonMolecularType::RXN_PLUS, this, m_mol_model);
+                    NonMolecularType::RXN_PLUS, m_fonts, this, m_mol_model);
             case EnumerationTool::ADD_MAPPING:
                 return std::make_shared<AtomMappingSceneTool>(
-                    MappingAction::ADD, this, m_mol_model);
+                    MappingAction::ADD, m_fonts, this, m_mol_model);
             case EnumerationTool::REMOVE_MAPPING:
                 return std::make_shared<AtomMappingSceneTool>(
-                    MappingAction::REMOVE, this, m_mol_model);
+                    MappingAction::REMOVE, m_fonts, this, m_mol_model);
         }
     } else if (draw_tool == DrawTool::CHARGE) {
         auto charge_tool = m_sketcher_model->getChargeTool();
-        return std::make_shared<EditChargeSceneTool>(charge_tool, this,
+        return std::make_shared<EditChargeSceneTool>(charge_tool, m_fonts, this,
                                                      m_mol_model);
     } else if (draw_tool == DrawTool::MOVE_ROTATE) {
-        return std::make_shared<MoveRotateSceneTool>(this, m_mol_model);
+        return std::make_shared<MoveRotateSceneTool>(m_fonts, this,
+                                                     m_mol_model);
     } else if (draw_tool == DrawTool::RING) {
         auto ring_tool = m_sketcher_model->getRingTool();
         return get_draw_fragment_scene_tool(
             ring_tool, m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
             *m_sketcher_model->getBondDisplaySettingsPtr(), this, m_mol_model);
     } else if (draw_tool == DrawTool::EXPLICIT_H) {
-        return std::make_shared<ExplicitHsSceneTool>(this, m_mol_model);
+        return std::make_shared<ExplicitHsSceneTool>(m_fonts, this,
+                                                     m_mol_model);
     } else if (draw_tool == DrawTool::MONOMER) {
         auto monomer_tool_type = m_sketcher_model->getMonomerToolType();
         if (monomer_tool_type == MonomerToolType::AMINO_ACID) {

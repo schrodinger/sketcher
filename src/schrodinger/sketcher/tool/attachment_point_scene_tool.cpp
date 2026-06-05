@@ -22,8 +22,8 @@ HintSquiggleItem::HintSquiggleItem(QGraphicsItem* parent) :
 }
 
 DrawAttachmentPointSceneTool::DrawAttachmentPointSceneTool(
-    Scene* scene, MolModel* mol_model) :
-    AbstractDrawSceneTool(scene, mol_model)
+    const Fonts& fonts, Scene* scene, MolModel* mol_model) :
+    AbstractDrawSceneTool(fonts, scene, mol_model)
 {
 }
 

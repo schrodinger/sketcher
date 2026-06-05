@@ -44,7 +44,7 @@ class HintChainItem : public QGraphicsItemGroup
 class SKETCHER_API DrawChainSceneTool : public StandardSceneToolBase
 {
   public:
-    DrawChainSceneTool(Scene* scene, MolModel* mol_model);
+    DrawChainSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
 
     // Overridden AbstractSceneTool methods
     std::vector<QGraphicsItem*> getGraphicsItems() override;

@@ -18,10 +18,10 @@ class PredictiveHighlightingItem : public AbstractHighlightingItem
 
     // overriden AbstractHighlightingItem methods
     QPainterPath
-    getPathForItem(AbstractGraphicsItem* const item) const override;
+    getPathForItem(const AbstractGraphicsItem* const item) const override;
 
-    QList<QGraphicsItem*>
-    updateItemsToHighlight(const QList<QGraphicsItem*>& items) const override;
+    QList<const QGraphicsItem*> updateItemsToHighlight(
+        const QList<const QGraphicsItem*>& items) const override;
 };
 
 } // namespace sketcher

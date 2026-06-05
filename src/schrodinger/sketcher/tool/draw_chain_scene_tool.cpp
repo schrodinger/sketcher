@@ -42,8 +42,9 @@ void HintChainItem::setCoords(QList<QPointF> coords)
     m_label_item.setText(QString::number(coords.size() - 1));
 }
 
-DrawChainSceneTool::DrawChainSceneTool(Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model)
+DrawChainSceneTool::DrawChainSceneTool(const Fonts& fonts, Scene* scene,
+                                       MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_AP;
 }
