@@ -51,6 +51,7 @@ void AbstractMonomerSceneTool::updateColorsAfterBackgroundColorChange(
 
 void AbstractMonomerSceneTool::onStructureUpdated()
 {
+    StandardSceneToolBase::onStructureUpdated();
     // the unbound attachment point items themselves were children of their
     // respective monomers, so Qt destroyed them when the monomers were
     // destroyed. We just need to clear out the stale pointers here.
