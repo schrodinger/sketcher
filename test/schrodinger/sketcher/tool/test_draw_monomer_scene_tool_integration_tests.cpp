@@ -443,7 +443,7 @@ BOOST_AUTO_TEST_CASE(test_undo_monomer_after_hint_fragment_no_crash)
     fix.confirmIsEmpty();
 
     // moving the mouse a little crashes pre-fix because the tool's cached
-    // m_unbound_ap_items / m_hovered_item are dangling
+    // m_unbound_ap_items / m_hovered_monomeric_item are dangling
     fix.mouseMove(c_ap_pos + QPointF(5, 5));
 }
 

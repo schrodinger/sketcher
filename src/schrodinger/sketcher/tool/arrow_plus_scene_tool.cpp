@@ -12,8 +12,9 @@ namespace sketcher
 {
 
 ArrowPlusSceneTool::ArrowPlusSceneTool(const NonMolecularType& type,
-                                       Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model),
+                                       const Fonts& fonts, Scene* scene,
+                                       MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model),
     m_type(type)
 {
 }

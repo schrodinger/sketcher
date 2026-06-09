@@ -37,8 +37,8 @@ enum class SelectMode;
  * @return The newly instantiated scene tool
  */
 SKETCHER_API std::shared_ptr<AbstractSceneTool>
-get_select_scene_tool(SelectionTool selection_type, Scene* scene,
-                      MolModel* mol_model);
+get_select_scene_tool(SelectionTool selection_type, const Fonts& fonts,
+                      Scene* scene, MolModel* mol_model);
 
 /**
  * A base class for the lasso and marquee selection scene tools, as well as the
@@ -50,7 +50,7 @@ template <typename T> class SKETCHER_API SelectSceneTool
     : public StandardSceneToolBase
 {
   public:
-    SelectSceneTool(Scene* scene, MolModel* mol_model);
+    SelectSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
 
     virtual void
     onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event) override;
@@ -98,7 +98,7 @@ class SKETCHER_API LassoSelectSceneTool
     : public SelectSceneTool<LassoSelectionItem>
 {
   public:
-    LassoSelectSceneTool(Scene* scene, MolModel* mol_model);
+    LassoSelectSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
     void onLeftButtonPress(QGraphicsSceneMouseEvent* const event) override;
     void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     void
@@ -116,7 +116,7 @@ template <typename T> class SKETCHER_API ShapeSelectSceneTool
     : public SelectSceneTool<T>
 {
   public:
-    ShapeSelectSceneTool(Scene* scene, MolModel* mol_model);
+    ShapeSelectSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
     void onLeftButtonDragMove(QGraphicsSceneMouseEvent* const event) override;
     QPixmap createDefaultCursorPixmap() const override;
 };
@@ -129,7 +129,7 @@ typedef ShapeSelectSceneTool<EllipseSelectionItem> EllipseSelectSceneTool;
 class SKETCHER_API EraseSceneTool : public RectSelectSceneTool
 {
   public:
-    EraseSceneTool(Scene* scene, MolModel* mol_model);
+    EraseSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;
     void
     onLeftButtonDoubleClick(QGraphicsSceneMouseEvent* const event) override;

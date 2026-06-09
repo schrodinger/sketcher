@@ -17,7 +17,7 @@ namespace sketcher
 class SKETCHER_API EditChargeSceneTool : public StandardSceneToolBase
 {
   public:
-    EditChargeSceneTool(ChargeTool bond_tool, Scene* scene,
+    EditChargeSceneTool(ChargeTool bond_tool, const Fonts& fonts, Scene* scene,
                         MolModel* mol_model);
 
   protected:

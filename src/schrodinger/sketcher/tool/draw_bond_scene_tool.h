@@ -28,7 +28,8 @@ namespace sketcher
 class SKETCHER_API AbstractDrawBondSceneTool : public AbstractDrawSceneTool
 {
   public:
-    AbstractDrawBondSceneTool(Scene* scene, MolModel* mol_model);
+    AbstractDrawBondSceneTool(const Fonts& fonts, Scene* scene,
+                              MolModel* mol_model);
 
   protected:
     /**
@@ -68,7 +69,8 @@ class SKETCHER_API AbstractDrawBondSceneTool : public AbstractDrawSceneTool
 class SKETCHER_API DrawBondSceneTool : public AbstractDrawBondSceneTool
 {
   public:
-    DrawBondSceneTool(BondTool bond_tool, Scene* scene, MolModel* mol_model);
+    DrawBondSceneTool(BondTool bond_tool, const Fonts& fonts, Scene* scene,
+                      MolModel* mol_model);
 
   protected:
     BondTool m_bond_tool;
@@ -115,8 +117,6 @@ class SKETCHER_API DrawBondQuerySceneTool : public AbstractDrawBondSceneTool
      * The text to use for labeling the drawn queries
      */
     std::string m_query_type;
-
-    const Fonts* m_fonts;
 
     /**
      * @return the query and bond type to use for bonds

@@ -22,8 +22,7 @@ namespace sketcher
 AbstractDrawAtomSceneTool::AbstractDrawAtomSceneTool(const Fonts& fonts,
                                                      Scene* scene,
                                                      MolModel* mol_model) :
-    AbstractDrawSceneTool(scene, mol_model),
-    m_fonts(&fonts)
+    AbstractDrawSceneTool(fonts, scene, mol_model)
 {
 }
 

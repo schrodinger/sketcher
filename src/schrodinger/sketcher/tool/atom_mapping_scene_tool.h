@@ -33,8 +33,8 @@ enum class MappingAction : bool { ADD, REMOVE };
 class SKETCHER_API AtomMappingSceneTool : public StandardSceneToolBase
 {
   public:
-    AtomMappingSceneTool(const MappingAction& action, Scene* scene,
-                         MolModel* mol_model);
+    AtomMappingSceneTool(const MappingAction& action, const Fonts& fonts,
+                         Scene* scene, MolModel* mol_model);
 
     // reimplemented AbstractSceneTool method
     void onLeftButtonPress(QGraphicsSceneMouseEvent* const event) override;

@@ -10,8 +10,9 @@ namespace schrodinger
 namespace sketcher
 {
 
-ExplicitHsSceneTool::ExplicitHsSceneTool(Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model)
+ExplicitHsSceneTool::ExplicitHsSceneTool(const Fonts& fonts, Scene* scene,
+                                         MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
 }

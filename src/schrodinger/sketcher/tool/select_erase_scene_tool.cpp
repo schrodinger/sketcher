@@ -29,21 +29,23 @@ namespace
 } // unnamed namespace
 
 std::shared_ptr<AbstractSceneTool>
-get_select_scene_tool(SelectionTool selection_type, Scene* scene,
-                      MolModel* mol_model)
+get_select_scene_tool(SelectionTool selection_type, const Fonts& fonts,
+                      Scene* scene, MolModel* mol_model)
 {
     if (selection_type == SelectionTool::RECTANGLE) {
-        return std::make_shared<RectSelectSceneTool>(scene, mol_model);
+        return std::make_shared<RectSelectSceneTool>(fonts, scene, mol_model);
     } else if (selection_type == SelectionTool::ELLIPSE) {
-        return std::make_shared<EllipseSelectSceneTool>(scene, mol_model);
+        return std::make_shared<EllipseSelectSceneTool>(fonts, scene,
+                                                        mol_model);
     } else { // selection_type == SelectionTool::LASSO
-        return std::make_shared<LassoSelectSceneTool>(scene, mol_model);
+        return std::make_shared<LassoSelectSceneTool>(fonts, scene, mol_model);
     }
 }
 
 template <typename T>
-SelectSceneTool<T>::SelectSceneTool(Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model)
+SelectSceneTool<T>::SelectSceneTool(const Fonts& fonts, Scene* scene,
+                                    MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::ALL;
     m_select_item.setVisible(false);
@@ -186,8 +188,9 @@ void SelectSceneTool<T>::onSelectionMade(const QList<QGraphicsItem*>& items,
                         non_molecular_objects, select_mode);
 }
 
-LassoSelectSceneTool::LassoSelectSceneTool(Scene* scene, MolModel* mol_model) :
-    SelectSceneTool(scene, mol_model)
+LassoSelectSceneTool::LassoSelectSceneTool(const Fonts& fonts, Scene* scene,
+                                           MolModel* mol_model) :
+    SelectSceneTool(fonts, scene, mol_model)
 {
 }
 
@@ -223,9 +226,9 @@ QPixmap LassoSelectSceneTool::createDefaultCursorPixmap() const
 }
 
 template <typename T>
-ShapeSelectSceneTool<T>::ShapeSelectSceneTool(Scene* scene,
+ShapeSelectSceneTool<T>::ShapeSelectSceneTool(const Fonts& fonts, Scene* scene,
                                               MolModel* mol_model) :
-    SelectSceneTool<T>(scene, mol_model)
+    SelectSceneTool<T>(fonts, scene, mol_model)
 {
 }
 
@@ -248,8 +251,9 @@ template <> QPixmap EllipseSelectSceneTool::createDefaultCursorPixmap() const
     return cursor_hint_from_svg(":/icons/select_ellipse.svg");
 }
 
-EraseSceneTool::EraseSceneTool(Scene* scene, MolModel* mol_model) :
-    RectSelectSceneTool(scene, mol_model)
+EraseSceneTool::EraseSceneTool(const Fonts& fonts, Scene* scene,
+                               MolModel* mol_model) :
+    RectSelectSceneTool(fonts, scene, mol_model)
 {
 }
 

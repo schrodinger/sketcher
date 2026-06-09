@@ -36,8 +36,6 @@ class SKETCHER_API AbstractDrawAtomSceneTool : public AbstractDrawSceneTool
                               MolModel* mol_model);
 
   protected:
-    const Fonts* m_fonts;
-
     // reimplemented AbstractDrawSceneTool methods
     void onBondClicked(const RDKit::Bond* const bond) override;
     void onEmptySpaceClicked(const RDGeom::Point3D& pos) override;

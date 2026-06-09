@@ -3,6 +3,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <QColor>
+#include <QGraphicsItemGroup>
 #include <QPen>
 #include <QPixmap>
 
@@ -12,10 +14,18 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/fonts.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/molviewer/predictive_highlighting_item.h"
 #include "schrodinger/sketcher/molviewer/rotation_item.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/tool/abstract_scene_tool.h"
+
+namespace RDKit
+{
+class Atom;
+class Bond;
+} // namespace RDKit
 
 namespace schrodinger
 {
@@ -23,6 +33,11 @@ namespace sketcher
 {
 class Scene;
 class MolModel;
+
+/**
+ * A convenience function to delete all children of the group
+ */
+void clear_graphics_item_group(QGraphicsItemGroup& group);
 
 /**
  * A graphics item that shows the rotation angle's value
@@ -69,8 +84,11 @@ class MergeHintItem : public QGraphicsItemGroup
 class SKETCHER_API StandardSceneToolBase : public AbstractSceneTool
 {
   public:
-    StandardSceneToolBase(Scene* scene, MolModel* mol_model);
+    StandardSceneToolBase(const Fonts& fonts, Scene* scene,
+                          MolModel* mol_model);
+    virtual ~StandardSceneToolBase() = default;
     virtual std::vector<QGraphicsItem*> getGraphicsItems() override;
+    virtual void onStructureUpdated() override;
 
   protected:
     /**
@@ -157,6 +175,51 @@ class SKETCHER_API StandardSceneToolBase : public AbstractSceneTool
 
     MergeHintItem m_merge_hint_item = MergeHintItem();
     AngleTextItem m_angle_text_item = AngleTextItem();
+
+    // A pointer to the Scene's fonts. The Scene owns this object and outlives
+    // its scene tools, so the pointer remains valid for the lifetime of the
+    // tool. Subclasses that need to tweak the fonts (e.g. setting bold on the
+    // cursor-hint font) should make their own copy rather than modifying this.
+    const Fonts* m_fonts;
+
+    // Members supporting monomeric attachment point labels. The base class
+    // automatically updates these in onMouseMove via
+    // updateMonomericAttachmentPointLabels.
+    QGraphicsItemGroup m_attachment_point_labels_group;
+    QColor m_bound_ap_label_color = BOUND_AP_LABEL_COLOR;
+    const QGraphicsItem* m_hovered_monomeric_item = nullptr;
+
+    /**
+     * Update which attachment point labels are drawn based on what the cursor
+     * is hovering over. If the cursor is over a monomer, draw its unbound
+     * attachment points; if over a monomer connector, label the bound
+     * attachment points of the connector; otherwise, clear any labels.
+     * @param scene_pos The position in Scene coordinates
+     */
+    void updateMonomericAttachmentPointLabels(const QPointF& scene_pos);
+
+    virtual QGraphicsItem*
+    getTopMonomericItemAt(const QPointF& scene_pos) const;
+
+    /**
+     * Clear any existing attachment point labels and draw new ones for the
+     * specified monomeric graphics item. If item is nullptr, then all labels
+     * will be cleared and no new ones will be drawn.
+     */
+    virtual void
+    drawMonomericAttachmentPointLabelsFor(QGraphicsItem* const item);
+
+    /**
+     * Label both attachment points for the given monomeric connector
+     * @param connector The monomeric connector to label
+     * @param is_secondary_connection Whether this method should label the
+     * secondary connection of the bond instead of the primary connection.
+     * Secondary connections occur when a single RDKit::Bond* represents
+     * multiple connections, e.g. two neighboring cysteines that are disulfide
+     * bonded to each other.
+     */
+    void labelAttachmentPointsOnConnector(const RDKit::Bond* const connector,
+                                          const bool is_secondary_connection);
 
     /**
      * compute the pivot point for a rotation. This is the selected atom that

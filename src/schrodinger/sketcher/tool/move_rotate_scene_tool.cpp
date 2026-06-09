@@ -22,8 +22,9 @@ MoveSelectionItem::MoveSelectionItem() : QGraphicsRectItem()
     setZValue(static_cast<qreal>(ZOrder::SELECTION_HIGHLIGHTING));
 }
 
-MoveRotateSceneTool::MoveRotateSceneTool(Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model)
+MoveRotateSceneTool::MoveRotateSceneTool(const Fonts& fonts, Scene* scene,
+                                         MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model)
 {
     m_allow_context_menu = false;
     m_highlight_types = InteractiveItemFlag::NONE;

@@ -18,8 +18,8 @@ enum class NonMolecularType;
 class SKETCHER_API ArrowPlusSceneTool : public StandardSceneToolBase
 {
   public:
-    ArrowPlusSceneTool(const NonMolecularType& type, Scene* scene,
-                       MolModel* mol_model);
+    ArrowPlusSceneTool(const NonMolecularType& type, const Fonts& fonts,
+                       Scene* scene, MolModel* mol_model);
 
     // reimplemented AbstractSceneTool method
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;

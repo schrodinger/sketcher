@@ -13,9 +13,10 @@ namespace schrodinger
 namespace sketcher
 {
 
-EditChargeSceneTool::EditChargeSceneTool(ChargeTool charge_tool, Scene* scene,
+EditChargeSceneTool::EditChargeSceneTool(ChargeTool charge_tool,
+                                         const Fonts& fonts, Scene* scene,
                                          MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model),
+    StandardSceneToolBase(fonts, scene, mol_model),
     m_charge_tool(charge_tool)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_R_NOT_AP;
