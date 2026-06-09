@@ -271,7 +271,7 @@ QToolButton::menu-indicator{width:0px;}</string>
     </widget>
    </item>
    <item>
-    <widget class="QToolButton" name="help_btn">
+    <widget class="QToolButton" name="sketcher_help_btn">
      <property name="toolTip">
       <string>Help</string>
      </property>

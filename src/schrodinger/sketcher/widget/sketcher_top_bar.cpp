@@ -126,7 +126,7 @@ void SketcherTopBar::initMenus()
 
     // Set up "Help" menu
     m_help_menu = new HelpMenu(this);
-    ui->help_btn->setMenu(m_help_menu);
+    ui->sketcher_help_btn->setMenu(m_help_menu);
     connect(m_help_menu->m_help_act, &QAction::triggered, this,
             &SketcherTopBar::onHelpClicked);
     connect(m_more_actions_menu->m_invert_selection_act, &QAction::triggered,
