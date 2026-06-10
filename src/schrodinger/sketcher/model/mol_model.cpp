@@ -2988,6 +2988,26 @@ void MolModel::addMolCommandFunc(RDKit::ROMol mol)
          ++bond_index) {
         RDKit::Bond* bond = m_mol.getBondWithIdx(bond_index);
         setTagForBond(bond, m_next_bond_tag++);
+
+        // SKETCH-2577 workaround: bridge wiggly state from the input mol
+        // (where prepare_mol set BondDir::UNKNOWN) into a property that
+        // survives downstream re-wedging passes. clearMolBlockWedgingInfo
+        // wipes the CXSMILES wiggly annotation; setting _MolFileBondCfg=2
+        // (MDL V3000 wiggly marker) lets the next wedgeMolBonds save block
+        // re-detect this bond as wiggly.
+        //
+        // TODO(SKETCH-2577): Once the upstream RDKit fix lands
+        // (pickBondToWedge skipping bonds with _UnknownStereo=1 set by
+        // clearSingleBondDirFlags), re-evaluate whether this bridge is still
+        // needed — clearSingleBondDirFlags already saves _UnknownStereo=1,
+        // which the upstream fix would respect.
+        auto* src_bond = mol.getBondWithIdx(bond_index - old_num_bonds);
+        bond->setBondDir(src_bond->getBondDir());
+        if (src_bond->getBondDir() == RDKit::Bond::BondDir::UNKNOWN &&
+            !src_bond->hasProp(RDKit::common_properties::_MolFileBondCfg)) {
+            bond->setProp(RDKit::common_properties::_MolFileBondCfg, 2);
+        }
+
         if (contains_two_monomer_linkages(bond)) {
             setSecondaryConnectionTagForBond(bond, m_next_bond_tag++);
         }

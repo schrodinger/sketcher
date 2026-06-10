@@ -75,6 +75,30 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     RDKit::ClearSingleBondDirFlags(mol);
     RDKit::Chirality::clearMolBlockWedgingInfo(mol);
 
+    // SKETCH-2577 workaround: hide wiggly bonds from WedgeMolBonds by
+    // temporarily changing them to Bond::OTHER. WedgeMolBonds only considers
+    // Bond::SINGLE bonds, so this prevents pickBondToWedge from stealing a
+    // wiggly bond to express a neighboring chiral atom's stereo — which the
+    // restore step below would then overwrite with UNKNOWN, losing that
+    // atom's wedge representation entirely.
+    //
+    // The upstream fix lives in RDKit (pickBondToWedge skips bonds with
+    // BondDir::UNKNOWN or _UnknownStereo=1). Once that lands in the RDKit
+    // version sketcher uses, this OTHER-type swap can go away — only the
+    // _UnknownStereo → BondDir::UNKNOWN restore below is still needed
+    // (clearSingleBondDirFlags clears UNKNOWN to NONE; we put it back so
+    // MolToCXSmiles emits |w:|).
+    std::vector<RDKit::Bond*> wiggly_bonds;
+    for (auto bond : mol.bonds()) {
+        int unknown_stereo{0};
+        if (bond->getPropIfPresent(RDKit::common_properties::_UnknownStereo,
+                                   unknown_stereo) &&
+            unknown_stereo && bond->getBondType() == RDKit::Bond::SINGLE) {
+            wiggly_bonds.push_back(bond);
+            bond->setBondType(RDKit::Bond::OTHER);
+        }
+    }
+
     try {
         // Temporarily silence RDKit's loggers
         RDLog::LogStateSetter silence_rdkit_logging;
@@ -87,6 +111,14 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
     // Restore the dummies
     for (auto bond : attachment_dummy_bonds) {
         bond->setBondType(RDKit::Bond::SINGLE);
+    }
+
+    // Restore wiggly bonds: SINGLE type + BondDir::UNKNOWN. The OTHER-type
+    // swap above is part of the SKETCH-2577 workaround; the BondDir::UNKNOWN
+    // restore is permanently needed regardless of the upstream RDKit fix.
+    for (auto bond : wiggly_bonds) {
+        bond->setBondType(RDKit::Bond::SINGLE);
+        bond->setBondDir(RDKit::Bond::BondDir::UNKNOWN);
     }
 }
 
