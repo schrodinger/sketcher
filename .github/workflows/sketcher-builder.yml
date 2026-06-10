@@ -45,21 +45,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - build-name: macos
+          - build-name: macos-arm64
             runner: macos-15
-          - build-name: windows
+          - build-name: windows-x64
             runner: windows-2022
-          - build-name: ubuntu
+          - build-name: linux-x64
             runner: ubuntu-22.04
           - build-name: wasm
             runner: ubuntu-22.04
-          - build-name: memtest
+          - build-name: debug
             runner: ubuntu-22.04
     steps:
-      # the memtest runner may run out of space if it has to build the
+      # the debug runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
       - name: Free up space on runner
-        if: matrix.build-name == 'memtest'
+        if: matrix.build-name == 'debug'
         run: |
           echo "Free space before cleanup = $(df -h / | awk 'NR==2 {print $4}')"
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
@@ -70,7 +70,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
-        if: matrix.build-name == 'macos'
+        if: matrix.build-name == 'macos-arm64'
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -80,11 +80,11 @@ jobs:
         run: python3 -m pip install cmake==3.24 ninja==1.13.0 pytest pytest-cpp pytest-xdist
 
       - name: Install valgrind
-        if: matrix.build-name == 'memtest'
+        if: matrix.build-name == 'debug'
         run: sudo apt-get update && sudo apt-get install valgrind
 
       - name: Determine build type
-        run: echo BUILD_TYPE=${{ matrix.build-name == 'memtest' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
+        run: echo BUILD_TYPE=${{ matrix.build-name == 'debug' && 'Debug' || 'Release' }} >> "$GITHUB_ENV"
 
       - name: Read external/versions.json
         run: |
@@ -109,7 +109,7 @@ jobs:
           echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Activate MSVC
-        if: matrix.build-name == 'windows'
+        if: matrix.build-name == 'windows-x64'
         uses: ./.github/actions/activate-msvc
 
       - name: Configure Dependency CMake
@@ -174,7 +174,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
       - name: Install Qt's required packages
-        if: matrix.build-name != 'macos' && matrix.build-name != 'windows'
+        if: matrix.build-name != 'macos-arm64' && matrix.build-name != 'windows-x64'
         run: |
           sudo apt-get update && sudo apt-get install \
             libfontconfig1-dev \
@@ -242,12 +242,12 @@ jobs:
 
       - name: Run tests
         working-directory: build
-        if: matrix.build-name != 'wasm' && matrix.build-name != 'memtest'
+        if: matrix.build-name != 'wasm' && matrix.build-name != 'debug'
         env:
           SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
-          ${{ matrix.build-name == 'ubuntu' && 'xvfb-run -a' || ''}} \
+          ${{ matrix.build-name == 'linux-x64' && 'xvfb-run -a' || ''}} \
           pytest -n auto --ignore=external
 
       - name: Run wasm tests
@@ -259,7 +259,7 @@ jobs:
 
       - name: Run memtests
         working-directory: build
-        if: matrix.build-name == 'memtest'
+        if: matrix.build-name == 'debug'
         # Using -j4 instead of -j because cmake 3.24 requires a specific number.
         # xvfb-run is embedded in each memtest command in CMakeLists so each
         # test gets its own isolated X display rather than sharing one.
