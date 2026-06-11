@@ -4801,6 +4801,126 @@ BOOST_AUTO_TEST_CASE(test_addBoundMonomer_RNA)
 }
 
 /**
+ * Test get_residue_number_for_new_monomer() for peptide chains.
+ *
+ * The function picks a residue number based on the residue number of the
+ * monomer being bound to, an offset that depends on the chain type and the
+ * attachment point used, and the set of residue numbers already in the chain.
+ * For peptides:
+ *   - connecting via the new monomer's N attachment point (R1) uses an offset
+ *     of -1
+ *   - any other attachment point uses the default offset of +1
+ * If the resulting "ideal" number is negative or already taken, the function
+ * instead falls back to one more than the highest existing residue number.
+ *
+ * Note that the function only reads the residue number and polymer of
+ * bound_to_monomer; it does not require the attachment points to form a valid
+ * connection, so we can drive each branch independently.
+ */
+BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_peptide)
+{
+    using rdkit_extensions::get_residue_number;
+    const auto N_AP = ap_model_name_for(PeptideAP::N);
+    const auto C_AP = ap_model_name_for(PeptideAP::C);
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // residue numbers {1, 2, 3} for the three alanines
+    add_text_to_mol_model(model, "PEPTIDE1{A.A.A}$$$$V2.0");
+    const auto* res1 = model.getMol()->getAtomWithIdx(0);
+    const auto* res3 = model.getMol()->getAtomWithIdx(2);
+    BOOST_REQUIRE(get_residue_number(res1) == 1u);
+    BOOST_REQUIRE(get_residue_number(res3) == 3u);
+
+    // Offset of -1 (new monomer's N attachment point) applied to residue 1. The
+    // ideal number (1 - 1 = 0) is available, so it is used as-is. This also
+    // covers the documented guarantee that the residue number is non-negative at
+    // its lower boundary.
+    BOOST_TEST(get_residue_number_for_new_monomer("G", ChainType::PEPTIDE, N_AP,
+                                                  res1) == 0);
+
+    // Default offset of +1 (any non-N attachment point) applied to residue 3,
+    // the highest in the chain. The ideal number (3 + 1 = 4) is available.
+    BOOST_TEST(get_residue_number_for_new_monomer("G", ChainType::PEPTIDE, C_AP,
+                                                  res3) == 4);
+
+    // Fallback when the ideal number is already taken: the default +1 offset
+    // applied to residue 1 yields 2, which is already used, so the function
+    // falls back to one more than the highest existing number (3 + 1 = 4).
+    BOOST_TEST(get_residue_number_for_new_monomer("G", ChainType::PEPTIDE, C_AP,
+                                                  res1) == 4);
+}
+
+/**
+ * Test get_residue_number_for_new_monomer() for RNA chains, where the offset
+ * depends on both the monomer type (sugar/base/phosphate, derived from the new
+ * monomer's residue name) and the attachment point used:
+ *   - new sugar via its 3' attachment point (R2): offset -2 (a number is
+ *     skipped to leave room for the sugar's base)
+ *   - new sugar via its 1' attachment point (R3): offset -1
+ *   - new base via its N1/N9 attachment point (R1): offset -1
+ *   - new phosphate via its attachment point to the previous sugar (R1):
+ *     offset -1
+ *   - anything else: default offset of +1
+ */
+BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_rna)
+{
+    using rdkit_extensions::get_residue_number;
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // RNA1{R(A)P} gives a sugar (residue 1), a base (residue 2), and a phosphate
+    // (residue 3)
+    add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
+    const auto* sugar = model.getMol()->getAtomWithIdx(0);
+    const auto* base = model.getMol()->getAtomWithIdx(1);
+    const auto* phosphate = model.getMol()->getAtomWithIdx(2);
+    BOOST_REQUIRE(get_residue_number(sugar) == 1u);
+    BOOST_REQUIRE(get_residue_number(base) == 2u);
+    BOOST_REQUIRE(get_residue_number(phosphate) == 3u);
+
+    // New base via its N1/N9 attachment point (R1): offset -1 applied to the
+    // sugar (residue 1). Ideal number 1 - 1 = 0 is available.
+    BOOST_TEST(get_residue_number_for_new_monomer(
+                   "A", ChainType::RNA, ap_model_name_for(NA_BASE_AP_N1_9),
+                   sugar) == 0);
+
+    // New phosphate via its attachment point to the previous sugar (R1): offset
+    // -1 applied to the sugar (residue 1). Ideal number 1 - 1 = 0 is available.
+    BOOST_TEST(get_residue_number_for_new_monomer(
+                   "P", ChainType::RNA,
+                   ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR), sugar) == 0);
+
+    // New sugar via its 1' attachment point (R3): offset -1 applied to the sugar
+    // (residue 1). Ideal number 1 - 1 = 0 is available.
+    BOOST_TEST(get_residue_number_for_new_monomer(
+                   "R", ChainType::RNA, ap_model_name_for(NASugarAP::ONE_PRIME),
+                   sugar) == 0);
+
+    // New sugar via its 3' attachment point (R2): offset -2 applied to the base
+    // (residue 2). Ideal number 2 - 2 = 0 is available.
+    BOOST_TEST(get_residue_number_for_new_monomer(
+                   "R", ChainType::RNA,
+                   ap_model_name_for(NASugarAP::THREE_PRIME), base) == 0);
+
+    // New phosphate via its attachment point to the next sugar (R2): not a
+    // special case, so the default +1 offset applies. Applied to the phosphate
+    // (residue 3, the highest), ideal number 3 + 1 = 4 is available.
+    BOOST_TEST(get_residue_number_for_new_monomer(
+                   "P", ChainType::RNA,
+                   ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR),
+                   phosphate) == 4);
+
+    // Fallback to the negative-number branch: the new sugar's 3' offset of -2
+    // applied to the sugar (residue 1) gives an ideal number of 1 - 2 = -1.
+    // Since that is negative, the function falls back to one more than the
+    // highest existing number (3 + 1 = 4).
+    BOOST_TEST(get_residue_number_for_new_monomer(
+                   "R", ChainType::RNA,
+                   ap_model_name_for(NASugarAP::THREE_PRIME), sugar) == 4);
+}
+
+/**
  * Confirm that combining two peptide chains via a standard backbone connection
  * produces HELM output with only a single chain
  */
