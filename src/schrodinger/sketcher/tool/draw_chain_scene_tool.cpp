@@ -23,7 +23,7 @@ HintChainItem::HintChainItem(QGraphicsItem* parent) : QGraphicsItemGroup(parent)
     setVisible(false);
 
     m_bonds_item.setPen(QPen(STRUCTURE_HINT_COLOR));
-    m_label_item.setFont(QFont(FONT_NAME, DRAW_CHAIN_FONT_SIZE));
+    m_label_item.setFont(QFont(FONT_LIST, DRAW_CHAIN_FONT_SIZE));
 
     addToGroup(&m_bonds_item);
     addToGroup(&m_label_item);
