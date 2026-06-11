@@ -4834,8 +4834,8 @@ BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_peptide)
 
     // Offset of -1 (new monomer's N attachment point) applied to residue 1. The
     // ideal number (1 - 1 = 0) is available, so it is used as-is. This also
-    // covers the documented guarantee that the residue number is non-negative at
-    // its lower boundary.
+    // covers the documented guarantee that the residue number is non-negative
+    // at its lower boundary.
     BOOST_TEST(get_residue_number_for_new_monomer("G", ChainType::PEPTIDE, N_AP,
                                                   res1) == 0);
 
@@ -4869,8 +4869,8 @@ BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_rna)
 
     QUndoStack undo_stack;
     TestMolModel model(&undo_stack);
-    // RNA1{R(A)P} gives a sugar (residue 1), a base (residue 2), and a phosphate
-    // (residue 3)
+    // RNA1{R(A)P} gives a sugar (residue 1), a base (residue 2), and a
+    // phosphate (residue 3)
     add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
     const auto* sugar = model.getMol()->getAtomWithIdx(0);
     const auto* base = model.getMol()->getAtomWithIdx(1);
@@ -4889,10 +4889,11 @@ BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_rna)
     // -1 applied to the sugar (residue 1). Ideal number 1 - 1 = 0 is available.
     BOOST_TEST(get_residue_number_for_new_monomer(
                    "P", ChainType::RNA,
-                   ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR), sugar) == 0);
+                   ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
+                   sugar) == 0);
 
-    // New sugar via its 1' attachment point (R3): offset -1 applied to the sugar
-    // (residue 1). Ideal number 1 - 1 = 0 is available.
+    // New sugar via its 1' attachment point (R3): offset -1 applied to the
+    // sugar (residue 1). Ideal number 1 - 1 = 0 is available.
     BOOST_TEST(get_residue_number_for_new_monomer(
                    "R", ChainType::RNA, ap_model_name_for(NASugarAP::ONE_PRIME),
                    sugar) == 0);

@@ -1736,6 +1736,5 @@ get_residue_number_for_new_monomer(const std::string_view res_name,
                                    const std::string_view new_monomer_ap_name,
                                    const RDKit::Atom* const bound_to_monomer);
 
-
 } // namespace sketcher
 } // namespace schrodinger

@@ -733,11 +733,11 @@ get_all_residue_numbers_in_polymer(const RDKit::Atom* const atom_in_polymer)
     return residue_numbers;
 }
 
-int
-get_residue_number_for_new_monomer(const std::string_view res_name,
-                                   const rdkit_extensions::ChainType chain_type,
-                                   const std::string_view new_monomer_ap_name,
-                                   const RDKit::Atom* const bound_to_monomer)
+int get_residue_number_for_new_monomer(
+    const std::string_view res_name,
+    const rdkit_extensions::ChainType chain_type,
+    const std::string_view new_monomer_ap_name,
+    const RDKit::Atom* const bound_to_monomer)
 {
     using rdkit_extensions::ChainType;
 
