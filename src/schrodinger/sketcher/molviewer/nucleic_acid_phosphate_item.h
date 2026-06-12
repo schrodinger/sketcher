@@ -25,6 +25,9 @@ class SKETCHER_API NucleicAcidPhosphateItem : public AbstractMonomerItem
 
     // Overridden AbstractGraphicsItem method
     void updateCachedData() override;
+
+    // Overridden AbstractMonomerItem method
+    QPointF getLabelOffsetPastShape(qreal angle) const override;
 };
 
 } // namespace sketcher

@@ -71,17 +71,17 @@ BOOST_AUTO_TEST_CASE(test_getInteractiveItems)
     auto scene = TestScene::getScene();
     auto items = scene->getInteractiveItems();
     BOOST_TEST(items.size() == 0);
-    BOOST_TEST(scene->items().size() == 7); // selection and highlighting items
+    BOOST_TEST(scene->items().size() == 8); // selection and highlighting items
 
     import_mol_text(scene->m_mol_model, "CC", Format::SMILES);
     items = scene->getInteractiveItems();
     BOOST_TEST(items.size() == 3); // two atoms and a bond
-    BOOST_TEST(scene->items().size() == 10);
+    BOOST_TEST(scene->items().size() == 11);
 
     scene->m_mol_model->clear();
     items = scene->getInteractiveItems();
     BOOST_TEST(items.size() == 0);
-    BOOST_TEST(scene->items().size() == 7);
+    BOOST_TEST(scene->items().size() == 8);
 }
 
 BOOST_AUTO_TEST_CASE(test_item_selection)

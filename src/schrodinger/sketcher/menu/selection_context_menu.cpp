@@ -72,14 +72,18 @@ void SelectionContextMenu::setContextItems(
     const std::unordered_set<const RDKit::Bond*>& bonds,
     const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
+    const RDKit::Atom* primary_atom)
 {
     m_modify_atoms_menu->setContextItems(atoms, bonds, secondary_connections,
-                                         sgroups, non_molecular_objects);
+                                         sgroups, non_molecular_objects,
+                                         primary_atom);
     m_modify_bonds_menu->setContextItems(atoms, bonds, secondary_connections,
-                                         sgroups, non_molecular_objects);
+                                         sgroups, non_molecular_objects,
+                                         primary_atom);
     AbstractContextMenu::setContextItems(atoms, bonds, secondary_connections,
-                                         sgroups, non_molecular_objects);
+                                         sgroups, non_molecular_objects,
+                                         primary_atom);
 }
 
 void SelectionContextMenu::updateActions()

@@ -94,6 +94,7 @@ class SKETCHER_API DrawMonomerSceneTool : public AbstractMonomerSceneTool
     std::string m_res_name;
     rdkit_extensions::ChainType m_chain_type;
     MonomerType m_monomer_type;
+    Fonts m_bolded_fonts;
 
     bool m_drag_ignored;
     AbstractMonomerItem* m_drag_start_monomer_item = nullptr;

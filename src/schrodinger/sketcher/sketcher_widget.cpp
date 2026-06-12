@@ -19,7 +19,6 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-#include <emscripten/val.h>
 #endif
 
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -531,30 +530,100 @@ void SketcherWidget::setInterfaceType(InterfaceTypeType interface_type)
     m_sketcher_model->setValue(ModelKey::INTERFACE_TYPE, interface_type);
 }
 
+// Sketcher-private MIME for a lossless RDKit pickle stashed alongside the
+// text payload; intra-sketcher pastes prefer it, other apps don't see it.
+const std::string SKETCHER_MIME_APP_NAME = "x-schrodinger-sketcher";
+const QString SKETCHER_MIME_TYPE =
+    QStringLiteral("application/") +
+    QString::fromStdString(SKETCHER_MIME_APP_NAME);
+
+#ifdef __EMSCRIPTEN__
+const std::string SKETCHER_WEB_MIME_TYPE =
+    "web " + SKETCHER_MIME_TYPE.toStdString();
+
+// prevent clang from breaking JavaScript by trying to reformat it
+// clang-format off
+
+// Returns whether the browser supports the given MIME type.  Supporting
+// SKETCHER_WEB_MIME_TYPE requires that the browser support the Web Custom
+// Formats extension to the async clipboard API (which is currently only recent
+// versions of Chromium-based browsers).
+EM_JS(int, sketcher_browser_supports_web_mime, (const char* web_mime_ptr), {
+    if (typeof ClipboardItem == 'undefined')
+        return 0;
+    if (typeof ClipboardItem.supports != 'function')
+        return 0;
+    return ClipboardItem.supports(UTF8ToString(web_mime_ptr)) ? 1 : 0;
+});
+
+// Write `text` and the lossless `binary` pickle to the system clipboard in a
+// single ClipboardItem. The binary is stored in the text/html MIME type using a
+// data property of an empty <div> block. The binary is additionally written to
+// the SKETCHER_WEB_MIME_TYPE if the source browser supports web custom MIMEs,
+// which allows intra-Chromium pastes to skip the HTML round-trip (and the
+// reformatting and security checks that text/html data is subjected to).
+EM_JS(void, sketcher_write_clipboard,
+      (const char* text_ptr, const char* binary_ptr,
+       const char* web_mime_ptr, const char* app_name_ptr), {
+    const text = UTF8ToString(text_ptr);
+    const binary = UTF8ToString(binary_ptr);
+    const webMime = UTF8ToString(web_mime_ptr);
+    const appName = UTF8ToString(app_name_ptr);
+    const items = {
+        'text/plain': new Blob([text], {type: 'text/plain'}),
+    };
+    if (binary.length > 0) {
+        const escapeHtml = (s) => s
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        const html = '<div style="display: none;" data-' + appName + '="' +
+                    binary + '"></div>' + escapeHtml(text);
+        items['text/html'] = new Blob([html], {type: 'text/html'});
+        if (sketcher_browser_supports_web_mime(web_mime_ptr)) {
+            items[webMime] = new Blob([binary], {type: webMime});
+        }
+    }
+    navigator.clipboard.write([new ClipboardItem(items)]).catch((err) => {
+        // Best-effort; user may have denied clipboard permission.
+    });
+});
+// clang-format on
+#endif
+
 std::string SketcherWidget::getClipboardContents() const
 {
+#ifndef __EMSCRIPTEN__
     auto data = QApplication::clipboard()->mimeData();
-    if (data == nullptr) {
-        // mimeData can return a nullptr in WASM builds
-        return "";
+    if (data->hasFormat(SKETCHER_MIME_TYPE)) {
+        return data->data(SKETCHER_MIME_TYPE).toStdString();
     }
     if (data->hasText()) {
         return data->text().toStdString();
     }
+#endif
     return "";
 }
 
-void SketcherWidget::setClipboardContents(std::string text) const
+void SketcherWidget::setClipboardContents(std::string text,
+                                          std::string binary) const
 {
+#ifdef __EMSCRIPTEN__
+    // QClipboard doesn't interact with the system clipboard on WASM builds, so
+    // we write everything directly to the system clipboard instead. The writer
+    // always embeds the binary in a text/html sidecar (so Chrome -> Firefox
+    // round-trips through HTML) and additionally adds a custom web MIME when
+    // the browser supports the Web Custom Formats extension.
+    sketcher_write_clipboard(text.c_str(), binary.c_str(),
+                             SKETCHER_WEB_MIME_TYPE.c_str(),
+                             SKETCHER_MIME_APP_NAME.c_str());
+#else
     auto data = new QMimeData;
     data->setText(QString::fromStdString(text));
+    if (!binary.empty()) {
+        data->setData(SKETCHER_MIME_TYPE, QByteArray::fromStdString(binary));
+    }
     QApplication::clipboard()->setMimeData(data);
-
-#ifdef __EMSCRIPTEN__
-    // Use the browser's aync clipboard api to enable copy for the wasm build
-    emscripten::val navigator = emscripten::val::global("navigator");
-    navigator["clipboard"].call<emscripten::val>("writeText",
-                                                 emscripten::val(text));
 #endif
 }
 
@@ -573,13 +642,18 @@ void SketcherWidget::cut(Format format)
 void SketcherWidget::copy(Format format, SceneSubset subset)
 {
     std::string text;
+    std::string binary;
     try {
         text = extract_string(m_mol_model, m_sketcher_model, format, subset);
+        // Always stash a lossless pickle so intra-sketcher pastes round-trip
+        // with full fidelity regardless of what the text format preserves.
+        binary = extract_string(m_mol_model, m_sketcher_model,
+                                Format::RDMOL_BINARY_BASE64, subset);
     } catch (const std::exception& exc) {
         show_error_dialog("Copy Error", exc.what(), window());
         return;
     }
-    setClipboardContents(text);
+    setClipboardContents(text, binary);
     // SKETCH-2091: Add image content to the clipboard; blocked by SKETCH-1975
 }
 
@@ -603,24 +677,71 @@ SketcherWidget* g_pending_paste_widget = nullptr;
 std::optional<QPointF> g_pending_paste_position;
 } // namespace
 
-// Non-suspending: starts readText() and attaches a .then() that calls back
-// into C++. We must NOT await here -- ASYNCIFY cannot suspend through the JS
-// trampoline Qt uses for slot dispatch, so the read has to complete on a
-// fresh wasm stack (see sketcher_finish_browser_paste below).
-EM_JS(void, sketcher_start_browser_clipboard_read, (), {
-    navigator.clipboard.readText()
-        .then(function(text) {
-            const byteLength = lengthBytesUTF8(text) + 1;
-            const ptr = _malloc(byteLength);
-            stringToUTF8(text, ptr, byteLength);
-            _sketcher_finish_browser_paste(ptr);
-            _free(ptr);
-        })
-        .catch(function(err) {
-            // No text, permission denied, document not focused, etc.
-            _sketcher_finish_browser_paste(0);
-        });
-});
+// Reads the system clipboard via the async API and re-enters C++ with whatever
+// payload should be pasted. Priority: the SKETCHER_WEB_MIME_TYPE custom MIME
+// (only present when the writer browser supported it), then the text/html
+// sidecar (a `<div data-${app}="${binary}">` written by the fallback path --
+// found via DOMParser since browsers may wrap clipboard HTML on read-back),
+// then plain text.
+//
+// Non-suspending: we must NOT await in the EM_JS body itself -- ASYNCIFY
+// cannot suspend through the JS trampoline Qt uses for slot dispatch, so the
+// read has to complete on a fresh wasm stack inside the .then() callback (see
+// sketcher_finish_browser_paste below).
+EM_JS(void, sketcher_start_browser_clipboard_read,
+      (const char* web_mime_ptr, const char* app_name_ptr), {
+          const webMime = UTF8ToString(web_mime_ptr);
+          const appName = UTF8ToString(app_name_ptr);
+
+          const sendString = function(s)
+          {
+              const byteLength = lengthBytesUTF8(s) + 1;
+              const ptr = _malloc(byteLength);
+              stringToUTF8(s, ptr, byteLength);
+              _sketcher_finish_browser_paste(ptr);
+              _free(ptr);
+          };
+
+          const findItem = function(items, mime)
+          {
+              for (const it of items) {
+                  if (it.types.includes(mime))
+                      return it;
+              }
+              return null;
+          };
+
+          navigator.clipboard.read()
+              .then(async function(items) {
+                  const webItem = findItem(items, webMime);
+                  if (webItem) {
+                      const blob = await webItem.getType(webMime);
+                      sendString(await blob.text());
+                      return;
+                  }
+                  const htmlItem = findItem(items, 'text/html');
+                  if (htmlItem) {
+                      const blob = await htmlItem.getType('text/html');
+                      const html = await blob.text();
+                      const doc =
+                          new DOMParser().parseFromString(html, 'text/html');
+                      const div =
+                          doc.querySelector('div[data-' + appName + ']');
+                      if (div) {
+                          sendString(div.getAttribute('data-' + appName));
+                          return;
+                      }
+                  }
+                  const textItem = findItem(items, 'text/plain');
+                  if (textItem) {
+                      const blob = await textItem.getType('text/plain');
+                      sendString(await blob.text());
+                      return;
+                  }
+                  _sketcher_finish_browser_paste(0);
+              })
+              .catch(function(err) { _sketcher_finish_browser_paste(0); });
+      });
 
 extern "C" EMSCRIPTEN_KEEPALIVE void
 sketcher_finish_browser_paste(const char* text)
@@ -641,19 +762,22 @@ sketcher_finish_browser_paste(const char* text)
  */
 void SketcherWidget::pasteAt(std::optional<QPointF> position)
 {
+#ifdef __EMSCRIPTEN__
+    // QClipboard doesn't interact with  the system clipboard on WASM, so always
+    // read the system clipboard via the async API and let the .then() callback
+    // re-enter through sketcher_finish_browser_paste(). The read function
+    // checks all three possible payload locations (web custom MIME, text/html
+    // sidecar, plain text) so the caller doesn't need to branch on browser
+    // support.
+    g_pending_paste_widget = this;
+    g_pending_paste_position = position;
+    sketcher_start_browser_clipboard_read(SKETCHER_WEB_MIME_TYPE.c_str(),
+                                          SKETCHER_MIME_APP_NAME.c_str());
+#else
     auto text = getClipboardContents();
     if (!text.empty()) {
         completePaste(std::move(text), position);
-        return;
     }
-#ifdef __EMSCRIPTEN__
-    // The browser may not not allow us to access the clipboard via Qt. In that
-    // case, use the JavaScript readText API to request permission from the
-    // user. JavaScript will automatically call completePaste once the user has
-    // granted permission.
-    g_pending_paste_widget = this;
-    g_pending_paste_position = position;
-    sketcher_start_browser_clipboard_read();
 #endif
 }
 
@@ -871,7 +995,7 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
     connect(&menu, &MonomerContextMenu::deleteRequested, this,
             [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
 
-    connect(&menu, &MonomerContextMenu::mutateResidueRequested, this,
+    connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
             [this](auto mutations, const QString& description) {
                 if (mutations.empty()) {
                     return;
@@ -882,14 +1006,20 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
                     description.isEmpty() ? QStringLiteral("Mutate Monomers")
                                           : description);
                 for (auto& [idxs, sym] : indexed) {
+                    if (idxs.empty()) {
+                        continue;
+                    }
                     std::unordered_set<const RDKit::Atom*> resolved;
                     resolved.reserve(idxs.size());
                     const auto* mol = m_mol_model->getMol();
                     for (auto i : idxs) {
                         resolved.insert(mol->getAtomWithIdx(i));
                     }
-                    m_mol_model->mutateMonomers(resolved, sym,
-                                                MonomerType::PEPTIDE);
+                    // Menu emits uniform-type batches; first-atom sample
+                    // gives the right type.
+                    const auto target_type =
+                        get_monomer_type(*resolved.begin());
+                    m_mol_model->mutateMonomers(resolved, sym, target_type);
                 }
             });
 }
@@ -1033,13 +1163,55 @@ void SketcherWidget::connectContextMenu(const BackgroundContextMenu& menu)
             &MolModel::clear);
 }
 
+AbstractContextMenu* SketcherWidget::chooseContextMenu(
+    const std::unordered_set<const RDKit::Atom*>& filtered_atoms,
+    const std::unordered_set<const RDKit::Bond*>& filtered_bonds,
+    const std::unordered_set<const RDKit::Bond*>& secondary_connections,
+    const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
+    bool only_attachment_points)
+{
+    if (!sgroups.empty()) {
+        return m_sgroup_context_menu;
+    }
+    if (only_attachment_points) {
+        return m_attachment_point_context_menu;
+    }
+    const bool bond_selected =
+        !filtered_bonds.empty() || !secondary_connections.empty();
+    if (!filtered_atoms.empty()) {
+        // All-monomeric short-circuits any atom+bond routing — selecting
+        // R and A together in R(A)P (which auto-includes the R-A bond)
+        // belongs to the monomer menu, not the atomistic selection menu.
+        const bool all_monomeric =
+            std::ranges::all_of(filtered_atoms, [](const auto* atom) {
+                return is_atom_monomeric(atom);
+            });
+        if (all_monomeric) {
+            return m_monomer_context_menu;
+        }
+        if (bond_selected) {
+            return m_selection_context_menu;
+        }
+        return m_atom_context_menu;
+    }
+    if (bond_selected) {
+        return m_bond_context_menu;
+    }
+    if (!non_molecular_objects.empty()) {
+        return nullptr;
+    }
+    return m_background_context_menu;
+}
+
 void SketcherWidget::showContextMenu(
     QGraphicsSceneMouseEvent* event,
     const std::unordered_set<const RDKit::Atom*>& atoms,
     const std::unordered_set<const RDKit::Bond*>& bonds,
     const std::unordered_set<const RDKit::Bond*>& secondary_connections,
     const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
-    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects)
+    const std::unordered_set<const NonMolecularObject*>& non_molecular_objects,
+    const RDKit::Atom* primary_atom)
 {
     if (m_sketcher_model && m_sketcher_model->isSelectOnlyModeActive()) {
         // context menus are disabled when select-only mode is active to prevent
@@ -1067,46 +1239,23 @@ void SketcherWidget::showContextMenu(
         sgroups.empty() && (!atoms.empty() || !bonds.empty()) &&
         filtered_atoms.empty() && filtered_bonds.empty();
 
-    AbstractContextMenu* menu = nullptr;
-    bool bond_selected = bonds.size() || secondary_connections.size();
-    if (sgroups.size()) {
-        menu = m_sgroup_context_menu;
-    } else if (only_attachment_points) {
-        menu = m_attachment_point_context_menu;
-    } else if (atoms.size() && bond_selected) {
-        menu = m_selection_context_menu;
-    } else if (atoms.size()) {
-        bool all_monomeric =
-            !filtered_atoms.empty() &&
-            std::ranges::all_of(filtered_atoms, [](const auto* atom) {
-                return is_atom_monomeric(atom);
-            });
-        if (all_monomeric) {
-            menu = m_monomer_context_menu;
-        } else {
-            menu = m_atom_context_menu;
-        }
-    } else if (bond_selected) {
-        menu = m_bond_context_menu;
-    } else if (non_molecular_objects.size()) {
-        /** a non molecular object is clicked, do nothing as there's no context
-         * menu for it.
-         * */
+    AbstractContextMenu* menu = chooseContextMenu(
+        filtered_atoms, filtered_bonds, secondary_connections, sgroups,
+        non_molecular_objects, only_attachment_points);
+    if (menu == nullptr) {
+        // Non-molecular object clicked — no menu to show.
         return;
-    } else {
-        // show the background context menu
-        menu = m_background_context_menu;
     }
 
     // Pass unfiltered sets to the attachment point menu; pass filtered sets
     // (attachment points excluded) to all other chemical modification menus.
     if (menu == m_attachment_point_context_menu) {
         menu->setContextItems(atoms, bonds, secondary_connections, sgroups,
-                              non_molecular_objects);
+                              non_molecular_objects, primary_atom);
     } else {
         menu->setContextItems(filtered_atoms, filtered_bonds,
                               secondary_connections, sgroups,
-                              non_molecular_objects);
+                              non_molecular_objects, primary_atom);
     }
 
     menu->move(event->screenPos());

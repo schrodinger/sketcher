@@ -187,11 +187,16 @@ const QColor CHEM_MONOMER_RECT_COLOR =
 // the angle between a monomeric connector, the center of the bound monomer, and
 // the attachment point label. Raising this number will move the label further
 // from the bond line.
-const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ANGLE_OFFSET = 10;
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ANGLE_OFFSET = 12.5;
 
-// the distance between the center of a monomer and its attachment point labels
-const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_DIST = 16;
 const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_FONT_RATIO = 0.7;
+
+// the distance between the edge of the monomer and its attachment point labels
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_MONOMER_SPACING = 2.0;
+
+// positioning for attachment point labels relative to connector arrowheads
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_VERTICAL = 1;
+const qreal MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL = 4.5;
 
 // the distance between the "pair" label and the relevant connector, as measured
 // perpendicular to the connector
@@ -214,8 +219,8 @@ const qreal UNBOUND_AP_CIRCLE_DIAMETER = 5.0;
 const qreal UNBOUND_AP_MIN_HOVER_HALF_WIDTH = 12;
 const QColor UNBOUND_AP_LABEL_COLOR = QColor("#AAAAAA");
 const QColor UNBOUND_AP_LABEL_COLOR_DARK_BG = QColor("#999999");
-const QColor BOUND_AP_LABEL_COLOR = QColor("#000000");
-const QColor BOUND_AP_LABEL_COLOR_DARK_BG = QColor("#AAAAAA");
+const QColor BOUND_AP_LABEL_COLOR = QColor("#333333");
+const QColor BOUND_AP_LABEL_COLOR_DARK_BG = QColor("#bababa");
 const qreal MONOMER_FRAGMENT_HINT_CONNECTOR_WIDTH = 3;
 
 const QColor AA_LINEAR_CONNECTOR_COLOR =

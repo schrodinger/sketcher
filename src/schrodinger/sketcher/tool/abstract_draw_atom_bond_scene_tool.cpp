@@ -27,9 +27,9 @@ HintBondItem::HintBondItem(QGraphicsItem* parent) : QGraphicsLineItem(parent)
     setVisible(false);
 }
 
-AbstractDrawSceneTool::AbstractDrawSceneTool(Scene* scene,
+AbstractDrawSceneTool::AbstractDrawSceneTool(const Fonts& fonts, Scene* scene,
                                              MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model)
+    StandardSceneToolBase(fonts, scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::MOLECULAR_NOT_AP;
 }

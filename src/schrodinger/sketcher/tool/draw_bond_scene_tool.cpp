@@ -16,9 +16,10 @@ namespace schrodinger
 namespace sketcher
 {
 
-AbstractDrawBondSceneTool::AbstractDrawBondSceneTool(Scene* scene,
+AbstractDrawBondSceneTool::AbstractDrawBondSceneTool(const Fonts& fonts,
+                                                     Scene* scene,
                                                      MolModel* mol_model) :
-    AbstractDrawSceneTool(scene, mol_model)
+    AbstractDrawSceneTool(fonts, scene, mol_model)
 {
 }
 
@@ -48,9 +49,9 @@ void AbstractDrawBondSceneTool::onEmptySpaceClicked(const RDGeom::Point3D& pos)
     addTwoBoundAtoms(pos, pos2);
 }
 
-DrawBondSceneTool::DrawBondSceneTool(BondTool bond_tool, Scene* scene,
-                                     MolModel* mol_model) :
-    AbstractDrawBondSceneTool(scene, mol_model)
+DrawBondSceneTool::DrawBondSceneTool(BondTool bond_tool, const Fonts& fonts,
+                                     Scene* scene, MolModel* mol_model) :
+    AbstractDrawBondSceneTool(fonts, scene, mol_model)
 {
     m_bond_tool = bond_tool;
     std::tie(m_bond_type, m_bond_dir, m_flippable, m_cursor_hint_path) =
@@ -122,8 +123,7 @@ QPixmap DrawBondSceneTool::createDefaultCursorPixmap() const
 DrawBondQuerySceneTool::DrawBondQuerySceneTool(BondTool bond_tool,
                                                const Fonts& fonts, Scene* scene,
                                                MolModel* mol_model) :
-    AbstractDrawBondSceneTool(scene, mol_model),
-    m_fonts(&fonts)
+    AbstractDrawBondSceneTool(fonts, scene, mol_model)
 {
     m_bond_tool = bond_tool;
     m_query_type = get_label_for_bond_query(getQueryAndBondType().first.get());

@@ -47,7 +47,8 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
         const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
-            non_molecular_objects);
+            non_molecular_objects,
+        const RDKit::Atom* primary_atom) override;
 
     ModifyAtomsMenu* m_modify_atoms_menu = nullptr;
     ModifyBondsMenu* m_modify_bonds_menu = nullptr;
@@ -81,7 +82,7 @@ class SKETCHER_API SelectionContextMenu : public AbstractContextMenu
     QAction* m_clean_up_region_action = nullptr;
 
   protected slots:
-    virtual void updateActions();
+    void updateActions() override;
 
   private:
     QMenu* createAddToSelectionMenu();

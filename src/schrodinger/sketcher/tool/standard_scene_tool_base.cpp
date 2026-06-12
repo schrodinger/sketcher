@@ -2,18 +2,35 @@
 
 #include <algorithm>
 
+#include <QGraphicsItem>
+#include <QPainterPath>
+
 #include <GraphMol/MolOps.h>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/model/mol_model.h"
+#include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
+#include "schrodinger/sketcher/molviewer/monomer_attachment_point_labels.h"
+#include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_hint_fragment_item.h"
+#include "schrodinger/sketcher/molviewer/monomer_utils.h"
+#include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
 
 namespace schrodinger
 {
 namespace sketcher
 {
+
+void clear_graphics_item_group(QGraphicsItemGroup& group)
+{
+    for (auto* item : group.childItems()) {
+        group.removeFromGroup(item);
+        delete item;
+    }
+}
 
 AngleTextItem::AngleTextItem() : QGraphicsSimpleTextItem()
 {
@@ -51,16 +68,15 @@ void MergeHintItem::setCoordinates(std::vector<QPointF> centers)
 
 void MergeHintItem::clear()
 {
-    for (auto* child : childItems()) {
-        removeFromGroup(child);
-        delete child;
-    }
+    clear_graphics_item_group(*this);
 }
 
-StandardSceneToolBase::StandardSceneToolBase(Scene* scene,
+StandardSceneToolBase::StandardSceneToolBase(const Fonts& fonts, Scene* scene,
                                              MolModel* mol_model) :
-    AbstractSceneTool(scene, mol_model)
+    AbstractSceneTool(scene, mol_model),
+    m_fonts(&fonts)
 {
+    m_attachment_point_labels_group.setZValue(static_cast<qreal>(ZOrder::HINT));
 }
 
 void StandardSceneToolBase::updateColorsAfterBackgroundColorChange(
@@ -72,6 +88,17 @@ void StandardSceneToolBase::updateColorsAfterBackgroundColorChange(
     m_predictive_highlighting_item.setBrush(color);
     m_angle_text_item.setPen(is_dark_mode ? ANNOTATION_COLOR_DARK_BG
                                           : ANNOTATION_COLOR);
+    m_bound_ap_label_color =
+        is_dark_mode ? BOUND_AP_LABEL_COLOR_DARK_BG : BOUND_AP_LABEL_COLOR;
+}
+
+void StandardSceneToolBase::onStructureUpdated()
+{
+    // The unbound attachment point items are children of their monomer, so they
+    // may have been deleted automatically when the structure changed.
+    clear_graphics_item_group(m_attachment_point_labels_group);
+    m_hovered_monomeric_item = nullptr;
+    m_predictive_highlighting_item.clearHighlightingPath();
 }
 
 void StandardSceneToolBase::onRightButtonClick(
@@ -92,6 +119,9 @@ void StandardSceneToolBase::onMouseMove(QGraphicsSceneMouseEvent* const event)
         QGraphicsItem* item =
             m_scene->getTopInteractiveItemAt(scene_pos, m_highlight_types);
         m_predictive_highlighting_item.highlightItem(item);
+    }
+    if (!m_mouse_pressed) {
+        updateMonomericAttachmentPointLabels(event->scenePos());
     }
     AbstractSceneTool::onMouseMove(event);
 }
@@ -231,7 +261,7 @@ void StandardSceneToolBase::updateGraphicsItemsDuringTranslation(
 std::vector<QGraphicsItem*> StandardSceneToolBase::getGraphicsItems()
 {
     return {&m_predictive_highlighting_item, &m_merge_hint_item,
-            &m_angle_text_item};
+            &m_angle_text_item, &m_attachment_point_labels_group};
 }
 
 RDGeom::Point3D StandardSceneToolBase::findPivotPointForRotation()
@@ -361,6 +391,55 @@ std::vector<std::pair<unsigned int, unsigned int>> get_overlapping_atom_idxs(
         }
     }
     return overlaps;
+}
+
+void StandardSceneToolBase::updateMonomericAttachmentPointLabels(
+    const QPointF& scene_pos)
+{
+    auto hovered_item = getTopMonomericItemAt(scene_pos);
+    if (hovered_item != m_hovered_monomeric_item) {
+        // we're hovering over something new, so update the attachment point
+        // labels
+        m_hovered_monomeric_item = hovered_item;
+        drawMonomericAttachmentPointLabelsFor(hovered_item);
+    }
+}
+
+QGraphicsItem*
+StandardSceneToolBase::getTopMonomericItemAt(const QPointF& scene_pos) const
+{
+    auto items = m_scene->items(scene_pos);
+    auto it = std::ranges::find_if(items, [](auto* item) {
+        return item_matches_type_flag(item, InteractiveItemFlag::MONOMERIC);
+    });
+    return it == items.end() ? nullptr : *it;
+}
+
+void StandardSceneToolBase::drawMonomericAttachmentPointLabelsFor(
+    QGraphicsItem* const item)
+{
+    clear_graphics_item_group(m_attachment_point_labels_group);
+    if (item == nullptr) {
+        return;
+    }
+    if (item_matches_type_flag(item, InteractiveItemFlag::MONOMER_CONNECTOR)) {
+        // hovering over a monomeric connector
+        auto* connector_item = qgraphicsitem_cast<MonomerConnectorItem*>(item);
+        const auto* connector = connector_item->getBond();
+        labelAttachmentPointsOnConnector(
+            connector, connector_item->isSecondaryConnection());
+    }
+}
+
+void StandardSceneToolBase::labelAttachmentPointsOnConnector(
+    const RDKit::Bond* const connector, const bool is_secondary_connection)
+{
+    auto ap_label_items = create_attachment_point_labels_for_connector(
+        connector, is_secondary_connection, m_bound_ap_label_color, *m_fonts,
+        m_scene);
+    for (auto* item : ap_label_items) {
+        m_attachment_point_labels_group.addToGroup(item);
+    }
 }
 
 } // namespace sketcher

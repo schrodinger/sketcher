@@ -18,7 +18,7 @@ namespace sketcher
 class SKETCHER_API ExplicitHsSceneTool : public StandardSceneToolBase
 {
   public:
-    ExplicitHsSceneTool(Scene* scene, MolModel* mol_model);
+    ExplicitHsSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
 
   protected:
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;

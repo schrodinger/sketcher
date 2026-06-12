@@ -140,7 +140,7 @@ QPixmap DrawMonomerFragmentSceneTool::createDefaultCursorPixmap() const
     // tiny. (Enlarging the font size would just make the outlines larger, which
     // means we'd need to scale the coordinates less, which means we'd wind up
     // with the same problem, so that won't help us here.)
-    Fonts fonts_copy(m_fonts);
+    Fonts fonts_copy(*m_fonts);
     fonts_copy.setSize(FONT_SIZE);
     fonts_copy.m_main_label_font.setBold(true);
     fonts_copy.updateFontMetrics();
@@ -171,18 +171,6 @@ void DrawMonomerFragmentSceneTool::onMouseMove(
     }
     QPointF scene_pos = event->scenePos();
     auto hovered_monomer_item = getTopMonomerItemAt(scene_pos);
-    QGraphicsItem* hovered_item = hovered_monomer_item;
-    if (hovered_monomer_item == nullptr) {
-        // if we're not over a monomer, check to see if we're over a connector
-        hovered_item = getTopMonomerConnectorItemAt(scene_pos);
-    }
-
-    if (hovered_item != m_hovered_item) {
-        // we're hovering over something new, so update the attachment point
-        // labels
-        m_hovered_item = hovered_item;
-        drawAttachmentPointLabelsFor(hovered_item);
-    }
 
     auto* hovered_ap_item =
         getConnectableUnboundAttachmentPointAt(scene_pos, hovered_monomer_item);
@@ -246,7 +234,7 @@ void DrawMonomerFragmentSceneTool::onLeftButtonPress(
         move_mol_to_coords_and_rotate(*frag_copy, m_index_to_center_on_click,
                                       to_mol_xy(scene_pos), 0.0);
         m_hint_fragment_item = new MonomerHintFragmentItem(
-            frag_copy, m_fonts, {}, -1, m_monomer_background_color);
+            frag_copy, *m_fonts, {}, -1, m_monomer_background_color);
         m_scene->addItem(m_hint_fragment_item);
     }
 }
@@ -395,7 +383,7 @@ void DrawMonomerFragmentSceneTool::drawFragmentHintFor(
         attachment_info.frag_monomer_ap_model_name);
 
     m_hint_fragment_item = new MonomerHintFragmentItem(
-        hint_mol, m_fonts, {hovered_monomer_copy_idx}, new_connection_idx,
+        hint_mol, *m_fonts, {hovered_monomer_copy_idx}, new_connection_idx,
         m_monomer_background_color);
     m_scene->addItem(m_hint_fragment_item);
 }

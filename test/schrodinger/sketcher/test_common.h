@@ -73,11 +73,15 @@ class TestSketcherWidget : public SketcherWidget
     TestSketcherWidget() : SketcherWidget(){};
     using SketcherWidget::addFromString;
     using SketcherWidget::addTextToMolModel;
+    using SketcherWidget::chooseContextMenu;
     using SketcherWidget::copy;
     using SketcherWidget::cut;
     using SketcherWidget::importText;
+    using SketcherWidget::m_atom_context_menu;
     using SketcherWidget::m_mol_model;
+    using SketcherWidget::m_monomer_context_menu;
     using SketcherWidget::m_scene;
+    using SketcherWidget::m_selection_context_menu;
     using SketcherWidget::m_sketcher_model;
     using SketcherWidget::m_ui;
     using SketcherWidget::m_undo_stack;
@@ -86,14 +90,18 @@ class TestSketcherWidget : public SketcherWidget
 
     // using the system clipboard during tests leads to intermittent test
     // failures on buildbot, so we create our own clipboard
-    mutable std::string m_clipboard;
+    mutable std::string m_clipboard_text;
+    mutable std::string m_clipboard_binary;
     std::string getClipboardContents() const override
     {
-        return m_clipboard;
+        return m_clipboard_binary.empty() ? m_clipboard_text
+                                          : m_clipboard_binary;
     }
-    void setClipboardContents(std::string text) const override
+    void setClipboardContents(std::string text,
+                              std::string binary) const override
     {
-        m_clipboard = text;
+        m_clipboard_text = text;
+        m_clipboard_binary = binary;
     }
 };
 

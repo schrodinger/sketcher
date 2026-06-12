@@ -34,7 +34,7 @@ enum class Action { ROTATE, TRANSLATE, NONE };
 class SKETCHER_API MoveRotateSceneTool : public StandardSceneToolBase
 {
   public:
-    MoveRotateSceneTool(Scene* scene, MolModel* mol_model);
+    MoveRotateSceneTool(const Fonts& fonts, Scene* scene, MolModel* mol_model);
     virtual void onMouseMove(QGraphicsSceneMouseEvent* const event) override;
     virtual void
     onLeftButtonDragStart(QGraphicsSceneMouseEvent* const event) override;

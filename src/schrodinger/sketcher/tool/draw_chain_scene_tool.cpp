@@ -23,7 +23,7 @@ HintChainItem::HintChainItem(QGraphicsItem* parent) : QGraphicsItemGroup(parent)
     setVisible(false);
 
     m_bonds_item.setPen(QPen(STRUCTURE_HINT_COLOR));
-    m_label_item.setFont(QFont(FONT_NAME, DRAW_CHAIN_FONT_SIZE));
+    m_label_item.setFont(QFont(FONT_LIST, DRAW_CHAIN_FONT_SIZE));
 
     addToGroup(&m_bonds_item);
     addToGroup(&m_label_item);
@@ -42,8 +42,9 @@ void HintChainItem::setCoords(QList<QPointF> coords)
     m_label_item.setText(QString::number(coords.size() - 1));
 }
 
-DrawChainSceneTool::DrawChainSceneTool(Scene* scene, MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model)
+DrawChainSceneTool::DrawChainSceneTool(const Fonts& fonts, Scene* scene,
+                                       MolModel* mol_model) :
+    StandardSceneToolBase(fonts, scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::ATOM_NOT_AP;
 }

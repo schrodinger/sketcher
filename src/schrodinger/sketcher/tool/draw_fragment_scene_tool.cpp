@@ -248,7 +248,7 @@ DrawFragmentSceneTool::DrawFragmentSceneTool(
     const AtomDisplaySettings& atom_display_settings,
     const BondDisplaySettings& bond_display_settings, Scene* scene,
     MolModel* mol_model) :
-    StandardSceneToolBase(scene, mol_model),
+    StandardSceneToolBase(fonts, scene, mol_model),
     m_frag(fragment),
     m_hint_item(m_frag, fonts, atom_display_settings, bond_display_settings)
 {

@@ -48,6 +48,7 @@ namespace schrodinger
 namespace sketcher
 {
 
+class AbstractContextMenu;
 class AttachmentPointContextMenu;
 class AtomContextMenu;
 class BackgroundContextMenu;
@@ -396,10 +397,15 @@ class SKETCHER_API SketcherWidget : public QWidget
     /**
      * Methods for getting and setting the system clipboard. These methods are
      * overriden in the unit test since using the real clipboard can lead to
-     * intermittent failures on buildbot.
+     * intermittent failures on buildbot. The optional `binary` payload is
+     * stashed under a sketcher-private MIME type and preferred on paste.
+     *
+     * @note getClipboardContents() always return an empty string on WASM
+     * builds. Use sketcher_start_browser_clipboard_read() instead.
      */
     virtual std::string getClipboardContents() const;
-    virtual void setClipboardContents(std::string text) const;
+    virtual void setClipboardContents(std::string text,
+                                      std::string binary) const;
 
     /**
      * Perform the actual paste of clipboard text into the scene at the given
@@ -443,7 +449,22 @@ class SKETCHER_API SketcherWidget : public QWidget
         const std::unordered_set<const RDKit::Bond*>& secondary_connections,
         const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
         const std::unordered_set<const NonMolecularObject*>&
-            non_molecular_objects);
+            non_molecular_objects,
+        const RDKit::Atom* primary_atom = nullptr);
+
+    /**
+     * Pick the appropriate context menu for a given selection. Pure routing —
+     * no side effects. Returns nullptr when the selection has no menu (e.g.
+     * a non-molecular object). Exposed for unit testing the routing logic.
+     */
+    AbstractContextMenu* chooseContextMenu(
+        const std::unordered_set<const RDKit::Atom*>& filtered_atoms,
+        const std::unordered_set<const RDKit::Bond*>& filtered_bonds,
+        const std::unordered_set<const RDKit::Bond*>& secondary_connections,
+        const std::unordered_set<const RDKit::SubstanceGroup*>& sgroups,
+        const std::unordered_set<const NonMolecularObject*>&
+            non_molecular_objects,
+        bool only_attachment_points);
 
     /**
      * Show or hide the toolbars

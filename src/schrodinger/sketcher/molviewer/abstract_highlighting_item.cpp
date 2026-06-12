@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/molviewer/abstract_highlighting_item.h"
 
+#include <functional>
+
 #include <QList>
 
 namespace schrodinger
@@ -25,7 +27,7 @@ void AbstractHighlightingItem::clearHighlightingPath()
     setHighlightingPath(QPainterPath());
 }
 
-void AbstractHighlightingItem::highlightItem(QGraphicsItem* const item)
+void AbstractHighlightingItem::highlightItem(const QGraphicsItem* const item)
 {
     highlightItems({item});
 }
@@ -33,26 +35,37 @@ void AbstractHighlightingItem::highlightItem(QGraphicsItem* const item)
 void AbstractHighlightingItem::highlightItems(
     const QList<QGraphicsItem*>& items)
 {
+    // Convert to const pointers and delegate to the const version
+    QList<const QGraphicsItem*> const_items;
+    std::ranges::transform(items, std::back_inserter(const_items),
+                           std::identity{});
+    highlightItems(const_items);
+}
+
+void AbstractHighlightingItem::highlightItems(
+    const QList<const QGraphicsItem*>& items)
+{
     auto updated_items = updateItemsToHighlight(items);
     QPainterPath path = buildHighlightingPathForItems(updated_items);
     setHighlightingPath(path);
 }
 
-QList<QGraphicsItem*> AbstractHighlightingItem::updateItemsToHighlight(
-    const QList<QGraphicsItem*>& items) const
+QList<const QGraphicsItem*> AbstractHighlightingItem::updateItemsToHighlight(
+    const QList<const QGraphicsItem*>& items) const
 {
     return items;
 }
 
 QPainterPath AbstractHighlightingItem::buildHighlightingPathForItems(
-    const QList<QGraphicsItem*>& items) const
+    const QList<const QGraphicsItem*>& items) const
 {
     QPainterPath path;
     // Set fill rule to ensure overlapping areas don't create "holes"
     path.setFillRule(Qt::WindingFill);
 
     for (auto item : items) {
-        if (auto* molviewer_item = dynamic_cast<AbstractGraphicsItem*>(item)) {
+        if (auto* molviewer_item =
+                dynamic_cast<const AbstractGraphicsItem*>(item)) {
             QPainterPath local_path = getPathForItem(molviewer_item);
             path.addPath(molviewer_item->mapToScene(local_path));
         }

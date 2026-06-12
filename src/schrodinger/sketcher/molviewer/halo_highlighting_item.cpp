@@ -19,8 +19,8 @@ HaloHighlightingItem::HaloHighlightingItem(qreal z_value) :
     setZValue(z_value);
 }
 
-QPainterPath
-HaloHighlightingItem::getPathForItem(AbstractGraphicsItem* const item) const
+QPainterPath HaloHighlightingItem::getPathForItem(
+    const AbstractGraphicsItem* const item) const
 {
     return item->selectionHighlightingPath();
 }

@@ -4,6 +4,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
@@ -48,7 +50,8 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     TestFileExportDialog dlg(&model);
     BOOST_TEST(dlg.getComboFormat() == Format::MDL_MOLV3000);
     BOOST_TEST(dlg.m_ui->filename_le->text().toStdString() == "structure");
-    BOOST_TEST(dlg.m_ui->format_combo->count() == 8); // export formats
+    // 8 atomistic formats with extensions + HELM + FASTA = 10
+    BOOST_TEST(dlg.m_ui->format_combo->count() == 10);
     auto exts = dlg.getValidExtensions();
     BOOST_TEST(exts.size() == 8); // MDL available extensions
     BOOST_TEST(contains(exts, ".mol"));
@@ -59,6 +62,13 @@ BOOST_AUTO_TEST_CASE(test_FileExportDialog_standard)
     exts = dlg.getValidExtensions();
     BOOST_TEST(exts.size() == 6);
     BOOST_TEST(contains(exts, ".pdb"));
+
+    // HELM and FASTA are always available regardless of model state;
+    // selecting them produces sequence extensions.
+    dlg.setComboFormat(Format::HELM);
+    BOOST_TEST(contains(dlg.getValidExtensions(), ".helm"));
+    dlg.setComboFormat(Format::FASTA);
+    BOOST_TEST(contains(dlg.getValidExtensions(), ".fasta"));
 }
 
 BOOST_AUTO_TEST_CASE(test_FileExportDialog_reaction)
@@ -97,4 +107,70 @@ BOOST_AUTO_TEST_CASE(export_button)
 #else
     BOOST_TEST(dlg.m_ui->export_btn->text().toStdString() == "Save...");
 #endif
+}
+
+// Wire the dialog to a real mol so its export plumbing (combo selection ->
+// getFileContent() -> exportTextRequested signal) can be exercised end-to-end
+// against rdkit_extensions::to_string.
+static std::unique_ptr<TestFileExportDialog>
+make_dialog_for_mol(SketcherModel& model,
+                    const boost::shared_ptr<RDKit::RWMol>& mol)
+{
+    auto dlg = std::make_unique<TestFileExportDialog>(&model);
+    QObject::connect(
+        dlg.get(), &FileExportDialog::exportTextRequested,
+        [mol](Format format) {
+            return QString::fromStdString(
+                schrodinger::rdkit_extensions::to_string(*mol, format));
+        });
+    return dlg;
+}
+
+BOOST_AUTO_TEST_CASE(test_FileExportDialog_helm_roundtrip)
+{
+    using schrodinger::rdkit_extensions::to_rdkit;
+    auto source_mol = to_rdkit("PEPTIDE1{A.G.L}$$$$V2.0", Format::HELM);
+
+    SketcherModel model;
+    auto dlg = make_dialog_for_mol(model, source_mol);
+    dlg->setComboFormat(Format::HELM);
+    auto exported = dlg->getFileContent().toStdString();
+
+    auto roundtripped = to_rdkit(exported, Format::HELM);
+    BOOST_TEST(roundtripped->getNumAtoms() == source_mol->getNumAtoms());
+    BOOST_TEST(roundtripped->getNumBonds() == source_mol->getNumBonds());
+}
+
+BOOST_AUTO_TEST_CASE(test_FileExportDialog_fasta_roundtrip)
+{
+    using schrodinger::rdkit_extensions::to_rdkit;
+    auto source_mol = to_rdkit("PEPTIDE1{A.G.L}$$$$V2.0", Format::HELM);
+
+    SketcherModel model;
+    auto dlg = make_dialog_for_mol(model, source_mol);
+    dlg->setComboFormat(Format::FASTA);
+    auto exported = dlg->getFileContent().toStdString();
+
+    // FASTA reads require the specific sub-format (peptide vs DNA vs RNA);
+    // the exporter always emits Format::FASTA.
+    auto roundtripped = to_rdkit(exported, Format::FASTA_PEPTIDE);
+    BOOST_TEST(roundtripped->getNumAtoms() == source_mol->getNumAtoms());
+}
+
+BOOST_AUTO_TEST_CASE(test_FileExportDialog_monomeric_to_atomistic_export)
+{
+    using schrodinger::rdkit_extensions::to_rdkit;
+    auto source_mol = to_rdkit("PEPTIDE1{A.G.L}$$$$V2.0", Format::HELM);
+    BOOST_TEST(schrodinger::rdkit_extensions::isMonomeric(*source_mol));
+
+    SketcherModel model;
+    auto dlg = make_dialog_for_mol(model, source_mol);
+    // Picking an atomistic format on a monomeric scene should expand the
+    // monomers into their constituent atoms before serializing.
+    dlg->setComboFormat(Format::MDL_MOLV3000);
+    auto exported = dlg->getFileContent().toStdString();
+
+    auto roundtripped = to_rdkit(exported, Format::MDL_MOLV3000);
+    BOOST_TEST(!schrodinger::rdkit_extensions::isMonomeric(*roundtripped));
+    BOOST_TEST(roundtripped->getNumAtoms() > source_mol->getNumAtoms());
 }
