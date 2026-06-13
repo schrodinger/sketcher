@@ -2123,6 +2123,17 @@ smartsBasedToMonomeric(RDKit::RWMol& atomistic_mol, bool complex_mode)
     return monomer_mol;
 }
 
+auto make_atomistic_mol = [](auto& input_mol) {
+    RDKit::RWMol new_atomistic_mol(input_mol);
+    // Set reference index for SMILES fragments
+    for (auto at : new_atomistic_mol.atoms()) {
+        at->setProp(REFERENCE_IDX, at->getIdx());
+    }
+
+    neutralizeAtoms(new_atomistic_mol);
+    return new_atomistic_mol;
+};
+
 } // unnamed namespace
 
 boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
@@ -2133,17 +2144,6 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
             "Input molecule has no atoms, cannot convert to "
             "monomeric representation.");
     }
-
-    auto make_atomistic_mol = [](auto& input_mol) {
-        RDKit::RWMol new_atomistic_mol(input_mol);
-        // Set reference index for SMILES fragments
-        for (auto at : new_atomistic_mol.atoms()) {
-            at->setProp(REFERENCE_IDX, at->getIdx());
-        }
-
-        neutralizeAtoms(new_atomistic_mol);
-        return new_atomistic_mol;
-    };
 
     auto atomistic_mol = make_atomistic_mol(mol);
 
@@ -2169,6 +2169,163 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
         // Use new atomistic_mol; old one may be littered with properties.
         auto atomistic_mol2 = make_atomistic_mol(mol);
         return smartsBasedToMonomeric(atomistic_mol2, /*complex_mode=*/true);
+    }
+}
+
+// If the monomer is an alpha amino acid residue, assign names to the backbone
+// atoms. This is used as a fallback when a monomer can't be identified.
+void assignBackboneAtomNames(RDKit::ROMol& mol, const MonomerMatch& monomer,
+                             const RDKit::ROMol& fragment)
+{
+    using namespace RDKit::v2::SmilesParse;
+    // Return the atom from `mol` corresponding to the atom in `fragment`
+    // with index `frag_idx`.
+    auto get_atom = [&](unsigned int frag_idx) {
+        auto* frag_atom = fragment.getAtomWithIdx(frag_idx);
+        auto atom_idx = frag_atom->getProp<unsigned int>(REFERENCE_IDX);
+        return mol.getAtomWithIdx(atom_idx);
+    };
+
+    auto set_name = [&](auto frag_idx, auto& name) {
+        auto* atom = get_atom(frag_idx);
+        atom->getMonomerInfo()->setName(name);
+    };
+
+    static auto residue_query = MolFromSmarts("N[C;H,H2]C(=O)");
+    auto matches = RDKit::SubstructMatch(fragment, *residue_query);
+    for (auto& match : matches) {
+        auto* n_atom = get_atom(match[0].second);
+        if (n_atom->getIdx() == monomer.r1) {
+            set_name(match[0].second, " N  ");
+            set_name(match[1].second, " CA ");
+            set_name(match[2].second, " C  ");
+            set_name(match[3].second, " O  ");
+            return;
+        }
+    }
+}
+
+void addResidueInfo(RDKit::ROMol& mol)
+{
+    using namespace RDKit::v2::SmilesParse;
+
+    const auto& db = MonomerDatabase::instance();
+
+    // Try a full conversion to monomeric and discard the result, just to see
+    // if complex_mode is required.
+    bool complex_mode = false;
+    try {
+        auto test_atomistic_mol = make_atomistic_mol(mol);
+        static_cast<void>(
+            smartsBasedToMonomeric(test_atomistic_mol, complex_mode));
+    } catch (std::runtime_error&) {
+        complex_mode = true;
+    }
+    auto atomistic_mol = make_atomistic_mol(mol);
+
+    std::vector<MonomerMatch> monomers;
+    identifyMonomers(atomistic_mol, monomers, complex_mode);
+
+    std::vector<Linkage> linkages;
+    detectLinkages(atomistic_mol, monomers, linkages);
+    orderMonomers(atomistic_mol, monomers, linkages);
+
+    // For each monomer, extract the atoms and do a substructure search to
+    // identify the atom mapping.
+    int res_num = 0;
+    int prev_chain_idx = -1;
+    for (const auto& monomer : monomers) {
+        ++res_num;
+        if (monomer.chain_idx != prev_chain_idx) {
+            // Start a new chain.
+            res_num = 1;
+            prev_chain_idx = monomer.chain_idx;
+        }
+
+        // Systematic chain ID: A, B, C... If there are more than 26 chains,
+        // we'll leave the rest blank.
+        std::string chain_id = " ";
+        if (monomer.chain_idx <= 26) {
+            chain_id[0] = 'A' + monomer.chain_idx - 1;
+        }
+
+        // Set residue number and chain ID, and placeholders for the rest,
+        // which will be added later if possible, depending on whether we
+        // can identify the monomer and match its atoms.
+        for (auto atom_idx : monomer.atom_indices) {
+            auto* atom = mol.getAtomWithIdx(atom_idx);
+            auto res_info = std::make_unique<RDKit::AtomPDBResidueInfo>(
+                "",                 // atomName
+                atom->getIdx() + 1, // serialNumber
+                "",                 // altLoc
+                "UNK",              // residueName
+                res_num,            // residueNumber
+                chain_id,           // chainId
+                " "                 // insertionCode
+            );
+            atom->setMonomerInfo(res_info.release());
+        }
+
+        if (monomer.terminal_atom != NO_ATTACHMENT) {
+            auto* atom = mol.getAtomWithIdx(monomer.terminal_atom);
+            if (atom->getAtomicNum() == 8) {
+                // terminal_atom should be one of atom_indices, but let's
+                // be safe.
+                if (auto* mi = atom->getMonomerInfo(); mi) {
+                    mi->setName(" OXT");
+                }
+            }
+        }
+
+        auto fragment =
+            ExtractMolFragment(atomistic_mol, monomer.atom_indices, false);
+
+        auto helm_symbol = findHelmSymbol(atomistic_mol, monomer);
+        if (!helm_symbol) {
+            assignBackboneAtomNames(mol, monomer, *fragment);
+            continue;
+        }
+
+        // Monomer has been recognized!
+        auto info = db.getMonomerInfo(*helm_symbol, ChainType::PEPTIDE);
+        std::string res_name = info.pdbcode ? *info.pdbcode : "UNK";
+
+        for (auto atom_idx : monomer.atom_indices) {
+            auto* atom = mol.getAtomWithIdx(atom_idx);
+            auto* res_info = atom->getMonomerInfo();
+            res_info->setResidueName(res_name);
+        }
+
+        // Get a query mol with the OXT removed, because the OXT atom won't
+        // be present in the fragment except if this is a C-terminal residue.
+        auto qmol = MolFromSmiles(*info.smiles);
+        for (auto* at : qmol->atoms()) {
+            std::string atom_name;
+            if (at->getPropIfPresent("pdbName", atom_name) &&
+                atom_name == " OXT") {
+                qmol->removeAtom(at->getIdx());
+                break;
+            }
+        }
+
+        auto matches = RDKit::SubstructMatch(*fragment, *qmol);
+        if (matches.empty()) {
+            assignBackboneAtomNames(mol, monomer, *fragment);
+            continue;
+        }
+
+        // Atoms have been mapped successfully!
+        auto& match = matches[0];
+        for (const auto& [query_idx, atom_idx] : match) {
+            auto* qatom = qmol->getAtomWithIdx(query_idx);
+            std::string atom_name;
+            if (qatom->getPropIfPresent("pdbName", atom_name)) {
+                auto* frag_atom = fragment->getAtomWithIdx(atom_idx);
+                auto orig_idx = frag_atom->getProp<unsigned int>(REFERENCE_IDX);
+                auto* atom = mol.getAtomWithIdx(orig_idx);
+                atom->getMonomerInfo()->setName(atom_name);
+            }
+        }
     }
 }
 

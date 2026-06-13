@@ -54,5 +54,16 @@ getMonomers(const RDKit::ROMol& mol);
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::RWMol>
 toAtomistic(const RDKit::ROMol& monomer_mol);
 
+/**
+ * Identify the residues in a molecule and set the AtomMonomerInfo for each
+ * atom, including atom name, residue name and number, and chain ID.
+ *
+ * The atom names come from the CXSMILES data in the SMILES field of the
+ * monomer database; the residue names come from the PDBCODE field. Chain names
+ * are assigned as A, B, C, etc. in an unsepecified order; residue numbers
+ * start from 1 for each chain.
+ */
+RDKIT_EXTENSIONS_API void addResidueInfo(RDKit::ROMol& atomistic_mol);
+
 } // namespace rdkit_extensions
 } // namespace schrodinger
