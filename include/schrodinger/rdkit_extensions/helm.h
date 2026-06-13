@@ -18,6 +18,7 @@ const std::string HELM_MODEL{"HELM_MODEL"};
 const std::string MONOMER_LIST{"MONOMER_LIST"};
 const std::string UNKNOWN_MONOMER{"UNKNOWN_MONOMER"};
 const std::string REPETITION_DUMMY_ID{"REPETITION_DUMMY_ID"};
+const std::string CANONICAL_SMILES{"CANONICAL_SMILES"};
 
 // NOTE: These are to allow replacement of the python api
 const std::string BRANCH_MONOMER{"isBranchMonomer"};

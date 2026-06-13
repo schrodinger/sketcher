@@ -4,10 +4,12 @@
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
+#include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 
 #include <algorithm>
+#include <iostream>
 #include <ranges>
 #include <unordered_map>
 #include <boost/functional/hash.hpp>
@@ -115,6 +117,32 @@ bool monomerSmilesHasAttachmentPoint(const std::string& monomer_smiles,
     }
 
     return false;
+}
+
+std::string canonicalize_smiles(const std::string& smiles)
+{
+    using namespace RDKit::v2::SmilesParse;
+    static const SmilesParserParams smi_opts{
+        .sanitize = false, .removeHs = false, .replacements = {}};
+
+    try {
+        [[maybe_unused]] CaptureRDErrorLog rdkit_log;
+        auto mol = MolFromSmiles(smiles, smi_opts);
+        if (mol) {
+            return RDKit::MolToSmiles(*mol);
+        }
+        std::cerr << fmt::format(
+            "Warning: Unable to canonicalize SMILES '{}'. Using original "
+            "SMILES.\n",
+            smiles);
+    } catch (...) {
+        // If canonicalization fails by exception, keep original string
+        std::cerr << fmt::format(
+            "Warning: Exception while canonicalizing SMILES '{}'. Using "
+            "original SMILES.\n",
+            smiles);
+    }
+    return smiles;
 }
 
 void validateAttachmentPointWithDB(
@@ -435,7 +463,10 @@ std::unique_ptr<Monomer> makeMonomer(const std::string_view name,
 
     // hack to get some level of canonicalization for monomer mols
     static boost::hash<std::string> hasher;
-    a->setIsotope(hasher(n));
+    // Canonicalize SMILES monomers before hashing and store canonicalized
+    std::string canon_smiles = is_smiles ? canonicalize_smiles(n) : n;
+    a->setProp(CANONICAL_SMILES, canon_smiles);
+    a->setIsotope(hasher(canon_smiles));
     a->setNoImplicit(true);
 
     auto* residue_info = new ::RDKit::AtomPDBResidueInfo();
@@ -476,7 +507,11 @@ void mutateMonomer(RDKit::ROMol& monomer_mol, unsigned int monomer_idx,
 
     // hack to get some level of canonicalization for monomer mols
     static boost::hash<std::string> hasher;
-    atom->setIsotope(hasher(helm_symbol_str));
+    // Canonicalize SMILES monomers before storing and hashing
+    std::string canon_smiles =
+        is_smiles ? canonicalize_smiles(helm_symbol_str) : helm_symbol_str;
+    atom->setProp(CANONICAL_SMILES, canon_smiles);
+    atom->setIsotope(hasher(canon_smiles));
 
     auto res_info =
         dynamic_cast<RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
