@@ -2205,6 +2205,22 @@ void assignBackboneAtomNames(RDKit::ROMol& mol, const MonomerMatch& monomer,
     }
 }
 
+RDKit::AtomMonomerInfo* addResidueInfoToAtom(RDKit::Atom& atom, int res_num,
+                                             const std::string& chain_id)
+{
+    auto res_info = std::make_unique<RDKit::AtomPDBResidueInfo>(
+        "",                // atomName
+        atom.getIdx() + 1, // serialNumber
+        "",                // altLoc
+        "UNK",             // residueName
+        res_num,           // residueNumber
+        chain_id,          // chainId
+        " "                // insertionCode
+    );
+    atom.setMonomerInfo(res_info.release());
+    return atom.getMonomerInfo();
+}
+
 void addResidueInfo(RDKit::ROMol& mol)
 {
     using namespace RDKit::v2::SmilesParse;
@@ -2267,31 +2283,15 @@ void addResidueInfo(RDKit::ROMol& mol)
             chain_id[0] = it->second;
         }
 
-        // Set residue number and chain ID, and placeholders for the rest,
-        // which will be added later if possible, depending on whether we
-        // can identify the monomer and match its atoms.
         for (auto atom_idx : monomer.atom_indices) {
             auto* atom = mol.getAtomWithIdx(atom_idx);
-            auto res_info = std::make_unique<RDKit::AtomPDBResidueInfo>(
-                "",                 // atomName
-                atom->getIdx() + 1, // serialNumber
-                "",                 // altLoc
-                "UNK",              // residueName
-                res_num,            // residueNumber
-                chain_id,           // chainId
-                " "                 // insertionCode
-            );
-            atom->setMonomerInfo(res_info.release());
-        }
-
-        if (monomer.terminal_atom != NO_ATTACHMENT) {
-            auto* atom = mol.getAtomWithIdx(monomer.terminal_atom);
-            if (atom->getAtomicNum() == 8) {
-                // terminal_atom should be one of atom_indices, but let's
-                // be safe.
-                if (auto* mi = atom->getMonomerInfo(); mi) {
-                    mi->setName(" OXT");
-                }
+            auto* res_info = atom->getMonomerInfo();
+            if (res_info == nullptr) {
+                res_info = addResidueInfoToAtom(*atom, res_num, chain_id);
+            }
+            if (atom_idx == monomer.terminal_atom &&
+                atom->getAtomicNum() == 8) {
+                res_info->setName(" OXT");
             }
         }
 
@@ -2306,12 +2306,14 @@ void addResidueInfo(RDKit::ROMol& mol)
 
         // Monomer has been recognized!
         auto info = db.getMonomerInfo(*helm_symbol, ChainType::PEPTIDE);
-        std::string res_name = info.pdbcode ? *info.pdbcode : "UNK";
 
-        for (auto atom_idx : monomer.atom_indices) {
-            auto* atom = mol.getAtomWithIdx(atom_idx);
-            auto* res_info = atom->getMonomerInfo();
-            res_info->setResidueName(res_name);
+        // Set the residue name if found. Otherwise we'll either preserve
+        // what was in the input or the UNK set by addResidueInfoToAtom().
+        if (info.pdbcode) {
+            for (auto atom_idx : monomer.atom_indices) {
+                auto* atom = mol.getAtomWithIdx(atom_idx);
+                atom->getMonomerInfo()->setResidueName(*info.pdbcode);
+            }
         }
 
         // Get a query mol with the OXT removed, because the OXT atom won't
