@@ -2230,6 +2230,23 @@ void addResidueInfo(RDKit::ROMol& mol)
     detectLinkages(atomistic_mol, monomers, linkages);
     orderMonomers(atomistic_mol, monomers, linkages);
 
+    // First pass: count monomers per chain to identify single-monomer chains.
+    std::map<int, int> monomers_per_chain;
+    for (const auto& monomer : monomers) {
+        monomers_per_chain[monomer.chain_idx]++;
+    }
+
+    // Build a mapping from chain_idx to chain letter for multi-monomer chains.
+    // Only chains with more than one monomer get assigned letters A, B, C...
+    std::map<int, char> chain_idx_to_letter;
+    int letter_index = 0;
+    for (const auto& [chain_idx, count] : monomers_per_chain) {
+        if (count > 1 && letter_index < 26) {
+            chain_idx_to_letter[chain_idx] = 'A' + letter_index;
+            ++letter_index;
+        }
+    }
+
     // For each monomer, extract the atoms and do a substructure search to
     // identify the atom mapping.
     int res_num = 0;
@@ -2242,11 +2259,12 @@ void addResidueInfo(RDKit::ROMol& mol)
             prev_chain_idx = monomer.chain_idx;
         }
 
-        // Systematic chain ID: A, B, C... If there are more than 26 chains,
-        // we'll leave the rest blank.
+        // Systematic chain ID: A, B, C... for chains with more than one
+        // monomer. Single-monomer chains get a space.
         std::string chain_id = " ";
-        if (monomer.chain_idx <= 26) {
-            chain_id[0] = 'A' + monomer.chain_idx - 1;
+        auto it = chain_idx_to_letter.find(monomer.chain_idx);
+        if (it != chain_idx_to_letter.end()) {
+            chain_id[0] = it->second;
         }
 
         // Set residue number and chain ID, and placeholders for the rest,

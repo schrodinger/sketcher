@@ -60,8 +60,9 @@ toAtomistic(const RDKit::ROMol& monomer_mol);
  *
  * The atom names come from the CXSMILES data in the SMILES field of the
  * monomer database; the residue names come from the PDBCODE field. Chain names
- * are assigned as A, B, C, etc. in an unsepecified order; residue numbers
- * start from 1 for each chain.
+ * are assigned as A, B, C, etc. in an unspecified order, but only for chains
+ * containing more than one monomer; single-monomer chains are assigned a space
+ * character as the chain ID. Residue numbers start from 1 for each chain.
  */
 RDKIT_EXTENSIONS_API void addResidueInfo(RDKit::ROMol& atomistic_mol);
 
