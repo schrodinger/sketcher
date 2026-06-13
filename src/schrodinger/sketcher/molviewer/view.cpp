@@ -113,12 +113,9 @@ void View::pinchTriggered(QPinchGesture* gesture)
     if (state == Qt::GestureStarted) {
         m_currently_pinching_trackpad = true;
     } else {
-        // zoom anchored at the pinch center (the mouse cursor on a macOS
-        // trackpad pinch). Anchoring at the view center would push the
-        // structure away from where the user is pinching.
+        // zoom
         auto scale_factor = gesture->scaleFactor();
-        auto pinch_anchor = viewport()->mapFromGlobal(QCursor::pos());
-        scaleAnchoredAtCursor(scale_factor, pinch_anchor);
+        scaleSafely(scale_factor);
 
         auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();
 
@@ -156,28 +153,7 @@ void View::wheelEvent(QWheelEvent* event)
     // K * 2^x, where K is an empirical constant to make the zooming feel
     // natural
     qreal scal = pow(2.0, event->angleDelta().y() / 2400.0);
-    scaleAnchoredAtCursor(scal, event->position().toPoint());
-}
-
-void View::scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor)
-{
-    // Capture the scene point under the anchor (cursor / pinch center) before
-    // scaling and shift the view afterwards so the same scene point is back
-    // under the anchor. Qt's setTransformationAnchor(AnchorUnderMouse)
-    // compensates through the scroll bars, which this view has disabled, so
-    // do it manually via sceneRect (the mechanism this view uses for
-    // panning). Iterate so any sub-pixel residual from setSceneRect's
-    // snapping converges to zero.
-    constexpr qreal SCENE_COORD_EPSILON = 0.001;
-    auto scene_pos_before = mapToScene(anchor);
-    scaleSafely(scale_factor);
-    for (int i = 0; i < 4; ++i) {
-        auto delta = scene_pos_before - mapToScene(anchor);
-        if (delta.manhattanLength() < SCENE_COORD_EPSILON) {
-            break;
-        }
-        translateViewport(delta);
-    }
+    scaleSafely(scal);
 }
 
 void View::fitToScreen(bool selection_only)

@@ -131,14 +131,6 @@ class SKETCHER_API View : public QGraphicsView
     void scaleSafely(qreal scale_factor);
 
     /**
-     * Scale the matrix and shift the viewport so the scene point currently
-     * under @p anchor (in viewport coordinates) stays under @p anchor after
-     * the scale. Use this for wheel and pinch zooms so the user can focus a
-     * region by zooming with the cursor over it.
-     */
-    void scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor);
-
-    /**
      * Utility function to fit given rectangle to the screen.
      */
     void fitRecToScreen(const QRectF& rec);
