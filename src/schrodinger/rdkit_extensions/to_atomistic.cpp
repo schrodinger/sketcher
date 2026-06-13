@@ -483,11 +483,20 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
     // calling removeHs explicitly which checks all hydrogens.
     atomistic_mol->beginBatchEdit();
     for (auto at_idx : remove_atoms) {
+        auto* at = atomistic_mol->getAtomWithIdx(at_idx);
         atomistic_mol->removeAtom(at_idx);
+
+        // We already removed the atom because it was used as an attachment
+        // point, so we don't want to remove it again below.
+        at->clearProp(ATOM_PROP_GRAPH_H);
     }
     for (auto at : atomistic_mol->atoms()) {
         bool is_graph_h = false;
         if (at->getPropIfPresent(ATOM_PROP_GRAPH_H, is_graph_h) && is_graph_h) {
+            // Inc. neighbor's H count to prevent pyrrole kekulization issues.
+            for (auto nbr : atomistic_mol->atomNeighbors(at)) {
+                nbr->setNumExplicitHs(nbr->getNumExplicitHs() + 1);
+            }
             atomistic_mol->removeAtom(at->getIdx());
         } else if (at->getAtomicNum() == 0) {
             atomistic_mol->removeAtom(at->getIdx());

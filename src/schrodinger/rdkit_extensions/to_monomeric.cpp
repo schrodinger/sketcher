@@ -158,6 +158,14 @@ void addDummyAtom(RDKit::RWMol& mol_fragment, unsigned int atom_idx)
     auto new_atom_idx =
         mol_fragment.addAtom(&dummy_atom, update_label, take_ownership);
     mol_fragment.addBond(new_atom_idx, atom_idx, RDKit::Bond::SINGLE);
+
+    // We need to remove an explicit hydrogen, if any, because otherwise the
+    // implicit hydrogen/valence calculation can turn sulfur atoms
+    // hypervalent, which we don't want: C[SH] -> C[SH2]*, instead of of CS*.
+    auto* atom = mol_fragment.getAtomWithIdx(atom_idx);
+    if (auto hcount = atom->getNumExplicitHs(); hcount > 0) {
+        atom->setNumExplicitHs(hcount - 1);
+    }
 }
 
 // Add dummy atoms next to the attachment points and remove the terminal
