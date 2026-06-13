@@ -15,10 +15,10 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/monomer_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
-#include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
