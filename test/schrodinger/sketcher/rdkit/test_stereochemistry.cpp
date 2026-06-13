@@ -174,5 +174,18 @@ M  END
     BOOST_TEST(bond->getBondDir() == RDKit::Bond::BondDir::EITHERDOUBLE);
 }
 
+BOOST_AUTO_TEST_CASE(test_smiles_specified_stereo_not_clobbered)
+{
+    auto mol =
+        rdkit_extensions::to_rdkit("C/C=C/C", rdkit_extensions::Format::SMILES);
+    rdkit_extensions::compute2DCoords(*mol);
+    update_molecule_on_change(*mol);
+
+    auto* bond = mol->getBondBetweenAtoms(1, 2);
+    BOOST_REQUIRE(bond != nullptr);
+    BOOST_TEST(bond->getStereo() != RDKit::Bond::BondStereo::STEREOANY);
+    BOOST_TEST(bond->getBondDir() != RDKit::Bond::BondDir::EITHERDOUBLE);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
