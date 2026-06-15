@@ -161,26 +161,19 @@ void View::wheelEvent(QWheelEvent* event)
 
 void View::scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor)
 {
-    // Capture the scene point under the anchor (cursor / pinch center) before
-    // scaling and shift the view afterwards so the same scene point is back
-    // under the anchor. Qt's setTransformationAnchor(AnchorUnderMouse)
-    // compensates through the scroll bars, which this view has disabled, so
-    // do it manually via sceneRect (the mechanism this view uses for
-    // panning). Iterate so any sub-pixel residual from setSceneRect's
-    // snapping converges to zero.
-    constexpr qreal SCENE_COORD_EPSILON = 0.001;
+    // Capture the scene point under the anchor before scaling, then
+    // reposition the viewport so the same scene point ends up back under
+    // the anchor. We compute the required sceneRect center analytically:
+    // mapToScene(p) = center + invTransform * (p - viewportCenter), so
+    // solving for center given a desired mapToScene(anchor) is a single
+    // subtraction.
     auto scene_pos_before = mapToScene(anchor);
     scaleSafely(scale_factor);
-    for (int i = 0; i < 4; ++i) {
-        auto delta = scene_pos_before - mapToScene(anchor);
-        if (delta.manhattanLength() < SCENE_COORD_EPSILON) {
-            break;
-        }
-        // Translate directly rather than through translateViewport, whose
-        // enlargeSceneIfNeeded call can fight the correction on platforms
-        // where the viewport is smaller than the widget rect (Windows).
-        setSceneRect(sceneRect().translated(delta));
-    }
+    auto viewport_center =
+        QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0);
+    auto anchor_scene_offset =
+        transform().inverted().map(QPointF(anchor) - viewport_center);
+    centerViewportOn(scene_pos_before - anchor_scene_offset);
     enlargeSceneIfNeeded();
 }
 
