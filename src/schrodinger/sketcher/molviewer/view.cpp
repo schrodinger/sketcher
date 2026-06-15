@@ -176,8 +176,12 @@ void View::scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor)
         if (delta.manhattanLength() < SCENE_COORD_EPSILON) {
             break;
         }
-        translateViewport(delta);
+        // Translate directly rather than through translateViewport, whose
+        // enlargeSceneIfNeeded call can fight the correction on platforms
+        // where the viewport is smaller than the widget rect (Windows).
+        setSceneRect(sceneRect().translated(delta));
     }
+    enlargeSceneIfNeeded();
 }
 
 void View::fitToScreen(bool selection_only)
