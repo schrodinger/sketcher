@@ -113,11 +113,12 @@ void View::pinchTriggered(QPinchGesture* gesture)
     if (state == Qt::GestureStarted) {
         m_currently_pinching_trackpad = true;
     } else {
-        // zoom anchored at the pinch center (the mouse cursor on a macOS
-        // trackpad pinch). Anchoring at the view center would push the
-        // structure away from where the user is pinching.
+        // Anchor the zoom at the pinch center so the region under the
+        // user's fingers stays fixed. Works for both trackpad and
+        // touchscreen pinches.
         auto scale_factor = gesture->scaleFactor();
-        auto pinch_anchor = viewport()->mapFromGlobal(QCursor::pos());
+        auto pinch_anchor =
+            viewport()->mapFromParent(gesture->centerPoint().toPoint());
         scaleAnchoredAtCursor(scale_factor, pinch_anchor);
 
         auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();

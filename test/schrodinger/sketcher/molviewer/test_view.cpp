@@ -26,6 +26,7 @@ class TestView : public View
     TestView(QGraphicsScene* scene, QWidget* parent = nullptr) :
         View(scene, parent)
     {
+        setAttribute(Qt::WA_DontShowOnScreen);
     }
     using View::m_delayed_fit_to_screen;
     using View::m_initial_geometry_set;

@@ -132,8 +132,8 @@ class SKETCHER_API View : public QGraphicsView
 
     /**
      * Scale the matrix and shift the viewport so the scene point currently
-     * under @p anchor (in viewport coordinates) stays under @p anchor after
-     * the scale. Use this for wheel and pinch zooms so the user can focus a
+     * under \a anchor (in viewport coordinates) stays under it after the
+     * scale. Use this for wheel and pinch zooms so the user can focus a
      * region by zooming with the cursor over it.
      */
     void scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor);
