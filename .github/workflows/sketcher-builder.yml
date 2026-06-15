@@ -46,7 +46,7 @@ jobs:
       matrix:
         include:
           - build-name: macos
-            runner: macos-15
+            runner: macos-26
           - build-name: windows
             runner: windows-2022
           - build-name: ubuntu
