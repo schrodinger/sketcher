@@ -246,7 +246,7 @@ list(
   git
   apply
   --ignore-whitespace
-  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_revert_9230.patch)
+  ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_modified_pr_9204.patch)
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
