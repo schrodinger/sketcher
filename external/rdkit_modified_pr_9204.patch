@@ -1,0 +1,749 @@
+diff --git a/Code/GraphMol/Depictor/DepictUtils.cpp b/Code/GraphMol/Depictor/DepictUtils.cpp
+index 9ec71c7ee..68415ac7b 100644
+--- a/Code/GraphMol/Depictor/DepictUtils.cpp
++++ b/Code/GraphMol/Depictor/DepictUtils.cpp
+@@ -14,6 +14,7 @@
+ #include <RDGeneral/Invariant.h>
+ #include <GraphMol/Chirality.h>
+ #include <algorithm>
++#include <boost/dynamic_bitset.hpp>
+ 
+ namespace {
+ static const char *FORMER_NBR_INDICES = "__formerNbrIndices";
+@@ -402,6 +403,97 @@ RDKit::INT_VECT getRotatableBonds(const RDKit::ROMol &mol, unsigned int aid1,
+   return res;
+ }
+ 
++bool isSpiroCenter(unsigned int aid, const RDKit::ROMol *mol) {
++  PRECONDITION(mol, "");
++  PRECONDITION(aid < mol->getNumAtoms(), "");
++
++  // Cheap check first: spiro center should have exactly 4 neighbors
++  unsigned int degree = mol->getAtomWithIdx(aid)->getDegree();
++  if (degree != 4) {
++    return false;
++  }
++
++  // Spiro atom must belong to exactly 2 rings
++  unsigned int numRings = mol->getRingInfo()->numAtomRings(aid);
++  if (numRings != 2) {
++    return false;
++  }
++
++  // Get the two rings containing this atom
++  const auto &atomRings = mol->getRingInfo()->atomRings();
++  std::vector<RDKit::INT_VECT> rings;
++  for (const auto &ring : atomRings) {
++    if (std::find(ring.begin(), ring.end(), static_cast<int>(aid)) !=
++        ring.end()) {
++      rings.push_back(ring);
++    }
++  }
++
++  if (rings.size() != 2) {
++    return false;
++  }
++
++  // Use dynamic_bitset for efficient set operations
++  boost::dynamic_bitset<> ring1(mol->getNumAtoms());
++  boost::dynamic_bitset<> ring2(mol->getNumAtoms());
++
++  for (auto idx : rings[0]) {
++    ring1.set(idx);
++  }
++  for (auto idx : rings[1]) {
++    ring2.set(idx);
++  }
++
++  // Check that the two rings share ONLY this atom (spiro)
++  boost::dynamic_bitset<> shared = ring1 & ring2;
++  if (shared.count() != 1) {
++    // Rings share more than just this atom - not a spiro
++    return false;
++  }
++
++  // Verify that each ring has exactly 2 neighbors of the spiro atom
++  int ring1_neighbors = 0;
++  int ring2_neighbors = 0;
++
++  for (auto nbr : mol->atomNeighbors(mol->getAtomWithIdx(aid))) {
++    unsigned int nbrIdx = nbr->getIdx();
++    bool in_ring1 = ring1.test(nbrIdx);
++    bool in_ring2 = ring2.test(nbrIdx);
++
++    if (in_ring1 && !in_ring2) {
++      ring1_neighbors++;
++    } else if (in_ring2 && !in_ring1) {
++      ring2_neighbors++;
++    } else {
++      // Neighbor is in both rings or neither - not a spiro
++      return false;
++    }
++  }
++
++  if (ring1_neighbors != 2 || ring2_neighbors != 2) {
++    return false;
++  }
++
++  return true;
++}
++
++RDKit::INT_VECT getSpiroCenters(const RDKit::ROMol &mol, unsigned int aid1,
++                                unsigned int aid2) {
++  PRECONDITION(aid1 < mol.getNumAtoms(), "");
++  PRECONDITION(aid2 < mol.getNumAtoms(), "");
++
++  RDKit::INT_LIST path = RDKit::MolOps::getShortestPath(mol, aid1, aid2);
++  RDKit::INT_VECT res;
++
++  for (auto aid : path) {
++    if (isSpiroCenter(aid, &mol)) {
++      res.push_back(aid);
++    }
++  }
++
++  return res;
++}
++
+ void getNbrAtomAndBondIds(unsigned int aid, const RDKit::ROMol *mol,
+                           RDKit::INT_VECT &aids, RDKit::INT_VECT &bids) {
+   CHECK_INVARIANT(mol, "");
+diff --git a/Code/GraphMol/Depictor/DepictUtils.h b/Code/GraphMol/Depictor/DepictUtils.h
+index b3bc4ec48..659ff30d0 100644
+--- a/Code/GraphMol/Depictor/DepictUtils.h
++++ b/Code/GraphMol/Depictor/DepictUtils.h
+@@ -334,6 +334,27 @@ RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getRotatableBonds(const RDKit::ROMol &mol,
+ RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getAllRotatableBonds(
+     const RDKit::ROMol &mol);
+ 
++//! \brief check if an atom is a spiro center (belongs to exactly 2 rings)
++/*!
++  \param aid  index of the atom
++  \param mol  the molecule of interest
++
++  \return true if the atom is a spiro center
++*/
++RDKIT_DEPICTOR_EXPORT bool isSpiroCenter(unsigned int aid,
++                                          const RDKit::ROMol *mol);
++
++//! \brief find spiro centers on the shortest path between two atoms
++/*!
++  \param mol   the molecule of interest
++  \param aid1  index of the first atom
++  \param aid2  index of the second atom
++
++  \return a set of the indices of spiro centers
++*/
++RDKIT_DEPICTOR_EXPORT RDKit::INT_VECT getSpiroCenters(
++    const RDKit::ROMol &mol, unsigned int aid1, unsigned int aid2);
++
+ //! Get the ids of the atoms and bonds that are connected to aid
+ RDKIT_DEPICTOR_EXPORT void getNbrAtomAndBondIds(unsigned int aid,
+                                                 const RDKit::ROMol *mol,
+diff --git a/Code/GraphMol/Depictor/EmbeddedFrag.cpp b/Code/GraphMol/Depictor/EmbeddedFrag.cpp
+index ec61bd1e6..b97d140d1 100644
+--- a/Code/GraphMol/Depictor/EmbeddedFrag.cpp
++++ b/Code/GraphMol/Depictor/EmbeddedFrag.cpp
+@@ -1443,6 +1443,24 @@ void _recurseAtomOneSide(unsigned int endAid, unsigned int begAid,
+   return;
+ }
+ 
++std::vector<RDKit::INT_VECT> _getRingsForSpiroCenter(unsigned int spiroAid,
++                                                     const RDKit::ROMol *mol) {
++  PRECONDITION(mol, "");
++  std::vector<RDKit::INT_VECT> result;
++  const auto &atomRings = mol->getRingInfo()->atomRings();
++
++  // Collect the 2 rings containing this spiro atom
++  for (const auto &ring : atomRings) {
++    if (std::find(ring.begin(), ring.end(), static_cast<int>(spiroAid)) !=
++        ring.end()) {
++      result.push_back(ring);
++    }
++  }
++
++  POSTCONDITION(result.size() == 2, "Spiro must have exactly 2 rings");
++  return result;
++}
++
+ double _crossVal(const RDGeom::Point2D &v1, const RDGeom::Point2D &v2) {
+   return v1.x * v2.y - v2.x * v1.y;
+ }
+@@ -1870,6 +1888,62 @@ void EmbeddedFrag::flipAboutBond(unsigned int bondId, bool flipEnd) {
+   }
+ }
+ 
++void EmbeddedFrag::flipAboutSpiroCenter(unsigned int spiroAid) {
++  PRECONDITION(dp_mol, "");
++  PRECONDITION(spiroAid < dp_mol->getNumAtoms(), "");
++  // Note: Caller validates spiroAid is a spiro center, no need to check again
++
++  // Get the two rings
++  auto rings = _getRingsForSpiroCenter(spiroAid, dp_mol);
++  CHECK_INVARIANT(rings.size() == 2, "");
++
++  // Always flip the first ring
++  const auto &targetRing = rings[0];
++
++  // Find the two neighbors of the spiro atom that are in the target ring
++  // (must be bonded to the spiro atom, not just in the same ring)
++  std::set<int> targetRingSet(targetRing.begin(), targetRing.end());
++  std::vector<unsigned int> ringNeighbors;
++
++  for (auto nbr : dp_mol->atomNeighbors(dp_mol->getAtomWithIdx(spiroAid))) {
++    unsigned int nbrIdx = nbr->getIdx();
++    if (targetRingSet.contains(nbrIdx)) {
++      ringNeighbors.push_back(nbrIdx);
++    }
++  }
++
++  CHECK_INVARIANT(ringNeighbors.size() == 2,
++                  "Spiro atom should have exactly 2 neighbors in each ring");
++
++  // Recursively collect all atoms on this side of the spiro
++  // (includes the ring, fused rings, and all substituents - DRY approach using
++  // bond flip logic) Start from one neighbor - it will find the other neighbor
++  // through the ring
++  RDKit::INT_VECT atomsToFlip;
++  _recurseAtomOneSide(ringNeighbors[0], spiroAid, dp_mol, atomsToFlip);
++
++  // Define reflection axis: through spiro center and midpoint of its two
++  // neighbors
++  const auto &spiroLoc = d_eatoms.at(spiroAid).loc;
++
++  // Calculate midpoint of the two neighbors
++  const auto &neighbor1Loc = d_eatoms.at(ringNeighbors[0]).loc;
++  const auto &neighbor2Loc = d_eatoms.at(ringNeighbors[1]).loc;
++  RDGeom::Point2D midpoint = (neighbor1Loc + neighbor2Loc) * 0.5;
++
++  // Check for fixed atoms (cannot flip if any atoms are fixed)
++  for (auto aid : atomsToFlip) {
++    if (d_eatoms.at(aid).df_fixed) {
++      return;  // Cannot flip - has fixed atoms
++    }
++  }
++
++  // Reflect all atoms on this side of the spiro (spiro center stays in place)
++  for (auto aid : atomsToFlip) {
++    d_eatoms[aid].Reflect(spiroLoc, midpoint);
++  }
++}
++
+ unsigned int _findDeg1Neighbor(const RDKit::ROMol *mol, unsigned int aid) {
+   PRECONDITION(mol, "");
+   auto deg = getDepictDegree(mol->getAtomWithIdx(aid));
+@@ -1974,6 +2048,99 @@ void EmbeddedFrag::openAngles(const double *dmat, unsigned int aid1,
+   }
+ }
+ 
++bool EmbeddedFrag::tryResolvingCollisionWithBondFlip(
++    const std::pair<unsigned int, unsigned int> &cAids, unsigned int ncols,
++    double prevDensity, std::map<int, unsigned int> &doneBonds,
++    const double *dmat) {
++  auto rotBonds = getRotatableBonds(*dp_mol, cAids.first, cAids.second);
++
++  for (auto ri : rotBonds) {
++    auto doneBondsRiIt = doneBonds.find(ri);
++    if ((doneBondsRiIt == doneBonds.end()) ||
++        (doneBondsRiIt->second < NUM_BONDS_FLIPS)) {
++      if (doneBondsRiIt == doneBonds.end()) {
++        doneBonds[ri] = 1;
++      } else {
++        doneBondsRiIt->second += 1;
++      }
++
++      flipAboutBond(ri);
++      auto colls = this->findCollisions(dmat);
++      auto newDensity = this->totalDensity();
++      if (colls.size() < ncols) {
++        doneBonds[ri] = NUM_BONDS_FLIPS;  // lock this rotatable bond
++        return true;
++      } else if (colls.size() == ncols && newDensity < prevDensity) {
++        return true;
++      } else {
++        // we made the wrong move earlier - reject the flip move it back
++        flipAboutBond(ri);
++        // and try the other end:
++        flipAboutBond(ri, false);
++        colls = this->findCollisions(dmat);
++        newDensity = this->totalDensity();
++        if (colls.size() < ncols) {
++          doneBonds[ri] = NUM_BONDS_FLIPS;  // lock this rotatable bond
++          return true;
++        } else if (colls.size() == ncols && newDensity < prevDensity) {
++          return true;
++        } else {
++          flipAboutBond(ri, false);
++        }
++      }
++    }
++  }
++  return false;
++}
++
++bool EmbeddedFrag::tryResolvingCollisionWithSpiroFlip(
++    const std::pair<unsigned int, unsigned int> &cAids, unsigned int ncols,
++    double prevDensity, std::map<int, unsigned int> &doneSpiros,
++    const boost::dynamic_bitset<> &spiroCenters, const double *dmat) {
++  // Find spiro centers on the path using our cached bitset (avoid expensive
++  // re-checks)
++  RDKit::INT_LIST path =
++      RDKit::MolOps::getShortestPath(*dp_mol, cAids.first, cAids.second);
++  std::vector<unsigned int> spiros;
++  for (auto aid : path) {
++    if (spiroCenters.test(aid)) {
++      spiros.push_back(aid);
++    }
++  }
++
++  for (auto spiroAid : spiros) {
++    auto doneSpiroIt = doneSpiros.find(spiroAid);
++
++    // Skip if already flipped NUM_BONDS_FLIPS times
++    if (doneSpiroIt != doneSpiros.end() &&
++        doneSpiroIt->second >= NUM_BONDS_FLIPS) {
++      continue;
++    }
++    // Flip the first ring
++    flipAboutSpiroCenter(spiroAid);
++    auto colls = this->findCollisions(dmat);
++    auto newDensity = this->totalDensity();
++
++    if (colls.size() < ncols) {
++      // Success! Lock this spiro
++      doneSpiros[spiroAid] = NUM_BONDS_FLIPS;
++      return true;
++    } else if (colls.size() == ncols && newDensity < prevDensity) {
++      // Same collisions but better density - keep it
++      if (doneSpiroIt == doneSpiros.end()) {
++        doneSpiros[spiroAid] = 1;
++      } else {
++        doneSpiroIt->second++;
++      }
++      return true;
++    } else {
++      // Didn't help - undo the flip
++      flipAboutSpiroCenter(spiroAid);
++    }
++  }
++  return false;
++}
++
+ void EmbeddedFrag::removeCollisionsBondFlip() {
+   // try to remove collisions in a structure by flipping rotatable bonds along
+   // the shortest path between the colliding atoms. we will limit the number of
+@@ -2033,6 +2200,50 @@ void EmbeddedFrag::removeCollisionsBondFlip() {
+   }
+ }
+ 
++void EmbeddedFrag::removeCollisionsBondAndSpiroFlip() {
++  // Pre-compute which atoms are spiro centers (expensive check, so cache it)
++  boost::dynamic_bitset<> spiroCenters(dp_mol->getNumAtoms());
++  for (unsigned int aid = 0; aid < dp_mol->getNumAtoms(); ++aid) {
++    if (isSpiroCenter(aid, dp_mol)) {
++      spiroCenters.set(aid);
++    }
++  }
++
++  // try to remove collisions in a structure by flipping rotatable bonds and
++  // spiro centers along the shortest path between the colliding atoms. we will
++  // limit the number of times we are going to do this since we may fall into
++  // spiral where removing a collision may create a new one
++  auto dmat = RDKit::MolOps::getDistanceMat(*dp_mol);
++  auto colls = this->findCollisions(dmat);
++  std::map<int, unsigned int> doneBonds;
++  std::map<int, unsigned int> doneSpiros;
++  unsigned int iter = 0;
++
++  while (iter < MAX_COLL_ITERS && colls.size()) {
++    auto ncols = colls.size();
++    if (ncols > 0) {
++      // we have a collision
++      auto cAids = colls[0];
++      auto prevDensity = this->totalDensity();
++      bool resolved = false;
++
++      // Try bond flipping first
++      resolved = tryResolvingCollisionWithBondFlip(cAids, ncols, prevDensity,
++                                                   doneBonds, dmat);
++
++      // Try spiro flipping if bond flipping didn't resolve the collision
++      if (!resolved) {
++        resolved = tryResolvingCollisionWithSpiroFlip(
++            cAids, ncols, prevDensity, doneSpiros, spiroCenters, dmat);
++      }
++
++      // Re-check collisions after flipping
++      colls = this->findCollisions(dmat);
++    }
++    ++iter;
++  }
++}
++
+ void EmbeddedFrag::removeCollisionsOpenAngles() {
+   auto dmat = RDKit::MolOps::getDistanceMat(*dp_mol);
+   // try opening up angles
+diff --git a/Code/GraphMol/Depictor/EmbeddedFrag.h b/Code/GraphMol/Depictor/EmbeddedFrag.h
+index 0388fc957..3def29581 100644
+--- a/Code/GraphMol/Depictor/EmbeddedFrag.h
++++ b/Code/GraphMol/Depictor/EmbeddedFrag.h
+@@ -16,6 +16,7 @@
+ #include <Geometry/point.h>
+ #include "DepictUtils.h"
+ #include <boost/smart_ptr.hpp>
++#include <boost/dynamic_bitset.hpp>
+ 
+ namespace RDKit {
+ class ROMol;
+@@ -322,6 +323,12 @@ class RDKIT_DEPICTOR_EXPORT EmbeddedFrag {
+   */
+   void flipAboutBond(unsigned int bondId, bool flipEnd = true);
+ 
++  //! \brief flip one ring of a spiro compound to resolve collisions
++  /*!
++    \param spiroAid - the spiro center atom index
++  */
++  void flipAboutSpiroCenter(unsigned int spiroAid);
++
+   void openAngles(const double *dmat, unsigned int aid1, unsigned int aid2);
+ 
+   std::vector<PAIR_I_I> findCollisions(const double *dmat,
+@@ -342,9 +349,13 @@ class RDKIT_DEPICTOR_EXPORT EmbeddedFrag {
+                                         bool permuteDeg4Nodes = false);
+ 
+   //! Remove collisions in a structure by flipping rotatable bonds
+-  //! along the shortest path between two colliding atoms
++  //! along the shortest path between two colliding atoms.
+   void removeCollisionsBondFlip();
+ 
++  //! Remove collisions in a structure by flipping rotatable bonds and spiro
++  //! centers along the shortest path between two colliding atoms.
++  void removeCollisionsBondAndSpiroFlip();
++
+   //! Remove collision by opening angles at the offending atoms
+   void removeCollisionsOpenAngles();
+ 
+@@ -375,6 +386,22 @@ class RDKIT_DEPICTOR_EXPORT EmbeddedFrag {
+  private:
+   double totalDensity();
+ 
++  // Helper methods for collision resolution
++  bool tryResolvingCollisionWithBondFlip(
++      const std::pair<unsigned int, unsigned int> &cAids,
++      unsigned int ncols,
++      double prevDensity,
++      std::map<int, unsigned int> &doneBonds,
++      const double *dmat);
++
++  bool tryResolvingCollisionWithSpiroFlip(
++      const std::pair<unsigned int, unsigned int> &cAids,
++      unsigned int ncols,
++      double prevDensity,
++      std::map<int, unsigned int> &doneSpiros,
++      const boost::dynamic_bitset<> &spiroCenters,
++      const double *dmat);
++
+   // returns true if fused rings found a template
+   bool matchToTemplate(const RDKit::INT_VECT &ringSystemAtoms);
+ 
+diff --git a/Code/GraphMol/Depictor/RDDepictor.cpp b/Code/GraphMol/Depictor/RDDepictor.cpp
+index b2fd2a9ab..d7f44a25b 100644
+--- a/Code/GraphMol/Depictor/RDDepictor.cpp
++++ b/Code/GraphMol/Depictor/RDDepictor.cpp
+@@ -610,6 +610,10 @@ unsigned int compute2DCoords(RDKit::ROMol &mol,
+       eri.randomSampleFlipsAndPermutations(
+           params.nFlipsPerSample, params.nSamples, params.sampleSeed, nullptr,
+           0.0, params.permuteDeg4Nodes);
++    } else if (params.useRingTemplates) {
++      // SPECIAL PATCH - fix collisions in ring systems joined by spiro, but hide under the useRingTemplates
++      // to not impact the typical Compute2DCoords workflow.
++      eri.removeCollisionsBondAndSpiroFlip();
+     } else {
+       eri.removeCollisionsBondFlip();
+     }
+diff --git a/Code/GraphMol/Depictor/catch_tests.cpp b/Code/GraphMol/Depictor/catch_tests.cpp
+index 45fc93e13..9c717cda4 100644
+--- a/Code/GraphMol/Depictor/catch_tests.cpp
++++ b/Code/GraphMol/Depictor/catch_tests.cpp
+@@ -945,7 +945,8 @@ M  END
+           MolTransforms::getAngleDeg(wedgedMolCopy.getConformer(), 23, 26, 25);
+       CHECK((angle > 145. && angle < 150.));
+       for (const auto &p : wedgePairs) {
+-        CHECK(getBondDirBetween(wedgedMolCopy, p.first, p.second) == Bond::NONE);
++        CHECK(getBondDirBetween(wedgedMolCopy, p.first, p.second) ==
++              Bond::NONE);
+       }
+     }
+     // the "rebuildCoordGen" alignment should succeed and keep original wedging
+@@ -1052,7 +1053,8 @@ M  END
+           MolTransforms::getAngleDeg(wedgedMolCopy.getConformer(), 23, 26, 25);
+       CHECK((angle > 105. && angle < 110.));
+       for (const auto &p : wedgePairs) {
+-        CHECK(getBondDirBetween(wedgedMolCopy, p.first, p.second) == Bond::NONE);
++        CHECK(getBondDirBetween(wedgedMolCopy, p.first, p.second) ==
++              Bond::NONE);
+       }
+     }
+     // the "rebuild" alignment should succeed and preserve molblock wedging
+@@ -1091,7 +1093,8 @@ M  END
+           MolTransforms::getAngleDeg(wedgedMolCopy.getConformer(), 23, 26, 25);
+       CHECK((angle > 145. && angle < 150.));
+       for (const auto &p : wedgePairs) {
+-        CHECK(getBondDirBetween(wedgedMolCopy, p.first, p.second) == Bond::NONE);
++        CHECK(getBondDirBetween(wedgedMolCopy, p.first, p.second) ==
++              Bond::NONE);
+       }
+     }
+     // the "rebuildCoordGen" alignment should succeed and keep original wedging
+@@ -2497,9 +2500,8 @@ TEST_CASE("macrocycle templating") {
+     params.useRingTemplates = false;
+     RDDepict::compute2DCoords(*mol, params);
+ 
+-    auto withoutTemplates =
+-        mol->getConformer().getAtomPos(0) -
+-        mol->getConformer().getAtomPos(ringSize / 2);
++    auto withoutTemplates = mol->getConformer().getAtomPos(0) -
++                            mol->getConformer().getAtomPos(ringSize / 2);
+ 
+     // Generate coordinates WITH templates
+     params.useRingTemplates = true;
+@@ -2523,4 +2525,149 @@ TEST_CASE("macrocycle templating") {
+       CHECK(templatesUsed == expectedTemplatesUsed);
+     }
+   }
++}
++
++TEST_CASE("spiro center detection") {
++  SECTION("true spiro compounds") {
++    auto [smiles, spiroAtom] = GENERATE(table<std::string, unsigned int>({
++        {"C1CCC2(C1)CCCCC2", 3},  // spiro[4.5]decane, atom 3
++        {"C1CCCC2(C1)CCCCC2", 4}  // spiro[5.5]undecane, atom 4
++    }));
++    CAPTURE(smiles, spiroAtom);
++
++    std::unique_ptr<RWMol> m(SmilesToMol(smiles));
++    REQUIRE(m);
++    MolOps::findSSSR(*m);
++
++    // Check that the expected atom is a spiro center
++    CHECK(RDDepict::isSpiroCenter(spiroAtom, m.get()));
++
++    // Other atoms should not be spiro centers
++    for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
++      if (i != spiroAtom) {
++        CHECK_FALSE(RDDepict::isSpiroCenter(i, m.get()));
++      }
++    }
++  }
++
++  SECTION("non-spiro compounds - no atoms should be spiro centers") {
++    auto smiles = GENERATE("C1CCC2CCCCC2C1",  // fused rings (decalin)
++                           "C1CC2CCC1CC2",    // bridged ring (norbornane)
++                           "C1CCCCC1"         // simple ring (cyclohexane)
++    );
++    CAPTURE(smiles);
++
++    std::unique_ptr<RWMol> m(SmilesToMol(smiles));
++    REQUIRE(m);
++    MolOps::findSSSR(*m);
++
++    for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
++      CHECK_FALSE(RDDepict::isSpiroCenter(i, m.get()));
++    }
++  }
++
++  SECTION("spiro with substituents - should find at least one spiro center") {
++    auto m = "CC1CCC2(C1)CCCCC2(C)C"_smiles;
++    REQUIRE(m);
++    MolOps::findSSSR(*m);
++
++    bool foundSpiro = false;
++    for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
++      if (RDDepict::isSpiroCenter(i, m.get())) {
++        foundSpiro = true;
++        break;
++      }
++    }
++    CHECK(foundSpiro);
++  }
++
++  SECTION("dispiro compound - should find exactly two spiro centers") {
++    auto m = "C1CCC2(C1)CCC1(CC2)CCCC1"_smiles;
++    REQUIRE(m);
++    MolOps::findSSSR(*m);
++
++    int spiroCount = 0;
++    for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
++      if (RDDepict::isSpiroCenter(i, m.get())) {
++        ++spiroCount;
++      }
++    }
++    CHECK(spiroCount == 2);
++  }
++}
++
++TEST_CASE("spiro flipping for collision resolution") {
++  auto smiles = GENERATE(
++      "C1CCC2(C1)CCCCC2",         // spiro[4.5]decane
++      "C1CCCC2(C1)CCCCC2",        // spiro[5.5]undecane
++      "CC1CCC2(C1)CCCC(C)C2",     // spiro with substituents
++      "CC1CCC2(C1)CCCCC2(C)C",    // complex spiro with multiple substituents
++      "C1CCC2(C1)CCC1(CC2)CCCC1"  // dispiro compound
++  );
++  CAPTURE(smiles);
++
++  std::unique_ptr<RWMol> m(SmilesToMol(smiles));
++  REQUIRE(m);
++  CHECK(RDDepict::compute2DCoords(*m) == 0);
++
++  // Verify no severe collisions (all non-bonded atoms should be reasonably
++  // separated)
++  auto &conf = m->getConformer();
++  for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
++    for (unsigned int j = i + 1; j < m->getNumAtoms(); ++j) {
++      // Skip bonded atoms
++      if (m->getBondBetweenAtoms(i, j)) {
++        continue;
++      }
++      auto pos = conf.getAtomPos(i) - conf.getAtomPos(j);
++      auto dist = pos.length();
++      CHECK(dist > 0.35);  // Minimum reasonable separation
++    }
++  }
++}
++
++TEST_CASE("complex spiro structure from MOL file - reasonable bond lengths") {
++  std::string rdbase = getenv("RDBASE");
++  std::string molfile =
++      rdbase + "/Code/GraphMol/Depictor/test_data/spiro_complex.mol";
++
++  std::unique_ptr<RWMol> m(MolFileToMol(molfile));
++  REQUIRE(m);
++
++  // Generate new 2D coordinates
++  CHECK(RDDepict::compute2DCoords(*m) == 0);
++
++  auto &conf = m->getConformer();
++
++  // Check that all bond lengths are reasonable (within ±30% of standard bond
++  // length)
++  const double expectedBondLength = RDDepict::BOND_LEN;
++  const double tolerance = 0.30;  // ±30%
++  const double minBondLength = expectedBondLength * (1.0 - tolerance);
++  const double maxBondLength = expectedBondLength * (1.0 + tolerance);
++
++  for (const auto &bond : m->bonds()) {
++    unsigned int i = bond->getBeginAtomIdx();
++    unsigned int j = bond->getEndAtomIdx();
++    auto pos = conf.getAtomPos(i) - conf.getAtomPos(j);
++    auto bondLength = pos.length();
++
++    // Bond lengths should be within ±30% of RDDepict::BOND_LEN (typically 1.5)
++    CHECK(bondLength >= minBondLength);
++    CHECK(bondLength <= maxBondLength);
++    INFO("Bond " << i << "-" << j << " length: " << bondLength << " (expected: "
++                 << expectedBondLength << " ±" << (tolerance * 100) << "%)");
++  }
++
++  // Also verify no severe atomic collisions
++  for (unsigned int i = 0; i < m->getNumAtoms(); ++i) {
++    for (unsigned int j = i + 1; j < m->getNumAtoms(); ++j) {
++      if (m->getBondBetweenAtoms(i, j)) {
++        continue;
++      }
++      auto pos = conf.getAtomPos(i) - conf.getAtomPos(j);
++      auto dist = pos.length();
++      CHECK(dist > 0.35);
++    }
++  }
+ }
+\ No newline at end of file
+diff --git a/Code/GraphMol/Depictor/testDepictor.cpp b/Code/GraphMol/Depictor/testDepictor.cpp
+index 11f399cb6..52c2416d6 100644
+--- a/Code/GraphMol/Depictor/testDepictor.cpp
++++ b/Code/GraphMol/Depictor/testDepictor.cpp
+@@ -385,7 +385,7 @@ void testIssue248() {
+        ++token) {
+     std::string smi = *token;
+     RWMol *m = SmilesToMol(smi, 0, 1);
+-    unsigned int confId = RDDepict::compute2DCoords(*m);
++    unsigned int confId = RDDepict::compute2DCoords(*m, nullptr, false, true, 3, 100);
+     // check that there are no collisions in the molecules
+     int natms = m->getNumAtoms();
+     int i, j;
+diff --git a/Code/GraphMol/Depictor/test_data/spiro_complex.mol b/Code/GraphMol/Depictor/test_data/spiro_complex.mol
+new file mode 100644
+index 000000000..7ee186c64
+--- /dev/null
++++ b/Code/GraphMol/Depictor/test_data/spiro_complex.mol
+@@ -0,0 +1,70 @@
++spiro_complex
++  RDKit          2D
++
++  0  0  0     0  0            999 V3000
++M  V30 BEGIN CTAB
++M  V30 COUNTS 27 30 0 0 0
++M  V30 BEGIN ATOM
++M  V30 1 C -0.000000 10.404690 0.000000 0
++M  V30 2 C 0.750000 9.105652 0.000000 0
++M  V30 3 C 2.250000 9.105652 0.000000 0
++M  V30 4 C 3.000000 10.404690 0.000000 0
++M  V30 5 C 2.250000 11.703729 0.000000 0
++M  V30 6 C 0.750000 11.703729 0.000000 0
++M  V30 7 C 1.500000 7.806614 0.000000 0
++M  V30 8 C 0.750000 6.507576 0.000000 0
++M  V30 9 C -0.750000 6.507576 0.000000 0
++M  V30 10 C -1.500000 7.806614 0.000000 0
++M  V30 11 C -0.750000 9.105652 0.000000 0
++M  V30 12 C 0.914538 11.175722 0.000000 0
++M  V30 13 C 0.194639 11.158341 0.000000 0
++M  V30 14 C 0.539536 10.526200 0.000000 0
++M  V30 15 C -2.967221 8.118482 0.000000 0
++M  V30 16 C -3.124014 9.610265 0.000000 0
++M  V30 17 C -1.753696 10.220370 0.000000 0
++M  V30 18 C -2.923052 12.958341 0.000000 0
++M  V30 19 C -2.581939 9.712862 0.000000 0
++M  V30 20 N -3.696656 8.709166 0.000000 0
++M  V30 21 N 4.500000 10.404690 0.000000 0
++M  V30 22 N 3.000000 7.806614 0.000000 0
++M  V30 23 C -4.081939 7.114786 0.000000 0
++M  V30 24 C -5.508523 7.578311 0.000000 0
++M  V30 25 C -5.972049 6.151727 0.000000 0
++M  V30 26 C -5.044998 9.004896 0.000000 0
++M  V30 27 C -6.935108 8.041837 0.000000 0
++M  V30 END ATOM
++M  V30 BEGIN BOND
++M  V30 1 1 1 2
++M  V30 2 1 2 3
++M  V30 3 1 3 4
++M  V30 4 1 4 5
++M  V30 5 1 5 6
++M  V30 6 1 6 1
++M  V30 7 1 7 8
++M  V30 8 1 8 9
++M  V30 9 1 9 10
++M  V30 10 1 10 11
++M  V30 11 1 7 2
++M  V30 12 1 2 11
++M  V30 13 1 12 13
++M  V30 14 2 13 14
++M  V30 15 1 1 14
++M  V30 16 2 12 6
++M  V30 17 1 15 16
++M  V30 18 2 16 17
++M  V30 19 1 11 17
++M  V30 20 2 15 10
++M  V30 21 1 13 18
++M  V30 22 1 14 19
++M  V30 23 3 19 20
++M  V30 24 1 4 21
++M  V30 25 1 3 22
++M  V30 26 1 15 23
++M  V30 27 1 23 24
++M  V30 28 1 24 25
++M  V30 29 1 24 26
++M  V30 30 1 24 27
++M  V30 END BOND
++M  V30 END CTAB
++M  END
++$$
