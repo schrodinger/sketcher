@@ -267,6 +267,7 @@ jobs:
           ctest -j4 --build-config ${{ env.BUILD_TYPE }} -L memtest --output-on-failure
 
       - name: Upload artifact
+        if: always() && steps.sketcher-build.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
           name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
