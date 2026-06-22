@@ -105,84 +105,50 @@ template <typename T> boost::shared_ptr<T> auto_detect(
     throw std::invalid_argument("Unable to determine format");
 }
 
-void attachment_point_dummies_to_molattachpt_property(RDKit::RWMol& rdk_mol)
+bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol)
 {
-    rdk_mol.updatePropertyCache(false);
-    std::vector<RDKit::Atom*> dummies_to_remove;
-    for (auto atom : rdk_mol.atoms()) {
-        if (is_attachment_point_dummy(*atom)) {
-            dummies_to_remove.push_back(atom);
+    bool found_any = false;
+    unsigned int ap_num = 1;
 
-            // This should find only one neighbor
-            for (auto parent : rdk_mol.atomNeighbors(atom)) {
-                int attachment_point_type{1};
-                if (parent->hasProp(RDKit::common_properties::molAttachPoint)) {
-                    attachment_point_type = -1;
-                }
-                parent->setNoImplicit(false);
-                parent->setProp(RDKit::common_properties::molAttachPoint,
-                                attachment_point_type);
-            }
-        }
-    }
-    rdk_mol.beginBatchEdit();
-    for (auto atom : dummies_to_remove) {
-        rdk_mol.removeAtom(atom);
-    }
-    rdk_mol.commitBatchEdit();
-
-    rdk_mol.updatePropertyCache(false);
-}
-
-bool molattachpt_property_to_attachment_point_dummies(RDKit::RWMol& rdk_mol)
-{
-    std::unordered_set<int> new_attachment_dummies;
-    // We can't use rdk_mol.atoms() because adding new atoms below
-    // will invalidate the iterators. Using num_atoms in the loop
-    // prevents us from checking rdk_mol.size() in each iteration
-    // and potentially checking atoms we just added.
     const auto num_atoms = rdk_mol.getNumAtoms();
     for (auto j = 0u; j < num_atoms; ++j) {
         auto atom = rdk_mol.getAtomWithIdx(j);
-        int attach_point_type{0};
-        if (atom->getPropIfPresent(RDKit::common_properties::molAttachPoint,
-                                   attach_point_type)) {
-            auto num_dummies = (attach_point_type == -1 ? 2 : 1);
-            auto explicit_h_count = atom->getNumExplicitHs();
-            for (auto i = 1; i <= num_dummies; ++i) {
+        if (atom->getAtomicNum() != 0 || atom->getDegree() != 1) {
+            continue;
+        }
 
-                auto dummy_atom = new RDKit::QueryAtom(0);
-                dummy_atom->setQuery(RDKit::makeAtomNullQuery());
+        int from_ap{0};
+        if (atom->getPropIfPresent(RDKit::common_properties::_fromAttachPoint,
+                                   from_ap)) {
+            found_any = true;
+            atom->setProp(RDKit::common_properties::atomLabel,
+                          ATTACHMENT_POINT_LABEL_PREFIX +
+                              std::to_string(ap_num++));
 
-                dummy_atom->setProp(RDKit::common_properties::atomLabel,
-                                    ATTACHMENT_POINT_LABEL_PREFIX +
-                                        std::to_string(i));
-
-                bool update_label = false;
-                bool take_ownership = true;
-                auto dummy_idx =
-                    rdk_mol.addAtom(dummy_atom, update_label, take_ownership);
-                rdk_mol.addBond(atom, dummy_atom, RDKit::Bond::SINGLE);
-
-                new_attachment_dummies.insert(dummy_idx);
-
-                RDKit::MolOps::setTerminalAtomCoords(rdk_mol, dummy_idx,
-                                                     atom->getIdx());
+            for (auto parent : rdk_mol.atomNeighbors(atom)) {
+                auto explicit_h_count = parent->getNumExplicitHs();
+                if (explicit_h_count != 0) {
+                    parent->setNumExplicitHs(explicit_h_count - 1);
+                }
             }
-            if (explicit_h_count != 0) {
-                atom->setNumExplicitHs(explicit_h_count - num_dummies);
-            }
-            atom->clearProp(RDKit::common_properties::molAttachPoint);
+            continue;
+        }
+
+        std::string label;
+        if (atom->getPropIfPresent(RDKit::common_properties::atomLabel,
+                                   label) &&
+            label.find(ATTACHMENT_POINT_LABEL_PREFIX) == 0) {
+            found_any = true;
+            atom->setProp(RDKit::common_properties::_fromAttachPoint, 1);
         }
     }
 
-    if (!new_attachment_dummies.empty()) {
+    if (found_any) {
         RDKit::Chirality::reapplyMolBlockWedging(rdk_mol);
         RDKit::MolOps::assignChiralTypesFromBondDirs(rdk_mol);
         rdk_mol.updatePropertyCache(false);
-        return true;
     }
-    return false;
+    return found_any;
 }
 
 void preserve_wiggly_bonds(RDKit::RWMol& mol)
@@ -586,7 +552,6 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
             break;
         case Format::MDL_MOLV2000:
         case Format::MDL_MOLV3000: {
-            // SDMolSupplier will preserve structure level properties
             RDKit::SDMolSupplier reader;
             bool strict_parsing = false;
             reader.setData(text, sanitize, removeHs, strict_parsing);
@@ -691,7 +656,8 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
         mol->updatePropertyCache(false);
     }
 
-    bool has_attchpt = molattachpt_property_to_attachment_point_dummies(*mol);
+    RDKit::MolOps::expandAttachmentPoints(*mol);
+    bool has_attchpt = label_expanded_attachment_points(*mol);
     if (!has_attchpt) {
         preserve_wiggly_bonds(*mol);
         fix_r0_rgroup(*mol);
@@ -835,7 +801,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             // single/double bonds to avoid sanitization errors, but for
             // atomistic inputs we'll keep whatever the caller gave us.
             kekulize = is_monomeric;
-            attachment_point_dummies_to_molattachpt_property(*mol);
+            RDKit::MolOps::collapseAttachmentPoints(*mol, true);
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(*mol);
             }
