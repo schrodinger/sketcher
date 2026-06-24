@@ -187,6 +187,8 @@ void sketcher_changed()
 #ifdef __EMSCRIPTEN__
 EMSCRIPTEN_BINDINGS(sketcher)
 {
+    emscripten::register_vector<std::string>("StringVector");
+
     emscripten::enum_<Format>("Format")
         .value("AUTO_DETECT", Format::AUTO_DETECT)
         .value("RDMOL_BINARY_BASE64", Format::RDMOL_BINARY_BASE64)

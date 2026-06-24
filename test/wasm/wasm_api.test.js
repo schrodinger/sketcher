@@ -352,7 +352,7 @@ test.describe('Custom Monomer DB', () => {
     expect(result).toBe(true);
   });
 
-  test('loading monomer with missing required fields throws', async ({ page }) => {
+  test('loading monomer with missing required fields returns error messages', async ({ page }) => {
     const incomplete = JSON.stringify([
       {
         SYMBOL: 'Bad',
@@ -361,18 +361,17 @@ test.describe('Custom Monomer DB', () => {
       },
     ]);
 
-    const result = await page.evaluate((json) => {
-      try {
-        Module.sketcher_load_custom_monomers(json);
-        return { threw: false };
-      } catch (e) {
-        const [type, message] = Module.getExceptionMessage(e);
-        return { threw: true, type, message };
+    const warnings = await page.evaluate((json) => {
+      const result = Module.sketcher_load_custom_monomers(json);
+      const arr = [];
+      for (let i = 0; i < result.size(); i++) {
+        arr.push(result.get(i));
       }
+      return arr;
     }, incomplete);
 
-    expect(result.threw).toBe(true);
-    expect(result.message).toContain('missing');
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings[0]).toContain('missing');
   });
 
   test('loading monomer with unknown fields throws', async ({ page }) => {
