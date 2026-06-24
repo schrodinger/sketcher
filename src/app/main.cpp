@@ -11,6 +11,7 @@
 #include "crash_handler.h"
 #endif
 
+#include <cstring>
 #include <stdexcept>
 
 #include <QAbstractButton>
@@ -78,10 +79,15 @@ bool sketcher_has_monomers()
     return schrodinger::rdkit_extensions::isMonomeric(*mol);
 }
 
-// Retained as a no-op for backwards compatibility with external callers;
-// ATOMISTIC_OR_MONOMERIC is now the default interface type (SKETCH-2735).
-void sketcher_allow_monomeric(bool /* allow_monomeric */)
+// Note: allow_monomeric should not be set to false if the workspace
+// contains monomers.
+void sketcher_allow_monomeric(bool allow_monomeric)
 {
+    auto& sk = get_sketcher_instance();
+    return sk.setInterfaceType(
+        allow_monomeric
+            ? schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC
+            : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
 void sketcher_load_custom_monomers(const std::string& json)
@@ -273,5 +279,10 @@ int main(int argc, char** argv)
 #endif
 
     sk.show();
+    // check for the command line option to enable the monomeric tools
+    if (argc >= 2 && strcmp(argv[1], "--allow-monomeric") == 0) {
+        sk.setInterfaceType(
+            schrodinger::sketcher::InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    }
     return application.exec();
 }
