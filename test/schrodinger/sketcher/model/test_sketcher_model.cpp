@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::CUSTOM_NUCLEOTIDE,
          QVariant::fromValue(std::tuple<std::string, std::string, std::string>(
              "Tho", "I", "PS"))},
-        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC_OR_MONOMERIC},
+        {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
         {ModelKey::MOLECULE_TYPE,
          QVariant::fromValue(MoleculeType::ATOMISTIC)}};

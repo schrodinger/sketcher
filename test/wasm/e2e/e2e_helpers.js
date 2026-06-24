@@ -71,13 +71,6 @@ export async function getExportedHelm(page) {
 }
 
 /**
- * Enable monomeric (peptide/nucleic acid) mode on the sketcher.
- */
-export async function enableMonomericMode(page) {
-  await page.evaluate(() => Module.sketcher_allow_monomeric(true));
-}
-
-/**
  * Select all items on the canvas via Cmd+A / Ctrl+A.
  */
 export async function selectAll(page) {

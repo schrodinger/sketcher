@@ -3,7 +3,6 @@ import {
   waitForSketcherReady,
   getDrawingAreaCenter,
   getExportedHelm,
-  enableMonomericMode,
   selectAll,
   clickWidget,
   clickPopupButton,
@@ -15,7 +14,6 @@ test.beforeEach(async ({ page }) => {
 
 test.describe('Amino Acid Analog Tests', () => {
   test('HELM round-trip preserves non-natural analog symbols', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
 
     // Import HELM with non-natural analog symbols (brackets required for
@@ -31,7 +29,6 @@ test.describe('Amino Acid Analog Tests', () => {
   });
 
   test('select analog via popup and draw', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'amino_monomer_btn');
 
@@ -50,7 +47,6 @@ test.describe('Amino Acid Analog Tests', () => {
   });
 
   test('mutate non-natural analogs to standard amino acid', async ({ page }) => {
-    await enableMonomericMode(page);
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'amino_monomer_btn');
 
