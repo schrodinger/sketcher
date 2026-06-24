@@ -13,6 +13,8 @@
 
 #include <cstring>
 #include <stdexcept>
+#include <string>
+#include <vector>
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -90,10 +92,10 @@ void sketcher_allow_monomeric(bool allow_monomeric)
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
-void sketcher_load_custom_monomers(const std::string& json)
+std::vector<std::string> sketcher_load_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    db.loadMonomersFromJson(json);
+    return db.loadMonomersFromJson(json);
 }
 
 void sketcher_load_custom_monomers_from_sql(const std::string& sql)
@@ -102,10 +104,11 @@ void sketcher_load_custom_monomers_from_sql(const std::string& sql)
     db.loadMonomersFromSql(sql);
 }
 
-void sketcher_insert_custom_monomers(const std::string& json)
+std::vector<std::string>
+sketcher_insert_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    db.insertMonomersFromJson(json);
+    return db.insertMonomersFromJson(json);
 }
 
 void sketcher_reset_custom_monomers()
