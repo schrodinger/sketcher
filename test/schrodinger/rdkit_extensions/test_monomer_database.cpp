@@ -239,7 +239,10 @@ BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
          "}]");
 
     auto& monomer_db = MonomerDatabase::instance();
-    monomer_db.loadMonomersFromJson(dummy_json);
+    auto res = monomer_db.loadMonomersFromJson(dummy_json);
+
+    BOOST_REQUIRE_EQUAL(res.size(), 1);
+    BOOST_CHECK_EQUAL(res.front().find("Monomer inserted successfully"), 0);
 
     monomer_db.loadMonomersFromSQLiteFile(
         LocalMonomerDbFixture::test_custom_monomer_db);
@@ -357,4 +360,84 @@ BOOST_AUTO_TEST_CASE(TestGetNonNaturalAnalogs)
             BOOST_CHECK_NE(info.symbol.value_or(""), natural_analog);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(TestDNInsertionLogs)
+{
+    constexpr std::string_view dummy_json =
+        ("["
+         "{" // Monomer 1: This should insert ok
+         "\"symbol\": \"dummy_symbol\","
+         "\"polymer_type\": \"PEPTIDE\"," // This one needs to be real!
+         "\"natural_analog\": \"dummy_analog1\","
+         "\"smiles\": \"NNNN\"," // This needs to be parseable
+         "\"core_smiles\": \"dummy_core_smiles1\","
+         "\"name\": \"dummy_name1\","
+         "\"monomer_type\": \"dummy_monomertype1\","
+         "\"author\": \"dummy_author1\","
+         "\"pdbcode\": \"dummy_pdbcode1\""
+         "},"
+         "{" // Monomer 2: Failure due to missing author
+         "\"symbol\": \"dummy_symbol\","
+         "\"polymer_type\": \"PEPTIDE\"," // This one needs to be real!
+         "\"natural_analog\": \"dummy_analog1\","
+         "\"smiles\": \"NNNN\"," // This needs to be parseable
+         "\"core_smiles\": \"dummy_core_smiles1\","
+         "\"name\": \"dummy_name1\","
+         "\"monomer_type\": \"dummy_monomertype1\","
+         "\"pdbcode\": \"dummy_pdbcode1\""
+         "},"
+         "{" // Monomer 3: Failure due to blank name
+         "\"symbol\": \"dummy_symbol\","
+         "\"polymer_type\": \"PEPTIDE\"," // This one needs to be real!
+         "\"natural_analog\": \"dummy_analog1\","
+         "\"smiles\": \"NNNN\"," // This needs to be parseable
+         "\"core_smiles\": \"dummy_core_smiles1\","
+         "\"name\": \"\","
+         "\"monomer_type\": \"dummy_monomertype1\","
+         "\"author\": \"dummy_author1\","
+         "\"pdbcode\": \"dummy_pdbcode1\""
+         "},"
+         "{" // Monomer 4: Failure due to unparseable SMILES
+         "\"symbol\": \"dummy_symbol\","
+         "\"polymer_type\": \"PEPTIDE\"," // This one needs to be real!
+         "\"natural_analog\": \"dummy_analog1\","
+         "\"smiles\": \"not parseable\","
+         "\"core_smiles\": \"dummy_core_smiles1\","
+         "\"name\": \"dummy_name1\","
+         "\"monomer_type\": \"dummy_monomertype1\","
+         "\"author\": \"dummy_author1\","
+         "\"pdbcode\": \"dummy_pdbcode1\""
+         "},"
+         "{" // Monomer 5: duplicate of the 1st one; overwrites it
+         "\"symbol\": \"dummy_symbol\","
+         "\"polymer_type\": \"PEPTIDE\"," // This one needs to be real!
+         "\"natural_analog\": \"dummy_analog1\","
+         "\"smiles\": \"NNNN\"," // This needs to be parseable
+         "\"core_smiles\": \"dummy_core_smiles1\","
+         "\"name\": \"dummy_name1\","
+         "\"monomer_type\": \"dummy_monomertype1\","
+         "\"author\": \"dummy_author1\","
+         "\"pdbcode\": \"dummy_pdbcode1\""
+         "}"
+         "]");
+
+    auto& monomer_db = MonomerDatabase::instance();
+    auto res = monomer_db.loadMonomersFromJson(dummy_json);
+
+    BOOST_REQUIRE_EQUAL(res.size(), 6);
+
+    BOOST_CHECK_EQUAL(res[0].find("Monomer inserted successfully"), 0);
+
+    BOOST_CHECK_EQUAL(
+        res[1].find("Monomer definition is missing required field"), 0);
+    BOOST_CHECK_NE(res[1].find("AUTHOR='(null)'"), std::string::npos);
+
+    BOOST_CHECK_EQUAL(
+        res[2].find("Monomer definition must have a non-empty name"), 0);
+    BOOST_CHECK_NE(res[2].find("NAME=''"), std::string::npos);
+
+    BOOST_CHECK_EQUAL(res[3].find("Could not canonicalize monomer SMILES"), 0);
+
+    BOOST_CHECK_EQUAL(res[4].find("Monomer inserted successfully"), 0);
 }
