@@ -425,12 +425,12 @@ BOOST_AUTO_TEST_CASE(TestDNInsertionLogs)
     auto& monomer_db = MonomerDatabase::instance();
     auto res = monomer_db.loadMonomersFromJson(dummy_json);
 
-    BOOST_REQUIRE_EQUAL(res.size(), 6);
+    BOOST_REQUIRE_EQUAL(res.size(), 5);
 
     BOOST_CHECK_EQUAL(res[0].find("Monomer inserted successfully"), 0);
 
     BOOST_CHECK_EQUAL(
-        res[1].find("Monomer definition is missing required field"), 0);
+        res[1].find("Monomer definition is missing required field(s)"), 0);
     BOOST_CHECK_NE(res[1].find("AUTHOR='(null)'"), std::string::npos);
 
     BOOST_CHECK_EQUAL(

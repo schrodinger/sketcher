@@ -444,7 +444,7 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
     for (auto& m : monomers) {
         if (!m.areRequiredFieldsPopulated()) {
             result.push_back(create_log_message(
-                m, "Monomer definition is missing required fields"));
+                m, "Monomer definition is missing required field(s)"));
             continue;
         }
 
@@ -473,7 +473,7 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
                 canonicalize_monomer_smiles(m.smiles.value().c_str());
             m.smiles = new_smiles;
             m.core_smiles = new_core_smiles;
-        } catch (const std::runtime_error& e) {
+        } catch (const std::runtime_error&) {
             result.push_back(
                 create_log_message(m, "Could not canonicalize monomer SMILES"));
             continue;
@@ -490,7 +490,7 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
             continue;
         }
 
-        // Monomer insertio succeeded
+        // Monomer insertion succeeded
         result.push_back(
             create_log_message(m, "Monomer inserted successfully"));
     }

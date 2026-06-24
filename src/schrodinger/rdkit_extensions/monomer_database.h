@@ -97,8 +97,8 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // thrown during the import process).
     // @returns a vector of strings with the results of the insertion
     //    of each of the monomers in the input json
-    // @throws std::runtime_error if the JSON fails to parse or
-    //    if the information cannot be written into the DB.
+    // @throws std::runtime_error if the JSON fails to parse or due to
+    //    DB related problems.
     std::vector<std::string> loadMonomersFromJson(std::string_view json);
 
     // use the indicated SQLite DB file as the source for custom
@@ -112,8 +112,8 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // definitions table. Any previous definitions will be preserved.
     // @returns a vector of strings with the results of the insertion
     //    of each of the monomers in the input json
-    // @throws std::runtime_error if the JSON fails to parse or
-    //    if the information cannot be written into the DB.
+    // @throws std::runtime_error if the JSON fails to parse or due to
+    //    DB related problems.
     std::vector<std::string> insertMonomersFromJson(std::string_view json);
 
     void resetMonomerDefinitions();
