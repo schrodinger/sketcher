@@ -60,17 +60,18 @@ QPainterPath AbstractHighlightingItem::buildHighlightingPathForItems(
     const QList<const QGraphicsItem*>& items) const
 {
     QPainterPath path;
-    // Set fill rule to ensure overlapping areas don't create "holes"
-    path.setFillRule(Qt::WindingFill);
-
     for (auto item : items) {
         if (auto* molviewer_item =
                 dynamic_cast<const AbstractGraphicsItem*>(item)) {
             QPainterPath local_path = getPathForItem(molviewer_item);
-            path.addPath(molviewer_item->mapToScene(local_path));
+            // We can't use addPath here, since that will result in the path
+            // being "hollowed out" where the path for two monomers intersects.
+            // E.g., there will be a hole in the selection highlighting between
+            // a nucleic acid sugar and base when both are selected.
+            path |= molviewer_item->mapToScene(local_path);
         }
     }
-    return path.simplified();
+    return path;
 }
 
 } // namespace sketcher
