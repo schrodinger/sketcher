@@ -745,11 +745,20 @@ int get_residue_number_for_new_monomer(
     auto existing_res_nums =
         get_all_residue_numbers_in_polymer(bound_to_monomer);
 
-    // first, determine what the ideal residue number would be based on the
-    // residue number of the monomer we're binding to
+    // First, determine what the "ideal" residue number would be based on the
+    // offset from the residue number of the monomer we're binding to. For
+    // example, the ideal residue number of a new C-terminal peptide is one
+    // higher than the bound peptide, and the ideal residue number of a new
+    // N-terminal peptide is one lower than the bound peptide. We refer to it as
+    // an "ideal" residue number since we don't know whether we'll actually be
+    // able to use that number; it may be non-positive, which isn't allowed, or
+    // it may already be taken by an existing monomer. In those cases, we'll
+    // just use one more than the highest current residue number, since we know
+    // that's available and valid.
+
     int res_num_offset = 1;
     if (chain_type == ChainType::PEPTIDE &&
-        new_monomer_ap_name == ap_model_name_for(PeptideAP::N)) {
+        new_monomer_ap_name == ap_model_name_for(PeptideAP::C)) {
         // a new C terminal peptide residue
         res_num_offset = -1;
     } else if (chain_type == ChainType::RNA) {
@@ -765,22 +774,23 @@ int get_residue_number_for_new_monomer(
                 // a new sugar bound to its base
                 res_num_offset = -1;
             }
-        } else if (monomer_type == MonomerType::NA_BASE &&
-                   new_monomer_ap_name == ap_model_name_for(NA_BASE_AP_N1_9)) {
-            res_num_offset = -1;
-        } else if (monomer_type == MonomerType::NA_PHOSPHATE &&
-                   new_monomer_ap_name ==
-                       ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR)) {
-            res_num_offset = -1;
+        } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
+            if (new_monomer_ap_name ==
+                ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR)) {
+                res_num_offset = 2;
+            } else if (new_monomer_ap_name ==
+                       ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)) {
+                res_num_offset = -1;
+            }
         }
     }
     auto bound_to_res_num =
         rdkit_extensions::get_residue_number(bound_to_monomer);
     int new_res_num = bound_to_res_num + res_num_offset;
 
-    // if the ideal residue number is not available, just use one more than the
-    // highest current residue number, since we know that's available
-    if (new_res_num < 0 || existing_res_nums.contains(new_res_num)) {
+    if (new_res_num <= 0 || existing_res_nums.contains(new_res_num)) {
+        // the ideal residue number isn't valid or isn't available. Note that
+        // residue numbers of 0 confuse HELM generation, so we avoid them.
         new_res_num = *std::ranges::max_element(existing_res_nums) + 1;
     }
     return new_res_num;

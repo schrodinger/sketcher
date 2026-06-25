@@ -1726,7 +1726,7 @@ SKETCHER_API void add_text_to_mol_model(
  * @param bound_to_monomer The existing monomer that the new monomer will be
  * bound to
  * @return the residue number, which is guaranteed to be:
- *   - non-negative (since get_residue_number returns unsigned ints)
+ *   - positive
  *   - unique amongst all residues in the same chain (The HELM reader and writer
  *     expect one monomer per residue number, even for nucleic acids.)
  */
