@@ -4892,7 +4892,11 @@ BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_na_phosphate)
     auto next_sugar_num = get_residue_number_for_new_monomer(
         "R", ChainType::RNA, ap_model_name_for(NASugarAP::FIVE_PRIME),
         phosphate);
+    // the base is expected to be numbered in between the previous sugar and
+    // this phosphate, so we skip 9 and instead assign 8 to the previous sugar
     BOOST_TEST(prev_sugar_num == 8u);
+    // the next base should get 12 (i.e. be numbered after the next sugar), so
+    // we don't need to skip a number between this phosphate and the next sugar
     BOOST_TEST(next_sugar_num == 11u);
 }
 
@@ -4916,6 +4920,8 @@ BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_na_base)
     // check residue number for a sugar bound to the base
     auto sugar_num = get_residue_number_for_new_monomer(
         "R", ChainType::RNA, ap_model_name_for(NASugarAP::ONE_PRIME), base);
+    // the base should be numbered after the sugar, so the sugar should get 9
+    // (instead of 11)
     BOOST_TEST(sugar_num == 9);
 }
 
