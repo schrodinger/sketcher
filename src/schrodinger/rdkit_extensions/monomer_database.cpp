@@ -411,7 +411,7 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
         return fmt::format(
             "{20}: {{ {0}='{10}', {1}='{11}', {2}='{12}', {3}='{13}', "
             "{4}='{14}', {5}='{15}', {6}='{16}', {7}='{17}', "
-            "{8}='{18}', {9}='{19}' }}",
+            "{8}='{18}', {9}='{19}' }}.",
             //
             symbol_column, polymer_type_column, analog_column, smiles_column,
             core_column, name_column, monomer_type_column, author_column,
@@ -421,7 +421,9 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
             m.natural_analog.value_or(null), m.smiles.value_or(null),
             m.core_smiles.value_or(null), m.name.value_or(null),
             m.monomer_type.value_or(null), m.author.value_or(null),
-            m.pdbcode.value_or(null), m.rgroups.value_or(null), msg);
+            m.pdbcode.value_or(null), m.rgroups.value_or(null),
+            //
+            msg);
     };
 
     auto monomers = json_to_monomer_vector(json);
