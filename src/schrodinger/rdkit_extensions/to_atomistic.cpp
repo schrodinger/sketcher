@@ -16,6 +16,7 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
+#include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -517,6 +518,7 @@ boost::shared_ptr<RDKit::RWMol> toAtomistic(const RDKit::ROMol& monomer_mol)
     // Add SUP substance groups to annotate residues for SDFs
     createSupGroupsFromResidueInfo(*atomistic_mol);
 
+    CopyMolProperties(monomer_mol, *atomistic_mol);
     return atomistic_mol;
 }
 

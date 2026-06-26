@@ -29,6 +29,30 @@ const std::string EXTENDED_ANNOTATIONS{"extended_annotations"};
 const std::string ARM_PAIR_KEY{"Antibody arms"};
 const std::string STRAND_PAIR_KEY{"Double Helix"};
 
+const std::string PDB_TO_HELM{"pdbToHelmChainMap"};
+
+// Properties excluded from CopyMolProperties - these are
+// representation-specific and should be regenerated during conversions rather
+// than copied
+const std::vector<std::string> PRIVATE_PROPERTIES = {
+    // RDKit internal metadata
+    "_CoarseGrain",
+    "_CXSMILES_Data",
+    "_MolFileComments",
+    "_MolFileInfo",
+
+    // HELM representation properties
+    ANNOTATION,
+    SUPPLEMENTARY_INFORMATION,
+    HELM_MODEL,
+    PDB_TO_HELM,
+
+    // Structural pairing metadata
+    EXTENDED_ANNOTATIONS,
+    ARM_PAIR_KEY,
+    STRAND_PAIR_KEY,
+};
+
 namespace RDKit
 {
 class ROMol;
