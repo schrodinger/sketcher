@@ -113,9 +113,13 @@ void View::pinchTriggered(QPinchGesture* gesture)
     if (state == Qt::GestureStarted) {
         m_currently_pinching_trackpad = true;
     } else {
-        // zoom
+        // Anchor the zoom at the pinch center so the region under the
+        // user's fingers stays fixed. Works for both trackpad and
+        // touchscreen pinches.
         auto scale_factor = gesture->scaleFactor();
-        scaleSafely(scale_factor);
+        auto pinch_anchor =
+            viewport()->mapFromParent(gesture->centerPoint().toPoint());
+        scaleAnchoredAtCursor(scale_factor, pinch_anchor);
 
         auto angle = gesture->rotationAngle() - gesture->lastRotationAngle();
 
@@ -153,7 +157,25 @@ void View::wheelEvent(QWheelEvent* event)
     // K * 2^x, where K is an empirical constant to make the zooming feel
     // natural
     qreal scal = pow(2.0, event->angleDelta().y() / 2400.0);
-    scaleSafely(scal);
+    scaleAnchoredAtCursor(scal, event->position().toPoint());
+}
+
+void View::scaleAnchoredAtCursor(qreal scale_factor, const QPoint& anchor)
+{
+    // Capture the scene point under the anchor before scaling, then
+    // reposition the viewport so the same scene point ends up back under
+    // the anchor. We compute the required sceneRect center analytically:
+    // mapToScene(p) = center + invTransform * (p - viewportCenter), so
+    // solving for center given a desired mapToScene(anchor) is a single
+    // subtraction.
+    auto scene_pos_before = mapToScene(anchor);
+    scaleSafely(scale_factor);
+    auto viewport_center =
+        QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0);
+    auto anchor_scene_offset =
+        transform().inverted().map(QPointF(anchor) - viewport_center);
+    centerViewportOn(scene_pos_before - anchor_scene_offset);
+    enlargeSceneIfNeeded();
 }
 
 void View::fitToScreen(bool selection_only)
