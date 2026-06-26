@@ -394,8 +394,8 @@ void canonicalize_db(sqlite3* db)
     execute_sql_on(db, "COMMIT;");
 }
 
-std::vector<std::string> insert_monomers_from_json(sqlite3* db,
-                                                   std::string_view json)
+std::pair<std::vector<std::string>, std::vector<std::string>>
+insert_monomers_from_json(sqlite3* db, std::string_view json)
 {
     // Prepare the INSERT statement once for reuse
     static constexpr std::string_view insert_sql =
@@ -406,10 +406,11 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
 
     static constexpr const char* null = "(null)";
 
-    auto create_log_message = [&](const MonomerInfo& m,
+    auto create_log_message = [&](const MonomerInfo& m, unsigned monomer_idx,
                                   const std::string& msg) {
         return fmt::format(
-            "{20}: {{ {0}='{10}', {1}='{11}', {2}='{12}', {3}='{13}', "
+            "Monomer definition {21}: {20}. data="
+            "{{ {0}='{10}', {1}='{11}', {2}='{12}', {3}='{13}', "
             "{4}='{14}', {5}='{15}', {6}='{16}', {7}='{17}', "
             "{8}='{18}', {9}='{19}' }}.",
             //
@@ -423,7 +424,7 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
             m.monomer_type.value_or(null), m.author.value_or(null),
             m.pdbcode.value_or(null), m.rgroups.value_or(null),
             //
-            msg);
+            msg, monomer_idx);
     };
 
     auto monomers = json_to_monomer_vector(json);
@@ -440,13 +441,15 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
     // Insert all rows in the same transaction
     execute_sql_on(db, "BEGIN TRANSACTION;");
 
-    std::vector<std::string> result;
-    result.reserve(monomers.size());
+    std::vector<std::string> succeeded;
+    std::vector<std::string> failed;
 
+    unsigned i = 0;
     for (auto& m : monomers) {
+        ++i;
         if (!m.areRequiredFieldsPopulated()) {
-            result.push_back(create_log_message(
-                m, "Monomer definition is missing required field(s)"));
+            failed.push_back(create_log_message(
+                m, i, "monomer is missing required field(s)"));
             continue;
         }
 
@@ -455,13 +458,13 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
         // but we don't require them to be non-empty. This restriction will be
         // enforced by the SQLite schema.
         if (m.name->empty()) {
-            result.push_back(create_log_message(
-                m, "Monomer definition must have a non-empty name"));
+            failed.push_back(
+                create_log_message(m, i, "monomer must have a non-empty name"));
             continue;
         }
         if (m.smiles->empty()) {
-            result.push_back(create_log_message(
-                m, "Monomer definition must have a non-empty SMILES"));
+            failed.push_back(create_log_message(
+                m, i, "definition must have a non-empty SMILES"));
             continue;
         }
 
@@ -476,8 +479,8 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
             m.smiles = new_smiles;
             m.core_smiles = new_core_smiles;
         } catch (const std::runtime_error&) {
-            result.push_back(
-                create_log_message(m, "Could not canonicalize monomer SMILES"));
+            failed.push_back(create_log_message(
+                m, i, "Could not canonicalize monomer SMILES"));
             continue;
         }
 
@@ -488,17 +491,16 @@ std::vector<std::string> insert_monomers_from_json(sqlite3* db,
         auto ret = bind_and_execute_stmt(db, stmt.get(), m);
         if (ret.has_value()) {
             // Insertion failed; store the error message
-            result.push_back(create_log_message(m, *ret));
+            failed.push_back(create_log_message(m, i, *ret));
             continue;
         }
 
         // Monomer insertion succeeded
-        result.push_back(
-            create_log_message(m, "Monomer inserted successfully"));
+        succeeded.push_back(create_log_message(m, i, "inserted successfully"));
     }
 
     execute_sql_on(db, "COMMIT;");
-    return result;
+    return std::make_pair(succeeded, failed);
 }
 
 /// Generate a few common tautomers from a SMILES
@@ -679,7 +681,7 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
     invalidateCache();
 }
 
-std::vector<std::string>
+std::pair<std::vector<std::string>, std::vector<std::string>>
 MonomerDatabase::loadMonomersFromJson(std::string_view json)
 {
 
@@ -697,10 +699,10 @@ MonomerDatabase::loadMonomersFromJson(std::string_view json)
     return result;
 }
 
-std::vector<std::string>
+std::pair<std::vector<std::string>, std::vector<std::string>>
 MonomerDatabase::insertMonomersFromJson(std::string_view json)
 {
-    std::vector<std::string> result;
+    std::pair<std::vector<std::string>, std::vector<std::string>> result;
     if (m_custom_monomers_db == nullptr) {
         result = loadMonomersFromJson(json);
     } else {

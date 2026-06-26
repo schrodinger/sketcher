@@ -241,8 +241,8 @@ BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
     auto& monomer_db = MonomerDatabase::instance();
     auto res = monomer_db.loadMonomersFromJson(dummy_json);
 
-    BOOST_REQUIRE_EQUAL(res.size(), 1);
-    BOOST_CHECK_EQUAL(res.front().find("Monomer inserted successfully"), 0);
+    BOOST_REQUIRE_EQUAL(res.first.size(), 1);
+    BOOST_REQUIRE_EQUAL(res.second.size(), 0);
 
     monomer_db.loadMonomersFromSQLiteFile(
         LocalMonomerDbFixture::test_custom_monomer_db);
@@ -423,21 +423,31 @@ BOOST_AUTO_TEST_CASE(TestDNInsertionLogs)
          "]");
 
     auto& monomer_db = MonomerDatabase::instance();
-    auto res = monomer_db.loadMonomersFromJson(dummy_json);
+    const auto [succeeded, failed] =
+        monomer_db.loadMonomersFromJson(dummy_json);
 
-    BOOST_REQUIRE_EQUAL(res.size(), 5);
-
-    BOOST_CHECK_EQUAL(res[0].find("Monomer inserted successfully"), 0);
-
-    BOOST_CHECK_EQUAL(
-        res[1].find("Monomer definition is missing required field(s)"), 0);
-    BOOST_CHECK_NE(res[1].find("AUTHOR='(null)'"), std::string::npos);
+    BOOST_REQUIRE_EQUAL(succeeded.size(), 2);
+    BOOST_REQUIRE_EQUAL(failed.size(), 3);
 
     BOOST_CHECK_EQUAL(
-        res[2].find("Monomer definition must have a non-empty name"), 0);
-    BOOST_CHECK_NE(res[2].find("NAME=''"), std::string::npos);
+        succeeded[0].find("Monomer definition 1: inserted successfully."), 0);
+    BOOST_CHECK_EQUAL(
+        succeeded[1].find("Monomer definition 5: inserted successfully."), 0);
 
-    BOOST_CHECK_EQUAL(res[3].find("Could not canonicalize monomer SMILES"), 0);
+    BOOST_CHECK_EQUAL(
+        failed[0].find(
+            "Monomer definition 2: monomer is missing required field(s)."),
+        0);
+    BOOST_CHECK_NE(failed[0].find("AUTHOR='(null)'"), std::string::npos);
 
-    BOOST_CHECK_EQUAL(res[4].find("Monomer inserted successfully"), 0);
+    BOOST_CHECK_EQUAL(
+        failed[1].find(
+            "Monomer definition 3: monomer must have a non-empty name."),
+        0);
+    BOOST_CHECK_NE(failed[1].find("NAME=''"), std::string::npos);
+
+    BOOST_CHECK_EQUAL(
+        failed[2].find(
+            "Monomer definition 4: Could not canonicalize monomer SMILES."),
+        0);
 }

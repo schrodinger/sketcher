@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
@@ -95,11 +96,12 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // successfully parsed, any prior custom definitions
     // will be dropped (they will be preserved if an exception is
     // thrown during the import process).
-    // @returns a vector of strings with the results of the insertion
-    //    of each of the monomers in the input json
+    // @returns a pair of vectors of strings containing the logs for
+    //    successful and failed insertions.
     // @throws std::runtime_error if the JSON fails to parse or due to
     //    DB related problems.
-    std::vector<std::string> loadMonomersFromJson(std::string_view json);
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    loadMonomersFromJson(std::string_view json);
 
     // use the indicated SQLite DB file as the source for custom
     // monomer definitions.
@@ -110,11 +112,12 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
 
     // Insert the custom monomers in JSON format into the custom
     // definitions table. Any previous definitions will be preserved.
-    // @returns a vector of strings with the results of the insertion
-    //    of each of the monomers in the input json
+    // @returns a pair of vectors of strings containing the logs for
+    //    successful and failed insertions.
     // @throws std::runtime_error if the JSON fails to parse or due to
     //    DB related problems.
-    std::vector<std::string> insertMonomersFromJson(std::string_view json);
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    insertMonomersFromJson(std::string_view json);
 
     void resetMonomerDefinitions();
 
