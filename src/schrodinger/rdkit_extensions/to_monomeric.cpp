@@ -50,6 +50,7 @@ static constexpr const char* REFERENCE_IDX{"referenceIndex"};
 static constexpr const char* ATTACH_NUM{
     "attachNumber"}; // Whether an atom corresponds to R1, R2, or R3
 static constexpr const char* PDB_TO_HELM{"pdbToHelmChainMap"};
+static constexpr const char* HELM_SYMBOL{"helmSymbol"};
 
 static constexpr int MIN_ATTCHPTS = 2;
 static constexpr int SIDECHAIN_ATTCHPT = 8;
@@ -2233,6 +2234,14 @@ void addResidueInfo(RDKit::ROMol& mol)
 {
     using namespace RDKit::v2::SmilesParse;
 
+    // Precondition: molecule must not have any hydrogen atoms
+    for (const auto* atom : mol.atoms()) {
+        if (atom->getAtomicNum() == 1) {
+            throw std::runtime_error(
+                "addResidueInfo: molecule must not contain hydrogen atoms");
+        }
+    }
+
     const auto& db = MonomerDatabase::instance();
 
     // Try a full conversion to monomeric and discard the result, just to see
@@ -2307,12 +2316,21 @@ void addResidueInfo(RDKit::ROMol& mol)
             ExtractMolFragment(atomistic_mol, monomer.atom_indices, false);
 
         auto helm_symbol = findHelmSymbol(atomistic_mol, monomer);
+
+        for (auto atom_idx : monomer.atom_indices) {
+            auto* atom = mol.getAtomWithIdx(atom_idx);
+            atom->setProp(HELM_SYMBOL, helm_symbol ? *helm_symbol : "");
+        }
+
         if (!helm_symbol) {
             assignBackboneAtomNames(mol, monomer, *fragment);
+            auto* atom = atomistic_mol.getAtomWithIdx(monomer.atom_indices[0]);
+            PRINT("monomer not recognized: {}\n",
+                  atom->getMonomerInfo()->getResidueName());
             continue;
         }
 
-        // Monomer has been recognized!
+        PRINT("monomer recognized: {}\n", *helm_symbol);
         auto info = db.getMonomerInfo(*helm_symbol, ChainType::PEPTIDE);
 
         // Set the residue name if found. Otherwise we'll either preserve

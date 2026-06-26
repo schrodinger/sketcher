@@ -63,6 +63,8 @@ toAtomistic(const RDKit::ROMol& monomer_mol);
  * are assigned as A, B, C, etc. in an unspecified order, but only for chains
  * containing more than one monomer; single-monomer chains are assigned a space
  * character as the chain ID. Residue numbers start from 1 for each chain.
+ *
+ * @throw std::runtime_error if atomistic_mol has graph hydrogens.
  */
 RDKIT_EXTENSIONS_API void addResidueInfo(RDKit::ROMol& atomistic_mol);
 
