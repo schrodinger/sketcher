@@ -508,3 +508,57 @@ BOOST_DATA_TEST_CASE(TestExtractMolFragmentWithPolymerGroups,
     BOOST_TEST(helm::rdkit_to_helm(*extracted_mol) ==
                "CHEM1{*}|CHEM2{*}$$" + polymer_groups + "$$V2.0");
 };
+
+BOOST_AUTO_TEST_CASE(TestCopyMolProperties_CopiesUserProperties)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    auto source = RDKit::v2::SmilesParse::MolFromSmiles("CC");
+    auto dest = RDKit::v2::SmilesParse::MolFromSmiles("CCC");
+
+    source->setProp("user_string", std::string("test"));
+    source->setProp("user_int", 42);
+    source->setProp("user_double", 3.14);
+
+    CopyMolProperties(*source, *dest);
+
+    BOOST_TEST(dest->getProp<std::string>("user_string") == "test");
+    BOOST_TEST(dest->getProp<int>("user_int") == 42);
+    BOOST_TEST(dest->getProp<double>("user_double") == 3.14);
+}
+
+BOOST_AUTO_TEST_CASE(TestCopyMolProperties_ExcludesInternalProperties)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    auto source = RDKit::v2::SmilesParse::MolFromSmiles("C1CCCCC1");
+    auto dest = RDKit::v2::SmilesParse::MolFromSmiles("C");
+
+    source->getRingInfo(); // Creates computed properties
+    source->setProp("_CoarseGrain", std::string("internal"));
+    source->setProp("HELM_MODEL", std::string("helm"));
+    source->setProp("user_prop", std::string("should_copy"));
+
+    CopyMolProperties(*source, *dest);
+
+    BOOST_TEST(dest->getProp<std::string>("user_prop") == "should_copy");
+    BOOST_TEST(!dest->hasProp("_CoarseGrain"));
+    BOOST_TEST(!dest->hasProp("HELM_MODEL"));
+    BOOST_TEST(dest->getRingInfo()->numRings() == 0); // Computed fresh
+}
+
+BOOST_AUTO_TEST_CASE(TestCopyMolProperties_InConversions)
+{
+    using namespace schrodinger::rdkit_extensions;
+
+    auto monomer_mol = helm::helm_to_rdkit("PEPTIDE1{A.C}$$$$V2.0");
+    monomer_mol->setProp("experiment_id", std::string("EXP-001"));
+    monomer_mol->setProp("temperature", 298.15);
+
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+
+    BOOST_TEST(atomistic_mol->getProp<std::string>("experiment_id") ==
+               "EXP-001");
+    BOOST_TEST(atomistic_mol->getProp<double>("temperature") == 298.15);
+    BOOST_TEST(!atomistic_mol->hasProp("HELM_MODEL"));
+}

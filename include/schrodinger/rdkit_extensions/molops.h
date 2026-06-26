@@ -7,6 +7,8 @@
 #pragma once
 
 #include <boost/shared_ptr.hpp>
+#include <string>
+#include <unordered_set>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
@@ -106,6 +108,18 @@ CombineMonomericMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2);
 //
 RDKIT_EXTENSIONS_API boost::shared_ptr<RDKit::ROMol>
 CombineMols(const RDKit::ROMol& mol1, const RDKit::ROMol& mol2);
+
+/**
+ * Copies user-defined properties from source to dest, excluding computed
+ * properties and internal metadata (HELM annotations, RDKit internals, etc.).
+ *
+ * @param source Source molecule
+ * @param dest Destination molecule (existing properties will be overwritten)
+ *
+ * @note Used during atomistic <-> monomeric conversions to preserve user data
+ */
+RDKIT_EXTENSIONS_API void CopyMolProperties(const RDKit::ROMol& source,
+                                            RDKit::ROMol& dest);
 
 } // namespace rdkit_extensions
 } // namespace schrodinger

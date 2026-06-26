@@ -49,7 +49,6 @@ static constexpr const char* MONOMER_MAP_NUM{"monomerMapNumber"};
 static constexpr const char* REFERENCE_IDX{"referenceIndex"};
 static constexpr const char* ATTACH_NUM{
     "attachNumber"}; // Whether an atom corresponds to R1, R2, or R3
-static constexpr const char* PDB_TO_HELM{"pdbToHelmChainMap"};
 static constexpr const char* HELM_SYMBOL{"helmSymbol"};
 
 static constexpr int MIN_ATTCHPTS = 2;
@@ -2129,6 +2128,7 @@ smartsBasedToMonomeric(RDKit::RWMol& atomistic_mol, bool complex_mode)
     auto monomer_mol =
         buildMonomerMol(atomistic_mol, monomers, linkages, allow_smiles);
     assignChains(*monomer_mol);
+    CopyMolProperties(atomistic_mol, *monomer_mol);
     return monomer_mol;
 }
 
@@ -2162,10 +2162,12 @@ boost::shared_ptr<RDKit::RWMol> toMonomeric(const RDKit::ROMol& mol,
         if (hasPdbResidueInfo(atomistic_mol)) {
             auto monomer_mol = pdbInfoAtomisticToMM(atomistic_mol, true);
             assignChains(*monomer_mol);
+            CopyMolProperties(mol, *monomer_mol);
             return monomer_mol;
         } else if (processSupGroups(atomistic_mol)) {
             auto monomer_mol = pdbInfoAtomisticToMM(atomistic_mol, false);
             assignChains(*monomer_mol);
+            CopyMolProperties(mol, *monomer_mol);
             return monomer_mol;
         }
     }

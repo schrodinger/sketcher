@@ -15,7 +15,6 @@
 #include <rdkit/GraphMol/SubstanceGroup.h>
 #include <memory>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
@@ -490,6 +489,46 @@ boost::shared_ptr<RDKit::ROMol> CombineMols(const RDKit::ROMol& mol1,
         return CombineMonomericMols(mol1, mol2);
     }
 }
+void CopyMolProperties(const RDKit::ROMol& source, RDKit::ROMol& dest)
+{
+    constexpr auto includePrivate = false;
+    constexpr auto includeComputed = false;
+    auto props_to_copy = source.getPropList(includePrivate, includeComputed);
+
+    for (const auto& [name, value] : source.getDict()) {
+        // Skip representation-specific properties
+        if (std::ranges::find(PRIVATE_PROPERTIES, name) !=
+            PRIVATE_PROPERTIES.end()) {
+            continue;
+        }
+
+        if (std::ranges::find(props_to_copy, name) != props_to_copy.end()) {
+            switch (value.getTag()) {
+                case RDKit::RDTypeTag::StringTag:
+                    dest.setProp(name, RDKit::rdvalue_cast<std::string>(value));
+                    break;
+                case RDKit::RDTypeTag::IntTag:
+                    dest.setProp(name, RDKit::rdvalue_cast<int>(value));
+                    break;
+                case RDKit::RDTypeTag::UnsignedIntTag:
+                    dest.setProp(name,
+                                 RDKit::rdvalue_cast<unsigned int>(value));
+                    break;
+                case RDKit::RDTypeTag::DoubleTag:
+                case RDKit::RDTypeTag::FloatTag:
+                    dest.setProp(name, RDKit::rdvalue_cast<double>(value));
+                    break;
+                case RDKit::RDTypeTag::BoolTag:
+                    dest.setProp(name, RDKit::rdvalue_cast<bool>(value));
+                    break;
+                default:
+                    // other kinds of properties for now.
+                    break;
+            }
+        }
+    }
+}
 
 } // namespace rdkit_extensions
 } // namespace schrodinger
+  //
