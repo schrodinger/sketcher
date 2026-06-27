@@ -103,8 +103,19 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
     }
     std::vector<RDKit::Bond::BondDir> bond_dirs;
     bond_dirs.reserve(mol.getNumBonds());
+    std::vector<bool> was_crossed_double;
+    was_crossed_double.reserve(mol.getNumBonds());
     for (auto bond : mol.bonds()) {
         bond_dirs.push_back(bond->getBondDir());
+        // SKETCH-2759: a double bond explicitly marked as crossed (V2000
+        // stereo flag 3 / V3000 CFG=2) reaches us with Stereo=STEREOANY but
+        // BondDir=NONE — assignStereochemistry's stereoPerception clears
+        // BondDir while preserving Stereo. Snapshot either marker so we can
+        // restore the canonical pair after the cleanIt=true pass below.
+        was_crossed_double.push_back(
+            bond->getStereo() == RDKit::Bond::BondStereo::STEREOANY ||
+            bond->getBondDir() == RDKit::Bond::BondDir::EITHERDOUBLE);
+
         if (bond->getBondDir() == RDKit::Bond::BondDir::ENDDOWNRIGHT ||
             bond->getBondDir() == RDKit::Bond::BondDir::ENDUPRIGHT) {
             bond->setBondDir(RDKit::Bond::BondDir::NONE);
@@ -140,6 +151,7 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
     // Restore bond directions. We want to preserve EITHERDOUBLE since
     // it's what we use to draw crossed bonds.
     auto bond_it = bond_dirs.begin();
+    auto crossed_it = was_crossed_double.begin();
     for (auto bond : mol.bonds()) {
         if (auto bond_dir = *bond_it++;
             bond_dir == RDKit::Bond::BondDir::BEGINDASH ||
@@ -147,6 +159,10 @@ assign_stereochemistry_with_bond_directions_and_coordinates(RDKit::RWMol& mol)
             bond_dir == RDKit::Bond::BondDir::EITHERDOUBLE ||
             bond_dir == RDKit::Bond::BondDir::UNKNOWN) {
             bond->setBondDir(bond_dir);
+        }
+        if (*crossed_it++) {
+            bond->setBondDir(RDKit::Bond::BondDir::EITHERDOUBLE);
+            bond->setStereo(RDKit::Bond::BondStereo::STEREOANY);
         }
     }
 }
