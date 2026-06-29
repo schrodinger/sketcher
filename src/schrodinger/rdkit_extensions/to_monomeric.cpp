@@ -86,13 +86,13 @@ ResidueQuery prepare_static_mol_query(const char* smarts_query,
 // attachment points 1 and 2 are backbone attachment points,
 // 8 is the side chain attachment point, 3 is cysteine's sulfur
 static const ResidueQuery CYSTEINE_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+:1][CX4H]([CX4H2][S:3])[CX3:2](=[OX1])[O,N:9]",
+    "[NX3,NX4+:1][CX4H]([CX4H2][S:3])[CX3:2](=[OX1])[O,#7:9]",
     "CYSTEINE")}; // matches C, dC, meC
 static const ResidueQuery GENERIC_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+:1][CX4H]([*:8])[CX3:2](=[OX1])[O,N:9]",
+    "[NX3,NX4+:1][CX4H]([*:8])[CX3:2](=[OX1])[O,#7:9]",
     "GENERIC")};
 static const ResidueQuery GLYCINE_AMINO_ACID_QUERY{prepare_static_mol_query(
-    "[NX3,NX4+:1][CX4H2][CX3:2](=[OX1])[O,N:9]",
+    "[NX3,NX4+:1][CX4H2][CX3:2](=[OX1])[O,#7:9]",
     "GLYCINE")}; // no side chain
 // clang-format on
 
