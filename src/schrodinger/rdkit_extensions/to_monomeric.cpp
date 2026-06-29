@@ -1127,7 +1127,7 @@ buildMonomerMol(const RDKit::ROMol& atomistic_mol,
     if (monomers.size() == 1) {
         auto& monomer = monomers.front();
         auto helm_symbol = findHelmSymbol(atomistic_mol, monomer);
-        if (!helm_symbol) {
+        if (!helm_symbol && allow_smiles) {
             addMonomer(*monomer_mol, RDKit::MolToSmiles(atomistic_mol), 1,
                        "CHEM1", MonomerType::SMILES);
             return monomer_mol;
