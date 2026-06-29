@@ -32,6 +32,7 @@
 
 #include "sqlite3.h"
 
+#include "schrodinger/rdkit_extensions/capture_rdkit_log.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
 #include "schrodinger/rdkit_extensions/monomer_db_schema.h"
 #include "schrodinger/rdkit_extensions/monomer_db_default_monomers.h"
@@ -549,7 +550,11 @@ std::vector<std::string> enumerate_smiles(const std::string& smiles)
         // to the output vector.
         if (!found_mapnum) {
             // The mols we check against have all Hs removed.
-            RDKit::MolOps::removeAllHs(*mol);
+            try {
+                RDKit::MolOps::removeAllHs(*mol);
+            } catch (const RDKit::MolSanitizeException&) {
+                continue;
+            }
             enumerated_smiles.push_back(RDKit::MolToSmiles(*mol));
         }
     }
@@ -987,6 +992,7 @@ const std::unordered_map<std::string, std::string>&
 MonomerDatabase::getEnumeratedCoreSmiles() const
 {
     if (!m_enumerated_core_smiles_cache.has_value()) {
+        schrodinger::rdkit_extensions::CaptureRDErrorLog rdkit_log;
         std::unordered_map<std::string, std::string> core_smiles_to_monomer;
 
         for (auto& [smiles, symbol] : getAllSMILES()) {
