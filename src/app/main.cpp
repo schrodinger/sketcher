@@ -36,9 +36,6 @@ using schrodinger::rdkit_extensions::Format;
 using schrodinger::sketcher::ImageFormat;
 using schrodinger::sketcher::SketcherWidget;
 
-using MonomerDefsInsertionResult =
-    std::pair<std::vector<std::string>, std::vector<std::string>>;
-
 // For the WebAssembly build, we need to be able to get the sketcher
 // instance we are running from a function/static method. We'll use a
 // singleton for that.
@@ -96,26 +93,16 @@ void sketcher_allow_monomeric(bool allow_monomeric)
             : schrodinger::sketcher::InterfaceType::ATOMISTIC);
 }
 
-static MonomerDefsInsertionResult load_custom_monomers(const std::string& json)
-{
-    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    return db.loadMonomersFromJson(json);
-}
-
 void sketcher_load_custom_monomers_from_sql(const std::string& sql)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     db.loadMonomersFromSql(sql);
 }
 
-static MonomerDefsInsertionResult
-insert_custom_monomers(const std::string& json)
-{
-    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    return db.insertMonomersFromJson(json);
-}
-
 #ifdef __EMSCRIPTEN__
+using MonomerDefsInsertionResult =
+    std::pair<std::vector<std::string>, std::vector<std::string>>;
+
 emscripten::val
 string_vector_to_js_array(const std::vector<std::string>& values)
 {
@@ -137,26 +124,19 @@ monomer_defs_insertion_result_to_js(const MonomerDefsInsertionResult& result)
 
 emscripten::val sketcher_load_custom_monomers(const std::string& json)
 {
-    return monomer_defs_insertion_result_to_js(load_custom_monomers(json));
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    auto result = db.loadMonomersFromJson(json);
+
+    return monomer_defs_insertion_result_to_js(result);
 }
 
 emscripten::val sketcher_insert_custom_monomers(const std::string& json)
 {
-    return monomer_defs_insertion_result_to_js(insert_custom_monomers(json));
-}
-#else
-inline MonomerDefsInsertionResult
-sketcher_load_custom_monomers(const std::string& json)
-{
-    return load_custom_monomers(json);
-}
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    auto result = db.insertMonomersFromJson(json);
 
-inline MonomerDefsInsertionResult
-sketcher_insert_custom_monomers(const std::string& json)
-{
-    return insert_custom_monomers(json);
+    return monomer_defs_insertion_result_to_js(result);
 }
-
 #endif
 
 void sketcher_reset_custom_monomers()
