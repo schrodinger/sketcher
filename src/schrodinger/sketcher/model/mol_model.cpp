@@ -712,12 +712,11 @@ get_monomer_type_from_chain_type(const rdkit_extensions::ChainType chain_type,
 }
 
 /**
- * @return a set of all residue numbers for monomers of the specified type that
- * are in the same polymer as the given atom.
+ * @return a set of all residue numbers for monomers that are in the same
+ * polymer as the given atom.
  */
 static std::unordered_set<int>
-get_all_residue_numbers_of_monomer_type_in_polymer(
-    const MonomerType monomer_type, const RDKit::Atom* const atom_in_polymer)
+get_all_residue_numbers_in_polymer(const RDKit::Atom* const atom_in_polymer)
 {
     // we make a copy of the molecule so we can flag it as monomeric
     auto mol = atom_in_polymer->getOwningMol();
@@ -728,68 +727,70 @@ get_all_residue_numbers_of_monomer_type_in_polymer(
     std::unordered_set<int> residue_numbers;
     for (auto atom_idx : atom_idxs) {
         auto* atom = mol.getAtomWithIdx(atom_idx);
-        if (get_monomer_type(atom) == monomer_type) {
-            auto res_num = rdkit_extensions::get_residue_number(atom);
-            residue_numbers.insert(res_num);
-        }
+        auto res_num = rdkit_extensions::get_residue_number(atom);
+        residue_numbers.insert(res_num);
     }
     return residue_numbers;
 }
 
-/**
- * Determine the appropriate residue number to use for a new monomer that will
- * be connected to an existing monomer.
- * @param res_name The residue name of the monomer to be added
- * @param chain_type The type of the monomer to be added
- * @param new_monomer_ap_name The new monomer's attachment point that will be
- * used to connect it to bound_to_monomer
- * @param bound_to_monomer The existing monomer that the new monomer will be
- * bound to
- * @return the residue number, which is guaranteed to be:
- *   - non-negative (since get_residue_number returns unsigned ints)
- *   - unique amongst all residues with the same monomer type (This allows,
- *     e.g., an RNA base and sugar to have the same residue number, but ensures
- *     that peptide monomers are uniquely numbered.)
- */
-static int
-get_residue_number_for_new_monomer(const std::string_view res_name,
-                                   const rdkit_extensions::ChainType chain_type,
-                                   const std::string_view new_monomer_ap_name,
-                                   const RDKit::Atom* const bound_to_monomer)
+int get_residue_number_for_new_monomer(
+    const std::string_view res_name,
+    const rdkit_extensions::ChainType chain_type,
+    const std::string_view new_monomer_ap_name,
+    const RDKit::Atom* const bound_to_monomer)
 {
     using rdkit_extensions::ChainType;
 
     auto monomer_type = get_monomer_type_from_chain_type(chain_type, res_name);
-    auto existing_res_nums = get_all_residue_numbers_of_monomer_type_in_polymer(
-        monomer_type, bound_to_monomer);
+    auto existing_res_nums =
+        get_all_residue_numbers_in_polymer(bound_to_monomer);
+
+    // First, determine what the "ideal" residue number would be based on the
+    // offset from the residue number of the monomer we're binding to. For
+    // example, the ideal residue number of a new C-terminal peptide is one
+    // higher than the bound peptide, and the ideal residue number of a new
+    // N-terminal peptide is one lower than the bound peptide. We refer to it as
+    // an "ideal" residue number since we don't know whether we'll actually be
+    // able to use that number; it may be non-positive, which isn't allowed, or
+    // it may already be taken by an existing monomer. In those cases, we'll
+    // just use one more than the highest current residue number, since we know
+    // that's available and valid.
 
     int res_num_offset = 1;
-    auto bound_to_monomer_chain_type =
-        rdkit_extensions::getChainType(*bound_to_monomer);
     if (chain_type == ChainType::PEPTIDE &&
-        bound_to_monomer_chain_type == ChainType::PEPTIDE &&
-        new_monomer_ap_name == ap_model_name_for(PeptideAP::N)) {
+        new_monomer_ap_name == ap_model_name_for(PeptideAP::C)) {
+        // a new C terminal peptide residue
         res_num_offset = -1;
-    } else if (chain_type == ChainType::RNA &&
-               bound_to_monomer_chain_type == ChainType::RNA) {
-        if (monomer_type == MonomerType::NA_SUGAR &&
-            new_monomer_ap_name == ap_model_name_for(NASugarAP::THREE_PRIME)) {
-            // sugars can link to the previous residue
-            res_num_offset = -1;
-        } else if (!((monomer_type == MonomerType::NA_PHOSPHATE &&
-                      new_monomer_ap_name ==
-                          ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)) ||
-                     (monomer_type == MonomerType::NA_BASE &&
-                      new_monomer_ap_name == NA_BASE_AP_PAIR))) {
-            // phosphates and bases can link to the next residue, but all other
-            // linkages are probably within the same residue
-            res_num_offset = 0;
+    } else if (chain_type == ChainType::RNA) {
+        if (monomer_type == MonomerType::NA_SUGAR) {
+            if (new_monomer_ap_name ==
+                ap_model_name_for(NASugarAP::THREE_PRIME)) {
+                // a new sugar bound to the next phosphate. We skip a number
+                // since the base is typically given the number immediately
+                // after the sugar
+                res_num_offset = -2;
+            } else if (new_monomer_ap_name ==
+                       ap_model_name_for(NASugarAP::ONE_PRIME)) {
+                // a new sugar bound to its base
+                res_num_offset = -1;
+            }
+        } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
+            if (new_monomer_ap_name ==
+                ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR)) {
+                res_num_offset = 2;
+            } else if (new_monomer_ap_name ==
+                       ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)) {
+                res_num_offset = -1;
+            }
         }
     }
     auto bound_to_res_num =
         rdkit_extensions::get_residue_number(bound_to_monomer);
     int new_res_num = bound_to_res_num + res_num_offset;
-    if (new_res_num < 0 || existing_res_nums.contains(new_res_num)) {
+
+    if (new_res_num <= 0 || existing_res_nums.contains(new_res_num)) {
+        // the ideal residue number isn't valid or isn't available. Note that
+        // residue numbers of 0 confuse HELM generation, so we avoid them.
         new_res_num = *std::ranges::max_element(existing_res_nums) + 1;
     }
     return new_res_num;

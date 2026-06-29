@@ -1714,5 +1714,27 @@ SKETCHER_API void add_text_to_mol_model(
     const std::optional<RDGeom::Point3D> position = std::nullopt,
     const bool recenter_view = true);
 
+/**
+ * Determine the appropriate residue number to use for a new monomer that will
+ * be connected to an existing monomer via a standard connection
+ * @param res_name The residue name of the monomer to be added
+ * @param chain_type The type of the monomer to be added, which must be the same
+ * as the chain type of bound_to_monomer (since otherwise the new residue should
+ * be a separate chain)
+ * @param new_monomer_ap_name The new monomer's attachment point that will be
+ * used to connect it to bound_to_monomer
+ * @param bound_to_monomer The existing monomer that the new monomer will be
+ * bound to
+ * @return the residue number, which is guaranteed to be:
+ *   - positive
+ *   - unique amongst all residues in the same chain (The HELM reader and writer
+ *     expect one monomer per residue number, even for nucleic acids.)
+ */
+SKETCHER_API int
+get_residue_number_for_new_monomer(const std::string_view res_name,
+                                   const rdkit_extensions::ChainType chain_type,
+                                   const std::string_view new_monomer_ap_name,
+                                   const RDKit::Atom* const bound_to_monomer);
+
 } // namespace sketcher
 } // namespace schrodinger

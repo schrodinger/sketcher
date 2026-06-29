@@ -26,6 +26,7 @@
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
 #include <rdkit/GraphMol/FileParsers/MolSupplier.h>
 #include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/QueryBond.h>
 #include <rdkit/GraphMol/ROMol.h>
@@ -4798,6 +4799,130 @@ BOOST_AUTO_TEST_CASE(test_addBoundMonomer_RNA)
                           prev_res_sugar, "R3");
     helm = get_mol_text(&model, Format::HELM);
     BOOST_TEST(helm == "RNA1{R(C)P.R(A)P.R(G)P}$$$$V2.0");
+}
+
+/**
+ * Test get_residue_number_for_new_monomer() for a peptide
+ */
+BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_peptide)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // create an amino acid with a residue number of 10
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A}$$$$V2.0", Format::HELM);
+    auto* res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+        mol->getAtomWithIdx(0)->getMonomerInfo());
+    res_info->setResidueNumber(10);
+    model.addMol(*mol);
+    auto peptide = model.getMol()->getAtomWithIdx(0);
+    BOOST_REQUIRE(rdkit_extensions::get_residue_number(peptide) == 10u);
+
+    // check residue numbers for the previous and next peptide
+    auto prev_peptide_num = get_residue_number_for_new_monomer(
+        "C", ChainType::PEPTIDE, ap_model_name_for(PeptideAP::C), peptide);
+    auto next_peptide_num = get_residue_number_for_new_monomer(
+        "C", ChainType::PEPTIDE, ap_model_name_for(PeptideAP::N), peptide);
+    BOOST_TEST(prev_peptide_num == 9u);
+    BOOST_TEST(next_peptide_num == 11u);
+
+    // add a new amino acid so we can check what happens when the ideal residue
+    // numbers is already assigned to an existing monomer
+    model.addBoundMonomer("C", ChainType::PEPTIDE, {1.0, 0.0, 0.0},
+                          ap_model_name_for(PeptideAP::N), peptide,
+                          ap_model_name_for(PeptideAP::C));
+    peptide = model.getMol()->getAtomWithIdx(0);
+    next_peptide_num = get_residue_number_for_new_monomer(
+        "C", ChainType::PEPTIDE, ap_model_name_for(PeptideAP::N), peptide);
+    BOOST_TEST(next_peptide_num == 12u);
+}
+
+/**
+ * Test get_residue_number_for_new_monomer() for a nucleic acid sugar
+ */
+BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_na_sugar)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // create a sugar with a residue number of 10
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R}$$$$V2.0", Format::HELM);
+    auto* res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+        mol->getAtomWithIdx(0)->getMonomerInfo());
+    res_info->setResidueNumber(10);
+    model.addMol(*mol);
+    auto sugar = model.getMol()->getAtomWithIdx(0);
+    BOOST_REQUIRE(rdkit_extensions::get_residue_number(sugar) == 10u);
+
+    // check residue numbers for a base and phosphates bound to the sugar
+    auto base_num = get_residue_number_for_new_monomer(
+        "A", ChainType::RNA, ap_model_name_for(NA_BASE_AP_N1_9), sugar);
+    auto next_phos_num = get_residue_number_for_new_monomer(
+        "P", ChainType::RNA, ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
+        sugar);
+    auto prev_phos_num = get_residue_number_for_new_monomer(
+        "P", ChainType::RNA, ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR),
+        sugar);
+    BOOST_TEST(base_num == 11u);
+    BOOST_TEST(next_phos_num == 12u);
+    BOOST_TEST(prev_phos_num == 9u);
+}
+
+/**
+ * Test get_residue_number_for_new_monomer() for a nucleic acid phosphate
+ */
+BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_na_phosphate)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // create a phosphate with a residue number of 10
+    auto mol = rdkit_extensions::to_rdkit("RNA1{P}$$$$V2.0", Format::HELM);
+    auto* res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+        mol->getAtomWithIdx(0)->getMonomerInfo());
+    res_info->setResidueNumber(10);
+    model.addMol(*mol);
+    auto phosphate = model.getMol()->getAtomWithIdx(0);
+    BOOST_REQUIRE(rdkit_extensions::get_residue_number(phosphate) == 10u);
+
+    // check residue numbers for sugars bound to the phosphate
+    auto prev_sugar_num = get_residue_number_for_new_monomer(
+        "R", ChainType::RNA, ap_model_name_for(NASugarAP::THREE_PRIME),
+        phosphate);
+    auto next_sugar_num = get_residue_number_for_new_monomer(
+        "R", ChainType::RNA, ap_model_name_for(NASugarAP::FIVE_PRIME),
+        phosphate);
+    // the base is expected to be numbered in between the previous sugar and
+    // this phosphate, so we skip 9 and instead assign 8 to the previous sugar
+    BOOST_TEST(prev_sugar_num == 8u);
+    // the next base should get 12 (i.e. be numbered after the next sugar), so
+    // we don't need to skip a number between this phosphate and the next sugar
+    BOOST_TEST(next_sugar_num == 11u);
+}
+
+/**
+ * Test get_residue_number_for_new_monomer() for a nucleic acid base
+ */
+BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_na_base)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+
+    // create a base with a residue number of 10
+    auto mol = rdkit_extensions::to_rdkit("RNA1{A}$$$$V2.0", Format::HELM);
+    auto* res_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+        mol->getAtomWithIdx(0)->getMonomerInfo());
+    res_info->setResidueNumber(10);
+    model.addMol(*mol);
+    auto base = model.getMol()->getAtomWithIdx(0);
+    BOOST_REQUIRE(rdkit_extensions::get_residue_number(base) == 10u);
+
+    // check residue number for a sugar bound to the base
+    auto sugar_num = get_residue_number_for_new_monomer(
+        "R", ChainType::RNA, ap_model_name_for(NASugarAP::ONE_PRIME), base);
+    // the base should be numbered after the sugar, so the sugar should get 9
+    // (instead of 11)
+    BOOST_TEST(sugar_num == 9);
 }
 
 /**
