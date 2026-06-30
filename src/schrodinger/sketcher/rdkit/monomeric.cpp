@@ -130,6 +130,51 @@ std::string get_monomer_res_name(const RDKit::Atom* const monomer)
     return res_info->getResidueName();
 }
 
+bool is_dna_base(const RDKit::Atom* const base)
+{
+    if (get_monomer_type(base) != MonomerType::NA_BASE) {
+        throw std::runtime_error("is_dna_base requires an NA_BASE atom");
+    }
+    const auto& mol = base->getOwningMol();
+    for (const auto* neighbor : mol.atomNeighbors(base)) {
+        if (get_monomer_type(neighbor) == MonomerType::NA_SUGAR &&
+            get_monomer_res_name(neighbor) == "dR") {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<std::string>
+get_complement_base_symbol(const std::string_view base_symbol,
+                           const bool is_dna)
+{
+    // G/C pairing is shared between DNA and RNA.
+    if (base_symbol == "G") {
+        return "C";
+    }
+    if (base_symbol == "C") {
+        return "G";
+    }
+    // The purine A pairs with the partner strand's pyrimidine: T in DNA, U in
+    // RNA. Both pyrimidines T and U pair back to A.
+    if (base_symbol == "A") {
+        return is_dna ? "T" : "U";
+    }
+    if (base_symbol == "T" || base_symbol == "U") {
+        return "A";
+    }
+    return std::nullopt;
+}
+
+bool na_base_has_complement(const std::string_view base_symbol)
+{
+    // Whether a complement exists is independent of the DNA/RNA target, so the
+    // is_dna argument is arbitrary here.
+    return get_complement_base_symbol(base_symbol, /* is_dna = */ false)
+        .has_value();
+}
+
 bool contains_two_monomer_linkages(const RDKit::Bond* bond)
 {
     std::string linkage, custom_linkage;

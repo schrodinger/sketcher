@@ -5120,6 +5120,154 @@ BOOST_AUTO_TEST_CASE(test_addMonomericConnection_pairing_two_nucleotides)
 }
 
 /**
+ * Single RNA base → one antiparallel complement nucleotide on a new RNA
+ * chain, paired via the standard "pair" connection. Confirms the HELM
+ * round-trip captures both the new chain and the pair annotation.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_single_RNA_base)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Atom 1 is the A base (sugar=0, base=1, phosphate=2).
+    model.addComplementaryStrand({mol->getAtomWithIdx(1)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm ==
+               "RNA1{R(A)P}|RNA2{R(U)P}$RNA1,RNA2,2:pair-2:pair$$$V2.0");
+}
+
+/**
+ * DNA strand (sugar = dR) selects the DNA complement table: A→T, C→G.
+ * Antiparallel order: original 5'-AC-3' produces complement 5'-GT-3'.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_DNA_strand)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{[dR](A)P.[dR](C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (A) and 4 (C) for [dR](A)P.[dR](C)P.
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{[dR](A)P.[dR](C)P}|RNA2{[dR](G)P.[dR](T)P}$"
+                       "RNA1,RNA2,5:pair-2:pair|"
+                       "RNA1,RNA2,2:pair-5:pair$$$V2.0");
+}
+
+/**
+ * Selecting only one base of a multi-base strand complements just that
+ * base — the spec is "complement only the selected bases".
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_partial_selection)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Pick only the second base (C at atom 4); first base (A at atom 1)
+    // should be left unpaired.
+    model.addComplementaryStrand({mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P.R(C)P}|RNA2{R(G)P}$"
+                       "RNA1,RNA2,5:pair-2:pair$$$V2.0");
+}
+
+/**
+ * The whole construction lives in one undo macro: a single QUndoStack
+ * undo() reverses the entire complement strand and all pair connections.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_grouped_undo)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    auto before = get_mol_text(&model, Format::HELM);
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+    auto after = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(after != before);
+
+    undo_stack.undo();
+    BOOST_TEST(get_mol_text(&model, Format::HELM) == before);
+}
+
+/**
+ * Non-base atoms (sugars, phosphates) in the input are filtered out and
+ * the molecule is unchanged. (The model-side complement-table-miss path
+ * is a coverage gap — needs LocalMonomerDbFixture wiring.)
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_filters_non_base_atoms)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Pass the sugar (atom 0) — wrong type, should be ignored entirely.
+    model.addComplementaryStrand({mol->getAtomWithIdx(0)});
+
+    BOOST_TEST(get_mol_text(&model, Format::HELM) == "RNA1{R(A)P}$$$$V2.0");
+}
+
+/**
+ * Bases selected from two different polymers each get their own
+ * antiparallel complement chain, with pair connections targeting the
+ * correct source.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_multi_polymer)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P}|RNA2{R(C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (RNA1's A) and 4 (RNA2's C).
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    BOOST_TEST(helm == "RNA1{R(A)P}|RNA2{R(C)P}|RNA3{R(U)P}|RNA4{R(G)P}$"
+                       "RNA1,RNA3,2:pair-2:pair|"
+                       "RNA2,RNA4,2:pair-2:pair$$$V2.0");
+}
+
+/**
+ * Chimeric polymer (R and dR sugars in one chain) — each base picks its
+ * own sugar type for the complement, so we get e.g. dR for the DNA base
+ * and R for the RNA base in the same complement strand.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_chimeric_chain)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    // RNA sugar + A base, then DNA sugar + C base, in one chain.
+    add_text_to_mol_model(model, "RNA1{R(A)P.[dR](C)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (RNA A) and 4 (DNA C).
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4)});
+
+    auto helm = get_mol_text(&model, Format::HELM);
+    // Antiparallel: complement strand 5'→3' starts from the partner of
+    // the original 3' end, so [dR](G) (DNA G, paired with the dR-C)
+    // comes first, then R(U) (RNA U, paired with the R-A).
+    BOOST_TEST(helm == "RNA1{R(A)P.[dR](C)P}|RNA2{[dR](G)P.R(U)P}$"
+                       "RNA1,RNA2,5:pair-2:pair|"
+                       "RNA1,RNA2,2:pair-5:pair$$$V2.0");
+}
+
+/**
  * Make sure that adding disconnected monomers via addMonomer results in the
  * expected HELM strings, which should contain properly numbered chains without
  * any connection between the monomers.
