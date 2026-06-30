@@ -183,6 +183,18 @@ std::vector<std::string> get_polymer_ids(const RDKit::ROMol& monomer_mol)
     return polymer_ids;
 }
 
+/**
+ * @return the value of the prop_name property from rd_prop, if present.
+ * Otherwise, returns an empty string.
+ */
+static std::string get_string_prop_if_present(const RDKit::RDProps& rd_prop,
+                                              const std::string& prop_name)
+{
+    std::string prop_val;
+    rd_prop.getPropIfPresent<std::string>(prop_name, prop_val);
+    return prop_val;
+}
+
 Chain get_polymer(const RDKit::ROMol& monomer_mol, std::string_view polymer_id)
 {
     std::vector<unsigned int> atoms;
@@ -216,8 +228,8 @@ Chain get_polymer(const RDKit::ROMol& monomer_mol, std::string_view polymer_id)
         if (!is_polymer_annotation_s_group(sg)) {
             continue;
         }
-        if (sg.getProp<std::string>("ID") == polymer_id) {
-            annotation = sg.getProp<std::string>(ANNOTATION);
+        if (get_string_prop_if_present(sg, "ID") == polymer_id) {
+            annotation = get_string_prop_if_present(sg, ANNOTATION);
             break;
         }
     }
@@ -258,8 +270,7 @@ is_supplementary_information_s_group(const RDKit::SubstanceGroup& sgroup)
 is_polymer_annotation_s_group(const RDKit::SubstanceGroup& sgroup)
 {
     std::string type;
-    return sgroup.getPropIfPresent("TYPE", type) && type == "COP" &&
-           sgroup.hasProp(ANNOTATION) && sgroup.hasProp("ID");
+    return sgroup.getPropIfPresent("TYPE", type) && type == "COP";
 }
 
 std::string get_extended_annotations(const ::RDKit::ROMol& mol)

@@ -5,6 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
+#include <rdkit/GraphMol/SubstanceGroup.h>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@ using helm::rdkit_to_helm;
 using schrodinger::rdkit_extensions::extract_helm_polymers;
 using schrodinger::rdkit_extensions::get_atoms_in_polymer_chain;
 using schrodinger::rdkit_extensions::get_atoms_in_polymer_chains;
+using schrodinger::rdkit_extensions::get_polymer;
 using schrodinger::rdkit_extensions::is_polymer_annotation_s_group;
 
 namespace bdata = boost::unit_test::data;
@@ -77,6 +79,36 @@ BOOST_AUTO_TEST_CASE(TestAtomisticMolsAreUnsupported)
                       std::invalid_argument);
     BOOST_CHECK_THROW(std::ignore = get_atoms_in_polymer_chains(mol, {}),
                       std::invalid_argument);
+}
+
+/**
+ * Ensure that get_polymer works correctly even if there's a COP substance group
+ * that's missing the ANNOTATION and ID properties.
+ */
+BOOST_DATA_TEST_CASE(TestGetPolymerIgnoresEmptyPolymerAnnotationSGroup,
+                     bdata::make(std::vector<bool>{false, true}),
+                     create_empty_s_group)
+{
+    auto mol =
+        helm_to_rdkit(R"(PEPTIDE1{A.A.A}"Alpha"|PEPTIDE2{C.C}"Beta"$$$$V2.0)");
+    if (create_empty_s_group) {
+        RDKit::SubstanceGroup sgroup{mol.get(), "COP"};
+        RDKit::addSubstanceGroup(*mol, sgroup);
+    }
+
+    const atoms_t expected_peptide1_atoms{0, 1, 2};
+    const atoms_t expected_peptide1_bonds{0, 1};
+    const auto peptide1 = get_polymer(*mol, "PEPTIDE1");
+    BOOST_TEST(peptide1.atoms == expected_peptide1_atoms);
+    BOOST_TEST(peptide1.bonds == expected_peptide1_bonds);
+    BOOST_TEST(peptide1.annotation == "Alpha");
+
+    const atoms_t expected_peptide2_atoms{3, 4};
+    const atoms_t expected_peptide2_bonds{2};
+    const auto peptide2 = get_polymer(*mol, "PEPTIDE2");
+    BOOST_TEST(peptide2.atoms == expected_peptide2_atoms);
+    BOOST_TEST(peptide2.bonds == expected_peptide2_bonds);
+    BOOST_TEST(peptide2.annotation == "Beta");
 }
 
 BOOST_AUTO_TEST_SUITE(TestPolymerExtraction)
