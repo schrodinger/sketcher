@@ -1162,6 +1162,14 @@ MonomerDatabase::getComplexMonomerQueries() const
                 }
             }
         }
+
+        // Sort by descending number of atoms so that toMonomeric() will give
+        // precedence to the larger complex monomer in cases where one complex
+        // monomer is a substructure of another.
+        std::ranges::sort(queries, {}, [](auto& q) {
+            return -static_cast<int>(q.mol->getNumAtoms());
+        });
+
         m_complex_monomer_queries = std::move(queries);
     }
     return *m_complex_monomer_queries;
