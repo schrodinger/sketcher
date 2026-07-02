@@ -86,6 +86,42 @@ export async function isSketcherEmpty(page) {
 }
 
 /**
+ * Clear all contents from the sketcher canvas.
+ */
+export async function clearSketcher(page) {
+  await page.evaluate(() => Module.sketcher_clear());
+}
+
+/**
+ * Import a structure string and report the outcome without throwing, so
+ * callers can sweep many structures and collect failures. Returns
+ * {ok, empty, error} where `ok` is false if the import threw, and `empty`
+ * reflects whether anything was actually rendered afterward.
+ */
+export async function tryImport(page, text) {
+  return page.evaluate((t) => {
+    try {
+      Module.sketcher_import_text(t);
+      return { ok: true, empty: Module.sketcher_is_empty(), error: null };
+    } catch (e) {
+      // Emscripten throws C++ exceptions as a raw pointer (a number).
+      // Decode it into the original what() message when possible.
+      let error;
+      if (typeof e === 'number' && typeof Module.getExceptionMessage === 'function') {
+        try {
+          error = Module.getExceptionMessage(e).join(': ');
+        } catch {
+          error = `uncaught C++ exception (ptr ${e})`;
+        }
+      } else {
+        error = String(e && e.message ? e.message : e);
+      }
+      return { ok: false, empty: true, error };
+    }
+  }, text);
+}
+
+/**
  * Click a toolbar button by its Qt objectName (e.g. "c_btn").
  * Uses the generic getWidgetRect to find the button's position.
  *
