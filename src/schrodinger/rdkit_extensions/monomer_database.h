@@ -63,6 +63,14 @@ struct RDKIT_EXTENSIONS_API ResidueQuery {
     /// Whether to consider chirality while doing the substructure search.
     /// Usually false for generic queries but true for specific monomers.
     bool use_chirality;
+
+    /// Getter for calling from Python.
+    // (I gave up on trying to get SWIG to convert the type of mol correctly
+    // when accessing the member variable directly.)
+    boost::shared_ptr<RDKit::RWMol> getMol() const
+    {
+        return mol;
+    }
 };
 
 class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
