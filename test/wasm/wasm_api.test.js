@@ -136,6 +136,52 @@ test.describe('WASM Sketcher API', () => {
     });
   });
 
+  ['SVG', 'PNG'].forEach((imageFormat) => {
+    test(`generating a ${imageFormat} image from text`, async ({ page }) => {
+      const bytes = await page.evaluate((imageFormat) => {
+        const imageBytes = Module.get_image_bytes('C=O', Module.ImageFormat[imageFormat]);
+        return Array.from(imageBytes);
+      }, imageFormat);
+
+      expect(bytes.length).toBeGreaterThan(0);
+      if (imageFormat === 'SVG') {
+        const svg = Buffer.from(bytes).toString('utf8');
+        expect(svg).toContain('<svg');
+      } else {
+        expect(bytes.slice(0, 8)).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      }
+    });
+  });
+
+  test('generating an image from text with render options', async ({ page }) => {
+    const bytes = await page.evaluate(() => {
+      const imageBytes = Module.get_image_bytes('CC', Module.ImageFormat.SVG, {
+        width_height: { width: 222, height: 111 },
+        background_color: '#d4e6f1',
+        scale: 0.5,
+        trim_image: false,
+        font_size: 24,
+        bond_width_scale: 1.5,
+        rdatom_index_to_label: { 0: 'AtomZero' },
+        rdatom_index_to_halo_color: { 0: '#ff0000' },
+        rdbond_index_to_halo_color: { 0: '#00ff00' },
+        rdatom_index_to_line_color: { 0: '#0000ff' },
+        rdbond_index_to_line_color: { 0: '#ff00ff' },
+        show_stereo_annotations: Module.StereoLabels.ALL,
+        show_absolute_stereo_groups: false,
+        show_simplified_stereo_annotation: false,
+        show_symbol_for_H_isotopes: false,
+        carbon_labels: Module.CarbonLabels.ALL,
+        color_scheme: Module.ColorScheme.DEFAULT,
+      });
+      return Array.from(imageBytes);
+    });
+    const svg = Buffer.from(bytes).toString('utf8');
+
+    expect(svg).toContain('svg width="222px" height="111px"');
+    expect(svg).toContain('AtomZero');
+  });
+
   test('Import CDXML from ketcher file', async ({ page }) => {
     const cdxmlInput = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE CDXML SYSTEM "http://www.cambridgesoft.com/xml/cdxml.dtd">
