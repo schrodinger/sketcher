@@ -234,7 +234,8 @@ enable_qt_moc(${SKETCHER_TARGET})
 
 # Standalone executable
 set(APP_TARGET schrodinger_sketcher)
-set(APP_SOURCES src/app/main.cpp src/app/crash_handler.cpp)
+set(APP_SOURCES src/app/main.cpp src/app/crash_handler.cpp
+                src/app/image_generation_from_js.cpp)
 if(WIN32)
   list(APPEND APP_SOURCES src/app/sketcher.rc)
 elseif(APPLE)
