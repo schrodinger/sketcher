@@ -22,7 +22,7 @@ SRC_DIR=$SCHRODINGER_SRC/sketcher
 BUILD_DIR=$SCHRODINGER/sketcher
 PF_DIR=$SCHRODINGER/schrodinger_buildenv_packages/.pixi/envs/schrodinger
 ZLIB_DIR=$(ls -d $PF_DIR/zlib-*)
-EIGEN_DIR=$(ls -d $PF_DIR/eigen-*/share/eigen3/cmake)
+EIGEN_DIR=$(ls -d $PF_DIR/share/eigen3)
 COORDGEN_DIR=$(ls -d $PF_DIR/coordgenlibs-*/lib/cmake)
 MAEPARSER_DIR=$(ls -d $PF_DIR/maeparser-*/lib/cmake)
 SQLITE_DIR=$(ls -d $PF_DIR/sqlite-*)
@@ -33,7 +33,7 @@ CMAKE_PREFIX_PATH="$PF_DIR;$ZLIB_DIR;$EIGEN_DIR;$COORDGEN_DIR;$MAEPARSER_DIR;$SQ
 # Configure compiler for Windows
 CXX_COMPILER=""
 if [[ "$OSTYPE" == "msys" ]]; then
-    CXX_COMPILER=$(ls -d $PF_DIR/vs-2019/compiler-*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe)
+    CXX_COMPILER=$(cygpath `which cl.exe`)
 fi
 
 # Ensure build directory exists
