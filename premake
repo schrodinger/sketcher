@@ -33,7 +33,7 @@ CMAKE_PREFIX_PATH="$PF_DIR;$ZLIB_DIR;$EIGEN_DIR;$COORDGEN_DIR;$MAEPARSER_DIR;$SQ
 # Configure compiler for Windows
 CXX_COMPILER=""
 if [[ "$OSTYPE" == "msys" ]]; then
-    CXX_COMPILER=$(ls -d $PF_DIR/vs-*/VC/Tools/MSVC/*/bin/Hostx64/x64/cl.exe)
+    CXX_COMPILER=$(cygpath `which cl.exe`)
 fi
 
 # Ensure build directory exists
