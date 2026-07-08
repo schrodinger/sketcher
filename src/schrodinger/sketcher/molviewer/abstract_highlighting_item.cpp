@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/molviewer/abstract_highlighting_item.h"
 
 #include <functional>
+#include <vector>
 
 #include <QList>
 
@@ -56,22 +57,41 @@ QList<const QGraphicsItem*> AbstractHighlightingItem::updateItemsToHighlight(
     return items;
 }
 
+/**
+ * Calculate the union of all specified paths. This function uses
+ * divide-and-conquer to keep the intermediate paths as small as possible, which
+ * dramatically improves performance over a naive for loop implementation.
+ */
+QPainterPath merge_paths(const std::vector<QPainterPath>& paths,
+                         const size_t begin, const size_t end)
+{
+    if (begin == end) {
+        return {};
+    }
+    if (begin + 1 == end) {
+        return paths[begin];
+    }
+
+    size_t mid = begin + (end - begin) / 2;
+    auto left = merge_paths(paths, begin, mid);
+    auto right = merge_paths(paths, mid, end);
+    return left | right;
+}
+
 QPainterPath AbstractHighlightingItem::buildHighlightingPathForItems(
     const QList<const QGraphicsItem*>& items) const
 {
-    QPainterPath path;
+    std::vector<QPainterPath> paths;
+
     for (auto item : items) {
         if (auto* molviewer_item =
                 dynamic_cast<const AbstractGraphicsItem*>(item)) {
-            QPainterPath local_path = getPathForItem(molviewer_item);
-            // We can't use addPath here, since that will result in the path
-            // being "hollowed out" where the path for two monomers intersects.
-            // E.g., there will be a hole in the selection highlighting between
-            // a nucleic acid sugar and base when both are selected.
-            path |= molviewer_item->mapToScene(local_path);
+            auto local_path = getPathForItem(molviewer_item);
+            auto scene_path = molviewer_item->mapToScene(local_path);
+            paths.push_back(scene_path);
         }
     }
-    return path;
+    return merge_paths(paths, 0, paths.size());
 }
 
 } // namespace sketcher
