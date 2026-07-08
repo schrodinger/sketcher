@@ -710,13 +710,15 @@ void BondItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option,
         painter->setClipPath(annotation_region);
         paintBondLinesAndPolygons(painter);
         painter->restore();
-        // paint the annotation
-        painter->save();
-        painter->setPen(m_chirality_pen);
-        painter->setFont(m_fonts.m_chirality_font);
-        paintAnnotation(painter, m_text_angle, m_text_pos, m_text_size,
-                        m_annotation_text);
-        painter->restore();
+        if (!m_annotation_text.isEmpty()) {
+            // paint the annotation text if there is any
+            painter->save();
+            painter->setPen(m_chirality_pen);
+            painter->setFont(m_fonts.m_chirality_font);
+            paintAnnotation(painter, m_text_angle, m_text_pos, m_text_size,
+                            m_annotation_text);
+            painter->restore();
+        }
     } else {
         paintBondLinesAndPolygons(painter);
     }
@@ -903,11 +905,11 @@ QPolygonF BondItem::getAnnotationPolygon()
     transform.rotate(-m_text_angle);
     return transform.map(QPolygonF(bounding_rect));
 }
+
 void BondItem::paintAnnotation(QPainter* painter, qreal angle,
                                const QPointF& text_pos, const QSizeF& text_size,
                                const QString& text)
 {
-    painter->save();
     // Position and rotate the painter to the correct angle
     painter->translate(text_pos);
     painter->rotate(-angle);
@@ -917,8 +919,6 @@ void BondItem::paintAnnotation(QPainter* painter, qreal angle,
     auto rect = QRectF(QPointF(0, 0), text_size);
     rect.moveCenter(QPointF(0, 0));
     painter->drawText(rect, text);
-    // Restore the painter's original state
-    painter->restore();
 }
 
 } // namespace sketcher
