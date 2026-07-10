@@ -62,6 +62,7 @@ std::vector<ModelKey> get_model_keys()
         ModelKey::CHARGE_TOOL,
         ModelKey::RING_TOOL,
         ModelKey::ENUMERATION_TOOL,
+        ModelKey::MONOMERIC_CONNECTION_TOOL,
         ModelKey::ELEMENT,
         ModelKey::ATOM_QUERY,
         ModelKey::RGROUP_NUMBER,
@@ -128,6 +129,12 @@ RingTool SketcherModel::getRingTool() const
 EnumerationTool SketcherModel::getEnumerationTool() const
 {
     return m_model_map.at(ModelKey::ENUMERATION_TOOL).value<EnumerationTool>();
+}
+
+MonomericConnectionTool SketcherModel::getMonomericConnectionTool() const
+{
+    return m_model_map.at(ModelKey::MONOMERIC_CONNECTION_TOOL)
+        .value<MonomericConnectionTool>();
 }
 
 Element SketcherModel::getElement() const
@@ -240,6 +247,8 @@ void SketcherModel::reset()
         {ModelKey::RING_TOOL, QVariant::fromValue(RingTool::CYCLOPROPANE)},
         {ModelKey::ENUMERATION_TOOL,
          QVariant::fromValue(EnumerationTool::NEW_RGROUP)},
+        {ModelKey::MONOMERIC_CONNECTION_TOOL,
+         QVariant::fromValue(MonomericConnectionTool::COVALENT_OR_DISULFIDE)},
         {ModelKey::ELEMENT, QVariant::fromValue(Element::C)},
         {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::A)},
         {ModelKey::RGROUP_NUMBER, 1u},

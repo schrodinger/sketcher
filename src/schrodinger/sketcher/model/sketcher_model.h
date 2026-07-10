@@ -239,6 +239,11 @@ enum class EnumerationTool : int {
     RXN_PLUS,
 };
 
+enum class MonomericConnectionTool : int {
+    COVALENT_OR_DISULFIDE,
+    HBOND,
+};
+
 /**
  * Possible draw tools.
  *
@@ -260,6 +265,7 @@ enum class DrawTool {
     RESIDUE,
     EXPLICIT_H,
     MONOMER,
+    MONOMERIC_CONNECTION,
 };
 
 /**
@@ -280,6 +286,7 @@ enum class ModelKey {
     CHARGE_TOOL,
     RING_TOOL,
     ENUMERATION_TOOL,
+    MONOMERIC_CONNECTION_TOOL,
     ELEMENT,
     ATOM_QUERY,
     RGROUP_NUMBER,
@@ -519,6 +526,7 @@ class SKETCHER_API SketcherModel : public QObject
     ChargeTool getChargeTool() const;
     RingTool getRingTool() const;
     EnumerationTool getEnumerationTool() const;
+    MonomericConnectionTool getMonomericConnectionTool() const;
     Element getElement() const;
     AtomQuery getAtomQuery() const;
     MonomerToolType getMonomerToolType() const;

@@ -48,6 +48,7 @@
 #include "schrodinger/sketcher/tool/draw_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_monomer_fragment_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_monomeric_connection_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
@@ -772,6 +773,12 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                     sugar.toStdString(), base.toStdString(), phos.toStdString(),
                     m_fonts, this, m_mol_model);
             }
+        }
+    } else if (draw_tool == DrawTool::MONOMERIC_CONNECTION) {
+        auto connection_tool = m_sketcher_model->getMonomericConnectionTool();
+        if (connection_tool == MonomericConnectionTool::COVALENT_OR_DISULFIDE) {
+            return std::make_shared<DrawMonomericConnectionSceneTool>(
+                m_fonts, this, m_mol_model);
         }
     }
     // tool not yet implemented

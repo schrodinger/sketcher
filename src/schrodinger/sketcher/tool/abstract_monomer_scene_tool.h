@@ -96,7 +96,7 @@ class SKETCHER_API AbstractMonomerSceneTool : public StandardSceneToolBase
      * Remove the hint fragment item from the scene, then destroy it as well as
      * the RDKit structure object it represents.
      */
-    void clearHintFragmentItem();
+    virtual void clearHintFragmentItem();
 
     /**
      * Determine whether the specified graphics item is part of this scene

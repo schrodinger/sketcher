@@ -138,6 +138,18 @@ struct MonomerToolTestFixture {
         process_qt_events();
     }
 
+    void setMonomericConnectionTool()
+    {
+        m_sketcher_model->setValues({
+            {ModelKey::DRAW_TOOL,
+             QVariant::fromValue(DrawTool::MONOMERIC_CONNECTION)},
+            {ModelKey::MONOMERIC_CONNECTION_TOOL,
+             QVariant::fromValue(
+                 MonomericConnectionTool::COVALENT_OR_DISULFIDE)},
+        });
+        process_qt_events();
+    }
+
     void importMolText(const std::string& text)
     {
         import_mol_text(m_mol_model, text);
