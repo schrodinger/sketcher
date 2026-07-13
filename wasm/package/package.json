@@ -10,7 +10,43 @@
         "access": "public",
         "registry": "https://npm.pkg.github.com"
     },
+    "main": "dist/react/index.js",
+    "module": "dist/react/index.es.js",
+    "types": "dist/react/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/react/index.d.ts",
+            "import": "./dist/react/index.es.js",
+            "require": "./dist/react/index.js"
+        },
+        "./react": {
+            "types": "./dist/react/index.d.ts",
+            "import": "./dist/react/index.es.js",
+            "require": "./dist/react/index.js"
+        },
+        "./dist/*": "./dist/*",
+        "./package.json": "./package.json"
+    },
     "files": [
         "dist"
-    ]
+    ],
+    "scripts": {
+        "build": "rollup -c"
+    },
+    "peerDependencies": {
+        "react": "^16.8.0"
+    },
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^20.0.0",
+        "@rollup/plugin-node-resolve": "^13.0.4",
+        "@rollup/plugin-replace": "^5.0.0",
+        "@rollup/plugin-typescript": "^8.5.0",
+        "@types/react": "^16.14.0",
+        "md5-file": "^5.0.0",
+        "rollup": "^2.56.3",
+        "rollup-plugin-peer-deps-external": "^2.2.4",
+        "tslib": "^2.6.0",
+        "type-fest": "^4.23.0",
+        "typescript": "^4.4.2"
+    }
 }

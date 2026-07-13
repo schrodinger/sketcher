@@ -16,6 +16,11 @@ runs:
         # Move WASM assets into package directory
         mv build/sketcher_app/* wasm/package/dist
 
+        # Compile the React component into dist/react. This must run after the
+        # WASM assets are in place so the build can hash the assembled
+        # wasm_shell.html for the iframe cache-bust (__WASM_HASH__).
+        (cd wasm/package && npm ci && npm run build)
+
         # Set pre-release version in package manifest
         sketcher_version=$(jq -r '.sketcher' version.json)
         tag_name=$(echo $sketcher_version | awk -F . '{print "v"$1"-"$2}')

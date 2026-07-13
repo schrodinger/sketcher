@@ -36,3 +36,5 @@ compile_commands.json
 .vscode/
 .venv
 ext_bld
+# node dependencies for the sketcher npm package's React build
+wasm/package/node_modules/
