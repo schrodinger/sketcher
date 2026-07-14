@@ -9,6 +9,9 @@ const packageJson = require('./package.json');
 
 export default {
   input: 'src/index.ts',
+  // react/jsx-runtime is pulled in by the automatic JSX transform; keep it (and
+  // react) external alongside peerDepsExternal so it is not bundled.
+  external: [/^react($|\/)/],
   output: [
     {
       file: packageJson.main,
