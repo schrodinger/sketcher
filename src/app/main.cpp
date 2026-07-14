@@ -7,6 +7,7 @@
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
 #else
 #include "crash_handler.h"
 #endif
@@ -22,18 +23,23 @@
 #include <QIcon>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QString>
 #include <QStyleHints>
 
+#include "image_generation_from_js.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/image_generation.h"
-#include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 
 using schrodinger::rdkit_extensions::Format;
+using schrodinger::sketcher::CarbonLabels;
+using schrodinger::sketcher::ColorScheme;
 using schrodinger::sketcher::ImageFormat;
+using schrodinger::sketcher::RenderOptions;
 using schrodinger::sketcher::SketcherWidget;
+using schrodinger::sketcher::StereoLabels;
 
 // For the WebAssembly build, we need to be able to get the sketcher
 // instance we are running from a function/static method. We'll use a
@@ -61,6 +67,24 @@ std::string sketcher_export_image(ImageFormat format)
     auto& sk = get_sketcher_instance();
     return sk.getImageBytes(format).toBase64().toStdString();
 }
+
+#ifdef __EMSCRIPTEN__
+std::string get_image_bytes_from_text(const std::string& text,
+                                      ImageFormat format)
+{
+    auto image_bytes = schrodinger::sketcher::get_image_bytes(text, format);
+    return image_bytes.toBase64().toStdString();
+}
+
+std::string get_image_bytes_from_text(const std::string& text,
+                                      ImageFormat format,
+                                      const emscripten::val& options)
+{
+    auto image_bytes = schrodinger::sketcher::get_image_bytes(
+        text, format, render_options_from_js(options));
+    return image_bytes.toBase64().toStdString();
+}
+#endif
 
 void sketcher_clear()
 {
@@ -236,9 +260,36 @@ EMSCRIPTEN_BINDINGS(sketcher)
         .value("PNG", ImageFormat::PNG)
         .value("SVG", ImageFormat::SVG);
 
+    emscripten::enum_<StereoLabels>("StereoLabels")
+        .value("NONE", StereoLabels::NONE)
+        .value("KNOWN", StereoLabels::KNOWN)
+        .value("ALL", StereoLabels::ALL);
+
+    emscripten::enum_<CarbonLabels>("CarbonLabels")
+        .value("NONE", CarbonLabels::NONE)
+        .value("TERMINAL", CarbonLabels::TERMINAL)
+        .value("ALL", CarbonLabels::ALL);
+
+    emscripten::enum_<ColorScheme>("ColorScheme")
+        .value("DEFAULT", ColorScheme::DEFAULT)
+        .value("AVALON", ColorScheme::AVALON)
+        .value("CDK", ColorScheme::CDK)
+        .value("DARK_MODE", ColorScheme::DARK_MODE)
+        .value("BLACK_WHITE", ColorScheme::BLACK_WHITE)
+        .value("WHITE_BLACK", ColorScheme::WHITE_BLACK);
+
     emscripten::function("sketcher_import_text", &sketcher_import_text);
     emscripten::function("sketcher_export_text", &sketcher_export_text);
     emscripten::function("sketcher_export_image", &sketcher_export_image);
+    emscripten::function(
+        "get_image_bytes",
+        emscripten::select_overload<std::string(
+            const std::string&, ImageFormat)>(&get_image_bytes_from_text));
+    emscripten::function(
+        "get_image_bytes",
+        emscripten::select_overload<std::string(const std::string&, ImageFormat,
+                                                const emscripten::val&)>(
+            &get_image_bytes_from_text));
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
     emscripten::function("sketcher_has_monomers", &sketcher_has_monomers);
