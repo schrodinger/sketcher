@@ -13,11 +13,6 @@
 #include "schrodinger/sketcher/image_generation.h"
 
 /**
- * Convert a QByteArray to a JavaScript array of uint8 values
- */
-emscripten::val qbyte_array_to_uint8_array(QByteArray bytes);
-
-/**
  * Convert a JavaScript object that describes render options to an actual C++
  * RenderOptions instance.
  */

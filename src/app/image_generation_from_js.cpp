@@ -19,14 +19,6 @@ using schrodinger::sketcher::ColorScheme;
 using schrodinger::sketcher::RenderOptions;
 using schrodinger::sketcher::StereoLabels;
 
-emscripten::val qbyte_array_to_uint8_array(QByteArray bytes)
-{
-    auto byte_view = emscripten::val(emscripten::typed_memory_view(
-        static_cast<std::size_t>(bytes.size()),
-        reinterpret_cast<unsigned char*>(bytes.data())));
-    return emscripten::val::global("Uint8Array").new_(byte_view);
-}
-
 static bool has_option(const emscripten::val& options, const char* key)
 {
     return options.hasOwnProperty(key);

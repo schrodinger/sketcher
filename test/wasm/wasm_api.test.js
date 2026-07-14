@@ -138,24 +138,28 @@ test.describe('WASM Sketcher API', () => {
 
   ['SVG', 'PNG'].forEach((imageFormat) => {
     test(`generating a ${imageFormat} image from text`, async ({ page }) => {
-      const bytes = await page.evaluate((imageFormat) => {
-        const imageBytes = Module.get_image_bytes('C=O', Module.ImageFormat[imageFormat]);
-        return Array.from(imageBytes);
-      }, imageFormat);
+      const base64Content = await page.evaluate(
+        (imageFormat) => Module.get_image_bytes('C=O', Module.ImageFormat[imageFormat]),
+        imageFormat,
+      );
+      expect(typeof base64Content).toBe('string');
+      const bytes = Buffer.from(base64Content, 'base64');
 
       expect(bytes.length).toBeGreaterThan(0);
       if (imageFormat === 'SVG') {
         const svg = Buffer.from(bytes).toString('utf8');
         expect(svg).toContain('<svg');
       } else {
-        expect(bytes.slice(0, 8)).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+        expect(Array.from(bytes.subarray(0, 8))).toEqual([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        ]);
       }
     });
   });
 
   test('generating an image from text with render options', async ({ page }) => {
-    const bytes = await page.evaluate(() => {
-      const imageBytes = Module.get_image_bytes('CC', Module.ImageFormat.SVG, {
+    const base64Content = await page.evaluate(() =>
+      Module.get_image_bytes('CC', Module.ImageFormat.SVG, {
         width_height: { width: 222, height: 111 },
         background_color: '#d4e6f1',
         scale: 0.5,
@@ -173,10 +177,10 @@ test.describe('WASM Sketcher API', () => {
         show_symbol_for_H_isotopes: false,
         carbon_labels: Module.CarbonLabels.ALL,
         color_scheme: Module.ColorScheme.DEFAULT,
-      });
-      return Array.from(imageBytes);
-    });
-    const svg = Buffer.from(bytes).toString('utf8');
+      }),
+    );
+    expect(typeof base64Content).toBe('string');
+    const svg = Buffer.from(base64Content, 'base64').toString('utf8');
 
     expect(svg).toContain('svg width="222px" height="111px"');
     expect(svg).toContain('AtomZero');

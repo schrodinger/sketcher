@@ -69,19 +69,20 @@ std::string sketcher_export_image(ImageFormat format)
 }
 
 #ifdef __EMSCRIPTEN__
-emscripten::val get_image_bytes_from_text(const std::string& text,
-                                          ImageFormat format)
+std::string get_image_bytes_from_text(const std::string& text,
+                                      ImageFormat format)
 {
-    return qbyte_array_to_uint8_array(
-        schrodinger::sketcher::get_image_bytes(text, format));
+    auto image_bytes = schrodinger::sketcher::get_image_bytes(text, format);
+    return image_bytes.toBase64().toStdString();
 }
 
-emscripten::val get_image_bytes_from_text(const std::string& text,
-                                          ImageFormat format,
-                                          const emscripten::val& options)
+std::string get_image_bytes_from_text(const std::string& text,
+                                      ImageFormat format,
+                                      const emscripten::val& options)
 {
-    return qbyte_array_to_uint8_array(schrodinger::sketcher::get_image_bytes(
-        text, format, render_options_from_js(options)));
+    auto image_bytes = schrodinger::sketcher::get_image_bytes(
+        text, format, render_options_from_js(options));
+    return image_bytes.toBase64().toStdString();
 }
 #endif
 
@@ -282,12 +283,12 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function("sketcher_export_image", &sketcher_export_image);
     emscripten::function(
         "get_image_bytes",
-        emscripten::select_overload<emscripten::val(
+        emscripten::select_overload<std::string(
             const std::string&, ImageFormat)>(&get_image_bytes_from_text));
     emscripten::function(
         "get_image_bytes",
-        emscripten::select_overload<emscripten::val(
-            const std::string&, ImageFormat, const emscripten::val&)>(
+        emscripten::select_overload<std::string(const std::string&, ImageFormat,
+                                                const emscripten::val&)>(
             &get_image_bytes_from_text));
     emscripten::function("sketcher_clear", &sketcher_clear);
     emscripten::function("sketcher_is_empty", &sketcher_is_empty);
