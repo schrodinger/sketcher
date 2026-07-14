@@ -230,19 +230,9 @@ std::vector<std::string> get_table_fields(sqlite3* db)
                                   column_names_getter);
 }
 
-void bind_monomer_to_stmt(sqlite3* db, sqlite3_stmt* stmt, const MonomerInfo& m)
+std::optional<std::string>
+bind_and_execute_stmt(sqlite3* db, sqlite3_stmt* stmt, const MonomerInfo& m)
 {
-    // SMILES and NAME must be unique, so we require them to be specified.
-    // We also require PolymerType and Symbol combinations to be unique,
-    // but we don't require them to be non-empty. This restriction will be
-    // enforced by the SQLite schema.
-    for (const auto& field : {m.name, m.smiles}) {
-        if (!field.has_value() || field->empty()) {
-            throw std::runtime_error(
-                "Monomer definitions must include at least "
-                "SMILES and NAME, which can't be empty.");
-        }
-    }
 
     // Bind values to the prepared statement (1-indexed)
     // clang-format off
@@ -258,12 +248,15 @@ void bind_monomer_to_stmt(sqlite3* db, sqlite3_stmt* stmt, const MonomerInfo& m)
     sqlite3_bind_text(stmt, 10, m.rgroups.value_or("").c_str(), -1, SQLITE_TRANSIENT);
     // clang-format on
 
+    std::optional<std::string> ret;
     if (auto rc = sqlite3_step(stmt); rc != SQLITE_DONE) {
-        throw std::runtime_error(
-            fmt::format("Error inserting monomer: {}", sqlite3_errmsg(db)));
+        ret.emplace(
+            fmt::format("Error storing monomer info: {}", sqlite3_errmsg(db)));
     }
 
     sqlite3_reset(stmt);
+
+    return ret;
 }
 
 template <class T> std::string
@@ -402,37 +395,40 @@ void canonicalize_db(sqlite3* db)
     execute_sql_on(db, "COMMIT;");
 }
 
-void insert_monomers_from_json(sqlite3* db, std::string_view json)
+std::pair<std::vector<std::string>, std::vector<std::string>>
+insert_monomers_from_json(sqlite3* db, std::string_view json)
 {
-    auto monomers = json_to_monomer_vector(json);
-    for (const auto& m : monomers) {
-        if (!m.areRequiredFieldsPopulated()) {
-            auto msg = fmt::format(
-                "Error: Cannot store monomer definition with missing "
-                "fields: {{ {0}='{10}', {1}='{11}', {2}='{12}', {3}='{13}', "
-                "{4}='{14}', {5}='{15}', {6}='{16}', {7}='{17}', "
-                "{8}='{18}', {9}='{19}' }}",
-                //
-                symbol_column, polymer_type_column, analog_column,
-                smiles_column, core_column, name_column, monomer_type_column,
-                author_column, pdb_code_column, rgroups_column,
-                //
-                m.symbol.value_or(""), m.polymer_type.value_or(""),
-                m.natural_analog.value_or(""), m.smiles.value_or(""),
-                m.core_smiles.value_or(""), m.name.value_or(""),
-                m.monomer_type.value_or(""), m.author.value_or(""),
-                m.pdbcode.value_or(""), m.rgroups.value_or(""));
-
-            throw std::runtime_error(msg);
-        }
-    }
-
     // Prepare the INSERT statement once for reuse
     static constexpr std::string_view insert_sql =
         "REPLACE INTO monomer_definitions ("
         "SYMBOL, POLYMER_TYPE, NATURAL_ANALOG, SMILES, CORE_SMILES, "
         "NAME, MONOMER_TYPE, AUTHOR, PDBCODE, RGROUPS) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+
+    static constexpr const char* null = "(null)";
+
+    auto create_log_message = [&](const MonomerInfo& m, unsigned monomer_idx,
+                                  const std::string& msg) {
+        return fmt::format(
+            "Monomer definition {21}: {20}. data="
+            "{{ {0}='{10}', {1}='{11}', {2}='{12}', {3}='{13}', "
+            "{4}='{14}', {5}='{15}', {6}='{16}', {7}='{17}', "
+            "{8}='{18}', {9}='{19}' }}.",
+            //
+            symbol_column, polymer_type_column, analog_column, smiles_column,
+            core_column, name_column, monomer_type_column, author_column,
+            pdb_code_column, rgroups_column,
+            //
+            m.symbol.value_or(null), m.polymer_type.value_or(null),
+            m.natural_analog.value_or(null), m.smiles.value_or(null),
+            m.core_smiles.value_or(null), m.name.value_or(null),
+            m.monomer_type.value_or(null), m.author.value_or(null),
+            m.pdbcode.value_or(null), m.rgroups.value_or(null),
+            //
+            msg, monomer_idx);
+    };
+
+    auto monomers = json_to_monomer_vector(json);
 
     sqlite3_stmt* raw_stmt = nullptr;
     if (auto rc =
@@ -446,27 +442,66 @@ void insert_monomers_from_json(sqlite3* db, std::string_view json)
     // Insert all rows in the same transaction
     execute_sql_on(db, "BEGIN TRANSACTION;");
 
-    try {
-        for (auto& m : monomers) {
+    std::vector<std::string> succeeded;
+    std::vector<std::string> failed;
+
+    unsigned i = 0;
+    for (auto& m : monomers) {
+        ++i;
+        if (!m.areRequiredFieldsPopulated()) {
+            failed.push_back(create_log_message(
+                m, i, "monomer is missing required field(s)"));
+            continue;
+        }
+
+        // SMILES and NAME must be unique, so we require them to be specified.
+        // We also require PolymerType and Symbol combinations to be unique,
+        // but we don't require them to be non-empty. This restriction will be
+        // enforced by the SQLite schema.
+        if (m.name->empty()) {
+            failed.push_back(
+                create_log_message(m, i, "monomer must have a non-empty name"));
+            continue;
+        }
+        if (m.smiles->empty()) {
+            failed.push_back(create_log_message(
+                m, i, "definition must have a non-empty SMILES"));
+            continue;
+        }
+
+        // From here on, note that some of the reported fields (smiles,
+        // core_smiles, pdbcode) may be different from the original inputs.
+
+        try {
             // Make sure the SMILES/CORE_SMILES are canonical
             // based on the current RDKit version.
             auto [new_smiles, new_core_smiles] =
                 canonicalize_monomer_smiles(m.smiles.value().c_str());
             m.smiles = new_smiles;
             m.core_smiles = new_core_smiles;
-
-            if (!m.pdbcode.has_value()) {
-                m.pdbcode = "UNL";
-            }
-
-            bind_monomer_to_stmt(db, stmt.get(), m);
+        } catch (const std::runtime_error&) {
+            failed.push_back(create_log_message(
+                m, i, "Could not canonicalize monomer SMILES"));
+            continue;
         }
-    } catch (const std::runtime_error& e) {
-        execute_sql_on(db, "ROLLBACK;");
-        throw e;
+
+        if (!m.pdbcode.has_value()) {
+            m.pdbcode = "UNL";
+        }
+
+        auto ret = bind_and_execute_stmt(db, stmt.get(), m);
+        if (ret.has_value()) {
+            // Insertion failed; store the error message
+            failed.push_back(create_log_message(m, i, *ret));
+            continue;
+        }
+
+        // Monomer insertion succeeded
+        succeeded.push_back(create_log_message(m, i, "inserted successfully"));
     }
 
     execute_sql_on(db, "COMMIT;");
+    return std::make_pair(succeeded, failed);
 }
 
 /// Generate a few common tautomers from a SMILES
@@ -651,12 +686,13 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
     invalidateCache();
 }
 
-void MonomerDatabase::loadMonomersFromJson(std::string_view json)
+std::pair<std::vector<std::string>, std::vector<std::string>>
+MonomerDatabase::loadMonomersFromJson(std::string_view json)
 {
 
     managed_db_t db = create_empty_monomer_db();
 
-    insert_monomers_from_json(db.get(), json);
+    auto result = insert_monomers_from_json(db.get(), json);
 
     if (auto custom_db_path = getMonomerDbPath(); custom_db_path.has_value()) {
         dumpToFile(db.get(), *custom_db_path);
@@ -664,16 +700,21 @@ void MonomerDatabase::loadMonomersFromJson(std::string_view json)
 
     swap_custom_monomers_db(db.release());
     invalidateCache();
+
+    return result;
 }
 
-void MonomerDatabase::insertMonomersFromJson(std::string_view json)
+std::pair<std::vector<std::string>, std::vector<std::string>>
+MonomerDatabase::insertMonomersFromJson(std::string_view json)
 {
+    std::pair<std::vector<std::string>, std::vector<std::string>> result;
     if (m_custom_monomers_db == nullptr) {
-        loadMonomersFromJson(json);
+        result = loadMonomersFromJson(json);
     } else {
-        insert_monomers_from_json(m_custom_monomers_db, json);
+        result = insert_monomers_from_json(m_custom_monomers_db, json);
         invalidateCache();
     }
+    return result;
 }
 
 void MonomerDatabase::loadMonomersFromSQLiteFile(

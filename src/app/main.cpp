@@ -12,6 +12,9 @@
 #endif
 
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <QAbstractButton>
 #include <QApplication>
@@ -84,23 +87,51 @@ void sketcher_allow_monomeric(bool /* allow_monomeric */)
 {
 }
 
-void sketcher_load_custom_monomers(const std::string& json)
-{
-    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    db.loadMonomersFromJson(json);
-}
-
 void sketcher_load_custom_monomers_from_sql(const std::string& sql)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     db.loadMonomersFromSql(sql);
 }
 
-void sketcher_insert_custom_monomers(const std::string& json)
+#ifdef __EMSCRIPTEN__
+using MonomerDefsInsertionResult =
+    std::pair<std::vector<std::string>, std::vector<std::string>>;
+
+emscripten::val
+string_vector_to_js_array(const std::vector<std::string>& values)
+{
+    auto array = emscripten::val::array();
+    for (unsigned i = 0; i < values.size(); ++i) {
+        array.set(i, values[i]);
+    }
+    return array;
+}
+
+emscripten::val
+monomer_defs_insertion_result_to_js(const MonomerDefsInsertionResult& result)
+{
+    auto object = emscripten::val::object();
+    object.set("succeeded", string_vector_to_js_array(result.first));
+    object.set("failed", string_vector_to_js_array(result.second));
+    return object;
+}
+
+emscripten::val sketcher_load_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
-    db.insertMonomersFromJson(json);
+    auto result = db.loadMonomersFromJson(json);
+
+    return monomer_defs_insertion_result_to_js(result);
 }
+
+emscripten::val sketcher_insert_custom_monomers(const std::string& json)
+{
+    auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
+    auto result = db.insertMonomersFromJson(json);
+
+    return monomer_defs_insertion_result_to_js(result);
+}
+#endif
 
 void sketcher_reset_custom_monomers()
 {

@@ -215,9 +215,12 @@ test.describe('Custom Monomer DB', () => {
       },
     ]);
 
-    await page.evaluate((json) => {
-      Module.sketcher_load_custom_monomers(json);
+    const result = await page.evaluate((json) => {
+      return Module.sketcher_load_custom_monomers(json);
     }, customMonomers);
+
+    expect(result.succeeded.length).toBe(1);
+    expect(result.failed.length).toBe(0);
   });
 
   test('load custom monomers from SQL', async ({ page }) => {
@@ -295,9 +298,12 @@ test.describe('Custom Monomer DB', () => {
     ]);
 
     // Load first and verify Mon1 works
-    await page.evaluate((json) => {
-      Module.sketcher_load_custom_monomers(json);
+    const monomer1_import_result = await page.evaluate((json) => {
+      return Module.sketcher_load_custom_monomers(json);
     }, monomer1);
+
+    expect(monomer1_import_result.succeeded.length).toBe(1);
+    expect(monomer1_import_result.failed.length).toBe(0);
 
     const mon1Works = await page.evaluate(() => {
       Module.sketcher_clear();
@@ -307,9 +313,12 @@ test.describe('Custom Monomer DB', () => {
     expect(mon1Works).toBe(true);
 
     // Insert second — both should still be available
-    await page.evaluate((json) => {
-      Module.sketcher_insert_custom_monomers(json);
+    const monomer2_import_result = await page.evaluate((json) => {
+      return Module.sketcher_insert_custom_monomers(json);
     }, monomer2);
+
+    expect(monomer2_import_result.succeeded.length).toBe(1);
+    expect(monomer2_import_result.failed.length).toBe(0);
 
     // Both custom monomers should be usable in a HELM import
     const result = await page.evaluate(() => {
@@ -335,17 +344,23 @@ test.describe('Custom Monomer DB', () => {
       },
     ]);
 
-    const result = await page.evaluate((json) => {
-      Module.sketcher_load_custom_monomers(json);
+    const monomer_import_result = await page.evaluate((json) => {
+      return Module.sketcher_load_custom_monomers(json);
+    }, customMonomers);
+
+    expect(monomer_import_result.succeeded.length).toBe(1);
+    expect(monomer_import_result.failed.length).toBe(0);
+
+    const result = await page.evaluate(() => {
       Module.sketcher_clear();
       Module.sketcher_import_text('PEPTIDE1{A.[Sar].G}$$$$V2.0');
       return !Module.sketcher_is_empty();
-    }, customMonomers);
+    });
 
     expect(result).toBe(true);
   });
 
-  test('loading monomer with missing required fields throws', async ({ page }) => {
+  test('loading monomer with missing required fields returns error messages', async ({ page }) => {
     const incomplete = JSON.stringify([
       {
         SYMBOL: 'Bad',
@@ -355,17 +370,13 @@ test.describe('Custom Monomer DB', () => {
     ]);
 
     const result = await page.evaluate((json) => {
-      try {
-        Module.sketcher_load_custom_monomers(json);
-        return { threw: false };
-      } catch (e) {
-        const [type, message] = Module.getExceptionMessage(e);
-        return { threw: true, type, message };
-      }
+      return Module.sketcher_load_custom_monomers(json);
+      const arr = [];
     }, incomplete);
 
-    expect(result.threw).toBe(true);
-    expect(result.message).toContain('missing');
+    expect(result.succeeded.length).toBe(0);
+    expect(result.failed.length).toBe(1);
+    expect(result.failed[0]).toContain('missing');
   });
 
   test('loading monomer with unknown fields throws', async ({ page }) => {
@@ -412,12 +423,18 @@ test.describe('Custom Monomer DB', () => {
     ]);
 
     // Load custom monomer, verify it works, then reset
-    const worksBeforeReset = await page.evaluate((json) => {
-      Module.sketcher_load_custom_monomers(json);
+    const result = await page.evaluate((json) => {
+      return Module.sketcher_load_custom_monomers(json);
+    }, customMonomers);
+
+    expect(result.succeeded.length).toBe(1);
+    expect(result.failed.length).toBe(0);
+
+    const worksBeforeReset = await page.evaluate(() => {
       Module.sketcher_clear();
       Module.sketcher_import_text('PEPTIDE1{A.[TmpMon].G}$$$$V2.0');
       return !Module.sketcher_is_empty();
-    }, customMonomers);
+    });
     expect(worksBeforeReset).toBe(true);
 
     // Reset should succeed without throwing
