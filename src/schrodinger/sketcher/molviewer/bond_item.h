@@ -410,7 +410,9 @@ class SKETCHER_API BondItem : public AbstractBondOrConnectorItem
      */
     QPolygonF getAnnotationPolygon();
 
-    /** Paint text annontation .
+    /**
+     * Paint text annontation. Note that this function will modify the QPainter
+     * and the calling scope is responsible for resetting it.
      *
      * @param painter  the qt painter to be used
      * @param angle  the angle of the annotation text

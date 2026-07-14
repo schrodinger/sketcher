@@ -8,7 +8,9 @@
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <QGraphicsItem>
+#include <QImage>
 #include <QLineF>
+#include <QPainter>
 #include <QPointF>
 #include <QPolygonF>
 #include <QtGlobal>
@@ -349,6 +351,24 @@ BOOST_AUTO_TEST_CASE(test_bond_stereo_tooltips)
         }
     }
     BOOST_TEST(found_stereo_bond);
+}
+
+/**
+ * Paint a bond that has no bond annotation, but is bound to an atom with a
+ * chirality label. This test is primarily intended so that Valgrind can confirm
+ * that we're not trying to paint an empty annotation using an uninitialized
+ * angle. See SKETCH-2801.
+ */
+BOOST_AUTO_TEST_CASE(test_chiral_atom_no_bond_annotation)
+{
+    auto [bond_items, scene] = createStructure("N[C@@H](C)C(=O)O |r:2|");
+    // paint the whole scene
+    QImage image(800, 600, QImage::Format::Format_ARGB32);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    // bonds 0, 1, and 2 don't have any annotation, but are all bound to an atom
+    // with a chiral label
+    scene->render(&painter);
 }
 
 } // namespace sketcher

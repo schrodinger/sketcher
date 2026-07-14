@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "schrodinger/rdkit_extensions/definitions.h"
@@ -63,6 +64,14 @@ struct RDKIT_EXTENSIONS_API ResidueQuery {
     /// Whether to consider chirality while doing the substructure search.
     /// Usually false for generic queries but true for specific monomers.
     bool use_chirality;
+
+    /// Getter for calling from Python.
+    // (I gave up on trying to get SWIG to convert the type of mol correctly
+    // when accessing the member variable directly.)
+    boost::shared_ptr<RDKit::RWMol> getMol() const
+    {
+        return mol;
+    }
 };
 
 class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
@@ -95,9 +104,12 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     // successfully parsed, any prior custom definitions
     // will be dropped (they will be preserved if an exception is
     // thrown during the import process).
-    // @throws std::runtime_error if the JSON fails to parse or
-    //    if the information cannot be written into the DB.
-    void loadMonomersFromJson(std::string_view json);
+    // @returns a pair of vectors of strings containing the logs for
+    //    successful and failed insertions.
+    // @throws std::runtime_error if the JSON fails to parse or due to
+    //    DB related problems.
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    loadMonomersFromJson(std::string_view json);
 
     // use the indicated SQLite DB file as the source for custom
     // monomer definitions.
@@ -108,9 +120,12 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
 
     // Insert the custom monomers in JSON format into the custom
     // definitions table. Any previous definitions will be preserved.
-    // @throws std::runtime_error if the JSON fails to parse or
-    //    if the information cannot be written into the DB.
-    void insertMonomersFromJson(std::string_view json);
+    // @returns a pair of vectors of strings containing the logs for
+    //    successful and failed insertions.
+    // @throws std::runtime_error if the JSON fails to parse or due to
+    //    DB related problems.
+    std::pair<std::vector<std::string>, std::vector<std::string>>
+    insertMonomersFromJson(std::string_view json);
 
     void resetMonomerDefinitions();
 
