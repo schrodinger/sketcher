@@ -85,6 +85,8 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::RING_TOOL, QVariant::fromValue(RingTool::CYCLOBUTANE)},
         {ModelKey::ENUMERATION_TOOL,
          QVariant::fromValue(EnumerationTool::EXISTING_RGROUP)},
+        {ModelKey::MONOMERIC_CONNECTION_TOOL,
+         QVariant::fromValue(MonomericConnectionTool::HBOND)},
         {ModelKey::ELEMENT, QVariant::fromValue(Element::N)},
         {ModelKey::ATOM_QUERY, QVariant::fromValue(AtomQuery::Q)},
         {ModelKey::RGROUP_NUMBER, 2u},

@@ -188,9 +188,21 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
         modular_btn->showPopupIndicatorOnHover(true);
         m_nucleic_acid_symbol_popups[button] = popup;
     }
+
+    ui->monomeric_connection_group->setId(
+        ui->covalent_or_disulfide_btn,
+        static_cast<int>(MonomericConnectionTool::COVALENT_OR_DISULFIDE));
 }
 
 MonomerToolWidget::~MonomerToolWidget() = default;
+
+void MonomerToolWidget::connectLocalSlots()
+{
+    AbstractDrawToolWidget::connectLocalSlots();
+
+    connect(ui->monomeric_connection_group, &QButtonGroup::idClicked, this,
+            &MonomerToolWidget::onConnectionButtonClicked);
+}
 
 void MonomerToolWidget::setModel(SketcherModel* model)
 {
@@ -250,7 +262,8 @@ void MonomerToolWidget::updateWidgetsEnabled()
 std::unordered_set<QAbstractButton*> MonomerToolWidget::getCheckableButtons()
 {
     auto buttons = AbstractDrawToolWidget::getCheckableButtons();
-    for (auto group : {ui->amino_monomer_group, ui->nucleic_monomer_group}) {
+    for (auto group : {ui->amino_monomer_group, ui->nucleic_monomer_group,
+                       ui->monomeric_connection_group}) {
         for (auto button : group->buttons()) {
             buttons.insert(button);
         }
@@ -266,8 +279,10 @@ void MonomerToolWidget::updateCheckedButton()
     }
     QAbstractButton* amino_button = nullptr;
     QAbstractButton* nucleic_button = nullptr;
+    QAbstractButton* connection_button = nullptr;
     bool has_sel = model->hasActiveSelection();
-    if (model->getDrawTool() == DrawTool::MONOMER) {
+    auto draw_tool = model->getDrawTool();
+    if (draw_tool == DrawTool::MONOMER) {
         if (model->getMonomerToolType() == MonomerToolType::AMINO_ACID) {
             ui->amino_monomer_btn->setChecked(true);
             ui->amino_or_nucleic_stack->setCurrentWidget(ui->amino_page);
@@ -284,9 +299,16 @@ void MonomerToolWidget::updateCheckedButton()
                     m_button_nucleic_acid_bimap.right.at(nucleic_acid);
             }
         }
+    } else if (draw_tool == DrawTool::MONOMERIC_CONNECTION) {
+        auto connection_tool =
+            model->getValueInt(ModelKey::MONOMERIC_CONNECTION_TOOL);
+        connection_button =
+            ui->monomeric_connection_group->button(connection_tool);
     }
     check_button_or_uncheck_group(amino_button, ui->amino_monomer_group);
     check_button_or_uncheck_group(nucleic_button, ui->nucleic_monomer_group);
+    check_button_or_uncheck_group(connection_button,
+                                  ui->monomeric_connection_group);
 
     // Only show the popup indicator arrow on the currently checked button
     for (auto& [btn, popup] : m_amino_acid_symbol_popups) {
@@ -462,6 +484,21 @@ void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)
     }
     ping_or_set_model_value(getModel(), ModelKey::NUCLEIC_ACID_SYMBOL,
                             NucleicAcidMutation{na_tool, symbol});
+}
+
+void MonomerToolWidget::onConnectionButtonClicked(int button_id)
+{
+    auto model = getModel();
+    auto tool = MonomericConnectionTool(button_id);
+    if (!model->hasActiveSelection()) {
+        // update the model
+        std::unordered_map<ModelKey, QVariant> kv_pairs = {
+            {ModelKey::DRAW_TOOL,
+             QVariant::fromValue(DrawTool::MONOMERIC_CONNECTION)},
+            {ModelKey::MONOMERIC_CONNECTION_TOOL, QVariant::fromValue(tool)},
+        };
+        model->setValues(kv_pairs);
+    }
 }
 
 } // namespace sketcher

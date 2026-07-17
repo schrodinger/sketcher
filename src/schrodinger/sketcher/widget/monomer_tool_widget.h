@@ -38,6 +38,7 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     MonomerToolWidget(QWidget* parent = nullptr);
     ~MonomerToolWidget();
 
+    void connectLocalSlots() override;
     void setModel(SketcherModel* model) override;
     void updateCheckedButton() override;
     void updateWidgetsEnabled() override;
@@ -70,6 +71,11 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
      * Respond to the user clicking on a specific nucleic acid
      */
     void onNucleicAcidClicked(QAbstractButton* button);
+
+    /**
+     * Respond to the user clicking on a specific monomeric connection button
+     */
+    void onConnectionButtonClicked(int button_id);
 };
 
 } // namespace sketcher

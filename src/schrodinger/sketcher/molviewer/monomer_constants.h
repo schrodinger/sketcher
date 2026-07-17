@@ -275,6 +275,15 @@ const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
 const QColor DRAG_END_INACTIVE_AP = QColor("#EEEEEE");
 const QColor DRAG_END_INACTIVE_AP_DARK_BG = QColor("#555555");
 
+// constants describing the line shown when dragging the connection tool to
+// empty space (which can't create a connection)
+const QColor CONNECTION_TOOL_INVALID_DRAG_COLOR = QColor("#EEEEEE");
+const QColor CONNECTION_TOOL_INVALID_DRAG_COLOR_DARK_BG = QColor("#555555");
+const qreal CONNECTION_TOOL_INVALID_DRAG_LINE_WIDTH = 2.0;
+
+const QColor CONNECTION_TOOL_AP_LABEL_HOVER_COLOR = QColor("#444444");
+const QColor CONNECTION_TOOL_AP_LABEL_HOVER_COLOR_DARK_BG = QColor("#EEEEEE");
+
 /**
  * A scaling factor for generating the cursor hints for monomers. If this value
  * is greater than one, then the cursor hint for smaller monomers (as measured

@@ -214,6 +214,7 @@ void UnboundMonomericAttachmentPointItem::setColor(const QColor& color)
 {
     m_line_pen.setColor(color);
     m_circle_brush.setColor(color);
+    update();
 }
 
 } // namespace sketcher
