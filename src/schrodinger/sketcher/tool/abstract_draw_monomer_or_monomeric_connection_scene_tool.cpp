@@ -567,13 +567,7 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragStart(
     // attachment points to be in the Scene
     clearAttachmentPointsLabelsAndHintFragmentItem();
 
-    // since the drag just started, we can safely assume that we're not over a
-    // different monomer than m_drag_start_monomer_item, which means we want a
-    // drag to direction, not to another's monomer attachment point
-    // auto dir = getDragDirection(event->scenePos());
     auto [drag_end_info, _] = getDragEndInfo(event->scenePos());
-    // TODO: this is why drags aren't working for the connection tool, since the
-    // connection tool returns false for drags to a direction
     auto handled = createDragHintIfDragStartValid(drag_end_info);
     if (handled) {
         // hide the cursor hint while the hint structure is shown. Note that the
