@@ -147,7 +147,7 @@ void DrawMonomericConnectionSceneTool::addDragStructureToMolModel(
 
 UnboundMonomericAttachmentPointItem* DrawMonomericConnectionSceneTool::
     getDefaultUnboundAttachmentPointForHoveredMonomer(
-        const bool no_default_if_click_should_mutate) const
+        const bool /* no_default_if_click_should_mutate */) const
 {
     auto [monomer, hovered_type] = getHoveredMonomerAndType();
     if (m_unbound_ap_items.empty()) {
