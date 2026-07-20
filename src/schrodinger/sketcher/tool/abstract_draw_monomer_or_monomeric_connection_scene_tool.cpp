@@ -550,17 +550,8 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragStart(
     if (m_drag_start_monomer_item == nullptr) {
         m_drag_start_ap_model_name = getDefaultDragStartAPModelName();
     } else {
-        auto ap_item =
-            getUnboundAttachmentPointAt(m_mouse_press_scene_pos, false);
-        if (ap_item == nullptr) {
-            // this monomer has no available attachment points. In this
-            // scenario, createDragHint will return false below and we'll ignore
-            // the drag.
-            m_drag_start_ap_model_name = "";
-        } else {
-            m_drag_start_ap_model_name =
-                ap_item->getAttachmentPoint().model_name;
-        }
+        m_drag_start_ap_model_name =
+            getAPModelNameAtPosOverMonomer(m_mouse_press_scene_pos);
     }
     // clear the attachment point labels. Note that this must happen *after* the
     // getUnboundAttachmentPointAt call, since that method requires the
@@ -582,6 +573,17 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragStart(
     m_drag_ignored = !handled;
 }
 
+std::string AbstractDrawMonomerOrMonomericConnectionSceneTool::
+    getAPModelNameAtPosOverMonomer(const QPointF& scene_pos) const
+{
+    auto ap_item = getUnboundAttachmentPointAt(scene_pos, false);
+    if (ap_item == nullptr) {
+        // this monomer has no available attachment points
+        return "";
+    } else {
+        return ap_item->getAttachmentPoint().model_name;
+    }
+}
 bool AbstractDrawMonomerOrMonomericConnectionSceneTool::
     createDragHintIfDragStartValid(const DragEndInfo& drag_end_info)
 {
@@ -620,31 +622,10 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::getDragEndInfo(
     // (i.e. not a standard backbone connection) between them, since our RDKit
     // monomer format currently doesn't support more than that
     if (m_drag_start_monomer_item != nullptr && drag_end_ap_item != nullptr) {
-        auto* monomer_start = m_drag_start_monomer_item->getAtom();
-        auto* monomer_end = hovered_monomer_item->getAtom();
-        auto* connection = m_mol_model->getMol()->getBondBetweenAtoms(
-            monomer_start->getIdx(), monomer_end->getIdx());
-        if (connection != nullptr) {
-            auto ap_name_end =
-                drag_end_ap_item->getAttachmentPoint().model_name;
-            auto [linkage, flipped] =
-                build_linkage_string(m_drag_start_ap_model_name, ap_name_end);
-            bool is_custom_bond =
-                get_is_custom_bond(monomer_start, monomer_end, linkage);
-            if (is_custom_bond && connection->hasProp(CUSTOM_BOND)) {
-                // this would be a custom connection (i.e. not a standard
-                // backbone connection) and this monomer pair already has one
-                drag_end_ap_item = nullptr;
-            } else if (!is_custom_bond &&
-                       (!connection->hasProp(CUSTOM_BOND) ||
-                        contains_two_monomer_linkages(connection))) {
-                // this would be a standard backbone connection and this monomer
-                // pair already has one (presumably in the opposite direction,
-                // since otherwise the attachment points would have already been
-                // bound)
-                drag_end_ap_item = nullptr;
-            }
-        }
+        auto ap_name_end = drag_end_ap_item->getAttachmentPoint().model_name;
+        if (!dragCanFormConnectionTo(hovered_monomer_item, ap_name_end)) {
+            drag_end_ap_item = nullptr;
+        };
     }
 
     DragEndInfo drag_end_info;
@@ -657,6 +638,44 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::getDragEndInfo(
         drag_end_info = std::make_pair(hovered_monomer_item, drag_end_ap_item);
     }
     return {drag_end_info, hovered_monomer_item};
+}
+
+bool AbstractDrawMonomerOrMonomericConnectionSceneTool::dragCanFormConnectionTo(
+    const AbstractMonomerItem* const hovered_monomer_item,
+    const std::string& ap_name_end) const
+{
+    auto* monomer_start = m_drag_start_monomer_item->getAtom();
+    auto* monomer_end = hovered_monomer_item->getAtom();
+    auto* connection = m_mol_model->getMol()->getBondBetweenAtoms(
+        monomer_start->getIdx(), monomer_end->getIdx());
+    if (connection != nullptr) {
+        if (ap_name_end == NA_BASE_AP_PAIR || is_hydrogen_bond(connection)) {
+            // If either the new bond or the existing bond is a hydrogen bond,
+            // then we're trying to mix a hydrogen bond and a covalent bond in
+            // the same connection, which isn't allowed. If both of them are
+            // hydrogen bonds, then we're trying to create a hydrogen bond that
+            // already exists, which isn't allowed.
+            return false;
+        }
+        auto [linkage, flipped] =
+            build_linkage_string(m_drag_start_ap_model_name, ap_name_end);
+        bool is_custom_bond =
+            get_is_custom_bond(monomer_start, monomer_end, linkage);
+        if (is_custom_bond && connection->hasProp(CUSTOM_BOND)) {
+            // this would be a custom connection (i.e. not a standard
+            // backbone connection) and this monomer pair already has one
+            return false;
+        } else if (!is_custom_bond &&
+                   (!connection->hasProp(CUSTOM_BOND) ||
+                    contains_two_monomer_linkages(connection))) {
+            // this would be a standard backbone connection and this monomer
+            // pair already has one (presumably in the opposite direction,
+            // since otherwise the attachment points would have already been
+            // bound)
+            return false;
+        }
+    }
+    return true;
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragMove(

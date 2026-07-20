@@ -337,5 +337,10 @@ SKETCHER_API void
 ensure_distinct_chain_names(RDKit::ROMol& mol_to_change,
                             const RDKit::ROMol& reference_mol);
 
+/**
+ * @return whether the given bond represents a monomeric hydrogen bond
+ */
+SKETCHER_API bool is_hydrogen_bond(const RDKit::Bond* const bond);
+
 } // namespace sketcher
 } // namespace schrodinger

@@ -354,8 +354,16 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
      *     drag
      *   - nullptr
      */
-    std::pair<DragEndInfo, AbstractMonomerItem*>
+    virtual std::pair<DragEndInfo, AbstractMonomerItem*>
     getDragEndInfo(const QPointF& scene_pos);
+
+    /**
+     * @return Whether the current drag can add a connection to the specified
+     * monomer and attachment point model name.
+     */
+    bool dragCanFormConnectionTo(
+        const AbstractMonomerItem* const hovered_monomer_item,
+        const std::string& ap_name_end) const;
 
     virtual void addDragStructureToMolModel(
         const HintFragmentMonomerInfo& hint_start_monomer_info,
@@ -405,6 +413,18 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
      */
     virtual DragEndInfo
     getDragEndInfoForNonMonomerPos(const QPointF& scene_pos) const = 0;
+
+    /**
+     * @return the model name of the attachment point to use when the mouse
+     * cursor is at the specified coordinates. Returns empty string if there are
+     * no unbound attachment points at the coordinates.
+     * @param scene_pos The mouse position in scene coordinates, which are
+     * guaranteed to be over a monomer or an unbound monomeric attachment point.
+     * However, if the coordinates are over a monomer, there's no guarantee that
+     * the monomer has any unbound attachment points.
+     */
+    virtual std::string
+    getAPModelNameAtPosOverMonomer(const QPointF& scene_pos) const;
 };
 
 } // namespace sketcher

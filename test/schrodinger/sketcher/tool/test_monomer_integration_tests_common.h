@@ -138,14 +138,14 @@ struct MonomerToolTestFixture {
         process_qt_events();
     }
 
-    void setMonomericConnectionTool()
+    void
+    setMonomericConnectionTool(const MonomericConnectionTool connection_tool)
     {
         m_sketcher_model->setValues({
             {ModelKey::DRAW_TOOL,
              QVariant::fromValue(DrawTool::MONOMERIC_CONNECTION)},
             {ModelKey::MONOMERIC_CONNECTION_TOOL,
-             QVariant::fromValue(
-                 MonomericConnectionTool::COVALENT_OR_DISULFIDE)},
+             QVariant::fromValue(connection_tool)},
         });
         process_qt_events();
     }
@@ -164,6 +164,15 @@ struct MonomerToolTestFixture {
         return to_scene_xy(mol->getConformer().getAtomPos(monomer_idx));
     }
 
+    QPointF getPosJustOutsideOfMonomer(const QPointF& monomer_pos,
+                                       const Direction dir)
+    {
+        auto offset_vec = direction_to_qt_vector(dir);
+        auto offset_dist =
+            UNBOUND_AP_LINE_LENGTH - 1 + STANDARD_AA_BORDER_WIDTH / 2;
+        return monomer_pos + offset_dist * offset_vec;
+    }
+
     QPointF getAttachmentPointPos(unsigned int monomer_idx,
                                   const std::string& ap_display_name)
     {
@@ -179,10 +188,8 @@ struct MonomerToolTestFixture {
             if (ap_item) {
                 auto ap = ap_item->getAttachmentPoint();
                 if (ap.display_name == ap_display_name) {
-                    auto offset_vec = direction_to_qt_vector(ap.direction);
-                    auto offset_dist = UNBOUND_AP_LINE_LENGTH - 1 +
-                                       STANDARD_AA_BORDER_WIDTH / 2;
-                    return monomer_pos + offset_dist * offset_vec;
+                    return getPosJustOutsideOfMonomer(monomer_pos,
+                                                      ap.direction);
                 }
             }
         }

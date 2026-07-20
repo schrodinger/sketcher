@@ -82,6 +82,16 @@ class SKETCHER_API AbstractMonomerSceneTool : public StandardSceneToolBase
     AbstractMonomerItem* getTopMonomerItemAt(const QPointF& scene_pos) const;
 
     /**
+     * @param scene_pos scene coordinates that are not over a monomer or any
+     * unbound attachment point graphics items
+     * @return the graphics item representing the monomer that would have an
+     * unbound attachment point at the specified coordinates if the unbound
+     * attachment points for the monomer were drawn. Nullptr if no such monomer
+     * exists.
+     */
+    virtual AbstractMonomerItem* getMonomerNear(const QPointF& scene_pos) const;
+
+    /**
      * Return the top graphics item representing a monomeric connector at the
      * given coordinates. If there's no such graphics item, return nullptr.
      * @param scene_pos The position in Scene coordinates
@@ -113,7 +123,7 @@ class SKETCHER_API AbstractMonomerSceneTool : public StandardSceneToolBase
      * Label all unbound attachment points on the given monomer, placing all
      * newly created graphics items into the specified group and list.
      */
-    void labelUnboundAttachmentPointsOnMonomer(
+    virtual void labelUnboundAttachmentPointsOnMonomer(
         const RDKit::Atom* const monomer,
         AbstractMonomerItem* const monomer_item,
         QGraphicsItemGroup& attachment_point_labels_group,

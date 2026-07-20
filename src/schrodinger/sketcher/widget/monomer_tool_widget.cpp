@@ -192,6 +192,8 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     ui->monomeric_connection_group->setId(
         ui->covalent_or_disulfide_btn,
         static_cast<int>(MonomericConnectionTool::COVALENT_OR_DISULFIDE));
+    ui->monomeric_connection_group->setId(
+        ui->hbond_btn, static_cast<int>(MonomericConnectionTool::HBOND));
 }
 
 MonomerToolWidget::~MonomerToolWidget() = default;
