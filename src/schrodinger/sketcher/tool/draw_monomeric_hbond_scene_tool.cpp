@@ -48,7 +48,7 @@ DrawMonomericHBondSceneTool::getHintFragmentMonomerInfoForDragEnd(
         auto [hovered_monomer_item, _drag_end_ap_item] =
             std::get<MonomerAndAPItems>(drag_end_info);
         return createHintFragmentMonomerInfoForHintToOrFromExistingMonomer(
-            hovered_monomer_item, NA_BASE_AP_PAIR);
+            hovered_monomer_item, H_BOND_AP_MODEL_NAME);
     }
 }
 
@@ -64,7 +64,7 @@ DrawMonomericHBondSceneTool::getDragEndInfo(const QPointF& scene_pos)
     if (m_drag_start_monomer_item == nullptr ||
         hovered_monomer_item == nullptr ||
         hovered_monomer_item == m_drag_start_monomer_item ||
-        !dragCanFormConnectionTo(hovered_monomer_item, NA_BASE_AP_PAIR)) {
+        !dragCanFormConnectionTo(hovered_monomer_item, H_BOND_AP_MODEL_NAME)) {
         // we can't form a bond to this location
         return {scene_pos, nullptr};
     } else {
@@ -76,7 +76,7 @@ DrawMonomericHBondSceneTool::getDragEndInfo(const QPointF& scene_pos)
 std::string DrawMonomericHBondSceneTool::getAPModelNameAtPosOverMonomer(
     const QPointF& scene_pos) const
 {
-    return NA_BASE_AP_PAIR;
+    return H_BOND_AP_MODEL_NAME;
 }
 
 AbstractMonomerItem*

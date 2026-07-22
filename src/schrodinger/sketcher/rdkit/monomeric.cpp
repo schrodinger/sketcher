@@ -35,6 +35,9 @@ const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
 // According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
 
+const std::string H_BOND_LINKAGE =
+    H_BOND_AP_MODEL_NAME + "-" + H_BOND_AP_MODEL_NAME;
+
 // "Pretty" names for attachment points that are normally represented as "R#"
 // Note that the primes use apostrophes instead of a Unicode prime to avoid
 // issues with C++′s handling of Unicode.
@@ -45,9 +48,12 @@ const std::unordered_map<MonomerType, std::vector<std::string>>
         {MonomerType::NA_SUGAR, {"5'", "3'", "1'"}},
 };
 
-// standard attachment point names that don't follow the "R#" naming scheme
-const std::unordered_map<MonomerType, std::vector<std::string>>
-    EXPECTED_AP_CUSTOM_NAMES = {{MonomerType::NA_BASE, {NA_BASE_AP_PAIR}}};
+// standard attachment point names that don't follow the "R#" naming scheme.
+// Given as a pair of model name, display name
+const std::unordered_map<MonomerType,
+                         std::vector<std::pair<std::string, std::string>>>
+    EXPECTED_AP_CUSTOM_NAMES = {
+        {MonomerType::NA_BASE, {{H_BOND_AP_MODEL_NAME, H_BOND_DISPLAY_NAME}}}};
 
 const int INVALID_ATTACHMENT_POINT_SPEC = -2;
 
@@ -150,8 +156,10 @@ ConnectorType get_connector_type(const RDKit::Bond* bond,
     auto end_res_name = get_monomer_res_name(end_atom);
     auto end_monomer_type = get_monomer_type(end_atom);
 
-    if (start_monomer_type == MonomerType::CHEM ||
-        end_monomer_type == MonomerType::CHEM) {
+    if (is_hydrogen_bond(bond)) {
+        return ConnectorType::H_BOND;
+    } else if (start_monomer_type == MonomerType::CHEM ||
+               end_monomer_type == MonomerType::CHEM) {
         return ConnectorType::CHEM;
     } else if (start_monomer_type == MonomerType::PEPTIDE ||
                end_monomer_type == MonomerType::PEPTIDE) {
@@ -173,9 +181,6 @@ ConnectorType get_connector_type(const RDKit::Bond* bond,
             return ConnectorType::PEPTIDE_BRANCHING;
         }
         return ConnectorType::PEPTIDE_LINEAR;
-    } else if (start_monomer_type == MonomerType::NA_BASE &&
-               end_monomer_type == MonomerType::NA_BASE) {
-        return ConnectorType::NA_BASE;
     } else if (start_monomer_type != MonomerType::NA_BASE &&
                end_monomer_type != MonomerType::NA_BASE) {
         return ConnectorType::NA_BACKBONE;
@@ -199,7 +204,7 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
     switch (connector_type) {
         case ConnectorType::CHEM:
         case ConnectorType::PEPTIDE_LINEAR:
-        case ConnectorType::NA_BASE:
+        case ConnectorType::H_BOND:
         case ConnectorType::NA_BACKBONE:
         case ConnectorType::NA_BACKBONE_TO_BASE:
             return {false, false};
@@ -469,10 +474,12 @@ static Direction calculate_direction_for_unbound_attachment_point(
     };
 
     std::vector<Direction> dirs_to_try;
-    if (ap_num <= 2 || ap_name == NA_BASE_AP_PAIR) {
+    if (ap_num <= 2 || ap_name == H_BOND_AP_MODEL_NAME) {
         // the first two attachment points should be across from each other (and
-        // "pair" is the second attachment point for nucleic acid base monomers)
-        int opposite_ap_num = ap_num == 2 || ap_name == NA_BASE_AP_PAIR ? 1 : 2;
+        // the hydrogen bond attachment point is considered the second
+        // attachment point for nucleic acid base monomers)
+        int opposite_ap_num =
+            ap_num == 2 || ap_name == H_BOND_AP_MODEL_NAME ? 1 : 2;
         auto opposite_dir = fetch_assigned_direction_for_attachment_point(
             opposite_ap_num, bound_aps, unbound_aps);
         if (opposite_dir.has_value()) {
@@ -590,19 +597,19 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
 
         // figure out which attachment points with custom names are unbound
         if (EXPECTED_AP_CUSTOM_NAMES.contains(monomer_type)) {
-            for (const auto& ap_name :
+            for (const auto& [ap_model_name, ap_display_name] :
                  EXPECTED_AP_CUSTOM_NAMES.at(monomer_type)) {
-                if (!bound_aps_with_custom_names.contains(ap_name)) {
+                if (!bound_aps_with_custom_names.contains(ap_model_name)) {
                     auto dir = calculate_direction_for_unbound_attachment_point(
-                        ATTACHMENT_POINT_WITH_CUSTOM_NAME, ap_name,
+                        ATTACHMENT_POINT_WITH_CUSTOM_NAME, ap_model_name,
                         monomer_type, bound_aps, available_aps,
                         occupied_directions);
                     occupied_directions.insert(dir);
                     // XCode 14 requires push_back instead of emplace_back and
                     // curly brackets instead of parenthesis here
                     available_aps.push_back(UnboundAttachmentPoint{
-                        ap_name, ap_name, ATTACHMENT_POINT_WITH_CUSTOM_NAME,
-                        dir});
+                        ap_model_name, ap_display_name,
+                        ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir});
                 }
             }
         }
@@ -851,8 +858,9 @@ std::pair<std::string, bool>
 build_linkage_string(const std::string_view ap_name_one,
                      const std::string_view ap_name_two)
 {
-    if (ap_name_one == "pair" || ap_name_two == "pair") {
-        return {"pair-pair", false};
+    if (ap_name_one == H_BOND_AP_MODEL_NAME ||
+        ap_name_two == H_BOND_AP_MODEL_NAME) {
+        return {H_BOND_LINKAGE, false};
     }
     auto ap_num_one = ap_name_to_num(ap_name_one);
     auto ap_num_two = ap_name_to_num(ap_name_two);
@@ -995,7 +1003,7 @@ bool is_hydrogen_bond(const RDKit::Bond* const bond)
 {
     std::string custom_linkage;
     bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
-    return custom_linkage == (NA_BASE_AP_PAIR + "-" + NA_BASE_AP_PAIR);
+    return custom_linkage == H_BOND_LINKAGE;
 }
 
 } // namespace sketcher

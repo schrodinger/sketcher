@@ -413,7 +413,7 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
     auto start_monomer_pos = fix.getMonomerPos(1);
     auto end_monomer_pos = fix.getMonomerPos(0);
     fix.mouseMove(start_monomer_pos);
-    auto start_ap_pos = fix.getAttachmentPointPos(1, "pair");
+    auto start_ap_pos = fix.getAttachmentPointPos(1, "H-bond");
     fix.mouseMove(start_ap_pos);
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
@@ -422,9 +422,9 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
 }
 
 /**
- * Make sure that dragging to a nucleic acid base's "pair" attachment point from
- * a peptide monomer doesn't cause a crash (i.e. dragging in the opposite
- * direction relative to the last test).
+ * Make sure that dragging to a nucleic acid base from a peptide monomer doesn't
+ * cause a crash (i.e. dragging in the opposite direction relative to the last
+ * test).
  */
 BOOST_AUTO_TEST_CASE(test_drag_to_na_base_from_peptide)
 {

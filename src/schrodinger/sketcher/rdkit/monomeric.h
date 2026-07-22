@@ -38,7 +38,7 @@ enum class ConnectorType {
     PEPTIDE_BRANCHING,
     PEPTIDE_DISULFIDE,
     PEPTIDE_SIDE_CHAIN,
-    NA_BASE,
+    H_BOND,
     NA_BACKBONE,
     NA_BACKBONE_TO_BASE
 };
@@ -59,7 +59,8 @@ enum { TO_PREV_SUGAR = 1, TO_NEXT_SUGAR = 2 };
 }
 
 constexpr int NA_BASE_AP_N1_9 = 1;
-const std::string NA_BASE_AP_PAIR = "pair";
+const std::string H_BOND_AP_MODEL_NAME = "pair";
+const std::string H_BOND_DISPLAY_NAME = "H-bond";
 
 /**
  * Convert any of the above attachment point enums (or NA_BASE_AP_N1_9) to the

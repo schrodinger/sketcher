@@ -67,7 +67,7 @@ UnboundMonomericAttachmentPointItem* DrawMonomericConnectionSceneTool::
             {PeptideAP::C, PeptideAP::N, PeptideAP::SIDECHAIN});
     } else if (hovered_type == MonomerType::NA_BASE) {
         return find_attachment_point_with_name(m_unbound_ap_items,
-                                               NA_BASE_AP_PAIR);
+                                               H_BOND_AP_MODEL_NAME);
     } else if (hovered_type == MonomerType::NA_SUGAR) {
         return find_preferred_attachment_point_by_num(
             m_unbound_ap_items,
