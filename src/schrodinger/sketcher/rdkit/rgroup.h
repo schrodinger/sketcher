@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -19,13 +18,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-/**
- * @return a new attachment point atom using the specified attachment point
- * number
- */
-std::shared_ptr<RDKit::Atom>
-make_new_attachment_point(const unsigned int ap_num);
 
 /**
  * @return whether the specified atom is an attachment point.  Note that we
