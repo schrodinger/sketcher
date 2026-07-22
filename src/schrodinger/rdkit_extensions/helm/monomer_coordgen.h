@@ -21,6 +21,15 @@ namespace rdkit_extensions
 // measured in scene units
 const std::string MONOMER_ITEM_SIZE{"monomerItemSize"};
 
+// Empty-space gap between a monomer and the next in the chain (the length of
+// the visible bond line connecting them).
+constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
+// Minimum monomer size, used when a size is unspecified or smaller than this.
+constexpr double MONOMER_MINIMUM_SIZE = 0.80;
+// Center-to-center distance between adjacent monomers in a chain.
+constexpr double MONOMER_BOND_LENGTH =
+    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
+
 /**
  * Information about a turn in a snaking or coiling chain layout.
  */

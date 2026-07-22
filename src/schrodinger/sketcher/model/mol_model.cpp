@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
+#include <map>
 #include <variant>
 
 #include <fmt/format.h>
@@ -9,6 +11,7 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
@@ -28,6 +31,7 @@
 
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/sgroup.h"
@@ -169,6 +173,145 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
     for (auto& s_group : getSubstanceGroups(mol)) {
         s_group.clearProp(TAG_PROPERTY);
     }
+}
+
+/**
+ * @brief Per-base data needed to build one complement nucleotide (sugar, base,
+ * phosphate).
+ *
+ * @c original_base_idx is the index of the original base this nucleotide pairs
+ * with.
+ */
+struct ComplementNucleotide {
+    size_t original_base_idx;
+    std::string sugar_symbol;
+    std::string base_symbol;
+};
+
+/**
+ * @brief Group selected NA bases by their HELM polymer id.
+ *
+ * Atom indices are stored (not pointers) since pointers are invalidated by
+ * later edits. Null/non-base atoms are skipped. An ordered map keeps per-
+ * polymer processing deterministic, so the auto-numbered complement chains are
+ * reproducible.
+ *
+ * @param bases the selected atoms
+ * @return a map from polymer id to the contained base atom indices
+ */
+static std::map<std::string, std::vector<size_t>>
+group_bases_by_polymer(const std::unordered_set<const RDKit::Atom*>& bases)
+{
+    std::map<std::string, std::vector<size_t>> bases_by_polymer;
+    for (const auto* base : bases) {
+        if (base == nullptr || get_monomer_type(base) != MonomerType::NA_BASE) {
+            continue;
+        }
+        bases_by_polymer[rdkit_extensions::get_polymer_id(base)].push_back(
+            base->getIdx());
+    }
+    return bases_by_polymer;
+}
+
+/**
+ * @brief Resolve each base to the complement triplet that should pair with it.
+ *
+ * Bases without a Watson-Crick complement are skipped. The complement
+ * (A/U/T/G/C), sugar (R/dR), and phosphate (P) are all standard HELM monomers,
+ * so no monomer-DB lookup is needed.
+ *
+ * @param mol the monomer molecule
+ * @param base_idxs indices of the original base atoms (any order)
+ * @return one ComplementNucleotide per resolvable base, in residue-number order
+ */
+static std::vector<ComplementNucleotide>
+build_complement_nucleotides(const RDKit::ROMol& mol,
+                             std::vector<size_t> base_idxs)
+{
+    // Process in residue-number order, which matches HELM monomer ordering.
+    std::ranges::sort(base_idxs, {}, [&mol](size_t i) {
+        return rdkit_extensions::get_residue_number(mol.getAtomWithIdx(i));
+    });
+
+    std::vector<ComplementNucleotide> complement_nucleotides;
+    for (auto idx : base_idxs) {
+        const auto* base_atom = mol.getAtomWithIdx(idx);
+        const bool is_dna = is_dna_base(base_atom);
+        const auto base_symbol = get_monomer_res_name(base_atom);
+        auto complement_base_symbol =
+            is_dna ? get_dna_complement_base_symbol(base_symbol)
+                   : get_rna_complement_base_symbol(base_symbol);
+        if (!complement_base_symbol.has_value()) {
+            continue;
+        }
+        // Sugar identity (R vs dR) is per base to handle chimeric chains
+        // mixing R and dR within one polymer.
+        std::string sugar_symbol = is_dna ? "dR" : "R";
+        complement_nucleotides.push_back(
+            {idx, std::move(sugar_symbol), std::move(*complement_base_symbol)});
+    }
+    return complement_nucleotides;
+}
+
+/**
+ * @brief Capture the positions of the original bases up front.
+ *
+ * Needed because the modifying calls that follow invalidate any held conformer
+ * reference.
+ *
+ * @param mol the monomer molecule
+ * @param complement_nucleotides the complement nucleotides whose original
+ * bases to read
+ * @return each original base position, in @p complement_nucleotides order
+ */
+static std::vector<RDGeom::Point3D> get_base_positions(
+    const RDKit::ROMol& mol,
+    const std::vector<ComplementNucleotide>& complement_nucleotides)
+{
+    const auto& conf = mol.getConformer();
+    std::vector<RDGeom::Point3D> positions;
+    positions.reserve(complement_nucleotides.size());
+    for (const auto& complement : complement_nucleotides) {
+        positions.push_back(conf.getAtomPos(complement.original_base_idx));
+    }
+    return positions;
+}
+
+/**
+ * @brief Determine the direction from an original base toward its complement.
+ *
+ * The complement sits on the side of the base away from the base's own sugar,
+ * so deriving the axis from the geometry lets the complement follow a rotated
+ * or moved strand. Taken from the first base with a locatable sugar.
+ *
+ * @param mol the monomer molecule
+ * @param complement_nucleotides the complement nucleotides to inspect
+ * @return a unit vector toward the complement, or (0, -1) if no sugar is found
+ */
+static RDGeom::Point3D
+pairing_axis(const RDKit::ROMol& mol,
+             const std::vector<ComplementNucleotide>& complement_nucleotides)
+{
+    const auto& conf = mol.getConformer();
+    for (const auto& complement : complement_nucleotides) {
+        const auto* base_atom =
+            mol.getAtomWithIdx(complement.original_base_idx);
+        const auto& base_pos = conf.getAtomPos(complement.original_base_idx);
+        for (const auto* nbr : mol.atomNeighbors(base_atom)) {
+            if (get_monomer_type(nbr) != MonomerType::NA_SUGAR) {
+                continue;
+            }
+            const auto& sugar_pos = conf.getAtomPos(nbr->getIdx());
+            RDGeom::Point3D d(base_pos.x - sugar_pos.x,
+                              base_pos.y - sugar_pos.y, 0.0);
+            if (d.lengthSq() > 1e-6) {
+                d.normalize();
+                return d;
+            }
+            break; // a base has a single sugar; its position was degenerate
+        }
+    }
+    return RDGeom::Point3D(0.0, -1.0, 0.0);
 }
 
 } // namespace
@@ -937,6 +1080,122 @@ void MolModel::addMonomericConnection(const RDKit::Atom* const monomer_one,
                                           is_custom_bond);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomeric connection",
+                            WhatChanged::MOLECULE);
+}
+
+void MolModel::addComplementaryStrand(
+    const std::unordered_set<const RDKit::Atom*>& selected_bases)
+{
+    auto bases_by_polymer = group_bases_by_polymer(selected_bases);
+    if (bases_by_polymer.empty()) {
+        return;
+    }
+    // One undo entry covers the complement chains for every source polymer.
+    auto undo_macro = createUndoMacro("Add Complementary Sequence");
+    for (const auto& [polymer_id, base_idxs] : bases_by_polymer) {
+        addComplementChainForPolymer(base_idxs);
+    }
+}
+
+void MolModel::addComplementChainForPolymer(
+    const std::vector<size_t>& base_idxs)
+{
+    const auto complement_nucleotides =
+        build_complement_nucleotides(m_mol, base_idxs);
+    if (complement_nucleotides.empty()) {
+        return;
+    }
+
+    // Capture base positions and the pairing axis up front: every modifying
+    // call below replaces m_mol's contents via snapshot restore, which
+    // invalidates any held conformer reference.
+    const auto orig_base_positions =
+        get_base_positions(m_mol, complement_nucleotides);
+    const RDGeom::Point3D pair_dir =
+        pairing_axis(m_mol, complement_nucleotides);
+    // Backbone axis: perpendicular to the pairing axis (-x for the canonical
+    // downward pair_dir).
+    const RDGeom::Point3D backbone_dir(pair_dir.y, -pair_dir.x, 0.0);
+    // Lay the complement out one monomer bond at a time so the spacing matches
+    // the rest of the monomer layout.
+    auto along = [](const RDGeom::Point3D& origin, const RDGeom::Point3D& dir,
+                    double dist) {
+        return RDGeom::Point3D(origin.x + dir.x * dist, origin.y + dir.y * dist,
+                               0.0);
+    };
+
+    // Build the complement chain antiparallel: iterate
+    // `complement_nucleotides` in reverse so the complement is constructed
+    // 5'→3' (paired with original 3'→5'). Record new atoms in chain order for
+    // the residue renumber below, so HELM PAIR sections round-trip without
+    // mis-targeting pairs.
+    size_t prev_phos_idx = std::numeric_limits<size_t>::max();
+    std::vector<size_t> new_chain_atom_idxs;
+    new_chain_atom_idxs.reserve(3 * complement_nucleotides.size());
+    for (size_t j = 0; j < complement_nucleotides.size(); ++j) {
+        const bool is_first = (j == 0);
+        const size_t complement_idx = complement_nucleotides.size() - 1 - j;
+        const auto& complement = complement_nucleotides[complement_idx];
+        const auto& orig_base_pos = orig_base_positions[complement_idx];
+
+        // Complement base sits across the pairing gap; its sugar one step
+        // further out so the new base faces back toward the original.
+        // Phosphate offsets along the backbone axis.
+        RDGeom::Point3D base_coord = along(
+            orig_base_pos, pair_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+        RDGeom::Point3D sugar_coord =
+            along(base_coord, pair_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+        RDGeom::Point3D phos_coord = along(
+            sugar_coord, backbone_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+
+        if (is_first) {
+            addMonomer(complement.sugar_symbol,
+                       rdkit_extensions::ChainType::RNA, sugar_coord);
+        } else {
+            addBoundMonomer(complement.sugar_symbol,
+                            rdkit_extensions::ChainType::RNA, sugar_coord,
+                            ap_model_name_for(NASugarAP::FIVE_PRIME),
+                            m_mol.getAtomWithIdx(prev_phos_idx),
+                            ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR));
+        }
+        const size_t new_sugar_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(new_sugar_idx);
+
+        addBoundMonomer(complement.base_symbol,
+                        rdkit_extensions::ChainType::RNA, base_coord,
+                        ap_model_name_for(NA_BASE_AP_N1_9),
+                        m_mol.getAtomWithIdx(new_sugar_idx),
+                        ap_model_name_for(NASugarAP::ONE_PRIME));
+        const size_t new_base_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(new_base_idx);
+
+        addBoundMonomer("P", rdkit_extensions::ChainType::RNA, phos_coord,
+                        ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
+                        m_mol.getAtomWithIdx(new_sugar_idx),
+                        ap_model_name_for(NASugarAP::THREE_PRIME));
+        prev_phos_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(prev_phos_idx);
+
+        addMonomericConnection(
+            m_mol.getAtomWithIdx(complement.original_base_idx), NA_BASE_AP_PAIR,
+            m_mol.getAtomWithIdx(new_base_idx), NA_BASE_AP_PAIR);
+    }
+
+    // Renumber the new chain's residues 1..N in chain order so the HELM PAIR
+    // section (which references residue numbers) maps to the correct monomer
+    // after round-tripping through the parser.
+    auto renumber = [this, new_chain_atom_idxs]() {
+        for (size_t i = 0; i < new_chain_atom_idxs.size(); ++i) {
+            auto* atom = m_mol.getAtomWithIdx(new_chain_atom_idxs[i]);
+            auto* info = dynamic_cast<RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            if (info == nullptr) {
+                continue;
+            }
+            info->setResidueNumber(static_cast<int>(i + 1));
+        }
+    };
+    doCommandUsingSnapshots(renumber, "Renumber monomer residues",
                             WhatChanged::MOLECULE);
 }
 

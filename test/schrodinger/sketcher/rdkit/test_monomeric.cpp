@@ -20,6 +20,33 @@ namespace sketcher
 {
 
 /**
+ * DNA and RNA use separate complement tables so adenine resolves to thymine
+ * for DNA and uracil for RNA. The remaining standard pairings are shared.
+ */
+BOOST_AUTO_TEST_CASE(test_complement_base_symbols)
+{
+    const auto dna_a = get_dna_complement_base_symbol("A");
+    const auto rna_a = get_rna_complement_base_symbol("A");
+    BOOST_REQUIRE(dna_a.has_value());
+    BOOST_REQUIRE(rna_a.has_value());
+    BOOST_TEST(*dna_a == "T");
+    BOOST_TEST(*rna_a == "U");
+
+    const auto dna_g = get_dna_complement_base_symbol("G");
+    const auto rna_g = get_rna_complement_base_symbol("G");
+    BOOST_REQUIRE(dna_g.has_value());
+    BOOST_REQUIRE(rna_g.has_value());
+    BOOST_TEST(*dna_g == "C");
+    BOOST_TEST(*rna_g == "C");
+
+    BOOST_TEST(!get_dna_complement_base_symbol("X").has_value());
+    BOOST_TEST(!get_rna_complement_base_symbol("X").has_value());
+    BOOST_TEST(na_base_has_complement("T"));
+    BOOST_TEST(na_base_has_complement("U"));
+    BOOST_TEST(!na_base_has_complement("X"));
+}
+
+/**
  * Make sure that contains_two_monomer_linkages correctly detects two monomer
  * linkages in the same bond when there's a disulfide bond between neighboring
  * cysteines.

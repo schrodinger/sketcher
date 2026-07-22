@@ -81,6 +81,22 @@ struct MutateRequestCapture {
     }
 };
 
+// Captures the most recent `addComplementaryStrandRequested` emission.
+struct ComplementRequestCapture {
+    std::unordered_set<const RDKit::Atom*> last_bases;
+    int call_count = 0;
+
+    void connectTo(MonomerContextMenu& menu)
+    {
+        QObject::connect(&menu,
+                         &MonomerContextMenu::addComplementaryStrandRequested,
+                         &menu, [this](auto bases) {
+                             last_bases = std::move(bases);
+                             ++call_count;
+                         });
+    }
+};
+
 // RAII helper for tests that need to inject custom monomer definitions.
 // Pairs with the LocalMonomerDbFixture global fixture, which redirects
 // the singleton to a per-binary scratch DB so we never touch the user's
@@ -895,6 +911,104 @@ BOOST_AUTO_TEST_CASE(test_custom_dna_registered_sugar_pair_enables_toggle)
 
     BOOST_REQUIRE(capture.last_mutations.size() == 1u);
     BOOST_TEST(capture.last_mutations[0].helm_symbol == "dYur");
+}
+
+/**
+ * "Add Complementary Sequence" hides for peptide selections — it only
+ * makes sense for nucleic acids.
+ */
+BOOST_AUTO_TEST_CASE(test_complement_action_hidden_for_peptide_selection)
+{
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {});
+    menu.updateActions();
+
+    auto* action = find_action(menu, "Add Complementary Sequence");
+    BOOST_REQUIRE(action != nullptr);
+    BOOST_TEST(!action->isVisible());
+}
+
+/**
+ * NA selection containing only sugars/phosphates (no bases) hides the
+ * action — there's nothing to complement.
+ */
+BOOST_AUTO_TEST_CASE(test_complement_action_hidden_for_no_bases)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    // atoms 0=R sugar, 1=A base, 2=P phosphate
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {0, 2}), {}, {}, {}, {});
+    menu.updateActions();
+
+    auto* action = find_action(menu, "Add Complementary Sequence");
+    BOOST_REQUIRE(action != nullptr);
+    BOOST_TEST(!action->isVisible());
+}
+
+/**
+ * A single NA base selection enables the action.
+ */
+BOOST_AUTO_TEST_CASE(test_complement_action_visible_for_single_base)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    menu.setContextItems(atoms_from(*mol, {1}), {}, {}, {}, {});
+    menu.updateActions();
+
+    auto* action = find_action(menu, "Add Complementary Sequence");
+    BOOST_REQUIRE(action != nullptr);
+    BOOST_TEST(action->isVisible());
+    BOOST_TEST(action->isEnabled());
+}
+
+/**
+ * Selection containing both bases and backbone monomers stays enabled —
+ * the action filters down to the bases when it emits.
+ */
+BOOST_AUTO_TEST_CASE(test_complement_action_visible_for_mixed_na_selection)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    ComplementRequestCapture capture;
+    capture.connectTo(menu);
+    menu.setContextItems(atoms_from(*mol, {0, 1, 2}), {}, {}, {}, {});
+    menu.updateActions();
+
+    auto* action = find_action(menu, "Add Complementary Sequence");
+    BOOST_REQUIRE(action != nullptr);
+    BOOST_TEST(action->isVisible());
+    BOOST_TEST(action->isEnabled());
+    action->trigger();
+
+    BOOST_TEST(capture.call_count == 1);
+    BOOST_REQUIRE(capture.last_bases.size() == 1u);
+    BOOST_TEST(*capture.last_bases.begin() == mol->getAtomWithIdx(1));
+}
+
+/**
+ * Mixing an NA base with a peptide hides the action — the spec restricts
+ * it to "bases or full NAs only".
+ */
+BOOST_AUTO_TEST_CASE(test_complement_action_hidden_for_mixed_with_peptide)
+{
+    auto mol = rdkit_extensions::to_rdkit("RNA1{R(A)P}|PEPTIDE1{A}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    // atom 1 = RNA base A, atom 3 = PEPTIDE A (positions depend on parse
+    // order; verify with a quick monomer-type check).
+    std::unordered_set<const RDKit::Atom*> sel;
+    for (const auto* a : mol->atoms()) {
+        if (get_monomer_type(a) == MonomerType::NA_BASE ||
+            get_monomer_type(a) == MonomerType::PEPTIDE) {
+            sel.insert(a);
+        }
+    }
+    menu.setContextItems(sel, {}, {}, {}, {});
+    menu.updateActions();
+
+    auto* action = find_action(menu, "Add Complementary Sequence");
+    BOOST_REQUIRE(action != nullptr);
+    BOOST_TEST(!action->isVisible());
 }
 
 } // namespace sketcher

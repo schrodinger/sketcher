@@ -35,6 +35,13 @@ const std::string PEPTIDE_POLYMER_PREFIX = "PEPTIDE";
 // According to HELM, DNA is a subtype of RNA, so DNA also uses the RNA prefix
 const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
 
+const std::unordered_map<std::string_view, std::string_view>
+    DNA_BASE_COMPLEMENTS = {
+        {"A", "T"}, {"T", "A"}, {"U", "A"}, {"G", "C"}, {"C", "G"}};
+const std::unordered_map<std::string_view, std::string_view>
+    RNA_BASE_COMPLEMENTS = {
+        {"A", "U"}, {"T", "A"}, {"U", "A"}, {"G", "C"}, {"C", "G"}};
+
 // "Pretty" names for attachment points that are normally represented as "R#"
 // Note that the primes use apostrophes instead of a Unicode prime to avoid
 // issues with C++′s handling of Unicode.
@@ -71,6 +78,17 @@ const std::unordered_map<Direction, std::vector<Direction>>
 class NoAvailableDirectionsException : public std::exception
 {
 };
+
+std::optional<std::string> lookup_complement_base_symbol(
+    const std::unordered_map<std::string_view, std::string_view>& complements,
+    const std::string_view base_symbol)
+{
+    const auto complement = complements.find(base_symbol);
+    if (complement == complements.end()) {
+        return std::nullopt;
+    }
+    return std::string(complement->second);
+}
 
 } // namespace
 
@@ -128,6 +146,39 @@ std::string get_monomer_res_name(const RDKit::Atom* const monomer)
         return monomer_info->getName();
     }
     return res_info->getResidueName();
+}
+
+bool is_dna_base(const RDKit::Atom* const base)
+{
+    if (get_monomer_type(base) != MonomerType::NA_BASE) {
+        throw std::runtime_error("is_dna_base requires an NA_BASE atom");
+    }
+    const auto& mol = base->getOwningMol();
+    for (const auto* neighbor : mol.atomNeighbors(base)) {
+        if (get_monomer_type(neighbor) == MonomerType::NA_SUGAR &&
+            get_monomer_res_name(neighbor) == "dR") {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<std::string>
+get_dna_complement_base_symbol(const std::string_view base_symbol)
+{
+    return lookup_complement_base_symbol(DNA_BASE_COMPLEMENTS, base_symbol);
+}
+
+std::optional<std::string>
+get_rna_complement_base_symbol(const std::string_view base_symbol)
+{
+    return lookup_complement_base_symbol(RNA_BASE_COMPLEMENTS, base_symbol);
+}
+
+bool na_base_has_complement(const std::string_view base_symbol)
+{
+    return DNA_BASE_COMPLEMENTS.contains(base_symbol) ||
+           RNA_BASE_COMPLEMENTS.contains(base_symbol);
 }
 
 bool contains_two_monomer_linkages(const RDKit::Bond* bond)
