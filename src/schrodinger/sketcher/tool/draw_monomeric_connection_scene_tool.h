@@ -5,22 +5,10 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
-#include "schrodinger/sketcher/tool/abstract_draw_monomer_or_monomeric_connection_scene_tool.h"
-
-class QGraphicsItem;
-
-namespace RDKit
-{
-class Atom;
-} // namespace RDKit
+#include "schrodinger/sketcher/tool/abstract_draw_monomeric_connection_scene_tool.h"
 
 namespace schrodinger
 {
-
-namespace rdkit_extensions
-{
-enum class ChainType;
-} // namespace rdkit_extensions
 
 namespace sketcher
 {
@@ -35,35 +23,15 @@ namespace sketcher
  * the DrawMonomericHBondSceneTool.
  */
 class SKETCHER_API DrawMonomericConnectionSceneTool
-    : public AbstractDrawMonomerOrMonomericConnectionSceneTool
+    : public AbstractDrawMonomericConnectionSceneTool
 {
   public:
     DrawMonomericConnectionSceneTool(const Fonts& fonts, Scene* scene,
                                      MolModel* mol_model);
 
-    // Reimplemented AbstractSceneTool method
-    void updateColorsAfterBackgroundColorChange(bool is_dark_mode) override;
-
   protected:
-    QGraphicsItem* m_invalid_drag_item = nullptr;
-    QPen m_invalid_drag_pen = QPen(CONNECTION_TOOL_INVALID_DRAG_COLOR,
-                                   CONNECTION_TOOL_INVALID_DRAG_LINE_WIDTH);
-    QColor m_unbound_ap_label_hover_color =
-        CONNECTION_TOOL_AP_LABEL_HOVER_COLOR;
-
     // Reimplemented AbstractSceneTool method
     QPixmap createDefaultCursorPixmap() const override;
-
-    // Reimplemented AbstractDrawMonomerOrMonomericConnectionSceneTool methods
-
-    /**
-     * Clicking never mutates a monomer for this tool.
-     */
-    bool clickShouldMutate(const RDKit::Atom* monomer,
-                           const MonomerType monomer_type) const override;
-
-    std::optional<HintFragmentMonomerInfo>
-    getHintFragmentMonomerInfoForDragStart() override;
 
     std::optional<HintFragmentMonomerInfo> getHintFragmentMonomerInfoForDragEnd(
         const HintFragmentMonomerInfo& hint_start_monomer_info,
@@ -71,19 +39,6 @@ class SKETCHER_API DrawMonomericConnectionSceneTool
 
     void updateHoveredUnboundAP(
         UnboundMonomericAttachmentPointItem* hovered_ap_item) override;
-
-    DragEndInfo
-    getDragEndInfoForNonMonomerPos(const QPointF& scene_pos) const override;
-
-    void clearHintFragmentItem() override;
-
-    void
-    createHintFragmentItem(HintFragmentMonomerInfo& monomer_one_info,
-                           HintFragmentMonomerInfo& monomer_two_info) override;
-
-    void addDragStructureToMolModel(
-        const HintFragmentMonomerInfo& hint_start_monomer_info,
-        const HintFragmentMonomerInfo& hint_end_monomer_info) override;
 
     UnboundMonomericAttachmentPointItem*
     getDefaultUnboundAttachmentPointForHoveredMonomer(

@@ -23,7 +23,8 @@ namespace sketcher
 BOOST_AUTO_TEST_CASE(test_click_empty_space)
 {
     MonomerToolTestFixture fix;
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     fix.mouseClick({0, 0});
     fix.confirmIsEmpty();
 }
@@ -36,7 +37,8 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer)
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{A}$$$$V2.0");
     auto pos = fix.getMonomerPos(0);
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     fix.mouseClick(pos);
     fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
 }
@@ -50,7 +52,8 @@ BOOST_AUTO_TEST_CASE(test_click_attachment_point)
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{A}$$$$V2.0");
     auto monomer_pos = fix.getMonomerPos(0);
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     // hover over the monomer to trigger AP label creation
     fix.mouseMove(monomer_pos);
 
@@ -81,7 +84,8 @@ BOOST_AUTO_TEST_CASE(test_drag_monomer_to_empty)
 {
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{A}$$$$V2.0");
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
 
     // Drag from the monomer to the right
     auto start_pos = fix.getMonomerPos(0);
@@ -98,7 +102,8 @@ BOOST_AUTO_TEST_CASE(test_drag_monomer_to_empty)
 BOOST_AUTO_TEST_CASE(test_drag_ap_to_empty)
 {
     MonomerToolTestFixture fix;
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
 
     // Add initial monomer
     fix.importMolText("PEPTIDE1{A}$$$$V2.0");
@@ -147,7 +152,8 @@ BOOST_AUTO_TEST_CASE(test_drag_ap_to_empty)
 BOOST_AUTO_TEST_CASE(test_drag_monomer_to_monomer_connects_default_aps)
 {
     MonomerToolTestFixture fix;
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     fix.importMolText("PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0");
     auto pos1 = fix.getMonomerPos(0);
     auto pos2 = fix.getMonomerPos(1);
@@ -163,7 +169,8 @@ BOOST_AUTO_TEST_CASE(test_drag_monomer_to_monomer_connects_default_aps)
 BOOST_AUTO_TEST_CASE(test_drag_ap_to_ap_connects_via_both_aps)
 {
     MonomerToolTestFixture fix;
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     fix.importMolText("PEPTIDE1{A}|PEPTIDE2{C}$$$$V2.0");
     auto ala_pos = fix.getMonomerPos(0);
     auto cys_pos = fix.getMonomerPos(1);
@@ -181,13 +188,13 @@ BOOST_AUTO_TEST_CASE(test_drag_ap_to_ap_connects_via_both_aps)
 }
 
 /**
- * Confirm that dragging from empty space to empty space with a peptide monomer
- * creates a dimer with a backbone connection
+ * Confirm that dragging from empty space to empty space has no effect
  */
 BOOST_AUTO_TEST_CASE(test_drag_empty_to_empty)
 {
     MonomerToolTestFixture fix;
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_pos = QPointF(100, 100);
     auto end_pos = start_pos + QPointF(100, 0);
     fix.mouseDrag(start_pos, end_pos);
@@ -201,7 +208,8 @@ BOOST_AUTO_TEST_CASE(test_drag_empty_to_monomer)
 {
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{C}$$$$V2.0");
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_pos = QPointF(100, 100);
     auto end_pos = fix.getMonomerPos(0);
     fix.mouseDrag(start_pos, end_pos);
@@ -217,7 +225,8 @@ BOOST_AUTO_TEST_CASE(test_drag_second_backbone_connection)
 {
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{A.A}$$$$V2.0");
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
@@ -242,7 +251,8 @@ BOOST_AUTO_TEST_CASE(test_drag_second_custom_connection)
     MonomerToolTestFixture fix;
     fix.importMolText(
         "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
@@ -266,7 +276,8 @@ BOOST_AUTO_TEST_CASE(test_drag_third_connection)
 {
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
@@ -278,6 +289,27 @@ BOOST_AUTO_TEST_CASE(test_drag_third_connection)
     fix.mouseMove(end_ap_pos);
     fix.mouseRelease(end_ap_pos);
     fix.verifyHELM("PEPTIDE1{C.C}$PEPTIDE1,PEPTIDE1,1:R3-2:R3$$$V2.0");
+}
+
+/**
+ * Make sure that dragging between two existing monomer won't create a
+ * connection between them if there's already a hydrogen bond (since monomer_mol
+ * won't mix covalent and hydrogen bonds)
+ */
+BOOST_AUTO_TEST_CASE(test_drag_hydrogen_bond)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText(
+        "PEPTIDE1{A}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
+
+    // drag from monomer to monomer
+    auto start_monomer_pos = fix.getMonomerPos(0);
+    auto end_monomer_pos = fix.getMonomerPos(1);
+    fix.mouseDrag(start_monomer_pos, end_monomer_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{A}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
 }
 
 /**
@@ -298,7 +330,8 @@ BOOST_AUTO_TEST_CASE(test_undo_monomer_after_hint_fragment_no_crash)
     fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
 
     // hover over the monomer so the tool creates unbound AP items
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     fix.mouseMove(monomer_pos);
 
     // hover over an attachment point so the tool also draws a hint fragment
@@ -341,7 +374,8 @@ BOOST_AUTO_TEST_CASE(test_undo_drag_end_monomer_no_crash)
     auto pos_b = fix.getMonomerPos(1);
 
     // start a drag from A's C attachment point
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     fix.mouseMove(pos_a);
     auto a_c_ap = fix.getAttachmentPointPos(0, "C");
     fix.mouseMove(a_c_ap);
@@ -374,7 +408,8 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
 {
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
-    fix.setMonomericConnectionTool();
+    fix.setMonomericConnectionTool(
+        MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_monomer_pos = fix.getMonomerPos(1);
     auto end_monomer_pos = fix.getMonomerPos(0);
     fix.mouseMove(start_monomer_pos);

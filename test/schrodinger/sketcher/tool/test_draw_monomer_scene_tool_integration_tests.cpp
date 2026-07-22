@@ -411,6 +411,28 @@ BOOST_AUTO_TEST_CASE(test_drag_third_connection)
 }
 
 /**
+ * Make sure that dragging between two existing monomer won't create a
+ * connection between them if there's already a hydrogen bond (since monomer_mol
+ * won't mix covalent and hydrogen bonds)
+ */
+BOOST_AUTO_TEST_CASE(test_drag_hydrogen_bond)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText(
+        "PEPTIDE1{A}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::PHE);
+
+    // drag from monomer to monomer
+    auto start_monomer_pos = fix.getMonomerPos(0);
+    auto end_monomer_pos = fix.getMonomerPos(1);
+    fix.mouseDrag(start_monomer_pos, end_monomer_pos);
+    // the drag should have added a new monomer to the N terminus of the start
+    // monomer since we released over an invalid attachment point
+    fix.verifyHELM(
+        "PEPTIDE1{A.F}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+}
+
+/**
  * Place a monomer, hover next to it so the tool caches unbound attachment-
  * point items and a hint fragment, then undo the placement and move the
  * mouse. The monomer's child AP items get destroyed when the monomer is

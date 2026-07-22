@@ -49,6 +49,7 @@
 #include "schrodinger/sketcher/tool/draw_monomer_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_monomer_fragment_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_monomeric_connection_scene_tool.h"
+#include "schrodinger/sketcher/tool/draw_monomeric_hbond_scene_tool.h"
 #include "schrodinger/sketcher/tool/draw_r_group_scene_tool.h"
 #include "schrodinger/sketcher/tool/edit_charge_scene_tool.h"
 #include "schrodinger/sketcher/tool/move_rotate_scene_tool.h"
@@ -649,6 +650,7 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::RNA_NUCLEOBASE:
             case ModelKey::DNA_NUCLEOBASE:
             case ModelKey::CUSTOM_NUCLEOTIDE:
+            case ModelKey::MONOMERIC_CONNECTION_TOOL:
                 updateSceneTool();
                 break;
             default:
@@ -779,6 +781,9 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         if (connection_tool == MonomericConnectionTool::COVALENT_OR_DISULFIDE) {
             return std::make_shared<DrawMonomericConnectionSceneTool>(
                 m_fonts, this, m_mol_model);
+        } else {
+            return std::make_shared<DrawMonomericHBondSceneTool>(m_fonts, this,
+                                                                 m_mol_model);
         }
     }
     // tool not yet implemented

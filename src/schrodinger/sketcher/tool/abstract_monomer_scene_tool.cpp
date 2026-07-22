@@ -99,9 +99,12 @@ AbstractMonomerSceneTool::getTopMonomerItemAt(const QPointF& scene_pos) const
         }
     }
 
-    // if we're not over any of those, check to see if we're near a monomer. If
-    // we are, check to see whether we'd be over one of its attachment points
-    // once they're drawn
+    return getMonomerNear(scene_pos);
+}
+
+AbstractMonomerItem*
+AbstractMonomerSceneTool::getMonomerNear(const QPointF& scene_pos) const
+{
     QPainterPath near_scene_pos;
     // We want a circle radius that will definitely include the relevant monomer
     // if we're over an attachment point hover area, but we don't care if it's

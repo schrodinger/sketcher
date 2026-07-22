@@ -991,5 +991,12 @@ void ensure_distinct_chain_names(RDKit::ROMol& mol_to_change,
     }
 }
 
+bool is_hydrogen_bond(const RDKit::Bond* const bond)
+{
+    std::string custom_linkage;
+    bond->getPropIfPresent(CUSTOM_BOND, custom_linkage);
+    return custom_linkage == (NA_BASE_AP_PAIR + "-" + NA_BASE_AP_PAIR);
+}
+
 } // namespace sketcher
 } // namespace schrodinger
