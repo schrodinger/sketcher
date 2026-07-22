@@ -136,20 +136,50 @@ function(setup_target TARGET)
   endif()
 endfunction()
 
+# Add dependencies to Qt resource collection files (*.qrc). This ensures that
+# changes to an icon, font, etc. will trigger a rebuild of the relevant .qrc
+# file.
+function(add_qrc_dependencies QRC_FILE)
+  get_filename_component(QRC_DIR ${QRC_FILE} DIRECTORY)
+  file(READ ${QRC_FILE} QRC_CONTENTS)
+  string(REGEX MATCHALL "<file[^>]*>[^<]+</file>" QRC_FILE_ENTRIES
+               ${QRC_CONTENTS})
+  set(QRC_DEPENDENCIES)
+  foreach(QRC_FILE_ENTRY ${QRC_FILE_ENTRIES})
+    string(REGEX REPLACE "^<file[^>]*>" "" QRC_RESOURCE ${QRC_FILE_ENTRY})
+    string(REGEX REPLACE "</file>$" "" QRC_RESOURCE ${QRC_RESOURCE})
+    string(STRIP ${QRC_RESOURCE} QRC_RESOURCE)
+    cmake_path(
+      ABSOLUTE_PATH
+      QRC_RESOURCE
+      BASE_DIRECTORY
+      ${QRC_DIR}
+      NORMALIZE
+      OUTPUT_VARIABLE
+      QRC_RESOURCE_PATH)
+    list(APPEND QRC_DEPENDENCIES ${QRC_RESOURCE_PATH})
+  endforeach()
+  set_property(
+    SOURCE ${QRC_FILE}
+    APPEND
+    PROPERTY OBJECT_DEPENDS "${QRC_DEPENDENCIES}")
+endfunction()
+
 # Configure the SKETCHER_LIB and RDKIT_EXTENSIONS_LIB libraries
 function(build_schrodinger_library TARGET)
   set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/schrodinger/${TARGET})
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${TARGET})
-  # Collect all headers, source, and resources; note we collect public headers
-  # so that Qt can build .moc files
-  file(
-    GLOB_RECURSE
-    SOURCE_LIST
-    CONFIGURE_DEPENDS
-    ${INCLUDE_DIR}/*.h
-    ${SRC_DIR}/*.h
-    ${SRC_DIR}/*.cpp
-    ${SRC_DIR}/*.qrc)
+  # Collect all headers and source; note we collect public headers so that Qt
+  # can build .moc files.
+  file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
+       ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp)
+  # Collect all resources
+  file(GLOB_RECURSE SOURCE_LIST_QRC CONFIGURE_DEPENDS ${SRC_DIR}/*.qrc)
+  list(APPEND SOURCE_LIST ${SOURCE_LIST_QRC})
+  foreach(QRC_FILE ${SOURCE_LIST_QRC})
+    add_qrc_dependencies(${QRC_FILE})
+  endforeach()
+
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME schrodinger_${TARGET})
