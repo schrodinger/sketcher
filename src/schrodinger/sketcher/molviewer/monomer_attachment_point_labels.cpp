@@ -318,8 +318,8 @@ std::vector<QGraphicsItem*> create_attachment_point_labels_for_connector(
     std::vector<QGraphicsItem*> ap_label_items;
     if (begin_ap_name == H_BOND_AP_MODEL_NAME &&
         end_ap_name == H_BOND_AP_MODEL_NAME) {
-        // for nucleic acid base pairs, only have a single "pair" label since
-        // the bond is typically too short to fit two separate labels
+        // for hydrogen bonds, only have a single label for the bond instead of
+        // identical labels for each attachment point
         auto* item = create_label_for_center_of_connector(
             begin_monomer, end_monomer,
             QString::fromStdString(H_BOND_DISPLAY_NAME), color, fonts);

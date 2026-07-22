@@ -476,7 +476,8 @@ static Direction calculate_direction_for_unbound_attachment_point(
     std::vector<Direction> dirs_to_try;
     if (ap_num <= 2 || ap_name == H_BOND_AP_MODEL_NAME) {
         // the first two attachment points should be across from each other (and
-        // "pair" is the second attachment point for nucleic acid base monomers)
+        // the hydrogen bond attachment point is considered the second
+        // attachment point for nucleic acid base monomers)
         int opposite_ap_num =
             ap_num == 2 || ap_name == H_BOND_AP_MODEL_NAME ? 1 : 2;
         auto opposite_dir = fetch_assigned_direction_for_attachment_point(
