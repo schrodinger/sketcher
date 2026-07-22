@@ -199,7 +199,7 @@ UnboundMonomericAttachmentPointItem* get_default_attachment_point(
         if (tool_type == MonomerType::NA_BASE ||
             tool_type == MonomerType::CHEM) {
             return find_attachment_point_with_name(unbound_ap_items,
-                                                   NA_BASE_AP_PAIR);
+                                                   H_BOND_AP_MODEL_NAME);
         } else if (tool_type == MonomerType::NA_SUGAR) {
             return find_attachment_point_with_num(unbound_ap_items,
                                                   NA_BASE_AP_N1_9);
@@ -247,7 +247,7 @@ get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
                     ap_model_name_for(NASugarAP::ONE_PRIME)) {
                 return ap_model_name_for(NA_BASE_AP_N1_9);
             }
-            return NA_BASE_AP_PAIR;
+            return H_BOND_AP_MODEL_NAME;
         case MonomerType::NA_SUGAR:
             if (existing_monomer_type == MonomerType::NA_PHOSPHATE) {
                 if (existing_monomer_ap ==
@@ -477,7 +477,7 @@ std::string AbstractDrawMonomerOrMonomericConnectionSceneTool::
     getDefaultDragStartAPModelName() const
 {
     return m_monomer_type == MonomerType::NA_BASE
-               ? NA_BASE_AP_PAIR
+               ? H_BOND_AP_MODEL_NAME
                : ap_model_name_for(PeptideAP::C);
 }
 
@@ -649,7 +649,8 @@ bool AbstractDrawMonomerOrMonomericConnectionSceneTool::dragCanFormConnectionTo(
     auto* connection = m_mol_model->getMol()->getBondBetweenAtoms(
         monomer_start->getIdx(), monomer_end->getIdx());
     if (connection != nullptr) {
-        if (ap_name_end == NA_BASE_AP_PAIR || is_hydrogen_bond(connection)) {
+        if (ap_name_end == H_BOND_AP_MODEL_NAME ||
+            is_hydrogen_bond(connection)) {
             // If either the new bond or the existing bond is a hydrogen bond,
             // then we're trying to mix a hydrogen bond and a covalent bond in
             // the same connection, which isn't allowed. If both of them are

@@ -327,8 +327,8 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(base);
         exp_bound = {{"R1", "N1/9", 1, sugar, false, Direction::N}};
-        exp_available = {
-            {"pair", "pair", ATTACHMENT_POINT_WITH_CUSTOM_NAME, Direction::S}};
+        exp_available = {{"pair", "H-bond", ATTACHMENT_POINT_WITH_CUSTOM_NAME,
+                          Direction::S}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
     }

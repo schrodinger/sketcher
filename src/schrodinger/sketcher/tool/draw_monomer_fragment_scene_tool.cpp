@@ -45,7 +45,8 @@ const std::vector<MonomerFragmentAttachmentInfo> NUCLEOTIDE_ATTACHMENT_INFO = {
      SUGAR_IDX, ap_model_name_for(NASugarAP::FIVE_PRIME)},
     {MonomerType::NA_SUGAR, ap_model_name_for(NASugarAP::FIVE_PRIME), PHOS_IDX,
      ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR)},
-    {MonomerType::NA_BASE, NA_BASE_AP_PAIR, BASE_IDX, NA_BASE_AP_PAIR}};
+    {MonomerType::NA_BASE, H_BOND_AP_MODEL_NAME, BASE_IDX,
+     H_BOND_AP_MODEL_NAME}};
 
 /**
  * The rotation angle adjustment required so that the base monomer follows the
