@@ -110,7 +110,7 @@ BOOST_DATA_TEST_CASE(
     TestGetCompressionType,
     boost::unit_test::data::make(std::vector<std::string>{
         ".mae", ".mol2", ".pdb", ".sdf", ".smi", ".smigz", ".sdfgz", ".maegz",
-        ".mae.zst"}) ^
+        ".mae.zst", ".maezst"}) ^
         boost::unit_test::data::make(std::vector<CompressionType>{
             CompressionType::UNKNOWN,
             CompressionType::UNKNOWN,
@@ -120,6 +120,7 @@ BOOST_DATA_TEST_CASE(
             CompressionType::GZIP,
             CompressionType::GZIP,
             CompressionType::GZIP,
+            CompressionType::ZSTD,
             CompressionType::ZSTD,
         }),
     extension, expected_compression_type)
