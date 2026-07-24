@@ -12,6 +12,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/coord_utils.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "test_common.h"
@@ -264,13 +265,14 @@ BOOST_AUTO_TEST_CASE(test_SVG_post_processing)
 BOOST_AUTO_TEST_CASE(test_image_generation_with_large_molecules)
 {
     // Create a molecule with more than 200 heavy atoms
-    // A simple polystyrene-like chain with 210 benzene rings
+    // A simple polystyrene-like chain with 101 benzene rings
     std::string large_smiles = "c1ccccc1";
-    for (int i = 0; i < 209; ++i) {
+    for (int i = 0; i < 100; ++i) {
         large_smiles += "c1ccccc1";
     }
     auto large_mol = rdkit_extensions::to_rdkit(large_smiles);
     BOOST_REQUIRE(large_mol->getNumAtoms() > 200);
+    rdkit_extensions::compute2DCoords(*large_mol);
 
     // Test that all image generation APIs work with this large molecule
     RenderOptions opts;
