@@ -7,7 +7,7 @@ namespace schrodinger
 namespace sketcher
 {
 
-void load_font_resources();
+SKETCHER_API void load_font_resources();
 
 } // namespace sketcher
 } // namespace schrodinger
