@@ -45,6 +45,22 @@ if [[ "$OSTYPE" == darwin* ]]; then
     POST_BUILD_COMMANDS="@find $BUILD_DIR \\( -name '*.dylib' -o -type f -perm +111 \\) ! -type l | while read target; do install_name_tool -change /Users/localbuildbot/builds/software/lib/Darwin-x86_64/sqlite-3.42.0/lib/libsqlite3.0.dylib /usr/lib/libsqlite3.0.dylib \"\$\$target\"; install_name_tool -change /software/lib/Darwin-x86_64/zlib-1.2.11/lib/libz.1.dylib /usr/lib/libz.1.dylib \"\$\$target\"; done"
 fi
 
+# Start with a fresh CMake cache if the compiler has moved. CMake considers the
+# compiler immutable after the build tree has been configured.
+ADDITIONAL_CMAKE_CONFIGURE_ARGS=""
+if [ -n "$CXX_COMPILER" ]; then
+    CACHED_CXX_COMPILER=$(sed -n 's/^CMAKE_CXX_COMPILER:[^=]*=//p' \
+        "$BUILD_DIR/CMakeCache.txt" 2>/dev/null || true)
+    NORMALIZED_CXX_COMPILER=$(cygpath -m "$CXX_COMPILER")
+    NORMALIZED_CACHED_CXX_COMPILER=""
+    if [ -n "$CACHED_CXX_COMPILER" ]; then
+        NORMALIZED_CACHED_CXX_COMPILER=$(cygpath -m "$CACHED_CXX_COMPILER")
+    fi
+    if [ "$NORMALIZED_CACHED_CXX_COMPILER" != "$NORMALIZED_CXX_COMPILER" ]; then
+        ADDITIONAL_CMAKE_CONFIGURE_ARGS="--fresh"
+    fi
+fi
+
 # Generate Makefile wrapper
 cat > "$BUILD_DIR/Makefile" << EOF
 .PHONY: all test memtest
@@ -57,7 +73,8 @@ all:
 	      -DENFORCE_DEPENDENCY_VERSIONS=OFF \\
 	      -DBUILD_SHARED_LIBS=ON \\
 	      -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \\
-	      ${CXX_COMPILER:+-DCMAKE_CXX_COMPILER="$CXX_COMPILER"}
+	      ${CXX_COMPILER:+-DCMAKE_CXX_COMPILER="$CXX_COMPILER"} \\
+          $ADDITIONAL_CMAKE_CONFIGURE_ARGS
 	cmake --build $BUILD_DIR --config $BUILD_TYPE
 	cmake --install $BUILD_DIR --config $BUILD_TYPE --prefix $BUILD_DIR
 	$POST_BUILD_COMMANDS
