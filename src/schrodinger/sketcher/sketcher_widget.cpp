@@ -1582,11 +1582,9 @@ void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
          QVariant::fromValue(MonomerToolType::NUCLEIC_ACID)},
     };
 
-    // if there's a selection (i.e. has_targets is true), then the keypress is
-    // going to mutate monomers so we don't care what current_tool is (since the
-    // real current tool is the selection tool, not a nucleic acid tool)
     if (!has_targets && (current_tool == NucleicAcidTool::RNA_NUCLEOTIDE ||
                          current_tool == NucleicAcidTool::DNA_NUCLEOTIDE)) {
+        // a full nucleotide tool is active
         if (BASE_KEYS.contains(key)) {
             // switch the base of the current full nucleotide tool
             auto base = std::get<StdNucleobase>(BASE_KEYS.at(key));
@@ -1602,6 +1600,7 @@ void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
         // the P key has no effect in this scenario
     } else if (!has_targets &&
                current_tool == NucleicAcidTool::CUSTOM_NUCLEOTIDE) {
+        // the custom nucleotide tool is active
         auto nt = m_sketcher_model->getCustomNucleotide();
         bool handled = true;
         if (BASE_KEYS.contains(key)) {
@@ -1625,8 +1624,8 @@ void SketcherWidget::handleNucleicAcidKeyboardShortcuts(
     } else {
         // either a monomer tool is active, in which case we'll switch to the
         // requested monomer tool (i.e. not a full nucleotide tool), or there's
-        // a selection, in which case we'll mutate all of the
-        // bases or sugars or phosphates
+        // a selection, in which case we'll mutate all of the bases or sugars or
+        // phosphates
         NucleicAcidTool tool;
         bool handled = true;
         if (BASE_KEYS.contains(key)) {
