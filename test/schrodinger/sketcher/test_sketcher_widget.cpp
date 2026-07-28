@@ -1,8 +1,11 @@
 #define BOOST_TEST_MODULE sketcher_widget_test
 
 #include <string>
+#include <tuple>
 
 #include <QGraphicsSvgItem>
+#include <QKeyEvent>
+#include <QMouseEvent>
 #include <QString>
 
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
@@ -63,6 +66,43 @@ struct TestWidgetFixture {
 };
 
 BOOST_GLOBAL_FIXTURE(TestWidgetFixture);
+
+static void send_key_press(TestSketcherWidget& sk, Qt::Key key,
+                           const QString& text)
+{
+    QKeyEvent event(QEvent::KeyPress, key, Qt::NoModifier, text);
+    QCoreApplication::sendEvent(&sk, &event);
+    QCoreApplication::processEvents();
+}
+
+static void click_scene_center(TestSketcherWidget& sk)
+{
+    auto* viewport = sk.m_ui->view->viewport();
+    const auto click_pos = viewport->rect().center();
+    const auto global_click_pos = viewport->mapToGlobal(click_pos);
+    QMouseEvent mouse_press(QEvent::MouseButtonPress, click_pos,
+                            global_click_pos, Qt::LeftButton, Qt::LeftButton,
+                            Qt::NoModifier);
+    QCoreApplication::sendEvent(viewport, &mouse_press);
+    QMouseEvent mouse_release(QEvent::MouseButtonRelease, click_pos,
+                              global_click_pos, Qt::LeftButton, Qt::NoButton,
+                              Qt::NoModifier);
+    QCoreApplication::sendEvent(viewport, &mouse_release);
+    QCoreApplication::processEvents();
+}
+
+static void set_nucleic_acid_tool(TestSketcherWidget& sk, NucleicAcidTool tool)
+{
+    sk.m_sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::MONOMER)},
+         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
+         {ModelKey::MONOMER_TOOL_TYPE,
+          QVariant::fromValue(MonomerToolType::NUCLEIC_ACID)},
+         {ModelKey::NUCLEIC_ACID_TOOL, QVariant::fromValue(tool)},
+         {ModelKey::NUCLEIC_ACID_SYMBOL,
+          QVariant::fromValue(NucleicAcidMutation{tool, ""})}});
+    QCoreApplication::processEvents();
+}
 
 BOOST_AUTO_TEST_CASE(test_addRDKitMolecule_getRDKitMolecule)
 {
@@ -605,6 +645,153 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 }
 
 /**
+ * Verify that an amino acid keyboard shortcut rebuilds the scene tool with the
+ * newly selected amino acid.
+ */
+BOOST_AUTO_TEST_CASE(test_amino_acid_shortcut_updates_scene_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.m_sketcher_model->setValues(
+        {{ModelKey::DRAW_TOOL, QVariant::fromValue(DrawTool::MONOMER)},
+         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
+         {ModelKey::MONOMER_TOOL_TYPE,
+          QVariant::fromValue(MonomerToolType::AMINO_ACID)},
+         {ModelKey::AMINO_ACID_TOOL, QVariant::fromValue(AminoAcidTool::ALA)},
+         {ModelKey::AMINO_ACID_SYMBOL, QString("A")}});
+
+    sk.show();
+    QCoreApplication::processEvents();
+
+    send_key_press(sk, Qt::Key_C, "c");
+    click_scene_center(sk);
+
+    BOOST_TEST(sk.getString(Format::HELM) == "PEPTIDE1{C}$$$$V2.0");
+}
+
+/**
+ * Verify shortcuts update full nucleotide tools, including that P has no
+ * effect on an RNA or DNA nucleotide tool.
+ */
+BOOST_AUTO_TEST_CASE(test_full_nucleotide_shortcuts_update_scene_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    set_nucleic_acid_tool(sk, NucleicAcidTool::RNA_NUCLEOTIDE);
+    sk.show();
+    QCoreApplication::processEvents();
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_C, "c");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{R(C)P}$$$$V2.0");
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_D, "d");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{[dR](A)P}$$$$V2.0");
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_T, "t");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{[dR](T)P}$$$$V2.0");
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_P, "p");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{[dR](T)P}$$$$V2.0");
+}
+
+/**
+ * Verify base and sugar shortcuts update a custom nucleotide scene tool.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_nucleotide_shortcuts_update_scene_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    set_nucleic_acid_tool(sk, NucleicAcidTool::CUSTOM_NUCLEOTIDE);
+    sk.m_sketcher_model->setValue(
+        ModelKey::CUSTOM_NUCLEOTIDE,
+        QVariant::fromValue(
+            std::tuple<QString, QString, QString>{"dR", "T", "P"}));
+    sk.show();
+    QCoreApplication::processEvents();
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_C, "c");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{[dR](C)P}$$$$V2.0");
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_R, "r");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{R(C)P}$$$$V2.0");
+}
+
+/**
+ * Verify shortcuts switch between individual nucleic acid monomer tools.
+ */
+BOOST_AUTO_TEST_CASE(test_nucleic_acid_monomer_shortcuts_update_scene_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    set_nucleic_acid_tool(sk, NucleicAcidTool::N);
+    sk.show();
+    QCoreApplication::processEvents();
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_A, "a");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{A}$$$$V2.0");
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_R, "r");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{R}$$$$V2.0");
+
+    sk.clear();
+    send_key_press(sk, Qt::Key_P, "p");
+    click_scene_center(sk);
+    BOOST_TEST(sk.getString(Format::HELM) == "RNA1{P}$$$$V2.0");
+}
+
+static void check_all_monomers_have_res_name(const RDKit::ROMol& mol,
+                                             std::string_view res_name)
+{
+    for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
+        BOOST_TEST(get_monomer_res_name(mol.getAtomWithIdx(i)) == res_name);
+    }
+}
+
+static void check_nucleic_acid_base_mutation(const RDKit::ROMol& mol,
+                                             std::string_view base_res_name)
+{
+    int base_count = 0;
+    int sugar_count = 0;
+    int phosphate_count = 0;
+    for (unsigned int i = 0; i < mol.getNumAtoms(); ++i) {
+        auto* atom = mol.getAtomWithIdx(i);
+        auto type = get_monomer_type(atom);
+        if (type == MonomerType::NA_BASE) {
+            BOOST_TEST(get_monomer_res_name(atom) == base_res_name);
+            ++base_count;
+        } else if (type == MonomerType::NA_SUGAR) {
+            BOOST_TEST(get_monomer_res_name(atom) == "R");
+            ++sugar_count;
+        } else if (type == MonomerType::NA_PHOSPHATE) {
+            BOOST_TEST(get_monomer_res_name(atom) == "P");
+            ++phosphate_count;
+        } else {
+            BOOST_FAIL("Monomer had its type unexpectedly changed");
+        }
+    }
+    // R(X)P.R(X)P = 2 bases, 2 sugars, 2 phosphates
+    BOOST_TEST(base_count == 2);
+    BOOST_TEST(sugar_count == 2);
+    BOOST_TEST(phosphate_count == 2);
+}
+
+/**
  * Verify that pinging AMINO_ACID_SYMBOL with a selection mutates the selected
  * peptide monomers.
  */
@@ -625,10 +812,32 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
 
     // verify all monomers are now "C" (cysteine)
     const auto* mol = model->getMol();
-    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
-        auto* atom = mol->getAtomWithIdx(i);
-        BOOST_TEST(get_monomer_res_name(atom) == "C");
+    check_all_monomers_have_res_name(*mol, "C");
+}
+
+/**
+ * Verify that an amino acid keyboard shortcut with a selection mutates the
+ * selected peptide monomers. Tested with both the amino acid tools active on
+ * the side bar and the nucleic acid tools active, since the keyboard shortcuts
+ * should follow the selection.
+ */
+BOOST_DATA_TEST_CASE(test_shortcutMutateMonomersPeptide,
+                     boost::unit_test::data::make({false, true}), set_na_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    if (set_na_tool) {
+        set_nucleic_acid_tool(sk, NucleicAcidTool::N);
     }
+    sk.addFromString("PEPTIDE1{A.G.L}$$$$V2.0");
+    auto model = sk.m_mol_model;
+
+    model->selectAll();
+    BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
+
+    send_key_press(sk, Qt::Key_C, "c");
+
+    check_all_monomers_have_res_name(*model->getMol(), "C");
 }
 
 /**
@@ -651,30 +860,32 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidBase)
         ModelKey::NUCLEIC_ACID_SYMBOL,
         NucleicAcidMutation{NucleicAcidTool::U, "U"});
 
-    const auto* mol = model->getMol();
-    int base_count = 0;
-    int sugar_count = 0;
-    int phosphate_count = 0;
-    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
-        auto* atom = mol->getAtomWithIdx(i);
-        auto type = get_monomer_type(atom);
-        if (type == MonomerType::NA_BASE) {
-            BOOST_TEST(get_monomer_res_name(atom) == "U");
-            ++base_count;
-        } else if (type == MonomerType::NA_SUGAR) {
-            BOOST_TEST(get_monomer_res_name(atom) == "R");
-            ++sugar_count;
-        } else if (type == MonomerType::NA_PHOSPHATE) {
-            BOOST_TEST(get_monomer_res_name(atom) == "P");
-            ++phosphate_count;
-        } else {
-            BOOST_FAIL("Monomer had its type unexpectedly changed");
-        }
+    check_nucleic_acid_base_mutation(*model->getMol(), "U");
+}
+
+/**
+ * Verify that a nucleic acid keyboard shortcut with a selection only mutates
+ * bases, leaving sugars and phosphates unchanged. Tested with both the nucleic
+ * acid tools active on the side bar and the amino acid tools active, since the
+ * keyboard shortcuts should follow the selection.
+ */
+BOOST_DATA_TEST_CASE(test_shortcutMutateMonomersNucleicAcidBase,
+                     boost::unit_test::data::make({true, false}), set_na_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    if (set_na_tool) {
+        set_nucleic_acid_tool(sk, NucleicAcidTool::N);
     }
-    // R(A)P.R(G)P = 2 bases, 2 sugars, 2 phosphates
-    BOOST_TEST(base_count == 2);
-    BOOST_TEST(sugar_count == 2);
-    BOOST_TEST(phosphate_count == 2);
+    sk.addFromString("RNA1{R(A)P.R(G)P}$$$$V2.0");
+    auto model = sk.m_mol_model;
+
+    model->selectAll();
+    BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
+
+    send_key_press(sk, Qt::Key_U, "u");
+
+    check_nucleic_acid_base_mutation(*model->getMol(), "U");
 }
 
 /**
