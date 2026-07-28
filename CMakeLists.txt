@@ -171,8 +171,14 @@ function(build_schrodinger_library TARGET)
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${TARGET})
   # Collect all headers and source; note we collect public headers so that Qt
   # can build .moc files.
-  file(GLOB_RECURSE SOURCE_LIST CONFIGURE_DEPENDS ${INCLUDE_DIR}/*.h
-       ${SRC_DIR}/*.h ${SRC_DIR}/*.cpp)
+  file(
+    GLOB_RECURSE
+    SOURCE_LIST
+    CONFIGURE_DEPENDS
+    ${INCLUDE_DIR}/*.h
+    ${SRC_DIR}/*.h
+    ${SRC_DIR}/*.cpp
+    ${SRC_DIR}/*.ui)
   # Collect all resources
   file(GLOB_RECURSE SOURCE_LIST_QRC CONFIGURE_DEPENDS ${SRC_DIR}/*.qrc)
   list(APPEND SOURCE_LIST ${SOURCE_LIST_QRC})
@@ -189,9 +195,35 @@ function(build_schrodinger_library TARGET)
   target_compile_definitions(${TARGET} PRIVATE IN_${TARGET_UPPER}_DLL)
 endfunction()
 
+# Add direct dependencies from C++ sources to the .ui files whose generated
+# headers they include. Without these edges, Ninja may decide that a source is
+# up-to-date before AUTOUIC regenerates its header, requiring a second build
+# before a ui change is incorporated.
+function(add_ui_dependencies TARGET UI_DIR)
+  get_target_property(TARGET_SOURCES ${TARGET} SOURCES)
+  foreach(SOURCE_FILE ${TARGET_SOURCES})
+    if(SOURCE_FILE MATCHES "\\.(cc|cpp|cxx)$")
+      file(STRINGS ${SOURCE_FILE} UI_INCLUDES
+           REGEX "#[ \t]*include[ \t]*[<\"][^>\"]*ui_[A-Za-z0-9_]+\\.h[>\"]")
+      foreach(UI_INCLUDE ${UI_INCLUDES})
+        string(REGEX REPLACE ".*ui_([A-Za-z0-9_]+)\\.h.*" "\\1" UI_BASENAME
+                             ${UI_INCLUDE})
+        set(UI_FILE ${UI_DIR}/${UI_BASENAME}.ui)
+        if(EXISTS ${UI_FILE})
+          set_property(
+            SOURCE ${SOURCE_FILE}
+            APPEND
+            PROPERTY OBJECT_DEPENDS ${UI_FILE})
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+endfunction()
+
 # Enable Qt's MOC and UIC features
 function(enable_qt_moc TARGET)
   set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/ui)
+  add_ui_dependencies(${TARGET} ${UI_DIR})
   set_target_properties(
     ${TARGET}
     PROPERTIES AUTOMOC ON
