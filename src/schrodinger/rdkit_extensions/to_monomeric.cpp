@@ -2,9 +2,11 @@
 
 #include <cassert>
 #include <chrono>
+#include <iterator>
+#include <memory>
 #include <queue>
 #include <span>
-#include <memory>
+#include <unordered_set>
 
 #include <boost/json.hpp>
 #include <fmt/format.h>
@@ -1395,11 +1397,38 @@ void findChainsAndResidues(const RDKit::ROMol& mol,
     }
 }
 
+/*
+ * Checks if residue atoms have a bond between them.
+ *
+ * It does not know anything about residues but check if
+ * any of the atoms first list is bound to any of the atoms
+ * in the second list.
+ *
+ * Returns true if there is any bond between the atom lists,
+ * false otherwise.
+ */
+bool residuesHaveInterResidueBond(const RDKit::ROMol& mol,
+                                  const std::vector<unsigned int>& atom_idxs1,
+                                  const std::vector<unsigned int>& atom_idxs2)
+{
+    const std::unordered_set<unsigned int> atom_idxs2_set(atom_idxs2.begin(),
+                                                          atom_idxs2.end());
+    for (auto atom_idx : atom_idxs1) {
+        const auto* atom = mol.getAtomWithIdx(atom_idx);
+        for (const auto* neighbor : mol.atomNeighbors(atom)) {
+            if (atom_idxs2_set.contains(neighbor->getIdx())) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 std::string getMonomerSmiles(RDKit::ROMol& mol,
                              const std::vector<unsigned int>& atom_idxs,
                              const std::string& chain_id,
                              const std::pair<int, std::string>& current_key,
-                             int res_num, bool end_of_chain)
+                             int helm_res_num, bool end_of_chain)
 {
     // Determine the atoms in current_res that connect to adjacent residues
     std::vector<std::pair<int, int>> attch_idxs; // adjacent res num, atom_idx
@@ -1427,16 +1456,22 @@ std::string getMonomerSmiles(RDKit::ROMol& mol,
     // This part is difficult; we need to figure out the order of the attachment
     // points on this monomer, Ideally we'd find the backbone and ensure to
     // label them directionally correctly using R2-R1
-    std::ranges::sort(
-        attch_idxs.begin(), attch_idxs.end(),
-        [&res_num](const std::pair<int, int>& a, const std::pair<int, int>& b) {
-            // we want the most 'adjacent' residue first in terms of residue
-            // ordering; this gets more complicated if we have different chains
-            if (std::abs(a.first - res_num) == std::abs(b.first - res_num)) {
-                return a.first < b.first;
-            }
-            return std::abs(a.first - res_num) < std::abs(b.first - res_num);
-        });
+    const auto pdb_res_num = current_key.first;
+    std::ranges::sort(attch_idxs.begin(), attch_idxs.end(),
+                      [pdb_res_num](const std::pair<int, int>& a,
+                                    const std::pair<int, int>& b) {
+                          // we want the most 'adjacent' residue first in terms
+                          // of residue ordering; this gets more complicated if
+                          // we have different chains
+                          const auto a_distance =
+                              std::abs(a.first - pdb_res_num);
+                          const auto b_distance =
+                              std::abs(b.first - pdb_res_num);
+                          if (a_distance == b_distance) {
+                              return a.first < b.first;
+                          }
+                          return a_distance < b_distance;
+                      });
 
     static constexpr bool sanitize = false;
     auto mol_fragment = ExtractMolFragment(mol, atom_idxs, sanitize);
@@ -1448,7 +1483,7 @@ std::string getMonomerSmiles(RDKit::ROMol& mol,
 
     // If this is the beginning of the chain or a branch, start with attachment
     // point 2
-    if (!end_of_chain && res_num == 1) {
+    if (!end_of_chain && helm_res_num == 1) {
         current_attchpt = 2;
     }
 
@@ -1875,16 +1910,37 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
             db, mol.getAtomWithIdx(residues.begin()->second[0]), has_pdb_codes);
         auto chain_type =
             helm_info ? std::get<2>(*helm_info) : ChainType::PEPTIDE;
-        std::string helm_chain_id = fmt::format("{}{}", toString(chain_type),
-                                                ++chain_counts[chain_type]);
+        auto next_helm_chain_id = [&]() {
+            return fmt::format("{}{}", toString(chain_type),
+                               ++chain_counts[chain_type]);
+        };
+        std::string helm_chain_id = next_helm_chain_id();
         // No SEQRES for the chain
         if (chain_to_seqres.find(chain_id) == chain_to_seqres.end()) {
             // Assuming residues are ordered correctly
             size_t res_num = 1;
-            for (const auto& [key, atom_idxs] : residues) {
+            std::vector<unsigned int> prev_atom_idxs;
+            for (auto residue_iter = residues.begin();
+                 residue_iter != residues.end(); ++residue_iter) {
+                const auto& [key, atom_idxs] = *residue_iter;
+                // A PDB/MAE chain ID can span disconnected fragments, while a
+                // HELM polymer ID implies one connected polymer.
+                if (has_pdb_codes && !prev_atom_idxs.empty() &&
+                    !residuesHaveInterResidueBond(mol, prev_atom_idxs,
+                                                  atom_idxs)) {
+                    helm_chain_id = next_helm_chain_id();
+                    res_num = 1;
+                }
                 helm_info = getHelmInfo(db, mol.getAtomWithIdx(atom_idxs[0]),
                                         has_pdb_codes);
+                auto next_residue_iter = std::next(residue_iter);
                 bool end_of_chain = res_num == residues.size();
+                if (has_pdb_codes) {
+                    end_of_chain =
+                        next_residue_iter == residues.end() ||
+                        !residuesHaveInterResidueBond(
+                            mol, atom_idxs, next_residue_iter->second);
+                }
                 size_t this_monomer = 1; // default for compiler
                 if (helm_info &&
                     sameMonomer(mol, atom_idxs, std::get<1>(*helm_info))) {
@@ -1909,6 +1965,7 @@ pdbInfoAtomisticToMM(const RDKit::ROMol& input_mol, bool has_pdb_codes)
                 }
                 pdb_chain_to_helm_chain[{chain_id, key.first, key.second}] = {
                     helm_chain_id, res_num};
+                prev_atom_idxs = atom_idxs;
                 ++res_num;
             }
         } else {
