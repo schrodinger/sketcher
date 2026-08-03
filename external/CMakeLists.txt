@@ -37,10 +37,12 @@ endfunction()
 function(generate_sqlite_urls VAR_NAME)
   # pull out the digits from the SQLite version
   string(REGEX REPLACE "[^0-9]" "" SQLITE_VERS_DIGITS "${SQLITE_VERSION}")
+
   # the file name is padded with zeroes to seven digits
   string(LENGTH "${SQLITE_VERS_DIGITS}" SQLITE_VERS_NUM_DIGITS)
   math(EXPR NUM_ZEROS "7 - ${SQLITE_VERS_NUM_DIGITS}")
   string(REPEAT "0" ${NUM_ZEROS} TRAILING_ZEROS)
+
   foreach(YEAR RANGE 2023 2035)
     list(
       APPEND
@@ -48,6 +50,7 @@ function(generate_sqlite_urls VAR_NAME)
       "https://www.sqlite.org/${YEAR}/sqlite-amalgamation-${SQLITE_VERS_DIGITS}${TRAILING_ZEROS}.zip"
     )
   endforeach(YEAR)
+
   list(JOIN URLS_FOR_YEARS ";" JOINED_URLS)
   set(${VAR_NAME}
       "${JOINED_URLS}"
@@ -65,6 +68,7 @@ if(EMSCRIPTEN)
       -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 else()
   set(EXTRA_QT_CMAKE_ARGS -DINPUT_opengl=no)
+
   if(LINUX)
     list(APPEND EXTRA_QT_CMAKE_ARGS -DFEATURE_xlib=ON -DFEATURE_xcb=ON
          -DFEATURE_xcb_xlib=ON -DFEATURE_xkbcommon=ON)
@@ -74,18 +78,21 @@ endif()
 set(COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
     -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD} -DCMAKE_CXX_STANDARD_REQUIRED=ON
     -DCMAKE_BUILD_TYPE=Release)
+
 if(CMAKE_TOOLCHAIN_FILE)
   # Emscripten builds specify a toolchain file and a cross-compiling emulator
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
        -DCMAKE_CROSSCOMPILING_EMULATOR=${CMAKE_CROSSCOMPILING_EMULATOR})
 endif()
+
 if(CMAKE_FIND_ROOT_PATH)
   # make sure we can always find the dependencies that we've built, even if
   # emscripten is trying to prevent us from finding system libraries
   list(APPEND COMMON_EXTERNAL_PROJECT_CMAKE_ARGS
        -DCMAKE_FIND_ROOT_PATH=${CMAKE_CURRENT_BINARY_DIR})
 endif()
+
 if(MSVC)
   # force MSVC to use the static linking runtime library instead of the default
   # shared version
@@ -139,6 +146,16 @@ ExternalProject_Add(
     ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/eigen-${EIGEN_VERSION})
 
+# Build expat library
+ExternalProject_Add(
+  expat
+  GIT_REPOSITORY https://github.com/libexpat/libexpat.git
+  GIT_TAG ${EXPAT_VERSION}
+  GIT_SHALLOW TRUE
+  CMAKE_ARGS
+    ${COMMON_EXTERNAL_PROJECT_CMAKE_ARGS}
+    -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/expat-${EXPAT_VERSION})
+
 # Build SQLite library
 generate_sqlite_urls(SQLITE_URLS)
 ExternalProject_Add(
@@ -173,10 +190,12 @@ set(BOOST_LIBS_TO_INCLUDE
     bimap
     filesystem
     test)
+
 if(NOT EMSCRIPTEN)
   # on desktop builds, we use stacktrace to print crash reports
   list(APPEND BOOST_LIBS_TO_INCLUDE stacktrace)
 endif()
+
 set_cmake_arg(BOOST_INCLUDE_LIBS ${BOOST_LIBS_TO_INCLUDE})
 set_cmake_arg(
   BOOST_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
@@ -204,8 +223,10 @@ ExternalProject_Add(
 # header-only library and use it that way
 set(BOOST_BEAST_HEADERS_PATH <SOURCE_DIR>/libs/beast/include)
 set(BOOST_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION})
+
 if(WIN32)
   string(APPEND BOOST_BEAST_HEADERS_PATH "/*")
+
   # we need to append /include/boost-1_81 directory to the include directory
   # path, but BOOST_VERSION uses periods, not underscores
   string(REPLACE "." ";" BOOST_VERSION_PARTS ${BOOST_VERSION})
@@ -216,6 +237,7 @@ if(WIN32)
 else()
 
 endif()
+
 ExternalProject_Add_Step(
   boost install_beast_header_only
   COMMENT "Copying boost::beast headers"
@@ -226,10 +248,13 @@ ExternalProject_Add_Step(
 # Build RDKit library
 string(REPLACE "." "_" RDKIT_GIT_TAG ${RDKIT_VERSION})
 set_cmake_arg(
-  RDKIT_CMAKE_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
+  RDKIT_CMAKE_PREFIX
+  ${CMAKE_CURRENT_BINARY_DIR}/boost-${BOOST_VERSION}
+  ${CMAKE_CURRENT_BINARY_DIR}/expat-${EXPAT_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zlib-${ZLIB_VERSION}
   ${CMAKE_CURRENT_BINARY_DIR}/zstd-${ZSTD_VERSION})
 set(RDKIT_PATCH_COMMAND git reset --hard HEAD)
+
 # Prevent RDKit from trying to build shared libs
 list(
   APPEND
@@ -239,11 +264,13 @@ list(
   apply
   --ignore-whitespace
   ${CMAKE_CURRENT_SOURCE_DIR}/rdkit_static_build.patch)
+
 if(WIN32)
   set(RDKIT_INSTALL_STATIC_LIBS_VAL ON)
 else()
   set(RDKIT_INSTALL_STATIC_LIBS_VAL OFF)
 endif()
+
 ExternalProject_Add(
   rdkit
   GIT_REPOSITORY https://github.com/rdkit/rdkit.git
@@ -280,6 +307,7 @@ if(QT_HOST_BUILD)
 else()
   set(QT_GIT_SUBMODULES qtbase qtsvg)
 endif()
+
 set_cmake_arg(QT_BUILD_SUBMODULES ${QT_GIT_SUBMODULES})
 ExternalProject_Add(
   qt
