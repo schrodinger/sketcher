@@ -148,10 +148,11 @@ ExternalProject_Add(
     -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/eigen-${EIGEN_VERSION})
 
 # Build expat library
+string(REPLACE "." "_" EXPAT_GIT_TAG ${EXPAT_VERSION})
 ExternalProject_Add(
   expat
   GIT_REPOSITORY https://github.com/libexpat/libexpat.git
-  GIT_TAG ${EXPAT_VERSION}
+  GIT_TAG R_${EXPAT_GIT_TAG}
   GIT_SHALLOW TRUE
   SOURCE_SUBDIR expat
   CMAKE_ARGS
