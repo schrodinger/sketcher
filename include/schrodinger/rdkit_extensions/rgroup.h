@@ -23,6 +23,16 @@ namespace rdkit_extensions
 {
 
 /**
+ * @return whether the specified atom is an attachment point dummy.
+ *
+ * Unlike RDKit::MolOps::details::isAttachmentPoint(), this tests attachment
+ * point identity rather than whether the atom is currently eligible to be
+ * collapsed. In particular, wedged attachment points are still recognized.
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API bool
+is_attachment_point_dummy(const RDKit::Atom& atom);
+
+/**
  * @return The R-group number of the specified atom.  If the atom is not an
  * R-group, an empty `r_group_num_t` object will be returned.
  */

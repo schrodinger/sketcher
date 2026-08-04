@@ -27,6 +27,7 @@
 #include <rdkit/GraphMol/FileParsers/MolSupplier.h>
 #include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/QueryBond.h>
 #include <rdkit/GraphMol/ROMol.h>
@@ -654,6 +655,34 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(get_next_attachment_point_number(mol) == 4);
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 3);
+}
+
+BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_identity)
+{
+    auto mol = rdkit_extensions::to_rdkit(
+        "*C |$_AP1;$|", rdkit_extensions::Format::EXTENDED_SMILES);
+    auto* attachment_atom = mol->getAtomWithIdx(0);
+    auto* attachment_bond = mol->getBondWithIdx(0);
+    attachment_bond->setBondDir(RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // A wedged attachment point cannot be collapsed by RDKit, but it remains
+    // an attachment point for Sketcher selection, numbering, and editing.
+    BOOST_TEST(is_attachment_point(attachment_atom));
+    BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
+    BOOST_TEST(get_attachment_point_bond(attachment_atom) == attachment_bond);
+}
+
+BOOST_AUTO_TEST_CASE(test_unlabelled_native_attachment_point)
+{
+    RDKit::RWMol mol;
+    auto parent_idx = mol.addAtom(new RDKit::Atom(6), false, true);
+    auto attachment_idx = RDKit::MolOps::details::addExplicitAttachmentPoint(
+        mol, parent_idx, 1, true, false);
+    auto* attachment_atom = mol.getAtomWithIdx(attachment_idx);
+
+    BOOST_TEST(rdkit_extensions::is_attachment_point_dummy(*attachment_atom));
+    BOOST_TEST(!is_attachment_point(attachment_atom));
+    BOOST_TEST(get_attachment_point_number(attachment_atom) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_removeAtom)

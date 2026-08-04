@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE rdkit_extensions_convert
 
 #include <map>
+#include <memory>
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
@@ -687,6 +688,26 @@ M  END)MDL";
     Eigen::Vector3d c(a2.x, a2.y, a2.z);
     // *C* is linear, the cross product is the zero vector
     BOOST_TEST((a - b).cross(a - c).norm() != 0.0);
+}
+
+BOOST_AUTO_TEST_CASE(test_cxsmiles_attachment_point_preserves_explicit_hs)
+{
+    auto mol = to_rdkit("*[NH2+]C |$_AP1;;$|", Format::EXTENDED_SMILES);
+
+    BOOST_REQUIRE(mol);
+    BOOST_TEST(mol->getAtomWithIdx(1)->getNumExplicitHs() == 2);
+}
+
+BOOST_AUTO_TEST_CASE(test_legacy_attachment_point_mdl_export)
+{
+    std::unique_ptr<RDKit::RWMol> mol{
+        RDKit::SmilesToMol("*C |$_AP3;$|", 0, false)};
+    BOOST_REQUIRE(mol);
+    BOOST_REQUIRE(!mol->getAtomWithIdx(0)->hasProp(
+        RDKit::common_properties::_fromAttachPoint));
+
+    auto molblock = to_string(*mol, Format::MDL_MOLV3000);
+    BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(test_atom_ring_queries)
