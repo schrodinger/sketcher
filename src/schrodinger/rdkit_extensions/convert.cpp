@@ -105,7 +105,8 @@ template <typename T> boost::shared_ptr<T> auto_detect(
     throw std::invalid_argument("Unable to determine format");
 }
 
-bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol)
+bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol,
+                                      const unsigned int first_expanded_atom)
 {
     bool found_any = false;
     unsigned int ap_num = 1;
@@ -124,11 +125,12 @@ bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol)
             atom->setProp(RDKit::common_properties::atomLabel,
                           ATTACHMENT_POINT_LABEL_PREFIX +
                               std::to_string(ap_num++));
-
-            for (auto parent : rdk_mol.atomNeighbors(atom)) {
-                auto explicit_h_count = parent->getNumExplicitHs();
-                if (explicit_h_count != 0) {
-                    parent->setNumExplicitHs(explicit_h_count - 1);
+            if (j >= first_expanded_atom) {
+                for (auto parent : rdk_mol.atomNeighbors(atom)) {
+                    auto explicit_h_count = parent->getNumExplicitHs();
+                    if (explicit_h_count != 0) {
+                        parent->setNumExplicitHs(explicit_h_count - 1);
+                    }
                 }
             }
             continue;
@@ -149,6 +151,16 @@ bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol)
         rdk_mol.updatePropertyCache(false);
     }
     return found_any;
+}
+
+void mark_legacy_attachment_points(RDKit::RWMol& mol)
+{
+    for (auto atom : mol.atoms()) {
+        if (is_attachment_point_dummy(*atom) &&
+            !atom->hasProp(RDKit::common_properties::_fromAttachPoint)) {
+            atom->setProp(RDKit::common_properties::_fromAttachPoint, 1);
+        }
+    }
 }
 
 void preserve_wiggly_bonds(RDKit::RWMol& mol)
@@ -656,8 +668,10 @@ boost::shared_ptr<RDKit::RWMol> to_rdkit(const std::string& text,
         mol->updatePropertyCache(false);
     }
 
+    const auto first_expanded_atom = mol->getNumAtoms();
     RDKit::MolOps::expandAttachmentPoints(*mol);
-    bool has_attchpt = label_expanded_attachment_points(*mol);
+    bool has_attchpt =
+        label_expanded_attachment_points(*mol, first_expanded_atom);
     if (!has_attchpt) {
         preserve_wiggly_bonds(*mol);
         fix_r0_rgroup(*mol);
@@ -801,6 +815,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             // single/double bonds to avoid sanitization errors, but for
             // atomistic inputs we'll keep whatever the caller gave us.
             kekulize = is_monomeric;
+            mark_legacy_attachment_points(*mol);
             RDKit::MolOps::collapseAttachmentPoints(*mol, true);
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(*mol);

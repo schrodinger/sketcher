@@ -5,7 +5,6 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
-#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/RDGeneral/types.h>
 
@@ -56,13 +55,13 @@ bool is_attachment_point(const RDKit::Atom* const atom)
 
 unsigned int get_attachment_point_number(const RDKit::Atom* const atom)
 {
-    if (!RDKit::MolOps::details::isAttachmentPoint(atom)) {
+    if (!rdkit_extensions::is_attachment_point_dummy(*atom)) {
         return 0;
     }
-    // We know that the atomLabel property must be present, because
-    // isAttachmentPoint will return false without it
-    std::string label =
-        atom->getProp<std::string>(RDKit::common_properties::atomLabel);
+    std::string label;
+    if (!atom->getPropIfPresent(RDKit::common_properties::atomLabel, label)) {
+        return 0;
+    }
     return get_numerical_suffix(label, ATTACHMENT_POINT_LABEL_PREFIX);
 }
 
