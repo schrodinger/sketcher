@@ -288,6 +288,7 @@ target_link_libraries(
           Qt6::Widgets
           RDKit::CIPLabeler
           RDKit::ChemReactions
+          RDKit::MolDraw2D
           ${RDKIT_EXTENSIONS_TARGET})
 # Configure and include version information for the sketcher
 configure_file(${PROJECT_SOURCE_DIR}/include/schrodinger/sketcher/version.h.in
