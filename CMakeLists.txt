@@ -83,7 +83,9 @@ find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
 # The EXPAT::EXPAT target used in RDKit doesn't actually exist... it's actually
 # lowercase expat::expat, so we create an alias to satisfy rdkit's dependencies
-add_library(EXPAT::EXPAT ALIAS expat::expat)
+if(NOT TARGET EXPAT::EXPAT)
+  add_library(EXPAT::EXPAT ALIAS expat::expat)
+endif()
 
 # Common library/executable configuration
 function(setup_target TARGET)
