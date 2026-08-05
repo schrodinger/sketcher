@@ -1,0 +1,36 @@
+diff --git a/External/ChemDraw/CMakeLists.txt b/External/ChemDraw/CMakeLists.txt
+index b75d32795..183492822 100644
+--- a/External/ChemDraw/CMakeLists.txt
++++ b/External/ChemDraw/CMakeLists.txt
+@@ -51,10 +51,31 @@ if(RDK_BUILD_CHEMDRAW_SUPPORT)
+     add_definitions("-DPLATFORM_LITTLEENDIAN")
+   endif(WORDS_BIGENDIAN)
+ 
++  if(WIN32)
++    # expatpp is looking for the "EXPAT" package, but expat's cmake builder
++    # exports the "expat" (lowercase) definitions. This works ok on other
++    # platforms, but windows has problems.
++    find_package(expat CONFIG REQUIRED)
++
++    if (NOT TARGET EXPAT::EXPAT)
++      add_library(EXPAT::EXPAT ALIAS expat::expat)
++      set(EXPAT_FOUND TRUE) # so that the find_package(EXPAT) in expatpp doesn't fail
++    endif()
++  endif()
++
+   # we don't want to install expat, this is statically linked in to the ChemDraw lib
+   # however, we don't want to install it so use the undocumented EXCLUDE_FROM_ALL
+   add_subdirectory(chemdraw/expatpp EXCLUDE_FROM_ALL)
+ 
++  # our windows build has trouble linking to expatpp because of the expatpp.h
++  # include. Make the path to it a public dependency so that things that
++  # depend on it can find it.
++  target_include_directories(expatpp PUBLIC ${EXPAT_INCLUDE_DIR})
++
++  # Linking against static expat requires XML_STATIC to be defined
++  target_compile_definitions(expatpp PUBLIC XML_STATIC)
++
++
+   include_directories(
+     ${CMAKE_CURRENT_SOURCE_DIR}/chemdraw/expatpp/expatpp-code-r6-trunk/src_pp
+     ${CMAKE_CURRENT_SOURCE_DIR}/chemdraw/expatpp/expatpp-code-r6-trunk/expat/lib)

@@ -20,6 +20,7 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/external/versions.json VERSIONS)
 if(${ENFORCE_DEPENDENCY_VERSIONS})
   string(JSON BOOST_VERSION GET ${VERSIONS} boost)
   string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
+  string(JSON EXPAT_VERSION GET ${VERSIONS} expat)
   string(JSON FMT_VERSION GET ${VERSIONS} fmt)
   string(JSON QT_VERSION GET ${VERSIONS} qt)
   string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
@@ -73,11 +74,16 @@ if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
 endif()
 
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
+find_package(EXPAT ${EXPAT_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
 find_package(SQLite3 ${SQLITE_VERSION} REQUIRED)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
+
+# The EXPAT::EXPAT target used in RDKit doesn't actually exist... it's actually
+# lowercase expat::expat, so we create an alias to satisfy rdkit's dependencies
+add_library(EXPAT::EXPAT ALIAS expat::expat)
 
 # Common library/executable configuration
 function(setup_target TARGET)
