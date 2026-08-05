@@ -81,8 +81,11 @@ find_package(SQLite3 ${SQLITE_VERSION} REQUIRED)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
 
-# The EXPAT::EXPAT target used in RDKit doesn't actually exist... it's actually
-# lowercase expat::expat, so we create an alias to satisfy rdkit's dependencies
+# The EXPAT::EXPAT target used in RDKit only exists if FindEXPAT.cmake was used
+# to find Expat. If CMAKE_FIND_PACKAGE_PREFER_CONFIG was passed and we instead
+# used Expat's config file, then the target name is actually lowercase
+# expat::expat. If that's happened, create an alias to satisfy rdkit's
+# dependencies.
 if(NOT TARGET EXPAT::EXPAT)
   add_library(EXPAT::EXPAT ALIAS expat::expat)
 endif()
