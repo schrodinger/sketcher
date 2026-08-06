@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(test_tool_tips)
     AminoAcidItem smiles_monomer_item(smiles_monomer.get(), fonts,
                                       atom_display_settings,
                                       bond_display_settings);
-    BOOST_TEST(smiles_monomer_item.toolTip().startsWith("<img src="));
+    BOOST_TEST(smiles_monomer_item.toolTip().startsWith("<img"));
 }
 
 } // namespace sketcher

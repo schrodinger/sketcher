@@ -19,6 +19,19 @@
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 
+namespace
+{
+/**
+ * For SMILES monomers, we generate tool tips containing atomistic images. Even
+ * though these images are vector-based SVGs, they are become aliased when
+ * rendered unless we increase the "resolution" of the image. (Presumably, the
+ * Qt internals use the SVG's resolution to rasterize the image before
+ * displaying it.) This constant controls the ratio of SVG "pixels" to tool tip
+ * pixels.
+ */
+const int TOOL_TIP_OVERSAMPLING_RATIO = 1;
+} // namespace
+
 namespace schrodinger
 {
 namespace sketcher
@@ -45,7 +58,8 @@ AbstractMonomerItem::AbstractMonomerItem(
 static QString get_tool_tip_containing_smiles_image(
     const std::string smiles, const Fonts& fonts,
     const AtomDisplaySettings* const atom_display_settings,
-    const BondDisplaySettings* const bond_display_settings)
+    const BondDisplaySettings* const bond_display_settings,
+    const bool is_dark_mode)
 {
     // convert the SMILES string to an RDKit molecule
     boost::shared_ptr<RDKit::RWMol> smiles_mol;
@@ -65,6 +79,9 @@ static QString get_tool_tip_containing_smiles_image(
                                       *atom_display_settings,
                                       *bond_display_settings);
     QGraphicsScene scene;
+    auto bg_color =
+        is_dark_mode ? DARK_BACKGROUND_COLOR : LIGHT_BACKGROUND_COLOR;
+    scene.setBackgroundBrush(bg_color);
     for (auto* item : all_items) {
         // the scene takes ownership of the graphics items here, so we
         // don't have to worry about destroying them manually
@@ -95,18 +112,22 @@ static QString get_tool_tip_containing_smiles_image(
     buffer.open(QIODevice::WriteOnly);
     auto svg_gen = QSvgGenerator();
     svg_gen.setOutputDevice(&buffer);
-    svg_gen.setSize(size);
-    svg_gen.setViewBox(QRect(QPoint(0, 0), size));
+    svg_gen.setSize(TOOL_TIP_OVERSAMPLING_RATIO * size);
+    svg_gen.setViewBox(QRect(QPoint(0, 0), TOOL_TIP_OVERSAMPLING_RATIO * size));
     {
         QPainter painter(&svg_gen);
         scene.render(&painter);
     }
     buffer.close();
 
-    // create the tool tip string containing the base64-encoded SVG
+    // create the tool tip string containing the base64-encoded SVG. We
+    // explicitly specify the size of the image to force oversampling when
+    // rasterizing the SVG, which prevents aliasing.
     auto image_bytes = buffer.data();
-    return QString("<img src='data:image/svg+xml;base64,%1'>")
-        .arg(image_bytes.toBase64());
+    return QString("<img width='%1' height='%2' "
+                   "src='data:image/svg+xml;base64,%3'>")
+        .arg(QString::number(size.width()), QString::number(size.height()),
+             image_bytes.toBase64());
 }
 
 void AbstractMonomerItem::updateCachedData()
@@ -120,7 +141,7 @@ void AbstractMonomerItem::updateCachedData()
         if (!smiles.empty()) {
             tool_tip = get_tool_tip_containing_smiles_image(
                 smiles, m_fonts, m_atom_display_settings,
-                m_bond_display_settings);
+                m_bond_display_settings, m_is_dark_mode);
         }
     }
     setToolTip(tool_tip);
