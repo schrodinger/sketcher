@@ -46,7 +46,6 @@ jobs:
 
   build-test:
     needs: pre-commit
-    if: ${{ inputs.build_target == '' || inputs.build_target == 'all' || matrix.build-name == inputs.build_target }}
     name: build-test (${{ matrix.build-name }}, ${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     defaults:
@@ -55,21 +54,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - build-name: macos
-            runner: macos-15
-            os-label: macos-15
-          - build-name: macos
-            runner: macos-26
-            os-label: macos-26
-          - build-name: windows
-            runner: windows-2022
-          - build-name: ubuntu
-            runner: ubuntu-22.04
-          - build-name: wasm
-            runner: ubuntu-22.04
-          - build-name: memtest
-            runner: ubuntu-22.04
+        include: ${{ fromJSON(inputs.build_target == 'wasm' && '[{"build-name":"wasm","runner":"ubuntu-22.04"}]' || '[{"build-name":"macos","runner":"macos-15","os-label":"macos-15"},{"build-name":"macos","runner":"macos-26","os-label":"macos-26"},{"build-name":"windows","runner":"windows-2022"},{"build-name":"ubuntu","runner":"ubuntu-22.04"},{"build-name":"wasm","runner":"ubuntu-22.04"},{"build-name":"memtest","runner":"ubuntu-22.04"}]') }}
     steps:
       # the memtest runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
