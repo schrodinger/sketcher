@@ -18,6 +18,7 @@
 #include <QMetaObject>
 #include <QPlainTextEdit>
 #include <QSpinBox>
+#include <QTimer>
 #include <QDoubleSpinBox>
 #include <QWidget>
 
@@ -157,7 +158,11 @@ void activate_menu_action(SketcherWidget& sketcher,
     for (auto* action : actions) {
         if (action->isVisible() &&
             (action->objectName() == query || action->text() == query)) {
-            action->trigger();
+            // An embind call runs while Qt is handling the browser event.
+            // Triggering an action synchronously can re-enter Qt's event loop
+            // and prevent the browser-side call from returning. Queue it for
+            // the next Qt event-loop iteration instead.
+            QTimer::singleShot(0, action, [action] { action->trigger(); });
             return;
         }
     }
