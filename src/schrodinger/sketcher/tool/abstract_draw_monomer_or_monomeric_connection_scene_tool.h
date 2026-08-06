@@ -39,6 +39,8 @@ namespace sketcher
 class MonomerHintFragmentItem;
 class UnboundMonomericAttachmentPointItem;
 class MonomerConnectorItem;
+class AtomDisplaySettings;
+class BondDisplaySettings;
 
 using MonomerAndAPItems =
     std::pair<AbstractMonomerItem*, UnboundMonomericAttachmentPointItem*>;
@@ -149,7 +151,9 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
     AbstractDrawMonomerOrMonomericConnectionSceneTool(
         const std::string& res_name,
         const rdkit_extensions::ChainType chain_type, const Fonts& fonts,
-        Scene* scene, MolModel* mol_model);
+        const AtomDisplaySettings& atom_display_settings,
+        const BondDisplaySettings& bond_display_settings, Scene* scene,
+        MolModel* mol_model);
     virtual ~AbstractDrawMonomerOrMonomericConnectionSceneTool();
 
     // Reimplemented AbstractSceneTool methods
@@ -168,6 +172,8 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
         rdkit_extensions::ChainType::CHEM;
     MonomerType m_monomer_type;
     Fonts m_bolded_fonts;
+    const AtomDisplaySettings* m_atom_display_settings = nullptr;
+    const BondDisplaySettings* m_bond_display_settings = nullptr;
 
     bool m_drag_ignored;
     AbstractMonomerItem* m_drag_start_monomer_item = nullptr;

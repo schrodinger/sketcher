@@ -42,11 +42,15 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     AbstractDrawMonomerOrMonomericConnectionSceneTool(
         const std::string& res_name,
         const rdkit_extensions::ChainType chain_type, const Fonts& fonts,
-        Scene* scene, MolModel* mol_model) :
+        const AtomDisplaySettings& atom_display_settings,
+        const BondDisplaySettings& bond_display_settings, Scene* scene,
+        MolModel* mol_model) :
     AbstractMonomerSceneTool(fonts, scene, mol_model),
     m_res_name(res_name),
     m_chain_type(chain_type),
-    m_bolded_fonts(fonts)
+    m_bolded_fonts(fonts),
+    m_atom_display_settings(&atom_display_settings),
+    m_bond_display_settings(&bond_display_settings)
 {
     // we handle predictive highlighting manually in onMouseMove, so we disable
     // StandardSceneToolsBase's predictive highlighting
@@ -468,7 +472,8 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::createHintFragmentItem(
     }
 
     m_hint_fragment_item = new MonomerHintFragmentItem(
-        frag, m_bolded_fonts, atom_indices_to_hide, bond_index_to_label,
+        frag, m_bolded_fonts, *m_atom_display_settings,
+        *m_bond_display_settings, atom_indices_to_hide, bond_index_to_label,
         m_monomer_background_color);
     m_scene->addItem(m_hint_fragment_item);
 }

@@ -19,6 +19,8 @@ class SKETCHER_API AminoAcidItem : public AbstractMonomerItem
 {
   public:
     AminoAcidItem(const RDKit::Atom* atom, const Fonts& fonts,
+                  const AtomDisplaySettings& atom_display_settings,
+                  const BondDisplaySettings& bond_display_settings,
                   const bool is_dark_mode = false,
                   QGraphicsItem* parent = nullptr);
 

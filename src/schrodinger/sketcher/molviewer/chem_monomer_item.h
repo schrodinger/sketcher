@@ -21,6 +21,8 @@ class SKETCHER_API ChemMonomerItem : public AbstractMonomerItem
 {
   public:
     ChemMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
+                    const AtomDisplaySettings& atom_display_settings,
+                    const BondDisplaySettings& bond_display_settings,
                     const bool is_dark_mode = false,
                     QGraphicsItem* parent = nullptr);
 

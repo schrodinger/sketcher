@@ -15,12 +15,16 @@ namespace schrodinger::sketcher
 
 MonomerHintFragmentItem::MonomerHintFragmentItem(
     std::shared_ptr<RDKit::RWMol> fragment, const Fonts& fonts,
+    const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings,
     const std::vector<size_t>& atom_indices_to_hide,
     const int bond_index_to_label, const QColor monomer_background_color,
     QGraphicsItem* parent) :
     QGraphicsItemGroup(parent),
     m_frag(fragment),
     m_fonts(&fonts),
+    m_atom_display_settings(&atom_display_settings),
+    m_bond_display_settings(&bond_display_settings),
     m_atom_indices_to_hide(atom_indices_to_hide),
     m_bond_index_to_label(bond_index_to_label),
     m_monomer_background_color(monomer_background_color),
@@ -34,7 +38,9 @@ void MonomerHintFragmentItem::createGraphicsItems()
 {
     auto [all_items, atom_to_atom_item, bond_to_bond_item,
           bond_to_secondary_connection_item, s_group_to_s_group_item] =
-        create_graphics_items_for_mol(m_frag.get(), *m_fonts);
+        create_graphics_items_for_mol(m_frag.get(), *m_fonts,
+                                      *m_atom_display_settings,
+                                      *m_bond_display_settings);
     for (auto* item : all_items) {
         addToGroup(item);
     }
