@@ -250,28 +250,29 @@ EMSCRIPTEN_BINDINGS(sketcher)
                          &sketcher_insert_custom_monomers);
     emscripten::function("sketcher_reset_custom_monomers",
                          &sketcher_reset_custom_monomers);
-    emscripten::function("_sketcher_get_widget_rect", [](const std::string&
-                                                             name) {
-        return schrodinger::sketcher::playwright_test_bridge::get_widget_rect(
-            get_sketcher_instance(), name);
-    });
-    emscripten::function("_sketcher_click_button", [](const std::string& name) {
-        schrodinger::sketcher::playwright_test_bridge::click_button(
-            get_sketcher_instance(), name);
-    });
-    emscripten::function("_sketcher_get_widget_state", [](const std::string&
-                                                              name) {
-        return schrodinger::sketcher::playwright_test_bridge::get_widget_state(
-            get_sketcher_instance(), name);
-    });
+    emscripten::function(
+        "_sketcher_get_widget_rect", +[](const std::string& name) {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_widget_rect(get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_click_button", +[](const std::string& name) {
+            schrodinger::sketcher::playwright_test_bridge::click_button(
+                get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_get_widget_state", +[](const std::string& name) {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_widget_state(get_sketcher_instance(), name);
+        });
     emscripten::function(
         "_sketcher_set_widget_text",
-        [](const std::string& name, const std::string& text) {
+        +[](const std::string& name, const std::string& text) {
             schrodinger::sketcher::playwright_test_bridge::set_widget_text(
                 get_sketcher_instance(), name, text);
         });
     emscripten::function(
-        "_sketcher_activate_menu_action", [](const std::string& name_or_text) {
+        "_sketcher_activate_menu_action", +[](const std::string& name_or_text) {
             schrodinger::sketcher::playwright_test_bridge::activate_menu_action(
                 get_sketcher_instance(), name_or_text);
         });
