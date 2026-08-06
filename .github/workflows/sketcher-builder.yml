@@ -1,7 +1,16 @@
 name: Sketcher Build and Test
 
 on:
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      build_target:
+        description: Build target to run (use wasm while iterating on browser tests)
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - wasm
   pull_request: ~
   merge_group: ~
   workflow_call:
@@ -37,6 +46,7 @@ jobs:
 
   build-test:
     needs: pre-commit
+    if: ${{ inputs.build_target == '' || inputs.build_target == 'all' || matrix.build-name == inputs.build_target }}
     name: build-test (${{ matrix.build-name }}, ${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     defaults:
