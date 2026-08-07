@@ -654,10 +654,7 @@ void MolModel::addAttachmentPoint(const RDGeom::Point3D& coords,
     unsigned int ap_num = get_next_attachment_point_number(&m_mol);
 
     auto cmd_func = [this, coords, bound_to_atom_tag, ap_num]() {
-        auto create_atom = std::bind(make_new_attachment_point, ap_num);
-        auto create_bond = make_new_single_bond;
-        addAtomChainCommandFunc(create_atom, {coords}, create_bond,
-                                bound_to_atom_tag);
+        addAttachmentPointCommandFunc(coords, bound_to_atom_tag, ap_num);
     };
     doCommandUsingSnapshots(cmd_func, "Add attachment point",
                             WhatChanged::MOLECULE);
@@ -2668,6 +2665,25 @@ MolModel::addDummyAtomsFromInvalidatedVariableAttachmentBonds(
         }
     }
     return updated_atoms_to_be_deleted;
+}
+
+void MolModel::addAttachmentPointCommandFunc(const RDGeom::Point3D& coords,
+                                             const AtomTag bound_to_atom_tag,
+                                             const unsigned int ap_num)
+{
+    Q_ASSERT(m_allow_edits);
+    auto* parent = m_mol.getUniqueAtomWithBookmark(bound_to_atom_tag);
+    auto parent_idx = parent->getIdx();
+    auto ap_idx = RDKit::MolOps::details::addExplicitAttachmentPoint(
+        m_mol, parent_idx, 1, /*addAsQuery=*/true, /*addCoords=*/false);
+    auto* ap_atom = m_mol.getAtomWithIdx(ap_idx);
+    ap_atom->setProp(RDKit::common_properties::atomLabel,
+                     rdkit_extensions::ATTACHMENT_POINT_LABEL_PREFIX +
+                         std::to_string(ap_num));
+    setTagForAtom(ap_atom, m_next_atom_tag++);
+    m_mol.getConformer().setAtomPos(ap_idx, coords);
+    auto* bond = m_mol.getBondBetweenAtoms(parent_idx, ap_idx);
+    setTagForBond(bond, m_next_bond_tag++);
 }
 
 void MolModel::addAtomChainCommandFunc(
