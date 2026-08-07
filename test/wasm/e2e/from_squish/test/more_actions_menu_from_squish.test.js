@@ -23,9 +23,12 @@ async function moreAction(page, action) {
   // Opening More Actions first preserves production menu-state behavior.
   await clickWidget(page, 'more_actions_btn');
   if (
-    ['Flip Horizontal', 'Flip Vertical', 'Add Explicit Hydrogens', 'Remove Explicit Hydrogens'].includes(
-      action,
-    )
+    [
+      'Flip Horizontal',
+      'Flip Vertical',
+      'Add Explicit Hydrogens',
+      'Remove Explicit Hydrogens',
+    ].includes(action)
   ) {
     await clickMenuAction(page, 'Modify All');
   }
