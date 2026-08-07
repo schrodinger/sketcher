@@ -24,7 +24,9 @@
 #include <QStyleHints>
 
 #include "image_generation_from_js.h"
+#ifdef SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
 #include "playwright_test_bridge.h"
+#endif
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
@@ -250,6 +252,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
                          &sketcher_insert_custom_monomers);
     emscripten::function("sketcher_reset_custom_monomers",
                          &sketcher_reset_custom_monomers);
+#ifdef SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
     emscripten::function(
         "_sketcher_get_widget_rect", +[](const std::string& name) {
             return schrodinger::sketcher::playwright_test_bridge::
@@ -282,6 +285,7 @@ EMSCRIPTEN_BINDINGS(sketcher)
     emscripten::function(
         "_sketcher_set_clipboard_text",
         &schrodinger::sketcher::playwright_test_bridge::set_clipboard_text);
+#endif
     // see sketcher_changed_callback above
 }
 #endif
