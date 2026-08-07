@@ -69,8 +69,15 @@ export async function drawingAreaCenter(page) {
  * @param {string} objectName
  */
 export async function widgetRect(page, objectName) {
+  const cached = await page.evaluate(
+    (name) => window.__sketcherPlaywrightWidgetRects?.[name],
+    objectName,
+  );
+  if (cached) {
+    return cached;
+  }
   const rect = await page.evaluate(
-    (name) => JSON.parse(Module._sketcher_get_widget_rect(name)),
+    async (name) => JSON.parse(await Module._sketcher_get_widget_rect(name)),
     objectName,
   );
   if (!rect || rect.width === undefined) {

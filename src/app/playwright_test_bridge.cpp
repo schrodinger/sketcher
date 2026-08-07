@@ -119,6 +119,9 @@ class MenuGeometryCache final : public QObject
     bool eventFilter(QObject* watched, QEvent* event) override
     {
         if (event->type() == QEvent::Show) {
+            if (auto* widget = qobject_cast<QWidget*>(watched)) {
+                cache_widget_geometry(*widget);
+            }
             if (auto* menu = qobject_cast<QMenu*>(watched)) {
                 cache_menu_geometry(*menu);
             }
@@ -168,8 +171,41 @@ class MenuGeometryCache final : public QObject
 #endif
     }
 
+    void cache_widget_geometry(const QWidget& widget)
+    {
+        cache_widget(widget);
+        for (auto* child : widget.findChildren<QWidget*>()) {
+            cache_widget(*child);
+        }
+        publish_browser_widget_rects();
+    }
+
+    void cache_widget(const QWidget& widget)
+    {
+        if (!widget.isVisible() || widget.objectName().isEmpty()) {
+            return;
+        }
+        m_widget_rects[widget.objectName()] = rect_to_object(
+            widget.mapTo(&m_sketcher, QPoint(0, 0)), widget.rect());
+    }
+
+    void publish_browser_widget_rects() const
+    {
+#ifdef __EMSCRIPTEN__
+        const auto json =
+            QJsonDocument(m_widget_rects).toJson(QJsonDocument::Compact);
+        EM_ASM(
+            {
+                window.__sketcherPlaywrightWidgetRects =
+                    JSON.parse(UTF8ToString($0));
+            },
+            json.constData());
+#endif
+    }
+
     SketcherWidget& m_sketcher;
     std::unordered_map<std::string, std::string> m_action_rects;
+    QJsonObject m_widget_rects;
 };
 
 MenuGeometryCache& menu_geometry_cache(SketcherWidget& sketcher)
