@@ -21,7 +21,9 @@
 #include <QMetaObject>
 #include <QMenu>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QSpinBox>
+#include <QTimer>
 #include <QDoubleSpinBox>
 #include <QWidget>
 
@@ -121,6 +123,12 @@ class MenuGeometryCache final : public QObject
         if (event->type() == QEvent::Show) {
             if (auto* widget = qobject_cast<QWidget*>(watched)) {
                 cache_widget_geometry(*widget);
+                const QPointer<QWidget> visible_widget(widget);
+                QTimer::singleShot(0, this, [this, visible_widget] {
+                    if (visible_widget) {
+                        cache_widget_geometry(*visible_widget);
+                    }
+                });
             }
             if (auto* menu = qobject_cast<QMenu*>(watched)) {
                 cache_menu_geometry(*menu);
