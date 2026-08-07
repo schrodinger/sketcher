@@ -18,6 +18,45 @@ export async function focusCanvas(page) {
   await page.locator('#screen canvas').focus();
 }
 
+/** Move the pointer before pressing and releasing a mouse button. */
+export async function mouseClick(page, x, y, { button = 'left', modifiers = [] } = {}) {
+  for (const modifier of modifiers) {
+    await page.keyboard.down(modifier);
+  }
+  try {
+    await page.mouse.move(x, y, { steps: 4 });
+    await page.mouse.down({ button });
+    await page.waitForTimeout(25);
+    await page.mouse.up({ button });
+  } finally {
+    for (const modifier of [...modifiers].reverse()) {
+      await page.keyboard.up(modifier);
+    }
+  }
+}
+
+/** Drag with ordinary pointer events, matching Squish's mouseDrag model. */
+export async function mouseDrag(
+  page,
+  start,
+  end,
+  { button = 'left', modifiers = [], steps = 12 } = {},
+) {
+  for (const modifier of modifiers) {
+    await page.keyboard.down(modifier);
+  }
+  try {
+    await page.mouse.move(start.x, start.y, { steps: 4 });
+    await page.mouse.down({ button });
+    await page.mouse.move(end.x, end.y, { steps });
+    await page.mouse.up({ button });
+  } finally {
+    for (const modifier of [...modifiers].reverse()) {
+      await page.keyboard.up(modifier);
+    }
+  }
+}
+
 /** @param {import('@playwright/test').Page} page */
 export async function drawingAreaCenter(page) {
   const rect = await widgetRect(page, 'view');
@@ -46,7 +85,7 @@ export async function widgetRect(page, objectName) {
  */
 export async function clickWidget(page, objectName) {
   const rect = await widgetRect(page, objectName);
-  await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  await mouseClick(page, rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
 /** Return visible Qt widget state exposed by the Playwright test bridge. */
@@ -54,12 +93,11 @@ export async function widgetState(page, objectName) {
   return page.evaluate((name) => JSON.parse(Module._sketcher_get_widget_state(name)), objectName);
 }
 
-/** Set text, a combo-box choice, or a spin-box value through the test bridge. */
+/** Click a visible text control and replace its value through keyboard input. */
 export async function setWidgetText(page, objectName, text) {
-  await page.evaluate(
-    ([name, value]) => Module._sketcher_set_widget_text(name, value),
-    [objectName, String(text)],
-  );
+  await clickWidget(page, objectName);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.type(String(text), { delay: 10 });
 }
 
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
@@ -77,7 +115,7 @@ export async function menuActionRect(page, objectNameOrText) {
 /** Click a visible Qt menu action using the browser's real mouse input. */
 export async function clickMenuAction(page, objectNameOrText) {
   const rect = await menuActionRect(page, objectNameOrText);
-  await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
+  await mouseClick(page, rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
 export async function clipboardText(page) {
@@ -90,12 +128,19 @@ export async function setClipboardText(page, text) {
 
 /** @param {import('@playwright/test').Page} page */
 export async function clearSketcher(page) {
-  await page.evaluate(() => Module.sketcher_clear());
+  await clickWidget(page, 'clear_btn');
 }
 
 /** @param {import('@playwright/test').Page} page @param {string} text */
 export async function importText(page, text) {
-  await page.evaluate((value) => Module.sketcher_import_text(value), text);
+  await clickWidget(page, 'import_btn');
+  await clickMenuAction(page, 'Paste in Text...');
+  await setWidgetText(page, 'structure_text_edit', text);
+
+  // The generated Qt button box has no stable child object name for its OK
+  // button. Its right half is the standard OK button in the standalone UI.
+  const buttonBox = await widgetRect(page, 'buttonBox');
+  await mouseClick(page, buttonBox.x + buttonBox.width * 0.75, buttonBox.y + buttonBox.height / 2);
 }
 
 /** @param {import('@playwright/test').Page} page @param {string} format */
@@ -119,8 +164,5 @@ export async function drawElement(page, element) {
 /** @param {import('@playwright/test').Page} page */
 export async function drawBond(page) {
   const center = await drawingAreaCenter(page);
-  await page.mouse.move(center.x, center.y);
-  await page.mouse.down();
-  await page.mouse.move(center.x + 100, center.y, { steps: 10 });
-  await page.mouse.up();
+  await mouseDrag(page, center, { x: center.x + 100, y: center.y });
 }
