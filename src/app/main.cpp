@@ -272,9 +272,9 @@ EMSCRIPTEN_BINDINGS(sketcher)
                 get_sketcher_instance(), name, text);
         });
     emscripten::function(
-        "_sketcher_activate_menu_action", +[](const std::string& name_or_text) {
-            schrodinger::sketcher::playwright_test_bridge::activate_menu_action(
-                get_sketcher_instance(), name_or_text);
+        "_sketcher_get_menu_action_rect", +[](const std::string& name_or_text) {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_menu_action_rect(get_sketcher_instance(), name_or_text);
         });
     emscripten::function(
         "_sketcher_clipboard_text",

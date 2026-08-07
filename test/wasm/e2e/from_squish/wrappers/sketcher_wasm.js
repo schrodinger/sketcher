@@ -62,12 +62,22 @@ export async function setWidgetText(page, objectName, text) {
   );
 }
 
-/** Trigger a currently visible Qt menu action by objectName or displayed text. */
-export async function activateMenuAction(page, objectNameOrText) {
-  await page.evaluate((name) => Module._sketcher_activate_menu_action(name), objectNameOrText);
-  // The native bridge queues QAction activation to avoid re-entering Qt from
-  // an embind call. Yield once so the Qt event loop can deliver it.
-  await page.waitForTimeout(0);
+/** Return a visible Qt menu action's canvas rectangle by objectName or text. */
+export async function menuActionRect(page, objectNameOrText) {
+  const rect = await page.evaluate(
+    (name) => JSON.parse(Module._sketcher_get_menu_action_rect(name)),
+    objectNameOrText,
+  );
+  if (!rect || rect.width === undefined) {
+    throw new Error(`Sketcher menu action not found: ${objectNameOrText}`);
+  }
+  return rect;
+}
+
+/** Click a visible Qt menu action using the browser's real mouse input. */
+export async function clickMenuAction(page, objectNameOrText) {
+  const rect = await menuActionRect(page, objectNameOrText);
+  await page.mouse.click(rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
 export async function clipboardText(page) {

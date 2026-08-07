@@ -16,9 +16,9 @@
 #include <QJsonObject>
 #include <QLineEdit>
 #include <QMetaObject>
+#include <QMenu>
 #include <QPlainTextEdit>
 #include <QSpinBox>
-#include <QTimer>
 #include <QDoubleSpinBox>
 #include <QWidget>
 
@@ -150,25 +150,36 @@ void set_widget_text(SketcherWidget& sketcher, const std::string& object_name,
              QString::fromStdString(text));
 }
 
-void activate_menu_action(SketcherWidget& sketcher,
-                          const std::string& object_name_or_text)
+std::string get_menu_action_rect(SketcherWidget& sketcher,
+                                 const std::string& object_name_or_text)
 {
     const QString query = QString::fromStdString(object_name_or_text);
-    const auto actions = sketcher.findChildren<QAction*>();
-    for (auto* action : actions) {
-        if (action->isVisible() &&
-            (action->objectName() == query || action->text() == query)) {
-            // An embind call runs while Qt is handling the browser event.
-            // Triggering an action synchronously can re-enter Qt's event loop
-            // and prevent the browser-side call from returning. Queue it for
-            // the next Qt event-loop iteration instead.
-            QTimer::singleShot(0, action, [action] { action->trigger(); });
-            return;
+    const auto menus = sketcher.findChildren<QMenu*>();
+    for (auto* menu : menus) {
+        if (!menu->isVisible()) {
+            continue;
+        }
+        for (auto* action : menu->actions()) {
+            if (action->objectName() != query && action->text() != query) {
+                continue;
+            }
+            const QRect action_rect = menu->actionGeometry(action);
+            if (action_rect.isEmpty()) {
+                continue;
+            }
+            const QPoint top_left =
+                menu->mapTo(&sketcher, action_rect.topLeft());
+            QJsonObject result;
+            result["x"] = top_left.x();
+            result["y"] = top_left.y();
+            result["width"] = action_rect.width();
+            result["height"] = action_rect.height();
+            return QJsonDocument(result)
+                .toJson(QJsonDocument::Compact)
+                .toStdString();
         }
     }
-    throw std::runtime_error("playwright test bridge: visible menu action not "
-                             "found with objectName/text '" +
-                             object_name_or_text + "'");
+    return "{}";
 }
 
 std::string clipboard_text()

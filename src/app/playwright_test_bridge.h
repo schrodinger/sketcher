@@ -24,8 +24,8 @@ std::string get_widget_state(SketcherWidget& sketcher,
                              const std::string& object_name);
 void set_widget_text(SketcherWidget& sketcher, const std::string& object_name,
                      const std::string& text);
-void activate_menu_action(SketcherWidget& sketcher,
-                          const std::string& object_name_or_text);
+std::string get_menu_action_rect(SketcherWidget& sketcher,
+                                 const std::string& object_name_or_text);
 std::string clipboard_text();
 void set_clipboard_text(const std::string& text);
 } // namespace playwright_test_bridge

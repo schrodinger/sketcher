@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
-  activateMenuAction,
+  clickMenuAction,
   clickWidget,
   clipboardText,
   exportText,
@@ -14,16 +14,22 @@ const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 
 async function requireTestBridge(page) {
   const available = await page.evaluate(
-    () => typeof Module._sketcher_activate_menu_action === 'function',
+    () => typeof Module._sketcher_get_menu_action_rect === 'function',
   );
   test.skip(!available, 'requires a WASM artifact rebuilt with playwright_test_bridge.cpp');
 }
 
 async function moreAction(page, action) {
-  // Opening More Actions first preserves the production menu's action-update
-  // behavior; the bridge then activates the named QAction in the Qt popup.
+  // Opening More Actions first preserves production menu-state behavior.
   await clickWidget(page, 'more_actions_btn');
-  await activateMenuAction(page, action);
+  if (
+    ['Flip Horizontal', 'Flip Vertical', 'Add Explicit Hydrogens', 'Remove Explicit Hydrogens'].includes(
+      action,
+    )
+  ) {
+    await clickMenuAction(page, 'Modify All');
+  }
+  await clickMenuAction(page, action);
 }
 
 async function expectCanvasCheckpoint(page, name) {
