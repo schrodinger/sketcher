@@ -10,6 +10,8 @@
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/atom_display_settings.h"
+#include "schrodinger/sketcher/molviewer/bond_display_settings.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
@@ -37,13 +39,16 @@ struct TestMonomer {
     std::unique_ptr<RDKit::Atom> atom;
     std::unique_ptr<AbstractMonomerItem> item;
     Fonts fonts;
+    AtomDisplaySettings atom_display_settings;
+    BondDisplaySettings bond_display_settings;
 
     TestMonomer(const std::string& res_name,
                 const rdkit_extensions::ChainType chain_type)
     {
         auto chain_id = rdkit_extensions::toString(chain_type) + "1";
         atom = rdkit_extensions::makeMonomer(res_name, chain_id, 1, false);
-        item.reset(get_monomer_graphics_item(atom.get(), fonts));
+        item.reset(get_monomer_graphics_item(
+            atom.get(), fonts, atom_display_settings, bond_display_settings));
     }
 
     /// Create an attachment point item with a numbered name (e.g. R1, R2)

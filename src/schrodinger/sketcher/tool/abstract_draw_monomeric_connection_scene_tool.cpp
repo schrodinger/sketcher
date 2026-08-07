@@ -11,12 +11,15 @@ namespace sketcher
 {
 
 AbstractDrawMonomericConnectionSceneTool::
-    AbstractDrawMonomericConnectionSceneTool(const Fonts& fonts, Scene* scene,
-                                             MolModel* mol_model) :
+    AbstractDrawMonomericConnectionSceneTool(
+        const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+        const BondDisplaySettings& bond_display_settings, Scene* scene,
+        MolModel* mol_model) :
     // the residue name and chain type are irrelevant since this class will
     // never create a new residue, so just pass dummy values
     AbstractDrawMonomerOrMonomericConnectionSceneTool(
-        "", rdkit_extensions::ChainType::CHEM, fonts, scene, mol_model)
+        "", rdkit_extensions::ChainType::CHEM, fonts, atom_display_settings,
+        bond_display_settings, scene, mol_model)
 {
 }
 

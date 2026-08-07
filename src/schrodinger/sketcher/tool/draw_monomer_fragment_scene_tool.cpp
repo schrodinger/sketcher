@@ -55,10 +55,11 @@ const std::vector<MonomerFragmentAttachmentInfo> NUCLEOTIDE_ATTACHMENT_INFO = {
 constexpr double NUCLEOTIDE_DRAG_ANGLE_ADJUSTMENT = M_PI / 2.0;
 
 std::shared_ptr<DrawMonomerFragmentSceneTool>
-get_nucleotide_fragment_scene_tool(const std::string& sugar,
-                                   const std::string& base,
-                                   const std::string& phos, const Fonts& fonts,
-                                   Scene* scene, MolModel* mol_model)
+get_nucleotide_fragment_scene_tool(
+    const std::string& sugar, const std::string& base, const std::string& phos,
+    const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    MolModel* mol_model)
 {
     auto to_helm_monomer = [](const std::string& monomer) {
         if (monomer.size() > 1) {
@@ -75,7 +76,8 @@ get_nucleotide_fragment_scene_tool(const std::string& sugar,
     prepare_mol(*mol);
     return std::make_shared<DrawMonomerFragmentSceneTool>(
         *mol, NUCLEOTIDE_ATTACHMENT_INFO, SUGAR_IDX,
-        NUCLEOTIDE_DRAG_ANGLE_ADJUSTMENT, fonts, scene, mol_model);
+        NUCLEOTIDE_DRAG_ANGLE_ADJUSTMENT, fonts, atom_display_settings,
+        bond_display_settings, scene, mol_model);
 }
 
 /**
@@ -102,12 +104,16 @@ DrawMonomerFragmentSceneTool::DrawMonomerFragmentSceneTool(
     const RDKit::ROMol& mol,
     const std::vector<MonomerFragmentAttachmentInfo> attachment_info,
     const int index_to_center_on_click, const double drag_angle_adjustment,
-    const Fonts& fonts, Scene* scene, MolModel* mol_model) :
+    const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    MolModel* mol_model) :
     AbstractMonomerSceneTool(fonts, scene, mol_model),
     m_frag(mol),
     m_attachment_info(attachment_info),
     m_index_to_center_on_click(index_to_center_on_click),
-    m_drag_angle_adjustment(drag_angle_adjustment)
+    m_drag_angle_adjustment(drag_angle_adjustment),
+    m_atom_display_settings(&atom_display_settings),
+    m_bond_display_settings(&bond_display_settings)
 {
     set_all_atoms_monomeric(m_frag);
     m_frag.getConformer().set3D(false);
@@ -145,8 +151,9 @@ QPixmap DrawMonomerFragmentSceneTool::createDefaultCursorPixmap() const
     fonts_copy.setSize(FONT_SIZE);
     fonts_copy.m_main_label_font.setBold(true);
     fonts_copy.updateFontMetrics();
-    MonomerHintFragmentItem graphics_item(frag_copy, fonts_copy, {}, -1,
-                                          m_monomer_background_color);
+    MonomerHintFragmentItem graphics_item(
+        frag_copy, fonts_copy, *m_atom_display_settings,
+        *m_bond_display_settings, {}, -1, m_monomer_background_color);
     auto cursor_hint =
         cursor_hint_from_graphics_item(&graphics_item, -1, CURSOR_HINT_SCALE);
 
@@ -235,7 +242,8 @@ void DrawMonomerFragmentSceneTool::onLeftButtonPress(
         move_mol_to_coords_and_rotate(*frag_copy, m_index_to_center_on_click,
                                       to_mol_xy(scene_pos), 0.0);
         m_hint_fragment_item = new MonomerHintFragmentItem(
-            frag_copy, *m_fonts, {}, -1, m_monomer_background_color);
+            frag_copy, *m_fonts, *m_atom_display_settings,
+            *m_bond_display_settings, {}, -1, m_monomer_background_color);
         m_scene->addItem(m_hint_fragment_item);
     }
 }
@@ -384,7 +392,8 @@ void DrawMonomerFragmentSceneTool::drawFragmentHintFor(
         attachment_info.frag_monomer_ap_model_name);
 
     m_hint_fragment_item = new MonomerHintFragmentItem(
-        hint_mol, *m_fonts, {hovered_monomer_copy_idx}, new_connection_idx,
+        hint_mol, *m_fonts, *m_atom_display_settings, *m_bond_display_settings,
+        {hovered_monomer_copy_idx}, new_connection_idx,
         m_monomer_background_color);
     m_scene->addItem(m_hint_fragment_item);
 }
