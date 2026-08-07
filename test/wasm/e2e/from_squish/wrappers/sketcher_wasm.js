@@ -102,14 +102,16 @@ export async function setWidgetText(page, objectName, text) {
 
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
 export async function menuActionRect(page, objectNameOrText) {
-  const rect = await page.evaluate(
-    async (name) => JSON.parse(await Module._sketcher_get_menu_action_rect(name)),
+  const rect = await page.waitForFunction(
+    (name) => window.__sketcherPlaywrightMenuRects?.[name],
     objectNameOrText,
+    { timeout: 5000 },
   );
-  if (!rect || rect.width === undefined) {
+  const value = await rect.jsonValue();
+  if (!value || value.width === undefined) {
     throw new Error(`Sketcher menu action not found: ${objectNameOrText}`);
   }
-  return rect;
+  return value;
 }
 
 /** Click a visible Qt menu action using the browser's real mouse input. */

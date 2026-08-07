@@ -25,6 +25,10 @@
 #include <QDoubleSpinBox>
 #include <QWidget>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
 #include "schrodinger/sketcher/sketcher_widget.h"
 
 namespace schrodinger::sketcher::playwright_test_bridge
@@ -87,14 +91,21 @@ void set_text(QWidget& widget, const QString& text)
                              "text/value input");
 }
 
-std::string rect_to_json(const QPoint& top_left, const QRect& rect)
+QJsonObject rect_to_object(const QPoint& top_left, const QRect& rect)
 {
     QJsonObject result;
     result["x"] = top_left.x();
     result["y"] = top_left.y();
     result["width"] = rect.width();
     result["height"] = rect.height();
-    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+    return result;
+}
+
+std::string rect_to_json(const QPoint& top_left, const QRect& rect)
+{
+    return QJsonDocument(rect_to_object(top_left, rect))
+        .toJson(QJsonDocument::Compact)
+        .toStdString();
 }
 
 class MenuGeometryCache final : public QObject
@@ -124,6 +135,7 @@ class MenuGeometryCache final : public QObject
   private:
     void cache_menu_geometry(const QMenu& menu)
     {
+        QJsonObject browser_rects;
         for (auto* action : menu.actions()) {
             const QRect action_rect = menu.actionGeometry(action);
             if (action_rect.isEmpty()) {
@@ -131,11 +143,29 @@ class MenuGeometryCache final : public QObject
             }
             const auto result = rect_to_json(
                 menu.mapTo(&m_sketcher, action_rect.topLeft()), action_rect);
+            const auto browser_result = rect_to_object(
+                menu.mapTo(&m_sketcher, action_rect.topLeft()), action_rect);
             if (!action->objectName().isEmpty()) {
                 m_action_rects[action->objectName().toStdString()] = result;
+                browser_rects[action->objectName()] = browser_result;
             }
             m_action_rects[action->text().toStdString()] = result;
+            browser_rects[action->text()] = browser_result;
         }
+        publish_browser_rects(browser_rects);
+    }
+
+    void publish_browser_rects(const QJsonObject& rects) const
+    {
+#ifdef __EMSCRIPTEN__
+        const auto json = QJsonDocument(rects).toJson(QJsonDocument::Compact);
+        EM_ASM(
+            {
+                window.__sketcherPlaywrightMenuRects =
+                    JSON.parse(UTF8ToString($0));
+            },
+            json.constData());
+#endif
     }
 
     SketcherWidget& m_sketcher;
