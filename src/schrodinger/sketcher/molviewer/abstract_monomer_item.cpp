@@ -29,7 +29,7 @@ namespace
  * displaying it.) This constant controls the ratio of SVG "pixels" to tool tip
  * pixels.
  */
-const int TOOL_TIP_OVERSAMPLING_RATIO = 1;
+const int TOOL_TIP_OVERSAMPLING_RATIO = 2;
 } // namespace
 
 namespace schrodinger
@@ -56,7 +56,7 @@ AbstractMonomerItem::AbstractMonomerItem(
  * that can be rendered by QToolTip.
  */
 static QString get_tool_tip_containing_smiles_image(
-    const std::string smiles, const Fonts& fonts,
+    const std::string& smiles, const Fonts& fonts,
     const AtomDisplaySettings* const atom_display_settings,
     const BondDisplaySettings* const bond_display_settings,
     const bool is_dark_mode)
