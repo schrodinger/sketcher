@@ -5,13 +5,16 @@
 
 #include "playwright_test_bridge.h"
 
+#include <memory>
 #include <stdexcept>
+#include <unordered_map>
 
 #include <QAbstractButton>
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
 #include <QComboBox>
+#include <QEvent>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLineEdit>
@@ -83,6 +86,67 @@ void set_text(QWidget& widget, const QString& text)
     throw std::runtime_error("playwright test bridge: widget does not support "
                              "text/value input");
 }
+
+std::string rect_to_json(const QPoint& top_left, const QRect& rect)
+{
+    QJsonObject result;
+    result["x"] = top_left.x();
+    result["y"] = top_left.y();
+    result["width"] = rect.width();
+    result["height"] = rect.height();
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+}
+
+class MenuGeometryCache final : public QObject
+{
+  public:
+    explicit MenuGeometryCache(SketcherWidget& sketcher) : m_sketcher(sketcher)
+    {
+        qApp->installEventFilter(this);
+    }
+
+    bool eventFilter(QObject* watched, QEvent* event) override
+    {
+        if (event->type() == QEvent::Show) {
+            if (auto* menu = qobject_cast<QMenu*>(watched)) {
+                cache_menu_geometry(*menu);
+            }
+        }
+        return false;
+    }
+
+    std::string action_rect(const std::string& object_name_or_text) const
+    {
+        const auto result = m_action_rects.find(object_name_or_text);
+        return result == m_action_rects.end() ? "{}" : result->second;
+    }
+
+  private:
+    void cache_menu_geometry(const QMenu& menu)
+    {
+        for (auto* action : menu.actions()) {
+            const QRect action_rect = menu.actionGeometry(action);
+            if (action_rect.isEmpty()) {
+                continue;
+            }
+            const auto result = rect_to_json(
+                menu.mapTo(&m_sketcher, action_rect.topLeft()), action_rect);
+            if (!action->objectName().isEmpty()) {
+                m_action_rects[action->objectName().toStdString()] = result;
+            }
+            m_action_rects[action->text().toStdString()] = result;
+        }
+    }
+
+    SketcherWidget& m_sketcher;
+    std::unordered_map<std::string, std::string> m_action_rects;
+};
+
+MenuGeometryCache& menu_geometry_cache(SketcherWidget& sketcher)
+{
+    static auto cache = std::make_unique<MenuGeometryCache>(sketcher);
+    return *cache;
+}
 } // namespace
 
 void click_button(SketcherWidget& sketcher, const std::string& object_name)
@@ -100,18 +164,15 @@ void click_button(SketcherWidget& sketcher, const std::string& object_name)
 std::string get_widget_rect(SketcherWidget& sketcher,
                             const std::string& object_name)
 {
+    // Install the menu observer before Playwright opens the first menu.
+    menu_geometry_cache(sketcher);
     auto* widget =
         find_visible_widget(sketcher, QString::fromStdString(object_name));
     if (!widget) {
         return "{}";
     }
     const QPoint top_left = widget->mapTo(&sketcher, QPoint(0, 0));
-    QJsonObject result;
-    result["x"] = top_left.x();
-    result["y"] = top_left.y();
-    result["width"] = widget->width();
-    result["height"] = widget->height();
-    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+    return rect_to_json(top_left, widget->rect());
 }
 
 std::string get_widget_state(SketcherWidget& sketcher,
@@ -153,33 +214,7 @@ void set_widget_text(SketcherWidget& sketcher, const std::string& object_name,
 std::string get_menu_action_rect(SketcherWidget& sketcher,
                                  const std::string& object_name_or_text)
 {
-    const QString query = QString::fromStdString(object_name_or_text);
-    const auto menus = sketcher.findChildren<QMenu*>();
-    for (auto* menu : menus) {
-        if (!menu->isVisible()) {
-            continue;
-        }
-        for (auto* action : menu->actions()) {
-            if (action->objectName() != query && action->text() != query) {
-                continue;
-            }
-            const QRect action_rect = menu->actionGeometry(action);
-            if (action_rect.isEmpty()) {
-                continue;
-            }
-            const QPoint top_left =
-                menu->mapTo(&sketcher, action_rect.topLeft());
-            QJsonObject result;
-            result["x"] = top_left.x();
-            result["y"] = top_left.y();
-            result["width"] = action_rect.width();
-            result["height"] = action_rect.height();
-            return QJsonDocument(result)
-                .toJson(QJsonDocument::Compact)
-                .toStdString();
-        }
-    }
-    return "{}";
+    return menu_geometry_cache(sketcher).action_rect(object_name_or_text);
 }
 
 std::string clipboard_text()

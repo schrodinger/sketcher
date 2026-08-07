@@ -103,7 +103,7 @@ export async function setWidgetText(page, objectName, text) {
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
 export async function menuActionRect(page, objectNameOrText) {
   const rect = await page.evaluate(
-    (name) => JSON.parse(Module._sketcher_get_menu_action_rect(name)),
+    async (name) => JSON.parse(await Module._sketcher_get_menu_action_rect(name)),
     objectNameOrText,
   );
   if (!rect || rect.width === undefined) {
