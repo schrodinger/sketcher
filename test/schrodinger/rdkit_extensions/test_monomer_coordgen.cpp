@@ -743,4 +743,52 @@ BOOST_AUTO_TEST_CASE(TestPositionInCoilsScore)
     }
 }
 
+BOOST_AUTO_TEST_CASE(CyclicRingsHaveConsistentDirection)
+{
+    // Test that cyclic rings are always drawn in the same direction (CCW)
+    // regardless of odd/even ring size. RDKit's normalizeRing can produce
+    // different atom orderings for different ring sizes, but our fix ensures
+    // consistent visual direction.
+
+    // 9-atom ring (odd)
+    std::string helm_odd =
+        "PEPTIDE1{C.P.M.H.V.I.K.C}|CHEM1{[mDBX]}$PEPTIDE1,CHEM1,1:R3-1:R1|"
+        "PEPTIDE1,CHEM1,8:R3-1:R2$$$V2.0";
+    // 10-atom ring (even)
+    std::string helm_even =
+        "PEPTIDE1{C.P.M.M.H.V.I.K.C}|CHEM1{[mDBX]}$PEPTIDE1,CHEM1,1:R3-1:R1|"
+        "PEPTIDE1,CHEM1,9:R3-1:R2$$$V2.0";
+
+    auto mol_odd = helm::helm_to_rdkit(helm_odd);
+    auto mol_even = helm::helm_to_rdkit(helm_even);
+
+    schrodinger::rdkit_extensions::compute_monomer_mol_coords(*mol_odd);
+    schrodinger::rdkit_extensions::compute_monomer_mol_coords(*mol_even);
+
+    auto& conf_odd = mol_odd->getConformer();
+    auto& conf_even = mol_even->getConformer();
+
+    // Check direction by looking at the cross product of consecutive edges.
+    // For CCW, the cross product (v1 x v2).z should be positive.
+    auto check_ccw = [](const RDKit::Conformer& conf, int a, int b, int c) {
+        auto p0 = conf.getAtomPos(a);
+        auto p1 = conf.getAtomPos(b);
+        auto p2 = conf.getAtomPos(c);
+        double v1x = p1.x - p0.x;
+        double v1y = p1.y - p0.y;
+        double v2x = p2.x - p1.x;
+        double v2y = p2.y - p1.y;
+        double cross_z = v1x * v2y - v1y * v2x;
+        return cross_z > 0;
+    };
+
+    // Check first 3 backbone atoms (0, 1, 2) for both rings
+    bool odd_ccw = check_ccw(conf_odd, 0, 1, 2);
+    bool even_ccw = check_ccw(conf_even, 0, 1, 2);
+
+    BOOST_CHECK_MESSAGE(odd_ccw == even_ccw,
+                        "Odd and even sized rings should have the same "
+                        "winding direction");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
