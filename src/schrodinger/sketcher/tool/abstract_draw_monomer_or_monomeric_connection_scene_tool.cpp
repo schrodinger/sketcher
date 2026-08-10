@@ -30,6 +30,7 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/molviewer/unbound_monomeric_attachment_point_item.h"
+#include "schrodinger/sketcher/rdkit/monomeric.h"
 
 namespace schrodinger
 {
@@ -183,7 +184,8 @@ find_attachment_point_with_num(
 }
 
 UnboundMonomericAttachmentPointItem* get_default_attachment_point(
-    const MonomerType hovered_type, const MonomerType tool_type,
+    const MonomerType hovered_type, const std::string& hovered_res_name,
+    const MonomerType tool_type, const std::string& tool_res_name,
     const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items)
 {
     if (unbound_ap_items.empty()) {
@@ -191,14 +193,23 @@ UnboundMonomericAttachmentPointItem* get_default_attachment_point(
     } else if (hovered_type == MonomerType::CHEM) {
         return find_min_attachment_point_by_num(unbound_ap_items);
     } else if (hovered_type == MonomerType::PEPTIDE) {
+        UnboundMonomericAttachmentPointItem* default_ap = nullptr;
         if (tool_type == MonomerType::PEPTIDE) {
-            return find_preferred_attachment_point_by_num(
-                unbound_ap_items,
-                {PeptideAP::C, PeptideAP::N, PeptideAP::SIDECHAIN});
-        } else if (tool_type == MonomerType::CHEM) {
-            return find_attachment_point_with_num(unbound_ap_items,
-                                                  PeptideAP::SIDECHAIN);
+            std::vector<int> aps_to_look_for = {PeptideAP::C, PeptideAP::N};
+            if (hovered_res_name == CYS_RES_NAME &&
+                tool_res_name == CYS_RES_NAME) {
+                // only offer to form a disulfide if we're forming a connection
+                // between two cysteines
+                aps_to_look_for.push_back(PeptideAP::S);
+            }
+            default_ap = find_preferred_attachment_point_by_num(
+                unbound_ap_items, aps_to_look_for);
         }
+        if (default_ap == nullptr) {
+            default_ap = find_attachment_point_with_name(unbound_ap_items,
+                                                         H_BOND_AP_MODEL_NAME);
+        }
+        return default_ap;
     } else if (hovered_type == MonomerType::NA_BASE) {
         if (tool_type == MonomerType::NA_BASE ||
             tool_type == MonomerType::CHEM) {
@@ -244,7 +255,7 @@ get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
                     return ap_model_name_for(PeptideAP::N);
                 }
             }
-            return ap_model_name_for(PeptideAP::SIDECHAIN);
+            return ap_model_name_for(PeptideAP::S);
         case MonomerType::NA_BASE:
             if (existing_monomer_type == MonomerType::NA_SUGAR &&
                 existing_monomer_ap ==
@@ -313,18 +324,20 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
         }
     }
 
-    // get the monomer type for the start and end monomers
-    auto get_drag_monomer_type =
+    // get the monomer type and residue name for the start and end monomers
+    auto get_drag_monomer_type_and_res_name =
         [this](const AbstractMonomerItem* const monomer_item) {
             if (monomer_item == nullptr) {
-                return m_monomer_type;
+                return std::make_pair(m_monomer_type, m_res_name);
             }
             auto [monomer, monomer_type] = get_monomer_and_type(monomer_item);
-            return monomer_type;
+            auto res_name = get_monomer_res_name(monomer);
+            return std::make_pair(monomer_type, res_name);
         };
-    auto drag_start_monomer_type =
-        get_drag_monomer_type(m_drag_start_monomer_item);
-    auto drag_end_monomer_type = get_drag_monomer_type(m_drag_end_monomer_item);
+    auto [drag_start_monomer_type, drag_start_res_name] =
+        get_drag_monomer_type_and_res_name(m_drag_start_monomer_item);
+    auto [drag_end_monomer_type, drag_end_res_name] =
+        get_drag_monomer_type_and_res_name(m_drag_end_monomer_item);
 
     // if the user is hovered over the monomer itself (not an attachment point)
     // and the "correct" attachment point is available (e.g. N terminus when we
@@ -341,9 +354,9 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // if the correct attachment point isn't available then there's probably no
     // good option, so use whatever we would've defaulted if we'd started the
     // drag at this monomer.
-    return get_default_attachment_point(drag_end_monomer_type,
-                                        drag_start_monomer_type,
-                                        m_drag_end_unbound_ap_items);
+    return get_default_attachment_point(
+        drag_end_monomer_type, drag_end_res_name, drag_start_monomer_type,
+        drag_start_res_name, m_drag_end_unbound_ap_items);
 }
 
 std::tuple<const RDKit::Atom*, MonomerType>
@@ -369,8 +382,9 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
         clickShouldMutate(monomer, monomer_type)) {
         return nullptr;
     }
-    return get_default_attachment_point(monomer_type, m_monomer_type,
-                                        m_unbound_ap_items);
+    return get_default_attachment_point(
+        monomer_type, get_monomer_res_name(monomer), m_monomer_type, m_res_name,
+        m_unbound_ap_items);
 }
 
 bool AbstractDrawMonomerOrMonomericConnectionSceneTool::
@@ -386,8 +400,9 @@ bool AbstractDrawMonomerOrMonomericConnectionSceneTool::
     if (clickShouldMutate(monomer, monomer_type)) {
         return true;
     }
-    return get_default_attachment_point(monomer_type, m_monomer_type,
-                                        m_unbound_ap_items) != nullptr;
+    return get_default_attachment_point(
+               monomer_type, get_monomer_res_name(monomer), m_monomer_type,
+               m_res_name, m_unbound_ap_items) != nullptr;
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::onMouseMove(
@@ -520,7 +535,15 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const AbstractMonomerItem* const monomer_item,
         const UnboundMonomericAttachmentPointItem* const ap_item) const
 {
-    auto ap_model_name = ap_item->getAttachmentPoint().model_name;
+    std::string ap_model_name;
+    if (ap_item == nullptr) {
+        // if there's no attachment point item, then the drag must have started
+        // from a "pair" AP (meaning that we didn't draw any attachment points
+        // since the drag can only create H-bonds)
+        ap_model_name = H_BOND_AP_MODEL_NAME;
+    } else {
+        ap_model_name = ap_item->getAttachmentPoint().model_name;
+    }
     return createHintFragmentMonomerInfoForHintToOrFromExistingMonomer(
         monomer_item, ap_model_name);
 }
@@ -634,7 +657,15 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::getDragEndInfo(
     }
 
     DragEndInfo drag_end_info;
-    if (drag_end_ap_item == nullptr) {
+    if (m_drag_start_monomer_item != nullptr &&
+        m_drag_start_ap_model_name == H_BOND_AP_MODEL_NAME &&
+        hovered_monomer_item != nullptr &&
+        dragCanFormConnectionTo(hovered_monomer_item, H_BOND_AP_MODEL_NAME)) {
+        // We can form a hydrogen bond here. There's no drag_end_ap_item in this
+        // scenario because we didn't draw any AP items, since a drag starting
+        // from a "pair" AP can only form H-bonds
+        drag_end_info = std::make_pair(hovered_monomer_item, nullptr);
+    } else if (drag_end_ap_item == nullptr) {
         // there's no available attachment point at the cursor (or there is one
         // but we can't use it because this pair of monomers already has that
         // type of connection), so we display the drag hint in a direction
@@ -699,7 +730,11 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragMove(
             clearDragEndAttachmentPointsLabels();
         }
         m_drag_end_monomer_item = hovered_monomer_item;
-        if (hovered_monomer_item != nullptr) {
+        // draw attachment points unless we're dragging from "pair" AP (in which
+        // case we can only form H-bonds, so we don't need numbered attachment
+        // points)
+        if (hovered_monomer_item != nullptr &&
+            m_drag_start_ap_model_name != H_BOND_AP_MODEL_NAME) {
             labelAttachmentPointsOnDragEndMonomer(
                 hovered_monomer_item->getAtom(), hovered_monomer_item);
         }
