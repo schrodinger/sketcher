@@ -89,10 +89,11 @@ SKETCHER_API UnboundMonomericAttachmentPointItem* get_default_attachment_point(
  * When adding a new monomer bound to an existing monomer, determine the
  * appropriate attach point to use for the new-monomer-end of the connection.
  */
-SKETCHER_API std::string
-get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
-                                     const std::string_view existing_monomer_ap,
-                                     const MonomerType new_monomer_type);
+SKETCHER_API std::string get_attachment_point_for_new_monomer(
+    const MonomerType existing_monomer_type,
+    const std::string_view existing_monomer_ap,
+    const MonomerType new_monomer_type,
+    const std::string_view new_monomer_res_name);
 
 /**
  * @return the monomer represented by the given graphics item, along with its

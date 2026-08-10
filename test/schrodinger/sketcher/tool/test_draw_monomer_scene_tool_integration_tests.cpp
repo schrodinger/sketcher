@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_monomer_type)
 }
 
 /**
- * Confirm that clicking on an unbounnd attachment point of an existing monomer
+ * Confirm that clicking on an unbound attachment point of an existing monomer
  * adds a new monomer via the clicked attachment point.
  */
 BOOST_AUTO_TEST_CASE(test_click_attachment_point)
@@ -82,12 +82,10 @@ BOOST_AUTO_TEST_CASE(test_click_attachment_point)
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{A}$$$$V2.0");
     auto monomer_pos = fix.getMonomerPos(0);
-    fix.setAminoAcidTool(AminoAcidTool::CYS);
-    // hover over the monomer to trigger AP label creation
-    fix.mouseMove(monomer_pos);
 
     // click on the N terminus attachment point
     fix.setAminoAcidTool(AminoAcidTool::CYS);
+    // hover over the monomer to trigger AP label creation
     fix.mouseMove(monomer_pos);
     auto n_ap_pos = fix.getAttachmentPointPos(0, "N");
     fix.mouseClick(n_ap_pos);
@@ -107,6 +105,63 @@ BOOST_AUTO_TEST_CASE(test_click_attachment_point)
     fix.mouseClick(x_ap_pos);
     fix.verifyHELM(
         "PEPTIDE1{C.A.F}|PEPTIDE2{W}$PEPTIDE1,PEPTIDE2,2:pair-1:pair$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on an ALA H-bond attachment point with a CYS tool
+ * forms a hydrogen bond, not a disulfide
+ */
+BOOST_AUTO_TEST_CASE(test_click_ala_pair_with_cys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto pair_ap_pos = fix.getAttachmentPointPos(0, "H-bond");
+    fix.mouseClick(pair_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{A}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a CYS R3 attachment point with an ALA tool
+ * forms a hydrogen bond, not a disulfide
+ */
+BOOST_AUTO_TEST_CASE(test_click_cys_r3_with_ala)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "S");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a CYS R3 attachment point with a CYS tool
+ * forms a disulfide
+ */
+BOOST_AUTO_TEST_CASE(test_click_cys_r3_with_cys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "S");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
 }
 
 /**
@@ -385,7 +440,7 @@ BOOST_AUTO_TEST_CASE(test_drag_second_custom_connection)
     // the drag should have added a new monomer with a side chain interaction
     // since we released over an invalid attachment point
     fix.verifyHELM("PEPTIDE1{C}|PEPTIDE2{C}|PEPTIDE3{F}$PEPTIDE1,PEPTIDE2,1:R2-"
-                   "1:R2|PEPTIDE1,PEPTIDE3,1:R3-1:R3$$$V2.0");
+                   "1:R2|PEPTIDE1,PEPTIDE3,1:pair-1:pair$$$V2.0");
 }
 
 /**

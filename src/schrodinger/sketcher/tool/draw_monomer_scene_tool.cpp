@@ -92,7 +92,8 @@ void DrawMonomerSceneTool::onLeftButtonClick(
             // default attachment point for this tool, so add a new monomer
             // bound to that attachment point
             auto new_monomer_ap_name = get_attachment_point_for_new_monomer(
-                monomer_type, clicked_ap->model_name, m_monomer_type);
+                monomer_type, clicked_ap->model_name, m_monomer_type,
+                m_res_name);
             auto new_pos = get_default_coords_for_bound_monomer(
                 monomer, clicked_ap->direction);
             // the attachment point labels won't be valid once the new monomer

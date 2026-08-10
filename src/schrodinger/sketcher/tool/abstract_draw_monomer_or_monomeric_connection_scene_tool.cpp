@@ -238,10 +238,11 @@ UnboundMonomericAttachmentPointItem* get_default_attachment_point(
     return nullptr;
 }
 
-std::string
-get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
-                                     const std::string_view existing_monomer_ap,
-                                     const MonomerType new_monomer_type)
+std::string get_attachment_point_for_new_monomer(
+    const MonomerType existing_monomer_type,
+    const std::string_view existing_monomer_ap,
+    const MonomerType new_monomer_type,
+    const std::string_view new_monomer_res_name)
 {
     switch (new_monomer_type) {
         case MonomerType::CHEM:
@@ -253,9 +254,13 @@ get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
                 } else if (existing_monomer_ap ==
                            ap_model_name_for(PeptideAP::C)) {
                     return ap_model_name_for(PeptideAP::N);
+                } else if (existing_monomer_ap ==
+                               ap_model_name_for(PeptideAP::S) &&
+                           new_monomer_res_name == CYS_RES_NAME) {
+                    return ap_model_name_for(PeptideAP::S);
                 }
             }
-            return ap_model_name_for(PeptideAP::S);
+            return H_BOND_AP_MODEL_NAME;
         case MonomerType::NA_BASE:
             if (existing_monomer_type == MonomerType::NA_SUGAR &&
                 existing_monomer_ap ==
@@ -344,7 +349,7 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
     // dragged from a C terminus), use that one
     auto ideal_ap_model_name = get_attachment_point_for_new_monomer(
         drag_start_monomer_type, m_drag_start_ap_model_name,
-        drag_end_monomer_type);
+        drag_end_monomer_type, drag_end_res_name);
     for (auto* ap_item : m_drag_end_unbound_ap_items) {
         if (ap_item->getAttachmentPoint().model_name == ideal_ap_model_name) {
             return ap_item;
@@ -565,7 +570,7 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
         rdkit_extensions::makeMonomer(m_res_name, chain_id, res_num, false);
     auto ap_model_name = get_attachment_point_for_new_monomer(
         start_monomer_info.monomer_type, start_monomer_info.ap_model_name,
-        m_monomer_type);
+        m_monomer_type, m_res_name);
     return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type, pos,
                                    ap_model_name, NEW_MONOMER_FROM_DRAG};
 }
