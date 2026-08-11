@@ -4826,15 +4826,19 @@ BOOST_AUTO_TEST_CASE(test_get_residue_number_for_new_monomer_peptide)
     BOOST_TEST(prev_peptide_num == 9u);
     BOOST_TEST(next_peptide_num == 11u);
 
-    // add a new amino acid so we can check what happens when the ideal residue
-    // numbers is already assigned to an existing monomer
+    // Add a new amino acid so we can check what happens when the ideal residue
+    // number is already assigned to an existing monomer. assignChains()
+    // normalizes the edited polymer's residue numbering.
     model.addBoundMonomer("C", ChainType::PEPTIDE, {1.0, 0.0, 0.0},
                           ap_model_name_for(PeptideAP::N), peptide,
                           ap_model_name_for(PeptideAP::C));
     peptide = model.getMol()->getAtomWithIdx(0);
+    BOOST_TEST(rdkit_extensions::get_residue_number(peptide) == 1u);
+    BOOST_TEST(rdkit_extensions::get_residue_number(
+                   model.getMol()->getAtomWithIdx(1)) == 2u);
     next_peptide_num = get_residue_number_for_new_monomer(
         "C", ChainType::PEPTIDE, ap_model_name_for(PeptideAP::N), peptide);
-    BOOST_TEST(next_peptide_num == 12u);
+    BOOST_TEST(next_peptide_num == 3u);
 }
 
 /**
