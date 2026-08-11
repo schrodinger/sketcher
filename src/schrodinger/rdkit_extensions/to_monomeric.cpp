@@ -1,5 +1,6 @@
 #include "schrodinger/rdkit_extensions/atomistic_conversions.h"
 
+#include <algorithm>
 #include <cassert>
 #include <chrono>
 #include <iterator>
@@ -1660,6 +1661,60 @@ int getAttchpt(const RDKit::Atom& monomer, const RDKit::Bond& bond,
     }
 }
 
+bool areSequentialResidues(const RDKit::Atom* monomer1,
+                           const RDKit::Atom* monomer2)
+{
+    if (get_polymer_id(monomer1) != get_polymer_id(monomer2)) {
+        return false;
+    }
+    auto residue_number1 = get_residue_number(monomer1);
+    auto residue_number2 = get_residue_number(monomer2);
+    return residue_number1 > residue_number2
+               ? residue_number1 - residue_number2 == 1
+               : residue_number2 - residue_number1 == 1;
+}
+
+bool hasMissingStructureMonomers(const RDKit::ROMol& monomer_mol,
+                                 const std::string& polymer_id)
+{
+    return std::ranges::any_of(monomer_mol.atoms(), [&](const auto* atom) {
+        return get_polymer_id(atom) == polymer_id &&
+               (atom->hasProp("MISSING_IN_STRUCTURE") ||
+                atom->hasProp("INCOMPLETE_IN_STRUCTURE"));
+    });
+}
+
+bool isCyclicConnection(const RDKit::ROMol& monomer_mol,
+                        const RDKit::Atom* begin_monomer,
+                        const RDKit::Atom* end_monomer)
+{
+    const auto polymer_id = get_polymer_id(begin_monomer);
+    if (polymer_id != get_polymer_id(end_monomer)) {
+        return false;
+    }
+
+    unsigned int first_residue = std::numeric_limits<unsigned int>::max();
+    unsigned int last_residue = 0;
+    unsigned int num_monomers = 0;
+    for (const auto* monomer : monomer_mol.atoms()) {
+        if (get_polymer_id(monomer) != polymer_id) {
+            continue;
+        }
+        auto residue_number = get_residue_number(monomer);
+        first_residue = std::min(first_residue, residue_number);
+        last_residue = std::max(last_residue, residue_number);
+        ++num_monomers;
+    }
+
+    if (num_monomers <= 2) {
+        return false;
+    }
+    auto begin_residue = get_residue_number(begin_monomer);
+    auto end_residue = get_residue_number(end_monomer);
+    return (begin_residue == first_residue && end_residue == last_residue) ||
+           (begin_residue == last_residue && end_residue == first_residue);
+}
+
 void detectLinkages(RDKit::RWMol& monomer_mol,
                     const RDKit::RWMol& atomistic_mol)
 {
@@ -1724,16 +1779,18 @@ void detectLinkages(RDKit::RWMol& monomer_mol,
             continue;
         }
 
-        bool sequential = ((begin_monomer_idx + 1) == end_monomer_idx) ||
-                          ((end_monomer_idx + 1) == begin_monomer_idx);
+        bool sequential = areSequentialResidues(begin_monomer, end_monomer);
         bool backbone = ((begin_attchpt == 2 && end_attchpt == 1) ||
                          (begin_attchpt == 1 && end_attchpt == 2));
-        unsigned int num_monomers = monomer_mol.getNumAtoms();
+        const auto same_polymer =
+            get_polymer_id(begin_monomer) == get_polymer_id(end_monomer);
+        const auto enforce_sequential_backbone =
+            same_polymer && hasMissingStructureMonomers(
+                                monomer_mol, get_polymer_id(begin_monomer));
         bool cyclic_connection =
-            (num_monomers > 2) &&
-            ((begin_monomer_idx == 0 && end_monomer_idx == num_monomers - 1) ||
-             (end_monomer_idx == 0 && begin_monomer_idx == num_monomers - 1));
-        if (backbone && !sequential && !cyclic_connection) {
+            isCyclicConnection(monomer_mol, begin_monomer, end_monomer);
+        if (enforce_sequential_backbone && backbone && !sequential &&
+            !cyclic_connection) {
             // R1-R2 for non sequential monomer residues that is not a cycle.
             // Indicates there were missing residues added between them.
             continue;

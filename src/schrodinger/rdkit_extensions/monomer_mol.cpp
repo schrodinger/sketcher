@@ -561,6 +561,115 @@ void setResidueNumber(RDKit::Atom* atom, int residue_number)
     residue_info->setResidueNumber(residue_number);
 }
 
+static void setPolymerId(RDKit::Atom* atom, std::string_view polymer_id)
+{
+    auto* residue_info =
+        static_cast<RDKit::AtomPDBResidueInfo*>(atom->getMonomerInfo());
+    if (residue_info == nullptr) {
+        throw std::runtime_error(
+            fmt::format("Atom {} does not have residue info", atom->getIdx()));
+    }
+    residue_info->setChainId(std::string{polymer_id});
+}
+
+static bool bondBelongsToPolymer(const RDKit::Bond* bond,
+                                 std::string_view polymer_id)
+{
+    auto begin_atom = bond->getBeginAtom();
+    auto end_atom = bond->getEndAtom();
+    return !is_dummy_atom(begin_atom) && !is_dummy_atom(end_atom) &&
+           get_polymer_id(begin_atom) == polymer_id &&
+           get_polymer_id(end_atom) == polymer_id;
+}
+
+static bool isResidueOrderingLinkage(const RDKit::Bond* bond)
+{
+    auto linkage = bond->getProp<std::string>(LINKAGE);
+    return linkage == BACKBONE_LINKAGE || linkage == BRANCH_LINKAGE;
+}
+
+static std::string getPolymerIdPrefix(const RDKit::Atom* atom)
+{
+    auto polymer_id = get_polymer_id(atom);
+    auto suffix_pos = polymer_id.find_first_of("0123456789");
+    return polymer_id.substr(0, suffix_pos);
+}
+
+static bool isCustomOnlyConnection(const RDKit::Bond* bond)
+{
+    std::string custom_bond;
+    return bond->getPropIfPresent<std::string>(CUSTOM_BOND, custom_bond) &&
+           custom_bond == bond->getProp<std::string>(LINKAGE);
+}
+
+static bool bondDefinesPolymerComponent(const RDKit::Bond* bond)
+{
+    auto begin_atom = bond->getBeginAtom();
+    auto end_atom = bond->getEndAtom();
+    if (is_dummy_atom(begin_atom) || is_dummy_atom(end_atom) ||
+        getPolymerIdPrefix(begin_atom) != getPolymerIdPrefix(end_atom) ||
+        isCustomOnlyConnection(bond)) {
+        return false;
+    }
+
+    auto linkage = bond->getProp<std::string>(LINKAGE);
+    if (linkage == BACKBONE_LINKAGE) {
+        return true;
+    } else if (linkage == BRANCH_LINKAGE) {
+        return get_polymer_id(begin_atom) == get_polymer_id(end_atom);
+    }
+    return false;
+}
+
+static void assignSequentialChainIds(RDKit::RWMol& monomer_mol)
+{
+    std::unordered_map<std::string, unsigned int> chain_type_counts;
+    std::vector<bool> visited(monomer_mol.getNumAtoms(), false);
+    for (auto atom : monomer_mol.atoms()) {
+        if (is_dummy_atom(atom) || visited[atom->getIdx()]) {
+            continue;
+        }
+
+        const auto chain_type = getPolymerIdPrefix(atom);
+        const auto polymer_id =
+            fmt::format("{}{}", chain_type, ++chain_type_counts[chain_type]);
+
+        std::vector<RDKit::Atom*> stack{atom};
+        std::vector<RDKit::Atom*> component;
+        visited[atom->getIdx()] = true;
+        while (!stack.empty()) {
+            auto current = stack.back();
+            stack.pop_back();
+            component.push_back(current);
+
+            for (const auto bond : monomer_mol.atomBonds(current)) {
+                auto other = bond->getOtherAtom(current);
+                if (is_dummy_atom(other) || visited[other->getIdx()] ||
+                    !bondDefinesPolymerComponent(bond)) {
+                    continue;
+                }
+                visited[other->getIdx()] = true;
+                stack.push_back(other);
+            }
+        }
+
+        for (auto component_atom : component) {
+            setPolymerId(component_atom, polymer_id);
+        }
+    }
+}
+
+static void renumberResidues(RDKit::RWMol& monomer_mol,
+                             std::string_view polymer_id)
+{
+    const auto chain = get_polymer(monomer_mol, polymer_id);
+    int residue_number = 1;
+    for (const auto atom_idx : chain.atoms) {
+        setResidueNumber(monomer_mol.getAtomWithIdx(atom_idx), residue_number);
+        ++residue_number;
+    }
+}
+
 bool isValidChain(const RDKit::RWMol& monomer_mol, std::string_view polymer_id)
 {
     // Check that the residue ordering is valid for this polymer. The residues
@@ -570,7 +679,8 @@ bool isValidChain(const RDKit::RWMol& monomer_mol, std::string_view polymer_id)
     for (size_t i = 1; i < chain.atoms.size(); ++i) {
         const auto bond =
             monomer_mol.getBondBetweenAtoms(last_residue, chain.atoms[i]);
-        if (bond == nullptr) {
+        if (bond == nullptr || !bondBelongsToPolymer(bond, polymer_id) ||
+            !isResidueOrderingLinkage(bond)) {
             return false;
         }
 
@@ -591,24 +701,36 @@ bool isValidChain(const RDKit::RWMol& monomer_mol, std::string_view polymer_id)
     return true;
 }
 
-RDKit::Atom* findChainBegin(RDKit::RWMol& monomer_mol)
+RDKit::Atom* findChainBegin(RDKit::RWMol& monomer_mol,
+                            std::string_view polymer_id)
 {
     // Find the beginning of the chain by starting at an arbirtary atom
     // and following the backbone backwards until the 'source' (beginning of the
     // chain) is found. If the beginning of the chain is in a cycle, then the
     // last discovered atom will be made the beginning of the chain.
+    RDKit::Atom* chain_begin = nullptr;
+    for (auto atom : monomer_mol.atoms()) {
+        if (!is_dummy_atom(atom) && get_polymer_id(atom) == polymer_id) {
+            chain_begin = atom;
+            break;
+        }
+    }
+    if (chain_begin == nullptr) {
+        throw std::runtime_error(
+            fmt::format("No monomers found for polymer {}", polymer_id));
+    }
+
     std::vector<bool> seen(monomer_mol.getNumAtoms(), 0);
-    auto chain_begin = monomer_mol.getAtomWithIdx(0);
     bool updated = true;
     while (updated) {
         updated = false;
         seen[chain_begin->getIdx()] = true;
         for (const auto bond : monomer_mol.atomBonds(chain_begin)) {
-            auto linkage = bond->getProp<std::string>(LINKAGE);
-            if (linkage == "R3-R3") {
-                // Don't cross cysteine bridges
+            auto other = bond->getOtherAtom(chain_begin);
+            if (!bondBelongsToPolymer(bond, polymer_id) ||
+                !isResidueOrderingLinkage(bond)) {
                 continue;
-            } else if (seen[bond->getOtherAtom(chain_begin)->getIdx()]) {
+            } else if (seen[other->getIdx()]) {
                 // this is a loop
                 continue;
             }
@@ -616,7 +738,6 @@ RDKit::Atom* findChainBegin(RDKit::RWMol& monomer_mol)
             // the direction of the chain. If this atom is the 'end' of the
             // bond, it is not the beginning of the chain, so follow the parent
             if (bond->getEndAtom() == chain_begin) {
-                auto other = bond->getOtherAtom(chain_begin);
                 chain_begin = other;
                 updated = true;
                 break;
@@ -626,13 +747,10 @@ RDKit::Atom* findChainBegin(RDKit::RWMol& monomer_mol)
     return chain_begin;
 }
 
-void orderResidues(RDKit::RWMol& monomer_mol)
+void orderResidues(RDKit::RWMol& monomer_mol, std::string_view polymer_id)
 {
-    // Currently assumes that all monomers are in the same chain. We will
-    // eventually want to order residues on a per-chain basis.
-
     // Find the beginning of the chain (must be a backbone monomer)
-    auto chain_begin = findChainBegin(monomer_mol);
+    auto chain_begin = findChainBegin(monomer_mol, polymer_id);
 
     // Now re-order the residues beginning at chain_begin
     std::vector<RDKit::Atom*> queue;
@@ -652,17 +770,20 @@ void orderResidues(RDKit::RWMol& monomer_mol)
         // ordering. For example: A.B(X)C should be ordered as A, B, X, C
         // instead of A, B, C, X
         for (const auto bond : monomer_mol.atomBonds(current)) {
-            if (bond->getEndAtom() == current ||
-                visited[bond->getOtherAtom(current)->getIdx()]) {
+            auto other = bond->getOtherAtom(current);
+            if (!bondBelongsToPolymer(bond, polymer_id) ||
+                !isResidueOrderingLinkage(bond) ||
+                bond->getEndAtom() == current || visited[other->getIdx()]) {
                 continue;
             }
             auto linkage = bond->getProp<std::string>(LINKAGE);
             if (linkage == BRANCH_LINKAGE) {
-                auto other = bond->getOtherAtom(current);
+                visited[other->getIdx()] = true;
                 setResidueNumber(other, current_res_idx);
                 ++current_res_idx;
             } else if (linkage == BACKBONE_LINKAGE) {
-                queue.push_back(bond->getOtherAtom(current));
+                visited[other->getIdx()] = true;
+                queue.push_back(other);
             }
         }
     }
@@ -672,10 +793,14 @@ void assignChains(RDKit::RWMol& monomer_mol)
 {
     monomer_mol.setProp("HELM_MODEL", true);
 
-    // Currently, orderResidues only works when there is a single chain
+    assignSequentialChainIds(monomer_mol);
+
     auto chain_ids = get_polymer_ids(monomer_mol);
-    if (chain_ids.size() == 1 && !isValidChain(monomer_mol, chain_ids[0])) {
-        orderResidues(monomer_mol);
+    for (const auto& chain_id : chain_ids) {
+        if (!isValidChain(monomer_mol, chain_id)) {
+            orderResidues(monomer_mol, chain_id);
+        }
+        renumberResidues(monomer_mol, chain_id);
     }
 
     // Determine and mark the 'connection bonds'
