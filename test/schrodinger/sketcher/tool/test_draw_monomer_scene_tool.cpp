@@ -76,8 +76,8 @@ struct TestMonomer {
 BOOST_AUTO_TEST_CASE(test_empty_list_returns_nullptr)
 {
     std::vector<UnboundMonomericAttachmentPointItem*> empty;
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::PEPTIDE, empty);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::PEPTIDE, "A", empty);
     BOOST_TEST(result == nullptr);
 }
 
@@ -90,8 +90,8 @@ BOOST_AUTO_TEST_CASE(test_chem_hovered_returns_min_num)
     auto* ap2 = monomer.makeAP(2);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap3, ap1, ap2};
 
-    auto* result = get_default_attachment_point(MonomerType::CHEM,
-                                                MonomerType::CHEM, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::CHEM, "LIG", MonomerType::CHEM, "LIG", items);
     BOOST_TEST(result == ap1);
 }
 
@@ -103,8 +103,8 @@ BOOST_AUTO_TEST_CASE(test_chem_hovered_prefers_numbered_over_custom_name)
     auto* ap2 = monomer.makeAP(2);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap_custom, ap2};
 
-    auto* result = get_default_attachment_point(MonomerType::CHEM,
-                                                MonomerType::CHEM, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::CHEM, "LIG", MonomerType::CHEM, "LIG", items);
     BOOST_TEST(result == ap2);
 
     // reverse the order of the attachment point list and make sure that we get
@@ -113,7 +113,7 @@ BOOST_AUTO_TEST_CASE(test_chem_hovered_prefers_numbered_over_custom_name)
                                                                      ap_custom};
 
     auto* result_reversed = get_default_attachment_point(
-        MonomerType::CHEM, MonomerType::CHEM, items_reversed);
+        MonomerType::CHEM, "LIG", MonomerType::CHEM, "LIG", items_reversed);
     BOOST_TEST(result_reversed == ap2);
 }
 
@@ -124,8 +124,8 @@ BOOST_AUTO_TEST_CASE(test_chem_hovered_returns_custom_name_when_only_option)
     auto* ap_custom = monomer.makeNamedAP("pair");
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap_custom};
 
-    auto* result = get_default_attachment_point(MonomerType::CHEM,
-                                                MonomerType::CHEM, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::CHEM, "LIG", MonomerType::CHEM, "LIG", items);
     BOOST_TEST(result == ap_custom);
 }
 
@@ -135,36 +135,76 @@ BOOST_AUTO_TEST_CASE(test_peptide_peptide_prefers_ap2)
     TestMonomer monomer("ALA", rdkit_extensions::ChainType::PEPTIDE);
     auto* ap1 = monomer.makeAP(1);
     auto* ap2 = monomer.makeAP(2);
-    auto* ap3 = monomer.makeAP(3);
-    std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2, ap3};
+    auto* ap_hbond = monomer.makeNamedAP("pair");
+    std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2, ap_hbond};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::PEPTIDE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::PEPTIDE, "A", items);
     BOOST_TEST(result == ap2);
 }
 
 /// PEPTIDE hovered + PEPTIDE tool: falls back to R1 when R2 is absent
 BOOST_AUTO_TEST_CASE(test_peptide_peptide_falls_back_to_ap1)
 {
-    TestMonomer monomer("ALA", rdkit_extensions::ChainType::PEPTIDE);
+    TestMonomer monomer("CYS", rdkit_extensions::ChainType::PEPTIDE);
     auto* ap1 = monomer.makeAP(1);
     auto* ap3 = monomer.makeAP(3);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap3};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::PEPTIDE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "C", MonomerType::PEPTIDE, "C", items);
     BOOST_TEST(result == ap1);
 }
 
-/// PEPTIDE hovered + PEPTIDE tool: falls back to R3 when R1 and R2 are absent
-BOOST_AUTO_TEST_CASE(test_peptide_peptide_falls_back_to_ap3)
+/// non-cysteine PEPTIDE hovered + non-cysteine PEPTIDE tool: default to H-bond
+/// when R1 and R2 are absent
+BOOST_AUTO_TEST_CASE(test_peptide_peptide_falls_back_to_hbond)
 {
     TestMonomer monomer("ALA", rdkit_extensions::ChainType::PEPTIDE);
+    auto* ap_hbond = monomer.makeNamedAP("pair");
+    std::vector<UnboundMonomericAttachmentPointItem*> items{ap_hbond};
+
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::PEPTIDE, "A", items);
+    BOOST_TEST(result == ap_hbond);
+}
+
+/// cysteine hovered + non-cysteine PEPTIDE tool: no default when R1 and R2 are
+/// absent
+BOOST_AUTO_TEST_CASE(cysteine_peptide_falls_back_to_hbond)
+{
+    TestMonomer monomer("CYS", rdkit_extensions::ChainType::PEPTIDE);
     auto* ap3 = monomer.makeAP(3);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap3};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::PEPTIDE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "C", MonomerType::PEPTIDE, "A", items);
+    BOOST_TEST(result == nullptr);
+}
+
+/// non-cysteine PEPTIDE hovered + cysteine PEPTIDE tool: default to H-bond when
+/// R1 and R2 are absent
+BOOST_AUTO_TEST_CASE(peptide_cysteine_falls_back_to_hbond)
+{
+    TestMonomer monomer("ALA", rdkit_extensions::ChainType::PEPTIDE);
+    auto* ap_hbond = monomer.makeNamedAP("pair");
+    std::vector<UnboundMonomericAttachmentPointItem*> items{ap_hbond};
+
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::PEPTIDE, "C", items);
+    BOOST_TEST(result == ap_hbond);
+}
+
+/// cysteine hovered + cysteine tool: default to disulfide bond when R1 and R2
+/// are absent
+BOOST_AUTO_TEST_CASE(test_cysteine_cysteine)
+{
+    TestMonomer monomer("CYS", rdkit_extensions::ChainType::PEPTIDE);
+    auto* ap3 = monomer.makeAP(3);
+    std::vector<UnboundMonomericAttachmentPointItem*> items{ap3};
+
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "C", MonomerType::PEPTIDE, "C", items);
     BOOST_TEST(result == ap3);
 }
 
@@ -175,23 +215,23 @@ BOOST_AUTO_TEST_CASE(test_peptide_peptide_returns_nullptr_when_no_preferred)
     auto* ap4 = monomer.makeAP(4);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap4};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::PEPTIDE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::PEPTIDE, "A", items);
     BOOST_TEST(result == nullptr);
 }
 
-/// PEPTIDE hovered + CHEM tool: returns R3
+/// cysteine hovered + CHEM tool: no default
 BOOST_AUTO_TEST_CASE(test_peptide_chem_returns_ap3)
 {
-    TestMonomer monomer("ALA", rdkit_extensions::ChainType::PEPTIDE);
+    TestMonomer monomer("CYS", rdkit_extensions::ChainType::PEPTIDE);
     auto* ap1 = monomer.makeAP(1);
     auto* ap2 = monomer.makeAP(2);
     auto* ap3 = monomer.makeAP(3);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2, ap3};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::CHEM, items);
-    BOOST_TEST(result == ap3);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "CYS", MonomerType::CHEM, "LIG", items);
+    BOOST_TEST(result == nullptr);
 }
 
 /// PEPTIDE hovered + CHEM tool: returns nullptr when R3 is absent
@@ -200,11 +240,12 @@ BOOST_AUTO_TEST_CASE(test_peptide_chem_returns_nullptr_when_no_ap3)
     TestMonomer monomer("ALA", rdkit_extensions::ChainType::PEPTIDE);
     auto* ap1 = monomer.makeAP(1);
     auto* ap2 = monomer.makeAP(2);
-    std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2};
+    auto* ap_hbond = monomer.makeNamedAP("pair");
+    std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2, ap_hbond};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::CHEM, items);
-    BOOST_TEST(result == nullptr);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::CHEM, "LIG", items);
+    BOOST_TEST(result == ap_hbond);
 }
 
 /// PEPTIDE hovered + unmatched tool type: returns nullptr
@@ -215,8 +256,8 @@ BOOST_AUTO_TEST_CASE(test_peptide_unmatched_tool_returns_nullptr)
     auto* ap2 = monomer.makeAP(2);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2};
 
-    auto* result = get_default_attachment_point(MonomerType::PEPTIDE,
-                                                MonomerType::NA_BASE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::PEPTIDE, "A", MonomerType::NA_BASE, "A", items);
     BOOST_TEST(result == nullptr);
 }
 
@@ -228,8 +269,8 @@ BOOST_AUTO_TEST_CASE(test_na_base_na_base_returns_pair)
     auto* ap_pair = monomer.makeNamedAP("pair");
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap_pair};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_BASE,
-                                                MonomerType::NA_BASE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_BASE, "A", MonomerType::NA_BASE, "A", items);
     BOOST_TEST(result == ap_pair);
 }
 
@@ -240,8 +281,8 @@ BOOST_AUTO_TEST_CASE(test_na_base_na_base_returns_nullptr_when_no_pair)
     auto* ap1 = monomer.makeAP(1);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_BASE,
-                                                MonomerType::NA_BASE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_BASE, "A", MonomerType::NA_BASE, "A", items);
     BOOST_TEST(result == nullptr);
 }
 
@@ -252,8 +293,8 @@ BOOST_AUTO_TEST_CASE(test_na_base_chem_returns_pair)
     auto* ap_pair = monomer.makeNamedAP("pair");
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap_pair};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_BASE,
-                                                MonomerType::CHEM, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_BASE, "A", MonomerType::CHEM, "LIG", items);
     BOOST_TEST(result == ap_pair);
 }
 
@@ -265,8 +306,8 @@ BOOST_AUTO_TEST_CASE(test_na_base_na_sugar_returns_ap1)
     auto* ap_pair = monomer.makeNamedAP("pair");
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap_pair, ap1};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_BASE,
-                                                MonomerType::NA_SUGAR, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_BASE, "A", MonomerType::NA_SUGAR, "R", items);
     BOOST_TEST(result == ap1);
 }
 
@@ -278,7 +319,7 @@ BOOST_AUTO_TEST_CASE(test_na_base_unmatched_tool_returns_nullptr)
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1};
 
     auto* result = get_default_attachment_point(
-        MonomerType::NA_BASE, MonomerType::NA_PHOSPHATE, items);
+        MonomerType::NA_BASE, "A", MonomerType::NA_PHOSPHATE, "P", items);
     BOOST_TEST(result == nullptr);
 }
 
@@ -291,8 +332,8 @@ BOOST_AUTO_TEST_CASE(test_na_sugar_na_base_returns_ap3)
     auto* ap3 = monomer.makeAP(3);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2, ap3};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_SUGAR,
-                                                MonomerType::NA_BASE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_SUGAR, "R", MonomerType::NA_BASE, "A", items);
     BOOST_TEST(result == ap3);
 }
 
@@ -305,7 +346,7 @@ BOOST_AUTO_TEST_CASE(test_na_sugar_na_phosphate_prefers_ap2)
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2};
 
     auto* result = get_default_attachment_point(
-        MonomerType::NA_SUGAR, MonomerType::NA_PHOSPHATE, items);
+        MonomerType::NA_SUGAR, "R", MonomerType::NA_PHOSPHATE, "P", items);
     BOOST_TEST(result == ap2);
 }
 
@@ -317,7 +358,7 @@ BOOST_AUTO_TEST_CASE(test_na_sugar_na_phosphate_falls_back_to_ap1)
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1};
 
     auto* result = get_default_attachment_point(
-        MonomerType::NA_SUGAR, MonomerType::NA_PHOSPHATE, items);
+        MonomerType::NA_SUGAR, "R", MonomerType::NA_PHOSPHATE, "P", items);
     BOOST_TEST(result == ap1);
 }
 
@@ -328,8 +369,8 @@ BOOST_AUTO_TEST_CASE(test_na_sugar_unmatched_tool_returns_nullptr)
     auto* ap1 = monomer.makeAP(1);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_SUGAR,
-                                                MonomerType::PEPTIDE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_SUGAR, "R", MonomerType::PEPTIDE, "A", items);
     BOOST_TEST(result == nullptr);
 }
 
@@ -341,8 +382,8 @@ BOOST_AUTO_TEST_CASE(test_na_phosphate_na_sugar_prefers_ap2)
     auto* ap2 = monomer.makeAP(2);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1, ap2};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_PHOSPHATE,
-                                                MonomerType::NA_SUGAR, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_PHOSPHATE, "P", MonomerType::NA_SUGAR, "R", items);
     BOOST_TEST(result == ap2);
 }
 
@@ -353,8 +394,8 @@ BOOST_AUTO_TEST_CASE(test_na_phosphate_na_sugar_falls_back_to_ap1)
     auto* ap1 = monomer.makeAP(1);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_PHOSPHATE,
-                                                MonomerType::NA_SUGAR, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_PHOSPHATE, "P", MonomerType::NA_SUGAR, "R", items);
     BOOST_TEST(result == ap1);
 }
 
@@ -365,60 +406,68 @@ BOOST_AUTO_TEST_CASE(test_na_phosphate_unmatched_tool_returns_nullptr)
     auto* ap1 = monomer.makeAP(1);
     std::vector<UnboundMonomericAttachmentPointItem*> items{ap1};
 
-    auto* result = get_default_attachment_point(MonomerType::NA_PHOSPHATE,
-                                                MonomerType::PEPTIDE, items);
+    auto* result = get_default_attachment_point(
+        MonomerType::NA_PHOSPHATE, "P", MonomerType::PEPTIDE, "A", items);
     BOOST_TEST(result == nullptr);
 }
 
 // clang-format off
-// Test data: (existing_monomer_type, existing_monomer_ap, new_monomer_type, expected_ap, description)
-const std::vector<std::tuple<MonomerType, std::string, MonomerType, std::string,
+// Test data: (existing_monomer_type, existing_monomer_ap, new_monomer_type, new_monomer_res_name, expected_ap, description)
+const std::vector<std::tuple<MonomerType, std::string, MonomerType, std::string, std::string,
                              std::string>>
     new_monomer_ap_test_data = {
         // CHEM always returns R1
-        {MonomerType::PEPTIDE, "R1", MonomerType::CHEM, "R1",
+        {MonomerType::PEPTIDE, "R1", MonomerType::CHEM, "LIG", "R1",
          "CHEM new monomer always returns R1"},
 
         // PEPTIDE onto PEPTIDE: R1 (N) -> R2 (C), R2 (C) -> R1 (N)
-        {MonomerType::PEPTIDE, "R1", MonomerType::PEPTIDE, "R2",
+        {MonomerType::PEPTIDE, "R1", MonomerType::PEPTIDE, "C", "R2",
          "PEPTIDE from PEPTIDE R1 returns R2"},
-        {MonomerType::PEPTIDE, "R2", MonomerType::PEPTIDE, "R1",
+        {MonomerType::PEPTIDE, "R2", MonomerType::PEPTIDE, "C", "R1",
          "PEPTIDE from PEPTIDE R2 returns R1"},
-        // PEPTIDE onto PEPTIDE: non-backbone AP falls through to sidechain
-        {MonomerType::PEPTIDE, "R3", MonomerType::PEPTIDE, "R3",
-         "PEPTIDE from PEPTIDE R3 returns R3 (sidechain)"},
+        // cysteine onto cysteine: form a disulfide
+        {MonomerType::PEPTIDE, "R3", MonomerType::PEPTIDE, "C", "R3",
+         "cysteine from cysteine R3 returns R3 (disulfide bond)"},
+        // cysteine onto non-cysteine: form a hydrogen bond
+        {MonomerType::PEPTIDE, "R3", MonomerType::PEPTIDE, "A", "pair",
+         "non-cysteine from cysteine R3 returns pair (hydrogen bond)"},
+        // non-cysteine onto cysteine: form a hydrogen bond
+        {MonomerType::PEPTIDE, "pair", MonomerType::PEPTIDE, "C", "pair",
+         "cysteine from non-cysteine pair returns pair (hydrogen bond)"},
         // PEPTIDE onto non-PEPTIDE: falls through to sidechain
-        {MonomerType::CHEM, "R1", MonomerType::PEPTIDE, "R3",
-         "PEPTIDE from CHEM returns R3 (sidechain)"},
+        {MonomerType::CHEM, "R1", MonomerType::PEPTIDE, "C", "pair",
+         "cysteine from CHEM returns pair"},
+        {MonomerType::CHEM, "R1", MonomerType::PEPTIDE, "A", "pair",
+         "non-cysteine PEPTIDE from CHEM returns pair"},
 
         // NA_BASE onto NA_SUGAR R3 (1') -> R1 (N1/9)
-        {MonomerType::NA_SUGAR, "R3", MonomerType::NA_BASE, "R1",
+        {MonomerType::NA_SUGAR, "R3", MonomerType::NA_BASE, "A", "R1",
          "NA_BASE from NA_SUGAR R3 returns R1"},
         // NA_BASE onto NA_SUGAR with non-matching AP -> pair
-        {MonomerType::NA_SUGAR, "R1", MonomerType::NA_BASE, "pair",
+        {MonomerType::NA_SUGAR, "R1", MonomerType::NA_BASE, "A", "pair",
          "NA_BASE from NA_SUGAR R1 returns pair"},
         // NA_BASE onto non-NA_SUGAR -> pair
-        {MonomerType::PEPTIDE, "R1", MonomerType::NA_BASE, "pair",
+        {MonomerType::PEPTIDE, "R1", MonomerType::NA_BASE, "A", "pair",
          "NA_BASE from PEPTIDE returns pair"},
 
         // NA_SUGAR onto NA_PHOSPHATE R1 (to_prev) -> R2 (3')
-        {MonomerType::NA_PHOSPHATE, "R1", MonomerType::NA_SUGAR, "R2",
+        {MonomerType::NA_PHOSPHATE, "R1", MonomerType::NA_SUGAR, "R", "R2",
          "NA_SUGAR from NA_PHOSPHATE R1 returns R2"},
         // NA_SUGAR onto NA_PHOSPHATE R2 (to_next) -> R1 (5')
-        {MonomerType::NA_PHOSPHATE, "R2", MonomerType::NA_SUGAR, "R1",
+        {MonomerType::NA_PHOSPHATE, "R2", MonomerType::NA_SUGAR, "R", "R1",
          "NA_SUGAR from NA_PHOSPHATE R2 returns R1"},
         // NA_SUGAR onto non-NA_PHOSPHATE -> R3 (1')
-        {MonomerType::NA_BASE, "R1", MonomerType::NA_SUGAR, "R3",
+        {MonomerType::NA_BASE, "R1", MonomerType::NA_SUGAR, "R", "R3",
          "NA_SUGAR from NA_BASE returns R3 (1')"},
 
         // NA_PHOSPHATE onto NA_SUGAR R2 (3') -> R1 (to_prev)
-        {MonomerType::NA_SUGAR, "R2", MonomerType::NA_PHOSPHATE, "R1",
+        {MonomerType::NA_SUGAR, "R2", MonomerType::NA_PHOSPHATE, "P", "R1",
          "NA_PHOSPHATE from NA_SUGAR R2 returns R1"},
         // NA_PHOSPHATE onto NA_SUGAR with non-matching AP -> R2 (to_next)
-        {MonomerType::NA_SUGAR, "R1", MonomerType::NA_PHOSPHATE, "R2",
+        {MonomerType::NA_SUGAR, "R1", MonomerType::NA_PHOSPHATE, "P", "R2",
          "NA_PHOSPHATE from NA_SUGAR R1 returns R2"},
         // NA_PHOSPHATE onto non-NA_SUGAR -> R2 (to_next)
-        {MonomerType::PEPTIDE, "R1", MonomerType::NA_PHOSPHATE, "R2",
+        {MonomerType::PEPTIDE, "R1", MonomerType::NA_PHOSPHATE, "P", "R2",
          "NA_PHOSPHATE from PEPTIDE returns R2"},
 };
 // clang-format on
@@ -426,10 +475,12 @@ const std::vector<std::tuple<MonomerType, std::string, MonomerType, std::string,
 BOOST_DATA_TEST_CASE(test_get_attachment_point_for_new_monomer,
                      bdata::make(new_monomer_ap_test_data),
                      existing_monomer_type, existing_monomer_ap,
-                     new_monomer_type, expected_ap, description)
+                     new_monomer_type, new_monomer_res_name, expected_ap,
+                     description)
 {
     auto result = get_attachment_point_for_new_monomer(
-        existing_monomer_type, existing_monomer_ap, new_monomer_type);
+        existing_monomer_type, existing_monomer_ap, new_monomer_type,
+        new_monomer_res_name);
     BOOST_CHECK_MESSAGE(result == expected_ap,
                         description << ": expected " << expected_ap << ", got "
                                     << result);

@@ -45,7 +45,7 @@ enum class ConnectorType {
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, SIDECHAIN = 3 };
+enum { N = 1, C = 2, S = 3 };
 }
 
 namespace NASugarAP
@@ -61,6 +61,8 @@ enum { TO_PREV_SUGAR = 1, TO_NEXT_SUGAR = 2 };
 constexpr int NA_BASE_AP_N1_9 = 1;
 const std::string H_BOND_AP_MODEL_NAME = "pair";
 const std::string H_BOND_DISPLAY_NAME = "H-bond";
+
+const std::string CYS_RES_NAME = "C";
 
 /**
  * Convert any of the above attachment point enums (or NA_BASE_AP_N1_9) to the

@@ -71,23 +71,29 @@ constexpr int NEW_MONOMER_FROM_INVALID_DRAG = -2;
  * Return the default unbound attachment point; that is, the attachment point
  * that should be selected when the user hovers over a monomer.
  * @param hovered_type The type of monomer being hovered over
+ * @param hovered_res_name The residue name of monomer being hovered over. Used
+ * to determine whether we can form a disulfide bond.
  * @param tool_type  The type of monomer that would be drawn by the active scene
  * tool
+ * @param tool_res_name The residue name of monomer from the active scene tool.
+ * Used to determine whether we can form a disulfide bond.
  * @param unbound_ap_items A list of all graphics items representing unbound
  * attachment points of the hovered monomer
  */
 SKETCHER_API UnboundMonomericAttachmentPointItem* get_default_attachment_point(
-    const MonomerType hovered_type, const MonomerType tool_type,
+    const MonomerType hovered_type, const std::string& hovered_res_name,
+    const MonomerType tool_type, const std::string& tool_res_name,
     const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items);
 
 /**
  * When adding a new monomer bound to an existing monomer, determine the
  * appropriate attach point to use for the new-monomer-end of the connection.
  */
-SKETCHER_API std::string
-get_attachment_point_for_new_monomer(const MonomerType existing_monomer_type,
-                                     const std::string_view existing_monomer_ap,
-                                     const MonomerType new_monomer_type);
+SKETCHER_API std::string get_attachment_point_for_new_monomer(
+    const MonomerType existing_monomer_type,
+    const std::string_view existing_monomer_ap,
+    const MonomerType new_monomer_type,
+    const std::string_view new_monomer_res_name);
 
 /**
  * @return the monomer represented by the given graphics item, along with its
