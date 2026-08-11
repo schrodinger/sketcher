@@ -209,9 +209,9 @@ void validateAttachmentPointWithDB(
         if (!monomerSmilesHasAttachmentPoint(*smiles, attachment_point)) {
             fmt::format_to(
                 std::back_inserter(errors),
-                "'{}' attachment point in residue='{}' within "
-                "polymer='{}' is not supported by the monomer database \n",
-                attachment_point, get_residue_number(monomer),
+                "'{}' attachment point does not exist for monomer='{}' "
+                "residue='{}' within polymer='{}' in the monomer database \n",
+                attachment_point, monomer_id, get_residue_number(monomer),
                 get_polymer_id(monomer));
         }
     }
