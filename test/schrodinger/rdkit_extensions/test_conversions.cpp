@@ -294,6 +294,21 @@ BOOST_DATA_TEST_CASE(TestRoundtripHelmPDBResidueInfo,
     BOOST_TEST(helm_result == test_data);
 }
 
+BOOST_AUTO_TEST_CASE(TestCyclicPolymerWithMissingMonomerInAnotherPolymer)
+{
+    auto monomer_mol = to_rdkit(
+        "PEPTIDE1{A.A.A.A}|PEPTIDE2{A.A}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0");
+    auto atomistic_mol = toAtomistic(*monomer_mol);
+    atomistic_mol->setProp("SEQRES",
+                           R"({"A":["A","A","A","A"],"B":["A","A","A"]})");
+
+    auto roundtrip_monomer_mol = toMonomeric(*atomistic_mol);
+
+    BOOST_TEST(
+        to_string(*roundtrip_monomer_mol, Format::HELM) ==
+        "PEPTIDE1{A.A.A.A}|PEPTIDE2{A.A.A}$PEPTIDE1,PEPTIDE1,4:R2-1:R1$$$V2.0");
+}
+
 BOOST_DATA_TEST_CASE(TestRoundtripSupGroups,
                      bdata::make(ROUNDTRIP_HELM_TEST_SET), test_data)
 {
@@ -381,21 +396,23 @@ BOOST_DATA_TEST_CASE(
          "PEPTIDE1{E.E.I.Q.D.V.S.G.T.W.Y.L.K.A.M.T.V.D.V.G.A.L.R.C.L.A.G.S.V.I."
          "P.T.T.L.T.T.L.E.G.G.N.L.E.A.K.V.T.M.H.I.K.G.R.S.Q.E.V.K.A.V.L.S.K.T."
          "D.E.P.G.I.Y.T.A.I.G.G.I.H.V.A.K.I.G.R.S.H.V.K.D.H.Y.I.F.Y.S.E.G.C.L."
-         "S.G.V.P.V.P.G.V.W.L.V.[CCCCCC[C@H]1C[C@H]1CCCCCCCCCC(O)O.[*:1]]}|"
-         "PEPTIDE2{V.S.G.T.W.Y.L.K.A.M.T.V.D.V.G.A.L.R.C.L.A.G.S.V.I.P.T.T.L.T."
-         "T.N.L.E.A.K.V.T.E.V.K.A.V.L.S.K.T.D.E.P.G.I.Y.T.A.I.G.G.I.H.V.A.K.I."
-         "G.R.S.D.H.Y.I.F.Y.S.E.G.C.L.S.G.V.P.V.P.G.V.W.L.V.[CCCCCC[C@H]1C[C@H]"
-         "1CCCCCCCCCC(O)O.[*:1]]}|PEPTIDE3{E.V.V.K.F.M.D.V.Y.Q.R.S.Y.C.H.P.I.E."
-         "T.L.V.D.I.F.Q.E.Y.P.D.E.I.E.Y.I.F.K.P.S.C.V.P.L.M.R.C.G.G.C.C.N.D.E."
-         "G.L.E.C.V.P.T.E.E.S.N.I.T.M.Q.I.M.R.I.K.P.H.Q.G.Q.H.I.G.E.M.S.F.L.Q."
-         "H.N.K.C.E.C.R.P.K.K.[OS(O)(O)O.[*:1].[*:2]].[OS(O)(O)O.[*:1]]}|"
-         "PEPTIDE4{H.E.V.V.K.F.M.D.V.Y.Q.R.S.Y.C.H.P.I.E.T.L.V.D.I.F.Q.E.Y.P.D."
+         "S.G.V.P.V.P.G.V.W.L.V}|PEPTIDE2{[CCCCCC[C@H]1C[C@H]1CCCCCCCCCC(O)O.[*"
+         ":1]]}|PEPTIDE3{V.S.G.T.W.Y.L.K.A.M.T.V.D.V.G.A.L.R.C.L.A.G.S.V.I.P.T."
+         "T.L.T.T}|PEPTIDE4{N.L.E.A.K.V.T}|PEPTIDE5{E.V.K.A.V.L.S.K.T.D.E.P.G."
+         "I.Y.T.A.I.G.G.I.H.V.A.K.I.G.R.S}|PEPTIDE6{D.H.Y.I.F.Y.S.E.G.C.L.S.G."
+         "V.P.V.P.G.V.W.L.V}|PEPTIDE7{[CCCCCC[C@H]1C[C@H]1CCCCCCCCCC(O)O.[*:1]]"
+         "}|PEPTIDE8{E.V.V.K.F.M.D.V.Y.Q.R.S.Y.C.H.P.I.E.T.L.V.D.I.F.Q.E.Y.P.D."
          "E.I.E.Y.I.F.K.P.S.C.V.P.L.M.R.C.G.G.C.C.N.D.E.G.L.E.C.V.P.T.E.E.S.N."
-         "I.T.M.Q.I.M.R.I.K.P.H.Q.G.Q.H.I.G.E.M.S.F.L.Q.H.N.K.C.E.C.R.P.[OS(O)("
-         "O)O.[*:1].[*:2]].[CC(O)O.[*:1]]}$PEPTIDE1,PEPTIDE1,24:R3-97:R3|"
-         "PEPTIDE3,PEPTIDE4,39:R3-49:R3|PEPTIDE3,PEPTIDE3,45:R3-90:R3|PEPTIDE3,"
-         "PEPTIDE4,48:R3-40:R3|PEPTIDE3,PEPTIDE3,49:R3-92:R3|PEPTIDE4,PEPTIDE4,"
-         "46:R3-91:R3|PEPTIDE4,PEPTIDE4,50:R3-93:R3$$$V2.0"},
+         "I.T.M.Q.I.M.R.I.K.P.H.Q.G.Q.H.I.G.E.M.S.F.L.Q.H.N.K.C.E.C.R.P.K.K}|"
+         "PEPTIDE9{[OS(O)(O)O.[*:1]]}|PEPTIDE10{[OS(O)(O)O.[*:1]]}|PEPTIDE11{H."
+         "E.V.V.K.F.M.D.V.Y.Q.R.S.Y.C.H.P.I.E.T.L.V.D.I.F.Q.E.Y.P.D.E.I.E.Y.I."
+         "F.K.P.S.C.V.P.L.M.R.C.G.G.C.C.N.D.E.G.L.E.C.V.P.T.E.E.S.N.I.T.M.Q.I."
+         "M.R.I.K.P.H.Q.G.Q.H.I.G.E.M.S.F.L.Q.H.N.K.C.E.C.R.P}|PEPTIDE12{[OS(O)"
+         "(O)O.[*:1]]}|PEPTIDE13{[CC(O)O.[*:1]]}$PEPTIDE1,PEPTIDE1,24:R3-97:R3|"
+         "PEPTIDE8,PEPTIDE11,39:R3-49:R3|PEPTIDE8,PEPTIDE8,45:R3-90:R3|"
+         "PEPTIDE8,PEPTIDE11,48:R3-40:R3|PEPTIDE8,PEPTIDE8,49:R3-92:R3|"
+         "PEPTIDE11,PEPTIDE11,46:R3-91:R3|PEPTIDE11,PEPTIDE11,50:R3-93:R3|"
+         "PEPTIDE3,PEPTIDE6,19:R3-10:R3$$$V2.0"},
         {"5vav.pdb", "PEPTIDE1{G.R.C.T.Q.A.W.P.P.I.C.F.P.D}$PEPTIDE1,PEPTIDE1,"
                      "3:R3-11:R3|PEPTIDE1,PEPTIDE1,14:R2-1:R1$$$V2.0"},
         {"shared_11152.mae",
