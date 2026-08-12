@@ -1231,6 +1231,19 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
      <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
       <widget class="QToolButton" name="covalent_or_disulfide_btn">
        <property name="minimumSize">
         <size>
@@ -1254,6 +1267,12 @@
         <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/monomeric_connection.svg</normaloff>:/icons/monomeric_connection.svg</iconset>
        </property>
+       <property name="iconSize">
+        <size>
+         <width>30</width>
+         <height>32</height>
+        </size>
+       </property>
        <property name="checkable">
         <bool>true</bool>
        </property>
@@ -1261,6 +1280,19 @@
         <string notr="true">monomeric_connection_group</string>
        </attribute>
       </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
      </item>
      <item>
       <widget class="QToolButton" name="hbond_btn">
@@ -1285,6 +1317,12 @@
        <property name="icon">
         <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/monomeric_hbond.svg</normaloff>:/icons/monomeric_hbond.svg</iconset>
+       </property>
+       <property name="iconSize">
+        <size>
+         <width>30</width>
+         <height>32</height>
+        </size>
        </property>
        <property name="checkable">
         <bool>true</bool>
