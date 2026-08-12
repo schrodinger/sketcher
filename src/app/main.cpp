@@ -311,13 +311,6 @@ EMSCRIPTEN_BINDINGS(sketcher)
 
 void apply_stylesheet(QApplication& app)
 {
-    // In Qt 6.8 and newer, Qt will try to automatically apply a dark mode color
-    // scheme if the system and/or browser is set to dark mode. The result looks
-    // terrible, so switch back to light mode.
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-    QApplication::styleHints()->setColorScheme(Qt::ColorScheme::Light);
-#endif
-
     QFile styleFile(":resources/schrodinger_livedesign.qss");
     bool success = styleFile.open(QFile::ReadOnly);
     if (!success) {
@@ -338,6 +331,13 @@ int main(int argc, char** argv)
     Q_INIT_RESOURCE(sketcher);
 #endif
     QApplication::setWindowIcon(QIcon(":icons/sketcher-logo.svg"));
+
+    // In Qt 6.8 and newer, Qt will try to automatically apply a dark mode color
+    // scheme if the system and/or web browser is set to dark mode. The result
+    // looks terrible, so switch back to light mode.
+#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
+    QApplication::styleHints()->setColorScheme(Qt::ColorScheme::Light);
+#endif
 
 #ifdef __EMSCRIPTEN__
     // Only apply this stylesheet for the WASM build
