@@ -7,8 +7,11 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
 
+#include <QGraphicsRectItem>
+
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
@@ -113,7 +116,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
         exp_bound = {{"R2", "C", 2, atom1, false, Direction::E},
-                     {"R3", "S", 3, atom2, false, Direction::N}};
+                     {"R3", "S", 3, atom2, false, Direction::E}};
         exp_available = {{"R1", "N", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -129,7 +132,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom2);
         exp_bound = {{"R1", "N", 1, atom1, false, Direction::W},
-                     {"R3", "S", 3, atom0, false, Direction::N}};
+                     {"R3", "S", 3, atom0, false, Direction::W}};
         exp_available = {{"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -146,7 +149,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
         exp_bound = {{"R2", "C", 2, atom1, false, Direction::E},
-                     {"R3", "S", 3, atom1, true, Direction::N}};
+                     {"R3", "S", 3, atom1, true, Direction::E}};
         exp_available = {{"R1", "N", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -154,7 +157,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom1);
         exp_bound = {{"R1", "N", 1, atom0, false, Direction::W},
-                     {"R3", "S", 3, atom0, true, Direction::N}};
+                     {"R3", "S", 3, atom0, true, Direction::W}};
         exp_available = {{"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -395,6 +398,33 @@ BOOST_AUTO_TEST_CASE(test_get_first_available_chain_name)
     BOOST_TEST(get_first_available_chain_name(*mol, ChainType::RNA) == "RNA3");
     BOOST_TEST(get_first_available_chain_name(*mol, ChainType::PEPTIDE) ==
                "PEPTIDE1");
+}
+
+BOOST_AUTO_TEST_CASE(test_monomer_arrowhead_offset_faces_bound_monomer)
+{
+    QGraphicsRectItem monomer(-10.0, -5.0, 20.0, 10.0);
+    monomer.setPos(100.0, 100.0);
+
+    const auto right_offset =
+        get_monomer_arrowhead_offset(monomer, QPointF(200.0, 100.0));
+    BOOST_TEST(right_offset.x() == monomer.boundingRect().right() +
+                                       MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+               boost::test_tools::tolerance(0.001));
+    BOOST_TEST(right_offset.y() == 0.0, boost::test_tools::tolerance(0.001));
+
+    const auto left_offset =
+        get_monomer_arrowhead_offset(monomer, QPointF(0.0, 100.0));
+    BOOST_TEST(left_offset.x() == monomer.boundingRect().left() -
+                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+               boost::test_tools::tolerance(0.001));
+    BOOST_TEST(left_offset.y() == 0.0, boost::test_tools::tolerance(0.001));
+
+    const auto bottom_offset =
+        get_monomer_arrowhead_offset(monomer, QPointF(100.0, 200.0));
+    BOOST_TEST(bottom_offset.x() == 0.0, boost::test_tools::tolerance(0.001));
+    BOOST_TEST(bottom_offset.y() == monomer.boundingRect().bottom() +
+                                        MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+               boost::test_tools::tolerance(0.001));
 }
 
 } // namespace sketcher

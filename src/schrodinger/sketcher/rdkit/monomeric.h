@@ -189,12 +189,13 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
 
 /**
  * For a monomer connector being drawn with a diamond arrowhead, determine the
- * distance between the center of the monomer and the center of the arrowhead.
+ * offset from the center of the monomer to the center of the arrowhead. The
+ * arrowhead is placed just outside the edge facing the bound monomer.
  * @param monomer_item the graphics item for the monomer
  * @param bound_coords the Scene coordinates for the other monomer involved in
  * the bond
  */
-SKETCHER_API qreal get_monomer_arrowhead_offset(
+SKETCHER_API QPointF get_monomer_arrowhead_offset(
     const QGraphicsItem& monomer_item, const QPointF& bound_coords);
 
 /**

@@ -10,6 +10,7 @@
 #include <boost/range/join.hpp>
 
 #include <QGraphicsItem>
+#include <QLineF>
 #include <QPointF>
 
 #include <fmt/core.h>
@@ -220,24 +221,24 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
     }
 }
 
-/**
- * Return true if coord is above (within a 45 degree cone of) other
- */
-static bool is_coord_above_the_other(const QPointF& coord, const QPointF& other)
+QPointF get_monomer_arrowhead_offset(const QGraphicsItem& monomer_item,
+                                     const QPointF& bound_coords)
 {
-    return coord.y() < other.y() &&
-           qFabs(coord.x() - other.x()) < qFabs(coord.y() - other.y());
-}
-
-qreal get_monomer_arrowhead_offset(const QGraphicsItem& monomer_item,
-                                   const QPointF& bound_coords)
-{
-    auto offset = monomer_item.boundingRect().height() / 2 +
-                  MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
-    if (is_coord_above_the_other(monomer_item.pos(), bound_coords)) {
-        offset *= -1;
+    auto line = QLineF(QPointF(), bound_coords - monomer_item.pos());
+    if (qFuzzyIsNull(line.length())) {
+        return {};
     }
-    return offset;
+
+    const auto rect = monomer_item.boundingRect();
+    line.setLength(2 * (rect.width() + rect.height()));
+    QPointF intersection;
+    if (!intersection_of_line_and_rect(line, rect, intersection)) {
+        return {};
+    }
+
+    line.setLength(QLineF(QPointF(), intersection).length() +
+                   MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+    return line.p2();
 }
 
 int ap_name_to_num(const std::string_view attachment_point_name)
@@ -322,21 +323,8 @@ static Direction get_bound_attachment_point_cardinal_direction(
     auto monomer_coords = conf.getAtomPos(monomer->getIdx());
     auto bound_monomer_coords = conf.getAtomPos(bound_monomer->getIdx());
 
-    auto* bond =
-        mol.getBondBetweenAtoms(monomer->getIdx(), bound_monomer->getIdx());
-    auto [is_arrowhead_at_bond_beginning, is_arrowhead_at_bond_end] =
-        does_connector_have_arrowheads(bond, is_secondary_connection);
-    bool is_start_atom = bond->getBeginAtom() == monomer;
-    bool is_arrowhead = is_start_atom ? is_arrowhead_at_bond_beginning
-                                      : is_arrowhead_at_bond_end;
-    if (is_arrowhead) {
-        bool is_above = is_coord_above_the_other(
-            to_scene_xy(monomer_coords), to_scene_xy(bound_monomer_coords));
-        return is_above ? Direction::S : Direction::N;
-    } else {
-        auto relative_pos = bound_monomer_coords - monomer_coords;
-        return cardinal_direction_for_point(relative_pos);
-    }
+    auto relative_pos = bound_monomer_coords - monomer_coords;
+    return cardinal_direction_for_point(relative_pos);
 }
 
 /**
