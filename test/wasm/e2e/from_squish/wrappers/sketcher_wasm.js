@@ -43,11 +43,21 @@ async function showMouseMarker(page, x, y) {
         });
         document.body.append(marker);
       }
+      marker.style.display = 'block';
       marker.style.left = `${left}px`;
       marker.style.top = `${top}px`;
     },
     { left: x, top: y },
   );
+}
+
+/** Hide the optional marker before a canvas visual checkpoint. */
+export async function hideMouseMarker(page) {
+  if (process.env.PLAYWRIGHT_SHOW_MOUSE !== '1') return;
+  await page.evaluate(() => {
+    const marker = document.getElementById('playwright-mouse-marker');
+    if (marker) marker.style.display = 'none';
+  });
 }
 
 /** Move the pointer before pressing and releasing a mouse button. */

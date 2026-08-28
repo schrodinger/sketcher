@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { Sketcher } from '../wrappers/sketcher.js';
+import { hideMouseMarker } from '../wrappers/sketcher_wasm.js';
 
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 const CLIPBOARD_LIMITATION =
@@ -20,6 +21,7 @@ async function requireRenderedGeometryBridge(page) {
 
 async function checkpoint(page, name) {
   await page.mouse.move(0, 0);
+  await hideMouseMarker(page);
   const replaySuffix = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1' ? '-replay' : '';
   await expect(page.locator('#screen canvas')).toHaveScreenshot(`${name}${replaySuffix}.png`);
 }
