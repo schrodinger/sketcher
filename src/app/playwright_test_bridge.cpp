@@ -230,12 +230,11 @@ MenuGeometryCache& menu_geometry_cache(SketcherWidget& sketcher)
 
 QGraphicsView& require_view(SketcherWidget& sketcher)
 {
-    return dynamic_cast<QGraphicsView&>(require_visible_widget(sketcher,
-                                                                "view"));
+    return dynamic_cast<QGraphicsView&>(
+        require_visible_widget(sketcher, "view"));
 }
 
-std::string scene_item_rect(SketcherWidget& sketcher,
-                            const QGraphicsItem& item)
+std::string scene_item_rect(SketcherWidget& sketcher, const QGraphicsItem& item)
 {
     auto& view = require_view(sketcher);
     const auto viewport_rect =
@@ -318,9 +317,8 @@ std::string get_atom_rect(SketcherWidget& sketcher, const int atom_index)
 {
     for (auto* item : require_view(sketcher).scene()->items()) {
         auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
-        if (atom_item &&
-            static_cast<int>(atom_item->getAtom()->getIdx()) + 1 ==
-                atom_index) {
+        if (atom_item && static_cast<int>(atom_item->getAtom()->getIdx()) + 1 ==
+                             atom_index) {
             return scene_item_rect(sketcher, *atom_item);
         }
     }
@@ -331,9 +329,8 @@ std::string get_bond_rect(SketcherWidget& sketcher, const int bond_index)
 {
     for (auto* item : require_view(sketcher).scene()->items()) {
         auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
-        if (bond_item &&
-            static_cast<int>(bond_item->getBond()->getIdx()) + 1 ==
-                bond_index) {
+        if (bond_item && static_cast<int>(bond_item->getBond()->getIdx()) + 1 ==
+                             bond_index) {
             return scene_item_rect(sketcher, *bond_item);
         }
     }
