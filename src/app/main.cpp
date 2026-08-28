@@ -279,6 +279,14 @@ EMSCRIPTEN_BINDINGS(sketcher)
             return schrodinger::sketcher::playwright_test_bridge::
                 get_menu_action_rect(get_sketcher_instance(), name_or_text);
         });
+    emscripten::function("_sketcher_get_atom_rect", +[](const int atom_index) {
+        return schrodinger::sketcher::playwright_test_bridge::get_atom_rect(
+            get_sketcher_instance(), atom_index);
+    });
+    emscripten::function("_sketcher_get_bond_rect", +[](const int bond_index) {
+        return schrodinger::sketcher::playwright_test_bridge::get_bond_rect(
+            get_sketcher_instance(), bond_index);
+    });
     emscripten::function(
         "_sketcher_clipboard_text",
         &schrodinger::sketcher::playwright_test_bridge::clipboard_text);

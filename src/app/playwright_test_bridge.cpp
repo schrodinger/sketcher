@@ -15,6 +15,7 @@
 #include <QClipboard>
 #include <QComboBox>
 #include <QEvent>
+#include <QGraphicsView>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLineEdit>
@@ -32,6 +33,11 @@
 #endif
 
 #include "schrodinger/sketcher/sketcher_widget.h"
+#include "schrodinger/sketcher/molviewer/atom_item.h"
+#include "schrodinger/sketcher/molviewer/bond_item.h"
+
+#include <GraphMol/Atom.h>
+#include <GraphMol/Bond.h>
 
 namespace schrodinger::sketcher::playwright_test_bridge
 {
@@ -221,6 +227,23 @@ MenuGeometryCache& menu_geometry_cache(SketcherWidget& sketcher)
     static auto cache = std::make_unique<MenuGeometryCache>(sketcher);
     return *cache;
 }
+
+QGraphicsView& require_view(SketcherWidget& sketcher)
+{
+    return dynamic_cast<QGraphicsView&>(require_visible_widget(sketcher,
+                                                                "view"));
+}
+
+std::string scene_item_rect(SketcherWidget& sketcher,
+                            const QGraphicsItem& item)
+{
+    auto& view = require_view(sketcher);
+    const auto viewport_rect =
+        view.mapFromScene(item.sceneBoundingRect()).boundingRect();
+    const auto top_left =
+        view.viewport()->mapTo(&sketcher, viewport_rect.topLeft());
+    return rect_to_json(top_left, viewport_rect);
+}
 } // namespace
 
 void click_button(SketcherWidget& sketcher, const std::string& object_name)
@@ -289,6 +312,32 @@ std::string get_menu_action_rect(SketcherWidget& sketcher,
                                  const std::string& object_name_or_text)
 {
     return menu_geometry_cache(sketcher).action_rect(object_name_or_text);
+}
+
+std::string get_atom_rect(SketcherWidget& sketcher, const int atom_index)
+{
+    for (auto* item : require_view(sketcher).scene()->items()) {
+        auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
+        if (atom_item &&
+            static_cast<int>(atom_item->getAtom()->getIdx()) + 1 ==
+                atom_index) {
+            return scene_item_rect(sketcher, *atom_item);
+        }
+    }
+    return "{}";
+}
+
+std::string get_bond_rect(SketcherWidget& sketcher, const int bond_index)
+{
+    for (auto* item : require_view(sketcher).scene()->items()) {
+        auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
+        if (bond_item &&
+            static_cast<int>(bond_item->getBond()->getIdx()) + 1 ==
+                bond_index) {
+            return scene_item_rect(sketcher, *bond_item);
+        }
+    }
+    return "{}";
 }
 
 std::string clipboard_text()
