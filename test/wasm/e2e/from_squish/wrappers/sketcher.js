@@ -13,6 +13,7 @@ import {
   drawingAreaCenter,
   exportText,
   focusCanvas,
+  isEmpty,
   loadStructureForTest,
   mouseClick,
   mouseDrag,
@@ -146,6 +147,7 @@ export class Sketcher {
   constructor(page) {
     this.page = page;
     this.rebuild_structures = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1';
+    this.replay_tool = null;
   }
 
   async open() {
@@ -162,6 +164,8 @@ export class Sketcher {
     if (!rebuild) return;
     const structure = await this.get_structure_information();
     await this.click_button('clear');
+    await this.wait_for_empty_structure();
+    this.replay_tool = null;
     await this.build_structure(structure, { sort });
   }
 
@@ -170,14 +174,44 @@ export class Sketcher {
     return sketcherCoordinates(parseV3000Structure(await exportText(this.page, 'MDL_MOLV3000')));
   }
 
+  /** Wait only until Qt/WASM has rendered the preceding visible gesture. */
+  async wait_for_rendered_object(type, index) {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const functionName = type === 'atom' ? '_sketcher_get_atom_rect' : '_sketcher_get_bond_rect';
+      const rect = await this.page.evaluate(
+        ({ name, itemIndex }) => JSON.parse(Module[name](itemIndex)),
+        { name: functionName, itemIndex: index },
+      );
+      if (rect?.width !== undefined) return;
+      await this.page.waitForTimeout(10);
+    }
+    throw new Error(`Timed out waiting for rendered ${type}: ${index}`);
+  }
+
+  async wait_for_empty_structure() {
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      if (await isEmpty(this.page)) return;
+      await this.page.waitForTimeout(10);
+    }
+    throw new Error('Timed out waiting for Clear to empty the structure');
+  }
+
+  /** Match Squish click_tool(): do not re-click an already active sticky tool. */
+  async select_replay_tool(tool, widgetName) {
+    if (this.replay_tool === tool) return;
+    await clickWidget(this.page, widgetName);
+    this.replay_tool = tool;
+  }
+
   /** Draw an atom at the coordinate produced by the source Squish wrapper. */
-  async add_to_sketcher(x, y, element = 'C', charge = 0) {
+  async add_to_sketcher(x, y, element = 'C', charge = 0, atomCount = null) {
     const tool = TOOL_NAMES[element];
     if (!tool) throw new Error(`Visible structure replay does not yet support element: ${element}`);
     const center = await drawingAreaCenter(this.page);
     const point = { x: center.x + x, y: center.y - y };
-    await this.click_tool(element);
+    await this.select_replay_tool(element, tool);
     await mouseClick(this.page, point.x, point.y);
+    if (atomCount !== null) await this.wait_for_rendered_object('atom', atomCount);
     const chargeTool = charge > 0 ? 'increase_charge_btn' : 'decrease_charge_btn';
     for (let click = 0; click < Math.abs(charge); click += 1) {
       await clickWidget(this.page, chargeTool);
@@ -186,7 +220,7 @@ export class Sketcher {
   }
 
   /** Draw a source V3000 bond with the corresponding visible bond tool. */
-  async add_bond(bond, atomsByIndex) {
+  async add_bond(bond, atomsByIndex, bondCount = null) {
     if (bond.order !== 1 && bond.order !== 2) {
       throw new Error(`Visible structure replay does not yet support bond order: ${bond.order}`);
     }
@@ -195,13 +229,23 @@ export class Sketcher {
     if (!first || !second) throw new Error(`Bond ${bond.index} refers to a missing atom`);
     // bond_order_btn's active/default tool is Double Bond. Opening its popup
     // is only necessary for non-default orders such as Triple Bond.
-    await clickWidget(this.page, BOND_TOOL_NAMES[bond.order]);
+    await this.select_replay_tool(`bond-${bond.order}`, BOND_TOOL_NAMES[bond.order]);
     const center = await drawingAreaCenter(this.page);
+    let start = first;
+    let end = second;
+    // Exact Molviewer workaround from Squish add_bond (SKETCH-2333).
+    if (second.element === 'O') {
+      start = { ...second, x: second.x - 20 };
+      end = first;
+    } else if (first.element === 'O') {
+      end = { ...second, x: second.x - 20 };
+    }
     await mouseDrag(
       this.page,
-      { x: center.x + first.x, y: center.y - first.y },
-      { x: center.x + second.x, y: center.y - second.y },
+      { x: center.x + start.x, y: center.y - start.y },
+      { x: center.x + end.x, y: center.y - end.y },
     );
+    if (bondCount !== null) await this.wait_for_rendered_object('bond', bondCount);
   }
 
   /** Browser equivalent of Squish build_structure(..., sort=True/False). */
@@ -212,12 +256,13 @@ export class Sketcher {
       atoms.sort((first, second) => first.element.localeCompare(second.element));
       bonds.sort((first, second) => first.order - second.order);
     }
-    for (const atom of atoms) {
-      await this.add_to_sketcher(atom.x, atom.y, atom.element, atom.charge);
+    for (let position = 0; position < atoms.length; position += 1) {
+      const atom = atoms[position];
+      await this.add_to_sketcher(atom.x, atom.y, atom.element, atom.charge, position + 1);
     }
     const atomsByIndex = new Map(structure.atoms.map((atom) => [atom.index, atom]));
-    for (const bond of bonds) {
-      await this.add_bond(bond, atomsByIndex);
+    for (let position = 0; position < bonds.length; position += 1) {
+      await this.add_bond(bonds[position], atomsByIndex, position + 1);
     }
   }
 
