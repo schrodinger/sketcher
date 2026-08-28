@@ -150,8 +150,8 @@ class MenuGeometryCache final : public QObject
         // out a cascading submenu.  The event-time cache is useful for
         // publishing diagnostics, but must not be trusted for an interaction:
         // find the action in the menu currently visible on screen instead.
-        for (auto* top_level : qApp->topLevelWidgets()) {
-            const auto* menu = qobject_cast<QMenu*>(top_level);
+        for (auto* widget : QApplication::allWidgets()) {
+            const auto* menu = qobject_cast<QMenu*>(widget);
             if (!menu || !menu->isVisible()) {
                 continue;
             }
