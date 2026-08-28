@@ -18,12 +18,45 @@ export async function focusCanvas(page) {
   await page.locator('#screen canvas').focus();
 }
 
+/** Show a test-only cursor marker when PLAYWRIGHT_SHOW_MOUSE=1. */
+async function showMouseMarker(page, x, y) {
+  if (process.env.PLAYWRIGHT_SHOW_MOUSE !== '1') return;
+  await page.evaluate(
+    ({ left, top }) => {
+      let marker = document.getElementById('playwright-mouse-marker');
+      if (!marker) {
+        marker = document.createElement('div');
+        marker.id = 'playwright-mouse-marker';
+        Object.assign(marker.style, {
+          background: 'rgba(255, 45, 45, 0.28)',
+          border: '2px solid #ff2d2d',
+          borderRadius: '50%',
+          boxSizing: 'border-box',
+          height: '18px',
+          left: '0',
+          pointerEvents: 'none',
+          position: 'fixed',
+          top: '0',
+          transform: 'translate(-50%, -50%)',
+          width: '18px',
+          zIndex: '2147483647',
+        });
+        document.body.append(marker);
+      }
+      marker.style.left = `${left}px`;
+      marker.style.top = `${top}px`;
+    },
+    { left: x, top: y },
+  );
+}
+
 /** Move the pointer before pressing and releasing a mouse button. */
 export async function mouseClick(page, x, y, { button = 'left', modifiers = [] } = {}) {
   for (const modifier of modifiers) {
     await page.keyboard.down(modifier);
   }
   try {
+    await showMouseMarker(page, x, y);
     await page.mouse.move(x, y, { steps: 4 });
     await page.mouse.down({ button });
     await page.waitForTimeout(25);
@@ -46,9 +79,16 @@ export async function mouseDrag(
     await page.keyboard.down(modifier);
   }
   try {
+    await showMouseMarker(page, start.x, start.y);
     await page.mouse.move(start.x, start.y, { steps: 4 });
     await page.mouse.down({ button });
-    await page.mouse.move(end.x, end.y, { steps });
+    for (let step = 1; step <= steps; step += 1) {
+      const progress = step / steps;
+      const x = start.x + (end.x - start.x) * progress;
+      const y = start.y + (end.y - start.y) * progress;
+      await showMouseMarker(page, x, y);
+      await page.mouse.move(x, y);
+    }
     await page.mouse.up({ button });
   } finally {
     for (const modifier of [...modifiers].reverse()) {
