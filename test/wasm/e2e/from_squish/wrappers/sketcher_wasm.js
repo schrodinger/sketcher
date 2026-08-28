@@ -152,6 +152,18 @@ export async function importText(page, text) {
   await mouseClick(page, buttonBox.x + buttonBox.width * 0.75, buttonBox.y + buttonBox.height / 2);
 }
 
+/**
+ * Load a structure as fixture setup, bypassing the import dialog.
+ *
+ * This is intentionally not an assertion of the user-facing Import flow.
+ * Tests that cover Import must call importText() above; all other suites can
+ * start from deterministic application state without introducing dialog
+ * behavior as an unrelated dependency.
+ */
+export async function loadStructureForTest(page, text) {
+  await page.evaluate((value) => Module.sketcher_import_text(value), text);
+}
+
 /** @param {import('@playwright/test').Page} page @param {string} format */
 export async function exportText(page, format = 'SMILES') {
   return page.evaluate((name) => Module.sketcher_export_text(Module.Format[name]), format);
