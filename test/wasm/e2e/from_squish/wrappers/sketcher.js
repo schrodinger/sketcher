@@ -148,6 +148,7 @@ export class Sketcher {
     this.page = page;
     this.rebuild_structures = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1';
     this.replay_tool = null;
+    this.current_tool = null;
     this.replay_atom_indices = new Map();
     this.replay_bond_indices = new Map();
   }
@@ -278,12 +279,17 @@ export class Sketcher {
   async click_button(object_name) {
     const widgetName = BUTTON_NAMES[object_name] || object_name;
     await clickWidget(this.page, widgetName);
+    if (object_name === 'clear') this.current_tool = null;
   }
 
   /** Equivalent to Squish `click_tool(tool, click_and_hold=False)`. */
   async click_tool(tool, _click_and_hold = false) {
+    // Squish tracks sticky tools and avoids re-clicking the current tool.
+    // In particular, repeated rect_btn clicks interrupt Shift-add selection.
+    if (this.current_tool === tool) return;
     const widgetName = TOOL_NAMES[tool] || tool;
     await clickWidget(this.page, widgetName);
+    this.current_tool = tool;
   }
 
   /** Equivalent to Squish `more_actions_menu(button1, button2=None)`. */
