@@ -7,6 +7,7 @@ import {
   loadStructureForTest,
   mouseDrag,
   openSketcher,
+  widgetState,
 } from '../wrappers/sketcher_wasm.js';
 
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
@@ -42,5 +43,32 @@ test.describe('ported tst_move_mode and tst_select_mode_active_selection', () =>
     await expect.poll(() => exportText(page)).not.toBe('');
     await page.mouse.move(0, 0);
     await expect(page.locator('#screen canvas')).toHaveScreenshot('move-selected-structure.png');
+  });
+
+  test('rectangle selection enables and clears selection actions', async ({ page }) => {
+    // Squish tst_select_mode_no_selection verifies these controls are disabled
+    // before any selection exists.
+    expect((await widgetState(page, 'clear_selection_btn')).enabled).toBe(false);
+    expect((await widgetState(page, 'invert_selection_btn')).enabled).toBe(false);
+
+    await clickWidget(page, 'select_tool_btn');
+    const center = await drawingAreaCenter(page);
+    await mouseDrag(
+      page,
+      { x: center.x - 250, y: center.y - 180 },
+      { x: center.x + 250, y: center.y + 180 },
+    );
+
+    await expect
+      .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
+      .toBe(true);
+    expect((await widgetState(page, 'invert_selection_btn')).enabled).toBe(true);
+    await page.mouse.move(0, 0);
+    await expect(page.locator('#screen canvas')).toHaveScreenshot('rectangle-selection.png');
+
+    await clickWidget(page, 'clear_selection_btn');
+    await expect
+      .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
+      .toBe(false);
   });
 });
