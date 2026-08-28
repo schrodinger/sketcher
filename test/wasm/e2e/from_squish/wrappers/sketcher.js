@@ -7,6 +7,7 @@
  * implemented with real browser input.
  */
 import {
+  clipboardText,
   clickMenuAction,
   clickWidget,
   drawingAreaCenter,
@@ -34,6 +35,7 @@ const TOOL_NAMES = {
 const MORE_ACTION_NAMES = {
   add_explicit_hydrogens: 'Add Explicit Hydrogens',
   clear_selection: 'Clear Selection',
+  copy_all_as: 'Copy All As',
   copy_all: 'Copy All',
   cut: 'Cut',
   fit_to_screen: 'Fit to Screen',
@@ -45,6 +47,15 @@ const MORE_ACTION_NAMES = {
   remove_explicit_hydrogens: 'Remove Explicit Hydrogens',
   select_all: 'Select All',
   undo: 'Undo',
+};
+
+const COPY_ALL_AS_NAMES = {
+  cxsmi: 'Extended SMILES',
+  inchikey: 'InChIKey',
+  inchi: 'InChI',
+  pdb: 'PDB',
+  sdf: 'MDL SD V3000',
+  smi: 'SMILES',
 };
 
 /** Browser equivalent of the source Squish `Sketcher` class. */
@@ -86,7 +97,20 @@ export class Sketcher {
       await clickMenuAction(this.page, MORE_ACTION_NAMES[button2] || button2);
       return;
     }
+    if (button1 === 'copy_all_as') {
+      await clickMenuAction(this.page, MORE_ACTION_NAMES[button1]);
+      if (button2 === null) {
+        return;
+      }
+      await clickMenuAction(this.page, COPY_ALL_AS_NAMES[button2] || button2);
+      return;
+    }
     await clickMenuAction(this.page, MORE_ACTION_NAMES[button1] || button1);
+  }
+
+  /** Equivalent to Squish `getClipboardText()` after Copy/Cut actions. */
+  async clipboard_text() {
+    return clipboardText(this.page);
   }
 
   /** Equivalent to Squish `type_text("sketcher_area", "<Ctrl+X>")`. */
