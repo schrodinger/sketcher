@@ -145,6 +145,28 @@ class MenuGeometryCache final : public QObject
 
     std::string action_rect(const std::string& object_name_or_text) const
     {
+        const auto query = QString::fromStdString(object_name_or_text);
+        // A menu may first be shown at a provisional location while Qt lays
+        // out a cascading submenu.  The event-time cache is useful for
+        // publishing diagnostics, but must not be trusted for an interaction:
+        // find the action in the menu currently visible on screen instead.
+        for (auto* top_level : qApp->topLevelWidgets()) {
+            const auto* menu = qobject_cast<QMenu*>(top_level);
+            if (!menu || !menu->isVisible()) {
+                continue;
+            }
+            for (auto* action : menu->actions()) {
+                if (action->objectName() != query && action->text() != query) {
+                    continue;
+                }
+                const QRect action_rect = menu->actionGeometry(action);
+                if (!action_rect.isEmpty()) {
+                    return rect_to_json(
+                        menu->mapTo(&m_sketcher, action_rect.topLeft()),
+                        action_rect);
+                }
+            }
+        }
         const auto result = m_action_rects.find(object_name_or_text);
         return result == m_action_rects.end() ? "{}" : result->second;
     }

@@ -162,7 +162,10 @@ export async function menuActionRect(page, objectNameOrText) {
   let rect;
   try {
     rect = await page.waitForFunction(
-      (name) => window.__sketcherPlaywrightMenuRects?.[name],
+      async (name) => {
+        const value = JSON.parse(await Module._sketcher_get_menu_action_rect(name));
+        return value?.width === undefined ? null : value;
+      },
       objectNameOrText,
       { timeout: 5000 },
     );
