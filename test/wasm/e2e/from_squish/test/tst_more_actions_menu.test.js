@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { Sketcher } from '../wrappers/sketcher.js';
 
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
+const CLIPBOARD_LIMITATION =
+  'Qt/WASM does not expose application clipboard contents to the browser.';
 
 async function requireRenderedGeometryBridge(page) {
   const available = await page.evaluate(
@@ -25,104 +27,75 @@ async function selectSourceAtomsAndBonds(sk) {
   }
 }
 
-async function setupSourceSelection(sk) {
-  await sk.load_structure_for_test(SOURCE_STRUCTURE);
-  await selectSourceAtomsAndBonds(sk);
-}
-
 test.describe('tst_more_actions_menu', () => {
-  test.beforeEach(async ({ page }) => {
+  test('main', async ({ page }, testInfo) => {
     const sk = new Sketcher(page);
     await sk.open();
     await requireRenderedGeometryBridge(page);
 
     // Source setup is Import -> Paste in Text, then Clear -> build_structure.
-    // The standalone Paste in Text dialog is an explicit WASM limitation, so
-    // this fixture loader is setup only and not Import-menu coverage.
+    // The standalone Paste in Text dialog is covered by its own suite; fixture
+    // setup here only establishes the same deterministic starting structure.
     await sk.load_structure_for_test(SOURCE_STRUCTURE);
-  });
-
-  test('add_hydrogens_ignores_selection', async ({ page }) => {
-    const sk = new Sketcher(page);
     await selectSourceAtomsAndBonds(sk);
-    await sk.more_actions_menu('modify_all', 'add_explicit_hydrogens');
-    await checkpoint(page, 'add_hydrogens_ignores_selection');
-    await sk.click_button('undo');
-  });
 
-  test('Ctrl_X_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await selectSourceAtomsAndBonds(sk);
-    await sk.type_text('sketcher_area', '<Ctrl+X>');
-    await checkpoint(page, 'Ctrl_X_hotkey');
-  });
+    await test.step('add_hydrogens_ignores_selection', async () => {
+      await sk.more_actions_menu('modify_all', 'add_explicit_hydrogens');
+      await checkpoint(page, 'add_hydrogens_ignores_selection');
+      await sk.click_button('undo');
+    });
+    await test.step('Ctrl_X_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+X>');
+      await checkpoint(page, 'Ctrl_X_hotkey');
+    });
 
-  test('Ctrl_V_hotkey', async () => {
-    test.skip(
-      true,
-      'Qt/WASM does not receive browser-delivered Ctrl+V; menu Paste remains covered separately.',
-    );
-  });
-
-  test('Ctrl_A_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    // This is the source state immediately after Ctrl+V.  Browser Ctrl+V is
-    // unavailable to Qt/WASM, so fixture setup replaces only that transition.
+    // Browser-delivered Ctrl+V never reaches the Qt/WASM application. Clear
+    // normally, then restore the exact post-paste source state as a fixture.
+    await sk.click_button('clear');
+    testInfo.annotations.push({
+      type: 'WASM limitation',
+      description: 'Ctrl_V_hotkey: browser Ctrl+V does not reach Qt/WASM.',
+    });
     await sk.load_structure_for_test(SOURCE_STRUCTURE);
-    await sk.type_text('sketcher_area', '<Ctrl+A>');
-    await checkpoint(page, 'Ctrl_A_hotkey');
-  });
 
-  test('Ctrl_Z_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await setupSourceSelection(sk);
-    await sk.type_text('sketcher_area', '<Ctrl+X>');
-    await sk.type_text('sketcher_area', '<Ctrl+Z>');
-    await checkpoint(page, 'Ctrl_Z_hotkey');
-  });
+    await test.step('Ctrl_A_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+A>');
+      await checkpoint(page, 'Ctrl_A_hotkey');
+    });
+    await test.step('Ctrl_Z_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+Z>');
+      await checkpoint(page, 'Ctrl_Z_hotkey');
+    });
+    await test.step('Ctrl_Shift_Z_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+Shift+Z>');
+      await checkpoint(page, 'Ctrl_Shift_Z_hotkey');
+    });
+    await test.step('Ctrl_D_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+D>');
+      await checkpoint(page, 'Ctrl_D_hotkey');
+    });
 
-  test('Ctrl_Shift_Z_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await setupSourceSelection(sk);
-    await sk.type_text('sketcher_area', '<Ctrl+X>');
-    await sk.type_text('sketcher_area', '<Ctrl+Z>');
-    await sk.type_text('sketcher_area', '<Ctrl+Shift+Z>');
-    await checkpoint(page, 'Ctrl_Shift_Z_hotkey');
-  });
+    // This is the source's second import -> rebuild -> selection setup.
+    await sk.load_structure_for_test(SOURCE_STRUCTURE);
+    await selectSourceAtomsAndBonds(sk);
 
-  test('Ctrl_D_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await setupSourceSelection(sk);
-    await sk.type_text('sketcher_area', '<Ctrl+X>');
-    await sk.type_text('sketcher_area', '<Ctrl+Z>');
-    await sk.type_text('sketcher_area', '<Ctrl+Shift+Z>');
-    await sk.type_text('sketcher_area', '<Ctrl+D>');
-    await checkpoint(page, 'Ctrl_D_hotkey');
-  });
-
-  test('Ctrl_I_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await setupSourceSelection(sk);
-    await sk.type_text('sketcher_area', '<Ctrl+I>');
-    await checkpoint(page, 'Ctrl_I_hotkey');
-  });
-
-  test('Ctrl_C_hotkey', async () => {
-    test.skip(true, 'Qt/WASM does not expose application clipboard contents to the browser.');
-  });
-
-  test('Ctrl_F_hotkey', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await setupSourceSelection(sk);
-    await sk.click_button('clear_selection');
-    await sk.mouse_drag(0, 0, 100, 100, null, 'right');
-    await sk.type_text('sketcher_area', '<Ctrl+F>');
-    await checkpoint(page, 'Ctrl_F_hotkey');
-  });
-
-  test('more_actions_menu', async ({ page }) => {
-    const sk = new Sketcher(page);
-    await setupSourceSelection(sk);
+    await test.step('Ctrl_I_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+I>');
+      await checkpoint(page, 'Ctrl_I_hotkey');
+    });
+    await test.step('Ctrl_C_hotkey', async () => {
+      await sk.type_text('sketcher_area', '<Ctrl+C>');
+      testInfo.annotations.push({
+        type: 'WASM limitation',
+        description: `Ctrl_C_hotkey: ${CLIPBOARD_LIMITATION}`,
+      });
+    });
+    await test.step('Ctrl_F_hotkey', async () => {
+      await sk.click_button('clear_selection');
+      await sk.mouse_drag(0, 0, 100, 100, null, 'right');
+      await sk.type_text('sketcher_area', '<Ctrl+F>');
+      await checkpoint(page, 'Ctrl_F_hotkey');
+    });
 
     for (const action of [
       'flip_horizontal',
@@ -130,21 +103,21 @@ test.describe('tst_more_actions_menu', () => {
       'add_explicit_hydrogens',
       'remove_explicit_hydrogens',
     ]) {
-      await sk.more_actions_menu('modify_all', action);
-      await checkpoint(page, action);
+      await test.step(action, async () => {
+        await sk.more_actions_menu('modify_all', action);
+        await checkpoint(page, action);
+      });
     }
 
-    // In the standalone build, Modify All retains the prior selection and
-    // presents "Copy As".  The source then invokes "Copy All As", so clear
-    // that retained selection with the real UI before its whole-structure
-    // export block.
-    await sk.click_button('clear_selection');
     for (const format of ['sdf', 'smi', 'cxsmi', 'inchi', 'inchikey', 'pdb']) {
-      await sk.more_actions_menu('copy_all_as', format);
-      // Squish records getClipboardText() here.  Qt/WASM performs the real
-      // menu click, but its QApplication clipboard is not browser-readable;
-      // see the explicit skipped clipboard-reference case below.
+      await test.step(format, async () => {
+        await sk.more_actions_menu('copy_all_as', format);
+      });
     }
+    testInfo.annotations.push({
+      type: 'WASM limitation',
+      description: `Copy All As text references: ${CLIPBOARD_LIMITATION}`,
+    });
 
     // Keep this stateful order identical to the source buttons_list.
     for (const [action, reference] of [
@@ -160,14 +133,16 @@ test.describe('tst_more_actions_menu', () => {
       ['undo', null],
       ['redo', 'redo'],
     ]) {
-      await sk.more_actions_menu(action);
-      if (reference === null) {
-        // These are clipboard-only Squish references.  The menu actions are
-        // still exercised with real mouse input, but text verification is
-        // unavailable in Qt/WASM.
-      } else {
-        await checkpoint(page, reference);
-      }
+      await test.step(action, async () => {
+        await sk.more_actions_menu(action);
+        if (reference !== null) {
+          await checkpoint(page, reference);
+        }
+      });
     }
+    testInfo.annotations.push({
+      type: 'WASM limitation',
+      description: `Copy All, Cut, and Undo text references: ${CLIPBOARD_LIMITATION}`,
+    });
   });
 });
