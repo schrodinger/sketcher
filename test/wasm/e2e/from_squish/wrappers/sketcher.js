@@ -148,6 +148,8 @@ export class Sketcher {
     this.page = page;
     this.rebuild_structures = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1';
     this.replay_tool = null;
+    this.replay_atom_indices = new Map();
+    this.replay_bond_indices = new Map();
   }
 
   async open() {
@@ -166,6 +168,8 @@ export class Sketcher {
     await this.click_button('clear');
     await this.wait_for_empty_structure();
     this.replay_tool = null;
+    this.replay_atom_indices.clear();
+    this.replay_bond_indices.clear();
     await this.build_structure(structure, { sort });
   }
 
@@ -259,10 +263,14 @@ export class Sketcher {
     for (let position = 0; position < atoms.length; position += 1) {
       const atom = atoms[position];
       await this.add_to_sketcher(atom.x, atom.y, atom.element, atom.charge, position + 1);
+      // Source atom numbers remain stable even when build_structure(sort=True)
+      // changes visible creation order.
+      this.replay_atom_indices.set(atom.index, position + 1);
     }
     const atomsByIndex = new Map(structure.atoms.map((atom) => [atom.index, atom]));
     for (let position = 0; position < bonds.length; position += 1) {
       await this.add_bond(bonds[position], atomsByIndex, position + 1);
+      this.replay_bond_indices.set(bonds[position].index, position + 1);
     }
   }
 
@@ -350,7 +358,8 @@ export class Sketcher {
   /** Equivalent to Squish `click_atom(atom, select=False, modifier=None)`. */
   async click_atom(atom, select = false, modifier = null) {
     if (select) await this.click_tool('rect_btn');
-    const rect = await this.rendered_object_rect('atom', atom);
+    const renderedIndex = this.replay_atom_indices.get(atom) || atom;
+    const rect = await this.rendered_object_rect('atom', renderedIndex);
     await mouseClick(this.page, rect.x + rect.width / 2, rect.y + rect.height / 2, {
       modifiers: modifier === 'shift' ? ['Shift'] : modifier === 'control' ? ['Control'] : [],
     });
@@ -359,7 +368,8 @@ export class Sketcher {
   /** Equivalent to Squish `click_bond(bond, select=False, modifier=None)`. */
   async click_bond(bond, select = false, modifier = null) {
     if (select) await this.click_tool('rect_btn');
-    const rect = await this.rendered_object_rect('bond', bond);
+    const renderedIndex = this.replay_bond_indices.get(bond) || bond;
+    const rect = await this.rendered_object_rect('bond', renderedIndex);
     await mouseClick(this.page, rect.x + rect.width / 2, rect.y + rect.height / 2, {
       modifiers: modifier === 'shift' ? ['Shift'] : modifier === 'control' ? ['Control'] : [],
     });
