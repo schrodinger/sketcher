@@ -12,6 +12,7 @@ import {
   drawingAreaCenter,
   focusCanvas,
   loadStructureForTest,
+  mouseClick,
   mouseDrag,
   openSketcher,
 } from './sketcher_wasm.js';
@@ -111,5 +112,40 @@ export class Sketcher {
       { x: center.x + x + dx, y: center.y + y + dy },
       { button: click, modifiers },
     );
+  }
+
+  /**
+   * Return a rendered atom/bond rectangle in the canvas coordinate system.
+   * The isolated C++ bridge maps the live QGraphicsItem through QGraphicsView;
+   * this avoids the fragile SDF-coordinate-to-pixel calculation in Squish.
+   */
+  async rendered_object_rect(type, index) {
+    const functionName = type === 'atom' ? '_sketcher_get_atom_rect' : '_sketcher_get_bond_rect';
+    const rect = await this.page.evaluate(
+      ({ name, itemIndex }) => JSON.parse(Module[name](itemIndex)),
+      { name: functionName, itemIndex: index },
+    );
+    if (!rect || rect.width === undefined) {
+      throw new Error(`Sketcher ${type} not found: ${index}`);
+    }
+    return rect;
+  }
+
+  /** Equivalent to Squish `click_atom(atom, select=False, modifier=None)`. */
+  async click_atom(atom, select = false, modifier = null) {
+    if (select) await this.click_tool('rect_btn');
+    const rect = await this.rendered_object_rect('atom', atom);
+    await mouseClick(this.page, rect.x + rect.width / 2, rect.y + rect.height / 2, {
+      modifiers: modifier === 'shift' ? ['Shift'] : modifier === 'control' ? ['Control'] : [],
+    });
+  }
+
+  /** Equivalent to Squish `click_bond(bond, select=False, modifier=None)`. */
+  async click_bond(bond, select = false, modifier = null) {
+    if (select) await this.click_tool('rect_btn');
+    const rect = await this.rendered_object_rect('bond', bond);
+    await mouseClick(this.page, rect.x + rect.width / 2, rect.y + rect.height / 2, {
+      modifiers: modifier === 'shift' ? ['Shift'] : modifier === 'control' ? ['Control'] : [],
+    });
   }
 }

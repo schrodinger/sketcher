@@ -54,4 +54,16 @@ test.describe('ported tst_move_mode and tst_select_mode_active_selection', () =>
       .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
       .toBe(false);
   });
+
+  test('source-style atom and bond selection uses rendered geometry', async ({ page }) => {
+    const sk = new Sketcher(page);
+    await sk.click_atom(1, true, 'shift');
+    await sk.click_bond(1, true, 'shift');
+
+    await expect
+      .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
+      .toBe(true);
+    await page.mouse.move(0, 0);
+    await expect(page.locator('#screen canvas')).toHaveScreenshot('atom-bond-selection.png');
+  });
 });
