@@ -1,6 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
 const buildDir = process.env.SKETCHER_WASM_BUILD_DIR || 'build';
+const slowMo = Number(process.env.PLAYWRIGHT_SLOW_MO || 0);
 
 export default defineConfig({
   webServer: {
@@ -10,6 +11,8 @@ export default defineConfig({
   },
   use: {
     baseURL: 'http://localhost:8000',
+    headless: process.env.PLAYWRIGHT_HEADED !== '1',
+    launchOptions: { slowMo },
     screenshot: 'only-on-failure',
     viewport: { width: 1280, height: 720 },
     actionTimeout: 10000,
