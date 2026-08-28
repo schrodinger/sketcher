@@ -1,14 +1,6 @@
 import { expect, test } from '@playwright/test';
-import {
-  clickMenuAction,
-  clickWidget,
-  drawingAreaCenter,
-  exportText,
-  loadStructureForTest,
-  mouseDrag,
-  openSketcher,
-  widgetState,
-} from '../wrappers/sketcher_wasm.js';
+import { exportText, widgetState } from '../wrappers/sketcher_wasm.js';
+import { Sketcher } from '../wrappers/sketcher.js';
 
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 
@@ -19,26 +11,21 @@ async function requireTestBridge(page) {
   test.skip(!available, 'requires a WASM artifact rebuilt with playwright_test_bridge.cpp');
 }
 
-async function moreAction(page, action) {
-  await clickWidget(page, 'more_actions_btn');
-  await clickMenuAction(page, action);
-}
-
 test.describe('ported tst_move_mode and tst_select_mode_active_selection', () => {
   test.beforeEach(async ({ page }) => {
-    await openSketcher(page);
+    const sk = new Sketcher(page);
+    await sk.open();
     await requireTestBridge(page);
-    await loadStructureForTest(page, SOURCE_STRUCTURE);
+    await sk.load_structure_for_test(SOURCE_STRUCTURE);
   });
 
   test('Move/Rotate preserves the selected structure during a pointer drag', async ({ page }) => {
     // Squish selects atoms/bonds, changes to Move/Rotate, then drags a selected
     // atom. Selecting all is the standalone equivalent of that active state.
-    await moreAction(page, 'Select All');
-    await clickWidget(page, 'move_rotate_btn');
-
-    const center = await drawingAreaCenter(page);
-    await mouseDrag(page, center, { x: center.x + 70, y: center.y + 55 });
+    const sk = new Sketcher(page);
+    await sk.more_actions_menu('select_all');
+    await sk.click_tool('move_rotate');
+    await sk.mouse_drag(0, 0, 70, 55);
 
     await expect.poll(() => exportText(page)).not.toBe('');
     await page.mouse.move(0, 0);
@@ -51,13 +38,9 @@ test.describe('ported tst_move_mode and tst_select_mode_active_selection', () =>
     expect((await widgetState(page, 'clear_selection_btn')).enabled).toBe(false);
     expect((await widgetState(page, 'invert_selection_btn')).enabled).toBe(false);
 
-    await clickWidget(page, 'select_tool_btn');
-    const center = await drawingAreaCenter(page);
-    await mouseDrag(
-      page,
-      { x: center.x - 250, y: center.y - 180 },
-      { x: center.x + 250, y: center.y + 180 },
-    );
+    const sk = new Sketcher(page);
+    await sk.click_tool('rect_btn');
+    await sk.mouse_drag(-250, -180, 500, 360);
 
     await expect
       .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
@@ -66,7 +49,7 @@ test.describe('ported tst_move_mode and tst_select_mode_active_selection', () =>
     await page.mouse.move(0, 0);
     await expect(page.locator('#screen canvas')).toHaveScreenshot('rectangle-selection.png');
 
-    await clickWidget(page, 'clear_selection_btn');
+    await sk.click_button('clear_selection');
     await expect
       .poll(async () => (await widgetState(page, 'clear_selection_btn')).enabled)
       .toBe(false);
