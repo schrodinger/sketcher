@@ -5,6 +5,10 @@ const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 const CLIPBOARD_LIMITATION =
   'Qt/WASM does not expose application clipboard contents to the browser.';
 
+// This source-style workflow rebuilds the molecule twice with visible input.
+// Preserve the fast default timeout while allowing paced replay inspection.
+test.setTimeout(process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1' ? 180_000 : 30_000);
+
 async function requireRenderedGeometryBridge(page) {
   const available = await page.evaluate(
     () =>
@@ -16,7 +20,8 @@ async function requireRenderedGeometryBridge(page) {
 
 async function checkpoint(page, name) {
   await page.mouse.move(0, 0);
-  await expect(page.locator('#screen canvas')).toHaveScreenshot(`${name}.png`);
+  const replaySuffix = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1' ? '-replay' : '';
+  await expect(page.locator('#screen canvas')).toHaveScreenshot(`${name}${replaySuffix}.png`);
 }
 
 async function selectSourceAtomsAndBonds(sk) {

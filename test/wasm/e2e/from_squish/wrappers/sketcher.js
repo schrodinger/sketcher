@@ -11,6 +11,7 @@ import {
   clickMenuAction,
   clickWidget,
   drawingAreaCenter,
+  exportText,
   focusCanvas,
   loadStructureForTest,
   mouseClick,
@@ -28,9 +29,90 @@ const BUTTON_NAMES = {
 };
 
 const TOOL_NAMES = {
+  C: 'c_btn',
+  Cl: 'cl_btn',
+  N: 'n_btn',
+  O: 'o_btn',
+  P: 'p_btn',
+  S: 's_btn',
+  F: 'f_btn',
+  H: 'h_btn',
   move_rotate: 'move_rotate_btn',
   rect_btn: 'select_tool_btn',
 };
+
+const BOND_TOOL_NAMES = {
+  1: 'single_bond_btn',
+  2: 'bond_order_btn',
+};
+
+function v3000Block(text, name) {
+  const begin = `M  V30 BEGIN ${name}`;
+  const end = `M  V30 END ${name}`;
+  const lines = String(text).split(/\r?\n/);
+  const start = lines.indexOf(begin);
+  const finish = lines.indexOf(end);
+  if (start === -1 || finish === -1 || finish <= start) {
+    throw new Error(`V3000 ${name} block not found`);
+  }
+  return lines.slice(start + 1, finish);
+}
+
+/** Parse the atom/bond information used by Squish get_structure_information(). */
+function parseV3000Structure(text) {
+  const atoms = v3000Block(text, 'ATOM').map((line) => {
+    const fields = line.trim().split(/\s+/);
+    const charge = Number((fields.find((field) => field.startsWith('CHG=')) || 'CHG=0').slice(4));
+    return {
+      index: Number(fields[2]),
+      element: fields[3],
+      x: Number(fields[4]),
+      y: Number(fields[5]),
+      charge,
+    };
+  });
+  const bonds = v3000Block(text, 'BOND').map((line) => {
+    const fields = line.trim().split(/\s+/);
+    return {
+      index: Number(fields[2]),
+      order: Number(fields[3]),
+      atom1: Number(fields[4]),
+      atom2: Number(fields[5]),
+      orientation: fields.find((field) => field.startsWith('CFG=')) || null,
+    };
+  });
+  return { atoms, bonds };
+}
+
+/** Match Squish convert_to_sketcher_coordinates() for visible replay input. */
+function sketcherCoordinates(structure) {
+  const visibleAtoms = structure.atoms.filter(
+    (atom) => !['A', 'AH', 'Q', 'QH', 'M', 'MH', 'X', 'XH'].includes(atom.element),
+  );
+  const center = visibleAtoms.reduce((sum, atom) => ({ x: sum.x + atom.x, y: sum.y + atom.y }), {
+    x: 0,
+    y: 0,
+  });
+  center.x /= visibleAtoms.length;
+  center.y /= visibleAtoms.length;
+  const byIndex = new Map(structure.atoms.map((atom) => [atom.index, atom]));
+  const lengths = structure.bonds.map((bond) => {
+    const first = byIndex.get(bond.atom1);
+    const second = byIndex.get(bond.atom2);
+    return Math.round(Math.hypot(second.x - first.x, second.y - first.y) * 1000) / 1000;
+  });
+  const counts = new Map();
+  for (const length of lengths) counts.set(length, (counts.get(length) || 0) + 1);
+  const commonLength = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 1.418;
+  return {
+    ...structure,
+    atoms: structure.atoms.map((atom) => ({
+      ...atom,
+      x: ((atom.x - center.x) * 1.418 * 35) / commonLength,
+      y: ((atom.y - center.y) * 1.418 * 35) / commonLength,
+    })),
+  };
+}
 
 const MORE_ACTION_NAMES = {
   add_explicit_hydrogens: 'Add Explicit Hydrogens',
@@ -63,15 +145,80 @@ export class Sketcher {
   /** @param {import('@playwright/test').Page} page */
   constructor(page) {
     this.page = page;
+    this.rebuild_structures = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1';
   }
 
   async open() {
     await openSketcher(this.page);
   }
 
-  /** Fixture setup only; never use this method in `tst_import_menu`. */
-  async load_structure_for_test(text) {
+  /**
+   * Fixture setup only; never use this method in `tst_import_menu`.
+   * Set PLAYWRIGHT_REBUILD_STRUCTURES=1 to replay Squish's visible
+   * get_structure_information -> clear -> build_structure workflow.
+   */
+  async load_structure_for_test(text, { rebuild = this.rebuild_structures, sort = true } = {}) {
     await loadStructureForTest(this.page, text);
+    if (!rebuild) return;
+    const structure = await this.get_structure_information();
+    await this.click_button('clear');
+    await this.build_structure(structure, { sort });
+  }
+
+  /** Browser equivalent of Squish get_structure_information() for V3000 state. */
+  async get_structure_information() {
+    return sketcherCoordinates(parseV3000Structure(await exportText(this.page, 'MDL_MOLV3000')));
+  }
+
+  /** Draw an atom at the coordinate produced by the source Squish wrapper. */
+  async add_to_sketcher(x, y, element = 'C', charge = 0) {
+    const tool = TOOL_NAMES[element];
+    if (!tool) throw new Error(`Visible structure replay does not yet support element: ${element}`);
+    const center = await drawingAreaCenter(this.page);
+    const point = { x: center.x + x, y: center.y - y };
+    await this.click_tool(element);
+    await mouseClick(this.page, point.x, point.y);
+    const chargeTool = charge > 0 ? 'increase_charge_btn' : 'decrease_charge_btn';
+    for (let click = 0; click < Math.abs(charge); click += 1) {
+      await clickWidget(this.page, chargeTool);
+      await mouseClick(this.page, point.x, point.y);
+    }
+  }
+
+  /** Draw a source V3000 bond with the corresponding visible bond tool. */
+  async add_bond(bond, atomsByIndex) {
+    if (bond.order !== 1 && bond.order !== 2) {
+      throw new Error(`Visible structure replay does not yet support bond order: ${bond.order}`);
+    }
+    const first = atomsByIndex.get(bond.atom1);
+    const second = atomsByIndex.get(bond.atom2);
+    if (!first || !second) throw new Error(`Bond ${bond.index} refers to a missing atom`);
+    // bond_order_btn's active/default tool is Double Bond. Opening its popup
+    // is only necessary for non-default orders such as Triple Bond.
+    await clickWidget(this.page, BOND_TOOL_NAMES[bond.order]);
+    const center = await drawingAreaCenter(this.page);
+    await mouseDrag(
+      this.page,
+      { x: center.x + first.x, y: center.y - first.y },
+      { x: center.x + second.x, y: center.y - second.y },
+    );
+  }
+
+  /** Browser equivalent of Squish build_structure(..., sort=True/False). */
+  async build_structure(structure, { sort = false } = {}) {
+    const atoms = [...structure.atoms];
+    const bonds = [...structure.bonds];
+    if (sort) {
+      atoms.sort((first, second) => first.element.localeCompare(second.element));
+      bonds.sort((first, second) => first.order - second.order);
+    }
+    for (const atom of atoms) {
+      await this.add_to_sketcher(atom.x, atom.y, atom.element, atom.charge);
+    }
+    const atomsByIndex = new Map(structure.atoms.map((atom) => [atom.index, atom]));
+    for (const bond of bonds) {
+      await this.add_bond(bond, atomsByIndex);
+    }
   }
 
   /** Equivalent to Squish `click_button(object_name)`. */
