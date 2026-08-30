@@ -1,7 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/molviewer/abstract_graphics_item.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
@@ -87,13 +85,6 @@ class SKETCHER_API SGroupItem : public AbstractGraphicsItem
      * atom inside the substance group to an atom outside of it.
      */
     QPainterPath getBracketPath() const;
-
-    /**
-     * @return The coordinates of the field data text and whether they are
-     * relative to the SGroup (as opposed to absolute). We assume the
-     * coordinates to be in scene units.
-     */
-    std::pair<QPointF, bool> getFieldDataDisplayInfo() const;
 
     const RDKit::SubstanceGroup& m_sgroup;
     QPainterPath m_brackets_path;
