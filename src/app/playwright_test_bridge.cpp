@@ -109,11 +109,30 @@ QJsonObject rect_to_object(const QPoint& top_left, const QRect& rect)
     return result;
 }
 
+QString normalise_menu_action_name(QString name)
+{
+    // QAction text may contain an ampersand to mark its mnemonic (for
+    // example, "Modify &All").  The browser-facing wrappers intentionally
+    // use the human-visible name, so compare the two forms consistently.
+    name.remove('&');
+    return name.simplified();
+}
+
 std::string rect_to_json(const QPoint& top_left, const QRect& rect)
 {
     return QJsonDocument(rect_to_object(top_left, rect))
         .toJson(QJsonDocument::Compact)
         .toStdString();
+}
+
+QPoint map_popup_point_to_sketcher(const QWidget& popup,
+                                   const SketcherWidget& sketcher,
+                                   const QPoint& point)
+{
+    // A cascading QMenu is its own popup window.  Mapping it directly to the
+    // Sketcher widget is fragile in Qt/WASM; convert through global
+    // coordinates, as Qt does for independent top-level widgets.
+    return sketcher.mapFromGlobal(popup.mapToGlobal(point));
 }
 
 class MenuGeometryCache final : public QObject
@@ -128,17 +147,19 @@ class MenuGeometryCache final : public QObject
     {
         if (event->type() == QEvent::Show) {
             if (auto* widget = qobject_cast<QWidget*>(watched)) {
-                cache_widget_geometry(*widget);
-                const QPointer<QWidget> visible_widget(widget);
-                QTimer::singleShot(0, this, [this, visible_widget] {
-                    if (visible_widget) {
-                        cache_widget_geometry(*visible_widget);
-                    }
-                });
+                if (!qobject_cast<QMenu*>(widget)) {
+                    cache_widget_geometry(*widget);
+                    const QPointer<QWidget> visible_widget(widget);
+                    QTimer::singleShot(0, this, [this, visible_widget] {
+                        if (visible_widget) {
+                            cache_widget_geometry(*visible_widget);
+                        }
+                    });
+                }
             }
-            if (auto* menu = qobject_cast<QMenu*>(watched)) {
-                cache_menu_geometry(*menu);
-            }
+            // QMenu inspection is intentionally disabled pending a WASM-safe
+            // geometry mechanism.  Accessing popup menu internals during its
+            // show lifecycle aborts the current Qt/WASM runtime.
         }
         return false;
     }
@@ -146,65 +167,61 @@ class MenuGeometryCache final : public QObject
     std::string action_rect(const std::string& object_name_or_text) const
     {
         const auto query = QString::fromStdString(object_name_or_text);
-        // A menu may first be shown at a provisional location while Qt lays
-        // out a cascading submenu.  The event-time cache is useful for
-        // publishing diagnostics, but must not be trusted for an interaction:
-        // find the action in the menu currently visible on screen instead.
-        for (auto* widget : QApplication::allWidgets()) {
-            const auto* menu = qobject_cast<QMenu*>(widget);
+        const auto normalised_query = normalise_menu_action_name(query);
+        // This is deliberately an on-demand lookup: inspecting QMenu while it
+        // is being shown is unsafe in Qt/WASM, but once the popup is visible
+        // its action geometry can be read for a real browser mouse click.
+        for (auto* menu : m_sketcher.findChildren<QMenu*>()) {
             if (!menu || !menu->isVisible()) {
                 continue;
             }
             for (auto* action : menu->actions()) {
-                if (action->objectName() != query && action->text() != query) {
+                if (action->objectName() != query && action->text() != query &&
+                    normalise_menu_action_name(action->objectName()) !=
+                        normalised_query &&
+                    normalise_menu_action_name(action->text()) !=
+                        normalised_query) {
                     continue;
                 }
                 const QRect action_rect = menu->actionGeometry(action);
                 if (!action_rect.isEmpty()) {
                     return rect_to_json(
-                        menu->mapTo(&m_sketcher, action_rect.topLeft()),
+                        map_popup_point_to_sketcher(*menu, m_sketcher,
+                                                    action_rect.topLeft()),
                         action_rect);
                 }
             }
         }
         const auto result = m_action_rects.find(object_name_or_text);
-        return result == m_action_rects.end() ? "{}" : result->second;
+        if (result != m_action_rects.end()) {
+            return result->second;
+        }
+        for (const auto& [name, rect] : m_action_rects) {
+            if (normalise_menu_action_name(QString::fromStdString(name)) ==
+                normalised_query) {
+                return rect;
+            }
+        }
+        return "{}";
     }
 
   private:
     void cache_menu_geometry(const QMenu& menu)
     {
-        QJsonObject browser_rects;
         for (auto* action : menu.actions()) {
             const QRect action_rect = menu.actionGeometry(action);
             if (action_rect.isEmpty()) {
                 continue;
             }
             const auto result = rect_to_json(
-                menu.mapTo(&m_sketcher, action_rect.topLeft()), action_rect);
-            const auto browser_result = rect_to_object(
-                menu.mapTo(&m_sketcher, action_rect.topLeft()), action_rect);
+                map_popup_point_to_sketcher(menu, m_sketcher,
+                                             action_rect.topLeft()),
+                action_rect);
             if (!action->objectName().isEmpty()) {
                 m_action_rects[action->objectName().toStdString()] = result;
-                browser_rects[action->objectName()] = browser_result;
             }
             m_action_rects[action->text().toStdString()] = result;
-            browser_rects[action->text()] = browser_result;
         }
-        publish_browser_rects(browser_rects);
-    }
-
-    void publish_browser_rects(const QJsonObject& rects) const
-    {
-#ifdef __EMSCRIPTEN__
-        const auto json = QJsonDocument(rects).toJson(QJsonDocument::Compact);
-        EM_ASM(
-            {
-                window.__sketcherPlaywrightMenuRects =
-                    JSON.parse(UTF8ToString($0));
-            },
-            json.constData());
-#endif
     }
 
     void cache_widget_geometry(const QWidget& widget)
@@ -282,8 +299,6 @@ void click_button(SketcherWidget& sketcher, const std::string& object_name)
 std::string get_widget_rect(SketcherWidget& sketcher,
                             const std::string& object_name)
 {
-    // Install the menu observer before Playwright opens the first menu.
-    menu_geometry_cache(sketcher);
     auto* widget =
         find_visible_widget(sketcher, QString::fromStdString(object_name));
     if (!widget) {

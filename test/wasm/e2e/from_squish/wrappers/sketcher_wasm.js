@@ -9,7 +9,11 @@
 /** @param {import('@playwright/test').Page} page */
 export async function openSketcher(page) {
   await page.goto('/wasm_shell.html');
-  await page.waitForFunction(() => typeof window.Module !== 'undefined', { timeout: 20000 });
+  await page.waitForFunction(
+    () => typeof window.Module !== 'undefined',
+    undefined,
+    { timeout: 20000 },
+  );
   await page.locator('#screen canvas').waitFor({ state: 'visible', timeout: 10000 });
 }
 
@@ -126,10 +130,24 @@ export async function widgetRect(page, objectName) {
   if (cached) {
     return cached;
   }
-  const rect = await page.evaluate(
-    async (name) => JSON.parse(await Module._sketcher_get_widget_rect(name)),
+  // Qt/WASM can return an empty string for one animation frame while a popup
+  // closes or the canvas is being repainted.  Wait for a complete bridge
+  // response instead of surfacing that transient state as a JSON parse error.
+  const result = await page.waitForFunction(
+    async (name) => {
+      const raw = await Module._sketcher_get_widget_rect(name);
+      if (typeof raw !== 'string' || raw.trim() === '') return null;
+      try {
+        const value = JSON.parse(raw);
+        return value?.width === undefined ? null : value;
+      } catch {
+        return null;
+      }
+    },
     objectName,
+    { timeout: 5000 },
   );
+  const rect = await result.jsonValue();
   if (!rect || rect.width === undefined) {
     throw new Error(`Sketcher widget not found: ${objectName}`);
   }
@@ -159,9 +177,8 @@ export async function setWidgetText(page, objectName, text) {
 
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
 export async function menuActionRect(page, objectNameOrText) {
-  let rect;
   try {
-    rect = await page.waitForFunction(
+    const rect = await page.waitForFunction(
       async (name) => {
         const value = JSON.parse(await Module._sketcher_get_menu_action_rect(name));
         return value?.width === undefined ? null : value;
@@ -169,20 +186,13 @@ export async function menuActionRect(page, objectNameOrText) {
       objectNameOrText,
       { timeout: 5000 },
     );
+    return await rect.jsonValue();
   } catch (error) {
-    const available = await page.evaluate(() =>
-      Object.keys(window.__sketcherPlaywrightMenuRects || {}),
-    );
     throw new Error(
-      `Sketcher menu action not found: ${objectNameOrText}; visible actions: ${available.join(', ')}`,
+      `Sketcher menu action not found: ${objectNameOrText}`,
       { cause: error },
     );
   }
-  const value = await rect.jsonValue();
-  if (!value || value.width === undefined) {
-    throw new Error(`Sketcher menu action not found: ${objectNameOrText}`);
-  }
-  return value;
 }
 
 /** Click a visible Qt menu action using the browser's real mouse input. */
@@ -191,8 +201,56 @@ export async function clickMenuAction(page, objectNameOrText) {
   await mouseClick(page, rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
+/**
+ * Click a row in a Qt/WASM popup through its browser canvas.  Qt gives every
+ * popup its own `qt-window-N` canvas; this avoids unsafe QMenu introspection.
+ */
+export async function clickPopupRow(page, popupIndex, rowCenter) {
+  const popup = await popupCanvasGeometry(page, popupIndex);
+  await mouseClick(page, popup.x + popup.width / 2, popup.y + rowCenter);
+}
+
+/** Return a Qt popup canvas's CSS offset and backing-canvas dimensions. */
+export async function popupCanvasGeometry(page, popupIndex) {
+  const popups = await page.locator('[id^="qt-window-"]').evaluateAll((elements) => {
+    return elements.slice(1).map((element) => {
+      const canvas = element.querySelector('canvas');
+      const style = getComputedStyle(element);
+      const x = Number.parseFloat(style.left);
+      const y = Number.parseFloat(style.top);
+      return Number.isFinite(x) && Number.isFinite(y) && canvas?.width && canvas?.height
+        ? { height: canvas.height, width: canvas.width, x, y }
+        : null;
+    }).filter(Boolean);
+  }).catch(() => []);
+  const popup = popups[popupIndex];
+  if (!popup) throw new Error(`Qt popup ${popupIndex} did not expose canvas geometry`);
+  return popup;
+}
+
+/** Open a cascading Qt submenu by moving the real pointer over its parent row. */
+export async function hoverPopupRow(page, popupIndex, rowCenter) {
+  const popup = await popupCanvasGeometry(page, popupIndex);
+  await showMouseMarker(page, popup.x + popup.width / 2, popup.y + rowCenter);
+  await page.mouse.move(popup.x + popup.width / 2, popup.y + rowCenter, { steps: 4 });
+  await page.waitForTimeout(250);
+}
+
+/** Open a cascading Qt submenu by moving the real pointer over its parent. */
+export async function hoverMenuAction(page, objectNameOrText) {
+  const rect = await menuActionRect(page, objectNameOrText);
+  await showMouseMarker(page, rect.x + rect.width / 2, rect.y + rect.height / 2);
+  await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2, { steps: 4 });
+  await page.waitForTimeout(150);
+}
+
 export async function clipboardText(page) {
-  return page.evaluate(() => Module._sketcher_clipboard_text());
+  return page.evaluate(async () => {
+    if (!navigator.clipboard?.readText) {
+      throw new Error('The browser Clipboard API is unavailable in this context.');
+    }
+    return navigator.clipboard.readText();
+  });
 }
 
 export async function setClipboardText(page, text) {

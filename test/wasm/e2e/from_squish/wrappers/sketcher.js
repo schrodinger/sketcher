@@ -9,10 +9,12 @@
 import {
   clipboardText,
   clickMenuAction,
+  clickPopupRow,
   clickWidget,
   drawingAreaCenter,
   exportText,
   focusCanvas,
+  hoverPopupRow,
   isEmpty,
   loadStructureForTest,
   mouseClick,
@@ -295,20 +297,65 @@ export class Sketcher {
   /** Equivalent to Squish `more_actions_menu(button1, button2=None)`. */
   async more_actions_menu(button1, button2 = null) {
     await clickWidget(this.page, 'more_actions_btn');
+    // Qt/WASM creates the popup in a later browser event-loop turn.  Use a
+    // Node-side yield here: Playwright's page-side timeout can remain pending
+    // while Qt processes a just-triggered model action.
+    await new Promise((resolve) => setTimeout(resolve, 100));
     if (button1 === 'modify_all') {
-      await clickMenuAction(this.page, 'Modify All');
+      // Modify All is the first root-menu row.  Popup rows are canvas-only in
+      // Qt/WASM, so use the browser-visible popup geometry rather than QMenu.
+      // A submenu opens on mouse hover, just as it does for a user.
+      await hoverPopupRow(this.page, 0, 18);
       if (button2 === null) {
         return;
       }
-      await clickMenuAction(this.page, MORE_ACTION_NAMES[button2] || button2);
+      const modifyAllRows = {
+        flip_horizontal: 11,
+        flip_vertical: 35,
+        aromatize: 60,
+        kekulize: 83,
+        add_explicit_hydrogens: 108,
+        remove_explicit_hydrogens: 131,
+      };
+      const row = modifyAllRows[button2];
+      if (row === undefined) throw new Error(`Unsupported Modify All action: ${button2}`);
+      await clickPopupRow(this.page, 1, row);
       return;
     }
     if (button1 === 'copy_all_as') {
-      await clickMenuAction(this.page, MORE_ACTION_NAMES[button1]);
+      await hoverPopupRow(this.page, 0, 202);
       if (button2 === null) {
         return;
       }
-      await clickMenuAction(this.page, COPY_ALL_AS_NAMES[button2] || button2);
+      const copyAllAsRows = {
+        sdf: 11,
+        smi: 35,
+        cxsmi: 60,
+        inchi: 83,
+        inchikey: 108,
+        pdb: 131,
+      };
+      const row = copyAllAsRows[button2];
+      if (row === undefined) throw new Error(`Unsupported Copy All As format: ${button2}`);
+      await clickPopupRow(this.page, 1, row);
+      return;
+    }
+    if (button1 === 'fit_to_screen') {
+      await clickPopupRow(this.page, 0, 249);
+      return;
+    }
+    const rootRows = {
+      undo: 35,
+      redo: 60,
+      select_all: 85,
+      clear_selection: 108,
+      invert_selection: 131,
+      cut: 155,
+      copy_all: 179,
+      paste: 225,
+    };
+    if (rootRows[button1] !== undefined) {
+      await clickPopupRow(this.page, 0, rootRows[button1]);
       return;
     }
     await clickMenuAction(this.page, MORE_ACTION_NAMES[button1] || button1);

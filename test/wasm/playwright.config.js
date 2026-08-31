@@ -13,6 +13,10 @@ export default defineConfig({
     baseURL: 'http://localhost:8000',
     headless: process.env.PLAYWRIGHT_HEADED !== '1',
     launchOptions: { slowMo },
+    // Qt/WASM forwards Copy/Cut/Paste through the browser Clipboard API.  Give
+    // every Playwright context both permissions before the page loads so
+    // Chromium does not show its "wants to see text ..." permission prompt.
+    permissions: ['clipboard-read', 'clipboard-write'],
     screenshot: 'only-on-failure',
     viewport: { width: 1280, height: 720 },
     actionTimeout: 10000,

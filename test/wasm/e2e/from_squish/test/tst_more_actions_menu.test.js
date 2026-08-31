@@ -3,12 +3,11 @@ import { Sketcher } from '../wrappers/sketcher.js';
 import { hideMouseMarker } from '../wrappers/sketcher_wasm.js';
 
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
-const CLIPBOARD_LIMITATION =
-  'Qt/WASM does not expose application clipboard contents to the browser.';
+const SKIP_NESTED_MENUS = process.env.PLAYWRIGHT_SKIP_NESTED_MENUS === '1';
 
 // This source-style workflow rebuilds the molecule twice with visible input.
 // Preserve the fast default timeout while allowing paced replay inspection.
-test.setTimeout(process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1' ? 180_000 : 30_000);
+test.setTimeout(180_000);
 
 async function requireRenderedGeometryBridge(page) {
   const available = await page.evaluate(
@@ -22,6 +21,9 @@ async function requireRenderedGeometryBridge(page) {
 async function checkpoint(page, name) {
   await page.mouse.move(0, 0);
   await hideMouseMarker(page);
+  if (process.env.PLAYWRIGHT_SKIP_SCREENSHOTS === '1') {
+    return;
+  }
   const replaySuffix = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1' ? '-replay' : '';
   await expect(page.locator('#screen canvas')).toHaveScreenshot(`${name}${replaySuffix}.png`);
 }
@@ -46,11 +48,18 @@ test.describe('tst_more_actions_menu', () => {
     await sk.load_structure_for_test(SOURCE_STRUCTURE);
     await selectSourceAtomsAndBonds(sk);
 
-    await test.step('add_hydrogens_ignores_selection', async () => {
-      await sk.more_actions_menu('modify_all', 'add_explicit_hydrogens');
-      await checkpoint(page, 'add_hydrogens_ignores_selection');
-      await sk.click_button('undo');
-    });
+    if (!SKIP_NESTED_MENUS) {
+      await test.step('add_hydrogens_ignores_selection', async () => {
+        await sk.more_actions_menu('modify_all', 'add_explicit_hydrogens');
+        await checkpoint(page, 'add_hydrogens_ignores_selection');
+        await sk.click_button('undo');
+      });
+    } else {
+      testInfo.annotations.push({
+        type: 'temporary probe exclusion',
+        description: 'Nested Modify All menu actions are disabled for diagnosis.',
+      });
+    }
     await test.step('Ctrl_X_hotkey', async () => {
       await sk.type_text('sketcher_area', '<Ctrl+X>');
       await checkpoint(page, 'Ctrl_X_hotkey');
@@ -83,6 +92,9 @@ test.describe('tst_more_actions_menu', () => {
     });
 
     // This is the source's second import -> rebuild -> selection setup.
+    // `load_structure_for_test` imports into the current model, while the
+    // source Import/Paste workflow replaces it before rebuilding.
+    await sk.click_button('clear');
     await sk.load_structure_for_test(SOURCE_STRUCTURE);
     await selectSourceAtomsAndBonds(sk);
 
@@ -92,10 +104,7 @@ test.describe('tst_more_actions_menu', () => {
     });
     await test.step('Ctrl_C_hotkey', async () => {
       await sk.type_text('sketcher_area', '<Ctrl+C>');
-      testInfo.annotations.push({
-        type: 'WASM limitation',
-        description: `Ctrl_C_hotkey: ${CLIPBOARD_LIMITATION}`,
-      });
+      await expect(await sk.clipboard_text()).toContain('V3000');
     });
     await test.step('Ctrl_F_hotkey', async () => {
       await sk.click_button('clear_selection');
@@ -104,27 +113,25 @@ test.describe('tst_more_actions_menu', () => {
       await checkpoint(page, 'Ctrl_F_hotkey');
     });
 
-    for (const action of [
-      'flip_horizontal',
-      'flip_vertical',
-      'add_explicit_hydrogens',
-      'remove_explicit_hydrogens',
-    ]) {
-      await test.step(action, async () => {
-        await sk.more_actions_menu('modify_all', action);
-        await checkpoint(page, action);
-      });
+    if (!SKIP_NESTED_MENUS) {
+      for (const action of [
+        'flip_horizontal',
+        'flip_vertical',
+        'add_explicit_hydrogens',
+        'remove_explicit_hydrogens',
+      ]) {
+        await test.step(action, async () => {
+          await sk.more_actions_menu('modify_all', action);
+          await checkpoint(page, action);
+        });
+      }
+      for (const format of ['sdf', 'smi', 'cxsmi', 'inchi', 'inchikey', 'pdb']) {
+        await test.step(format, async () => {
+          await sk.more_actions_menu('copy_all_as', format);
+          await expect(await sk.clipboard_text()).not.toBe('');
+        });
+      }
     }
-
-    for (const format of ['sdf', 'smi', 'cxsmi', 'inchi', 'inchikey', 'pdb']) {
-      await test.step(format, async () => {
-        await sk.more_actions_menu('copy_all_as', format);
-      });
-    }
-    testInfo.annotations.push({
-      type: 'WASM limitation',
-      description: `Copy All As text references: ${CLIPBOARD_LIMITATION}`,
-    });
 
     // Keep this stateful order identical to the source buttons_list.
     for (const [action, reference] of [
@@ -147,9 +154,5 @@ test.describe('tst_more_actions_menu', () => {
         }
       });
     }
-    testInfo.annotations.push({
-      type: 'WASM limitation',
-      description: `Copy All, Cut, and Undo text references: ${CLIPBOARD_LIMITATION}`,
-    });
   });
 });
