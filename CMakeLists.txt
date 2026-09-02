@@ -142,8 +142,12 @@ function(setup_target TARGET)
   if(EMSCRIPTEN)
     # We optimize for space in wasm builds because otherwise binaryen (run
     # because of ASYNCIFY) runs out of memory
-    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
-                        -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
+    set(SKETCHER_WASM_OPTIMIZATION
+        "-Os"
+        CACHE STRING "Emscripten optimization level for local WASM builds")
+    target_link_options(
+      ${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS -fexceptions
+      -sDISABLE_EXCEPTION_CATCHING=0 ${SKETCHER_WASM_OPTIMIZATION})
     target_compile_options(${TARGET} PRIVATE -fexceptions
                                              -sDISABLE_EXCEPTION_CATCHING=0 -Os)
   endif()

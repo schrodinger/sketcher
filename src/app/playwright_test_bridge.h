@@ -18,6 +18,8 @@ class SketcherWidget;
 namespace playwright_test_bridge
 {
 void click_button(SketcherWidget& sketcher, const std::string& object_name);
+void send_mouse_press(SketcherWidget& sketcher, const std::string& object_name);
+void close_active_popups();
 std::string get_widget_rect(SketcherWidget& sketcher,
                             const std::string& object_name);
 std::string get_widget_state(SketcherWidget& sketcher,
@@ -28,6 +30,9 @@ std::string get_menu_action_rect(SketcherWidget& sketcher,
                                  const std::string& object_name_or_text);
 std::string get_atom_rect(SketcherWidget& sketcher, int atom_index);
 std::string get_bond_rect(SketcherWidget& sketcher, int bond_index);
+std::string get_rendered_atom_geometry(SketcherWidget& sketcher);
+std::string get_rendered_bond_geometry(SketcherWidget& sketcher);
+std::string visible_widget_names(SketcherWidget& sketcher);
 std::string clipboard_text();
 void set_clipboard_text(const std::string& text);
 } // namespace playwright_test_bridge

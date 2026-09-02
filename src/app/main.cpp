@@ -264,6 +264,16 @@ EMSCRIPTEN_BINDINGS(sketcher)
                 get_sketcher_instance(), name);
         });
     emscripten::function(
+        "_sketcher_send_mouse_press", +[](const std::string& name) {
+            schrodinger::sketcher::playwright_test_bridge::send_mouse_press(
+                get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_close_active_popups", +[]() {
+            schrodinger::sketcher::playwright_test_bridge::
+                close_active_popups();
+        });
+    emscripten::function(
         "_sketcher_get_widget_state", +[](const std::string& name) {
             return schrodinger::sketcher::playwright_test_bridge::
                 get_widget_state(get_sketcher_instance(), name);
@@ -280,6 +290,11 @@ EMSCRIPTEN_BINDINGS(sketcher)
                 get_menu_action_rect(get_sketcher_instance(), name_or_text);
         });
     emscripten::function(
+        "_sketcher_visible_widget_names", +[]() {
+            return schrodinger::sketcher::playwright_test_bridge::
+                visible_widget_names(get_sketcher_instance());
+        });
+    emscripten::function(
         "_sketcher_get_atom_rect", +[](const int atom_index) {
             return schrodinger::sketcher::playwright_test_bridge::get_atom_rect(
                 get_sketcher_instance(), atom_index);
@@ -288,6 +303,16 @@ EMSCRIPTEN_BINDINGS(sketcher)
         "_sketcher_get_bond_rect", +[](const int bond_index) {
             return schrodinger::sketcher::playwright_test_bridge::get_bond_rect(
                 get_sketcher_instance(), bond_index);
+        });
+    emscripten::function(
+        "_sketcher_get_rendered_atom_geometry", +[]() {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_rendered_atom_geometry(get_sketcher_instance());
+        });
+    emscripten::function(
+        "_sketcher_get_rendered_bond_geometry", +[]() {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_rendered_bond_geometry(get_sketcher_instance());
         });
     emscripten::function(
         "_sketcher_clipboard_text",

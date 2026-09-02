@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
 /**
  * Browser-facing Sketcher wrapper used by the Squish-to-Playwright port.
  *
@@ -9,11 +12,9 @@
 /** @param {import('@playwright/test').Page} page */
 export async function openSketcher(page) {
   await page.goto('/wasm_shell.html');
-  await page.waitForFunction(
-    () => typeof window.Module !== 'undefined',
-    undefined,
-    { timeout: 20000 },
-  );
+  await page.waitForFunction(() => typeof window.Module !== 'undefined', undefined, {
+    timeout: 20000,
+  });
   await page.locator('#screen canvas').waitFor({ state: 'visible', timeout: 10000 });
 }
 
@@ -123,13 +124,11 @@ export async function drawingAreaCenter(page) {
  * @param {string} objectName
  */
 export async function widgetRect(page, objectName) {
-  const cached = await page.evaluate(
-    (name) => window.__sketcherPlaywrightWidgetRects?.[name],
-    objectName,
-  );
-  if (cached) {
-    return cached;
-  }
+  // Always retrieve the live bridge geometry.  The cached startup geometry is
+  // correct for ordinary child widgets, but modular-tool popup controls live
+  // in separate top-level Qt/WASM windows.  Treating those as children gives
+  // a plausible but wrong canvas point, so a real Playwright click lands on
+  // the underlying toolbar instead of the visible popup item.
   // Qt/WASM can return an empty string for one animation frame while a popup
   // closes or the canvas is being repainted.  Wait for a complete bridge
   // response instead of surfacing that transient state as a JSON parse error.
@@ -145,7 +144,10 @@ export async function widgetRect(page, objectName) {
       }
     },
     objectName,
-    { timeout: 5000 },
+    // The normal artifact responds immediately; a deliberately lower-
+    // optimization local WASM development build can need several seconds
+    // after its first canvas paint.
+    { timeout: 15000 },
   );
   const rect = await result.jsonValue();
   if (!rect || rect.width === undefined) {
@@ -163,6 +165,16 @@ export async function clickWidget(page, objectName) {
   await mouseClick(page, rect.x + rect.width / 2, rect.y + rect.height / 2);
 }
 
+/** Squish-compatible Qt press event for non-browser-rendered QWidgetActions. */
+export async function sendWidgetMousePress(page, objectName) {
+  await page.evaluate((name) => Module._sketcher_send_mouse_press(name), objectName);
+}
+
+/** Test-only cleanup for Qt/WASM QWidgetAction popup bookkeeping. */
+export async function closeActiveQtPopups(page) {
+  await page.evaluate(() => Module._sketcher_close_active_popups());
+}
+
 /** Return visible Qt widget state exposed by the Playwright test bridge. */
 export async function widgetState(page, objectName) {
   return page.evaluate((name) => JSON.parse(Module._sketcher_get_widget_state(name)), objectName);
@@ -177,22 +189,20 @@ export async function setWidgetText(page, objectName, text) {
 
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
 export async function menuActionRect(page, objectNameOrText) {
-  try {
-    const rect = await page.waitForFunction(
-      async (name) => {
-        const value = JSON.parse(await Module._sketcher_get_menu_action_rect(name));
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const rect = await page.evaluate(async (name) => {
+      const raw = await Module._sketcher_get_menu_action_rect(name);
+      try {
+        const value = JSON.parse(raw);
         return value?.width === undefined ? null : value;
-      },
-      objectNameOrText,
-      { timeout: 5000 },
-    );
-    return await rect.jsonValue();
-  } catch (error) {
-    throw new Error(
-      `Sketcher menu action not found: ${objectNameOrText}`,
-      { cause: error },
-    );
+      } catch {
+        return null;
+      }
+    }, objectNameOrText);
+    if (rect) return rect;
+    await page.waitForTimeout(25);
   }
+  throw new Error(`Sketcher menu action not found: ${objectNameOrText}`);
 }
 
 /** Click a visible Qt menu action using the browser's real mouse input. */
@@ -212,17 +222,23 @@ export async function clickPopupRow(page, popupIndex, rowCenter) {
 
 /** Return a Qt popup canvas's CSS offset and backing-canvas dimensions. */
 export async function popupCanvasGeometry(page, popupIndex) {
-  const popups = await page.locator('[id^="qt-window-"]').evaluateAll((elements) => {
-    return elements.slice(1).map((element) => {
-      const canvas = element.querySelector('canvas');
-      const style = getComputedStyle(element);
-      const x = Number.parseFloat(style.left);
-      const y = Number.parseFloat(style.top);
-      return Number.isFinite(x) && Number.isFinite(y) && canvas?.width && canvas?.height
-        ? { height: canvas.height, width: canvas.width, x, y }
-        : null;
-    }).filter(Boolean);
-  }).catch(() => []);
+  const popups = await page
+    .locator('[id^="qt-window-"]')
+    .evaluateAll((elements) => {
+      return elements
+        .slice(1)
+        .map((element) => {
+          const canvas = element.querySelector('canvas');
+          const style = getComputedStyle(element);
+          const x = Number.parseFloat(style.left);
+          const y = Number.parseFloat(style.top);
+          return Number.isFinite(x) && Number.isFinite(y) && canvas?.width && canvas?.height
+            ? { height: canvas.height, width: canvas.width, x, y }
+            : null;
+        })
+        .filter(Boolean);
+    })
+    .catch(() => []);
   const popup = popups[popupIndex];
   if (!popup) throw new Error(`Qt popup ${popupIndex} did not expose canvas geometry`);
   return popup;
@@ -241,7 +257,10 @@ export async function hoverMenuAction(page, objectNameOrText) {
   const rect = await menuActionRect(page, objectNameOrText);
   await showMouseMarker(page, rect.x + rect.width / 2, rect.y + rect.height / 2);
   await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2, { steps: 4 });
-  await page.waitForTimeout(150);
+  // Nested Qt/WASM menus are attached on a later browser frame.  Give the
+  // ordinary human hover enough time to expose its child popup before the
+  // next source-menu path step resolves its geometry.
+  await page.waitForTimeout(250);
 }
 
 export async function clipboardText(page) {
@@ -253,8 +272,28 @@ export async function clipboardText(page) {
   });
 }
 
+/**
+ * Provide the result of the browser-native File System Access picker.
+ *
+ * Qt/WASM 6.7 invokes `showOpenFilePicker()` rather than an HTML file input,
+ * so Playwright cannot use its `filechooser` event.  This replaces only the
+ * native-picker result; the Sketcher Import menu is still opened and selected
+ * through ordinary pointer input.
+ */
+export async function setFilePickerResult(page, filePath) {
+  const contents = await readFile(filePath);
+  await page.evaluate(
+    ({ base64, name }) => {
+      const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+      const file = new File([bytes], name);
+      window.showOpenFilePicker = async () => [{ getFile: async () => file, kind: 'file', name }];
+    },
+    { base64: contents.toString('base64'), name: path.basename(filePath) },
+  );
+}
+
 export async function setClipboardText(page, text) {
-  await page.evaluate((value) => Module._sketcher_set_clipboard_text(value), text);
+  await page.evaluate((value) => navigator.clipboard.writeText(value), text);
 }
 
 /** @param {import('@playwright/test').Page} page */

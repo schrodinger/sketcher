@@ -16,9 +16,12 @@
 #include <QComboBox>
 #include <QEvent>
 #include <QGraphicsView>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
 #include <QLineEdit>
+#include <QMouseEvent>
 #include <QMetaObject>
 #include <QMenu>
 #include <QPlainTextEdit>
@@ -45,13 +48,56 @@ namespace
 {
 QWidget* find_visible_widget(SketcherWidget& sketcher, const QString& name)
 {
+    auto menu_ancestor = [](QWidget* widget) {
+        for (auto* parent = widget ? widget->parentWidget() : nullptr; parent;
+             parent = parent->parentWidget()) {
+            if (qobject_cast<QMenu*>(parent)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    // A context-menu widget can legitimately share an objectName with the
+    // persistent toolbar (for example periodic_table_btn). Prefer the visible
+    // control contained in the open QMenu, so browser input follows the
+    // source's context-menu path rather than silently using the toolbar.
+    QWidget* fallback = nullptr;
     const auto candidates = sketcher.findChildren<QWidget*>(name);
     for (auto* widget : candidates) {
-        if (widget->isVisible()) {
+        if (!widget->isVisible()) {
+            continue;
+        }
+        if (menu_ancestor(widget)) {
             return widget;
         }
+        if (!fallback) {
+            fallback = widget;
+        }
     }
-    return nullptr;
+    // Modular tool popups are separate top-level Qt/WASM windows rather than
+    // children of SketcherWidget.  Search those windows too, solely for their
+    // visible named controls used by browser tests.
+    for (auto* top_level : QApplication::topLevelWidgets()) {
+        if (!top_level) {
+            continue;
+        }
+        if (top_level->objectName() == name && top_level->isVisible()) {
+            return top_level;
+        }
+        const auto popup_candidates = top_level->findChildren<QWidget*>(name);
+        for (auto* widget : popup_candidates) {
+            if (!widget->isVisible()) {
+                continue;
+            }
+            if (menu_ancestor(widget)) {
+                return widget;
+            }
+            if (!fallback) {
+                fallback = widget;
+            }
+        }
+    }
+    return fallback;
 }
 
 QWidget& require_visible_widget(SketcherWidget& sketcher,
@@ -168,12 +214,9 @@ class MenuGeometryCache final : public QObject
     {
         const auto query = QString::fromStdString(object_name_or_text);
         const auto normalised_query = normalise_menu_action_name(query);
-        // This is deliberately an on-demand lookup: inspecting QMenu while it
-        // is being shown is unsafe in Qt/WASM, but once the popup is visible
-        // its action geometry can be read for a real browser mouse click.
-        for (auto* menu : m_sketcher.findChildren<QMenu*>()) {
+        const auto action_rect_in_menu = [&](QMenu* menu) -> std::string {
             if (!menu || !menu->isVisible()) {
-                continue;
+                return {};
             }
             for (auto* action : menu->actions()) {
                 if (action->objectName() != query && action->text() != query &&
@@ -190,6 +233,26 @@ class MenuGeometryCache final : public QObject
                                                     action_rect.topLeft()),
                         action_rect);
                 }
+            }
+            return {};
+        };
+        // This is deliberately an on-demand lookup: inspecting QMenu while it
+        // is being shown is unsafe in Qt/WASM, but once the popup is visible
+        // its action geometry can be read for a real browser mouse click.
+        // A nested context path can contain duplicate labels.  Qt identifies
+        // the deepest currently open submenu as the active popup, which is
+        // exactly the menu receiving the next human pointer event.
+        if (auto* active_menu =
+                qobject_cast<QMenu*>(QApplication::activePopupWidget())) {
+            if (const auto result = action_rect_in_menu(active_menu);
+                !result.empty()) {
+                return result;
+            }
+        }
+        for (auto* menu : m_sketcher.findChildren<QMenu*>()) {
+            if (const auto result = action_rect_in_menu(menu);
+                !result.empty()) {
+                return result;
             }
         }
         const auto result = m_action_rects.find(object_name_or_text);
@@ -213,10 +276,10 @@ class MenuGeometryCache final : public QObject
             if (action_rect.isEmpty()) {
                 continue;
             }
-            const auto result = rect_to_json(
-                map_popup_point_to_sketcher(menu, m_sketcher,
-                                             action_rect.topLeft()),
-                action_rect);
+            const auto result =
+                rect_to_json(map_popup_point_to_sketcher(menu, m_sketcher,
+                                                         action_rect.topLeft()),
+                             action_rect);
             if (!action->objectName().isEmpty()) {
                 m_action_rects[action->objectName().toStdString()] = result;
             }
@@ -296,6 +359,28 @@ void click_button(SketcherWidget& sketcher, const std::string& object_name)
     button->click();
 }
 
+void send_mouse_press(SketcherWidget& sketcher, const std::string& object_name)
+{
+    // Squish send_event() delivers a Qt mouse press to the mapped object. Use
+    // the same mechanism only when a QWidgetAction is not browser-rendered.
+    auto& widget = require_visible_widget(sketcher, object_name);
+    const QPointF point(widget.rect().center());
+    QMouseEvent event(QEvent::MouseButtonPress, point, point,
+                      widget.mapToGlobal(point.toPoint()), Qt::LeftButton,
+                      Qt::LeftButton, Qt::NoModifier);
+    QApplication::sendEvent(&widget, &event);
+}
+
+void close_active_popups()
+{
+    // Qt/WASM leaves QWidgetAction popup windows registered after the
+    // Squish-style synthetic press. Close only the active popup stack, not
+    // application windows, before returning to browser-visible input.
+    while (auto* popup = QApplication::activePopupWidget()) {
+        popup->close();
+    }
+}
+
 std::string get_widget_rect(SketcherWidget& sketcher,
                             const std::string& object_name)
 {
@@ -304,7 +389,11 @@ std::string get_widget_rect(SketcherWidget& sketcher,
     if (!widget) {
         return "{}";
     }
-    const QPoint top_left = widget->mapTo(&sketcher, QPoint(0, 0));
+    // Dialogs and menus are top-level Qt windows in WASM.  Map through global
+    // coordinates so their browser-visible geometry is correct as well as
+    // ordinary child-widget geometry.
+    const QPoint top_left =
+        sketcher.mapFromGlobal(widget->mapToGlobal(QPoint(0, 0)));
     return rect_to_json(top_left, widget->rect());
 }
 
@@ -317,6 +406,10 @@ std::string get_widget_state(SketcherWidget& sketcher,
     result["className"] = widget.metaObject()->className();
     result["visible"] = widget.isVisible();
     result["enabled"] = widget.isEnabled();
+    result["styleSheet"] = widget.styleSheet();
+    // Tool-selection suites assert the visible Qt tooltip text.  This is
+    // read-only test observation and stays behind the Playwright bridge flag.
+    result["toolTip"] = widget.toolTip();
 
     if (auto* button = qobject_cast<QAbstractButton*>(&widget)) {
         result["checked"] = button->isChecked();
@@ -325,6 +418,8 @@ std::string get_widget_state(SketcherWidget& sketcher,
         result["text"] = line_edit->text();
     } else if (auto* text_edit = qobject_cast<QPlainTextEdit*>(&widget)) {
         result["text"] = text_edit->toPlainText();
+    } else if (auto* label = qobject_cast<QLabel*>(&widget)) {
+        result["text"] = label->text();
     } else if (auto* combo_box = qobject_cast<QComboBox*>(&widget)) {
         result["text"] = combo_box->currentText();
     } else if (auto* spin_box = qobject_cast<QSpinBox*>(&widget)) {
@@ -372,6 +467,63 @@ std::string get_bond_rect(SketcherWidget& sketcher, const int bond_index)
         }
     }
     return "{}";
+}
+
+std::string get_rendered_atom_geometry(SketcherWidget& sketcher)
+{
+    QJsonArray result;
+    for (auto* item : require_view(sketcher).scene()->items()) {
+        auto* atom_item = qgraphicsitem_cast<AtomItem*>(item);
+        if (!atom_item)
+            continue;
+        const auto* atom = atom_item->getAtom();
+        const auto& point =
+            atom->getOwningMol().getConformer().getAtomPos(atom->getIdx());
+        QJsonObject entry;
+        entry["index"] = static_cast<int>(atom->getIdx()) + 1;
+        entry["x"] = point.x;
+        entry["y"] = point.y;
+        result.append(entry);
+    }
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+}
+
+std::string get_rendered_bond_geometry(SketcherWidget& sketcher)
+{
+    QJsonArray result;
+    for (auto* item : require_view(sketcher).scene()->items()) {
+        auto* bond_item = qgraphicsitem_cast<BondItem*>(item);
+        if (!bond_item)
+            continue;
+        const auto* bond = bond_item->getBond();
+        QJsonObject entry;
+        entry["index"] = static_cast<int>(bond->getIdx()) + 1;
+        entry["atom1"] = static_cast<int>(bond->getBeginAtomIdx()) + 1;
+        entry["atom2"] = static_cast<int>(bond->getEndAtomIdx()) + 1;
+        result.append(entry);
+    }
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
+}
+
+std::string visible_widget_names(SketcherWidget& sketcher)
+{
+    QJsonArray result;
+    for (auto* widget : sketcher.findChildren<QWidget*>()) {
+        if (widget->isVisible() && !widget->objectName().isEmpty()) {
+            result.append(widget->objectName());
+        }
+    }
+    for (auto* top_level : QApplication::topLevelWidgets()) {
+        if (!top_level || !top_level->isVisible())
+            continue;
+        if (!top_level->objectName().isEmpty())
+            result.append(top_level->objectName());
+        for (auto* widget : top_level->findChildren<QWidget*>()) {
+            if (widget->isVisible() && !widget->objectName().isEmpty())
+                result.append(widget->objectName());
+        }
+    }
+    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
 }
 
 std::string clipboard_text()
