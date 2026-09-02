@@ -22,6 +22,7 @@
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/monomer_context_menu.h"
 #include "schrodinger/sketcher/menu/selection_context_menu.h"
+#include "schrodinger/sketcher/menu/sketcher_top_bar_menus.h"
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
@@ -30,6 +31,7 @@
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
+#include "schrodinger/sketcher/widget/sketcher_top_bar.h"
 #include "schrodinger/test/checkexceptionmsg.h"
 #include "test_common.h"
 
@@ -66,6 +68,27 @@ struct TestWidgetFixture {
 };
 
 BOOST_GLOBAL_FIXTURE(TestWidgetFixture);
+
+BOOST_AUTO_TEST_CASE(test_copy_all_as_image_from_top_bar)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.addFromString("CC");
+    sk.m_clipboard_image_set = false;
+
+    QAction* image_action = nullptr;
+    auto* copy_as_menu = sk.m_ui->top_bar_wdg->m_more_actions_menu
+                             ->m_cut_copy_manager->m_copy_as_menu;
+    for (auto* action : copy_as_menu->actions()) {
+        if (action->text() == "Image") {
+            image_action = action;
+            break;
+        }
+    }
+    BOOST_TEST_REQUIRE(image_action != nullptr);
+
+    image_action->trigger();
+    BOOST_TEST(sk.m_clipboard_image_set);
+}
 
 static void send_key_press(TestSketcherWidget& sk, Qt::Key key,
                            const QString& text)
