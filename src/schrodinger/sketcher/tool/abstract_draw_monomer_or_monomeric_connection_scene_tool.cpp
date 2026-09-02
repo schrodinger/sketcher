@@ -743,6 +743,9 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragMove(
             labelAttachmentPointsOnDragEndMonomer(
                 hovered_monomer_item->getAtom(), hovered_monomer_item);
         }
+        // update drag_end_info now that we've updated the attachment point
+        // labels
+        drag_end_info = getDragEndInfo(event->scenePos()).first;
     }
 
     if (drag_end_info != m_drag_end_info) {

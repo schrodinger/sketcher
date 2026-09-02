@@ -391,6 +391,41 @@ BOOST_AUTO_TEST_CASE(test_drag_empty_to_ap_adds_connected_correct_aps)
 }
 
 /**
+ * Regression test for SKETCH-2852. When a drag moved from one monomer to
+ * another, the drag-end information could retain a pointer to an attachment
+ * point item that was deleted while updating the attachment point labels for
+ * the newly hovered monomer.
+ */
+BOOST_AUTO_TEST_CASE(test_drag_across_monomers_does_not_use_deleted_ap_item)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C.C.C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+
+    auto first_cys_pos = fix.getMonomerPos(0);
+    auto middle_cys_pos = fix.getMonomerPos(1);
+    auto empty_pos = first_cys_pos + QPointF(0, -200);
+    fix.mouseMove(empty_pos);
+    fix.mousePress(empty_pos);
+
+    for (int i = 0; i < 5; ++i) {
+        // Moving over the first cysteine creates its N and S attachment point
+        // items. Moving directly from its N attachment point to the middle
+        // cysteine replaces those items with the middle cysteine's S item. We
+        // repeat these movements multiple times since the bug was intermittent;
+        // the loop increases the likelihood of triggering the exception should
+        // a regression occur.
+        fix.mouseMove(first_cys_pos, Qt::LeftButton);
+        auto first_cys_n_ap_pos = fix.getAttachmentPointPos(0, "N");
+        fix.mouseMove(first_cys_n_ap_pos, Qt::LeftButton);
+        fix.mouseMove(middle_cys_pos, Qt::LeftButton);
+    }
+
+    fix.mouseRelease(middle_cys_pos);
+    BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 4);
+}
+
+/**
  * Make sure that dragging between two existing monomer won't create a second
  * standard backbone connection between them (since monomer_mol can't store more
  * than one standard backbone connection between the same pair of monomers)
