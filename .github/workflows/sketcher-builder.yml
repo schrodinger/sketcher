@@ -29,6 +29,9 @@ env:
 
 jobs:
   pre-commit:
+    # Manual WASM dispatches are artifact builds for browser-test iteration;
+    # PR and full-build formatting checks remain mandatory.
+    if: github.event_name != 'workflow_dispatch' || inputs.build_target != 'wasm'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
