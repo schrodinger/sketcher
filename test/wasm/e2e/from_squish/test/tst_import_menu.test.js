@@ -82,8 +82,7 @@ test.describe('tst_import_menu', () => {
     }
 
     await test.step('import_sdf_text', async () => {
-      await sk.more_actions_menu('copy_all_as', 'sdf');
-      const sdfText = await sk.clipboard_text();
+      const sdfText = await sk.copy_all_as_text('sdf');
       expect(sdfText).toContain('V3000');
       await sk.import_menu('paste_in_text', sdfText, false);
       expect(await sk.paste_in_text_format()).toBe('Autodetect (MDL SD)');
