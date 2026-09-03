@@ -67,6 +67,19 @@ test.describe('Sketcher wrapper contracts', () => {
     );
   });
 
+  test('Bracket Subgroup dialog creates the source SRU/HT S-group', async ({ page }) => {
+    const sk = new Sketcher(page);
+    await sk.open();
+    await sk.import_menu('paste_in_text', SOURCE_STRUCTURE);
+    await sk.map_imported_atom_indexes();
+
+    await sk.add_sgroup('SRU', [4, 5, 6, 7], [4, 5, 6], 'HT', '');
+    const sdf = await sk.copy_all_as_text('sdf');
+    expect(sdf).toContain('M  V30 BEGIN SGROUP');
+    expect(sdf).toContain(' SRU ');
+    expect(sdf).toContain('CONNECT=HT');
+  });
+
   test('Help menu opens and closes both standalone dialogs', async ({ page }) => {
     const sk = new Sketcher(page);
     await sk.open();

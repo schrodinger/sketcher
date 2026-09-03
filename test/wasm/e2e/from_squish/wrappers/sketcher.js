@@ -25,6 +25,7 @@ import {
   sendWidgetMousePress,
   setClipboardText,
   setFilePickerResult,
+  setWidgetText,
   widgetRect,
   widgetState,
 } from './sketcher_wasm.js';
@@ -330,6 +331,7 @@ const COPY_ALL_AS_NAMES = {
 // their human-visible labels.  Keep this translation in the wrapper so test
 // bodies retain the source call format.
 const CONTEXT_MENU_NAMES = {
+  add_to_selection: 'Add to Selection',
   copy_as: 'Copy As',
   modify_atoms: 'Modify Atoms',
   modify_bonds: 'Modify Bonds',
@@ -607,6 +609,15 @@ export class Sketcher {
 
   /** Equivalent to Squish `click_button(object_name)`. */
   async click_button(object_name) {
+    if (object_name === 'bracket_subgroup_ok') {
+      // Qt/WASM renders this dialog's generated QDialogButtonBox without a
+      // discoverable objectName.  Its OK button is nevertheless a visible
+      // fixed-position control in the live dialog canvas, so send a normal
+      // browser click there rather than calling the dialog backend.
+      const dialog = await popupCanvasGeometry(this.page, 0);
+      await mouseClick(this.page, dialog.x + dialog.width * 0.62, dialog.y + dialog.height * 0.87);
+      return;
+    }
     if (object_name === 'about_sketcher_ok') {
       // About2DSketcher is a Qt/WASM top-level canvas. Its generated
       // QDialogButtonBox is not consistently discoverable by objectName after
@@ -1301,6 +1312,35 @@ export class Sketcher {
       { x: view.x + startX, y: view.y + startY },
       { x: view.x + endX, y: view.y + endY },
     );
+  }
+
+  /**
+   * Equivalent to Squish `add_sgroup(...)`: form a Shift-selected group,
+   * open Add to Selection -> Bracket Subgroup, and complete its visible dialog.
+   */
+  async add_sgroup(sgroup_type, sgroup_atoms, sgroup_xbonds, sgroup_connect, sgroup_label) {
+    for (const atom of sgroup_atoms) await this.click_atom(atom, true, 'shift');
+    for (const bond of sgroup_xbonds) await this.click_bond(bond, true, 'shift');
+
+    await this.selection_context_menu(
+      { type: 'atom', index: sgroup_atoms.at(-1) },
+      'add_to_selection',
+      'Bracket Subgroup...',
+    );
+
+    // Open each Qt combobox with the pointer, then use its normal type-ahead
+    // behavior to select the same visible source item.  Enter would activate
+    // this dialog's default OK button and close it prematurely.
+    await clickWidget(this.page, 'subgroup_type_combo');
+    await this.page.keyboard.type(sgroup_type);
+    await this.page.keyboard.press('Escape');
+    await clickWidget(this.page, 'repeat_pattern_combo');
+    await this.page.keyboard.type(sgroup_connect);
+    await this.page.keyboard.press('Escape');
+    if (sgroup_type === 'SRU' && String(sgroup_label) !== '') {
+      await setWidgetText(this.page, 'polymer_label_le', sgroup_label);
+    }
+    await this.click_button('bracket_subgroup_ok');
   }
 
   /** Equivalent to Squish `click_atom(atom, select=False, modifier=None)`. */
