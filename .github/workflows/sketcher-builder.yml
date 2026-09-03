@@ -49,6 +49,7 @@ jobs:
 
   build-test:
     needs: pre-commit
+    if: always()
     name: build-test (${{ matrix.build-name }}, ${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     defaults:
