@@ -340,6 +340,7 @@ const CONTEXT_MENU_NAMES = {
   single_up_down: 'Single Up/Down',
   double_cis_trans: 'Double Cis/Trans',
   zero_order: 'Zero Order',
+  'Not In a Ring': 'Not In a Ring',
   '+_charge': '+ Charge',
   '–_charge': '– Charge',
   add_explicit_hydrogens: 'Add Explicit Hydrogens',
