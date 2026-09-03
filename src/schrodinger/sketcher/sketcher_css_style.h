@@ -71,7 +71,7 @@ const QString ATOM_ELEMENT_OR_MONOMER_COMPACT_STYLE{
 /// style for an unknown monomer (e.g. amino acid X or nucleotide N)
 const QString UNKNOWN_MONOMER_STYLE{
     "QToolButton { font-size: 14px; font-weight: bold; font-style: italic; "
-    "color: #333333; }"
+    "color: #606060; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
 const QString ATOM_QUERY_STYLE{
