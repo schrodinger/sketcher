@@ -139,11 +139,12 @@ function(setup_target TARGET)
       endif()
     endif()
   endif()
-  if(EMSCRIPTEN)
-    # We optimize for space in wasm builds because otherwise binaryen (run
-    # because of ASYNCIFY) runs out of memory
+if(EMSCRIPTEN)
+  # We optimize for space in wasm builds because otherwise binaryen (run
+  # because of ASYNCIFY) runs out of memory
+  set(SKETCHER_WASM_DEFAULT_OPTIMIZATION "-Os")
     set(SKETCHER_WASM_OPTIMIZATION
-        "-Os"
+        "${SKETCHER_WASM_DEFAULT_OPTIMIZATION}"
         CACHE STRING "Emscripten optimization level for local WASM builds")
     target_link_options(
       ${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS -fexceptions
@@ -330,6 +331,13 @@ add_executable(${APP_TARGET} ${APP_SOURCES})
 if(SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
   target_compile_definitions(${APP_TARGET}
                              PRIVATE SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+  # Export verification is recorded at the Qt save boundary. Limit the
+  # bridge-specific compile definition to that one source: normal builds have
+  # no bridge dependency, and incremental Playwright builds avoid recompiling
+  # the entire Sketcher library merely because this option is enabled.
+  set_source_files_properties(
+    ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/dialog/file_export_dialog.cpp
+    APPEND PROPERTY COMPILE_DEFINITIONS SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
 endif()
 if(APPLE)
   set_target_properties(

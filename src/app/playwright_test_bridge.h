@@ -35,5 +35,7 @@ std::string get_rendered_bond_geometry(SketcherWidget& sketcher);
 std::string visible_widget_names(SketcherWidget& sketcher);
 std::string clipboard_text();
 void set_clipboard_text(const std::string& text);
+void record_file_export(const std::string& filename,
+                        const std::string& file_content);
 } // namespace playwright_test_bridge
 } // namespace schrodinger::sketcher

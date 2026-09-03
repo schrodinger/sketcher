@@ -439,6 +439,33 @@ void set_widget_text(SketcherWidget& sketcher, const std::string& object_name,
              QString::fromStdString(text));
 }
 
+void record_file_export(const std::string& filename,
+                        const std::string& file_content)
+{
+#ifdef __EMSCRIPTEN__
+    // QFileDialog::saveFileContent is implemented within Qt/WASM and does not
+    // create a Chromium Download event.  Observe the already-produced bytes
+    // here; the test itself still activates the visible Download button.
+    QJsonObject result;
+    result["filename"] = QString::fromStdString(filename);
+    result["contentBase64"] = QString::fromLatin1(
+        QByteArray::fromStdString(file_content).toBase64());
+    const auto json = QJsonDocument(result).toJson(QJsonDocument::Compact);
+    EM_ASM(
+        {
+            if (!window.__sketcherPlaywrightFileExports) {
+                window.__sketcherPlaywrightFileExports = [];
+            }
+            window.__sketcherPlaywrightFileExports.push(
+                JSON.parse(UTF8ToString($0)));
+        },
+        json.constData());
+#else
+    (void)filename;
+    (void)file_content;
+#endif
+}
+
 std::string get_menu_action_rect(SketcherWidget& sketcher,
                                  const std::string& object_name_or_text)
 {
