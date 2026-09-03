@@ -57,6 +57,22 @@ QWidget* find_visible_widget(SketcherWidget& sketcher, const QString& name)
         }
         return false;
     };
+    // A modal dialog can legitimately share an objectName with the persistent
+    // toolbar (for example, both have an export_btn).  A person can only
+    // interact with the active dialog, so prefer its visible control before
+    // considering the background Sketcher hierarchy.
+    if (auto* modal = QApplication::activeModalWidget(); modal &&
+        modal->isVisible()) {
+        if (modal->objectName() == name) {
+            return modal;
+        }
+        const auto modal_candidates = modal->findChildren<QWidget*>(name);
+        for (auto* widget : modal_candidates) {
+            if (widget->isVisible()) {
+                return widget;
+            }
+        }
+    }
     // A context-menu widget can legitimately share an objectName with the
     // persistent toolbar (for example periodic_table_btn). Prefer the visible
     // control contained in the open QMenu, so browser input follows the
