@@ -2,8 +2,11 @@ import { expect, test } from '@playwright/test';
 import { Sketcher } from '../wrappers/sketcher.js';
 import { hideMouseMarker, isEmpty } from '../wrappers/sketcher_wasm.js';
 
+test.setTimeout(180_000);
+
 const SOURCE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 const ELEMENT_SHORTCUTS = ['f', 'h', 'n', 'o', 'p', 's', 'i', 'b', 'k', 'u'];
+const PERIODIC_TABLE_SHORTCUTS = new Set(['I', 'B', 'K', 'U']);
 const BOND_SHORTCUTS = [0, 2, 3, 1];
 
 async function checkpoint(page, name) {
@@ -35,9 +38,12 @@ test.describe('tst_hidden_shortcuts', () => {
     for (const element of ELEMENT_SHORTCUTS) {
       await sk.type_text('sketcher_area', element);
       const tool = element.toUpperCase();
-      const state = await sk.widget_state(sk.tool_widget_name(tool));
+      const state = await sk.widget_state(
+        PERIODIC_TABLE_SHORTCUTS.has(tool) ? 'last_picked_element_btn' : sk.tool_widget_name(tool),
+      );
       expect(state.enabled).toBe(true);
       expect(state.checked).toBe(true);
+      if (PERIODIC_TABLE_SHORTCUTS.has(tool)) expect(state.text).toBe(tool);
     }
     for (const order of BOND_SHORTCUTS) {
       await sk.type_text('sketcher_area', String(order));

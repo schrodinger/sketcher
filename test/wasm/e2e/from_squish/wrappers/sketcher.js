@@ -1080,9 +1080,13 @@ export class Sketcher {
       {
         '<Backspace>': 'Backspace',
         ' ': 'Space',
-      }[sourceKey] || shortcut;
+    }[sourceKey] || shortcut;
     await focusCanvas(this.page);
     await this.page.keyboard.press(key);
+    // The source Space shortcut transitions draw, move, and erase tools back
+    // to the remembered Select mode. Keep wrapper state in sync so a
+    // subsequent lasso/ellipse click opens (rather than closes) its popup.
+    if (sourceKey === ' ') this.current_tool = 'rect_btn';
   }
 
   /** Equivalent to `mouse_drag` using source coordinates relative to canvas center. */
