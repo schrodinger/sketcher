@@ -495,7 +495,7 @@ if(ENABLE_TESTING)
       ${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PREFIX_PATH}
                                 OUTPUT_NAME ${TEST_STEM})
     # Create memtest target and command
-    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
       # create the valgrind test
       set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
       if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
@@ -516,7 +516,7 @@ if(ENABLE_TESTING)
       ${TEST_TARGET} PROPERTIES ENVIRONMENT
                                 "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
     # Add label for memtest targets
-    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
       set_property(TEST ${TEST_TARGET} PROPERTY LABELS memtest)
     endif()
   endforeach()
