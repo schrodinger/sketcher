@@ -627,6 +627,11 @@ void SketcherWidget::setClipboardContents(std::string text,
 #endif
 }
 
+void SketcherWidget::setClipboardImage(const QImage& image) const
+{
+    QApplication::clipboard()->setImage(image);
+}
+
 void SketcherWidget::cut(Format format)
 {
     copy(format, SceneSubset::SELECTION);
@@ -664,7 +669,7 @@ void SketcherWidget::copyAsImage()
     image_bytes = get_image_bytes(*m_scene, ImageFormat::PNG, opts);
     QImage image;
     image.loadFromData(image_bytes, "PNG");
-    QApplication::clipboard()->setImage(image);
+    setClipboardImage(image);
 }
 
 #ifdef __EMSCRIPTEN__
@@ -954,6 +959,8 @@ void SketcherWidget::connectTopBarSlots()
             &SketcherWidget::cut);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::copyRequested, this,
             &SketcherWidget::copy);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::copyAsImageRequested, this,
+            &SketcherWidget::copyAsImage);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::pasteRequested, this,
             &SketcherWidget::paste);
 

@@ -95,6 +95,9 @@ void SketcherTopBar::initMenus()
     connect(m_more_actions_menu->m_cut_copy_manager,
             &CutCopyActionManager::copyRequested, this,
             &SketcherTopBar::copyRequested);
+    connect(m_more_actions_menu->m_cut_copy_manager,
+            &CutCopyActionManager::copyAsImageRequested, this,
+            &SketcherTopBar::copyAsImageRequested);
     connect(m_more_actions_menu->m_paste_act, &QAction::triggered, this,
             &SketcherTopBar::pasteRequested);
     connect(m_more_actions_menu->m_flip_horizontal_act, &QAction::triggered,
