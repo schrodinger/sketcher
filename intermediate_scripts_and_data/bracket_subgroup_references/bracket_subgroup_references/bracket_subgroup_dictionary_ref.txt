@@ -1,0 +1,1 @@
+{'bracket_subgroup_SRU_HT_nolabel': None, 'bracket_subgroup_SRU_HH_nolabel': None, 'bracket_subgroup_SRU_EU_nolabel': None, 'bracket_subgroup_SRU_HT_constantlabel': None, 'bracket_subgroup_SRU_HT_rangelabel': None, 'bracket_subgroup_COP_HT': None, 'bracket_subgroup_COP_HH': None, 'bracket_subgroup_COP_EU': None}

@@ -8,7 +8,9 @@ test.setTimeout(180_000);
 async function checkpoint(page, name) {
   await page.mouse.move(0, 0);
   await hideMouseMarker(page);
-  await expect(page.locator('#screen canvas')).toHaveScreenshot(`${name}.png`);
+  // Qt/WASM may retain a closing context-menu canvas for one render frame.
+  await page.waitForTimeout(150);
+  await expect(page.locator('#screen')).toHaveScreenshot(`${name}.png`);
 }
 
 test.describe('tst_select_mode_active_selection', () => {

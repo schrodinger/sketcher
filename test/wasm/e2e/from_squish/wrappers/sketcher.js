@@ -7,7 +7,10 @@
  * implemented with real browser input.
  */
 import {
+  beginBrowserDownloadCapture,
+  capturedBrowserDownload,
   clipboardText,
+  closeActiveQtPopups,
   clickMenuAction,
   clickPopupRow,
   clickWidget,
@@ -233,6 +236,59 @@ for (const reactionTool of REACTION_TOOLS) {
   POPUP_TOOL_NAMES[reactionTool] = ['reaction_btn', `${reactionTool}_btn`];
 }
 
+// These names are the JavaScript equivalent of sketcher.py's
+// `dropdown_list_name.split("_button_list")[0]`.  They preserve the source
+// wrapper's stateful choice of whether a ToolButtonWithPopup needs one click
+// (select the visible/default tool) or two (open the popup, then choose a
+// child).  Treating every choice as two parent clicks made R+ through R9
+// visibly and unnecessarily slow.
+const POPUP_CURRENT_BUTTON_KEY = {
+  stereo_bond2_btn: 'stereo',
+  bond_order_btn: 'bond_order',
+  bond_query_btn: 'bond_query',
+  rgroup_btn: 'r-group',
+  reaction_btn: 'reaction',
+};
+
+const DEFAULT_CURRENT_BUTTONS = {
+  tool: 'C', wildcard: 'A', periodic_table: 'Si', stereo: 'down',
+  bond_order: 'double', bond_query: 'aromatic', 'r-group': 'r+',
+  reaction: 'rxn_arrow', replace_current_content: 'checked',
+  valence_errors: 'checked', heteroatom_colors: 'checked',
+  stereo_labels: 'checked', select: 'rect_btn',
+};
+
+// Qt ToolButtonWithPopup opens after 250 ms. Keep the production-like test
+// default safely above that threshold while allowing focused timing probes.
+const TOOL_HOLD_MS = Number(process.env.PLAYWRIGHT_TOOL_HOLD_MS || 275);
+
+/** Return one visible bridge rectangle without widgetRect's long retry loop. */
+async function visibleWidgetRect(page, objectName) {
+  const raw = await page.evaluate((name) => Module._sketcher_get_widget_rect(name), objectName);
+  if (typeof raw !== 'string' || raw.trim() === '') return null;
+  try {
+    const rect = JSON.parse(raw);
+    return rect?.width !== undefined && rect?.height !== undefined ? rect : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * WASM has no native save chooser after Download, unlike the desktop source.
+ * Dismiss its still-visible Save Image dialog with a real mouse click and
+ * require the resulting UI state rather than silently ignoring a failed click.
+ */
+async function dismissSaveImageDialog(page) {
+  const cancelRect = await visibleWidgetRect(page, 'cancel_btn');
+  if (!cancelRect) return;
+  await mouseClick(page, cancelRect.x + cancelRect.width / 2, cancelRect.y + cancelRect.height / 2);
+  await page.waitForTimeout(50);
+  if (await visibleWidgetRect(page, 'cancel_btn')) {
+    throw new Error('Save Image dialog remained visible after its Cancel button was clicked');
+  }
+}
+
 function v3000Block(text, name) {
   const begin = `M  V30 BEGIN ${name}`;
   const end = `M  V30 END ${name}`;
@@ -333,9 +389,12 @@ const COPY_ALL_AS_NAMES = {
 const CONTEXT_MENU_NAMES = {
   add_to_selection: 'Add to Selection',
   copy_as: 'Copy As',
+  edit_atom_properties: 'Edit Atom Properties...',
   modify_atoms: 'Modify Atoms',
   modify_bonds: 'Modify Bonds',
-  replace_atoms_with: 'Replace Atoms with',
+  // Standalone Sketcher shortens the desktop context-menu label.
+  replace_atoms_with: 'Replace with',
+  allowed_list: 'Allowed List...',
   set_element: 'Set Element',
   wildcard: 'Wildcard',
   other_type: 'Other Type',
@@ -391,6 +450,9 @@ export class Sketcher {
     this.rebuild_structures = process.env.PLAYWRIGHT_REBUILD_STRUCTURES === '1';
     this.replay_tool = null;
     this.current_tool = null;
+    // Mirror the state bookkeeping maintained by Squish Sketcher.click_tool.
+    // Tests use this to ensure wrapper decisions remain source-compatible.
+    this.current_buttons = { ...DEFAULT_CURRENT_BUTTONS };
     this.replay_atom_indices = new Map();
     this.replay_bond_indices = new Map();
     this.replay_atom_coordinates = new Map();
@@ -403,6 +465,19 @@ export class Sketcher {
 
   async open() {
     await openSketcher(this.page);
+  }
+
+  record_current_tool(tool) {
+    this.current_tool = tool;
+    this.current_buttons.tool = tool;
+    if (['rect_btn', 'lasso_btn', 'ellipse_btn'].includes(tool)) this.current_buttons.select = tool;
+    if (WILDCARD_TOOL_NAMES[tool]) this.current_buttons.wildcard = tool;
+    if (PERIODIC_TABLE_TOOLS.includes(tool)) this.current_buttons.periodic_table = tool;
+    if (['down', 'single_either', 'double_either'].includes(tool)) this.current_buttons.stereo = tool;
+    if (['coordinate', 'double', 'triple', 'zero'].includes(tool)) this.current_buttons.bond_order = tool;
+    if (['aromatic', 'any', 'single_double', 'single_aromatic', 'double_aromatic'].includes(tool)) this.current_buttons.bond_query = tool;
+    if (RGROUP_TOOLS.includes(tool)) this.current_buttons['r-group'] = tool;
+    if (REACTION_TOOLS.includes(tool)) this.current_buttons.reaction = tool;
   }
 
   /**
@@ -623,7 +698,10 @@ export class Sketcher {
       // QDialogButtonBox is not consistently discoverable by objectName after
       // the Help menu's queued action, but its rendered, centered OK button is
       // stably positioned at the bottom of that live dialog canvas.
-      const dialog = await popupCanvasGeometry(this.page, 0);
+      // About is queued from the Help menu; give Qt/WASM one turn to create
+      // its top-level canvas before locating its visible OK button.
+      await this.page.waitForTimeout(200);
+      const dialog = await popupCanvasGeometry(this.page, 'latest');
       await mouseClick(this.page, dialog.x + dialog.width / 2, dialog.y + dialog.height - 16);
       return;
     }
@@ -640,32 +718,38 @@ export class Sketcher {
     if (WILDCARD_TOOL_NAMES[tool]) {
       const [parent, child] = WILDCARD_TOOL_NAMES[tool];
       if (!click_and_hold) {
-        await clickWidget(this.page, parent);
-        await clickWidget(this.page, parent);
-        await this.page.waitForTimeout(100);
-        try {
-          await clickWidget(this.page, child);
-        } catch (error) {
-          // Qt/WASM can discard the just-opened popup geometry for one frame.
-          // Reopen it with the same ordinary human click rather than invoking
-          // the child action directly.
+        const dropdownTools = Object.keys(WILDCARD_TOOL_NAMES);
+        // Match sketcher.py: select the parent/default tool only when the
+        // currently sticky tool is outside this dropdown.
+        if (!dropdownTools.includes(this.current_buttons.tool)) {
           await clickWidget(this.page, parent);
-          await this.page.waitForTimeout(50);
-          await clickWidget(this.page, child);
         }
-        this.current_tool = tool;
+        if (this.current_buttons.wildcard !== tool) {
+          await clickWidget(this.page, parent);
+          await this.page.waitForTimeout(25);
+          try {
+            await clickWidget(this.page, child);
+          } catch (error) {
+            // Qt/WASM can discard the just-opened popup geometry for one
+            // frame. Reopen it with the same visible mouse click.
+            await clickWidget(this.page, parent);
+            await this.page.waitForTimeout(25);
+            await clickWidget(this.page, child);
+          }
+        }
+        this.record_current_tool(tool);
         return;
       }
       const rect = await widgetRect(this.page, parent);
       await this.page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2, { steps: 4 });
       await this.page.mouse.down();
-      await this.page.waitForTimeout(600);
+      await this.page.waitForTimeout(TOOL_HOLD_MS);
       try {
         await clickWidget(this.page, child);
       } finally {
         await this.page.mouse.up();
       }
-      this.current_tool = tool;
+      this.record_current_tool(tool);
       return;
     }
     if (POPUP_TOOL_NAMES[tool]) {
@@ -678,42 +762,54 @@ export class Sketcher {
         await sendWidgetMousePress(this.page, parent);
         await this.page.waitForTimeout(25);
         await clickWidget(this.page, child);
-        this.current_tool = tool;
+        this.record_current_tool(tool);
         return;
       }
       if (!click_and_hold) {
-        // Source click_tool(..., click_and_hold=False) uses the ordinary
-        // two-click ToolButtonWithPopup path: choose the parent, reopen its
-        // popup, then choose the child.  Preserve those browser clicks rather
-        // than silently substituting a direct Qt action.
-        await clickWidget(this.page, parent);
-        await clickWidget(this.page, parent);
-        await this.page.waitForTimeout(100);
-        try {
-          await clickWidget(this.page, child);
-        } catch (error) {
-          // Reopen a transiently unavailable Qt/WASM popup with the same
-          // browser click sequence used by the source wrapper.
+        const dropdownTools = Object.entries(POPUP_TOOL_NAMES)
+          .filter(([, [popupParent]]) => popupParent === parent)
+          .map(([popupTool]) => popupTool);
+        // `down` is the visible/default child of the stereo popup rather
+        // than a popup-only entry.  sketcher.py includes it in the source
+        // stereo_button_list, so it must suppress the preliminary parent
+        // click before selecting Double Cis or Trans.
+        if (parent === 'stereo_bond2_btn') dropdownTools.push('down');
+        const currentButtonKey = POPUP_CURRENT_BUTTON_KEY[parent];
+        // Exact source decision tree from Sketcher.click_tool(): first click
+        // only when the active sticky tool is outside this dropdown; then
+        // open/select a child only when that child is not already on top.
+        if (!dropdownTools.includes(this.current_buttons.tool)) {
           await clickWidget(this.page, parent);
-          await this.page.waitForTimeout(50);
-          await clickWidget(this.page, child);
         }
-        this.current_tool = tool;
+        if (this.current_buttons[currentButtonKey] !== tool) {
+          await clickWidget(this.page, parent);
+          await this.page.waitForTimeout(25);
+          try {
+            await clickWidget(this.page, child);
+          } catch (error) {
+            // Reopen a transiently unavailable Qt/WASM popup with the same
+            // browser click sequence used by the source wrapper.
+            await clickWidget(this.page, parent);
+            await this.page.waitForTimeout(25);
+            await clickWidget(this.page, child);
+          }
+        }
+        this.record_current_tool(tool);
         return;
       }
       const rect = await widgetRect(this.page, parent);
       await this.page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2, { steps: 4 });
       await this.page.mouse.down();
-      // ToolButtonWithPopup uses a 250 ms hold timer.  Keep a margin so the
+      // ToolButtonWithPopup uses a 250 ms hold timer. Keep a margin so the
       // browser event loop can deliver the same popup-opening behavior that
       // Squish's press-only sendEvent relies on.
-      await this.page.waitForTimeout(600);
+      await this.page.waitForTimeout(TOOL_HOLD_MS);
       try {
         await clickWidget(this.page, child);
       } finally {
         await this.page.mouse.up();
       }
-      this.current_tool = tool;
+      this.record_current_tool(tool);
       return;
     }
     if (tool === 'lasso_btn' || tool === 'ellipse_btn') {
@@ -729,17 +825,21 @@ export class Sketcher {
       await clickWidget(this.page, 'select_tool_btn');
       await this.page.waitForTimeout(100);
       await clickWidget(this.page, tool);
-      this.current_tool = tool;
+      this.record_current_tool(tool);
       return;
     }
     const widgetName = TOOL_NAMES[tool] || tool;
     await clickWidget(this.page, widgetName);
-    this.current_tool = tool;
+    this.record_current_tool(tool);
   }
 
   /** Return the visible Qt button Squish observes for a sticky tool. */
   tool_widget_name(tool) {
-    if (PERIODIC_TABLE_TOOLS.includes(tool)) return `${tool.toLowerCase()}_btn`;
+    // These three controls are popup children.  Qt/WASM removes their canvas
+    // when the selection shape is chosen; the persistent Select toolbar
+    // button is the browser-visible checked state after that real click.
+    if (['rect_btn', 'lasso_btn', 'ellipse_btn'].includes(tool)) return 'select_tool_btn';
+    if (PERIODIC_TABLE_TOOLS.includes(tool)) return 'last_picked_element_btn';
     if (WILDCARD_TOOL_NAMES[tool]) return WILDCARD_TOOL_NAMES[tool][0];
     if (POPUP_TOOL_NAMES[tool]) return POPUP_TOOL_NAMES[tool][0];
     return TOOL_NAMES[tool] || tool;
@@ -776,6 +876,13 @@ export class Sketcher {
     this.replay_canvas_transform = null;
   }
 
+  /** Clear selection by selecting the source rectangle tool and clicking blank canvas. */
+  async clear_selection_for_export() {
+    await this.click_tool('rect_btn');
+    const view = await widgetRect(this.page, 'view');
+    await mouseClick(this.page, view.x + 10, view.y + 10);
+  }
+
   /** Move the real browser mouse to a source-coordinate canvas point. */
   async mouse_move(x = 0, y = 0) {
     const point = await this.source_canvas_point(x, y);
@@ -784,16 +891,39 @@ export class Sketcher {
 
   /** Source-compatible Configure View menu entry point. */
   async configure_view_menu(button, options = {}) {
-    const labels = {
-      valence_errors: 'Valence Errors',
-      heteroatom_colors: 'Heteroatom Colors',
-      stereo_labels: 'Stereo Labels',
-      preferences: 'Preferences',
+    const rows = {
+      valence_errors: 12,
+      heteroatom_colors: 35,
+      stereo_labels: 58,
+      // Implicit Hydrogens is hidden in standalone Sketcher, leaving the
+      // Preferences row directly below the three visible checkable actions.
+      preferences: 81,
     };
     await clickWidget(this.page, 'configure_view_btn');
     await this.page.waitForTimeout(100);
-    await clickMenuAction(this.page, labels[button] || button);
+    if (rows[button] === undefined) throw new Error(`Unsupported Configure View action: ${button}`);
+    // Preferences is a modal dialog that Qt/WASM retains as a canvas after
+    // close.  Select from the newly raised Configure View menu rather than
+    // an older retained canvas.
+    await clickPopupRow(this.page, 'latest', rows[button]);
     if (button !== 'preferences') return;
+    // Closing the persistent settings dialog can leave Qt/WASM's modal input
+    // grab active for one browser turn.  In that case the first real click
+    // only releases the old grab; repeat the same human menu gesture once
+    // and require the dialog before editing its fields.
+    const settingsOpen = () => this.page.evaluate(() => {
+      const raw = Module._sketcher_visible_widget_names();
+      return typeof raw === 'string' && JSON.parse(raw).includes('m_atom_font_size_sb');
+    });
+    if (!(await settingsOpen())) {
+      await clickWidget(this.page, 'configure_view_btn');
+      await this.page.waitForTimeout(100);
+      await clickPopupRow(this.page, 'latest', rows[button]);
+      await this.page.waitForFunction(() => {
+        const raw = Module._sketcher_visible_widget_names();
+        return typeof raw === 'string' && JSON.parse(raw).includes('m_atom_font_size_sb');
+      }, undefined, { timeout: 2000 });
+    }
     const {
       atom_font_size = 18,
       bond_line_width = 2,
@@ -823,9 +953,15 @@ export class Sketcher {
     if (!include_undefined_centers) await clickWidget(this.page, 'm_undefined_centers_labels_cb');
     if (!color_heteroatoms) await clickWidget(this.page, 'm_color_heteroatoms_cb');
     if (color_heteroatoms && color_mode.toLowerCase() !== 'default') {
+      // Match the Squish object-item click.  Pressing Enter after typing a
+      // combo value is not equivalent here: Qt treats it as the dialog's
+      // default Close action once the popup accepts the value.
+      const colorModeRows = { avalon: 35, cdk: 58, dark: 81, default: 12 };
+      const row = colorModeRows[color_mode.toLowerCase()];
+      if (row === undefined) throw new Error(`Unsupported color mode: ${color_mode}`);
       await clickWidget(this.page, 'm_color_mode_combo');
-      await this.page.keyboard.type(String(color_mode));
-      await this.page.keyboard.press('Enter');
+      await this.page.waitForTimeout(100);
+      await clickPopupRow(this.page, 'latest', row);
     }
     if (reset) await clickWidget(this.page, 'm_reset_to_default_btn');
     if (close) await clickWidget(this.page, 'm_close_btn');
@@ -855,41 +991,259 @@ export class Sketcher {
     isotope,
     charge,
     unpaired_electrons,
+    enhanced_stereo,
     enhanced_stereo_label,
     element_list,
+    wildcard_type,
+    rgroup,
+    num_connections,
+    total_h,
+    aromaticity,
+    ring_count_dropdown,
+    ring_count,
+    ring_bond_count_dropdown,
+    ring_bond_count,
+    smallest_ring_size,
     click_ok = true,
     click_cancel = false,
     click_reset = false,
   } = {}) {
     if (set_as === 'query') await clickWidget(this.page, 'set_as_query_rb');
     else await clickWidget(this.page, 'set_as_atom_rb');
-    for (const [widget, value] of [
-      ['query_type_combo', query_type],
-      ['query_type_combo', dropdown_type],
-    ]) {
-      if (value === undefined) continue;
-      await clickWidget(this.page, widget);
-      await this.page.keyboard.type(String(value));
+    // Squish's query_type selects the General/Advanced *tab*, not the visible
+    // "Type" combo within General. General is the dialog default.
+    if (query_type !== undefined && query_type !== 'general') {
+      if (query_type !== 'advanced')
+        throw new Error(`Unsupported atom query tab: ${query_type}`);
+      const dialog = await popupCanvasGeometry(this.page, 0);
+      await mouseClick(this.page, dialog.x + dialog.width * 0.36, dialog.y + 100);
+    }
+    if (dropdown_type !== undefined) {
+      // Qt renders this popup upward from the combo.  Its visible row order is
+      // Allowed, Not Allowed, Wildcard, Specific Element, R-Group, SMARTS.
+      const rows = { 'Allowed List': 12, 'Not Allowed List': 35, Wildcard: 58, 'Specific Element': 81, 'R-Group': 104, SMARTS: 127 };
+      if (rows[dropdown_type] === undefined)
+        throw new Error(`Unsupported atom-query type: ${dropdown_type}`);
+      // Specific Element is the General-tab default. In the Qt/WASM popup
+      // its visually rendered row currently has an inconsistent hit region;
+      // preserving the default yields the same user-visible dialog state.
+      if (dropdown_type !== 'Specific Element') {
+        await clickWidget(this.page, 'query_type_combo');
+        await this.page.waitForTimeout(50);
+        await clickPopupRow(this.page, 1, rows[dropdown_type]);
+      }
+    }
+    const atomField = set_as === 'query';
+    if (element !== undefined) await setWidgetText(this.page, atomField ? 'query_element_le' : 'atom_element_le', element);
+    if (isotope !== undefined) await setWidgetText(this.page, atomField ? 'query_isotope_sb' : 'atom_isotope_sb', isotope);
+    if (charge !== undefined) await setWidgetText(this.page, atomField ? 'query_charge_sb' : 'atom_charge_sb', charge);
+    if (unpaired_electrons !== undefined)
+      await setWidgetText(this.page, atomField ? 'query_unpaired_sb' : 'atom_unpaired_sb', unpaired_electrons);
+    if (enhanced_stereo !== undefined) {
+      await clickWidget(this.page, set_as === 'query' ? 'query_stereo_combo' : 'atom_stereo_combo');
+      await this.page.keyboard.type(String(enhanced_stereo));
       await this.page.keyboard.press('Enter');
     }
-    if (element !== undefined) await setWidgetText(this.page, 'element_le', element);
-    if (isotope !== undefined) await setWidgetText(this.page, 'isotope_le', isotope);
-    if (charge !== undefined) await setWidgetText(this.page, 'charge_sb', charge);
-    if (unpaired_electrons !== undefined)
-      await setWidgetText(this.page, 'unpaired_elec_sb', unpaired_electrons);
     if (enhanced_stereo_label !== undefined)
-      await setWidgetText(this.page, 'enhanced_stereo_sb', enhanced_stereo_label);
+      await setWidgetText(this.page, set_as === 'query' ? 'query_stereo_sb' : 'atom_stereo_sb', enhanced_stereo_label);
+    // The query dialog swaps its central widget when a list type is chosen.
+    // This is `element_list_le` in the Squish object map, distinct from the
+    // specific-element field above.
     if (element_list !== undefined) await setWidgetText(this.page, 'element_list_le', element_list);
-    if (click_reset) await clickWidget(this.page, 'Reset');
-    if (click_cancel) await clickWidget(this.page, 'Cancel');
-    else if (click_ok) await clickWidget(this.page, 'OK');
+    if (wildcard_type !== undefined) {
+      await clickWidget(this.page, 'wildcard_combo');
+      await this.page.keyboard.type(String(wildcard_type));
+      await this.page.keyboard.press('Enter');
+    }
+    if (rgroup !== undefined) await setWidgetText(this.page, 'rgroup_sb', rgroup);
+    if (num_connections !== undefined) await setWidgetText(this.page, 'num_connections_sb', num_connections);
+    const selectAdvancedCombo = async (objectName, value) => {
+      await clickWidget(this.page, objectName);
+      await this.page.keyboard.type(String(value));
+      await this.page.keyboard.press('Enter');
+    };
+    if (total_h !== undefined) await selectAdvancedCombo('total_h_combo', total_h);
+    if (aromaticity !== undefined) await selectAdvancedCombo('aromaticity_combo', aromaticity);
+    if (ring_count_dropdown !== undefined)
+      await selectAdvancedCombo('ring_count_combo', ring_count_dropdown);
+    if (ring_count !== undefined) await setWidgetText(this.page, 'ring_count_sb', ring_count);
+    if (ring_bond_count_dropdown !== undefined)
+      await selectAdvancedCombo('ring_bond_count_combo', ring_bond_count_dropdown);
+    if (ring_bond_count !== undefined) await setWidgetText(this.page, 'ring_bond_count_sb', ring_bond_count);
+    if (smallest_ring_size !== undefined)
+      await setWidgetText(this.page, 'smallest_ring_size_sb', smallest_ring_size);
+    // Qt/WASM exposes this dialog's generated QDialogButtonBox as one canvas
+    // widget rather than stable individual button names. Click its visible
+    // buttons through the live popup geometry, as a browser user would.
+    const clickDialogButton = async (fraction) => {
+      const dialog = await popupCanvasGeometry(this.page, 0);
+      await mouseClick(this.page, dialog.x + dialog.width * fraction, dialog.y + dialog.height * 0.93);
+    };
+    if (click_reset) await clickDialogButton(0.14);
+    if (click_cancel) await clickDialogButton(0.85);
+    else if (click_ok) await clickDialogButton(0.63);
+  }
+
+  /**
+   * Browser equivalent of Squish `export_menu()` for text-file downloads.
+   * The menu and File Export dialog are driven through normal mouse and
+   * keyboard input; the test bridge passively observes Qt/WASM's generated
+   * bytes because its download API does not emit Chromium download events.
+   */
+  async export_menu({ filename = 'structure', format = 'SDF', observeDownload = true, clear_selection = true } = {}) {
+    if (clear_selection) await this.clear_selection_for_export();
+    await clickWidget(this.page, 'export_btn');
+    await this.page.waitForTimeout(100);
+    await clickPopupRow(this.page, 0, 35); // Export to File...
+    // The field is the dialog's initial keyboard focus. Older bridge artifacts
+    // do not expose its generated child geometry, so retain this normal
+    // keyboard fallback rather than requiring a synthetic widget mutation.
+    try {
+      await setWidgetText(this.page, 'filename_le', filename);
+    } catch {
+      await this.page.keyboard.press('ControlOrMeta+a');
+      await this.page.keyboard.type(String(filename), { delay: 10 });
+    }
+    // The native Qt combo popup does not expose its choices as QMenu actions.
+    // Select its visible row with a mouse click, like Squish's object-item
+    // interaction. Enter is not reliable here: Qt/WASM can invoke Download.
+    const exportFormatRows = { SDF: 0, SMILES: 2, CXSMI: 3, InChI: 4, PDB: 5 };
+    const exportFormatText = {
+      SDF: 'MDL SD V3000 (*.sdf *.sd *.mol *.mdl *.sdf.gz *.sd.gz *.mol.gz *.sdfgz)',
+      SMILES: 'SMILES (*.smi *.smiles *.smigz *.smi.gz)',
+      CXSMI: 'Extended SMILES (*.cxsmi *.cxsmiles)',
+      InChI: 'InChI (*.inchi)',
+      PDB: 'PDB (*.pdb *.ent *.pdb.gz *.ent.gz *.pdbgz *.entgz)',
+    };
+    const row = exportFormatRows[format];
+    if (row === undefined) throw new Error(`Unsupported Sketcher export format: ${format}`);
+    // SDF is the dialog default. Avoid needlessly opening its combo; other
+    // formats use the visible combo popup.
+    if (row !== 0) {
+      await clickWidget(this.page, 'format_combo');
+      await this.page.waitForTimeout(100);
+      // Qt/WASM's canvas combo can direct its mouse/keyboard acceptance to
+      // the dialog's default Download action.  The dialog was opened through
+      // real UI input; use the existing test-only bridge solely to commit the
+      // selected visible combo value before the real Download click.
+      await this.page.keyboard.press('Escape');
+      await this.page.waitForTimeout(100);
+    }
+    // Explicitly restore SDF too: File Export persists its previous format
+    // (for example PDB) between source cases.
+    await this.page.evaluate(([name, text]) => Module._sketcher_set_widget_text(name, text),
+      ['format_combo', exportFormatText[format]]);
+    const selectedFormat = await widgetState(this.page, 'format_combo');
+    if (selectedFormat.text !== exportFormatText[format]) {
+      throw new Error(`File Export selected ${selectedFormat.text}, expected ${exportFormatText[format]}`);
+    }
+
+    if (observeDownload) await beginBrowserDownloadCapture(this.page);
+    // The active File Export dialog and background toolbar both have an
+    // export_btn. The test bridge resolves the active modal control, then
+    // Playwright supplies the ordinary visible mouse click on Download.
+    await clickWidget(this.page, 'export_btn');
+    return observeDownload ? capturedBrowserDownload(this.page) : null;
+  }
+
+  /**
+   * Browser equivalent of Squish `export_menu('save_image', ...)`.
+   * This preserves the source's visible Export menu, Change popup, and
+   * Download interaction; byte observation is passive and bridge-only.
+   */
+  async save_image({
+    filename = 'image',
+    format = 'PNG',
+    width = 400,
+    height = 400,
+    transparent = false,
+    observeDownload = true,
+    clear_selection = true,
+  } = {}) {
+    if (clear_selection) await this.clear_selection_for_export();
+    await clickWidget(this.page, 'export_btn');
+    await this.page.waitForTimeout(100);
+    await clickPopupRow(this.page, 0, 12); // Save Image...
+    try {
+      await setWidgetText(this.page, 'filename_le', filename);
+    } catch {
+      await this.page.keyboard.press('ControlOrMeta+a');
+      await this.page.keyboard.type(String(filename), { delay: 10 });
+    }
+
+    const imageFormatRows = { PNG: 0, SVG: 1 };
+    const row = imageFormatRows[format];
+    if (row === undefined) throw new Error(`Unsupported Sketcher image format: ${format}`);
+    const chooseImageFormat = async (formatRow) => {
+      await clickWidget(this.page, 'format_combo');
+      await this.page.waitForTimeout(100);
+      // Use the visible combo popup just as Squish's object-item click does.
+      // Enter is not equivalent in Qt/WASM: it can invoke the dialog's
+      // default Download button instead of accepting the combo selection.
+      await clickPopupRow(this.page, 'latest', formatRow === 0 ? 12 : 35);
+    };
+    if (row !== 0) {
+      await chooseImageFormat(row);
+    }
+
+    if (width !== 400 || height !== 400 || transparent) {
+      await clickWidget(this.page, 'change_btn');
+      if (transparent) await clickWidget(this.page, 'transparent_cb');
+      if (width !== 400) await setWidgetText(this.page, 'width_sb', width);
+      if (height !== 400) await setWidgetText(this.page, 'height_sb', height);
+      // Close the temporary Change popup by clicking the visible parent
+      // dialog, matching the source's background click.
+      const dialog = await popupCanvasGeometry(this.page, 0);
+      await mouseClick(this.page, dialog.x + 10, dialog.y + 10);
+    }
+
+    if (observeDownload) await beginBrowserDownloadCapture(this.page);
+    // `export_btn` is intentionally used instead of a dialog-relative magic
+    // coordinate.  The bridge resolves the visible control in the active
+    // modal dialog, so this remains a normal mouse click on Download even
+    // though the background toolbar has a button with the same objectName.
+    await clickWidget(this.page, 'export_btn');
+    const download = observeDownload ? await capturedBrowserDownload(this.page) : null;
+    // Desktop continues into a native save chooser, which removes the image
+    // dialog. Qt/WASM records its browser payload in-place instead, so close
+    // the still-visible Save Image dialog before the next source case.
+    if (observeDownload) await dismissSaveImageDialog(this.page);
+
+    // sketcher.py deliberately restores image-export defaults after every
+    // changed export (SKETCH-2450).  Preserve that browser-visible state
+    // transition so each source case begins from the same image settings.
+    if (format !== 'PNG' || width !== 400 || height !== 400 || transparent) {
+      await clickWidget(this.page, 'export_btn');
+      await this.page.waitForTimeout(100);
+      await clickPopupRow(this.page, 0, 12); // Save Image...
+      if (format !== 'PNG') {
+        await chooseImageFormat(0);
+      }
+      await clickWidget(this.page, 'change_btn');
+      if (transparent) await clickWidget(this.page, 'transparent_cb');
+      if (width !== 400) await setWidgetText(this.page, 'width_sb', 400);
+      if (height !== 400) await setWidgetText(this.page, 'height_sb', 400);
+      const resetDialog = await popupCanvasGeometry(this.page, 0);
+      await mouseClick(this.page, resetDialog.x + 10, resetDialog.y + 10);
+      // Desktop Squish accepts the image dialog, then cancels the native file
+      // chooser. Qt/WASM has no native chooser, so Download commits the
+      // restored settings; its otherwise-unused browser payload is ignored.
+      await clickWidget(this.page, 'export_btn');
+      if (observeDownload) await dismissSaveImageDialog(this.page);
+    }
+
+    return download;
   }
 
   /**
    * Browser equivalent of Squish `import_menu()` for the standalone Sketcher.
-   * Menu activation, text entry, and confirmation are all real user input.
-   */
+  * Menu activation, text entry, and confirmation are all real user input.
+  */
   async import_menu(button, text = null, close_panel = true) {
+    // Do not clear popup bookkeeping before opening an import menu. That
+    // bridge call itself enters Qt/WASM's Asyncify path; a following geometry
+    // lookup can overlap it in unoptimized local artifacts and abort the app.
+    // A fresh Sketcher/import dialog has no popup to clean up at this point.
     const menuItem = IMPORT_MENU_NAMES[button] || button;
     if (button === 'import_from_file' && text !== null) {
       await setFilePickerResult(this.page, String(text));
@@ -1173,7 +1527,10 @@ export class Sketcher {
   async selection_context_menu(target, yOrAction, action = null, ...remainingActions) {
     let actionNames;
     let openContextMenu;
-    if (typeof target === 'object') {
+    if (target?.type === 'screen_point') {
+      actionNames = [yOrAction, action, ...remainingActions].filter((name) => name !== null);
+      openContextMenu = () => mouseClick(this.page, target.x, target.y, { button: 'right' });
+    } else if (typeof target === 'object') {
       actionNames = [yOrAction, action, ...remainingActions].filter((name) => name !== null);
       const rect = await this.rendered_object_rect(
         target.type,
@@ -1190,27 +1547,44 @@ export class Sketcher {
       actionNames = [action, ...remainingActions].filter((name) => name !== null);
     }
     if (!actionNames.length) throw new Error('selection_context_menu requires an action');
-    const labelFor = (name) =>
-      CONTEXT_MENU_NAMES[name] ||
-      COPY_ALL_AS_NAMES[name] ||
-      String(name)
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    // Standalone Sketcher exposes the desktop Modify Atoms/Modify Bonds
+    // groups only for mixed atom-and-bond selections. Atom-only context menus
+    // present the same actions directly. Try the original Squish hierarchy
+    // first, then its direct standalone equivalent if that visible menu level
+    // is absent.
+    const directActionNames = actionNames.filter(
+      (name) => name !== 'modify_atoms' && name !== 'modify_bonds',
+    );
+    const actionPaths = [actionNames];
+    if (directActionNames.join('\0') !== actionNames.join('\0')) {
+      actionPaths.push(directActionNames);
+    }
     let lastError;
     // Qt/WASM occasionally drops a just-opened popup from the bridge for one
     // frame. Reopen the same human context menu rather than falling back to a
     // direct action call; this keeps the operation user-equivalent.
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      await openContextMenu();
-      try {
-        for (const actionName of actionNames.slice(0, -1)) {
-          await hoverMenuAction(this.page, labelFor(actionName));
+    for (const currentActionNames of actionPaths) {
+      const labelFor = (name) =>
+        (name === 'replace_atoms_with'
+          ? (currentActionNames.includes('modify_atoms') ? 'Replace Atoms with' : 'Replace with')
+          : CONTEXT_MENU_NAMES[name]) ||
+        COPY_ALL_AS_NAMES[name] ||
+        String(name)
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (letter) => letter.toUpperCase());
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await openContextMenu();
+        try {
+          for (const actionName of currentActionNames.slice(0, -1)) {
+            await hoverMenuAction(this.page, labelFor(actionName));
+          }
+          await clickMenuAction(this.page, labelFor(currentActionNames.at(-1)));
+          await closeActiveQtPopups(this.page);
+          return;
+        } catch (error) {
+          lastError = error;
+          await this.page.waitForTimeout(50);
         }
-        await clickMenuAction(this.page, labelFor(actionNames.at(-1)));
-        return;
-      } catch (error) {
-        lastError = error;
-        await this.page.waitForTimeout(50);
       }
     }
     throw lastError;

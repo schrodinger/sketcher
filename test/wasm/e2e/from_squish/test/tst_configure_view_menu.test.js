@@ -17,7 +17,14 @@ const PREFERENCES = {
 async function checkpoint(page, name) {
   await page.mouse.move(0, 0);
   await hideMouseMarker(page);
-  await expect(page.locator('#screen canvas')).toHaveScreenshot(`${name}.png`);
+  // Rendering settings schedule a Qt/WASM repaint after their dialog closes.
+  // Wait for that ordinary browser frame before capturing the visual source
+  // checkpoint; otherwise Playwright can receive an empty canvas buffer.
+  await page.waitForTimeout(250);
+  // A color-mode QComboBox can leave its tiny popup canvas in #screen after
+  // Enter. The first canvas is always the visible main Sketcher surface.
+  const canvas = await page.locator('#screen canvas').first().screenshot();
+  expect(canvas).toMatchSnapshot(`${name}.png`);
 }
 
 test.describe('tst_configure_view_menu', () => {

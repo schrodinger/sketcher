@@ -15,6 +15,20 @@ async function checkpoint(page, name) {
 }
 
 test.describe('tst_bracket_subgroup', () => {
+  // Temporary focused regression check for the 2026-4 COP bracket report.
+  // It deliberately uses the same real pointer/keyboard wrapper sequence as
+  // the Squish port and the established pre-regression COP/HT visual baseline.
+  test('temporary COP brackets regression', async ({ page }) => {
+    const sk = new Sketcher(page);
+    await sk.open();
+    await sk.import_menu('paste_in_text', SOURCE);
+    await sk.map_imported_atom_indexes();
+    await sk.add_sgroup('COP', SGROUP_ATOMS, SGROUP_XBONDS, 'HT', '');
+    await page.mouse.move(0, 0);
+    await hideMouseMarker(page);
+    await expect(page.locator('#screen canvas')).toHaveScreenshot('bracket-subgroup-COP-HT.png');
+  });
+
   test('main', async ({ page }) => {
     const sk = new Sketcher(page);
     await sk.open();

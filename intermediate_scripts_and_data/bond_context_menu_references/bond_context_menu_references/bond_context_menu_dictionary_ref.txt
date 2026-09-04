@@ -1,0 +1,1 @@
+{'flip_substituent': None, 'double': None, 'single': None, 'aromatic': None, 'up': None, 'down': None, 'delete': None, 'Coordinate': None, 'Zero Order': None, 'Single Up_Down': None, 'Double Cis_Trans': None, 'Any': None, 'Single_Double': None, 'Double_Aromatic': None, 'Single_Aromatic': None, 'In Ring': None, 'Not In a Ring': None, 'Either': None}

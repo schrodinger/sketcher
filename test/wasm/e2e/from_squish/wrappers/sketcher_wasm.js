@@ -11,6 +11,36 @@ import path from 'node:path';
 
 /** @param {import('@playwright/test').Page} page */
 export async function openSketcher(page) {
+  // QFileDialog::saveFileContent in Qt/WASM ultimately triggers a synthetic
+  // browser download.  In headed Linux runs Chromium may show a native Save
+  // As chooser, which Playwright cannot inspect or dismiss.  The actual
+  // Sketcher Download button is still clicked normally and the test bridge
+  // observes its already-created bytes; suppress only this untestable final
+  // browser handoff so it does not obscure a visual run.
+  await page.addInitScript(() => {
+    // Qt 6.7 uses the browser File System Access save picker on platforms
+    // that expose it. Supply an in-memory writable handle: the preceding Qt
+    // Download click remains real and the test bridge has already recorded
+    // the exact bytes at this boundary.
+    window.showSaveFilePicker = async () => {
+      window.__sketcherPlaywrightSuppressedSavePickers =
+        (window.__sketcherPlaywrightSuppressedSavePickers || 0) + 1;
+      return {
+        createWritable: async () => ({ close: async () => {}, write: async () => {} }),
+        kind: 'file',
+        name: 'sketcher-playwright-export',
+      };
+    };
+    const nativeClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function sketcherDownloadShim(...args) {
+      if (this.hasAttribute('download')) {
+        window.__sketcherPlaywrightSuppressedDownloads =
+          (window.__sketcherPlaywrightSuppressedDownloads || 0) + 1;
+        return;
+      }
+      return nativeClick.apply(this, args);
+    };
+  });
   await page.goto('/wasm_shell.html');
   await page.waitForFunction(() => typeof window.Module !== 'undefined', undefined, {
     timeout: 20000,
@@ -132,28 +162,24 @@ export async function widgetRect(page, objectName) {
   // Qt/WASM can return an empty string for one animation frame while a popup
   // closes or the canvas is being repainted.  Wait for a complete bridge
   // response instead of surfacing that transient state as a JSON parse error.
-  const result = await page.waitForFunction(
-    async (name) => {
-      const raw = await Module._sketcher_get_widget_rect(name);
-      if (typeof raw !== 'string' || raw.trim() === '') return null;
+  // Do not use `waitForFunction` with an async bridge call here. Its polling
+  // scheduler can begin another Asyncify invocation before Qt/WASM completes
+  // the first, which aborts with "multiple async operations in flight" in
+  // unoptimized local artifacts. Sequential retries preserve one real bridge
+  // operation at a time.
+  for (let attempt = 0; attempt < 150; attempt += 1) {
+    const raw = await page.evaluate((name) => Module._sketcher_get_widget_rect(name), objectName);
+    if (typeof raw === 'string' && raw.trim() !== '') {
       try {
-        const value = JSON.parse(raw);
-        return value?.width === undefined ? null : value;
+        const rect = JSON.parse(raw);
+        if (rect?.width !== undefined) return rect;
       } catch {
-        return null;
+        // Qt may expose an incomplete string for one repaint frame.
       }
-    },
-    objectName,
-    // The normal artifact responds immediately; a deliberately lower-
-    // optimization local WASM development build can need several seconds
-    // after its first canvas paint.
-    { timeout: 15000 },
-  );
-  const rect = await result.jsonValue();
-  if (!rect || rect.width === undefined) {
-    throw new Error(`Sketcher widget not found: ${objectName}`);
+    }
+    await page.waitForTimeout(100);
   }
-  return rect;
+  throw new Error(`Sketcher widget not found: ${objectName}`);
 }
 
 /**
@@ -175,9 +201,41 @@ export async function closeActiveQtPopups(page) {
   await page.evaluate(() => Module._sketcher_close_active_popups());
 }
 
+/**
+ * Clear the Playwright-only record made at Qt's QFileDialog save boundary.
+ * Qt/WASM does not emit Chromium's download event, so the bridge observes the
+ * bytes after the real visible Download click has produced them.
+ */
+export async function beginBrowserDownloadCapture(page) {
+  await page.evaluate(() => {
+    window.__sketcherPlaywrightFileExports = [];
+  });
+}
+
+/** Wait for and return the payload produced by a real Qt/WASM Download click. */
+export async function capturedBrowserDownload(page) {
+  const result = await page.waitForFunction(
+    () => window.__sketcherPlaywrightFileExports?.[0] || null,
+    undefined,
+    { timeout: 10000 },
+  );
+  return result.jsonValue();
+}
+
 /** Return visible Qt widget state exposed by the Playwright test bridge. */
 export async function widgetState(page, objectName) {
-  return page.evaluate((name) => JSON.parse(Module._sketcher_get_widget_state(name)), objectName);
+  for (let attempt = 0; attempt < 150; attempt += 1) {
+    const raw = await page.evaluate((name) => Module._sketcher_get_widget_state(name), objectName);
+    if (typeof raw === 'string' && raw.trim() !== '') {
+      try {
+        return JSON.parse(raw);
+      } catch {
+        // Qt may expose an incomplete string for one repaint frame.
+      }
+    }
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`Sketcher widget state not found: ${objectName}`);
 }
 
 /** Click a visible text control and replace its value through keyboard input. */
@@ -230,6 +288,13 @@ export async function popupCanvasGeometry(page, popupIndex) {
         .map((element) => {
           const canvas = element.querySelector('canvas');
           const style = getComputedStyle(element);
+          // Qt/WASM keeps a DOM canvas for a closed QComboBox popup.  It is
+          // no longer visible to a person, but was still being counted as
+          // popup zero and could receive a later menu click.  Restrict the
+          // geometry map to canvases that are actually visible in the page.
+          if (style.display === 'none' || style.visibility === 'hidden') return null;
+          const bounds = element.getBoundingClientRect();
+          if (bounds.width === 0 || bounds.height === 0) return null;
           const x = Number.parseFloat(style.left);
           const y = Number.parseFloat(style.top);
           return Number.isFinite(x) && Number.isFinite(y) && canvas?.width && canvas?.height
@@ -239,7 +304,10 @@ export async function popupCanvasGeometry(page, popupIndex) {
         .filter(Boolean);
     })
     .catch(() => []);
-  const popup = popups[popupIndex];
+  // A persistent Qt dialog can retain an older hidden canvas in the DOM
+  // after closing.  A newly opened root menu is appended last, so callers
+  // that need the currently raised root menu can request `latest`.
+  const popup = popupIndex === 'latest' ? popups.at(-1) : popups[popupIndex];
   if (!popup) throw new Error(`Qt popup ${popupIndex} did not expose canvas geometry`);
   return popup;
 }

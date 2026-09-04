@@ -296,6 +296,13 @@ target_link_libraries(
 # schrodinger::sketcher library
 set(SKETCHER_TARGET sketcher)
 build_schrodinger_library(${SKETCHER_TARGET})
+if(SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+  # The file-export dialog is part of the Sketcher library, not the app.
+  # Give only the opted-in test build the bridge definition; production builds
+  # compile this library exactly as before.
+  target_compile_definitions(${SKETCHER_TARGET}
+                             PRIVATE SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+endif()
 target_link_libraries(
   ${SKETCHER_TARGET}
   PRIVATE Boost::boost
@@ -331,13 +338,6 @@ add_executable(${APP_TARGET} ${APP_SOURCES})
 if(SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
   target_compile_definitions(${APP_TARGET}
                              PRIVATE SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
-  # Export verification is recorded at the Qt save boundary. Limit the
-  # bridge-specific compile definition to that one source: normal builds have
-  # no bridge dependency, and incremental Playwright builds avoid recompiling
-  # the entire Sketcher library merely because this option is enabled.
-  set_source_files_properties(
-    ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/dialog/file_export_dialog.cpp
-    APPEND PROPERTY COMPILE_DEFINITIONS SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
 endif()
 if(APPLE)
   set_target_properties(

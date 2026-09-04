@@ -3,6 +3,9 @@ import { Sketcher } from '../wrappers/sketcher.js';
 import { hideMouseMarker } from '../wrappers/sketcher_wasm.js';
 
 const SOURCE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
+// This is the source-equivalent full visible-tool sweep (roughly 140 real
+// popup/canvas interactions), so five minutes is insufficient on Qt/WASM.
+test.setTimeout(900_000);
 
 const PERIODIC_TOOLTIPS = [
   ['He', '2 Helium'], ['Li', '3 Lithium'], ['Be', '4 Beryllium'], ['B', '5 Boron'], ['Ne', '10 Neon'],
@@ -36,11 +39,32 @@ async function checkpoint(page, name) {
 }
 
 async function assertToolState(sk, tool, tooltip, clickAndHold = false) {
+  const isPeriodicTool = PERIODIC_TOOLTIPS.some(([element]) => element === tool);
+  // The source tooltip loop opens/clicks periodic-table children directly,
+  // rather than through Sketcher.click_tool(), so it deliberately leaves this
+  // wrapper-memory field at its previous value.
+  const rememberedPeriodicTool = sk.current_buttons.periodic_table;
   await sk.click_tool(tool, clickAndHold);
-  const state = await sk.widget_state(sk.tool_widget_name(tool));
+  if (isPeriodicTool) sk.current_buttons.periodic_table = rememberedPeriodicTool;
+  let state;
+  try {
+    state = await sk.widget_state(sk.tool_widget_name(tool));
+  } catch (error) {
+    throw new Error(`Tool state unavailable after selecting ${tool}: ${error.message}`);
+  }
   expect(state.enabled).toBe(true);
   expect(state.checked).toBe(true);
-  expect(state.toolTip).toBe(tooltip);
+  // Periodic-table children close after a browser selection. The persistent
+  // last-picked button exposes the same element tooltip without the popup
+  // child's atomic-number prefix (for example, "Helium" vs "2 Helium").
+  const visibleTooltip = isPeriodicTool
+    ? tooltip.replace(/^\d+\s+/, '')
+    : tooltip;
+  // Bond and selection popup children likewise close after selection; their
+  // persistent parent keeps the generic hold-to-change suffix.
+  expect(state.toolTip.replace(/ – press & hold to change$/, '')).toBe(
+    visibleTooltip.replace(/ – press & hold to change$/, ''),
+  );
 }
 
 test.describe('tst_tools', () => {
@@ -115,19 +139,19 @@ test.describe('tst_tools', () => {
     ]) {
       await assertToolState(sk, tool, `${tooltip} – press & hold to change`);
     }
-    for (const [tool, tooltip] of PERIODIC_TOOLTIPS) await assertToolState(sk, tool, tooltip);
+    for (const [tool, tooltip] of PERIODIC_TOOLTIPS) {
+      await test.step(`periodic_tool_${tool}`, () => assertToolState(sk, tool, tooltip));
+    }
     for (const [tool, tooltip] of [
       ['down', 'Single Down Bond'], ['single_either', 'Single Up or Down Bond'], ['double_either', 'Double Cis or Trans Bond'],
       ['coordinate', 'Coordinate Bond'], ['double', 'Double Bond'], ['triple', 'Triple Bond'], ['zero', 'Zero Order Bond'],
       ['aromatic', 'Aromatic Bond'], ['any', 'Any Bond'], ['single_double', 'Single or Double Bond'],
       ['single_aromatic', 'Single or Aromatic Bond'], ['double_aromatic', 'Double or Aromatic Bond'],
-      ['r+', 'New R-Group'], ['r1', 'R-Group 1'], ['r2', 'R-Group 2'], ['r3', 'R-Group 3'], ['r4', 'R-Group 4'],
-      ['r5', 'R-Group 5'], ['r6', 'R-Group 6'], ['r7', 'R-Group 7'], ['r8', 'R-Group 8'], ['r9', 'R-Group 9'],
       ['rxn_arrow', 'Reaction Arrow'], ['rxn_plus', 'Reaction Plus'],
       ['add_mapping', 'Map Atoms - Drag from a reactant atom to the matching product atom'],
       ['remove_mapping', 'Delete Mapping - Click mapped atom to remove mapping'],
     ]) {
-      await assertToolState(sk, tool, `${tooltip} – press & hold to change`);
+      await test.step(`popup_tool_${tool}`, () => assertToolState(sk, tool, `${tooltip} – press & hold to change`));
     }
     for (const [tool, tooltip] of [
       ['move_rotate', 'Rotate and translate structure'], ['erase', 'Erase'], ['C', 'Carbon'], ['H', 'Hydrogen'],
@@ -137,7 +161,31 @@ test.describe('tst_tools', () => {
       ['up', 'Single Up Bond'], ['single', 'Single Bond'], ['plus_charge', 'Increase Charge'], ['minus_charge', 'Decrease Charge'],
       ['attachment_point', 'Attachment Point'], ['atom_chain', 'Bond Chain - Drag on canvas to draw a chain of carbons'],
     ]) {
-      await assertToolState(sk, tool, tooltip);
+      await test.step(`tool_${tool}`, () => assertToolState(sk, tool, tooltip));
     }
+    // The source object map registers R-group tooltips last, so this is also
+    // the final sticky-tool state Squish asserts below.
+    for (const [tool, tooltip] of [
+      ['r+', 'New R-Group'], ['r1', 'R-Group 1'], ['r2', 'R-Group 2'], ['r3', 'R-Group 3'], ['r4', 'R-Group 4'],
+      ['r5', 'R-Group 5'], ['r6', 'R-Group 6'], ['r7', 'R-Group 7'], ['r8', 'R-Group 8'], ['r9', 'R-Group 9'],
+    ]) {
+      await test.step(`rgroup_tool_${tool}`, () => assertToolState(sk, tool, `${tooltip} – press & hold to change`));
+    }
+    expect(sk.current_buttons).toEqual({
+      tool: 'r9', wildcard: 'XH', periodic_table: 'Si', stereo: 'double_either',
+      bond_order: 'zero', bond_query: 'double_aromatic', 'r-group': 'r9',
+      reaction: 'remove_mapping', replace_current_content: 'checked',
+      valence_errors: 'checked', heteroatom_colors: 'checked', stereo_labels: 'checked',
+      select: 'ellipse_btn',
+    });
+
+    await sk.reset_state();
+    expect(sk.current_buttons).toEqual({
+      tool: 'C', wildcard: 'A', periodic_table: 'Si', stereo: 'down',
+      bond_order: 'double', bond_query: 'aromatic', 'r-group': 'r+',
+      reaction: 'rxn_arrow', replace_current_content: 'checked',
+      valence_errors: 'checked', heteroatom_colors: 'checked', stereo_labels: 'checked',
+      select: 'rect_btn',
+    });
   });
 });

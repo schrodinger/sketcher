@@ -38,3 +38,13 @@ compile_commands.json
 ext_bld
 # node dependencies for the sketcher npm package's React build
 wasm/package/node_modules/
+
+# Local and downloaded WASM artifacts. These can contain hundreds of thousands
+# of generated files; keep them available for test runs without asking Git or
+# VS Code to enumerate them as untracked project changes.
+/build/
+/build-[0-9]*/
+/wasm-build/
+/wasm-dev/
+/wasm-fast/
+/test-results/
