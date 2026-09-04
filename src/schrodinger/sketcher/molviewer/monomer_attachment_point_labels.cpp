@@ -106,28 +106,26 @@ static void position_ap_label_rect_next_to_arrowhead(
     QRectF& ap_label_rect, const QGraphicsItem* monomer_item,
     const RDGeom::Point3D& monomer_coords, const RDGeom::Point3D& bound_coords)
 {
-    auto monomer_qcoords = to_scene_xy(monomer_coords);
     auto bound_qcoords = to_scene_xy(bound_coords);
-
     auto arrowhead_offset =
         get_monomer_arrowhead_offset(*monomer_item, bound_qcoords);
-    auto label_vertical_offset =
-        monomer_item->boundingRect().height() / 2 +
-        MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_VERTICAL;
-    if (arrowhead_offset > 0) {
-        ap_label_rect.moveBottom(-label_vertical_offset);
-    } else {
-        ap_label_rect.moveTop(label_vertical_offset);
-    }
 
-    auto label_horizontal_offset =
-        MONOMER_CONNECTOR_ARROWHEAD_RADIUS +
-        MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL;
-    auto angle = QLineF(monomer_qcoords, bound_qcoords).angle();
-    if (angle < 90 || angle >= 270) {
-        ap_label_rect.moveRight(-label_horizontal_offset);
-    } else {
-        ap_label_rect.moveLeft(label_horizontal_offset);
+    // Position the label perpendicular to the connector, just past the
+    // arrowhead. Opposite ends of a connector naturally use opposite sides.
+    QLineF normal(QPointF(),
+                  QPointF(-arrowhead_offset.y(), arrowhead_offset.x()));
+    auto normal_length = normal.length();
+    if (!qFuzzyIsNull(normal_length)) {
+        auto unit_x = normal.dx() / normal_length;
+        auto unit_y = normal.dy() / normal_length;
+        auto label_half_extent = qAbs(unit_x) * ap_label_rect.width() / 2 +
+                                 qAbs(unit_y) * ap_label_rect.height() / 2;
+        auto spacing =
+            MONOMER_CONNECTOR_ARROWHEAD_RADIUS +
+            MONOMERIC_ATTACHMENT_POINT_LABEL_ARROWHEAD_SPACING_HORIZONTAL +
+            label_half_extent;
+        normal.setLength(spacing);
+        ap_label_rect.moveCenter(arrowhead_offset + normal.p2());
     }
 
     ap_label_rect.translate(monomer_item->pos());

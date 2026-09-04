@@ -268,7 +268,7 @@ const QColor H_BOND_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 const QColor NA_BACKBONE_TO_BASE_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 const QColor CHEM_CONNECTOR_COLOR_DARK_BG = QColor("#999999");
 
-const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 6;
+const qreal MONOMER_CONNECTOR_ARROWHEAD_RADIUS = 4.8;
 
 // colors for the non-hovered attachment points of the hovered monomer when
 // doing a click-and-drag with the monomer scene tools
