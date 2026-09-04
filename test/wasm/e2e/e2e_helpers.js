@@ -77,8 +77,14 @@ async function callBridge(page, name, arg) {
  * and keyboard events.
  *
  * @param {import('@playwright/test').Page} page
- * @param {string} selector - "widget:<objectName>", "atom:<index>", or
- *   "bond:<index>"; indices are 0-based indices into the molecule
+ * @param {string} selector - one of:
+ *   "widget:<objectName>"  a visible widget, by its Qt objectName
+ *   "state:<objectName>"   the same, but matching a hidden widget too, and
+ *                          adding "visible" to the result
+ *   "atom:<index>"         an atom, by 0-based index into the molecule
+ *   "bond:<index>"         a bond, by 0-based index into the molecule
+ *   "menu:<name or text>"  a row of an already-open context menu
+ *   A button also reports "checked", "text", and "toolTip".
  */
 async function getRect(page, selector) {
   const rect = JSON.parse(await callBridge(page, '_sketcher_get_rect', selector));
@@ -103,10 +109,10 @@ export async function requireRect(page, selector) {
 /**
  * Return a widget's state, failing if no widget has that objectName.
  *
- * A button reports "enabled", "checked", "text", and "visible", which is how a
- * test asserts that a shortcut selected the tool it should have. This matches a
- * hidden widget too, since a tool inside a closed popup is still the tool the
- * shortcut is meant to have chosen.
+ * A button reports "enabled", "visible", "checked", "text", and "toolTip",
+ * which is how a test asserts that a shortcut selected the tool it should have.
+ * This matches a hidden widget too, since a tool inside a closed popup is still
+ * the tool the shortcut is meant to have chosen.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} name - a Qt objectName
@@ -392,8 +398,8 @@ export async function clickWidget(page, name, options) {
   await click(page, `widget:${name}`, options);
 }
 
-// ToolButtonWithPopup opens its popup 250 ms after the press, and a release
-// before then cancels it, so hold well past that.
+// ToolButtonWithPopup::m_popup_delay is 250 ms, and releasing before it elapses
+// cancels the popup, so hold well past it. Raise this if that default changes.
 const POPUP_HOLD_MS = 600;
 
 /**

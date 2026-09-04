@@ -48,6 +48,7 @@
 #include <QGraphicsView>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QList>
 #include <QMenu>
 #include <QPoint>
 #include <QRect>
@@ -142,6 +143,10 @@ QWidget* find_visible_widget(SketcherWidget& sketcher, const QString& name)
  * held, so a test that wants such a tool has to know which button to hold.
  * Deriving that from the widget tree keeps tests from carrying a hand-written
  * map of every tool to its owning button.
+ *
+ * Should the same objectName appear in more than one popup, this returns the
+ * first owner found; name the widget unambiguously rather than relying on
+ * which one that is.
  */
 std::string popup_owner(SketcherWidget& sketcher, const std::string& name)
 {
@@ -223,7 +228,7 @@ QGraphicsItem* find_visible_item(const QGraphicsView& view, const bool is_atom,
  * "widget" only matches a visible widget, since that is what a test can click.
  * "state" matches whether or not the widget is showing and reports "visible",
  * which is how a test asserts that a shortcut selected a tool that lives in a
- * closed popup. A button also reports "checked" and "text".
+ * closed popup. A button also reports "checked", "text", and "toolTip".
  */
 std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
                         const bool visible_only)
@@ -280,6 +285,29 @@ std::string item_rect(SketcherWidget& sketcher, const bool is_atom,
 }
 
 /**
+ * Find the action matching name_or_text, or nullptr if there is none.
+ *
+ * Most menu actions are created without an objectName, so tests usually name a
+ * row by the text the user sees. An objectName match still wins over a text
+ * match anywhere in the list, so that a test naming a specific action can't be
+ * captured by an unrelated one whose label happens to collide.
+ */
+QAction* find_action(const QList<QAction*>& actions, const QString& name)
+{
+    const QString wanted = without_mnemonic(name);
+    QAction* by_text = nullptr;
+    for (auto* action : actions) {
+        if (action->objectName() == name) {
+            return action;
+        }
+        if (by_text == nullptr && without_mnemonic(action->text()) == wanted) {
+            by_text = action;
+        }
+    }
+    return by_text;
+}
+
+/**
  * Resolve a row of one open QMenu, or "" if this menu has no matching row.
  *
  * Reading action geometry is only safe once the popup is actually visible; Qt
@@ -293,20 +321,16 @@ std::string action_rect_in_menu(const QMenu& menu,
     if (!menu.isVisible()) {
         return {};
     }
-    const QString wanted = without_mnemonic(name);
-    for (auto* action : menu.actions()) {
-        if (action->objectName() != name &&
-            without_mnemonic(action->text()) != wanted) {
-            continue;
-        }
-        const QRect rect = menu.actionGeometry(action);
-        if (rect.isEmpty()) {
-            continue;
-        }
-        return rect_to_json(map_to_sketcher(menu, sketcher, rect.topLeft()),
-                            rect.size(), action->isEnabled());
+    auto* action = find_action(menu.actions(), name);
+    if (action == nullptr) {
+        return {};
     }
-    return {};
+    const QRect rect = menu.actionGeometry(action);
+    if (rect.isEmpty()) {
+        return {};
+    }
+    return rect_to_json(map_to_sketcher(menu, sketcher, rect.topLeft()),
+                        rect.size(), action->isEnabled());
 }
 
 /**
@@ -339,26 +363,19 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
 
 /**
  * Trigger the QAction matching name_or_text, or return false if there is none.
- *
- * Actions are matched on objectName first and then on display text, since most
- * menu actions are created without an objectName.
  */
 bool try_activate_action(SketcherWidget& sketcher, const QString& name)
 {
-    const QString wanted = without_mnemonic(name);
-    for (auto* action : sketcher.findChildren<QAction*>()) {
-        if (action->objectName() != name &&
-            without_mnemonic(action->text()) != wanted) {
-            continue;
-        }
-        if (!action->isEnabled()) {
-            throw std::runtime_error("playwright test bridge: action '" +
-                                     name.toStdString() + "' is disabled");
-        }
-        action->trigger();
-        return true;
+    auto* action = find_action(sketcher.findChildren<QAction*>(), name);
+    if (action == nullptr) {
+        return false;
     }
-    return false;
+    if (!action->isEnabled()) {
+        throw std::runtime_error("playwright test bridge: action '" +
+                                 name.toStdString() + "' is disabled");
+    }
+    action->trigger();
+    return true;
 }
 
 } // namespace
@@ -405,10 +422,11 @@ bool try_activate_action(SketcherWidget& sketcher, const QString& name)
  * order the structure was built in, not the canonical order a format like
  * SMILES may renumber to on export.
  *
- * Returns "{}" when nothing visible matches, since there is no coordinate a
- * test could click. "enabled" reports whether Qt would accept a click there;
- * Playwright applies that check automatically to real DOM elements but has no
- * way to do so for something painted into a canvas.
+ * Returns "{}" when nothing matches: for every selector but "state:" that means
+ * nothing visible matches, since there is no coordinate a test could click.
+ * "enabled" reports whether Qt would accept a click there; Playwright applies
+ * that check automatically to real DOM elements but has no way to do so for
+ * something painted into a canvas.
  *
  * Throws std::runtime_error for a malformed selector or an unrecognized kind,
  * which indicates the test needs to be updated.
