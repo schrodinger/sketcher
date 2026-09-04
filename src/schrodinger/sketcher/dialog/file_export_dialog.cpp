@@ -10,6 +10,10 @@
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/ui/ui_file_export_dialog.h"
 
+#ifdef SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
+#include "app/playwright_test_bridge.h"
+#endif
+
 using ::schrodinger::rdkit_extensions::Format;
 
 namespace schrodinger
@@ -141,6 +145,11 @@ void FileExportDialog::exportFile()
             get_compressed_string(file_content.toStdString(), compression_type);
         file_content = QByteArray::fromStdString(text);
     }
+
+#ifdef SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
+    playwright_test_bridge::record_file_export(filename.toStdString(),
+                                                file_content.toStdString());
+#endif
 
     // make sure we call accept() *before* we call saveFileContent(). Otherwise,
     // accept() will close the new file dialog on Windows only.

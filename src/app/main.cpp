@@ -17,16 +17,16 @@
 #include <utility>
 #include <vector>
 
-#include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
 #include <QIcon>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QString>
 #include <QStyleHints>
 
 #include "image_generation_from_js.h"
+#ifdef SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
+#include "playwright_test_bridge.h"
+#endif
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
@@ -163,56 +163,6 @@ void sketcher_reset_custom_monomers()
     db.resetMonomerDefinitions();
 }
 
-/**
- * Programmatically click a button by its Qt objectName.
- * Used by e2e tests to interact with popup buttons that can't be targeted
- * via browser events in the WASM environment.
- *
- * Throws std::runtime_error if no button with the given name is found,
- * which typically indicates the test needs to be updated.
- */
-void sketcher_click_button(const std::string& name)
-{
-    auto& sk = get_sketcher_instance();
-    auto* button = sk.findChild<QAbstractButton*>(QString::fromStdString(name));
-    if (!button) {
-        throw std::runtime_error(
-            "sketcher_click_button: no button found with objectName '" + name +
-            "'");
-    }
-    button->click();
-}
-
-/**
- * Return the position and size of any child widget found by its Qt
- * objectName. Returns a JSON object with {x, y, width, height}.
- * Coordinates are relative to the sketcher widget's top-left corner.
- * Returns "{}" if no widget with the given name is found.
- */
-std::string sketcher_get_widget_rect(const std::string& object_name)
-{
-    auto& sk = get_sketcher_instance();
-    const QString name = QString::fromStdString(object_name);
-    QWidget* widget = nullptr;
-    const auto candidates = sk.findChildren<QWidget*>(name);
-    for (auto* w : candidates) {
-        if (w->isVisible()) {
-            widget = w;
-            break;
-        }
-    }
-    if (!widget) {
-        return "{}";
-    }
-    const QPoint topLeft = widget->mapTo(&sk, QPoint(0, 0));
-    QJsonObject result;
-    result["x"] = topLeft.x();
-    result["y"] = topLeft.y();
-    result["width"] = widget->width();
-    result["height"] = widget->height();
-    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
-}
-
 void sketcher_changed()
 {
 #ifdef __EMSCRIPTEN__
@@ -302,9 +252,75 @@ EMSCRIPTEN_BINDINGS(sketcher)
                          &sketcher_insert_custom_monomers);
     emscripten::function("sketcher_reset_custom_monomers",
                          &sketcher_reset_custom_monomers);
-    emscripten::function("_sketcher_get_widget_rect",
-                         &sketcher_get_widget_rect);
-    emscripten::function("_sketcher_click_button", &sketcher_click_button);
+#ifdef SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
+    emscripten::function(
+        "_sketcher_get_widget_rect", +[](const std::string& name) {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_widget_rect(get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_click_button", +[](const std::string& name) {
+            schrodinger::sketcher::playwright_test_bridge::click_button(
+                get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_send_mouse_press", +[](const std::string& name) {
+            schrodinger::sketcher::playwright_test_bridge::send_mouse_press(
+                get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_close_active_popups", +[]() {
+            schrodinger::sketcher::playwright_test_bridge::
+                close_active_popups();
+        });
+    emscripten::function(
+        "_sketcher_get_widget_state", +[](const std::string& name) {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_widget_state(get_sketcher_instance(), name);
+        });
+    emscripten::function(
+        "_sketcher_set_widget_text",
+        +[](const std::string& name, const std::string& text) {
+            schrodinger::sketcher::playwright_test_bridge::set_widget_text(
+                get_sketcher_instance(), name, text);
+        });
+    emscripten::function(
+        "_sketcher_get_menu_action_rect", +[](const std::string& name_or_text) {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_menu_action_rect(get_sketcher_instance(), name_or_text);
+        });
+    emscripten::function(
+        "_sketcher_visible_widget_names", +[]() {
+            return schrodinger::sketcher::playwright_test_bridge::
+                visible_widget_names(get_sketcher_instance());
+        });
+    emscripten::function(
+        "_sketcher_get_atom_rect", +[](const int atom_index) {
+            return schrodinger::sketcher::playwright_test_bridge::get_atom_rect(
+                get_sketcher_instance(), atom_index);
+        });
+    emscripten::function(
+        "_sketcher_get_bond_rect", +[](const int bond_index) {
+            return schrodinger::sketcher::playwright_test_bridge::get_bond_rect(
+                get_sketcher_instance(), bond_index);
+        });
+    emscripten::function(
+        "_sketcher_get_rendered_atom_geometry", +[]() {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_rendered_atom_geometry(get_sketcher_instance());
+        });
+    emscripten::function(
+        "_sketcher_get_rendered_bond_geometry", +[]() {
+            return schrodinger::sketcher::playwright_test_bridge::
+                get_rendered_bond_geometry(get_sketcher_instance());
+        });
+    emscripten::function(
+        "_sketcher_clipboard_text",
+        &schrodinger::sketcher::playwright_test_bridge::clipboard_text);
+    emscripten::function(
+        "_sketcher_set_clipboard_text",
+        &schrodinger::sketcher::playwright_test_bridge::set_clipboard_text);
+#endif
     // see sketcher_changed_callback above
 }
 #endif
