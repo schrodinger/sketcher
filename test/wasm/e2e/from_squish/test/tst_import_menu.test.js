@@ -24,7 +24,7 @@ const FILE_IMPORT_INCHI = Object.freeze({
 const SKIP_DIALOG_STATE = process.env.PLAYWRIGHT_IMPORT_SKIP_DIALOG_STATE === '1';
 const STRUCTURES_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../../../intermediate_scripts_and_data/squish_reference_images/import_menu_structures',
+  '../.runtime_fixtures/import_menu_structures',
 );
 
 test.setTimeout(180_000);

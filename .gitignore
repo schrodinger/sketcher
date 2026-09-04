@@ -48,3 +48,7 @@ wasm/package/node_modules/
 /wasm-dev/
 /wasm-fast/
 /test-results/
+
+# Recreated automatically from the versioned from_squish runtime-fixtures
+# archive before Playwright starts.  Keep the PR-visible bundle to one file.
+/test/wasm/e2e/from_squish/.runtime_fixtures/

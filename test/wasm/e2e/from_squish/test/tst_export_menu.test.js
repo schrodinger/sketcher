@@ -6,11 +6,11 @@ import { Sketcher } from '../wrappers/sketcher.js';
 
 const FIXTURES_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../../../intermediate_scripts_and_data/export_menu_structures',
+  '../.runtime_fixtures/export_menu_structures',
 );
 const REFERENCES_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../../../../../intermediate_scripts_and_data/export_menu_references',
+  '../.runtime_fixtures/export_menu_references',
 );
 
 // The source uses item 10 for image export. The original 2,000+ entry
