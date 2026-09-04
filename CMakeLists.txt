@@ -13,6 +13,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(ENABLE_TESTING "Build and enable tests" ON)
+option(SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE
+       "Build the WebAssembly-only Playwright test bridge" OFF)
 option(ENFORCE_DEPENDENCY_VERSIONS "Require versions.json enforcement" ON)
 
 # Load dependency versions
@@ -137,11 +139,16 @@ function(setup_target TARGET)
       endif()
     endif()
   endif()
-  if(EMSCRIPTEN)
-    # We optimize for space in wasm builds because otherwise binaryen (run
-    # because of ASYNCIFY) runs out of memory
-    target_link_options(${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS
-                        -fexceptions -sDISABLE_EXCEPTION_CATCHING=0 -Os)
+if(EMSCRIPTEN)
+  # We optimize for space in wasm builds because otherwise binaryen (run
+  # because of ASYNCIFY) runs out of memory
+  set(SKETCHER_WASM_DEFAULT_OPTIMIZATION "-Os")
+    set(SKETCHER_WASM_OPTIMIZATION
+        "${SKETCHER_WASM_DEFAULT_OPTIMIZATION}"
+        CACHE STRING "Emscripten optimization level for local WASM builds")
+    target_link_options(
+      ${TARGET} PRIVATE -sGL_ENABLE_GET_PROC_ADDRESS -fexceptions
+      -sDISABLE_EXCEPTION_CATCHING=0 ${SKETCHER_WASM_OPTIMIZATION})
     target_compile_options(${TARGET} PRIVATE -fexceptions
                                              -sDISABLE_EXCEPTION_CATCHING=0 -Os)
   endif()
@@ -289,6 +296,13 @@ target_link_libraries(
 # schrodinger::sketcher library
 set(SKETCHER_TARGET sketcher)
 build_schrodinger_library(${SKETCHER_TARGET})
+if(SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+  # The file-export dialog is part of the Sketcher library, not the app.
+  # Give only the opted-in test build the bridge definition; production builds
+  # compile this library exactly as before.
+  target_compile_definitions(${SKETCHER_TARGET}
+                             PRIVATE SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+endif()
 target_link_libraries(
   ${SKETCHER_TARGET}
   PRIVATE Boost::boost
@@ -308,6 +322,10 @@ enable_qt_moc(${SKETCHER_TARGET})
 # Standalone executable
 set(APP_TARGET schrodinger_sketcher)
 file(GLOB APP_SOURCES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/src/app/*.cpp)
+if(NOT SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+  list(REMOVE_ITEM APP_SOURCES
+       ${PROJECT_SOURCE_DIR}/src/app/playwright_test_bridge.cpp)
+endif()
 if(WIN32)
   list(APPEND APP_SOURCES src/app/sketcher.rc)
 elseif(APPLE)
@@ -317,6 +335,10 @@ elseif(APPLE)
                               PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 endif()
 add_executable(${APP_TARGET} ${APP_SOURCES})
+if(SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+  target_compile_definitions(${APP_TARGET}
+                             PRIVATE SKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE)
+endif()
 if(APPLE)
   set_target_properties(
     ${APP_TARGET}

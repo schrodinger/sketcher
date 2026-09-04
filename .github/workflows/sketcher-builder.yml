@@ -1,7 +1,16 @@
 name: Sketcher Build and Test
 
 on:
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      build_target:
+        description: Build target to run (use wasm while iterating on browser tests)
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - wasm
   pull_request: ~
   merge_group: ~
   workflow_call:
@@ -20,6 +29,9 @@ env:
 
 jobs:
   pre-commit:
+    # Manual WASM dispatches are artifact builds for browser-test iteration;
+    # PR and full-build formatting checks remain mandatory.
+    if: github.event_name != 'workflow_dispatch' || inputs.build_target != 'wasm'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -37,6 +49,7 @@ jobs:
 
   build-test:
     needs: pre-commit
+    if: always()
     name: build-test (${{ matrix.build-name }}, ${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
     defaults:
@@ -45,21 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - build-name: macos
-            runner: macos-15
-            os-label: macos-15
-          - build-name: macos
-            runner: macos-26
-            os-label: macos-26
-          - build-name: windows
-            runner: windows-2022
-          - build-name: ubuntu
-            runner: ubuntu-22.04
-          - build-name: wasm
-            runner: ubuntu-22.04
-          - build-name: memtest
-            runner: ubuntu-22.04
+        include: ${{ fromJSON(inputs.build_target == 'wasm' && '[{"build-name":"wasm","runner":"ubuntu-22.04"}]' || '[{"build-name":"macos","runner":"macos-15","os-label":"macos-15"},{"build-name":"macos","runner":"macos-26","os-label":"macos-26"},{"build-name":"windows","runner":"windows-2022"},{"build-name":"ubuntu","runner":"ubuntu-22.04"},{"build-name":"wasm","runner":"ubuntu-22.04"},{"build-name":"memtest","runner":"ubuntu-22.04"}]') }}
     steps:
       # the memtest runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
@@ -247,7 +246,7 @@ jobs:
                 -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
                 -DCMAKE_FIND_PACKAGE_PREFER_CONFIG=ON \
                 -DCMAKE_PREFIX_PATH="${{ env.CMAKE_PREFIX_PATH }}" \
-                ${{ matrix.build-name == 'wasm' && '-DENABLE_TESTING=OFF' || '' }}
+                ${{ matrix.build-name == 'wasm' && '-DENABLE_TESTING=OFF -DSKETCHER_ENABLE_PLAYWRIGHT_TEST_BRIDGE=ON' || '' }}
 
       - name: Build
         id: sketcher-build

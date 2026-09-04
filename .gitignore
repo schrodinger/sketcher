@@ -38,3 +38,20 @@ compile_commands.json
 ext_bld
 # node dependencies for the sketcher npm package's React build
 wasm/package/node_modules/
+
+# Local and downloaded WASM artifacts. These can contain hundreds of thousands
+# of generated files; keep them available for test runs without asking Git or
+# VS Code to enumerate them as untracked project changes.
+/build/
+/build-[0-9]*/
+/wasm-build/
+/wasm-dev/
+/wasm-fast/
+/test-results/
+
+# Recreated automatically from versioned archives before Playwright starts.
+# Keep PR-visible fixture and baseline updates localized to archive files.
+/test/wasm/e2e/sketcher/.runtime_fixtures/
+# Old cache location during the one-time move to root-level e2e tests.
+/test/wasm/e2e/sketcher/test/__snapshots__/
+/test/wasm/e2e/__snapshots__/
