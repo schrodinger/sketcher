@@ -58,8 +58,7 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_residue_mutates)
 
 /**
  * Confirm that clicking on an existing monomer with a monomer tool of a
- * different monomer type adds an H-bond, or does nothing if there's already an
- * H-bond.
+ * different monomer type does nothing.
  */
 BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_monomer_type)
 {
@@ -68,9 +67,7 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_monomer_type)
     auto pos = fix.getMonomerPos(0);
     fix.setNucleicAcidTool(NucleicAcidTool::P);
     fix.mouseClick(pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{P}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
-    fix.mouseClick(pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{P}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
 }
 
 /**
@@ -80,50 +77,32 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_monomer_type)
 BOOST_AUTO_TEST_CASE(test_click_attachment_point)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
     auto monomer_pos = fix.getMonomerPos(0);
 
     // click on the N terminus attachment point
-    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
     // hover over the monomer to trigger AP label creation
     fix.mouseMove(monomer_pos);
     auto n_ap_pos = fix.getAttachmentPointPos(0, "N");
     fix.mouseClick(n_ap_pos);
-    fix.verifyHELM("PEPTIDE1{C.A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A.C}$$$$V2.0");
 
     // click on the C terminus attachment point
     fix.setAminoAcidTool(AminoAcidTool::PHE);
     fix.mouseMove(monomer_pos);
     auto c_ap_pos = fix.getAttachmentPointPos(0, "C");
     fix.mouseClick(c_ap_pos);
-    fix.verifyHELM("PEPTIDE1{C.A.F}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A.C.F}$$$$V2.0");
 
     // click on the side chain attachment point
     fix.setAminoAcidTool(AminoAcidTool::TRP);
     fix.mouseMove(monomer_pos);
-    auto x_ap_pos = fix.getAttachmentPointPos(0, "H-bond");
+    auto x_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseClick(x_ap_pos);
+    // this will be added as a hydrogen bond since TRP can't form disulfides
     fix.verifyHELM(
-        "PEPTIDE1{C.A.F}|PEPTIDE2{W}$PEPTIDE1,PEPTIDE2,2:pair-1:pair$$$V2.0");
-}
-
-/**
- * Confirm that clicking on an ALA H-bond attachment point with a CYS tool
- * forms a hydrogen bond, not a disulfide
- */
-BOOST_AUTO_TEST_CASE(test_click_ala_pair_with_cys)
-{
-    MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
-    fix.setAminoAcidTool(AminoAcidTool::CYS);
-    auto monomer_pos = fix.getMonomerPos(0);
-    // hover over the monomer to trigger AP label creation
-
-    fix.mouseMove(monomer_pos);
-    auto pair_ap_pos = fix.getAttachmentPointPos(0, "H-bond");
-    fix.mouseClick(pair_ap_pos);
-    fix.verifyHELM(
-        "PEPTIDE1{A}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+        "PEPTIDE1{A.C.F}|PEPTIDE2{W}$PEPTIDE1,PEPTIDE2,2:pair-1:pair$$$V2.0");
 }
 
 /**

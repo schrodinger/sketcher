@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer)
 BOOST_AUTO_TEST_CASE(test_click_attachment_point)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
     auto monomer_pos = fix.getMonomerPos(0);
     fix.setMonomericConnectionTool(
         MonomericConnectionTool::COVALENT_OR_DISULFIDE);
@@ -61,19 +61,19 @@ BOOST_AUTO_TEST_CASE(test_click_attachment_point)
     fix.mouseMove(monomer_pos);
     auto n_ap_pos = fix.getAttachmentPointPos(0, "N");
     fix.mouseClick(n_ap_pos);
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
 
     // click on the C terminus attachment point
     fix.mouseMove(monomer_pos);
     auto c_ap_pos = fix.getAttachmentPointPos(0, "C");
     fix.mouseClick(c_ap_pos);
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
 
     // click on the side chain attachment point
     fix.mouseMove(monomer_pos);
-    auto x_ap_pos = fix.getAttachmentPointPos(0, "H-bond");
+    auto x_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseClick(x_ap_pos);
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
 }
 
 /**
@@ -128,18 +128,6 @@ BOOST_AUTO_TEST_CASE(test_drag_ap_to_empty)
     // Drag from C attachment point to empty space
     start_pos = fix.getAttachmentPointPos(0, "C");
     end_pos = start_pos + QPointF(100, 100);
-    fix.mouseDrag(start_pos, end_pos);
-
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
-
-    // hover over the first monomer so that its attachment point graphics items
-    // are created again
-    fix.mouseMove(end_pos);
-    fix.mouseMove(ala_pos);
-
-    // Drag from pair attachment point to empty space
-    start_pos = fix.getAttachmentPointPos(0, "H-bond");
-    end_pos = start_pos + QPointF(-50, 100);
     fix.mouseDrag(start_pos, end_pos);
 
     fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
