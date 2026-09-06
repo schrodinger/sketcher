@@ -511,6 +511,29 @@ generate_coordinates_for_cycles(RDKit::ROMol& polymer,
     params.forceRDKit = true;
     params.useRingTemplates = false;
     RDDepict::compute2DCoords(polymer, params);
+
+    // Ensure consistent ring direction (CW) for single-ring polymers by
+    // checking if the ring atoms are laid out in ascending backbone order.
+    // RDKit's normalizeRing can produce different orderings for different ring
+    // sizes. If ascending (CCW), mirror the y-coordinates to flip to CW.
+    // Only apply this fix for single rings where ALL atoms are in the ring,
+    // to avoid disrupting layouts with external attachments.
+    auto& conformer = polymer.getConformer();
+    const auto& rings = polymer.getRingInfo()->atomRings();
+    if (rings.size() == 1 && rings[0].size() == polymer.getNumAtoms()) {
+        const auto& ring = rings[0];
+        if (ring.size() > 2 && ring[1] < ring.back()) {
+            // Ring is in ascending order (CCW) - mirror y-coordinates around
+            // centroid to make it CW
+            auto centroid = compute_centroid(polymer, ring);
+            for (auto atom_idx : ring) {
+                auto pos = conformer.getAtomPos(atom_idx);
+                pos.y = 2 * centroid.y - pos.y;
+                conformer.setAtomPos(atom_idx, pos);
+            }
+        }
+    }
+
     orient_ring_system(polymer);
 
     // finalize coordinates of rings and of their immediate neighbors.
