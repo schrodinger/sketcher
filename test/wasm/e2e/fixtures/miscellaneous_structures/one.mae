@@ -1,0 +1,80 @@
+{ 
+ s_m_m2io_version
+ :::
+ 2.0.0 
+} 
+
+f_m_ct { 
+ s_m_title
+ s_m_entry_id
+ s_m_smiles
+ s_valid_ligand_variant_code
+ s_valid_PDB_codes
+ r_valid_Affinity_upa_(uM)
+ s_valid_Affinity_Type
+ r_valid_affinity
+ b_valid_affinity_boolean
+ i_valid_affinity_bin
+ r_valid_delta_G_assoc(297_K_kcal/mol)
+ s_valid_Target_Source
+ s_valid_Target_Tissue
+ s_valid_Target_Subtype
+ i_valid_Citation_Id
+ s_valid_Citation_Reference
+ s_valid_version
+ s_m_subgroup_title
+ s_m_subgroupid
+ b_m_subgroup_collapsed
+ i_m_ct_format
+ :::
+ "R-group 1 (17153)" 
+  2725 
+  [*]Cl 
+  17153-1 
+  1gjd 
+  6
+  k_i 
+  6
+  1
+  -1
+  -7.1028518017797
+  Human 
+  None 
+  Unknown 
+  2159
+  "Chem. Biol. 2001 8 pg 1107 # 11421" 
+  24067_17153-1_2008-12-10 
+  "" 
+  Analyze_Lib 
+  0
+  2
+ m_atom[2] { 
+  # First column is atom index #
+  i_m_mmod_type
+  r_m_x_coord
+  r_m_y_coord
+  r_m_z_coord
+  i_m_residue_number
+  i_m_color
+  r_m_charge1
+  r_m_charge2
+  s_m_grow_name
+  i_m_atomic_number
+  s_m_color_rgb
+  i_rga_index
+  :::
+  1 57 3.096637 -2.275998 0.681228 900 9 -0.18000 -0.18000 rpc1 17 006400  3
+  2 61 4.073324 -3.646190 0.272125 0 19 0.00000 0.00000 rpc2 -2 E11EE1  <>
+  :::
+ } 
+ m_bond[1] { 
+  # First column is bond index #
+  i_m_from
+  i_m_to
+  i_m_order
+  :::
+  1 1 2 1
+  :::
+ } 
+} 
+
