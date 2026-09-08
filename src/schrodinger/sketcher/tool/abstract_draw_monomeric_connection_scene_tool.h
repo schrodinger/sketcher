@@ -24,8 +24,10 @@ class SKETCHER_API AbstractDrawMonomericConnectionSceneTool
     : public AbstractDrawMonomerOrMonomericConnectionSceneTool
 {
   protected:
-    AbstractDrawMonomericConnectionSceneTool(const Fonts& fonts, Scene* scene,
-                                             MolModel* mol_model);
+    AbstractDrawMonomericConnectionSceneTool(
+        const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+        const BondDisplaySettings& bond_display_settings, Scene* scene,
+        MolModel* mol_model);
 
     QGraphicsItem* m_invalid_drag_item = nullptr;
     QPen m_invalid_drag_pen = QPen(CONNECTION_TOOL_INVALID_DRAG_COLOR,

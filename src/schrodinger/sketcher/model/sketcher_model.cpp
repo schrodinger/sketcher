@@ -476,6 +476,12 @@ bool SketcherModel::hasNAPhosphateSelection() const
     return contains_item<NucleicAcidPhosphateItem>(*this);
 }
 
+bool SketcherModel::hasNucleicAcidSelection() const
+{
+    return hasNABaseSelection() || hasNASugarSelection() ||
+           hasNAPhosphateSelection();
+}
+
 bool SketcherModel::hasMonomerSelection() const
 {
     return contains_item<AbstractMonomerItem>(*this);

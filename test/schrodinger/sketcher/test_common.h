@@ -92,6 +92,7 @@ class TestSketcherWidget : public SketcherWidget
     // failures on buildbot, so we create our own clipboard
     mutable std::string m_clipboard_text;
     mutable std::string m_clipboard_binary;
+    mutable bool m_clipboard_image_set = false;
     std::string getClipboardContents() const override
     {
         return m_clipboard_binary.empty() ? m_clipboard_text
@@ -102,6 +103,10 @@ class TestSketcherWidget : public SketcherWidget
     {
         m_clipboard_text = text;
         m_clipboard_binary = binary;
+    }
+    void setClipboardImage(const QImage&) const override
+    {
+        m_clipboard_image_set = true;
     }
 };
 

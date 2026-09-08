@@ -59,7 +59,7 @@ Next build the external dependencies:
 
     # The first five are quick to build and independent of each other, so
     # they can be built together.
-    cmake --build ext_bld --target fmt zlib zstd eigen sqlite
+    cmake --build ext_bld --target fmt zlib zstd eigen sqlite expat
     cmake --build ext_bld --target boost
     cmake --build ext_bld --target rdkit
     cmake --build ext_bld --target qt

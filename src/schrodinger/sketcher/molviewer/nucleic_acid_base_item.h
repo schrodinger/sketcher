@@ -20,6 +20,8 @@ class SKETCHER_API NucleicAcidBaseItem : public AbstractMonomerItem
 {
   public:
     NucleicAcidBaseItem(const RDKit::Atom* atom, const Fonts& fonts,
+                        const AtomDisplaySettings& atom_display_settings,
+                        const BondDisplaySettings& bond_display_settings,
                         const bool is_dark_mode = false,
                         QGraphicsItem* parent = nullptr);
 

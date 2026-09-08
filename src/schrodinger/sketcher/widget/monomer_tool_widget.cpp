@@ -117,6 +117,14 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
 
     for (auto& entry : m_button_amino_acid_bimap.left) {
         auto* button = entry.first;
+        auto aa_tool = entry.second;
+        auto symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(aa_tool);
+        const auto& name = AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
+        if (aa_tool == AminoAcidTool::UNK) {
+            // the UNK button doesn't get a popup and isn't a ModularToolButton
+            button->setToolTip(QString::fromStdString(name));
+            continue;
+        }
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
         Q_ASSERT_X(modular_btn, "MonomerToolWidget",
                    "Expected ModularToolButton");
@@ -124,9 +132,6 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
         // reveal on buttons that actually get an analog popup attached.
         modular_btn->showPopupIndicator(false);
 
-        auto aa_tool = entry.second;
-        auto symbol = AMINO_ACID_TOOL_TO_RES_NAME.at(aa_tool);
-        const auto& name = AMINO_ACID_TOOL_TO_FULL_NAME.at(aa_tool);
         auto it = analogs_by_aa.find(symbol);
         if (it == analogs_by_aa.end() || it->second.empty()) {
             button->setToolTip(QString::fromStdString(name));
@@ -170,6 +175,12 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
             continue; // sugar/phosphate/full-nucleotide buttons
         }
         const auto& [symbol, name] = *std_name;
+        if (na_tool == NucleicAcidTool::N) {
+            // the N button doesn't get a popup and isn't a ModularToolButton
+            button->setToolTip(QString::fromStdString(name));
+            continue;
+        }
+
         auto* modular_btn = qobject_cast<ModularToolButton*>(button);
         // Hide the wedge by default for every per-base NA button; only
         // enable hover reveal on buttons that actually get an analog popup
@@ -246,8 +257,9 @@ void MonomerToolWidget::updateWidgetsEnabled()
 
     // Enable individual nucleic acid component buttons only if that
     // component type is in the selection (or there's no monomer selection)
-    std::array base_btns{ui->na_a_btn, ui->na_c_btn, ui->na_g_btn,
-                         ui->na_u_btn, ui->na_t_btn, ui->na_n_btn};
+    auto base_btns =
+        std::to_array<QToolButton*>({ui->na_a_btn, ui->na_c_btn, ui->na_g_btn,
+                                     ui->na_u_btn, ui->na_t_btn, ui->na_n_btn});
     for (auto* btn : base_btns) {
         btn->setEnabled(!has_monomer_selection || has_na_base);
     }

@@ -10,10 +10,12 @@ namespace schrodinger
 namespace sketcher
 {
 
-DrawMonomericHBondSceneTool::DrawMonomericHBondSceneTool(const Fonts& fonts,
-                                                         Scene* scene,
-                                                         MolModel* mol_model) :
-    AbstractDrawMonomericConnectionSceneTool(fonts, scene, mol_model)
+DrawMonomericHBondSceneTool::DrawMonomericHBondSceneTool(
+    const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    MolModel* mol_model) :
+    AbstractDrawMonomericConnectionSceneTool(
+        fonts, atom_display_settings, bond_display_settings, scene, mol_model)
 {
     m_highlight_types = InteractiveItemFlag::MONOMER;
 }

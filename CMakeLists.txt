@@ -20,6 +20,7 @@ file(READ ${CMAKE_CURRENT_SOURCE_DIR}/external/versions.json VERSIONS)
 if(${ENFORCE_DEPENDENCY_VERSIONS})
   string(JSON BOOST_VERSION GET ${VERSIONS} boost)
   string(JSON EIGEN_VERSION GET ${VERSIONS} eigen)
+  string(JSON EXPAT_VERSION GET ${VERSIONS} expat)
   string(JSON FMT_VERSION GET ${VERSIONS} fmt)
   string(JSON QT_VERSION GET ${VERSIONS} qt)
   string(JSON RDKIT_VERSION GET ${VERSIONS} rdkit)
@@ -73,11 +74,21 @@ if(APPLE AND TARGET WrapOpenGL::WrapOpenGL)
 endif()
 
 find_package(Eigen3 ${EIGEN_VERSION} REQUIRED)
+find_package(EXPAT ${EXPAT_VERSION} REQUIRED)
 find_package(RDKit ${RDKIT_VERSION} REQUIRED)
 find_package(fmt ${FMT_VERSION} REQUIRED)
 find_package(SQLite3 ${SQLITE_VERSION} REQUIRED)
 find_package(ZLIB ${ZLIB_VERSION} REQUIRED)
 find_package(zstd ${ZSTD_VERSION} REQUIRED)
+
+# The EXPAT::EXPAT target used in RDKit only exists if FindEXPAT.cmake was used
+# to find Expat. If CMAKE_FIND_PACKAGE_PREFER_CONFIG was passed and we instead
+# used Expat's config file, then the target name is actually lowercase
+# expat::expat. If that's happened, create an alias to satisfy rdkit's
+# dependencies.
+if(NOT TARGET EXPAT::EXPAT)
+  add_library(EXPAT::EXPAT ALIAS expat::expat)
+endif()
 
 # Common library/executable configuration
 function(setup_target TARGET)
@@ -136,12 +147,41 @@ function(setup_target TARGET)
   endif()
 endfunction()
 
+# Add dependencies to Qt resource collection files (*.qrc). This ensures that
+# changes to an icon, font, etc. will trigger a rebuild of the relevant .qrc
+# file.
+function(add_qrc_dependencies QRC_FILE)
+  get_filename_component(QRC_DIR ${QRC_FILE} DIRECTORY)
+  file(READ ${QRC_FILE} QRC_CONTENTS)
+  string(REGEX MATCHALL "<file[^>]*>[^<]+</file>" QRC_FILE_ENTRIES
+               ${QRC_CONTENTS})
+  set(QRC_DEPENDENCIES)
+  foreach(QRC_FILE_ENTRY ${QRC_FILE_ENTRIES})
+    string(REGEX REPLACE "^<file[^>]*>" "" QRC_RESOURCE ${QRC_FILE_ENTRY})
+    string(REGEX REPLACE "</file>$" "" QRC_RESOURCE ${QRC_RESOURCE})
+    string(STRIP ${QRC_RESOURCE} QRC_RESOURCE)
+    cmake_path(
+      ABSOLUTE_PATH
+      QRC_RESOURCE
+      BASE_DIRECTORY
+      ${QRC_DIR}
+      NORMALIZE
+      OUTPUT_VARIABLE
+      QRC_RESOURCE_PATH)
+    list(APPEND QRC_DEPENDENCIES ${QRC_RESOURCE_PATH})
+  endforeach()
+  set_property(
+    SOURCE ${QRC_FILE}
+    APPEND
+    PROPERTY OBJECT_DEPENDS "${QRC_DEPENDENCIES}")
+endfunction()
+
 # Configure the SKETCHER_LIB and RDKIT_EXTENSIONS_LIB libraries
 function(build_schrodinger_library TARGET)
   set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include/schrodinger/${TARGET})
   set(SRC_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/${TARGET})
-  # Collect all headers, source, and resources; note we collect public headers
-  # so that Qt can build .moc files
+  # Collect all headers and source; note we collect public headers so that Qt
+  # can build .moc files.
   file(
     GLOB_RECURSE
     SOURCE_LIST
@@ -149,7 +189,14 @@ function(build_schrodinger_library TARGET)
     ${INCLUDE_DIR}/*.h
     ${SRC_DIR}/*.h
     ${SRC_DIR}/*.cpp
-    ${SRC_DIR}/*.qrc)
+    ${SRC_DIR}/*.ui)
+  # Collect all resources
+  file(GLOB_RECURSE SOURCE_LIST_QRC CONFIGURE_DEPENDS ${SRC_DIR}/*.qrc)
+  list(APPEND SOURCE_LIST ${SOURCE_LIST_QRC})
+  foreach(QRC_FILE ${SOURCE_LIST_QRC})
+    add_qrc_dependencies(${QRC_FILE})
+  endforeach()
+
   add_library(${TARGET} ${SOURCE_LIST})
   add_library(schrodinger::${TARGET} ALIAS ${TARGET})
   set_target_properties(${TARGET} PROPERTIES OUTPUT_NAME schrodinger_${TARGET})
@@ -159,9 +206,35 @@ function(build_schrodinger_library TARGET)
   target_compile_definitions(${TARGET} PRIVATE IN_${TARGET_UPPER}_DLL)
 endfunction()
 
+# Add direct dependencies from C++ sources to the .ui files whose generated
+# headers they include. Without these edges, Ninja may decide that a source is
+# up-to-date before AUTOUIC regenerates its header, requiring a second build
+# before a ui change is incorporated.
+function(add_ui_dependencies TARGET UI_DIR)
+  get_target_property(TARGET_SOURCES ${TARGET} SOURCES)
+  foreach(SOURCE_FILE ${TARGET_SOURCES})
+    if(SOURCE_FILE MATCHES "\\.(cc|cpp|cxx)$")
+      file(STRINGS ${SOURCE_FILE} UI_INCLUDES
+           REGEX "#[ \t]*include[ \t]*[<\"][^>\"]*ui_[A-Za-z0-9_]+\\.h[>\"]")
+      foreach(UI_INCLUDE ${UI_INCLUDES})
+        string(REGEX REPLACE ".*ui_([A-Za-z0-9_]+)\\.h.*" "\\1" UI_BASENAME
+                             ${UI_INCLUDE})
+        set(UI_FILE ${UI_DIR}/${UI_BASENAME}.ui)
+        if(EXISTS ${UI_FILE})
+          set_property(
+            SOURCE ${SOURCE_FILE}
+            APPEND
+            PROPERTY OBJECT_DEPENDS ${UI_FILE})
+        endif()
+      endforeach()
+    endif()
+  endforeach()
+endfunction()
+
 # Enable Qt's MOC and UIC features
 function(enable_qt_moc TARGET)
   set(UI_DIR ${PROJECT_SOURCE_DIR}/src/schrodinger/sketcher/ui)
+  add_ui_dependencies(${TARGET} ${UI_DIR})
   set_target_properties(
     ${TARGET}
     PROPERTIES AUTOMOC ON
@@ -399,6 +472,11 @@ if(ENABLE_TESTING)
     target_include_directories(${TEST_TARGET}
                                PRIVATE ${PROJECT_SOURCE_DIR}/test)
     target_link_libraries(${TEST_TARGET} PRIVATE ${TEST_DEPENDENCIES})
+    if(NOT QT6_IS_SHARED_LIBS_BUILD)
+      # we use the offscreen platform to make sure that the tests don't pop up
+      # windows on the screen while they're running
+      qt_import_plugins(${TEST_TARGET} INCLUDE Qt6::QOffscreenIntegrationPlugin)
+    endif()
     if(MSVC)
       # ignore discarded [[nodiscard]] values for the tests
       target_compile_options(${TEST_TARGET} PRIVATE -wd4834)
@@ -417,7 +495,7 @@ if(ENABLE_TESTING)
       ${TEST_TARGET} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PREFIX_PATH}
                                 OUTPUT_NAME ${TEST_STEM})
     # Create memtest target and command
-    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
       # create the valgrind test
       set(CURRENT_MEMTEST_COMMAND ${MEMTEST_COMMAND})
       if(EXISTS "${PREFIX_PATH}/${SUPPRESSION_FILE}")
@@ -438,7 +516,7 @@ if(ENABLE_TESTING)
       ${TEST_TARGET} PROPERTIES ENVIRONMENT
                                 "SKETCHER_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
     # Add label for memtest targets
-    if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
       set_property(TEST ${TEST_TARGET} PROPERTY LABELS memtest)
     endif()
   endforeach()

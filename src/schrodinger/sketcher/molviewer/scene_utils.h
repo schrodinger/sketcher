@@ -48,11 +48,17 @@ class NonMolecularObject;
  * Create and return a graphics item for the given monomer
  * @param atom An atom that represents a monomer
  * @param fonts The fonts for the graphics item to use
+ * @param atom_display_settings The settings for displaying atoms (only used for
+ * SMILES monomers)
+ * @param bond_display_settings The settings for displaying bonds (only used for
+ * SMILES monomers)
  * @return The newly created graphics item. Destruction of this graphics item is
  * the responsibility of the calling scope.
  */
 SKETCHER_API AbstractMonomerItem*
 get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts,
+                          const AtomDisplaySettings& atom_display_settings,
+                          const BondDisplaySettings& bond_display_settings,
                           const bool is_dark_mode = false);
 
 /**
@@ -78,11 +84,11 @@ std::tuple<std::vector<QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::Bond*, QGraphicsItem*>,
            std::unordered_map<const RDKit::SubstanceGroup*, SGroupItem*>>
-create_graphics_items_for_mol(
-    const RDKit::ROMol* mol, const Fonts& fonts,
-    const AtomDisplaySettings& atom_display_settings = AtomDisplaySettings(),
-    const BondDisplaySettings& bond_display_settings = BondDisplaySettings(),
-    const bool is_dark_mode = false, const bool draw_attachment_points = true);
+create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
+                              const AtomDisplaySettings& atom_display_settings,
+                              const BondDisplaySettings& bond_display_settings,
+                              const bool is_dark_mode = false,
+                              const bool draw_attachment_points = true);
 
 /**
  * Update all graphics items to represent an updated conformer

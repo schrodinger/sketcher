@@ -43,17 +43,10 @@ const std::string H_BOND_LINKAGE =
 // issues with C++′s handling of Unicode.
 const std::unordered_map<MonomerType, std::vector<std::string>>
     NUMBERED_AP_NAMES_BY_MONOMER_TYPE = {
-        {MonomerType::PEPTIDE, {"N", "C", "X"}},
+        {MonomerType::PEPTIDE, {"N", "C", "S"}},
         {MonomerType::NA_BASE, {"N1/9"}},
         {MonomerType::NA_SUGAR, {"5'", "3'", "1'"}},
 };
-
-// standard attachment point names that don't follow the "R#" naming scheme.
-// Given as a pair of model name, display name
-const std::unordered_map<MonomerType,
-                         std::vector<std::pair<std::string, std::string>>>
-    EXPECTED_AP_CUSTOM_NAMES = {
-        {MonomerType::NA_BASE, {{H_BOND_AP_MODEL_NAME, H_BOND_DISPLAY_NAME}}}};
 
 const int INVALID_ATTACHMENT_POINT_SPEC = -2;
 
@@ -565,6 +558,11 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
     if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
         num_numbered_aps =
             NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(monomer_type).size();
+        if (monomer_type == MonomerType::PEPTIDE &&
+            get_monomer_res_name(monomer) != CYS_RES_NAME) {
+            // cysteine is the only peptide that can form disulfides
+            num_numbered_aps -= 1;
+        }
     } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
         num_numbered_aps = 2;
     } else {
@@ -595,23 +593,18 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
             }
         }
 
-        // figure out which attachment points with custom names are unbound
-        if (EXPECTED_AP_CUSTOM_NAMES.contains(monomer_type)) {
-            for (const auto& [ap_model_name, ap_display_name] :
-                 EXPECTED_AP_CUSTOM_NAMES.at(monomer_type)) {
-                if (!bound_aps_with_custom_names.contains(ap_model_name)) {
-                    auto dir = calculate_direction_for_unbound_attachment_point(
-                        ATTACHMENT_POINT_WITH_CUSTOM_NAME, ap_model_name,
-                        monomer_type, bound_aps, available_aps,
-                        occupied_directions);
-                    occupied_directions.insert(dir);
-                    // XCode 14 requires push_back instead of emplace_back and
-                    // curly brackets instead of parenthesis here
-                    available_aps.push_back(UnboundAttachmentPoint{
-                        ap_model_name, ap_display_name,
-                        ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir});
-                }
-            }
+        // figure out if we should add an unbound H-bond attachment point
+        if (monomer_type == MonomerType::NA_BASE &&
+            !bound_aps_with_custom_names.contains(H_BOND_AP_MODEL_NAME)) {
+            auto dir = calculate_direction_for_unbound_attachment_point(
+                ATTACHMENT_POINT_WITH_CUSTOM_NAME, H_BOND_AP_MODEL_NAME,
+                monomer_type, bound_aps, available_aps, occupied_directions);
+            occupied_directions.insert(dir);
+            // XCode 14 requires push_back instead of emplace_back and
+            // curly brackets instead of parenthesis here
+            available_aps.push_back(UnboundAttachmentPoint{
+                H_BOND_AP_MODEL_NAME, H_BOND_DISPLAY_NAME,
+                ATTACHMENT_POINT_WITH_CUSTOM_NAME, dir});
         }
     } catch (const NoAvailableDirectionsException&) {
         // there are so many attachment points that we can't generate directions

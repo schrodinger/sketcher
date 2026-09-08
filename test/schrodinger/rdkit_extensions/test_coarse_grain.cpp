@@ -10,6 +10,7 @@
 
 #include <rdkit/GraphMol/FileParsers/FileParsers.h>
 #include <rdkit/GraphMol/GraphMol.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesParse.h>
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 #include <rdkit/GraphMol/Substruct/SubstructMatch.h>
@@ -76,6 +77,25 @@ BOOST_AUTO_TEST_CASE(TestBranchesCoarseGrain)
     // consecutive branches
 }
 
+BOOST_AUTO_TEST_CASE(TestTwoChainsWithSameID)
+{
+    // Create two chains with the same ID to see if assignChains()
+    // overrides them with unique chain IDs.
+    ::RDKit::RWMol monomer_mol;
+    auto peptide1_a = addMonomer(monomer_mol, "A", 1, "PEPTIDE1");
+    auto peptide1_g = addMonomer(monomer_mol, "G");
+    addConnection(monomer_mol, peptide1_a, peptide1_g);
+
+    auto peptide2_c = addMonomer(monomer_mol, "C", 1, "PEPTIDE1");
+    auto peptide2_t = addMonomer(monomer_mol, "T");
+    addConnection(monomer_mol, peptide2_c, peptide2_t);
+
+    assignChains(monomer_mol);
+
+    BOOST_CHECK_EQUAL(to_string(monomer_mol, Format::HELM),
+                      "PEPTIDE1{A.G}|PEPTIDE2{C.T}$$$$V2.0");
+}
+
 BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
 {
     ::RDKit::RWMol monomer_mol;
@@ -102,6 +122,46 @@ BOOST_AUTO_TEST_CASE(TestMultipleChainsCoarseGrainMol)
     BOOST_CHECK_EQUAL(
         to_string(monomer_mol, Format::HELM),
         "PEPTIDE1{A.G.C}|PEPTIDE2{T.C.A}$PEPTIDE1,PEPTIDE2,3:R3-1:R1$$$V2.0");
+}
+
+BOOST_AUTO_TEST_CASE(TestAssignChainsSplitsDisconnectedMonomers)
+{
+    const std::string helm_str = "PEPTIDE1{A}|PEPTIDE2{A}$$$$V2.0";
+    auto monomer_mol = to_rdkit(helm_str, Format::HELM);
+
+    // Simulate two disconnected monomers that were incorrectly assigned to
+    // the same polymer before assignChains().
+    auto* residue_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+        monomer_mol->getAtomWithIdx(1)->getMonomerInfo());
+    BOOST_REQUIRE(residue_info != nullptr);
+    residue_info->setChainId("PEPTIDE1");
+
+    assignChains(*monomer_mol);
+
+    BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM), helm_str);
+}
+
+BOOST_AUTO_TEST_CASE(TestAssignChainsRenumbersSplitChains)
+{
+    const std::string helm_str =
+        "PEPTIDE1{A}|PEPTIDE2{C.A.C}$PEPTIDE2,PEPTIDE2,1:R3-3:R3$$$V2.0";
+    auto monomer_mol = to_rdkit(helm_str, Format::HELM);
+
+    // Simulate a valid sub-chain split out of a larger stale parent chain.
+    // The sequence order is already valid, so assignChains() must still
+    // renumber residues to avoid out-of-range HELM connection references.
+    for (auto atom_idx = 1u; atom_idx < monomer_mol->getNumAtoms();
+         ++atom_idx) {
+        auto* residue_info = static_cast<RDKit::AtomPDBResidueInfo*>(
+            monomer_mol->getAtomWithIdx(atom_idx)->getMonomerInfo());
+        BOOST_REQUIRE(residue_info != nullptr);
+        residue_info->setChainId("PEPTIDE1");
+        residue_info->setResidueNumber(67 + atom_idx);
+    }
+
+    assignChains(*monomer_mol);
+
+    BOOST_CHECK_EQUAL(to_string(*monomer_mol, Format::HELM), helm_str);
 }
 
 BOOST_AUTO_TEST_CASE(TestAtomisticSmilesToCGString)

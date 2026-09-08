@@ -23,6 +23,8 @@ enum class ChainType;
 namespace sketcher
 {
 
+class AtomDisplaySettings;
+class BondDisplaySettings;
 struct HintFragmentMonomerInfo;
 
 /**
@@ -34,7 +36,10 @@ class SKETCHER_API DrawMonomerSceneTool
   public:
     DrawMonomerSceneTool(const std::string& res_name,
                          const rdkit_extensions::ChainType chain_type,
-                         const Fonts& fonts, Scene* scene, MolModel* mol_model);
+                         const Fonts& fonts,
+                         const AtomDisplaySettings& atom_display_settings,
+                         const BondDisplaySettings& bond_display_settings,
+                         Scene* scene, MolModel* mol_model);
 
     // Reimplemented AbstractSceneTool method
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;

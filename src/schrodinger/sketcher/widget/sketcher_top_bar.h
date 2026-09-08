@@ -64,6 +64,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     void invertSelectionRequested();
     void cutRequested(rdkit_extensions::Format format);
     void copyRequested(rdkit_extensions::Format format, SceneSubset subset);
+    void copyAsImageRequested();
     void pasteRequested();
     void flipHorizontalRequested();
     void flipVerticalRequested();

@@ -7,11 +7,8 @@
 #include <QResizeEvent>
 #include <QPinchGesture>
 #include <QGestureEvent>
-#include <QPinchGesture>
-#include <QGestureEvent>
 #include <Qt>
 #include <QtGlobal>
-#include <QWheelEvent>
 #include <QWheelEvent>
 
 #include "schrodinger/sketcher/model/mol_model.h"

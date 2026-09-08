@@ -508,6 +508,14 @@ BOOST_DATA_TEST_CASE(
                                      << "\nComputed coords: " << actual_str);
 }
 
+BOOST_AUTO_TEST_CASE(TestSingleIntrapolymerPairDoesNotCrash)
+{
+    const auto mol = helm_to_rdkit(
+        "RNA1{R(A)P.R(C)P.R(G)P.R(A)P}$RNA1,RNA1,2:pair-8:pair$$$V2.0");
+
+    BOOST_CHECK_NO_THROW(compute_monomer_mol_coords(*mol));
+}
+
 BOOST_AUTO_TEST_SUITE(TestMonomerCoordgenCheckCoords)
 
 static RDKit::RWMol

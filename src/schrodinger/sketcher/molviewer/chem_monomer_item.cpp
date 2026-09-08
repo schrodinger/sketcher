@@ -7,10 +7,13 @@ namespace schrodinger
 namespace sketcher
 {
 
-ChemMonomerItem::ChemMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
-                                 const bool is_dark_mode,
-                                 QGraphicsItem* parent) :
-    AbstractMonomerItem(monomer, fonts, is_dark_mode, parent)
+ChemMonomerItem::ChemMonomerItem(
+    const RDKit::Atom* monomer, const Fonts& fonts,
+    const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, const bool is_dark_mode,
+    QGraphicsItem* parent) :
+    AbstractMonomerItem(monomer, fonts, atom_display_settings,
+                        bond_display_settings, is_dark_mode, parent)
 {
     setZValue(static_cast<qreal>(ZOrder::MONOMER));
     m_border_brush.setColor(CHEM_MONOMER_RECT_COLOR);
@@ -29,7 +32,7 @@ int ChemMonomerItem::type() const
 
 void ChemMonomerItem::updateCachedData()
 {
-    prepareGeometryChange();
+    AbstractMonomerItem::updateCachedData();
     auto res_name = get_monomer_res_name(m_atom);
     m_main_label_text = elide_text(res_name);
     auto [border_width, border_height] = get_rect_size_to_fit_label(

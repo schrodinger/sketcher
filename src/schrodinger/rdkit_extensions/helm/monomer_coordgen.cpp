@@ -1571,6 +1571,12 @@ find_hairpin_turn(const RDKit::ROMol& polymer)
         }
     }
 
+    if (turn_ends.first == -1) {
+        // A single intrapolymer pair forms an isolated ring, so there is no
+        // hairpin turn that needs to be laid out.
+        return {};
+    }
+
     // turn_ends are the indices, in turn_monomers, of the monomers at the top
     // and bottom end of the hairpin turn respectively - so they're either
     // adjacent or at the ends of the vector. We want to orient the vector so
@@ -1597,6 +1603,9 @@ layout_hairpin_polymer(RDKit::ROMol& polymer,
                        std::unordered_set<int>& placed_monomers_idcs)
 {
     auto hairpin_turn = find_hairpin_turn(polymer);
+    if (hairpin_turn.empty()) {
+        return;
+    }
     auto& conformer = polymer.getConformer();
 
     // layout the hairpin turn

@@ -30,6 +30,9 @@ enum class ChainType;
 namespace sketcher
 {
 
+class AtomDisplaySettings;
+class BondDisplaySettings;
+
 /**
  * An abstract parent class for graphics items that represent monomers.
  */
@@ -37,8 +40,12 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
 {
   public:
     AbstractMonomerItem(const RDKit::Atom* monomer, const Fonts& fonts,
+                        const AtomDisplaySettings& atom_display_settings,
+                        const BondDisplaySettings& bond_display_settings,
                         const bool is_dark_mode = false,
                         QGraphicsItem* parent = nullptr);
+
+    void updateCachedData() override;
 
     /**
      * Replace the monomer-specific colors with the given colors.
@@ -69,6 +76,8 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
 
   protected:
     const Fonts& m_fonts;
+    const AtomDisplaySettings* m_atom_display_settings;
+    const BondDisplaySettings* m_bond_display_settings;
     QPen m_border_pen;
     QBrush m_border_brush = QBrush(Qt::BrushStyle::SolidPattern);
     QString m_main_label_text;

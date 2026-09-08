@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer)
 BOOST_AUTO_TEST_CASE(test_click_attachment_point)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
     auto monomer_pos = fix.getMonomerPos(0);
     fix.setMonomericConnectionTool(
         MonomericConnectionTool::COVALENT_OR_DISULFIDE);
@@ -61,19 +61,19 @@ BOOST_AUTO_TEST_CASE(test_click_attachment_point)
     fix.mouseMove(monomer_pos);
     auto n_ap_pos = fix.getAttachmentPointPos(0, "N");
     fix.mouseClick(n_ap_pos);
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
 
     // click on the C terminus attachment point
     fix.mouseMove(monomer_pos);
     auto c_ap_pos = fix.getAttachmentPointPos(0, "C");
     fix.mouseClick(c_ap_pos);
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
 
     // click on the side chain attachment point
     fix.mouseMove(monomer_pos);
-    auto x_ap_pos = fix.getAttachmentPointPos(0, "X");
+    auto x_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseClick(x_ap_pos);
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
 }
 
 /**
@@ -128,18 +128,6 @@ BOOST_AUTO_TEST_CASE(test_drag_ap_to_empty)
     // Drag from C attachment point to empty space
     start_pos = fix.getAttachmentPointPos(0, "C");
     end_pos = start_pos + QPointF(100, 100);
-    fix.mouseDrag(start_pos, end_pos);
-
-    fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
-
-    // hover over the first monomer so that its attachment point graphics items
-    // are created again
-    fix.mouseMove(end_pos);
-    fix.mouseMove(ala_pos);
-
-    // Drag from C attachment point to empty space
-    start_pos = fix.getAttachmentPointPos(0, "X");
-    end_pos = start_pos + QPointF(-50, 100);
     fix.mouseDrag(start_pos, end_pos);
 
     fix.verifyHELM("PEPTIDE1{A}$$$$V2.0");
@@ -250,21 +238,21 @@ BOOST_AUTO_TEST_CASE(test_drag_second_custom_connection)
 {
     MonomerToolTestFixture fix;
     fix.importMolText(
-        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
     fix.setMonomericConnectionTool(
         MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
-    auto start_ap_pos = fix.getAttachmentPointPos(0, "X");
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseMove(start_ap_pos);
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
-    auto end_ap_pos = fix.getAttachmentPointPos(1, "X");
+    auto end_ap_pos = fix.getAttachmentPointPos(1, "S");
     fix.mouseMove(end_ap_pos);
     fix.mouseRelease(end_ap_pos);
     fix.verifyHELM(
-        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
 }
 
 /**
@@ -407,7 +395,7 @@ BOOST_AUTO_TEST_CASE(test_undo_drag_end_monomer_no_crash)
 BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}|RNA1{A}$$$$V2.0");
     fix.setMonomericConnectionTool(
         MonomericConnectionTool::COVALENT_OR_DISULFIDE);
     auto start_monomer_pos = fix.getMonomerPos(1);
@@ -418,7 +406,7 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
     fix.mouseRelease(end_monomer_pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$RNA1,PEPTIDE1,1:pair-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}|RNA1{A}$RNA1,PEPTIDE1,1:pair-1:pair$$$V2.0");
 }
 
 /**
@@ -429,17 +417,17 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
 BOOST_AUTO_TEST_CASE(test_drag_to_na_base_from_peptide)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}|RNA1{A}$$$$V2.0");
     fix.setNucleicAcidTool(NucleicAcidTool::A);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
-    auto start_ap_pos = fix.getAttachmentPointPos(0, "X");
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseMove(start_ap_pos);
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
     fix.mouseRelease(end_monomer_pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}|RNA1{A}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
 }
 
 } // namespace sketcher

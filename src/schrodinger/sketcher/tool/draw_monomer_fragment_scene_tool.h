@@ -21,6 +21,8 @@ namespace sketcher
 {
 
 class AbstractMonomerItem;
+class AtomDisplaySettings;
+class BondDisplaySettings;
 class DrawMonomerFragmentSceneTool;
 class UnboundMonomericAttachmentPointItem;
 
@@ -43,10 +45,11 @@ struct MonomerFragmentAttachmentInfo {
  * the given residue names.
  */
 std::shared_ptr<DrawMonomerFragmentSceneTool>
-get_nucleotide_fragment_scene_tool(const std::string& sugar,
-                                   const std::string& base,
-                                   const std::string& phos, const Fonts& fonts,
-                                   Scene* scene, MolModel* mol_model);
+get_nucleotide_fragment_scene_tool(
+    const std::string& sugar, const std::string& base, const std::string& phos,
+    const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    MolModel* mol_model);
 
 /**
  * A scene tool for drawing monomeric fragments
@@ -87,7 +90,9 @@ class SKETCHER_API DrawMonomerFragmentSceneTool
         const RDKit::ROMol& mol,
         const std::vector<MonomerFragmentAttachmentInfo> attachment_info,
         const int index_to_center_on_click, const double drag_angle_adjustment,
-        const Fonts& fonts, Scene* scene, MolModel* mol_model);
+        const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+        const BondDisplaySettings& bond_display_settings, Scene* scene,
+        MolModel* mol_model);
 
     // Reimplemented AbstractSceneTool methods
     QPixmap createDefaultCursorPixmap() const override;
@@ -105,6 +110,8 @@ class SKETCHER_API DrawMonomerFragmentSceneTool
     int m_index_to_center_on_click;
     bool m_press_was_over_monomer = false;
     double m_drag_angle_adjustment;
+    const AtomDisplaySettings* m_atom_display_settings = nullptr;
+    const BondDisplaySettings* m_bond_display_settings = nullptr;
 
     /**
      * @return the attachment point graphics item that we should attach the

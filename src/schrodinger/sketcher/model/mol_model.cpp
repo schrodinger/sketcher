@@ -26,7 +26,6 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
-#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"

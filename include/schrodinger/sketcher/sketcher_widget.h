@@ -15,6 +15,7 @@
 
 class QGraphicsSvgItem;
 class QGraphicsSceneMouseEvent;
+class QImage;
 class QUndoStack;
 
 #ifdef __EMSCRIPTEN__
@@ -406,6 +407,7 @@ class SKETCHER_API SketcherWidget : public QWidget
     virtual std::string getClipboardContents() const;
     virtual void setClipboardContents(std::string text,
                                       std::string binary) const;
+    virtual void setClipboardImage(const QImage& image) const;
 
     /**
      * Perform the actual paste of clipboard text into the scene at the given

@@ -21,6 +21,8 @@ namespace schrodinger::sketcher
 
 class Fonts;
 class Scene;
+class AtomDisplaySettings;
+class BondDisplaySettings;
 
 /**
  * A graphics item showing a blue hint structure for monomeric models.
@@ -33,6 +35,10 @@ class MonomerHintFragmentItem : public QGraphicsItemGroup
      * molecule may be modified.
      * @param fonts The fonts to use for displaying the fragment. This object
      * must not be destroyed while this graphics item is in use.
+     * @param atom_display_settings The atom display settings to use. This
+     * object must not be destroyed while this graphics item is in use.
+     * @param bond_display_settings The bond display settings to use. This
+     * object must not be destroyed while this graphics item is in use.
      * @param atom_indices_to_hide The graphics item for these atom will be
      * hidden. Normally used to hide atoms that overlap the existing Sketcher
      * structure.
@@ -46,6 +52,8 @@ class MonomerHintFragmentItem : public QGraphicsItemGroup
      */
     MonomerHintFragmentItem(std::shared_ptr<RDKit::RWMol> fragment,
                             const Fonts& fonts,
+                            const AtomDisplaySettings& atom_display_settings,
+                            const BondDisplaySettings& bond_display_settings,
                             const std::vector<size_t>& atom_indices_to_hide,
                             const int bond_index_to_label,
                             const QColor monomer_background_color,
@@ -65,6 +73,8 @@ class MonomerHintFragmentItem : public QGraphicsItemGroup
   protected:
     std::shared_ptr<RDKit::RWMol> m_frag;
     const Fonts* m_fonts = nullptr;
+    const AtomDisplaySettings* m_atom_display_settings = nullptr;
+    const BondDisplaySettings* m_bond_display_settings = nullptr;
     std::vector<size_t> m_atom_indices_to_hide;
     int m_bond_index_to_label = -1;
     QColor m_monomer_background_color;

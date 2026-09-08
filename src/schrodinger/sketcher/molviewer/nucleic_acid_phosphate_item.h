@@ -17,6 +17,8 @@ class SKETCHER_API NucleicAcidPhosphateItem : public AbstractMonomerItem
 {
   public:
     NucleicAcidPhosphateItem(const RDKit::Atom* atom, const Fonts& fonts,
+                             const AtomDisplaySettings& atom_display_settings,
+                             const BondDisplaySettings& bond_display_settings,
                              const bool is_dark_mode = false,
                              QGraphicsItem* parent = nullptr);
 

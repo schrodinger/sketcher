@@ -9,8 +9,11 @@ namespace sketcher
 {
 
 DrawMonomericConnectionSceneTool::DrawMonomericConnectionSceneTool(
-    const Fonts& fonts, Scene* scene, MolModel* mol_model) :
-    AbstractDrawMonomericConnectionSceneTool(fonts, scene, mol_model)
+    const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    MolModel* mol_model) :
+    AbstractDrawMonomericConnectionSceneTool(
+        fonts, atom_display_settings, bond_display_settings, scene, mol_model)
 {
 }
 
@@ -62,9 +65,13 @@ UnboundMonomericAttachmentPointItem* DrawMonomericConnectionSceneTool::
     } else if (hovered_type == MonomerType::CHEM) {
         return find_min_attachment_point_by_num(m_unbound_ap_items);
     } else if (hovered_type == MonomerType::PEPTIDE) {
-        return find_preferred_attachment_point_by_num(
-            m_unbound_ap_items,
-            {PeptideAP::C, PeptideAP::N, PeptideAP::SIDECHAIN});
+        auto default_ap = find_preferred_attachment_point_by_num(
+            m_unbound_ap_items, {PeptideAP::C, PeptideAP::N, PeptideAP::S});
+        if (default_ap == nullptr) {
+            default_ap = find_attachment_point_with_name(m_unbound_ap_items,
+                                                         H_BOND_AP_MODEL_NAME);
+        }
+        return default_ap;
     } else if (hovered_type == MonomerType::NA_BASE) {
         return find_attachment_point_with_name(m_unbound_ap_items,
                                                H_BOND_AP_MODEL_NAME);

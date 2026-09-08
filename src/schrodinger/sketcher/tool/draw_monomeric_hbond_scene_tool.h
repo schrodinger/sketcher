@@ -21,8 +21,10 @@ class SKETCHER_API DrawMonomericHBondSceneTool
     : public AbstractDrawMonomericConnectionSceneTool
 {
   public:
-    DrawMonomericHBondSceneTool(const Fonts& fonts, Scene* scene,
-                                MolModel* mol_model);
+    DrawMonomericHBondSceneTool(
+        const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+        const BondDisplaySettings& bond_display_settings, Scene* scene,
+        MolModel* mol_model);
 
   protected:
     // Reimplemented AbstractSceneTool method

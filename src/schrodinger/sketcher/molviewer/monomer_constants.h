@@ -296,5 +296,11 @@ const QColor CONNECTION_TOOL_AP_LABEL_HOVER_COLOR_DARK_BG = QColor("#EEEEEE");
  */
 const qreal MONOMER_CURSOR_HINT_MIN_SCENE_SIZE_SCALE = 1.4;
 
+/**
+ * The maximum width and height of the tooltip for SMILES monomers, which
+ * contain an atomistic image of the monomer.
+ */
+const int SMILES_MONOMER_TOOLTIP_SIZE = 250;
+
 } // namespace sketcher
 } // namespace schrodinger

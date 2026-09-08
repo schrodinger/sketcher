@@ -57,8 +57,8 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_residue_mutates)
 }
 
 /**
- * Confirm that clicking on an existing monomer with a monomer tool of
- * a different monomer type has no effect.
+ * Confirm that clicking on an existing monomer with a monomer tool of a
+ * different monomer type does nothing.
  */
 BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_monomer_type)
 {
@@ -71,39 +71,76 @@ BOOST_AUTO_TEST_CASE(test_click_existing_monomer_different_monomer_type)
 }
 
 /**
- * Confirm that clicking on an unbounnd attachment point of an existing monomer
+ * Confirm that clicking on an unbound attachment point of an existing monomer
  * adds a new monomer via the clicked attachment point.
  */
 BOOST_AUTO_TEST_CASE(test_click_attachment_point)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
     auto monomer_pos = fix.getMonomerPos(0);
-    fix.setAminoAcidTool(AminoAcidTool::CYS);
-    // hover over the monomer to trigger AP label creation
-    fix.mouseMove(monomer_pos);
 
     // click on the N terminus attachment point
-    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+    // hover over the monomer to trigger AP label creation
     fix.mouseMove(monomer_pos);
     auto n_ap_pos = fix.getAttachmentPointPos(0, "N");
     fix.mouseClick(n_ap_pos);
-    fix.verifyHELM("PEPTIDE1{C.A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A.C}$$$$V2.0");
 
     // click on the C terminus attachment point
     fix.setAminoAcidTool(AminoAcidTool::PHE);
     fix.mouseMove(monomer_pos);
     auto c_ap_pos = fix.getAttachmentPointPos(0, "C");
     fix.mouseClick(c_ap_pos);
-    fix.verifyHELM("PEPTIDE1{C.A.F}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A.C.F}$$$$V2.0");
 
     // click on the side chain attachment point
     fix.setAminoAcidTool(AminoAcidTool::TRP);
     fix.mouseMove(monomer_pos);
-    auto x_ap_pos = fix.getAttachmentPointPos(0, "X");
+    auto x_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseClick(x_ap_pos);
+    // this will be added as a hydrogen bond since TRP can't form disulfides
     fix.verifyHELM(
-        "PEPTIDE1{C.A.F}|PEPTIDE2{W}$PEPTIDE1,PEPTIDE2,2:R3-1:R3$$$V2.0");
+        "PEPTIDE1{A.C.F}|PEPTIDE2{W}$PEPTIDE1,PEPTIDE2,2:pair-1:pair$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a CYS R3 attachment point with an ALA tool
+ * forms a hydrogen bond, not a disulfide
+ */
+BOOST_AUTO_TEST_CASE(test_click_cys_r3_with_ala)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "S");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:pair-1:pair$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a CYS R3 attachment point with a CYS tool
+ * forms a disulfide
+ */
+BOOST_AUTO_TEST_CASE(test_click_cys_r3_with_cys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "S");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
 }
 
 /**
@@ -152,47 +189,47 @@ BOOST_AUTO_TEST_CASE(
 BOOST_AUTO_TEST_CASE(test_drag_ap_to_empty_adds_connected_via_dragged_ap)
 {
     MonomerToolTestFixture fix;
-    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    fix.setAminoAcidTool(AminoAcidTool::ALA);
 
     // Add initial monomer
-    fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
 
     // hover over the monomer so that the attachment point graphics items are
     // created
-    auto ala_pos = fix.getMonomerPos(0);
-    fix.mouseMove(ala_pos);
+    auto cys_pos = fix.getMonomerPos(0);
+    fix.mouseMove(cys_pos);
 
     // Drag from N attachment point to empty space
     auto start_pos = fix.getAttachmentPointPos(0, "N");
     auto end_pos = start_pos + QPointF(-100, 0);
     fix.mouseDrag(start_pos, end_pos);
 
-    fix.verifyHELM("PEPTIDE1{C.A}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A.C}$$$$V2.0");
 
     // hover over the first monomer so that its attachment point graphics items
     // are created again
     fix.setAminoAcidTool(AminoAcidTool::PHE);
-    fix.mouseMove(ala_pos);
+    fix.mouseMove(cys_pos);
 
     // Drag from C attachment point to empty space
     start_pos = fix.getAttachmentPointPos(0, "C");
     end_pos = start_pos + QPointF(100, 100);
     fix.mouseDrag(start_pos, end_pos);
 
-    fix.verifyHELM("PEPTIDE1{C.A.F}$$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{A.C.F}$$$$V2.0");
 
     // hover over the first monomer so that its attachment point graphics items
     // are created again
-    fix.setAminoAcidTool(AminoAcidTool::ALA);
-    fix.mouseMove(ala_pos);
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    fix.mouseMove(cys_pos);
 
     // Drag from C attachment point to empty space
-    start_pos = fix.getAttachmentPointPos(0, "X");
+    start_pos = fix.getAttachmentPointPos(0, "S");
     end_pos = start_pos + QPointF(-50, 100);
     fix.mouseDrag(start_pos, end_pos);
 
     fix.verifyHELM(
-        "PEPTIDE1{C.A.F}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,2:R3-1:R3$$$V2.0");
+        "PEPTIDE1{A.C.F}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,2:R3-1:R3$$$V2.0");
 }
 
 /**
@@ -318,18 +355,53 @@ BOOST_AUTO_TEST_CASE(test_drag_empty_to_ap_adds_connected_correct_aps)
 {
     MonomerToolTestFixture fix;
     fix.importMolText("PEPTIDE1{C}$$$$V2.0");
-    fix.setAminoAcidTool(AminoAcidTool::ALA);
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
     auto start_pos = QPointF(100, 100);
     auto monomer_pos = fix.getMonomerPos(0);
     fix.mouseMove(start_pos);
     fix.mousePress(start_pos);
     // first, drag to the existing monomer to make its attachment points appear
     fix.mouseMove(monomer_pos);
-    auto end_pos = fix.getAttachmentPointPos(0, "X");
+    auto end_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseMove(end_pos);
     fix.mouseRelease(end_pos);
     fix.verifyHELM(
-        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R3-1:R2$$$V2.0");
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R2$$$V2.0");
+}
+
+/**
+ * Regression test for SKETCH-2852. When a drag moved from one monomer to
+ * another, the drag-end information could retain a pointer to an attachment
+ * point item that was deleted while updating the attachment point labels for
+ * the newly hovered monomer.
+ */
+BOOST_AUTO_TEST_CASE(test_drag_across_monomers_does_not_use_deleted_ap_item)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C.C.C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+
+    auto first_cys_pos = fix.getMonomerPos(0);
+    auto middle_cys_pos = fix.getMonomerPos(1);
+    auto empty_pos = first_cys_pos + QPointF(0, -200);
+    fix.mouseMove(empty_pos);
+    fix.mousePress(empty_pos);
+
+    for (int i = 0; i < 5; ++i) {
+        // Moving over the first cysteine creates its N and S attachment point
+        // items. Moving directly from its N attachment point to the middle
+        // cysteine replaces those items with the middle cysteine's S item. We
+        // repeat these movements multiple times since the bug was intermittent;
+        // the loop increases the likelihood of triggering the exception should
+        // a regression occur.
+        fix.mouseMove(first_cys_pos, Qt::LeftButton);
+        auto first_cys_n_ap_pos = fix.getAttachmentPointPos(0, "N");
+        fix.mouseMove(first_cys_n_ap_pos, Qt::LeftButton);
+        fix.mouseMove(middle_cys_pos, Qt::LeftButton);
+    }
+
+    fix.mouseRelease(middle_cys_pos);
+    BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 4);
 }
 
 /**
@@ -367,22 +439,22 @@ BOOST_AUTO_TEST_CASE(test_drag_second_custom_connection)
 {
     MonomerToolTestFixture fix;
     fix.importMolText(
-        "PEPTIDE1{C}|PEPTIDE2{A}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R2-1:R2$$$V2.0");
     fix.setAminoAcidTool(AminoAcidTool::PHE);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
-    auto start_ap_pos = fix.getAttachmentPointPos(0, "X");
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseMove(start_ap_pos);
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
-    auto end_ap_pos = fix.getAttachmentPointPos(1, "X");
+    auto end_ap_pos = fix.getAttachmentPointPos(1, "S");
     fix.mouseMove(end_ap_pos);
     fix.mouseRelease(end_ap_pos);
     // the drag should have added a new monomer with a side chain interaction
     // since we released over an invalid attachment point
-    fix.verifyHELM("PEPTIDE1{C}|PEPTIDE2{A}|PEPTIDE3{F}$PEPTIDE1,PEPTIDE2,1:R2-"
-                   "1:R2|PEPTIDE1,PEPTIDE3,1:R3-1:R3$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}|PEPTIDE2{C}|PEPTIDE3{F}$PEPTIDE1,PEPTIDE2,1:R2-"
+                   "1:R2|PEPTIDE1,PEPTIDE3,1:pair-1:pair$$$V2.0");
 }
 
 /**
@@ -523,7 +595,7 @@ BOOST_AUTO_TEST_CASE(test_undo_drag_end_monomer_no_crash)
 BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}|RNA1{A}$$$$V2.0");
     fix.setNucleicAcidTool(NucleicAcidTool::A);
     auto start_monomer_pos = fix.getMonomerPos(1);
     auto end_monomer_pos = fix.getMonomerPos(0);
@@ -533,7 +605,7 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
     fix.mouseRelease(end_monomer_pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$RNA1,PEPTIDE1,1:pair-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}|RNA1{A}$RNA1,PEPTIDE1,1:pair-1:pair$$$V2.0");
 }
 
 /**
@@ -544,17 +616,17 @@ BOOST_AUTO_TEST_CASE(test_drag_from_na_base_to_peptide)
 BOOST_AUTO_TEST_CASE(test_drag_to_na_base_from_peptide)
 {
     MonomerToolTestFixture fix;
-    fix.importMolText("PEPTIDE1{A}|RNA1{A}$$$$V2.0");
+    fix.importMolText("PEPTIDE1{C}|RNA1{A}$$$$V2.0");
     fix.setNucleicAcidTool(NucleicAcidTool::A);
     auto start_monomer_pos = fix.getMonomerPos(0);
     auto end_monomer_pos = fix.getMonomerPos(1);
     fix.mouseMove(start_monomer_pos);
-    auto start_ap_pos = fix.getAttachmentPointPos(0, "X");
+    auto start_ap_pos = fix.getAttachmentPointPos(0, "S");
     fix.mouseMove(start_ap_pos);
     fix.mousePress(start_ap_pos);
     fix.mouseMove(end_monomer_pos);
     fix.mouseRelease(end_monomer_pos);
-    fix.verifyHELM("PEPTIDE1{A}|RNA1{A}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
+    fix.verifyHELM("PEPTIDE1{C}|RNA1{A}$PEPTIDE1,RNA1,1:pair-1:pair$$$V2.0");
 }
 
 } // namespace sketcher

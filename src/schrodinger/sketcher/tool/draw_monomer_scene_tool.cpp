@@ -23,9 +23,12 @@ using rdkit_extensions::Direction;
 
 DrawMonomerSceneTool::DrawMonomerSceneTool(
     const std::string& res_name, const rdkit_extensions::ChainType chain_type,
-    const Fonts& fonts, Scene* scene, MolModel* mol_model) :
-    AbstractDrawMonomerOrMonomericConnectionSceneTool(res_name, chain_type,
-                                                      fonts, scene, mol_model)
+    const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
+    const BondDisplaySettings& bond_display_settings, Scene* scene,
+    MolModel* mol_model) :
+    AbstractDrawMonomerOrMonomericConnectionSceneTool(
+        res_name, chain_type, fonts, atom_display_settings,
+        bond_display_settings, scene, mol_model)
 {
 }
 
@@ -89,7 +92,8 @@ void DrawMonomerSceneTool::onLeftButtonClick(
             // default attachment point for this tool, so add a new monomer
             // bound to that attachment point
             auto new_monomer_ap_name = get_attachment_point_for_new_monomer(
-                monomer_type, clicked_ap->model_name, m_monomer_type);
+                monomer_type, clicked_ap->model_name, m_monomer_type,
+                m_res_name);
             auto new_pos = get_default_coords_for_bound_monomer(
                 monomer, clicked_ap->direction);
             // the attachment point labels won't be valid once the new monomer
@@ -187,7 +191,9 @@ QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
         rdkit_extensions::makeMonomer(m_res_name, chain_id, 1, false);
 
     std::shared_ptr<AbstractMonomerItem> monomer_item;
-    monomer_item.reset(get_monomer_graphics_item(monomer.get(), *m_fonts));
+    monomer_item.reset(get_monomer_graphics_item(monomer.get(), *m_fonts,
+                                                 *m_atom_display_settings,
+                                                 *m_bond_display_settings));
     monomer_item->setMonomerColors(Qt::GlobalColor::transparent,
                                    CURSOR_HINT_COLOR, CURSOR_HINT_COLOR);
     // make sure that the cursor hint is at least a little smaller than an

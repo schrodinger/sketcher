@@ -182,10 +182,10 @@
        <item row="7" column="0">
         <spacer name="verticalSpacer_2">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeType">
-          <enum>QSizePolicy::Fixed</enum>
+          <enum>QSizePolicy::Policy::Fixed</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -260,10 +260,10 @@
        <item row="3" column="0">
         <spacer name="verticalSpacer_3">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeType">
-          <enum>QSizePolicy::Fixed</enum>
+          <enum>QSizePolicy::Policy::Fixed</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -364,7 +364,7 @@
         </widget>
        </item>
        <item row="4" column="2">
-        <widget class="schrodinger::sketcher::ModularToolButton" name="na_n_btn">
+        <widget class="QToolButton" name="na_n_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -428,7 +428,7 @@
        <item row="10" column="0">
         <spacer name="verticalSpacer_4">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -553,7 +553,7 @@
        <item row="7" column="0">
         <spacer name="verticalSpacer">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -1094,7 +1094,7 @@
         </widget>
        </item>
        <item row="6" column="2">
-        <widget class="schrodinger::sketcher::ModularToolButton" name="unk_btn">
+        <widget class="QToolButton" name="unk_btn">
          <property name="minimumSize">
           <size>
            <width>32</width>
@@ -1224,12 +1224,25 @@
    <item>
     <widget class="Line" name="line">
      <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+      <enum>Qt::Orientation::Horizontal</enum>
      </property>
     </widget>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <item>
+      <spacer name="horizontalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
      <item>
       <widget class="QToolButton" name="covalent_or_disulfide_btn">
        <property name="minimumSize">
@@ -1254,6 +1267,12 @@
         <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/monomeric_connection.svg</normaloff>:/icons/monomeric_connection.svg</iconset>
        </property>
+       <property name="iconSize">
+        <size>
+         <width>30</width>
+         <height>32</height>
+        </size>
+       </property>
        <property name="checkable">
         <bool>true</bool>
        </property>
@@ -1261,6 +1280,19 @@
         <string notr="true">monomeric_connection_group</string>
        </attribute>
       </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_3">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
      </item>
      <item>
       <widget class="QToolButton" name="hbond_btn">
@@ -1286,6 +1318,12 @@
         <iconset resource="../sketcher.qrc">
          <normaloff>:/icons/monomeric_hbond.svg</normaloff>:/icons/monomeric_hbond.svg</iconset>
        </property>
+       <property name="iconSize">
+        <size>
+         <width>30</width>
+         <height>32</height>
+        </size>
+       </property>
        <property name="checkable">
         <bool>true</bool>
        </property>
@@ -1297,7 +1335,7 @@
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
-        <enum>Qt::Horizontal</enum>
+        <enum>Qt::Orientation::Horizontal</enum>
        </property>
        <property name="sizeHint" stdset="0">
         <size>
@@ -1312,7 +1350,7 @@
    <item>
     <spacer name="verticalSpacer_5">
      <property name="orientation">
-      <enum>Qt::Vertical</enum>
+      <enum>Qt::Orientation::Vertical</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>

@@ -6,7 +6,6 @@
 #include <QGraphicsItem>
 #include <QGraphicsItemGroup>
 #include <QGraphicsPathItem>
-#include <QGraphicsPathItem>
 #include <QGraphicsSimpleTextItem>
 
 #include "schrodinger/sketcher/definitions.h"

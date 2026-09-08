@@ -751,7 +751,9 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 res_name = AMINO_ACID_TOOL_TO_RES_NAME.at(tool);
             }
             return std::make_shared<DrawMonomerSceneTool>(
-                res_name, rdkit_extensions::ChainType::PEPTIDE, m_fonts, this,
+                res_name, rdkit_extensions::ChainType::PEPTIDE, m_fonts,
+                *m_sketcher_model->getAtomDisplaySettingsPtr(),
+                *m_sketcher_model->getBondDisplaySettingsPtr(), this,
                 m_mol_model);
         } else {
             auto tool = m_sketcher_model->getNucleicAcidTool();
@@ -766,24 +768,32 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 // HELM considers DNA to be a type of RNA, so we want an RNA
                 // chain type regardless of which nucleic acid we're drawing
                 return std::make_shared<DrawMonomerSceneTool>(
-                    res_name, rdkit_extensions::ChainType::RNA, m_fonts, this,
+                    res_name, rdkit_extensions::ChainType::RNA, m_fonts,
+                    *m_sketcher_model->getAtomDisplaySettingsPtr(),
+                    *m_sketcher_model->getBondDisplaySettingsPtr(), this,
                     m_mol_model);
             } else {
                 // the tool is for a full nucleotide
                 auto [sugar, base, phos] = *m_sketcher_model->getNucleotide();
                 return get_nucleotide_fragment_scene_tool(
                     sugar.toStdString(), base.toStdString(), phos.toStdString(),
-                    m_fonts, this, m_mol_model);
+                    m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
+                    *m_sketcher_model->getBondDisplaySettingsPtr(), this,
+                    m_mol_model);
             }
         }
     } else if (draw_tool == DrawTool::MONOMERIC_CONNECTION) {
         auto connection_tool = m_sketcher_model->getMonomericConnectionTool();
         if (connection_tool == MonomericConnectionTool::COVALENT_OR_DISULFIDE) {
             return std::make_shared<DrawMonomericConnectionSceneTool>(
-                m_fonts, this, m_mol_model);
+                m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
+                *m_sketcher_model->getBondDisplaySettingsPtr(), this,
+                m_mol_model);
         } else {
-            return std::make_shared<DrawMonomericHBondSceneTool>(m_fonts, this,
-                                                                 m_mol_model);
+            return std::make_shared<DrawMonomericHBondSceneTool>(
+                m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
+                *m_sketcher_model->getBondDisplaySettingsPtr(), this,
+                m_mol_model);
         }
     }
     // tool not yet implemented
@@ -919,7 +929,9 @@ void Scene::updateMonomerLabelSizeOnModel()
             continue;
         }
         // create a temporary graphics item to figure out the label size
-        auto* item = get_monomer_graphics_item(atom, m_fonts);
+        auto* item = get_monomer_graphics_item(
+            atom, m_fonts, *m_sketcher_model->getAtomDisplaySettingsPtr(),
+            *m_sketcher_model->getBondDisplaySettingsPtr());
         const auto bounding_rect = item->boundingRect();
         RDGeom::Point3D size(bounding_rect.width() / VIEW_SCALE,
                              bounding_rect.height() / VIEW_SCALE, 0);
