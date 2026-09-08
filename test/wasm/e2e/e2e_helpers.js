@@ -109,10 +109,10 @@ export async function requireRect(page, selector) {
 /**
  * Return a widget's state, failing if no widget has that objectName.
  *
- * A button reports "enabled", "visible", "checked", "text", and "toolTip",
- * which is how a test asserts that a shortcut selected the tool it should have.
- * This matches a hidden widget too, since a tool inside a closed popup is still
- * the tool the shortcut is meant to have chosen.
+ * Every widget reports "enabled" and "visible"; a button adds "checked",
+ * "text", and "toolTip", which is how a test asserts that a shortcut selected
+ * the tool it should have. This matches a hidden widget too, since a tool inside
+ * a closed popup is still the tool the shortcut is meant to have chosen.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} name - a Qt objectName
@@ -256,6 +256,11 @@ async function showMouseMarker(page, x, y) {
 
 /**
  * Hide the optional cursor marker, so that it stays out of a screenshot.
+ *
+ * The mouse helpers deliberately leave the marker showing once a gesture ends,
+ * so that a trace frame captured after the click still says where the pointer
+ * went; hiding it there would erase the only record of it. Call this from a test
+ * that is about to take a visual snapshot.
  */
 export async function hideMouseMarker(page) {
   if (process.env.PLAYWRIGHT_SHOW_MOUSE !== '1') {
@@ -444,6 +449,10 @@ export async function clickItem(page, kind, index, options) {
 
 /**
  * Move the pointer over whatever a selector resolves to.
+ *
+ * Every selector kind reports "enabled", not just a button, so this waits for an
+ * enabled target the way click() does — its callers hover a menu row to open the
+ * submenu underneath it, and a disabled row has none to open.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} selector - see getRect
