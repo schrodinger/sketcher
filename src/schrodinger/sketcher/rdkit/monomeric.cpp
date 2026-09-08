@@ -554,16 +554,13 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
 
     // figure out how many numbered attachment points we expect
     auto monomer_type = get_monomer_type(monomer);
-    bool is_amino_acid_other_than_cysteine =
-        monomer_type == MonomerType::PEPTIDE &&
-        get_monomer_res_name(monomer) != CYS_RES_NAME;
     int num_numbered_aps = -1;
     if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
         num_numbered_aps =
             NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(monomer_type).size();
-        if (is_amino_acid_other_than_cysteine) {
-            // only cysteine can form disulfides, other amino acids will have a
-            // H-bond attachment point added below
+        if (monomer_type == MonomerType::PEPTIDE &&
+            get_monomer_res_name(monomer) != CYS_RES_NAME) {
+            // cysteine is the only peptide that can form disulfides
             num_numbered_aps -= 1;
         }
     } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
@@ -597,9 +594,7 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
         }
 
         // figure out if we should add an unbound H-bond attachment point
-        bool expect_h_bond_ap = monomer_type == MonomerType::NA_BASE ||
-                                is_amino_acid_other_than_cysteine;
-        if (expect_h_bond_ap &&
+        if (monomer_type == MonomerType::NA_BASE &&
             !bound_aps_with_custom_names.contains(H_BOND_AP_MODEL_NAME)) {
             auto dir = calculate_direction_for_unbound_attachment_point(
                 ATTACHMENT_POINT_WITH_CUSTOM_NAME, H_BOND_AP_MODEL_NAME,
