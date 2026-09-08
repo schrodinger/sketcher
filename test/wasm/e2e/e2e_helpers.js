@@ -84,7 +84,9 @@ async function callBridge(page, name, arg) {
  *   "atom:<index>"         an atom, by 0-based index into the molecule
  *   "bond:<index>"         a bond, by 0-based index into the molecule
  *   "menu:<name or text>"  a row of an already-open context menu
- *   A button also reports "checked", "text", and "toolTip".
+ *   A widget whose text the user can read also reports "text" — a caption, a
+ *   combo box's current item, or a line edit's or spin box's contents — and a
+ *   button also reports "checked" and "toolTip".
  */
 async function getRect(page, selector) {
   const rect = JSON.parse(await callBridge(page, '_sketcher_get_rect', selector));
@@ -109,10 +111,11 @@ export async function requireRect(page, selector) {
 /**
  * Return a widget's state, failing if no widget has that objectName.
  *
- * Every widget reports "enabled" and "visible"; a button adds "checked",
- * "text", and "toolTip", which is how a test asserts that a shortcut selected
- * the tool it should have. This matches a hidden widget too, since a tool inside
- * a closed popup is still the tool the shortcut is meant to have chosen.
+ * Every widget reports "enabled" and "visible", and one the user can read text
+ * from adds "text"; a button adds "checked" and "toolTip", which is how a test
+ * asserts that a shortcut selected the tool it should have. This matches a
+ * hidden widget too, since a tool inside a closed popup is still the tool the
+ * shortcut is meant to have chosen.
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} name - a Qt objectName

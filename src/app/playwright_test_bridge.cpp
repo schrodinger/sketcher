@@ -41,13 +41,17 @@
 #include <utility>
 
 #include <QAbstractButton>
+#include <QAbstractSpinBox>
 #include <QAction>
 #include <QApplication>
+#include <QComboBox>
 #include <QGraphicsItem>
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLabel>
+#include <QLineEdit>
 #include <QList>
 #include <QMenu>
 #include <QPoint>
@@ -228,7 +232,8 @@ QGraphicsItem* find_visible_item(const QGraphicsView& view, const bool is_atom,
  * "widget" only matches a visible widget, since that is what a test can click.
  * "state" matches whether or not the widget is showing and reports "visible",
  * which is how a test asserts that a shortcut selected a tool that lives in a
- * closed popup. A button also reports "checked", "text", and "toolTip".
+ * closed popup. A widget whose text the user can read reports it as "text", and
+ * a button also reports "checked" and "toolTip".
  */
 std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
                         const bool visible_only)
@@ -249,10 +254,21 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
     if (!visible_only) {
         result["visible"] = widget->isVisible();
     }
+    // A caption is chrome, so it is normalized the way the user reads it; a
+    // value the user typed or chose is reported verbatim, since a test that
+    // sets a field and reads it back has to see exactly what it wrote.
     if (auto* button = qobject_cast<QAbstractButton*>(widget)) {
         result["checked"] = button->isChecked();
         result["text"] = without_mnemonic(button->text());
         result["toolTip"] = button->toolTip();
+    } else if (auto* label = qobject_cast<QLabel*>(widget)) {
+        result["text"] = without_mnemonic(label->text());
+    } else if (auto* combo_box = qobject_cast<QComboBox*>(widget)) {
+        result["text"] = combo_box->currentText();
+    } else if (auto* line_edit = qobject_cast<QLineEdit*>(widget)) {
+        result["text"] = line_edit->text();
+    } else if (auto* spin_box = qobject_cast<QAbstractSpinBox*>(widget)) {
+        result["text"] = spin_box->text();
     }
     return to_json(result);
 }
@@ -403,8 +419,14 @@ bool try_activate_action(SketcherWidget& sketcher, const QString& name)
  * Use "widget:" to find something to click, since only a visible widget can be
  * clicked. Use "state:" to ask whether a control is checked or enabled when it
  * may be out of sight, such as a tool inside a closed popup; it adds "visible"
- * to the result. A button of either kind also reports "checked", "text", and
- * "toolTip".
+ * to the result.
+ *
+ * A widget of either kind whose text the user can read also reports it as
+ * "text": a button's or label's caption, a combo box's current item, or the
+ * contents of a line edit or spin box. A caption is reported the way it is
+ * painted, with any mnemonic ampersand and surrounding whitespace removed,
+ * while a value the user typed or chose is reported verbatim. A button
+ * additionally reports "checked" and "toolTip".
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
  * menu first. It does not reach a QToolButton's menu, which cannot be open and
