@@ -4,6 +4,8 @@
  *
  * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
+#pragma once
+
 #include "schrodinger/rdkit_extensions/molops.h"
 
 #include <rdkit/GraphMol/MolOps.h>
