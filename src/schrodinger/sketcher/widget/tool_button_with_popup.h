@@ -124,9 +124,6 @@ class SKETCHER_API ToolButtonWithPopup : public QToolButton
 
   private:
     QTimer* m_popup_timer = nullptr;
-    // The Playwright tests hold a button down for POPUP_HOLD_MS (see
-    // test/wasm/e2e/e2e_helpers.js) to open its popup, so raise that value to
-    // stay clear of this one if this default grows.
     float m_popup_delay = 250;
     bool m_show_popup_indicator = true;
     bool m_show_popup_indicator_on_hover = false;
