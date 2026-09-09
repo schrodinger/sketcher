@@ -256,16 +256,15 @@ QGraphicsItem* find_visible_item(const QGraphicsView& view,
  * @param name the objectName to look for
  * @param visible_only if true, only a widget that is currently showing counts
  * as a match; if false, a hidden widget matches too and the result carries an
- * extra "visible" entry
+ * extra "visible" entry. Either way a visible widget is preferred when several
+ * share the objectName, as documented on sketcher_get_rect(); only when none is
+ * visible does a false visible_only fall back to a hidden one.
  * @return the JSON object described by sketcher_get_rect(), or "{}" if no
  * widget matches
  */
 std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
                         const bool visible_only)
 {
-    // Several widgets can share an objectName, so a visible one wins: it is the
-    // only match a test could click, and it is the one a test means when a
-    // duplicate happens to be showing.
     const auto object_name = QString::fromStdString(name);
     auto* widget = find_visible_widget(sketcher, object_name);
     if (widget == nullptr && !visible_only) {
@@ -450,6 +449,13 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
  * clicked. Use "state:" to ask whether a control is checked or enabled when it
  * may be out of sight, such as a tool inside a closed popup; it adds "visible"
  * to the result.
+ *
+ * Several widgets may share an objectName, and a visible one is deliberately
+ * preferred: it is the only match "widget:" can return, and it is the one a
+ * "state:" query means when a duplicate happens to be showing. "state:" falls
+ * back to the first widget in the tree only when none of them is visible, so a
+ * test that has to distinguish two same-named widgets should name them
+ * unambiguously rather than rely on which one it gets.
  *
  * A widget of either kind whose text the user can read also reports it as
  * "text": a button's or label's text, a combo box's current item, or the
