@@ -92,7 +92,8 @@ namespace
             fmt::format("({})", get_property<std::string>(atom, MONOMER_LIST));
     } else {
         const auto id = get_property<std::string>(atom, ATOM_LABEL);
-        const auto& is_blob = (get_polymer_id(atom).front() == 'B');
+        const auto polymer_id = get_polymer_id(atom);
+        const auto is_blob = !polymer_id.empty() && polymer_id.front() == 'B';
         monomer_id =
             ((id.size() == 1 || is_blob) ? id : fmt::format("[{}]", id));
     }
