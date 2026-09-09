@@ -19,8 +19,8 @@
  * its rows are located with a "menu:" selector and clicked for real.
  *
  * A QToolButton's menu is the one exception, and sketcher_activate_action()
- * exists for it alone: Qt does run a nested event loop while such a menu is
- * open, which under Asyncify suspends the WebAssembly stack and stops any call
+ * exists for it alone: Qt runs a nested event loop while such a menu is open,
+ * which under Asyncify suspends the WebAssembly stack and stops any call
  * into the module from completing until the menu closes. See that function.
  *
  * Everything here is self-contained: the functions are registered with
@@ -65,17 +65,29 @@
 
 #include "schrodinger/sketcher/molviewer/abstract_atom_or_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/abstract_bond_or_connector_item.h"
+#include "schrodinger/sketcher/molviewer/constants.h"
+#include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
 #include "schrodinger/sketcher/widget/tool_button_with_popup.h"
 #include "sketcher_instance.h"
 
 using schrodinger::sketcher::AbstractAtomOrMonomerItem;
 using schrodinger::sketcher::AbstractBondOrConnectorItem;
+using schrodinger::sketcher::InteractiveItemFlagType;
+using schrodinger::sketcher::Scene;
 using schrodinger::sketcher::SketcherWidget;
 using schrodinger::sketcher::ToolButtonWithPopup;
+namespace InteractiveItemFlag = schrodinger::sketcher::InteractiveItemFlag;
 
 namespace
 {
+
+/**
+ * Whether a selector addresses an atom or a bond. Monomers are addressed as
+ * atoms and monomer connectors as bonds, since the model stores them as RDKit
+ * atoms and bonds.
+ */
+enum class AtomOrBond { ATOM, BOND };
 
 std::string to_json(const QJsonObject& object)
 {
@@ -192,71 +204,85 @@ QGraphicsView& require_view(SketcherWidget& sketcher)
     return *view;
 }
 
+Scene& require_scene(const QGraphicsView& view)
+{
+    auto* scene = qobject_cast<Scene*>(view.scene());
+    if (scene == nullptr) {
+        throw std::runtime_error(
+            "playwright test bridge: the view holds no sketcher Scene");
+    }
+    return *scene;
+}
+
 /**
  * Find the visible Scene item for the atom or bond at the given model index, or
  * nullptr if there isn't one.
  *
- * The casts are dynamic_casts to the abstract base classes rather than
- * qgraphicsitem_casts to AtomItem/BondItem, because qgraphicsitem_cast matches
- * type() exactly and so would skip monomers and monomer connectors: those are
- * siblings of AtomItem and BondItem, not subclasses.
+ * Asking the Scene for its interactive items of the requested kind keeps
+ * transient graphics — a predictive highlight shown on hover, say — from being
+ * mistaken for the atom or bond itself. Every item the Scene returns for these
+ * two flags derives from the corresponding abstract base, so the cast always
+ * succeeds.
  */
-QGraphicsItem* find_visible_item(const QGraphicsView& view, const bool is_atom,
-                                 const int index)
+QGraphicsItem* find_visible_item(const QGraphicsView& view,
+                                 const AtomOrBond kind, const int index)
 {
-    for (auto* item : view.scene()->items()) {
+    const auto is_atom = kind == AtomOrBond::ATOM;
+    const InteractiveItemFlagType flags =
+        is_atom ? InteractiveItemFlag::ATOM_OR_MONOMER
+                : InteractiveItemFlag::BOND_OR_CONNECTOR;
+    for (auto* item : require_scene(view).getInteractiveItems(flags)) {
         if (!item->isVisible()) {
             continue;
         }
-        if (is_atom) {
-            auto* atom_item = dynamic_cast<AbstractAtomOrMonomerItem*>(item);
-            if (atom_item != nullptr &&
-                static_cast<int>(atom_item->getAtom()->getIdx()) == index) {
-                return atom_item;
-            }
-        } else {
-            auto* bond_item = dynamic_cast<AbstractBondOrConnectorItem*>(item);
-            if (bond_item != nullptr &&
-                static_cast<int>(bond_item->getBond()->getIdx()) == index) {
-                return bond_item;
-            }
+        const auto item_index =
+            is_atom ? static_cast<AbstractAtomOrMonomerItem*>(item)
+                          ->getAtom()
+                          ->getIdx()
+                    : static_cast<AbstractBondOrConnectorItem*>(item)
+                          ->getBond()
+                          ->getIdx();
+        if (static_cast<int>(item_index) == index) {
+            return item;
         }
     }
     return nullptr;
 }
 
 /**
- * Resolve a "widget:<objectName>" or "state:<objectName>" selector, or "{}" if
- * nothing matches.
+ * Find a child widget by objectName and report its geometry and state as JSON.
  *
- * "widget" only matches a visible widget, since that is what a test can click.
- * "state" matches whether or not the widget is showing and reports "visible",
- * which is how a test asserts that a shortcut selected a tool that lives in a
- * closed popup. A widget whose text the user can read reports it as "text", and
- * a button also reports "checked" and "toolTip".
+ * @param sketcher the widget tree to search
+ * @param name the objectName to look for
+ * @param visible_only if true, only a widget that is currently showing counts
+ * as a match; if false, a hidden widget matches too and the result carries an
+ * extra "visible" entry
+ * @return the JSON object described by sketcher_get_rect(), or "{}" if no
+ * widget matches
  */
 std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
                         const bool visible_only)
 {
+    // Several widgets can share an objectName, so a visible one wins: it is the
+    // only match a test could click, and it is the one a test means when a
+    // duplicate happens to be showing.
     const auto object_name = QString::fromStdString(name);
     auto* widget = find_visible_widget(sketcher, object_name);
-    if (widget == nullptr) {
-        if (visible_only) {
-            return "{}";
-        }
+    if (widget == nullptr && !visible_only) {
         widget = sketcher.findChild<QWidget*>(object_name);
-        if (widget == nullptr) {
-            return "{}";
-        }
+    }
+    if (widget == nullptr) {
+        return "{}";
     }
     auto result = rect_json(map_to_sketcher(*widget, sketcher, QPoint(0, 0)),
                             widget->size(), widget->isEnabled());
     if (!visible_only) {
         result["visible"] = widget->isVisible();
     }
-    // A caption is chrome, so it is normalized the way the user reads it; a
-    // value the user typed or chose is reported verbatim, since a test that
-    // sets a field and reads it back has to see exactly what it wrote.
+    // A label the application painted is chrome, so it is normalized the way
+    // the user reads it; a value the user typed or chose is reported verbatim,
+    // since a test that sets a field and reads it back has to see exactly what
+    // it wrote.
     if (auto* button = qobject_cast<QAbstractButton*>(widget)) {
         result["checked"] = button->isChecked();
         result["text"] = without_mnemonic(button->text());
@@ -274,22 +300,31 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
 }
 
 /**
- * Resolve an "atom:<index>" or "bond:<index>" selector, or "{}" if no visible
- * item matches. Scene items are QGraphicsItems rather than QWidgets, so they
- * can't be found by objectName; their bounding rect is mapped through the View
- * transform instead.
+ * Find the Scene item for an atom or bond and report its geometry as JSON.
+ *
+ * Scene items are QGraphicsItems rather than QWidgets, so they can't be found
+ * by objectName; their bounding rect is mapped through the View transform
+ * instead.
+ *
+ * @param sketcher the sketcher whose Scene to search
+ * @param kind whether to look for an atom or a bond
+ * @param index the item's model index, as the decimal string taken from the
+ * selector
+ * @return the JSON object described by sketcher_get_rect(), or "{}" if no
+ * visible item matches
+ * @throw std::runtime_error if index isn't an integer
  */
-std::string item_rect(SketcherWidget& sketcher, const bool is_atom,
-                      const std::string& value)
+std::string item_rect(SketcherWidget& sketcher, const AtomOrBond kind,
+                      const std::string& index_string)
 {
     bool is_number = false;
-    const int index = QString::fromStdString(value).toInt(&is_number);
+    const int index = QString::fromStdString(index_string).toInt(&is_number);
     if (!is_number) {
-        throw std::runtime_error("playwright test bridge: '" + value +
+        throw std::runtime_error("playwright test bridge: '" + index_string +
                                  "' is not a valid item index");
     }
     auto& view = require_view(sketcher);
-    auto* item = find_visible_item(view, is_atom, index);
+    auto* item = find_visible_item(view, kind, index);
     if (item == nullptr) {
         return "{}";
     }
@@ -301,19 +336,21 @@ std::string item_rect(SketcherWidget& sketcher, const bool is_atom,
 }
 
 /**
- * Find the action matching name_or_text, or nullptr if there is none.
+ * Find the action matching name_or_text in the list of actions, or nullptr if
+ * there is none.
  *
  * Most menu actions are created without an objectName, so tests usually name a
  * row by the text the user sees. An objectName match still wins over a text
  * match anywhere in the list, so that a test naming a specific action can't be
  * captured by an unrelated one whose label happens to collide.
  */
-QAction* find_action(const QList<QAction*>& actions, const QString& name)
+QAction* find_action(const QList<QAction*>& actions,
+                     const QString& name_or_text)
 {
-    const QString wanted = without_mnemonic(name);
+    const QString wanted = without_mnemonic(name_or_text);
     QAction* by_text = nullptr;
     for (auto* action : actions) {
-        if (action->objectName() == name) {
+        if (action->objectName() == name_or_text) {
             return action;
         }
         if (by_text == nullptr && without_mnemonic(action->text()) == wanted) {
@@ -324,20 +361,28 @@ QAction* find_action(const QList<QAction*>& actions, const QString& name)
 }
 
 /**
- * Resolve a row of one open QMenu, or "" if this menu has no matching row.
+ * Resolve a row of one open QMenu.
  *
  * Reading action geometry is only safe once the popup is actually visible; Qt
  * has not laid the rows out before that, and on WASM touching a menu's
  * internals mid-show aborts the runtime.
+ *
+ * @param menu the menu to search
+ * @param sketcher the widget the returned coordinates are relative to
+ * @param name_or_text the row's objectName or its visible text
+ * @return the JSON object described by sketcher_get_rect(), or an empty string
+ * — not the "{}" that the bound functions return — if this menu is closed or
+ * has no such row, so that menu_rect() can tell "no match here" from a match
+ * and go on to the next menu
  */
 std::string action_rect_in_menu(const QMenu& menu,
                                 const SketcherWidget& sketcher,
-                                const QString& name)
+                                const QString& name_or_text)
 {
     if (!menu.isVisible()) {
         return {};
     }
-    auto* action = find_action(menu.actions(), name);
+    auto* action = find_action(menu.actions(), name_or_text);
     if (action == nullptr) {
         return {};
     }
@@ -360,38 +405,23 @@ std::string action_rect_in_menu(const QMenu& menu,
  */
 std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
 {
-    const auto name = QString::fromStdString(value);
+    const auto name_or_text = QString::fromStdString(value);
     if (auto* active =
             qobject_cast<QMenu*>(QApplication::activePopupWidget())) {
-        if (const auto result = action_rect_in_menu(*active, sketcher, name);
+        if (const auto result =
+                action_rect_in_menu(*active, sketcher, name_or_text);
             !result.empty()) {
             return result;
         }
     }
     for (auto* menu : sketcher.findChildren<QMenu*>()) {
-        if (const auto result = action_rect_in_menu(*menu, sketcher, name);
+        if (const auto result =
+                action_rect_in_menu(*menu, sketcher, name_or_text);
             !result.empty()) {
             return result;
         }
     }
     return "{}";
-}
-
-/**
- * Trigger the QAction matching name_or_text, or return false if there is none.
- */
-bool try_activate_action(SketcherWidget& sketcher, const QString& name)
-{
-    auto* action = find_action(sketcher.findChildren<QAction*>(), name);
-    if (action == nullptr) {
-        return false;
-    }
-    if (!action->isEnabled()) {
-        throw std::runtime_error("playwright test bridge: action '" +
-                                 name.toStdString() + "' is disabled");
-    }
-    action->trigger();
-    return true;
 }
 
 } // namespace
@@ -422,11 +452,11 @@ bool try_activate_action(SketcherWidget& sketcher, const QString& name)
  * to the result.
  *
  * A widget of either kind whose text the user can read also reports it as
- * "text": a button's or label's caption, a combo box's current item, or the
- * contents of a line edit or spin box. A caption is reported the way it is
- * painted, with any mnemonic ampersand and surrounding whitespace removed,
- * while a value the user typed or chose is reported verbatim. A button
- * additionally reports "checked" and "toolTip".
+ * "text": a button's or label's text, a combo box's current item, or the
+ * contents of a line edit or spin box. Text the application painted is reported
+ * the way it appears on screen, with any mnemonic ampersand and surrounding
+ * whitespace removed, while a value the user typed or chose is reported
+ * verbatim. A button additionally reports "checked" and "toolTip".
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
  * menu first. It does not reach a QToolButton's menu, which cannot be open and
@@ -461,7 +491,9 @@ std::string sketcher_get_rect(const std::string& selector)
         return widget_rect(sketcher, value, kind == "widget");
     }
     if (kind == "atom" || kind == "bond") {
-        return item_rect(sketcher, kind == "atom", value);
+        return item_rect(sketcher,
+                         kind == "atom" ? AtomOrBond::ATOM : AtomOrBond::BOND,
+                         value);
     }
     if (kind == "menu") {
         return menu_rect(sketcher, value);
@@ -496,11 +528,18 @@ std::string sketcher_get_rect(const std::string& selector)
 void sketcher_activate_action(const std::string& name_or_text)
 {
     auto& sketcher = get_sketcher_instance();
-    if (!try_activate_action(sketcher, QString::fromStdString(name_or_text))) {
+    auto* action = find_action(sketcher.findChildren<QAction*>(),
+                               QString::fromStdString(name_or_text));
+    if (action == nullptr) {
         throw std::runtime_error(
             "playwright test bridge: no action found matching '" +
             name_or_text + "'");
     }
+    if (!action->isEnabled()) {
+        throw std::runtime_error("playwright test bridge: action '" +
+                                 name_or_text + "' is disabled");
+    }
+    action->trigger();
 }
 
 /**
