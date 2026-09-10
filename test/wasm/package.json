@@ -5,7 +5,9 @@
     "type": "module",
     "scripts": {
         "postinstall": "playwright install --with-deps",
-        "test": "playwright test"
+        "test": "playwright test",
+        "test:sketcher": "playwright test e2e/tst_*.test.js e2e/*_parity.test.js e2e/wrapper_contracts.test.js e2e/context_*_probe.test.js e2e/edit_atom_properties_probe.test.js",
+        "archive:sketcher-snapshots": "node e2e/sketcher/scripts/archive_snapshots.mjs"
     },
     "devDependencies": {
         "@playwright/test": "^1.56.1"
