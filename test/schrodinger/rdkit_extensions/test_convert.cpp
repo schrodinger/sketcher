@@ -710,6 +710,34 @@ BOOST_AUTO_TEST_CASE(test_legacy_attachment_point_mdl_export)
     BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_mdl_export)
+{
+    // RDKit won't collapse an attachment point whose bond is wedged, since
+    // ATTCHPT is an atom property with nowhere to record the wedging. We drop
+    // the wedge so that the attachment point still collapses, because an
+    // uncollapsed attachment point is written as a bare "*" and reads back as
+    // an ordinary dummy atom rather than an attachment point.
+    for (auto bond_dir :
+         {RDKit::Bond::BondDir::NONE, RDKit::Bond::BondDir::BEGINWEDGE,
+          RDKit::Bond::BondDir::BEGINDASH}) {
+        BOOST_TEST_CONTEXT("bond direction " << static_cast<int>(bond_dir))
+        {
+            std::unique_ptr<RDKit::RWMol> mol{
+                RDKit::SmilesToMol("*C |$_AP1;$|", 0, false)};
+            BOOST_REQUIRE(mol);
+            mol->getBondWithIdx(0)->setBondDir(bond_dir);
+
+            auto molblock = to_string(*mol, Format::MDL_MOLV3000);
+            BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
+
+            auto roundtripped = to_rdkit(molblock, Format::MDL_MOLV3000);
+            BOOST_REQUIRE(roundtripped->getNumAtoms() == 2);
+            BOOST_TEST(
+                is_attachment_point_dummy(*roundtripped->getAtomWithIdx(1)));
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_atom_ring_queries)
 {
     auto molblock = R""""(

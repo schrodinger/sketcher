@@ -153,12 +153,39 @@ bool label_expanded_attachment_points(RDKit::RWMol& rdk_mol,
     return found_any;
 }
 
-void mark_legacy_attachment_points(RDKit::RWMol& mol)
+/**
+ * @internal Make every attachment point dummy in the mol collapsible by
+ * RDKit::MolOps::collapseAttachmentPoints(), which is about to be called on
+ * this (already copied) mol.
+ *
+ * Two things stop RDKit from collapsing an attachment point that Sketcher
+ * considers one:
+ *
+ * - a legacy `_AP<n>` labelled dummy carries no _fromAttachPoint property, so
+ *   RDKit doesn't recognize it as marked.
+ * - RDKit refuses to collapse an attachment point whose bond is wedged, since
+ *   ATTCHPT is an atom property and has nowhere to record the wedging.
+ *
+ * The wedge is dropped rather than preserved because the alternative is worse:
+ * an uncollapsed attachment point is written as a bare `*` atom, losing the
+ * attachment point marker entirely, so it reads back as an ordinary dummy
+ * rather than an attachment point.
+ */
+void prepare_attachment_points_for_collapse(RDKit::RWMol& mol)
 {
     for (auto atom : mol.atoms()) {
-        if (is_attachment_point_dummy(*atom) &&
-            !atom->hasProp(RDKit::common_properties::_fromAttachPoint)) {
+        if (!is_attachment_point_dummy(*atom)) {
+            continue;
+        }
+        if (!atom->hasProp(RDKit::common_properties::_fromAttachPoint)) {
             atom->setProp(RDKit::common_properties::_fromAttachPoint, 1);
+        }
+        // is_attachment_point_dummy() requires degree 1, so there's exactly
+        // one bond to dereference here
+        auto bond = *mol.atomBonds(atom).begin();
+        if (bond->getBondType() == RDKit::Bond::BondType::SINGLE ||
+            bond->getBondType() == RDKit::Bond::BondType::UNSPECIFIED) {
+            bond->setBondDir(RDKit::Bond::BondDir::NONE);
         }
     }
 }
@@ -815,7 +842,7 @@ std::string to_string(const RDKit::ROMol& input_mol, const Format format)
             // single/double bonds to avoid sanitization errors, but for
             // atomistic inputs we'll keep whatever the caller gave us.
             kekulize = is_monomeric;
-            mark_legacy_attachment_points(*mol);
+            prepare_attachment_points_for_collapse(*mol);
             RDKit::MolOps::collapseAttachmentPoints(*mol, true);
             if (format == Format::MDL_MOLV2000) {
                 adjust_for_mdl_v2k_format(*mol);

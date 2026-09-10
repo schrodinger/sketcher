@@ -672,6 +672,28 @@ BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_identity)
     BOOST_TEST(get_attachment_point_bond(attachment_atom) == attachment_bond);
 }
 
+BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_is_reachable_and_exports)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0),
+                             mol->getAtomWithIdx(0));
+    BOOST_REQUIRE(mol->getNumBonds() == 1);
+
+    // Nothing stops the wedge bond tool from being applied to an attachment
+    // point bond, so this state is reachable from the UI
+    model.mutateBonds({mol->getBondWithIdx(0)}, BondTool::SINGLE_UP);
+    BOOST_TEST(mol->getBondWithIdx(0)->getBondDir() ==
+               RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // ...and the attachment point must still survive an MDL round trip
+    auto molblock = rdkit_extensions::to_string(*mol, Format::MDL_MOLV3000);
+    BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
+}
+
 BOOST_AUTO_TEST_CASE(test_unlabelled_native_attachment_point)
 {
     RDKit::RWMol mol;
