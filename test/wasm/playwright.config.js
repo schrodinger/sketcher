@@ -35,6 +35,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   snapshotPathTemplate: '{testDir}/{testFileDir}/__snapshots__/{testFileName}/{arg}{ext}',
   expect: {
+    toHaveScreenshot: { maxDiffPixelRatio: 0.1 },
     toMatchSnapshot: { maxDiffPixelRatio: 0.1 },
   },
   // Output to the same place as executable tests for GitHub actions
