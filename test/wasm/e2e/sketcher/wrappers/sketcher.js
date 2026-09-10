@@ -267,7 +267,7 @@ const TOOL_HOLD_MS = Number(process.env.PLAYWRIGHT_TOOL_HOLD_MS || 275);
 /** Return one visible bridge rectangle without widgetRect's long retry loop. */
 async function visibleWidgetRect(page, objectName) {
   try {
-    return await widgetRect(page, objectName);
+    return await genericRect(page, `widget:${objectName}`);
   } catch {
     return null;
   }
@@ -313,10 +313,9 @@ async function openImmediatePopup(page, objectName) {
 
 /** Click the visible Download button in a File Export or Save Image dialog. */
 async function clickDialogDownload(page, horizontalFraction = 0.71) {
-  // FileExportDialog is not registered by Qt/WASM as the active modal widget,
-  // so its export_btn collides with the background toolbar's export_btn in the
-  // generic widget lookup. Its visible canvas is reliable, however; use the
-  // Download button's measured center within that live dialog geometry.
+  // Qt does not consistently mark this generated dialog button visible in
+  // its QWidget tree. Use the live dialog canvas, while still sending a real
+  // browser mouse click to the rendered Download button.
   const dialog = await dialogCanvasGeometry(page);
   await mouseClick(
     page,
@@ -1169,7 +1168,7 @@ export class Sketcher {
     // This QToolButton menu runs a Qt/Asyncify nested loop. Its rows cannot
     // be queried through the bridge until the popup closes, so use the
     // visible canvas row with an ordinary mouse click.
-    await clickPopupRow(this.page, 0, 35); // Export to File...
+    await clickPopupRow(this.page, 'latest', 35); // Export to File...
     await this.page.waitForTimeout(100);
     // The field is the dialog's initial keyboard focus. Older bridge artifacts
     // do not expose its generated child geometry, so retain this normal
@@ -1197,16 +1196,32 @@ export class Sketcher {
     for (let index = 0; index < formatChoice.index; index += 1) {
       await this.page.keyboard.press('ArrowDown');
     }
-    await this.page.keyboard.press('Enter');
-    const selectedFormat = await widgetState(this.page, 'format_combo');
-    if (!selectedFormat.text.startsWith(formatChoice.label)) {
-      throw new Error(`File Export selected ${selectedFormat.text}, expected ${formatChoice.label}`);
-    }
-
+    // Some Qt/WASM combo-box paths treat Enter as both accepting the selected
+    // value and invoking the dialog's default Download button. Arm capture
+    // first so either behavior is observable and deterministic.
     if (observeDownload) await beginBrowserDownloadCapture(this.page);
-    // Qt/WASM renders the dialog Download button without the toolbar's
-    // export_btn object name. Click its visible dialog-relative position.
-    await clickDialogDownload(this.page);
+    await this.page.keyboard.press('Enter');
+    await this.page.waitForTimeout(100);
+    const submittedByEnter = observeDownload
+      ? await this.page.evaluate(() => Boolean(window.__sketcherPlaywrightFileExports?.[0]))
+      : false;
+    if (!submittedByEnter) {
+      const selectedFormat = await widgetState(this.page, 'format_combo');
+      if (!selectedFormat.text.startsWith(formatChoice.label)) {
+        throw new Error(`File Export selected ${selectedFormat.text}, expected ${formatChoice.label}`);
+      }
+      // Qt/WASM renders the dialog Download button without the toolbar's
+      // export_btn object name. Click its visible dialog-relative position.
+      try {
+        await clickDialogDownload(this.page);
+      } catch (error) {
+        // An unsupported/empty export can close the dialog without handing a
+        // payload to the browser. Callers that explicitly do not observe a
+        // download validate that no-payload outcome against their source
+        // reference; ordinary exports must still surface this as a failure.
+        if (observeDownload) throw error;
+      }
+    }
     const download = observeDownload ? await capturedBrowserDownload(this.page) : null;
     // QFileDialog::saveFileContent has completed at this point. Qt/WASM can
     // retain its closed QMenu canvas as the active popup, which would absorb

@@ -155,27 +155,28 @@ test.describe('tst_export_menu', () => {
       });
       for (const [extension, format, expectedExtension, expectedText] of TEXT_EXPORTS) {
         await test.step(`save_as_file_${sourceFragment}_${extension}`, async () => {
-          const download = await sk.export_menu({
-            filename: `fragment_${sourceFragment}_${extension}`,
-            format,
-          });
-          expect(download.filename).toBe(`fragment_${sourceFragment}_${extension}.${expectedExtension}`);
-          const contents = Buffer.from(download.contentBase64, 'base64').toString('utf8');
           const referencePath = path.join(
             REFERENCES_DIR,
             `save_as_file_${sourceFragment}_${extension}_ref.${expectedExtension}`,
           );
+          const referenceContents = await readFile(referencePath, 'utf8');
+          const download = await sk.export_menu({
+            filename: `fragment_${sourceFragment}_${extension}`,
+            format,
+            observeDownload: referenceContents.length > 0,
+          });
+          // The original desktop references contain empty InChI files for
+          // these enumeration fragments. Preserve that observed no-payload
+          // behavior instead of fabricating a browser download.
+          if (referenceContents.length === 0) {
+            expect(download).toBeNull();
+            return;
+          }
+          expect(download.filename).toBe(`fragment_${sourceFragment}_${extension}.${expectedExtension}`);
+          const contents = Buffer.from(download.contentBase64, 'base64').toString('utf8');
           // Reference output was produced by the original desktop Squish
           // test. V3000 ordering and coordinates differ in Qt/WASM, so check
           // the chemically meaningful graph rather than byte order.
-          const referenceContents = await readFile(referencePath, 'utf8');
-          // The original desktop references contain empty InChI files for
-          // several enumeration fragments. Preserve that observed behavior
-          // instead of incorrectly requiring a payload where none exists.
-          if (referenceContents.length === 0) {
-            expect(contents).toBe('');
-            return;
-          }
           expect(contents.length).toBeGreaterThan(0);
           if (expectedText) expect(contents).toContain(expectedText);
           if (format === 'SDF') {

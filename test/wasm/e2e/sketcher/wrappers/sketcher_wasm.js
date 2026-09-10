@@ -37,24 +37,30 @@ export async function openSketcher(page) {
         (window.__sketcherPlaywrightSuppressedSavePickers || 0) + 1;
       const filename = options.suggestedName || 'sketcher-playwright-export';
       return {
-        createWritable: async () => ({
-          close: async () => {},
-          write: async (data) => {
-            const blob = data instanceof Blob ? data : new Blob([data]);
-            const bytes = new Uint8Array(await blob.arrayBuffer());
-            let binary = '';
-            for (const byte of bytes) binary += String.fromCharCode(byte);
-            window.__sketcherPlaywrightFileExportCallbackCount =
-              (window.__sketcherPlaywrightFileExportCallbackCount || 0) + 1;
-            if (!window.__sketcherPlaywrightFileExports) {
-              window.__sketcherPlaywrightFileExports = [];
-            }
-            window.__sketcherPlaywrightFileExports.push({
-              filename,
-              contentBase64: btoa(binary),
-            });
-          },
-        }),
+        createWritable: async () => {
+          const chunks = [];
+          return {
+            write: async (data) => {
+              const payload = data?.type === 'write' ? data.data : data;
+              chunks.push(payload instanceof Blob ? payload : new Blob([payload]));
+            },
+            close: async () => {
+              const blob = new Blob(chunks);
+              const bytes = new Uint8Array(await blob.arrayBuffer());
+              let binary = '';
+              for (const byte of bytes) binary += String.fromCharCode(byte);
+              window.__sketcherPlaywrightFileExportCallbackCount =
+                (window.__sketcherPlaywrightFileExportCallbackCount || 0) + 1;
+              if (!window.__sketcherPlaywrightFileExports) {
+                window.__sketcherPlaywrightFileExports = [];
+              }
+              window.__sketcherPlaywrightFileExports.push({
+                filename,
+                contentBase64: btoa(binary),
+              });
+            },
+          };
+        },
         kind: 'file',
         name: filename,
       };
@@ -199,7 +205,16 @@ export async function drawingAreaCenter(page) {
  * @param {string} objectName
  */
 export async function widgetRect(page, objectName) {
-  return genericRect(page, `widget:${objectName}`);
+  let lastError;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      return await genericRect(page, `widget:${objectName}`);
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(25);
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -226,7 +241,10 @@ export async function closeActiveQtPopups(page) {
   // cascading stack. Qt consumes that click rather than forwarding it to the
   // canvas underneath, exactly as it does for a person.
   const view = await widgetRect(page, 'view');
-  await mouseClick(page, view.x + view.width / 2, view.y + 4);
+  // Use the inert top-bar background rather than the drawing surface. Some
+  // Qt/WASM menu stacks let the outside click reach the view, which clears an
+  // otherwise valid selection and changes the next context menu's contents.
+  await mouseClick(page, view.x + view.width / 2, Math.max(2, view.y - 10));
 }
 
 /**
@@ -280,7 +298,16 @@ export async function setWidgetText(page, objectName, text) {
 
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
 export async function menuActionRect(page, objectNameOrText) {
-  return genericRect(page, `menu:${objectNameOrText}`);
+  let lastError;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    try {
+      return await genericRect(page, `menu:${objectNameOrText}`);
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(25);
+    }
+  }
+  throw lastError;
 }
 
 /** Click a visible Qt menu action using the browser's real mouse input. */
