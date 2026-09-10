@@ -20,7 +20,12 @@ set -euo pipefail
 # Define directory paths
 SRC_DIR=$SCHRODINGER_SRC/sketcher
 BUILD_DIR=$SCHRODINGER/sketcher
-PF_DIR=$SCHRODINGER/schrodinger_buildenv_packages/.pixi/envs/schrodinger
+# SCHRODINGER_LIB is exported by build_env and points at the package factory
+# environment selected for this build (e.g. schrodinger, schrodinger-gfortran).
+PF_DIR=$SCHRODINGER_LIB
+if [[ "$OSTYPE" == "msys" ]]; then
+    PF_DIR=$(cygpath -m $PF_DIR)
+fi
 ZLIB_DIR=$(ls -d $PF_DIR/zlib-*)
 EIGEN_DIR=$(ls -d $PF_DIR/share/eigen3)
 COORDGEN_DIR=$(ls -d $PF_DIR/coordgenlibs-*/lib/cmake)
@@ -29,6 +34,11 @@ SQLITE_DIR=$(ls -d $PF_DIR/sqlite-*)
 
 # Build CMake prefix path
 CMAKE_PREFIX_PATH="$PF_DIR;$ZLIB_DIR;$EIGEN_DIR;$COORDGEN_DIR;$MAEPARSER_DIR;$SQLITE_DIR"
+
+# The prebuilt RDKit libraries have transitive dependencies (e.g. libexpat)
+# that live in the environment's top level lib directory. CMake only derives
+# rpaths from the directories we link against, so add it explicitly.
+BUILD_RPATH="$PF_DIR/lib"
 
 # Configure compiler for Windows
 CXX_COMPILER=""
@@ -76,6 +86,7 @@ all:
 	      -DENFORCE_DEPENDENCY_VERSIONS=OFF \\
 	      -DBUILD_SHARED_LIBS=ON \\
 	      -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \\
+	      -DCMAKE_BUILD_RPATH="$BUILD_RPATH" \\
 	      ${CXX_COMPILER:+-DCMAKE_CXX_COMPILER="$CXX_COMPILER"} \\
           $ADDITIONAL_CMAKE_CONFIGURE_ARGS
 	cmake --build $BUILD_DIR --config $BUILD_TYPE
