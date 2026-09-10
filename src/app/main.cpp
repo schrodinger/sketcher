@@ -17,12 +17,9 @@
 #include <utility>
 #include <vector>
 
-#include <QAbstractButton>
 #include <QApplication>
 #include <QFile>
 #include <QIcon>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QString>
 #include <QStyleHints>
 
@@ -32,6 +29,7 @@
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
+#include "sketcher_instance.h"
 
 using schrodinger::rdkit_extensions::Format;
 using schrodinger::sketcher::CarbonLabels;
@@ -163,56 +161,6 @@ void sketcher_reset_custom_monomers()
     db.resetMonomerDefinitions();
 }
 
-/**
- * Programmatically click a button by its Qt objectName.
- * Used by e2e tests to interact with popup buttons that can't be targeted
- * via browser events in the WASM environment.
- *
- * Throws std::runtime_error if no button with the given name is found,
- * which typically indicates the test needs to be updated.
- */
-void sketcher_click_button(const std::string& name)
-{
-    auto& sk = get_sketcher_instance();
-    auto* button = sk.findChild<QAbstractButton*>(QString::fromStdString(name));
-    if (!button) {
-        throw std::runtime_error(
-            "sketcher_click_button: no button found with objectName '" + name +
-            "'");
-    }
-    button->click();
-}
-
-/**
- * Return the position and size of any child widget found by its Qt
- * objectName. Returns a JSON object with {x, y, width, height}.
- * Coordinates are relative to the sketcher widget's top-left corner.
- * Returns "{}" if no widget with the given name is found.
- */
-std::string sketcher_get_widget_rect(const std::string& object_name)
-{
-    auto& sk = get_sketcher_instance();
-    const QString name = QString::fromStdString(object_name);
-    QWidget* widget = nullptr;
-    const auto candidates = sk.findChildren<QWidget*>(name);
-    for (auto* w : candidates) {
-        if (w->isVisible()) {
-            widget = w;
-            break;
-        }
-    }
-    if (!widget) {
-        return "{}";
-    }
-    const QPoint topLeft = widget->mapTo(&sk, QPoint(0, 0));
-    QJsonObject result;
-    result["x"] = topLeft.x();
-    result["y"] = topLeft.y();
-    result["width"] = widget->width();
-    result["height"] = widget->height();
-    return QJsonDocument(result).toJson(QJsonDocument::Compact).toStdString();
-}
-
 void sketcher_changed()
 {
 #ifdef __EMSCRIPTEN__
@@ -302,10 +250,8 @@ EMSCRIPTEN_BINDINGS(sketcher)
                          &sketcher_insert_custom_monomers);
     emscripten::function("sketcher_reset_custom_monomers",
                          &sketcher_reset_custom_monomers);
-    emscripten::function("_sketcher_get_widget_rect",
-                         &sketcher_get_widget_rect);
-    emscripten::function("_sketcher_click_button", &sketcher_click_button);
     // see sketcher_changed_callback above
+    // the e2e test bindings are registered in playwright_test_bridge.cpp
 }
 #endif
 
