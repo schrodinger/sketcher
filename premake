@@ -23,6 +23,9 @@ BUILD_DIR=$SCHRODINGER/sketcher
 # SCHRODINGER_LIB is exported by build_env and points at the package factory
 # environment selected for this build (e.g. schrodinger, schrodinger-gfortran).
 PF_DIR=$SCHRODINGER_LIB
+if [[ "$OSTYPE" == "msys" ]]; then
+    PF_DIR=$(cygpath -m $PF_DIR)
+fi
 ZLIB_DIR=$(ls -d $PF_DIR/zlib-*)
 EIGEN_DIR=$(ls -d $PF_DIR/share/eigen3)
 COORDGEN_DIR=$(ls -d $PF_DIR/coordgenlibs-*/lib/cmake)
