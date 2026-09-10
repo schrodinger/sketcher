@@ -3,8 +3,6 @@
  *
  * Defined in main.cpp; declared here so that other translation units in the
  * app can reach the instance without duplicating the declaration.
- *
- * Copyright Schrodinger LLC, All Rights Reserved.
  --------------------------------------------------------------------------- */
 
 #pragma once
