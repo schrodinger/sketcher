@@ -8,6 +8,7 @@
 #define BOOST_TEST_MODULE rdkit_extensions_convert
 
 #include <map>
+#include <memory>
 
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
@@ -687,6 +688,54 @@ M  END)MDL";
     Eigen::Vector3d c(a2.x, a2.y, a2.z);
     // *C* is linear, the cross product is the zero vector
     BOOST_TEST((a - b).cross(a - c).norm() != 0.0);
+}
+
+BOOST_AUTO_TEST_CASE(test_cxsmiles_attachment_point_preserves_explicit_hs)
+{
+    auto mol = to_rdkit("*[NH2+]C |$_AP1;;$|", Format::EXTENDED_SMILES);
+
+    BOOST_REQUIRE(mol);
+    BOOST_TEST(mol->getAtomWithIdx(1)->getNumExplicitHs() == 2);
+}
+
+BOOST_AUTO_TEST_CASE(test_legacy_attachment_point_mdl_export)
+{
+    std::unique_ptr<RDKit::RWMol> mol{
+        RDKit::SmilesToMol("*C |$_AP3;$|", 0, false)};
+    BOOST_REQUIRE(mol);
+    BOOST_REQUIRE(!mol->getAtomWithIdx(0)->hasProp(
+        RDKit::common_properties::_fromAttachPoint));
+
+    auto molblock = to_string(*mol, Format::MDL_MOLV3000);
+    BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_mdl_export)
+{
+    // RDKit won't collapse an attachment point whose bond is wedged, since
+    // ATTCHPT is an atom property with nowhere to record the wedging. We drop
+    // the wedge so that the attachment point still collapses, because an
+    // uncollapsed attachment point is written as a bare "*" and reads back as
+    // an ordinary dummy atom rather than an attachment point.
+    for (auto bond_dir :
+         {RDKit::Bond::BondDir::NONE, RDKit::Bond::BondDir::BEGINWEDGE,
+          RDKit::Bond::BondDir::BEGINDASH}) {
+        BOOST_TEST_CONTEXT("bond direction " << static_cast<int>(bond_dir))
+        {
+            std::unique_ptr<RDKit::RWMol> mol{
+                RDKit::SmilesToMol("*C |$_AP1;$|", 0, false)};
+            BOOST_REQUIRE(mol);
+            mol->getBondWithIdx(0)->setBondDir(bond_dir);
+
+            auto molblock = to_string(*mol, Format::MDL_MOLV3000);
+            BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
+
+            auto roundtripped = to_rdkit(molblock, Format::MDL_MOLV3000);
+            BOOST_REQUIRE(roundtripped->getNumAtoms() == 2);
+            BOOST_TEST(
+                is_attachment_point_dummy(*roundtripped->getAtomWithIdx(1)));
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(test_atom_ring_queries)
