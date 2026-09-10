@@ -346,8 +346,12 @@ if(EMSCRIPTEN)
 endif()
 target_link_libraries(
   ${APP_TARGET}
-  PRIVATE Boost::boost Boost::filesystem Qt6::Widgets RDKit::Depictor
-          ${RDKIT_EXTENSIONS_TARGET} ${SKETCHER_TARGET}
+  PRIVATE Boost::boost
+          Boost::filesystem
+          Qt6::Widgets
+          RDKit::Depictor
+          ${RDKIT_EXTENSIONS_TARGET}
+          ${SKETCHER_TARGET}
           ${EXTRA_SKETCHER_APP_LINK_FLAGS})
 
 # Utility: smiles_to_helm
