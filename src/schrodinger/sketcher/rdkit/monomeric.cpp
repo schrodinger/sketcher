@@ -329,8 +329,7 @@ get_occupied_directions(const RDKit::Atom* monomer,
 
     auto record_occupied_directions = [&](const RDKit::Bond* bond,
                                           const bool is_secondary) {
-        if (bond == current_bond &&
-            is_secondary == is_secondary_connection) {
+        if (bond == current_bond && is_secondary == is_secondary_connection) {
             return;
         }
         const auto* other_monomer = bond->getOtherAtom(monomer);
@@ -400,13 +399,9 @@ static QPointF get_offset_for_corner(const QRectF& monomer_rect,
                                      const Direction second_side)
 {
     // The two side points contain complementary x and y components, so their
-    // sum is the corner shared by the sides. Move that point toward the center
-    // by the amino-acid corner radius so the diamond meets the rounded border
-    // instead of leaving a gap at the corner.
-    auto corner = get_point_on_side(monomer_rect, first_side) +
-                  get_point_on_side(monomer_rect, second_side);
-    corner.rx() += corner.x() < 0 ? AA_ROUNDING_RADIUS : -AA_ROUNDING_RADIUS;
-    corner.ry() += corner.y() < 0 ? AA_ROUNDING_RADIUS : -AA_ROUNDING_RADIUS;
+    // sum is the corner shared by the sides.
+    const auto corner = get_point_on_side(monomer_rect, first_side) +
+                        get_point_on_side(monomer_rect, second_side);
     return extend_past_monomer(corner);
 }
 
