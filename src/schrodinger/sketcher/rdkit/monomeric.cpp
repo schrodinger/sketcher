@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <functional>
+#include <limits>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
@@ -232,41 +233,25 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
     }
 }
 
-static std::pair<Direction, Direction>
-get_nearest_cardinal_directions(const QPointF& relative_pos)
+static Direction get_nearest_cardinal_direction(const QPointF& relative_pos)
 {
     const auto horizontal_side =
         relative_pos.x() < 0 ? Direction::W : Direction::E;
     const auto vertical_side =
         relative_pos.y() > 0 ? Direction::S : Direction::N;
     if (qAbs(relative_pos.x()) >= qAbs(relative_pos.y())) {
-        return {horizontal_side, vertical_side};
+        return horizontal_side;
     }
-    return {vertical_side, horizontal_side};
+    return vertical_side;
 }
 
 static QPointF get_direction_unit_vector(const Direction direction)
 {
-    constexpr auto diagonal = COSINE_45_DEGREES;
-    switch (direction) {
-        case Direction::N:
-            return {0.0, -1.0};
-        case Direction::NE:
-            return {diagonal, -diagonal};
-        case Direction::E:
-            return {1.0, 0.0};
-        case Direction::SE:
-            return {diagonal, diagonal};
-        case Direction::S:
-            return {0.0, 1.0};
-        case Direction::SW:
-            return {-diagonal, diagonal};
-        case Direction::W:
-            return {-1.0, 0.0};
-        case Direction::NW:
-            return {-diagonal, -diagonal};
+    auto vector = direction_to_qt_vector(direction);
+    if (!qFuzzyIsNull(vector.x()) && !qFuzzyIsNull(vector.y())) {
+        vector *= COSINE_45_DEGREES;
     }
-    throw std::logic_error("Unexpected placement direction");
+    return vector;
 }
 
 static bool is_cardinal_direction(const Direction direction)
@@ -282,16 +267,15 @@ static double direction_closeness(const Direction direction,
 }
 
 /**
- * Select the four closest forward-facing directions, keeping the nearest side
- * first. Within those four candidates, prefer another side over a corner.
- * Directions on the back half of the monomer are excluded because a connector
- * from there would pass behind the monomer.
+ * Select the four closest directions on the half of the monomer facing the
+ * bound monomer, keeping the nearest side first. Within those four candidates,
+ * prefer another side over a corner. Directions on the opposite half are
+ * excluded because a connector from there would pass behind the monomer.
  */
 static std::vector<Direction>
 get_ranked_placement_directions(const QPointF& relative_pos)
 {
-    const auto nearest_side =
-        get_nearest_cardinal_directions(relative_pos).first;
+    const auto nearest_side = get_nearest_cardinal_direction(relative_pos);
     std::vector<Direction> ranked_directions = {nearest_side};
     for (const auto direction : ALL_PLACEMENT_DIRECTIONS) {
         if (direction != nearest_side) {
@@ -344,11 +328,9 @@ get_occupied_directions(const RDKit::Atom* monomer,
     std::unordered_set<Direction> occupied_directions;
 
     auto record_occupied_directions = [&](const RDKit::Bond* bond,
-                                          const bool is_secondary,
-                                          const std::string& linkage_property) {
-        std::string linkage;
-        if (!bond->getPropIfPresent(linkage_property, linkage) ||
-            (bond == current_bond && is_secondary == is_secondary_connection)) {
+                                          const bool is_secondary) {
+        if (bond == current_bond &&
+            is_secondary == is_secondary_connection) {
             return;
         }
         const auto* other_monomer = bond->getOtherAtom(monomer);
@@ -362,11 +344,11 @@ get_occupied_directions(const RDKit::Atom* monomer,
     };
 
     for (const auto* bond : mol.atomBonds(monomer)) {
-        record_occupied_directions(bond, false, LINKAGE);
+        record_occupied_directions(bond, false);
         // A custom-bond property can duplicate the primary HELM linkage. It is
         // a separate connection only when the bond stores two linkages.
         if (contains_two_monomer_linkages(bond)) {
-            record_occupied_directions(bond, true, CUSTOM_BOND);
+            record_occupied_directions(bond, true);
         }
     }
     return occupied_directions;
@@ -375,12 +357,12 @@ get_occupied_directions(const RDKit::Atom* monomer,
 static bool monomers_are_in_same_chain(const RDKit::Atom* first,
                                        const RDKit::Atom* second)
 {
-    const auto* first_info =
-        dynamic_cast<const RDKit::AtomPDBResidueInfo*>(first->getMonomerInfo());
-    const auto* second_info = dynamic_cast<const RDKit::AtomPDBResidueInfo*>(
-        second->getMonomerInfo());
-    return first_info != nullptr && second_info != nullptr &&
-           first_info->getChainId() == second_info->getChainId();
+    try {
+        return rdkit_extensions::get_polymer_id(first) ==
+               rdkit_extensions::get_polymer_id(second);
+    } catch (const std::runtime_error&) {
+        return false;
+    }
 }
 
 static QPointF get_point_on_side(const QRectF& monomer_rect,
@@ -418,9 +400,13 @@ static QPointF get_offset_for_corner(const QRectF& monomer_rect,
                                      const Direction second_side)
 {
     // The two side points contain complementary x and y components, so their
-    // sum is the corner shared by the sides.
-    const auto corner = get_point_on_side(monomer_rect, first_side) +
-                        get_point_on_side(monomer_rect, second_side);
+    // sum is the corner shared by the sides. Move that point toward the center
+    // by the amino-acid corner radius so the diamond meets the rounded border
+    // instead of leaving a gap at the corner.
+    auto corner = get_point_on_side(monomer_rect, first_side) +
+                  get_point_on_side(monomer_rect, second_side);
+    corner.rx() += corner.x() < 0 ? AA_ROUNDING_RADIUS : -AA_ROUNDING_RADIUS;
+    corner.ry() += corner.y() < 0 ? AA_ROUNDING_RADIUS : -AA_ROUNDING_RADIUS;
     return extend_past_monomer(corner);
 }
 
@@ -477,8 +463,7 @@ static std::optional<Direction> get_shared_perpendicular_side(
 {
     // For a blocked same-chain connection, first try to route both ends along
     // one unoccupied side perpendicular to the line between the monomers.
-    const auto nearest_side =
-        get_nearest_cardinal_directions(relative_pos).first;
+    const auto nearest_side = get_nearest_cardinal_direction(relative_pos);
     for (const auto side : PERPENDICULAR_CARDINAL_DIRECTIONS.at(nearest_side)) {
         if (!first_occupied_directions.contains(side) &&
             !second_occupied_directions.contains(side)) {
@@ -519,7 +504,9 @@ static size_t count_candidate_bond_crossings(const QGraphicsItem& monomer_item,
             // Bonds ending at the remote monomer naturally meet the candidate
             // at that monomer's center. Only interior intersections count.
             !qFuzzyIsNull(QLineF(intersection, bound_coords).length())) {
-            ++crossing_count;
+            // A bond with a secondary linkage is drawn as two connections, so
+            // crossing it should carry twice the penalty.
+            crossing_count += contains_two_monomer_linkages(bond) ? 2 : 1;
         }
     }
     return crossing_count;
@@ -531,13 +518,8 @@ static Direction get_direction_with_fewest_bond_crossings(
     const std::vector<Direction>& directions)
 {
     auto best_direction = directions.front();
-    auto fewest_crossings = count_candidate_bond_crossings(
-        monomer_item, bound_coords, monomer, bound_monomer, best_direction);
-    if (fewest_crossings == 0) {
-        return best_direction;
-    }
-    for (size_t index = 1; index < directions.size(); ++index) {
-        const auto direction = directions[index];
+    auto fewest_crossings = std::numeric_limits<size_t>::max();
+    for (const auto direction : directions) {
         const auto crossing_count = count_candidate_bond_crossings(
             monomer_item, bound_coords, monomer, bound_monomer, direction);
         if (crossing_count == 0) {
@@ -637,10 +619,9 @@ QPointF get_monomer_arrowhead_offset(const QGraphicsItem& monomer_item,
     const auto bound_monomer_occupied_directions = get_occupied_directions(
         bound_monomer, monomer, is_secondary_connection);
     const auto relative_pos = bound_coords - monomer_item.pos();
-    const auto nearest_side =
-        get_nearest_cardinal_directions(relative_pos).first;
+    const auto nearest_side = get_nearest_cardinal_direction(relative_pos);
     const auto bound_monomer_nearest_side =
-        get_nearest_cardinal_directions(-relative_pos).first;
+        get_nearest_cardinal_direction(-relative_pos);
 
     // Only same-chain connections need both ends coordinated around the line
     // between monomer centers. Interchain endpoints can be placed independently

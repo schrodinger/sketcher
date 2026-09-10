@@ -111,11 +111,13 @@ static void position_ap_label_rect_next_to_arrowhead(
         get_monomer_arrowhead_offset(*monomer_item, bound_qcoords, monomer,
                                      bound_monomer, is_secondary_connection);
 
-    // Position the label perpendicular to the radial line from the monomer
-    // center to its arrowhead. This also works when the arrowhead has moved to
-    // a fallback side or corner.
+    // Use the connection line to choose the label side. The reverse call for
+    // the other endpoint reverses this normal, keeping the two attachment-point
+    // labels on opposite sides of the connector even when both arrowheads use
+    // the same side of their monomers.
+    const auto connection_vector = bound_qcoords - monomer_item->pos();
     QLineF normal(QPointF(),
-                  QPointF(-arrowhead_offset.y(), arrowhead_offset.x()));
+                  QPointF(-connection_vector.y(), connection_vector.x()));
     auto normal_length = normal.length();
     if (!qFuzzyIsNull(normal_length)) {
         auto unit_x = normal.dx() / normal_length;

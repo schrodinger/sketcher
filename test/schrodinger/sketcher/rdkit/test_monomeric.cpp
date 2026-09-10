@@ -440,7 +440,10 @@ BOOST_AUTO_TEST_CASE(test_monomer_arrowhead_offset_uses_ranked_directions)
                       {0.0, monomer.boundingRect().bottom() +
                                 MONOMER_CONNECTOR_ARROWHEAD_RADIUS});
 
-    QLineF expected_corner_offset(QPointF(), monomer.boundingRect().topRight());
+    const auto rounded_corner =
+        monomer.boundingRect().topRight() +
+        QPointF(-AA_ROUNDING_RADIUS, AA_ROUNDING_RADIUS);
+    QLineF expected_corner_offset(QPointF(), rounded_corner);
     expected_corner_offset.setLength(expected_corner_offset.length() +
                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
 
@@ -487,7 +490,10 @@ BOOST_AUTO_TEST_CASE(test_side_and_corner_use_ninety_degree_occupancy)
     // non-crossing southeast corner is used instead.
     const auto offset = get_monomer_arrowhead_offset(
         first_item, fourth_pos, first_monomer, fourth_monomer, false);
-    QLineF expected_offset(QPointF(), first_item.boundingRect().bottomRight());
+    const auto rounded_corner =
+        first_item.boundingRect().bottomRight() +
+        QPointF(-AA_ROUNDING_RADIUS, -AA_ROUNDING_RADIUS);
+    QLineF expected_offset(QPointF(), rounded_corner);
     expected_offset.setLength(expected_offset.length() +
                               MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
     check_point_close(offset, expected_offset.p2());
@@ -551,8 +557,10 @@ BOOST_AUTO_TEST_CASE(test_macrocycle_connection_avoids_crossing_bonds)
 
     const auto monomer_20_offset = get_monomer_arrowhead_offset(
         monomer_20_item, monomer_8_pos, monomer_20, monomer_8, false);
-    QLineF expected_monomer_20_offset(
-        QPointF(), monomer_20_item.boundingRect().bottomRight());
+    const auto rounded_corner =
+        monomer_20_item.boundingRect().bottomRight() +
+        QPointF(-AA_ROUNDING_RADIUS, -AA_ROUNDING_RADIUS);
+    QLineF expected_monomer_20_offset(QPointF(), rounded_corner);
     expected_monomer_20_offset.setLength(expected_monomer_20_offset.length() +
                                          MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
     check_point_close(monomer_20_offset, expected_monomer_20_offset.p2());
@@ -611,7 +619,10 @@ BOOST_AUTO_TEST_CASE(test_interchain_connection_avoids_crossing_other_bond)
 
     const auto bottom_offset = get_monomer_arrowhead_offset(
         bottom_item, top_pos, bottom_monomer, top_monomer, false);
-    QLineF expected_offset(QPointF(), bottom_item.boundingRect().topLeft());
+    const auto rounded_corner =
+        bottom_item.boundingRect().topLeft() +
+        QPointF(AA_ROUNDING_RADIUS, AA_ROUNDING_RADIUS);
+    QLineF expected_offset(QPointF(), rounded_corner);
     expected_offset.setLength(expected_offset.length() +
                               MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
     check_point_close(bottom_offset, expected_offset.p2());
