@@ -138,11 +138,43 @@ QString without_mnemonic(QString text)
 }
 
 /**
- * Find a visible child widget by objectName. Several widgets may share a name,
- * so this returns the first visible one, or nullptr if none is visible.
+ * Find the visible widget a user can currently reach by objectName.
+ *
+ * Dialogs and QWidgetActions embedded in menus can be separate top-level Qt
+ * surfaces rather than children of SketcherWidget. Prefer the active popup or
+ * modal, then other visible top-level surfaces, before the background sketcher
+ * tree so a same-named background control cannot hide the foreground one.
  */
 QWidget* find_visible_widget(SketcherWidget& sketcher, const QString& name)
 {
+    const auto find_visible_match = [&name](QWidget* root) -> QWidget* {
+        if (root == nullptr || !root->isVisible()) {
+            return nullptr;
+        }
+        if (root->objectName() == name) {
+            return root;
+        }
+        for (auto* child : root->findChildren<QWidget*>(name)) {
+            if (child->isVisible()) {
+                return child;
+            }
+        }
+        return nullptr;
+    };
+    if (auto* match = find_visible_match(QApplication::activePopupWidget())) {
+        return match;
+    }
+    if (auto* match = find_visible_match(QApplication::activeModalWidget())) {
+        return match;
+    }
+    for (auto* top_level : QApplication::topLevelWidgets()) {
+        if (top_level == &sketcher) {
+            continue;
+        }
+        if (auto* match = find_visible_match(top_level)) {
+            return match;
+        }
+    }
     for (auto* widget : sketcher.findChildren<QWidget*>(name)) {
         if (widget->isVisible()) {
             return widget;
@@ -278,6 +310,7 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
     if (!visible_only) {
         result["visible"] = widget->isVisible();
     }
+    result["styleSheet"] = widget->styleSheet();
     // A label the application painted is chrome, so it is normalized the way
     // the user reads it; a value the user typed or chose is reported verbatim,
     // since a test that sets a field and reads it back has to see exactly what
@@ -462,7 +495,9 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
  * contents of a line edit or spin box. Text the application painted is reported
  * the way it appears on screen, with any mnemonic ampersand and surrounding
  * whitespace removed, while a value the user typed or chose is reported
- * verbatim. A button additionally reports "checked" and "toolTip".
+ * verbatim. Every widget reports its Qt "styleSheet" so a test can verify a
+ * user-visible state conveyed by styling; a button additionally reports
+ * "checked" and "toolTip".
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
  * menu first. It does not reach a QToolButton's menu, which cannot be open and
