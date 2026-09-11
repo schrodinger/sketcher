@@ -4,6 +4,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <unordered_set>
 #include <vector>
 
 #include <fmt/format.h>
@@ -189,13 +190,40 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
 
 /**
  * For a monomer connector being drawn with a diamond arrowhead, determine the
- * distance between the center of the monomer and the center of the arrowhead.
+ * offset from the center of the monomer to the center of the arrowhead. The
+ * arrowhead is placed outside the nearest cardinal side facing the bound
+ * monomer. If that side is occupied, up to three other forward-facing sides
+ * and corners are considered, preferring sides over corners. A side or corner
+ * is occupied when another connection is within 45 degrees of its direction.
+ * Independently placed endpoints use the candidate crossing the fewest other
+ * bonds, with normal direction priority breaking ties. Same-chain endpoints
+ * are coordinated when necessary so their connector does not cross the chain
+ * between them.
  * @param monomer_item the graphics item for the monomer
  * @param bound_coords the Scene coordinates for the other monomer involved in
  * the bond
+ * @param monomer the monomer where the arrowhead is being placed
+ * @param bound_monomer the other monomer involved in the connection
+ * @param is_secondary_connection whether this is the secondary connection of
+ * a bond that represents two monomer connections
  */
-SKETCHER_API qreal get_monomer_arrowhead_offset(
-    const QGraphicsItem& monomer_item, const QPointF& bound_coords);
+SKETCHER_API QPointF get_monomer_arrowhead_offset(
+    const QGraphicsItem& monomer_item, const QPointF& bound_coords,
+    const RDKit::Atom* monomer, const RDKit::Atom* bound_monomer,
+    bool is_secondary_connection);
+
+/**
+ * Low-level overload that uses an explicitly provided set of occupied sides
+ * and corners. This is useful when the caller has already determined
+ * connection occupancy.
+ * @param monomer_item the graphics item for the monomer
+ * @param bound_coords the Scene coordinates for the other monomer
+ * @param occupied_directions sides and corners already used by other
+ * connections
+ */
+SKETCHER_API QPointF get_monomer_arrowhead_offset(
+    const QGraphicsItem& monomer_item, const QPointF& bound_coords,
+    const std::unordered_set<Direction>& occupied_directions);
 
 /**
  * @return a list of all unbound attachment points names for the given monomer

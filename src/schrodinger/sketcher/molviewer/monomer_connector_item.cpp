@@ -5,6 +5,7 @@
 
 #include <QPainter>
 #include <QPointF>
+#include <QTransform>
 #include <QtMath>
 
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -85,14 +86,21 @@ bool MonomerConnectorItem::isSecondaryConnection() const
  * @param path the path to add to
  * @param center the center of the diamond
  * @param radius the radius of the diamond
+ * @param rotate_for_corner whether to rotate the diamond 45 degrees
  */
 static void add_diamond_arrowhead_to_path(QPainterPath& path,
                                           const QPointF& center,
-                                          const qreal radius)
+                                          const qreal radius,
+                                          const bool rotate_for_corner)
 {
     QPolygonF diamond;
     diamond << QPointF(radius, 0) << QPointF(0, -radius) << QPointF(-radius, 0)
             << QPointF(0, radius);
+    if (rotate_for_corner) {
+        QTransform transform;
+        transform.rotate(45.0);
+        diamond = transform.map(diamond);
+    }
     diamond.translate(center);
     path.addPolygon(diamond);
     path.closeSubpath();
@@ -106,14 +114,22 @@ static void add_diamond_arrowhead_to_path(QPainterPath& path,
  * @param path the path to add to
  * @param center the center of the diamond
  * @param radius the radius of the diamond
+ * @param rotate_for_corner whether to rotate the diamond 45 degrees
  */
 static void or_diamond_arrowhead_to_path(QPainterPath& path,
                                          const QPointF& center,
-                                         const qreal radius)
+                                         const qreal radius,
+                                         const bool rotate_for_corner)
 {
     QPainterPath diamond_path;
-    add_diamond_arrowhead_to_path(diamond_path, center, radius);
+    add_diamond_arrowhead_to_path(diamond_path, center, radius,
+                                  rotate_for_corner);
     path |= diamond_path;
+}
+
+static bool offset_is_at_corner(const QPointF& offset)
+{
+    return !qFuzzyIsNull(offset.x()) && !qFuzzyIsNull(offset.y());
 }
 
 void MonomerConnectorItem::updateCachedData()
@@ -139,19 +155,29 @@ void MonomerConnectorItem::updateCachedData()
 
     QPointF start_offset;
     if (start_has_arrowhead) {
-        start_offset.ry() -=
-            get_monomer_arrowhead_offset(m_start_item, end_qcoords);
-        add_diamond_arrowhead_to_path(m_arrowhead_path, start_offset,
-                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+        start_offset = get_monomer_arrowhead_offset(
+            m_start_item, end_qcoords, m_start_item.getAtom(),
+            m_end_item.getAtom(), m_is_secondary_connection);
     }
 
-    auto end_pos = end_qcoords - start_qcoords;
+    QPointF end_offset;
     if (end_has_arrowhead) {
-        end_pos.ry() -= get_monomer_arrowhead_offset(m_end_item, start_qcoords);
-        add_diamond_arrowhead_to_path(m_arrowhead_path, end_pos,
-                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+        end_offset = get_monomer_arrowhead_offset(
+            m_end_item, start_qcoords, m_end_item.getAtom(),
+            m_start_item.getAtom(), m_is_secondary_connection);
     }
+    auto end_pos = end_qcoords - start_qcoords + end_offset;
     m_connector_line = QLineF(start_offset, end_pos);
+    if (start_has_arrowhead) {
+        add_diamond_arrowhead_to_path(m_arrowhead_path, start_offset,
+                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                      offset_is_at_corner(start_offset));
+    }
+    if (end_has_arrowhead) {
+        add_diamond_arrowhead_to_path(m_arrowhead_path, end_pos,
+                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                      offset_is_at_corner(end_offset));
+    }
     m_midpoint = m_connector_line.center();
     m_selection_highlighting_path = path_around_line(
         m_connector_line, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
@@ -161,19 +187,23 @@ void MonomerConnectorItem::updateCachedData()
         or_diamond_arrowhead_to_path(m_selection_highlighting_path,
                                      start_offset,
                                      BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(start_offset));
         or_diamond_arrowhead_to_path(m_predictive_highlighting_path,
                                      start_offset,
                                      BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(start_offset));
     }
     if (end_has_arrowhead) {
         or_diamond_arrowhead_to_path(m_selection_highlighting_path, end_pos,
                                      BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(end_offset));
         or_diamond_arrowhead_to_path(m_predictive_highlighting_path, end_pos,
                                      BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(end_offset));
     }
     m_shape = QPainterPath(m_selection_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
