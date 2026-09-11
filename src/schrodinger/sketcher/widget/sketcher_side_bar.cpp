@@ -78,6 +78,11 @@ SketcherSideBar::SketcherSideBar(QWidget* parent) : SketcherView(parent)
 
 SketcherSideBar::~SketcherSideBar() = default;
 
+void SketcherSideBar::updateMonomerButtons()
+{
+    ui->monomeric_wdg->updateMonomerButtons();
+}
+
 void SketcherSideBar::setModel(SketcherModel* model)
 {
     SketcherView::setModel(model);

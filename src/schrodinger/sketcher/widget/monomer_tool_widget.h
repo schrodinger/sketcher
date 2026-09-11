@@ -38,6 +38,11 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     MonomerToolWidget(QWidget* parent = nullptr);
     ~MonomerToolWidget();
 
+    /**
+     * Rebuild monomer analog popups from the current monomer database.
+     */
+    void updateMonomerButtons();
+
     void connectLocalSlots() override;
     void setModel(SketcherModel* model) override;
     void updateCheckedButton() override;

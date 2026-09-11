@@ -50,6 +50,7 @@ class SKETCHER_API SketcherTopBar : public SketcherView
     MoreActionsMenu* m_more_actions_menu = nullptr;
 
   signals:
+    void monomerDatabaseLoaded();
     void clearSketcherRequested();
     void importTextRequested(const std::string& text,
                              const rdkit_extensions::Format format);
@@ -115,6 +116,11 @@ class SKETCHER_API SketcherTopBar : public SketcherView
      * `importTextRequested` signal with the specified file path.
      */
     void onImportFromFileClicked();
+
+    /**
+     * Open a JSON file and load its custom monomer definitions.
+     */
+    void onLoadMonomerDatabaseClicked();
 
     /**
      * Respond to a click on the "Paste in Text..." action.

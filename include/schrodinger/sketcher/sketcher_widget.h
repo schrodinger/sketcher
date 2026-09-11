@@ -121,6 +121,11 @@ class SKETCHER_API SketcherWidget : public QWidget
     void clear();
 
     /**
+     * Refresh sidebar monomer buttons after changing the monomer database.
+     */
+    void updateMonomerButtons();
+
+    /**
      * @return true if the scene is empty
      */
     bool isEmpty() const;

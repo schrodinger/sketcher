@@ -969,6 +969,8 @@ void SketcherWidget::connectTopBarSlots()
             m_mol_model, &MolModel::clear);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::importTextRequested, this,
             &SketcherWidget::importText);
+    connect(m_ui->top_bar_wdg, &SketcherTopBar::monomerDatabaseLoaded, this,
+            &SketcherWidget::updateMonomerButtons);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::saveImageRequested, this,
             &SketcherWidget::showFileSaveImageDialog);
     connect(m_ui->top_bar_wdg, &SketcherTopBar::exportToFileRequested, this,
@@ -976,6 +978,11 @@ void SketcherWidget::connectTopBarSlots()
     connect(m_ui->top_bar_wdg,
             &SketcherTopBar::adjustRenderingSettingsRequested, this,
             &SketcherWidget::showRenderingSettingsDialog);
+}
+
+void SketcherWidget::updateMonomerButtons()
+{
+    m_ui->side_bar_wdg->updateMonomerButtons();
 }
 
 void SketcherWidget::connectSideBarSlots()
