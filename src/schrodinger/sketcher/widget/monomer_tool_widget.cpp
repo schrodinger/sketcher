@@ -110,6 +110,30 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     m_custom_nt_popup = new CustomNucleotidePopup(this);
     ui->na_custom_nt_btn->setPopupWidget(m_custom_nt_popup);
 
+    updateMonomerButtons();
+
+    ui->monomeric_connection_group->setId(
+        ui->covalent_or_disulfide_btn,
+        static_cast<int>(MonomericConnectionTool::COVALENT_OR_DISULFIDE));
+    ui->monomeric_connection_group->setId(
+        ui->hbond_btn, static_cast<int>(MonomericConnectionTool::HBOND));
+}
+
+MonomerToolWidget::~MonomerToolWidget() = default;
+
+void MonomerToolWidget::updateMonomerButtons()
+{
+    auto clear_popups = [](auto& popups) {
+        for (auto& [button, popup] : popups) {
+            auto* modular_btn = qobject_cast<ModularToolButton*>(button);
+            modular_btn->setEnumItem(0);
+            modular_btn->clearPopupWidget();
+        }
+        popups.clear();
+    };
+    clear_popups(m_amino_acid_symbol_popups);
+    clear_popups(m_nucleic_acid_symbol_popups);
+
     // Set up amino acid analog popups from the monomer database
     auto analogs_by_aa =
         rdkit_extensions::MonomerDatabase::instance()
@@ -142,6 +166,9 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
         modular_btn->setEnumItem(0); // default to standard AA
         modular_btn->showPopupIndicatorOnHover(true);
         m_amino_acid_symbol_popups[button] = popup;
+        if (auto* model = getModel()) {
+            popup->setModel(model);
+        }
     }
 
     // Set up nucleic acid analog popups from the monomer database. Buttons
@@ -198,16 +225,11 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
         modular_btn->setEnumItem(0); // default to standard base
         modular_btn->showPopupIndicatorOnHover(true);
         m_nucleic_acid_symbol_popups[button] = popup;
+        if (auto* model = getModel()) {
+            popup->setModel(model);
+        }
     }
-
-    ui->monomeric_connection_group->setId(
-        ui->covalent_or_disulfide_btn,
-        static_cast<int>(MonomericConnectionTool::COVALENT_OR_DISULFIDE));
-    ui->monomeric_connection_group->setId(
-        ui->hbond_btn, static_cast<int>(MonomericConnectionTool::HBOND));
 }
-
-MonomerToolWidget::~MonomerToolWidget() = default;
 
 void MonomerToolWidget::connectLocalSlots()
 {

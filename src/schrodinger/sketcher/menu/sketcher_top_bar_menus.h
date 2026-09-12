@@ -19,6 +19,7 @@ class SKETCHER_API ImportMenu : public QMenu
     QAction* m_import_from_file_act = nullptr;
     QAction* m_paste_in_text_act = nullptr;
     QAction* m_replace_content_act = nullptr;
+    QAction* m_load_monomer_database_act = nullptr;
 };
 
 class SKETCHER_API ExportMenu : public QMenu

@@ -49,6 +49,8 @@ ImportMenu::ImportMenu(QWidget* parent) : QMenu(parent)
     m_paste_in_text_act = addAction("Paste in Text...");
     m_replace_content_act = addAction("Replace Current Content");
     m_replace_content_act->setCheckable(true);
+    addSeparator();
+    m_load_monomer_database_act = addAction("Load Monomer Database...");
 }
 
 ExportMenu::ExportMenu(QWidget* parent) : QMenu(parent)
