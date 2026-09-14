@@ -5,7 +5,6 @@ import {
   getExportedHelm,
   selectAll,
   clickWidget,
-  clickPopupButton,
 } from './e2e_helpers.js';
 
 test.beforeEach(async ({ page }) => {
@@ -35,9 +34,10 @@ test.describe('Amino Acid Analog Tests', () => {
     // Click alanine to activate it (checks the button)
     await clickWidget(page, 'ala_btn');
 
-    // Select the dA analog via the C++ API (popup buttons can't be
-    // targeted by Playwright in WASM — see clickPopupButton helper).
-    await clickPopupButton(page, 'analog_dA_btn');
+    // The analog buttons live in a Qt::Popup, which is its own top-level
+    // window. The bridge maps its rect through global coordinates, so this is
+    // an ordinary click.
+    await clickWidget(page, 'analog_dA_btn');
 
     // Place the analog on canvas
     const center = await getDrawingAreaCenter(page);
