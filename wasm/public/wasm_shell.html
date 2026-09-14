@@ -100,6 +100,119 @@
     <script type="text/javascript" src="qtloader.js"></script>
     <script type="text/javascript" src="Sketcher.js"></script>
     <script type="text/javascript">
+      let resolveSketcher;
+      let rejectSketcher;
+      const sketcherReady = new Promise((resolve, reject) => {
+        resolveSketcher = resolve;
+        rejectSketcher = reject;
+      });
+      // Loading errors are also displayed in the page, even when no API caller waits.
+      sketcherReady.catch(() => {});
+
+      function nativeExceptionMessage(instance, exception) {
+        // Older distributions expose the message helper but not cleanup helpers.
+        const canRelease =
+          typeof instance.incrementExceptionRefcount === 'function' &&
+          typeof instance.decrementExceptionRefcount === 'function';
+        if (canRelease) {
+          instance.incrementExceptionRefcount(exception);
+        }
+        try {
+          return instance.getExceptionMessage(exception)[1];
+        } finally {
+          if (canRelease) {
+            instance.decrementExceptionRefcount(exception);
+          }
+        }
+      }
+
+      async function withSketcher(callback) {
+        const instance = await sketcherReady;
+        const canRestoreStack =
+          typeof instance.stackSave === 'function' && typeof instance.stackRestore === 'function';
+        const stack = canRestoreStack ? instance.stackSave() : undefined;
+        try {
+          return callback(instance);
+        } catch (err) {
+          if (typeof err === 'number') {
+            throw new Error(nativeExceptionMessage(instance, err));
+          }
+          throw err;
+        } finally {
+          if (canRestoreStack) {
+            instance.stackRestore(stack);
+          }
+        }
+      }
+
+      // Public API for applications hosting this page in a same-origin iframe.
+      window.getMolecule = async function (format = 'SMILES') {
+        return withSketcher((instance) => {
+          if (!Object.prototype.hasOwnProperty.call(instance.Format, format)) {
+            throw new Error(`Unknown molecule format: ${format}`);
+          }
+          return instance.sketcher_export_text(instance.Format[format]);
+        });
+      };
+
+      window.getImage = async function (format = 'PNG') {
+        return withSketcher((instance) => {
+          if (!Object.prototype.hasOwnProperty.call(instance.ImageFormat, format)) {
+            throw new Error(`Unknown image format: ${format}`);
+          }
+          return instance.sketcher_export_image(instance.ImageFormat[format]);
+        });
+      };
+
+      window.setMolecule = async function (text) {
+        if (typeof text !== 'string') {
+          throw new TypeError('Molecule must be a string');
+        }
+        return withSketcher((instance) => {
+          instance.sketcher_clear();
+          if (text.trim()) {
+            instance.sketcher_import_text(text);
+          }
+        });
+      };
+
+      window.addEventListener('message', async (event) => {
+        const request = event.data;
+        // Only the embedding parent may control this sketcher. Opaque origins
+        // cannot receive a reply with an exact target origin.
+        if (
+          event.source !== window.parent ||
+          event.source === window ||
+          event.origin === 'null' ||
+          !request ||
+          request.type !== 'schrodinger.sketcher.request' ||
+          typeof request.id !== 'string'
+        ) {
+          return;
+        }
+
+        const response = { type: 'schrodinger.sketcher.response', id: request.id };
+        try {
+          switch (request.method) {
+            case 'getMolecule':
+              response.result = await window.getMolecule(request.format);
+              break;
+            case 'getImage':
+              response.result = await window.getImage(request.format);
+              break;
+            case 'setMolecule':
+              await window.setMolecule(request.text);
+              response.result = null;
+              break;
+            default:
+              throw new Error(`Unknown sketcher method: ${request.method}`);
+          }
+        } catch (err) {
+          response.error = { message: err instanceof Error ? err.message : String(err) };
+        }
+        event.source.postMessage(response, event.origin);
+      });
+
       async function init() {
         const spinner = document.querySelector('#qtspinner');
         const status = document.querySelector('#qtstatus');
@@ -146,7 +259,9 @@
             writable: false,
             configurable: false,
           });
+          resolveSketcher(sketcherInstance);
         } catch (err) {
+          rejectSketcher(err);
           console.error(err);
           const errorMessage = err instanceof Error ? err.message : 'Unknown error';
           errorTextContainer.innerHTML = errorMessage;
