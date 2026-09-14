@@ -21,6 +21,21 @@ This project is released by Schrödinger, Inc. and is available under an open-so
 
 **[Training and Video Walkthrough](https://www.schrodinger.com/sites/default/files/s3/public/2D-Sketcher/2023-2/Content/Resources/Videos/2D_Sketcher.mp4)** -- Learn how to use Sketcher with this guided video.
 
+## Host the WebAssembly Demo on GitHub Pages
+
+This repository includes a GitHub Actions workflow that builds the WebAssembly application and
+publishes it to GitHub Pages whenever a commit is pushed to `main`. The workflow can also be run
+manually from the **Actions** tab.
+
+To enable the demo on a fork:
+
+1. Open **Settings > Pages** in the GitHub repository.
+2. Under **Build and deployment**, select **GitHub Actions** as the source.
+3. Push the workflow to `main`, or run **Deploy WebAssembly demo to GitHub Pages** manually.
+
+After the first successful deployment, the demo is available at
+`https://<github-username>.github.io/<repository-name>/`.
+
 ## Build Prerequisites
 
 - A C++ compiler supporting C++20 or later

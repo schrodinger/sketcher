@@ -14,6 +14,10 @@ on:
         description: Whether an npm package should be published with the wasm build artifacts
         type: boolean
         default: false
+      wasm-only:
+        description: Build only the WebAssembly artifact
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
@@ -44,22 +48,7 @@ jobs:
         shell: bash
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - build-name: macos
-            runner: macos-15
-            os-label: macos-15
-          - build-name: macos
-            runner: macos-26
-            os-label: macos-26
-          - build-name: windows
-            runner: windows-2022
-          - build-name: ubuntu
-            runner: ubuntu-22.04
-          - build-name: wasm
-            runner: ubuntu-22.04
-          - build-name: memtest
-            runner: ubuntu-22.04
+      matrix: ${{ inputs.wasm-only && fromJSON('{"include":[{"build-name":"wasm","runner":"ubuntu-22.04"}]}') || fromJSON('{"include":[{"build-name":"macos","runner":"macos-15","os-label":"macos-15"},{"build-name":"macos","runner":"macos-26","os-label":"macos-26"},{"build-name":"windows","runner":"windows-2022"},{"build-name":"ubuntu","runner":"ubuntu-22.04"},{"build-name":"wasm","runner":"ubuntu-22.04"},{"build-name":"memtest","runner":"ubuntu-22.04"}]}') }}
     steps:
       # the memtest runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need

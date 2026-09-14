@@ -1,0 +1,58 @@
+name: Deploy WebAssembly demo to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: ~
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sketcher-builder.yml
+    with:
+      ref: ${{ github.sha }}
+      wasm-only: true
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Download WebAssembly build
+        uses: actions/download-artifact@v7
+        with:
+          name: sketcher-${{ github.sha }}-wasm
+          path: site
+
+      - name: Prepare site
+        run: |
+          mv site/wasm_shell.html site/index.html
+          touch site/.nojekyll
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
