@@ -4,7 +4,6 @@
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QMessageBox>
 #include <QRegularExpression>
 #include <QToolButton>
 #include <QWidget>
@@ -13,7 +12,7 @@
 #include "schrodinger/rdkit_extensions/file_format.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
-#include "schrodinger/sketcher/dialog/error_dialog.h"
+#include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/paste_in_text_dialog.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
@@ -282,14 +281,10 @@ void SketcherTopBar::onLoadMonomerDatabaseClicked()
                 show_error_dialog("Monomer Database Error", failures.join("\n"),
                                   this);
             } else {
-                auto* dialog = new QMessageBox(
-                    QMessageBox::Information, "Monomer Database",
+                show_information_dialog(
+                    "Monomer Database",
                     QFileInfo(file_path).fileName() + " read successfully.",
-                    QMessageBox::Ok, this);
-                dialog->setTextFormat(Qt::PlainText);
-                dialog->setAttribute(Qt::WA_DeleteOnClose);
-                dialog->setWindowModality(Qt::WindowModal);
-                dialog->show();
+                    this);
             }
         } catch (const std::exception& exc) {
             show_error_dialog("Monomer Database Error", exc.what(), this);
