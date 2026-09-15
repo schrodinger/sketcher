@@ -281,10 +281,10 @@ void SketcherTopBar::onLoadMonomerDatabaseClicked()
                 show_error_dialog("Monomer Database Error", failures.join("\n"),
                                   this);
             } else {
-                show_information_dialog(
-                    "Monomer Database",
-                    QFileInfo(file_path).fileName() + " read successfully.",
-                    this);
+                show_information_dialog("Monomer Database",
+                                        QFileInfo(file_path).fileName() +
+                                            " read successfully.",
+                                        this);
             }
         } catch (const std::exception& exc) {
             show_error_dialog("Monomer Database Error", exc.what(), this);
