@@ -113,7 +113,6 @@ void sketcher_load_custom_monomers_from_sql(const std::string& sql)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     db.loadMonomersFromSql(sql);
-    get_sketcher_instance().updateMonomerButtons();
 }
 
 #ifdef __EMSCRIPTEN__
@@ -143,7 +142,6 @@ emscripten::val sketcher_load_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     auto result = db.loadMonomersFromJson(json);
-    get_sketcher_instance().updateMonomerButtons();
 
     return monomer_defs_insertion_result_to_js(result);
 }
@@ -152,7 +150,6 @@ emscripten::val sketcher_insert_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     auto result = db.insertMonomersFromJson(json);
-    get_sketcher_instance().updateMonomerButtons();
 
     return monomer_defs_insertion_result_to_js(result);
 }
@@ -162,7 +159,6 @@ void sketcher_reset_custom_monomers()
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     db.resetMonomerDefinitions();
-    get_sketcher_instance().updateMonomerButtons();
 }
 
 void sketcher_changed()

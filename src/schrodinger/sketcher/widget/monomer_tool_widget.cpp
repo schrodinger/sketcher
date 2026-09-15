@@ -5,6 +5,7 @@
 #include <boost/assign.hpp>
 
 #include <QButtonGroup>
+#include <QMetaObject>
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
@@ -110,6 +111,13 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     m_custom_nt_popup = new CustomNucleotidePopup(this);
     ui->na_custom_nt_btn->setPopupWidget(m_custom_nt_popup);
 
+    m_database_connection =
+        rdkit_extensions::MonomerDatabase::instance().subscribeToChanges(
+            [this]() {
+                QMetaObject::invokeMethod(
+                    this, [this]() { updateMonomerButtons(); },
+                    Qt::AutoConnection);
+            });
     updateMonomerButtons();
 
     ui->monomeric_connection_group->setId(

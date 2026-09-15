@@ -30,11 +30,6 @@ class SKETCHER_API SketcherSideBar : public SketcherView
     SketcherSideBar(QWidget* parent = nullptr);
     ~SketcherSideBar();
 
-    /**
-     * Rebuild monomer analog popups from the current monomer database.
-     */
-    void updateMonomerButtons();
-
     void setModel(SketcherModel* model) override;
     void updateWidgetsEnabled() override;
     void updateCheckState() override;

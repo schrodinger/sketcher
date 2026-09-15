@@ -272,7 +272,6 @@ void SketcherTopBar::onLoadMonomerDatabaseClicked()
         try {
             auto& db = rdkit_extensions::MonomerDatabase::instance();
             auto result = db.loadMonomersFromJson(content.toStdString());
-            emit monomerDatabaseLoaded();
             if (!result.second.empty()) {
                 QStringList failures;
                 for (const auto& failure : result.second) {

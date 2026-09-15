@@ -57,6 +57,7 @@ BOOST_AUTO_TEST_CASE(refresh_monomer_popups)
     auto scene = TestScene::getScene();
     MonomerToolWidget widget;
     widget.setModel(scene->m_sketcher_model);
+    auto second_widget = std::make_unique<MonomerToolWidget>();
 
     // read in new monomers and confirm that they're added to the relevant pop
     // ups
@@ -71,7 +72,16 @@ BOOST_AUTO_TEST_CASE(refresh_monomer_popups)
     auto result = db.loadMonomersFromJson(json);
     BOOST_REQUIRE(result.second.empty());
     BOOST_REQUIRE_EQUAL(result.first.size(), 2);
-    widget.updateMonomerButtons();
+    BOOST_REQUIRE(second_widget->findChild<QAbstractButton*>(
+                      "analog_testAA_btn") != nullptr);
+    // Widgets constructed after a load also see the current database.
+    {
+        MonomerToolWidget late_widget;
+        BOOST_REQUIRE(late_widget.findChild<QAbstractButton*>(
+                          "analog_testAA_btn") != nullptr);
+    }
+    // Subsequent updates must be safe after a subscriber is destroyed.
+    second_widget.reset();
     for (const auto* name : {"ala_btn", "na_a_btn"}) {
         auto* button = widget.findChild<ModularToolButton*>(name);
         BOOST_REQUIRE(button != nullptr);
@@ -92,7 +102,6 @@ BOOST_AUTO_TEST_CASE(refresh_monomer_popups)
     auto* button = widget.findChild<ModularToolButton*>("ala_btn");
     QPointer<QWidget> old_popup = button->getPopupWidget();
     db.resetMonomerDefinitions();
-    widget.updateMonomerButtons();
     BOOST_TEST(old_popup.isNull());
     BOOST_TEST(button->text() == "A");
     BOOST_TEST(widget.findChild<QAbstractButton*>("analog_testAA_btn") ==
@@ -101,7 +110,16 @@ BOOST_AUTO_TEST_CASE(refresh_monomer_popups)
                nullptr);
     // Repeated refreshes must also replace existing core analog popups without
     // throwing an exception
-    widget.updateMonomerButtons();
+    db.resetMonomerDefinitions();
+
+    // Insertion into an existing database also refreshes the controls.
+    db.loadMonomersFromJson("[]");
+    db.insertMonomersFromJson(json);
+    BOOST_REQUIRE(widget.findChild<QAbstractButton*>("analog_testAA_btn") !=
+                  nullptr);
+    QPointer<QWidget> inserted_popup = button->getPopupWidget();
+    BOOST_CHECK_THROW(db.loadMonomersFromJson("invalid JSON"), std::exception);
+    BOOST_TEST(button->getPopupWidget() == inserted_popup.data());
 }
 
 } // namespace sketcher
