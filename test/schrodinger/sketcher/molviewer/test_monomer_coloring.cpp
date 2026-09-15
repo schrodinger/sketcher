@@ -19,8 +19,6 @@
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 
-// Include the LocalMonomerDbFixture from rdkit_extensions tests
-#include "../../rdkit_extensions/test_common.h"
 #include "../qapplication_required_fixture.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
