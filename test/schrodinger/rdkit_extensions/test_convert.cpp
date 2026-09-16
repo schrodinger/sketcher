@@ -884,9 +884,9 @@ BOOST_AUTO_TEST_CASE(test_invalid_inline_smiles_export_throws)
     auto mol = to_rdkit("PEPTIDE1{[NCC(=O)O]}$$$$V2.0", Format::HELM);
     // Simulate a corrupted inline monomer, including the former layout bug.
     mol->getAtomWithIdx(0)->setProp(ATOM_LABEL, std::string{"CX"});
-    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
-        to_string(*mol, Format::SMILES), std::invalid_argument,
-        "Unable to parse SMILES for monomer CX in polymer PEPTIDE1: CX");
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(to_string(*mol, Format::SMILES),
+                                    std::runtime_error,
+                                    "Monomer has invalid SMILES: CX");
 }
 
 BOOST_DATA_TEST_CASE(test_cannot_be_smiles,
