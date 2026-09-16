@@ -75,9 +75,7 @@
 
     const rawResponse = await fetch(wasmUrl, fetchOptions);
     if (!rawResponse.ok) {
-      throw new Error(
-        `fetch ${wasmUrl} failed: ${rawResponse.status} ${rawResponse.statusText}`,
-      );
+      throw new Error(`fetch ${wasmUrl} failed: ${rawResponse.status} ${rawResponse.statusText}`);
     }
     return compileResponse(rawResponse, false);
   }
