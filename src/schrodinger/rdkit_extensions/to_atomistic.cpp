@@ -259,9 +259,8 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
         }
 
         if (!new_monomer) {
-            throw std::invalid_argument(fmt::format(
-                "Unable to parse SMILES for monomer {} in polymer {}: {}",
-                monomer_label, polymer_id, smiles));
+            throw std::runtime_error(
+                fmt::format("Monomer has invalid SMILES: {}", smiles));
         }
 
         if (monomer->getProp<bool>(SMILES_MONOMER)) {
