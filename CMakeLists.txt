@@ -343,6 +343,14 @@ if(EMSCRIPTEN)
       -fexceptions
       -sDISABLE_EXCEPTION_CATCHING=0
       -sEXPORT_EXCEPTION_HANDLING_HELPERS)
+  set(COMPRESSED_WASM_LOADER
+      ${CMAKE_CURRENT_SOURCE_DIR}/wasm/compressed_wasm_loader.js)
+  target_link_options(
+    ${APP_TARGET} PRIVATE "SHELL:--pre-js ${COMPRESSED_WASM_LOADER}")
+  set_property(
+    TARGET ${APP_TARGET}
+    APPEND
+    PROPERTY LINK_DEPENDS ${COMPRESSED_WASM_LOADER})
 endif()
 target_link_libraries(
   ${APP_TARGET}
