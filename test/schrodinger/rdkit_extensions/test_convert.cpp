@@ -27,6 +27,9 @@
 #include <rdkit/GraphMol/SmilesParse/SmilesWrite.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
+#include "schrodinger/rdkit_extensions/helm/to_rdkit.h"
 #include "schrodinger/rdkit_extensions/molops.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/test/checkexceptionmsg.h"
@@ -844,6 +847,46 @@ BOOST_AUTO_TEST_CASE(TestConvertingHELM)
     const std::string text{"PEPTIDE1{A.K.L}$$$$V2.0"};
     const auto mol = to_rdkit(text, Format::HELM);
     BOOST_TEST(to_string(*mol, Format::HELM) == text);
+}
+
+BOOST_AUTO_TEST_CASE(test_inline_smiles_export_after_layout)
+{
+    const std::string text{
+        "PEPTIDE1{[O=C([C@H](CSCCN[H:3])N[H:1])[OH:2]]}$$$$V2.0"};
+    auto mol = to_rdkit(text, Format::HELM);
+    compute_monomer_mol_coords(*mol);
+    BOOST_TEST(to_string(*mol, Format::HELM) == text);
+
+    // Compare canonical SMILES to verify both connectivity and chirality.
+    auto expected = to_rdkit("O=C([C@H](CSCCN)N)O", Format::SMILES);
+    BOOST_TEST(to_string(*mol, Format::SMILES) ==
+               to_string(*expected, Format::SMILES));
+}
+
+BOOST_AUTO_TEST_CASE(test_long_registered_monomer_export_after_layout)
+{
+    auto& db = MonomerDatabase::instance();
+    db.loadMonomersFromJson(R"([{
+        "symbol": "LongAla", "polymer_type": "PEPTIDE",
+        "natural_analog": "A", "smiles": "C[C@H](N[H:1])C(=O)[OH:2]",
+        "core_smiles": "C[C@H](N)C(=O)O", "name": "Test alanine",
+        "monomer_type": "Backbone", "author": "Test", "pdbcode": "ALA"
+    }])");
+    const std::string text{"PEPTIDE1{[LongAla]}$$$$V2.0"};
+    auto mol = helm::helm_to_rdkit(text, true, true);
+    compute_monomer_mol_coords(*mol);
+    BOOST_TEST(to_string(*mol, Format::HELM) == text);
+    db.resetMonomerDefinitions();
+}
+
+BOOST_AUTO_TEST_CASE(test_invalid_inline_smiles_export_throws)
+{
+    auto mol = to_rdkit("PEPTIDE1{[NCC(=O)O]}$$$$V2.0", Format::HELM);
+    // Simulate a corrupted inline monomer, including the former layout bug.
+    mol->getAtomWithIdx(0)->setProp(ATOM_LABEL, std::string{"CX"});
+    TEST_CHECK_EXCEPTION_MSG_SUBSTR(
+        to_string(*mol, Format::SMILES), std::invalid_argument,
+        "Unable to parse SMILES for monomer CX in polymer PEPTIDE1: CX");
 }
 
 BOOST_DATA_TEST_CASE(test_cannot_be_smiles,
