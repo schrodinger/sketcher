@@ -244,6 +244,23 @@ BOOST_DATA_TEST_CASE(
           {0.75, 2.308263},
           {1.963525, 1.426585}}},
 
+        // Interlocking disulfides can use two turns: C1 is on the top strand,
+        // C6-C7 are together on the middle strand, and C12 is on the bottom.
+        {"PEPTIDE1{C.K.F.K.L.C.C.T.Y.A.G.C}$PEPTIDE1,PEPTIDE1,1:R3-7:R3|"
+         "PEPTIDE1,PEPTIDE1,6:R3-12:R3$$$",
+         {{0, 0},
+          {1.5, 0},
+          {3, 0},
+          {3.75, -1.299038},
+          {3, -2.598076},
+          {1.5, -2.598076},
+          {0, -2.598076},
+          {-1.5, -2.598076},
+          {-2.25, -3.897114},
+          {-1.5, -5.196152},
+          {0, -5.196152},
+          {1.5, -5.196152}}},
+
         {"PEPTIDE1{G.C.C.S.L.P.R.C.A.L.N.C}$PEPTIDE1,PEPTIDE1,2:R3-8:R3|"
          "PEPTIDE1,PEPTIDE1,3:R3-12:R3$$$",
          {{0, 0},

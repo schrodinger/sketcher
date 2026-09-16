@@ -544,6 +544,74 @@ struct TurnConstraint {
 };
 
 /**
+ * Computes a turn centered between the monomers connected by a custom bond.
+ * The turn size is chosen from the number of intervening monomers so that the
+ * two connected monomers occupy corresponding positions on adjacent strands.
+ */
+static TurnInfo compute_centered_turn(const TurnConstraint& constraint)
+{
+    const auto distance = constraint.max_pos - constraint.min_pos;
+
+    unsigned int turn_size;
+    if (distance < 4) {
+        turn_size = 0; // An instant turn is sufficient for a short interval.
+    } else if (distance % 2 == 1) {
+        turn_size = 2; // Two turn monomers balance an odd-length interval.
+    } else {
+        turn_size = 1; // One turn monomer balances an even-length interval.
+    }
+
+    const auto turn_pos =
+        constraint.min_pos + 1 +
+        (constraint.max_pos - turn_size - constraint.min_pos) / 2;
+    return {turn_pos, turn_size};
+}
+
+/**
+ * Returns true when each custom bond can be closed around a different turn.
+ *
+ * A custom bond whose endpoints contain exactly one turn connects adjacent
+ * strands. Requiring this for every bond allows interlocking intervals to use
+ * consecutive pairs of strands without crossing. We also require at least one
+ * monomer between adjacent turns so that each intermediate strand is non-empty.
+ *
+ * The constraints must be ordered by their first monomer, as returned by
+ * extract_custom_bonds().
+ */
+static bool
+can_use_independent_turns(const std::vector<TurnConstraint>& constraints)
+{
+    std::vector<TurnInfo> turns;
+    std::transform(constraints.begin(), constraints.end(),
+                   std::back_inserter(turns), compute_centered_turn);
+
+    // lay_out_chain_with_turns() requires ordered, non-overlapping turns and a
+    // non-empty chain segment between each pair.
+    for (size_t idx = 1; idx < turns.size(); ++idx) {
+        const auto& previous = turns[idx - 1];
+        if (previous.position + previous.size >= turns[idx].position) {
+            return false;
+        }
+    }
+
+    // If a bond interval contains zero turns, its endpoints stay on the same
+    // strand. If it contains multiple turns, they end up more than one strand
+    // apart. Neither case can be closed by this layout without a crossing or a
+    // stretched bond.
+    for (const auto& constraint : constraints) {
+        const auto num_turns_in_constraint =
+            std::count_if(turns.begin(), turns.end(), [&](const auto& turn) {
+                return turn.position > constraint.min_pos &&
+                       turn.position < constraint.max_pos;
+            });
+        if (num_turns_in_constraint != 1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
  * Extracts the CUSTOM_BONDs from `polymer` and returns them as a list of
  * CustomBondInfo, sorted by starting position.
  */
@@ -701,8 +769,19 @@ compute_turn_positions_for_chain(const RDKit::ROMol& polymer)
         constraints.push_back({bond.monomer_i, bond.monomer_j});
     }
 
-    // If the regions "pinched" by two bonds are one inside the other (i1 < i2 <
-    // j2 < j1), they  they share a turn between i2 and j2
+    // Interlocking custom bonds do not necessarily cross. If each bond can be
+    // assigned its own turn, the bonds connect consecutive pairs of strands.
+    // For example, bonds 0-6 and 5-11 use separate turns with monomers 5 and 6
+    // together on the middle strand.
+    if (can_use_independent_turns(constraints)) {
+        return constraints;
+    }
+
+    // The remaining supported arrangement has nested bond intervals (i1 < i2
+    // < j2 < j1). Nested bonds connect the same pair of strands and therefore
+    // share a turn in the intersection of their constraints. Any other
+    // arrangement that reached this point cannot use either independent or
+    // shared centered turns.
     for (size_t idx1 = 0; idx1 < custom_bonds.size(); ++idx1) {
         for (size_t idx2 = idx1 + 1; idx2 < custom_bonds.size(); ++idx2) {
             auto& bond1 = custom_bonds[idx1];
@@ -713,13 +792,12 @@ compute_turn_positions_for_chain(const RDKit::ROMol& polymer)
                 bond2.monomer_i < bond2.monomer_j &&
                 bond2.monomer_j < bond1.monomer_j) {
 
-                //  bond2 is completely contained within bond1 - they will
-                //  connect the same pair of consecutive rows The turn must be
-                //  between i2 and j1
+                // bond2 is completely contained within bond1, so both bonds
+                // connect the same pair of consecutive strands.
                 constraints.push_back({bond2.monomer_i, bond2.monomer_j});
             } else {
-                // bond regions overlap. This means that the two bonds would
-                // cross, and the layout is not possible
+                // The available centered turns cannot place these bonds on
+                // adjacent strands without a crossing or stretched bond.
                 return {};
             }
         }
@@ -1342,24 +1420,7 @@ static bool maybe_lay_out_cyclic_polymer_as_snaking_chain(
     }
     std::vector<TurnInfo> turn_positions;
     for (const auto& turn : turns) {
-        // Calculate distance from the constraint range
-        unsigned int distance = turn.max_pos - turn.min_pos;
-
-        // Determine turn size based on distance, so that the CUSTOM_BOND is
-        // laid out vertically
-        unsigned int turn_size;
-        if (distance < 4) {
-            turn_size = 0; // Very small distance: instant turn
-        } else if (distance % 2 == 1) {
-            turn_size = 2; // Odd distance
-        } else {
-            turn_size = 1; // Even distance
-        }
-
-        unsigned int turn_pos =
-            (turn.min_pos + 1 + (turn.max_pos - turn_size - turn.min_pos) / 2);
-
-        turn_positions.push_back({turn_pos, turn_size});
+        turn_positions.push_back(compute_centered_turn(turn));
     }
 
     // Extract custom bonds to identify protected regions
