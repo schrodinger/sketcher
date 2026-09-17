@@ -218,9 +218,9 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
 void add_to_mol_model(MolModel& mol_model, const std::string& text)
 {
     add_text_to_mol_model(mol_model, text,
-                         rdkit_extensions::Format::AUTO_DETECT, std::nullopt,
-                         /* recenter_view = */ true,
-                         /* enforce_monomer_validity = */ false);
+                          rdkit_extensions::Format::AUTO_DETECT, std::nullopt,
+                          /* recenter_view = */ true,
+                          /* enforce_monomer_validity = */ false);
 }
 
 void paint_scene_to_given_paint_device(QPaintDevice* device,

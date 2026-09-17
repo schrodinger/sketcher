@@ -1195,17 +1195,15 @@ BOOST_AUTO_TEST_CASE(test_addMol_monomer_validity)
     model.selectAll();
     const auto undo_count = undo_stack.count();
 
-    auto mol = rdkit_extensions::to_rdkit(
-        "PEPTIDE1{[missingMonomer]}$$$$V2.0");
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{[missingMonomer]}$$$$V2.0");
     BOOST_CHECK_THROW(model.addMol(*mol), std::runtime_error);
     BOOST_TEST(model.getMol()->getNumAtoms() == 2);
     BOOST_TEST(model.getSelectedAtoms().size() == 2);
     BOOST_TEST(undo_stack.count() == undo_count);
 
     model.clear();
-    BOOST_CHECK_NO_THROW(model.addMol(
-        *mol, "Import molecule", true, true, true,
-        /* enforce_monomer_validity = */ false));
+    BOOST_CHECK_NO_THROW(model.addMol(*mol, "Import molecule", true, true, true,
+                                      /* enforce_monomer_validity = */ false));
     BOOST_TEST(model.getMol()->getNumAtoms() == 1);
 }
 

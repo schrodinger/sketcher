@@ -22,10 +22,9 @@ namespace sketcher
 
 BOOST_AUTO_TEST_CASE(test_validate_monomers)
 {
-    for (const auto& helm : {
-             "PEPTIDE1{A.C.W}$$$$V2.0", "RNA1{R(A)P.[dR](C)P}$$$$V2.0",
-             "CHEM1{[CCO]}$$$$V2.0",
-             "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
+    for (const auto& helm :
+         {"PEPTIDE1{A.C.W}$$$$V2.0", "RNA1{R(A)P.[dR](C)P}$$$$V2.0",
+          "CHEM1{[CCO]}$$$$V2.0", "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
         auto mol = rdkit_extensions::to_rdkit(helm);
         BOOST_CHECK_NO_THROW(validate_monomers(*mol));
     }
@@ -35,7 +34,8 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
              {"PEPTIDE1{A.[missingMonomer]}$$$$V2.0",
               "Peptide monomer missingMonomer not found in monomer database"},
              {"RNA1{R([missingMonomer])P}$$$$V2.0",
-              "Nucleic acid monomer missingMonomer not found in monomer database"},
+              "Nucleic acid monomer missingMonomer not found in monomer "
+              "database"},
              {"CHEM1{[missingMonomer]}$$$$V2.0",
               "CHEM monomer missingMonomer not found in monomer database"},
              {"CHEM1{W}$$$$V2.0",
@@ -57,12 +57,11 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
     auto mol = rdkit_extensions::to_rdkit("CHEM1{[CCO]}$$$$V2.0");
     auto* monomer = mol->getAtomWithIdx(0);
     monomer->setProp(ATOM_LABEL, std::string("C1CC"));
-    BOOST_CHECK_EXCEPTION(
-        validate_monomers(*mol), std::runtime_error,
-        [](const std::runtime_error& error) {
-            return std::string(error.what()) ==
-                   "Could not parse monomer SMILES: C1CC";
-        });
+    BOOST_CHECK_EXCEPTION(validate_monomers(*mol), std::runtime_error,
+                          [](const std::runtime_error& error) {
+                              return std::string(error.what()) ==
+                                     "Could not parse monomer SMILES: C1CC";
+                          });
 }
 
 /**

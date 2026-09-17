@@ -96,10 +96,10 @@ void validate_monomers(const RDKit::ROMol& mol)
                 const auto type_name =
                     chain_type == ChainType::PEPTIDE ? "Peptide"
                     : chain_type == ChainType::CHEM  ? "CHEM"
-                                                    : "Nucleic acid";
-                throw std::runtime_error(fmt::format(
-                    "{} monomer {} not found in monomer database", type_name,
-                    label));
+                                                     : "Nucleic acid";
+                throw std::runtime_error(
+                    fmt::format("{} monomer {} not found in monomer database",
+                                type_name, label));
             }
         }
     }

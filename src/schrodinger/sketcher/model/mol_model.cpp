@@ -3302,7 +3302,7 @@ void add_mol_or_reaction_to_mol_model(
         auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
         if (position.has_value()) {
             mol_model.addMolAt(*mol, *position, "Import molecule",
-                              enforce_monomer_validity);
+                               enforce_monomer_validity);
         } else {
             mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
                              recenter_view, /* enforce_size_limit = */ true,
