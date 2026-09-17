@@ -18,8 +18,20 @@ namespace schrodinger
 namespace sketcher
 {
 
-// SKETCH-2786: both drawing tools normalize only a phosphate with two free
-// backbone attachments, and only when connecting to sugar R1 or R2.
+/**
+ * Make sure that the monomer tool and the monomeric connection tool normalize
+ * bonds between phosphates and sugars. This normalization should only happen
+ * when connecting to/from a phosphate with both R1 and R2 available, and only
+ * when connecting from/to the sugar's R1 or R2 attachment point.
+ * @param connection_tool whether to use the monomeric connection tool or the
+ * monomer tool
+ * @param phosphate_first whether to mimic a drag from a phosphate to a sugar
+ * (true) or from a sugar to a phosphate (false)
+ * @param sugar_ap the sugar attachment point to use for the connection
+ * @param phosphate_ap the phosphate attachment point to use for the connection
+ * @param occupied_ap which (if any) of the phosphate's attachment points are
+ * already involved in a connection
+ */
 BOOST_DATA_TEST_CASE(test_sugar_phosphate_attachment_selection,
                      boost::unit_test::data::make({false, true}) *
                          boost::unit_test::data::make({false, true}) *
