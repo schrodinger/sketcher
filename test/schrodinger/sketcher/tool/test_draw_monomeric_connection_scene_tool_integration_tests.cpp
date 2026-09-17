@@ -3,6 +3,7 @@
 
 #include <QPointF>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/data/test_case.hpp>
 
 #include "./test_monomer_integration_tests_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
@@ -16,6 +17,66 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+// SKETCH-2786: both drawing tools normalize only a phosphate with two free
+// backbone attachments, and only when connecting to sugar R1 or R2.
+BOOST_DATA_TEST_CASE(test_sugar_phosphate_attachment_selection,
+                     boost::unit_test::data::make({false, true}) *
+                         boost::unit_test::data::make({false, true}) *
+                         boost::unit_test::data::make({1, 2, 3}) *
+                         boost::unit_test::data::make({1, 2}) *
+                         boost::unit_test::data::make({0, 1, 2}),
+                     connection_tool, phosphate_first, sugar_ap, phosphate_ap,
+                     occupied_ap)
+{
+    if (phosphate_ap == occupied_ap) {
+        return;
+    }
+    MonomerToolTestFixture fix;
+    unsigned int phosphate_idx = occupied_ap == 1 ? 2 : 1;
+    fix.importMolText(occupied_ap == 1   ? "RNA1{R}|RNA2{R.P}$$$$V2.0"
+                      : occupied_ap == 2 ? "RNA1{R}|RNA2{P.R}$$$$V2.0"
+                                         : "RNA1{R}|RNA2{P}$$$$V2.0");
+    if (connection_tool) {
+        fix.setMonomericConnectionTool(
+            MonomericConnectionTool::COVALENT_OR_DISULFIDE);
+    } else {
+        fix.setNucleicAcidTool(NucleicAcidTool::P);
+    }
+    const auto sugar_label = "R" + std::to_string(sugar_ap);
+    const auto phosphate_label = "R" + std::to_string(phosphate_ap);
+    auto start_idx = phosphate_first ? phosphate_idx : 0;
+    auto end_idx = phosphate_first ? 0 : phosphate_idx;
+    fix.mouseMove(fix.getMonomerPos(start_idx));
+    auto start_pos = fix.getAttachmentPointPos(
+        start_idx, phosphate_first ? phosphate_label : sugar_label, true);
+    fix.mouseMove(start_pos);
+    fix.mousePress(start_pos);
+    fix.mouseMove(fix.getMonomerPos(end_idx), Qt::LeftButton);
+    auto end_pos = fix.getAttachmentPointPos(
+        end_idx, phosphate_first ? sugar_label : phosphate_label, true);
+    fix.mouseMove(end_pos, Qt::LeftButton);
+    fix.mouseRelease(end_pos);
+
+    auto mol = fix.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getBondBetweenAtoms(0, phosphate_idx) != nullptr);
+    auto expected_phosphate_ap =
+        occupied_ap == 0 && sugar_ap != 3 ? 3 - sugar_ap : phosphate_ap;
+    for (auto [idx, other_idx, expected_ap] :
+         {std::tuple{phosphate_idx, 0u, expected_phosphate_ap},
+          std::tuple{0u, phosphate_idx, sugar_ap}}) {
+        auto [bound, unbound] =
+            get_attachment_points_for_monomer(mol->getAtomWithIdx(idx));
+        bool found = false;
+        for (const auto& ap : bound) {
+            if (ap.bound_monomer->getIdx() == other_idx) {
+                BOOST_TEST(ap.model_name == "R" + std::to_string(expected_ap));
+                found = true;
+            }
+        }
+        BOOST_TEST(found);
+    }
+}
 
 /**
  * Confirm that clicking in empty space has no effect
