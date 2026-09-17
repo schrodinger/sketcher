@@ -516,6 +516,32 @@ BOOST_AUTO_TEST_CASE(TestSingleIntrapolymerPairDoesNotCrash)
     BOOST_CHECK_NO_THROW(compute_monomer_mol_coords(*mol));
 }
 
+BOOST_AUTO_TEST_CASE(TestRenderPeptideLinearly)
+{
+    const auto default_mol =
+        helm_to_rdkit("PEPTIDE1{A.A.A.A.A.A.A.A.A.A.A.A}$$$$V2.0");
+    compute_monomer_mol_coords(*default_mol);
+    const auto& default_positions = default_mol->getConformer().getPositions();
+    BOOST_CHECK(std::any_of(
+        default_positions.begin(), default_positions.end(),
+        [](const auto& position) { return std::abs(position.y) > 0.01; }));
+
+    const auto mol =
+        helm_to_rdkit("PEPTIDE1{C.K.F.K.L.C.C.T.Y.A.G.C}$PEPTIDE1,PEPTIDE1,"
+                      "1:R3-7:R3|PEPTIDE1,PEPTIDE1,6:R3-12:R3$$$V2.0");
+
+    compute_monomer_mol_coords(*mol, /* render_peptides_linearly = */ true);
+
+    const auto& conformer = mol->getConformer();
+    BOOST_TEST(!conformer.is3D());
+    for (const auto* monomer : mol->atoms()) {
+        const auto& position = conformer.getAtomPos(monomer->getIdx());
+        BOOST_TEST(position.x == monomer->getIdx() * 1.5,
+                   boost::test_tools::tolerance(0.01));
+        BOOST_TEST(position.y == 0.0, boost::test_tools::tolerance(0.01));
+    }
+}
+
 BOOST_AUTO_TEST_SUITE(TestMonomerCoordgenCheckCoords)
 
 static RDKit::RWMol

@@ -1,5 +1,7 @@
 #include "schrodinger/sketcher/molviewer/monomer_connector_item.h"
 
+#include <cstdlib>
+
 #include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/ROMol.h>
 
@@ -57,12 +59,13 @@ MonomerConnectorItem::MonomerConnectorItem(
     const RDKit::Bond* bond, const AbstractMonomerItem& start_monomer_item,
     const AbstractMonomerItem& end_monomer_item,
     const bool is_secondary_connection, const bool is_dark_mode,
-    QGraphicsItem* parent) :
+    const int lane, QGraphicsItem* parent) :
     AbstractBondOrConnectorItem(bond, parent),
     m_is_dark_mode(is_dark_mode),
     m_start_item(start_monomer_item),
     m_end_item(end_monomer_item),
-    m_is_secondary_connection(is_secondary_connection)
+    m_is_secondary_connection(is_secondary_connection),
+    m_lane(lane)
 {
 
     setZValue(static_cast<qreal>(ZOrder::MONOMER_CONNECTOR));
@@ -77,6 +80,11 @@ int MonomerConnectorItem::type() const
 bool MonomerConnectorItem::isSecondaryConnection() const
 {
     return m_is_secondary_connection;
+}
+
+int MonomerConnectorItem::getLane() const
+{
+    return m_lane;
 }
 
 /**
@@ -120,6 +128,8 @@ void MonomerConnectorItem::updateCachedData()
 {
     prepareGeometryChange();
     m_arrowhead_path.clear();
+    m_start_connector_join = QLineF();
+    m_end_connector_join = QLineF();
     auto connector_type = get_connector_type(m_bond, m_is_secondary_connection);
     auto [start_has_arrowhead, end_has_arrowhead] =
         does_connector_have_arrowheads(m_bond, connector_type);
@@ -137,26 +147,83 @@ void MonomerConnectorItem::updateCachedData()
     auto end_qcoords = m_end_item.pos();
     setPos(start_qcoords);
 
+    // Numbered peptide connections use fixed top or bottom anchor positions.
+    // Connections that naturally have diamonds draw them at these anchors;
+    // backbone-style closures such as R2-R1 use the same routing without
+    // adding diamonds. Other connectors retain their existing geometry.
+    const auto get_endpoint_y_offset =
+        [this](const AbstractMonomerItem& item, const QPointF& other_coords) {
+        if (m_lane == 0) {
+            return -get_monomer_arrowhead_offset(item, other_coords);
+        }
+        const auto magnitude = item.boundingRect().height() / 2 +
+                               MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+        return m_lane > 0 ? -magnitude : magnitude;
+    };
+
     QPointF start_offset;
+    if (start_has_arrowhead || m_lane != 0) {
+        start_offset.ry() += get_endpoint_y_offset(m_start_item, end_qcoords);
+    }
     if (start_has_arrowhead) {
-        start_offset.ry() -=
-            get_monomer_arrowhead_offset(m_start_item, end_qcoords);
         add_diamond_arrowhead_to_path(m_arrowhead_path, start_offset,
                                       MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
     }
 
     auto end_pos = end_qcoords - start_qcoords;
+    if (end_has_arrowhead || m_lane != 0) {
+        end_pos.ry() += get_endpoint_y_offset(m_end_item, start_qcoords);
+    }
     if (end_has_arrowhead) {
-        end_pos.ry() -= get_monomer_arrowhead_offset(m_end_item, start_qcoords);
         add_diamond_arrowhead_to_path(m_arrowhead_path, end_pos,
                                       MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
     }
-    m_connector_line = QLineF(start_offset, end_pos);
+    // Every numbered lane floats away from its endpoint anchors. This keeps a
+    // horizontal line from running through a diamond on another connection.
+    // Larger lane numbers move outward by one additional diamond width.
+    qreal line_y_displacement = 0;
+    if (m_lane != 0) {
+        const int lane_distance = std::abs(m_lane);
+        const auto direction = m_lane > 0 ? -1 : 1;
+        line_y_displacement = direction * lane_distance * 2 *
+                              MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+    }
+    const QPointF line_displacement(0, line_y_displacement);
+    m_connector_line =
+        QLineF(start_offset + line_displacement, end_pos + line_displacement);
+
+    if (m_lane != 0) {
+        // Diamond connections join at the outward diamond tip. Connections
+        // without diamonds join directly to the residue edge instead.
+        const auto direction = m_lane > 0 ? -1 : 1;
+        const auto get_join_start = [direction](const QPointF& endpoint,
+                                                const bool has_diamond) {
+            const auto offset_direction = has_diamond ? direction : -direction;
+            return endpoint + QPointF(
+                                  0, offset_direction *
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+        };
+        m_start_connector_join =
+            QLineF(get_join_start(start_offset, start_has_arrowhead),
+                   m_connector_line.p1());
+        m_end_connector_join =
+            QLineF(get_join_start(end_pos, end_has_arrowhead),
+                   m_connector_line.p2());
+    }
     m_midpoint = m_connector_line.center();
     m_selection_highlighting_path = path_around_line(
         m_connector_line, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
     m_predictive_highlighting_path = path_around_line(
         m_connector_line, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+    for (const auto& join :
+         {m_start_connector_join, m_end_connector_join}) {
+        if (!join.isNull()) {
+            m_selection_highlighting_path |= path_around_line(
+                join, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
+            m_predictive_highlighting_path |= path_around_line(
+                join, BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH);
+        }
+    }
     if (start_has_arrowhead) {
         or_diamond_arrowhead_to_path(m_selection_highlighting_path,
                                      start_offset,
@@ -186,6 +253,12 @@ void MonomerConnectorItem::paint(QPainter* painter,
     painter->save();
     painter->setPen(m_connector_pen);
     painter->drawLine(m_connector_line);
+    if (!m_start_connector_join.isNull()) {
+        painter->drawLine(m_start_connector_join);
+    }
+    if (!m_end_connector_join.isNull()) {
+        painter->drawLine(m_end_connector_join);
+    }
 
     if (!m_arrowhead_path.isEmpty()) {
         painter->setPen(m_arrowhead_pen);

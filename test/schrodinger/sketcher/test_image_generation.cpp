@@ -78,6 +78,23 @@ BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)
     BOOST_TEST(get_image_bytes(*test_scene, ImageFormat::PNG, opts).size() > 0);
 }
 
+BOOST_AUTO_TEST_CASE(test_render_peptide_linearly)
+{
+    const std::string helm = "PEPTIDE1{A.A.A.A.A.A.A.A.A.A.A.A}$$$$V2.0";
+
+    RenderOptions default_opts;
+    const auto default_svg =
+        get_image_bytes(helm, ImageFormat::SVG, default_opts);
+
+    RenderOptions linear_opts;
+    linear_opts.render_peptides_linearly = true;
+    const auto linear_svg =
+        get_image_bytes(helm, ImageFormat::SVG, linear_opts);
+
+    BOOST_TEST(!linear_svg.isEmpty());
+    BOOST_CHECK(linear_svg != default_svg);
+}
+
 BOOST_AUTO_TEST_CASE(test_highlighting)
 {
     auto rdmol = rdkit_extensions::to_rdkit("C1=CC=CC=C1");

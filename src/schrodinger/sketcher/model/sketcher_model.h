@@ -697,6 +697,11 @@ class SKETCHER_API SketcherModel : public QObject
     void loadRenderOptions(const RenderOptions& opts);
 
     /**
+     * @return whether peptides should use the linear rendering style
+     */
+    bool renderPeptidesLinearly() const;
+
+    /**
      * By default, the select, move-rotate and delete tool will be switched to
      * the draw carbon tool when the scene is empty. This method allows that
      * behavior to be disabled, which is required when the Sketcher is in
@@ -834,6 +839,7 @@ class SKETCHER_API SketcherModel : public QObject
     QColor m_background_color = LIGHT_BACKGROUND_COLOR;
     bool m_allow_select_tool_when_scene_empty = false;
     bool m_select_only_mode_active = false;
+    bool m_render_peptides_linearly = false;
 
     ColorScheme m_color_scheme = ColorScheme::DEFAULT;
 };

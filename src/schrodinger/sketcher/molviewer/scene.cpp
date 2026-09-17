@@ -167,7 +167,9 @@ void Scene::updateItems(const WhatChangedType what_changed)
             create_graphics_items_for_mol(
                 mol, m_fonts, *atom_display_settings_ptr,
                 *bond_display_settings_ptr,
-                m_sketcher_model->hasDarkColorScheme());
+                m_sketcher_model->hasDarkColorScheme(),
+                /* draw_attachment_points = */ true,
+                m_sketcher_model->renderPeptidesLinearly());
 
         for (auto* item : all_items) {
             addItem(item);

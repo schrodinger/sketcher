@@ -50,6 +50,10 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
      * more than one bond between two atoms, so a single bond object must
      * represent both connections.
      *
+     * @param lane The connector lane to use. Zero keeps the normal
+     * geometry-dependent placement. Positive lanes are above the monomers and
+     * negative lanes are below them; larger magnitudes are farther away.
+     *
      * @param parent The Qt parent for this item.  See the QGraphicsItem
      * documentation for additional information.
      *
@@ -61,6 +65,7 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
                          const AbstractMonomerItem& end_monomer_item,
                          const bool is_secondary_connection = false,
                          const bool is_dark_mode = false,
+                         const int lane = 0,
                          QGraphicsItem* parent = nullptr);
 
     enum { Type = static_cast<int>(ItemType::MONOMER_CONNECTOR) };
@@ -78,6 +83,8 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
      * the bond
      */
     bool isSecondaryConnection() const;
+
+    int getLane() const;
 
     /**
      * Replace the connector color and width with the given settings.
@@ -98,10 +105,13 @@ class SKETCHER_API MonomerConnectorItem : public AbstractBondOrConnectorItem
     QColor m_connector_color_dark_bg;
     bool m_is_dark_mode = false;
     QLineF m_connector_line;
+    QLineF m_start_connector_join;
+    QLineF m_end_connector_join;
     QPainterPath m_arrowhead_path;
     const AbstractMonomerItem& m_start_item;
     const AbstractMonomerItem& m_end_item;
     bool m_is_secondary_connection;
+    int m_lane;
 };
 
 } // namespace sketcher

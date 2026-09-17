@@ -23,6 +23,8 @@
 #include <unordered_map>
 
 #include "schrodinger/sketcher/font_loader.h"
+#include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
@@ -202,21 +204,44 @@ QSize get_image_size(const RenderOptions& opts, const QRectF& scene_rect)
  * Helper functions for the templated image generation APIs to inject various
  * inputs into the given sketcher scene.
  */
-void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
+void apply_coordinate_render_options(RDKit::RWMol& mol,
+                                     const RenderOptions& opts)
 {
-    mol_model.addMol(rdmol, "Import molecule", /* reposition_mol = */ true,
+    if (opts.render_peptides_linearly && rdkit_extensions::isMonomeric(mol)) {
+        mol.clearConformers();
+        rdkit_extensions::compute_monomer_mol_coords(
+            mol, /* render_peptides_linearly = */ true);
+    }
+}
+
+void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol,
+                      const RenderOptions& opts)
+{
+    RDKit::RWMol mol(rdmol);
+    apply_coordinate_render_options(mol, opts);
+    mol_model.addMol(mol, "Import molecule", /* reposition_mol = */ true,
                      /* new_molecule_added = */ true,
                      /* enforce_size_limit = */ false);
 }
 
-void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
+void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn,
+                      const RenderOptions&)
 {
     mol_model.addReaction(rxn, /* enforce_size_limit = */ false);
 }
 
-void add_to_mol_model(MolModel& mol_model, const std::string& text)
+void add_to_mol_model(MolModel& mol_model, const std::string& text,
+                      const RenderOptions& opts)
 {
-    add_text_to_mol_model(mol_model, text);
+    auto mol_or_reaction = convert_text_to_mol_or_reaction(
+        text, rdkit_extensions::Format::AUTO_DETECT);
+    if (std::holds_alternative<boost::shared_ptr<RDKit::RWMol>>(
+            mol_or_reaction)) {
+        auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
+        apply_coordinate_render_options(*mol, opts);
+    }
+    add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, std::nullopt,
+                                     /* recenter_view = */ true);
 }
 
 void paint_scene_to_given_paint_device(QPaintDevice* device,
@@ -257,7 +282,7 @@ template <typename T>
 void init_molviewer_image(MolModel& mol_model, SketcherModel& sketcher_model,
                           const T& input, const RenderOptions& opts)
 {
-    add_to_mol_model(mol_model, input);
+    add_to_mol_model(mol_model, input, opts);
     setLineColors(mol_model, opts);
     setHaloHighlightings(mol_model, opts);
     setAtomLabels(mol_model, opts);

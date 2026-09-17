@@ -69,6 +69,8 @@ get_monomer_graphics_item(const RDKit::Atom* atom, const Fonts& fonts,
  * @param bond_display_settings The settings for displaying bonds
  * @param draw_attachment_points Whether to create graphics items for
  * attachment point atoms.
+ * @param render_peptides_linearly Whether custom peptide connectors should be
+ * routed above or below their horizontal backbone.
  * @return A tuple of
  *   - A list of all newly created graphics items.
  *   - A map of atom -> the graphics item used to represent that atom
@@ -88,7 +90,8 @@ create_graphics_items_for_mol(const RDKit::ROMol* mol, const Fonts& fonts,
                               const AtomDisplaySettings& atom_display_settings,
                               const BondDisplaySettings& bond_display_settings,
                               const bool is_dark_mode = false,
-                              const bool draw_attachment_points = true);
+                              const bool draw_attachment_points = true,
+                              const bool render_peptides_linearly = false);
 
 /**
  * Update all graphics items to represent an updated conformer
