@@ -110,27 +110,17 @@
       sketcherReady.catch(() => {});
 
       function nativeExceptionMessage(instance, exception) {
-        // Older distributions expose the message helper but not cleanup helpers.
-        const canRelease =
-          typeof instance.incrementExceptionRefcount === 'function' &&
-          typeof instance.decrementExceptionRefcount === 'function';
-        if (canRelease) {
-          instance.incrementExceptionRefcount(exception);
-        }
+        instance.incrementExceptionRefcount(exception);
         try {
           return instance.getExceptionMessage(exception)[1];
         } finally {
-          if (canRelease) {
-            instance.decrementExceptionRefcount(exception);
-          }
+          instance.decrementExceptionRefcount(exception);
         }
       }
 
       async function withSketcher(callback) {
         const instance = await sketcherReady;
-        const canRestoreStack =
-          typeof instance.stackSave === 'function' && typeof instance.stackRestore === 'function';
-        const stack = canRestoreStack ? instance.stackSave() : undefined;
+        const stack = instance.stackSave();
         try {
           return callback(instance);
         } catch (err) {
@@ -139,9 +129,7 @@
           }
           throw err;
         } finally {
-          if (canRestoreStack) {
-            instance.stackRestore(stack);
-          }
+          instance.stackRestore(stack);
         }
       }
 
@@ -178,8 +166,8 @@
 
       window.addEventListener('message', async (event) => {
         const request = event.data;
-        // Only the embedding parent may control this sketcher. Opaque origins
-        // cannot receive a reply with an exact target origin.
+        // Limit control to the embedding parent and reply only to its verified
+        // origin. Opaque origins cannot receive an exact-origin reply.
         if (
           event.source !== window.parent ||
           event.source === window ||

@@ -1,12 +1,21 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
 import vm from 'node:vm';
+
+import { test } from '@playwright/test';
 
 const html = readFileSync(new URL('../../wasm/public/wasm_shell.html', import.meta.url), 'utf8');
 const script = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/)[1];
 
 function createPage(qtLoad) {
+  const loadModule = async (...args) => {
+    const instance = await qtLoad(...args);
+    instance.stackSave ??= () => 0;
+    instance.stackRestore ??= () => {};
+    instance.incrementExceptionRefcount ??= () => {};
+    instance.decrementExceptionRefcount ??= () => {};
+    return instance;
+  };
   const context = vm.createContext({
     window: {
       devicePixelRatio: 1,
@@ -18,7 +27,7 @@ function createPage(qtLoad) {
     document: { querySelector: () => ({ style: {}, addEventListener() {} }) },
     console: { error() {} },
     schrodinger_sketcher_entry() {},
-    qtLoad,
+    qtLoad: loadModule,
   });
   vm.runInContext(script, context);
   return context;

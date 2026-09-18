@@ -5,8 +5,7 @@
     "type": "module",
     "scripts": {
         "postinstall": "playwright install --with-deps",
-        "test": "node --test html_api.node.js && playwright test",
-        "test:html-api": "node --test html_api.node.js"
+        "test": "playwright test"
     },
     "devDependencies": {
         "@playwright/test": "^1.56.1"
