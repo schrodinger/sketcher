@@ -1,8 +1,10 @@
 #pragma once
 #include <array>
+#include <cstddef>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include <QGraphicsItem>
@@ -25,6 +27,11 @@ class Atom;
 
 namespace schrodinger
 {
+namespace rdkit_extensions
+{
+enum class ChainType;
+}
+
 namespace sketcher
 {
 
@@ -266,6 +273,7 @@ enum class DrawTool {
     EXPLICIT_H,
     MONOMER,
     MONOMERIC_CONNECTION,
+    CUSTOM_MONOMER,
 };
 
 /**
@@ -301,15 +309,16 @@ enum class ModelKey {
     DNA_NUCLEOBASE,      /// the base to use for the DNA_NUCLEOTIDE tool
     CUSTOM_NUCLEOTIDE,   /// a tuple of (sugar, base, phosphate) to use for the
                          ///   CUSTOM_NUCLEOTIDE tool
-    INTERFACE_TYPE,      /// whether the Sketcher is intended for use with
-                         ///   atomistic models, monomeric models, or both
-    TOOL_SET,            /// whether the side bar shows the atomistic tools or
-                         ///   monomeric tools, which (along with
-                         ///   MONOMER_TOOL_TYPE) controls the keyboard
-                         ///   shortcuts (i.e. should "C" activate carbon,
-                         ///   cysteine, or cytosine)
-    MOLECULE_TYPE,       /// whether the Sketcher workspace contains an
-                         ///   atomistic model, a monomeric model, or is empty
+    CUSTOM_MONOMER,
+    INTERFACE_TYPE, /// whether the Sketcher is intended for use with
+                    ///   atomistic models, monomeric models, or both
+    TOOL_SET,       /// whether the side bar shows the atomistic tools or
+                    ///   monomeric tools, which (along with
+                    ///   MONOMER_TOOL_TYPE) controls the keyboard
+                    ///   shortcuts (i.e. should "C" activate carbon,
+                    ///   cysteine, or cytosine)
+    MOLECULE_TYPE,  /// whether the Sketcher workspace contains an
+                    ///   atomistic model, a monomeric model, or is empty
 };
 
 enum class MoleculeType {
@@ -531,6 +540,7 @@ class SKETCHER_API SketcherModel : public QObject
     AtomQuery getAtomQuery() const;
     MonomerToolType getMonomerToolType() const;
     AminoAcidTool getAminoAcidTool() const;
+    std::pair<QString, rdkit_extensions::ChainType> getCustomMonomer() const;
     NucleicAcidTool getNucleicAcidTool() const;
     StdNucleobase getRNANucleobase() const;
     StdNucleobase getDNANucleobase() const;

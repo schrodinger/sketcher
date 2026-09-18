@@ -3,6 +3,7 @@
 #include <string>
 #include <tuple>
 
+#include <QAbstractButton>
 #include <QGraphicsSvgItem>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -17,7 +18,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/monomer_context_menu.h"
@@ -36,6 +39,7 @@
 #include "test_common.h"
 
 using namespace schrodinger::sketcher;
+using schrodinger::rdkit_extensions::ChainType;
 using schrodinger::rdkit_extensions::Format;
 using schrodinger::rdkit_extensions::MOL_FORMATS;
 using schrodinger::rdkit_extensions::RXN_FORMATS;
@@ -668,6 +672,46 @@ BOOST_AUTO_TEST_CASE(test_toolAtomChainTool)
 }
 
 /**
+ * Switching to the ATOM palette from a monomeric tool restores the
+ * previous atomistic tool, including the tool used for the next canvas click.
+ */
+BOOST_DATA_TEST_CASE(
+    test_monomeric_switch_to_atomistic_tool,
+    boost::unit_test::data::make({DrawTool::ATOM, DrawTool::BOND}) *
+        boost::unit_test::data::make({DrawTool::MONOMER,
+                                      DrawTool::CUSTOM_MONOMER,
+                                      DrawTool::MONOMERIC_CONNECTION}),
+    previous_tool, monomeric_tool)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    auto* model = sk.m_sketcher_model;
+    model->setValue(ModelKey::DRAW_TOOL, previous_tool);
+    model->setValues(
+        {{ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
+         {ModelKey::DRAW_TOOL, QVariant::fromValue(monomeric_tool)},
+         {ModelKey::CUSTOM_MONOMER, QVariant::fromValue(std::make_pair(
+                                        QString("CC"), ChainType::PEPTIDE))}});
+    BOOST_REQUIRE(model->getDrawTool() == monomeric_tool);
+
+    auto* atomistic_button = sk.findChild<QAbstractButton*>("atomistic_btn");
+    BOOST_REQUIRE(atomistic_button != nullptr);
+    BOOST_REQUIRE(atomistic_button->isEnabled());
+    atomistic_button->click();
+    BOOST_REQUIRE(model->getToolSet() == ToolSet::ATOMISTIC);
+    BOOST_REQUIRE(model->getDrawTool() == previous_tool);
+
+    sk.show();
+    QCoreApplication::processEvents();
+    click_scene_center(sk);
+    const auto* mol = sk.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() > 0);
+    for (const auto* atom : mol->atoms()) {
+        BOOST_TEST(!is_atom_monomeric(atom));
+    }
+}
+
+/**
  * Verify that an amino acid keyboard shortcut rebuilds the scene tool with the
  * newly selected amino acid.
  */
@@ -836,6 +880,38 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersPeptide)
     // verify all monomers are now "C" (cysteine)
     const auto* mol = model->getMol();
     check_all_monomers_have_res_name(*mol, "C");
+}
+
+/**
+ * Verify that pinging CUSTOM_MONOMER mutates selected monomers of the matching
+ * chain type, but does not mutate a selected monomer of a different type.
+ */
+BOOST_AUTO_TEST_CASE(test_pingMutateCustomMonomer)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    auto model = sk.m_mol_model;
+    model->addMonomer("A", ChainType::PEPTIDE, {0.0, 0.0, 0.0});
+    model->selectAll();
+
+    sk.m_sketcher_model->pingValue(
+        ModelKey::CUSTOM_MONOMER,
+        QVariant::fromValue(std::make_pair(QString("CC"), ChainType::PEPTIDE)));
+
+    const auto* monomer = model->getMol()->getAtomWithIdx(0);
+    std::string smiles_symbol;
+    BOOST_REQUIRE(monomer->getPropIfPresent("smilesSymbol", smiles_symbol));
+    BOOST_TEST(smiles_symbol == "CC");
+
+    // CUSTOM_MONOMER derives the target monomer type from its ChainType, so a
+    // CHEM custom monomer must not replace the selected peptide monomer.
+    sk.m_sketcher_model->pingValue(
+        ModelKey::CUSTOM_MONOMER,
+        QVariant::fromValue(std::make_pair(QString("NN"), ChainType::CHEM)));
+
+    monomer = model->getMol()->getAtomWithIdx(0);
+    BOOST_REQUIRE(monomer->getPropIfPresent("smilesSymbol", smiles_symbol));
+    BOOST_TEST(smiles_symbol == "CC");
 }
 
 /**

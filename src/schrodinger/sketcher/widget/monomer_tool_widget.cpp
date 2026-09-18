@@ -5,9 +5,11 @@
 #include <boost/assign.hpp>
 
 #include <QButtonGroup>
+#include <QToolButton>
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h" // ChainType
+#include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/rdkit/monomer_analog.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
@@ -97,6 +99,9 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
             &MonomerToolWidget::onAminoAcidClicked);
     connect(ui->nucleic_monomer_group, &QButtonGroup::buttonClicked, this,
             &MonomerToolWidget::onNucleicAcidClicked);
+
+    connect(ui->custom_monomer_btn, &QToolButton::clicked, this,
+            &MonomerToolWidget::sketchCustomMonomer);
 
     m_rna_popup = new NucleotidePopup(NucleicAcidTool::RNA_NUCLEOTIDE,
                                       ModelKey::RNA_NUCLEOBASE, "R", "U", this);
@@ -296,18 +301,19 @@ void MonomerToolWidget::updateCheckedButton()
     QAbstractButton* connection_button = nullptr;
     bool has_sel = model->hasActiveSelection();
     auto draw_tool = model->getDrawTool();
-    if (draw_tool == DrawTool::MONOMER) {
+    if (draw_tool == DrawTool::MONOMER ||
+        draw_tool == DrawTool::CUSTOM_MONOMER) {
         if (model->getMonomerToolType() == MonomerToolType::AMINO_ACID) {
             ui->amino_monomer_btn->setChecked(true);
             ui->amino_or_nucleic_stack->setCurrentWidget(ui->amino_page);
-            if (!has_sel) {
+            if (draw_tool == DrawTool::MONOMER && !has_sel) {
                 auto amino_acid = model->getAminoAcidTool();
                 amino_button = m_button_amino_acid_bimap.right.at(amino_acid);
             }
         } else {
             ui->nucleic_monomer_btn->setChecked(true);
             ui->amino_or_nucleic_stack->setCurrentWidget(ui->nucleic_page);
-            if (!has_sel) {
+            if (draw_tool == DrawTool::MONOMER && !has_sel) {
                 auto nucleic_acid = model->getNucleicAcidTool();
                 nucleic_button =
                     m_button_nucleic_acid_bimap.right.at(nucleic_acid);
@@ -323,6 +329,7 @@ void MonomerToolWidget::updateCheckedButton()
     check_button_or_uncheck_group(nucleic_button, ui->nucleic_monomer_group);
     check_button_or_uncheck_group(connection_button,
                                   ui->monomeric_connection_group);
+    ui->custom_monomer_btn->setChecked(draw_tool == DrawTool::CUSTOM_MONOMER);
 
     // Only show the popup indicator arrow on the currently checked button
     for (auto& [btn, popup] : m_amino_acid_symbol_popups) {
@@ -463,6 +470,69 @@ void MonomerToolWidget::onAminoAcidClicked(QAbstractButton* button)
         symbol = QString::fromStdString(AMINO_ACID_TOOL_TO_RES_NAME.at(tool));
     }
     ping_or_set_model_value(getModel(), ModelKey::AMINO_ACID_SYMBOL, symbol);
+}
+
+void MonomerToolWidget::sketchCustomMonomer()
+{
+    auto model = getModel();
+    // we don't want to check the custom monomer side bar button until the user
+    // clicks OK in the dialog (which will happen in updateCheckedButton), so
+    // uncheck it for now unless we were already on the custom monomer tool
+    auto draw_tool = model->getDrawTool();
+    ui->custom_monomer_btn->setChecked(draw_tool == DrawTool::CUSTOM_MONOMER);
+
+    // initialize the dialog with the current custom monomer
+    auto [starting_smiles, starting_monomer_type] = model->getCustomMonomer();
+    if (starting_smiles.isEmpty()) {
+        // if this is the first time the user has opened the dialog, then leave
+        // the Sketcher workspace empty and set the monomer type based on the
+        // currently active side bar tab
+        auto monomer_tool_type = model->getMonomerToolType();
+        starting_monomer_type = monomer_tool_type == MonomerToolType::AMINO_ACID
+                                    ? rdkit_extensions::ChainType::PEPTIDE
+                                    : rdkit_extensions::ChainType::RNA;
+    }
+
+    auto* dialog = new CustomMonomerDialog(this);
+    connect(dialog, &CustomMonomerDialog::customMonomerAccepted, this,
+            &MonomerToolWidget::onCustomMonomerDialogAccepted);
+    dialog->setMonomerType(starting_monomer_type);
+    if (!starting_smiles.isEmpty()) {
+        dialog->addSMILES(starting_smiles.toStdString());
+    }
+    dialog->show();
+}
+
+void MonomerToolWidget::onCustomMonomerDialogAccepted(
+    const std::string& smiles, const rdkit_extensions::ChainType monomer_type)
+{
+    auto model = getModel();
+    auto custom_monomer_value = QVariant::fromValue(
+        std::make_pair(QString::fromStdString(smiles), monomer_type));
+    if (!model->hasActiveSelection()) {
+        // there's no selection, so we switch to the custom monomer tool with
+        // the new monomer
+        std::unordered_map<ModelKey, QVariant> values = {
+            {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
+            {ModelKey::DRAW_TOOL,
+             QVariant::fromValue(DrawTool::CUSTOM_MONOMER)},
+            {ModelKey::CUSTOM_MONOMER, custom_monomer_value}};
+        if (monomer_type != rdkit_extensions::ChainType::CHEM) {
+            // switch to the AMINO or NUCLEIC tab to match the custom monomer's
+            // type
+            auto monomer_tool_type =
+                monomer_type == rdkit_extensions::ChainType::PEPTIDE
+                    ? MonomerToolType::AMINO_ACID
+                    : MonomerToolType::NUCLEIC_ACID;
+            values.insert({ModelKey::MONOMER_TOOL_TYPE,
+                           QVariant::fromValue(monomer_tool_type)});
+        }
+        model->setValues(values);
+    } else {
+        // setValue also pings the model to mutate the selection, while
+        // remembering the custom monomer for the next time the dialog opens.
+        model->setValue(ModelKey::CUSTOM_MONOMER, custom_monomer_value);
+    }
 }
 
 void MonomerToolWidget::onNucleicAcidClicked(QAbstractButton* button)

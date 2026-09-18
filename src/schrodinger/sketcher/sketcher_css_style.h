@@ -129,5 +129,8 @@ const QString AMINO_OR_NUCLEIC_TOGGLE_STYLE{
     "QToolButton:checked { color: #000000;"
     "     border-bottom: 2px solid #333333; }"};
 
+const QString CUSTOM_MONOMER_DIALOG_STYLE{
+    "#sketcher_widget_holder { background-color: white; }"};
+
 } // namespace sketcher
 } // namespace schrodinger

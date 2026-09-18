@@ -45,10 +45,11 @@ AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const rdkit_extensions::ChainType chain_type, const Fonts& fonts,
         const AtomDisplaySettings& atom_display_settings,
         const BondDisplaySettings& bond_display_settings, Scene* scene,
-        MolModel* mol_model) :
+        MolModel* mol_model, const bool is_smiles_monomer) :
     AbstractMonomerSceneTool(fonts, scene, mol_model),
     m_res_name(res_name),
     m_chain_type(chain_type),
+    m_is_smiles_monomer(is_smiles_monomer),
     m_bolded_fonts(fonts),
     m_atom_display_settings(&atom_display_settings),
     m_bond_display_settings(&bond_display_settings)
@@ -511,8 +512,8 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
         const QPointF& scene_pos) const
 {
     auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
-    auto monomer =
-        rdkit_extensions::makeMonomer(m_res_name, chain_id, 1, false);
+    auto monomer = rdkit_extensions::makeMonomer(m_res_name, chain_id, 1,
+                                                 m_is_smiles_monomer);
     auto monomer_pos = to_mol_xy(scene_pos);
     auto linkage_start = getDefaultDragStartAPModelName();
     // returned monomer is owned by the calling scope
@@ -566,8 +567,8 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
     auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
     auto res_num = 2;
     // returned monomer is owned by the calling scope
-    auto monomer =
-        rdkit_extensions::makeMonomer(m_res_name, chain_id, res_num, false);
+    auto monomer = rdkit_extensions::makeMonomer(m_res_name, chain_id, res_num,
+                                                 m_is_smiles_monomer);
     auto ap_model_name = get_attachment_point_for_new_monomer(
         start_monomer_info.monomer_type, start_monomer_info.ap_model_name,
         m_monomer_type, m_res_name);
@@ -818,7 +819,7 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::
             } else {
                 auto monomer_idx = m_mol_model->getMol()->getNumAtoms();
                 m_mol_model->addMonomer(m_res_name, m_chain_type,
-                                        monomer_info.pos);
+                                        monomer_info.pos, m_is_smiles_monomer);
                 return monomer_idx;
             }
         };

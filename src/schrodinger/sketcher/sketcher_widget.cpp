@@ -1736,6 +1736,25 @@ void SketcherWidget::applyModelValuePingToTargets(
             m_mol_model->mutateMonomers(atoms, symbol, MonomerType::PEPTIDE);
             break;
         }
+        case ModelKey::CUSTOM_MONOMER: {
+            auto [smiles, chain_type] =
+                value.value<std::pair<QString, rdkit_extensions::ChainType>>();
+            MonomerType monomer_type;
+            switch (chain_type) {
+                case rdkit_extensions::ChainType::PEPTIDE:
+                    monomer_type = MonomerType::PEPTIDE;
+                    break;
+                case rdkit_extensions::ChainType::RNA:
+                    // TODO: create a NA_CUSTOM type and use that here
+                    monomer_type = MonomerType::NA_BASE;
+                    break;
+                default:
+                    monomer_type = MonomerType::CHEM;
+            }
+            m_mol_model->mutateMonomers(atoms, smiles.toStdString(),
+                                        monomer_type, /*is_smiles =*/true);
+            break;
+        }
         case ModelKey::NUCLEIC_ACID_SYMBOL: {
             auto mutation = value.value<NucleicAcidMutation>();
             if (!NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(mutation.tool)) {

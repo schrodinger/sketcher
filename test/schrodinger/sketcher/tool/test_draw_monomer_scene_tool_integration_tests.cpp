@@ -1,10 +1,13 @@
 #define BOOST_TEST_MODULE test_draw_monomer_scene_tool_integration_tests
 
 #include <QPointF>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "./test_monomer_integration_tests_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+#include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/scene_utils.h"
@@ -15,6 +18,83 @@ namespace schrodinger
 {
 namespace sketcher
 {
+
+/**
+ * Dragging from empty space or an existing monomer must commit custom SMILES
+ * monomers, and the resulting connected structure must survive HELM export.
+ */
+BOOST_DATA_TEST_CASE(test_custom_monomer_drag_preserves_smiles,
+                     boost::unit_test::data::make({false, true}),
+                     start_on_existing)
+{
+    const std::string smiles = "[*:1]NCC(=O)[*:2]";
+    MonomerToolTestFixture fix;
+    QPointF start_pos(100, 100);
+    if (start_on_existing) {
+        fix.importMolText("PEPTIDE1{A}$$$$V2.0");
+        start_pos = fix.getMonomerPos(0);
+    }
+    fix.setCustomMonomerTool(QString::fromStdString(smiles),
+                             rdkit_extensions::ChainType::PEPTIDE);
+    fix.mouseDrag(start_pos, start_pos + QPointF(100, 0));
+
+    const auto* mol = fix.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 2);
+    BOOST_REQUIRE(mol->getNumBonds() == 1);
+    for (unsigned int i = start_on_existing ? 1 : 0; i < 2; ++i) {
+        const auto* monomer = mol->getAtomWithIdx(i);
+        BOOST_TEST(monomer->getProp<bool>(SMILES_MONOMER));
+        BOOST_TEST(monomer->getProp<std::string>(ATOM_LABEL) == smiles);
+    }
+    const auto first_symbol = start_on_existing ? "A" : "[" + smiles + "]";
+    fix.verifyHELM("PEPTIDE1{" + first_symbol + ".[" + smiles + "]}$$$$V2.0");
+}
+
+/**
+ * A database symbol and identical SMILES text represent different monomers.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_monomer_symbol_collision_mutates)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
+    fix.setCustomMonomerTool("C", rdkit_extensions::ChainType::PEPTIDE);
+    fix.mouseClick(fix.getMonomerPos(0));
+
+    auto mol = fix.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 1);
+    BOOST_TEST(mol->getAtomWithIdx(0)->getProp<bool>(SMILES_MONOMER));
+    BOOST_TEST(mol->getAtomWithIdx(0)->getProp<std::string>(ATOM_LABEL) == "C");
+
+    // The standard cysteine tool must also mutate back to the database monomer.
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    fix.mouseClick(fix.getMonomerPos(0));
+    mol = fix.m_mol_model->getMol();
+    BOOST_REQUIRE(mol->getNumAtoms() == 1);
+    BOOST_TEST(!mol->getAtomWithIdx(0)->getProp<bool>(SMILES_MONOMER));
+    fix.verifyHELM("PEPTIDE1{C}$$$$V2.0");
+}
+
+/**
+ * Clicking the same custom monomer extends it; selecting another mutates it.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_monomer_click_identity)
+{
+    const std::string smiles = "[*:1]NCC(=O)[*:2]";
+    MonomerToolTestFixture fix;
+    fix.setCustomMonomerTool(QString::fromStdString(smiles),
+                             rdkit_extensions::ChainType::PEPTIDE);
+    fix.mouseClick({0, 0});
+    fix.mouseClick(fix.getMonomerPos(0));
+    BOOST_REQUIRE(fix.m_mol_model->getMol()->getNumAtoms() == 2);
+    fix.verifyHELM("PEPTIDE1{[" + smiles + "].[" + smiles + "]}$$$$V2.0");
+
+    const std::string replacement = "[*:1]NC(C)C(=O)[*:2]";
+    fix.setCustomMonomerTool(QString::fromStdString(replacement),
+                             rdkit_extensions::ChainType::PEPTIDE);
+    fix.mouseClick(fix.getMonomerPos(0));
+    BOOST_REQUIRE(fix.m_mol_model->getMol()->getNumAtoms() == 2);
+    fix.verifyHELM("PEPTIDE1{[" + replacement + "].[" + smiles + "]}$$$$V2.0");
+}
 
 /**
  * Confirm that clicking in empty space adds the appropriate monomer
