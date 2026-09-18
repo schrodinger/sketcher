@@ -1,11 +1,13 @@
 #include "schrodinger/sketcher/dialog/file_import_export.h"
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <fmt/format.h>
 #include <fmt/ranges.h>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/image_generation.h"
+#include "schrodinger/sketcher/model/sketcher_model.h"
 
 using ::schrodinger::rdkit_extensions::Format;
 
@@ -19,7 +21,11 @@ std::vector<std::tuple<Format, std::string>> get_mol_import_formats()
     return {
         {Format::MDL_MOLV3000, "MDL SD"},
         {Format::MAESTRO, "Maestro"},
-        {Format::EXTENDED_SMILES, "SMILES"},
+        // On input there is no difference between SMILES and CXSMILES (or
+        // between SMARTS and CXSMARTS); both are handled by the same parser,
+        // so we offer a single entry for each rather than one per variant.
+        {Format::SMILES, "SMILES"},
+        {Format::SMARTS, "SMARTS"},
         {Format::INCHI, "InChI"},
         {Format::MOL2, "MOL2"},
         {Format::PDB, "PDB"},
@@ -47,64 +53,166 @@ std::vector<std::tuple<Format, std::string>> get_monomoric_import_formats()
     };
 }
 
-FormatList<Format> get_import_formats()
+namespace
 {
 
-    auto mol_import_formats = get_mol_import_formats();
-    auto rxn_import_formats = get_reaction_import_formats();
+/**
+ * @return the sequence formats to offer in a file dialog, with a human
+ * readable name for each. This differs from get_monomoric_import_formats(),
+ * which lists the FASTA sub-formats used when the caller knows what kind of
+ * sequence it has; extensions can't distinguish them, so a file dialog offers
+ * a single FASTA entry and resolve_ambiguous_import_format() picks a reader.
+ */
+std::vector<std::tuple<Format, std::string>> get_seq_file_import_formats()
+{
+    return {
+        {Format::HELM, "HELM"},
+        {Format::FASTA, "FASTA"},
+    };
+}
 
-    FormatList<Format> import_formats;
-    for (const auto& [format, label] : mol_import_formats) {
-        auto extensions = rdkit_extensions::get_mol_extensions(format);
-        // For EXTENDED_SMILES, also add extensions from SMILES
-        if (format == Format::EXTENDED_SMILES) {
-            auto smiles_extensions =
-                rdkit_extensions::get_mol_extensions(Format::SMILES);
-            extensions.insert(extensions.begin(), smiles_extensions.begin(),
-                              smiles_extensions.end());
+/**
+ * @param ext a file extension, including the leading dot
+ * @return whether the extension denotes a compressed file
+ */
+bool is_compressed_extension(const std::string& ext)
+{
+    return boost::algorithm::iends_with(ext, "gz") ||
+           boost::algorithm::iends_with(ext, "zst");
+}
+
+/**
+ * @param format the format to look up extensions for
+ * @return the molecule extensions for that format. The SMILES entry stands in
+ * for CXSMILES as well (the two are read and written by the same parser), so
+ * it also claims the CXSMILES extensions.
+ */
+std::vector<std::string> get_mol_import_extensions(const Format format)
+{
+    auto extensions = rdkit_extensions::get_mol_extensions(format);
+    if (format == Format::SMILES) {
+        auto cxsmiles_extensions =
+            rdkit_extensions::get_mol_extensions(Format::EXTENDED_SMILES);
+        extensions.insert(extensions.end(), cxsmiles_extensions.begin(),
+                          cxsmiles_extensions.end());
+    }
+    return extensions;
+}
+
+/**
+ * Build menu entries for the given formats, splitting each format's extensions
+ * into an uncompressed entry and a "[compressed]" entry so that no single row
+ * lists both. Formats with no extensions at all are omitted, since they can't
+ * be selected in a file dialog.
+ *
+ * @param formats (format enum, menu label) pairs, in menu order
+ * @param get_extensions callable returning the extensions for one format
+ * @param[out] uncompressed_entries uncompressed entries are appended here
+ * @param[out] compressed_entries compressed entries are appended here
+ */
+template <class T, class F> void
+append_split_entries(const std::vector<std::tuple<T, std::string>>& formats,
+                     F get_extensions, FormatList<T>& uncompressed_entries,
+                     FormatList<T>& compressed_entries)
+{
+    for (const auto& [format, label] : formats) {
+        std::vector<std::string> uncompressed;
+        std::vector<std::string> compressed;
+        for (const auto& ext : get_extensions(format)) {
+            (is_compressed_extension(ext) ? compressed : uncompressed)
+                .push_back(ext);
         }
-        // we skip SMARTS and EXTENDED_SMARTS since those don't have any
-        // associated extensions
-        if (!extensions.empty()) {
-            import_formats.push_back({format, label, extensions});
+        if (!uncompressed.empty()) {
+            uncompressed_entries.push_back({format, label, uncompressed});
+        }
+        if (!compressed.empty()) {
+            compressed_entries.push_back(
+                {format, label + " [compressed]", compressed});
         }
     }
-    for (const auto& [format, label] : rxn_import_formats) {
-        auto extensions = rdkit_extensions::get_rxn_extensions(format);
-        import_formats.push_back({format, label, extensions});
+}
+
+/**
+ * @return the given formats as menu entries, with all uncompressed entries
+ * first and all "[compressed]" entries after them
+ */
+template <class T, class F> FormatList<T>
+split_compressed_formats(const std::vector<std::tuple<T, std::string>>& formats,
+                         F get_extensions)
+{
+    FormatList<T> entries;
+    FormatList<T> compressed_entries;
+    append_split_entries(formats, get_extensions, entries, compressed_entries);
+    entries.insert(entries.end(), compressed_entries.begin(),
+                   compressed_entries.end());
+    return entries;
+}
+
+} // namespace
+
+InterfaceTypeType
+get_importable_mol_types(const InterfaceTypeType interface_type,
+                         const MoleculeType cur_mol_type,
+                         const bool replace_content)
+{
+    // If the interface only offers one kind of structure, that's all we can
+    // import. Otherwise, unless the import is going to replace what's already
+    // in the Sketcher, we're limited to whatever is already there.
+    if (interface_type == InterfaceType::ATOMISTIC ||
+        (!replace_content && cur_mol_type == MoleculeType::ATOMISTIC)) {
+        return InterfaceType::ATOMISTIC;
+    }
+    if (interface_type == InterfaceType::MONOMERIC ||
+        (!replace_content && cur_mol_type == MoleculeType::MONOMERIC)) {
+        return InterfaceType::MONOMERIC;
+    }
+    return InterfaceType::ATOMISTIC_OR_MONOMERIC;
+}
+
+FormatList<Format> get_import_formats(const InterfaceTypeType interface_type,
+                                      const MoleculeType cur_mol_type,
+                                      const bool replace_content)
+{
+    auto allowed_mol_types =
+        get_importable_mol_types(interface_type, cur_mol_type, replace_content);
+
+    FormatList<Format> atomistic_entries;
+    FormatList<Format> atomistic_compressed;
+    if (allowed_mol_types & InterfaceType::ATOMISTIC) {
+        append_split_entries(get_mol_import_formats(),
+                             get_mol_import_extensions, atomistic_entries,
+                             atomistic_compressed);
+        append_split_entries(get_reaction_import_formats(),
+                             rdkit_extensions::get_rxn_extensions,
+                             atomistic_entries, atomistic_compressed);
+        atomistic_entries.insert(atomistic_entries.end(),
+                                 atomistic_compressed.begin(),
+                                 atomistic_compressed.end());
+    }
+
+    FormatList<Format> monomeric_entries;
+    if (allowed_mol_types & InterfaceType::MONOMERIC) {
+        monomeric_entries =
+            split_compressed_formats(get_seq_file_import_formats(),
+                                     rdkit_extensions::get_seq_extensions);
+    }
+
+    // Laura Beck (SKETCH-2516): on the Monomer tab the sequence formats belong
+    // at the top, since everything else is atom-based; elsewhere they go at the
+    // bottom. A visual separator between the two groups isn't possible here,
+    // because QFileDialog::getOpenFileContent only accepts a filter string.
+    FormatList<Format> import_formats;
+    if (interface_type == InterfaceType::MONOMERIC) {
+        import_formats = std::move(monomeric_entries);
+        import_formats.insert(import_formats.end(), atomistic_entries.begin(),
+                              atomistic_entries.end());
+    } else {
+        import_formats = std::move(atomistic_entries);
+        import_formats.insert(import_formats.end(), monomeric_entries.begin(),
+                              monomeric_entries.end());
     }
     return import_formats;
 }
-
-namespace
-{
-// Helper function to check if an extension is compressed
-bool is_compressed_extension(const std::string& ext)
-{
-    return ext.find(".gz") != std::string::npos ||
-           ext.find("gz") == ext.length() - 2 ||
-           ext.find(".zst") != std::string::npos ||
-           ext.find("zst") == ext.length() - 3;
-}
-
-// Helper function to separate compressed and uncompressed extensions
-std::pair<std::vector<std::string>, std::vector<std::string>>
-separate_compressed_extensions(const std::vector<std::string>& extensions)
-{
-    std::vector<std::string> uncompressed;
-    std::vector<std::string> compressed;
-
-    for (const auto& ext : extensions) {
-        if (is_compressed_extension(ext)) {
-            compressed.push_back(ext);
-        } else {
-            uncompressed.push_back(ext);
-        }
-    }
-
-    return {uncompressed, compressed};
-}
-} // namespace
 
 FormatList<Format> get_standard_export_formats()
 {
@@ -128,32 +236,9 @@ FormatList<Format> get_standard_export_formats()
         {Format::FASTA, "FASTA"},
     };
 
-    FormatList<Format> export_formats;
-
-    // First pass: add all uncompressed formats
-    for (const auto& [format, label] : mol_and_seq_export_formats) {
-        auto extensions = rdkit_extensions::get_mol_and_seq_extensions(format);
-        auto [uncompressed, compressed] =
-            separate_compressed_extensions(extensions);
-
-        if (!uncompressed.empty()) {
-            export_formats.push_back({format, label, uncompressed});
-        }
-    }
-
-    // Second pass: add all compressed formats at the end
-    for (const auto& [format, label] : mol_and_seq_export_formats) {
-        auto extensions = rdkit_extensions::get_mol_and_seq_extensions(format);
-        auto [uncompressed, compressed] =
-            separate_compressed_extensions(extensions);
-
-        if (!compressed.empty()) {
-            export_formats.push_back(
-                {format, label + " [compressed]", compressed});
-        }
-    }
-
-    return export_formats;
+    return split_compressed_formats(
+        mol_and_seq_export_formats,
+        rdkit_extensions::get_mol_and_seq_extensions);
 };
 
 FormatList<Format> get_reaction_export_formats()
@@ -167,32 +252,8 @@ FormatList<Format> get_reaction_export_formats()
         {Format::EXTENDED_SMARTS, "Extended Reaction SMARTS"},
     };
 
-    FormatList<Format> export_formats;
-
-    // First pass: add all uncompressed formats
-    for (const auto& [format, label] : rxn_export_formats) {
-        auto extensions = rdkit_extensions::get_rxn_extensions(format);
-        auto [uncompressed, compressed] =
-            separate_compressed_extensions(extensions);
-
-        if (!uncompressed.empty()) {
-            export_formats.push_back({format, label, uncompressed});
-        }
-    }
-
-    // Second pass: add all compressed formats at the end
-    for (const auto& [format, label] : rxn_export_formats) {
-        auto extensions = rdkit_extensions::get_rxn_extensions(format);
-        auto [uncompressed, compressed] =
-            separate_compressed_extensions(extensions);
-
-        if (!compressed.empty()) {
-            export_formats.push_back(
-                {format, label + " [compressed]", compressed});
-        }
-    }
-
-    return export_formats;
+    return split_compressed_formats(rxn_export_formats,
+                                    rdkit_extensions::get_rxn_extensions);
 };
 
 // We define get_image_formats as a function for consistency with
@@ -210,6 +271,15 @@ FormatList<ImageFormat> get_image_export_formats()
         export_formats.push_back({format, label, {extension}});
     }
     return export_formats;
+}
+
+Format resolve_ambiguous_import_format(const Format format)
+{
+    // Every FASTA extension maps to Format::FASTA, which can't be read
+    // directly. The three sub-formats share an alphabet, so there's no way to
+    // tell them apart from the contents; assume peptide, as AUTO_DETECT_FORMATS
+    // does.
+    return format == Format::FASTA ? Format::FASTA_PEPTIDE : format;
 }
 
 std::string get_file_text(const std::string& file_path)

@@ -3,8 +3,6 @@
 #include <QFileDialog>
 #include <QTimer>
 
-#include <fmt/format.h>
-
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/file_stream.h"
 #include "schrodinger/sketcher/dialog/error_dialog.h"
@@ -74,10 +72,11 @@ void FileExportDialog::setIsReactionExport(bool has_reaction)
     int index = 0;
     for (const auto& [format, label, extensions] : m_current_format_list) {
         if (!extensions.empty()) {
-            // For export combo box, just show the format name without
-            // extensions Store the index in the format list, not the Format
-            // enum
-            m_ui->format_combo->addItem(QString::fromStdString(label), index);
+            // Store the index into the format list rather than the Format
+            // enum, since compressed and uncompressed entries for the same
+            // format share a Format value
+            m_ui->format_combo->addItem(get_filter_name(label, extensions),
+                                        index);
         }
         index++;
     }
