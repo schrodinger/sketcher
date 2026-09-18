@@ -566,10 +566,12 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
     } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
         num_numbered_aps = 2;
     } else {
-        // a CHEM monomer
-        num_numbered_aps =
-            *std::max_element(bound_ap_nums.begin(), bound_ap_nums.end());
-        num_numbered_aps += 1;
+        // A CHEM monomer with no numbered connections starts with R1.
+        num_numbered_aps = bound_ap_nums.empty()
+                               ? 1
+                               : *std::max_element(bound_ap_nums.begin(),
+                                                   bound_ap_nums.end()) +
+                                     1;
     }
 
     std::unordered_set<Direction> occupied_directions;

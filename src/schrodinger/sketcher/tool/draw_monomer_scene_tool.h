@@ -39,7 +39,8 @@ class SKETCHER_API DrawMonomerSceneTool
                          const Fonts& fonts,
                          const AtomDisplaySettings& atom_display_settings,
                          const BondDisplaySettings& bond_display_settings,
-                         Scene* scene, MolModel* mol_model);
+                         Scene* scene, MolModel* mol_model,
+                         bool is_smiles_monomer = false);
 
     // Reimplemented AbstractSceneTool method
     void onLeftButtonClick(QGraphicsSceneMouseEvent* const event) override;

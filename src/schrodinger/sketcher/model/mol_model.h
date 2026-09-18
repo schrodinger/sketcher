@@ -402,21 +402,28 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Undoably add an atom that represents a monomer
      *
-     * @param res_name The residue name of the monomer
+     * @param res_name_or_smiles The residue name of the monomer (if
+     * is_smiles_monomer is false) or SMILES string (if is_smiles_monomer is
+     * true)
      * @param chain_type The chain type of the monomer. Note that this should be
      * ChainType::RNA for any form of nucleic acid (since HELM considers DNA to
      * be a type of RNA)
      * @param coords The coordinates for the new monomer
+     * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
+     * a SMILES string
      */
-    void addMonomer(const std::string_view res_name,
+    void addMonomer(const std::string_view res_name_or_smiles,
                     const rdkit_extensions::ChainType chain_type,
-                    const RDGeom::Point3D& coords);
+                    const RDGeom::Point3D& coords,
+                    bool is_smiles_monomer = false);
 
     /**
      * Undoably add an atom that represents a monomer, and add a connection
      * between this new monomer and an existing monomer
      *
-     * @param res_name The residue name of the monomer
+     * @param res_name_or_smiles The residue name of the monomer (if
+     * is_smiles_monomer is false) or SMILES string (if is_smiles_monomer is
+     * true)
      * @param chain_type The chain type of the monomer. Note that this should be
      * ChainType::RNA for any form of nucleic acid (since HELM considers DNA to
      * be a type of RNA)
@@ -426,13 +433,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bound_to_monomer The existing monomer to add a connection to
      * @param bound_to_monomer_ap_name The name of the existing monomer's
      * attachment point used for the connection
+     * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
+     * a SMILES string
      */
-    void addBoundMonomer(const std::string_view res_name,
+    void addBoundMonomer(const std::string_view res_name_or_smiles,
                          const rdkit_extensions::ChainType chain_type,
                          const RDGeom::Point3D& coords,
                          const std::string_view new_monomer_ap_name,
                          const RDKit::Atom* const bound_to_monomer,
-                         const std::string_view bound_to_monomer_ap_name);
+                         const std::string_view bound_to_monomer_ap_name,
+                         bool is_smiles_monomer = false);
 
     /**
      * Undoably add a connection between two existing monomers
@@ -900,10 +910,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atoms The atoms (monomers) to consider for mutation
      * @param helm_symbol The HELM symbol to mutate matching monomers to
      * @param target_type Only mutate monomers of this type
+     * @param is_smiles Whether helm_symbol represents a residue name or a
+     * SMILES string
      */
     void mutateMonomers(const std::unordered_set<const RDKit::Atom*>& atoms,
-                        std::string_view helm_symbol,
-                        const MonomerType target_type);
+                        const std::string_view helm_symbol,
+                        const MonomerType target_type,
+                        const bool is_smiles = false);
 
     /**
      * Mutate all selected bonds

@@ -477,10 +477,10 @@ std::unique_ptr<Monomer> makeMonomer(const std::string_view name,
     return a;
 }
 
-void mutateMonomer(RDKit::ROMol& monomer_mol, unsigned int monomer_idx,
-                   std::string_view helm_symbol)
+void mutateMonomer(RDKit::ROMol& monomer_mol, const unsigned int monomer_idx,
+                   const std::string_view helm_symbol,
+                   const std::optional<bool> is_smiles_opt)
 {
-    // Currently assumes helm_symbol is in monomer DB
     auto* atom = monomer_mol.getAtomWithIdx(monomer_idx);
     if (atom == nullptr) {
         throw std::runtime_error(fmt::format("Atom {} not found", monomer_idx));
@@ -502,7 +502,8 @@ void mutateMonomer(RDKit::ROMol& monomer_mol, unsigned int monomer_idx,
     auto chain_type = getChainType(*atom);
     auto& db = MonomerDatabase::instance();
     bool in_db = db.getMonomerSmiles(helm_symbol_str, chain_type).has_value();
-    bool is_smiles = !in_db && helm::is_smiles_monomer(helm_symbol_str);
+    bool is_smiles = is_smiles_opt.value_or(
+        !in_db && helm::is_smiles_monomer(helm_symbol_str));
     atom->setProp(SMILES_MONOMER, is_smiles);
 
     // hack to get some level of canonicalization for monomer mols

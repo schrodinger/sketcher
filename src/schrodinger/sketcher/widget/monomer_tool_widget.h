@@ -3,6 +3,7 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 
 #include <boost/bimap.hpp>
 
@@ -19,6 +20,12 @@ class MonomerToolWidget;
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+enum class ChainType;
+}
+
 namespace sketcher
 {
 
@@ -66,6 +73,20 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
      * Respond to the user clicking on a specific amino acid
      */
     void onAminoAcidClicked(QAbstractButton* button);
+
+    /**
+     * Open the dialog for sketching a custom amino-acid monomer.
+     */
+    void sketchCustomMonomer();
+
+    /**
+     * Respond the the user clicking OK in the custom monomer dialog
+     * @param smiles A SMILES string representing the sketched monomer
+     * @param monomer_type The monomer type that the user selected in the dialog
+     */
+    void onCustomMonomerDialogAccepted(
+        const std::string& smiles,
+        const rdkit_extensions::ChainType monomer_type);
 
     /**
      * Respond to the user clicking on a specific nucleic acid
