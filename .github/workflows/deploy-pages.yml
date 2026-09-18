@@ -4,7 +4,12 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: ~
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref or commit to build
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -21,7 +26,7 @@ jobs:
       contents: read
     uses: ./.github/workflows/sketcher-builder.yml
     with:
-      ref: ${{ github.sha }}
+      ref: ${{ inputs.ref || github.sha }}
       wasm-only: true
 
   deploy:
@@ -37,7 +42,7 @@ jobs:
       - name: Download WebAssembly build
         uses: actions/download-artifact@v7
         with:
-          name: sketcher-${{ github.sha }}-wasm
+          name: sketcher-${{ inputs.ref || github.sha }}-wasm
           path: site
 
       - name: Prepare site
