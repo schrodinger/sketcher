@@ -89,7 +89,7 @@ get_attachment_point_nums_and_elems_for_monomer(const RDKit::Atom* monomer)
     bool is_smiles = false;
     if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
         return get_attachment_points_for_smiles(
-            monomer->getProp<std::string>(CANONICAL_SMILES));
+            monomer->getProp<std::string>(ATOM_LABEL));
     } else {
         return get_attachment_points_for_res(
             get_monomer_res_name(monomer),
