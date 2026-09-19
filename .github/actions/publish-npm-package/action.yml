@@ -16,6 +16,11 @@ runs:
         # Move WASM assets into package directory
         mv build/sketcher_app/* wasm/package/dist
 
+        # The generated Sketcher.js prefers this deterministic gzip asset and
+        # falls back to raw WASM for non-npm deployments. Do not duplicate the
+        # 44 MB raw module in the package.
+        gzip -9 -n wasm/package/dist/Sketcher.wasm
+
         # Compile the React component into dist/react. This must run after the
         # WASM assets are in place so the build can hash the assembled
         # wasm_shell.html for the iframe cache-bust (__WASM_HASH__).
