@@ -10,7 +10,7 @@
 
 #include <QByteArray> // qgetenv, qputemv, qunsetenv
 
-#include "schrodinger/local_monomer_db_fixture.h"
+#include "schrodinger/rdkit_extensions/local_monomer_db_fixture.h"
 
 BOOST_GLOBAL_FIXTURE(LocalMonomerDbFixture);
 

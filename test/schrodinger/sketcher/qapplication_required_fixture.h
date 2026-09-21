@@ -13,7 +13,7 @@
 #include <cstdlib>
 
 #include "schrodinger/sketcher/font_loader.h"
-#include "schrodinger/local_monomer_db_fixture.h"
+#include "schrodinger/rdkit_extensions/local_monomer_db_fixture.h"
 
 /// @return true if there is a display
 static bool has_display()
