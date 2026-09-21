@@ -568,6 +568,16 @@ static TurnInfo compute_centered_turn(const TurnConstraint& constraint)
 }
 
 /**
+ * Returns true if `monomer_pos` is consumed by a non-instant turn.
+ */
+static bool turn_contains_monomer(const TurnInfo& turn,
+                                  unsigned int monomer_pos)
+{
+    return turn.size > 0 && turn.position <= monomer_pos &&
+           monomer_pos < turn.position + turn.size;
+}
+
+/**
  * Returns true when each custom bond can be closed around a different turn.
  *
  * A custom bond whose endpoints contain exactly one turn connects adjacent
@@ -597,12 +607,24 @@ can_use_independent_turns(const std::vector<TurnConstraint>& constraints)
     // If a bond interval contains zero turns, its endpoints stay on the same
     // strand. If it contains multiple turns, they end up more than one strand
     // apart. Neither case can be closed by this layout without a crossing or a
-    // stretched bond.
+    // stretched bond. A zero-sized turn at max_pos is between the endpoints,
+    // because max_pos starts the following strand. Non-zero turns must fit
+    // entirely between the endpoints; an endpoint consumed by a turn is not on
+    // either adjacent strand.
     for (const auto& constraint : constraints) {
+        const auto endpoint_is_in_turn =
+            std::any_of(turns.begin(), turns.end(), [&](const auto& turn) {
+                return turn_contains_monomer(turn, constraint.min_pos) ||
+                       turn_contains_monomer(turn, constraint.max_pos);
+            });
+        if (endpoint_is_in_turn) {
+            return false;
+        }
+
         const auto num_turns_in_constraint =
             std::count_if(turns.begin(), turns.end(), [&](const auto& turn) {
                 return turn.position > constraint.min_pos &&
-                       turn.position < constraint.max_pos;
+                       turn.position + turn.size <= constraint.max_pos;
             });
         if (num_turns_in_constraint != 1) {
             return false;
