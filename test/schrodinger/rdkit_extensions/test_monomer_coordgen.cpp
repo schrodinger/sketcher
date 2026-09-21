@@ -265,12 +265,7 @@ BOOST_DATA_TEST_CASE(
         // between the bonded monomers and can be used independently.
         {"PEPTIDE1{C.A.C.C.A.C}$PEPTIDE1,PEPTIDE1,1:R3-3:R3|PEPTIDE1,"
          "PEPTIDE1,4:R3-6:R3$$$",
-         {{0, 0},
-          {1.5, 0},
-          {1.5, -1.5},
-          {0, -1.5},
-          {-1.5, -1.5},
-          {-1.5, -3}}},
+         {{0, 0}, {1.5, 0}, {1.5, -1.5}, {0, -1.5}, {-1.5, -1.5}, {-1.5, -3}}},
 
         // A custom-bond endpoint cannot be consumed by a non-instant turn.
         // Constraints 0-4 and 2-6 would otherwise be incorrectly accepted as
