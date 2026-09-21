@@ -53,7 +53,7 @@ void NucleicAcidPhosphateItem::updateCachedData()
     AbstractMonomerItem::updateCachedData();
 
     auto res_name = get_monomer_res_name(m_atom);
-    m_main_label_text = elide_text(res_name);
+    setMainLabelText(res_name);
 
     auto [border_pen_width, border_color, border_color_dark_bg, main_label_font,
           main_label_fm] =

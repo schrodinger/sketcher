@@ -81,12 +81,14 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
     QPen m_border_pen;
     QBrush m_border_brush = QBrush(Qt::BrushStyle::SolidPattern);
     QString m_main_label_text;
+    QString m_main_label_paint_text;
     QFont m_main_label_font;
     QPen m_main_label_pen =
         QPen(MONOMER_LABEL_TEXT_COLOR, MONOMER_LABEL_TEXT_WIDTH);
     QColor m_border_color;
     QColor m_border_color_dark_bg;
     bool m_is_dark_mode = false;
+    bool m_main_label_is_elided = false;
     QPainterPath m_border_path;
     // The leftmost point of the baseline to use when painting the main label
     // text (i.e. what we should pass to the QPainter in order to center the
@@ -99,10 +101,17 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
      * instead of the default 18 pt), then return num * 1.5.
      */
     qreal scaleBasedOnFontSize(qreal num) const;
+
+    /**
+     * Set the displayed monomer label and record whether it was shortened. If
+     * shortened, retain one additional character for clipped painting.
+     */
+    void setMainLabelText(const std::string& text);
 };
 
 /**
- * Elide the given string so that it contains no more than 6 characters.
+ * Return labels of up to 6 characters unchanged. Crop longer labels to 5
+ * characters so the sixth can be painted as the faded truncation character.
  */
 SKETCHER_API QString elide_text(const std::string& text);
 

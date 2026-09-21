@@ -333,6 +333,14 @@ set_target_properties(
   ${APP_TARGET}
   PROPERTIES OUTPUT_NAME "Sketcher" RUNTIME_OUTPUT_DIRECTORY
                                     ${CMAKE_BINARY_DIR}/sketcher_app)
+if(APPLE)
+  # Prefer libraries produced by this build over same-named libraries in the
+  # dependency environment. Otherwise the app can load an incompatible
+  # packaged rdkit_extensions library before the local one.
+  set_property(
+    TARGET ${APP_TARGET}
+    PROPERTY BUILD_RPATH "${CMAKE_BINARY_DIR};${CMAKE_BUILD_RPATH}")
+endif()
 if(EMSCRIPTEN)
   set(EXTRA_SKETCHER_APP_LINK_FLAGS
       -sEXPORT_NAME=schrodinger_sketcher_entry
