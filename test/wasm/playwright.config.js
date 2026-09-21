@@ -13,6 +13,9 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     viewport: { width: 1280, height: 720 },
     actionTimeout: 10000,
+    // On WASM the sketcher bypasses QClipboard and talks to
+    // navigator.clipboard directly, so clipboard tests need these granted.
+    permissions: ['clipboard-read', 'clipboard-write'],
   },
   retries: process.env.CI ? 1 : 0,
   snapshotPathTemplate: '{testDir}/{testFileDir}/__snapshots__/{testFileName}/{arg}{ext}',

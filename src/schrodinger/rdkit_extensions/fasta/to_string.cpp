@@ -64,7 +64,8 @@ get_property(const RDKitObject* obj, const std::string& propname)
 [[nodiscard]] static bool is_biopolymer(std::string_view polymer_id)
 {
     // PEPTIDE[0-9]* or RNA[0-9]*
-    return polymer_id.front() == 'P' || polymer_id.front() == 'R';
+    return !polymer_id.empty() &&
+           (polymer_id.front() == 'P' || polymer_id.front() == 'R');
 }
 
 [[nodiscard]] static std::string

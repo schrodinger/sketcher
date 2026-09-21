@@ -86,9 +86,6 @@ const std::string ORIGINAL_INDEX{"originalIndex"};
 // Set on the polymer mol
 const std::string POLYMER_ID{"polymerID"};
 
-// Replacement atom label for monomers with SMILES strings as their atom label
-const std::string SMILES_MONOMER_LABEL{"CX"};
-
 // the direction in which to lay out a monomer chain (from left to right or
 // right to left)
 enum class ChainDirection { LTR, RTL };
@@ -2394,16 +2391,6 @@ static unsigned int copy_polymer_coords_to_monomer_mol(
     return conformer->getId();
 }
 
-static void remove_cxsmiles_labels(RDKit::ROMol& monomer_mol)
-{
-    for (auto monomer : monomer_mol.atoms()) {
-        auto label = monomer->getProp<std::string>(ATOM_LABEL);
-        if (label.size() > 4) {
-            monomer->setProp<std::string>(ATOM_LABEL, SMILES_MONOMER_LABEL);
-        }
-    }
-}
-
 /**
  * Adjust CHEM polymers (polymers with a single monomer typically used to
  * connect a polymer back to itself or two polymers together) to position them
@@ -3267,8 +3254,6 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol)
     } else {
         lay_out_polymers(polymers, parent_polymer);
     }
-
-    remove_cxsmiles_labels(monomer_mol);
 
     auto conformer_id =
         copy_polymer_coords_to_monomer_mol(monomer_mol, polymers);

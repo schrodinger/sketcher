@@ -85,8 +85,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
         exp_available = {{"R1", "N", 1, Direction::W},
-                         {"R2", "C", 2, Direction::E},
-                         {"pair", "H-bond", -1, Direction::N}};
+                         {"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps.empty());
         BOOST_TEST(unbound_aps == exp_available);
     }
@@ -101,16 +100,14 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
         exp_bound = {{"R2", "C", 2, atom1, false, Direction::E}};
-        exp_available = {{"R1", "N", 1, Direction::W},
-                         {"pair", "H-bond", -1, Direction::N}};
+        exp_available = {{"R1", "N", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
 
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom1);
         exp_bound = {{"R1", "N", 1, atom0, false, Direction::W}};
-        exp_available = {{"R2", "C", 2, Direction::E},
-                         {"pair", "H-bond", -1, Direction::N}};
+        exp_available = {{"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
     }
@@ -142,9 +139,8 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
             get_attachment_points_for_monomer(atom1);
         exp_bound = {{"R1", "N", 1, atom0, false, Direction::W},
                      {"R2", "C", 2, atom2, false, Direction::E}};
-        exp_available = {{"pair", "H-bond", -1, Direction::N}};
         BOOST_TEST(bound_aps == exp_bound);
-        BOOST_TEST(unbound_aps == exp_available);
+        BOOST_TEST(unbound_aps.empty());
 
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom2);
@@ -323,8 +319,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
             get_attachment_points_for_monomer(atom0);
         exp_bound = {{"R2", "C", 2, atom1, false, Direction::E},
                      {"R4", "R4", 4, atom1, true, Direction::E}};
-        exp_available = {{"R1", "N", 1, Direction::W},
-                         {"pair", "H-bond", -1, Direction::N}};
+        exp_available = {{"R1", "N", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
 
@@ -332,8 +327,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
             get_attachment_points_for_monomer(atom1);
         exp_bound = {{"R1", "N", 1, atom0, false, Direction::W},
                      {"R4", "R4", 4, atom0, true, Direction::W}};
-        exp_available = {{"R2", "C", 2, Direction::E},
-                         {"pair", "H-bond", -1, Direction::N}};
+        exp_available = {{"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
     }
