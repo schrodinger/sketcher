@@ -100,21 +100,42 @@ std::vector<std::string> get_mol_import_extensions(const Format format)
 }
 
 /**
- * Build menu entries for the given formats, splitting each format's extensions
- * into an uncompressed entry and a "[compressed]" entry so that no single row
- * lists both. Formats with no extensions at all are omitted, since they can't
- * be selected in a file dialog.
+ * Build one menu entry per format, listing all of that format's extensions
+ * together. Formats with no extensions at all are omitted, since they can't be
+ * selected in a file dialog.
  *
  * @param formats (format enum, menu label) pairs, in menu order
  * @param get_extensions callable returning the extensions for one format
- * @param[out] uncompressed_entries uncompressed entries are appended here
- * @param[out] compressed_entries compressed entries are appended here
  */
-template <class T, class F> void
-append_split_entries(const std::vector<std::tuple<T, std::string>>& formats,
-                     F get_extensions, FormatList<T>& uncompressed_entries,
-                     FormatList<T>& compressed_entries)
+template <class T, class F> FormatList<T>
+build_format_list(const std::vector<std::tuple<T, std::string>>& formats,
+                  F get_extensions)
 {
+    FormatList<T> entries;
+    for (const auto& [format, label] : formats) {
+        auto extensions = get_extensions(format);
+        if (!extensions.empty()) {
+            entries.push_back({format, label, extensions});
+        }
+    }
+    return entries;
+}
+
+/**
+ * Build menu entries for the given formats, giving each format's compressed
+ * extensions their own "[compressed]" entry directly below the uncompressed
+ * one. Keeping the pair adjacent means the user finds the compressed variant
+ * next to the format they were already looking for. Formats with no extensions
+ * at all are omitted, since they can't be selected in a file dialog.
+ *
+ * @param formats (format enum, menu label) pairs, in menu order
+ * @param get_extensions callable returning the extensions for one format
+ */
+template <class T, class F>
+FormatList<T> build_format_list_split_by_compression(
+    const std::vector<std::tuple<T, std::string>>& formats, F get_extensions)
+{
+    FormatList<T> entries;
     for (const auto& [format, label] : formats) {
         std::vector<std::string> uncompressed;
         std::vector<std::string> compressed;
@@ -123,28 +144,12 @@ append_split_entries(const std::vector<std::tuple<T, std::string>>& formats,
                 .push_back(ext);
         }
         if (!uncompressed.empty()) {
-            uncompressed_entries.push_back({format, label, uncompressed});
+            entries.push_back({format, label, uncompressed});
         }
         if (!compressed.empty()) {
-            compressed_entries.push_back(
-                {format, label + " [compressed]", compressed});
+            entries.push_back({format, label + " [compressed]", compressed});
         }
     }
-}
-
-/**
- * @return the given formats as menu entries, with all uncompressed entries
- * first and all "[compressed]" entries after them
- */
-template <class T, class F> FormatList<T>
-split_compressed_formats(const std::vector<std::tuple<T, std::string>>& formats,
-                         F get_extensions)
-{
-    FormatList<T> entries;
-    FormatList<T> compressed_entries;
-    append_split_entries(formats, get_extensions, entries, compressed_entries);
-    entries.insert(entries.end(), compressed_entries.begin(),
-                   compressed_entries.end());
     return entries;
 }
 
@@ -176,25 +181,27 @@ FormatList<Format> get_import_formats(const InterfaceTypeType interface_type,
     auto allowed_mol_types =
         get_importable_mol_types(interface_type, cur_mol_type, replace_content);
 
+    // Unlike export, an import entry lists a format's compressed and
+    // uncompressed extensions together: the user is picking a file that already
+    // exists, so there's nothing to decide and splitting would only lengthen an
+    // already long list.
     FormatList<Format> atomistic_entries;
-    FormatList<Format> atomistic_compressed;
     if (allowed_mol_types & InterfaceType::ATOMISTIC) {
-        append_split_entries(get_mol_import_formats(),
-                             get_mol_import_extensions, atomistic_entries,
-                             atomistic_compressed);
-        append_split_entries(get_reaction_import_formats(),
-                             rdkit_extensions::get_rxn_extensions,
-                             atomistic_entries, atomistic_compressed);
+        atomistic_entries = build_format_list(get_mol_import_formats(),
+                                              get_mol_import_extensions);
+        auto reaction_entries =
+            build_format_list(get_reaction_import_formats(),
+                              rdkit_extensions::get_rxn_extensions);
         atomistic_entries.insert(atomistic_entries.end(),
-                                 atomistic_compressed.begin(),
-                                 atomistic_compressed.end());
+                                 reaction_entries.begin(),
+                                 reaction_entries.end());
     }
 
     FormatList<Format> monomeric_entries;
     if (allowed_mol_types & InterfaceType::MONOMERIC) {
         monomeric_entries =
-            split_compressed_formats(get_seq_file_import_formats(),
-                                     rdkit_extensions::get_seq_extensions);
+            build_format_list(get_seq_file_import_formats(),
+                              rdkit_extensions::get_seq_extensions);
     }
 
     // Laura Beck (SKETCH-2516): on the Monomer tab the sequence formats belong
@@ -214,9 +221,9 @@ FormatList<Format> get_import_formats(const InterfaceTypeType interface_type,
     return import_formats;
 }
 
-FormatList<Format> get_standard_export_formats()
+std::vector<std::tuple<Format, std::string>> get_mol_and_seq_export_formats()
 {
-    std::vector<std::tuple<Format, std::string>> mol_and_seq_export_formats = {
+    return {
         // Forbid MDL_MOLV2000 on export; potential stereo ambiguities
         {Format::MDL_MOLV3000, "MDL SD V3000"},
         {Format::MAESTRO, "Maestro"},
@@ -235,15 +242,11 @@ FormatList<Format> get_standard_export_formats()
         {Format::HELM, "HELM"},
         {Format::FASTA, "FASTA"},
     };
+}
 
-    return split_compressed_formats(
-        mol_and_seq_export_formats,
-        rdkit_extensions::get_mol_and_seq_extensions);
-};
-
-FormatList<Format> get_reaction_export_formats()
+std::vector<std::tuple<Format, std::string>> get_rxn_export_formats()
 {
-    std::vector<std::tuple<Format, std::string>> rxn_export_formats = {
+    return {
         // Forbid MDL_MOLV2000 on export; potential stereo ambiguities
         {Format::MDL_MOLV3000, "MDL RXN V3000"},
         {Format::SMILES, "Reaction SMILES"},
@@ -251,9 +254,19 @@ FormatList<Format> get_reaction_export_formats()
         {Format::SMARTS, "Reaction SMARTS"},
         {Format::EXTENDED_SMARTS, "Extended Reaction SMARTS"},
     };
+}
 
-    return split_compressed_formats(rxn_export_formats,
-                                    rdkit_extensions::get_rxn_extensions);
+FormatList<Format> get_standard_export_formats()
+{
+    return build_format_list_split_by_compression(
+        get_mol_and_seq_export_formats(),
+        rdkit_extensions::get_mol_and_seq_extensions);
+};
+
+FormatList<Format> get_reaction_export_formats()
+{
+    return build_format_list_split_by_compression(
+        get_rxn_export_formats(), rdkit_extensions::get_rxn_extensions);
 };
 
 // We define get_image_formats as a function for consistency with

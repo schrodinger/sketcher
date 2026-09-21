@@ -45,9 +45,15 @@ BOOST_AUTO_TEST_CASE(test_updateActions)
     // All formats are present as actions, we just show/hide based on whether
     // there is a mol or a reaction present
     BOOST_TEST(mgr.m_copy_as_menu->actions().size() ==
-               get_standard_export_formats().size() +
-                   get_reaction_export_formats().size() +
+               get_mol_and_seq_export_formats().size() +
+                   get_rxn_export_formats().size() +
                    2); // + (separator + image)
+
+    // A copy has no filename, so the menu must not offer "[compressed]"
+    // duplicates of formats that happen to have a compressed extension
+    for (auto act : mgr.m_copy_as_menu->actions()) {
+        BOOST_TEST(!act->text().contains("compressed"));
+    }
 
     // confirm copy as menu toggles based on reactions
     auto reaction_actions_visible = [&mgr](bool expect_reaction) {

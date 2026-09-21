@@ -81,8 +81,22 @@ SKETCHER_API rdkit_extensions::Format
 resolve_ambiguous_import_format(const rdkit_extensions::Format format);
 
 /**
+ * @return the molecule, sequence, and reaction export formats with a human
+ * readable name for each. Callers that write to a file should prefer
+ * get_standard_export_formats() / get_reaction_export_formats(), which also
+ * report extensions; these are for destinations with no filename, such as the
+ * clipboard, where compression doesn't apply.
+ */
+SKETCHER_API std::vector<std::tuple<rdkit_extensions::Format, std::string>>
+get_mol_and_seq_export_formats();
+SKETCHER_API std::vector<std::tuple<rdkit_extensions::Format, std::string>>
+get_rxn_export_formats();
+
+/**
  * @return list of exportable (format enum, menu label, allowable extensions)
- *  for both standard molecules, reactions, and image formats
+ *  for both standard molecules, reactions, and image formats. Each format's
+ *  compressed extensions get their own "[compressed]" entry directly below the
+ *  uncompressed one.
  */
 SKETCHER_API FormatList<rdkit_extensions::Format> get_standard_export_formats();
 SKETCHER_API FormatList<rdkit_extensions::Format> get_reaction_export_formats();

@@ -63,13 +63,19 @@ std::vector<std::string> extensions_for(const FormatList<Format>& formats,
 
 BOOST_AUTO_TEST_CASE(test_get_import_export_formats)
 {
-    // 13 atomistic molecule entries + 2 reaction entries + HELM + FASTA
-    BOOST_TEST(all_import_formats().size() == 17);
-    // Formats with both compressed and uncompressed extensions are listed
-    // twice; formats with no extensions at all are omitted
+    // 9 atomistic molecule entries + 2 reaction entries + HELM + FASTA. Formats
+    // with no extensions at all are omitted, since they can't be picked in a
+    // file dialog
+    BOOST_TEST(all_import_formats().size() == 13);
+    // On export, formats with both compressed and uncompressed extensions are
+    // listed twice
     BOOST_TEST(get_standard_export_formats().size() == 14);
     BOOST_TEST(get_reaction_export_formats().size() == 2);
     BOOST_TEST(get_image_export_formats().size() == 2);
+    // The clipboard has no filename, so those lists carry no compressed
+    // duplicates and are correspondingly shorter
+    BOOST_TEST(get_mol_and_seq_export_formats().size() == 13);
+    BOOST_TEST(get_rxn_export_formats().size() == 5);
 }
 
 BOOST_AUTO_TEST_CASE(test_get_standard_export_formats_includes_sequence_formats)
@@ -103,6 +109,9 @@ BOOST_AUTO_TEST_CASE(test_smiles_entry_covers_cxsmiles)
     BOOST_TEST(contains(smiles_exts, ".smiles"));
     BOOST_TEST(contains(smiles_exts, ".cxsmi"));
     BOOST_TEST(contains(smiles_exts, ".cxsmiles"));
+    // compressed extensions ride along on the same entry, see
+    // test_import_does_not_split_compressed
+    BOOST_TEST(contains(smiles_exts, ".smigz"));
 
     // SMARTS has no extensions, so it can't appear in a file dialog, but it
     // must still be offered where the user supplies the format themselves
@@ -116,44 +125,93 @@ BOOST_AUTO_TEST_CASE(test_smiles_entry_covers_cxsmiles)
 }
 
 /**
- * Compressed extensions get their own "[compressed]" entry so that no single
- * row in the dialog lists both compressed and uncompressed extensions.
+ * On import the user is picking a file that already exists, so there's nothing
+ * for them to decide and each format lists all of its extensions on one row.
  */
-BOOST_AUTO_TEST_CASE(test_compressed_extensions_are_split_out)
+BOOST_AUTO_TEST_CASE(test_import_does_not_split_compressed)
 {
     auto formats = all_import_formats();
-
-    auto smiles_exts = extensions_for(formats, "SMILES");
-    BOOST_TEST(!contains(smiles_exts, ".smigz"));
-    BOOST_TEST(!contains(smiles_exts, ".smi.gz"));
-    auto compressed_smiles_exts =
-        extensions_for(formats, "SMILES [compressed]");
-    BOOST_TEST(contains(compressed_smiles_exts, ".smigz"));
-    BOOST_TEST(contains(compressed_smiles_exts, ".smi.gz"));
+    auto labels = labels_of(formats);
+    BOOST_TEST(std::none_of(
+        labels.begin(), labels.end(), [](const std::string& label) {
+            return label.find("compressed") != std::string::npos;
+        }));
 
     // ".maezst" ends in "zst" without a preceding dot, so it is easy to
-    // misclassify as uncompressed
+    // misclassify; all four compressed spellings must remain selectable
     auto maestro_exts = extensions_for(formats, "Maestro");
-    BOOST_TEST(maestro_exts == std::vector<std::string>{".mae"});
-    auto compressed_maestro_exts =
-        extensions_for(formats, "Maestro [compressed]");
-    BOOST_TEST(contains(compressed_maestro_exts, ".maegz"));
-    BOOST_TEST(contains(compressed_maestro_exts, ".maezst"));
-    BOOST_TEST(contains(compressed_maestro_exts, ".mae.zst"));
+    BOOST_TEST(contains(maestro_exts, ".mae"));
+    BOOST_TEST(contains(maestro_exts, ".maegz"));
+    BOOST_TEST(contains(maestro_exts, ".mae.gz"));
+    BOOST_TEST(contains(maestro_exts, ".maezst"));
+    BOOST_TEST(contains(maestro_exts, ".mae.zst"));
 
-    // Formats with no compressed extensions get no second entry
-    BOOST_TEST(!contains(labels_of(formats), "MOL2 [compressed]"));
-
-    // Within the atomistic group, the compressed entries are collected at the
-    // end rather than interleaved with the formats they duplicate
     auto atomistic = labels_of(get_import_formats(InterfaceType::ATOMISTIC,
                                                   MoleculeType::EMPTY, true));
     BOOST_TEST(atomistic == (std::vector<std::string>{
                                 "MDL SD", "Maestro", "SMILES", "InChI", "MOL2",
                                 "PDB", "XYZ", "Marvin Document", "ChemDraw XML",
-                                "MDL RXN", "Reaction SMILES",
-                                "MDL SD [compressed]", "Maestro [compressed]",
-                                "SMILES [compressed]", "PDB [compressed]"}));
+                                "MDL RXN", "Reaction SMILES"}));
+}
+
+/**
+ * On export the compressed variant is a real choice, so it gets its own entry
+ * -- directly below the format it compresses, rather than in a block at the
+ * end, so that the pair stays together.
+ */
+BOOST_AUTO_TEST_CASE(test_export_interleaves_compressed_with_its_pair)
+{
+    auto labels = labels_of(get_standard_export_formats());
+    BOOST_TEST(labels[0] == "MDL SD V3000");
+    BOOST_TEST(labels[1] == "MDL SD V3000 [compressed]");
+    BOOST_TEST(labels[2] == "Maestro");
+    BOOST_TEST(labels[3] == "Maestro [compressed]");
+
+    // every compressed entry sits directly below the one it duplicates
+    const std::string suffix = " [compressed]";
+    for (size_t i = 0; i < labels.size(); ++i) {
+        if (!labels[i].ends_with(suffix)) {
+            continue;
+        }
+        BOOST_TEST(i > 0);
+        BOOST_TEST(labels[i - 1] ==
+                   labels[i].substr(0, labels[i].size() - suffix.size()));
+    }
+
+    // Formats with no compressed extensions get no second entry
+    BOOST_TEST(!contains(labels, "InChIKey [compressed]"));
+
+    auto compressed_maestro_exts =
+        extensions_for(get_standard_export_formats(), "Maestro [compressed]");
+    BOOST_TEST(contains(compressed_maestro_exts, ".maegz"));
+    BOOST_TEST(contains(compressed_maestro_exts, ".maezst"));
+    BOOST_TEST(extensions_for(get_standard_export_formats(), "Maestro") ==
+               std::vector<std::string>{".mae"});
+}
+
+/**
+ * A copy goes to the clipboard rather than to a file, so compression doesn't
+ * apply. The compressed entries share a Format value with the uncompressed
+ * ones, so offering them would produce byte-identical duplicate menu items.
+ */
+BOOST_AUTO_TEST_CASE(test_clipboard_export_formats_have_no_compressed_entries)
+{
+    for (const auto& formats :
+         {get_mol_and_seq_export_formats(), get_rxn_export_formats()}) {
+        for (const auto& [format, label] : formats) {
+            BOOST_TEST(label.find("compressed") == std::string::npos);
+        }
+    }
+
+    // ...but they still cover every format the file dialog offers
+    auto has_label = [](const auto& formats, const std::string& target) {
+        return std::ranges::any_of(formats, [&target](const auto& e) {
+            return std::get<1>(e) == target;
+        });
+    };
+    BOOST_TEST(has_label(get_mol_and_seq_export_formats(), "Maestro"));
+    BOOST_TEST(has_label(get_mol_and_seq_export_formats(), "HELM"));
+    BOOST_TEST(has_label(get_rxn_export_formats(), "Reaction SMARTS"));
 }
 
 /**
@@ -174,12 +232,12 @@ BOOST_AUTO_TEST_CASE(test_sequence_formats_are_ordered_by_interface)
     // Atomistic tab: no sequence formats at all
     auto atomistic = labels_of(get_import_formats(InterfaceType::ATOMISTIC,
                                                   MoleculeType::EMPTY, true));
-    BOOST_TEST(atomistic.size() == 15);
+    BOOST_TEST(atomistic.size() == 11);
     BOOST_TEST(std::none_of(atomistic.begin(), atomistic.end(), is_seq));
 
     // Both: sequence formats last, since the atomistic formats dominate
     auto both = labels_of(all_import_formats());
-    BOOST_TEST(both.size() == 17);
+    BOOST_TEST(both.size() == 13);
     BOOST_TEST(is_seq(both[both.size() - 2]));
     BOOST_TEST(is_seq(both.back()));
 
