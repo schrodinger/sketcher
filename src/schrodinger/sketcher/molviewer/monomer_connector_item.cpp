@@ -160,7 +160,7 @@ void MonomerConnectorItem::updateCachedData()
             m_end_item.getAtom(), m_is_secondary_connection);
     }
 
-    QPointF end_offset;
+    QPointF end_offset{};
     if (end_has_arrowhead) {
         end_offset = get_monomer_arrowhead_offset(
             m_end_item, start_qcoords, m_end_item.getAtom(),
