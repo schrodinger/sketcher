@@ -102,14 +102,14 @@ makeMonomer(const std::string_view name, const std::string_view chain_id,
  * @param monomer_mol The monomeric molecule to mutate
  * @param monomer_idx The index of the monomer to mutate
  * @param helm_symbol The HELM symbol to mutate the monomer to
- * @param is_smiles_opt Whether HELM symbol should be interpretted as a SMILES
+ * @param is_smiles Whether HELM symbol should be interpretted as a SMILES
  * string or a residue name. If not given, will be automatically determined
  * based on helm_symbol.
  */
 RDKIT_EXTENSIONS_API void
 mutateMonomer(RDKit::ROMol& monomer_mol, const unsigned int monomer_idx,
               const std::string_view helm_symbol,
-              const std::optional<bool> is_smiles_opt = std::nullopt);
+              const std::optional<bool> is_smiles = std::nullopt);
 
 /*
  * Add a connection between two monomers in the molecule. The connection has

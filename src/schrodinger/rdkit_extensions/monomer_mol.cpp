@@ -479,7 +479,7 @@ std::unique_ptr<Monomer> makeMonomer(const std::string_view name,
 
 void mutateMonomer(RDKit::ROMol& monomer_mol, const unsigned int monomer_idx,
                    const std::string_view helm_symbol,
-                   const std::optional<bool> is_smiles_opt)
+                   const std::optional<bool> is_smiles)
 {
     auto* atom = monomer_mol.getAtomWithIdx(monomer_idx);
     if (atom == nullptr) {
@@ -502,15 +502,15 @@ void mutateMonomer(RDKit::ROMol& monomer_mol, const unsigned int monomer_idx,
     auto chain_type = getChainType(*atom);
     auto& db = MonomerDatabase::instance();
     bool in_db = db.getMonomerSmiles(helm_symbol_str, chain_type).has_value();
-    bool is_smiles = is_smiles_opt.value_or(
-        !in_db && helm::is_smiles_monomer(helm_symbol_str));
-    atom->setProp(SMILES_MONOMER, is_smiles);
+    bool is_smiles_bool =
+        is_smiles.value_or(!in_db && helm::is_smiles_monomer(helm_symbol_str));
+    atom->setProp(SMILES_MONOMER, is_smiles_bool);
 
     // hack to get some level of canonicalization for monomer mols
     static boost::hash<std::string> hasher;
     // Canonicalize SMILES monomers before storing and hashing
     std::string canon_smiles =
-        is_smiles ? canonicalize_smiles(helm_symbol_str) : helm_symbol_str;
+        is_smiles_bool ? canonicalize_smiles(helm_symbol_str) : helm_symbol_str;
     atom->setProp(CANONICAL_SMILES, canon_smiles);
     atom->setIsotope(hasher(canon_smiles));
 
