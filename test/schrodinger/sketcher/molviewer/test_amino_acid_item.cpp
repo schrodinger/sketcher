@@ -20,13 +20,13 @@ namespace sketcher
 class TestAminoAcidItem : public AminoAcidItem
 {
   public:
-    using AminoAcidItem::AminoAcidItem;
-    using AbstractMonomerItem::m_main_label_is_elided;
-    using AbstractMonomerItem::m_main_label_paint_text;
+    using AbstractMonomerItem::m_main_label_fade_text;
+    using AbstractMonomerItem::m_main_label_is_truncated;
     using AbstractMonomerItem::m_main_label_text;
+    using AminoAcidItem::AminoAcidItem;
 };
 
-BOOST_AUTO_TEST_CASE(test_long_label_is_shortened_for_fading)
+BOOST_AUTO_TEST_CASE(test_long_label_uses_extra_character_for_fading)
 {
     Fonts fonts;
     AtomDisplaySettings atom_display_settings;
@@ -38,19 +38,19 @@ BOOST_AUTO_TEST_CASE(test_long_label_is_shortened_for_fading)
                            bond_display_settings);
 
     BOOST_TEST(item.m_main_label_text.toStdString() == "FADIN");
-    BOOST_TEST(item.m_main_label_paint_text.toStdString() == "FADING");
-    BOOST_TEST(item.m_main_label_is_elided);
+    BOOST_TEST(item.m_main_label_fade_text.toStdString() == "FADING");
+    BOOST_TEST(item.m_main_label_is_truncated);
     BOOST_TEST(elide_text("FADIN").toStdString() == "FADIN");
 
     auto six_character_monomer =
         rdkit_extensions::makeMonomer("FADING", "PEPTIDE1", 1, false);
-    TestAminoAcidItem six_character_item(
-        six_character_monomer.get(), fonts, atom_display_settings,
-        bond_display_settings);
+    TestAminoAcidItem six_character_item(six_character_monomer.get(), fonts,
+                                         atom_display_settings,
+                                         bond_display_settings);
     BOOST_TEST(six_character_item.m_main_label_text.toStdString() == "FADING");
-    BOOST_TEST(six_character_item.m_main_label_paint_text.toStdString() ==
+    BOOST_TEST(six_character_item.m_main_label_fade_text.toStdString() ==
                "FADING");
-    BOOST_TEST(!six_character_item.m_main_label_is_elided);
+    BOOST_TEST(!six_character_item.m_main_label_is_truncated);
 }
 
 /**

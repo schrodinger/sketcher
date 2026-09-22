@@ -32,7 +32,6 @@ namespace
  * pixels.
  */
 const int TOOL_TIP_OVERSAMPLING_RATIO = 2;
-
 } // namespace
 
 namespace schrodinger
@@ -160,10 +159,10 @@ void AbstractMonomerItem::paint(QPainter* painter,
     painter->drawPath(m_border_path);
     painter->setFont(m_main_label_font);
 
-    if (m_main_label_is_elided) {
+    if (m_main_label_is_truncated) {
         QPainterPath text_path;
         text_path.addText(m_main_label_left_baseline, m_main_label_font,
-                          m_main_label_paint_text);
+                          m_main_label_fade_text);
 
         // Start the gradient at the fifth character. Subtracting its advance
         // from the shortened label's advance preserves the kerning Qt applies
@@ -252,11 +251,10 @@ void AbstractMonomerItem::setMainLabelText(const std::string& text)
 {
     const auto full_text = QString::fromStdString(text);
     m_main_label_text = elide_text(text);
-    m_main_label_is_elided = m_main_label_text != full_text;
-    m_main_label_paint_text =
-        m_main_label_is_elided
-            ? full_text.left(MAX_MONOMER_LABEL_LENGTH + 1)
-            : m_main_label_text;
+    m_main_label_is_truncated = m_main_label_text != full_text;
+    m_main_label_fade_text = m_main_label_is_truncated
+                                 ? full_text.left(MAX_MONOMER_LABEL_LENGTH + 1)
+                                 : m_main_label_text;
 }
 
 QString elide_text(const std::string& text)
