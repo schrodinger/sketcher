@@ -164,9 +164,9 @@ void AbstractMonomerItem::paint(QPainter* painter,
         text_path.addText(m_main_label_left_baseline, m_main_label_font,
                           m_main_label_fade_text);
 
-        // Start the gradient at the fifth character. Subtracting its advance
-        // from the shortened label's advance preserves the kerning Qt applies
-        // before that character.
+        // Start the gradient at the last character used to size the label.
+        // Subtracting its advance from the shortened label's advance preserves
+        // the kerning Qt applies before that character.
         const QFontMetricsF metrics(m_main_label_font, painter->device());
         const auto fade_start_character = m_main_label_text.right(1);
         const auto fade_start_character_x =
@@ -260,8 +260,9 @@ void AbstractMonomerItem::setMainLabelText(const std::string& text)
 QString elide_text(const std::string& text)
 {
     auto qtext = QString::fromStdString(text);
-    // A six-character label fits without suggesting that more text follows.
-    // For longer labels, crop at five so the sixth character can provide the
+    // A label with one character beyond MAX_MONOMER_LABEL_LENGTH fits without
+    // suggesting that more text follows. For longer labels, crop at
+    // MAX_MONOMER_LABEL_LENGTH so the additional character can provide the
     // fade-out at the monomer boundary.
     if (qtext.length() > MAX_MONOMER_LABEL_LENGTH + 1) {
         return qtext.left(MAX_MONOMER_LABEL_LENGTH);

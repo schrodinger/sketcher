@@ -110,8 +110,10 @@ class SKETCHER_API AbstractMonomerItem : public AbstractAtomOrMonomerItem
 };
 
 /**
- * Return labels of up to 6 characters unchanged. Crop longer labels to 5
- * characters so the sixth can be painted as the faded truncation character.
+ * Return labels containing at most one character beyond
+ * MAX_MONOMER_LABEL_LENGTH unchanged. Crop longer labels to
+ * MAX_MONOMER_LABEL_LENGTH so one additional character can be painted as the
+ * faded truncation character.
  */
 SKETCHER_API QString elide_text(const std::string& text);
 
