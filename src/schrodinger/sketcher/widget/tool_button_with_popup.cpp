@@ -56,6 +56,15 @@ void ToolButtonWithPopup::setPopupWidget(QWidget* popup_wdg)
     updateStyle();
 }
 
+void ToolButtonWithPopup::clearPopupWidget()
+{
+    m_popup_timer->stop();
+    delete m_popup_wdg;
+    m_popup_wdg = nullptr;
+    showPopupIndicatorOnHover(false);
+    updateStyle();
+}
+
 QWidget* ToolButtonWithPopup::getPopupWidget() const
 {
     return m_popup_wdg;

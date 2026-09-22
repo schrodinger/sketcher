@@ -78,6 +78,36 @@ class NoAvailableDirectionsException : public std::exception
 
 } // namespace
 
+void validate_monomers(const RDKit::ROMol& mol)
+{
+    using rdkit_extensions::ChainType;
+    const auto& db = rdkit_extensions::MonomerDatabase::instance();
+    for (const auto* monomer : mol.atoms()) {
+        const auto label = monomer->getProp<std::string>(ATOM_LABEL);
+        bool is_smiles = false;
+        if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+            try {
+                rdkit_extensions::to_rdkit(
+                    label, rdkit_extensions::Format::EXTENDED_SMILES);
+            } catch (const std::exception&) {
+                throw std::runtime_error(
+                    fmt::format("Could not parse monomer SMILES: {}", label));
+            }
+        } else {
+            const auto chain_type = rdkit_extensions::getChainType(*monomer);
+            if (!db.getMonomerSmiles(label, chain_type).has_value()) {
+                const auto type_name =
+                    chain_type == ChainType::PEPTIDE ? "Peptide"
+                    : chain_type == ChainType::CHEM  ? "CHEM"
+                                                     : "Nucleic acid";
+                throw std::runtime_error(
+                    fmt::format("{} monomer {} not found in monomer database",
+                                type_name, label));
+            }
+        }
+    }
+}
+
 /**
  * @return a list of <attachment point number, heavy element at the attachment
  * point> for the given monomer

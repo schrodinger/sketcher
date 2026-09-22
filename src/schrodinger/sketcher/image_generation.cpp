@@ -206,7 +206,8 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol)
 {
     mol_model.addMol(rdmol, "Import molecule", /* reposition_mol = */ true,
                      /* new_molecule_added = */ true,
-                     /* enforce_size_limit = */ false);
+                     /* enforce_size_limit = */ false,
+                     /* enforce_monomer_validity = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
@@ -216,7 +217,10 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn)
 
 void add_to_mol_model(MolModel& mol_model, const std::string& text)
 {
-    add_text_to_mol_model(mol_model, text);
+    add_text_to_mol_model(mol_model, text,
+                          rdkit_extensions::Format::AUTO_DETECT, std::nullopt,
+                          /* recenter_view = */ true,
+                          /* enforce_monomer_validity = */ false);
 }
 
 void paint_scene_to_given_paint_device(QPaintDevice* device,

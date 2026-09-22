@@ -841,10 +841,48 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::
     auto end_monomer_idx =
         add_monomer_to_mol_model_if_new(hint_end_monomer_info);
     auto mol = m_mol_model->getMol();
-    m_mol_model->addMonomericConnection(mol->getAtomWithIdx(start_monomer_idx),
-                                        hint_start_monomer_info.ap_model_name,
-                                        mol->getAtomWithIdx(end_monomer_idx),
-                                        hint_end_monomer_info.ap_model_name);
+
+    /**
+     * @return the attachment point model name to use for the given monomer.
+     * This is taken directly from monomer_info *except* when connecting a
+     * nucleic acid phosphate to a sugar. Because a phosphate's attachment
+     * points are chemically identical, we select the AP that will create a
+     * standard backbone connection. Note that this will only affect
+     * click-and-drag connections where the user dragged to or from the "wrong"
+     * phosphate AP. In all other scenarios, the scene tool will have defaulted
+     * to the correct AP already.
+     */
+    auto get_ap_name = [&mol](const HintFragmentMonomerInfo& monomer_info,
+                              const unsigned int monomer_idx,
+                              const HintFragmentMonomerInfo& other_info) {
+        if (monomer_info.monomer_type == MonomerType::NA_PHOSPHATE &&
+            other_info.monomer_type == MonomerType::NA_SUGAR &&
+            (other_info.ap_model_name == "R1" ||
+             other_info.ap_model_name == "R2")) {
+            auto [bound_aps, unbound_aps] = get_attachment_points_for_monomer(
+                mol->getAtomWithIdx(monomer_idx));
+            auto is_unbound = [&unbound_aps](const std::string& name) {
+                return std::ranges::any_of(
+                    unbound_aps,
+                    [&name](const auto& ap) { return ap.model_name == name; });
+            };
+            if (is_unbound("R1") && is_unbound("R2")) {
+                return get_attachment_point_for_new_monomer(
+                    MonomerType::NA_SUGAR, other_info.ap_model_name,
+                    MonomerType::NA_PHOSPHATE, "P", false);
+            }
+        }
+        return monomer_info.ap_model_name;
+    };
+
+    auto start_ap_name = get_ap_name(hint_start_monomer_info, start_monomer_idx,
+                                     hint_end_monomer_info);
+    auto end_ap_name = get_ap_name(hint_end_monomer_info, end_monomer_idx,
+                                   hint_start_monomer_info);
+
+    m_mol_model->addMonomericConnection(
+        mol->getAtomWithIdx(start_monomer_idx), start_ap_name,
+        mol->getAtomWithIdx(end_monomer_idx), end_ap_name);
 }
 
 void AbstractDrawMonomerOrMonomericConnectionSceneTool::
