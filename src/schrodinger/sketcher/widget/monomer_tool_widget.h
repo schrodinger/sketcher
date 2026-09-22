@@ -6,6 +6,7 @@
 #include <string>
 
 #include <boost/bimap.hpp>
+#include <boost/signals2/connection.hpp>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
@@ -52,6 +53,9 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     std::unordered_set<QAbstractButton*> getCheckableButtons() override;
 
   protected:
+    /** Rebuild monomer analog popups from the current monomer database. */
+    void updateMonomerButtons();
+
     std::unique_ptr<Ui::MonomerToolWidget> ui;
     boost::bimap<QAbstractButton*, AminoAcidTool> m_button_amino_acid_bimap;
     boost::bimap<QAbstractButton*, NucleicAcidTool> m_button_nucleic_acid_bimap;
@@ -97,6 +101,9 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
      * Respond to the user clicking on a specific monomeric connection button
      */
     void onConnectionButtonClicked(int button_id);
+
+  private:
+    boost::signals2::scoped_connection m_database_connection;
 };
 
 } // namespace sketcher

@@ -1,5 +1,6 @@
 #define BOOST_TEST_MODULE sketcher_widget_test
 
+#include <memory>
 #include <string>
 #include <tuple>
 
@@ -49,26 +50,35 @@ using schrodinger::rdkit_extensions::to_string;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::ColorScheme)
 
-BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
-
 // Reuse a single widget instance across all tests for better performance
-// Note: Widget is intentionally leaked to avoid Qt destruction order issues.
-// The widget cannot be safely destroyed after QApplication cleanup without
-// causing crashes on Linux/Windows. This small leak (< 1MB) is acceptable for
-// test code and only occurs at program exit when the OS reclaims all memory.
-struct TestWidgetFixture {
+// Destroy the widget before the base fixture cleans up the database and app.
+struct TestWidgetFixture : QApplicationRequiredFixture {
+    TestWidgetFixture()
+    {
+        s_instance = this;
+    }
+
+    ~TestWidgetFixture()
+    {
+        s_instance = nullptr;
+    }
+
     static TestSketcherWidget* get()
     {
-        static TestSketcherWidget* widget = nullptr;
+        auto& widget = s_instance->m_widget;
         if (!widget) {
-            widget = new TestSketcherWidget();
+            widget = std::make_unique<TestSketcherWidget>();
         }
         // Clear state before each test for isolation
         widget->clear();
         widget->m_undo_stack->clear();
         widget->m_sketcher_model->reset();
-        return widget;
+        return widget.get();
     }
+
+  private:
+    inline static TestWidgetFixture* s_instance = nullptr;
+    std::unique_ptr<TestSketcherWidget> m_widget;
 };
 
 BOOST_GLOBAL_FIXTURE(TestWidgetFixture);

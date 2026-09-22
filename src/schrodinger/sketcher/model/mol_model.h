@@ -690,10 +690,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param mol The molecule to add
      * @param position The position to center the new molecule at
      * @param description The description to use for the undo command.
+     * @param enforce_monomer_validity If true (default), confirm that all
+     * monomer names exist in the monomer database and that all inline SMILES
+     * can be successfully parsed before importing.
      *
      */
     void addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
-                  const QString& description = "Import molecule");
+                  const QString& description = "Import molecule",
+                  const bool enforce_monomer_validity = true);
 
     /**
      * This method imports the specified RDKit::RWMol into the current model.
@@ -709,13 +713,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * empty.
      * @param new_mol_added If true (default), indicates that a new molecule was
      * added to the model.
+     * @param enforce_size_limit If true (default), enforce the maximum atom
+     * count limit for molecules.
+     * @param enforce_monomer_validity If true (default), confirm that all
+     * monomer names exist in the monomer database and that all inline SMILES
+     * can be successfully parsed before importing.
      */
 
     void addMol(RDKit::RWMol mol,
                 const QString& description = "Import molecule",
                 const bool reposition_mol = true,
                 const bool new_mol_added = true,
-                const bool enforce_size_limit = true);
+                const bool enforce_size_limit = true,
+                const bool enforce_monomer_validity = true);
 
     /**
      * Undoably add the given reaction to the model.  All reactants and products
@@ -1704,13 +1714,16 @@ convert_text_to_mol_or_reaction(const std::string& text,
  * @param recenter_view If true **and mol_or_reaction is a molecule**, the
  * imported molecule will be repositioned to avoid overlap, or centered at the
  * origin if the scene is empty.
+ * @param enforce_monomer_validity If true (default), validate monomer
+ * database identities and inline SMILES before importing a molecule.
  */
 SKETCHER_API void add_mol_or_reaction_to_mol_model(
     MolModel& mol_model,
     const std::variant<boost::shared_ptr<RDKit::RWMol>,
                        boost::shared_ptr<RDKit::ChemicalReaction>>
         mol_or_reaction,
-    const std::optional<RDGeom::Point3D> position, const bool recenter_view);
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view,
+    const bool enforce_monomer_validity = true);
 
 /**
  * Add the molecule or reaction to the given MolModel.  See
@@ -1725,7 +1738,8 @@ SKETCHER_API void add_text_to_mol_model(
     const rdkit_extensions::Format format =
         rdkit_extensions::Format::AUTO_DETECT,
     const std::optional<RDGeom::Point3D> position = std::nullopt,
-    const bool recenter_view = true);
+    const bool recenter_view = true,
+    const bool enforce_monomer_validity = true);
 
 /**
  * Determine the appropriate residue number to use for a new monomer that will

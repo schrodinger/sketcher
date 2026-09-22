@@ -22,6 +22,47 @@
 
 using namespace schrodinger::rdkit_extensions;
 
+BOOST_AUTO_TEST_CASE(database_change_subscriptions)
+{
+    auto& db = MonomerDatabase::instance();
+    db.resetMonomerDefinitions();
+    int notifications = 0;
+    int second_notifications = 0;
+    {
+        auto connection = db.subscribeToChanges([&]() {
+            ++notifications;
+            // Readers can query the completed update from a callback.
+            BOOST_CHECK_EQUAL(db.getMonomerDefinitions(false), "[]");
+        });
+        {
+            auto second =
+                db.subscribeToChanges([&]() { ++second_notifications; });
+            // Insertion delegates to load when no custom database exists.
+            db.insertMonomersFromJson("[]");
+            BOOST_CHECK_EQUAL(notifications, 1);
+            BOOST_CHECK_EQUAL(second_notifications, 1);
+        }
+        db.insertMonomersFromJson("[]");
+        BOOST_CHECK_EQUAL(notifications, 2);
+        BOOST_CHECK_EQUAL(second_notifications, 1);
+        db.loadMonomersFromJson("[]");
+        BOOST_CHECK_EQUAL(notifications, 3);
+        db.loadMonomersFromSql("DELETE FROM monomer_definitions;");
+        BOOST_CHECK_EQUAL(notifications, 4);
+        db.canonicalizeSmilesFields();
+        BOOST_CHECK_EQUAL(notifications, 5);
+        BOOST_CHECK_THROW(db.loadMonomersFromJson("invalid JSON"),
+                          std::exception);
+        BOOST_CHECK_THROW(db.loadMonomersFromSql("invalid SQL"),
+                          std::exception);
+        BOOST_CHECK_EQUAL(notifications, 5);
+        db.resetMonomerDefinitions();
+        BOOST_CHECK_EQUAL(notifications, 6);
+    }
+    db.resetMonomerDefinitions();
+    BOOST_CHECK_EQUAL(notifications, 6);
+}
+
 BOOST_DATA_TEST_CASE(Check_Core_Monomers_Are_Canonical,
                      boost::unit_test::data::make({0, 1}), ff_state)
 {
@@ -244,8 +285,11 @@ BOOST_AUTO_TEST_CASE(TestUpdateCustomDB)
     BOOST_REQUIRE_EQUAL(res.first.size(), 1);
     BOOST_REQUIRE_EQUAL(res.second.size(), 0);
 
+    int notifications = 0;
+    auto connection = monomer_db.subscribeToChanges([&]() { ++notifications; });
     monomer_db.loadMonomersFromSQLiteFile(
         LocalMonomerDbFixture::test_custom_monomer_db);
+    BOOST_CHECK_EQUAL(notifications, 1);
 }
 
 BOOST_AUTO_TEST_CASE(TestNameEscaping)
