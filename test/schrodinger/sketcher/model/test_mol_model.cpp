@@ -1184,6 +1184,53 @@ BOOST_AUTO_TEST_CASE(test_addMol_size_cutoff)
 }
 
 /**
+ * Make sure that the addMol method honors the enforce_monomer_validity
+ * parameter
+ */
+BOOST_AUTO_TEST_CASE(test_addMol_monomer_validity)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "PEPTIDE1{A.A}$$$$V2.0");
+    model.selectAll();
+    const auto undo_count = undo_stack.count();
+
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{[missingMonomer]}$$$$V2.0");
+    BOOST_CHECK_THROW(model.addMol(*mol), std::runtime_error);
+    BOOST_TEST(model.getMol()->getNumAtoms() == 2);
+    BOOST_TEST(model.getSelectedAtoms().size() == 2);
+    BOOST_TEST(undo_stack.count() == undo_count);
+
+    model.clear();
+    BOOST_CHECK_NO_THROW(model.addMol(*mol, "Import molecule", true, true, true,
+                                      /* enforce_monomer_validity = */ false));
+    BOOST_TEST(model.getMol()->getNumAtoms() == 1);
+}
+
+/**
+ * Make sure that the add_text_to_mol_model function honors the
+ * enforce_monomer_validity parameter
+ */
+BOOST_AUTO_TEST_CASE(test_add_text_monomer_validity)
+{
+    for (const auto& position :
+         {std::optional<RDGeom::Point3D>{},
+          std::optional<RDGeom::Point3D>{{2.0, 3.0, 0.0}}}) {
+        QUndoStack undo_stack;
+        TestMolModel model(&undo_stack);
+        const std::string helm = "PEPTIDE1{[missingMonomer]}$$$$V2.0";
+        BOOST_CHECK_THROW(
+            add_text_to_mol_model(model, helm, Format::HELM, position),
+            std::runtime_error);
+        BOOST_TEST(model.getMol()->getNumAtoms() == 0);
+        BOOST_CHECK_NO_THROW(add_text_to_mol_model(
+            model, helm, Format::HELM, position, /* recenter_view = */ true,
+            /* enforce_monomer_validity = */ false));
+        BOOST_TEST(model.getMol()->getNumAtoms() == 1);
+    }
+}
+
+/**
  * Make sure that the selection is updated when a molecule is added
  */
 BOOST_AUTO_TEST_CASE(test_addMol_move_selection)

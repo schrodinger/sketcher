@@ -116,11 +116,11 @@ BOOST_AUTO_TEST_CASE(test_click_empty_space_adds_nucleotide)
     fix.mouseClick({400, 0});
     fix.verifyHELM("RNA1{R(A)P}|RNA2{R(U)P}|RNA3{[dR](T)P}$$$$V2.0");
 
-    // create a custom nucleotide
-    fix.setCustomNucleotideTool("Tho", "I", "PS");
+    // create a custom nucleotide from registered monomer components
+    fix.setCustomNucleotideTool("dR", "G", "P");
     fix.mouseClick({600, 0});
     fix.verifyHELM(
-        "RNA1{R(A)P}|RNA2{R(U)P}|RNA3{[dR](T)P}|RNA4{[Tho](I)[PS]}$$$$V2.0");
+        "RNA1{R(A)P}|RNA2{R(U)P}|RNA3{[dR](T)P}|RNA4{[dR](G)P}$$$$V2.0");
 }
 
 BOOST_AUTO_TEST_CASE(test_click_existing_monomers)

@@ -21,7 +21,7 @@ namespace sketcher
 class ModularPopup;
 
 /**
- * Populate `popup` with a horizontal row of QToolButtons: ID 0 is the
+ * Populate `popup` with a row-major grid of QToolButtons: ID 0 is the
  * standard monomer (text = standard_symbol, tooltip = standard_name); IDs
  * 1+ are the analogs. Each button's object name is set to
  * "<object_name_prefix>_<symbol>_btn", and the id->symbol mapping is
