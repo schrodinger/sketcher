@@ -178,6 +178,50 @@ std::string ap_model_name_for(int ap_num)
     return fmt::format("R{}", ap_num);
 }
 
+/**
+ * Get the attachment point number, if any, from the atom label of the given
+ * atom.
+ */
+static std::optional<unsigned int>
+get_attachment_point_num_from_atom_label(const RDKit::Atom& atom)
+{
+    std::string atom_label;
+    atom.getPropIfPresent(RDKit::common_properties::atomLabel, atom_label);
+    if (atom_label.starts_with("_R")) {
+        const auto parsed_num = ap_name_to_num(atom_label.substr(1));
+        if (parsed_num > 0) {
+            return static_cast<unsigned int>(parsed_num);
+        }
+    }
+    return std::nullopt;
+}
+
+/**
+ * Get the attachment point number, if any, from the given atom. This function
+ * recognized attachment point numbers that are specified using atom-map
+ * numbers, isotope-numbers, or CXSMILES atom labels in the format of "_R<#>".
+ */
+static std::optional<unsigned int>
+get_attachment_point_num(const RDKit::Atom& atom)
+{
+    unsigned int attachment_point_num = 0;
+    if (atom.getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
+                              attachment_point_num) &&
+        attachment_point_num > 0) {
+        return attachment_point_num;
+    }
+
+    if (const auto atom_label_num =
+            get_attachment_point_num_from_atom_label(atom)) {
+        return atom_label_num;
+    }
+
+    if (atom.getAtomicNum() == 0 && atom.getIsotope() > 0) {
+        return atom.getIsotope();
+    }
+    return std::nullopt;
+}
+
 std::vector<std::pair<int, std::string>>
 get_attachment_points_for_smiles(const std::string& smiles)
 {
@@ -186,24 +230,8 @@ get_attachment_points_for_smiles(const std::string& smiles)
 
     std::vector<std::pair<int, std::string>> attachment_points;
     for (const auto* atom : mol->atoms()) {
-        unsigned int attachment_point_num = 0;
-        bool found_mol_atom_map_num = atom->getPropIfPresent(
-            RDKit::common_properties::molAtomMapNumber, attachment_point_num);
-        std::string atom_label;
-        atom->getPropIfPresent(RDKit::common_properties::atomLabel, atom_label);
-
-        if (!found_mol_atom_map_num && atom_label.starts_with("_R")) {
-            // parse the attachment point number after removing the leading
-            // underscore
-            const auto parsed_num = ap_name_to_num(atom_label.substr(1));
-            if (parsed_num > 0) {
-                attachment_point_num = parsed_num;
-            }
-        }
-        if (attachment_point_num == 0 && atom->getAtomicNum() == 0) {
-            attachment_point_num = atom->getIsotope();
-        }
-        if (attachment_point_num == 0) {
+        const auto attachment_point_num = get_attachment_point_num(*atom);
+        if (!attachment_point_num) {
             continue;
         }
 
@@ -218,7 +246,7 @@ get_attachment_points_for_smiles(const std::string& smiles)
             }
         }
         if (heavy_atom != nullptr) {
-            attachment_points.emplace_back(attachment_point_num,
+            attachment_points.emplace_back(*attachment_point_num,
                                            heavy_atom->getSymbol());
         }
     }

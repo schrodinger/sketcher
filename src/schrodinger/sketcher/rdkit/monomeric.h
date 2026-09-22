@@ -82,7 +82,9 @@ SKETCHER_API std::string ap_model_name_for(int ap_num);
 /**
  * Return the numbered attachment points in a monomer SMILES string. Each
  * attachment point is described using a pair of the attachment point number and
- * the symbol of the heavy atom at that site.
+ * the symbol of the heavy atom at that site. Note that this function assumes
+ * that the SMILES string is valid and sane; it does not protect against, e.g.,
+ * duplicated attachment points or attachment points on unbound dummy atoms.
  *
  * @param smiles the SMILES string, with attachment points indicated using
  * atom-map numbers, isotope-numbered dummy atoms, or CXSMILES atom labels such
