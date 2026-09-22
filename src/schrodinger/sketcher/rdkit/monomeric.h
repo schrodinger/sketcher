@@ -66,6 +66,13 @@ const std::string H_BOND_DISPLAY_NAME = "H-bond";
 const std::string CYS_RES_NAME = "C";
 
 /**
+ * Validate the monomers in a monomeric molecule.
+ * @throw std::runtime_error if a monomer is missing from the database or its
+ * inline SMILES cannot be parsed.
+ */
+SKETCHER_API void validate_monomers(const RDKit::ROMol& mol);
+
+/**
  * Convert any of the above attachment point enums (or NA_BASE_AP_N1_9) to the
  * equivalent model name, which is simply "R" followed by the attachment point
  * number.

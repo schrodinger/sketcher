@@ -683,7 +683,7 @@ void MonomerDatabase::loadMonomersFromSql(std::string_view sql)
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>>
@@ -699,7 +699,7 @@ MonomerDatabase::loadMonomersFromJson(std::string_view json)
     }
 
     swap_custom_monomers_db(db.release());
-    invalidateCache();
+    onDatabaseChanged();
 
     return result;
 }
@@ -712,7 +712,7 @@ MonomerDatabase::insertMonomersFromJson(std::string_view json)
         result = loadMonomersFromJson(json);
     } else {
         result = insert_monomers_from_json(m_custom_monomers_db, json);
-        invalidateCache();
+        onDatabaseChanged();
     }
     return result;
 }
@@ -747,13 +747,20 @@ void MonomerDatabase::loadMonomersFromSQLiteFile(
     canonicalize_db(db.get());
 
     swap_custom_monomers_db(db.release());
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 MonomerDatabase& MonomerDatabase::instance()
 {
     static MonomerDatabase monomer_db;
     return monomer_db;
+}
+
+boost::signals2::scoped_connection MonomerDatabase::subscribeToChanges(
+    const boost::signals2::signal<void()>::slot_type& callback)
+{
+    return boost::signals2::scoped_connection(
+        m_database_changed.connect(callback));
 }
 
 MonomerDatabase::MonomerDatabase() :
@@ -771,7 +778,7 @@ MonomerDatabase::MonomerDatabase() :
 
 MonomerDatabase::~MonomerDatabase()
 {
-    resetMonomerDefinitions();
+    swap_custom_monomers_db(nullptr);
     if (m_core_monomers_db) {
         sqlite3_close_v2(m_core_monomers_db);
     }
@@ -840,7 +847,7 @@ void MonomerDatabase::dumpToFile(sqlite3* db,
 void MonomerDatabase::resetMonomerDefinitions()
 {
     swap_custom_monomers_db(nullptr);
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 std::vector<std::string> MonomerDatabase::getDbFields() const
@@ -995,7 +1002,7 @@ void MonomerDatabase::canonicalizeSmilesFields(bool include_core)
             canonicalize_db(db);
         }
     }
-    invalidateCache();
+    onDatabaseChanged();
 }
 
 [[nodiscard]] MonomerDatabase::all_smiles_t
@@ -1219,10 +1226,11 @@ MonomerDatabase::getComplexMonomerQueries() const
     return *m_complex_monomer_queries;
 }
 
-void MonomerDatabase::invalidateCache()
+void MonomerDatabase::onDatabaseChanged()
 {
     m_enumerated_core_smiles_cache.reset();
     m_complex_monomer_queries.reset();
+    m_database_changed();
 }
 
 [[nodiscard]] std::unordered_map<std::string, std::vector<MonomerInfo>>

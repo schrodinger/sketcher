@@ -11,6 +11,7 @@
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
@@ -38,6 +39,50 @@ void check_point_close(const QPointF& actual, const QPointF& expected)
 }
 
 } // namespace
+
+BOOST_AUTO_TEST_CASE(test_validate_monomers)
+{
+    for (const auto& helm :
+         {"PEPTIDE1{A.C.W}$$$$V2.0", "RNA1{R(A)P.[dR](C)P}$$$$V2.0",
+          "CHEM1{[CCO]}$$$$V2.0", "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
+        auto mol = rdkit_extensions::to_rdkit(helm);
+        BOOST_CHECK_NO_THROW(validate_monomers(*mol));
+    }
+
+    for (const auto& [helm, expected] :
+         std::vector<std::pair<std::string, std::string>>{
+             {"PEPTIDE1{A.[missingMonomer]}$$$$V2.0",
+              "Peptide monomer missingMonomer not found in monomer database"},
+             {"RNA1{R([missingMonomer])P}$$$$V2.0",
+              "Nucleic acid monomer missingMonomer not found in monomer "
+              "database"},
+             {"CHEM1{[missingMonomer]}$$$$V2.0",
+              "CHEM monomer missingMonomer not found in monomer database"},
+             {"CHEM1{W}$$$$V2.0",
+              "CHEM monomer W not found in monomer database"}}) {
+        auto mol = rdkit_extensions::to_rdkit(helm);
+        auto check_error = [&](const std::runtime_error& error) {
+            return error.what() == expected;
+        };
+        BOOST_CHECK_EXCEPTION(validate_monomers(*mol), std::runtime_error,
+                              check_error);
+        // Missing SMILES_MONOMER properties also mean database monomers.
+        for (auto* monomer : mol->atoms()) {
+            monomer->clearProp(SMILES_MONOMER);
+        }
+        BOOST_CHECK_EXCEPTION(validate_monomers(*mol), std::runtime_error,
+                              check_error);
+    }
+
+    auto mol = rdkit_extensions::to_rdkit("CHEM1{[CCO]}$$$$V2.0");
+    auto* monomer = mol->getAtomWithIdx(0);
+    monomer->setProp(ATOM_LABEL, std::string("C1CC"));
+    BOOST_CHECK_EXCEPTION(validate_monomers(*mol), std::runtime_error,
+                          [](const std::runtime_error& error) {
+                              return std::string(error.what()) ==
+                                     "Could not parse monomer SMILES: C1CC";
+                          });
+}
 
 /**
  * Make sure that contains_two_monomer_linkages correctly detects two monomer
