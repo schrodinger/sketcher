@@ -27,8 +27,8 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
     for (const auto& helm :
          {"PEPTIDE1{A.C.W}$$$$V2.0", "RNA1{R(A)P.[dR](C)P}$$$$V2.0",
           "PEPTIDE1{X}$$$$V2.0", "PEPTIDE1{A.X.W}$$$$V2.0",
-          "RNA1{R(N)P.[dR](N)P}$$$$V2.0",
-          "CHEM1{[CCO]}$$$$V2.0", "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
+          "RNA1{R(N)P.[dR](N)P}$$$$V2.0", "CHEM1{[CCO]}$$$$V2.0",
+          "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
         auto mol = rdkit_extensions::to_rdkit(helm);
         BOOST_CHECK_NO_THROW(validate_monomers(*mol));
     }

@@ -147,7 +147,8 @@ BOOST_AUTO_TEST_CASE(test_attach_nucleotide_with_missing_base)
 
     // Keep the sugar and phosphate registered so the fragment has known
     // attachment points, while still containing a missing database monomer.
-    BOOST_REQUIRE_NO_THROW(fix.setCustomNucleotideTool("R", "missingBase", "P"));
+    BOOST_REQUIRE_NO_THROW(
+        fix.setCustomNucleotideTool("R", "missingBase", "P"));
     auto phos_pos = fix.getMonomerPos(2);
     BOOST_REQUIRE_NO_THROW(fix.mouseClick(phos_pos));
     fix.verifyHELM("RNA1{R(A)P.R([missingBase])P}$$$$V2.0");
@@ -160,12 +161,15 @@ BOOST_AUTO_TEST_CASE(test_attach_nucleotide_with_missing_base)
 BOOST_AUTO_TEST_CASE(test_add_nucleotide_with_unknown_base)
 {
     for (const bool is_dna : {false, true}) {
-        BOOST_TEST_CONTEXT("is_dna = " << is_dna) {
+        BOOST_TEST_CONTEXT("is_dna = " << is_dna)
+        {
             MonomerToolTestFixture fix;
             if (is_dna) {
-                BOOST_REQUIRE_NO_THROW(fix.setDNANucleotideTool(StdNucleobase::N));
+                BOOST_REQUIRE_NO_THROW(
+                    fix.setDNANucleotideTool(StdNucleobase::N));
             } else {
-                BOOST_REQUIRE_NO_THROW(fix.setRNANucleotideTool(StdNucleobase::N));
+                BOOST_REQUIRE_NO_THROW(
+                    fix.setRNANucleotideTool(StdNucleobase::N));
             }
             const std::string nucleotide = is_dna ? "[dR](N)P" : "R(N)P";
             BOOST_REQUIRE_NO_THROW(fix.mouseClick({0, 0}));
@@ -173,7 +177,8 @@ BOOST_AUTO_TEST_CASE(test_add_nucleotide_with_unknown_base)
 
             auto phos_pos = fix.getMonomerPos(2);
             BOOST_REQUIRE_NO_THROW(fix.mouseClick(phos_pos));
-            fix.verifyHELM("RNA1{" + nucleotide + "." + nucleotide + "}$$$$V2.0");
+            fix.verifyHELM("RNA1{" + nucleotide + "." + nucleotide +
+                           "}$$$$V2.0");
         }
     }
 }
