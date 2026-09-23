@@ -66,7 +66,8 @@ UnboundMonomericAttachmentPointItem* DrawMonomericConnectionSceneTool::
         return find_min_attachment_point_by_num(m_unbound_ap_items);
     } else if (hovered_type == MonomerType::PEPTIDE) {
         auto default_ap = find_preferred_attachment_point_by_num(
-            m_unbound_ap_items, {PeptideAP::C, PeptideAP::N, PeptideAP::S});
+            m_unbound_ap_items,
+            {PeptideAP::C, PeptideAP::N, PeptideAP::X_OR_S});
         if (default_ap == nullptr) {
             default_ap = find_attachment_point_with_name(m_unbound_ap_items,
                                                          H_BOND_AP_MODEL_NAME);

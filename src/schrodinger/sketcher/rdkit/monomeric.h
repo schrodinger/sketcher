@@ -46,7 +46,7 @@ enum class ConnectorType {
 
 namespace PeptideAP
 {
-enum { N = 1, C = 2, S = 3 };
+enum { N = 1, C = 2, X_OR_S = 3 };
 }
 
 namespace NASugarAP
@@ -63,7 +63,8 @@ constexpr int NA_BASE_AP_N1_9 = 1;
 const std::string H_BOND_AP_MODEL_NAME = "pair";
 const std::string H_BOND_DISPLAY_NAME = "H-bond";
 
-const std::string CYS_RES_NAME = "C";
+const std::string PEPTIDE_R3_NAME_S = "S";
+const std::string PEPTIDE_R3_NAME_X = "X";
 
 /**
  * Validate the monomers in a monomeric molecule.
@@ -78,6 +79,38 @@ SKETCHER_API void validate_monomers(const RDKit::ROMol& mol);
  * number.
  */
 SKETCHER_API std::string ap_model_name_for(int ap_num);
+
+/**
+ * Return the numbered attachment points in a monomer SMILES string. Each
+ * attachment point is described using a pair of the attachment point number and
+ * the symbol of the heavy atom at that site. Note that this function assumes
+ * that the SMILES string is valid and sane; it does not protect against, e.g.,
+ * duplicated attachment points or attachment points on unbound dummy atoms.
+ *
+ * @param smiles the SMILES string, with attachment points indicated using
+ * atom-map numbers, isotope-numbered dummy atoms, or CXSMILES atom labels such
+ * as "_R1". For example, any of the following are acceptable descriptions of
+ * alanine:
+ *   - C[C@H](N[H:1])C(=O)[OH:2]
+ *   - [1*]N[C@@H](C)C(=O)O[2*]
+ *   - *N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|.
+ *
+ * @throws std::invalid_argument if smiles is not valid extended SMILES
+ */
+SKETCHER_API std::vector<std::pair<int, std::string>>
+get_attachment_points_for_smiles(const std::string& smiles);
+
+/**
+ * Return the numbered attachment points for the given monomer, which must be
+ * found in the monomer database. Each attachment point is described using a
+ * pair of the attachment point number and the symbol of the heavy atom at that
+ * site.
+ *
+ * @throws std::invalid_argument if the monomer is not present in the database
+ */
+SKETCHER_API std::vector<std::pair<int, std::string>>
+get_attachment_points_for_res(const std::string& resname,
+                              const rdkit_extensions::ChainType chain_type);
 
 /**
  * Information about an attachment point on a monomer that's bound to another
@@ -233,9 +266,16 @@ SKETCHER_API QPointF get_monomer_arrowhead_offset(
     const std::unordered_set<Direction>& occupied_directions);
 
 /**
- * @return a list of all unbound attachment points names for the given monomer
- * using "pretty" names (e.g. "N" instead of "R1" for amino acids)
+ * @return whether or not the specified peptide monomer has a side-chain
+ * attachment point
+ * @param res_name_or_smiles The residue name if is_smiles is false or the
+ * SMILES string if is_smiles if true.
+ * @param is_smiles Whether res_name_or_smiles represents the residue name (for
+ * residues that appear in the monomer database) or the SMILES string (for
+ * SMILES monomers)
  */
+SKETCHER_API bool peptide_has_ap3(const std::string& res_name_or_smiles,
+                                  const bool is_smiles);
 
 /**
  * Determine all bound and unbound monomeric attachment points for the given
