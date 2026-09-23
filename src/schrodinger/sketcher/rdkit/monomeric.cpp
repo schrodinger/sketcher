@@ -45,7 +45,10 @@ const std::string H_BOND_LINKAGE =
 // issues with C++′s handling of Unicode.
 const std::unordered_map<MonomerType, std::vector<std::string>>
     NUMBERED_AP_NAMES_BY_MONOMER_TYPE = {
-        {MonomerType::PEPTIDE, {"N", "C", "S"}},
+        // the R3 of a peptide is named either S or X depending on the element
+        // at the attachment point (see peptide_ap3_name_for_element), so we use
+        // a blank string here
+        {MonomerType::PEPTIDE, {"N", "C", ""}},
         {MonomerType::NA_BASE, {"N1/9"}},
         {MonomerType::NA_SUGAR, {"5'", "3'", "1'"}},
 };
@@ -105,9 +108,165 @@ void validate_monomers(const RDKit::ROMol& mol)
     }
 }
 
+/**
+ * @return a list of <attachment point number, heavy element at the attachment
+ * point> for the given monomer
+ */
+static std::vector<std::pair<int, std::string>>
+get_attachment_point_nums_and_elems_for_monomer(const RDKit::Atom* monomer)
+{
+    std::vector<std::pair<int, std::string>> numbered_aps;
+    bool is_smiles = false;
+    if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+        return get_attachment_points_for_smiles(
+            monomer->getProp<std::string>(ATOM_LABEL));
+    } else {
+        return get_attachment_points_for_res(
+            get_monomer_res_name(monomer),
+            rdkit_extensions::getChainType(*monomer));
+    }
+}
+
+/**
+ * @return the attachment point name to use for a peptide side-chain attachment
+ * point with the given heavy element
+ */
+static std::string peptide_ap3_name_for_element(const std::string_view elem)
+{
+    return elem == "S" ? PEPTIDE_R3_NAME_S : PEPTIDE_R3_NAME_X;
+}
+
+/**
+ * @return the attachment point name to use for the side-chain attachment
+ * point of the given peptide monomer
+ * @note The monomer must be a peptide monomer with an R3 attachment point. This
+ * function does not do any input validation.
+ */
+static std::string peptide_ap3_name_for_monomer(const RDKit::Atom* monomer)
+{
+    auto aps_from_smiles =
+        get_attachment_point_nums_and_elems_for_monomer(monomer);
+    std::string elem;
+    for (auto [cur_num, cur_elem] : aps_from_smiles) {
+        if (cur_num == 3) {
+            elem = cur_elem;
+        }
+    }
+    return peptide_ap3_name_for_element(elem);
+}
+
+bool peptide_has_ap3(const std::string& res_name_or_smiles,
+                     const bool is_smiles)
+{
+    std::vector<std::pair<int, std::string>> aps_from_smiles;
+    if (is_smiles) {
+        aps_from_smiles = get_attachment_points_for_smiles(res_name_or_smiles);
+    } else {
+        aps_from_smiles = get_attachment_points_for_res(
+            res_name_or_smiles, rdkit_extensions::ChainType::PEPTIDE);
+    }
+    for (auto [cur_num, cur_elem] : aps_from_smiles) {
+        if (cur_num == 3) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string ap_model_name_for(int ap_num)
 {
     return fmt::format("R{}", ap_num);
+}
+
+/**
+ * Get the attachment point number, if any, from the atom label of the given
+ * atom.
+ */
+static std::optional<unsigned int>
+get_attachment_point_num_from_atom_label(const RDKit::Atom& atom)
+{
+    std::string atom_label;
+    atom.getPropIfPresent(RDKit::common_properties::atomLabel, atom_label);
+    if (atom_label.starts_with("_R")) {
+        const auto parsed_num = ap_name_to_num(atom_label.substr(1));
+        if (parsed_num > 0) {
+            return static_cast<unsigned int>(parsed_num);
+        }
+    }
+    return std::nullopt;
+}
+
+/**
+ * Get the attachment point number, if any, from the given atom. This function
+ * recognized attachment point numbers that are specified using atom-map
+ * numbers, isotope-numbers, or CXSMILES atom labels in the format of "_R<#>".
+ */
+static std::optional<unsigned int>
+get_attachment_point_num(const RDKit::Atom& atom)
+{
+    unsigned int attachment_point_num = 0;
+    if (atom.getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
+                              attachment_point_num) &&
+        attachment_point_num > 0) {
+        return attachment_point_num;
+    }
+
+    if (const auto atom_label_num =
+            get_attachment_point_num_from_atom_label(atom)) {
+        return atom_label_num;
+    }
+
+    if (atom.getAtomicNum() == 0 && atom.getIsotope() > 0) {
+        return atom.getIsotope();
+    }
+    return std::nullopt;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_smiles(const std::string& smiles)
+{
+    auto mol = rdkit_extensions::to_rdkit(
+        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+
+    std::vector<std::pair<int, std::string>> attachment_points;
+    for (const auto* atom : mol->atoms()) {
+        const auto attachment_point_num = get_attachment_point_num(*atom);
+        if (!attachment_point_num) {
+            continue;
+        }
+
+        const RDKit::Atom* heavy_atom = atom;
+        if (heavy_atom->getAtomicNum() <= 1) {
+            heavy_atom = nullptr;
+            for (const auto* neighbor : mol->atomNeighbors(atom)) {
+                if (neighbor->getAtomicNum() > 1) {
+                    heavy_atom = neighbor;
+                    break;
+                }
+            }
+        }
+        if (heavy_atom != nullptr) {
+            attachment_points.emplace_back(*attachment_point_num,
+                                           heavy_atom->getSymbol());
+        }
+    }
+
+    std::ranges::sort(attachment_points);
+    return attachment_points;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_res(const std::string& resname,
+                              const rdkit_extensions::ChainType chain_type)
+{
+    const auto smiles =
+        rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
+            resname, chain_type);
+    if (!smiles.has_value()) {
+        throw std::invalid_argument(
+            fmt::format("Monomer '{}' not found in monomer database", resname));
+    }
+    return get_attachment_points_for_smiles(*smiles);
 }
 
 MonomerType get_monomer_type(const RDKit::Atom* atom)
@@ -192,7 +351,8 @@ ConnectorType get_connector_type(const RDKit::Bond* bond,
         std::string prop = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
         bond->getPropIfPresent(prop, attachment_points);
         if (attachment_points == "R3-R3") {
-            if (start_res_name.ends_with('C') && end_res_name.ends_with('C')) {
+            if (peptide_ap3_name_for_monomer(start_atom) == PEPTIDE_R3_NAME_S &&
+                peptide_ap3_name_for_monomer(end_atom) == PEPTIDE_R3_NAME_S) {
                 return ConnectorType::PEPTIDE_DISULFIDE;
             } else {
                 return ConnectorType::PEPTIDE_SIDE_CHAIN;
@@ -565,9 +725,6 @@ static Direction calculate_direction_for_unbound_attachment_point(
  * be assigned to them. This is guaranteed to only happen when there are more
  * than 8 attachment points for the monomer.
  *
- * Also note that we don't have a good way to determine how many attachment
- * points a CHEM monomer should have, so we assume that it has one additional
- * attachment point beyond the highest numbered bound attachment point.
  */
 static std::vector<UnboundAttachmentPoint>
 get_unbound_attachment_points(const RDKit::Atom* monomer,
@@ -584,44 +741,31 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
         }
     }
 
-    // figure out how many numbered attachment points we expect
-    auto monomer_type = get_monomer_type(monomer);
-    int num_numbered_aps = -1;
-    if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
-        num_numbered_aps =
-            NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(monomer_type).size();
-        if (monomer_type == MonomerType::PEPTIDE &&
-            get_monomer_res_name(monomer) != CYS_RES_NAME) {
-            // cysteine is the only peptide that can form disulfides
-            num_numbered_aps -= 1;
-        }
-    } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
-        num_numbered_aps = 2;
-    } else {
-        // a CHEM monomer
-        num_numbered_aps =
-            *std::max_element(bound_ap_nums.begin(), bound_ap_nums.end());
-        num_numbered_aps += 1;
-    }
-
+    auto numbered_aps =
+        get_attachment_point_nums_and_elems_for_monomer(monomer);
     std::unordered_set<Direction> occupied_directions;
     for (auto ap : bound_aps) {
         occupied_directions.insert(ap.direction);
     }
 
+    auto monomer_type = get_monomer_type(monomer);
     std::vector<UnboundAttachmentPoint> available_aps;
     try {
         // figure out which numbered attachment points are unbound
-        for (int ap_num = 1; ap_num <= num_numbered_aps; ++ap_num) {
+        for (const auto& [ap_num, symbol] : numbered_aps) {
             if (!bound_ap_nums.contains(ap_num)) {
                 auto dir = calculate_direction_for_unbound_attachment_point(
                     ap_num, "", monomer_type, bound_aps, available_aps,
                     occupied_directions);
                 occupied_directions.insert(dir);
+                std::string display_name;
+                if (monomer_type == MonomerType::PEPTIDE && ap_num == 3) {
+                    display_name = peptide_ap3_name_for_element(symbol);
+                }
                 // XCode 14 requires push_back instead of emplace_back and curly
                 // brackets instead of parenthesis here
                 available_aps.push_back(UnboundAttachmentPoint{
-                    "R" + std::to_string(ap_num), "", ap_num, dir});
+                    "R" + std::to_string(ap_num), display_name, ap_num, dir});
             }
         }
 
@@ -710,8 +854,10 @@ get_attachment_point_name_of_bound_sugar(const RDKit::Atom* phosphate)
 /**
  * @return a list of all "pretty" attachment point names (e.g. "N" instead of
  * "R1" for amino acids) for numbered attachment points (i.e. any attachment
- * points named "R#") of the given monomer.  This function does not account for
- * of whether those attachment points are bound or available.
+ * points named "R#") of the given monomer. This function does not account for
+ * of whether those attachment points are bound or available, nor does it give
+ * the appropriate name for the R3 attachment point of a peptide (since deciding
+ * between "S" and "X" requires examining the monomer's atomistic structure).
  *
  * Note that CHEM monomers don't have special names, so we return an empty list
  * (which will cause ap_num_to_name() to return R1, R2, etc).
@@ -724,7 +870,7 @@ get_attachment_point_name_of_bound_sugar(const RDKit::Atom* phosphate)
  * sugar.
  */
 static std::vector<std::string>
-get_all_numbered_attachment_point_names(const RDKit::Atom* monomer)
+get_standard_numbered_attachment_point_names(const RDKit::Atom* monomer)
 {
     auto monomer_type = get_monomer_type(monomer);
 
@@ -761,11 +907,15 @@ get_attachment_points_for_monomer(const RDKit::Atom* monomer)
     auto bound_aps = get_bound_attachment_points(monomer);
     auto unbound_aps = get_unbound_attachment_points(monomer, bound_aps);
 
+    auto all_names = get_standard_numbered_attachment_point_names(monomer);
     // add pretty names to all numbered attachment points
-    auto all_names = get_all_numbered_attachment_point_names(monomer);
     auto assign_ap_names = [&all_names](auto&& aps) {
         for (auto& cur_ap : aps) {
-            if (cur_ap.num != ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
+            // cur_ap.display_name will only be populated for the R3 of peptide
+            // monomers (with either "S" or "X", based on the element at the
+            // attachment point)
+            if (cur_ap.num != ATTACHMENT_POINT_WITH_CUSTOM_NAME &&
+                cur_ap.display_name.empty()) {
                 cur_ap.display_name = ap_num_to_name(cur_ap.num, all_names);
             }
         }
@@ -781,15 +931,19 @@ get_attachment_point_name_for_connection(const RDKit::Atom* monomer,
                                          const RDKit::Bond* connector,
                                          const bool is_secondary_connection)
 {
-    auto all_names = get_all_numbered_attachment_point_names(monomer);
     std::string prop_name = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
     std::string linkage;
     if (connector->getPropIfPresent(prop_name, linkage)) {
         bool is_start_atom = connector->getBeginAtom() == monomer;
         const auto& [ap_num, orig_ap_name] =
             get_attachment_point_for_atom(linkage, is_start_atom);
-        if (ap_num > 0) {
-            return ap_num_to_name(ap_num, all_names);
+        if (ap_num == 3 && get_monomer_type(monomer) == MonomerType::PEPTIDE) {
+            // peptide side chain (R3) can be either S or X
+            return peptide_ap3_name_for_monomer(monomer);
+        } else if (ap_num > 0) {
+            auto standard_names =
+                get_standard_numbered_attachment_point_names(monomer);
+            return ap_num_to_name(ap_num, standard_names);
         } else if (ap_num == ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
             return orig_ap_name;
         }
