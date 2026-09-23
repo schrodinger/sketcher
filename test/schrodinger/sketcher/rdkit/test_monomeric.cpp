@@ -26,6 +26,8 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
 {
     for (const auto& helm :
          {"PEPTIDE1{A.C.W}$$$$V2.0", "RNA1{R(A)P.[dR](C)P}$$$$V2.0",
+          "PEPTIDE1{X}$$$$V2.0", "PEPTIDE1{A.X.W}$$$$V2.0",
+          "RNA1{R(N)P.[dR](N)P}$$$$V2.0",
           "CHEM1{[CCO]}$$$$V2.0", "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
         auto mol = rdkit_extensions::to_rdkit(helm);
         BOOST_CHECK_NO_THROW(validate_monomers(*mol));
@@ -41,7 +43,18 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
              {"CHEM1{[missingMonomer]}$$$$V2.0",
               "CHEM monomer missingMonomer not found in monomer database"},
              {"CHEM1{W}$$$$V2.0",
-              "CHEM monomer W not found in monomer database"}}) {
+              "CHEM monomer W not found in monomer database"},
+             {"CHEM1{X}$$$$V2.0",
+              "CHEM monomer X not found in monomer database"},
+             {"CHEM1{N}$$$$V2.0",
+              "CHEM monomer N not found in monomer database"},
+             {"RNA1{R(X)P}$$$$V2.0",
+              "Nucleic acid monomer X not found in monomer database"},
+             {"PEPTIDE1{X.[missingMonomer]}$$$$V2.0",
+              "Peptide monomer missingMonomer not found in monomer database"},
+             {"RNA1{R(N)P.R([missingMonomer])P}$$$$V2.0",
+              "Nucleic acid monomer missingMonomer not found in monomer "
+              "database"}}) {
         auto mol = rdkit_extensions::to_rdkit(helm);
         auto check_error = [&](const std::runtime_error& error) {
             return error.what() == expected;
@@ -91,6 +104,35 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_res)
                                                                {2, "O"}};
     BOOST_TEST(get_attachment_points_for_res(
                    "A", rdkit_extensions::ChainType::PEPTIDE) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_unknown_peptide)
+{
+    const std::vector<std::pair<int, std::string>> expected = {{1, ""},
+                                                               {2, ""}};
+    BOOST_TEST(get_attachment_points_for_res(
+                   "X", rdkit_extensions::ChainType::PEPTIDE) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_unknown_nucleic_acid)
+{
+    using rdkit_extensions::ChainType;
+    const std::vector<std::pair<int, std::string>> expected = {{1, ""}};
+    BOOST_TEST(get_attachment_points_for_res("N", ChainType::RNA) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_missing_monomer)
+{
+    using rdkit_extensions::ChainType;
+    const std::vector<std::pair<int, std::string>> expected = {{1, ""},
+                                                               {2, ""}};
+    for (const auto chain_type :
+         {ChainType::PEPTIDE, ChainType::RNA, ChainType::CHEM}) {
+        BOOST_TEST(get_attachment_points_for_res("missingMonomer",
+                                                 chain_type) == expected);
+    }
+    // The unknown-base special case must not apply to other polymer types.
+    BOOST_TEST(get_attachment_points_for_res("N", ChainType::CHEM) == expected);
 }
 
 /**
