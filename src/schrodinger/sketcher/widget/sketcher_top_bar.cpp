@@ -254,6 +254,7 @@ void SketcherTopBar::onImportFromFileClicked()
     };
 
     QStringList filters;
+    filters.append("All supported formats (*.*)");
     for (const auto& [_, label, extensions] : get_import_formats()) {
         filters.append(get_filter_name(label, extensions));
     }
