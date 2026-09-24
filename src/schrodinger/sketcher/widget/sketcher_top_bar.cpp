@@ -245,16 +245,38 @@ void SketcherTopBar::onImportFromFileClicked()
             using namespace rdkit_extensions;
 
             auto path_string = file_path.toStdString();
-            auto format = get_file_format(path_string);
             auto text = get_decompressed_string(content.toStdString());
-            emit importTextRequested(text, format);
+            // The "All supported formats" filter lets the user pick a file
+            // with any extension, so fall back to sniffing the contents when
+            // the extension isn't one we recognize
+            Format format;
+            try {
+                format = get_file_format(path_string);
+            } catch (const std::invalid_argument&) {
+                format = Format::AUTO_DETECT;
+            }
+            emit importTextRequested(text,
+                                     resolve_ambiguous_import_format(format));
         } catch (const std::exception& exc) {
             show_error_dialog("File Error", exc.what(), this);
         }
     };
 
+    auto model = getModel();
+    if (model == nullptr) {
+        throw std::runtime_error(
+            "The dialog cannot be used if there is no model.");
+    }
+
     QStringList filters;
-    for (const auto& [_, label, extensions] : get_import_formats()) {
+    // Maestro offers an auto-detect filter first, and the native file dialog
+    // hides the format list by default, so without this only the first
+    // format's extensions would be selectable. SKETCH-2516
+    filters.append("All supported formats (*.*)");
+    for (const auto& [_, label, extensions] : get_import_formats(
+             model->getInterfaceType(), model->getMoleculeType(),
+             model->getValueBool(ModelKey::NEW_STRUCTURES_REPLACE_CONTENT),
+             model->getToolSet())) {
         filters.append(get_filter_name(label, extensions));
     }
     auto name_filter = filters.join(";;");

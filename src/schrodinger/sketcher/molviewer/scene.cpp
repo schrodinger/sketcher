@@ -888,7 +888,8 @@ void Scene::dropEvent(QGraphicsSceneDragDropEvent* event)
             auto file_path = url.toLocalFile().toStdString();
             auto contents = get_file_text(file_path);
             auto format = rdkit_extensions::get_file_format(file_path);
-            emit importTextRequested(contents, format);
+            emit importTextRequested(contents,
+                                     resolve_ambiguous_import_format(format));
         }
     }
     event->acceptProposedAction();

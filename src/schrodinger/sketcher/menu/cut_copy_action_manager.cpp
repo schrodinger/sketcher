@@ -73,6 +73,9 @@ Format CutCopyActionManager::getDefaultCutCopyFormat() const
 
 void CutCopyActionManager::initCopyAsMenu()
 {
+    // Note that these are the format lists without extensions: a copy goes to
+    // the clipboard rather than to a file, so there's nothing to compress and
+    // the "[compressed]" entries would just duplicate their uncompressed twins.
     auto init_menu = [&](const auto& format_list, bool is_reaction_format) {
         for (const auto& format : format_list) {
             // Clang < 16 does not allow capturing structured bindings, so
@@ -87,8 +90,8 @@ void CutCopyActionManager::initCopyAsMenu()
         }
     };
 
-    init_menu(get_standard_export_formats(), false);
-    init_menu(get_reaction_export_formats(), true);
+    init_menu(get_mol_and_seq_export_formats(), false);
+    init_menu(get_rxn_export_formats(), true);
 
     // Add a separator and the option to export as an image
     auto separator = m_copy_as_menu->addSeparator();

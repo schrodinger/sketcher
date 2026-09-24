@@ -67,11 +67,18 @@ void FileExportDialog::setIsReactionExport(bool has_reaction)
                 // reaction state, so nothing to do
     }
     m_ui->format_combo->clear();
-    for (const auto& [fmt, label, extensions] : get_format_list(has_reaction)) {
+    m_current_format_list = get_format_list(has_reaction);
+
+    int index = 0;
+    for (const auto& [format, label, extensions] : m_current_format_list) {
         if (!extensions.empty()) {
-            auto filter = get_filter_name(label, extensions);
-            m_ui->format_combo->addItem(filter, QVariant::fromValue(fmt));
+            // Store the index into the format list rather than the Format
+            // enum, since compressed and uncompressed entries for the same
+            // format share a Format value
+            m_ui->format_combo->addItem(get_filter_name(label, extensions),
+                                        index);
         }
+        index++;
     }
     // reset the format index
     m_format_index_at_start = 0;
@@ -80,8 +87,9 @@ void FileExportDialog::setIsReactionExport(bool has_reaction)
 
 QByteArray FileExportDialog::getFileContent() const
 {
-    auto combo_format = m_ui->format_combo->currentData().value<Format>();
-    return emit exportTextRequested(combo_format).toUtf8();
+    int format_index = m_ui->format_combo->currentData().toInt();
+    auto [format, label, extensions] = m_current_format_list[format_index];
+    return emit exportTextRequested(format).toUtf8();
 }
 
 void FileExportDialog::reject()
@@ -103,11 +111,9 @@ void FileExportDialog::showEvent(QShowEvent* event)
 
 std::vector<std::string> FileExportDialog::getValidExtensions() const
 {
-    auto combo_format = m_ui->format_combo->currentData().value<Format>();
-    if (m_model_has_reaction) {
-        return get_rxn_extensions(combo_format);
-    }
-    return get_mol_and_seq_extensions(combo_format);
+    int format_index = m_ui->format_combo->currentData().toInt();
+    auto [format, label, extensions] = m_current_format_list[format_index];
+    return extensions;
 }
 
 void FileExportDialog::exportFile()

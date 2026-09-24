@@ -96,18 +96,11 @@ void PasteInTextDialog::onModelValuesChanged()
     ui->status_lbl->setStyleSheet(style);
 
     // load data into the format combo box
-    auto interface_type = m_sketcher_model->getInterfaceType();
-    auto cur_mol_type = m_sketcher_model->getMoleculeType();
     // first figure out whether we want atomistic formats, monomeric formats, or
     // both
-    auto allowed_mol_type = InterfaceType::ATOMISTIC_OR_MONOMERIC;
-    if (interface_type == InterfaceType::ATOMISTIC ||
-        (!replace && cur_mol_type == MoleculeType::ATOMISTIC)) {
-        allowed_mol_type = InterfaceType::ATOMISTIC;
-    } else if (interface_type == InterfaceType::MONOMERIC ||
-               (!replace && cur_mol_type == MoleculeType::MONOMERIC)) {
-        allowed_mol_type = InterfaceType::MONOMERIC;
-    }
+    auto allowed_mol_type =
+        get_importable_mol_types(m_sketcher_model->getInterfaceType(),
+                                 m_sketcher_model->getMoleculeType(), replace);
     // then iterate through the available formats and load tha applicable ones
     // into the combo box
     ui->format_combo->clear();

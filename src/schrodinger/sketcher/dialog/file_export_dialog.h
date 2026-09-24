@@ -1,6 +1,7 @@
 #pragma once
 
 #include "schrodinger/sketcher/definitions.h"
+#include "schrodinger/sketcher/dialog/file_import_export.h"
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
 
 namespace Ui
@@ -70,6 +71,9 @@ class SKETCHER_API FileExportDialog : public ModalDialog
     int m_format_index_at_start = 0;
     QString m_filename_at_start;
     SketcherModel* m_model = nullptr;
+
+    // Store the current format list to look up extensions by combo box index
+    FormatList<rdkit_extensions::Format> m_current_format_list;
 };
 
 } // namespace sketcher
