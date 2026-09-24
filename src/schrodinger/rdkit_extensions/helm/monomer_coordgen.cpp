@@ -2387,7 +2387,7 @@ static unsigned int copy_polymer_coords_to_monomer_mol(
                 polymer->getConformer().getAtomPos(monomer->getIdx()));
         }
     }
-    monomer_mol.addConformer(conformer);
+    monomer_mol.addConformer(conformer, /*assignId = */ true);
     return conformer->getId();
 }
 
