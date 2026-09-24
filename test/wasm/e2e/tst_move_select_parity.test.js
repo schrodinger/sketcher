@@ -5,9 +5,7 @@ import { Sketcher } from './sketcher/wrappers/sketcher.js';
 const SOURCE_STRUCTURE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 
 async function requireTestBridge(page) {
-  const available = await page.evaluate(
-    () => typeof Module._sketcher_get_rect === 'function',
-  );
+  const available = await page.evaluate(() => typeof Module._sketcher_get_rect === 'function');
   test.skip(!available, 'requires a WASM artifact rebuilt with playwright_test_bridge.cpp');
 }
 

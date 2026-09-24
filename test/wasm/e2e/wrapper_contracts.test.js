@@ -10,12 +10,18 @@ function v3000Counts(text) {
 }
 
 async function visibleQtPopupCount(page) {
-  return page.locator('[id^="qt-window-"]').evaluateAll((elements) =>
-    elements.slice(1).filter((element) => {
-      const style = getComputedStyle(element);
-      const bounds = element.getBoundingClientRect();
-      return style.display !== 'none' && style.visibility !== 'hidden' && bounds.width > 0 && bounds.height > 0;
-    }).length,
+  return page.locator('[id^="qt-window-"]').evaluateAll(
+    (elements) =>
+      elements.slice(1).filter((element) => {
+        const style = getComputedStyle(element);
+        const bounds = element.getBoundingClientRect();
+        return (
+          style.display !== 'none' &&
+          style.visibility !== 'hidden' &&
+          bounds.width > 0 &&
+          bounds.height > 0
+        );
+      }).length,
   );
 }
 
@@ -48,9 +54,15 @@ test.describe('Sketcher wrapper contracts', () => {
     await sk.reset_state();
 
     expect(sk.current_buttons).toMatchObject({
-      tool: 'C', wildcard: 'A', periodic_table: 'Si', stereo: 'down',
-      bond_order: 'double', bond_query: 'aromatic', 'r-group': 'r+',
-      reaction: 'rxn_arrow', select: 'rect_btn',
+      tool: 'C',
+      wildcard: 'A',
+      periodic_table: 'Si',
+      stereo: 'down',
+      bond_order: 'double',
+      bond_query: 'aromatic',
+      'r-group': 'r+',
+      reaction: 'rxn_arrow',
+      select: 'rect_btn',
     });
     expect((await sk.widget_state('c_btn')).checked).toBe(true);
   });
@@ -88,11 +100,7 @@ test.describe('Sketcher wrapper contracts', () => {
       await sk.click_bond(index, true, 'shift');
     }
 
-    await sk.selection_context_menu(
-      { type: 'bond', index: 4 },
-      'topology',
-      'Not In a Ring',
-    );
+    await sk.selection_context_menu({ type: 'bond', index: 4 }, 'topology', 'Not In a Ring');
   });
 
   test('deep context-menu action dismisses its Qt/WASM popup canvases', async ({ page }) => {

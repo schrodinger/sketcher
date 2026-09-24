@@ -7,7 +7,9 @@ test.describe('tst_query_bond_crash', () => {
   test('main', async ({ page }) => {
     const sk = new Sketcher(page);
     let browserCrashed = false;
-    page.on('crash', () => { browserCrashed = true; });
+    page.on('crash', () => {
+      browserCrashed = true;
+    });
     await sk.open();
 
     // SKETCH-2399: repeatedly apply Single/Double to an imported bond.

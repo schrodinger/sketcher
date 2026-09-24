@@ -27,7 +27,11 @@ test.describe('tst_enumeration_details', () => {
     await importAndMap(sk);
 
     await sk.click_tool('r+');
-    for (const [atom, name] of [[1, 'add_r1'], [2, 'add_r2'], [3, 'add_r3']]) {
+    for (const [atom, name] of [
+      [1, 'add_r1'],
+      [2, 'add_r2'],
+      [3, 'add_r3'],
+    ]) {
       await sk.click_atom(atom);
       await checkpoint(page, name);
     }

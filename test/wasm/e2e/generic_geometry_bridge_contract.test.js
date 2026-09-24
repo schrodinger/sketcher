@@ -4,9 +4,11 @@ const SOURCE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 
 async function waitForSketcherReady(page) {
   await page.goto('/wasm_shell.html');
-  await page.waitForFunction(() =>
-    typeof window.Module?._sketcher_get_rect === 'function' &&
-    typeof window.Module?.sketcher_import_text === 'function');
+  await page.waitForFunction(
+    () =>
+      typeof window.Module?._sketcher_get_rect === 'function' &&
+      typeof window.Module?.sketcher_import_text === 'function',
+  );
 }
 
 async function bridgeRect(page, selector) {
@@ -43,8 +45,9 @@ test.describe('generic geometry bridge contract', () => {
     expect(deleteAction.width).toBeGreaterThan(0);
     await page.keyboard.press('Escape');
 
-    await expect(page.evaluate(() => Module._sketcher_get_popup_owner('double_btn')))
-      .resolves.toBe('bond_order_btn');
+    await expect(page.evaluate(() => Module._sketcher_get_popup_owner('double_btn'))).resolves.toBe(
+      'bond_order_btn',
+    );
 
     // State selectors deliberately resolve popup tools while their popup is
     // closed; that is how shortcut-driven tool selection is asserted.
@@ -53,7 +56,9 @@ test.describe('generic geometry bridge contract', () => {
     expect(doubleBond.width).toBeGreaterThan(0);
   });
 
-  test('opens and selects a ToolButtonWithPopup child with generic widget geometry', async ({ page }) => {
+  test('opens and selects a ToolButtonWithPopup child with generic widget geometry', async ({
+    page,
+  }) => {
     await waitForSketcherReady(page);
 
     // A normal first click selects the displayed parent tool. A second normal

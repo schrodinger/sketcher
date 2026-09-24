@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { Sketcher } from './sketcher/wrappers/sketcher.js';
-import { clickWidget, closeActiveQtPopups, hideMouseMarker, isEmpty, sendWidgetMousePress, widgetState } from './sketcher/wrappers/sketcher_wasm.js';
+import {
+  clickWidget,
+  closeActiveQtPopups,
+  hideMouseMarker,
+  isEmpty,
+  sendWidgetMousePress,
+  widgetState,
+} from './sketcher/wrappers/sketcher_wasm.js';
 
 const SOURCE = 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl';
 test.setTimeout(180_000);
@@ -154,7 +161,13 @@ test.describe('tst_select_mode_active_selection', () => {
       await checkpoint(page, checkpointName);
     }
     for (const tool of ['A', 'AH', 'Q', 'QH', 'M', 'MH', 'X', 'XH']) {
-      await sk.selection_context_menu(atomTarget, 'modify_atoms', 'replace_atoms_with', 'wildcard', tool);
+      await sk.selection_context_menu(
+        atomTarget,
+        'modify_atoms',
+        'replace_atoms_with',
+        'wildcard',
+        tool,
+      );
       await checkpoint(page, `change_atoms_to_${tool}_context`);
     }
     // R-group placement has no deterministic Squish image reference
@@ -164,14 +177,25 @@ test.describe('tst_select_mode_active_selection', () => {
       await sk.click_atom(n, true, 'shift');
       await sk.click_bond(n, true, 'shift');
     }
-    await sk.selection_context_menu({ type: 'atom', index: 3 }, 'modify_atoms', 'replace_atoms_with', 'new_r-group');
+    await sk.selection_context_menu(
+      { type: 'atom', index: 3 },
+      'modify_atoms',
+      'replace_atoms_with',
+      'new_r-group',
+    );
     await sk.click_button('clear_selection');
     await sk.click_tool('rect_btn');
     for (const n of [1, 2]) {
       await sk.click_atom(n, true, 'shift');
       await sk.click_bond(n, true, 'shift');
     }
-    await sk.selection_context_menu(atomTarget, 'modify_atoms', 'replace_atoms_with', 'existing_r-group', 'r1');
+    await sk.selection_context_menu(
+      atomTarget,
+      'modify_atoms',
+      'replace_atoms_with',
+      'existing_r-group',
+      'r1',
+    );
     await sk.click_button('clear_selection');
     for (const n of [1, 2, 3, 4, 5, 6]) {
       await sk.click_bond(n, true, 'shift');

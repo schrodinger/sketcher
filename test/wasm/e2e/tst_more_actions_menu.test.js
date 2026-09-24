@@ -34,10 +34,7 @@ function pdbAtomElements(text) {
 }
 
 async function requireRenderedGeometryBridge(page) {
-  const available = await page.evaluate(
-    () =>
-      typeof Module._sketcher_get_rect === 'function',
-  );
+  const available = await page.evaluate(() => typeof Module._sketcher_get_rect === 'function');
   test.skip(!available, 'requires the WASM artifact with rendered-geometry test bridge support');
 }
 
@@ -154,8 +151,21 @@ test.describe('tst_more_actions_menu', () => {
           // exported PDB payload. Validate the browser-visible PDB instead.
           const clipboard = await sk.copy_all_as_text(format);
           await expect(pdbAtomElements(clipboard)).toEqual([
-            'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'C',
-            'Cl', 'Cl', 'N', 'N', 'N', 'O',
+            'C',
+            'C',
+            'C',
+            'C',
+            'C',
+            'C',
+            'C',
+            'C',
+            'C',
+            'Cl',
+            'Cl',
+            'N',
+            'N',
+            'N',
+            'O',
           ]);
           return;
         }

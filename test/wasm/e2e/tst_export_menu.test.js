@@ -66,11 +66,13 @@ function v3000Block(text, name) {
  * even when the browser-visible structure and chemistry are the same.
  */
 function v3000Graph(text) {
-  const atoms = new Map(v3000Block(text, 'ATOM').map((line) => {
-    const fields = line.trim().split(/\s+/);
-    const charge = fields.find((field) => field.startsWith('CHG=')) || 'CHG=0';
-    return [Number(fields[2]), { element: fields[3], charge, edges: [] }];
-  }));
+  const atoms = new Map(
+    v3000Block(text, 'ATOM').map((line) => {
+      const fields = line.trim().split(/\s+/);
+      const charge = fields.find((field) => field.startsWith('CHG=')) || 'CHG=0';
+      return [Number(fields[2]), { element: fields[3], charge, edges: [] }];
+    }),
+  );
   for (const line of v3000Block(text, 'BOND')) {
     const fields = line.trim().split(/\s+/);
     const edge = {
@@ -91,20 +93,28 @@ function sameMolecularGraph(actualText, referenceText) {
   const actualIds = [...actual.keys()].sort(
     (left, right) => actual.get(right).edges.length - actual.get(left).edges.length,
   );
-  const candidates = new Map(actualIds.map((id) => [
-    id,
-    [...reference.keys()].filter((candidate) => label(actual.get(id)) === label(reference.get(candidate))),
-  ]));
+  const candidates = new Map(
+    actualIds.map((id) => [
+      id,
+      [...reference.keys()].filter(
+        (candidate) => label(actual.get(id)) === label(reference.get(candidate)),
+      ),
+    ]),
+  );
   const mapping = new Map();
   const used = new Set();
-  const compatible = (actualId, referenceId) => actual.get(actualId).edges.every((edge) => {
-    if (!mapping.has(edge.to)) return true;
-    return reference.get(referenceId).edges.some((candidate) =>
-      candidate.to === mapping.get(edge.to)
-      && candidate.order === edge.order
-      && candidate.orientation === edge.orientation,
-    );
-  });
+  const compatible = (actualId, referenceId) =>
+    actual.get(actualId).edges.every((edge) => {
+      if (!mapping.has(edge.to)) return true;
+      return reference
+        .get(referenceId)
+        .edges.some(
+          (candidate) =>
+            candidate.to === mapping.get(edge.to) &&
+            candidate.order === edge.order &&
+            candidate.orientation === edge.orientation,
+        );
+    });
   const search = (position) => {
     if (position === actualIds.length) return true;
     const actualId = actualIds[position];
@@ -131,7 +141,13 @@ test.describe('tst_export_menu', () => {
     });
     for (const [name, format, width, height, transparent] of IMAGE_EXPORTS) {
       await test.step(name, async () => {
-        const download = await sk.save_image({ filename: name, format, width, height, transparent });
+        const download = await sk.save_image({
+          filename: name,
+          format,
+          width,
+          height,
+          transparent,
+        });
         expect(download.filename).toBe(`${name}.${format.toLowerCase()}`);
         const image = Buffer.from(download.contentBase64, 'base64');
         if (format === 'PNG') {
@@ -172,7 +188,9 @@ test.describe('tst_export_menu', () => {
             expect(download).toBeNull();
             return;
           }
-          expect(download.filename).toBe(`fragment_${sourceFragment}_${extension}.${expectedExtension}`);
+          expect(download.filename).toBe(
+            `fragment_${sourceFragment}_${extension}.${expectedExtension}`,
+          );
           const contents = Buffer.from(download.contentBase64, 'base64').toString('utf8');
           // Reference output was produced by the original desktop Squish
           // test. V3000 ordering and coordinates differ in Qt/WASM, so check
@@ -184,10 +202,11 @@ test.describe('tst_export_menu', () => {
           } else {
             // PDB's fixed-width coordinates can differ only in a signed zero
             // after the desktop-to-WASM rendering transform.
-            const normalizePdbZero = (value) => format === 'PDB'
-              ? value.replace(/-0\.000/g, ' 0.000')
-              : value;
-            expect(normalizePdbZero(contents.trim())).toBe(normalizePdbZero(referenceContents.trim()));
+            const normalizePdbZero = (value) =>
+              format === 'PDB' ? value.replace(/-0\.000/g, ' 0.000') : value;
+            expect(normalizePdbZero(contents.trim())).toBe(
+              normalizePdbZero(referenceContents.trim()),
+            );
           }
         });
       }

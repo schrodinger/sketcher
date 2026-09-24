@@ -13,7 +13,10 @@ test('Modify Atoms R-group context menus use real cascading menus', async ({ pag
     await sk.click_bond(n, true, 'shift');
   }
   await sk.selection_context_menu(
-    { type: 'atom', index: 3 }, 'modify_atoms', 'replace_atoms_with', 'new_r-group',
+    { type: 'atom', index: 3 },
+    'modify_atoms',
+    'replace_atoms_with',
+    'new_r-group',
   );
   await sk.click_button('clear_selection');
   await sk.click_tool('rect_btn');
@@ -22,7 +25,11 @@ test('Modify Atoms R-group context menus use real cascading menus', async ({ pag
     await sk.click_bond(n, true, 'shift');
   }
   await sk.selection_context_menu(
-    { type: 'atom', index: 1 }, 'modify_atoms', 'replace_atoms_with', 'existing_r-group', 'r1',
+    { type: 'atom', index: 1 },
+    'modify_atoms',
+    'replace_atoms_with',
+    'existing_r-group',
+    'r1',
   );
   // R-group placement has no deterministic image reference (SKETCH-1905).
   expect(await sk.clipboard_text()).toBeDefined();

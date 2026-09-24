@@ -9,7 +9,11 @@ test('Modify Atoms Set Element opens the periodic-table popup by mouse', async (
   await sk.import_menu('paste_in_text', 'NC(N)=NC(=O)CC1=C(Cl)C=CC=C1Cl');
   await sk.map_imported_atom_indexes();
   await sk.click_button('select_all');
-  await sk.open_selection_context_submenu({ type: 'atom', index: 1 }, 'modify_atoms', 'set_element');
+  await sk.open_selection_context_submenu(
+    { type: 'atom', index: 1 },
+    'modify_atoms',
+    'set_element',
+  );
   await clickPopupTool(page, 'pd_btn');
   await closeActiveQtPopups(page);
   await page.waitForTimeout(100);
