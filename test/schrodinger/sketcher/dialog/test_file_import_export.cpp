@@ -25,7 +25,7 @@ namespace
 FormatList<Format> all_import_formats()
 {
     return get_import_formats(InterfaceType::ATOMISTIC_OR_MONOMERIC,
-                              MoleculeType::EMPTY, true);
+                              MoleculeType::EMPTY, true, ToolSet::ATOMISTIC);
 }
 
 bool contains(const std::vector<std::string>& vec, const std::string& str)
@@ -147,7 +147,8 @@ BOOST_AUTO_TEST_CASE(test_import_does_not_split_compressed)
     BOOST_TEST(contains(maestro_exts, ".mae.zst"));
 
     auto atomistic = labels_of(get_import_formats(InterfaceType::ATOMISTIC,
-                                                  MoleculeType::EMPTY, true));
+                                                  MoleculeType::EMPTY, true,
+                                                  ToolSet::ATOMISTIC));
     BOOST_TEST(atomistic == (std::vector<std::string>{
                                 "MDL SD", "Maestro", "SMILES", "InChI", "MOL2",
                                 "PDB", "XYZ", "Marvin Document", "ChemDraw XML",
@@ -215,41 +216,57 @@ BOOST_AUTO_TEST_CASE(test_clipboard_export_formats_have_no_compressed_entries)
 }
 
 /**
- * Sequence formats lead on a monomeric interface and trail elsewhere, and are
- * dropped entirely when an import can't produce a monomeric structure.
+ * Sequence formats lead on the Monomer tab and trail on the Atomistic tab, and
+ * are dropped entirely when an import can't produce a monomeric structure.
  */
-BOOST_AUTO_TEST_CASE(test_sequence_formats_are_ordered_by_interface)
+BOOST_AUTO_TEST_CASE(test_sequence_formats_are_ordered_by_tab)
 {
     auto is_seq = [](const std::string& label) {
         return label == "HELM" || label == "FASTA";
     };
 
-    // Monomer tab: sequence formats first
+    // The ordering follows the tab the user is on, not the interface type. The
+    // usual Sketcher is built with ATOMISTIC_OR_MONOMERIC, so keying off the
+    // interface type would leave the Monomer tab ordered atomistic-first.
+    auto monomer_tab = labels_of(
+        get_import_formats(InterfaceType::ATOMISTIC_OR_MONOMERIC,
+                           MoleculeType::EMPTY, true, ToolSet::MONOMERIC));
+    BOOST_TEST(monomer_tab.size() == 13);
+    BOOST_TEST(is_seq(monomer_tab[0]));
+    BOOST_TEST(is_seq(monomer_tab[1]));
+
+    auto atomistic_tab = labels_of(
+        get_import_formats(InterfaceType::ATOMISTIC_OR_MONOMERIC,
+                           MoleculeType::EMPTY, true, ToolSet::ATOMISTIC));
+    BOOST_TEST(atomistic_tab.size() == 13);
+    BOOST_TEST(is_seq(atomistic_tab[atomistic_tab.size() - 2]));
+    BOOST_TEST(is_seq(atomistic_tab.back()));
+
+    // A monomer-only build offers nothing but the sequence formats
     auto monomeric = labels_of(get_import_formats(InterfaceType::MONOMERIC,
-                                                  MoleculeType::EMPTY, true));
+                                                  MoleculeType::EMPTY, true,
+                                                  ToolSet::MONOMERIC));
     BOOST_TEST(monomeric == (std::vector<std::string>{"HELM", "FASTA"}));
 
-    // Atomistic tab: no sequence formats at all
+    // ...and an atomistic-only build offers no sequence formats at all, even
+    // on the Monomer tab, which such a build has no way to reach anyway
     auto atomistic = labels_of(get_import_formats(InterfaceType::ATOMISTIC,
-                                                  MoleculeType::EMPTY, true));
+                                                  MoleculeType::EMPTY, true,
+                                                  ToolSet::MONOMERIC));
     BOOST_TEST(atomistic.size() == 11);
     BOOST_TEST(std::none_of(atomistic.begin(), atomistic.end(), is_seq));
 
-    // Both: sequence formats last, since the atomistic formats dominate
-    auto both = labels_of(all_import_formats());
-    BOOST_TEST(both.size() == 13);
-    BOOST_TEST(is_seq(both[both.size() - 2]));
-    BOOST_TEST(is_seq(both.back()));
-
     // An import that adds to an existing atomistic structure can't bring in a
     // sequence, so the sequence formats drop out
-    auto adding_to_atomistic = labels_of(get_import_formats(
-        InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::ATOMISTIC, false));
+    auto adding_to_atomistic = labels_of(
+        get_import_formats(InterfaceType::ATOMISTIC_OR_MONOMERIC,
+                           MoleculeType::ATOMISTIC, false, ToolSet::ATOMISTIC));
     BOOST_TEST(std::none_of(adding_to_atomistic.begin(),
                             adding_to_atomistic.end(), is_seq));
     // ...but replacing it can
-    auto replacing_atomistic = labels_of(get_import_formats(
-        InterfaceType::ATOMISTIC_OR_MONOMERIC, MoleculeType::ATOMISTIC, true));
+    auto replacing_atomistic = labels_of(
+        get_import_formats(InterfaceType::ATOMISTIC_OR_MONOMERIC,
+                           MoleculeType::ATOMISTIC, true, ToolSet::ATOMISTIC));
     BOOST_TEST(std::any_of(replacing_atomistic.begin(),
                            replacing_atomistic.end(), is_seq));
 }

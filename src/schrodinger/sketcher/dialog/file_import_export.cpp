@@ -176,7 +176,8 @@ get_importable_mol_types(const InterfaceTypeType interface_type,
 
 FormatList<Format> get_import_formats(const InterfaceTypeType interface_type,
                                       const MoleculeType cur_mol_type,
-                                      const bool replace_content)
+                                      const bool replace_content,
+                                      const ToolSet tool_set)
 {
     auto allowed_mol_types =
         get_importable_mol_types(interface_type, cur_mol_type, replace_content);
@@ -206,10 +207,12 @@ FormatList<Format> get_import_formats(const InterfaceTypeType interface_type,
 
     // Laura Beck (SKETCH-2516): on the Monomer tab the sequence formats belong
     // at the top, since everything else is atom-based; elsewhere they go at the
-    // bottom. A visual separator between the two groups isn't possible here,
-    // because QFileDialog::getOpenFileContent only accepts a filter string.
+    // bottom. Note that this keys off the tab the user is on rather than the
+    // interface type, which is fixed by the embedding application. A visual
+    // separator between the two groups isn't possible here, because
+    // QFileDialog::getOpenFileContent only accepts a filter string.
     FormatList<Format> import_formats;
-    if (interface_type == InterfaceType::MONOMERIC) {
+    if (tool_set == ToolSet::MONOMERIC) {
         import_formats = std::move(monomeric_entries);
         import_formats.insert(import_formats.end(), atomistic_entries.begin(),
                               atomistic_entries.end());

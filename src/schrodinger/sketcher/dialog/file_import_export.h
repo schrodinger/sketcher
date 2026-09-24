@@ -16,6 +16,7 @@ namespace sketcher
 
 enum class ImageFormat;
 enum class MoleculeType;
+enum class ToolSet;
 
 // Collection specifying the relationship for permitted formats via tuples
 // containing (format enum, menu label, allowable extensions). These are
@@ -60,13 +61,15 @@ SKETCHER_API InterfaceTypeType get_importable_mol_types(
  * @param interface_type which kinds of structure the interface supports
  * @param cur_mol_type what the Sketcher currently contains
  * @param replace_content whether an import replaces the current contents
+ * @param tool_set which tab the user is on
  * @return list of importable (format enum, menu label, allowable extensions).
- * Sequence formats are listed first on a monomeric interface and last
- * otherwise, and are omitted entirely when they can't be imported.
+ * Sequence formats are listed first on the Monomer tab and last on the
+ * Atomistic tab, and are omitted entirely when they can't be imported.
  */
 SKETCHER_API FormatList<rdkit_extensions::Format>
 get_import_formats(const InterfaceTypeType interface_type,
-                   const MoleculeType cur_mol_type, const bool replace_content);
+                   const MoleculeType cur_mol_type, const bool replace_content,
+                   const ToolSet tool_set);
 
 /**
  * File extensions can't distinguish the FASTA sub-formats, so

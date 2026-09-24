@@ -270,7 +270,8 @@ void SketcherTopBar::onImportFromFileClicked()
     filters.append("All supported formats (*.*)");
     for (const auto& [_, label, extensions] : get_import_formats(
              model->getInterfaceType(), model->getMoleculeType(),
-             model->getValueBool(ModelKey::NEW_STRUCTURES_REPLACE_CONTENT))) {
+             model->getValueBool(ModelKey::NEW_STRUCTURES_REPLACE_CONTENT),
+             model->getToolSet())) {
         filters.append(get_filter_name(label, extensions));
     }
     auto name_filter = filters.join(";;");
