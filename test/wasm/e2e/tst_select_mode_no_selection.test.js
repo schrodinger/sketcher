@@ -54,11 +54,16 @@ test.describe('tst_select_mode_no_selection', () => {
     for (const n of [1, 4, 7]) await sk.click_bond(n, true, 'shift');
     await checkpoint(page, 'add_bonds_to_selection');
     await sk.click_button('clear_selection');
-    for (const n of [1, 4, 7]) { await sk.click_atom(n, true, 'shift'); await sk.click_bond(n, true, 'shift'); }
+    for (const n of [1, 4, 7]) {
+      await sk.click_atom(n, true, 'shift');
+      await sk.click_bond(n, true, 'shift');
+    }
     await checkpoint(page, 'add_both_to_selection');
     for (const n of [1, 4, 7]) {
-      await sk.click_bond(n, true, 'control'); await checkpoint(page, `invert_bond_${n}`);
-      await sk.click_atom(n, true, 'control'); await checkpoint(page, `invert_atom_${n}`);
+      await sk.click_bond(n, true, 'control');
+      await checkpoint(page, `invert_bond_${n}`);
+      await sk.click_atom(n, true, 'control');
+      await checkpoint(page, `invert_atom_${n}`);
     }
 
     const oxygen = await center(sk, 'atom', 6);
@@ -66,13 +71,20 @@ test.describe('tst_select_mode_no_selection', () => {
     const nitrogen1 = await center(sk, 'atom', 1);
     const nitrogen4 = await center(sk, 'atom', 4);
     await sk.click_button('clear_selection');
-    await sk.click_tool('rect_btn'); await drag(page, oxygen, chlorine); await checkpoint(page, 'mouse_drag');
+    await sk.click_tool('rect_btn');
+    await drag(page, oxygen, chlorine);
+    await checkpoint(page, 'mouse_drag');
     await sk.click_button('clear_selection');
-    await drag(page, oxygen, chlorine); await checkpoint(page, 'shift_drag');
-    await drag(page, nitrogen1, chlorine, 'Control'); await checkpoint(page, 'ctrl_drag');
+    await drag(page, oxygen, chlorine);
+    await checkpoint(page, 'shift_drag');
+    await drag(page, nitrogen1, chlorine, 'Control');
+    await checkpoint(page, 'ctrl_drag');
     await sk.click_button('clear_selection');
-    await page.mouse.dblclick(nitrogen1.x, nitrogen1.y); await checkpoint(page, 'double_click');
+    await page.mouse.dblclick(nitrogen1.x, nitrogen1.y);
+    await checkpoint(page, 'double_click');
     await sk.click_button('clear_selection');
-    await sk.click_tool('move_rotate'); await drag(page, nitrogen1, nitrogen4); await checkpoint(page, 'drag_canvas');
+    await sk.click_tool('move_rotate');
+    await drag(page, nitrogen1, nitrogen4);
+    await checkpoint(page, 'drag_canvas');
   });
 });

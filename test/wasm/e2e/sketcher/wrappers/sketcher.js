@@ -253,11 +253,19 @@ const POPUP_CURRENT_BUTTON_KEY = {
 };
 
 const DEFAULT_CURRENT_BUTTONS = {
-  tool: 'C', wildcard: 'A', periodic_table: 'Si', stereo: 'down',
-  bond_order: 'double', bond_query: 'aromatic', 'r-group': 'r+',
-  reaction: 'rxn_arrow', replace_current_content: 'checked',
-  valence_errors: 'checked', heteroatom_colors: 'checked',
-  stereo_labels: 'checked', select: 'rect_btn',
+  tool: 'C',
+  wildcard: 'A',
+  periodic_table: 'Si',
+  stereo: 'down',
+  bond_order: 'double',
+  bond_query: 'aromatic',
+  'r-group': 'r+',
+  reaction: 'rxn_arrow',
+  replace_current_content: 'checked',
+  valence_errors: 'checked',
+  heteroatom_colors: 'checked',
+  stereo_labels: 'checked',
+  select: 'rect_btn',
 };
 
 // Qt ToolButtonWithPopup opens after 250 ms. Keep the production-like test
@@ -523,9 +531,12 @@ export class Sketcher {
     if (['rect_btn', 'lasso_btn', 'ellipse_btn'].includes(tool)) this.current_buttons.select = tool;
     if (WILDCARD_TOOL_NAMES[tool]) this.current_buttons.wildcard = tool;
     if (PERIODIC_TABLE_TOOLS.includes(tool)) this.current_buttons.periodic_table = tool;
-    if (['down', 'single_either', 'double_either'].includes(tool)) this.current_buttons.stereo = tool;
-    if (['coordinate', 'double', 'triple', 'zero'].includes(tool)) this.current_buttons.bond_order = tool;
-    if (['aromatic', 'any', 'single_double', 'single_aromatic', 'double_aromatic'].includes(tool)) this.current_buttons.bond_query = tool;
+    if (['down', 'single_either', 'double_either'].includes(tool))
+      this.current_buttons.stereo = tool;
+    if (['coordinate', 'double', 'triple', 'zero'].includes(tool))
+      this.current_buttons.bond_order = tool;
+    if (['aromatic', 'any', 'single_double', 'single_aromatic', 'double_aromatic'].includes(tool))
+      this.current_buttons.bond_query = tool;
     if (RGROUP_TOOLS.includes(tool)) this.current_buttons['r-group'] = tool;
     if (REACTION_TOOLS.includes(tool)) this.current_buttons.reaction = tool;
   }
@@ -1084,15 +1095,21 @@ export class Sketcher {
     // Squish's query_type selects the General/Advanced *tab*, not the visible
     // "Type" combo within General. General is the dialog default.
     if (query_type !== undefined && query_type !== 'general') {
-      if (query_type !== 'advanced')
-        throw new Error(`Unsupported atom query tab: ${query_type}`);
+      if (query_type !== 'advanced') throw new Error(`Unsupported atom query tab: ${query_type}`);
       const dialog = await popupCanvasGeometry(this.page, 0);
       await mouseClick(this.page, dialog.x + dialog.width * 0.36, dialog.y + 100);
     }
     if (dropdown_type !== undefined) {
       // Qt renders this popup upward from the combo.  Its visible row order is
       // Allowed, Not Allowed, Wildcard, Specific Element, R-Group, SMARTS.
-      const rows = { 'Allowed List': 12, 'Not Allowed List': 35, Wildcard: 58, 'Specific Element': 81, 'R-Group': 104, SMARTS: 127 };
+      const rows = {
+        'Allowed List': 12,
+        'Not Allowed List': 35,
+        Wildcard: 58,
+        'Specific Element': 81,
+        'R-Group': 104,
+        SMARTS: 127,
+      };
       if (rows[dropdown_type] === undefined)
         throw new Error(`Unsupported atom-query type: ${dropdown_type}`);
       // Specific Element is the General-tab default. In the Qt/WASM popup
@@ -1105,18 +1122,29 @@ export class Sketcher {
       }
     }
     const atomField = set_as === 'query';
-    if (element !== undefined) await setWidgetText(this.page, atomField ? 'query_element_le' : 'atom_element_le', element);
-    if (isotope !== undefined) await setWidgetText(this.page, atomField ? 'query_isotope_sb' : 'atom_isotope_sb', isotope);
-    if (charge !== undefined) await setWidgetText(this.page, atomField ? 'query_charge_sb' : 'atom_charge_sb', charge);
+    if (element !== undefined)
+      await setWidgetText(this.page, atomField ? 'query_element_le' : 'atom_element_le', element);
+    if (isotope !== undefined)
+      await setWidgetText(this.page, atomField ? 'query_isotope_sb' : 'atom_isotope_sb', isotope);
+    if (charge !== undefined)
+      await setWidgetText(this.page, atomField ? 'query_charge_sb' : 'atom_charge_sb', charge);
     if (unpaired_electrons !== undefined)
-      await setWidgetText(this.page, atomField ? 'query_unpaired_sb' : 'atom_unpaired_sb', unpaired_electrons);
+      await setWidgetText(
+        this.page,
+        atomField ? 'query_unpaired_sb' : 'atom_unpaired_sb',
+        unpaired_electrons,
+      );
     if (enhanced_stereo !== undefined) {
       await clickWidget(this.page, set_as === 'query' ? 'query_stereo_combo' : 'atom_stereo_combo');
       await this.page.keyboard.type(String(enhanced_stereo));
       await this.page.keyboard.press('Enter');
     }
     if (enhanced_stereo_label !== undefined)
-      await setWidgetText(this.page, set_as === 'query' ? 'query_stereo_sb' : 'atom_stereo_sb', enhanced_stereo_label);
+      await setWidgetText(
+        this.page,
+        set_as === 'query' ? 'query_stereo_sb' : 'atom_stereo_sb',
+        enhanced_stereo_label,
+      );
     // The query dialog swaps its central widget when a list type is chosen.
     // This is `element_list_le` in the Squish object map, distinct from the
     // specific-element field above.
@@ -1127,7 +1155,8 @@ export class Sketcher {
       await this.page.keyboard.press('Enter');
     }
     if (rgroup !== undefined) await setWidgetText(this.page, 'rgroup_sb', rgroup);
-    if (num_connections !== undefined) await setWidgetText(this.page, 'num_connections_sb', num_connections);
+    if (num_connections !== undefined)
+      await setWidgetText(this.page, 'num_connections_sb', num_connections);
     const selectAdvancedCombo = async (objectName, value) => {
       await clickWidget(this.page, objectName);
       await this.page.keyboard.type(String(value));
@@ -1140,7 +1169,8 @@ export class Sketcher {
     if (ring_count !== undefined) await setWidgetText(this.page, 'ring_count_sb', ring_count);
     if (ring_bond_count_dropdown !== undefined)
       await selectAdvancedCombo('ring_bond_count_combo', ring_bond_count_dropdown);
-    if (ring_bond_count !== undefined) await setWidgetText(this.page, 'ring_bond_count_sb', ring_bond_count);
+    if (ring_bond_count !== undefined)
+      await setWidgetText(this.page, 'ring_bond_count_sb', ring_bond_count);
     if (smallest_ring_size !== undefined)
       await setWidgetText(this.page, 'smallest_ring_size_sb', smallest_ring_size);
     // Qt/WASM exposes this dialog's generated QDialogButtonBox as one canvas
@@ -1148,7 +1178,11 @@ export class Sketcher {
     // buttons through the live popup geometry, as a browser user would.
     const clickDialogButton = async (fraction) => {
       const dialog = await popupCanvasGeometry(this.page, 0);
-      await mouseClick(this.page, dialog.x + dialog.width * fraction, dialog.y + dialog.height * 0.93);
+      await mouseClick(
+        this.page,
+        dialog.x + dialog.width * fraction,
+        dialog.y + dialog.height * 0.93,
+      );
     };
     if (click_reset) await clickDialogButton(0.14);
     if (click_cancel) await clickDialogButton(0.85);
@@ -1161,7 +1195,12 @@ export class Sketcher {
    * keyboard input; the test bridge passively observes Qt/WASM's generated
    * bytes because its download API does not emit Chromium download events.
    */
-  async export_menu({ filename = 'structure', format = 'SDF', observeDownload = true, clear_selection = true } = {}) {
+  async export_menu({
+    filename = 'structure',
+    format = 'SDF',
+    observeDownload = true,
+    clear_selection = true,
+  } = {}) {
     if (clear_selection) await this.clear_selection_for_export();
     await clickWidget(this.page, 'export_btn');
     await this.page.waitForTimeout(100);
@@ -1190,7 +1229,8 @@ export class Sketcher {
       PDB: { label: 'PDB', index: 5 },
     };
     const formatChoice = exportFormatChoices[format];
-    if (formatChoice === undefined) throw new Error(`Unsupported Sketcher export format: ${format}`);
+    if (formatChoice === undefined)
+      throw new Error(`Unsupported Sketcher export format: ${format}`);
     await clickWidget(this.page, 'format_combo');
     await this.page.keyboard.press('Home');
     for (let index = 0; index < formatChoice.index; index += 1) {
@@ -1208,7 +1248,9 @@ export class Sketcher {
     if (!submittedByEnter) {
       const selectedFormat = await widgetState(this.page, 'format_combo');
       if (!selectedFormat.text.startsWith(formatChoice.label)) {
-        throw new Error(`File Export selected ${selectedFormat.text}, expected ${formatChoice.label}`);
+        throw new Error(
+          `File Export selected ${selectedFormat.text}, expected ${formatChoice.label}`,
+        );
       }
       // Qt/WASM renders the dialog Download button without the toolbar's
       // export_btn object name. Click its visible dialog-relative position.
@@ -1322,8 +1364,8 @@ export class Sketcher {
 
   /**
    * Browser equivalent of Squish `import_menu()` for the standalone Sketcher.
-  * Menu activation, text entry, and confirmation are all real user input.
-  */
+   * Menu activation, text entry, and confirmation are all real user input.
+   */
   async import_menu(button, text = null, close_panel = true) {
     // Do not clear popup bookkeeping before opening an import menu. That
     // bridge call itself enters Qt/WASM's Asyncify path; a following geometry
@@ -1544,7 +1586,7 @@ export class Sketcher {
       {
         '<Backspace>': 'Backspace',
         ' ': 'Space',
-    }[sourceKey] || shortcut;
+      }[sourceKey] || shortcut;
     await focusCanvas(this.page);
     await this.page.keyboard.press(key);
     // The source Space shortcut transitions draw, move, and erase tools back
@@ -1665,7 +1707,9 @@ export class Sketcher {
     for (const currentActionNames of actionPaths) {
       const labelFor = (name) =>
         (name === 'replace_atoms_with'
-          ? (currentActionNames.includes('modify_atoms') ? 'Replace Atoms with' : 'Replace with')
+          ? currentActionNames.includes('modify_atoms')
+            ? 'Replace Atoms with'
+            : 'Replace with'
           : CONTEXT_MENU_NAMES[name]) ||
         COPY_ALL_AS_NAMES[name] ||
         String(name)
@@ -1684,7 +1728,14 @@ export class Sketcher {
           // and Escape would immediately dismiss that newly opened dialog.
           // Ordinary actions leave their context menu visible in Qt/WASM, so
           // close only that menu after those actions to match desktop Squish.
-          if (!['edit_atom_properties', 'allowed_list', 'not_allowed_list', 'Bracket Subgroup...'].includes(finalAction)) {
+          if (
+            ![
+              'edit_atom_properties',
+              'allowed_list',
+              'not_allowed_list',
+              'Bracket Subgroup...',
+            ].includes(finalAction)
+          ) {
             await closeActiveQtPopups(this.page);
           }
           return;

@@ -56,7 +56,7 @@ test.describe('tst_hidden_shortcuts', () => {
     }
     for (const order of BOND_SHORTCUTS) {
       await sk.type_text('sketcher_area', String(order));
-      const tool = ({ 0: 'zero', 1: 'single', 2: 'double', 3: 'triple' })[order];
+      const tool = { 0: 'zero', 1: 'single', 2: 'double', 3: 'triple' }[order];
       const state = await sk.widget_state(sk.tool_widget_name(tool));
       expect(state.enabled).toBe(true);
       expect(state.checked).toBe(true);
@@ -96,9 +96,14 @@ test.describe('tst_hidden_shortcuts', () => {
       await checkpoint(page, `change_bond_order_${order}`);
     }
     for (const [key, name] of [
-      ['+', 'increase_charge_1'], ['-', 'decrease_charge_1'], ['+', 'increase_charge_2'],
-      ['+', 'increase_charge_3'], ['-', 'decrease_charge_2'], ['-', 'decrease_charge_3'],
-      ['-', 'decrease_charge_4'], ['-', 'decrease_charge_5'],
+      ['+', 'increase_charge_1'],
+      ['-', 'decrease_charge_1'],
+      ['+', 'increase_charge_2'],
+      ['+', 'increase_charge_3'],
+      ['-', 'decrease_charge_2'],
+      ['-', 'decrease_charge_3'],
+      ['-', 'decrease_charge_4'],
+      ['-', 'decrease_charge_5'],
     ]) {
       await sk.type_text('sketcher_area', key);
       await checkpoint(page, name);

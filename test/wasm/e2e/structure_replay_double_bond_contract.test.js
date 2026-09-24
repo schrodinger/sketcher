@@ -36,7 +36,9 @@ test('structure replay explicitly restores Double Bond after query-bond use', as
   expect(graphSignature(await sk.get_structure_information())).toEqual(graphSignature(imported));
 });
 
-test('structure replay restores V3000 aromatic bonds through the visible toolbar', async ({ page }) => {
+test('structure replay restores V3000 aromatic bonds through the visible toolbar', async ({
+  page,
+}) => {
   test.setTimeout(90_000);
   const sk = new Sketcher(page);
   await sk.open();
