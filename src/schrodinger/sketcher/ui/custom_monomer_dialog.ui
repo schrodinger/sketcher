@@ -75,16 +75,6 @@
       <number>9</number>
      </property>
      <item>
-      <widget class="QLabel" name="monomer_type_lbl">
-       <property name="text">
-        <string>Type:</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QComboBox" name="monomer_type_combo"/>
-     </item>
-     <item>
       <widget class="QDialogButtonBox" name="button_box">
        <property name="standardButtons">
         <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>

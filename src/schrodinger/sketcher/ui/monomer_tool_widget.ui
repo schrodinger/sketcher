@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>100</width>
-    <height>300</height>
+    <height>297</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -1235,43 +1235,66 @@
     </widget>
    </item>
    <item>
-    <widget class="Line" name="line">
-     <property name="orientation">
-      <enum>Qt::Orientation::Horizontal</enum>
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <property name="spacing">
+      <number>0</number>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QToolButton" name="custom_monomer_btn">
-     <property name="minimumSize">
-      <size>
-       <width>32</width>
-       <height>30</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>32</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="icon">
-      <iconset resource="../sketcher.qrc">
-       <normaloff>:/icons/add_custom_monomer.png</normaloff>:/icons/add_custom_monomer.png</iconset>
-     </property>
-     <property name="iconSize">
-      <size>
-       <width>30</width>
-       <height>32</height>
-      </size>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-    </widget>
+     <item>
+      <spacer name="horizontalSpacer_4">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <widget class="QToolButton" name="custom_monomer_btn">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Custom...</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../sketcher.qrc">
+         <normaloff>:/icons/add_custom_monomer.svg</normaloff>:/icons/add_custom_monomer.svg</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="toolButtonStyle">
+        <enum>Qt::ToolButtonStyle::ToolButtonTextBesideIcon</enum>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer_5">
+       <property name="orientation">
+        <enum>Qt::Orientation::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <property name="spacing">
+      <number>0</number>
+     </property>
      <item>
       <spacer name="horizontalSpacer_2">
        <property name="orientation">
@@ -1426,9 +1449,9 @@
  </resources>
  <connections/>
  <buttongroups>
-  <buttongroup name="monomeric_connection_group"/>
   <buttongroup name="nucleic_monomer_group"/>
   <buttongroup name="amino_monomer_group"/>
+  <buttongroup name="monomeric_connection_group"/>
   <buttongroup name="amino_or_nucleic_group"/>
  </buttongroups>
 </ui>

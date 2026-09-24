@@ -35,13 +35,9 @@ class SKETCHER_API CustomMonomerDialog : public ModalDialog
     Q_OBJECT
 
   public:
-    CustomMonomerDialog(QWidget* parent = nullptr);
+    CustomMonomerDialog(const rdkit_extensions::ChainType chain_type,
+                        QWidget* parent = nullptr);
     ~CustomMonomerDialog();
-
-    /**
-     * Specify the monomer type to display in the combo box
-     */
-    void setMonomerType(const rdkit_extensions::ChainType chain_type);
 
     /**
      * Load the specified molecule into the dialog's Sketcher workspace
@@ -57,7 +53,7 @@ class SKETCHER_API CustomMonomerDialog : public ModalDialog
     /**
      * Emitted when the dialog is accepted
      * @param smiles A SMILES string representing the sketched monomer
-     * @param monomer_type The monomer type that the user selected
+     * @param monomer_type The monomer type specified when the dialog was opened
      */
     void customMonomerAccepted(const std::string& smiles,
                                const rdkit_extensions::ChainType);
@@ -71,6 +67,7 @@ class SKETCHER_API CustomMonomerDialog : public ModalDialog
     void updateOkButton();
 
     std::unique_ptr<Ui::CustomMonomerDialog> ui;
+    rdkit_extensions::ChainType m_chain_type;
 };
 
 } // namespace sketcher
