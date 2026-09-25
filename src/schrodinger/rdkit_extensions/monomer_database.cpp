@@ -766,10 +766,11 @@ boost::signals2::scoped_connection MonomerDatabase::subscribeToChanges(
 MonomerDatabase::MonomerDatabase() :
     m_core_monomers_db{create_default_monomers_db().release()}
 {
-    if (auto path = getMonomerDbPath();
-        path.has_value() && boost::filesystem::exists(*path)) {
+    if (auto path = getMonomerDbPath(); path.has_value()) {
         try {
-            loadMonomersFromSQLiteFile(*path);
+            if (boost::filesystem::exists(*path)) {
+                loadMonomersFromSQLiteFile(*path);
+            }
         } catch (const std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
         }
