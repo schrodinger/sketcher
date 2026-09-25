@@ -5,7 +5,8 @@
     "type": "module",
     "scripts": {
         "postinstall": "playwright install --with-deps",
-        "test": "playwright test"
+        "test": "npm run test:unit && playwright test",
+        "test:unit": "node --test unit/*.unit.mjs"
     },
     "devDependencies": {
         "@playwright/test": "^1.56.1"
