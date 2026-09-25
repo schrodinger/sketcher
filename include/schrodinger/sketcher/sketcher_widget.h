@@ -326,6 +326,11 @@ class SKETCHER_API SketcherWidget : public QWidget
                                       const bool set_to_allowed_list);
 
     /**
+     * Show the custom monomer structure editor for the specified monomer.
+     */
+    void showEditMonomerStructureDialog(const RDKit::Atom* const atom);
+
+    /**
      * Updates the watermark on user drawing atoms or deleting all
      * atoms from the scene
      */

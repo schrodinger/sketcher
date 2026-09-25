@@ -2,6 +2,7 @@
 
 #include <memory> // std::unique_ptr<>, required on Linux with Qt5
 
+#include <QDialogButtonBox>
 #include <QStyle>
 
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
@@ -22,6 +23,8 @@ class SKETCHER_API MessageBoxDialog : public ModalDialog
   public:
     MessageBoxDialog(const QString& title, const QString& text,
                      QStyle::StandardPixmap standard_icon,
+                     QDialogButtonBox::StandardButtons standard_buttons =
+                         QDialogButtonBox::Ok,
                      QWidget* parent = nullptr,
                      Qt::WindowFlags f = Qt::WindowFlags());
     ~MessageBoxDialog();
@@ -31,17 +34,25 @@ class SKETCHER_API MessageBoxDialog : public ModalDialog
 };
 
 /**
- * Convenience method for showing an error dialog
+ * Convenience method for showing an error dialog with an OK button
  */
-void show_error_dialog(const QString& title, const QString& text,
-                       QWidget* parent, Qt::WindowFlags f = Qt::WindowFlags());
+SKETCHER_API void show_error_dialog(const QString& title, const QString& text,
+                                    QWidget* parent,
+                                    Qt::WindowFlags f = Qt::WindowFlags());
 
 /**
- * Convenience method for showing an information dialog
+ * Convenience method for showing a warning dialog with OK and Cancel buttons
  */
-void show_information_dialog(const QString& title, const QString& text,
-                             QWidget* parent,
-                             Qt::WindowFlags f = Qt::WindowFlags());
+SKETCHER_API MessageBoxDialog*
+show_warning_dialog(const QString& title, const QString& text, QWidget* parent,
+                    Qt::WindowFlags f = Qt::WindowFlags());
+
+/**
+ * Convenience method for showing an information dialog with an OK button
+ */
+SKETCHER_API void
+show_information_dialog(const QString& title, const QString& text,
+                        QWidget* parent, Qt::WindowFlags f = Qt::WindowFlags());
 
 } // namespace sketcher
 } // namespace schrodinger
