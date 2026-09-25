@@ -463,10 +463,13 @@ void DrawMonomerFragmentSceneTool::addBoundFragmentToMolModel(
 
     auto first_frag_idx = m_mol_model->getMol()->getNumAtoms();
     auto undo_raii = m_mol_model->createUndoMacro("Add monomeric fragment");
+    // we skip the monomer validity check since we currently allow users to
+    // enter nucleic acid monomer names without any validation
     m_mol_model->addMol(*positioned_frag, "Add monomeric fragment",
                         /* reposition_mol = */ false,
                         /* new_mol_added = */ false,
-                        /* enforce_size_limit = */ false);
+                        /* enforce_size_limit = */ false,
+                        /* enforce_monomer_validity = */ false);
     auto* mol = m_mol_model->getMol();
     hovered_monomer = mol->getAtomWithIdx(hovered_monomer_idx);
     auto frag_monomer_to_bind_idx =
@@ -483,10 +486,13 @@ void DrawMonomerFragmentSceneTool::addUnboundFragmentToMolModel(
     auto frag_copy = std::make_shared<RDKit::RWMol>(m_frag);
     move_mol_to_coords_and_rotate(*frag_copy, m_index_to_center_on_click,
                                   to_mol_xy(scene_pos), rotation);
+    // we skip the monomer validity check since we currently allow users to
+    // enter nucleic acid monomer names without any validation
     m_mol_model->addMol(*frag_copy, "Add monomeric fragment",
                         /* reposition_mol = */ false,
                         /* new_mol_added = */ false,
-                        /* enforce_size_limit = */ false);
+                        /* enforce_size_limit = */ false,
+                        /* enforce_monomer_validity = */ false);
 }
 
 double DrawMonomerFragmentSceneTool::getDragAngle(const QPointF& scene_pos)
