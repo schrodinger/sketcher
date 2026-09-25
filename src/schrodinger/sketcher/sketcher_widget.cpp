@@ -1,6 +1,7 @@
 #include "schrodinger/sketcher/sketcher_widget.h"
 
 #include <algorithm>
+#include <unordered_set>
 
 #include <QApplication>
 #include <QClipboard>
@@ -21,8 +22,12 @@
 #include <emscripten.h>
 #endif
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/dialog/bracket_subgroup_dialog.h"
+#include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
 #include "schrodinger/sketcher/dialog/edit_atom_properties.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/dialog/file_export_dialog.h"
@@ -78,6 +83,16 @@ struct IndexedMonomerMutation {
 };
 
 /**
+ * A connection and its associated attachment point that should be preserved
+ * when a monomer is edited in the CustomMonomerDialog.
+ */
+struct RequiredConnection {
+    int attachment_point;
+    unsigned int bound_monomer_index;
+    bool is_secondary_connection;
+};
+
+/**
  * Capture atom identity by index before a sequence of
  * `MolModel::mutateMonomers` calls. Indices are stable since the
  * underlying `mutateMonomer` only edits properties (no atom
@@ -127,6 +142,23 @@ static MonomerType nucleic_acid_tool_to_monomer_type(NucleicAcidTool tool)
         default:
             Q_UNREACHABLE_RETURN(MonomerType::NA_BASE);
     }
+}
+
+/**
+ * @return a SMILES string representing the content of the specified monomer.
+ * For non-SMILES monomers, this is taken from the monomer database. If the
+ * monomer is not found in the database, std:nullopt is returned.
+ */
+static std::optional<std::string>
+get_monomer_smiles(const RDKit::Atom* const atom)
+{
+    const auto monomer_label = atom->getProp<std::string>(ATOM_LABEL);
+    bool is_smiles = false;
+    if (atom->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+        return monomer_label;
+    }
+    return rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
+        monomer_label, rdkit_extensions::getChainType(*atom));
 }
 
 /**
@@ -856,6 +888,127 @@ void SketcherWidget::showEditAtomPropertiesDialog(
     dialog->show();
 }
 
+/**
+ * Get information about the required attachment points (i.e. attachment points
+ * that are currently involved in a connection, meaning that we should warn the
+ * user if they try to delete it) and their associated connections
+ */
+static std::pair<std::vector<int>, std::vector<RequiredConnection>>
+get_required_attachment_points(const RDKit::Atom* monomer)
+{
+    std::vector<int> required_attachment_points;
+    std::vector<RequiredConnection> required_connections;
+    const auto attachment_points = get_attachment_points_for_monomer(monomer);
+    for (const auto& bound_attachment_point : attachment_points.first) {
+        if (bound_attachment_point.num <= 0) {
+            continue;
+        }
+        required_attachment_points.push_back(bound_attachment_point.num);
+        required_connections.push_back(
+            {bound_attachment_point.num,
+             bound_attachment_point.bound_monomer->getIdx(),
+             bound_attachment_point.is_secondary_connection});
+    }
+    return std::make_pair(required_attachment_points, required_connections);
+}
+
+/**
+ * After the user accepts the edits in the CustomMonomerDialog, figure out
+ * which connections, if any, we should remove from the edited monomer.
+ * Connections will be removed if the user deleted their associated attachment
+ * point.
+ * @param accepted_smiles A SMILES string representing the edited monomer
+ * @param required_attachment_points Any attachment points that were involved in
+ * connections prior to editing
+ * @param required_connections Information about the monomer's connections prior
+ * to editing
+ * @param mol The molecule containing the edited monomer
+ * @param atom_index The index of the edited monomer
+ * @return A pair of
+ *   - any primary connections to remove
+ *   - any secondary connections to remove
+ */
+static std::pair<std::unordered_set<const RDKit::Bond*>,
+                 std::unordered_set<const RDKit::Bond*>>
+get_connections_to_remove_after_monomer_edit(
+    const std::string& accepted_smiles,
+    const std::vector<int>& required_attachment_points,
+    const std::vector<RequiredConnection>& required_connections,
+    const RDKit::ROMol* mol, unsigned int atom_index)
+{
+    // figure out if the user erased any bound attachment points,
+    // since we'll need to erase the associated connections if they
+    // did (the dialog already warned the user about this)
+    const auto edited_monomer =
+        rdkit_extensions::to_rdkit(accepted_smiles, Format::EXTENDED_SMILES);
+    const auto missing_attachment_points =
+        get_missing_required_attachment_points(*edited_monomer,
+                                               required_attachment_points);
+    const std::unordered_set<int> missing_attachment_point_set(
+        missing_attachment_points.begin(), missing_attachment_points.end());
+
+    std::unordered_set<const RDKit::Bond*> bonds;
+    std::unordered_set<const RDKit::Bond*> secondary_connections;
+    for (const auto& connection : required_connections) {
+        if (!missing_attachment_point_set.contains(
+                connection.attachment_point)) {
+            continue;
+        }
+        const auto* bond = mol->getBondBetweenAtoms(
+            atom_index, connection.bound_monomer_index);
+        if (connection.is_secondary_connection) {
+            secondary_connections.insert(bond);
+        } else {
+            bonds.insert(bond);
+        }
+    }
+    return {std::move(bonds), std::move(secondary_connections)};
+}
+
+void SketcherWidget::showEditMonomerStructureDialog(
+    const RDKit::Atom* const atom)
+{
+    if (atom == nullptr) {
+        return;
+    }
+    const auto smiles = get_monomer_smiles(atom);
+
+    const auto chain_type = rdkit_extensions::getChainType(*atom);
+    const auto monomer_type = get_monomer_type(atom);
+    const auto atom_index = atom->getIdx();
+
+    auto [required_attachment_points, required_connections] =
+        get_required_attachment_points(atom);
+    auto* dialog = new CustomMonomerDialog(chain_type, this);
+    dialog->setRequiredAttachmentPoints(required_attachment_points);
+    if (smiles) {
+        dialog->addSMILES(normalize_smiles_attachment_points(*smiles));
+    }
+    // note that we ignore the chain type emitted with customMonomerAccepted
+    // since it's guaranteed to be the same as chain_type
+    connect(dialog, &CustomMonomerDialog::customMonomerAccepted, this,
+            [this, dialog, atom_index, monomer_type, required_attachment_points,
+             required_connections](const std::string& accepted_smiles,
+                                   const auto&) {
+                const auto [bonds, secondary_connections] =
+                    get_connections_to_remove_after_monomer_edit(
+                        accepted_smiles, required_attachment_points,
+                        required_connections, m_mol_model->getMol(),
+                        atom_index);
+
+                // erase any required connections and mutate the monomer in a
+                // single undo step
+                auto undo_raii =
+                    m_mol_model->createUndoMacro("Edit monomer structure");
+                m_mol_model->remove({}, bonds, secondary_connections, {}, {});
+                const auto* monomer =
+                    m_mol_model->getMol()->getAtomWithIdx(atom_index);
+                m_mol_model->mutateMonomers({monomer}, accepted_smiles,
+                                            monomer_type, /*is_smiles=*/true);
+            });
+    dialog->show();
+}
+
 void SketcherWidget::updateWatermarkVisibilityAndPos()
 {
     bool is_empty = m_sketcher_model->sceneIsEmpty();
@@ -1001,6 +1154,9 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
 {
     connect(&menu, &MonomerContextMenu::deleteRequested, this,
             [this](auto atoms) { m_mol_model->remove(atoms, {}, {}, {}, {}); });
+
+    connect(&menu, &MonomerContextMenu::editStructureRequested, this,
+            &SketcherWidget::showEditMonomerStructureDialog);
 
     connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
             [this](auto mutations, const QString& description) {

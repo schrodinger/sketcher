@@ -154,13 +154,60 @@ BOOST_AUTO_TEST_CASE(test_actions_for_peptide_selection)
     BOOST_TEST(del->isVisible());
     BOOST_TEST(!protonate->isEnabled());
 
+    auto* edit_structure = find_action(menu, "Edit Structure...");
+    BOOST_REQUIRE(edit_structure != nullptr);
+    BOOST_TEST(edit_structure->isVisible());
+    BOOST_TEST(edit_structure->isEnabled());
+    BOOST_TEST(menu.actions().indexOf(edit_structure) ==
+               menu.actions().indexOf(mutate) + 1);
+
     BOOST_REQUIRE(mutate->menu() != nullptr);
     BOOST_TEST(mutate->menu()->actions().size() == 21u);
 }
 
 /**
- * Non-peptide selections (NA bases / sugars / phosphates / CHEM) only
- * see Delete; AA-specific actions hide themselves.
+ * Edit Structure is available only for one selected monomer with no selected
+ * bonds, and emits the selected atom when triggered.
+ */
+BOOST_AUTO_TEST_CASE(test_edit_structure_selection_requirements)
+{
+    auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A.G}$$$$V2.0");
+    TestMonomerContextMenu menu;
+    const auto* first_atom = mol->getAtomWithIdx(0);
+    const auto* second_atom = mol->getAtomWithIdx(1);
+    const auto* connecting_bond =
+        mol->getBondBetweenAtoms(first_atom->getIdx(), second_atom->getIdx());
+    BOOST_REQUIRE(connecting_bond != nullptr);
+
+    const RDKit::Atom* requested_atom = nullptr;
+    int request_count = 0;
+    QObject::connect(&menu, &MonomerContextMenu::editStructureRequested, &menu,
+                     [&](const auto* atom) {
+                         requested_atom = atom;
+                         ++request_count;
+                     });
+    auto* edit_structure = find_action(menu, "Edit Structure...");
+    BOOST_REQUIRE(edit_structure != nullptr);
+
+    menu.setContextItems(atoms_from(*mol, {0, 1}), {}, {}, {}, {});
+    menu.updateActions();
+    BOOST_TEST(!edit_structure->isEnabled());
+
+    menu.setContextItems(atoms_from(*mol, {0}), {connecting_bond}, {}, {}, {});
+    menu.updateActions();
+    BOOST_TEST(!edit_structure->isEnabled());
+
+    menu.setContextItems(atoms_from(*mol, {0}), {}, {}, {}, {});
+    menu.updateActions();
+    BOOST_TEST(edit_structure->isEnabled());
+    edit_structure->trigger();
+    BOOST_TEST(request_count == 1);
+    BOOST_TEST(requested_atom == first_atom);
+}
+
+/**
+ * Non-peptide selections (NA bases / sugars / phosphates / CHEM) hide
+ * peptide-specific actions but keep Edit Structure and Delete.
  */
 BOOST_AUTO_TEST_CASE(test_non_peptide_hides_aa_actions)
 {
