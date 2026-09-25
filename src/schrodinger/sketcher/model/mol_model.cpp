@@ -1522,6 +1522,28 @@ static void sync_helm_model_property(bool is_monomeric, RDKit::RWMol& mol)
     }
 }
 
+/**
+ * Call rdkit_extensions::compute2DCoords with the given arguments and ensure
+ * that mol's current default conformer is replaced by the newly computed
+ * conformer. Without this wrapper, the conformer may or may not be replaced
+ * depending on the input mol.
+ */
+static void compute_2d_coords(RDKit::ROMol& mol,
+                              const std::vector<unsigned int>& frozen_ids = {})
+{
+    const auto new_conformer_id =
+        rdkit_extensions::compute2DCoords(mol, frozen_ids);
+    auto& default_conformer = mol.getConformer();
+    if (default_conformer.getId() == new_conformer_id) {
+        return;
+    }
+    auto& new_conformer = mol.getConformer(new_conformer_id);
+    const auto default_conformer_id = default_conformer.getId();
+    default_conformer = new_conformer;
+    default_conformer.setId(default_conformer_id);
+    mol.removeConformer(new_conformer_id);
+}
+
 void MolModel::cleanUpSelection()
 {
     if (!hasSelectedAtoms()) {
@@ -1540,7 +1562,7 @@ void MolModel::cleanUpSelection()
             }
         }
         sync_helm_model_property(isMonomeric(), m_mol);
-        rdkit_extensions::compute2DCoords(m_mol, frozen_ids);
+        compute_2d_coords(m_mol, frozen_ids);
         update_post_compute2DCoords(m_mol);
     };
     doCommandUsingSnapshots(cmd, "Clean Up Coordinates", WhatChanged::ALL);
@@ -1554,7 +1576,7 @@ void MolModel::regenerateCoordinates()
         m_selected_non_molecular_tags.clear();
         if (!hasReactionArrow()) {
             sync_helm_model_property(isMonomeric(), m_mol);
-            rdkit_extensions::compute2DCoords(m_mol);
+            compute_2d_coords(m_mol);
         } else {
             regenerateReactionCoordinatesCommandFunc();
         }

@@ -36,6 +36,7 @@
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/stereochemistry.h"
 #include "schrodinger/sketcher/rdkit/variable_attachment_bond_core.h"
@@ -4082,7 +4083,7 @@ BOOST_AUTO_TEST_CASE(test_monomer_detection)
 }
 
 /**
- * Clean Up should not distort coordinates of a monomeric structure.
+ * Clean Up should not distort a monomeric structure, but may translate it.
  */
 BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_monomeric_SKETCH_2716,
                      *utf::tolerance(0.01))
@@ -4105,9 +4106,12 @@ BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_monomeric_SKETCH_2716,
 
     BOOST_REQUIRE(mol->getNumAtoms() == original_coords.size());
     auto& new_conf = mol->getConformer();
-    for (unsigned int i = 0; i < mol->getNumAtoms(); ++i) {
-        const auto& orig = original_coords[i];
-        const auto& curr = new_conf.getAtomPos(i);
+    // Compare positions relative to the same atom to allow translation of the
+    // entire structure while still detecting changes between disconnected
+    // chains.
+    for (unsigned int i = 1; i < mol->getNumAtoms(); ++i) {
+        const auto orig = original_coords[i] - original_coords[0];
+        const auto curr = new_conf.getAtomPos(i) - new_conf.getAtomPos(0);
         BOOST_TEST(orig.x == curr.x);
         BOOST_TEST(orig.y == curr.y);
     }
@@ -4172,6 +4176,77 @@ BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_addMonomer_SKETCH_2716,
     built_vec = built_conf.getAtomPos(2) - built_conf.getAtomPos(0);
     BOOST_TEST(baseline_vec.x == built_vec.x);
     BOOST_TEST(baseline_vec.y == built_vec.y);
+}
+
+/**
+ * SKETCH-2849: Clean Up must replace a distorted monomer layout even when the
+ * current coordinates do not contain clashes, crossings, or stretched bonds.
+ */
+BOOST_AUTO_TEST_CASE(test_clean_up_restores_valid_distorted_monomer_SKETCH_2849,
+                     *utf::tolerance(0.01))
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    import_mol_text(
+        &model,
+        "PEPTIDE1{A.F.C.Y.Q.M.L.C.V.W}$PEPTIDE1,PEPTIDE1,3:R3-8:R3$$$V2.0");
+
+    const auto* mol = model.getMol();
+    BOOST_REQUIRE(model.isMonomeric());
+    BOOST_REQUIRE(mol->getNumAtoms() == 10);
+    BOOST_REQUIRE(mol->getNumConformers() == 1);
+
+    auto get_relative_coordinates = [mol]() {
+        const auto& conformer = mol->getConformer();
+        const auto origin = conformer.getAtomPos(0);
+        std::vector<RDGeom::Point3D> relative_coordinates;
+        relative_coordinates.reserve(mol->getNumAtoms());
+        for (unsigned int atom_idx = 0; atom_idx < mol->getNumAtoms();
+             ++atom_idx) {
+            relative_coordinates.push_back(conformer.getAtomPos(atom_idx) -
+                                           origin);
+        }
+        return relative_coordinates;
+    };
+
+    const auto expected_coordinates = get_relative_coordinates();
+    const auto* terminal_tryptophan = mol->getAtomWithIdx(9);
+    // This distortion deliberately remains within the coordinate validator's
+    // tolerances, which is the state where Clean Up previously ignored the
+    // newly calculated coordinates. (See SKETCH-2849.) Moving the monomer
+    // farther would trigger the fallback logic (where the old coordinates are
+    // immediately thrown out) and mask the bug.
+    model.translateByVector(
+        {0.75, 0.5, 0.0},
+        std::unordered_set<const RDKit::Atom*>{terminal_tryptophan});
+
+    BOOST_REQUIRE(rdkit_extensions::coordinates_are_valid(*mol));
+    const auto distorted_coordinates = get_relative_coordinates();
+    // sanity check that the coordinates have actually been moved
+    BOOST_REQUIRE(distorted_coordinates.back().x !=
+                  expected_coordinates.back().x);
+    BOOST_REQUIRE(distorted_coordinates.back().y !=
+                  expected_coordinates.back().y);
+
+    auto check_cleaned_layout = [&]() {
+        BOOST_TEST(mol->getNumConformers() == 1);
+        const auto cleaned_coordinates = get_relative_coordinates();
+        for (unsigned int atom_idx = 0; atom_idx < mol->getNumAtoms();
+             ++atom_idx) {
+            BOOST_TEST(cleaned_coordinates[atom_idx].x ==
+                       expected_coordinates[atom_idx].x);
+            BOOST_TEST(cleaned_coordinates[atom_idx].y ==
+                       expected_coordinates[atom_idx].y);
+        }
+    };
+
+    model.regenerateCoordinates();
+    check_cleaned_layout();
+
+    // Repeated cleanup should remain idempotent and must not accumulate
+    // inactive conformers.
+    model.regenerateCoordinates();
+    check_cleaned_layout();
 }
 
 /**
