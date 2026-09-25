@@ -21,6 +21,11 @@ This project is released by Schrödinger, Inc. and is available under an open-so
 
 **[Training and Video Walkthrough](https://www.schrodinger.com/sites/default/files/s3/public/2D-Sketcher/2023-2/Content/Resources/Videos/2D_Sketcher.mp4)** -- Learn how to use Sketcher with this guided video.
 
+## Embedding the HTML page
+
+Applications can embed the WebAssembly sketcher and exchange molecules and
+images across origins. See the [WASM embedding guide](wasm/README.md).
+
 ## Build Prerequisites
 
 - A C++ compiler supporting C++20 or later
