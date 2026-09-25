@@ -766,10 +766,11 @@ boost::signals2::scoped_connection MonomerDatabase::subscribeToChanges(
 MonomerDatabase::MonomerDatabase() :
     m_core_monomers_db{create_default_monomers_db().release()}
 {
-    if (auto path = getMonomerDbPath();
-        path.has_value() && boost::filesystem::exists(*path)) {
+    if (auto path = getMonomerDbPath(); path.has_value()) {
         try {
-            loadMonomersFromSQLiteFile(*path);
+            if (boost::filesystem::exists(*path)) {
+                loadMonomersFromSQLiteFile(*path);
+            }
         } catch (const std::runtime_error& e) {
             std::cerr << e.what() << std::endl;
         }
@@ -1204,7 +1205,13 @@ MonomerDatabase::getComplexMonomerQueries() const
                     auto can_smiles = RDKit::MolToSmiles(tautomer);
                     std::unique_ptr<RDKit::RWMol> can_tautomer(
                         RDKit::SmilesToMol(can_smiles, debug, sanitize));
-                    RDKit::MolOps::sanitizeMol(*can_tautomer);
+                    try {
+                        RDKit::MolOps::sanitizeMol(*can_tautomer);
+                    } catch (const RDKit::MolSanitizeException&) {
+                        // Sometimes the tautomerization reactions produce
+                        // an invalid structure; skip it.
+                        continue;
+                    }
                     query.mol = make_query(*can_tautomer, can_smiles);
                     query.attch_map = make_attch_map(*query.mol);
                     query.name = monomer_id.symbol;

@@ -19,6 +19,7 @@ using helm::rdkit_to_helm;
 using schrodinger::rdkit_extensions::extract_helm_polymers;
 using schrodinger::rdkit_extensions::get_atoms_in_polymer_chain;
 using schrodinger::rdkit_extensions::get_atoms_in_polymer_chains;
+using schrodinger::rdkit_extensions::get_interpolymer_connections;
 using schrodinger::rdkit_extensions::get_polymer;
 using schrodinger::rdkit_extensions::is_polymer_annotation_s_group;
 
@@ -79,6 +80,21 @@ BOOST_AUTO_TEST_CASE(TestAtomisticMolsAreUnsupported)
                       std::invalid_argument);
     BOOST_CHECK_THROW(std::ignore = get_atoms_in_polymer_chains(mol, {}),
                       std::invalid_argument);
+}
+
+BOOST_AUTO_TEST_CASE(TestGetInterpolymerConnections)
+{
+    auto mol = helm_to_rdkit("PEPTIDE1{C.C}|PEPTIDE2{C}|PEPTIDE3{C}$"
+                             "PEPTIDE1,PEPTIDE1,1:R3-2:R3|"
+                             "PEPTIDE1,PEPTIDE2,2:R3-1:R3$$$V2.0");
+
+    const auto connections = get_interpolymer_connections(*mol);
+    BOOST_TEST(connections.size() == 3);
+    BOOST_TEST(connections.at("PEPTIDE1").size() == 1);
+    BOOST_TEST(connections.at("PEPTIDE1").count("PEPTIDE2") == 1);
+    BOOST_TEST(connections.at("PEPTIDE2").size() == 1);
+    BOOST_TEST(connections.at("PEPTIDE2").count("PEPTIDE1") == 1);
+    BOOST_TEST(connections.at("PEPTIDE3").empty());
 }
 
 /**
