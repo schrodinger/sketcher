@@ -516,6 +516,27 @@ BOOST_AUTO_TEST_CASE(TestSingleIntrapolymerPairDoesNotCrash)
     BOOST_CHECK_NO_THROW(compute_monomer_mol_coords(*mol));
 }
 
+BOOST_AUTO_TEST_CASE(TestChainsLeavingCycleStartInCardinalDirections)
+{
+    const auto mol = helm_to_rdkit(
+        R"(CHEM1{[*CCC(N1CN(C(CC*)=O)CN(C(CC\*)=O)C1)=O |$_R1;;;;;;;;;;_R2;;;;;;;_R3;;;;$|]}|PEPTIDE1{A.R.D.C.P.L.V.N.P.L.C.L.H.P.G.W.T.C.[dV].[Orn]}$PEPTIDE1,CHEM1,4:R3-1:R1|PEPTIDE1,CHEM1,11:R3-1:R2|CHEM1,PEPTIDE1,1:R3-18:R3$$$V2.0)");
+
+    compute_monomer_mol_coords(*mol);
+    const auto& conformer = mol->getConformer();
+    const auto first_tail_offset =
+        conformer.getAtomPos(3) - conformer.getAtomPos(4);
+    const auto second_tail_offset =
+        conformer.getAtomPos(19) - conformer.getAtomPos(18);
+
+    // Both tails leave the right side of the cycle. Their first monomers should
+    // be horizontal with their respective ring atoms instead of retaining the
+    // close, diagonal coordinates produced by RDKit.
+    BOOST_CHECK_SMALL(first_tail_offset.y, 1e-6);
+    BOOST_CHECK_SMALL(second_tail_offset.y, 1e-6);
+    BOOST_CHECK_GT(first_tail_offset.x, 0.0);
+    BOOST_CHECK_GT(second_tail_offset.x, 0.0);
+}
+
 BOOST_AUTO_TEST_SUITE(TestMonomerCoordgenCheckCoords)
 
 static RDKit::RWMol
