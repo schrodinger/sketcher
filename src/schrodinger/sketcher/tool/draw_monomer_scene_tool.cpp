@@ -9,6 +9,7 @@
 #include <rdkit/Geometry/point.h>
 #include <rdkit/GraphMol/ROMol.h>
 
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -25,18 +26,30 @@ DrawMonomerSceneTool::DrawMonomerSceneTool(
     const std::string& res_name, const rdkit_extensions::ChainType chain_type,
     const Fonts& fonts, const AtomDisplaySettings& atom_display_settings,
     const BondDisplaySettings& bond_display_settings, Scene* scene,
-    MolModel* mol_model) :
+    MolModel* mol_model, const bool is_smiles_monomer) :
     AbstractDrawMonomerOrMonomericConnectionSceneTool(
         res_name, chain_type, fonts, atom_display_settings,
-        bond_display_settings, scene, mol_model)
+        bond_display_settings, scene, mol_model, is_smiles_monomer)
 {
 }
 
 bool DrawMonomerSceneTool::clickShouldMutate(
     const RDKit::Atom* monomer, const MonomerType monomer_type) const
 {
-    return (monomer_type == m_monomer_type &&
-            get_monomer_res_name(monomer) != m_res_name);
+    if (monomer_type != m_monomer_type) {
+        return false;
+    }
+    bool is_smiles_monomer = false;
+    monomer->getPropIfPresent(SMILES_MONOMER, is_smiles_monomer);
+    if (is_smiles_monomer != m_is_smiles_monomer) {
+        return true;
+    }
+    // Custom monomers share a display placeholder, so compare their actual
+    // SMILES instead of the displayed residue name.
+    auto res_name = is_smiles_monomer
+                        ? monomer->getProp<std::string>(ATOM_LABEL)
+                        : get_monomer_res_name(monomer);
+    return res_name != m_res_name;
 }
 
 void DrawMonomerSceneTool::updateHoveredUnboundAP(
@@ -78,7 +91,8 @@ void DrawMonomerSceneTool::onLeftButtonClick(
     if (item == nullptr) {
         // the click was on empty space, so create a new monomer here
         auto mol_pos = to_mol_xy(scene_pos);
-        m_mol_model->addMonomer(m_res_name, m_chain_type, mol_pos);
+        m_mol_model->addMonomer(m_res_name, m_chain_type, mol_pos,
+                                m_is_smiles_monomer);
     } else {
         auto [monomer, monomer_type] = get_monomer_and_type(item);
         std::optional<UnboundAttachmentPoint> clicked_ap;
@@ -99,16 +113,17 @@ void DrawMonomerSceneTool::onLeftButtonClick(
             // the attachment point labels won't be valid once the new monomer
             // is added, so clear them now (otherwise we risk a crash)
             clearAttachmentPointsLabelsAndHintFragmentItem();
-            m_mol_model->addBoundMonomer(m_res_name, m_chain_type, new_pos,
-                                         new_monomer_ap_name, monomer,
-                                         clicked_ap->model_name);
+            m_mol_model->addBoundMonomer(
+                m_res_name, m_chain_type, new_pos, new_monomer_ap_name, monomer,
+                clicked_ap->model_name, m_is_smiles_monomer);
 
         } else if (clickShouldMutate(monomer, monomer_type)) {
             // the user clicked directly on the monomer and the clicked
             // monomer's residue name is different than the tool's, so we mutate
             // the clicked monomer
             clearAttachmentPointsLabelsAndHintFragmentItem();
-            m_mol_model->mutateMonomers({monomer}, m_res_name, m_monomer_type);
+            m_mol_model->mutateMonomers({monomer}, m_res_name, m_monomer_type,
+                                        m_is_smiles_monomer);
         }
     }
 }
@@ -187,8 +202,8 @@ QPixmap DrawMonomerSceneTool::createDefaultCursorPixmap() const
     // the specific number used here (the "1") doesn't matter - we just need any
     // number to form a proper chain ID
     auto chain_id = rdkit_extensions::toString(m_chain_type) + "1";
-    auto monomer =
-        rdkit_extensions::makeMonomer(m_res_name, chain_id, 1, false);
+    auto monomer = rdkit_extensions::makeMonomer(m_res_name, chain_id, 1,
+                                                 m_is_smiles_monomer);
 
     std::shared_ptr<AbstractMonomerItem> monomer_item;
     monomer_item.reset(get_monomer_graphics_item(monomer.get(), *m_fonts,

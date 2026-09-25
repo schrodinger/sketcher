@@ -121,6 +121,25 @@ BOOST_AUTO_TEST_CASE(test_contains_two_monomer_linkages)
 }
 
 /**
+ * An isolated custom CHEM monomer must expose its first attachment point
+ * without trying to find the highest numbered bound attachment point.
+ */
+BOOST_AUTO_TEST_CASE(test_isolated_chem_attachment_points)
+{
+    auto mol = rdkit_extensions::to_rdkit("CHEM1{[[*:1]C]}$$$$V2.0");
+    prepare_mol(*mol);
+    BOOST_REQUIRE(mol->getNumAtoms() == 1);
+    BOOST_REQUIRE(mol->getNumBonds() == 0);
+
+    auto [bound_aps, unbound_aps] =
+        get_attachment_points_for_monomer(mol->getAtomWithIdx(0));
+    const std::vector<UnboundAttachmentPoint> expected = {
+        {"R1", "R1", 1, Direction::W}};
+    BOOST_TEST(bound_aps.empty());
+    BOOST_TEST(unbound_aps == expected);
+}
+
+/**
  * Make sure that get_bound_attachment_point_names_and_atoms() and
  * get_available_attachment_point_names() return the expected attachment point
  * names for a variety of molecules

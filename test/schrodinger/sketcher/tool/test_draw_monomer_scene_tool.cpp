@@ -8,6 +8,7 @@
 #include <boost/test/data/test_case.hpp>
 
 #include "../test_common.h"
+#include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
 #include "schrodinger/sketcher/molviewer/atom_display_settings.h"
@@ -28,6 +29,80 @@ namespace sketcher
 {
 
 MAKE_ENUM_LOGGABLE(MonomerType);
+
+class TestDrawMonomerSceneTool : public DrawMonomerSceneTool
+{
+  public:
+    using DrawMonomerSceneTool::clickShouldMutate;
+    using DrawMonomerSceneTool::
+        createHintFragmentMonomerInfoForHintFromEmptySpace;
+    using DrawMonomerSceneTool::createHintFragmentMonomerInfoForHintToDirection;
+    using DrawMonomerSceneTool::DrawMonomerSceneTool;
+};
+
+// Tool symbol, tool is SMILES, existing symbol, existing is SMILES,
+// existing monomer type, whether clicking should mutate.
+const std::vector<
+    std::tuple<std::string, bool, std::string, bool, MonomerType, bool>>
+    mutation_identity_test_data = {
+        {"A", false, "A", false, MonomerType::PEPTIDE, false},
+        {"A", false, "C", false, MonomerType::PEPTIDE, true},
+        {"C", true, "C", false, MonomerType::PEPTIDE, true},
+        {"C", false, "C", true, MonomerType::PEPTIDE, true},
+        {"CC", true, "CC", true, MonomerType::PEPTIDE, false},
+        {"CC", true, "CN", true, MonomerType::PEPTIDE, true},
+        {"C", true, "C", false, MonomerType::NA_BASE, false},
+};
+
+/**
+ * Make sure that clickShouldMutate returns the correct value, even when a
+ * residue name and a SMILES string match (e.g. we should be able to mutate
+ * between a cysteine - a "C" residue name - and a SMILES monomer containing
+ * methane - a "C" SMILES string)
+ */
+BOOST_DATA_TEST_CASE(test_monomer_mutation_identity,
+                     bdata::make(mutation_identity_test_data), tool_symbol,
+                     tool_is_smiles, existing_symbol, existing_is_smiles,
+                     existing_type, should_mutate)
+{
+    auto scene = TestScene::getScene();
+    auto model = scene->m_sketcher_model;
+    TestDrawMonomerSceneTool tool(
+        tool_symbol, rdkit_extensions::ChainType::PEPTIDE, scene->m_fonts,
+        *model->getAtomDisplaySettingsPtr(),
+        *model->getBondDisplaySettingsPtr(), scene.get(), scene->m_mol_model,
+        tool_is_smiles);
+    auto chain_id = existing_type == MonomerType::NA_BASE ? "RNA1" : "PEPTIDE1";
+    auto monomer = rdkit_extensions::makeMonomer(existing_symbol, chain_id, 1,
+                                                 existing_is_smiles);
+
+    BOOST_TEST(tool.clickShouldMutate(monomer.get(), existing_type) ==
+               should_mutate);
+}
+
+/**
+ * Both ends of a custom-monomer drag preview must retain their SMILES identity.
+ */
+BOOST_AUTO_TEST_CASE(test_custom_monomer_drag_preview)
+{
+    const std::string smiles = "[*:1]NCC(=O)[*:2]";
+    auto scene = TestScene::getScene();
+    auto model = scene->m_sketcher_model;
+    TestDrawMonomerSceneTool tool(smiles, rdkit_extensions::ChainType::PEPTIDE,
+                                  scene->m_fonts,
+                                  *model->getAtomDisplaySettingsPtr(),
+                                  *model->getBondDisplaySettingsPtr(),
+                                  scene.get(), scene->m_mol_model, true);
+
+    auto start =
+        tool.createHintFragmentMonomerInfoForHintFromEmptySpace({0, 0});
+    auto end = tool.createHintFragmentMonomerInfoForHintToDirection(
+        start, rdkit_extensions::Direction::E);
+    for (const auto* hint : {&start, &end}) {
+        BOOST_TEST(hint->monomer->getProp<bool>(SMILES_MONOMER));
+        BOOST_TEST(hint->monomer->getProp<std::string>(ATOM_LABEL) == smiles);
+    }
+}
 
 /**
  * Helper that owns a monomer atom and its graphics item, and creates
