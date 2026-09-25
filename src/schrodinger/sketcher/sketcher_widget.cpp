@@ -987,7 +987,7 @@ void SketcherWidget::showEditMonomerStructureDialog(
     // note that we ignore the chain type emitted with customMonomerAccepted
     // since it's guaranteed to be the same as chain_type
     connect(dialog, &CustomMonomerDialog::customMonomerAccepted, this,
-            [this, dialog, atom_index, monomer_type, required_attachment_points,
+            [this, atom_index, monomer_type, required_attachment_points,
              required_connections](const std::string& accepted_smiles,
                                    const auto&) {
                 const auto [bonds, secondary_connections] =
