@@ -89,7 +89,12 @@ async function callBridge(page, name, arg) {
  *   button also reports "checked" and "toolTip".
  */
 async function getRect(page, selector) {
-  const rect = JSON.parse(await callBridge(page, '_sketcher_get_rect', selector));
+  const encoded = await callBridge(page, '_sketcher_get_rect', selector);
+  // Qt/WASM can yield an empty result for one browser turn while it closes a
+  // modal or lays out its replacement. Treat that as temporarily unavailable
+  // so the normal clickable-state poll can retry instead of parsing it as JSON.
+  if (typeof encoded !== 'string' || encoded.trim() === '') return null;
+  const rect = JSON.parse(encoded);
   return rect && rect.width !== undefined ? rect : null;
 }
 
