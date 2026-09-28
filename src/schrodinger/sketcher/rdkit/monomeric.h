@@ -67,7 +67,8 @@ const std::string PEPTIDE_R3_NAME_X = "X";
 
 /**
  * Validate the monomers in a monomeric molecule.
- * @throw std::runtime_error if a monomer is missing from the database or its
+ * @throw std::runtime_error if a monomer is missing from the database (other
+ * than peptide X and nucleic acid N, which represent unknown monomers) or its
  * inline SMILES cannot be parsed.
  */
 SKETCHER_API void validate_monomers(const RDKit::ROMol& mol);
@@ -100,12 +101,13 @@ SKETCHER_API std::vector<std::pair<int, std::string>>
 get_attachment_points_for_smiles(const std::string& smiles);
 
 /**
- * Return the numbered attachment points for the given monomer, which must be
- * found in the monomer database. Each attachment point is described using a
- * pair of the attachment point number and the symbol of the heavy atom at that
- * site.
+ * Return the numbered attachment points for the given monomer. Each attachment
+ * point is described using a pair of the attachment point number and the symbol
+ * of the heavy atom at that site.
  *
- * @throws std::invalid_argument if the monomer is not present in the database
+ * If the monomer is missing from the database, unknown nucleic acid bases (N)
+ * have R1, while unknown peptides (X) and all other missing monomers have R1
+ * and R2. These fallback attachment points have empty element symbols.
  */
 SKETCHER_API std::vector<std::pair<int, std::string>>
 get_attachment_points_for_res(const std::string& resname,
