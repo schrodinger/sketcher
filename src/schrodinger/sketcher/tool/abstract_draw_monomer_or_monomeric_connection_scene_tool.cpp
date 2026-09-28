@@ -793,10 +793,15 @@ void AbstractDrawMonomerOrMonomericConnectionSceneTool::onLeftButtonDragRelease(
     auto hint_start_monomer_info = getHintFragmentMonomerInfoForDragStart();
     auto [drag_end_info, hovered_monomer_item] =
         getDragEndInfo(event->scenePos());
-    // we know that hint_start_monomer_info can't be std::nullopt, since
-    // otherwise m_drag_ignored would be true and we would've returned already
-    auto hint_end_monomer_info = getHintFragmentMonomerInfoForDragEnd(
-        *hint_start_monomer_info, drag_end_info);
+    // hint_start_monomer_info can be std::nullopt if the structure was updated
+    // during the drag (e.g. the user hit Ctrl+Z), since onStructureUpdated()
+    // clears m_drag_start_monomer_item. In that case, there's no drag structure
+    // to add.
+    std::optional<HintFragmentMonomerInfo> hint_end_monomer_info;
+    if (hint_start_monomer_info.has_value()) {
+        hint_end_monomer_info = getHintFragmentMonomerInfoForDragEnd(
+            *hint_start_monomer_info, drag_end_info);
+    }
 
     // delete the attachment point graphics items before we modify the structure
     // so that we don't have to worry about monomer graphics items being deleted
