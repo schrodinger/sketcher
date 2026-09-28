@@ -27,6 +27,7 @@
 #include <rdkit/GraphMol/FileParsers/MolSupplier.h>
 #include <rdkit/GraphMol/MolTransforms/MolTransforms.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
+#include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/QueryAtom.h>
 #include <rdkit/GraphMol/QueryBond.h>
 #include <rdkit/GraphMol/ROMol.h>
@@ -654,6 +655,56 @@ BOOST_AUTO_TEST_CASE(test_addAtom_attachment_point)
     BOOST_TEST(get_next_attachment_point_number(mol) == 4);
     BOOST_TEST(mol->getNumAtoms() == 5);
     BOOST_TEST(mol->getNumBonds() == 3);
+}
+
+BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_identity)
+{
+    auto mol = rdkit_extensions::to_rdkit(
+        "*C |$_AP1;$|", rdkit_extensions::Format::EXTENDED_SMILES);
+    auto* attachment_atom = mol->getAtomWithIdx(0);
+    auto* attachment_bond = mol->getBondWithIdx(0);
+    attachment_bond->setBondDir(RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // A wedged attachment point cannot be collapsed by RDKit, but it remains
+    // an attachment point for Sketcher selection, numbering, and editing.
+    BOOST_TEST(is_attachment_point(attachment_atom));
+    BOOST_TEST(get_attachment_point_number(attachment_atom) == 1);
+    BOOST_TEST(get_attachment_point_bond(attachment_atom) == attachment_bond);
+}
+
+BOOST_AUTO_TEST_CASE(test_wedged_attachment_point_is_reachable_and_exports)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    const RDKit::ROMol* mol = model.getMol();
+
+    model.addAtom(Element::C, RDGeom::Point3D(1.0, 2.0, 0.0));
+    model.addAttachmentPoint(RDGeom::Point3D(3.0, 4.0, 0.0),
+                             mol->getAtomWithIdx(0));
+    BOOST_REQUIRE(mol->getNumBonds() == 1);
+
+    // Nothing stops the wedge bond tool from being applied to an attachment
+    // point bond, so this state is reachable from the UI
+    model.mutateBonds({mol->getBondWithIdx(0)}, BondTool::SINGLE_UP);
+    BOOST_TEST(mol->getBondWithIdx(0)->getBondDir() ==
+               RDKit::Bond::BondDir::BEGINWEDGE);
+
+    // ...and the attachment point must still survive an MDL round trip
+    auto molblock = rdkit_extensions::to_string(*mol, Format::MDL_MOLV3000);
+    BOOST_TEST(molblock.find("ATTCHPT=1") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(test_unlabelled_native_attachment_point)
+{
+    RDKit::RWMol mol;
+    auto parent_idx = mol.addAtom(new RDKit::Atom(6), false, true);
+    auto attachment_idx = RDKit::MolOps::details::addExplicitAttachmentPoint(
+        mol, parent_idx, 1, true, false);
+    auto* attachment_atom = mol.getAtomWithIdx(attachment_idx);
+
+    BOOST_TEST(rdkit_extensions::is_attachment_point_dummy(*attachment_atom));
+    BOOST_TEST(!is_attachment_point(attachment_atom));
+    BOOST_TEST(get_attachment_point_number(attachment_atom) == 0);
 }
 
 BOOST_AUTO_TEST_CASE(test_removeAtom)
