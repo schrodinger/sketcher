@@ -1387,6 +1387,14 @@ export class Sketcher {
         await new Promise((resolve) => setTimeout(resolve, 100));
         try {
           await clickPopupRow(this.page, 0, importRows[button]);
+          // A Qt popup can accept the browser click while it is still
+          // transitioning, dismissing the menu without activating its row.
+          // Do not treat that as success: for Paste in Text, wait until the
+          // user-visible dialog is actually present before leaving the retry
+          // loop. This keeps the retry tied to observable GUI behavior.
+          if (button === 'paste_in_text') {
+            await widgetRect(this.page, 'structure_text_edit');
+          }
           lastError = null;
           break;
         } catch (error) {
