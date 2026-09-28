@@ -224,8 +224,11 @@ BOOST_AUTO_TEST_CASE(test_undo_drag_end_monomer_no_crash)
     process_qt_events();
     BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 1);
 
-    // releasing the drag must not crash
+    // releasing the drag must not crash, and must not add anything to the
+    // structure
     fix.mouseRelease(pos_b);
+    BOOST_TEST(fix.m_mol_model->getMol()->getNumAtoms() == 1);
+    BOOST_TEST(fix.m_mol_model->getMol()->getNumBonds() == 0);
 }
 
 /**
