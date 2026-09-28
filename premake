@@ -29,11 +29,23 @@ fi
 ZLIB_DIR=$(ls -d $PF_DIR/zlib-*)
 EIGEN_DIR=$(ls -d $PF_DIR/share/eigen3)
 COORDGEN_DIR=$(ls -d $PF_DIR/coordgenlibs-*/lib/cmake)
-MAEPARSER_DIR=$(ls -d $PF_DIR/maeparser-*/lib/cmake)
+# Some environments install maeparser into its own versioned directory, while
+# others install it flat into the environment's top level lib directory.
+MAEPARSER_DIR=$(ls -d $PF_DIR/maeparser-*/lib/cmake 2>/dev/null || echo $PF_DIR/lib/cmake)
 SQLITE_DIR=$(ls -d $PF_DIR/sqlite-*)
+XZ_DIR=$(ls -d $PF_DIR/xz-*)
 
 # Build CMake prefix path
 CMAKE_PREFIX_PATH="$PF_DIR;$ZLIB_DIR;$EIGEN_DIR;$COORDGEN_DIR;$MAEPARSER_DIR;$SQLITE_DIR"
+
+# Some package factory libraries record install names pointing at the build
+# machine's staging paths, so dyld needs to be told where they really are.
+# macOS strips DYLD_* across /bin/sh, which both $SCHRODINGER/run and the
+# pytest console script are, so re-inject it and start pytest from python.
+PYTEST_CMD="$SCHRODINGER/run pytest"
+if [[ "$OSTYPE" == darwin* ]]; then
+    PYTEST_CMD="$SCHRODINGER/run /usr/bin/env DYLD_LIBRARY_PATH=$ZLIB_DIR/lib:$XZ_DIR/lib:$SQLITE_DIR/lib python3 $SCHRODINGER/internal/bin/pytest"
+fi
 
 # The prebuilt RDKit libraries have transitive dependencies (e.g. libexpat)
 # that live in the environment's top level lib directory. CMake only derives
@@ -94,7 +106,7 @@ all:
 	$POST_BUILD_COMMANDS
 
 test:
-	SKETCHER_SOURCE_DIR=$SRC_DIR $SCHRODINGER/run pytest --rootdir=$BUILD_DIR -n auto \$(TEST_ARGS)
+	SKETCHER_SOURCE_DIR=$SRC_DIR $PYTEST_CMD --rootdir=$BUILD_DIR -n auto \$(TEST_ARGS)
 
 memtest:
 	$SCHRODINGER/run ctest --build-config $BUILD_TYPE --test-dir $SCHRODINGER/sketcher -L memtest --output-on-failure
