@@ -1,13 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { gzipSync } from 'node:zlib';
-import {
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -29,14 +21,20 @@ const expectedArchives = new Set(snapshots.map((name) => `${name}.tar.gz`));
 
 for (const name of snapshots) {
   // A separate deterministic archive per test keeps PR changes localized.
-  const tarContents = execFileSync(
-    'tar',
-    ['--sort=name', '--mtime=@0', '--owner=0', '--group=0', '--numeric-owner', '-C', snapshotRoot, '-cf', '-', name],
-    { maxBuffer: 100 * 1024 * 1024 },
-  );
   const archivePath = path.join(archiveRoot, `${name}.tar.gz`);
   const temporaryPath = `${archivePath}.tmp`;
-  writeFileSync(temporaryPath, gzipSync(tarContents));
+  execFileSync('tar', [
+    '--sort=name',
+    '--mtime=@0',
+    '--owner=0',
+    '--group=0',
+    '--numeric-owner',
+    '-C',
+    snapshotRoot,
+    '-czf',
+    temporaryPath,
+    name,
+  ]);
   renameSync(temporaryPath, archivePath);
 }
 

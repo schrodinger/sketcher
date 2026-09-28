@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import {
-  clickWidget as clickGenericWidget,
+  clickWidget,
   requireRect as requireBridgeRect,
   widgetState as bridgeWidgetState,
 } from '../../e2e_helpers.js';
+
+export { clickWidget };
 
 /** Return a selector rectangle from the shared generic C++ geometry bridge. */
 export async function genericRect(page, selector) {
@@ -109,6 +111,10 @@ async function showMouseMarker(page, x, y) {
   if (process.env.PLAYWRIGHT_SHOW_MOUSE !== '1') return;
   await page.evaluate(
     ({ left, top }) => {
+      // Chromium clamps stacking levels to a signed 32-bit integer. Keep the
+      // visualization above every Qt canvas without relying on an unexplained
+      // magic number.
+      const maximumCssZIndex = String(2 ** 31 - 1);
       let marker = document.getElementById('playwright-mouse-marker');
       if (!marker) {
         marker = document.createElement('div');
@@ -125,7 +131,7 @@ async function showMouseMarker(page, x, y) {
           top: '0',
           transform: 'translate(-50%, -50%)',
           width: '18px',
-          zIndex: '2147483647',
+          zIndex: maximumCssZIndex,
         });
         document.body.append(marker);
       }
@@ -205,24 +211,14 @@ export async function drawingAreaCenter(page) {
  * @param {string} objectName
  */
 export async function widgetRect(page, objectName) {
-  let lastError;
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
       return await genericRect(page, `widget:${objectName}`);
     } catch (error) {
-      lastError = error;
+      if (attempt === 99) throw error;
       await page.waitForTimeout(25);
     }
   }
-  throw lastError;
-}
-
-/**
- * Activate a visible Qt button by stable objectName.  Qt renders the controls
- * into its canvas, so the input itself must be sent as a canvas click.
- */
-export async function clickWidget(page, objectName) {
-  await clickGenericWidget(page, objectName);
 }
 
 /** Squish-compatible Qt press event for non-browser-rendered QWidgetActions. */
@@ -298,16 +294,14 @@ export async function setWidgetText(page, objectName, text) {
 
 /** Return a visible Qt menu action's canvas rectangle by objectName or text. */
 export async function menuActionRect(page, objectNameOrText) {
-  let lastError;
   for (let attempt = 0; attempt < 100; attempt += 1) {
     try {
       return await genericRect(page, `menu:${objectNameOrText}`);
     } catch (error) {
-      lastError = error;
+      if (attempt === 99) throw error;
       await page.waitForTimeout(25);
     }
   }
-  throw lastError;
 }
 
 /** Click a visible Qt menu action using the browser's real mouse input. */
