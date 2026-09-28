@@ -95,6 +95,11 @@ void validate_monomers(const RDKit::ROMol& mol)
             }
         } else {
             const auto chain_type = rdkit_extensions::getChainType(*monomer);
+            // HELM unknown amino acids and bases have no database entry.
+            if ((chain_type == ChainType::PEPTIDE && label == "X") ||
+                (chain_type == ChainType::RNA && label == "N")) {
+                continue;
+            }
             if (!db.getMonomerSmiles(label, chain_type).has_value()) {
                 const auto type_name =
                     chain_type == ChainType::PEPTIDE ? "Peptide"
@@ -263,8 +268,13 @@ get_attachment_points_for_res(const std::string& resname,
         rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
             resname, chain_type);
     if (!smiles.has_value()) {
-        throw std::invalid_argument(
-            fmt::format("Monomer '{}' not found in monomer database", resname));
+        if (chain_type == rdkit_extensions::ChainType::RNA && resname == "N") {
+            // unknown bases have one attachment point with an unknown element
+            return {{1, ""}};
+        }
+        // Unknown peptides (X) and other unrecognized monomers default to two
+        // attachment points. Their elements are unknown.
+        return {{1, ""}, {2, ""}};
     }
     return get_attachment_points_for_smiles(*smiles);
 }

@@ -123,6 +123,66 @@ BOOST_AUTO_TEST_CASE(test_click_empty_space_adds_nucleotide)
         "RNA1{R(A)P}|RNA2{R(U)P}|RNA3{[dR](T)P}|RNA4{[dR](G)P}$$$$V2.0");
 }
 
+BOOST_AUTO_TEST_CASE(test_add_nucleotide_with_missing_monomers)
+{
+    MonomerToolTestFixture fix;
+    // Custom nucleotide names are not required to be in the monomer database.
+    BOOST_REQUIRE_NO_THROW(fix.setCustomNucleotideTool(
+        "missingSugar", "missingBase", "missingPhosphate"));
+    BOOST_REQUIRE_NO_THROW(fix.mouseClick({0, 0}));
+    fix.verifyHELM(
+        "RNA1{[missingSugar]([missingBase])[missingPhosphate]}$$$$V2.0");
+
+    BOOST_REQUIRE_NO_THROW(fix.mouseDrag({500, 0}, {600, 100}));
+    fix.verifyHELM(
+        "RNA1{[missingSugar]([missingBase])[missingPhosphate]}|"
+        "RNA2{[missingSugar]([missingBase])[missingPhosphate]}$$$$V2.0");
+}
+
+BOOST_AUTO_TEST_CASE(test_attach_nucleotide_with_missing_base)
+{
+    MonomerToolTestFixture fix;
+    fix.setRNANucleotideTool(StdNucleobase::A);
+    fix.mouseClick({0, 0});
+
+    // Keep the sugar and phosphate registered so the fragment has known
+    // attachment points, while still containing a missing database monomer.
+    BOOST_REQUIRE_NO_THROW(
+        fix.setCustomNucleotideTool("R", "missingBase", "P"));
+    auto phos_pos = fix.getMonomerPos(2);
+    BOOST_REQUIRE_NO_THROW(fix.mouseClick(phos_pos));
+    fix.verifyHELM("RNA1{R(A)P.R([missingBase])P}$$$$V2.0");
+
+    auto sugar_pos = fix.getMonomerPos(0);
+    BOOST_REQUIRE_NO_THROW(fix.mouseClick(sugar_pos));
+    fix.verifyHELM("RNA1{R([missingBase])P.R(A)P.R([missingBase])P}$$$$V2.0");
+}
+
+BOOST_AUTO_TEST_CASE(test_add_nucleotide_with_unknown_base)
+{
+    for (const bool is_dna : {false, true}) {
+        BOOST_TEST_CONTEXT("is_dna = " << is_dna)
+        {
+            MonomerToolTestFixture fix;
+            if (is_dna) {
+                BOOST_REQUIRE_NO_THROW(
+                    fix.setDNANucleotideTool(StdNucleobase::N));
+            } else {
+                BOOST_REQUIRE_NO_THROW(
+                    fix.setRNANucleotideTool(StdNucleobase::N));
+            }
+            const std::string nucleotide = is_dna ? "[dR](N)P" : "R(N)P";
+            BOOST_REQUIRE_NO_THROW(fix.mouseClick({0, 0}));
+            fix.verifyHELM("RNA1{" + nucleotide + "}$$$$V2.0");
+
+            auto phos_pos = fix.getMonomerPos(2);
+            BOOST_REQUIRE_NO_THROW(fix.mouseClick(phos_pos));
+            fix.verifyHELM("RNA1{" + nucleotide + "." + nucleotide +
+                           "}$$$$V2.0");
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_click_existing_monomers)
 {
     MonomerToolTestFixture fix;
