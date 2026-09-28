@@ -144,6 +144,83 @@ BOOST_AUTO_TEST_CASE(test_click_cys_r3_with_cys)
 }
 
 /**
+ * Confirm that clicking on a LYS R3 attachment point with a LYS tool
+ * forms a covalent bond
+ */
+BOOST_AUTO_TEST_CASE(test_click_lys_r3_with_lys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{K}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::LYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "X");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{K}|PEPTIDE2{K}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a LYS R3 attachment point with a CYS tool
+ * forms a covalent bond
+ */
+BOOST_AUTO_TEST_CASE(test_click_lys_r3_with_cys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{K}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::CYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "X");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{K}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a CYS R3 attachment point with a LYS tool
+ * forms a covalent bond
+ */
+BOOST_AUTO_TEST_CASE(test_click_cys_r3_with_lys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{C}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::LYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "S");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM(
+        "PEPTIDE1{C}|PEPTIDE2{K}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+}
+
+/**
+ * Confirm that clicking on a thialysine (a SMILES monomer representing a
+ * non-native lysine analog) R3 attachment point with a LYS tool forms a
+ * covalent bond
+ */
+BOOST_AUTO_TEST_CASE(test_click_thialysine_r3_with_lys)
+{
+    MonomerToolTestFixture fix;
+    fix.importMolText("PEPTIDE1{[O=C([C@H](CSCCN[H:3])N[H:1])[OH:2]]}$$$$V2.0");
+    fix.setAminoAcidTool(AminoAcidTool::LYS);
+    auto monomer_pos = fix.getMonomerPos(0);
+    // hover over the monomer to trigger AP label creation
+
+    fix.mouseMove(monomer_pos);
+    auto s_ap_pos = fix.getAttachmentPointPos(0, "X");
+    fix.mouseClick(s_ap_pos);
+    fix.verifyHELM("PEPTIDE1{[O=C([C@H](CSCCN[H:3])N[H:1])[OH:2]]}|PEPTIDE2{K}$"
+                   "PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+}
+
+/**
  * Confirm that click-and-drag from an existing monomer adds a new monomer using
  * the default attachment point
  */

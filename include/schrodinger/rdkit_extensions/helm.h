@@ -4,6 +4,8 @@
 #include "schrodinger/rdkit_extensions/polymer_group.h"
 
 #include <boost/shared_ptr.hpp>
+#include <map>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -76,6 +78,8 @@ struct Chain {
     // std::string polymer_id;
 };
 
+using PolymerConnections = std::map<std::string, std::set<std::string>>;
+
 [[nodiscard]] RDKIT_EXTENSIONS_API bool isMonomeric(const RDKit::ROMol& mol);
 
 // Helper apis to get atom indices belonging to the inputs polymers
@@ -127,6 +131,21 @@ is_dummy_atom(const ::RDKit::Atom* atom);
  */
 [[nodiscard]] RDKIT_EXTENSIONS_API std::vector<unsigned int>
 get_connections(const ::RDKit::ROMol& monomer_mol);
+
+/**
+ * Return the inter-polymer HELM connection graph keyed by polymer ID.
+ * Polymers without inter-polymer connections are included with no neighbors.
+ *
+ * Example map where peptide1 and peptide2 are connected and peptide3 is not:
+ * {
+ *  'PEPTIDE1': {'PEPTIDE2'},
+ *  'PEPTIDE2': {'PEPTIDE1'},
+ *  'PEPTIDE3': {}
+ * }
+ *
+ */
+[[nodiscard]] RDKIT_EXTENSIONS_API PolymerConnections
+get_interpolymer_connections(const ::RDKit::ROMol& monomer_mol);
 
 std::vector<std::string>
     RDKIT_EXTENSIONS_API get_polymer_ids(const RDKit::ROMol& monomer_mol);

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <csignal>
+#include <memory>
 #include <vector>
 
 #include <QApplication>
@@ -12,6 +13,7 @@
 #include <cstdlib>
 
 #include "schrodinger/sketcher/font_loader.h"
+#include "schrodinger/rdkit_extensions/local_monomer_db_fixture.h"
 
 /// @return true if there is a display
 static bool has_display()
@@ -78,6 +80,7 @@ class QApplicationRequiredFixture
         // load the Arimo font so that font width calculations result in
         // expected values
         schrodinger::sketcher::load_font_resources();
+        d_monomer_db = std::make_unique<LocalMonomerDbFixture>();
     }
 
   private:
@@ -85,4 +88,6 @@ class QApplicationRequiredFixture
     std::vector<QByteArray> d_arguments;
     std::vector<char*> d_argv;
     std::unique_ptr<QApplication> d_app;
+    // Database cleanup can notify Qt objects, so it must precede app teardown.
+    std::unique_ptr<LocalMonomerDbFixture> d_monomer_db;
 };

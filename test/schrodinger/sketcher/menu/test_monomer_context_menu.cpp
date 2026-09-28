@@ -16,7 +16,6 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/ROMol.h>
 
-#include "../../rdkit_extensions/test_common.h"
 #include "../test_common.h"
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
@@ -82,9 +81,9 @@ struct MutateRequestCapture {
 };
 
 // RAII helper for tests that need to inject custom monomer definitions.
-// Pairs with the LocalMonomerDbFixture global fixture, which redirects
-// the singleton to a per-binary scratch DB so we never touch the user's
-// real custom DB.
+// Pairs with the QApplicationRequiredFixture's database fixture, which
+// redirects the singleton to a per-binary scratch DB so we never touch the
+// user's real custom DB.
 struct CustomDbScope {
     explicit CustomDbScope(std::string_view json)
     {
