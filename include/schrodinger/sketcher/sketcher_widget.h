@@ -3,6 +3,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_set>
+#include <vector>
 
 #include <boost/shared_ptr.hpp>
 #include <QSet>
@@ -12,6 +13,8 @@
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/public_constants.h"
 #include "schrodinger/rdkit_extensions/convert.h"
+
+Q_MOC_INCLUDE("schrodinger/sketcher/rdkit/monomer_analog.h")
 
 class QGraphicsSvgItem;
 class QGraphicsSceneMouseEvent;
@@ -59,6 +62,7 @@ class ModifyAtomsMenu;
 class ModifyBondsMenu;
 class MolModel;
 class MonomerContextMenu;
+struct MonomerMutation;
 class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
@@ -329,6 +333,13 @@ class SKETCHER_API SketcherWidget : public QWidget
      * Show the custom monomer structure editor for the specified monomer.
      */
     void showEditMonomerStructureDialog(const RDKit::Atom* const atom);
+
+    /**
+     * Apply a context-menu monomer mutation after warning about lost
+     * connections if there are any.
+     */
+    void mutateMonomersFromContextMenu(std::vector<MonomerMutation> mutations,
+                                       QString description);
 
     /**
      * Updates the watermark on user drawing atoms or deleting all
