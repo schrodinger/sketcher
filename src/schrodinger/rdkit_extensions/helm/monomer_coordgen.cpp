@@ -2455,14 +2455,16 @@ orient_polymer(RDKit::ROMol& polymer_to_orient,
 
 /**
  * Adds a conformer to the monomer_mol copying all the coordinates from the
- * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX
- * prop pointing to the corresponding index for that monomer in the monomer_mol.
- * Returns the id of the added conformer.
+ * polymers. Expects each monomer in the polymers to have an ORIGINAL_INDEX prop
+ * pointing to the corresponding index for that monomer in the monomer_mol. Any
+ * existing monomer_mol conformers will be cleared. Returns the id of the added
+ * conformer.
  */
 static unsigned int copy_polymer_coords_to_monomer_mol(
     RDKit::ROMol& monomer_mol, const std::vector<RDKit::ROMOL_SPTR>& polymers)
 {
     auto conformer = new RDKit::Conformer(monomer_mol.getNumAtoms());
+    conformer->set3D(false);
     for (auto polymer : polymers) {
         for (auto monomer : polymer->atoms()) {
             conformer->setAtomPos(
@@ -2470,7 +2472,8 @@ static unsigned int copy_polymer_coords_to_monomer_mol(
                 polymer->getConformer().getAtomPos(monomer->getIdx()));
         }
     }
-    monomer_mol.addConformer(conformer);
+    monomer_mol.clearConformers();
+    monomer_mol.addConformer(conformer, /*assignId = */ true);
     return conformer->getId();
 }
 
