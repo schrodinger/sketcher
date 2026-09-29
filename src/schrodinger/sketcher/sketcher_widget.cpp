@@ -310,6 +310,11 @@ SketcherWidget::SketcherWidget(QWidget* parent,
 
 SketcherWidget::~SketcherWidget() = default;
 
+void SketcherWidget::setRenderOptions(const RenderOptions& options)
+{
+    m_sketcher_model->loadRenderOptions(options);
+}
+
 /**
  * @internal
  * @param mol_model the model to extract the molecule from

@@ -27,6 +27,7 @@
 #include "schrodinger/sketcher/molviewer/monomer_utils.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/rdkit/coord_utils.h"
+#include "schrodinger/sketcher/image_generation.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
 #include "schrodinger/sketcher/molviewer/scene.h"
@@ -69,6 +70,8 @@ struct TestWidgetFixture : QApplicationRequiredFixture {
         widget->clear();
         widget->m_undo_stack->clear();
         widget->m_sketcher_model->reset();
+        // reset() does not restore display settings changed by RenderOptions.
+        widget->setRenderOptions(RenderOptions());
         return widget.get();
     }
 
@@ -78,6 +81,30 @@ struct TestWidgetFixture : QApplicationRequiredFixture {
 };
 
 BOOST_GLOBAL_FIXTURE(TestWidgetFixture);
+
+BOOST_AUTO_TEST_CASE(test_set_render_options)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+
+    RenderOptions options;
+    options.font_size = 24;
+    options.bond_width_scale = 2.0;
+    options.carbon_labels = CarbonLabels::ALL;
+    options.color_scheme = ColorScheme::WHITE_BLACK;
+
+    sk.setRenderOptions(options);
+
+    BOOST_CHECK_EQUAL(sk.m_sketcher_model->getFontSize(), options.font_size);
+    BOOST_CHECK_EQUAL(
+        sk.m_sketcher_model->getBondDisplaySettingsPtr()->m_bond_width, 4.8);
+    BOOST_CHECK(
+        sk.m_sketcher_model->getAtomDisplaySettingsPtr()->m_carbon_labels ==
+        CarbonLabels::ALL);
+    const auto* atom_settings =
+        sk.m_sketcher_model->getAtomDisplaySettingsPtr();
+    BOOST_CHECK(atom_settings->getAtomColor(static_cast<int>(Element::C)) ==
+                atom_settings->getAtomColor(static_cast<int>(Element::N)));
+}
 
 BOOST_AUTO_TEST_CASE(test_copy_all_as_image_from_top_bar)
 {
