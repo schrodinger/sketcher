@@ -2381,6 +2381,7 @@ static unsigned int copy_polymer_coords_to_monomer_mol(
     RDKit::ROMol& monomer_mol, const std::vector<RDKit::ROMOL_SPTR>& polymers)
 {
     auto conformer = new RDKit::Conformer(monomer_mol.getNumAtoms());
+    conformer->set3D(false);
     for (auto polymer : polymers) {
         for (auto monomer : polymer->atoms()) {
             conformer->setAtomPos(

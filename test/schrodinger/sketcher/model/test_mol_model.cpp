@@ -4106,6 +4106,7 @@ BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_monomeric_SKETCH_2716,
 
     BOOST_REQUIRE(mol->getNumAtoms() == original_coords.size());
     auto& new_conf = mol->getConformer();
+    BOOST_TEST(!new_conf.is3D());
     // Compare positions relative to the same atom to allow translation of the
     // entire structure while still detecting changes between disconnected
     // chains.
@@ -4168,6 +4169,7 @@ BOOST_AUTO_TEST_CASE(test_clean_up_does_not_distort_addMonomer_SKETCH_2716,
     // valid layout for the same connectivity can be translated. The shape
     // (relative atom positions) must match.
     auto& built_conf = built_mol->getConformer();
+    BOOST_TEST(!built_conf.is3D());
     auto baseline_vec = baseline_coords[1] - baseline_coords[0];
     auto built_vec = built_conf.getAtomPos(1) - built_conf.getAtomPos(0);
     BOOST_TEST(baseline_vec.x == built_vec.x);
@@ -4198,6 +4200,7 @@ BOOST_AUTO_TEST_CASE(test_clean_up_restores_valid_distorted_monomer_SKETCH_2849,
 
     auto get_relative_coordinates = [mol]() {
         const auto& conformer = mol->getConformer();
+        BOOST_TEST(!conformer.is3D());
         const auto origin = conformer.getAtomPos(0);
         std::vector<RDGeom::Point3D> relative_coordinates;
         relative_coordinates.reserve(mol->getNumAtoms());
