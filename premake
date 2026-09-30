@@ -34,6 +34,7 @@ COORDGEN_DIR=$(ls -d $PF_DIR/coordgenlibs-*/lib/cmake)
 MAEPARSER_DIR=$(ls -d $PF_DIR/maeparser-*/lib/cmake 2>/dev/null || echo $PF_DIR/lib/cmake)
 SQLITE_DIR=$(ls -d $PF_DIR/sqlite-*)
 XZ_DIR=$(ls -d $PF_DIR/xz-*)
+ZSTD_DIR=$(ls -d $PF_DIR/zstd-*)
 
 # Build CMake prefix path
 CMAKE_PREFIX_PATH="$PF_DIR;$ZLIB_DIR;$EIGEN_DIR;$COORDGEN_DIR;$MAEPARSER_DIR;$SQLITE_DIR"
@@ -49,8 +50,9 @@ fi
 
 # The prebuilt RDKit libraries have transitive dependencies (e.g. libexpat)
 # that live in the environment's top level lib directory. CMake only derives
-# rpaths from the directories we link against, so add it explicitly.
-BUILD_RPATH="$PF_DIR/lib"
+# rpaths from the directories we link against, so add it explicitly; libzstd
+# likewise, from its own versioned directory.
+BUILD_RPATH="$PF_DIR/lib;$ZSTD_DIR/lib"
 
 # Configure compiler for Windows
 CXX_COMPILER=""
@@ -64,7 +66,14 @@ mkdir -p "$BUILD_DIR"
 # Update rpaths for shared libraries on MacOS
 POST_BUILD_COMMANDS=""
 if [[ "$OSTYPE" == darwin* ]]; then
-    POST_BUILD_COMMANDS="@find $BUILD_DIR \\( -name '*.dylib' -o -type f -perm +111 \\) ! -type l | while read target; do install_name_tool -change /Users/localbuildbot/builds/software/lib/Darwin-x86_64/sqlite-3.42.0/lib/libsqlite3.0.dylib /usr/lib/libsqlite3.0.dylib \"\$\$target\"; install_name_tool -change /software/lib/Darwin-x86_64/zlib-1.2.11/lib/libz.1.dylib /usr/lib/libz.1.dylib \"\$\$target\"; done"
+    # zlib, xz and sqlite ship install names pointing at build staging paths,
+    # which rpath cannot redirect; rewrite them to the macOS copies. Read them
+    # from the packages as rebuilds change them. grep avoids re-signing
+    # libraries that need nothing.
+    ZLIB_ID=$(otool -D $ZLIB_DIR/lib/libz.1.dylib | tail -1)
+    XZ_ID=$(otool -D $XZ_DIR/lib/liblzma.5.dylib | tail -1)
+    SQLITE_ID=$(otool -D $SQLITE_DIR/lib/libsqlite3.dylib | tail -1)
+    POST_BUILD_COMMANDS="@{ find $BUILD_DIR \\( -name '*.dylib' -o -type f -perm +111 \\) ! -type l; find $PF_DIR/lib -maxdepth 1 -name '*.dylib' ! -type l; } | while read target; do grep -q placehold \"\$\$target\" 2>/dev/null || continue; install_name_tool -change $ZLIB_ID /usr/lib/libz.1.dylib \"\$\$target\"; install_name_tool -change $XZ_ID /usr/lib/liblzma.5.dylib \"\$\$target\"; install_name_tool -change $SQLITE_ID /usr/lib/libsqlite3.dylib \"\$\$target\"; done; true"
 fi
 
 # Start with a fresh CMake cache if the compiler has moved, since CMake
