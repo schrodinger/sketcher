@@ -58,8 +58,20 @@ void assign_stereochemistry(RDKit::ROMol& mol)
                                          flagPossibleStereoCenters);
 }
 
-void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
+void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf,
+                   bool keep_existing_wedges)
 {
+    std::vector<std::pair<RDKit::Bond*, RDKit::Bond::BondDir>> existing_wedges;
+    if (keep_existing_wedges) {
+        for (auto bond : mol.bonds()) {
+            if (auto dir = bond->getBondDir();
+                dir == RDKit::Bond::BondDir::BEGINWEDGE ||
+                dir == RDKit::Bond::BondDir::BEGINDASH) {
+                existing_wedges.emplace_back(bond, dir);
+            }
+        }
+    }
+
     std::vector<RDKit::Bond*> attachment_dummy_bonds;
     for (auto atom : mol.atoms()) {
         if (is_attachment_point_dummy(*atom)) {
@@ -74,6 +86,11 @@ void wedgeMolBonds(RDKit::ROMol& mol, const RDKit::Conformer* conf)
 
     RDKit::ClearSingleBondDirFlags(mol);
     RDKit::Chirality::clearMolBlockWedgingInfo(mol);
+
+    // WedgeMolBonds() skips any chiral atom that already has a wedged bond
+    for (auto [bond, dir] : existing_wedges) {
+        bond->setBondDir(dir);
+    }
 
     try {
         // Temporarily silence RDKit's loggers

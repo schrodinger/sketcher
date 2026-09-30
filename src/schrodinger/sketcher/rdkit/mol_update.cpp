@@ -233,7 +233,7 @@ void prepare_mol(RDKit::ROMol& mol)
     // this call will intentionally keep a 3d conformer if one is found, since
     // Maestro may use that later to align the Sketcher structure with the
     // Maestro workspace structure
-    update_2d_coordinates(mol);
+    bool coords_generated = update_2d_coordinates(mol);
 
     // Update all input chiral centers to have enhanced stereo; honors MDL input
     add_enhanced_stereo_to_chiral_atoms(mol);
@@ -241,8 +241,13 @@ void prepare_mol(RDKit::ROMol& mol)
     // Convert parities back to wedges/dashes
     if (has_molblock_cfgs(mol)) {
         RDKit::Chirality::reapplyMolBlockWedging(mol);
-    } else { // Otherwise recalculate chiral bond directions
-        rdkit_extensions::wedgeMolBonds(mol, &mol.getConformer());
+    } else {
+        // Otherwise recalculate chiral bond directions, honoring any wedges
+        // already present on the input (SKETCH-2872) unless we just generated
+        // new coordinates, which would make those wedges meaningless
+        rdkit_extensions::wedgeMolBonds(mol, &mol.getConformer(),
+                                        /* keep_existing_wedges = */
+                                        !coords_generated);
     }
 }
 
