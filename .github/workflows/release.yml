@@ -37,8 +37,9 @@ jobs:
             name=$(basename "$dir")
             case "$name" in
               *-memtest) continue ;;
-              # upload-artifact drops file permissions, so restore them
-              *-linux-x64 | *-macos-*) chmod -R +x "$dir" ;;
+              # download-artifact drops file permissions, so restore them
+              *-linux-x64) chmod +x "$dir"/Sketcher "$dir"/smiles_to_helm ;;
+              *-macos-*) chmod +x "$dir"/Sketcher.app/Contents/MacOS/Sketcher "$dir"/smiles_to_helm ;;
             esac
             if [[ "$name" == *-linux-x64 ]]; then
               tar -czf "${name}.tar.gz" -C "$dir" .
