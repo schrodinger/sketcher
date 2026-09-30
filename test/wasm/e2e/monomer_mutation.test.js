@@ -5,6 +5,7 @@ import {
   getExportedHelm,
   selectAll,
   clickWidget,
+  requireRect,
 } from './e2e_helpers.js';
 
 test.beforeEach(async ({ page }) => {
@@ -47,7 +48,7 @@ test.describe('Monomer Mutation', () => {
     expect(helm).not.toContain('R(C)');
   });
 
-  test('clicking disabled incompatible monomer button does not mutate', async ({ page }) => {
+  test('incompatible monomer button is disabled for a peptide selection', async ({ page }) => {
     await clickWidget(page, 'monomeric_btn');
     await clickWidget(page, 'amino_monomer_btn');
 
@@ -61,10 +62,14 @@ test.describe('Monomer Mutation', () => {
     // Switch to nucleic acid page — peptide selection should persist
     await clickWidget(page, 'nucleic_monomer_btn');
 
-    // Click a nucleic acid base button (should be disabled for peptide selection)
-    await clickWidget(page, 'na_u_btn');
+    // A nucleic acid base can't be applied to a peptide selection, so the
+    // button must be disabled. Assert that directly rather than clicking it and
+    // checking the molecule is unchanged, which would also pass if the button
+    // were enabled but the mutation silently did nothing.
+    await expect
+      .poll(async () => (await requireRect(page, 'widget:na_u_btn')).enabled, { timeout: 5000 })
+      .toBe(false);
 
-    // Verify no mutation occurred
     const helm = await getExportedHelm(page);
     expect(helm).toContain('PEPTIDE1{A.G.L}');
   });

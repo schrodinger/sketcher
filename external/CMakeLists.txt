@@ -197,6 +197,7 @@ set(BOOST_LIBS_TO_INCLUDE
     # rdkit_extensions required libraries
     bimap
     filesystem
+    signals2
     test)
 
 if(NOT EMSCRIPTEN)

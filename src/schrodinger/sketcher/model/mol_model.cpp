@@ -1182,19 +1182,22 @@ void MolModel::remove(
 }
 
 void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
-                        const QString& description)
+                        const QString& description,
+                        const bool enforce_monomer_validity)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
     center_mol_on(mol, position);
     addMol(mol, description, /* reposition_mol = */ false,
-           /* new_molecule_added = */ false);
+           /* new_molecule_added = */ false, /* enforce_size_limit = */ true,
+           enforce_monomer_validity);
 }
 
 void MolModel::addMol(RDKit::RWMol mol, const QString& description,
                       const bool reposition_mol, const bool new_molecule_added,
-                      const bool enforce_size_limit)
+                      const bool enforce_size_limit,
+                      const bool enforce_monomer_validity)
 {
     if (mol.getNumAtoms() == 0) {
         return;
@@ -1208,6 +1211,13 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
         throw std::runtime_error(
             fmt::format("Cannot import molecules containing more than {} atoms",
                         MAX_NUM_ATOMS_FOR_IMPORT));
+    }
+
+    if (enforce_monomer_validity && rdkit_extensions::isMonomeric(mol)) {
+        // throw a std::runtime_error if there are any monomer names that don't
+        // exist in the monomer database or if there are any SMILES monomers
+        // with invalid SMILES
+        validate_monomers(mol);
     }
 
     // Ensure the newly added mol has coords and necessary stereo information
@@ -3284,16 +3294,19 @@ void add_mol_or_reaction_to_mol_model(
     const std::variant<boost::shared_ptr<RDKit::RWMol>,
                        boost::shared_ptr<RDKit::ChemicalReaction>>
         mol_or_reaction,
-    const std::optional<RDGeom::Point3D> position, const bool recenter_view)
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view,
+    const bool enforce_monomer_validity)
 {
     if (std::holds_alternative<boost::shared_ptr<RDKit::RWMol>>(
             mol_or_reaction)) {
         auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
         if (position.has_value()) {
-            mol_model.addMolAt(*mol, *position, "Import molecule");
+            mol_model.addMolAt(*mol, *position, "Import molecule",
+                               enforce_monomer_validity);
         } else {
             mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
-                             recenter_view);
+                             recenter_view, /* enforce_size_limit = */ true,
+                             enforce_monomer_validity);
         }
     } else {
         auto reaction = std::get<boost::shared_ptr<RDKit::ChemicalReaction>>(
@@ -3305,11 +3318,12 @@ void add_mol_or_reaction_to_mol_model(
 void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
                            const rdkit_extensions::Format format,
                            const std::optional<RDGeom::Point3D> position,
-                           const bool recenter_view)
+                           const bool recenter_view,
+                           const bool enforce_monomer_validity)
 {
     auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
     add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, position,
-                                     recenter_view);
+                                     recenter_view, enforce_monomer_validity);
 }
 
 void MolModel::resizeMonomers(

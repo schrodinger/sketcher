@@ -564,3 +564,18 @@
    ...
    fun:*QApplicationRequiredFixture*
 }
+{
+   Qt raster paint thread pool TLS - false positive
+   Memcheck:Leak
+   match-leak-kinds: possible
+   fun:calloc
+   fun:calloc
+   fun:allocate_dtv
+   fun:_dl_allocate_tls
+   fun:allocate_stack
+   fun:pthread_create@@GLIBC_2.34
+   fun:_ZN7QThread5startENS_8PriorityE
+   fun:_ZN18QThreadPoolPrivate11startThreadEP9QRunnable
+   fun:_ZN11QThreadPool5startEP9QRunnablei
+   fun:_ZL19blend_color_genericiPK11QT_FT_Span_Pv
+}

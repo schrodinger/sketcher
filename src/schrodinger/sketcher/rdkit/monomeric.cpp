@@ -1,15 +1,19 @@
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 
 #include <algorithm>
+#include <array>
 #include <functional>
+#include <limits>
 #include <numeric>
 #include <optional>
+#include <stdexcept>
 #include <string>
 
 #include <boost/range/combine.hpp>
 #include <boost/range/join.hpp>
 
 #include <QGraphicsItem>
+#include <QLineF>
 #include <QPointF>
 
 #include <fmt/core.h>
@@ -20,7 +24,9 @@
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
 
+#include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 
@@ -43,12 +49,24 @@ const std::string H_BOND_LINKAGE =
 // issues with C++′s handling of Unicode.
 const std::unordered_map<MonomerType, std::vector<std::string>>
     NUMBERED_AP_NAMES_BY_MONOMER_TYPE = {
-        {MonomerType::PEPTIDE, {"N", "C", "S"}},
+        // the R3 of a peptide is named either S or X depending on the element
+        // at the attachment point (see peptide_ap3_name_for_element), so we use
+        // a blank string here
+        {MonomerType::PEPTIDE, {"N", "C", ""}},
         {MonomerType::NA_BASE, {"N1/9"}},
         {MonomerType::NA_SUGAR, {"5'", "3'", "1'"}},
 };
 
 const int INVALID_ATTACHMENT_POINT_SPEC = -2;
+
+// A side or corner is occupied when another connection is within 45 degrees
+// of its outward direction. For example, east covers -45 to 45 degrees and
+// northeast covers 0 to 90 degrees, so neighboring occupancy sectors overlap.
+constexpr double COSINE_45_DEGREES = 0.7071067811865476;
+constexpr size_t MAX_PLACEMENT_DIRECTIONS = 4;
+constexpr std::array<Direction, 8> ALL_PLACEMENT_DIRECTIONS = {
+    Direction::N, Direction::NE, Direction::E, Direction::SE,
+    Direction::S, Direction::SW, Direction::W, Direction::NW};
 
 const std::unordered_map<Direction, Direction> OPPOSITE_CARDINAL_DIRECTION = {
     {Direction::N, Direction::S},
@@ -73,9 +91,205 @@ class NoAvailableDirectionsException : public std::exception
 
 } // namespace
 
+void validate_monomers(const RDKit::ROMol& mol)
+{
+    using rdkit_extensions::ChainType;
+    const auto& db = rdkit_extensions::MonomerDatabase::instance();
+    for (const auto* monomer : mol.atoms()) {
+        const auto label = monomer->getProp<std::string>(ATOM_LABEL);
+        bool is_smiles = false;
+        if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+            try {
+                rdkit_extensions::to_rdkit(
+                    label, rdkit_extensions::Format::EXTENDED_SMILES);
+            } catch (const std::exception&) {
+                throw std::runtime_error(
+                    fmt::format("Could not parse monomer SMILES: {}", label));
+            }
+        } else {
+            const auto chain_type = rdkit_extensions::getChainType(*monomer);
+            // HELM unknown amino acids and bases have no database entry.
+            if ((chain_type == ChainType::PEPTIDE && label == "X") ||
+                (chain_type == ChainType::RNA && label == "N")) {
+                continue;
+            }
+            if (!db.getMonomerSmiles(label, chain_type).has_value()) {
+                const auto type_name =
+                    chain_type == ChainType::PEPTIDE ? "Peptide"
+                    : chain_type == ChainType::CHEM  ? "CHEM"
+                                                     : "Nucleic acid";
+                throw std::runtime_error(
+                    fmt::format("{} monomer {} not found in monomer database",
+                                type_name, label));
+            }
+        }
+    }
+}
+
+/**
+ * @return a list of <attachment point number, heavy element at the attachment
+ * point> for the given monomer
+ */
+static std::vector<std::pair<int, std::string>>
+get_attachment_point_nums_and_elems_for_monomer(const RDKit::Atom* monomer)
+{
+    std::vector<std::pair<int, std::string>> numbered_aps;
+    bool is_smiles = false;
+    if (monomer->getPropIfPresent(SMILES_MONOMER, is_smiles) && is_smiles) {
+        return get_attachment_points_for_smiles(
+            monomer->getProp<std::string>(ATOM_LABEL));
+    } else {
+        return get_attachment_points_for_res(
+            get_monomer_res_name(monomer),
+            rdkit_extensions::getChainType(*monomer));
+    }
+}
+
+/**
+ * @return the attachment point name to use for a peptide side-chain attachment
+ * point with the given heavy element
+ */
+static std::string peptide_ap3_name_for_element(const std::string_view elem)
+{
+    return elem == "S" ? PEPTIDE_R3_NAME_S : PEPTIDE_R3_NAME_X;
+}
+
+/**
+ * @return the attachment point name to use for the side-chain attachment
+ * point of the given peptide monomer
+ * @note The monomer must be a peptide monomer with an R3 attachment point. This
+ * function does not do any input validation.
+ */
+static std::string peptide_ap3_name_for_monomer(const RDKit::Atom* monomer)
+{
+    auto aps_from_smiles =
+        get_attachment_point_nums_and_elems_for_monomer(monomer);
+    std::string elem;
+    for (auto [cur_num, cur_elem] : aps_from_smiles) {
+        if (cur_num == 3) {
+            elem = cur_elem;
+        }
+    }
+    return peptide_ap3_name_for_element(elem);
+}
+
+bool peptide_has_ap3(const std::string& res_name_or_smiles,
+                     const bool is_smiles)
+{
+    std::vector<std::pair<int, std::string>> aps_from_smiles;
+    if (is_smiles) {
+        aps_from_smiles = get_attachment_points_for_smiles(res_name_or_smiles);
+    } else {
+        aps_from_smiles = get_attachment_points_for_res(
+            res_name_or_smiles, rdkit_extensions::ChainType::PEPTIDE);
+    }
+    for (auto [cur_num, cur_elem] : aps_from_smiles) {
+        if (cur_num == 3) {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string ap_model_name_for(int ap_num)
 {
     return fmt::format("R{}", ap_num);
+}
+
+/**
+ * Get the attachment point number, if any, from the atom label of the given
+ * atom.
+ */
+static std::optional<unsigned int>
+get_attachment_point_num_from_atom_label(const RDKit::Atom& atom)
+{
+    std::string atom_label;
+    atom.getPropIfPresent(RDKit::common_properties::atomLabel, atom_label);
+    if (atom_label.starts_with("_R")) {
+        const auto parsed_num = ap_name_to_num(atom_label.substr(1));
+        if (parsed_num > 0) {
+            return static_cast<unsigned int>(parsed_num);
+        }
+    }
+    return std::nullopt;
+}
+
+/**
+ * Get the attachment point number, if any, from the given atom. This function
+ * recognized attachment point numbers that are specified using atom-map
+ * numbers, isotope-numbers, or CXSMILES atom labels in the format of "_R<#>".
+ */
+static std::optional<unsigned int>
+get_attachment_point_num(const RDKit::Atom& atom)
+{
+    unsigned int attachment_point_num = 0;
+    if (atom.getPropIfPresent(RDKit::common_properties::molAtomMapNumber,
+                              attachment_point_num) &&
+        attachment_point_num > 0) {
+        return attachment_point_num;
+    }
+
+    if (const auto atom_label_num =
+            get_attachment_point_num_from_atom_label(atom)) {
+        return atom_label_num;
+    }
+
+    if (atom.getAtomicNum() == 0 && atom.getIsotope() > 0) {
+        return atom.getIsotope();
+    }
+    return std::nullopt;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_smiles(const std::string& smiles)
+{
+    auto mol = rdkit_extensions::to_rdkit(
+        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+
+    std::vector<std::pair<int, std::string>> attachment_points;
+    for (const auto* atom : mol->atoms()) {
+        const auto attachment_point_num = get_attachment_point_num(*atom);
+        if (!attachment_point_num) {
+            continue;
+        }
+
+        const RDKit::Atom* heavy_atom = atom;
+        if (heavy_atom->getAtomicNum() <= 1) {
+            heavy_atom = nullptr;
+            for (const auto* neighbor : mol->atomNeighbors(atom)) {
+                if (neighbor->getAtomicNum() > 1) {
+                    heavy_atom = neighbor;
+                    break;
+                }
+            }
+        }
+        if (heavy_atom != nullptr) {
+            attachment_points.emplace_back(*attachment_point_num,
+                                           heavy_atom->getSymbol());
+        }
+    }
+
+    std::ranges::sort(attachment_points);
+    return attachment_points;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_res(const std::string& resname,
+                              const rdkit_extensions::ChainType chain_type)
+{
+    const auto smiles =
+        rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
+            resname, chain_type);
+    if (!smiles.has_value()) {
+        if (chain_type == rdkit_extensions::ChainType::RNA && resname == "N") {
+            // unknown bases have one attachment point with an unknown element
+            return {{1, ""}};
+        }
+        // Unknown peptides (X) and other unrecognized monomers default to two
+        // attachment points. Their elements are unknown.
+        return {{1, ""}, {2, ""}};
+    }
+    return get_attachment_points_for_smiles(*smiles);
 }
 
 MonomerType get_monomer_type(const RDKit::Atom* atom)
@@ -160,7 +374,8 @@ ConnectorType get_connector_type(const RDKit::Bond* bond,
         std::string prop = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
         bond->getPropIfPresent(prop, attachment_points);
         if (attachment_points == "R3-R3") {
-            if (start_res_name.ends_with('C') && end_res_name.ends_with('C')) {
+            if (peptide_ap3_name_for_monomer(start_atom) == PEPTIDE_R3_NAME_S &&
+                peptide_ap3_name_for_monomer(end_atom) == PEPTIDE_R3_NAME_S) {
                 return ConnectorType::PEPTIDE_DISULFIDE;
             } else {
                 return ConnectorType::PEPTIDE_SIDE_CHAIN;
@@ -220,24 +435,427 @@ does_connector_have_arrowheads(const RDKit::Bond* bond,
     }
 }
 
-/**
- * Return true if coord is above (within a 45 degree cone of) other
- */
-static bool is_coord_above_the_other(const QPointF& coord, const QPointF& other)
+static Direction get_nearest_cardinal_direction(const QPointF& relative_pos)
 {
-    return coord.y() < other.y() &&
-           qFabs(coord.x() - other.x()) < qFabs(coord.y() - other.y());
+    const auto horizontal_side =
+        relative_pos.x() < 0 ? Direction::W : Direction::E;
+    const auto vertical_side =
+        relative_pos.y() > 0 ? Direction::S : Direction::N;
+    if (qAbs(relative_pos.x()) >= qAbs(relative_pos.y())) {
+        return horizontal_side;
+    }
+    return vertical_side;
 }
 
-qreal get_monomer_arrowhead_offset(const QGraphicsItem& monomer_item,
-                                   const QPointF& bound_coords)
+static QPointF get_direction_unit_vector(const Direction direction)
 {
-    auto offset = monomer_item.boundingRect().height() / 2 +
-                  MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
-    if (is_coord_above_the_other(monomer_item.pos(), bound_coords)) {
-        offset *= -1;
+    auto vector = direction_to_qt_vector(direction);
+    if (!qFuzzyIsNull(vector.x()) && !qFuzzyIsNull(vector.y())) {
+        vector *= COSINE_45_DEGREES;
     }
-    return offset;
+    return vector;
+}
+
+static bool is_cardinal_direction(const Direction direction)
+{
+    return OPPOSITE_CARDINAL_DIRECTION.contains(direction);
+}
+
+static double direction_closeness(const Direction direction,
+                                  const QPointF& relative_pos)
+{
+    const auto unit_vector = get_direction_unit_vector(direction);
+    return QPointF::dotProduct(unit_vector, relative_pos);
+}
+
+/**
+ * Select the four closest directions on the half of the monomer facing the
+ * bound monomer, keeping the nearest side first. Within those four candidates,
+ * prefer another side over a corner. Directions on the opposite half are
+ * excluded because a connector from there would pass behind the monomer.
+ */
+static std::vector<Direction>
+get_ranked_placement_directions(const QPointF& relative_pos)
+{
+    const auto nearest_side = get_nearest_cardinal_direction(relative_pos);
+    std::vector<Direction> ranked_directions = {nearest_side};
+    for (const auto direction : ALL_PLACEMENT_DIRECTIONS) {
+        if (direction != nearest_side) {
+            ranked_directions.push_back(direction);
+        }
+    }
+    std::stable_sort(
+        ranked_directions.begin() + 1, ranked_directions.end(),
+        [&relative_pos](const Direction first, const Direction second) {
+            return direction_closeness(first, relative_pos) >
+                   direction_closeness(second, relative_pos);
+        });
+    ranked_directions.resize(MAX_PLACEMENT_DIRECTIONS);
+    std::stable_partition(ranked_directions.begin() + 1,
+                          ranked_directions.end(),
+                          [](const Direction direction) {
+                              return is_cardinal_direction(direction);
+                          });
+    return ranked_directions;
+}
+
+static std::unordered_set<Direction>
+get_directions_occupied_by_vector(const QPointF& relative_pos)
+{
+    std::unordered_set<Direction> occupied_directions;
+    const auto length = QLineF(QPointF(), relative_pos).length();
+    if (qFuzzyIsNull(length)) {
+        return occupied_directions;
+    }
+
+    for (const auto direction : ALL_PLACEMENT_DIRECTIONS) {
+        const auto cosine =
+            direction_closeness(direction, relative_pos) / length;
+        if (cosine >= COSINE_45_DEGREES) {
+            occupied_directions.insert(direction);
+        }
+    }
+    return occupied_directions;
+}
+
+static std::unordered_set<Direction>
+get_occupied_directions(const RDKit::Atom* monomer,
+                        const RDKit::Atom* bound_monomer,
+                        const bool is_secondary_connection)
+{
+    const auto& mol = monomer->getOwningMol();
+    const auto* current_bond =
+        mol.getBondBetweenAtoms(monomer->getIdx(), bound_monomer->getIdx());
+    const auto& conf = mol.getConformer();
+    std::unordered_set<Direction> occupied_directions;
+
+    auto record_occupied_directions = [&](const RDKit::Bond* bond,
+                                          const bool is_secondary) {
+        if (bond == current_bond && is_secondary == is_secondary_connection) {
+            return;
+        }
+        const auto* other_monomer = bond->getOtherAtom(monomer);
+        const auto relative_pos =
+            to_scene_xy(conf.getAtomPos(other_monomer->getIdx())) -
+            to_scene_xy(conf.getAtomPos(monomer->getIdx()));
+        const auto connection_directions =
+            get_directions_occupied_by_vector(relative_pos);
+        occupied_directions.insert(connection_directions.begin(),
+                                   connection_directions.end());
+    };
+
+    for (const auto* bond : mol.atomBonds(monomer)) {
+        record_occupied_directions(bond, false);
+        // A custom-bond property can duplicate the primary HELM linkage. It is
+        // a separate connection only when the bond stores two linkages.
+        if (contains_two_monomer_linkages(bond)) {
+            record_occupied_directions(bond, true);
+        }
+    }
+    return occupied_directions;
+}
+
+static bool monomers_are_in_same_chain(const RDKit::Atom* first,
+                                       const RDKit::Atom* second)
+{
+    try {
+        return rdkit_extensions::get_polymer_id(first) ==
+               rdkit_extensions::get_polymer_id(second);
+    } catch (const std::runtime_error&) {
+        return false;
+    }
+}
+
+static QPointF get_point_on_side(const QRectF& monomer_rect,
+                                 const Direction side)
+{
+    switch (side) {
+        case Direction::N:
+            return {0.0, monomer_rect.top()};
+        case Direction::S:
+            return {0.0, monomer_rect.bottom()};
+        case Direction::E:
+            return {monomer_rect.right(), 0.0};
+        case Direction::W:
+            return {monomer_rect.left(), 0.0};
+        default:
+            throw std::logic_error("Expected a cardinal direction");
+    }
+}
+
+static QPointF extend_past_monomer(const QPointF& boundary_point)
+{
+    QLineF offset(QPointF(), boundary_point);
+    offset.setLength(offset.length() + MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+    return offset.p2();
+}
+
+static QPointF get_offset_for_side(const QRectF& monomer_rect,
+                                   const Direction side)
+{
+    return extend_past_monomer(get_point_on_side(monomer_rect, side));
+}
+
+static QPointF get_offset_for_corner(const QRectF& monomer_rect,
+                                     const Direction first_side,
+                                     const Direction second_side)
+{
+    // The two side points contain complementary x and y components, so their
+    // sum is the corner shared by the sides.
+    const auto corner = get_point_on_side(monomer_rect, first_side) +
+                        get_point_on_side(monomer_rect, second_side);
+    return extend_past_monomer(corner);
+}
+
+static QPointF get_offset_for_direction(const QRectF& monomer_rect,
+                                        const Direction direction)
+{
+    switch (direction) {
+        case Direction::N:
+        case Direction::S:
+        case Direction::E:
+        case Direction::W:
+            return get_offset_for_side(monomer_rect, direction);
+        case Direction::NE:
+            return get_offset_for_corner(monomer_rect, Direction::N,
+                                         Direction::E);
+        case Direction::SE:
+            return get_offset_for_corner(monomer_rect, Direction::S,
+                                         Direction::E);
+        case Direction::SW:
+            return get_offset_for_corner(monomer_rect, Direction::S,
+                                         Direction::W);
+        case Direction::NW:
+            return get_offset_for_corner(monomer_rect, Direction::N,
+                                         Direction::W);
+    }
+    throw std::logic_error("Unexpected placement direction");
+}
+
+static std::vector<Direction> get_available_directions(
+    const QPointF& relative_pos,
+    const std::unordered_set<Direction>& occupied_directions)
+{
+    const auto ranked_directions =
+        get_ranked_placement_directions(relative_pos);
+    std::vector<Direction> available_directions;
+    for (const auto direction : ranked_directions) {
+        if (!occupied_directions.contains(direction)) {
+            available_directions.push_back(direction);
+        }
+    }
+
+    // If every position is occupied, overlap the preferred side rather than
+    // sending the connector to the far side of the monomer.
+    if (available_directions.empty()) {
+        available_directions.push_back(ranked_directions.front());
+    }
+    return available_directions;
+}
+
+static std::optional<Direction> get_shared_perpendicular_side(
+    const QPointF& relative_pos,
+    const std::unordered_set<Direction>& first_occupied_directions,
+    const std::unordered_set<Direction>& second_occupied_directions)
+{
+    // For a blocked same-chain connection, first try to route both ends along
+    // one unoccupied side perpendicular to the line between the monomers.
+    const auto nearest_side = get_nearest_cardinal_direction(relative_pos);
+    for (const auto side : PERPENDICULAR_CARDINAL_DIRECTIONS.at(nearest_side)) {
+        if (!first_occupied_directions.contains(side) &&
+            !second_occupied_directions.contains(side)) {
+            return side;
+        }
+    }
+    return std::nullopt;
+}
+
+static size_t count_candidate_bond_crossings(const QGraphicsItem& monomer_item,
+                                             const QPointF& bound_coords,
+                                             const RDKit::Atom* monomer,
+                                             const RDKit::Atom* bound_monomer,
+                                             const Direction direction)
+{
+    const auto offset =
+        get_offset_for_direction(monomer_item.boundingRect(), direction);
+    const QLineF candidate_line(monomer_item.pos() + offset, bound_coords);
+    const auto& mol = monomer->getOwningMol();
+    const auto& conf = mol.getConformer();
+    const auto* current_bond =
+        mol.getBondBetweenAtoms(monomer->getIdx(), bound_monomer->getIdx());
+    size_t crossing_count = 0;
+
+    for (const auto* bond : mol.bonds()) {
+        // The current RDKit bond represents the connector being placed, so it
+        // cannot be an obstacle to itself.
+        if (bond == current_bond) {
+            continue;
+        }
+        const auto* begin = bond->getBeginAtom();
+        const auto* end = bond->getEndAtom();
+        const QLineF bond_line(to_scene_xy(conf.getAtomPos(begin->getIdx())),
+                               to_scene_xy(conf.getAtomPos(end->getIdx())));
+        QPointF intersection;
+        if (candidate_line.intersects(bond_line, &intersection) ==
+                QLineF::BoundedIntersection &&
+            // Bonds ending at the remote monomer naturally meet the candidate
+            // at that monomer's center. Only interior intersections count.
+            !qFuzzyIsNull(QLineF(intersection, bound_coords).length())) {
+            // A bond with a secondary linkage is drawn as two connections, so
+            // crossing it should carry twice the penalty.
+            crossing_count += contains_two_monomer_linkages(bond) ? 2 : 1;
+        }
+    }
+    return crossing_count;
+}
+
+static Direction get_direction_with_fewest_bond_crossings(
+    const QGraphicsItem& monomer_item, const QPointF& bound_coords,
+    const RDKit::Atom* monomer, const RDKit::Atom* bound_monomer,
+    const std::vector<Direction>& directions)
+{
+    auto best_direction = directions.front();
+    auto fewest_crossings = std::numeric_limits<size_t>::max();
+    for (const auto direction : directions) {
+        const auto crossing_count = count_candidate_bond_crossings(
+            monomer_item, bound_coords, monomer, bound_monomer, direction);
+        if (crossing_count == 0) {
+            return direction;
+        }
+        if (crossing_count < fewest_crossings) {
+            best_direction = direction;
+            fewest_crossings = crossing_count;
+        }
+    }
+    return best_direction;
+}
+
+static double cross_product(const QPointF& first, const QPointF& second)
+{
+    return first.x() * second.y() - first.y() * second.x();
+}
+
+static bool placements_cross_center_line(const QPointF& relative_pos,
+                                         const Direction first_direction,
+                                         const Direction second_direction)
+{
+    const auto first_side =
+        cross_product(relative_pos, get_direction_unit_vector(first_direction));
+    const auto second_side = cross_product(
+        relative_pos, get_direction_unit_vector(second_direction));
+    return first_side * second_side < 0.0;
+}
+
+/**
+ * Select the best available pair of directions that keeps both arrowheads on
+ * the same side of the line between monomer centers. This keeps a same-chain
+ * connector from crossing the polymer path between its endpoints.
+ */
+static std::pair<Direction, Direction> get_non_crossing_direction_pair(
+    const QPointF& relative_pos,
+    const std::unordered_set<Direction>& first_occupied_directions,
+    const std::unordered_set<Direction>& second_occupied_directions)
+{
+    const auto first_candidates =
+        get_available_directions(relative_pos, first_occupied_directions);
+    const auto second_candidates =
+        get_available_directions(-relative_pos, second_occupied_directions);
+
+    std::optional<std::pair<size_t, size_t>> best_indices;
+    for (size_t first_idx = 0; first_idx < first_candidates.size();
+         ++first_idx) {
+        for (size_t second_idx = 0; second_idx < second_candidates.size();
+             ++second_idx) {
+            if (placements_cross_center_line(relative_pos,
+                                             first_candidates[first_idx],
+                                             second_candidates[second_idx])) {
+                continue;
+            }
+            const auto score = std::make_tuple(first_idx + second_idx,
+                                               std::max(first_idx, second_idx));
+            if (!best_indices.has_value() ||
+                score <
+                    std::make_tuple(
+                        best_indices->first + best_indices->second,
+                        std::max(best_indices->first, best_indices->second))) {
+                best_indices = {first_idx, second_idx};
+            }
+        }
+    }
+
+    if (!best_indices.has_value()) {
+        return {first_candidates.front(), second_candidates.front()};
+    }
+    return {first_candidates[best_indices->first],
+            second_candidates[best_indices->second]};
+}
+
+QPointF get_monomer_arrowhead_offset(
+    const QGraphicsItem& monomer_item, const QPointF& bound_coords,
+    const std::unordered_set<Direction>& occupied_directions)
+{
+    const auto relative_pos = bound_coords - monomer_item.pos();
+    if (qFuzzyIsNull(QLineF(QPointF(), relative_pos).length())) {
+        return {};
+    }
+
+    const auto available_directions =
+        get_available_directions(relative_pos, occupied_directions);
+    return get_offset_for_direction(monomer_item.boundingRect(),
+                                    available_directions.front());
+}
+
+QPointF get_monomer_arrowhead_offset(const QGraphicsItem& monomer_item,
+                                     const QPointF& bound_coords,
+                                     const RDKit::Atom* monomer,
+                                     const RDKit::Atom* bound_monomer,
+                                     const bool is_secondary_connection)
+{
+    const auto occupied_directions = get_occupied_directions(
+        monomer, bound_monomer, is_secondary_connection);
+    const auto bound_monomer_occupied_directions = get_occupied_directions(
+        bound_monomer, monomer, is_secondary_connection);
+    const auto relative_pos = bound_coords - monomer_item.pos();
+    const auto nearest_side = get_nearest_cardinal_direction(relative_pos);
+    const auto bound_monomer_nearest_side =
+        get_nearest_cardinal_direction(-relative_pos);
+
+    // Only same-chain connections need both ends coordinated around the line
+    // between monomer centers. Interchain endpoints can be placed independently
+    // and ranked by their actual bond crossings. Atom indices provide a
+    // canonical ordering so both calls choose the same pair even when their
+    // arguments are reversed.
+    if (monomers_are_in_same_chain(monomer, bound_monomer) &&
+        occupied_directions.contains(nearest_side) &&
+        bound_monomer_occupied_directions.contains(
+            bound_monomer_nearest_side)) {
+        const auto shared_side =
+            get_shared_perpendicular_side(relative_pos, occupied_directions,
+                                          bound_monomer_occupied_directions);
+        if (shared_side.has_value()) {
+            return get_offset_for_side(monomer_item.boundingRect(),
+                                       *shared_side);
+        }
+        const bool monomer_is_first =
+            monomer->getIdx() < bound_monomer->getIdx();
+        const auto direction_pair =
+            monomer_is_first
+                ? get_non_crossing_direction_pair(
+                      relative_pos, occupied_directions,
+                      bound_monomer_occupied_directions)
+                : get_non_crossing_direction_pair(
+                      -relative_pos, bound_monomer_occupied_directions,
+                      occupied_directions);
+        const auto direction =
+            monomer_is_first ? direction_pair.first : direction_pair.second;
+        return get_offset_for_direction(monomer_item.boundingRect(), direction);
+    }
+    const auto available_directions =
+        get_available_directions(relative_pos, occupied_directions);
+    const auto direction = get_direction_with_fewest_bond_crossings(
+        monomer_item, bound_coords, monomer, bound_monomer,
+        available_directions);
+    return get_offset_for_direction(monomer_item.boundingRect(), direction);
 }
 
 int ap_name_to_num(const std::string_view attachment_point_name)
@@ -322,21 +940,8 @@ static Direction get_bound_attachment_point_cardinal_direction(
     auto monomer_coords = conf.getAtomPos(monomer->getIdx());
     auto bound_monomer_coords = conf.getAtomPos(bound_monomer->getIdx());
 
-    auto* bond =
-        mol.getBondBetweenAtoms(monomer->getIdx(), bound_monomer->getIdx());
-    auto [is_arrowhead_at_bond_beginning, is_arrowhead_at_bond_end] =
-        does_connector_have_arrowheads(bond, is_secondary_connection);
-    bool is_start_atom = bond->getBeginAtom() == monomer;
-    bool is_arrowhead = is_start_atom ? is_arrowhead_at_bond_beginning
-                                      : is_arrowhead_at_bond_end;
-    if (is_arrowhead) {
-        bool is_above = is_coord_above_the_other(
-            to_scene_xy(monomer_coords), to_scene_xy(bound_monomer_coords));
-        return is_above ? Direction::S : Direction::N;
-    } else {
-        auto relative_pos = bound_monomer_coords - monomer_coords;
-        return cardinal_direction_for_point(relative_pos);
-    }
+    auto relative_pos = bound_monomer_coords - monomer_coords;
+    return cardinal_direction_for_point(relative_pos);
 }
 
 /**
@@ -533,9 +1138,6 @@ static Direction calculate_direction_for_unbound_attachment_point(
  * be assigned to them. This is guaranteed to only happen when there are more
  * than 8 attachment points for the monomer.
  *
- * Also note that we don't have a good way to determine how many attachment
- * points a CHEM monomer should have, so we assume that it has one additional
- * attachment point beyond the highest numbered bound attachment point.
  */
 static std::vector<UnboundAttachmentPoint>
 get_unbound_attachment_points(const RDKit::Atom* monomer,
@@ -552,44 +1154,31 @@ get_unbound_attachment_points(const RDKit::Atom* monomer,
         }
     }
 
-    // figure out how many numbered attachment points we expect
-    auto monomer_type = get_monomer_type(monomer);
-    int num_numbered_aps = -1;
-    if (NUMBERED_AP_NAMES_BY_MONOMER_TYPE.contains(monomer_type)) {
-        num_numbered_aps =
-            NUMBERED_AP_NAMES_BY_MONOMER_TYPE.at(monomer_type).size();
-        if (monomer_type == MonomerType::PEPTIDE &&
-            get_monomer_res_name(monomer) != CYS_RES_NAME) {
-            // cysteine is the only peptide that can form disulfides
-            num_numbered_aps -= 1;
-        }
-    } else if (monomer_type == MonomerType::NA_PHOSPHATE) {
-        num_numbered_aps = 2;
-    } else {
-        // a CHEM monomer
-        num_numbered_aps =
-            *std::max_element(bound_ap_nums.begin(), bound_ap_nums.end());
-        num_numbered_aps += 1;
-    }
-
+    auto numbered_aps =
+        get_attachment_point_nums_and_elems_for_monomer(monomer);
     std::unordered_set<Direction> occupied_directions;
     for (auto ap : bound_aps) {
         occupied_directions.insert(ap.direction);
     }
 
+    auto monomer_type = get_monomer_type(monomer);
     std::vector<UnboundAttachmentPoint> available_aps;
     try {
         // figure out which numbered attachment points are unbound
-        for (int ap_num = 1; ap_num <= num_numbered_aps; ++ap_num) {
+        for (const auto& [ap_num, symbol] : numbered_aps) {
             if (!bound_ap_nums.contains(ap_num)) {
                 auto dir = calculate_direction_for_unbound_attachment_point(
                     ap_num, "", monomer_type, bound_aps, available_aps,
                     occupied_directions);
                 occupied_directions.insert(dir);
+                std::string display_name;
+                if (monomer_type == MonomerType::PEPTIDE && ap_num == 3) {
+                    display_name = peptide_ap3_name_for_element(symbol);
+                }
                 // XCode 14 requires push_back instead of emplace_back and curly
                 // brackets instead of parenthesis here
                 available_aps.push_back(UnboundAttachmentPoint{
-                    "R" + std::to_string(ap_num), "", ap_num, dir});
+                    "R" + std::to_string(ap_num), display_name, ap_num, dir});
             }
         }
 
@@ -678,8 +1267,10 @@ get_attachment_point_name_of_bound_sugar(const RDKit::Atom* phosphate)
 /**
  * @return a list of all "pretty" attachment point names (e.g. "N" instead of
  * "R1" for amino acids) for numbered attachment points (i.e. any attachment
- * points named "R#") of the given monomer.  This function does not account for
- * of whether those attachment points are bound or available.
+ * points named "R#") of the given monomer. This function does not account for
+ * of whether those attachment points are bound or available, nor does it give
+ * the appropriate name for the R3 attachment point of a peptide (since deciding
+ * between "S" and "X" requires examining the monomer's atomistic structure).
  *
  * Note that CHEM monomers don't have special names, so we return an empty list
  * (which will cause ap_num_to_name() to return R1, R2, etc).
@@ -692,7 +1283,7 @@ get_attachment_point_name_of_bound_sugar(const RDKit::Atom* phosphate)
  * sugar.
  */
 static std::vector<std::string>
-get_all_numbered_attachment_point_names(const RDKit::Atom* monomer)
+get_standard_numbered_attachment_point_names(const RDKit::Atom* monomer)
 {
     auto monomer_type = get_monomer_type(monomer);
 
@@ -729,11 +1320,15 @@ get_attachment_points_for_monomer(const RDKit::Atom* monomer)
     auto bound_aps = get_bound_attachment_points(monomer);
     auto unbound_aps = get_unbound_attachment_points(monomer, bound_aps);
 
+    auto all_names = get_standard_numbered_attachment_point_names(monomer);
     // add pretty names to all numbered attachment points
-    auto all_names = get_all_numbered_attachment_point_names(monomer);
     auto assign_ap_names = [&all_names](auto&& aps) {
         for (auto& cur_ap : aps) {
-            if (cur_ap.num != ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
+            // cur_ap.display_name will only be populated for the R3 of peptide
+            // monomers (with either "S" or "X", based on the element at the
+            // attachment point)
+            if (cur_ap.num != ATTACHMENT_POINT_WITH_CUSTOM_NAME &&
+                cur_ap.display_name.empty()) {
                 cur_ap.display_name = ap_num_to_name(cur_ap.num, all_names);
             }
         }
@@ -749,15 +1344,19 @@ get_attachment_point_name_for_connection(const RDKit::Atom* monomer,
                                          const RDKit::Bond* connector,
                                          const bool is_secondary_connection)
 {
-    auto all_names = get_all_numbered_attachment_point_names(monomer);
     std::string prop_name = is_secondary_connection ? CUSTOM_BOND : LINKAGE;
     std::string linkage;
     if (connector->getPropIfPresent(prop_name, linkage)) {
         bool is_start_atom = connector->getBeginAtom() == monomer;
         const auto& [ap_num, orig_ap_name] =
             get_attachment_point_for_atom(linkage, is_start_atom);
-        if (ap_num > 0) {
-            return ap_num_to_name(ap_num, all_names);
+        if (ap_num == 3 && get_monomer_type(monomer) == MonomerType::PEPTIDE) {
+            // peptide side chain (R3) can be either S or X
+            return peptide_ap3_name_for_monomer(monomer);
+        } else if (ap_num > 0) {
+            auto standard_names =
+                get_standard_numbered_attachment_point_names(monomer);
+            return ap_num_to_name(ap_num, standard_names);
         } else if (ap_num == ATTACHMENT_POINT_WITH_CUSTOM_NAME) {
             return orig_ap_name;
         }
