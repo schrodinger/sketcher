@@ -51,6 +51,7 @@ MonomerToolWidget::MonomerToolWidget(QWidget* parent) :
     }
     ui->unk_btn->setStyleSheet(UNKNOWN_MONOMER_STYLE);
     ui->na_n_btn->setStyleSheet(UNKNOWN_MONOMER_STYLE);
+    ui->custom_monomer_btn->setStyleSheet(CUSTOM_MONOMER_BUTTON_STYLE);
 
     using ButtonAminoAcidBimapType =
         boost::bimap<QAbstractButton*, AminoAcidTool>;

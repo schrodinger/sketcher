@@ -51,6 +51,34 @@ BOOST_DATA_TEST_CASE(test_custom_monomer_drag_preserves_smiles,
 }
 
 /**
+ * Make sure that connecting two SMILES peptide monomers by their R3 attachment
+ * point creates a covalent or disulfide bond, not an H-bond.
+ */
+BOOST_DATA_TEST_CASE(test_custom_monomer_r3_connects_to_r3,
+                     boost::unit_test::data::make({'S', 'O'}) *
+                         boost::unit_test::data::make({false, true}),
+                     attachment_element, via_drag)
+{
+    const std::string smiles =
+        "[*:1]NC(C" + std::string(1, attachment_element) + "[*:3])C(=O)[*:2]";
+    MonomerToolTestFixture fix;
+    fix.setCustomMonomerTool(QString::fromStdString(smiles),
+                             rdkit_extensions::ChainType::PEPTIDE);
+    fix.mouseClick({0, 0});
+    fix.mouseMove(fix.getMonomerPos(0));
+    auto ap_pos =
+        fix.getAttachmentPointPos(0, attachment_element == 'S' ? "S" : "X");
+    if (via_drag) {
+        fix.mouseDrag(ap_pos, ap_pos + QPointF(100, 0));
+    } else {
+        fix.mouseClick(ap_pos);
+    }
+
+    fix.verifyHELM("PEPTIDE1{[" + smiles + "]}|PEPTIDE2{[" + smiles +
+                   "]}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+}
+
+/**
  * A database symbol and identical SMILES text represent different monomers.
  */
 BOOST_AUTO_TEST_CASE(test_custom_monomer_symbol_collision_mutates)
