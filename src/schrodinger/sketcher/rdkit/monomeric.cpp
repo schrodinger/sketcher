@@ -23,6 +23,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 
@@ -95,6 +96,11 @@ void validate_monomers(const RDKit::ROMol& mol)
             }
         } else {
             const auto chain_type = rdkit_extensions::getChainType(*monomer);
+            // HELM unknown amino acids and bases have no database entry.
+            if ((chain_type == ChainType::PEPTIDE && label == "X") ||
+                (chain_type == ChainType::RNA && label == "N")) {
+                continue;
+            }
             if (!db.getMonomerSmiles(label, chain_type).has_value()) {
                 const auto type_name =
                     chain_type == ChainType::PEPTIDE ? "Peptide"
@@ -222,14 +228,44 @@ get_attachment_point_num(const RDKit::Atom& atom)
     return std::nullopt;
 }
 
-std::vector<std::pair<int, std::string>>
-get_attachment_points_for_smiles(const std::string& smiles)
+/**
+ * Clear any properties on the specified atom that are used to mark it as an
+ * attachment point
+ */
+static void clear_attachment_point_properties(RDKit::Atom& atom)
 {
-    auto mol = rdkit_extensions::to_rdkit(
-        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+    atom.clearProp(RDKit::common_properties::molAtomMapNumber);
 
+    if (get_attachment_point_num_from_atom_label(atom)) {
+        atom.clearProp(RDKit::common_properties::atomLabel);
+    }
+}
+
+std::vector<int> get_missing_required_attachment_points(
+    const RDKit::ROMol& atomistic_mol,
+    std::vector<int> required_attachment_points)
+{
+    std::unordered_set<int> present_attachment_points;
+    for (const auto& attachment_point :
+         get_attachment_points_for_atomistic_mol(atomistic_mol)) {
+        present_attachment_points.insert(attachment_point.first);
+    }
+
+    std::vector<int> missing_attachment_points;
+    std::ranges::copy_if(
+        required_attachment_points,
+        std::back_inserter(missing_attachment_points),
+        [&present_attachment_points](const int attachment_point) {
+            return !present_attachment_points.contains(attachment_point);
+        });
+    return missing_attachment_points;
+}
+
+std::vector<std::pair<int, std::string>>
+get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol)
+{
     std::vector<std::pair<int, std::string>> attachment_points;
-    for (const auto* atom : mol->atoms()) {
+    for (const auto* atom : mol.atoms()) {
         const auto attachment_point_num = get_attachment_point_num(*atom);
         if (!attachment_point_num) {
             continue;
@@ -238,7 +274,7 @@ get_attachment_points_for_smiles(const std::string& smiles)
         const RDKit::Atom* heavy_atom = atom;
         if (heavy_atom->getAtomicNum() <= 1) {
             heavy_atom = nullptr;
-            for (const auto* neighbor : mol->atomNeighbors(atom)) {
+            for (const auto* neighbor : mol.atomNeighbors(atom)) {
                 if (neighbor->getAtomicNum() > 1) {
                     heavy_atom = neighbor;
                     break;
@@ -256,6 +292,51 @@ get_attachment_points_for_smiles(const std::string& smiles)
 }
 
 std::vector<std::pair<int, std::string>>
+get_attachment_points_for_smiles(const std::string& smiles)
+{
+    auto mol = rdkit_extensions::to_rdkit(
+        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+    return get_attachment_points_for_atomistic_mol(*mol);
+}
+
+std::string normalize_smiles_attachment_points(const std::string& smiles)
+{
+    auto mol = rdkit_extensions::to_rdkit(
+        smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+
+    // Adding atoms invalidates atom iterators, so only visit atoms from the
+    // input molecule by index.
+    const auto input_atom_count = mol->getNumAtoms();
+    for (auto atom_idx = 0u; atom_idx < input_atom_count; ++atom_idx) {
+        auto* atom = mol->getAtomWithIdx(atom_idx);
+        const auto attachment_point_num = get_attachment_point_num(*atom);
+        if (!attachment_point_num) {
+            continue;
+        }
+
+        auto dummy = rdkit_extensions::make_new_r_group(*attachment_point_num);
+        // Atom-map numbers mark leaving atoms in database monomer SMILES,
+        // including heavy atoms such as the C-terminal oxygen of a peptide.
+        // Replace the leaving atom so the dummy bonds directly to the core.
+        if (atom->getAtomMapNum() > 0 || atom->getAtomicNum() <= 1) {
+            mol->replaceAtom(atom_idx, dummy.get());
+            continue;
+        }
+
+        clear_attachment_point_properties(*atom);
+        if (atom->getNumExplicitHs() > 0) {
+            atom->setNumExplicitHs(atom->getNumExplicitHs() - 1);
+        }
+        const auto dummy_idx = mol->addAtom(dummy.get());
+        mol->addBond(atom_idx, dummy_idx, RDKit::Bond::SINGLE);
+    }
+
+    mol->updatePropertyCache(false);
+    return rdkit_extensions::to_string(
+        *mol, rdkit_extensions::Format::EXTENDED_SMILES);
+}
+
+std::vector<std::pair<int, std::string>>
 get_attachment_points_for_res(const std::string& resname,
                               const rdkit_extensions::ChainType chain_type)
 {
@@ -263,8 +344,13 @@ get_attachment_points_for_res(const std::string& resname,
         rdkit_extensions::MonomerDatabase::instance().getMonomerSmiles(
             resname, chain_type);
     if (!smiles.has_value()) {
-        throw std::invalid_argument(
-            fmt::format("Monomer '{}' not found in monomer database", resname));
+        if (chain_type == rdkit_extensions::ChainType::RNA && resname == "N") {
+            // unknown bases have one attachment point with an unknown element
+            return {{1, ""}};
+        }
+        // Unknown peptides (X) and other unrecognized monomers default to two
+        // attachment points. Their elements are unknown.
+        return {{1, ""}, {2, ""}};
     }
     return get_attachment_points_for_smiles(*smiles);
 }
