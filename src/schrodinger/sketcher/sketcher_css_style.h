@@ -59,6 +59,10 @@ const QString ATOM_ELEMENT_OR_MONOMER_STYLE{
     "QToolButton { font-size: 14px; font-weight: bold; color: #333333; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
+const QString CUSTOM_MONOMER_BUTTON_STYLE{
+    "QToolButton { font-size: 10pt; font-weight: bold; color: #333333; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
+
 /// Minimum label length that requires the compact style
 constexpr int COMPACT_STYLE_MIN_LENGTH = 3;
 

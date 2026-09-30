@@ -583,7 +583,7 @@ HintFragmentMonomerInfo AbstractDrawMonomerOrMonomericConnectionSceneTool::
                                                  m_is_smiles_monomer);
     auto ap_model_name = get_attachment_point_for_new_monomer(
         start_monomer_info.monomer_type, start_monomer_info.ap_model_name,
-        m_monomer_type, m_res_name, false);
+        m_monomer_type, m_res_name, m_is_smiles_monomer);
     return HintFragmentMonomerInfo{std::move(monomer), m_monomer_type, pos,
                                    ap_model_name, NEW_MONOMER_FROM_DRAG};
 }
