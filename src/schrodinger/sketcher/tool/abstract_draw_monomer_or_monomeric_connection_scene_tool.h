@@ -162,7 +162,7 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
         const rdkit_extensions::ChainType chain_type, const Fonts& fonts,
         const AtomDisplaySettings& atom_display_settings,
         const BondDisplaySettings& bond_display_settings, Scene* scene,
-        MolModel* mol_model);
+        MolModel* mol_model, bool is_smiles_monomer = false);
     virtual ~AbstractDrawMonomerOrMonomericConnectionSceneTool();
 
     // Reimplemented AbstractSceneTool methods
@@ -180,6 +180,7 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
     rdkit_extensions::ChainType m_chain_type =
         rdkit_extensions::ChainType::CHEM;
     MonomerType m_monomer_type;
+    bool m_is_smiles_monomer;
     Fonts m_bolded_fonts;
     const AtomDisplaySettings* m_atom_display_settings = nullptr;
     const BondDisplaySettings* m_bond_display_settings = nullptr;

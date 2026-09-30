@@ -103,6 +103,10 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
         {ModelKey::CUSTOM_NUCLEOTIDE,
          QVariant::fromValue(std::tuple<std::string, std::string, std::string>(
              "Tho", "I", "PS"))},
+        {ModelKey::CUSTOM_MONOMER,
+         QVariant::fromValue(
+             std::make_pair<QString, rdkit_extensions::ChainType>(
+                 "CC", rdkit_extensions::ChainType::CHEM))},
         {ModelKey::INTERFACE_TYPE, InterfaceType::ATOMISTIC},
         {ModelKey::TOOL_SET, QVariant::fromValue(ToolSet::MONOMERIC)},
         {ModelKey::MOLECULE_TYPE,
@@ -115,6 +119,7 @@ BOOST_AUTO_TEST_CASE(get_set_signal)
     for (auto& key : get_model_keys()) {
         if (key == ModelKey::RESIDUE_TYPE ||
             key == ModelKey::AMINO_ACID_SYMBOL ||
+            key == ModelKey::CUSTOM_MONOMER ||
             key == ModelKey::NUCLEIC_ACID_SYMBOL ||
             key == ModelKey::CUSTOM_NUCLEOTIDE) {
             // These values are not stored as int-like objects
