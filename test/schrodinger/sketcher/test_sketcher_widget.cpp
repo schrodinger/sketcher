@@ -5,9 +5,11 @@
 #include <tuple>
 
 #include <QAbstractButton>
+#include <QDialogButtonBox>
 #include <QGraphicsSvgItem>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QPushButton>
 #include <QString>
 
 #include <rdkit/GraphMol/ChemReactions/Reaction.h>
@@ -22,6 +24,8 @@
 #include "schrodinger/rdkit_extensions/helm.h"
 #include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
+#include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
+#include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/menu/atom_context_menu.h"
 #include "schrodinger/sketcher/menu/cut_copy_action_manager.h"
 #include "schrodinger/sketcher/menu/monomer_context_menu.h"
@@ -49,6 +53,7 @@ using schrodinger::rdkit_extensions::to_rdkit_reaction;
 using schrodinger::rdkit_extensions::to_string;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(schrodinger::sketcher::ColorScheme)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(ChainType)
 
 // Reuse a single widget instance across all tests for better performance
 // Destroy the widget before the base fixture cleans up the database and app.
@@ -1132,6 +1137,161 @@ BOOST_AUTO_TEST_CASE(test_mutateMonomerRequested_signal_mutates_na_sugar)
     BOOST_TEST(find_atom_by_res_name(*mol_after, "R") == nullptr);
     BOOST_TEST(find_atom_by_res_name(*mol_after, "A") != nullptr);
     BOOST_TEST(find_atom_by_res_name(*mol_after, "P") != nullptr);
+}
+
+/**
+ * Edit Structure opens a CustomMonomerDialog and mutates the selected monomer
+ * with the accepted SMILES using its existing monomer type.
+ */
+BOOST_AUTO_TEST_CASE(test_edit_structure_dialog_mutates_selected_monomer)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("PEPTIDE1{A}$$$$V2.0");
+
+    const auto* atom = sk.m_mol_model->getMol()->getAtomWithIdx(0);
+    sk.m_monomer_context_menu->setContextItems({atom}, {}, {}, {}, {}, atom);
+    QAction* edit_structure = nullptr;
+    for (auto* action : sk.m_monomer_context_menu->actions()) {
+        if (action->text() == "Edit Structure...") {
+            edit_structure = action;
+            break;
+        }
+    }
+    BOOST_REQUIRE(edit_structure != nullptr);
+    edit_structure->trigger();
+    QCoreApplication::processEvents();
+
+    auto* dialog = sk.findChild<CustomMonomerDialog*>();
+    BOOST_REQUIRE(dialog != nullptr);
+    auto* dialog_sketcher = dialog->findChild<SketcherWidget*>();
+    BOOST_REQUIRE(dialog_sketcher != nullptr);
+    dialog_sketcher->clear();
+    dialog_sketcher->addFromString("CC", Format::EXTENDED_SMILES);
+    dialog->accept();
+    QCoreApplication::processEvents();
+
+    const auto* mutated_atom = sk.m_mol_model->getMol()->getAtomWithIdx(0);
+    BOOST_TEST(mutated_atom->getProp<std::string>(ATOM_LABEL) == "CC");
+    BOOST_TEST(mutated_atom->getProp<bool>(SMILES_MONOMER));
+    BOOST_TEST(schrodinger::rdkit_extensions::getChainType(*mutated_atom) ==
+               ChainType::PEPTIDE);
+}
+
+/**
+ * Opening the Custom Monomer Dialog and not changing anything must not modify
+ * the atomistic SMILES of the entire molecule and must preserve the chemistry
+ * of bound leaving groups.
+ */
+BOOST_AUTO_TEST_CASE(test_edit_structure_dialog_preserves_peptide_connectivity)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString("PEPTIDE1{A.A.A}$$$$V2.0");
+    const auto original_smiles = sk.getString(Format::SMILES);
+
+    // Both attachment points of the middle alanine are bound, so expansion
+    // should remove both leaving groups before and after the edit.
+    const auto* atom = sk.m_mol_model->getMol()->getAtomWithIdx(1);
+    emit sk.m_monomer_context_menu->editStructureRequested(atom);
+    auto* dialog = sk.findChild<CustomMonomerDialog*>();
+    BOOST_REQUIRE(dialog != nullptr);
+    dialog->accept();
+
+    BOOST_TEST(sk.getString(Format::SMILES) == original_smiles);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+}
+
+/**
+ * Monomers without a database structure can still be edited. The editor opens
+ * with the existing polymer type selected and an empty drawing area.
+ */
+BOOST_DATA_TEST_CASE(
+    test_edit_structure_dialog_is_blank_for_unknown_monomer,
+    boost::unit_test::data::make({std::make_tuple("PEPTIDE1{X}$$$$V2.0", "X"),
+                                  std::make_tuple("RNA1{R(N)P}$$$$V2.0", "N")}),
+    helm, monomer_name)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString(helm);
+
+    const auto* atom =
+        find_atom_by_res_name(*sk.m_mol_model->getMol(), monomer_name);
+    BOOST_REQUIRE(atom != nullptr);
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+    const auto dialog_count_before =
+        sk.findChildren<CustomMonomerDialog*>().size();
+
+    emit sk.m_monomer_context_menu->editStructureRequested(atom);
+    QCoreApplication::processEvents();
+
+    const auto dialogs = sk.findChildren<CustomMonomerDialog*>();
+    BOOST_REQUIRE(dialogs.size() == dialog_count_before + 1);
+    auto* dialog = dialogs.back();
+    auto* dialog_sketcher = dialog->findChild<SketcherWidget*>();
+    BOOST_REQUIRE(dialog_sketcher != nullptr);
+    BOOST_TEST(dialog_sketcher->isEmpty());
+    dialog->reject();
+    QCoreApplication::sendPostedEvents(nullptr, QEvent::DeferredDelete);
+}
+
+/**
+ * Removing a bound attachment point through Edit Structure warns first, then
+ * removes the connection and mutates the monomer as a single undo step.
+ */
+BOOST_AUTO_TEST_CASE(
+    test_edit_structure_dialog_removes_missing_attachment_point_connection)
+{
+    TestSketcherWidget& sk = *TestWidgetFixture::get();
+    sk.setInterfaceType(InterfaceType::ATOMISTIC_OR_MONOMERIC);
+    sk.addFromString(
+        "PEPTIDE1{C}|PEPTIDE2{C}$PEPTIDE1,PEPTIDE2,1:R3-1:R3$$$V2.0");
+    const auto undo_index_before_edit = sk.m_undo_stack->index();
+
+    const auto* atom = sk.m_mol_model->getMol()->getAtomWithIdx(0);
+    sk.m_monomer_context_menu->setContextItems({atom}, {}, {}, {}, {}, atom);
+    QAction* edit_structure = nullptr;
+    for (auto* action : sk.m_monomer_context_menu->actions()) {
+        if (action->text() == "Edit Structure...") {
+            edit_structure = action;
+            break;
+        }
+    }
+    BOOST_REQUIRE(edit_structure != nullptr);
+    edit_structure->trigger();
+    QCoreApplication::processEvents();
+
+    auto* dialog = sk.findChild<CustomMonomerDialog*>();
+    BOOST_REQUIRE(dialog != nullptr);
+    auto* dialog_sketcher = dialog->findChild<SketcherWidget*>();
+    BOOST_REQUIRE(dialog_sketcher != nullptr);
+    dialog_sketcher->clear();
+    dialog_sketcher->addFromString("*N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|",
+                                   Format::EXTENDED_SMILES);
+    dialog->accept();
+
+    auto* warning_dialog = dialog->findChild<MessageBoxDialog*>();
+    BOOST_REQUIRE(warning_dialog != nullptr);
+    BOOST_TEST(sk.m_mol_model->getMol()->getNumBonds() == 1u);
+    auto* button_box =
+        warning_dialog->findChild<QDialogButtonBox*>("button_box");
+    BOOST_REQUIRE(button_box != nullptr);
+    button_box->button(QDialogButtonBox::Ok)->click();
+    QCoreApplication::processEvents();
+
+    const auto* edited_mol = sk.m_mol_model->getMol();
+    BOOST_TEST(edited_mol->getNumBonds() == 0u);
+    BOOST_TEST(edited_mol->getAtomWithIdx(0)->getProp<bool>(SMILES_MONOMER));
+    BOOST_TEST(sk.m_undo_stack->index() == undo_index_before_edit + 1);
+
+    sk.m_undo_stack->undo();
+
+    const auto* restored_mol = sk.m_mol_model->getMol();
+    BOOST_TEST(restored_mol->getNumBonds() == 1u);
+    BOOST_TEST(get_monomer_res_name(restored_mol->getAtomWithIdx(0)) == "C");
+    BOOST_TEST(get_monomer_res_name(restored_mol->getAtomWithIdx(1)) == "C");
+    BOOST_TEST(sk.m_undo_stack->index() == undo_index_before_edit);
 }
 
 /**

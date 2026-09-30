@@ -2,9 +2,15 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/dialog/modal_dialog.h"
+
+namespace RDKit
+{
+class ROMol;
+}
 
 namespace Ui
 {
@@ -40,6 +46,15 @@ class SKETCHER_API CustomMonomerDialog : public ModalDialog
     ~CustomMonomerDialog();
 
     /**
+     * Specify the numbered attachment points that must remain in the monomer.
+     * If the user removes any of these attachment points and then clicks OK,
+     * they will be warned that continuing will remove connections from the
+     * monomer.
+     */
+    void
+    setRequiredAttachmentPoints(std::vector<int> required_attachment_points);
+
+    /**
      * Load the specified molecule into the dialog's Sketcher workspace
      */
     void addSMILES(const std::string& smiles);
@@ -68,6 +83,7 @@ class SKETCHER_API CustomMonomerDialog : public ModalDialog
 
     std::unique_ptr<Ui::CustomMonomerDialog> ui;
     rdkit_extensions::ChainType m_chain_type;
+    std::vector<int> m_required_attachment_points;
 };
 
 } // namespace sketcher

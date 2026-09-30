@@ -81,6 +81,27 @@ SKETCHER_API void validate_monomers(const RDKit::ROMol& mol);
 SKETCHER_API std::string ap_model_name_for(int ap_num);
 
 /**
+ * @return a list of all attachment points in required_attachment_points that
+ * are not present in atomistic_mol
+ */
+SKETCHER_API std::vector<int> get_missing_required_attachment_points(
+    const RDKit::ROMol& atomistic_mol,
+    std::vector<int> required_attachment_points);
+
+/**
+ * Return the numbered attachment points in the given atomistic molecule (which
+ * contains the contents of a monomer). Each attachment point is described using
+ * a pair of the attachment point number and the symbol of the heavy atom at
+ * that site. Note that this function assumes that the attachment points in the
+ * molecule are sane; it does not protect against, e.g., duplicated attachment
+ * points or attachment points on unbound dummy atoms.
+ *
+ * @throws std::invalid_argument if smiles is not valid extended SMILES
+ */
+SKETCHER_API std::vector<std::pair<int, std::string>>
+get_attachment_points_for_atomistic_mol(const RDKit::ROMol& mol);
+
+/**
  * Return the numbered attachment points in a monomer SMILES string. Each
  * attachment point is described using a pair of the attachment point number and
  * the symbol of the heavy atom at that site. Note that this function assumes
@@ -99,6 +120,19 @@ SKETCHER_API std::string ap_model_name_for(int ap_num);
  */
 SKETCHER_API std::vector<std::pair<int, std::string>>
 get_attachment_points_for_smiles(const std::string& smiles);
+
+/**
+ * Normalize numbered attachment points in a monomer SMILES string so each is
+ * represented by a dummy atom with a CXSMILES atom label such as "_R1".
+ * Attachment points may initially be represented by atom-map numbers,
+ * isotope-numbered dummy atoms, or CXSMILES atom labels. Atom-mapped leaving
+ * atoms are replaced by labeled dummy atoms. A heavy atom marked only with a
+ * CXSMILES label receives a new bonded dummy atom.
+ *
+ * @throws std::invalid_argument if smiles is not valid extended SMILES
+ */
+SKETCHER_API std::string
+normalize_smiles_attachment_points(const std::string& smiles);
 
 /**
  * Return the numbered attachment points for the given monomer. Each attachment
