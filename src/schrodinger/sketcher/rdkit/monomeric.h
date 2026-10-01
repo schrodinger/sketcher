@@ -26,6 +26,11 @@ class Bond;
 class ROMol;
 } // namespace RDKit
 
+namespace RDGeom
+{
+class Point3D;
+} // namespace RDGeom
+
 namespace schrodinger
 {
 namespace sketcher
@@ -251,6 +256,47 @@ get_rna_complement_base_symbol(const std::string_view base_symbol);
  * this is suitable for gating UI before the target strand type is known.
  */
 SKETCHER_API bool na_base_has_complement(const std::string_view base_symbol);
+
+/**
+ * The data needed to build one nucleotide (sugar, base, and phosphate) of a
+ * complementary strand
+ */
+struct ComplementNucleotide {
+    // the index of the original base that this nucleotide pairs with
+    size_t original_base_idx;
+    std::string sugar_symbol;
+    std::string base_symbol;
+};
+
+/**
+ * Determine the complementary chains needed to pair with the given nucleic acid
+ * bases. Bases are grouped by polymer, and each polymer's bases are split into
+ * runs of neighboring nucleotides, each of which gets its own complementary
+ * chain. Bases without a Watson-Crick complement are skipped (which also splits
+ * the run), as are atoms that aren't nucleic acid bases.
+ *
+ * @param bases the nucleic acid bases to complement
+ * @return the complementary chains in the order that they should be created.
+ * Each chain lists its nucleotides in the residue order of the original bases
+ * that they pair with.
+ */
+SKETCHER_API std::vector<std::vector<ComplementNucleotide>>
+get_complement_chains(const std::unordered_set<const RDKit::Atom*>& bases);
+
+/**
+ * Determine the direction from the original bases toward their complements. The
+ * complement sits on the side of the base away from the base's own sugar, so
+ * deriving the direction from the geometry lets the complement follow a rotated
+ * or moved strand.
+ *
+ * @param mol the monomer molecule containing the original bases
+ * @param complement_nucleotides the nucleotides of one complementary chain
+ * @return a unit vector toward the complement, taken from the first original
+ * base with a locatable sugar, or (0, -1) if there is no such base
+ */
+SKETCHER_API RDGeom::Point3D get_complement_pairing_direction(
+    const RDKit::ROMol& mol,
+    const std::vector<ComplementNucleotide>& complement_nucleotides);
 
 /**
  * @return whether the given bond represents two connections between the same

@@ -5332,8 +5332,7 @@ BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_grouped_undo)
 
 /**
  * Non-base atoms (sugars, phosphates) in the input are filtered out and
- * the molecule is unchanged. (The model-side complement-table-miss path
- * is a coverage gap — needs LocalMonomerDbFixture wiring.)
+ * the molecule is unchanged.
  */
 BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_filters_non_base_atoms)
 {
@@ -5394,6 +5393,83 @@ BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_chimeric_chain)
     BOOST_TEST(helm == "RNA1{R(A)P.[dR](C)P}|RNA2{[dR](G)P.R(U)P}$"
                        "RNA1,RNA2,5:pair-2:pair|"
                        "RNA1,RNA2,2:pair-5:pair$$$V2.0");
+}
+
+/**
+ * If none of the given bases have a Watson-Crick complement, nothing is added
+ * and no (empty) entry is pushed onto the undo stack.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_no_complementable_bases)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(N)P}$$$$V2.0");
+    const auto undo_count = undo_stack.count();
+
+    const auto* mol = model.getMol();
+    // Atom 1 is the N (unknown) base, which has no complement
+    model.addComplementaryStrand({mol->getAtomWithIdx(1)});
+
+    BOOST_TEST(get_mol_text(&model, Format::HELM) == "RNA1{R(N)P}$$$$V2.0");
+    BOOST_TEST(undo_stack.count() == undo_count);
+}
+
+/**
+ * A selected base with no complement (N) splits the complement into one chain
+ * per run of neighboring complementable bases, so that we never bond together
+ * complement nucleotides across the gap.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_non_complementable_gap)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P.R(N)P.R(G)P.R(U)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    const auto num_orig_atoms = mol->getNumAtoms();
+    // Bases are at atoms 1 (A), 4 (C), 7 (N), 10 (G), and 13 (U)
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(4), mol->getAtomWithIdx(7),
+         mol->getAtomWithIdx(10), mol->getAtomWithIdx(13)});
+
+    // Antiparallel: the chain pairing with the original's 3' end comes first
+    BOOST_TEST(get_mol_text(&model, Format::HELM) ==
+               "RNA1{R(A)P.R(C)P.R(N)P.R(G)P.R(U)P}|RNA2{R(A)P.R(C)P}|"
+               "RNA3{R(G)P.R(U)P}$"
+               "RNA1,RNA2,14:pair-2:pair|RNA1,RNA2,11:pair-5:pair|"
+               "RNA1,RNA3,5:pair-2:pair|RNA1,RNA3,2:pair-5:pair$$$V2.0");
+
+    // None of the new bonds should be stretched across the gap
+    for (const auto* bond : mol->bonds()) {
+        if (bond->getBeginAtomIdx() < num_orig_atoms ||
+            bond->getEndAtomIdx() < num_orig_atoms) {
+            continue;
+        }
+        BOOST_TEST(MolTransforms::getBondLength(mol->getConformer(),
+                                                bond->getBeginAtomIdx(),
+                                                bond->getEndAtomIdx()) <=
+                   rdkit_extensions::MONOMER_BOND_LENGTH + 0.001);
+    }
+}
+
+/**
+ * Selecting bases that aren't in neighboring nucleotides (here, A and G but
+ * not the C between them) gives a separate complement chain for each.
+ */
+BOOST_AUTO_TEST_CASE(test_addComplementaryStrand_unselected_gap)
+{
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    add_text_to_mol_model(model, "RNA1{R(A)P.R(C)P.R(G)P}$$$$V2.0");
+
+    const auto* mol = model.getMol();
+    // Bases are at atoms 1 (A), 4 (C), and 7 (G)
+    model.addComplementaryStrand(
+        {mol->getAtomWithIdx(1), mol->getAtomWithIdx(7)});
+
+    BOOST_TEST(get_mol_text(&model, Format::HELM) ==
+               "RNA1{R(A)P.R(C)P.R(G)P}|RNA2{R(C)P}|RNA3{R(U)P}$"
+               "RNA1,RNA2,8:pair-2:pair|RNA1,RNA3,2:pair-2:pair$$$V2.0");
 }
 
 /**

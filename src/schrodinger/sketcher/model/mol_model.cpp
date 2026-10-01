@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <functional>
 #include <limits>
-#include <map>
 #include <variant>
 
 #include <fmt/format.h>
@@ -172,145 +171,6 @@ void strip_notes_and_mol_model_tags(RDKit::ROMol& mol)
     for (auto& s_group : getSubstanceGroups(mol)) {
         s_group.clearProp(TAG_PROPERTY);
     }
-}
-
-/**
- * @brief Per-base data needed to build one complement nucleotide (sugar, base,
- * phosphate).
- *
- * @c original_base_idx is the index of the original base this nucleotide pairs
- * with.
- */
-struct ComplementNucleotide {
-    size_t original_base_idx;
-    std::string sugar_symbol;
-    std::string base_symbol;
-};
-
-/**
- * @brief Group selected NA bases by their HELM polymer id.
- *
- * Atom indices are stored (not pointers) since pointers are invalidated by
- * later edits. Null/non-base atoms are skipped. An ordered map keeps per-
- * polymer processing deterministic, so the auto-numbered complement chains are
- * reproducible.
- *
- * @param bases the selected atoms
- * @return a map from polymer id to the contained base atom indices
- */
-static std::map<std::string, std::vector<size_t>>
-group_bases_by_polymer(const std::unordered_set<const RDKit::Atom*>& bases)
-{
-    std::map<std::string, std::vector<size_t>> bases_by_polymer;
-    for (const auto* base : bases) {
-        if (base == nullptr || get_monomer_type(base) != MonomerType::NA_BASE) {
-            continue;
-        }
-        bases_by_polymer[rdkit_extensions::get_polymer_id(base)].push_back(
-            base->getIdx());
-    }
-    return bases_by_polymer;
-}
-
-/**
- * @brief Resolve each base to the complement triplet that should pair with it.
- *
- * Bases without a Watson-Crick complement are skipped. The complement
- * (A/U/T/G/C), sugar (R/dR), and phosphate (P) are all standard HELM monomers,
- * so no monomer-DB lookup is needed.
- *
- * @param mol the monomer molecule
- * @param base_idxs indices of the original base atoms (any order)
- * @return one ComplementNucleotide per resolvable base, in residue-number order
- */
-static std::vector<ComplementNucleotide>
-build_complement_nucleotides(const RDKit::ROMol& mol,
-                             std::vector<size_t> base_idxs)
-{
-    // Process in residue-number order, which matches HELM monomer ordering.
-    std::ranges::sort(base_idxs, {}, [&mol](size_t i) {
-        return rdkit_extensions::get_residue_number(mol.getAtomWithIdx(i));
-    });
-
-    std::vector<ComplementNucleotide> complement_nucleotides;
-    for (auto idx : base_idxs) {
-        const auto* base_atom = mol.getAtomWithIdx(idx);
-        const bool is_dna = is_dna_base(base_atom);
-        const auto base_symbol = get_monomer_res_name(base_atom);
-        auto complement_base_symbol =
-            is_dna ? get_dna_complement_base_symbol(base_symbol)
-                   : get_rna_complement_base_symbol(base_symbol);
-        if (!complement_base_symbol.has_value()) {
-            continue;
-        }
-        // Sugar identity (R vs dR) is per base to handle chimeric chains
-        // mixing R and dR within one polymer.
-        std::string sugar_symbol = is_dna ? "dR" : "R";
-        complement_nucleotides.push_back(
-            {idx, std::move(sugar_symbol), std::move(*complement_base_symbol)});
-    }
-    return complement_nucleotides;
-}
-
-/**
- * @brief Capture the positions of the original bases up front.
- *
- * Needed because the modifying calls that follow invalidate any held conformer
- * reference.
- *
- * @param mol the monomer molecule
- * @param complement_nucleotides the complement nucleotides whose original
- * bases to read
- * @return each original base position, in @p complement_nucleotides order
- */
-static std::vector<RDGeom::Point3D> get_base_positions(
-    const RDKit::ROMol& mol,
-    const std::vector<ComplementNucleotide>& complement_nucleotides)
-{
-    const auto& conf = mol.getConformer();
-    std::vector<RDGeom::Point3D> positions;
-    positions.reserve(complement_nucleotides.size());
-    for (const auto& complement : complement_nucleotides) {
-        positions.push_back(conf.getAtomPos(complement.original_base_idx));
-    }
-    return positions;
-}
-
-/**
- * @brief Determine the direction from an original base toward its complement.
- *
- * The complement sits on the side of the base away from the base's own sugar,
- * so deriving the axis from the geometry lets the complement follow a rotated
- * or moved strand. Taken from the first base with a locatable sugar.
- *
- * @param mol the monomer molecule
- * @param complement_nucleotides the complement nucleotides to inspect
- * @return a unit vector toward the complement, or (0, -1) if no sugar is found
- */
-static RDGeom::Point3D
-pairing_axis(const RDKit::ROMol& mol,
-             const std::vector<ComplementNucleotide>& complement_nucleotides)
-{
-    const auto& conf = mol.getConformer();
-    for (const auto& complement : complement_nucleotides) {
-        const auto* base_atom =
-            mol.getAtomWithIdx(complement.original_base_idx);
-        const auto& base_pos = conf.getAtomPos(complement.original_base_idx);
-        for (const auto* nbr : mol.atomNeighbors(base_atom)) {
-            if (get_monomer_type(nbr) != MonomerType::NA_SUGAR) {
-                continue;
-            }
-            const auto& sugar_pos = conf.getAtomPos(nbr->getIdx());
-            RDGeom::Point3D d(base_pos.x - sugar_pos.x,
-                              base_pos.y - sugar_pos.y, 0.0);
-            if (d.lengthSq() > 1e-6) {
-                d.normalize();
-                return d;
-            }
-            break; // a base has a single sugar; its position was degenerate
-        }
-    }
-    return RDGeom::Point3D(0.0, -1.0, 0.0);
 }
 
 } // namespace
@@ -1090,33 +950,33 @@ void MolModel::addMonomericConnection(const RDKit::Atom* const monomer_one,
 void MolModel::addComplementaryStrand(
     const std::unordered_set<const RDKit::Atom*>& selected_bases)
 {
-    auto bases_by_polymer = group_bases_by_polymer(selected_bases);
-    if (bases_by_polymer.empty()) {
+    // Resolve the complement chains before opening the undo macro so that we
+    // don't push an empty undo entry if none of the bases have a complement
+    const auto complement_chains = get_complement_chains(selected_bases);
+    if (complement_chains.empty()) {
         return;
     }
-    // One undo entry covers the complement chains for every source polymer.
+    // One undo entry covers all of the complement chains
     auto undo_macro = createUndoMacro("Add Complementary Sequence");
-    for (const auto& [polymer_id, base_idxs] : bases_by_polymer) {
-        addComplementChainForPolymer(base_idxs);
+    for (const auto& complement_nucleotides : complement_chains) {
+        addComplementChain(complement_nucleotides);
     }
 }
 
-void MolModel::addComplementChainForPolymer(
-    const std::vector<size_t>& base_idxs)
+void MolModel::addComplementChain(
+    const std::vector<ComplementNucleotide>& complement_nucleotides)
 {
-    const auto complement_nucleotides =
-        build_complement_nucleotides(m_mol, base_idxs);
-    if (complement_nucleotides.empty()) {
-        return;
-    }
-
     // Capture base positions and the pairing axis up front: every modifying
     // call below replaces m_mol's contents via snapshot restore, which
     // invalidates any held conformer reference.
-    const auto orig_base_positions =
-        get_base_positions(m_mol, complement_nucleotides);
+    std::vector<RDGeom::Point3D> orig_base_positions;
+    orig_base_positions.reserve(complement_nucleotides.size());
+    for (const auto& complement : complement_nucleotides) {
+        orig_base_positions.push_back(
+            m_mol.getConformer().getAtomPos(complement.original_base_idx));
+    }
     const RDGeom::Point3D pair_dir =
-        pairing_axis(m_mol, complement_nucleotides);
+        get_complement_pairing_direction(m_mol, complement_nucleotides);
     // Backbone axis: perpendicular to the pairing axis (-x for the canonical
     // downward pair_dir).
     const RDGeom::Point3D backbone_dir(pair_dir.y, -pair_dir.x, 0.0);
