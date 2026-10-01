@@ -236,6 +236,43 @@ BOOST_AUTO_TEST_CASE(test_complement_base_symbols)
 }
 
 /**
+ * Bases are grouped by polymer and split into one chain per run of neighboring
+ * nucleotides, skipping non-base atoms and bases with no complement. Within a
+ * polymer, the chain that pairs with the 3' end comes first.
+ */
+BOOST_AUTO_TEST_CASE(test_get_complement_chains)
+{
+    using Nucleotides =
+        std::vector<std::tuple<size_t, std::string, std::string>>;
+    auto to_tuples = [](const std::vector<ComplementNucleotide>& chain) {
+        Nucleotides nucleotides;
+        for (const auto& cur : chain) {
+            nucleotides.emplace_back(cur.original_base_idx, cur.sugar_symbol,
+                                     cur.base_symbol);
+        }
+        return nucleotides;
+    };
+
+    auto mol = rdkit_extensions::to_rdkit(
+        "RNA1{R(A)P.R(C)P.R(N)P.[dR](G)P}|RNA2{R(U)P}$$$$V2.0");
+    // RNA1's bases are atoms 1 (A), 4 (C), 7 (N), and 10 (G), and RNA2's base
+    // is atom 13 (U). Atom 0 is a sugar.
+    std::unordered_set<const RDKit::Atom*> atoms;
+    for (auto idx : {0, 1, 4, 7, 10, 13}) {
+        atoms.insert(mol->getAtomWithIdx(idx));
+    }
+    const auto chains = get_complement_chains(atoms);
+    BOOST_REQUIRE(chains.size() == 3);
+    BOOST_CHECK((to_tuples(chains[0]) == Nucleotides{{10, "dR", "C"}}));
+    BOOST_CHECK(
+        (to_tuples(chains[1]) == Nucleotides{{1, "R", "U"}, {4, "R", "G"}}));
+    BOOST_CHECK((to_tuples(chains[2]) == Nucleotides{{13, "R", "A"}}));
+
+    // only non-complementable bases
+    BOOST_TEST(get_complement_chains({mol->getAtomWithIdx(7)}).empty());
+}
+
+/**
  * Make sure that contains_two_monomer_linkages correctly detects two monomer
  * linkages in the same bond when there's a disulfide bond between neighboring
  * cysteines.
