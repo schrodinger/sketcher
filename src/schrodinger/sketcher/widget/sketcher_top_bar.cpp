@@ -4,6 +4,7 @@
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QMenu>
 #include <QRegularExpression>
 #include <QToolButton>
 #include <QWidget>
@@ -28,6 +29,25 @@ namespace sketcher
 {
 
 static const char* APPLY_TO_SELECTION_PROPERTY = "apply_to_selection";
+
+/**
+ * Show a menu below a button when the button is clicked. We use this instead of
+ * QToolButton::setMenu() because QToolButton opens its menu with
+ * QMenu::exec(), whose nested event loop isn't supported in WASM builds.
+ *
+ * The menu's action is added to the top bar so that the shortcuts of the menu's
+ * actions work while the menu is closed, which setMenu() did by adding it to
+ * the button. We can't add it to the button since QToolButton would then
+ * open its own menu with exec().
+ */
+static void show_menu_on_click(QWidget* top_bar, QToolButton* button,
+                               QMenu* menu)
+{
+    top_bar->addAction(menu->menuAction());
+    QObject::connect(button, &QToolButton::clicked, menu, [button, menu]() {
+        menu->popup(button->mapToGlobal(button->rect().bottomLeft()));
+    });
+}
 
 SketcherTopBar::SketcherTopBar(QWidget* parent) : SketcherView(parent)
 {
@@ -64,7 +84,7 @@ void SketcherTopBar::initMenus()
 {
     // Set up "New Structures" menu
     m_import_menu = new ImportMenu(this);
-    ui->import_btn->setMenu(m_import_menu);
+    show_menu_on_click(this, ui->import_btn, m_import_menu);
     connect(m_import_menu->m_import_from_file_act, &QAction::triggered, this,
             &SketcherTopBar::onImportFromFileClicked, Qt::QueuedConnection);
     // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
@@ -76,7 +96,7 @@ void SketcherTopBar::initMenus()
 
     // Set up "Export" menu
     m_export_menu = new ExportMenu(this);
-    ui->export_btn->setMenu(m_export_menu);
+    show_menu_on_click(this, ui->export_btn, m_export_menu);
     // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_export_menu->m_save_image_act, &QAction::triggered, this,
             &SketcherTopBar::saveImageRequested, Qt::QueuedConnection);
@@ -85,7 +105,7 @@ void SketcherTopBar::initMenus()
 
     // Set up "More Actions" menu
     m_more_actions_menu = new MoreActionsMenu(getModel(), this);
-    ui->more_actions_btn->setMenu(m_more_actions_menu);
+    show_menu_on_click(this, ui->more_actions_btn, m_more_actions_menu);
     connect(m_more_actions_menu->m_undo_act, &QAction::triggered, this,
             &SketcherTopBar::undoRequested);
     connect(m_more_actions_menu->m_redo_act, &QAction::triggered, this,
@@ -126,7 +146,7 @@ void SketcherTopBar::initMenus()
 
     // Set up "Configure View" menu
     m_configure_view_menu = new ConfigureViewMenu(this);
-    ui->configure_view_btn->setMenu(m_configure_view_menu);
+    show_menu_on_click(this, ui->configure_view_btn, m_configure_view_menu);
     // QueuedConnection is required for WASM builds on Qt >= 6.8 (SKETCH-2653)
     connect(m_configure_view_menu->m_preferences_act, &QAction::triggered, this,
             &SketcherTopBar::adjustRenderingSettingsRequested,
@@ -134,7 +154,7 @@ void SketcherTopBar::initMenus()
 
     // Set up "Help" menu
     m_help_menu = new HelpMenu(this);
-    ui->sketcher_help_btn->setMenu(m_help_menu);
+    show_menu_on_click(this, ui->sketcher_help_btn, m_help_menu);
     connect(m_help_menu->m_help_act, &QAction::triggered, this,
             &SketcherTopBar::onHelpClicked);
     connect(m_more_actions_menu->m_invert_selection_act, &QAction::triggered,
