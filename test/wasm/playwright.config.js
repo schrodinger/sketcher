@@ -33,9 +33,6 @@ export default defineConfig({
     permissions: ['clipboard-read', 'clipboard-write'],
   },
   retries: process.env.CI ? 1 : 0,
-  // Playwright defaults to half the CPU cores, which is 2 on the 4 core CI
-  // runners
-  workers: process.env.CI ? 4 : undefined,
   snapshotPathTemplate: '{testDir}/{testFileDir}/__snapshots__/{testFileName}/{arg}{ext}',
   expect: {
     toHaveScreenshot: { maxDiffPixelRatio: 0.1 },
