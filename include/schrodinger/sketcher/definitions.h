@@ -2,12 +2,20 @@
 
 #pragma once
 
+#ifndef API_HELPER_IMPORT
 #ifdef _WIN32
 #define API_HELPER_IMPORT __declspec(dllimport)
-#define API_HELPER_EXPORT __declspec(dllexport)
 #else
 #define API_HELPER_IMPORT __attribute__((visibility("default")))
+#endif
+#endif
+
+#ifndef API_HELPER_EXPORT
+#ifdef _WIN32
+#define API_HELPER_EXPORT __declspec(dllexport)
+#else
 #define API_HELPER_EXPORT __attribute__((visibility("default")))
+#endif
 #endif
 
 #ifdef SKETCHER_STATIC_DEFINE
