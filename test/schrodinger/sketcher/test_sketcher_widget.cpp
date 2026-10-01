@@ -1008,7 +1008,8 @@ BOOST_DATA_TEST_CASE(test_shortcutMutateMonomersNucleicAcidBase,
  * the selected base monomers to that analog. This exercises the end-to-end
  * popup-analog-selection pipeline at the model level.
  */
-BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog)
+BOOST_DATA_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog,
+                     boost::unit_test::data::make({false, true}), unclassified)
 {
     constexpr std::string_view custom_monomer_json =
         ("[{"
@@ -1034,11 +1035,12 @@ BOOST_AUTO_TEST_CASE(test_pingMutateMonomersNucleicAcidAnalog)
     model->selectAll();
     BOOST_TEST(sk.m_sketcher_model->hasActiveSelection());
 
-    // Ping with tool=A (the natural analog) and symbol="ModA" — only the
-    // bases should change to "ModA".
+    // Both a standard base slot and the unclassified slot mutate only bases.
     sk.m_sketcher_model->pingValue(
         ModelKey::NUCLEIC_ACID_SYMBOL,
-        NucleicAcidMutation{NucleicAcidTool::A, "ModA"});
+        NucleicAcidMutation{unclassified ? NucleicAcidTool::UNCLASSIFIED
+                                         : NucleicAcidTool::A,
+                            "ModA"});
 
     const auto* mol = model->getMol();
     int base_count = 0;

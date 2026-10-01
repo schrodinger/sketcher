@@ -26,6 +26,7 @@ class ModularPopup;
  * 1+ are the analogs. Each button's object name is set to
  * "<object_name_prefix>_<symbol>_btn", and the id->symbol mapping is
  * written into `id_to_symbol`.
+ * An empty standard_symbol omits the standard monomer; analog IDs start at 0.
  *
  * @return The QButtonGroup containing the buttons. The caller must pass
  * it to ModularPopup::setButtonGroup() to finish initialization.
