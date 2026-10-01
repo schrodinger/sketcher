@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <limits>
+#include <map>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
@@ -20,6 +21,7 @@
 
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
+#include <rdkit/GraphMol/Conformer.h>
 #include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/ROMol.h>
 #include <rdkit/GraphMol/RWMol.h>
@@ -44,6 +46,13 @@ const std::string NUCLEOTIDE_POLYMER_PREFIX = "RNA";
 
 const std::string H_BOND_LINKAGE =
     H_BOND_AP_MODEL_NAME + "-" + H_BOND_AP_MODEL_NAME;
+
+const std::unordered_map<std::string_view, std::string_view>
+    DNA_BASE_COMPLEMENTS = {
+        {"A", "T"}, {"T", "A"}, {"U", "A"}, {"G", "C"}, {"C", "G"}};
+const std::unordered_map<std::string_view, std::string_view>
+    RNA_BASE_COMPLEMENTS = {
+        {"A", "U"}, {"T", "A"}, {"U", "A"}, {"G", "C"}, {"C", "G"}};
 
 // "Pretty" names for attachment points that are normally represented as "R#"
 // Note that the primes use apostrophes instead of a Unicode prime to avoid
@@ -89,6 +98,17 @@ const std::unordered_map<Direction, std::vector<Direction>>
 class NoAvailableDirectionsException : public std::exception
 {
 };
+
+std::optional<std::string> lookup_complement_base_symbol(
+    const std::unordered_map<std::string_view, std::string_view>& complements,
+    const std::string_view base_symbol)
+{
+    const auto complement = complements.find(base_symbol);
+    if (complement == complements.end()) {
+        return std::nullopt;
+    }
+    return std::string(complement->second);
+}
 
 } // namespace
 
@@ -417,6 +437,165 @@ std::string get_monomer_res_name(const RDKit::Atom* const monomer)
         return monomer_info->getName();
     }
     return res_info->getResidueName();
+}
+
+bool is_dna_base(const RDKit::Atom* const base)
+{
+    if (get_monomer_type(base) != MonomerType::NA_BASE) {
+        throw std::runtime_error("is_dna_base requires an NA_BASE atom");
+    }
+    const auto& mol = base->getOwningMol();
+    for (const auto* neighbor : mol.atomNeighbors(base)) {
+        if (get_monomer_type(neighbor) == MonomerType::NA_SUGAR &&
+            get_monomer_res_name(neighbor) == "dR") {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::optional<std::string>
+get_dna_complement_base_symbol(const std::string_view base_symbol)
+{
+    return lookup_complement_base_symbol(DNA_BASE_COMPLEMENTS, base_symbol);
+}
+
+std::optional<std::string>
+get_rna_complement_base_symbol(const std::string_view base_symbol)
+{
+    return lookup_complement_base_symbol(RNA_BASE_COMPLEMENTS, base_symbol);
+}
+
+bool na_base_has_complement(const std::string_view base_symbol)
+{
+    return DNA_BASE_COMPLEMENTS.contains(base_symbol) ||
+           RNA_BASE_COMPLEMENTS.contains(base_symbol);
+}
+
+/**
+ * @return the sugar bound to the given nucleic acid base, or nullptr if there
+ * is none
+ */
+static const RDKit::Atom* get_sugar_for_base(const RDKit::Atom* const base)
+{
+    const auto& mol = base->getOwningMol();
+    for (const auto* neighbor : mol.atomNeighbors(base)) {
+        if (get_monomer_type(neighbor) == MonomerType::NA_SUGAR) {
+            return neighbor;
+        }
+    }
+    return nullptr;
+}
+
+/**
+ * @return whether the given nucleic acid bases are in neighboring nucleotides,
+ * i.e. whether their sugars are joined by a single phosphate
+ */
+static bool are_in_neighboring_nucleotides(const RDKit::Atom* const base_one,
+                                           const RDKit::Atom* const base_two)
+{
+    const auto* sugar_one = get_sugar_for_base(base_one);
+    const auto* sugar_two = get_sugar_for_base(base_two);
+    if (sugar_one == nullptr || sugar_two == nullptr) {
+        return false;
+    }
+    const auto& mol = base_one->getOwningMol();
+    for (const auto* neighbor : mol.atomNeighbors(sugar_one)) {
+        if (get_monomer_type(neighbor) == MonomerType::NA_PHOSPHATE &&
+            mol.getBondBetweenAtoms(neighbor->getIdx(), sugar_two->getIdx())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * @return the complement nucleotide that pairs with the given base, or
+ * std::nullopt if the base has no Watson-Crick complement
+ */
+static std::optional<ComplementNucleotide>
+get_complement_nucleotide(const RDKit::Atom* const base)
+{
+    const bool is_dna = is_dna_base(base);
+    const auto base_symbol = get_monomer_res_name(base);
+    auto complement_base_symbol =
+        is_dna ? get_dna_complement_base_symbol(base_symbol)
+               : get_rna_complement_base_symbol(base_symbol);
+    if (!complement_base_symbol.has_value()) {
+        return std::nullopt;
+    }
+    // Sugar identity (R vs dR) is per base to handle chimeric chains mixing R
+    // and dR within one polymer
+    return ComplementNucleotide{base->getIdx(), is_dna ? "dR" : "R",
+                                std::move(*complement_base_symbol)};
+}
+
+std::vector<std::vector<ComplementNucleotide>>
+get_complement_chains(const std::unordered_set<const RDKit::Atom*>& bases)
+{
+    // An ordered map keeps per-polymer processing deterministic, so the
+    // auto-numbered complement chains are reproducible
+    std::map<std::string, std::vector<const RDKit::Atom*>> bases_by_polymer;
+    for (const auto* base : bases) {
+        if (base != nullptr && get_monomer_type(base) == MonomerType::NA_BASE) {
+            bases_by_polymer[rdkit_extensions::get_polymer_id(base)].push_back(
+                base);
+        }
+    }
+
+    std::vector<std::vector<ComplementNucleotide>> chains;
+    for (auto& [polymer_id, polymer_bases] : bases_by_polymer) {
+        // Process in residue-number order, which matches HELM monomer ordering
+        std::ranges::sort(polymer_bases, {}, [](const RDKit::Atom* base) {
+            return rdkit_extensions::get_residue_number(base);
+        });
+        // Start a new chain whenever there's a gap between bases (either a
+        // base that wasn't given or one that has no complement) so that we
+        // never bond together complement nucleotides across the gap
+        std::vector<std::vector<ComplementNucleotide>> polymer_chains;
+        const RDKit::Atom* prev_base = nullptr;
+        for (const auto* base : polymer_bases) {
+            auto complement = get_complement_nucleotide(base);
+            if (!complement.has_value()) {
+                continue;
+            }
+            if (prev_base == nullptr ||
+                !are_in_neighboring_nucleotides(prev_base, base)) {
+                polymer_chains.emplace_back();
+            }
+            polymer_chains.back().push_back(std::move(*complement));
+            prev_base = base;
+        }
+        // Complementary strands are antiparallel, so the chain that pairs with
+        // the 3' end of the original strand comes first
+        chains.insert(chains.end(),
+                      std::make_move_iterator(polymer_chains.rbegin()),
+                      std::make_move_iterator(polymer_chains.rend()));
+    }
+    return chains;
+}
+
+RDGeom::Point3D get_complement_pairing_direction(
+    const RDKit::ROMol& mol,
+    const std::vector<ComplementNucleotide>& complement_nucleotides)
+{
+    const auto& conf = mol.getConformer();
+    for (const auto& complement : complement_nucleotides) {
+        const auto* sugar = get_sugar_for_base(
+            mol.getAtomWithIdx(complement.original_base_idx));
+        if (sugar == nullptr) {
+            continue;
+        }
+        const auto& base_pos = conf.getAtomPos(complement.original_base_idx);
+        const auto& sugar_pos = conf.getAtomPos(sugar->getIdx());
+        RDGeom::Point3D direction(base_pos.x - sugar_pos.x,
+                                  base_pos.y - sugar_pos.y, 0.0);
+        if (direction.lengthSq() > 1e-6) {
+            direction.normalize();
+            return direction;
+        }
+    }
+    return RDGeom::Point3D(0.0, -1.0, 0.0);
 }
 
 bool contains_two_monomer_linkages(const RDKit::Bond* bond)

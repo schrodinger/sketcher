@@ -52,6 +52,7 @@ namespace sketcher
 {
 
 class BondOrSecondaryConnection;
+struct ComplementNucleotide;
 
 enum class MonomerType;
 enum class SubgroupType;
@@ -458,6 +459,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                 const std::string& ap_name_one,
                                 const RDKit::Atom* const monomer_two,
                                 const std::string& ap_name_two);
+
+    /**
+     * Undoably add antiparallel Watson-Crick complement chain(s) for the
+     * given NA bases, linked back via "pair" connections. Each run of
+     * neighboring bases within a polymer gets its own chain. Bases without a
+     * complement are skipped, and nothing (including no undo entry) is added
+     * if none of the bases have one.
+     */
+    void addComplementaryStrand(
+        const std::unordered_set<const RDKit::Atom*>& selected_bases);
 
     /**
      * Undoably add a chain of atoms, where each atom is bound to the previous
@@ -1408,6 +1419,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
                                            const size_t bond_end_idx,
                                            const std::string& linkage,
                                            const bool is_custom_bond);
+
+    /**
+     * Build and add one antiparallel complement chain, linking each new base
+     * back to its original via a "pair" connection. Must be called within an
+     * open undo macro.
+     * @param complement_nucleotides the nucleotides of the chain, as returned
+     * by get_complement_chains
+     */
+    void addComplementChain(
+        const std::vector<ComplementNucleotide>& complement_nucleotides);
 
     /**
      * Add a non-molecular object (a plus sign or a reaction arrow).  This
