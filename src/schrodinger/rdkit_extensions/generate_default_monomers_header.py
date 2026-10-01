@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 
 FILE_HEADER = """#pragma once
@@ -61,6 +62,7 @@ def writer(f, chunk_size):
 
 def write_monomer_header(monomers, out_file_name):
 
+    os.makedirs(os.path.dirname(out_file_name), exist_ok=True)
     with open(out_file_name, 'wt') as f:
         f.write(FILE_HEADER)
 
