@@ -59,6 +59,10 @@ const QString ATOM_ELEMENT_OR_MONOMER_STYLE{
     "QToolButton { font-size: 14px; font-weight: bold; color: #333333; }"
     "QToolButton:disabled { color: #E4E4E4; }"};
 
+const QString CUSTOM_MONOMER_BUTTON_STYLE{
+    "QToolButton { font-size: 10pt; font-weight: bold; color: #333333; }"
+    "QToolButton:disabled { color: #E4E4E4; }"};
+
 /// Minimum label length that requires the compact style
 constexpr int COMPACT_STYLE_MIN_LENGTH = 3;
 
@@ -128,6 +132,9 @@ const QString AMINO_OR_NUCLEIC_TOGGLE_STYLE{
     "QToolButton:!checked:hover { color: #5b8aa8;}"
     "QToolButton:checked { color: #000000;"
     "     border-bottom: 2px solid #333333; }"};
+
+const QString CUSTOM_MONOMER_DIALOG_STYLE{
+    "#sketcher_widget_holder { background-color: white; }"};
 
 } // namespace sketcher
 } // namespace schrodinger

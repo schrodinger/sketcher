@@ -1,6 +1,7 @@
 
 #define BOOST_TEST_MODULE monomeric
 
+#include <algorithm>
 #include <array>
 #include <unordered_set>
 
@@ -14,6 +15,7 @@
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
@@ -118,6 +120,57 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_smiles)
     }
 }
 
+BOOST_AUTO_TEST_CASE(test_normalize_smiles_attachment_points)
+{
+    const std::string alanine = "*N[C@@H](C)C(=O)* |$_R1;;;;;;_R2$|";
+    const std::vector<std::tuple<std::string, std::string,
+                                 std::vector<std::pair<int, std::string>>>>
+        test_cases = {
+            {"C[C@H](N[H:1])C(=O)[OH:2]", alanine, {{1, "N"}, {2, "C"}}},
+            {"[1*]N[C@@H](C)C(=O)[2*]", alanine, {{1, "N"}, {2, "C"}}},
+            {alanine, alanine, {{1, "N"}, {2, "C"}}},
+            {"[*:1]N[C@@H](C)C(=O)[*:2]", alanine, {{1, "N"}, {2, "C"}}},
+            {"C[C@H](N)C(=O)O |$;;_R1;;;_R2$|",
+             "*N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|",
+             {{1, "N"}, {2, "O"}}},
+            {"O=P(O)([OH:1])[OH:2]",
+             "O=P(O)(*)* |$;;;_R1;_R2$|",
+             {{1, "P"}, {2, "P"}}}};
+
+    for (const auto& [input_smiles, expected_smiles, expected_aps] :
+         test_cases) {
+        const auto normalized =
+            normalize_smiles_attachment_points(input_smiles);
+        BOOST_TEST(normalized.find("_R1") != std::string::npos);
+        BOOST_TEST(normalized.find("_R2") != std::string::npos);
+        BOOST_TEST(get_attachment_points_for_smiles(normalized) ==
+                   expected_aps);
+        const auto mol = rdkit_extensions::to_rdkit(
+            normalized, rdkit_extensions::Format::EXTENDED_SMILES);
+        const auto expected = rdkit_extensions::to_rdkit(
+            expected_smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+        BOOST_TEST(rdkit_extensions::to_string(
+                       *mol, rdkit_extensions::Format::EXTENDED_SMILES) ==
+                   rdkit_extensions::to_string(
+                       *expected, rdkit_extensions::Format::EXTENDED_SMILES));
+
+        std::vector<unsigned int> attachment_point_nums;
+        for (const auto* atom : mol->atoms()) {
+            const auto r_group_num = rdkit_extensions::get_r_group_number(atom);
+            if (r_group_num) {
+                attachment_point_nums.push_back(*r_group_num);
+                BOOST_TEST(atom->getAtomicNum() == 0);
+                BOOST_TEST(atom->getDegree() == 1);
+            }
+            BOOST_TEST(
+                !atom->hasProp(RDKit::common_properties::molAtomMapNumber));
+        }
+        std::ranges::sort(attachment_point_nums);
+        const std::vector<unsigned int> expected_nums = {1, 2};
+        BOOST_TEST(attachment_point_nums == expected_nums);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_res)
 {
     const std::vector<std::pair<int, std::string>> expected = {{1, "N"},
@@ -180,6 +233,25 @@ BOOST_AUTO_TEST_CASE(test_contains_two_monomer_linkages)
     BOOST_TEST(!contains_two_monomer_linkages(mol->getBondWithIdx(0)));
     BOOST_TEST(!contains_two_monomer_linkages(mol->getBondWithIdx(1)));
     BOOST_TEST(!contains_two_monomer_linkages(mol->getBondWithIdx(2)));
+}
+
+/**
+ * An isolated custom CHEM monomer must expose its first attachment point
+ * without trying to find the highest numbered bound attachment point.
+ */
+BOOST_AUTO_TEST_CASE(test_isolated_chem_attachment_points)
+{
+    auto mol = rdkit_extensions::to_rdkit("CHEM1{[[*:1]C]}$$$$V2.0");
+    prepare_mol(*mol);
+    BOOST_REQUIRE(mol->getNumAtoms() == 1);
+    BOOST_REQUIRE(mol->getNumBonds() == 0);
+
+    auto [bound_aps, unbound_aps] =
+        get_attachment_points_for_monomer(mol->getAtomWithIdx(0));
+    const std::vector<UnboundAttachmentPoint> expected = {
+        {"R1", "R1", 1, Direction::W}};
+    BOOST_TEST(bound_aps.empty());
+    BOOST_TEST(unbound_aps == expected);
 }
 
 /**
