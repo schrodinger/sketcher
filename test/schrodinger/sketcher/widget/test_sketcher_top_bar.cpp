@@ -210,7 +210,8 @@ BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
 
 /**
  * Make sure that the More Actions menu's shortcuts work through Qt's shortcut
- * system without the menu ever being opened.
+ * system without the menu ever being opened. The WASM Playwright tests rely on
+ * this, since they press Ctrl+A, Ctrl+Z, etc. without opening the menu.
  */
 BOOST_AUTO_TEST_CASE(test_menu_shortcuts_with_closed_menu)
 {
