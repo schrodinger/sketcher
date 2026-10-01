@@ -650,6 +650,7 @@ void Scene::onModelValuesChanged(const std::unordered_set<ModelKey>& keys)
             case ModelKey::RNA_NUCLEOBASE:
             case ModelKey::DNA_NUCLEOBASE:
             case ModelKey::CUSTOM_NUCLEOTIDE:
+            case ModelKey::CUSTOM_MONOMER:
             case ModelKey::MONOMERIC_CONNECTION_TOOL:
                 updateSceneTool();
                 break;
@@ -739,6 +740,7 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
         return std::make_shared<ExplicitHsSceneTool>(m_fonts, this,
                                                      m_mol_model);
     } else if (draw_tool == DrawTool::MONOMER) {
+        bool is_smiles = false;
         auto monomer_tool_type = m_sketcher_model->getMonomerToolType();
         if (monomer_tool_type == MonomerToolType::AMINO_ACID) {
             auto analog =
@@ -754,7 +756,7 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 res_name, rdkit_extensions::ChainType::PEPTIDE, m_fonts,
                 *m_sketcher_model->getAtomDisplaySettingsPtr(),
                 *m_sketcher_model->getBondDisplaySettingsPtr(), this,
-                m_mol_model);
+                m_mol_model, is_smiles);
         } else {
             auto tool = m_sketcher_model->getNucleicAcidTool();
             if (NUCLEIC_ACID_TOOL_TO_RES_NAME.contains(tool)) {
@@ -771,7 +773,7 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                     res_name, rdkit_extensions::ChainType::RNA, m_fonts,
                     *m_sketcher_model->getAtomDisplaySettingsPtr(),
                     *m_sketcher_model->getBondDisplaySettingsPtr(), this,
-                    m_mol_model);
+                    m_mol_model, is_smiles);
             } else {
                 // the tool is for a full nucleotide
                 auto [sugar, base, phos] = *m_sketcher_model->getNucleotide();
@@ -795,6 +797,14 @@ std::shared_ptr<AbstractSceneTool> Scene::getNewSceneTool()
                 *m_sketcher_model->getBondDisplaySettingsPtr(), this,
                 m_mol_model);
         }
+    } else if (draw_tool == DrawTool::CUSTOM_MONOMER) {
+        auto [smiles, monomer_type] = m_sketcher_model->getCustomMonomer();
+        auto is_smiles = true;
+        return std::make_shared<DrawMonomerSceneTool>(
+            smiles.toStdString(), monomer_type, m_fonts,
+            *m_sketcher_model->getAtomDisplaySettingsPtr(),
+            *m_sketcher_model->getBondDisplaySettingsPtr(), this, m_mol_model,
+            is_smiles);
     }
     // tool not yet implemented
     return std::make_shared<NullSceneTool>();

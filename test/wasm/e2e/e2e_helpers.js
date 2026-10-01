@@ -89,7 +89,12 @@ async function callBridge(page, name, arg) {
  *   button also reports "checked" and "toolTip".
  */
 async function getRect(page, selector) {
-  const rect = JSON.parse(await callBridge(page, '_sketcher_get_rect', selector));
+  const encoded = await callBridge(page, '_sketcher_get_rect', selector);
+  // Qt/WASM can yield an empty result for one browser turn while it closes a
+  // modal or lays out its replacement. Treat that as temporarily unavailable
+  // so the normal clickable-state poll can retry instead of parsing it as JSON.
+  if (typeof encoded !== 'string' || encoded.trim() === '') return null;
+  const rect = JSON.parse(encoded);
   return rect && rect.width !== undefined ? rect : null;
 }
 
@@ -426,15 +431,32 @@ export async function clickPopupTool(page, name) {
   if (!owner) {
     throw new Error(`"${name}" is not visible and is not inside a popup`);
   }
+  // When the owner is embedded in a cascading QMenu, Qt does not create that
+  // submenu until its hover delay expires. Waiting before resolving the owner
+  // prevents a same-named sidebar button from winning the lookup meanwhile.
+  await page.waitForTimeout(500);
   const rect = await waitForClickable(page, `widget:${owner}`);
   const x = rect.x + rect.width / 2;
   const y = rect.y + rect.height / 2;
   await showMouseMarker(page, x, y);
   await page.mouse.move(x, y, { steps: 4 });
   await page.mouse.down();
-  await page.waitForTimeout(POPUP_HOLD_MS);
-  await page.mouse.up();
-  await click(page, `widget:${name}`);
+  try {
+    await page.waitForTimeout(POPUP_HOLD_MS);
+    const target = await waitForClickable(page, `widget:${name}`);
+    const targetX = target.x + target.width / 2;
+    const targetY = target.y + target.height / 2;
+    await showMouseMarker(page, targetX, targetY);
+    // A ToolButtonWithPopup closes its press-and-hold popup if the original
+    // press is released before the target is activated. Keep that press held
+    // while clicking the desired tool, matching a person's press-drag-click
+    // sequence and the interaction Squish performs.
+    await page.mouse.move(targetX, targetY, { steps: 4 });
+    await page.mouse.down();
+    await page.mouse.up();
+  } finally {
+    await page.mouse.up();
+  }
 }
 
 /**

@@ -166,6 +166,27 @@ get_connections(const ::RDKit::ROMol& monomer_mol)
     return connections;
 }
 
+[[nodiscard]] PolymerConnections
+get_interpolymer_connections(const ::RDKit::ROMol& monomer_mol)
+{
+    PolymerConnections connections;
+    for (const auto& polymer_id : get_polymer_ids(monomer_mol)) {
+        connections.emplace(polymer_id, std::set<std::string>{});
+    }
+
+    for (const auto bond_idx : get_connections(monomer_mol)) {
+        const auto* bond = monomer_mol.getBondWithIdx(bond_idx);
+        const auto begin_polymer_id = get_polymer_id(bond->getBeginAtom());
+        const auto end_polymer_id = get_polymer_id(bond->getEndAtom());
+        if (begin_polymer_id == end_polymer_id) {
+            continue;
+        }
+        connections[begin_polymer_id].insert(end_polymer_id);
+        connections[end_polymer_id].insert(begin_polymer_id);
+    }
+    return connections;
+}
+
 std::vector<std::string> get_polymer_ids(const RDKit::ROMol& monomer_mol)
 {
     std::vector<std::string> polymer_ids;

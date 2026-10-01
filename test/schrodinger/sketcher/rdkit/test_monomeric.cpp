@@ -1,17 +1,21 @@
 
 #define BOOST_TEST_MODULE monomeric
 
+#include <algorithm>
+#include <array>
 #include <unordered_set>
 
 #include <rdkit/GraphMol/RWMol.h>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/data/test_case.hpp>
+#include <fmt/format.h>
 
 #include <QGraphicsRectItem>
 
 #include "schrodinger/rdkit_extensions/convert.h"
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 #include "schrodinger/rdkit_extensions/helm.h"
+#include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/molviewer/constants.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
@@ -44,7 +48,9 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
 {
     for (const auto& helm :
          {"PEPTIDE1{A.C.W}$$$$V2.0", "RNA1{R(A)P.[dR](C)P}$$$$V2.0",
-          "CHEM1{[CCO]}$$$$V2.0", "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
+          "PEPTIDE1{X}$$$$V2.0", "PEPTIDE1{A.X.W}$$$$V2.0",
+          "RNA1{R(N)P.[dR](N)P}$$$$V2.0", "CHEM1{[CCO]}$$$$V2.0",
+          "PEPTIDE1{[C* |$;_R1$|]}$$$$V2.0"}) {
         auto mol = rdkit_extensions::to_rdkit(helm);
         BOOST_CHECK_NO_THROW(validate_monomers(*mol));
     }
@@ -59,7 +65,18 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
              {"CHEM1{[missingMonomer]}$$$$V2.0",
               "CHEM monomer missingMonomer not found in monomer database"},
              {"CHEM1{W}$$$$V2.0",
-              "CHEM monomer W not found in monomer database"}}) {
+              "CHEM monomer W not found in monomer database"},
+             {"CHEM1{X}$$$$V2.0",
+              "CHEM monomer X not found in monomer database"},
+             {"CHEM1{N}$$$$V2.0",
+              "CHEM monomer N not found in monomer database"},
+             {"RNA1{R(X)P}$$$$V2.0",
+              "Nucleic acid monomer X not found in monomer database"},
+             {"PEPTIDE1{X.[missingMonomer]}$$$$V2.0",
+              "Peptide monomer missingMonomer not found in monomer database"},
+             {"RNA1{R(N)P.R([missingMonomer])P}$$$$V2.0",
+              "Nucleic acid monomer missingMonomer not found in monomer "
+              "database"}}) {
         auto mol = rdkit_extensions::to_rdkit(helm);
         auto check_error = [&](const std::runtime_error& error) {
             return error.what() == expected;
@@ -82,6 +99,113 @@ BOOST_AUTO_TEST_CASE(test_validate_monomers)
                               return std::string(error.what()) ==
                                      "Could not parse monomer SMILES: C1CC";
                           });
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_smiles)
+{
+    const std::array<std::string, 5> alanine_smiles = {
+        "C[C@H](N[H:1])C(=O)[OH:2] |atomProp:0.pdbName. CB "
+        ":1.pdbName. CA :2.pdbName. N  :3.pdbName. H  :4.pdbName. C  "
+        ":5.pdbName. O  :6.pdbName. OXT|",
+        "C[C@H](N[H:1])C(=O)[OH:2]", "[1*]N[C@@H](C)C(=O)O[2*]",
+        "*N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$,atomProp:1.pdbName. N  "
+        ":2.pdbName. CA :3.pdbName. CB :4.pdbName. C  :5.pdbName. O  "
+        ",a:2|",
+        "*N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|"};
+    const std::vector<std::pair<int, std::string>> expected = {{1, "N"},
+                                                               {2, "O"}};
+
+    for (const auto& smiles : alanine_smiles) {
+        BOOST_TEST(get_attachment_points_for_smiles(smiles) == expected);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_normalize_smiles_attachment_points)
+{
+    const std::string alanine = "*N[C@@H](C)C(=O)* |$_R1;;;;;;_R2$|";
+    const std::vector<std::tuple<std::string, std::string,
+                                 std::vector<std::pair<int, std::string>>>>
+        test_cases = {
+            {"C[C@H](N[H:1])C(=O)[OH:2]", alanine, {{1, "N"}, {2, "C"}}},
+            {"[1*]N[C@@H](C)C(=O)[2*]", alanine, {{1, "N"}, {2, "C"}}},
+            {alanine, alanine, {{1, "N"}, {2, "C"}}},
+            {"[*:1]N[C@@H](C)C(=O)[*:2]", alanine, {{1, "N"}, {2, "C"}}},
+            {"C[C@H](N)C(=O)O |$;;_R1;;;_R2$|",
+             "*N[C@@H](C)C(=O)O* |$_R1;;;;;;;_R2$|",
+             {{1, "N"}, {2, "O"}}},
+            {"O=P(O)([OH:1])[OH:2]",
+             "O=P(O)(*)* |$;;;_R1;_R2$|",
+             {{1, "P"}, {2, "P"}}}};
+
+    for (const auto& [input_smiles, expected_smiles, expected_aps] :
+         test_cases) {
+        const auto normalized =
+            normalize_smiles_attachment_points(input_smiles);
+        BOOST_TEST(normalized.find("_R1") != std::string::npos);
+        BOOST_TEST(normalized.find("_R2") != std::string::npos);
+        BOOST_TEST(get_attachment_points_for_smiles(normalized) ==
+                   expected_aps);
+        const auto mol = rdkit_extensions::to_rdkit(
+            normalized, rdkit_extensions::Format::EXTENDED_SMILES);
+        const auto expected = rdkit_extensions::to_rdkit(
+            expected_smiles, rdkit_extensions::Format::EXTENDED_SMILES);
+        BOOST_TEST(rdkit_extensions::to_string(
+                       *mol, rdkit_extensions::Format::EXTENDED_SMILES) ==
+                   rdkit_extensions::to_string(
+                       *expected, rdkit_extensions::Format::EXTENDED_SMILES));
+
+        std::vector<unsigned int> attachment_point_nums;
+        for (const auto* atom : mol->atoms()) {
+            const auto r_group_num = rdkit_extensions::get_r_group_number(atom);
+            if (r_group_num) {
+                attachment_point_nums.push_back(*r_group_num);
+                BOOST_TEST(atom->getAtomicNum() == 0);
+                BOOST_TEST(atom->getDegree() == 1);
+            }
+            BOOST_TEST(
+                !atom->hasProp(RDKit::common_properties::molAtomMapNumber));
+        }
+        std::ranges::sort(attachment_point_nums);
+        const std::vector<unsigned int> expected_nums = {1, 2};
+        BOOST_TEST(attachment_point_nums == expected_nums);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_res)
+{
+    const std::vector<std::pair<int, std::string>> expected = {{1, "N"},
+                                                               {2, "O"}};
+    BOOST_TEST(get_attachment_points_for_res(
+                   "A", rdkit_extensions::ChainType::PEPTIDE) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_unknown_peptide)
+{
+    const std::vector<std::pair<int, std::string>> expected = {{1, ""},
+                                                               {2, ""}};
+    BOOST_TEST(get_attachment_points_for_res(
+                   "X", rdkit_extensions::ChainType::PEPTIDE) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_unknown_nucleic_acid)
+{
+    using rdkit_extensions::ChainType;
+    const std::vector<std::pair<int, std::string>> expected = {{1, ""}};
+    BOOST_TEST(get_attachment_points_for_res("N", ChainType::RNA) == expected);
+}
+
+BOOST_AUTO_TEST_CASE(test_get_attachment_points_for_missing_monomer)
+{
+    using rdkit_extensions::ChainType;
+    const std::vector<std::pair<int, std::string>> expected = {{1, ""},
+                                                               {2, ""}};
+    for (const auto chain_type :
+         {ChainType::PEPTIDE, ChainType::RNA, ChainType::CHEM}) {
+        BOOST_TEST(get_attachment_points_for_res("missingMonomer",
+                                                 chain_type) == expected);
+    }
+    // The unknown-base special case must not apply to other polymer types.
+    BOOST_TEST(get_attachment_points_for_res("N", ChainType::CHEM) == expected);
 }
 
 /**
@@ -112,6 +236,25 @@ BOOST_AUTO_TEST_CASE(test_contains_two_monomer_linkages)
 }
 
 /**
+ * An isolated custom CHEM monomer must expose its first attachment point
+ * without trying to find the highest numbered bound attachment point.
+ */
+BOOST_AUTO_TEST_CASE(test_isolated_chem_attachment_points)
+{
+    auto mol = rdkit_extensions::to_rdkit("CHEM1{[[*:1]C]}$$$$V2.0");
+    prepare_mol(*mol);
+    BOOST_REQUIRE(mol->getNumAtoms() == 1);
+    BOOST_REQUIRE(mol->getNumBonds() == 0);
+
+    auto [bound_aps, unbound_aps] =
+        get_attachment_points_for_monomer(mol->getAtomWithIdx(0));
+    const std::vector<UnboundAttachmentPoint> expected = {
+        {"R1", "R1", 1, Direction::W}};
+    BOOST_TEST(bound_aps.empty());
+    BOOST_TEST(unbound_aps == expected);
+}
+
+/**
  * Make sure that get_bound_attachment_point_names_and_atoms() and
  * get_available_attachment_point_names() return the expected attachment point
  * names for a variety of molecules
@@ -120,7 +263,11 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
 {
     std::vector<BoundAttachmentPoint> bound_aps, exp_bound;
     std::vector<UnboundAttachmentPoint> unbound_aps, exp_available;
-    const RDKit::Atom *atom0, *atom1, *atom2;
+    RDKit::Atom *atom0, *atom1, *atom2;
+    auto set_smiles_monomer = [](RDKit::Atom* atom, const std::string& smiles) {
+        atom->setProp(SMILES_MONOMER, true);
+        atom->setProp(ATOM_LABEL, smiles);
+    };
 
     // a lone alanine has no bound attachment points
     auto mol = rdkit_extensions::to_rdkit("PEPTIDE1{A}$$$$V2.0");
@@ -175,7 +322,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
         exp_bound = {{"R2", "C", 2, atom1, false, Direction::E},
-                     {"R3", "S", 3, atom2, false, Direction::E}};
+                     {"R3", "", 3, atom2, false, Direction::E}};
         exp_available = {{"R1", "N", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -190,7 +337,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom2);
         exp_bound = {{"R1", "N", 1, atom1, false, Direction::W},
-                     {"R3", "S", 3, atom0, false, Direction::W}};
+                     {"R3", "", 3, atom0, false, Direction::W}};
         exp_available = {{"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -207,7 +354,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
         exp_bound = {{"R2", "C", 2, atom1, false, Direction::E},
-                     {"R3", "S", 3, atom1, true, Direction::E}};
+                     {"R3", "", 3, atom1, true, Direction::E}};
         exp_available = {{"R1", "N", 1, Direction::W}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -215,7 +362,7 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom1);
         exp_bound = {{"R1", "N", 1, atom0, false, Direction::W},
-                     {"R3", "S", 3, atom0, true, Direction::W}};
+                     {"R3", "", 3, atom0, true, Direction::W}};
         exp_available = {{"R2", "C", 2, Direction::E}};
         BOOST_TEST(bound_aps == exp_bound);
         BOOST_TEST(unbound_aps == exp_available);
@@ -223,11 +370,15 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
 
     // CHEM monomers
     mol = rdkit_extensions::to_rdkit(
-        "CHEM1{[MONO1]}|CHEM2{[MONO2]}$CHEM1,CHEM2,1:R1-1:R3$$$V2.0");
+        "CHEM1{[C([CH3:1])[CH3:2]]}|"
+        "CHEM2{[C([CH3:1])([CH3:2])([CH3:3])[CH3:4]]}"
+        "$CHEM1,CHEM2,1:R1-1:R3$$$V2.0");
     prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
         atom1 = mol->getAtomWithIdx(1);
+        set_smiles_monomer(atom0, "C([CH3:1])[CH3:2]");
+        set_smiles_monomer(atom1, "C([CH3:1])([CH3:2])([CH3:3])[CH3:4]");
 
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
@@ -246,13 +397,18 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         BOOST_TEST(unbound_aps == exp_available);
     }
 
-    // CHEM monomers with too many attachment points - some will be omitted
+    // a bound attachment point absent from the CHEM definition doesn't invent
+    // additional unbound attachment points
     mol = rdkit_extensions::to_rdkit(
-        "CHEM1{[MONO1]}|CHEM2{[MONO2]}$CHEM1,CHEM2,1:R1-1:R11$$$V2.0");
+        "CHEM1{[C([CH3:1])[CH3:2]]}|"
+        "CHEM2{[C([CH3:1])([CH3:2])([CH3:3])[CH3:4]]}"
+        "$CHEM1,CHEM2,1:R1-1:R11$$$V2.0");
     prepare_mol(*mol);
     {
         atom0 = mol->getAtomWithIdx(0);
         atom1 = mol->getAtomWithIdx(1);
+        set_smiles_monomer(atom0, "C([CH3:1])[CH3:2]");
+        set_smiles_monomer(atom1, "C([CH3:1])([CH3:2])([CH3:3])[CH3:4]");
 
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom0);
@@ -264,12 +420,32 @@ BOOST_AUTO_TEST_CASE(test_get_attachment_points)
         std::tie(bound_aps, unbound_aps) =
             get_attachment_points_for_monomer(atom1);
         exp_bound = {{"R11", "R11", 11, atom0, false, Direction::N}};
-        exp_available = {
-            {"R1", "R1", 1, Direction::W},  {"R2", "R2", 2, Direction::E},
-            {"R3", "R3", 3, Direction::S},  {"R4", "R4", 4, Direction::NW},
-            {"R5", "R5", 5, Direction::NE}, {"R6", "R6", 6, Direction::SE},
-            {"R7", "R7", 7, Direction::SW}};
+        exp_available = {{"R1", "R1", 1, Direction::W},
+                         {"R2", "R2", 2, Direction::E},
+                         {"R3", "R3", 3, Direction::S},
+                         {"R4", "R4", 4, Direction::NW}};
         BOOST_TEST(bound_aps == exp_bound);
+        BOOST_TEST(unbound_aps == exp_available);
+    }
+
+    // peptide R3 names reflect whether the attachment-point atom is sulfur
+    for (const auto& [side_chain, expected_name] :
+         std::array<std::pair<std::string, std::string>, 2>{
+             {{"C[*:3]", "X"}, {"S[*:3]", "S"}}}) {
+        const auto smiles =
+            fmt::format("N([*:1])[C@@H]({})C(=O)[*:2]", side_chain);
+        const auto helm = fmt::format("PEPTIDE1{{[{}]}}$$$$V2.0", smiles);
+        mol = rdkit_extensions::to_rdkit(helm);
+        prepare_mol(*mol);
+
+        atom0 = mol->getAtomWithIdx(0);
+        set_smiles_monomer(atom0, smiles);
+        std::tie(bound_aps, unbound_aps) =
+            get_attachment_points_for_monomer(atom0);
+        exp_available = {{"R1", "N", 1, Direction::W},
+                         {"R2", "C", 2, Direction::E},
+                         {"R3", expected_name, 3, Direction::N}};
+        BOOST_TEST(bound_aps.empty());
         BOOST_TEST(unbound_aps == exp_available);
     }
 
@@ -654,6 +830,19 @@ BOOST_AUTO_TEST_CASE(test_interchain_connection_avoids_crossing_other_bond)
     expected_offset.setLength(expected_offset.length() +
                               MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
     check_point_close(bottom_offset, expected_offset.p2());
+}
+
+BOOST_AUTO_TEST_CASE(test_peptide_has_ap3)
+{
+    BOOST_TEST(peptide_has_ap3("A", false) == false);
+    BOOST_TEST(peptide_has_ap3("K", false) == true);
+    BOOST_TEST(peptide_has_ap3("C", false) == true);
+    BOOST_TEST(peptide_has_ap3("CC[C@H](C)[C@H](N[H:1])C(=O)[OH:2]", true) ==
+               false);
+    BOOST_TEST(peptide_has_ap3("O=C([C@H](CCCCN[H:3])N[H:1])[OH:2]", true) ==
+               true);
+    BOOST_TEST(peptide_has_ap3("O=C([C@H](CS[H:3])N[H:1])[OH:2]", true) ==
+               true);
 }
 
 } // namespace sketcher
