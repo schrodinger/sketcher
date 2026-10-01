@@ -46,20 +46,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - build-name: macos
+          - build-name: macos-15-arm64
             runner: macos-15
-            os-label: macos-15
-          - build-name: macos
+          - build-name: macos-26-arm64
             runner: macos-26
-            os-label: macos-26
-          - build-name: windows
-            runner: windows-2022
-          - build-name: ubuntu
-            runner: ubuntu-22.04
+          - build-name: windows-x64
+            runner: windows-2025
+          - build-name: linux-x64
+            runner: ubuntu-24.04
           - build-name: wasm
-            runner: ubuntu-22.04
+            runner: ubuntu-24.04
           - build-name: memtest
-            runner: ubuntu-22.04
+            runner: ubuntu-24.04
     steps:
       # the memtest runner may run out of space if it has to build the
       # dependencies, so erase stuff that we know we don't need
@@ -75,7 +73,7 @@ jobs:
           ref: ${{ inputs.ref }}
 
       - name: Create and activate virtualenv
-        if: matrix.build-name == 'macos'
+        if: startsWith(matrix.build-name, 'macos')
         run: |
           python3 -m venv .venv
           source .venv/bin/activate
@@ -114,7 +112,7 @@ jobs:
           echo "${{ github.workspace }}/build/external/emsdk-${{ env.VERSION }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
 
       - name: Activate MSVC
-        if: matrix.build-name == 'windows'
+        if: matrix.build-name == 'windows-x64'
         uses: ./.github/actions/activate-msvc
 
       - name: Configure Dependency CMake
@@ -186,7 +184,7 @@ jobs:
           version: ${{ fromJson(env.VERSIONS_JSON).rdkit }}
 
       - name: Install Qt's required packages
-        if: matrix.build-name != 'macos' && matrix.build-name != 'windows'
+        if: ${{ !startsWith(matrix.build-name, 'macos') && matrix.build-name != 'windows-x64' }}
         run: |
           sudo apt-get update && sudo apt-get install \
             libfontconfig1-dev \
@@ -260,7 +258,7 @@ jobs:
           SKETCHER_SOURCE_DIR: ${{ github.workspace }}
         # Launching `xvfb-run -a` required for Ubuntu
         run: |
-          ${{ matrix.build-name == 'ubuntu' && 'xvfb-run -a' || ''}} \
+          ${{ matrix.build-name == 'linux-x64' && 'xvfb-run -a' || ''}} \
           pytest -n auto --ignore=external
 
       - name: Run wasm tests
@@ -283,7 +281,7 @@ jobs:
         if: always() && steps.sketcher-build.outcome == 'success'
         uses: actions/upload-artifact@v6
         with:
-          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.os-label || matrix.build-name }}
+          name: sketcher-${{ inputs.ref || github.sha }}-${{ matrix.build-name }}
           path: |
             build/sketcher_app
             !build/sketcher_app/*.manifest

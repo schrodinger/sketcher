@@ -150,7 +150,8 @@ void SketcherSideBar::updateCheckState()
     };
     static const std::unordered_set<DrawTool> MONOMERIC_TOOLS = {
         DrawTool::MONOMER,
-        // TODO: add monomeric connector tool in SKETCH-2483
+        DrawTool::CUSTOM_MONOMER,
+        DrawTool::MONOMERIC_CONNECTION,
     };
     QWidget* page;
     std::optional<DrawTool> new_draw_tool = std::nullopt;
