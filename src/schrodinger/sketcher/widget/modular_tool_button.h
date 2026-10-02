@@ -37,6 +37,11 @@ class SKETCHER_API ModularToolButton : public ToolButtonWithPopup
      */
     void setEnumItem(int enum_int);
 
+    /**
+     * Keep the button's own text, icon and style instead of the popup's.
+     */
+    void setUpdateAppearanceFromPopup(bool update);
+
   signals:
     void enumChanged();
 
@@ -46,6 +51,7 @@ class SKETCHER_API ModularToolButton : public ToolButtonWithPopup
      */
     void updateButton();
     int m_enum_int = -1;
+    bool m_update_appearance_from_popup = true;
 
   protected slots:
     /**

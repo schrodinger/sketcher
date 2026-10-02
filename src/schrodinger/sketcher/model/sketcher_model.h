@@ -359,6 +359,7 @@ enum class AminoAcidTool {
     TYR,
     VAL,
     UNK,
+    UNCLASSIFIED,
 };
 
 const std::unordered_map<AminoAcidTool, std::string>
@@ -438,6 +439,7 @@ enum class NucleicAcidTool {
     RNA_NUCLEOTIDE,
     DNA_NUCLEOTIDE,
     CUSTOM_NUCLEOTIDE,
+    UNCLASSIFIED,
 };
 
 const std::unordered_map<NucleicAcidTool, std::string>
