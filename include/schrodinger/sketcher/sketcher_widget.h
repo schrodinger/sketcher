@@ -63,6 +63,7 @@ class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
 class SketcherModel;
+struct RenderOptions;
 enum class ImageFormat;
 enum class ModelKey;
 enum class SceneSubset;
@@ -145,6 +146,13 @@ class SKETCHER_API SketcherWidget : public QWidget
      * the background color.
      */
     void setColorScheme(const ColorScheme color_scheme);
+
+    /**
+     * Apply image-generation rendering options to this widget's display model.
+     *
+     * @param options Rendering options to apply
+     */
+    void setRenderOptions(const RenderOptions& options);
 
     /**
      * Undoably select or deselect the specified atoms and bonds.
