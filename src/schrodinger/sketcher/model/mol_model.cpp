@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <limits>
 #include <variant>
 
 #include <fmt/format.h>
@@ -9,6 +10,7 @@
 #include <rdkit/GraphMol/Atom.h>
 #include <rdkit/GraphMol/Bond.h>
 #include <rdkit/GraphMol/Conformer.h>
+#include <rdkit/GraphMol/MonomerInfo.h>
 #include <rdkit/GraphMol/MolOps.h>
 #include <rdkit/GraphMol/RWMol.h>
 #include <rdkit/GraphMol/SubstanceGroup.h>
@@ -27,6 +29,7 @@
 #include "schrodinger/rdkit_extensions/helm/monomer_coordgen.h"
 
 #include "schrodinger/rdkit_extensions/molops.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/rdkit_extensions/rgroup.h"
 #include "schrodinger/sketcher/rdkit/sgroup.h"
@@ -941,6 +944,123 @@ void MolModel::addMonomericConnection(const RDKit::Atom* const monomer_one,
                                           is_custom_bond);
     };
     doCommandUsingSnapshots(cmd_func, "Add monomeric connection",
+                            WhatChanged::MOLECULE);
+}
+
+void MolModel::addComplementaryStrand(
+    const std::unordered_set<const RDKit::Atom*>& selected_bases)
+{
+    // Resolve the complement chains before opening the undo macro so that we
+    // don't push an empty undo entry if none of the bases have a complement
+    const auto complement_chains = get_complement_chains(selected_bases);
+    if (complement_chains.empty()) {
+        return;
+    }
+    // One undo entry covers all of the complement chains
+    auto undo_macro = createUndoMacro("Add Complementary Sequence");
+    for (const auto& complement_nucleotides : complement_chains) {
+        addComplementChain(complement_nucleotides);
+    }
+}
+
+void MolModel::addComplementChain(
+    const std::vector<ComplementNucleotide>& complement_nucleotides)
+{
+    // Capture base positions and the pairing axis up front: every modifying
+    // call below replaces m_mol's contents via snapshot restore, which
+    // invalidates any held conformer reference.
+    std::vector<RDGeom::Point3D> orig_base_positions;
+    orig_base_positions.reserve(complement_nucleotides.size());
+    for (const auto& complement : complement_nucleotides) {
+        orig_base_positions.push_back(
+            m_mol.getConformer().getAtomPos(complement.original_base_idx));
+    }
+    const RDGeom::Point3D pair_dir =
+        get_complement_pairing_direction(m_mol, complement_nucleotides);
+    // Backbone axis: perpendicular to the pairing axis (-x for the canonical
+    // downward pair_dir).
+    const RDGeom::Point3D backbone_dir(pair_dir.y, -pair_dir.x, 0.0);
+    // Lay the complement out one monomer bond at a time so the spacing matches
+    // the rest of the monomer layout.
+    auto along = [](const RDGeom::Point3D& origin, const RDGeom::Point3D& dir,
+                    double dist) {
+        return RDGeom::Point3D(origin.x + dir.x * dist, origin.y + dir.y * dist,
+                               0.0);
+    };
+
+    // Build the complement chain antiparallel: iterate
+    // `complement_nucleotides` in reverse so the complement is constructed
+    // 5'→3' (paired with original 3'→5'). Record new atoms in chain order for
+    // the residue renumber below, so HELM PAIR sections round-trip without
+    // mis-targeting pairs.
+    size_t prev_phos_idx = std::numeric_limits<size_t>::max();
+    std::vector<size_t> new_chain_atom_idxs;
+    new_chain_atom_idxs.reserve(3 * complement_nucleotides.size());
+    for (size_t j = 0; j < complement_nucleotides.size(); ++j) {
+        const bool is_first = (j == 0);
+        const size_t complement_idx = complement_nucleotides.size() - 1 - j;
+        const auto& complement = complement_nucleotides[complement_idx];
+        const auto& orig_base_pos = orig_base_positions[complement_idx];
+
+        // Complement base sits across the pairing gap; its sugar one step
+        // further out so the new base faces back toward the original.
+        // Phosphate offsets along the backbone axis.
+        RDGeom::Point3D base_coord = along(
+            orig_base_pos, pair_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+        RDGeom::Point3D sugar_coord =
+            along(base_coord, pair_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+        RDGeom::Point3D phos_coord = along(
+            sugar_coord, backbone_dir, rdkit_extensions::MONOMER_BOND_LENGTH);
+
+        if (is_first) {
+            addMonomer(complement.sugar_symbol,
+                       rdkit_extensions::ChainType::RNA, sugar_coord);
+        } else {
+            addBoundMonomer(complement.sugar_symbol,
+                            rdkit_extensions::ChainType::RNA, sugar_coord,
+                            ap_model_name_for(NASugarAP::FIVE_PRIME),
+                            m_mol.getAtomWithIdx(prev_phos_idx),
+                            ap_model_name_for(NAPhosphateAP::TO_NEXT_SUGAR));
+        }
+        const size_t new_sugar_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(new_sugar_idx);
+
+        addBoundMonomer(complement.base_symbol,
+                        rdkit_extensions::ChainType::RNA, base_coord,
+                        ap_model_name_for(NA_BASE_AP_N1_9),
+                        m_mol.getAtomWithIdx(new_sugar_idx),
+                        ap_model_name_for(NASugarAP::ONE_PRIME));
+        const size_t new_base_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(new_base_idx);
+
+        addBoundMonomer("P", rdkit_extensions::ChainType::RNA, phos_coord,
+                        ap_model_name_for(NAPhosphateAP::TO_PREV_SUGAR),
+                        m_mol.getAtomWithIdx(new_sugar_idx),
+                        ap_model_name_for(NASugarAP::THREE_PRIME));
+        prev_phos_idx = m_mol.getNumAtoms() - 1;
+        new_chain_atom_idxs.push_back(prev_phos_idx);
+
+        addMonomericConnection(
+            m_mol.getAtomWithIdx(complement.original_base_idx),
+            H_BOND_AP_MODEL_NAME, m_mol.getAtomWithIdx(new_base_idx),
+            H_BOND_AP_MODEL_NAME);
+    }
+
+    // Renumber the new chain's residues 1..N in chain order so the HELM PAIR
+    // section (which references residue numbers) maps to the correct monomer
+    // after round-tripping through the parser.
+    auto renumber = [this, new_chain_atom_idxs]() {
+        for (size_t i = 0; i < new_chain_atom_idxs.size(); ++i) {
+            auto* atom = m_mol.getAtomWithIdx(new_chain_atom_idxs[i]);
+            auto* info = dynamic_cast<RDKit::AtomPDBResidueInfo*>(
+                atom->getMonomerInfo());
+            if (info == nullptr) {
+                continue;
+            }
+            info->setResidueNumber(static_cast<int>(i + 1));
+        }
+    };
+    doCommandUsingSnapshots(renumber, "Renumber monomer residues",
                             WhatChanged::MOLECULE);
 }
 

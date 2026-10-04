@@ -50,18 +50,6 @@ namespace rdkit_extensions
 
 using schrodinger::rdkit_extensions::Direction;
 
-// empty space gap between a monomer and the one following it in the chain. This
-// will be the length of the visibile bond line connecting the two.
-constexpr double SIDE_TO_SIDE_DISTANCE = 0.70;
-// when a monomer size is not specified or its value is lower than this, this
-// value is used as the minimum size
-constexpr double MONOMER_MINIMUM_SIZE = 0.80;
-
-// total distance from the center of one monomer to the center of the following
-// in the chain
-constexpr double MONOMER_BOND_LENGTH =
-    SIDE_TO_SIDE_DISTANCE + MONOMER_MINIMUM_SIZE;
-
 // maximum allowed bond length as a multiple of the ideal bond length. Any bond
 // longer than this will be considered "stretched"
 constexpr double MAX_BOND_STRETCH = 3.0;
