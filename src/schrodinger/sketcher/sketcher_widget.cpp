@@ -1893,6 +1893,15 @@ void SketcherWidget::applyModelValuePingToTargets(
             m_mol_model->mutateMonomers(atoms, symbol, MonomerType::PEPTIDE);
             break;
         }
+        case ModelKey::MONOMER_DB_MONOMER: {
+            auto monomer = value.value<rdkit_extensions::MonomerID>();
+            if (!monomer.symbol.empty()) {
+                m_mol_model->mutateMonomers(
+                    atoms, monomer.symbol,
+                    get_monomer_type(monomer.symbol, monomer.chain_type));
+            }
+            break;
+        }
         case ModelKey::CUSTOM_MONOMER: {
             auto [smiles, chain_type] =
                 value.value<std::pair<QString, rdkit_extensions::ChainType>>();

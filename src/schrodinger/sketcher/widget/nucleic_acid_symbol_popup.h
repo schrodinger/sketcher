@@ -6,6 +6,7 @@
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/modular_popup.h"
+#include "schrodinger/rdkit_extensions/monomer_database.h"
 
 namespace schrodinger
 {
@@ -37,12 +38,14 @@ class SKETCHER_API NucleicAcidSymbolPopup : public ModularPopup
      */
     QString getSymbolForId(int id) const;
 
+    rdkit_extensions::MonomerID getMonomerForId(int id) const;
+
   protected:
     void generateButtonPackets() override;
     int getButtonIDToCheck() override;
 
   private:
-    std::unordered_map<int, std::string> m_id_to_symbol;
+    std::unordered_map<int, rdkit_extensions::MonomerID> m_id_to_monomer;
 };
 
 } // namespace sketcher

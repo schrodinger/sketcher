@@ -3,6 +3,7 @@
 #include <QButtonGroup>
 
 #include "schrodinger/rdkit_extensions/monomer_database.h"
+#include "schrodinger/rdkit_extensions/monomer_mol.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/widget/monomer_symbol_popup_utils.h"
@@ -18,20 +19,26 @@ NucleicAcidSymbolPopup::NucleicAcidSymbolPopup(
     QWidget* parent) :
     ModularPopup(parent)
 {
-    auto* group =
-        build_monomer_symbol_buttons(this, "na_analog", standard_symbol,
-                                     standard_name, analogs, m_id_to_symbol);
+    auto* group = build_monomer_symbol_buttons(
+        this, "na_analog", standard_symbol, standard_name, analogs,
+        m_id_to_monomer, rdkit_extensions::ChainType::RNA);
     setStyleSheet(ATOM_ELEMENT_OR_MONOMER_STYLE);
     setButtonGroup(group);
 }
 
 QString NucleicAcidSymbolPopup::getSymbolForId(int id) const
 {
-    auto it = m_id_to_symbol.find(id);
-    if (it == m_id_to_symbol.end()) {
+    auto it = m_id_to_monomer.find(id);
+    if (it == m_id_to_monomer.end()) {
         return {};
     }
-    return QString::fromStdString(it->second);
+    return QString::fromStdString(it->second.symbol);
+}
+
+rdkit_extensions::MonomerID
+NucleicAcidSymbolPopup::getMonomerForId(int id) const
+{
+    return m_id_to_monomer.at(id);
 }
 
 void NucleicAcidSymbolPopup::generateButtonPackets()
@@ -47,24 +54,8 @@ void NucleicAcidSymbolPopup::generateButtonPackets()
 
 int NucleicAcidSymbolPopup::getButtonIDToCheck()
 {
-    auto model = getModel();
-    if (model == nullptr) {
-        return -1;
-    }
-
-    if (model->getDrawTool() != DrawTool::MONOMER ||
-        model->getMonomerToolType() != MonomerToolType::NUCLEIC_ACID) {
-        return -1;
-    }
-
-    auto analog = model->getValue(ModelKey::NUCLEIC_ACID_SYMBOL)
-                      .value<NucleicAcidMutation>();
-    for (const auto& [id, symbol] : m_id_to_symbol) {
-        if (QString::fromStdString(symbol) == analog.symbol) {
-            return id;
-        }
-    }
-    return -1;
+    return get_monomer_symbol_button_id(
+        getModel(), MonomerToolType::NUCLEIC_ACID, m_id_to_monomer);
 }
 
 } // namespace sketcher
