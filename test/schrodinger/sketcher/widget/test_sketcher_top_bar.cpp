@@ -3,6 +3,7 @@
 #include <QButtonGroup>
 #include <QKeyEvent>
 #include <QSignalSpy>
+#include <QTest>
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
@@ -205,6 +206,26 @@ BOOST_AUTO_TEST_CASE(testhandleShortcutAction)
     BOOST_CHECK_EQUAL(menu->m_redo_act->isEnabled(), true);
     BOOST_CHECK_EQUAL(top_bar.handleShortcutAction(redo_seq), true);
     BOOST_CHECK_EQUAL(redo_spy.count(), 1);
+}
+
+/**
+ * Make sure that the More Actions menu's shortcuts work through Qt's shortcut
+ * system without the menu ever being opened. The WASM Playwright tests rely on
+ * this, since they press Ctrl+A, Ctrl+Z, etc. without opening the menu.
+ */
+BOOST_AUTO_TEST_CASE(test_menu_shortcuts_with_closed_menu)
+{
+    TestSketcherWidget sk;
+    TestSketcherTopBar top_bar(sk.m_sketcher_model);
+    import_mol_text(sk.m_mol_model, "CC");
+    top_bar.updateWidgetsEnabled();
+    top_bar.show();
+    top_bar.activateWindow();
+    BOOST_REQUIRE(QTest::qWaitForWindowActive(&top_bar));
+
+    QSignalSpy select_all_spy{&top_bar, &SketcherTopBar::selectAllRequested};
+    QTest::keyClick(&top_bar, Qt::Key_A, Qt::ControlModifier);
+    BOOST_TEST(select_all_spy.count() == 1);
 }
 
 } // namespace sketcher
