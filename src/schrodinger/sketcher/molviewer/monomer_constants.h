@@ -120,7 +120,7 @@ const std::unordered_map<std::string, QColor> NUCLEIC_ACID_COLOR_BY_RES_NAME{
 };
 
 const std::string SMILES_PLACEHOLDER_TEXT = "***";
-const qsizetype MAX_MONOMER_LABEL_LENGTH = 6;
+const qsizetype MAX_MONOMER_LABEL_LENGTH = 5;
 
 const QColor DEFAULT_AA_BACKGROUND_COLOR =
     MONOMER_COLOR_MAP.at(MonomerColorType::OTHER);

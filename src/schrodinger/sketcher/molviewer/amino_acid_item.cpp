@@ -74,7 +74,7 @@ void AminoAcidItem::updateCachedData()
     AbstractMonomerItem::updateCachedData();
 
     auto res_name = get_monomer_res_name(m_atom);
-    m_main_label_text = elide_text(res_name);
+    setMainLabelText(res_name);
     qreal standard_border_width, standard_border_height, border_line_width;
     QColor border_color;
     const QFontMetricsF* main_label_fm = nullptr;
