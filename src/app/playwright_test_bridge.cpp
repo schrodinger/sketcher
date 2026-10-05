@@ -14,14 +14,9 @@
  * still a clickable page coordinate. Such a widget is reached with a real mouse
  * event like anything else.
  *
- * A context menu behaves the same way: the sketcher shows one with
- * QMenu::show() rather than exec(), so it does not run a nested event loop and
- * its rows are located with a "menu:" selector and clicked for real.
- *
- * A QToolButton's menu is the one exception, and sketcher_activate_action()
- * exists for it alone: Qt runs a nested event loop while such a menu is open,
- * which under Asyncify suspends the WebAssembly stack and stops any call
- * into the module from completing until the menu closes. See that function.
+ * Menus behave the same way: the sketcher shows them with QMenu::popup() rather
+ * than exec(), so they do not run a nested event loop and their rows are
+ * located with a "menu:" selector and clicked for real.
  *
  * Everything here is self-contained: the functions are registered with
  * JavaScript by the EMSCRIPTEN_BINDINGS block at the bottom, so no other
@@ -138,11 +133,43 @@ QString without_mnemonic(QString text)
 }
 
 /**
- * Find a visible child widget by objectName. Several widgets may share a name,
- * so this returns the first visible one, or nullptr if none is visible.
+ * Find the visible widget a user can currently reach by objectName.
+ *
+ * Dialogs and QWidgetActions embedded in menus can be separate top-level Qt
+ * surfaces rather than children of SketcherWidget. Prefer the active popup or
+ * modal, then other visible top-level surfaces, before the background sketcher
+ * tree so a same-named background control cannot hide the foreground one.
  */
 QWidget* find_visible_widget(SketcherWidget& sketcher, const QString& name)
 {
+    const auto find_visible_match = [&name](QWidget* root) -> QWidget* {
+        if (root == nullptr || !root->isVisible()) {
+            return nullptr;
+        }
+        if (root->objectName() == name) {
+            return root;
+        }
+        for (auto* child : root->findChildren<QWidget*>(name)) {
+            if (child->isVisible()) {
+                return child;
+            }
+        }
+        return nullptr;
+    };
+    if (auto* match = find_visible_match(QApplication::activePopupWidget())) {
+        return match;
+    }
+    if (auto* match = find_visible_match(QApplication::activeModalWidget())) {
+        return match;
+    }
+    for (auto* top_level : QApplication::topLevelWidgets()) {
+        if (top_level == &sketcher) {
+            continue;
+        }
+        if (auto* match = find_visible_match(top_level)) {
+            return match;
+        }
+    }
     for (auto* widget : sketcher.findChildren<QWidget*>(name)) {
         if (widget->isVisible()) {
             return widget;
@@ -278,6 +305,7 @@ std::string widget_rect(SketcherWidget& sketcher, const std::string& name,
     if (!visible_only) {
         result["visible"] = widget->isVisible();
     }
+    result["styleSheet"] = widget->styleSheet();
     // A label the application painted is chrome, so it is normalized the way
     // the user reads it; a value the user typed or chose is reported verbatim,
     // since a test that sets a field and reads it back has to see exactly what
@@ -462,11 +490,12 @@ std::string menu_rect(SketcherWidget& sketcher, const std::string& value)
  * contents of a line edit or spin box. Text the application painted is reported
  * the way it appears on screen, with any mnemonic ampersand and surrounding
  * whitespace removed, while a value the user typed or chose is reported
- * verbatim. A button additionally reports "checked" and "toolTip".
+ * verbatim. Every widget reports its Qt "styleSheet" so a test can verify a
+ * user-visible state conveyed by styling; a button additionally reports
+ * "checked" and "toolTip".
  *
  * A "menu:" selector only resolves while the menu is on screen, so open the
- * menu first. It does not reach a QToolButton's menu, which cannot be open and
- * queried at the same time; use sketcher_activate_action() for those rows.
+ * menu first.
  *
  * Monomers are addressed as "atom" and monomer connectors as "bond", since the
  * model stores them as RDKit atoms and bonds. Every atom has a non-empty
@@ -510,45 +539,6 @@ std::string sketcher_get_rect(const std::string& selector)
 }
 
 /**
- * Trigger a menu action by objectName or visible text, without opening the menu
- * it belongs to. Mnemonic ampersands are ignored when comparing text.
- *
- * This exists because a menu row cannot be clicked the way every other control
- * can. The menu belongs to a QToolButton, and Qt runs a nested event loop for
- * as long as that menu is open. Qt/WASM is built with Asyncify, so that nested
- * loop leaves the WebAssembly stack suspended, and no further call into the
- * module completes until the menu closes — sketcher_get_rect() included. A test
- * therefore cannot ask where a menu row is while the menu is showing, which
- * leaves triggering the action directly as the only way to reach it.
- *
- * Note what this gives up: the menu never opens, so nothing here covers the
- * menu's own layout or hit-testing, only the action's effect. Controls outside
- * a menu — including those in Qt::Popup widgets, which do not run a nested
- * event loop — should still be clicked with real mouse events.
- *
- * Throws std::runtime_error if nothing matches, or if the match is disabled.
- * Triggering skips the enabled check a real mouse event goes through, so
- * refusing here keeps a test from passing against a row the user could not have
- * activated.
- */
-void sketcher_activate_action(const std::string& name_or_text)
-{
-    auto& sketcher = get_sketcher_instance();
-    auto* action = find_action(sketcher.findChildren<QAction*>(),
-                               QString::fromStdString(name_or_text));
-    if (action == nullptr) {
-        throw std::runtime_error(
-            "playwright test bridge: no action found matching '" +
-            name_or_text + "'");
-    }
-    if (!action->isEnabled()) {
-        throw std::runtime_error("playwright test bridge: action '" +
-                                 name_or_text + "' is disabled");
-    }
-    action->trigger();
-}
-
-/**
  * Return the objectName of the button whose popup holds the named widget, or an
  * empty string if it isn't in a popup.
  *
@@ -568,8 +558,6 @@ std::string sketcher_get_popup_owner(const std::string& name)
 EMSCRIPTEN_BINDINGS(sketcher_playwright_test_bridge)
 {
     emscripten::function("_sketcher_get_rect", &sketcher_get_rect);
-    emscripten::function("_sketcher_activate_action",
-                         &sketcher_activate_action);
     emscripten::function("_sketcher_get_popup_owner",
                          &sketcher_get_popup_owner);
 }

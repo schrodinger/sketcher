@@ -221,7 +221,8 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol,
     apply_coordinate_render_options(mol, opts);
     mol_model.addMol(mol, "Import molecule", /* reposition_mol = */ true,
                      /* new_molecule_added = */ true,
-                     /* enforce_size_limit = */ false);
+                     /* enforce_size_limit = */ false,
+                     /* enforce_monomer_validity = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn,
@@ -241,7 +242,8 @@ void add_to_mol_model(MolModel& mol_model, const std::string& text,
         apply_coordinate_render_options(*mol, opts);
     }
     add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, std::nullopt,
-                                     /* recenter_view = */ true);
+                                     /* recenter_view = */ true,
+                                     /* enforce_monomer_validity = */ false);
 }
 
 void paint_scene_to_given_paint_device(QPaintDevice* device,

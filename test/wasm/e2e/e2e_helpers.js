@@ -42,9 +42,7 @@ async function callBridge(page, name, arg) {
   return page.evaluate(
     async ({ fn, value }) => {
       try {
-        // Qt/WASM is built with Asyncify, so a bridge call that unwinds the
-        // stack hands back a promise rather than its value; await covers both.
-        return await Module[fn](value);
+        return Module[fn](value);
       } catch (e) {
         // A C++ exception reaches JS as an opaque emscripten value, so decode
         // it to keep the reason in the test failure. A WASM trap arrives as an
@@ -89,7 +87,12 @@ async function callBridge(page, name, arg) {
  *   button also reports "checked" and "toolTip".
  */
 async function getRect(page, selector) {
-  const rect = JSON.parse(await callBridge(page, '_sketcher_get_rect', selector));
+  const encoded = await callBridge(page, '_sketcher_get_rect', selector);
+  // Qt/WASM can yield an empty result for one browser turn while it closes a
+  // modal or lays out its replacement. Treat that as temporarily unavailable
+  // so the normal clickable-state poll can retry instead of parsing it as JSON.
+  if (typeof encoded !== 'string' || encoded.trim() === '') return null;
+  const rect = JSON.parse(encoded);
   return rect && rect.width !== undefined ? rect : null;
 }
 
@@ -426,15 +429,32 @@ export async function clickPopupTool(page, name) {
   if (!owner) {
     throw new Error(`"${name}" is not visible and is not inside a popup`);
   }
+  // When the owner is embedded in a cascading QMenu, Qt does not create that
+  // submenu until its hover delay expires. Waiting before resolving the owner
+  // prevents a same-named sidebar button from winning the lookup meanwhile.
+  await page.waitForTimeout(500);
   const rect = await waitForClickable(page, `widget:${owner}`);
   const x = rect.x + rect.width / 2;
   const y = rect.y + rect.height / 2;
   await showMouseMarker(page, x, y);
   await page.mouse.move(x, y, { steps: 4 });
   await page.mouse.down();
-  await page.waitForTimeout(POPUP_HOLD_MS);
-  await page.mouse.up();
-  await click(page, `widget:${name}`);
+  try {
+    await page.waitForTimeout(POPUP_HOLD_MS);
+    const target = await waitForClickable(page, `widget:${name}`);
+    const targetX = target.x + target.width / 2;
+    const targetY = target.y + target.height / 2;
+    await showMouseMarker(page, targetX, targetY);
+    // A ToolButtonWithPopup closes its press-and-hold popup if the original
+    // press is released before the target is activated. Keep that press held
+    // while clicking the desired tool, matching a person's press-drag-click
+    // sequence and the interaction Squish performs.
+    await page.mouse.move(targetX, targetY, { steps: 4 });
+    await page.mouse.down();
+    await page.mouse.up();
+  } finally {
+    await page.mouse.up();
+  }
 }
 
 /**
@@ -473,11 +493,6 @@ async function hover(page, selector) {
  * walk a path of rows: every row but the last is hovered to open its submenu,
  * and the last is clicked.
  *
- * Unlike the More Actions menu, a context menu can be driven for real. The
- * sketcher shows one with QMenu::show() rather than exec(), so it doesn't run
- * the nested event loop that would otherwise suspend the WASM module — see
- * activateAction.
- *
  * The whole gesture is retried, because Qt/WASM can take a frame to put the
  * popup up and a half-open menu resolves no rows. Reopening replays the same
  * user actions rather than falling back to triggering the action directly, so a
@@ -502,6 +517,31 @@ export async function contextMenuAction(page, selector, ...path) {
         await hover(page, `menu:${label}`);
       }
       await click(page, `menu:${path.at(-1)}`);
+      return;
+    } catch (error) {
+      lastError = error;
+      await page.keyboard.press('Escape');
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Open a top bar button's menu with a real click, then click one of its rows.
+ *
+ * Retried like contextMenuAction, because Qt/WASM can take a frame to put the
+ * menu up.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {string} button - Qt objectName of the button that opens the menu
+ * @param {string} row - the row's objectName or visible text
+ */
+export async function clickMenuButtonRow(page, button, row) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await clickWidget(page, button);
+    try {
+      await click(page, `menu:${row}`);
       return;
     } catch (error) {
       lastError = error;
@@ -537,25 +577,6 @@ export async function openContextMenu(page, selector, ...path) {
     }
   }
   throw lastError;
-}
-
-/**
- * Trigger a menu action by objectName or visible text, without opening its
- * menu.
- *
- * This is the one control that can't be clicked for real. Qt runs a nested
- * event loop while a QToolButton's menu is open, and because Qt/WASM is built
- * with Asyncify that leaves the WebAssembly stack suspended — no call into the
- * module returns until the menu closes, so a test can't even ask where a row
- * is. Everything else, popup widgets included, gets a real mouse event.
- *
- * Throws if no action matches or the match is disabled.
- *
- * @param {import('@playwright/test').Page} page
- * @param {string} nameOrText - objectName, or the row's visible text
- */
-export async function activateAction(page, nameOrText) {
-  await callBridge(page, '_sketcher_activate_action', nameOrText);
 }
 
 /**

@@ -402,21 +402,28 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
     /**
      * Undoably add an atom that represents a monomer
      *
-     * @param res_name The residue name of the monomer
+     * @param res_name_or_smiles The residue name of the monomer (if
+     * is_smiles_monomer is false) or SMILES string (if is_smiles_monomer is
+     * true)
      * @param chain_type The chain type of the monomer. Note that this should be
      * ChainType::RNA for any form of nucleic acid (since HELM considers DNA to
      * be a type of RNA)
      * @param coords The coordinates for the new monomer
+     * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
+     * a SMILES string
      */
-    void addMonomer(const std::string_view res_name,
+    void addMonomer(const std::string_view res_name_or_smiles,
                     const rdkit_extensions::ChainType chain_type,
-                    const RDGeom::Point3D& coords);
+                    const RDGeom::Point3D& coords,
+                    bool is_smiles_monomer = false);
 
     /**
      * Undoably add an atom that represents a monomer, and add a connection
      * between this new monomer and an existing monomer
      *
-     * @param res_name The residue name of the monomer
+     * @param res_name_or_smiles The residue name of the monomer (if
+     * is_smiles_monomer is false) or SMILES string (if is_smiles_monomer is
+     * true)
      * @param chain_type The chain type of the monomer. Note that this should be
      * ChainType::RNA for any form of nucleic acid (since HELM considers DNA to
      * be a type of RNA)
@@ -426,13 +433,16 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param bound_to_monomer The existing monomer to add a connection to
      * @param bound_to_monomer_ap_name The name of the existing monomer's
      * attachment point used for the connection
+     * @param is_smiles_monomer Whether res_name_or_smiles is a residue name or
+     * a SMILES string
      */
-    void addBoundMonomer(const std::string_view res_name,
+    void addBoundMonomer(const std::string_view res_name_or_smiles,
                          const rdkit_extensions::ChainType chain_type,
                          const RDGeom::Point3D& coords,
                          const std::string_view new_monomer_ap_name,
                          const RDKit::Atom* const bound_to_monomer,
-                         const std::string_view bound_to_monomer_ap_name);
+                         const std::string_view bound_to_monomer_ap_name,
+                         bool is_smiles_monomer = false);
 
     /**
      * Undoably add a connection between two existing monomers
@@ -680,10 +690,14 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param mol The molecule to add
      * @param position The position to center the new molecule at
      * @param description The description to use for the undo command.
+     * @param enforce_monomer_validity If true (default), confirm that all
+     * monomer names exist in the monomer database and that all inline SMILES
+     * can be successfully parsed before importing.
      *
      */
     void addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
-                  const QString& description = "Import molecule");
+                  const QString& description = "Import molecule",
+                  const bool enforce_monomer_validity = true);
 
     /**
      * This method imports the specified RDKit::RWMol into the current model.
@@ -699,13 +713,19 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * empty.
      * @param new_mol_added If true (default), indicates that a new molecule was
      * added to the model.
+     * @param enforce_size_limit If true (default), enforce the maximum atom
+     * count limit for molecules.
+     * @param enforce_monomer_validity If true (default), confirm that all
+     * monomer names exist in the monomer database and that all inline SMILES
+     * can be successfully parsed before importing.
      */
 
     void addMol(RDKit::RWMol mol,
                 const QString& description = "Import molecule",
                 const bool reposition_mol = true,
                 const bool new_mol_added = true,
-                const bool enforce_size_limit = true);
+                const bool enforce_size_limit = true,
+                const bool enforce_monomer_validity = true);
 
     /**
      * Undoably add the given reaction to the model.  All reactants and products
@@ -900,10 +920,13 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param atoms The atoms (monomers) to consider for mutation
      * @param helm_symbol The HELM symbol to mutate matching monomers to
      * @param target_type Only mutate monomers of this type
+     * @param is_smiles Whether helm_symbol represents a residue name or a
+     * SMILES string
      */
     void mutateMonomers(const std::unordered_set<const RDKit::Atom*>& atoms,
-                        std::string_view helm_symbol,
-                        const MonomerType target_type);
+                        const std::string_view helm_symbol,
+                        const MonomerType target_type,
+                        const bool is_smiles = false);
 
     /**
      * Mutate all selected bonds
@@ -1691,13 +1714,16 @@ convert_text_to_mol_or_reaction(const std::string& text,
  * @param recenter_view If true **and mol_or_reaction is a molecule**, the
  * imported molecule will be repositioned to avoid overlap, or centered at the
  * origin if the scene is empty.
+ * @param enforce_monomer_validity If true (default), validate monomer
+ * database identities and inline SMILES before importing a molecule.
  */
 SKETCHER_API void add_mol_or_reaction_to_mol_model(
     MolModel& mol_model,
     const std::variant<boost::shared_ptr<RDKit::RWMol>,
                        boost::shared_ptr<RDKit::ChemicalReaction>>
         mol_or_reaction,
-    const std::optional<RDGeom::Point3D> position, const bool recenter_view);
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view,
+    const bool enforce_monomer_validity = true);
 
 /**
  * Add the molecule or reaction to the given MolModel.  See
@@ -1712,7 +1738,8 @@ SKETCHER_API void add_text_to_mol_model(
     const rdkit_extensions::Format format =
         rdkit_extensions::Format::AUTO_DETECT,
     const std::optional<RDGeom::Point3D> position = std::nullopt,
-    const bool recenter_view = true);
+    const bool recenter_view = true,
+    const bool enforce_monomer_validity = true);
 
 /**
  * Determine the appropriate residue number to use for a new monomer that will

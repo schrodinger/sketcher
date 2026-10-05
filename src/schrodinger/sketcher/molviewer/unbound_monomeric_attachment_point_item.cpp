@@ -2,8 +2,8 @@
 
 #include <QPainter>
 
-#include "schrodinger/rdkit_extensions/monomer_directions.h"
 #include "schrodinger/sketcher/molviewer/abstract_monomer_item.h"
+#include "schrodinger/sketcher/molviewer/coord_utils.h"
 #include "schrodinger/sketcher/molviewer/fonts.h"
 #include "schrodinger/sketcher/molviewer/monomer_constants.h"
 #include "schrodinger/sketcher/molviewer/monomer_attachment_point_labels.h"
@@ -61,18 +61,6 @@ static QPainterPath calculate_hover_area(QRectF ap_bounding_rect,
     monomer_bounding_path.addRect(monomer_bounding_rect);
     hover_area -= monomer_bounding_path;
     return hover_area;
-}
-
-/**
- * Convert a Direction enum value to a vector in scene coordinates.
- * Note: Y-axis is inverted in Qt (positive Y goes down), so N is (0, -1).
- * @param dir The direction
- * @return vector pointing in that direction
- */
-QPointF direction_to_qt_vector(Direction dir)
-{
-    auto mol_vec = rdkit_extensions::direction_to_vector(dir);
-    return QPointF(mol_vec.x, -mol_vec.y);
 }
 
 /**

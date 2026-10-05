@@ -14,6 +14,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/signals2/signal.hpp>
 
 struct sqlite3;
 
@@ -100,6 +101,13 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
     [[nodiscard]] static MonomerDatabase& instance();
 
     ~MonomerDatabase();
+
+    // Subscribe to completed database updates. Keep the returned connection
+    // alive to receive notifications; destroying it unsubscribes. Callbacks
+    // run synchronously after cache invalidation and must not throw or mutate
+    // the database. Notifications may also be sent for no-op updates.
+    [[nodiscard]] boost::signals2::scoped_connection subscribeToChanges(
+        const boost::signals2::signal<void()>::slot_type& callback);
 
     // Populate the custom monomers table with the given SQL.
     // Note that any prior custom definitions will be dropped
@@ -209,8 +217,10 @@ class RDKIT_EXTENSIONS_API MonomerDatabase : public boost::noncopyable
 
     void dumpToFile(sqlite3* db, boost::filesystem::path db_file) const;
 
-    // Invalidates the enumerated core SMILES cache
-    void invalidateCache();
+    // Invalidate derived data before notifying readers of a completed update.
+    void onDatabaseChanged();
+
+    boost::signals2::signal<void()> m_database_changed;
 
     sqlite3* m_core_monomers_db = nullptr;
     sqlite3* m_custom_monomers_db = nullptr;

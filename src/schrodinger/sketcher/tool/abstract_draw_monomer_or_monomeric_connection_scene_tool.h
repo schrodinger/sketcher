@@ -73,6 +73,7 @@ constexpr int NEW_MONOMER_FROM_INVALID_DRAG = -2;
  * @param hovered_type The type of monomer being hovered over
  * @param hovered_res_name The residue name of monomer being hovered over. Used
  * to determine whether we can form a disulfide bond.
+ * @param hovered_is_smiles Whether hovered_res_name contains inline SMILES
  * @param tool_type  The type of monomer that would be drawn by the active scene
  * tool
  * @param tool_res_name The residue name of monomer from the active scene tool.
@@ -82,7 +83,8 @@ constexpr int NEW_MONOMER_FROM_INVALID_DRAG = -2;
  */
 SKETCHER_API UnboundMonomericAttachmentPointItem* get_default_attachment_point(
     const MonomerType hovered_type, const std::string& hovered_res_name,
-    const MonomerType tool_type, const std::string& tool_res_name,
+    const bool hovered_is_smiles, const MonomerType tool_type,
+    const std::string& tool_res_name,
     const std::vector<UnboundMonomericAttachmentPointItem*>& unbound_ap_items);
 
 /**
@@ -93,7 +95,8 @@ SKETCHER_API std::string get_attachment_point_for_new_monomer(
     const MonomerType existing_monomer_type,
     const std::string_view existing_monomer_ap,
     const MonomerType new_monomer_type,
-    const std::string_view new_monomer_res_name);
+    const std::string_view new_monomer_res_name,
+    const bool new_monomer_is_smiles);
 
 /**
  * @return the monomer represented by the given graphics item, along with its
@@ -159,7 +162,7 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
         const rdkit_extensions::ChainType chain_type, const Fonts& fonts,
         const AtomDisplaySettings& atom_display_settings,
         const BondDisplaySettings& bond_display_settings, Scene* scene,
-        MolModel* mol_model);
+        MolModel* mol_model, bool is_smiles_monomer = false);
     virtual ~AbstractDrawMonomerOrMonomericConnectionSceneTool();
 
     // Reimplemented AbstractSceneTool methods
@@ -177,6 +180,7 @@ class SKETCHER_API AbstractDrawMonomerOrMonomericConnectionSceneTool
     rdkit_extensions::ChainType m_chain_type =
         rdkit_extensions::ChainType::CHEM;
     MonomerType m_monomer_type;
+    bool m_is_smiles_monomer;
     Fonts m_bolded_fonts;
     const AtomDisplaySettings* m_atom_display_settings = nullptr;
     const BondDisplaySettings* m_bond_display_settings = nullptr;

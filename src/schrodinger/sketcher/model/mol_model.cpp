@@ -667,22 +667,24 @@ void MolModel::addAttachmentPoint(const RDGeom::Point3D& coords,
  */
 static std::shared_ptr<RDKit::Atom>
 create_monomer(const std::string_view res_name, const std::string_view chain_id,
-               const int res_num)
+               const int res_num, const bool is_smiles_monomer)
 {
-    auto monomer_unique_ptr =
-        rdkit_extensions::makeMonomer(res_name, chain_id, res_num, false);
+    auto monomer_unique_ptr = rdkit_extensions::makeMonomer(
+        res_name, chain_id, res_num, is_smiles_monomer);
     std::shared_ptr<RDKit::Atom> monomer;
     monomer.reset(monomer_unique_ptr.release());
     set_atom_monomeric(monomer.get());
     return monomer;
 }
 
-void MolModel::addMonomer(const std::string_view res_name,
+void MolModel::addMonomer(const std::string_view res_name_or_smiles,
                           const rdkit_extensions::ChainType chain_type,
-                          const RDGeom::Point3D& coords)
+                          const RDGeom::Point3D& coords,
+                          const bool is_smiles_monomer)
 {
     auto chain_id = get_first_available_chain_name(m_mol, chain_type);
-    auto create_atom = std::bind(create_monomer, res_name, chain_id, 1);
+    auto create_atom = std::bind(create_monomer, res_name_or_smiles, chain_id,
+                                 1, is_smiles_monomer);
     auto cmd_func = [this, create_atom, coords]() {
         addAtomChainCommandFunc(create_atom, {coords}, make_new_single_bond,
                                 AtomTag(-1));
@@ -795,12 +797,13 @@ int get_residue_number_for_new_monomer(
     return new_res_num;
 }
 
-void MolModel::addBoundMonomer(const std::string_view res_name,
+void MolModel::addBoundMonomer(const std::string_view res_name_or_smiles,
                                const rdkit_extensions::ChainType chain_type,
                                const RDGeom::Point3D& coords,
                                const std::string_view new_monomer_ap_name,
                                const RDKit::Atom* const bound_to_monomer,
-                               const std::string_view bound_to_monomer_ap_name)
+                               const std::string_view bound_to_monomer_ap_name,
+                               const bool is_smiles_monomer)
 {
     auto [linkage, flip_monomer_order] =
         build_linkage_string(bound_to_monomer_ap_name, new_monomer_ap_name);
@@ -813,8 +816,8 @@ void MolModel::addBoundMonomer(const std::string_view res_name,
     if (flip_monomer_order) {
         std::swap(bond_start_idx, bond_end_idx);
     }
-    bool is_custom_bond =
-        get_is_custom_bond(res_name, chain_type, bound_to_monomer, linkage);
+    bool is_custom_bond = get_is_custom_bond(res_name_or_smiles, chain_type,
+                                             bound_to_monomer, linkage);
 
     std::string chain_id;
     int res_num;
@@ -823,14 +826,16 @@ void MolModel::addBoundMonomer(const std::string_view res_name,
         // same chain as bound_to_monomer
         chain_id = rdkit_extensions::get_polymer_id(bound_to_monomer);
         res_num = get_residue_number_for_new_monomer(
-            res_name, chain_type, new_monomer_ap_name, bound_to_monomer);
+            res_name_or_smiles, chain_type, new_monomer_ap_name,
+            bound_to_monomer);
     } else {
         // otherwise, put the new monomer in its own chain
         chain_id = get_first_available_chain_name(m_mol, chain_type);
         res_num = 1;
     }
 
-    auto create_atom = std::bind(create_monomer, res_name, chain_id, res_num);
+    auto create_atom = std::bind(create_monomer, res_name_or_smiles, chain_id,
+                                 res_num, is_smiles_monomer);
 
     auto cmd_func = [this, create_atom, coords, bond_start_idx, bond_end_idx,
                      linkage, is_custom_bond]() {
@@ -1182,19 +1187,22 @@ void MolModel::remove(
 }
 
 void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
-                        const QString& description)
+                        const QString& description,
+                        const bool enforce_monomer_validity)
 {
     if (mol.getNumAtoms() == 0) {
         return;
     }
     center_mol_on(mol, position);
     addMol(mol, description, /* reposition_mol = */ false,
-           /* new_molecule_added = */ false);
+           /* new_molecule_added = */ false, /* enforce_size_limit = */ true,
+           enforce_monomer_validity);
 }
 
 void MolModel::addMol(RDKit::RWMol mol, const QString& description,
                       const bool reposition_mol, const bool new_molecule_added,
-                      const bool enforce_size_limit)
+                      const bool enforce_size_limit,
+                      const bool enforce_monomer_validity)
 {
     if (mol.getNumAtoms() == 0) {
         return;
@@ -1208,6 +1216,13 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
         throw std::runtime_error(
             fmt::format("Cannot import molecules containing more than {} atoms",
                         MAX_NUM_ATOMS_FOR_IMPORT));
+    }
+
+    if (enforce_monomer_validity && rdkit_extensions::isMonomeric(mol)) {
+        // throw a std::runtime_error if there are any monomer names that don't
+        // exist in the monomer database or if there are any SMILES monomers
+        // with invalid SMILES
+        validate_monomers(mol);
     }
 
     // Ensure the newly added mol has coords and necessary stereo information
@@ -2265,7 +2280,8 @@ void MolModel::mutateRGroups(
 
 void MolModel::mutateMonomers(
     const std::unordered_set<const RDKit::Atom*>& atoms,
-    std::string_view helm_symbol, const MonomerType target_type)
+    const std::string_view helm_symbol, const MonomerType target_type,
+    const bool is_smiles)
 {
     // Filter atoms to only include monomers matching the target type
     auto matches_target = [target_type](const RDKit::Atom* atom) {
@@ -2277,9 +2293,10 @@ void MolModel::mutateMonomers(
     if (matching_monomers.empty()) {
         return;
     }
-    auto cmd_func = [this, matching_monomers, helm_symbol]() {
+    auto cmd_func = [this, matching_monomers, helm_symbol, is_smiles]() {
         for (auto* atom : matching_monomers) {
-            rdkit_extensions::mutateMonomer(m_mol, atom->getIdx(), helm_symbol);
+            rdkit_extensions::mutateMonomer(m_mol, atom->getIdx(), helm_symbol,
+                                            is_smiles);
         }
     };
     doCommandUsingSnapshots(cmd_func, "Mutate monomers", WhatChanged::MOLECULE);
@@ -3284,16 +3301,19 @@ void add_mol_or_reaction_to_mol_model(
     const std::variant<boost::shared_ptr<RDKit::RWMol>,
                        boost::shared_ptr<RDKit::ChemicalReaction>>
         mol_or_reaction,
-    const std::optional<RDGeom::Point3D> position, const bool recenter_view)
+    const std::optional<RDGeom::Point3D> position, const bool recenter_view,
+    const bool enforce_monomer_validity)
 {
     if (std::holds_alternative<boost::shared_ptr<RDKit::RWMol>>(
             mol_or_reaction)) {
         auto mol = std::get<boost::shared_ptr<RDKit::RWMol>>(mol_or_reaction);
         if (position.has_value()) {
-            mol_model.addMolAt(*mol, *position, "Import molecule");
+            mol_model.addMolAt(*mol, *position, "Import molecule",
+                               enforce_monomer_validity);
         } else {
             mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
-                             recenter_view);
+                             recenter_view, /* enforce_size_limit = */ true,
+                             enforce_monomer_validity);
         }
     } else {
         auto reaction = std::get<boost::shared_ptr<RDKit::ChemicalReaction>>(
@@ -3305,11 +3325,12 @@ void add_mol_or_reaction_to_mol_model(
 void add_text_to_mol_model(MolModel& mol_model, const std::string& text,
                            const rdkit_extensions::Format format,
                            const std::optional<RDGeom::Point3D> position,
-                           const bool recenter_view)
+                           const bool recenter_view,
+                           const bool enforce_monomer_validity)
 {
     auto mol_or_reaction = convert_text_to_mol_or_reaction(text, format);
     add_mol_or_reaction_to_mol_model(mol_model, mol_or_reaction, position,
-                                     recenter_view);
+                                     recenter_view, enforce_monomer_validity);
 }
 
 void MolModel::resizeMonomers(

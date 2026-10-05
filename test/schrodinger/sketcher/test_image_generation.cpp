@@ -66,6 +66,19 @@ BOOST_AUTO_TEST_CASE(test_image_gen_APIs)
     image_gen_APIs(std::string(rxn_smiles));
 }
 
+/**
+ * Make sure that we can generate images containing monomers that don't appear
+ * in the monomer database.
+ */
+BOOST_AUTO_TEST_CASE(test_image_gen_unknown_monomer)
+{
+    const std::string helm = "PEPTIDE1{[missingMonomer]}$$$$V2.0";
+    auto mol = rdkit_extensions::to_rdkit(helm);
+    RenderOptions opts;
+    BOOST_TEST(!get_qimage(*mol, opts).isNull());
+    BOOST_TEST(!get_qimage(helm, opts).isNull());
+}
+
 BOOST_AUTO_TEST_CASE(test_get_image_bytes_from_scene)
 {
     RenderOptions opts;

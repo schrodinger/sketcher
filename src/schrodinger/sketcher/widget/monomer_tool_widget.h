@@ -3,13 +3,16 @@
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
+#include <string>
 
 #include <boost/bimap.hpp>
+#include <boost/signals2/connection.hpp>
 
 #include "schrodinger/sketcher/definitions.h"
 #include "schrodinger/sketcher/widget/abstract_draw_tool_widget.h"
 
 class QAbstractButton;
+class QAction;
 class QWidget;
 
 namespace Ui
@@ -19,6 +22,12 @@ class MonomerToolWidget;
 
 namespace schrodinger
 {
+
+namespace rdkit_extensions
+{
+enum class ChainType;
+}
+
 namespace sketcher
 {
 
@@ -45,6 +54,9 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     std::unordered_set<QAbstractButton*> getCheckableButtons() override;
 
   protected:
+    /** Rebuild monomer analog popups from the current monomer database. */
+    void updateMonomerButtons();
+
     std::unique_ptr<Ui::MonomerToolWidget> ui;
     boost::bimap<QAbstractButton*, AminoAcidTool> m_button_amino_acid_bimap;
     boost::bimap<QAbstractButton*, NucleicAcidTool> m_button_nucleic_acid_bimap;
@@ -68,6 +80,26 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
     void onAminoAcidClicked(QAbstractButton* button);
 
     /**
+     * Open the dialog for sketching a custom monomer of the specified type.
+     */
+    void sketchCustomMonomer(rdkit_extensions::ChainType chain_type);
+
+    /**
+     * Update the first custom-monomer menu action for the active monomer tab.
+     */
+    void
+    setCustomMonomerActionChainType(rdkit_extensions::ChainType chain_type);
+
+    /**
+     * Respond the the user clicking OK in the custom monomer dialog
+     * @param smiles A SMILES string representing the sketched monomer
+     * @param monomer_type The monomer type that the user selected in the dialog
+     */
+    void onCustomMonomerDialogAccepted(
+        const std::string& smiles,
+        const rdkit_extensions::ChainType monomer_type);
+
+    /**
      * Respond to the user clicking on a specific nucleic acid
      */
     void onNucleicAcidClicked(QAbstractButton* button);
@@ -76,6 +108,11 @@ class SKETCHER_API MonomerToolWidget : public AbstractDrawToolWidget
      * Respond to the user clicking on a specific monomeric connection button
      */
     void onConnectionButtonClicked(int button_id);
+
+  private:
+    QAction* m_custom_monomer_action = nullptr;
+    rdkit_extensions::ChainType m_custom_monomer_chain_type;
+    boost::signals2::scoped_connection m_database_connection;
 };
 
 } // namespace sketcher

@@ -258,6 +258,11 @@ AttachmentMap addPolymer(RDKit::RWMol& atomistic_mol,
                 RDKit::SmilesToMol("[" + smiles + "]", 0, sanitize));
         }
 
+        if (!new_monomer) {
+            throw std::runtime_error(
+                fmt::format("Monomer has invalid SMILES: {}", smiles));
+        }
+
         if (monomer->getProp<bool>(SMILES_MONOMER)) {
             // SMILES monomers may be in rgroup form like
             // *N[C@H](C(=O)O)S* |$_R1;;;;;;;_R3$| or use atom map numbers like

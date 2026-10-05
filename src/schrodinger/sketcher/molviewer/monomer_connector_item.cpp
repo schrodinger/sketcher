@@ -7,6 +7,7 @@
 
 #include <QPainter>
 #include <QPointF>
+#include <QTransform>
 #include <QtMath>
 
 #include "schrodinger/rdkit_extensions/helm.h"
@@ -93,14 +94,21 @@ int MonomerConnectorItem::getLane() const
  * @param path the path to add to
  * @param center the center of the diamond
  * @param radius the radius of the diamond
+ * @param rotate_for_corner whether to rotate the diamond 45 degrees
  */
 static void add_diamond_arrowhead_to_path(QPainterPath& path,
                                           const QPointF& center,
-                                          const qreal radius)
+                                          const qreal radius,
+                                          const bool rotate_for_corner)
 {
     QPolygonF diamond;
     diamond << QPointF(radius, 0) << QPointF(0, -radius) << QPointF(-radius, 0)
             << QPointF(0, radius);
+    if (rotate_for_corner) {
+        QTransform transform;
+        transform.rotate(45.0);
+        diamond = transform.map(diamond);
+    }
     diamond.translate(center);
     path.addPolygon(diamond);
     path.closeSubpath();
@@ -114,14 +122,22 @@ static void add_diamond_arrowhead_to_path(QPainterPath& path,
  * @param path the path to add to
  * @param center the center of the diamond
  * @param radius the radius of the diamond
+ * @param rotate_for_corner whether to rotate the diamond 45 degrees
  */
 static void or_diamond_arrowhead_to_path(QPainterPath& path,
                                          const QPointF& center,
-                                         const qreal radius)
+                                         const qreal radius,
+                                         const bool rotate_for_corner)
 {
     QPainterPath diamond_path;
-    add_diamond_arrowhead_to_path(diamond_path, center, radius);
+    add_diamond_arrowhead_to_path(diamond_path, center, radius,
+                                  rotate_for_corner);
     path |= diamond_path;
+}
+
+static bool offset_is_at_corner(const QPointF& offset)
+{
+    return !qFuzzyIsNull(offset.x()) && !qFuzzyIsNull(offset.y());
 }
 
 void MonomerConnectorItem::updateCachedData()
@@ -148,36 +164,32 @@ void MonomerConnectorItem::updateCachedData()
     setPos(start_qcoords);
 
     // Numbered peptide connections use fixed top or bottom anchor positions.
-    // Connections that naturally have diamonds draw them at these anchors;
-    // backbone-style closures such as R2-R1 use the same routing without
-    // adding diamonds. Other connectors retain their existing geometry.
-    const auto get_endpoint_y_offset =
-        [this](const AbstractMonomerItem& item, const QPointF& other_coords) {
-        if (m_lane == 0) {
-            return -get_monomer_arrowhead_offset(item, other_coords);
+    // Other connectors retain the direction-aware upstream geometry.
+    QPointF start_offset{};
+    QPointF end_offset{};
+    if (m_lane == 0) {
+        if (start_has_arrowhead) {
+            start_offset = get_monomer_arrowhead_offset(
+                m_start_item, end_qcoords, m_start_item.getAtom(),
+                m_end_item.getAtom(), m_is_secondary_connection);
         }
-        const auto magnitude = item.boundingRect().height() / 2 +
-                               MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
-        return m_lane > 0 ? -magnitude : magnitude;
-    };
+        if (end_has_arrowhead) {
+            end_offset = get_monomer_arrowhead_offset(
+                m_end_item, start_qcoords, m_end_item.getAtom(),
+                m_start_item.getAtom(), m_is_secondary_connection);
+        }
+    } else {
+        const auto start_magnitude = m_start_item.boundingRect().height() / 2 +
+                                     MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+        const auto end_magnitude = m_end_item.boundingRect().height() / 2 +
+                                   MONOMER_CONNECTOR_ARROWHEAD_RADIUS;
+        const auto direction = m_lane > 0 ? -1 : 1;
+        start_offset.ry() = direction * start_magnitude;
+        end_offset.ry() = direction * end_magnitude;
+    }
 
-    QPointF start_offset;
-    if (start_has_arrowhead || m_lane != 0) {
-        start_offset.ry() += get_endpoint_y_offset(m_start_item, end_qcoords);
-    }
-    if (start_has_arrowhead) {
-        add_diamond_arrowhead_to_path(m_arrowhead_path, start_offset,
-                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
-    }
+    auto end_pos = end_qcoords - start_qcoords + end_offset;
 
-    auto end_pos = end_qcoords - start_qcoords;
-    if (end_has_arrowhead || m_lane != 0) {
-        end_pos.ry() += get_endpoint_y_offset(m_end_item, start_qcoords);
-    }
-    if (end_has_arrowhead) {
-        add_diamond_arrowhead_to_path(m_arrowhead_path, end_pos,
-                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
-    }
     // Every numbered lane floats away from its endpoint anchors. This keeps a
     // horizontal line from running through a diamond on another connection.
     // Larger lane numbers move outward by one additional diamond width.
@@ -210,6 +222,16 @@ void MonomerConnectorItem::updateCachedData()
             QLineF(get_join_start(end_pos, end_has_arrowhead),
                    m_connector_line.p2());
     }
+    if (start_has_arrowhead) {
+        add_diamond_arrowhead_to_path(m_arrowhead_path, start_offset,
+                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                      offset_is_at_corner(start_offset));
+    }
+    if (end_has_arrowhead) {
+        add_diamond_arrowhead_to_path(m_arrowhead_path, end_pos,
+                                      MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                      offset_is_at_corner(end_offset));
+    }
     m_midpoint = m_connector_line.center();
     m_selection_highlighting_path = path_around_line(
         m_connector_line, BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH);
@@ -228,19 +250,23 @@ void MonomerConnectorItem::updateCachedData()
         or_diamond_arrowhead_to_path(m_selection_highlighting_path,
                                      start_offset,
                                      BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(start_offset));
         or_diamond_arrowhead_to_path(m_predictive_highlighting_path,
                                      start_offset,
                                      BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(start_offset));
     }
     if (end_has_arrowhead) {
         or_diamond_arrowhead_to_path(m_selection_highlighting_path, end_pos,
                                      BOND_SELECTION_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(end_offset));
         or_diamond_arrowhead_to_path(m_predictive_highlighting_path, end_pos,
                                      BOND_PREDICTIVE_HIGHLIGHTING_HALF_WIDTH +
-                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS);
+                                         MONOMER_CONNECTOR_ARROWHEAD_RADIUS,
+                                     offset_is_at_corner(end_offset));
     }
     m_shape = QPainterPath(m_selection_highlighting_path);
     m_bounding_rect = m_shape.boundingRect();
