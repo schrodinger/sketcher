@@ -63,6 +63,7 @@ class NonMolecularObject;
 class Scene;
 class SelectionContextMenu;
 class SketcherModel;
+class SketcherSideBar;
 enum class ImageFormat;
 enum class ModelKey;
 enum class SceneSubset;
@@ -78,6 +79,12 @@ class ModelObjsByType;
 class SKETCHER_API SketcherWidget : public QWidget
 {
     Q_OBJECT
+
+    // allow CustomMonomerDialog to customize its embedded SketcherWidget to
+    // make sure that the dialog can fit into the Live Design Sketcher frame.
+    // However, we want to keep the public API small, so we don't want to
+    // publicly expose those customizations options
+    friend class CustomMonomerDialog;
 
   public:
     SketcherWidget(QWidget* parent = nullptr,
@@ -477,6 +484,22 @@ class SKETCHER_API SketcherWidget : public QWidget
      * Show or hide the toolbars
      */
     void setToolbarsVisible(const bool visible);
+
+    /**
+     * Show or hide the atomistic/monomeric interface toggle.
+     */
+    void setInterfaceToggleVisible(const bool visible);
+
+    /**
+     * Add a widget below the View, alongside the side bar. The widget is
+     * reparented to this SketcherWidget.
+     */
+    void addWidgetBelowView(QWidget* widget);
+
+    /**
+     * @return the side bar, for dialog layout customization
+     */
+    const SketcherSideBar* getSideBar() const;
 
     /**
      * Override QWidget methods to handle keystrokes

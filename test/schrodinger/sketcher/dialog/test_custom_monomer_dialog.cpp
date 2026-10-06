@@ -7,14 +7,17 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QDialogButtonBox>
+#include <QLayout>
 #include <QPushButton>
 #include <QTextEdit>
+#include <QToolButton>
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
 #include "schrodinger/sketcher/dialog/custom_monomer_dialog.h"
 #include "schrodinger/sketcher/dialog/message_box_dialog.h"
 #include "schrodinger/sketcher/sketcher_widget.h"
+#include "schrodinger/sketcher/widget/sketcher_side_bar.h"
 #include "schrodinger/rdkit_extensions/monomer_mol.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
@@ -31,6 +34,170 @@ static QPushButton* get_ok_button(const QWidget& dialog)
     auto* button_box = dialog.findChild<QDialogButtonBox*>("button_box");
     BOOST_REQUIRE(button_box != nullptr);
     return button_box->button(QDialogButtonBox::Ok);
+}
+
+/**
+ * Resizing switches footer placement without raising the compact minimum or
+ * changing the threshold. The footer remains visible and its signals work
+ * after repeated reparenting.
+ */
+static void check_footer_placement(CustomMonomerDialog& dialog)
+{
+    dialog.setAttribute(Qt::WA_DeleteOnClose, false);
+    auto* sketcher = dialog.findChild<SketcherWidget*>();
+    auto* footer = dialog.findChild<QWidget*>("button_bar");
+    auto* view = dialog.findChild<QWidget*>("view");
+    auto* sidebar = dialog.findChild<QWidget*>("side_bar_wdg");
+    auto* button_box = dialog.findChild<QDialogButtonBox*>("button_box");
+    BOOST_REQUIRE(sketcher != nullptr);
+    BOOST_REQUIRE(footer != nullptr);
+    BOOST_REQUIRE(view != nullptr);
+    BOOST_REQUIRE(sidebar != nullptr);
+    BOOST_REQUIRE(button_box != nullptr);
+
+    dialog.resize(dialog.sizeHint() + QSize(100, 100));
+    dialog.show();
+    QCoreApplication::processEvents();
+    const auto compact_minimum = dialog.minimumSizeHint();
+    const int full_footer_height = dialog.layout()->totalMinimumSize().height();
+    BOOST_TEST(full_footer_height > compact_minimum.height());
+    BOOST_TEST(footer->parentWidget() != sketcher);
+    BOOST_TEST(footer->mapTo(&dialog, QPoint()).y() >=
+               sidebar->mapTo(&dialog, QPoint()).y() + sidebar->height());
+
+    for (int i = 0; i < 3; ++i) {
+        dialog.resize(dialog.width(), full_footer_height - 1);
+        QCoreApplication::processEvents();
+        BOOST_TEST(dialog.height() == full_footer_height - 1);
+        BOOST_TEST(footer->parentWidget() == sketcher);
+        BOOST_TEST(footer->isVisible());
+        BOOST_TEST(footer->mapTo(&dialog, QPoint()).y() >=
+                   view->mapTo(&dialog, QPoint()).y() + view->height());
+        BOOST_TEST(dialog.minimumSizeHint().height() ==
+                   compact_minimum.height());
+        BOOST_TEST(dialog.minimumSizeHint().width() == compact_minimum.width());
+        BOOST_TEST(dialog.minimumHeight() == compact_minimum.height());
+        BOOST_TEST(dialog.layout()->totalMinimumSize().height() ==
+                   compact_minimum.height());
+
+        dialog.resize(dialog.width(), full_footer_height);
+        QCoreApplication::processEvents();
+        BOOST_TEST(footer->parentWidget() != sketcher);
+        BOOST_TEST(footer->isVisible());
+        BOOST_TEST(dialog.minimumSizeHint().height() ==
+                   compact_minimum.height());
+        BOOST_TEST(dialog.layout()->totalMinimumSize().height() ==
+                   full_footer_height);
+    }
+
+    dialog.resize(compact_minimum);
+    QCoreApplication::processEvents();
+    BOOST_TEST(dialog.height() == compact_minimum.height());
+    BOOST_TEST(dialog.width() == compact_minimum.width());
+    BOOST_TEST(footer->parentWidget() == sketcher);
+    BOOST_TEST(view->height() >= view->minimumSizeHint().height());
+    BOOST_TEST(button_box->width() >= button_box->minimumSizeHint().width());
+
+    bool rejected = false;
+    QObject::connect(&dialog, &QDialog::rejected,
+                     [&rejected]() { rejected = true; });
+    button_box->button(QDialogButtonBox::Cancel)->click();
+    BOOST_TEST(rejected);
+}
+
+BOOST_AUTO_TEST_CASE(custom_monomer_dialog_footer_follows_available_height)
+{
+    CustomMonomerDialog dialog(ChainType::PEPTIDE);
+    check_footer_placement(dialog);
+}
+
+/**
+ * Exercise title-bar and border accounting on native builds as well as WASM,
+ * and make the View column determine the compact minimum height.
+ */
+BOOST_AUTO_TEST_CASE(
+    custom_monomer_dialog_footer_with_title_bar_and_tall_footer)
+{
+    class DialogWithTitleBar : public CustomMonomerDialog
+    {
+      public:
+        DialogWithTitleBar() : CustomMonomerDialog(ChainType::PEPTIDE)
+        {
+            if (m_title_bar == nullptr) {
+                m_title_bar = new CustomTitleBar(windowTitle(), this);
+                qobject_cast<QVBoxLayout*>(layout())->insertWidget(0,
+                                                                   m_title_bar);
+            }
+            configureWasmTitleBar();
+            setStyleSheet(
+                styleSheet() +
+                "QDialog { border: 1px solid #b5b5b5; }"
+                "QDialogButtonBox > QPushButton { padding: 4px 20px; }");
+            auto* sidebar = findChild<QWidget*>("side_bar_wdg");
+            auto* footer = findChild<QWidget*>("button_bar");
+            footer->setMinimumHeight(sidebar->minimumSizeHint().height());
+        }
+    } dialog;
+    check_footer_placement(dialog);
+}
+
+/**
+ * A title bar keeps its normal height when space permits, shrinks to the
+ * polished toggle height minus the border margins at the compact minimum,
+ * and grows again on resize.
+ */
+BOOST_AUTO_TEST_CASE(custom_monomer_dialog_title_bar_can_shrink)
+{
+    class DialogWithTitleBar : public CustomMonomerDialog
+    {
+      public:
+        DialogWithTitleBar() : CustomMonomerDialog(ChainType::PEPTIDE)
+        {
+            if (m_title_bar == nullptr) {
+                m_title_bar = new CustomTitleBar(windowTitle(), this);
+                qobject_cast<QVBoxLayout*>(layout())->insertWidget(0,
+                                                                   m_title_bar);
+            }
+            // Use a smaller toggle icon size so this checks an actual range
+            // regardless of the platform's default widget style.
+            findChild<QToolButton*>("atomistic_btn")
+                ->setIconSize(QSize(16, 16));
+            findChild<QToolButton*>("monomeric_btn")
+                ->setIconSize(QSize(16, 16));
+            configureWasmTitleBar();
+        }
+
+        CustomTitleBar* titleBar() const
+        {
+            return m_title_bar;
+        }
+    } dialog;
+    dialog.setAttribute(Qt::WA_DeleteOnClose, false);
+    auto* title_bar = dialog.titleBar();
+    const int normal_height = title_bar->maximumHeight();
+    const int minimum_height =
+        dialog.findChild<SketcherSideBar*>()->getInterfaceToggleHeight() - 2;
+    BOOST_REQUIRE(minimum_height < normal_height);
+    BOOST_TEST(title_bar->minimumHeight() == minimum_height);
+
+    dialog.resize(dialog.sizeHint() + QSize(100, 100));
+    dialog.show();
+    QCoreApplication::processEvents();
+    BOOST_TEST(title_bar->height() == normal_height);
+    const auto compact_minimum = dialog.minimumSizeHint();
+
+    dialog.resize(compact_minimum);
+    QCoreApplication::processEvents();
+    BOOST_TEST(dialog.height() == compact_minimum.height());
+    BOOST_TEST(title_bar->height() == minimum_height);
+    BOOST_TEST(dialog.layout()->totalMinimumSize().height() ==
+               compact_minimum.height());
+
+    dialog.resize(dialog.sizeHint() + QSize(100, 100));
+    QCoreApplication::processEvents();
+    BOOST_TEST(title_bar->height() == normal_height);
+    BOOST_TEST(dialog.minimumSizeHint().height() == compact_minimum.height());
+    dialog.close();
 }
 
 /**

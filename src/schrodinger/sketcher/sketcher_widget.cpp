@@ -1455,6 +1455,21 @@ void SketcherWidget::setToolbarsVisible(const bool visible)
     m_ui->line->setVisible(visible);
 }
 
+void SketcherWidget::setInterfaceToggleVisible(const bool visible)
+{
+    m_ui->side_bar_wdg->setInterfaceToggleVisible(visible);
+}
+
+void SketcherWidget::addWidgetBelowView(QWidget* widget)
+{
+    m_ui->verticalLayout->addWidget(widget);
+}
+
+const SketcherSideBar* SketcherWidget::getSideBar() const
+{
+    return m_ui->side_bar_wdg;
+}
+
 /**
  * Determine whether we should interpret a keyboard shortcut as an amino acid or
  * a nucleic acid. If there a selection of only amino acids or only nucleic
