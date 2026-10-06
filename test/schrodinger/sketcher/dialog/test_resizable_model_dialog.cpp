@@ -18,11 +18,11 @@ namespace schrodinger
 namespace sketcher
 {
 
-class FramelessDialog : public ResizableModelDialog
+class FramelessDialog : public ResizableModalDialog
 {
   public:
     FramelessDialog() :
-        ResizableModelDialog(nullptr, Qt::Dialog | Qt::FramelessWindowHint)
+        ResizableModalDialog(nullptr, Qt::Dialog | Qt::FramelessWindowHint)
     {
         setAttribute(Qt::WA_DeleteOnClose, false);
         layout()->setSizeConstraint(QLayout::SetNoConstraint);
@@ -165,12 +165,12 @@ BOOST_AUTO_TEST_CASE(right_button_does_not_resize)
 
 #ifndef __EMSCRIPTEN__
 /**
- * Ensure that ResizableModelDialog doesn't add any resize handles in non-WASM
+ * Ensure that ResizableModalDialog doesn't add any resize handles in non-WASM
  * builds
  */
 BOOST_AUTO_TEST_CASE(native_dialog_uses_native_frame)
 {
-    ResizableModelDialog dialog;
+    ResizableModalDialog dialog;
     BOOST_TEST(!dialog.windowFlags().testFlag(Qt::FramelessWindowHint));
     BOOST_TEST(dialog
                    .findChildren<QWidget*>(

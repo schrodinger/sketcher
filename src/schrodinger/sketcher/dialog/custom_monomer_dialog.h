@@ -44,7 +44,7 @@ namespace sketcher
  * moved into the embedded SketcherWidget underneath the View (i.e. next to the
  * bottom of the side bar instead of below the side bar).
  */
-class SKETCHER_API CustomMonomerDialog : public ResizableModelDialog
+class SKETCHER_API CustomMonomerDialog : public ResizableModalDialog
 {
     Q_OBJECT
 
@@ -111,6 +111,12 @@ class SKETCHER_API CustomMonomerDialog : public ResizableModelDialog
      */
     void resizeEvent(QResizeEvent* event) override;
     bool event(QEvent* event) override;
+
+    /**
+     * Route keys ignored by the footer buttons through Sketcher in either
+     * layout before allowing the dialog to handle them.
+     */
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
     std::unique_ptr<Ui::CustomMonomerDialog> ui;
     rdkit_extensions::ChainType m_chain_type;

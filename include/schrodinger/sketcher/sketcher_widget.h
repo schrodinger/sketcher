@@ -552,7 +552,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      *
      * @note see handleCommonKeyboardShortcuts for param documentation
      */
-    void handleAtomisticKeyboardShortcuts(QKeyEvent* event,
+    bool handleAtomisticKeyboardShortcuts(QKeyEvent* event,
                                           const QPointF& cursor_pos,
                                           const ModelObjsByType& targets);
     /**
@@ -560,7 +560,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      *
      * @note see handleCommonKeyboardShortcuts for param documentation
      */
-    void handleAminoAcidKeyboardShortcuts(QKeyEvent* event,
+    bool handleAminoAcidKeyboardShortcuts(QKeyEvent* event,
                                           const QPointF& cursor_pos,
                                           const ModelObjsByType& targets);
     /**
@@ -574,7 +574,7 @@ class SKETCHER_API SketcherWidget : public QWidget
      *
      * @note see handleCommonKeyboardShortcuts for param documentation
      */
-    void handleNucleicAcidKeyboardShortcuts(QKeyEvent* event,
+    bool handleNucleicAcidKeyboardShortcuts(QKeyEvent* event,
                                             const QPointF& cursor_pos,
                                             const ModelObjsByType& targets);
 

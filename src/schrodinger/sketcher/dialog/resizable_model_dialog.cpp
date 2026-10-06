@@ -129,7 +129,7 @@ class DialogResizeHandle : public QWidget
     QRect m_start_geometry;
 };
 
-ResizableModelDialog::ResizableModelDialog(QWidget* parent, Qt::WindowFlags f) :
+ResizableModalDialog::ResizableModalDialog(QWidget* parent, Qt::WindowFlags f) :
     ModalDialog(parent, f)
 {
 #ifdef __EMSCRIPTEN__
@@ -137,7 +137,7 @@ ResizableModelDialog::ResizableModelDialog(QWidget* parent, Qt::WindowFlags f) :
 #endif
 }
 
-void ResizableModelDialog::enableBorderResizing()
+void ResizableModalDialog::enableBorderResizing()
 {
     if (!m_resize_handles.empty()) {
         return;
@@ -158,20 +158,20 @@ void ResizableModelDialog::enableBorderResizing()
     updateResizeHandles();
 }
 
-void ResizableModelDialog::updateResizeHandles()
+void ResizableModalDialog::updateResizeHandles()
 {
     for (auto* handle : m_resize_handles) {
         handle->updatePosition();
     }
 }
 
-void ResizableModelDialog::resizeEvent(QResizeEvent* event)
+void ResizableModalDialog::resizeEvent(QResizeEvent* event)
 {
     ModalDialog::resizeEvent(event);
     updateResizeHandles();
 }
 
-void ResizableModelDialog::showEvent(QShowEvent* event)
+void ResizableModalDialog::showEvent(QShowEvent* event)
 {
     ModalDialog::showEvent(event);
     updateResizeHandles();

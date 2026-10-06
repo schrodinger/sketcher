@@ -15,12 +15,12 @@ class DialogResizeHandle;
  * Modal dialog with draggable edges and corners on WASM, where ModalDialog
  * removes the native window frame. Desktop builds use native window resizing.
  */
-class SKETCHER_API ResizableModelDialog : public ModalDialog
+class SKETCHER_API ResizableModalDialog : public ModalDialog
 {
     Q_OBJECT
 
   public:
-    ResizableModelDialog(QWidget* parent = nullptr,
+    ResizableModalDialog(QWidget* parent = nullptr,
                          Qt::WindowFlags f = Qt::WindowFlags());
 
   protected:

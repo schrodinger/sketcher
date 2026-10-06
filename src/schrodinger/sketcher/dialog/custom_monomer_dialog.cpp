@@ -4,7 +4,9 @@
 #include <map>
 #include <unordered_set>
 
+#include <QCoreApplication>
 #include <QDialogButtonBox>
+#include <QKeyEvent>
 #include <QPalette>
 #include <QPushButton>
 #include <QResizeEvent>
@@ -80,11 +82,12 @@ static QString chain_type_display_name(const ChainType chain_type)
 
 CustomMonomerDialog::CustomMonomerDialog(const ChainType chain_type,
                                          QWidget* parent) :
-    ResizableModelDialog(parent),
+    ResizableModalDialog(parent),
     m_chain_type(chain_type)
 {
     ui.reset(new Ui::CustomMonomerDialog());
     setupDialogUI(*ui);
+    ui->button_bar->installEventFilter(this);
     setStyleSheet(CUSTOM_MONOMER_DIALOG_STYLE);
     setWindowTitle("Sketch Custom " + chain_type_display_name(chain_type) +
                    " Monomer");
@@ -255,16 +258,31 @@ void CustomMonomerDialog::updateButtonBarPlacement()
 void CustomMonomerDialog::resizeEvent(QResizeEvent* event)
 {
     updateButtonBarPlacement();
-    ResizableModelDialog::resizeEvent(event);
+    ResizableModalDialog::resizeEvent(event);
 }
 
 bool CustomMonomerDialog::event(QEvent* event)
 {
-    const bool handled = ResizableModelDialog::event(event);
+    const bool handled = ResizableModalDialog::event(event);
     if (event->type() == QEvent::LayoutRequest) {
         updateButtonBarPlacement();
     }
     return handled;
+}
+
+bool CustomMonomerDialog::eventFilter(QObject* watched, QEvent* event)
+{
+    if (watched == ui->button_bar && event->type() == QEvent::KeyPress) {
+        // Keys ignored by the footer buttons should reach Sketcher first in
+        // both layouts. Unhandled keys then propagate to the dialog normally.
+        std::unique_ptr<QKeyEvent> forwarded(
+            static_cast<QKeyEvent*>(event)->clone());
+        QCoreApplication::sendEvent(ui->sketcher_widget, forwarded.get());
+        // Forwarding already ran the parent chain; don't traverse it again.
+        event->accept();
+        return true;
+    }
+    return ResizableModalDialog::eventFilter(watched, event);
 }
 
 void CustomMonomerDialog::setRequiredAttachmentPoints(
@@ -325,13 +343,13 @@ void CustomMonomerDialog::accept()
         connect(warning_dialog, &MessageBoxDialog::accepted, this,
                 [this, smiles]() {
                     emit customMonomerAccepted(smiles, m_chain_type);
-                    ResizableModelDialog::accept();
+                    ResizableModalDialog::accept();
                 });
         return;
     }
 
     emit customMonomerAccepted(smiles, m_chain_type);
-    ResizableModelDialog::accept();
+    ResizableModalDialog::accept();
 }
 
 } // namespace sketcher
