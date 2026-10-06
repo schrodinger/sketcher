@@ -106,11 +106,12 @@ std::vector<int> get_linear_custom_connector_lanes(const std::string& helm)
     BondDisplaySettings bond_display_settings;
     Fonts fonts;
     auto [all_items, atom_items, bond_items, secondary_connection_items,
-          sgroup_items] = create_graphics_items_for_mol(
-        mol.get(), fonts, atom_display_settings, bond_display_settings,
-        /* is_dark_mode = */ false,
-        /* draw_attachment_points = */ true,
-        /* render_peptides_linearly = */ true);
+          sgroup_items] =
+        create_graphics_items_for_mol(mol.get(), fonts, atom_display_settings,
+                                      bond_display_settings,
+                                      /* is_dark_mode = */ false,
+                                      /* draw_attachment_points = */ true,
+                                      /* render_peptides_linearly = */ true);
 
     std::vector<const RDKit::Bond*> custom_bonds;
     for (const auto* bond : mol->bonds()) {
@@ -120,18 +121,18 @@ std::vector<int> get_linear_custom_connector_lanes(const std::string& helm)
     }
     std::sort(custom_bonds.begin(), custom_bonds.end(),
               [](const auto* lhs, const auto* rhs) {
-                  const auto lhs_start = std::min(lhs->getBeginAtomIdx(),
-                                                  lhs->getEndAtomIdx());
-                  const auto rhs_start = std::min(rhs->getBeginAtomIdx(),
-                                                  rhs->getEndAtomIdx());
+                  const auto lhs_start =
+                      std::min(lhs->getBeginAtomIdx(), lhs->getEndAtomIdx());
+                  const auto rhs_start =
+                      std::min(rhs->getBeginAtomIdx(), rhs->getEndAtomIdx());
                   return lhs_start < rhs_start;
               });
     std::vector<int> lanes;
     for (const auto* bond : custom_bonds) {
-        const auto* connector = dynamic_cast<const MonomerConnectorItem*>(
-            bond_items.at(bond));
+        const auto* connector =
+            dynamic_cast<const MonomerConnectorItem*>(bond_items.at(bond));
         BOOST_REQUIRE(connector != nullptr);
-        lanes.push_back(connector->getLane());
+        lanes.push_back(connector->getConnectorLane());
     }
 
     for (auto* item : all_items) {

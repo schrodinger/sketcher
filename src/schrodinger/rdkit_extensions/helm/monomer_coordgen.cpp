@@ -1744,6 +1744,9 @@ lay_out_linear_polymer(RDKit::ROMol& polymer,
         });
     auto branch_dir = rotate ? BranchDirection::UP : BranchDirection::DOWN;
     auto chain_dir = rotate ? ChainDirection::RTL : ChainDirection::LTR;
+    // lay_out_chain() keeps every backbone residue at y=0 and advances its x
+    // coordinate by MONOMER_BOND_LENGTH. Branch residues are placed above or
+    // below that horizontal backbone.
     lay_out_chain(polymer, start_monomer, placed_monomers_idcs,
                   RDGeom::Point3D(0, 0, 0), chain_dir, branch_dir);
 }
@@ -3354,16 +3357,16 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol,
     // clear layout related props so we can start a fresh layout
     clear_layout_props(monomer_mol);
     auto [polymers, parent_polymer] = break_into_polymers(monomer_mol);
-    const bool linear_peptide_layout =
+    const bool use_linear_peptide_layout =
         render_peptides_linearly &&
         std::any_of(polymers.begin(), polymers.end(),
                     [](const auto& polymer) { return is_peptide(*polymer); });
     // SHARED-9795: Special case for single polymers that are strictly
     // chains
-    if (!linear_peptide_layout && is_single_linear_polymer(monomer_mol)) {
+    if (!use_linear_peptide_layout && is_single_linear_polymer(monomer_mol)) {
         lay_out_snaked_linear_polymer(*polymers[0]);
     } else {
-        lay_out_polymers(polymers, parent_polymer, linear_peptide_layout);
+        lay_out_polymers(polymers, parent_polymer, use_linear_peptide_layout);
     }
 
     auto conformer_id =
@@ -3377,7 +3380,7 @@ unsigned int compute_monomer_mol_coords(RDKit::ROMol& monomer_mol,
     // stretched across the horizontal chain. Those bonds will be handled by
     // the linear peptide renderer, so they must not trigger the normal cyclic
     // layout fallback.
-    if (!linear_peptide_layout && !coordinates_are_valid(monomer_mol)) {
+    if (!use_linear_peptide_layout && !coordinates_are_valid(monomer_mol)) {
         // the coordinates are not good, try breaking the molecule into
         // topological units. This considers rings as a single unit, even if
         // they are made of monomers that belong to different polymers.
