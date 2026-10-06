@@ -1,4 +1,4 @@
-#include "schrodinger/sketcher/dialog/resizable_model_dialog.h"
+#include "schrodinger/sketcher/dialog/resizable_modal_dialog.h"
 
 #include <algorithm>
 
@@ -180,4 +180,4 @@ void ResizableModalDialog::showEvent(QShowEvent* event)
 } // namespace sketcher
 } // namespace schrodinger
 
-#include "schrodinger/sketcher/dialog/resizable_model_dialog.moc"
+#include "schrodinger/sketcher/dialog/resizable_modal_dialog.moc"

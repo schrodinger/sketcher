@@ -7,7 +7,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../test_common.h"
-#include "schrodinger/sketcher/dialog/resizable_model_dialog.h"
+#include "schrodinger/sketcher/dialog/resizable_modal_dialog.h"
 
 BOOST_GLOBAL_FIXTURE(QApplicationRequiredFixture);
 BOOST_TEST_DONT_PRINT_LOG_VALUE(QRect);

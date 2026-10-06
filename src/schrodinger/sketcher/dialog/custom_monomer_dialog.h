@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "schrodinger/sketcher/definitions.h"
-#include "schrodinger/sketcher/dialog/resizable_model_dialog.h"
+#include "schrodinger/sketcher/dialog/resizable_modal_dialog.h"
 
 namespace RDKit
 {
