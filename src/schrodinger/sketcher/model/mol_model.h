@@ -741,13 +741,10 @@ class SKETCHER_API MolModel : public AbstractUndoableModel
      * @param reaction The reaction to add
      * @param enforce_size_limit If true (default), enforces the maximum atom
      * count limit for reactions
-     * @param render_peptides_linearly If coordinates need to be generated, lay
-     * peptide backbones out as horizontal chains.
      * @throw std::runtime_error if the model already contains a reaction arrow
      */
     void addReaction(RDKit::ChemicalReaction reaction,
-                     const bool enforce_size_limit = true,
-                     const bool render_peptides_linearly = false);
+                     const bool enforce_size_limit = true);
 
     /**
      * Undoably add a fragment and (optionally) bond it to the existing
@@ -1725,8 +1722,9 @@ convert_text_to_mol_or_reaction(const std::string& text,
  * origin if the scene is empty.
  * @param enforce_monomer_validity If true (default), validate monomer
  * database identities and inline SMILES before importing a molecule.
- * @param render_peptides_linearly If coordinates need to be generated, lay
- * peptide backbones out as horizontal chains.
+ * @param render_peptides_linearly If mol_or_reaction is a molecule and its
+ * coordinates need to be generated, lay peptide backbones out as horizontal
+ * chains.
  */
 SKETCHER_API void add_mol_or_reaction_to_mol_model(
     MolModel& mol_model,

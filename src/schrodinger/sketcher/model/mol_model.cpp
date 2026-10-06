@@ -1284,8 +1284,7 @@ num_atoms_in_reaction(const RDKit::ChemicalReaction& reaction)
 }
 
 void MolModel::addReaction(RDKit::ChemicalReaction reaction,
-                           const bool enforce_size_limit,
-                           const bool render_peptides_linearly)
+                           const bool enforce_size_limit)
 {
     if (!reaction.getNumReactantTemplates() &&
         !reaction.getNumProductTemplates()) {
@@ -1304,10 +1303,10 @@ void MolModel::addReaction(RDKit::ChemicalReaction reaction,
     }
 
     for (auto mol : reaction.getReactants()) {
-        prepare_mol(*mol, render_peptides_linearly);
+        prepare_mol(*mol);
     }
     for (auto mol : reaction.getProducts()) {
-        prepare_mol(*mol, render_peptides_linearly);
+        prepare_mol(*mol);
     }
 
     auto cmd_func = [this, reaction]() { addReactionCommandFunc(reaction); };
@@ -3323,8 +3322,7 @@ void add_mol_or_reaction_to_mol_model(
     } else {
         auto reaction = std::get<boost::shared_ptr<RDKit::ChemicalReaction>>(
             mol_or_reaction);
-        mol_model.addReaction(*reaction, /* enforce_size_limit = */ true,
-                              render_peptides_linearly);
+        mol_model.addReaction(*reaction);
     }
 }
 

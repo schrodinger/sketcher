@@ -214,11 +214,9 @@ void add_to_mol_model(MolModel& mol_model, const RDKit::ROMol& rdmol,
 }
 
 void add_to_mol_model(MolModel& mol_model, const RDKit::ChemicalReaction& rxn,
-                      const RenderOptions& opts)
+                      const RenderOptions&)
 {
-    mol_model.addReaction(rxn, /* enforce_size_limit = */ false,
-                          /* render_peptides_linearly = */
-                          opts.render_peptides_linearly);
+    mol_model.addReaction(rxn, /* enforce_size_limit = */ false);
 }
 
 void add_to_mol_model(MolModel& mol_model, const std::string& text,
