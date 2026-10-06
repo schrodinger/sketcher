@@ -47,6 +47,7 @@
 #include "schrodinger/sketcher/model/mol_model.h"
 #include "schrodinger/sketcher/model/non_molecular_object.h"
 #include "schrodinger/sketcher/model/sketcher_model.h"
+#include "schrodinger/sketcher/rdkit/monomer_analog.h"
 #include "schrodinger/sketcher/rdkit/monomeric.h"
 #include "schrodinger/sketcher/molviewer/atom_item.h"
 #include "schrodinger/sketcher/molviewer/bond_item.h"
@@ -60,6 +61,7 @@
 #include "schrodinger/sketcher/rdkit/mol_update.h"
 #include "schrodinger/sketcher/rdkit/periodic_table.h"
 #include "schrodinger/sketcher/rdkit/rgroup.h"
+#include "schrodinger/sketcher/molviewer/removing_bound_monomeric_connection.h"
 #include "schrodinger/sketcher/sketcher_css_style.h"
 #include "schrodinger/sketcher/ui/ui_sketcher_widget.h"
 #include "schrodinger/sketcher/molviewer/coord_utils.h"
@@ -70,27 +72,6 @@ namespace schrodinger
 {
 namespace sketcher
 {
-
-/**
- * Index-keyed counterpart to MonomerMutation: the same `(atoms,
- * helm_symbol)` pair, but with atom identity captured by index so it
- * survives a `MolModel::mutateMonomers` call (which may invalidate
- * raw `RDKit::Atom*` pointers via its snapshot mechanism).
- */
-struct IndexedMonomerMutation {
-    std::vector<unsigned int> atom_indices;
-    std::string helm_symbol;
-};
-
-/**
- * A connection and its associated attachment point that should be preserved
- * when a monomer is edited in the CustomMonomerDialog.
- */
-struct RequiredConnection {
-    int attachment_point;
-    unsigned int bound_monomer_index;
-    bool is_secondary_connection;
-};
 
 /**
  * Capture atom identity by index before a sequence of
@@ -889,30 +870,6 @@ void SketcherWidget::showEditAtomPropertiesDialog(
 }
 
 /**
- * Get information about the required attachment points (i.e. attachment points
- * that are currently involved in a connection, meaning that we should warn the
- * user if they try to delete it) and their associated connections
- */
-static std::pair<std::vector<int>, std::vector<RequiredConnection>>
-get_required_attachment_points(const RDKit::Atom* monomer)
-{
-    std::vector<int> required_attachment_points;
-    std::vector<RequiredConnection> required_connections;
-    const auto attachment_points = get_attachment_points_for_monomer(monomer);
-    for (const auto& bound_attachment_point : attachment_points.first) {
-        if (bound_attachment_point.num <= 0) {
-            continue;
-        }
-        required_attachment_points.push_back(bound_attachment_point.num);
-        required_connections.push_back(
-            {bound_attachment_point.num,
-             bound_attachment_point.bound_monomer->getIdx(),
-             bound_attachment_point.is_secondary_connection});
-    }
-    return std::make_pair(required_attachment_points, required_connections);
-}
-
-/**
  * After the user accepts the edits in the CustomMonomerDialog, figure out
  * which connections, if any, we should remove from the edited monomer.
  * Connections will be removed if the user deleted their associated attachment
@@ -1159,32 +1116,60 @@ void SketcherWidget::connectContextMenu(const MonomerContextMenu& menu)
             &SketcherWidget::showEditMonomerStructureDialog);
 
     connect(&menu, &MonomerContextMenu::mutateMonomerRequested, this,
-            [this](auto mutations, const QString& description) {
-                if (mutations.empty()) {
-                    return;
-                }
-                auto indexed = capture_atom_indices(std::move(mutations));
+            &SketcherWidget::mutateMonomersFromContextMenu);
+}
 
-                auto undo_raii = m_mol_model->createUndoMacro(
-                    description.isEmpty() ? QStringLiteral("Mutate Monomers")
-                                          : description);
-                for (auto& [idxs, sym] : indexed) {
-                    if (idxs.empty()) {
-                        continue;
-                    }
-                    std::unordered_set<const RDKit::Atom*> resolved;
-                    resolved.reserve(idxs.size());
-                    const auto* mol = m_mol_model->getMol();
-                    for (auto i : idxs) {
-                        resolved.insert(mol->getAtomWithIdx(i));
-                    }
-                    // Menu emits uniform-type batches; first-atom sample
-                    // gives the right type.
-                    const auto target_type =
-                        get_monomer_type(*resolved.begin());
-                    m_mol_model->mutateMonomers(resolved, sym, target_type);
-                }
-            });
+void SketcherWidget::mutateMonomersFromContextMenu(
+    std::vector<MonomerMutation> mutations, QString description)
+{
+    if (mutations.empty()) {
+        return;
+    }
+    auto indexed = capture_atom_indices(std::move(mutations));
+    auto changes = get_monomer_mutation_connection_changes(
+        *m_mol_model->getMol(), indexed);
+
+    auto apply_mutations = [this, indexed = std::move(indexed), changes,
+                            description]() {
+        auto undo_raii = m_mol_model->createUndoMacro(
+            description.isEmpty() ? QStringLiteral("Mutate Monomers")
+                                  : description);
+        const auto* mol = m_mol_model->getMol();
+        std::unordered_set<const RDKit::Bond*> bonds;
+        std::unordered_set<const RDKit::Bond*> secondary;
+        for (auto index : changes.bond_indices) {
+            bonds.insert(mol->getBondWithIdx(index));
+        }
+        for (auto index : changes.secondary_connection_indices) {
+            secondary.insert(mol->getBondWithIdx(index));
+        }
+        if (!bonds.empty() || !secondary.empty()) {
+            m_mol_model->remove({}, bonds, secondary, {}, {});
+        }
+        for (const auto& [idxs, sym] : indexed) {
+            if (idxs.empty()) {
+                continue;
+            }
+            std::unordered_set<const RDKit::Atom*> resolved;
+            resolved.reserve(idxs.size());
+            const auto* current_mol = m_mol_model->getMol();
+            for (auto i : idxs) {
+                resolved.insert(current_mol->getAtomWithIdx(i));
+            }
+            // Menu emits uniform-type batches; first-atom sample gives
+            // the right type.
+            const auto target_type = get_monomer_type(*resolved.begin());
+            m_mol_model->mutateMonomers(resolved, sym, target_type);
+        }
+    };
+    if (changes.missing_attachment_points.empty()) {
+        apply_mutations();
+        return;
+    }
+    auto* warning = show_bound_connection_warning(
+        changes.missing_attachment_points, this, changes.affected_monomers > 1);
+    connect(warning, &MessageBoxDialog::accepted, this,
+            std::move(apply_mutations));
 }
 
 void SketcherWidget::connectContextMenu(const ModifyAtomsMenu& menu)
