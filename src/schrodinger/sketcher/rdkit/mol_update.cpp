@@ -223,7 +223,7 @@ static void clear_abs_labels_with_unresolved_cip(RDKit::RWMol& mol)
 /**
  * Called once when a mol is first brought into the sketcher
  */
-void prepare_mol(RDKit::ROMol& mol)
+void prepare_mol(RDKit::ROMol& mol, const bool render_peptides_linearly)
 {
     // Make sure valences are available.
     mol.updatePropertyCache(false);
@@ -233,7 +233,7 @@ void prepare_mol(RDKit::ROMol& mol)
     // this call will intentionally keep a 3d conformer if one is found, since
     // Maestro may use that later to align the Sketcher structure with the
     // Maestro workspace structure
-    update_2d_coordinates(mol);
+    update_2d_coordinates(mol, render_peptides_linearly);
 
     // Update all input chiral centers to have enhanced stereo; honors MDL input
     add_enhanced_stereo_to_chiral_atoms(mol);

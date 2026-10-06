@@ -29,8 +29,13 @@ namespace sketcher
  * they are RDDepict::BOND_LEN units long. If the input structure contains a 3d
  * conformer, it will be kept in addition to the 2d conformer. Any additional 2d
  * or 3d conformers will be discarded.
+ *
+ * @param mol Molecule whose conformers should be normalized.
+ * @param render_peptides_linearly If coordinates need to be generated, lay
+ * peptide backbones out as horizontal chains.
  */
-SKETCHER_API void update_2d_coordinates(RDKit::ROMol& mol);
+SKETCHER_API void update_2d_coordinates(RDKit::ROMol& mol,
+                                        bool render_peptides_linearly = false);
 
 /**
  * Determine the length of a typical bond in the given molecule.  If the

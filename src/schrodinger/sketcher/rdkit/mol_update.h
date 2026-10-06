@@ -18,8 +18,11 @@ namespace sketcher
  * of 2D coordinates and certain updates dealing with stereochemistry.
  *
  * @param mol The molecule to prepare for use in the sketcher
+ * @param render_peptides_linearly If coordinates need to be generated, lay
+ * peptide backbones out as horizontal chains.
  */
-SKETCHER_API void prepare_mol(RDKit::ROMol& mol);
+SKETCHER_API void prepare_mol(RDKit::ROMol& mol,
+                              bool render_peptides_linearly = false);
 
 /**
  * Update an RDKit molecule after any change is made to its underlying

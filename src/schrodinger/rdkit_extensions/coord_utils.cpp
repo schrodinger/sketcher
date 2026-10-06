@@ -31,10 +31,11 @@ RDGeom::Point3D compute_centroid(const std::vector<RDGeom::Point3D>& positions)
 }
 
 unsigned int compute2DCoords(RDKit::ROMol& mol,
-                             const std::vector<unsigned int>& frozen_ids)
+                             const std::vector<unsigned int>& frozen_ids,
+                             const bool render_peptides_linearly)
 {
     if (isMonomeric(mol)) {
-        return compute_monomer_mol_coords(mol);
+        return compute_monomer_mol_coords(mol, render_peptides_linearly);
     }
 
     RDDepict::Compute2DCoordParameters params;
