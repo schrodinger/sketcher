@@ -1195,13 +1195,11 @@ void MolModel::addMolAt(RDKit::RWMol mol, const RDGeom::Point3D& position,
     }
     center_mol_on(mol, position);
     addMol(mol, description, /* reposition_mol = */ false,
-           /* new_molecule_added = */ false, /* enforce_size_limit = */ true,
-           enforce_monomer_validity);
+           /* new_molecule_added = */ false, enforce_monomer_validity);
 }
 
 void MolModel::addMol(RDKit::RWMol mol, const QString& description,
                       const bool reposition_mol, const bool new_molecule_added,
-                      const bool enforce_size_limit,
                       const bool enforce_monomer_validity)
 {
     if (mol.getNumAtoms() == 0) {
@@ -1211,12 +1209,6 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
         (new_molecule_added)
             ? WhatChanged::MOLECULE | WhatChanged::NEW_MOLECULE_ADDED
             : WhatChanged::MOLECULE;
-
-    if (enforce_size_limit && mol.getNumAtoms() > MAX_NUM_ATOMS_FOR_IMPORT) {
-        throw std::runtime_error(
-            fmt::format("Cannot import molecules containing more than {} atoms",
-                        MAX_NUM_ATOMS_FOR_IMPORT));
-    }
 
     if (enforce_monomer_validity && rdkit_extensions::isMonomeric(mol)) {
         // throw a std::runtime_error if there are any monomer names that don't
@@ -1263,26 +1255,7 @@ void MolModel::addMol(RDKit::RWMol mol, const QString& description,
     }
 }
 
-/**
- * @return the total number of atoms in all of a reaction's products and
- * reactants
- */
-static unsigned int
-num_atoms_in_reaction(const RDKit::ChemicalReaction& reaction)
-{
-    auto sum_num_atoms = [](unsigned int num_atoms, RDKit::ROMOL_SPTR mol) {
-        return num_atoms + mol->getNumAtoms();
-    };
-    auto num_atoms =
-        std::accumulate(reaction.beginReactantTemplates(),
-                        reaction.endReactantTemplates(), 0u, sum_num_atoms);
-    return std::accumulate(reaction.beginProductTemplates(),
-                           reaction.endProductTemplates(), num_atoms,
-                           sum_num_atoms);
-}
-
-void MolModel::addReaction(RDKit::ChemicalReaction reaction,
-                           const bool enforce_size_limit)
+void MolModel::addReaction(RDKit::ChemicalReaction reaction)
 {
     if (!reaction.getNumReactantTemplates() &&
         !reaction.getNumProductTemplates()) {
@@ -1292,12 +1265,6 @@ void MolModel::addReaction(RDKit::ChemicalReaction reaction,
     if (m_arrow.has_value()) {
         throw std::runtime_error(
             "Sketcher does not support more than one reaction.");
-    }
-    if (enforce_size_limit &&
-        num_atoms_in_reaction(reaction) > MAX_NUM_ATOMS_FOR_IMPORT) {
-        throw std::runtime_error(
-            fmt::format("Cannot import reactions containing more than {} atoms",
-                        MAX_NUM_ATOMS_FOR_IMPORT));
     }
 
     for (auto mol : reaction.getReactants()) {
@@ -3312,8 +3279,7 @@ void add_mol_or_reaction_to_mol_model(
                                enforce_monomer_validity);
         } else {
             mol_model.addMol(*mol, "Import molecule", /*reposition_mol =*/true,
-                             recenter_view, /* enforce_size_limit = */ true,
-                             enforce_monomer_validity);
+                             recenter_view, enforce_monomer_validity);
         }
     } else {
         auto reaction = std::get<boost::shared_ptr<RDKit::ChemicalReaction>>(
