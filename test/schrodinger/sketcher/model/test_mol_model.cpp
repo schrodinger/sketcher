@@ -4253,6 +4253,89 @@ BOOST_AUTO_TEST_CASE(test_clean_up_restores_valid_distorted_monomer_SKETCH_2849,
 }
 
 /**
+ * SKETCH-2874: Join a forward chain to a chain drawn from C to N. Clean Up
+ * should produce the same layout as importing the final HELM, without changing
+ * the model's atom order or the connectivity. Include a scene so label sizing
+ * and redraw run as they do in the application.
+ */
+BOOST_AUTO_TEST_CASE(test_clean_up_joined_chains_SKETCH_2874)
+{
+    const std::string helm =
+        "PEPTIDE1{C.G.A.A.T.C}$PEPTIDE1,PEPTIDE1,1:R3-6:R3$$$V2.0";
+    QUndoStack imported_undo_stack;
+    TestMolModel imported_model(&imported_undo_stack);
+    SketcherModel imported_settings;
+    TestScene imported_scene(&imported_model, &imported_settings);
+    import_mol_text(&imported_model, helm);
+    imported_model.regenerateCoordinates();
+    const auto& expected_conf = imported_model.getMol()->getConformer();
+
+    QUndoStack undo_stack;
+    TestMolModel model(&undo_stack);
+    SketcherModel settings;
+    TestScene scene(&model, &settings);
+    import_mol_text(&model, "PEPTIDE1{C.G.A}$$$$V2.0");
+    const auto* mol = model.getMol();
+    model.addMonomer("C", ChainType::PEPTIDE, {0, -3, 0});
+    model.addBoundMonomer("T", ChainType::PEPTIDE, {1.5, -3, 0}, "R2",
+                          mol->getAtomWithIdx(3), "R1");
+    model.addBoundMonomer("A", ChainType::PEPTIDE, {3, -3, 0}, "R2",
+                          mol->getAtomWithIdx(4), "R1");
+    model.addMonomericConnection(mol->getAtomWithIdx(0), "R3",
+                                 mol->getAtomWithIdx(3), "R3");
+    model.addMonomericConnection(mol->getAtomWithIdx(2), "R2",
+                                 mol->getAtomWithIdx(5), "R1");
+    BOOST_REQUIRE_EQUAL(mol->getNumAtoms(), 6);
+    BOOST_REQUIRE_EQUAL(mol->getNumBonds(), 6);
+    const std::vector<unsigned int> residue_numbers{1, 2, 3, 6, 5, 4};
+    auto check_atom_order = [&]() {
+        for (unsigned int idx = 0; idx < mol->getNumAtoms(); ++idx) {
+            BOOST_TEST(rdkit_extensions::get_residue_number(
+                           mol->getAtomWithIdx(idx)) == residue_numbers[idx]);
+        }
+        BOOST_TEST(get_mol_text(&model, Format::HELM) == helm);
+    };
+    check_atom_order();
+
+    auto check_layout = [&]() {
+        BOOST_REQUIRE_EQUAL(mol->getNumConformers(), 1);
+        const auto& actual_conf = mol->getConformer();
+        BOOST_TEST(!actual_conf.is3D());
+        for (const auto* atom : mol->atoms()) {
+            const auto residue_idx =
+                rdkit_extensions::get_residue_number(atom) - 1;
+            const auto actual = actual_conf.getAtomPos(atom->getIdx()) -
+                                actual_conf.getAtomPos(0);
+            const auto expected = expected_conf.getAtomPos(residue_idx) -
+                                  expected_conf.getAtomPos(0);
+            BOOST_CHECK_SMALL(actual.x - expected.x, 1e-6);
+            BOOST_CHECK_SMALL(actual.y - expected.y, 1e-6);
+        }
+    };
+
+    const auto original_positions = mol->getConformer().getPositions();
+    model.regenerateCoordinates();
+    check_layout();
+    check_atom_order();
+    undo_stack.undo();
+    for (unsigned int idx = 0; idx < mol->getNumAtoms(); ++idx) {
+        const auto delta =
+            mol->getConformer().getAtomPos(idx) - original_positions[idx];
+        BOOST_CHECK_SMALL(delta.length(), 1e-6);
+    }
+    undo_stack.redo();
+    check_layout();
+    check_atom_order();
+    model.regenerateCoordinates();
+    check_layout();
+    check_atom_order();
+
+    model.clear();
+    import_mol_text(&model, helm);
+    check_layout();
+}
+
+/**
  * Reproduce the bug where placing a monomer, deleting it, then placing an
  * atomistic atom and copy/cutting it throws "Atom does not have monomer info".
  *
