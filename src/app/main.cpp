@@ -142,6 +142,7 @@ emscripten::val sketcher_load_custom_monomers(const std::string& json)
 {
     auto& db = schrodinger::rdkit_extensions::MonomerDatabase::instance();
     auto result = db.loadMonomersFromJson(json);
+    get_sketcher_instance().setLoadMonomerDatabaseVisible(false);
 
     return monomer_defs_insertion_result_to_js(result);
 }

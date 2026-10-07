@@ -466,6 +466,11 @@ void SketcherWidget::setColorScheme(const ColorScheme color_scheme)
     m_sketcher_model->setColorScheme(color_scheme);
 }
 
+void SketcherWidget::setLoadMonomerDatabaseVisible(const bool visible)
+{
+    m_ui->top_bar_wdg->setLoadMonomerDatabaseVisible(visible);
+}
+
 static std::unordered_set<const RDKit::Atom*>
 get_corresponding_atoms_from_different_mol(
     const std::unordered_set<const RDKit::Atom*>& atoms,

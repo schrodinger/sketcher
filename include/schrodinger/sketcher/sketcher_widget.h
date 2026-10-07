@@ -147,6 +147,13 @@ class SKETCHER_API SketcherWidget : public QWidget
     void setColorScheme(const ColorScheme color_scheme);
 
     /**
+     * Set whether the "Load Monomer Database..." menu item is visible. This
+     * should be hidden when the monomer database is supplied by the host
+     * application (e.g. from a monomer service).
+     */
+    void setLoadMonomerDatabaseVisible(const bool visible);
+
+    /**
      * Undoably select or deselect the specified atoms and bonds.
      *
      * @param atoms The atoms to select or deselect
